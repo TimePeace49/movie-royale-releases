@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Royale · Setup guide</title>
+<style>
+  :root { --bg:#120a24; --panel:#1d1238; --panel2:#251849; --line:#3a2a66; --text:#f3edff; --dim:#a898cf; --gold:#ffc94a; --hot:#ff6a3d; --good:#4ade80; --bad:#f87171; --twitch:#9146ff; --discord:#5865f2; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; color:var(--text); font:15px/1.55 Inter, 'Segoe UI', system-ui, sans-serif; background:radial-gradient(1100px 600px at 70% -10%, #3b1856 0, var(--bg) 60%); }
+  button, input { font:inherit; color:inherit; }
+  button { cursor:pointer; border:1px solid var(--line); border-radius:10px; padding:9px 16px; background:var(--panel2); transition:.15s; }
+  button:hover { filter:brightness(1.2); }
+  button.primary { background:linear-gradient(135deg, var(--gold), var(--hot)); color:#2a1100; font-weight:800; border:0; }
+  button.twitch { background:var(--twitch); border:0; color:#fff; font-weight:800; }
+  button.discord { background:var(--discord); border:0; color:#fff; font-weight:800; }
+  button.big { padding:13px 22px; font-size:17px; border-radius:12px; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  input { width:100%; background:#0f0820; border:1px solid var(--line); border-radius:10px; padding:10px 12px; outline:none; }
+  input:focus { border-color:var(--gold); }
+  a { color:var(--gold); }
+  header { display:flex; align-items:center; gap:16px; padding:14px 26px; border-bottom:1px solid var(--line); background:rgba(18,10,36,.8); position:sticky; top:0; z-index:4; }
+  header h1 { margin:0; font-size:22px; font-family:'Lilita One', Impact, sans-serif; color:var(--gold); }
+  header .grow { flex:1; }
+  .wrap { display:grid; grid-template-columns:290px 1fr; gap:24px; padding:24px 26px; max-width:1250px; margin:0 auto; }
+  @media (max-width:900px) { .wrap { grid-template-columns:1fr; } }
+  nav { display:flex; flex-direction:column; gap:6px; position:sticky; top:84px; align-self:start; }
+  nav button { display:flex; align-items:center; gap:12px; text-align:left; background:transparent; border:1px solid transparent; padding:12px 14px; }
+  nav button.on { background:var(--panel); border-color:var(--gold); }
+  nav .n { width:30px; height:30px; flex:none; border-radius:50%; display:grid; place-items:center; font-weight:800; background:var(--panel2); border:2px solid var(--line); }
+  nav .done .n { background:var(--good); border-color:var(--good); color:#062a12; }
+  nav small { display:block; color:var(--dim); font-size:12px; }
+  .bar { height:8px; background:#0f0820; border-radius:8px; overflow:hidden; margin:6px 0 14px; } .bar i { display:block; height:100%; background:linear-gradient(90deg, var(--gold), var(--hot)); transition:width .4s; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px 30px; }
+  .card h2 { margin:0 0 4px; font-size:26px; }
+  .why { color:var(--dim); margin:0 0 20px; }
+  ol.steps { list-style:none; counter-reset:s; padding:0; margin:0 0 20px; }
+  ol.steps > li { counter-increment:s; position:relative; padding:14px 16px 14px 58px; margin-bottom:10px; background:var(--panel2); border-radius:14px; }
+  ol.steps > li::before { content:counter(s); position:absolute; left:16px; top:13px; width:28px; height:28px; border-radius:50%; background:var(--gold); color:#2a1100; font-weight:800; display:grid; place-items:center; }
+  ol.steps b { color:#fff; }
+  .copy { display:flex; gap:8px; margin-top:8px; } .copy input { font-family:ui-monospace, Consolas, monospace; font-size:13px; }
+  .field { margin-top:10px; } .field label { display:block; font-size:13px; color:var(--dim); margin-bottom:4px; }
+  .ok, .bad, .info { padding:12px 16px; border-radius:12px; margin:14px 0; }
+  .ok { background:rgba(74,222,128,.12); border:1px solid rgba(74,222,128,.4); color:#c9f7d8; }
+  .bad { background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.4); color:#ffd3d3; }
+  .info { background:rgba(255,201,74,.08); border:1px solid rgba(255,201,74,.3); color:#ffe9b0; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .foot { display:flex; justify-content:space-between; margin-top:24px; gap:10px; }
+  .drop { border:2px dashed var(--line); border-radius:14px; padding:20px; text-align:center; color:var(--dim); margin-top:10px; }
+  .drop.over { border-color:var(--gold); color:var(--gold); }
+  kbd { background:#0f0820; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:0 6px; font-size:13px; }
+  .tag { font-size:12px; padding:2px 8px; border-radius:20px; background:var(--panel2); color:var(--dim); }
+</style>
+</head>
+<body>
+<header><h1>🧭 SETUP GUIDE</h1><span class="grow"></span><a href="/control.html"><button>Done for now → Movie Royale</button></a></header>
+<div class="wrap">
+  <nav>
+    <div class="muted" id="progressTxt" style="color:var(--dim);font-size:13px"></div>
+    <div class="bar"><i id="progress" style="width:0"></i></div>
+    <div id="nav"></div>
+    <p style="color:var(--dim);font-size:13px;margin-top:10px">Every step is optional. Custom lists and the game work without any of them. Do them in any order — your progress saves as you go.</p>
+  </nav>
+  <main class="card" id="page">Loading…</main>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let S = null, A = null, step = new URLSearchParams(location.search).get('step') || null, msg = {};
+async function api(url, body, method = 'POST') {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Something went wrong'); return j;
+}
+const copyBox = v => `<div class="copy"><input readonly value="${esc(v)}" onclick="this.select()"><button onclick="navigator.clipboard.writeText(${esc(JSON.stringify(v))});this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button></div>`;
+const link = (url, text) => `<a href="${esc(url)}" target="_blank">${text} ↗</a>`;
+
+const STEPS = [
+  { id: 'twitch', title: 'Sign in with Twitch', sub: 'Your account, chat & !join', done: () => !!S.owner },
+  { id: 'rewards', title: 'Channel points & bits', sub: 'Viewers trigger chaos', done: () => !!S.settings.rewardsCreated && S.status.twitch.state === 'online' },
+  { id: 'tmdb', title: 'Movie search', sub: 'Title, year, poster, cast', done: () => !!S.settings.tmdbKey },
+  { id: 'omdb', title: 'Ratings', sub: 'Rotten Tomatoes + IMDb', done: () => !!S.settings.omdbKey },
+  { id: 'letterboxd', title: 'Letterboxd', sub: 'Skip movies you\'ve seen', done: () => S.status.letterboxd.count > 0 },
+  { id: 'discord', title: 'Discord bot', sub: '/suggest movies', done: () => S.status.discord.state === 'online' && (A.guilds || []).length > 0 },
+  { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup }
+];
+
+async function load() {
+  [S, A] = await Promise.all([fetch('/api/state').then(r => r.json()), fetch('/api/app').then(r => r.json())]);
+  if (!S.settings.setupSeen) api('/api/settings', { setupSeen: true }).catch(() => {});
+  if (!step) step = (STEPS.find(s => !s.done()) || STEPS[0]).id;
+  render();
+}
+function render() {
+  const done = STEPS.filter(s => s.done()).length;
+  $('progress').style.width = (done / STEPS.length * 100) + '%';
+  $('progressTxt').textContent = `${done} of ${STEPS.length} connected`;
+  $('nav').innerHTML = STEPS.map((s, i) => `<button class="${s.id === step ? 'on' : ''} ${s.done() ? 'done' : ''}" onclick="go('${s.id}')"><span class="n">${s.done() ? '✓' : i + 1}</span><span>${esc(s.title)}<small>${esc(s.sub)}</small></span></button>`).join('');
+  const keep = [...document.querySelectorAll('#page input[id]')].reduce((o, el) => (o[el.id] = el.value, o), {});
+  const focus = document.activeElement?.id;
+  $('page').innerHTML = PAGES[step]();
+  for (const [k, v] of Object.entries(keep)) if ($(k) && !$(k).readOnly && v) $(k).value = v;
+  if (focus && $(focus)) $(focus).focus();
+  PAGES[step + 'After']?.();
+}
+function go(id) { step = id; msg = {}; history.replaceState(null, '', '?step=' + id); render(); scrollTo(0, 0); }
+function nav() {
+  const i = STEPS.findIndex(s => s.id === step);
+  return `<div class="foot">${i > 0 ? `<button onclick="go('${STEPS[i - 1].id}')">← Back</button>` : '<span></span>'}
+    ${i < STEPS.length - 1 ? `<button class="primary" onclick="go('${STEPS[i + 1].id}')">${STEPS[i].done() ? 'Next' : 'Skip for now'} →</button>` : `<a href="/control.html"><button class="primary">🎉 Go to Movie Royale</button></a>`}</div>`;
+}
+const status = (ok, okText, badText) => ok ? `<div class="ok">✅ ${okText}</div>` : badText ? `<div class="bad">${badText}</div>` : '';
+const note = k => msg[k] ? `<div class="${msg[k].ok ? 'ok' : 'bad'}">${msg[k].ok ? '✅' : '⚠️'} ${msg[k].text}</div>` : '';
+
+const PAGES = {
+  twitch() {
+    const ready = !!(S.settings.twitchClientId && S.settings.twitchClientSecret), o = S.owner;
+    const cb = `http://localhost:${S.port}/twitch/callback`;
+    return `<h2>Sign in with Twitch</h2><p class="why">This shows your name and picture, reads your chat (for <b>!join</b> lists and the winner claim), and powers channel points and bits.</p>
+    ${o ? status(true, `Signed in as <b>${esc(o.name)}</b>. Chat: ${esc(S.status.twitch.chat)}.`) : ''}
+    ${!ready ? `<p>Twitch needs a free "app" so Movie Royale can sign you in. It takes about 2 minutes, and you only do it once.</p>
+    <ol class="steps">
+      <li>Open the ${link('https://dev.twitch.tv/console/apps/create', 'Twitch Developer Console')} and sign in with your Twitch account. If it asks, turn on two-factor authentication (Twitch requires it for developer apps).</li>
+      <li><b>Name:</b> type anything unique, like <i>MovieRoyale-${esc((S.settings.streamerName || S.owner?.name || 'me').replace(/\W/g, ''))}</i></li>
+      <li><b>OAuth Redirect URLs:</b> paste this exactly, then click <b>Add</b>:${copyBox(cb)}</li>
+      <li><b>Category:</b> pick <b>Other</b>. <b>Client Type:</b> pick <b>Confidential</b>. Tick the "I'm not a robot" box and click <b>Create</b>.</li>
+      <li>You're back on the list of apps. Click <b>Manage</b> next to your new app.</li>
+      <li>Copy the <b>Client ID</b> and paste it here:<div class="field"><input id="cid" placeholder="Client ID" autocomplete="off"></div></li>
+      <li>Click <b>New Secret</b> (confirm the pop-up), copy the secret and paste it here:<div class="field"><input id="sec" type="password" placeholder="Client Secret" autocomplete="off"></div></li>
+      <li>Click <b>Save</b> on the Twitch page, then press the button below.</li>
+    </ol>
+    ${note('tw')}
+    <button class="twitch big" onclick="saveTwitch()">Save &amp; sign in with Twitch</button>`
+    : `${o ? '' : `<ol class="steps"><li>Press the purple button. ${A.desktop ? 'Your web browser opens the Twitch sign-in page.' : 'You go to the Twitch sign-in page.'}</li><li>Click <b>Authorize</b>. (It asks for channel points and bits permission so viewers can trigger chaos.)</li><li>${A.desktop ? 'When it says "Signed in", close that browser tab and come back here. This page updates by itself.' : 'You come right back here.'}</li></ol>`}
+      <div class="row"><button class="twitch big" onclick="location.href='/auth/twitch'">${o ? 'Sign in again' : 'Sign in with Twitch'}</button>
+      <button onclick="if(confirm('Re-enter your Twitch app keys?')) api('/api/settings',{twitchClientId:'',twitchClientSecret:''}).then(load)">Change app keys</button></div>
+      <div class="info" style="margin-top:16px">If Twitch says <b>"redirect_mismatch"</b>: in the Developer Console, open your app and make sure the redirect URL is exactly:${copyBox(cb)}</div>`}
+    ${nav()}`;
+  },
+  rewards() {
+    const tw = S.status.twitch, rw = Object.keys(S.settings.rewards);
+    return `<h2>Channel points &amp; bits</h2><p class="why">Viewers spend channel points or bits to fire chaos events (comets, earthquakes, tornadoes…) that hit everyone at random. Nobody can buy an advantage.</p>
+    ${!S.owner ? `<div class="bad">Sign in with Twitch first (step 1).</div>` : tw.state !== 'online' ? `<div class="bad">Twitch is "${esc(tw.state)}". ${esc(tw.error || '')}</div>` : ''}
+    <div class="info">Channel points and bits need a Twitch <b>Affiliate</b> or <b>Partner</b> channel.</div>
+    <ol class="steps">
+      <li>Press <b>Create my rewards</b>. It adds these to your channel (you can change prices, names and colors later on Twitch):<div style="margin-top:8px">${rw.map(r => `<span class="tag" style="margin:2px">${esc(r)}</span>`).join(' ')}</div></li>
+      <li>Bits work automatically: a cheer of 100+, 300+, 500+, 1000+ or 2500+ triggers a bigger event. Change the tiers in ⚙️ Settings.</li>
+      <li>Test it: on the main screen, press any chaos test button, or redeem one of the rewards on your channel.</li>
+    </ol>
+    ${note('rw')}
+    ${status(S.settings.rewardsCreated && tw.state === 'online', 'Rewards are set up and Movie Royale is listening.')}
+    <button class="primary big" ${S.owner && tw.state === 'online' ? '' : 'disabled'} onclick="makeRewards(this)">✨ Create my rewards</button>
+    ${nav()}`;
+  },
+  tmdb() {
+    return `<h2>Movie search</h2><p class="why">TMDB is a free movie database. It powers the title + year search in Discord and the poster, director, cast, genre and synopsis on the winner card.</p>
+    <ol class="steps">
+      <li>Make a free account at ${link('https://www.themoviedb.org/signup', 'themoviedb.org/signup')} and confirm the email they send you.</li>
+      <li>Go to ${link('https://www.themoviedb.org/settings/api', 'Settings → API')} and click <b>Create</b> (or "click here" under Request an API Key). Choose <b>Developer</b> and accept the terms.</li>
+      <li>Fill in the form: <b>Type of use:</b> Personal · <b>Application name:</b> Movie Royale · <b>URL:</b> <code>http://localhost</code> · <b>Summary:</b> "Picking movies with my stream". Your own name/address go in the rest. Submit.</li>
+      <li>On the API page, copy the long <b>API Read Access Token</b> (starts with <code>eyJ</code>) and paste it here:<div class="field"><input id="tmdb" placeholder="${S.settings.tmdbKey ? 'Saved ' + esc(S.settings.tmdbKey) + ' — paste a new one to replace it' : 'eyJ…'}" autocomplete="off"></div></li>
+      <li>Press <b>Save &amp; test</b>.</li>
+    </ol>
+    ${note('tmdb')}
+    <button class="primary big" onclick="testTmdb(this)">Save &amp; test</button>
+    ${nav()}`;
+  },
+  omdb() {
+    return `<h2>Ratings on the winner screen</h2><p class="why">The winner screen shows the movie's Rotten Tomatoes, IMDb and Letterboxd ratings. Letterboxd works by itself. Rotten Tomatoes and IMDb come from OMDb, which is free.</p>
+    <ol class="steps">
+      <li>Go to ${link('https://www.omdbapi.com/apikey.aspx', 'omdbapi.com/apikey.aspx')}, choose <b>FREE! (1,000 daily limit)</b>, type your email, first and last name, and in <b>Use</b> write "Movie ratings for my stream". Press <b>Submit</b>.</li>
+      <li>Open the email from OMDb. <b>Click the activation link</b> in it (the key doesn't work until you do).</li>
+      <li>Copy the key from that email (8 letters/numbers) and paste it here:<div class="field"><input id="omdb" placeholder="${S.settings.omdbKey ? 'Saved ' + esc(S.settings.omdbKey) + ' — paste a new one to replace it' : 'e.g. a1b2c3d4'}" autocomplete="off"></div></li>
+      <li>Press <b>Save &amp; test</b>.</li>
+    </ol>
+    ${note('omdb')}
+    <button class="primary big" onclick="testOmdbKey(this)">Save &amp; test</button>
+    ${nav()}`;
+  },
+  letterboxd() {
+    const lb = S.status.letterboxd;
+    return `<h2>Letterboxd</h2><p class="why">Movies you've already logged are blocked from being suggested, and movies in the pool are retired automatically once you log them.</p>
+    ${status(lb.count > 0, `Knows ${lb.count} of your films${lb.profileCount ? ` (read your whole profile: ${lb.profileCount} films)` : ''}.`)}
+    ${lb.profileError && S.settings.letterboxdUser ? `<div class="bad">⚠️ Couldn't read your whole profile (${esc(lb.profileError)}). Only recent watches are known — add your export below so older movies are blocked too.</div>` : ''}
+    <ol class="steps">
+      <li>Type your Letterboxd username (the name in your profile link, letterboxd.com/<b>name</b>):<div class="field"><input id="lbu" value="${esc(S.settings.letterboxdUser)}" placeholder="username"></div>
+        <div class="row" style="margin-top:10px"><button class="primary" onclick="testLb(this)">Save &amp; sync</button></div>${note('lb')}
+        <p style="color:var(--dim);font-size:13px;margin:8px 0 0">Movie Royale reads every film on your public profile (re-checked every 6 hours, recent watches every 30 minutes). Your profile must be public.</p></li>
+      <li><b>Backup — if the count above looks too low:</b> on Letterboxd go to ${link('https://letterboxd.com/settings/data/', 'Settings → Data')} and click <b>Export your data</b>. Open the downloaded zip and drag <b>watched.csv</b> and <b>ratings.csv</b> into this box:
+        <div class="drop" id="lbdrop">📄 Drop watched.csv / ratings.csv here</div>${note('csv')}</li>
+    </ol>
+    ${nav()}`;
+  },
+  letterboxdAfter() {
+    const d = $('lbdrop'); if (!d) return;
+    d.ondragover = e => { e.preventDefault(); d.classList.add('over'); }; d.ondragleave = () => d.classList.remove('over');
+    d.ondrop = async e => {
+      e.preventDefault(); d.classList.remove('over');
+      for (const f of e.dataTransfer.files) {
+        if (!/\.csv$/i.test(f.name)) { msg.csv = { ok: false, text: `${esc(f.name)} isn't a CSV file. Unzip the export first.` }; continue; }
+        const r = await fetch('/api/letterboxd/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: await f.text() }).then(r => r.json());
+        msg.csv = { ok: true, text: `Loaded ${esc(f.name)} — ${r.count} films known${r.retired ? `, ${r.retired} pool movie(s) marked watched` : ''}.` };
+      }
+      await load();
+    };
+  },
+  discord() {
+    const d = S.status.discord, g = A.guilds || [];
+    return `<h2>Discord bot</h2><p class="why">Your viewers type <b>/suggest</b> in your Discord, see movie titles and years as they type, and the movie joins the pool.</p>
+    ${d.state === 'online' ? status(true, `Bot <b>${esc(d.tag)}</b> is online${g.length ? ` in: <b>${g.map(esc).join(', ')}</b>` : ''}.`) : d.error ? `<div class="bad">⚠️ ${esc(d.error)}</div>` : ''}
+    <ol class="steps">
+      <li>Open the ${link('https://discord.com/developers/applications', 'Discord Developer Portal')}, sign in, click <b>New Application</b>, name it <i>Movie Royale</i>, tick the box and click <b>Create</b>.</li>
+      <li>On the <b>General Information</b> page, copy the <b>Application ID</b> and paste it here:<div class="field"><input id="dapp" placeholder="${S.settings.discordClientId ? esc(S.settings.discordClientId) : 'Application ID (a long number)'}" autocomplete="off"></div></li>
+      <li>Click <b>Bot</b> in the left menu, then <b>Reset Token</b> → <b>Yes, do it!</b> Copy the token and paste it here (keep it secret!):<div class="field"><input id="dtok" type="password" placeholder="${S.settings.discordToken ? 'Saved — paste a new one to replace it' : 'Bot token'}" autocomplete="off"></div>
+        <p style="color:var(--dim);font-size:13px;margin:8px 0 0">You don't need to turn on any "Privileged Gateway Intents".</p></li>
+      <li>Press <b>Save &amp; connect</b>.<div class="row" style="margin-top:8px"><button class="primary" onclick="saveDiscord(this)">Save &amp; connect</button></div>${note('dc')}</li>
+      <li>Press <b>Add the bot to my server</b>, pick your server, click <b>Continue</b> → <b>Authorize</b>.<div class="row" style="margin-top:8px"><button class="discord" ${A.discordInvite ? '' : 'disabled'} onclick="window.open(A.discordInvite)">Add the bot to my server</button></div></li>
+      <li>The bot makes a new channel called <b>#${esc(S.settings.discordChannelName || 'movies-royal')}</b> and pins a message there with every command. <b>/suggest</b> and <b>/swap</b> only work in that channel. If you don't see the commands right away, press <kbd>Ctrl</kbd>+<kbd>R</kbd> in Discord to refresh.</li>
+      <li><b>Added the bot before?</b> Press <b>Add the bot to my server</b> again so it gets permission to make the channel and pin the message.</li>${(d.warnings || []).map(w => `<div class="bad">⚠️ ${esc(w)}</div>`).join('')}
+    </ol>
+    ${nav()}`;
+  },
+  stream() {
+    return `<h2>Put it on stream</h2><p class="why">The game runs in the Movie Royale window. Capture it in OBS like any other window.</p>
+    <ol class="steps">
+      <li>On the main screen, press <b>🪟 Pop out</b>. The game opens in its own window. Size it however you like (16:9 looks best).</li>
+      <li>In OBS: <b>Sources</b> → <b>+</b> → <b>Window Capture</b> → pick <b>[MovieRoyale.exe]: Movie Royale — Game</b>.${A.desktop ? '' : ' (If you run it in a browser, pick the browser window instead.)'} Set <b>Capture Method</b> to <b>Windows 10 (1903 and up)</b>.</li>
+      <li>For the sound: <b>Sources</b> → <b>+</b> → <b>Application Audio Capture</b> → pick <b>MovieRoyale.exe</b>. Now the game has its own volume slider in OBS.</li>
+      <li>Keep the game window open (it can be behind other windows, just not minimized).</li>
+    </ol>
+    <label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" style="width:auto" ${S.settings.streamSetup ? 'checked' : ''} onchange="api('/api/settings',{streamSetup:this.checked}).then(load)"> I've added it to OBS</label>
+    ${nav()}`;
+  }
+};
+
+async function saveTwitch() {
+  const id = $('cid').value.trim(), sec = $('sec').value.trim();
+  if (!id || !sec) { msg.tw = { ok: false, text: 'Paste both the Client ID and the Client Secret.' }; return render(); }
+  await api('/api/setup', { twitchClientId: id, twitchClientSecret: sec });
+  location.href = '/auth/twitch';
+  setTimeout(load, 800);
+}
+async function makeRewards(btn) {
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try { const r = await api('/api/twitch/rewards'); msg.rw = { ok: true, text: r.made.length ? `Created ${r.made.length} rewards on your channel.` : 'All the rewards already exist on your channel.' }; }
+  catch (e) { msg.rw = { ok: false, text: /affiliate|partner|forbidden|403/i.test(e.message) ? 'Twitch says your channel can\'t have custom rewards yet (needs Affiliate or Partner).' : esc(e.message) }; }
+  await load();
+}
+async function testTmdb(btn) {
+  const k = $('tmdb').value.trim();
+  if (!k && !S.settings.tmdbKey) { msg.tmdb = { ok: false, text: 'Paste your API Read Access Token first.' }; return render(); }
+  btn.disabled = true; btn.textContent = 'Testing…';
+  if (k) await api('/api/settings', { tmdbKey: k });
+  const r = await api('/api/test/tmdb');
+  msg.tmdb = r.ok ? { ok: true, text: `Working! Found <b>${esc(r.sample)}</b>.` } : { ok: false, text: esc(r.error || 'No results came back.') };
+  await load();
+}
+async function testOmdbKey(btn) {
+  const k = $('omdb').value.trim();
+  if (!k && !S.settings.omdbKey) { msg.omdb = { ok: false, text: 'Paste your OMDb key first.' }; return render(); }
+  btn.disabled = true; btn.textContent = 'Testing…';
+  if (k) await api('/api/settings', { omdbKey: k });
+  const r = await api('/api/test/omdb');
+  msg.omdb = r.ok ? { ok: true, text: `Working! ${esc(r.sample)}` } : { ok: false, text: esc(r.error || 'No ratings came back.') };
+  await load();
+}
+async function testLb(btn) {
+  const u = $('lbu').value.trim().replace(/^https?:\/\/letterboxd\.com\//, '').replace(/\/.*$/, '');
+  if (!u) { msg.lb = { ok: false, text: 'Type your Letterboxd username.' }; return render(); }
+  btn.disabled = true; btn.textContent = 'Syncing…';
+  const r = await api('/api/test/letterboxd', { user: u });
+  msg.lb = r.count ? { ok: true, text: `Synced! ${r.count} films known.${r.profileError ? ' (Only recent ones — see below.)' : ''}` } : { ok: false, text: `Couldn't read letterboxd.com/${esc(u)} (${esc(r.profileError || r.rssError || 'no films found')}). Check the spelling and that your profile is public.` };
+  await load();
+}
+async function saveDiscord(btn) {
+  const id = $('dapp').value.trim(), tok = $('dtok').value.trim(), body = {};
+  if (id) { if (!/^\d{15,22}$/.test(id)) { msg.dc = { ok: false, text: 'The Application ID is a long number — copy it from General Information.' }; return render(); } body.discordClientId = id; }
+  if (tok) body.discordToken = tok;
+  if (!body.discordClientId && !S.settings.discordClientId) { msg.dc = { ok: false, text: 'Paste the Application ID.' }; return render(); }
+  if (!body.discordToken && !S.settings.discordToken) { msg.dc = { ok: false, text: 'Paste the bot token.' }; return render(); }
+  btn.disabled = true; btn.textContent = 'Connecting…';
+  await api('/api/settings', body);
+  msg.dc = { ok: true, text: 'Saved. Connecting to Discord…' };
+  for (let i = 0; i < 12; i++) { await new Promise(r => setTimeout(r, 1000)); await load(); if (S.status.discord.state === 'online' || S.status.discord.state === 'error') break; }
+  msg.dc = S.status.discord.state === 'online' ? { ok: true, text: 'Connected! Now add the bot to your server (next step).' } : { ok: false, text: esc(S.status.discord.error || 'Still connecting — check the token.') };
+  render();
+}
+
+// live updates (e.g. after you sign in with Twitch in your browser)
+function connect() {
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=control`);
+  let t; ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'state') { clearTimeout(t); t = setTimeout(async () => { S = m.state; A = await fetch('/api/app').then(r => r.json()); if (!document.activeElement || document.activeElement.tagName !== 'INPUT') render(); }, 200); } };
+  ws.onclose = () => setTimeout(connect, 1500);
+}
+load(); connect();
+</script>
+</body>
+</html>

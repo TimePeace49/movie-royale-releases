@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Royale Help</title>
+<style>
+  :root { --bg:#120a24; --panel:#1d1238; --panel2:#251849; --line:#3a2a66; --text:#f3edff; --dim:#a898cf; --gold:#ffc94a; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body { background:var(--bg); color:var(--text); font:15px/1.55 Inter, 'Segoe UI', system-ui, sans-serif; display:grid; grid-template-columns:260px 1fr; }
+  aside { border-right:1px solid var(--line); padding:16px; overflow:auto; background:rgba(29,18,56,.6); }
+  aside input { width:100%; background:#0f0820; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; outline:none; }
+  aside input:focus { border-color:var(--gold); }
+  aside a { display:block; color:var(--dim); text-decoration:none; padding:5px 8px; border-radius:8px; font-size:14px; }
+  aside a:hover { background:var(--panel2); color:var(--text); }
+  aside a.hide { display:none; }
+  main { overflow:auto; padding:24px 36px 80px; }
+  h1 { font-family:'Lilita One', Impact, sans-serif; color:var(--gold); margin:0 0 4px; letter-spacing:.5px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px 22px; margin:14px 0; max-width:880px; }
+  section.hide { display:none; }
+  h2 { margin:0 0 8px; color:var(--gold); font-size:19px; }
+  h3 { margin:14px 0 4px; font-size:15px; }
+  p, li { color:#e3dbf7; }
+  code { background:#0f0820; padding:1px 6px; border-radius:6px; color:var(--gold); }
+  mark { background:rgba(255,201,74,.35); color:inherit; border-radius:3px; }
+  .muted { color:var(--dim); }
+  .none { display:none; color:var(--dim); padding:30px; }
+  ol li, ul li { margin:4px 0; }
+  .tip { background:var(--panel2); border-left:3px solid var(--gold); padding:8px 12px; border-radius:8px; margin:10px 0; }
+  @media (max-width:800px) { body { grid-template-columns:1fr; } aside { display:none; } }
+</style>
+</head>
+<body>
+<aside>
+  <input id="q" placeholder="🔎 Search help… (e.g. swap, kirb, luck)" autofocus>
+  <div id="toc" style="margin-top:12px"></div>
+</aside>
+<main>
+  <h1>❓ How to do everything</h1>
+  <p class="muted">Type in the search box to find anything. Every section is short — promise.</p>
+  <div class="none" id="none">Nothing matched. Try a simpler word like <i>discord</i>, <i>start</i>, <i>sound</i> or <i>update</i>.</div>
+
+  <section data-k="start first setup connect">
+    <h2>🧭 First time setup</h2>
+    <ol>
+      <li>Open <b>Settings → 🧭 Setup guide</b> (also opens by itself the first time). It walks you through Twitch, channel points, movie search (TMDB), ratings (OMDb), Letterboxd, Discord and OBS — with a test button for each.</li>
+      <li>Everything saves automatically on your computer. Nothing to remember.</li>
+      <li>Use the <b>🧪 Test</b> tab to try every feature before you go live.</li>
+    </ol>
+  </section>
+
+  <section data-k="battle start royale countdown fullscreen timer fight">
+    <h2>⚔️ Running a battle</h2>
+    <ol>
+      <li>Go to the <b>⚔️ Battle</b> tab and pick which battle you're playing from the <b>Playing</b> dropdown under the game.</li>
+      <li>Press <b>▶ START ROYALE</b>. The game goes fullscreen, counts down 5 seconds, then the 30-second fight starts. The big timer under the button shows what's left.</li>
+      <li>The last piece standing wins. A few seconds after the winner shows, fullscreen closes so you can reach the buttons.</li>
+      <li>Press <b>Next round →</b> to put the pieces back for another round.</li>
+    </ol>
+    <p class="tip">Change the countdown and fight length in <b>Settings → Game</b>.</p>
+  </section>
+
+  <section data-k="title screen name heading battle">
+    <h2>🏷️ Putting a title on the battle screen</h2>
+    <p>On the <b>⚔️ Battle</b> tab, type in the <b>Screen title</b> box under the game (e.g. <i>Spooky Movie Night</i>). It shows at the top of the battle. Leave it empty to show the battle's name. Each battle remembers its own title.</p>
+  </section>
+
+  <section data-k="chat timer 2 minute gather wait start">
+    <h2>⏱️ 2-minute chat timer</h2>
+    <p>Press <b>⏱️ 2-min chat timer, then start</b> to give chat time to type before the battle. When it runs out, the battle starts by itself. Press it again to cancel.</p>
+  </section>
+
+  <section data-k="claim winner timer 30 instant chat">
+    <h2>🏆 Claim timer &amp; winners</h2>
+    <ul>
+      <li>When a Discord movie wins, press <b>⏱️ Start 30s claim timer</b>. A pop-up shows chat live. If the winner types in chat, the timer stops and celebrates.</li>
+      <li>If the winner already typed in chat <i>before</i> you start the timer, they win instantly.</li>
+      <li>Didn't see them? Press <b>✅ They're here</b> to claim it yourself.</li>
+      <li>The winning movie is marked watched automatically. Not watching it after all? Press <b>↩️ Not watching it — put it back</b>.</li>
+      <li>When a wildcard (Kirb) spot wins there's no claim timer — just the winner screen.</li>
+    </ul>
+  </section>
+
+  <section data-k="winner screen poster rating rotten tomatoes imdb letterboxd genre year omdb">
+    <h2>🎬 The winner screen</h2>
+    <p>For movies it shows, top to bottom: <b>WINNER</b>, the poster, the title, year and genre, the <b>Rotten Tomatoes</b>, <b>IMDb</b> and <b>Letterboxd</b> ratings, then who picked it.</p>
+    <p>Rotten Tomatoes and IMDb need a free OMDb key: get one at <a href="https://www.omdbapi.com/apikey.aspx" target="_blank">omdbapi.com/apikey.aspx</a> (choose FREE), click the link in their email to turn it on, then paste it in <b>Settings → Movie info</b>. The Letterboxd rating works without a key. A rating shows <b>—</b> if a site doesn't have one.</p>
+  </section>
+
+  <section data-k="discord bot commands suggest swap mymovies mine list help linktwitch channel pinned">
+    <h2>🤖 Discord commands</h2>
+    <p>The bot makes a channel called <b>#movies-royal</b> and pins a message listing every command. <code>/suggest</code> and <code>/swap</code> only work in that channel.</p>
+    <ul>
+      <li><code>/suggest</code> — pick a movie. As you type, matching movies pop up with their year.</li>
+      <li><code>/swap</code> — trade one of your movies for a different one (1 for 1, doesn't use a pick). Only until the stream starts.</li>
+      <li><code>/mymovies</code> (or <code>/mine</code>) — see your movies, picks left and luck.</li>
+      <li><code>/list</code> — see everything in the pool.</li>
+      <li><code>/linktwitch</code> — connect your Twitch name so chatting checks you in.</li>
+      <li><code>/help</code> — the rules.</li>
+    </ul>
+    <p class="tip">Already added the bot before this update? Go to <b>Settings → Discord &amp; picks</b> and press <b>Re-invite it</b> so it can make the channel and pin the message. Rename the channel in the same place.</p>
+  </section>
+
+  <section data-k="blocked grey greyed watched banned series year already unselectable discord">
+    <h2>🚫 Why a movie can't be picked</h2>
+    <p>Discord can't grey out choices, so blocked movies still show up in the list with a <b>🚫</b> and the reason — people can see they spelled it right. Picking one just explains why. A movie is blocked when:</p>
+    <ul>
+      <li>✅ you've watched it on Letterboxd (or it already won here),</li>
+      <li>🚫 you banned it (<b>🚫 Bans</b> tab),</li>
+      <li>📅 it came out this year (if that rule is on),</li>
+      <li>🎞️ another movie from the same series is already in the pool,</li>
+      <li>🔒 somebody already picked it — every movie can only be picked once.</li>
+    </ul>
+  </section>
+
+  <section data-k="ban banned bans block movie unban">
+    <h2>🚫 Banning a movie</h2>
+    <p>Open the <b>🚫 Bans</b> tab, type the movie, press <b>🚫 Ban</b>. You can add a reason people will see. Press <b>Unban</b> to undo. Banning a movie that's already in the pool removes it.</p>
+  </section>
+
+  <section data-k="current year new release 2026 auto ban allow">
+    <h2>📅 New releases (this year's movies)</h2>
+    <p>Every movie from the current year is blocked automatically. To let one through, search it on the <b>🚫 Bans</b> tab and press <b>✅ Allow</b>. Turn the whole rule off with the checkbox on that tab or in <b>Settings → Discord &amp; picks</b>.</p>
+  </section>
+
+  <section data-k="series collection sequel harry potter lord of the rings franchise">
+    <h2>🎞️ Series rule</h2>
+    <p>If someone picks a movie from a series, nobody can pick another movie from that series while it's in the pool. It uses TMDB's series info, so it just works. Once that movie is watched or removed, the series opens up again.</p>
+  </section>
+
+  <section data-k="picks rules 3 three weekly week sunday benched won">
+    <h2>📏 Pick rules</h2>
+    <ul>
+      <li>Everyone gets <b>3</b> movies (change it in <b>Settings → Discord &amp; picks</b>).</li>
+      <li>They can't add more until <b>all</b> of their movies have been watched.</li>
+      <li>When someone's movie wins, their other movies sit out until the new week. Weeks start <b>Sunday</b>.</li>
+      <li>Fix anyone's picks by hand on the <b>👥 People</b> tab (🔓 gives a fresh set).</li>
+    </ul>
+  </section>
+
+  <section data-k="swap change switch movie lock live">
+    <h2>🔁 Swapping movies</h2>
+    <p>People use <code>/swap</code> in Discord to trade one movie for another, 1 for 1. Swaps lock automatically when you go live on Twitch, and open again when your stream ends. You can also lock or unlock them yourself in <b>Settings → Luck &amp; swaps</b> or on the Pool tab.</p>
+  </section>
+
+  <section data-k="mymovies command twitch chat !mymovies left cooldown someone else name lookup">
+    <h2>💬 <code>!mymovies</code> in Twitch chat (and Discord)</h2>
+    <p>Viewers type <code>!mymovies</code> in Twitch chat and Movie Royale replies with their movies and picks left. <code>!mymovies lucy</code> shows Lucy's movies instead. In Discord it's <code>/mymovies</code>, or <code>/mymovies person: Lucy</code>. Each person can use it once every 30 seconds (looking someone up in Discord has the same cooldown). Change the command and cooldown in <b>Settings → Twitch</b>.</p>
+    <p class="tip">If it doesn't reply, sign in with Twitch again — replying in chat needs one extra permission.</p>
+  </section>
+
+  <section data-k="kirb spot wildcard spots weekly">
+    <h2>🎟️ Kirb spots (wildcards)</h2>
+    <p>3 wildcard spots join the pool every new week. If one wins, all of them leave until the next week, and there's no claim timer — just the winner screen. Add them by hand with the <b>🎟️ spots</b> button on the Pool tab. Rename them or change how many in <b>Settings → Discord &amp; picks</b>.</p>
+  </section>
+
+  <section data-k="luck lucky chance better odds clover reset">
+    <h2>🍀 Luck</h2>
+    <p>Turn it on in <b>Settings → Luck &amp; swaps</b>. Every battle a Discord movie loses, it gets a bit more likely to win (1% by default — change it in Settings). It builds battle to battle and week to week. When one of your movies wins, all your other movies go back to 0.</p>
+    <p>Kirb spots don't build luck on their own — set their luck by hand with the 🍀 box on the Pool tab. You'll see each movie's luck as 🍀 +x% in the Pool.</p>
+  </section>
+
+  <section data-k="active chatters chatting stream tonight cliff join">
+    <h2>💬 Only people who are here</h2>
+    <p>Someone's Discord movies hop onto the cliff once they type in Twitch chat that stream. It resets every day. Click names on the Pool tab to add or remove people yourself. If someone typed but didn't show up, use <b>Recent chatters</b> to match their Twitch name.</p>
+  </section>
+
+  <section data-k="roll call reset no show 3 claim">
+    <h2>📣 Roll call</h2>
+    <p>After 3 winners in a row don't claim, Movie Royale suggests a roll call. Everyone has 2 minutes to type in chat; anyone who doesn't sits out for the night.</p>
+  </section>
+
+  <section data-k="people wheel import old manual add person twitch link">
+    <h2>👥 People &amp; your old wheel</h2>
+    <p>On the <b>👥 People</b> tab you can add people by hand, give them movies (＋ movie), set picks used, and link their Twitch name. To bring over your whole old wheel, open <b>Import everyone from your old wheel</b> and paste one person per line:</p>
+    <p><code>lucy_tv: Heat, Coco, Jaws (1975)</code></p>
+    <p>If they later use <code>/suggest</code> or <code>/linktwitch</code> in Discord, it all merges into their account.</p>
+  </section>
+
+  <section data-k="pause pool remove temporary odds bigger piece weight">
+    <h2>📋 The pool &amp; odds</h2>
+    <ul>
+      <li><b>+ / −</b> changes odds. Bigger odds = bigger piece = better chance.</li>
+      <li>⏸ pauses something (off the cliff until you resume it). ✕ removes it.</li>
+      <li>Every entry gets its own piece on the cliff.</li>
+      <li><b>Exact odds</b> (Settings → Game) draws the winner like a real wheel and lets the fight play it out.</li>
+    </ul>
+  </section>
+
+  <section data-k="custom new battle list movies text pictures chat giveaway category">
+    <h2>➕ Making a new battle</h2>
+    <p>Press <b>+ New battle</b> and pick what goes in it:</p>
+    <ul>
+      <li><b>🎬 Movies</b> — search or paste movie titles yourself. Winners get the full movie winner screen. Great for theme nights.</li>
+      <li><b>📝 Text</b> — paste anything, one per line. Add <code>x3</code> for triple odds.</li>
+      <li><b>🖼️ Pictures</b> — drag in pictures.</li>
+      <li><b>💬 Twitch chat</b> — viewers type <code>!join</code>. Perfect for giveaways.</li>
+    </ul>
+  </section>
+
+  <section data-k="chat battle join giveaway !join random">
+    <h2>🎲 Chat battle (!join)</h2>
+    <p>Open the <b>🎲 Chat battle</b> tab and press <b>▶ Open joining</b>. Viewers type <code>!join</code> in Twitch chat and pop onto the list with their Twitch picture. Press <b>▶ START CHAT BATTLE</b> when you're ready. The winner screen shows the winner's Twitch name. <b>🧹 Clear entries</b> empties it for next time.</p>
+  </section>
+
+  <section data-k="import wheel of names marbles on stream csv file list link">
+    <h2>📥 Importing from Wheel of Names / Marbles on Stream</h2>
+    <p>On the <b>📋 Pool</b> tab open <b>📥 Import</b>. Paste a Wheel of Names share link, or drop a file: <code>.wheel</code> (Wheel of Names), <code>.csv</code> (Marbles on Stream or any spreadsheet), <code>.json</code> or <code>.txt</code>. Odds come along if the file has them. The <b>+ New battle</b> box has the same thing.</p>
+    <p class="tip">Easiest Wheel of Names trick: click the entries box on the wheel, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it into the list box. Always works.</p>
+  </section>
+
+  <section data-k="twitch bot chat replies winner announce post">
+    <h2>🤖 Do I need a Twitch chat bot?</h2>
+    <p>No. Movie Royale answers <code>!mymovies</code> and posts the winner from <b>your own Twitch account</b> while you're signed in. Turn the winner post on/off in <b>Settings → Twitch</b>. If it doesn't post, sign in with Twitch again (it needs the chat permission).</p>
+  </section>
+
+  <section data-k="esc escape fullscreen exit leave battle screen">
+    <h2>⎋ Leaving the battle screen</h2>
+    <p>Press <b>Esc</b> any time to leave fullscreen. It also closes by itself a few seconds after the winner shows.</p>
+  </section>
+
+  <section data-k="camera zoom move pan bigger cliff size scroll drag">
+    <h2>🎥 Camera &amp; cliff size</h2>
+    <p>The camera follows the action: as the cliff crumbles it zooms in so the last pieces stay big. During a battle you can <b>scroll</b> on it to zoom, <b>drag</b> to move around, and <b>double-click</b> to go back to the auto camera. The <b>➖ 🎥 Auto ➕</b> buttons under the game do the same (handy when the game is popped out). </p>
+    <p><b>Follow a piece:</b> click any piece on the battle and the camera locks onto it (like following a marble); <b>Tab</b> / ▶ jumps to the next one, ◀ to the previous. Click empty ground to let go. Keys: <b>WASD</b> or arrows move, <b>Q</b>/<b>E</b> zoom, <b>O</b> shows the whole cliff, <b>R</b> goes back to the auto camera.</p>
+    <p>Make the cliff bigger or smaller on screen in <b>Settings → Game → Cliff size</b> (130% is the default). You can also turn the auto camera off there.</p>
+  </section>
+
+  <section data-k="replay slow motion instant final seconds skip">
+    <h2>🎬 Instant replay</h2>
+    <p>When a battle ends, the last few seconds play again in slow motion like a sports replay (with the REPLAY bug, slow-mo and a heartbeat), then the winner card shows. Click the battle, press <b>Space</b>, or press <b>⏭ Skip replay</b> under the game to skip it. Turn it off in <b>Settings → Game</b>.</p>
+  </section>
+
+  <section data-k="volume sound loud quiet mute music">
+    <h2>🔊 Volume</h2>
+    <p>The <b>⚔️ Battle</b> tab has a Volume box: mute, sound effects and music sliders. Changes are instant. (Same controls on the 🔊 Sounds tab.)</p>
+  </section>
+
+  <section data-k="turn off disable points bits chaos on off button">
+    <h2>⭐ Turning channel points / bits on and off</h2>
+    <p>Click <b>⭐ Points ON/OFF</b> or <b>💎 Bits ON/OFF</b> on the Battle tab, the Pool tab, the Chat battle tab or in Settings → Twitch. Green = on, red = off. Turning points off also pauses your Movie Royale rewards on Twitch so nobody spends points by accident; turning them on unpauses them.</p>
+  </section>
+
+  <section data-k="history search who won what person movies ever">
+    <h2>📜 History &amp; who won what</h2>
+    <p>In <b>📜 History</b>, use the search bar to find any movie or name. Switch to <b>👑 Who won what</b> to see every movie each person has ever won since you started using Movie Royale.</p>
+  </section>
+
+  <section data-k="winner name shown hidden username">
+    <h2>🙈 When the winner's name shows</h2>
+    <p>The winner screen only shows a name when chat picked it: Discord movies show who suggested it, and <code>!join</code> battles show who joined. Lists you typed in yourself just show the winner.</p>
+  </section>
+
+  <section data-k="channel points rewards bits chaos events price cost edit">
+    <h2>⭐ Channel points, bits &amp; chaos</h2>
+    <p>Viewers trigger chaos events (comets, tornadoes, earthquakes…) that hit everyone at random — nobody gets an edge.</p>
+    <p>In <b>Settings → Twitch &amp; channel points</b> press <b>✨ Create my channel point rewards</b>. Then change each reward's name, price, cooldown, on/off and what it does right there and press <b>Save</b> — it updates on Twitch instantly. Bits tiers are just below.</p>
+  </section>
+
+  <section data-k="sounds custom upload music fanfare volume">
+    <h2>🔊 Custom sounds</h2>
+    <p>Open the <b>🔊 Sounds</b> tab. Press <b>⬆️ Upload</b> next to any sound to use your own mp3/wav file, <b>▶</b> to hear it, and <b>Reset</b> to go back to the built-in one. Changes are live.</p>
+  </section>
+
+  <section data-k="letterboxd watched history download sync csv">
+    <h2>📗 Letterboxd</h2>
+    <p>Put your username in <b>Settings → Movie info</b>. Movie Royale reads your whole Letterboxd profile on its own (when it starts and every 6 hours), so anything you've watched is blocked automatically — there's nothing to download. Winners count as watched right away, even before you log them.</p>
+    <p class="muted">Only if your profile is private: export your data from Letterboxd and drop the CSV files in Settings.</p>
+  </section>
+
+  <section data-k="obs stream capture window popout show">
+    <h2>📺 Showing it on stream (OBS)</h2>
+    <p>Press <b>🪟 Pop out</b> on the Battle tab and add that window in OBS as a <b>Window Capture</b> (and its audio). Or go <b>⛶ Fullscreen</b> and capture your screen. The Setup guide has step-by-step pictures.</p>
+  </section>
+
+  <section data-k="update new version install github release post">
+    <h2>🔄 Updates</h2>
+    <p>When a new version is posted, Movie Royale asks <b>“Update available — Install now?”</b> the next time it opens. Your lists, history and settings are kept.</p>
+    <h3>How to post an update (one-time setup)</h3>
+    <ol>
+      <li>Make a free account at <a href="https://github.com/signup" target="_blank">github.com</a>.</li>
+      <li>Press <b>+ → New repository</b>. Name it <code>movie-royale-releases</code>, choose <b>Public</b>, press <b>Create</b>.</li>
+      <li>In Movie Royale: <b>Settings → Account &amp; updates</b> → type <code>yourname/movie-royale-releases</code> in <b>Where updates come from</b>.</li>
+    </ol>
+    <h3>Every time you have a new version</h3>
+    <ol>
+      <li>On your GitHub repo page press <b>Releases → Draft a new release</b>.</li>
+      <li><b>Choose a tag</b>: type the version with a v, like <code>v1.1.0</code> (it must be higher than the one you have).</li>
+      <li>Drag the <code>MovieRoyale-Setup-1.1.0.exe</code> file into the box, then press <b>Publish release</b>.</li>
+    </ol>
+    <p>That's it — next time Movie Royale opens, it offers the update. You can also install a setup file directly with <b>📦 Install update from file</b>.</p>
+  </section>
+
+  <section data-k="backup restore move computer save data">
+    <h2>💾 Backups</h2>
+    <p><b>Settings → Account &amp; updates → ⬇️ Download backup</b> saves everything to one file. <b>⬆️ Restore</b> loads it back (on this or another computer).</p>
+  </section>
+
+  <section data-k="test testing try fake practice">
+    <h2>🧪 Testing features</h2>
+    <p>The <b>🧪 Test</b> tab lets you: send fake chat as anyone, fake channel point redemptions and bits, check if Discord would allow a movie, run a practice battle (doesn't touch your real lists), test every connection, and play any sound.</p>
+  </section>
+
+  <section data-k="background tray running windows close startup">
+    <h2>🖥️ Keeping it running</h2>
+    <p>The Discord bot and <code>!mymovies</code> only answer while Movie Royale is running. Closing the window keeps it in the tray by the clock. Turn on <b>Start when Windows starts</b> in <b>Settings → App</b> and you never have to think about it.</p>
+  </section>
+
+  <section data-k="problem trouble not working fix bot offline">
+    <h2>🛠️ Something's not working</h2>
+    <ul>
+      <li>The colored dots at the top right show each connection — hover one to see what's wrong.</li>
+      <li>Discord commands missing? Re-invite the bot (Settings → Discord) and wait a minute.</li>
+      <li>Someone typed in chat but didn't get in? Link their Twitch name on the Pool tab under <b>Recent chatters</b>.</li>
+      <li>No sound? Click inside the game once — browsers need a click before playing sound.</li>
+      <li>Use the <b>🧪 Test</b> tab connection buttons to see a clear message for each service.</li>
+    </ul>
+  </section>
+</main>
+<script>
+const secs = [...document.querySelectorAll('section')];
+secs.forEach((s, i) => { s.id = 's' + i; s.dataset.text = (s.textContent + ' ' + s.dataset.k).toLowerCase(); s.dataset.html = s.innerHTML; });
+const toc = document.getElementById('toc');
+toc.innerHTML = secs.map(s => `<a href="#${s.id}">${s.querySelector('h2').textContent}</a>`).join('');
+const links = [...toc.children];
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+document.getElementById('q').oninput = e => {
+  const words = e.target.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  let shown = 0;
+  secs.forEach((s, i) => {
+    const hit = words.every(w => s.dataset.text.includes(w));
+    s.classList.toggle('hide', !hit); links[i].classList.toggle('hide', !hit); if (hit) shown++;
+    s.innerHTML = s.dataset.html;
+    if (hit && words.length) { // highlight matches in text only
+      const re = new RegExp('(' + words.map(escRe).join('|') + ')', 'gi');
+      const walk = n => { for (const c of [...n.childNodes]) { if (c.nodeType === 3 && re.test(c.textContent)) { const sp = document.createElement('span'); sp.innerHTML = c.textContent.replace(/[&<>]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[x])).replace(re, '<mark>$1</mark>'); c.replaceWith(sp); } else if (c.nodeType === 1 && c.tagName !== 'A') walk(c); re.lastIndex = 0; } };
+      walk(s);
+    }
+  });
+  document.getElementById('none').style.display = shown ? 'none' : 'block';
+};
+</script>
+</body>
+</html>

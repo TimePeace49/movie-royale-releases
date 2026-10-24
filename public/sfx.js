@@ -1,0 +1,166 @@
+// Movie Royale sound engine. Every sound is synthesized live with Web Audio, so there are no files to download.
+// To replace any sound with your own, drop a file named after it into public/assets/sounds/
+// (e.g. fanfare.mp3, music.mp3, lobby.mp3, comet.wav). See SOUND_NAMES below.
+window.SFX = (() => {
+  let ac = null, master, sfxBus, musicBus, comp, noiseBuf;
+  const vol = { on: true, sfx: .7, music: .35 };
+  const custom = {};      // name -> AudioBuffer
+  const lastPlay = {};    // name -> time, for rate limiting
+  const LIMIT = { bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05 };
+
+  function init() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    ac = new AC();
+    comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(ac.destination);
+    master = ac.createGain(); master.connect(comp);
+    sfxBus = ac.createGain(); sfxBus.connect(master);
+    musicBus = ac.createGain(); musicBus.connect(master);
+    noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    apply(); loadCustom();
+    return ac;
+  }
+  function apply() { if (!ac) return; const t = ac.currentTime; master.gain.setTargetAtTime(vol.on ? 1 : 0, t, .05); sfxBus.gain.setTargetAtTime(vol.sfx, t, .05); musicBus.gain.setTargetAtTime(vol.music * .6, t, .1); }
+  function setVolume(v) { Object.assign(vol, v); apply(); }
+
+  async function loadCustom() {
+    for (const k of Object.keys(custom)) delete custom[k];
+    try {
+      const files = await fetch('/api/sounds').then(r => r.ok ? r.json() : []);
+      for (const f of files) {
+        const name = f.replace(/\.\w+$/, '').toLowerCase();
+        try { custom[name] = await ac.decodeAudioData(await fetch('assets/sounds/' + encodeURIComponent(f) + '?t=' + Date.now()).then(r => r.arrayBuffer())); } catch {}
+      }
+    } catch {}
+  }
+
+  // ---------- building blocks ----------
+  const now = () => ac.currentTime;
+  function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+  function tone({ type = 'sine', f0 = 440, f1 = null, dur = .2, v = .3, a = .005, at = 0, bus = sfxBus, detune = 0, pan = 0 }) {
+    const t = now() + at, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.detune.value = detune;
+    if (f1) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    env(g, t, a, v, dur);
+    let out = g; if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = pan; g.connect(p); out = p; }
+    o.connect(g); out.connect(bus); o.start(t); o.stop(t + a + dur + .05);
+  }
+  function noise({ dur = .3, v = .3, type = 'lowpass', f0 = 1000, f1 = null, q = 1, a = .005, at = 0, bus = sfxBus }) {
+    const t = now() + at, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = noiseBuf; s.loop = true;
+    f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+    env(g, t, a, v, dur);
+    s.connect(f); f.connect(g); g.connect(bus); s.start(t, Math.random()); s.stop(t + a + dur + .05);
+  }
+  const notes = (arr, step, fn) => arr.forEach((n, i) => n && fn(n, i * step));
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12); // midi -> Hz
+
+  // ---------- the sounds ----------
+  const S = {
+    tick: (o = {}) => tone({ type: 'square', f0: o.high ? 1320 : 880, dur: .05, v: .12 }),
+    go: () => { tone({ type: 'sawtooth', f0: 220, f1: 440, dur: .35, v: .25 }); tone({ type: 'square', f0: 440, f1: 880, dur: .35, v: .15 }); noise({ dur: .4, v: .2, type: 'highpass', f0: 2000 }); },
+    land: (o = {}) => { tone({ type: 'sine', f0: 180 * (o.p || 1), f1: 60, dur: .15, v: .35 }); noise({ dur: .08, v: .12, f0: 800 }); },
+    bonk: (o = {}) => { const p = o.p || 1; tone({ type: 'triangle', f0: 520 * p, f1: 180 * p, dur: .12, v: .22 * (o.v || 1), pan: o.pan || 0 }); noise({ dur: .05, v: .1 * (o.v || 1), type: 'bandpass', f0: 2500, q: 2 }); },
+    dash: () => noise({ dur: .18, v: .08, type: 'bandpass', f0: 600, f1: 2400, q: 3 }),
+    crumble: () => { noise({ dur: .35, v: .11, f0: 420 + Math.random() * 200, f1: 110, q: .8 }); tone({ type: 'sine', f0: 80 + Math.random() * 30, f1: 40, dur: .3, v: .1 }); },
+    fall: (o = {}) => tone({ type: 'sine', f0: 900, f1: 120, dur: .9, v: .14, pan: o.pan || 0 }),
+    out: () => { tone({ type: 'square', f0: 330, dur: .08, v: .08 }); tone({ type: 'square', f0: 247, dur: .14, v: .08, at: .09 }); },
+    lucky: () => notes([84, 88, 91, 96], .06, (n, at) => tone({ type: 'triangle', f0: hz(n), dur: .18, v: .16, at })),
+    alert: () => { tone({ type: 'sawtooth', f0: 660, dur: .1, v: .1 }); tone({ type: 'sawtooth', f0: 990, dur: .16, v: .1, at: .1 }); },
+    // chaos events
+    comet: () => { noise({ dur: 1.4, v: .3, type: 'bandpass', f0: 300, f1: 3000, q: 1.5, a: .4 }); tone({ type: 'sawtooth', f0: 120, f1: 60, dur: 1.3, v: .08, a: .3 }); },
+    smack: () => { noise({ dur: .25, v: .35, f0: 3000, f1: 300 }); tone({ type: 'sine', f0: 200, f1: 50, dur: .25, v: .35 }); },
+    boom: () => { noise({ dur: .9, v: .5, f0: 1200, f1: 60, q: .7 }); tone({ type: 'sine', f0: 110, f1: 30, dur: .8, v: .5 }); },
+    collapse: () => { noise({ dur: 1.6, v: .35, f0: 400, f1: 80, a: .05 }); for (let i = 0; i < 6; i++) tone({ type: 'sine', f0: 70 + Math.random() * 60, f1: 35, dur: .3, v: .2, at: i * .2 }); },
+    earthquake: () => { noise({ dur: 2.6, v: .4, f0: 160, f1: 60, a: .2 }); tone({ type: 'sawtooth', f0: 42, dur: 2.5, v: .12, a: .3 }); },
+    meteors: () => noise({ dur: 1.2, v: .2, type: 'bandpass', f0: 400, f1: 2500, q: 1, a: .3 }),
+    wind: () => { noise({ dur: 3.6, v: .3, type: 'bandpass', f0: 400, f1: 900, q: 2, a: .6 }); noise({ dur: 3.4, v: .12, type: 'bandpass', f0: 1400, f1: 700, q: 4, a: .8 }); },
+    ice: () => notes([96, 91, 100, 95, 103], .07, (n, at) => tone({ type: 'sine', f0: hz(n), dur: .5, v: .1, at })),
+    tornado: () => { noise({ dur: 5, v: .32, type: 'bandpass', f0: 300, f1: 700, q: 3, a: .8 }); noise({ dur: 5, v: .12, type: 'bandpass', f0: 1800, f1: 1100, q: 6, a: 1 }); },
+    shockwave: () => { tone({ type: 'sine', f0: 80, f1: 30, dur: 1.2, v: .55 }); noise({ dur: 1, v: .35, f0: 4000, f1: 100 }); tone({ type: 'sawtooth', f0: 400, f1: 40, dur: .6, v: .12 }); },
+    thunder: () => { noise({ dur: .12, v: .5, type: 'highpass', f0: 3000 }); noise({ dur: 1.6, v: .4, f0: 600, f1: 70, a: .03, at: .05 }); },
+    lightning: () => noise({ dur: .3, v: .12, type: 'highpass', f0: 5000, a: .02 }),
+    boulder: () => { noise({ dur: 2.6, v: .3, f0: 220, f1: 120, a: .3 }); for (let i = 0; i < 10; i++) tone({ type: 'sine', f0: 60 + Math.random() * 30, dur: .12, v: .15, at: i * .25 }); },
+    swap: () => { tone({ type: 'sine', f0: 200, f1: 1600, dur: .35, v: .2 }); tone({ type: 'sine', f0: 1600, f1: 200, dur: .35, v: .2, at: .35 }); },
+    lowgrav: () => [0, .25, .5].forEach(at => tone({ type: 'sine', f0: 180, f1: 620, dur: .22, v: .2, at })),
+    // round flow
+    final5: () => tone({ type: 'square', f0: 1046, dur: .07, v: .14 }),
+    suddendeath: () => { for (let i = 0; i < 3; i++) { tone({ type: 'sawtooth', f0: 520, dur: .18, v: .16, at: i * .36 }); tone({ type: 'sawtooth', f0: 390, dur: .18, v: .16, at: i * .36 + .18 }); } },
+    fanfare: () => {
+      const seq = [[67, 0], [67, .12], [67, .24], [72, .4], [76, .75], [79, 1.0], [84, 1.3]];
+      seq.forEach(([n, at]) => { tone({ type: 'sawtooth', f0: hz(n), dur: .32, v: .12, at }); tone({ type: 'square', f0: hz(n - 12), dur: .32, v: .07, at }); });
+      [60, 64, 67, 72].forEach(n => tone({ type: 'triangle', f0: hz(n), dur: 1.6, v: .09, at: 1.3, a: .05 }));
+      noise({ dur: 1.6, v: .1, type: 'highpass', f0: 6000, at: 1.3 });
+    },
+    claimStart: () => notes([72, 79], .15, (n, at) => tone({ type: 'triangle', f0: hz(n), dur: .25, v: .18, at })),
+    pop: () => tone({ type: 'sine', f0: 700, f1: 1100, dur: .06, v: .1 }),
+    ding: () => { tone({ type: 'sine', f0: hz(88), dur: 1, v: .25 }); tone({ type: 'sine', f0: hz(100), dur: .8, v: .1 }); },
+    celebrate: () => {
+      S.fanfare();
+      for (let i = 0; i < 14; i++) noise({ dur: .1, v: .12, type: 'bandpass', f0: 1500 + Math.random() * 2500, q: 3, at: .2 + Math.random() * 2.2 }); // confetti pops
+      noise({ dur: 2.5, v: .12, type: 'bandpass', f0: 1200, q: .5, a: .4, at: .3 }); // crowd-ish cheer
+    },
+    buzzer: () => { tone({ type: 'sawtooth', f0: 110, dur: .8, v: .22 }); tone({ type: 'square', f0: 116, dur: .8, v: .12 }); },
+    queued: () => notes([79, 84], .08, (n, at) => tone({ type: 'square', f0: hz(n), dur: .07, v: .08, at })),
+    joined: () => tone({ type: 'triangle', f0: hz(84), f1: hz(91), dur: .12, v: .12 }),
+    whoosh: () => { noise({ dur: .55, v: .32, type: 'bandpass', f0: 300, f1: 4200, q: 1.2, a: .2 }); tone({ type: 'sine', f0: 140, f1: 60, dur: .5, v: .15, a: .15 }); },
+    heartbeat: () => { tone({ type: 'sine', f0: 62, f1: 42, dur: .16, v: .45 }); tone({ type: 'sine', f0: 58, f1: 40, dur: .2, v: .32, at: .22 }); },
+    slowhit: () => { noise({ dur: 1.4, v: .35, f0: 700, f1: 50, a: .02 }); tone({ type: 'sine', f0: 70, f1: 28, dur: 1.4, v: .5 }); tone({ type: 'sawtooth', f0: 110, f1: 40, dur: .9, v: .08 }); }
+  };
+  const SOUND_NAMES = Object.keys(S).concat(['music', 'lobby']);
+
+  function play(name, opts) {
+    if (!init() || !vol.on) return;
+    const t = performance.now() / 1000;
+    if (LIMIT[name] && t - (lastPlay[name] || 0) < LIMIT[name]) return;
+    lastPlay[name] = t;
+    const own = custom[String(name).toLowerCase()];
+    if (own) {
+      const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = own; g.gain.value = .9;
+      if (opts?.p) s.playbackRate.value = opts.p; s.connect(g); g.connect(sfxBus); s.start(); return;
+    }
+    try { S[name]?.(opts || {}); } catch (e) { console.warn('sfx', name, e); }
+  }
+
+  // ---------- music: a looping chiptune-ish battle track (or your own music.mp3 / lobby.mp3) ----------
+  let mode = null, timer = null, nextT = 0, step = 0, intensity = 0, track = null;
+  const BPM = 138, STEP = 60 / BPM / 4;
+  const bassA = [45, 0, 45, 0, 48, 0, 45, 0, 43, 0, 43, 0, 47, 0, 43, 0];
+  const bassB = [41, 0, 41, 0, 45, 0, 41, 0, 43, 0, 43, 0, 40, 0, 43, 0];
+  const lead = [69, 72, 76, 72, 69, 72, 76, 79, 67, 71, 74, 71, 67, 71, 74, 78, 65, 69, 72, 69, 65, 69, 72, 76, 67, 71, 74, 71, 76, 74, 71, 67];
+  function sched() {
+    while (nextT < ac.currentTime + .12) {
+      const at = nextT - ac.currentTime, i = step % 16, bar = Math.floor(step / 16) % 4;
+      if (mode === 'fight') {
+        const bass = bar % 2 ? bassB : bassA;
+        if (bass[i]) tone({ type: 'sawtooth', f0: hz(bass[i]), dur: STEP * 1.6, v: .16, at, bus: musicBus });
+        if (i % 4 === 0) { tone({ type: 'sine', f0: 140, f1: 45, dur: .16, v: .55, at, bus: musicBus }); }
+        if (i % 8 === 4) noise({ dur: .14, v: .28, type: 'bandpass', f0: 1800, q: .8, at, bus: musicBus });
+        if (i % 2 === 1 || intensity > .6) noise({ dur: .03, v: .08 + intensity * .05, type: 'highpass', f0: 8000, at, bus: musicBus });
+        if (intensity > .3 && step % 2 === 0) tone({ type: 'square', f0: hz(lead[(step / 2) % 32] + (intensity > .8 ? 12 : 0)), dur: STEP * 1.5, v: .05 + intensity * .03, at, bus: musicBus });
+      } else if (mode === 'lobby') {
+        if (i === 0) [57, 60, 64].forEach(n => tone({ type: 'triangle', f0: hz(n + (bar % 2 ? -2 : 0)), dur: STEP * 15, v: .06, a: .3, at, bus: musicBus }));
+        if (i % 4 === 0) noise({ dur: .05, v: .1, type: 'highpass', f0: 6000, at, bus: musicBus });
+        if (i % 2 === 0) tone({ type: 'sine', f0: hz(45 + (bar % 2 ? -2 : 0)), dur: STEP, v: .1, at, bus: musicBus });
+        if (i === 12 || i === 14) tone({ type: 'sine', f0: 100, f1: 50, dur: .1, v: .35, at, bus: musicBus });
+      }
+      nextT += STEP; step++;
+    }
+  }
+  function music(m) {
+    if (!init()) return;
+    if (m === mode) return;
+    stopMusic();
+    mode = m; if (!m) return;
+    const file = custom[m === 'fight' ? 'music' : 'lobby'];
+    if (file) { track = ac.createBufferSource(); track.buffer = file; track.loop = true; track.connect(musicBus); track.start(); return; }
+    step = 0; nextT = ac.currentTime + .05; timer = setInterval(sched, 25);
+  }
+  function stopMusic() { clearInterval(timer); timer = null; if (track) { try { track.stop(); } catch {} track = null; } mode = null; }
+  function setIntensity(x) { intensity = Math.max(0, Math.min(1, x)); }
+
+  const blocked = () => ac && ac.state === 'suspended';
+  const reload = () => { if (ac) loadCustom(); };
+  return { play, music, stopMusic, setIntensity, setVolume, init, blocked, reload, SOUND_NAMES };
+})();

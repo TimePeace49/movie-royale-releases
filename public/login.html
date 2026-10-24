@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Royale · Connect Twitch</title>
+<style>
+  :root { --bg:#120a24; --panel:#1d1238; --line:#3a2a66; --text:#f3edff; --dim:#a898cf; --gold:#ffc94a; --hot:#ff6a3d; --twitch:#9146ff; --bad:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; color:var(--text); font:15px/1.5 Inter, 'Segoe UI', system-ui, sans-serif;
+    background:radial-gradient(900px 500px at 50% -10%, #5a2463 0, transparent 70%), radial-gradient(700px 400px at 80% 110%, #6b2d3c 0, transparent 70%), var(--bg); }
+  .card { width:min(520px, 100%); background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:34px; box-shadow:0 30px 80px #0008; }
+  h1 { margin:0; font-family:'Lilita One', Impact, sans-serif; font-size:40px; color:var(--gold); letter-spacing:.5px; text-align:center; }
+  .tag { text-align:center; color:var(--dim); margin:4px 0 26px; }
+  .twitch { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; padding:16px; border:0; border-radius:14px; background:var(--twitch); color:#fff;
+    font:800 18px Inter, sans-serif; cursor:pointer; text-decoration:none; transition:.15s; }
+  .twitch:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  .twitch svg { width:24px; height:24px; }
+  .owner { display:flex; align-items:center; gap:14px; justify-content:center; margin-bottom:20px; font-size:18px; font-weight:700; }
+  .owner img { width:56px; height:56px; border-radius:50%; border:3px solid var(--gold); }
+  .err { background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.4); color:#ffd0d0; padding:12px 14px; border-radius:12px; margin-bottom:18px; }
+  ol { padding-left:20px; color:var(--dim); margin:0 0 16px; } ol li { margin:6px 0; } ol b { color:var(--text); }
+  a { color:var(--gold); }
+  label { display:block; font-size:13px; color:var(--dim); margin:12px 0 4px; }
+  input { width:100%; background:#0f0820; border:1px solid var(--line); border-radius:10px; padding:11px 12px; color:var(--text); font:inherit; outline:none; }
+  input:focus { border-color:var(--gold); }
+  .copy { display:flex; gap:8px; } .copy input { font-family:ui-monospace, Consolas, monospace; font-size:13px; }
+  .copy button, .save { border:1px solid var(--line); background:#251849; color:var(--text); border-radius:10px; padding:0 14px; cursor:pointer; font:inherit; }
+  .save { width:100%; margin-top:18px; padding:13px; background:linear-gradient(135deg, var(--gold), var(--hot)); color:#2a1100; font-weight:800; border:0; }
+  .small { color:var(--dim); font-size:13px; text-align:center; margin-top:18px; }
+  .step { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:800; margin-bottom:8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🍿 MOVIE ROYALE</h1>
+  <div class="tag">Battle royale wheel for your stream</div>
+  <div id="body">Loading…</div>
+</div>
+<script>
+const TW = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.3 3 3 6.4v13.1h4.5V22h2.6l2.5-2.5h3.6L21 14.7V3H4.3zm15 10.8-2.8 2.8H12l-2.5 2.5v-2.5H5.8V4.7h13.5v9.1zM16.5 7.8v4.8h-1.7V7.8h1.7zm-4.6 0v4.8h-1.7V7.8h1.7z"/></svg>';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const err = new URLSearchParams(location.search).get('error');
+
+async function show() {
+  const info = await fetch('/api/login-info').then(r => r.json());
+  const e = err ? `<div class="err">${esc(err)}</div>` : '';
+  if (!info.ready) {
+    const cb = `http://localhost:${info.port}/twitch/callback`;
+    document.getElementById('body').innerHTML = `${e}
+      <div class="step">One-time setup</div>
+      <p>Signing in with Twitch shows your name and picture and hooks up channel points, bits and chat. First, make a free Twitch app (2 minutes):</p>
+      <ol>
+        <li>Open the <a href="https://dev.twitch.tv/console/apps/create" target="_blank">Twitch Developer Console</a> and sign in.</li>
+        <li><b>Name:</b> anything, like <i>MovieRoyale${Math.floor(Math.random() * 900 + 100)}</i></li>
+        <li><b>OAuth Redirect URL:</b> paste this:
+          <div class="copy" style="margin-top:6px"><input readonly value="${cb}" id="cb"><button onclick="navigator.clipboard.writeText(document.getElementById('cb').value);this.textContent='Copied!'">Copy</button></div></li>
+        <li><b>Category:</b> Other · <b>Client Type:</b> Confidential → <b>Create</b></li>
+        <li>Click <b>Manage</b>, copy the <b>Client ID</b>, press <b>New Secret</b> and copy that too.</li>
+      </ol>
+      <label>Client ID</label><input id="cid" autocomplete="off">
+      <label>Client Secret</label><input id="sec" type="password" autocomplete="off">
+      <button class="save" onclick="save()">Save &amp; sign in</button>
+      <div class="small"><a href="/control.html">← Skip for now</a> — everything else works without Twitch.</div>`;
+    return;
+  }
+  document.getElementById('body').innerHTML = `${e}
+    ${info.owner ? `<div class="owner">${info.owner.avatar ? `<img src="${esc(info.owner.avatar)}">` : ''}<span>Signed in as ${esc(info.owner.name)}</span></div>` : '<p style="text-align:center">Sign in with the Twitch account you stream on.</p>'}
+    <a class="twitch" href="/auth/twitch">${TW} ${info.owner ? 'Sign in again' : 'Sign in with Twitch'}</a>
+    <div class="small"><a href="/control.html">← Back to Movie Royale</a><br>Everything is saved on this computer automatically, signed in or not.</div>`;
+}
+async function save() {
+  const r = await fetch('/api/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ twitchClientId: document.getElementById('cid').value, twitchClientSecret: document.getElementById('sec').value }) });
+  const j = await r.json();
+  if (!r.ok) return alert(j.error);
+  location.href = '/auth/twitch';
+}
+show();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "name": "movie-royale",
+  "version": "1.1.8",
+  "description": "Battle royale movie wheel for Twitch: Discord suggestions, Letterboxd, custom lists, channel points and bits.",
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "desktop": "electron .",
+    "build:win": "node scripts/build-win.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "express": "^4.21.1",
+    "ws": "^8.18.0"
+  },
+  "productName": "Movie Royale",
+  "author": "Derek Viera",
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "resedit": "^2.0.3",
+    "pe-library": "^1.0.1",
+    "7zip-bin": "^5.2.0"
+  },
+  "build": {
+    "appId": "com.movieroyale.app",
+    "productName": "Movie Royale",
+    "executableName": "MovieRoyale",
+    "asar": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "public/**/*",
+      "desktop/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  },
+  "updateRepo": "",
+  "license": "MIT"
+}

@@ -1,0 +1,1247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Royale</title>
+<style>
+  :root { --bg:#120a24; --panel:#1d1238; --panel2:#251849; --line:#3a2a66; --text:#f3edff; --dim:#a898cf; --gold:#ffc94a; --hot:#ff6a3d; --good:#4ade80; --bad:#f87171; --twitch:#9146ff; --hdr:58px; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:radial-gradient(1200px 600px at 70% -10%, #3b1856 0, var(--bg) 60%); color:var(--text); font:14px/1.4 Inter, 'Segoe UI', system-ui, sans-serif; overflow:hidden; }
+  button, input, textarea, select { font:inherit; color:inherit; }
+  button { cursor:pointer; border-radius:10px; padding:7px 13px; background:var(--panel2); border:1px solid var(--line); transition:.15s; }
+  button:hover { filter:brightness(1.25); }
+  button.primary { background:linear-gradient(135deg, var(--gold), var(--hot)); color:#2a1100; font-weight:800; border:0; }
+  button.big { font-size:20px; padding:14px 22px; border-radius:14px; letter-spacing:.5px; }
+  button.ghost { background:transparent; }
+  button.danger { color:var(--bad); }
+  button.twitch { background:var(--twitch); border:0; color:#fff; font-weight:700; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  input[type=range] { padding:0; accent-color:var(--gold); background:transparent; border:0; }
+  input[type=checkbox] { width:auto; accent-color:var(--gold); }
+  input, textarea, select { background:#0f0820; border:1px solid var(--line); border-radius:10px; padding:8px 11px; outline:none; width:100%; }
+  input:focus, textarea:focus { border-color:var(--gold); }
+  textarea { min-height:110px; resize:vertical; }
+  a { color:var(--gold); }
+  /* header + main tabs */
+  header { height:var(--hdr); display:flex; align-items:center; gap:14px; padding:0 16px; border-bottom:1px solid var(--line); background:rgba(18,10,36,.85); }
+  header h1 { margin:0; font-size:20px; font-family:'Lilita One', Impact, sans-serif; letter-spacing:.5px; color:var(--gold); white-space:nowrap; }
+  nav { display:flex; gap:2px; height:100%; overflow-x:auto; }
+  nav button { background:transparent; border:0; border-bottom:3px solid transparent; border-radius:0; padding:0 12px; color:var(--dim); font-weight:700; white-space:nowrap; height:100%; }
+  nav button.on { color:var(--text); border-bottom-color:var(--gold); }
+  nav .pill { margin-left:4px; }
+  .dots { display:flex; gap:6px; margin-left:auto; }
+  .dot { width:10px; height:10px; border-radius:50%; background:#666; display:inline-block; cursor:help; }
+  .dot.on { background:var(--good); box-shadow:0 0 8px var(--good); } .dot.warn { background:var(--gold); } .dot.err { background:var(--bad); }
+  .me { display:flex; align-items:center; gap:8px; font-weight:700; white-space:nowrap; }
+  .me img { width:30px; height:30px; border-radius:50%; border:2px solid var(--twitch); }
+  .live { background:#e91916; color:#fff; font-weight:800; font-size:11px; padding:2px 7px; border-radius:6px; letter-spacing:1px; }
+  /* views fill the window; only inner panes scroll */
+  .view { display:none; height:calc(100vh - var(--hdr)); padding:14px 16px; gap:14px; }
+  .view.on { display:grid; }
+  .pane { min-height:0; overflow:auto; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
+  .card + .card { margin-top:12px; }
+  .card.soft { background:var(--panel2); }
+  h2 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--dim); }
+  h3 { margin:0 0 8px; color:var(--gold); font-size:16px; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:20px; background:var(--panel2); color:var(--dim); white-space:nowrap; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .grow { flex:1; }
+  .help { color:var(--dim); font-size:12.5px; margin:6px 0 8px; }
+  .help code, code { background:#0f0820; padding:1px 6px; border-radius:6px; color:var(--gold); }
+  .muted { color:var(--dim); }
+  label { display:block; font-size:12.5px; color:var(--dim); margin:9px 0 4px; }
+  label.ck { display:flex; gap:8px; align-items:flex-start; color:var(--text); font-size:13.5px; margin:9px 0; }
+  label.ck input { margin-top:3px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+  #toasts { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center; }
+  .toast { background:var(--panel2); border:1px solid var(--gold); padding:12px 20px; border-radius:12px; z-index:200; box-shadow:0 10px 40px #0008; max-width:80vw; }
+  dialog { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:18px; width:min(560px, 94vw); padding:0; }
+  dialog::backdrop { background:#000a; }
+  dialog .inner { padding:22px; max-height:80vh; overflow:auto; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; flex-wrap:wrap; }
+  .seg button { border:0; border-radius:0; background:transparent; }
+  .seg button.on { background:var(--gold); color:#2a1100; font-weight:800; }
+  .empty { padding:30px; text-align:center; color:var(--dim); }
+  details summary { cursor:pointer; color:var(--dim); }
+  table { width:100%; border-collapse:collapse; }
+  td, th { padding:6px 8px; border-bottom:1px solid rgba(58,42,102,.6); text-align:left; vertical-align:middle; }
+  th { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; font-weight:600; position:sticky; top:0; background:var(--panel); z-index:1; }
+  td.thumb { width:44px; } td.thumb img, td.thumb span { width:36px; height:36px; border-radius:50%; object-fit:cover; display:inline-flex; align-items:center; justify-content:center; background:var(--panel2); font-weight:800; font-size:13px; }
+  td.thumb img.poster { border-radius:6px; width:28px; height:42px; }
+  .odds { display:flex; align-items:center; gap:4px; }
+  .odds button { padding:2px 9px; font-weight:800; }
+  .odds input { width:56px; text-align:center; padding:4px; }
+  .bar { height:6px; border-radius:6px; background:#0f0820; overflow:hidden; width:80px; }
+  .bar i { display:block; height:100%; background:linear-gradient(90deg, var(--gold), var(--hot)); }
+  .tag { font-size:11px; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+  .tag.w { background:rgba(74,222,128,.15); color:var(--good); } .tag.p { background:rgba(255,201,74,.15); color:var(--gold); } .tag.b { background:rgba(248,113,113,.15); color:var(--bad); } .tag.v { background:rgba(145,70,255,.2); color:#c9a8ff; }
+  .chip { display:inline-flex; align-items:center; gap:4px; background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:2px 4px 2px 10px; font-size:12.5px; margin:2px 4px 2px 0; }
+  .chip button { padding:0 6px; border:0; background:transparent; color:var(--dim); }
+  .chip button:hover { color:var(--bad); }
+  .chip.click { cursor:pointer; padding-right:10px; }
+  .results { margin-top:6px; display:flex; flex-direction:column; gap:5px; }
+  .results button { display:flex; gap:10px; align-items:center; text-align:left; }
+  .results img { width:28px; height:42px; object-fit:cover; border-radius:4px; background:#0f0820; }
+  .drop { border:2px dashed var(--line); border-radius:14px; padding:20px; text-align:center; color:var(--dim); transition:.15s; }
+  .drop.over { border-color:var(--gold); color:var(--gold); background:rgba(255,201,74,.06); }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:12px; }
+  .stat { background:var(--panel2); border-radius:12px; padding:10px 12px; } .stat b { display:block; font-size:20px; } .stat small { color:var(--dim); }
+  /* game screen: one iframe that never reloads. Big on the Battle tab, a mini player on the others */
+  #stage { position:fixed; z-index:30; background:#0b0618; border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:0 20px 60px #0007; transition:none; }
+  #stage iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  #stage .away { position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:var(--dim); text-align:center; padding:16px; }
+  #stage.popped iframe { display:none; } #stage.popped .away { display:flex; }
+  #stage.mini { right:16px; bottom:16px; width:320px; height:180px; cursor:pointer; border-color:var(--gold); }
+  #stage.mini iframe { pointer-events:none; }
+  #stage.mini::after { content:'⚔️ Battle — click to open'; position:absolute; left:0; right:0; bottom:0; padding:4px 10px; font-size:11px; font-weight:700; background:linear-gradient(transparent, #000c); }
+  #stage.mini.hide { display:none; }
+  #stage:fullscreen { border-radius:0; border:0; }
+  /* battle */
+  #v-battle { grid-template-columns:1fr 330px; }
+  #stageSlot { min-height:0; display:flex; flex-direction:column; gap:10px; }
+  #stageBox { flex:1; min-height:0; display:flex; align-items:flex-start; justify-content:center; }
+  #stageSize { width:100%; aspect-ratio:16/9; max-height:100%; }
+  .side { display:flex; flex-direction:column; gap:10px; min-height:0; overflow:auto; padding-right:2px; }
+  .side .card + .card { margin-top:0; }
+  .bigtimer { text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:8px; }
+  .bigtimer div:first-child { font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--dim); }
+  .bigtimer div:last-child { font:800 42px 'Lilita One', Impact, sans-serif; line-height:1.1; }
+  .events { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .events button { font-size:12.5px; padding:6px 7px; text-align:left; }
+  .winner { text-align:center; }
+  .winner img { width:80px; height:118px; object-fit:cover; border-radius:10px; }
+  .winner .t { font-size:20px; font-weight:800; margin:6px 0 2px; }
+  .stack > * + * { margin-top:7px; }
+  .stack button { width:100%; }
+  .under { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  /* pool */
+  #v-pool { grid-template-columns:210px 1fr 320px; }
+  .lists button { display:flex; width:100%; justify-content:space-between; align-items:center; margin-bottom:5px; text-align:left; background:transparent; border:1px solid transparent; }
+  .lists button.active { background:var(--panel2); border-color:var(--gold); }
+  .lists small { color:var(--dim); }
+  .poolmain { display:flex; flex-direction:column; min-height:0; gap:12px; }
+  .poolmain .tablecard { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .poolmain .tablewrap { flex:1; min-height:0; overflow:auto; }
+  .listhead { display:flex; align-items:center; gap:10px; }
+  .listhead input { font-size:20px; font-weight:800; background:transparent; border-color:transparent; padding:3px 6px; }
+  .listhead input:hover { border-color:var(--line); }
+  .luck { color:#7dffa0; font-size:12px; font-weight:700; white-space:nowrap; }
+  /* single-pane views */
+  #v-people, #v-history, #v-bans, #v-sounds, #v-test { grid-template-columns:1fr; }
+  #v-people .pane, #v-history .pane { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
+  .person td { vertical-align:top; }
+  .person .tw { width:140px; padding:5px 8px; }
+  .round { display:grid; grid-template-columns:60px 1fr auto; gap:14px; padding:12px 0; border-bottom:1px solid rgba(58,42,102,.6); align-items:start; }
+  .round .pic { width:60px; height:60px; border-radius:50%; object-fit:cover; background:var(--panel2); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:22px; }
+  .round .pic.poster { height:88px; border-radius:8px; }
+  .round .t { font-size:17px; font-weight:800; }
+  .round .meta { color:var(--dim); font-size:12.5px; margin-top:2px; }
+  .round .top { margin-top:6px; font-size:12.5px; } .round .top span { margin-right:10px; white-space:nowrap; }
+  .round .ev { margin-top:5px; font-size:12px; color:var(--dim); }
+  #v-bans { grid-template-columns:1fr 1fr; }
+  #v-chat { grid-template-columns:380px 1fr; }
+  .chaosbar { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .chaosbar button { font-weight:800; padding:8px 6px; }
+  .chaosbar button.on { background:rgba(74,222,128,.14); border-color:var(--good); color:var(--good); }
+  .chaosbar button.off { background:rgba(248,113,113,.12); border-color:var(--bad); color:var(--bad); }
+  .joiners { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; }
+  .joiner { display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:6px 8px; }
+  .joiner img, .joiner span.av { width:34px; height:34px; border-radius:50%; object-fit:cover; background:#0f0820; display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex:none; }
+  .joiner b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .joiner button { padding:1px 7px; border:0; background:transparent; color:var(--dim); }
+  .bigjoin { font-size:22px; padding:18px; width:100%; }
+  .person-wins { display:grid; grid-template-columns:200px 1fr; gap:12px; padding:12px 0; border-bottom:1px solid rgba(58,42,102,.6); }
+  .person-wins .who { font-weight:800; font-size:16px; }
+  .wonmovie { display:inline-flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:4px 10px 4px 4px; margin:3px 6px 3px 0; font-size:13px; }
+  .wonmovie img { width:24px; height:36px; object-fit:cover; border-radius:4px; background:#0f0820; }
+  mark { background:rgba(255,201,74,.35); color:inherit; border-radius:3px; }
+  #v-sounds { grid-template-columns:340px 1fr; }
+  #v-test { grid-template-columns:repeat(3, 1fr); align-content:start; overflow:auto; }
+  #v-test .card + .card { margin-top:0; }
+  #v-help { grid-template-columns:1fr; padding:0; }
+  #v-help iframe { width:100%; height:100%; border:0; }
+  /* settings: sub-tabs down the left */
+  #v-settings { grid-template-columns:220px 1fr; }
+  .subnav button { display:block; width:100%; text-align:left; margin-bottom:5px; background:transparent; border:1px solid transparent; font-weight:700; color:var(--dim); }
+  .subnav button.on { background:var(--panel2); border-color:var(--gold); color:var(--text); }
+  .setpane { display:flex; flex-direction:column; min-height:0; }
+  .setpane .body { flex:1; min-height:0; overflow:auto; padding-right:6px; }
+  .setpane .foot { display:flex; justify-content:flex-end; gap:8px; padding-top:10px; border-top:1px solid var(--line); margin-top:8px; }
+  .sub { display:none; } .sub.on { display:block; }
+  .rw td { padding:5px 6px; }
+  .rw input { padding:5px 8px; }
+  @media (max-width:1200px) { #v-pool { grid-template-columns:190px 1fr; } #v-pool .poolside { display:none; } #v-test { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🍿 MOVIE ROYALE</h1>
+  <nav id="nav">
+    <button data-v="battle" class="on">⚔️ Battle</button>
+    <button data-v="pool">📋 Pool</button>
+    <button data-v="chat">🎲 Chat battle</button>
+    <button data-v="people">👥 People</button>
+    <button data-v="history">📜 History</button>
+    <button data-v="bans">🚫 Bans</button>
+    <button data-v="sounds">🔊 Sounds</button>
+    <button data-v="test">🧪 Test</button>
+    <button data-v="help">❓ Help</button>
+    <button data-v="settings">⚙️ Settings</button>
+  </nav>
+  <div class="dots" id="dots"></div>
+  <span id="liveTag"></span>
+  <div id="me"></div>
+</header>
+
+<div id="stage">
+  <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royale game"></iframe>
+  <div class="away"><div style="font-size:36px">🪟</div><div>The game is open in its own window.</div><button onclick="event.stopPropagation();bringBack()">Bring it back here</button></div>
+</div>
+
+<!-- ⚔️ BATTLE -->
+<section class="view on" id="v-battle">
+  <div id="stageSlot">
+    <div id="stageBox"><div id="stageSize"></div></div>
+    <div class="under">
+      <span class="muted">Playing</span>
+      <select id="playList" style="width:auto" onchange="setActive(this.value)"></select>
+      <button class="ghost" onclick="newList()">+ New battle</button>
+      <span class="muted" style="margin-left:8px">Screen title</span>
+      <input id="screenTitle" style="width:260px" placeholder="shown at the top of the battle" onchange="saveTitle(this.value)">
+      <span class="grow"></span>
+      <span class="seg" title="Camera — click a piece on the battle to follow it, scroll to zoom, drag to move"><button onclick="cam('prev')" title="Follow the previous piece">◀</button><button onclick="cam('next')" title="Follow the next piece (Tab)">🎯 Follow</button><button onclick="cam('next')" title="Follow the next piece">▶</button><button onclick="cam('overview')" title="See the whole cliff (O)">🗺️</button><button onclick="cam('auto')" title="Back to the automatic camera (R)">🎥 Auto</button><button onclick="cam('out')" title="Zoom out (Q)">➖</button><button onclick="cam('in')" title="Zoom in (E)">➕</button></span>
+      <button id="skipBtn" onclick="cam('skip')" title="Skip the slow-motion replay" style="display:none">⏭ Skip replay</button>
+      <button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
+      <button onclick="popOut()" title="Open the game in its own window (for OBS window capture)">🪟 Pop out</button>
+      <button onclick="api('/api/reset')" title="Clear the cliff and start over">↺ Reset</button>
+    </div>
+  </div>
+  <div class="side">
+    <button class="primary big" id="startBtn" onclick="start()">▶ START ROYALE</button>
+    <div class="bigtimer" id="bigTimer" style="display:none"><div id="bigTimerLbl"></div><div id="bigTimerNum"></div></div>
+    <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
+    <div class="chaosbar" data-chaos></div>
+    <div class="muted" id="poolCount" style="text-align:center"></div>
+    <div class="card" id="winnerCard" style="display:none"></div>
+    <div class="card" id="rollCard" style="display:none"></div>
+    <div class="card">
+      <div class="row" style="margin-bottom:4px"><h2 class="grow" style="margin:0">🔊 Volume</h2><button id="bSnd" style="padding:3px 10px" onclick="setSound({soundOn: !S.settings.soundOn})"></button></div>
+      <label style="margin-top:4px">Sound effects <span id="bSfxVal"></span></label><input type="range" min="0" max="100" id="bSfx" oninput="volChange('sfxVolume', this.value)">
+      <label>Music <span id="bMusVal"></span></label><input type="range" min="0" max="100" id="bMus" oninput="volChange('musicVolume', this.value)">
+    </div>
+    <div class="card">
+      <h2>Chaos events</h2>
+      <div class="events" id="events"></div>
+      <p class="help" id="queued" style="margin-bottom:0"></p>
+    </div>
+    <div class="card">
+      <h2>Latest winners</h2>
+      <div id="hist" style="font-size:12.5px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 📋 POOL -->
+<section class="view" id="v-pool">
+  <div class="pane card">
+    <h2>Battles</h2>
+    <div class="lists" id="lists"></div>
+    <button class="primary" style="width:100%;margin-top:6px" onclick="newList()">+ New battle</button>
+  </div>
+  <div class="poolmain" id="poolMain"></div>
+  <div class="pane poolside" id="poolSide"></div>
+</section>
+
+<!-- 🎲 CHAT BATTLE -->
+<section class="view" id="v-chat">
+  <div class="pane">
+    <div class="card">
+      <h3>🎲 Chat battle</h3>
+      <p class="help" style="margin-top:0">A quick battle for giveaways or just for fun: viewers type <code id="joinCmd">!join</code> in Twitch chat and their Twitch picture becomes their piece. The winner screen shows their name.</p>
+      <button class="bigjoin" id="joinBtn" onclick="toggleJoin()"></button>
+      <p class="help" id="joinHint"></p>
+      <button class="primary big" style="width:100%;margin-top:6px" id="chatStart" onclick="chatStart()">▶ START CHAT BATTLE</button>
+      <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who joined?')) api('/api/chatbattle',{clear:true})">🧹 Clear entries</button><button class="grow" onclick="api('/api/chatbattle',{select:true}).then(()=>setView('battle'))">⚔️ Open on Battle tab</button></div>
+    </div>
+    <div class="card">
+      <h2>Channel points &amp; bits</h2>
+      <div class="chaosbar" data-chaos></div>
+      <p class="help" style="margin-bottom:0">Turn chaos events on or off for everyone with one click.</p>
+    </div>
+    <div class="card">
+      <h2>Options</h2>
+      <label>Screen title</label><input id="chatTitle" placeholder="e.g. Giveaway time!" onchange="api('/api/lists/chat-join',{screenTitle:this.value},'PATCH').then(()=>toast('Title updated'))">
+      <p class="help" style="margin-bottom:0">Change the join command in Settings → Game.</p>
+    </div>
+  </div>
+  <div class="pane card">
+    <div class="row" style="margin-bottom:10px"><h2 class="grow" style="margin:0" id="joinCount">Who's in</h2><input id="joinFilter" placeholder="Find someone…" style="width:200px" oninput="renderChat()"></div>
+    <div class="joiners" id="joiners"></div>
+  </div>
+</section>
+
+<!-- 👥 PEOPLE -->
+<section class="view" id="v-people"><div class="pane" id="peopleBody"></div></section>
+
+<!-- 📜 HISTORY -->
+<section class="view" id="v-history"><div class="pane"><div id="histBody"><div class="empty">Loading…</div></div></div></section>
+
+<!-- 🚫 BANS -->
+<section class="view" id="v-bans">
+  <div class="pane card">
+    <h3>🚫 Banned movies</h3>
+    <p class="help">Banned movies can't be picked in Discord (people see them with a 🚫 so they know they spelled it right). Banning a movie that's already in the pool takes it out.</p>
+    <div class="row"><input id="banQ" class="grow" placeholder="Type a movie to ban…" oninput="banSearch(this.value)"></div>
+    <input id="banReason" style="margin-top:6px" placeholder="Reason (optional — people see it in Discord)">
+    <div class="results" id="banResults"></div>
+    <div id="banList" style="margin-top:12px"></div>
+  </div>
+  <div class="pane">
+    <div class="card">
+      <h3>📅 New releases</h3>
+      <label class="ck"><input type="checkbox" id="banYear" onchange="api('/api/settings',{banCurrentYear:this.checked}).then(()=>toast('Saved'))"> <span>Auto-ban every movie that came out this year (<b id="banYearNum"></b>)</span></label>
+      <p class="help">Want to let one through anyway? Search it on the left and press <b>Allow</b> — or allow it below.</p>
+      <div id="yearAllow"></div>
+    </div>
+    <div class="card">
+      <h3>🎞️ Series rule</h3>
+      <p class="help">When someone picks a movie from a series (like <i>Harry Potter</i> or <i>Lord of the Rings</i>), nobody can pick another movie from that series while it's in the pool. This uses TMDB's "collection" info, so it works automatically.</p>
+      <h3 style="margin-top:14px">Also blocked automatically</h3>
+      <p class="help">✅ Movies you've watched on Letterboxd · 🏆 movies that already won · 🔒 movies someone already picked — every movie can only be picked once.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 🔊 SOUNDS -->
+<section class="view" id="v-sounds">
+  <div class="pane">
+    <div class="card">
+      <h3>Volume</h3>
+      <button id="sndToggle" style="width:100%" onclick="setSound({soundOn: !S.settings.soundOn})"></button>
+      <label>Sound effects <span id="sfxVal"></span></label><input type="range" min="0" max="100" id="sfxVol" oninput="volChange('sfxVolume', this.value)">
+      <label>Music <span id="musVal"></span></label><input type="range" min="0" max="100" id="musVol" oninput="volChange('musicVolume', this.value)">
+      <p class="help">Sound plays from the game screen, so OBS picks it up with the game window.</p>
+    </div>
+    <div class="card">
+      <h3>Make it yours</h3>
+      <p class="help">Every sound is built in. Press <b>Upload</b> next to any of them to use your own file instead (mp3, wav, ogg or m4a). <b>Reset</b> goes back to the built-in one. Changes are live — no restart.</p>
+      <p class="help">Tip: <b>Battle music</b> and <b>Countdown music</b> loop, so pick a file that loops nicely.</p>
+    </div>
+  </div>
+  <div class="pane card"><table id="soundTable"></table><input type="file" id="sndFile" accept=".mp3,.wav,.ogg,.m4a,audio/*" hidden></div>
+</section>
+
+<!-- 🧪 TEST -->
+<section class="view" id="v-test">
+  <div class="card">
+    <h3>💬 Pretend to be a chatter</h3>
+    <p class="help">Sends a fake Twitch chat message. Use someone's Twitch name to check them in, claim a win, answer roll call, or try <code>!mymovies</code> / <code>!mymovies lucy</code>.</p>
+    <label>Twitch name</label><input id="tName" value="test_viewer">
+    <label>Message</label><input id="tText" value="hello!">
+    <button class="primary" style="margin-top:10px" onclick="api('/api/test/chat',{name:$('tName').value,text:$('tText').value}).then(()=>toast('Sent as '+esc($('tName').value)))">Send fake chat</button>
+  </div>
+  <div class="card">
+    <h3>⚡ Pretend channel points / bits</h3>
+    <p class="help">Fires a chaos event as if a viewer redeemed it. If no battle is running it gets queued for the next one, just like the real thing.</p>
+    <label>Event</label><select id="tEvent"></select>
+    <div class="row" style="margin-top:10px"><button class="primary" onclick="api('/api/test/redeem',{event:$('tEvent').value,name:'test_viewer'}).then(()=>toast('Redeemed!'))">Redeem</button>
+      <input id="tBits" type="number" value="500" style="width:90px"><button onclick="api('/api/test/cheer',{bits:$('tBits').value,name:'test_viewer'}).then(()=>toast('Cheered!'))">Cheer bits</button></div>
+  </div>
+  <div class="card">
+    <h3>🎬 Would Discord allow this movie?</h3>
+    <p class="help">Checks a title against every rule (watched, banned, this year, series, already in) without adding it.</p>
+    <div class="row"><input id="tMovie" class="grow" placeholder="e.g. The Two Towers"><button class="primary" onclick="api('/api/test/check-movie',{query:$('tMovie').value}).then(r=>$('tMovieOut').innerHTML=esc(r.msg))">Check</button></div>
+    <p id="tMovieOut" class="help"></p>
+  </div>
+  <div class="card">
+    <h3>⚔️ Practice battle</h3>
+    <p class="help">Runs a round with 10 made-up movies so you can see the countdown, fight, winner screen and sounds. Your real lists, picks and history aren't touched.</p>
+    <button class="primary" onclick="practice()">Run practice round</button>
+  </div>
+  <div class="card">
+    <h3>🔌 Connections</h3>
+    <div class="stack">
+      <button onclick="testBtn(this,'/api/test/tmdb')">🎬 Test TMDB (movie search)</button>
+      <button onclick="testBtn(this,'/api/test/omdb')">🍅 Test OMDb (RT + IMDb ratings)</button>
+      <button onclick="testBtn(this,'/api/test/letterboxd')">📗 Sync Letterboxd now</button>
+      <button onclick="testBtn(this,'/api/test/discord')">🤖 Discord: post a test message</button>
+      <button onclick="testBtn(this,'/api/test/twitch-say')">💬 Twitch: send a chat message</button>
+    </div>
+    <p id="tConn" class="help"></p>
+  </div>
+  <div class="card">
+    <h3>🔊 Sounds</h3>
+    <div class="row"><select id="sndTest" class="grow"></select><button onclick="api('/api/sound-test',{name:$('sndTest').value})">▶ Play</button></div>
+    <p class="help">Plays on the game screen. Click inside the game once if your browser blocked sound.</p>
+    <h3 style="margin-top:14px">🏆 Winner screen</h3>
+    <button onclick="practice()">Show me a winner screen</button>
+  </div>
+</section>
+
+<!-- ❓ HELP -->
+<section class="view" id="v-help"><iframe id="helpFrame" title="Help"></iframe></section>
+
+<!-- ⚙️ SETTINGS -->
+<section class="view" id="v-settings">
+  <div class="pane card subnav" id="subnav">
+    <button data-s="account" class="on">👤 Account &amp; updates</button>
+    <button data-s="game">⚔️ Game</button>
+    <button data-s="discord">🤖 Discord &amp; picks</button>
+    <button data-s="luck">🍀 Luck &amp; swaps</button>
+    <button data-s="twitch">💜 Twitch &amp; channel points</button>
+    <button data-s="movies">🎬 Movie info (TMDB, OMDb, Letterboxd)</button>
+    <button data-s="app">🖥️ App &amp; background</button>
+    <p class="help" style="margin-top:14px">Need a hand connecting things? <a href="/setup.html">🧭 Setup guide</a></p>
+  </div>
+  <div class="card setpane"><div class="body" id="settingsBody"></div>
+    <div class="foot"><span class="help grow" id="saveHint" style="margin:0">Change anything, then press Save.</span><button onclick="openSettings(true)">Undo changes</button><button class="primary" onclick="saveSettings().then(()=>toast('✅ Saved'))">💾 Save</button></div></div>
+</section>
+
+<dialog id="newlist"><div class="inner">
+  <h3>New battle</h3>
+  <label>Name</label><input id="nlName" placeholder="e.g. Horror night, Snack wheel, Giveaway">
+  <label>What goes in it?</label>
+  <div class="seg" id="nlType">
+    <button data-t="films" class="on">🎬 Movies</button><button data-t="text">📝 Text</button><button data-t="pics">🖼️ Pictures</button><button data-t="chat">💬 Twitch chat</button>
+  </div>
+  <p class="help" id="nlHelp"></p>
+  <label>Add stuff now (optional) — separate with commas or new lines</label>
+  <textarea id="nlItems" style="min-height:90px" placeholder="Heat, Jaws, The Thing x2&#10;Alien"></textarea>
+  <div class="row" style="margin-top:6px"><input id="nlUrl" class="grow" placeholder="…or a Wheel of Names link"><button onclick="nlImportLink()">Get list</button><button onclick="$('nlFile').click()">📄 File</button><input type="file" id="nlFile" accept=".wheel,.json,.csv,.tsv,.txt,text/*,application/json" hidden multiple onchange="nlImportFile(this.files)"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:16px"><button onclick="newlist.close()">Cancel</button><button class="primary" onclick="createList()">Create</button></div>
+</div></dialog>
+
+<dialog id="upd"><div class="inner" id="updBody"></div></dialog>
+
+<script>
+let S = null, sock = null, filter = '', showOut = false, view = 'battle', sub = 'account', hist = null, histFor = null, histVer = -1, histList = null, settingsDirty = false;
+const $ = id => document.getElementById(id);
+// Windows desktop app: typing can stop working after a yes/no pop-up until the window is re-focused, so re-focus it right after
+{ const nc = window.confirm.bind(window); window.confirm = m => { const r = nc(m); fetch('/api/refocus', { method: 'POST' }).catch(() => {}); return r; }; }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TYPE = { movies: '🎬 Discord movies', films: '🎬 Movies', text: '📝 Text', pics: '🖼️ Pictures', chat: '💬 Twitch chat' };
+const proxy = u => !u ? '' : u.startsWith('/') ? u : '/img?u=' + encodeURIComponent(u);
+const when = t => { const d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const isMovieList = l => l && (l.type === 'movies' || l.type === 'films');
+
+function toast(msg, ms = 3500) { let box = $('toasts'); if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); } const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = msg; box.appendChild(d); setTimeout(() => d.remove(), ms); }
+async function api(url, body, method = 'POST') {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { toast('⚠️ ' + esc(j.error || 'Something went wrong')); throw new Error(j.error); }
+  return j;
+}
+const list = () => S.lists.find(l => l.id === S.activeListId) || S.lists[0];
+
+function connect() {
+  sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=control`);
+  sock.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'toast') toast(esc(m.text));
+    if (m.type === 'state') {
+      const was = S?.phase; S = m.state; render();
+      if (was && was !== 'ended' && S.phase === 'ended' && document.fullscreenElement) setTimeout(() => document.fullscreenElement && document.exitFullscreen().catch(() => {}), S.settings.replayOn !== false ? 20000 : 7000); // after the replay + winner card
+    }
+  };
+  sock.onclose = () => setTimeout(connect, 1500);
+}
+
+// ---------- tabs ----------
+$('nav').onclick = e => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
+$('subnav').onclick = e => { const b = e.target.closest('button[data-s]'); if (b) setSub(b.dataset.s); };
+function setView(v) {
+  if (view === 'settings' && v !== 'settings' && settingsDirty && !confirm('You changed some settings without saving. Leave anyway?')) return;
+  if (v !== 'settings') settingsDirty = false;
+  view = v;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
+  if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
+  if (v === 'settings') openSettings(true);
+  if (v === 'bans') loadBans();
+  if (v === 'sounds') loadSounds();
+  placeStage(); renderView();
+}
+function setSub(s) { sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); }
+
+// ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
+let popWin = null;
+function placeStage() {
+  const st = $('stage');
+  if (document.fullscreenElement === st) return;
+  if (view === 'battle') {
+    const r = $('stageSize').getBoundingClientRect();
+    st.classList.remove('mini', 'hide');
+    Object.assign(st.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', right: '', bottom: '' });
+  } else {
+    st.classList.add('mini'); st.classList.toggle('hide', view === 'help' || view === 'settings');
+    Object.assign(st.style, { left: '', top: '', width: '', height: '' });
+  }
+}
+window.addEventListener('resize', placeStage);
+new ResizeObserver(placeStage).observe($('stageSize'));
+document.addEventListener('fullscreenchange', () => setTimeout(placeStage, 50));
+$('stage').addEventListener('click', () => { if ($('stage').classList.contains('mini')) setView('battle'); });
+function fullscreen() { if (popWin && !popWin.closed) { popWin.focus(); return toast('The game is in its own window — press F11 there for fullscreen.'); } $('stage').requestFullscreen?.(); }
+function popOut() {
+  popWin = window.open('/game.html', 'royale-game', 'width=1280,height=720');
+  if (!popWin) return toast('Your browser blocked the pop-up. Allow pop-ups for this page.');
+  $('stage').classList.add('popped'); $('game').src = 'about:blank';
+  const iv = setInterval(() => { if (popWin.closed) { clearInterval(iv); bringBack(); } }, 800);
+}
+function bringBack() { if (popWin && !popWin.closed) popWin.close(); popWin = null; $('stage').classList.remove('popped'); $('game').src = '/game.html'; }
+document.addEventListener('pointerdown', () => { try { $('game').contentWindow.SFX?.init(); } catch {} });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.fullscreenElement) document.exitFullscreen().catch(() => {}); });
+function goFullscreen() {
+  if (S.settings.autoFullscreen === false || popWin && !popWin.closed || document.fullscreenElement) return;
+  $('stage').requestFullscreen?.().catch(() => {});
+}
+
+// ---------- render ----------
+function render() { renderHeader(); renderBattle(); renderView(); }
+function renderView() {
+  if (!S) return;
+  document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
+  if (view === 'pool') renderPool();
+  else if (view === 'chat') renderChat();
+  else if (view === 'people') renderPeople();
+  else if (view === 'history') { if (histVer !== S.historyVersion || !hist) loadHistory(); }
+  else if (view === 'bans') renderBanSide();
+  else if (view === 'sounds') renderSound();
+}
+function renderHeader() {
+  const st = S.status, d = st.discord, tw = st.twitch, lb = st.letterboxd;
+  const cls = s => s === 'online' ? 'on' : /error/.test(s) ? 'err' : /not|off/.test(s) ? '' : 'warn';
+  const warns = (d.warnings || []).join(' · ');
+  $('dots').innerHTML = [
+    [`Discord: ${d.state}${d.error ? ' — ' + d.error : ''}${warns ? ' — ⚠️ ' + warns : ''}`, warns && d.state === 'online' ? 'warn' : cls(d.state)],
+    [`Twitch: ${tw.state}${tw.error ? ' — ' + tw.error : ''}`, cls(tw.state)],
+    [`Chat: ${tw.chat}`, /reading/.test(tw.chat) ? 'on' : ''],
+    [`Letterboxd: ${lb.count} films${lb.rssError ? ' — ' + lb.rssError : ''}`, lb.count ? 'on' : ''],
+    [`Game screen: ${st.overlays ? 'ready' : 'not open'}`, st.overlays ? 'on' : 'err']
+  ].map(([t, c]) => `<span class="dot ${c}" title="${esc(t)}"></span>`).join('');
+  $('liveTag').innerHTML = S.live ? '<span class="live" title="Discord swaps are locked while you\'re live">LIVE</span>' : '';
+  const o = S.owner;
+  $('me').innerHTML = o ? `<span class="me" title="Signed in with Twitch">${o.avatar ? `<img src="${esc(proxy(o.avatar))}">` : ''}${esc(o.name)}</span>` : `<button class="twitch" onclick="location.href='/auth/twitch'">Sign in with Twitch</button>`;
+  const peopleTab = document.querySelector('#nav [data-v="people"]'); peopleTab.innerHTML = `👥 People <span class="pill">${S.people.length}</span>`;
+  const banTab = document.querySelector('#nav [data-v="bans"]'); banTab.innerHTML = `🚫 Bans${S.banCount ? ` <span class="pill">${S.banCount}</span>` : ''}`;
+}
+
+// ---------- ⚔️ battle ----------
+function renderBattle() {
+  const busy = S.phase === 'lobby' || S.phase === 'running', l = list();
+  $('startBtn').disabled = busy;
+  $('startBtn').textContent = busy ? (S.phase === 'lobby' ? '⏳ Countdown running…' : '⚔️ Fight in progress…') : (S.settings.lobbySeconds > 0 ? `▶ START ROYALE` : '▶ START ROYALE');
+  $('playList').innerHTML = S.lists.map(x => `<option value="${x.id}" ${x.id === S.activeListId ? 'selected' : ''}>${esc(x.name)} — ${TYPE[x.type]}</option>`).join('');
+  if (document.activeElement !== $('screenTitle')) { $('screenTitle').value = l.screenTitle || ''; $('screenTitle').placeholder = l.name; }
+  const n = l.entries.filter(e => e.status === 'active').length;
+  $('poolCount').innerHTML = `${n} in the pool${S.settings.lobbySeconds > 0 ? ` · ${S.settings.lobbySeconds}s countdown, then a ${S.settings.gameSeconds}s fight` : ''}`;
+  renderBigTimer();
+  const g = S.gather, gb = $('gatherBtn');
+  gb.disabled = busy;
+  if (g) { const left = Math.max(0, Math.ceil((g.endsAt - Date.now()) / 1000)); gb.innerHTML = `⏳ Battle starts in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} — <u>cancel</u>`; clearTimeout(window._gT); window._gT = setTimeout(renderBattle, 1000); }
+  else gb.textContent = '⏱️ 2-min chat timer, then start';
+  if (!$('events').children.length) $('events').innerHTML = Object.entries(S.events).map(([k, e]) => `<button title="${esc(e.desc)}" onclick="api('/api/effect',{event:'${k}'})">${e.icon} ${esc(e.name)}</button>`).join('');
+  if (!$('tEvent').options.length) $('tEvent').innerHTML = Object.entries(S.events).map(([k, e]) => `<option value="${k}">${e.icon} ${esc(e.name)}</option>`).join('');
+  if (!$('sndTest').options.length) $('sndTest').innerHTML = Object.entries(SOUND_INFO).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+  $('queued').textContent = S.pendingEffects.length ? `⚡ ${S.pendingEffects.length} event(s) queued for the next round` : 'Viewers trigger these with channel points or bits. They hit everyone at random.';
+  $('hist').innerHTML = S.history.length ? S.history.slice(0, 5).map(h => `<div class="row" style="padding:3px 0;border-bottom:1px solid rgba(58,42,102,.5)"><span class="grow">🏆 ${esc(h.label)}${h.sub ? ' (' + esc(h.sub) + ')' : ''}</span><span class="muted">${new Date(h.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></div>`).join('') + `<p class="help" style="margin-bottom:0"><a href="#" onclick="setView('history');return false">Full history →</a></p>` : '<span class="muted">No rounds yet.</span>';
+  renderRoll(); renderWinner(); renderSound();
+  const showSkip = S.phase === 'ended' && S.settings.replayOn !== false && Date.now() - (S.phaseAt || 0) < 13000;
+  $('skipBtn').style.display = showSkip ? '' : 'none'; if (showSkip) { clearTimeout(window._skT); window._skT = setTimeout(renderBattle, 1500); }
+}
+function renderWinner() {
+  const w = S.lastWinner, wc = $('winnerCard');
+  if (!w) { wc.style.display = 'none'; return; }
+  wc.style.display = '';
+  const c = S.claim;
+  const claimTxt = w.spot ? `🎟️ Wildcard — your pick!` : w.test ? '🧪 Practice round' : !c ? (w.owner ? `If ${esc(w.owner)} types in chat now, they win instantly` : '') : c.done ? (c.claimed ? (c.instant ? '✅ Claimed instantly in chat!' : '✅ Claimed!') : '⏰ Nobody claimed') : '⏳ Claim timer running…';
+  const r = w.ratings;
+  wc.innerHTML = `<h2>Winner</h2><div class="winner">
+    ${w.spot ? '<div style="font-size:48px">🎟️</div>' : w.poster ? `<img src="${esc(proxy(w.poster))}">` : w.image ? `<img src="${esc(proxy(w.image))}" style="width:80px;height:80px;border-radius:50%">` : ''}
+    <div class="t">${esc(w.label)}${w.sub ? ' (' + esc(w.sub) + ')' : ''}</div>
+    <div class="muted">${w.owner ? (isMovieList(w) || w.kind === 'movies' ? 'Picked by ' : '') + esc(w.owner) : ''}</div>
+    ${r && Object.keys(r).length ? `<div class="muted" style="margin-top:4px">${r.rt ? '🍅 ' + esc(r.rt) + ' ' : ''}${r.imdb ? '⭐ IMDb ' + esc(r.imdb) + ' ' : ''}${r.lb ? '📗 ' + esc(r.lb) : ''}</div>` : ''}
+    <p style="margin:8px 0"><b>${claimTxt}</b></p>
+    ${w.benched ? `<p class="help">💤 ${w.benched} other movie${w.benched === 1 ? '' : 's'} from ${esc(w.owner)} sit out until the new week.</p>` : ''}
+    ${w.spotsRemoved ? `<p class="help">🎟️ All ${esc(S.settings.spotName)} spots are gone for the week.</p>` : ''}</div>
+    <div class="stack">
+      ${w.spot || w.test ? '' : `<button class="primary" onclick="api('/api/claim/start',{seconds:30})">⏱️ Start 30s claim timer</button>`}
+      ${c && !c.done ? `<button onclick="api('/api/claim/confirm')">✅ They're here (claim manually)</button>` : ''}
+      ${w.spot || w.test ? '' : w.kind === 'movies' ? (w.undone ? '<p class="help">↩️ Put back in the pool.</p>' : `<button class="ghost" onclick="if(confirm('Not watching it after all? This puts it back in the pool.')) api('/api/winner/undo').then(()=>toast('Put back in the pool'))">↩️ Not watching it — put it back</button>`) : `<button onclick="api('/api/winner/out').then(()=>toast('Done'))">🚪 Take winner out of the pool</button>`}
+      <button onclick="api('/api/claim/close')">Next round →</button>
+    </div>`;
+}
+function renderRoll() {
+  const rc = S.rollcall, card = $('rollCard'), movies = list().type === 'movies';
+  if (!rc && !movies && !S.awayCount) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  if (rc && !rc.done) {
+    const here = rc.people.filter(p => p.here).length, left = Math.max(0, Math.ceil((rc.endsAt - Date.now()) / 1000));
+    card.innerHTML = `<h2>📣 Roll call running</h2>
+      <p><b>${here} / ${rc.people.length}</b> here · ends in <b>${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</b></p>
+      <div>${rc.people.map(p => `<span class="chip click" style="${p.here ? 'border-color:var(--good)' : ''}" onclick="${p.here ? '' : `api('/api/rollcall/checkin',{key:'${esc(p.key)}'})`}">${p.here ? '✅' : '⏳'} ${esc(p.name)}</span>`).join('')}</div>
+      <div class="row" style="margin-top:10px"><button class="primary grow" onclick="api('/api/rollcall/end')">End now</button><button onclick="api('/api/rollcall/cancel')">Cancel</button></div>`;
+    clearTimeout(window._rcT); window._rcT = setTimeout(renderRoll, 1000);
+    return;
+  }
+  if (rc && rc.done) {
+    card.innerHTML = `<h2>📣 Roll call done</h2>
+      <p>${rc.removed ? `<b>${rc.people.filter(p => p.here).length}</b> people are in. Didn't make it: ${rc.awayNames.map(esc).join(', ')}.` : "Everyone showed up!"}</p>
+      <button style="width:100%" onclick="api('/api/rollcall/close')">Close</button>`;
+    return;
+  }
+  const hot = S.noShowStreak >= 3;
+  card.innerHTML = `<h2>📣 Roll call</h2>
+    ${hot ? `<p style="color:var(--gold);margin-top:0"><b>${S.noShowStreak} winners in a row didn't claim.</b> Reset with whoever's here?</p>` : `<p class="help" style="margin-top:0">Everyone gets 2 minutes to type in chat; only they stay on the cliff tonight.${S.noShowStreak ? ` (${S.noShowStreak} no-show${S.noShowStreak === 1 ? '' : 's'} in a row)` : ''}</p>`}
+    <button class="${hot ? 'primary' : ''}" style="width:100%" onclick="api('/api/rollcall/start',{seconds:120})">📣 2-minute roll call</button>
+    ${S.awayCount ? `<p class="help" style="margin-bottom:0">💤 ${S.awayCount} out tonight · <a href="#" onclick="api('/api/rollcall/restore').then(r=>toast('Brought back ' + r.back));return false">bring everyone back</a></p>` : ''}`;
+}
+function renderBigTimer() {
+  const box = $('bigTimer'), el = (Date.now() - (S.phaseAt || Date.now())) / 1000;
+  let lbl = '', num = '';
+  if (S.phase === 'lobby') { lbl = 'Starting in'; num = Math.max(1, Math.ceil(S.settings.lobbySeconds - el)); }
+  else if (S.phase === 'running') { const left = Math.max(0, Math.ceil(S.settings.gameSeconds - el)); lbl = 'Fight time left'; num = `0:${String(left).padStart(2, '0')}`; }
+  else if (S.gather) { const left = Math.max(0, Math.ceil((S.gather.endsAt - Date.now()) / 1000)); lbl = 'Battle starts in'; num = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; }
+  box.style.display = lbl ? '' : 'none';
+  if (!lbl) return;
+  $('bigTimerLbl').textContent = lbl; $('bigTimerNum').textContent = num;
+  $('bigTimerNum').style.color = S.phase === 'running' && parseInt(String(num).split(':')[1]) <= 5 ? 'var(--bad)' : 'var(--gold)';
+  clearTimeout(window._btT); window._btT = setTimeout(renderBigTimer, 250);
+}
+async function start() { goFullscreen(); await api('/api/start'); }
+async function gatherClick() { if (S.gather) return api('/api/gather/cancel'); goFullscreen(); await api('/api/gather/start', { seconds: 120 }); }
+function cam(action) { api('/api/camera', { action }); }
+async function saveTitle(v) { await api('/api/lists/' + list().id, { screenTitle: v }, 'PATCH'); toast('Title updated'); }
+async function setActive(id) { histList = null; await api('/api/active', { id }); }
+
+// ---------- channel points / bits on-off ----------
+function chaosButtons() {
+  const c = S?.chaos || { points: true, bits: true };
+  return `<button class="${c.points ? 'on' : 'off'}" title="Click to turn ${c.points ? 'off' : 'on'}" onclick="chaosToggle('points', ${!c.points})">⭐ Points ${c.points ? 'ON' : 'OFF'}</button>
+    <button class="${c.bits ? 'on' : 'off'}" title="Click to turn ${c.bits ? 'off' : 'on'}" onclick="chaosToggle('bits', ${!c.bits})">💎 Bits ${c.bits ? 'ON' : 'OFF'}</button>`;
+}
+async function chaosToggle(k, v) {
+  S.chaos = { ...S.chaos, [k]: v }; document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
+  const r = await api('/api/chaos-toggle', { [k]: v });
+  toast(`${k === 'points' ? '⭐ Channel point' : '💎 Bits'} chaos is <b>${v ? 'ON' : 'OFF'}</b>${r.msg ? ' · ' + esc(r.msg) : ''}`);
+}
+
+// ---------- 🎲 chat battle ----------
+function renderChat() {
+  const l = S.lists.find(x => x.id === 'chat-join'); if (!l) return;
+  const playing = S.activeListId === l.id, open = l.joinOpen && playing, cmd = S.settings.joinCommand || '!join';
+  $('joinCmd').textContent = cmd;
+  $('joinBtn').className = 'bigjoin ' + (open ? 'danger' : 'primary');
+  $('joinBtn').textContent = open ? '⏹ Close joining' : '▶ Open joining';
+  $('joinHint').innerHTML = open ? `🟢 Chat can join now — type <code>${esc(cmd)}</code>` : l.joinOpen && !playing ? '⚠️ Another battle is playing right now, so !join is paused. Press Open joining to switch to this one.' : 'Joining is closed.';
+  if (!/reading/.test(S.status.twitch.chat)) $('joinHint').innerHTML += '<br>⚠️ Not reading Twitch chat yet — sign in with Twitch (top right).';
+  const busy = S.phase === 'lobby' || S.phase === 'running';
+  const people = l.entries.filter(e => e.status === 'active');
+  $('chatStart').disabled = busy || people.length < 2;
+  $('chatStart').textContent = busy ? '⚔️ Battle running…' : people.length < 2 ? 'Need at least 2 people' : `▶ START CHAT BATTLE (${people.length})`;
+  if (document.activeElement !== $('chatTitle')) $('chatTitle').value = l.screenTitle || '';
+  const q = ($('joinFilter').value || '').toLowerCase();
+  $('joinCount').textContent = `Who's in (${people.length})`;
+  const shown = people.filter(e => !q || e.label.toLowerCase().includes(q)).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  $('joiners').innerHTML = shown.length ? shown.map(e => `<div class="joiner">${e.image ? `<img src="${esc(proxy(e.image))}">` : `<span class="av">${esc((e.label[0] || '?').toUpperCase())}</span>`}<b title="${esc(e.label)}">${esc(e.label)}</b><button title="Remove" onclick="api('/api/lists/chat-join/entries/${e.id}',{status:'removed'},'PATCH')">✕</button></div>`).join('')
+    : `<div class="empty" style="grid-column:1/-1">${people.length ? 'Nobody matches.' : 'Nobody yet. Open joining and tell chat to type ' + esc(cmd) + '!'}</div>`;
+}
+async function toggleJoin() {
+  const l = S.lists.find(x => x.id === 'chat-join'), open = !(l.joinOpen && S.activeListId === l.id);
+  await api('/api/chatbattle', { open });
+  toast(open ? '🟢 Joining is open' : '⏹ Joining closed');
+}
+async function chatStart() {
+  goFullscreen(); // must be right on the click
+  await api('/api/chatbattle', { open: false, select: true });
+  setView('battle');
+  await api('/api/start');
+}
+
+// ---------- 📋 pool ----------
+function renderPool() {
+  const l = list();
+  $('lists').innerHTML = S.lists.map(x => `<button class="${x.id === S.activeListId ? 'active' : ''}" onclick="setActive('${x.id}')"><span>${esc(x.name)}<br><small>${TYPE[x.type]}</small></span><span class="pill">${x.entries.filter(e => e.status === 'active').length}</span></button>`).join('');
+  const active = l.entries.filter(e => e.status === 'active');
+  const total = active.reduce((s, e) => s + (e.weight || 1) * (l.type === 'movies' && S.luckOn ? 1 + (e.luckPct || 0) / 100 : 1), 0) || 1;
+  const keepFocus = document.activeElement?.id, keepVal = { bulk: $('bulk')?.value, msearch: $('msearch')?.value }, keepOpen = !!document.querySelector('#poolMain details:not(#impBox)')?.open, keepImp = !!$('impBox')?.open, keepUrl = $('impUrl')?.value, keepList = renderPool.last === l.id;
+  renderPool.last = l.id;
+  if (document.activeElement?.closest?.('#poolMain .results')) return;
+  let add = '';
+  if (l.type === 'movies') add = `
+    <div class="row"><input id="msearch" class="grow" placeholder="Add a movie yourself: start typing a title…" oninput="searchMovie(this.value)">
+      <button onclick="newWeekClick()" title="Bring benched movies back and refill wildcard spots now">🗓️ New week</button>
+      <button onclick="addSpotsClick()">🎟️ ${esc(S.settings.spotName)} spots (${active.filter(e => e.kind === 'spot').length}/${S.settings.spotMax})</button></div>
+    <div class="results" id="mresults"></div>
+    <details style="margin-top:8px"><summary>Paste a big list of movie titles</summary>
+      <textarea id="bulk" placeholder="The Thing 1982, Paddington 2, Heat x2&#10;(commas or new lines)"></textarea>
+      <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add all</button><span class="help">Each line is looked up on TMDB.</span></div></details>`;
+  else if (l.type === 'films') add = `
+    <div class="row"><input id="msearch" class="grow" placeholder="Add a movie: start typing a title…" oninput="searchMovie(this.value)"></div>
+    <div class="results" id="mresults"></div>
+    <details style="margin-top:8px"><summary>Paste a big list of movie titles</summary>
+      <textarea id="bulk" placeholder="Halloween 1978, The Shining, Scream x2&#10;(commas or new lines)"></textarea>
+      <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add all</button><span class="help">Each line is looked up on TMDB. <code>x2</code> = double odds. The winner gets the full movie winner screen.</span></div></details>`;
+  else if (l.type === 'text') add = `
+    <textarea id="bulk" style="min-height:80px" placeholder="Paste as many as you want — commas or new lines:&#10;Pizza, Tacos x3, Sushi"></textarea>
+    <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add to list</button><span class="help">Separate with commas or new lines. <code>x3</code> after one = triple odds.</span></div>`;
+  else if (l.type === 'pics') add = `
+    <div class="drop" id="drop">🖼️ <b>Drag &amp; drop pictures here</b> · or <a href="#" onclick="$('file').click();return false">choose files</a> — the file name becomes the label
+      <input type="file" id="file" accept="image/*" multiple hidden onchange="uploadFiles(this.files)"></div>
+    <details style="margin-top:8px"><summary>…or paste image links</summary>
+      <textarea id="bulk" placeholder="Cat | https://example.com/cat.png&#10;https://example.com/dog.jpg x2"></textarea>
+      <button class="primary" style="margin-top:6px" onclick="bulkAdd()">Add links</button></details>`;
+  else if (l.type === 'chat') add = `
+    <div class="row"><button class="${l.joinOpen ? 'danger' : 'primary'}" onclick="api('/api/lists/${l.id}', {joinOpen:${!l.joinOpen}}, 'PATCH')">${l.joinOpen ? '⏹ Close joining' : '▶ Open joining'}</button>
+      <span class="help grow">${l.joinOpen ? `🟢 Chat can join now with <code>${esc(S.settings.joinCommand)}</code>` : `Viewers type <code>${esc(S.settings.joinCommand)}</code> to jump in. Their Twitch picture becomes their piece.`}</span></div>
+    ${/reading/.test(S.status.twitch.chat) ? '' : `<p class="help">⚠️ Not reading chat yet — sign in with Twitch (top right).</p>`}
+    <details style="margin-top:8px"><summary>…or paste usernames</summary><textarea id="bulk" placeholder="username1, username2 x2"></textarea><button class="primary" style="margin-top:6px" onclick="bulkAdd()">Add</button></details>`;
+
+  const rows = active.filter(e => !filter || e.label.toLowerCase().includes(filter)).sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label)).slice(0, 500).map(e => {
+    const spot = e.kind === 'spot';
+    const luckM = l.type === 'movies' && S.luckOn ? 1 + (e.luckPct || 0) / 100 : 1;
+    const pct = (e.weight || 1) * luckM / total * 100;
+    const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
+    const waiting = l.type === 'movies' && S.settings.chatGate !== false && !spot && e.backers?.length && !S.chatters.includes(e.backers[0].discordId);
+    const series = e.details?.collection ? ` · 🎞️ ${esc(e.details.collection.name)}` : '';
+    const sub = (spot ? `Wildcard · if one wins, all ${esc(S.settings.spotName)} spots leave for the week` : l.type === 'movies' ? `${esc(e.sub)} · ${e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you'}${series}` : esc(e.sub || '')) + (waiting ? ` · <span style="color:var(--gold)">💬 joins once ${esc(e.backers[0].name)} chats</span>` : '');
+    const luck = l.type === 'movies' && S.luckOn ? (spot ? `<div class="luck" title="Wildcard spots only get luck you give them">🍀 <input type="number" step="0.01" min="0" value="${e.luckPct || 0}" style="width:64px;padding:2px 4px" onchange="api('/api/luck',{id:'${e.id}',luckPct:this.value})">%</div>` : e.luckPct ? `<div class="luck" title="Built up from battles it lost">🍀 +${(+e.luckPct).toFixed(2)}%</div>` : '') : '';
+    return `<tr style="${waiting ? 'opacity:.5' : ''}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b><br><small class="muted">${sub}</small></td>
+      <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)" title="Odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div>${luck}</td>
+      <td><div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small></td>
+      <td style="white-space:nowrap"><button class="ghost" title="Pause — off the cliff until you resume it" onclick="setStatus('${e.id}','paused')">⏸</button>${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}<button class="ghost danger" title="Remove" onclick="setStatus('${e.id}','removed')">✕</button></td></tr>`;
+  }).join('');
+
+  add += `
+    <details style="margin-top:8px" id="impBox"><summary>📥 Import from Wheel of Names, Marbles on Stream or a file</summary>
+      <div class="row" style="margin-top:6px"><input id="impUrl" class="grow" placeholder="Paste a Wheel of Names share link (wheelofnames.com/abc-xyz) or a link to a list"><button class="primary" onclick="importLinkClick(this)">Import link</button></div>
+      <div class="drop" id="impDrop" style="margin-top:8px;padding:14px">📄 Drop a <b>.wheel</b>, <b>.csv</b>, <b>.json</b> or <b>.txt</b> file here · or <a href="#" onclick="$('impFile').click();return false">choose a file</a>
+        <input type="file" id="impFile" accept=".wheel,.json,.csv,.tsv,.txt,text/*,application/json" hidden onchange="importFiles(this.files)"></div>
+      <p class="help">Wheel of Names: you can also click the entries box on the wheel, press <b>Ctrl+A</b>, <b>Ctrl+C</b>, and paste into the list box above. Odds/weights come along when the file has them.${l.type === 'movies' || l.type === 'films' ? ' Each name is looked up as a movie.' : ''}</p>
+    </details>`;
+  $('poolMain').innerHTML = `<div class="card">
+      <div class="listhead"><input class="grow" value="${esc(l.name)}" ${l.type === 'movies' ? 'readonly' : ''} onchange="api('/api/lists/${l.id}', {name:this.value}, 'PATCH')"><span class="pill">${TYPE[l.type]}</span><span class="pill">${active.length} in the pool</span></div>
+      ${add}</div>
+    <div class="card tablecard">
+      <div class="row" style="margin-bottom:6px">
+        <h2 class="grow" style="margin:0">Pool &amp; odds ${l.type === 'movies' && S.luckOn ? '<span class="luck">🍀 luck is on</span>' : ''}</h2>
+        <input id="filter" placeholder="Filter…" style="width:160px" value="${esc(filter)}" oninput="filter=this.value.toLowerCase();renderPool()">
+        <button onclick="if(confirm('Set everyone back to default odds?')) api('/api/lists/${l.id}/reset-odds')">Reset odds</button>
+        <button class="danger" onclick="if(confirm('Remove everything from this list?')) api('/api/lists/${l.id}/clear')">Clear</button>
+        ${l.id !== 'movies' ? `<button class="danger" onclick="if(confirm('Delete this battle? Its history stays in History.')) api('/api/lists/${l.id}', null, 'DELETE')">Delete</button>` : ''}
+      </div>
+      <div class="tablewrap">${active.length ? `<table><tr><th></th><th>Entry</th><th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>${active.length > 500 ? `<p class="help">Showing 500 of ${active.length}. Use the filter.</p>` : ''}` : `<div class="empty">Nothing here yet — add some above.</div>`}</div>
+    </div>`;
+  renderPoolSide(l);
+  if (l.type === 'pics') setupDrop();
+  { const d = $('impDrop'); if (d) { d.ondragover = e => { e.preventDefault(); d.classList.add('over'); }; d.ondragleave = () => d.classList.remove('over'); d.ondrop = e => { e.preventDefault(); d.classList.remove('over'); importFiles(e.dataTransfer.files); }; } }
+  if (keepOpen && keepList && document.querySelector('#poolMain details:not(#impBox)')) document.querySelector('#poolMain details:not(#impBox)').open = true;
+  if (keepImp && keepList && $('impBox')) { $('impBox').open = true; if (keepUrl) $('impUrl').value = keepUrl; }
+  if (keepList) for (const [k, v] of Object.entries(keepVal)) if (v != null && $(k)) $(k).value = v;
+  if (keepFocus && $(keepFocus)) { const el = $(keepFocus); el.focus(); el.setSelectionRange?.(el.value.length, el.value.length); }
+  if (lastResults && $('mresults')) $('mresults').innerHTML = lastResults;
+}
+function renderPoolSide(l) {
+  const out = l.entries.filter(e => !['active', 'removed', 'benched', 'away', 'paused'].includes(e.status) && e.kind !== 'spot');
+  const benched = l.entries.filter(e => e.status === 'benched'), away = l.entries.filter(e => e.status === 'away'), paused = l.entries.filter(e => e.status === 'paused');
+  const line = (e, btn) => `<div class="row" style="padding:3px 0"><span class="grow">${esc(e.label)} ${e.sub ? '<span class="muted">(' + esc(e.sub) + ')</span>' : ''}${e.backers?.[0] ? ` <small class="muted">· ${esc(e.backers[0].name)}</small>` : ''}</span><button class="ghost" style="padding:2px 8px" onclick="setStatus('${e.id}','active')">${btn}</button></div>`;
+  let h = `<div class="card"><h2>Channel points &amp; bits</h2><div class="chaosbar" data-chaos>${chaosButtons()}</div></div>`;
+  if (l.type === 'movies') {
+    h += `<div class="card"><h2>📅 This week</h2><p class="help" style="margin:0">Week of <b>${new Date(S.week.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</b>. New week starts <b>${esc(S.week.backOn)}</b>.</p>
+      <div class="row" style="margin-top:8px"><span class="grow">🔁 Discord swaps: <b style="color:${S.swapsLocked ? 'var(--bad)' : 'var(--good)'}">${S.swapsLocked ? 'locked' : 'open'}</b>${S.live && !S.swapLock ? ' <span class="muted">(you\'re live)</span>' : ''}</span>
+      <button onclick="api('/api/swaps/lock',{locked:${!S.swapLock}})">${S.swapLock ? 'Unlock' : 'Lock now'}</button></div></div>`;
+    if (S.settings.chatGate !== false) h += chattersCard();
+  }
+  if (benched.length) h += `<div class="card"><h2>💤 Sitting out this week (${benched.length})</h2><p class="help" style="margin-top:0">Their person already won. Back ${esc(S.week.backOn)}.</p>${benched.map(e => line(e, 'Bring back')).join('')}</div>`;
+  if (paused.length) h += `<div class="card"><div class="row"><h2 class="grow" style="margin:0">⏸ Paused (${paused.length})</h2><button style="padding:2px 8px" onclick="api('/api/lists/${l.id}/resume-all').then(r=>toast('Resumed ' + r.back))">Resume all</button></div>${paused.map(e => line(e, '▶ Resume')).join('')}</div>`;
+  if (away.length) h += `<div class="card"><h2>📣 Out tonight (${away.length})</h2><p class="help" style="margin-top:0">Missed the roll call. Back tomorrow.</p>${away.map(e => line(e, 'Bring back')).join('')}</div>`;
+  if (out.length) h += `<div class="card"><h2><a href="#" onclick="showOut=!showOut;renderPool();return false">${showOut ? '▾' : '▸'} ${l.type === 'movies' ? 'Watched' : 'Taken out'} (${out.length})</a></h2>
+    ${l.type !== 'movies' ? `<a href="#" onclick="api('/api/lists/${l.id}/restore');return false">put them all back</a>` : ''}
+    ${showOut ? out.map(e => line(e, l.type === 'movies' ? 'Not watched' : 'Put back')).join('') : ''}</div>`;
+
+  $('poolSide').innerHTML = h;
+}
+function chattersCard() {
+  const on = S.people.filter(p => p.chatting), off = S.people.filter(p => !p.chatting && p.active.length);
+  return `<div class="card"><div class="row"><h2 class="grow" style="margin:0">💬 Chatting tonight: ${on.length}</h2><button class="ghost" style="padding:2px 8px" onclick="if(confirm('Clear everyone? Their movies leave the cliff until they chat again.')) api('/api/stream/new')">Clear</button></div>
+    <p class="help">Movies join the cliff when their person chats. Click to add/remove.</p>
+    ${on.map(p => `<span class="chip click" style="border-color:var(--good)" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">🟢 ${esc(p.name)}</span>`).join('')}
+    ${off.map(p => `<span class="chip click" style="opacity:.6" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">⚪ ${esc(p.name)}</span>`).join('')}
+    ${S.recentChatters.length ? `<details style="margin-top:8px" ${S.recentChatters.some(c => !c.person) ? 'open' : ''}><summary>Recent chatters (${S.recentChatters.length})</summary>
+      <table style="margin-top:6px">${S.recentChatters.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${c.person ? `<span class="tag w">✓ ${esc(c.person)}</span>` : `<select style="width:auto;padding:3px 6px" onchange="if(this.value) api('/api/chatters/link',{login:'${esc(c.login)}',discordId:this.value}).then(()=>toast('Linked ${esc(c.name)}'))"><option value="">This is…</option>${S.people.map(p => `<option value="${esc(p.discordId)}">${esc(p.name)}</option>`).join('')}</select>`}</td></tr>`).join('')}</table></details>` : ''}</div>`;
+}
+async function newWeekClick() { const r = await api('/api/movies/new-week'); toast(`🗓️ New week! ${plural(r.back, 'benched movie')} back, ${plural(r.spots, esc(S.settings.spotName) + ' spot')} added`); }
+async function addSpotsClick() { const r = await api('/api/movies/spots'); toast(r.added ? `Added ${plural(r.added, esc(S.settings.spotName) + ' spot')}` : r.spotWon ? `A ${esc(S.settings.spotName)} spot already won this week — they come back ${esc(S.week.backOn)} (or press New week).` : `Already at ${S.settings.spotMax} ${esc(S.settings.spotName)} spots`); }
+async function setStatus(id, status) { await api(`/api/lists/${list().id}/entries/${id}`, { status }, 'PATCH'); }
+async function odds(id, v) { await api(`/api/lists/${list().id}/entries/${id}`, { weight: Math.max(0.1, Number(v) || 1) }, 'PATCH'); }
+async function bulkAdd() {
+  const ta = $('bulk'); if (!ta.value.trim()) return;
+  const btn = event?.target; if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  try {
+    const r = await api(`/api/lists/${list().id}/bulk`, { text: ta.value });
+    ta.value = '';
+    toast(`Added ${r.added}${r.failed.length ? `<br><small>Skipped:<br>${r.failed.slice(0, 8).map(esc).join('<br>')}${r.failed.length > 8 ? '<br>…' : ''}</small>` : ''}`, r.failed.length ? 8000 : 3000);
+  } finally { if (btn) btn.disabled = false; renderPool(); }
+}
+function setupDrop() {
+  const d = $('drop'); if (!d) return;
+  d.ondragover = e => { e.preventDefault(); d.classList.add('over'); };
+  d.ondragleave = () => d.classList.remove('over');
+  d.ondrop = e => { e.preventDefault(); d.classList.remove('over'); uploadFiles(e.dataTransfer.files); };
+}
+async function uploadFiles(files) {
+  const imgs = [...files].filter(f => f.type.startsWith('image/')); let n = 0;
+  for (const f of imgs) { await fetch(`/api/lists/${list().id}/upload?name=${encodeURIComponent(f.name)}`, { method: 'POST', body: f }); n++; if (imgs.length > 3 && $('drop')) $('drop').innerHTML = `Uploading… ${n} / ${imgs.length}`; }
+  toast(`Added ${n} picture${n === 1 ? '' : 's'}`);
+}
+let stT, lastResults = '';
+function searchMovie(q) {
+  clearTimeout(stT);
+  if (q.trim().length < 2) { lastResults = ''; $('mresults').innerHTML = ''; return; }
+  stT = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/search?q=' + encodeURIComponent(q)).then(r => r.json());
+      const l = list();
+      if (r.error) lastResults = `<p class="help">⚠️ ${esc(r.error)}</p>`;
+      else lastResults = r.map(m => {
+        const pooled = l.entries.find(e => String(e.tmdbId) === String(m.id) && e.status === 'active');
+        const block = l.type === 'movies' && m.watched;
+        return `<button ${block ? 'disabled' : ''} onclick="addMovie(${m.id})"><img src="${m.poster ? esc(proxy(m.poster)) : ''}"><span class="grow"><b>${esc(m.title)}</b> <span class="muted">(${esc(m.year || '????')})</span></span>
+        ${m.watched ? `<span class="tag w">✅ watched</span>` : pooled ? '<span class="tag p">in pool</span>' : ''}</button>`;
+      }).join('') || '<p class="help">No matches.</p>';
+      if ($('mresults')) $('mresults').innerHTML = lastResults;
+    } catch {}
+  }, 250);
+}
+async function addMovie(id) {
+  const l = list();
+  const r = l.type === 'films' ? await api(`/api/lists/${l.id}/film`, { tmdbId: id }) : await api('/api/movies/add', { tmdbId: id });
+  toast(esc(r.msg.replace(/\*\*/g, ''))); lastResults = ''; if ($('msearch')) $('msearch').value = ''; renderPool();
+}
+
+// ---------- 📥 import (Wheel of Names, Marbles on Stream, files) ----------
+async function fileToLines(file) { const r = await api('/api/import/parse', { text: await file.text(), name: file.name }); return r.text; }
+async function addLines(listId, text) {
+  if (!text.trim()) return toast('⚠️ Nothing to import in there.');
+  toast('Importing…');
+  const r = await api(`/api/lists/${listId}/bulk`, { text });
+  toast(`📥 Imported ${r.added}${r.failed.length ? `<br><small>Skipped:<br>${r.failed.slice(0, 8).map(esc).join('<br>')}${r.failed.length > 8 ? '<br>…' : ''}</small>` : ''}`, r.failed.length ? 9000 : 3500);
+}
+async function importFiles(files) { for (const f of files) await addLines(list().id, await fileToLines(f)); }
+async function importLinkClick(btn) {
+  const url = $('impUrl').value.trim(); if (!url) return toast('Paste a link first');
+  btn.disabled = true; btn.textContent = 'Reading…';
+  try { const r = await api('/api/import/link', { url }); $('impUrl').value = ''; await addLines(list().id, r.text); }
+  finally { btn.disabled = false; btn.textContent = 'Import link'; }
+}
+async function nlImportFile(files) { for (const f of files) { const t = await fileToLines(f); $('nlItems').value = ($('nlItems').value.trim() ? $('nlItems').value.trim() + '\n' : '') + t; } }
+async function nlImportLink() {
+  const url = $('nlUrl').value.trim(); if (!url) return toast('Paste a link first');
+  const r = await api('/api/import/link', { url }); $('nlItems').value = ($('nlItems').value.trim() ? $('nlItems').value.trim() + '\n' : '') + r.text; $('nlUrl').value = ''; toast(`Found ${r.count}`);
+}
+
+// ---------- 👥 people ----------
+function renderPeople() {
+  const box = $('peopleBody');
+  if (box.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; // don't wipe what you're typing
+  const keep = { npName: $('npName')?.value, npTw: $('npTw')?.value, impText: $('impText')?.value }, open = box.querySelector('details')?.open;
+  const max = S.settings.maxPerUser;
+  const tools = `<div class="row" style="margin-bottom:10px"><b>➕ Add someone</b><input id="npName" style="width:180px" placeholder="Name (e.g. Lucy)"><input id="npTw" style="width:220px" placeholder="Twitch username"><button class="primary" onclick="addPerson()">Add person</button>
+    <span class="grow"></span><span class="help" style="margin:0">Everyone gets <b>${max}</b> picks · new ones once all ${max} are watched · Discord: <code>/suggest</code> <code>/swap</code> <code>/mymovies</code></span></div>
+    <details style="margin-bottom:10px"><summary>📋 Import everyone from your old wheel at once</summary>
+      <p class="help">One person per line: Twitch name, a colon, then their movies with commas.</p>
+      <textarea id="impText" placeholder="lucy_tv: Heat, Coco, Jaws (1975)&#10;bigscreenbob: The Thing 1982, Arrival"></textarea>
+      <button class="primary" style="margin-top:6px" onclick="importWheel(this)">Import</button></details>`;
+  box.innerHTML = tools + (!S.people.length ? `<div class="empty">Nobody has movies yet. Add people above, or they can use /suggest in Discord.</div>` : `
+  <table><tr><th></th><th>Person</th><th>Chatting</th><th>Picks used</th><th>Movies</th><th>Twitch</th><th></th></tr>
+  ${S.people.map(p => {
+    const locked = p.used >= max;
+    return `<tr class="person"><td class="thumb">${p.avatar ? `<img src="${esc(p.avatar)}">` : `<span>${esc((p.name[0] || '?').toUpperCase())}</span>`}</td>
+      <td>${p.manual ? `<input class="tw" value="${esc(p.name)}" style="font-weight:700" onchange="api('/api/discord/people/${p.discordId}',{name:this.value})">` : `<b>${esc(p.name)}</b>`}<br><small class="muted">${p.manual ? 'added by you' : 'Discord'} · ${p.watched} watched</small></td>
+      <td><button class="${p.chatting ? '' : 'ghost'}" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">${p.chatting ? '🟢 In' : '⚪ Not yet'}</button></td>
+      <td style="white-space:nowrap"><input type="number" min="0" max="99" value="${p.used}" style="width:56px;padding:4px" onchange="api('/api/discord/people/${p.discordId}',{picksUsed:this.value})"> <small class="muted">/ ${max}</small>${locked ? ' 🔒' : ''}</td>
+      <td>${p.active.map(m => `<span class="chip">${m.benched ? '💤 ' : m.paused ? '⏸ ' : ''}${esc(m.label)}${m.sub ? ` (${esc(m.sub)})` : ''}<button title="Take ${esc(p.name)} off this movie" onclick="unback('${m.id}','${p.discordId}')">✕</button></span>`).join('')}
+        <button class="ghost" style="padding:2px 10px" onclick="addMovieFor('${p.discordId}')">＋ movie</button><div class="results" id="pm-${p.discordId}"></div></td>
+      <td><input class="tw" value="${esc(p.twitch)}" placeholder="not linked" onchange="api('/api/discord/people/${p.discordId}', {twitch:this.value}).then(()=>toast('Twitch link saved'))"></td>
+      <td style="white-space:nowrap"><button ${p.used ? '' : 'disabled'} title="Give them a fresh set of picks" onclick="api('/api/discord/people/${p.discordId}', {resetPicks:true}).then(()=>toast('They can pick again'))">🔓</button>${p.manual ? `<button class="ghost danger" title="Remove this person" onclick="if(confirm('Remove this person and take them off their movies?')) api('/api/people/${p.discordId}',null,'DELETE')">✕</button>` : ''}</td></tr>`;
+  }).join('')}</table>`);
+  for (const [k, v] of Object.entries(keep)) if (v && $(k)) $(k).value = v;
+  if (open && box.querySelector('details')) box.querySelector('details').open = true;
+}
+async function addPerson() {
+  const name = $('npName').value.trim(), twitch = $('npTw').value.trim();
+  if (!name && !twitch) return toast('Type a name or Twitch username');
+  await api('/api/people', { name, twitch }); $('npName').value = $('npTw').value = ''; document.activeElement.blur(); renderPeople(); toast(`Added ${esc(name || twitch)} — now press ＋ movie next to them`);
+}
+async function importWheel(btn) {
+  const t = $('impText').value; if (!t.trim()) return;
+  btn.disabled = true; btn.textContent = 'Importing… (looking up movies)';
+  try {
+    const r = await api('/api/people/import', { text: t });
+    $('impText').value = '';
+    toast(`Imported ${r.people} people and ${r.movies} movies${r.failed.length ? `<br><small>Couldn't add:<br>${r.failed.slice(0, 10).map(esc).join('<br>')}</small>` : ''}`, r.failed.length ? 12000 : 4000);
+  } finally { btn.disabled = false; btn.textContent = 'Import'; btn.blur(); renderPeople(); }
+}
+function addMovieFor(id) {
+  const box = $('pm-' + id); if (box.innerHTML) { box.innerHTML = ''; return; }
+  box.innerHTML = `<input placeholder="Type a movie title…" style="margin-top:6px" oninput="searchFor('${id}', this.value)"><div id="pmr-${id}"></div>`;
+  box.querySelector('input').focus();
+}
+let sfT;
+function searchFor(id, q) {
+  clearTimeout(sfT);
+  sfT = setTimeout(async () => {
+    const out = $('pmr-' + id); if (!out) return;
+    if (q.trim().length < 2) { out.innerHTML = ''; return; }
+    const r = await fetch('/api/search?q=' + encodeURIComponent(q)).then(r => r.json());
+    out.innerHTML = r.error ? `<p class="help">⚠️ ${esc(r.error)}</p>` : r.slice(0, 6).map(m => `<button style="display:flex;gap:8px;align-items:center;width:100%;margin-top:4px;text-align:left" ${m.watched ? 'disabled' : ''} onmousedown="event.preventDefault()" onclick="giveMovie('${id}', ${m.id})"><img src="${m.poster ? esc(proxy(m.poster)) : ''}" style="width:24px;height:36px;object-fit:cover;border-radius:3px"><span>${esc(m.title)} <span class="muted">(${esc(m.year || '????')})</span></span>${m.watched ? ' <span class="tag w">watched</span>' : ''}</button>`).join('');
+  }, 250);
+}
+async function giveMovie(id, tmdbId) { const r = await api(`/api/people/${id}/movie`, { tmdbId }); document.activeElement?.blur(); toast(esc(r.msg.replace(/\*\*/g, '').replace(/<@[^>]+>/g, 'them'))); renderPeople(); }
+async function unback(eid, did) { if (confirm('Take this person off that movie? It gives them their pick back.')) await api(`/api/movies/${eid}/backers/${did}`, null, 'DELETE'); }
+
+// ---------- 📜 history ----------
+async function loadHistory(force) {
+  const want = histList || 'all';
+  if (!force && hist && histFor === want && histVer === S.historyVersion) return drawHistory();
+  const r = await fetch('/api/history?listId=' + encodeURIComponent(want)).then(r => r.json());
+  hist = r; histFor = want; histVer = S.historyVersion; drawHistory();
+}
+let histMode = 'rounds', histQ = '';
+const hl = t => { const x = esc(t); if (!histQ) return x; const re = new RegExp('(' + histQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'); return x.replace(re, '<mark>$1</mark>'); };
+function histSearch(v) { histQ = v.trim(); drawHistory(); const el = $('histQ'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+function drawHistory() {
+  const box = $('histBody'); if (!box || !hist) return;
+  const want = histFor, q = histQ.toLowerCase();
+  const rows = hist.rows.filter(h => !q || [h.winner.label, h.winner.sub, h.winner.owner, h.listName].some(x => String(x || '').toLowerCase().includes(q)));
+  const known = new Map(S.lists.map(l => [l.id, l.name]));
+  for (const l of hist.lists) if (l.id && !known.has(l.id)) known.set(l.id, l.name + ' (deleted)');
+  const opts = [['all', 'All battles'], ...known].map(([id, n]) => `<option value="${esc(id)}" ${id === want ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  const claimed = rows.filter(h => h.claimed === true || h.claimed === 'instant').length;
+  const asked = rows.filter(h => h.claimed !== null && h.claimed !== undefined).length;
+  const counts = {}; for (const h of rows) { const k = h.winner.owner; if (k) counts[k] = (counts[k] || 0) + 1; }
+  const topOwner = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  box.innerHTML = `
+    <div class="row" style="margin-bottom:12px"><div class="seg"><button class="${histMode === 'rounds' ? 'on' : ''}" onclick="histMode='rounds';drawHistory()">📜 Every round</button><button class="${histMode === 'people' ? 'on' : ''}" onclick="histMode='people';drawHistory()">👑 Who won what</button></div>
+      <input id="histQ" style="width:260px" placeholder="🔎 Search a movie or a name…" value="${esc(histQ)}" oninput="histSearch(this.value)">
+      <span class="muted">in</span><select style="width:auto" onchange="histList=this.value;loadHistory(true)">${opts}</select>
+      <span class="grow"></span>${want !== 'all' && rows.length ? `<button class="ghost danger" onclick="if(confirm('Delete all history for this battle?')) api('/api/history/clear',{listId:'${esc(want)}'}).then(()=>loadHistory(true))">Clear history</button>` : ''}</div>
+    ${rows.length ? `<div class="stats"><div class="stat"><b>${rows.length}</b><small>rounds played</small></div>
+      ${asked ? `<div class="stat"><b>${claimed}/${asked}</b><small>winners claimed</small></div>` : ''}
+      ${topOwner && topOwner[1] > 1 ? `<div class="stat"><b>${esc(topOwner[0])}</b><small>most wins (${topOwner[1]})</small></div>` : ''}</div>` : ''}
+    ${histMode === 'people' ? peopleWins(rows) : rows.length ? rows.map(roundHTML).join('') : `<div class="empty">${q ? 'Nothing matches “' + esc(histQ) + '”.' : `No rounds yet${want === 'all' ? '' : ' for this battle'}.`}</div>`}`;
+}
+function peopleWins(rows) {
+  const by = new Map();
+  for (const h of rows) {
+    const w = h.winner; if (!w.owner || !(h.kind === 'movies' || h.kind === 'films') || String(w.id || '').startsWith('spot-')) continue; // movies people picked
+    const k = w.owner.toLowerCase(); if (!by.has(k)) by.set(k, { name: w.owner, wins: [] });
+    by.get(k).wins.push(h);
+  }
+  const list = [...by.values()].sort((a, b) => b.wins.length - a.wins.length || a.name.localeCompare(b.name));
+  if (!list.length) return `<div class="empty">${histQ ? 'Nothing matches “' + esc(histQ) + '”.' : 'No one has won a movie yet.'}</div>`;
+  return `<p class="help">Every movie each person has ever won since you started using Movie Royale${histFor === 'all' ? '' : ' in this battle (pick “All battles” to see everything)'}. Newest first.</p>` + list.map(p => `<div class="person-wins"><div><div class="who">${hl(p.name)}</div><div class="muted">🏆 ${p.wins.length} win${p.wins.length === 1 ? '' : 's'}</div></div>
+    <div>${p.wins.map(h => `<span class="wonmovie" title="${esc(when(h.at))}${h.listName ? ' · ' + esc(h.listName) : ''}">${h.winner.poster ? `<img src="${esc(proxy(h.winner.poster))}">` : '<span style="padding-left:6px">🏆</span>'}<span>${hl(h.winner.label)}${h.winner.sub ? ` <span class="muted">(${esc(h.winner.sub)})</span>` : ''}<br><small class="muted">${new Date(h.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}${h.outcome === 'put back' ? ' · put back' : ''}</small></span></span>`).join('')}</div></div>`).join('');
+}
+function roundHTML(h) {
+  const w = h.winner, d = w.details || {}, r = w.ratings || {};
+  const pic = w.poster ? `<img class="pic poster" src="${esc(proxy(w.poster))}">` : w.image ? `<img class="pic" src="${esc(proxy(w.image))}">` : `<div class="pic">${esc((w.label?.[0] || '?').toUpperCase())}</div>`;
+  const claim = h.claimed === 'instant' ? '<span class="tag w">⚡ claimed instantly</span>' : h.claimed === true ? '<span class="tag w">✅ claimed</span>' : h.claimed === false ? '<span class="tag b">⏰ no claim</span>' : '';
+  const outcome = h.outcome === 'watched' ? '<span class="tag v">🎬 watched</span>' : h.outcome === 'out' ? '<span class="tag v">🚪 taken out</span>' : h.outcome === 'put back' ? '<span class="tag v">↩️ put back</span>' : '';
+  const meta = [when(h.at), histFor === 'all' && h.listName ? esc(h.listName) : '', h.entrants ? `${h.entrants}${h.total > h.entrants ? ` of ${h.total}` : ''} on the cliff` : '', w.odds ? `${Math.round(w.odds * 1000) / 10}% odds` : ''].filter(Boolean).join(' · ');
+  const top = (h.top || []).slice(1), ev = h.events || [];
+  return `<div class="round">${pic}<div>
+      <div class="t">🏆 ${hl(w.label)}${w.sub ? ` <span class="muted">(${esc(w.sub)})</span>` : ''}</div>
+      <div class="meta">${w.owner ? `${h.kind === 'movies' || h.kind === 'films' ? 'Picked by' : 'Winner:'} <b>${hl(w.owner)}</b> · ` : ''}${meta}</div>
+      ${d.director || d.genres?.length ? `<div class="meta">${d.director ? '🎬 ' + esc(d.director) : ''}${d.genres?.length ? ' · ' + esc(d.genres.join(', ')) : ''}${r.rt ? ' · 🍅 ' + esc(r.rt) : ''}${r.imdb ? ' · IMDb ' + esc(r.imdb) : ''}${r.lb ? ' · 📗 ' + esc(r.lb) : ''}</div>` : ''}
+      <div class="row" style="gap:6px;margin-top:6px">${claim}${outcome}</div>
+      ${top.length ? `<div class="top"><span class="muted">Runners-up:</span> ${top.map((x, i) => `<span>${['🥈', '🥉', '4th', '5th'][i]} ${esc(x.label)}</span>`).join('')}</div>` : ''}
+      ${ev.length ? `<div class="ev">Chaos: ${ev.map(e => esc(e.event) + (e.by ? ` <i>(${esc(e.by)})</i>` : '')).join(', ')}</div>` : ''}
+    </div><button class="ghost danger" title="Delete this round" onclick="if(confirm('Delete this round from history?')) api('/api/history/${esc(h.id)}', null, 'DELETE').then(()=>loadHistory(true))">✕</button></div>`;
+}
+
+// ---------- 🚫 bans ----------
+let bans = null;
+async function loadBans() { bans = await fetch('/api/bans').then(r => r.json()); drawBans(); }
+function drawBans() {
+  if (!bans) return;
+  $('banList').innerHTML = bans.bans.length ? `<table><tr><th></th><th>Movie</th><th>Banned</th><th></th></tr>${bans.bans.map(b => `<tr><td class="thumb">${b.poster ? `<img class="poster" src="${esc(proxy(b.poster))}">` : '<span>🚫</span>'}</td><td><b>${esc(b.title)}</b> <span class="muted">(${esc(b.year || '????')})</span>${b.reason ? `<br><small class="muted">${esc(b.reason)}</small>` : ''}</td><td class="muted">${new Date(b.at).toLocaleDateString()}</td><td><button class="ghost" onclick="api('/api/bans/${b.tmdbId}',null,'DELETE').then(loadBans)">Unban</button></td></tr>`).join('')}</table>` : '<div class="empty">No banned movies yet.</div>';
+  $('yearAllow').innerHTML = bans.yearAllow.length ? `<p class="help">Allowed even though they're new:</p>${bans.yearAllow.map(a => `<span class="chip">${esc(a.title || a.tmdbId)}<button onclick="api('/api/year-allow',{tmdbId:'${esc(a.tmdbId)}',allow:false}).then(loadBans)">✕</button></span>`).join('')}` : '';
+  renderBanSide();
+}
+function renderBanSide() { if (!S) return; $('banYear').checked = S.settings.banCurrentYear !== false; $('banYearNum').textContent = new Date().getFullYear(); }
+let bsT;
+function banSearch(q) {
+  clearTimeout(bsT);
+  if (q.trim().length < 2) { $('banResults').innerHTML = ''; return; }
+  bsT = setTimeout(async () => {
+    const r = await fetch('/api/search?q=' + encodeURIComponent(q)).then(r => r.json());
+    const year = String(new Date().getFullYear());
+    $('banResults').innerHTML = r.error ? `<p class="help">⚠️ ${esc(r.error)}</p>` : r.slice(0, 8).map(m => {
+      const banned = bans?.bans.some(b => String(b.tmdbId) === String(m.id));
+      const isNew = String(m.year) === year && S.settings.banCurrentYear !== false;
+      const allowed = bans?.yearAllow.some(a => String(a.tmdbId) === String(m.id));
+      return `<div class="row"><img src="${m.poster ? esc(proxy(m.poster)) : ''}" style="width:28px;height:42px;object-fit:cover;border-radius:4px"><span class="grow"><b>${esc(m.title)}</b> <span class="muted">(${esc(m.year || '????')})</span></span>
+        ${isNew ? (allowed ? `<button onclick="api('/api/year-allow',{tmdbId:${m.id},allow:false}).then(()=>{loadBans();banSearch($('banQ').value)})">Block again (new)</button>` : `<button onclick="api('/api/year-allow',{tmdbId:${m.id},allow:true}).then(()=>{toast('Allowed');loadBans();banSearch($('banQ').value)})">✅ Allow (it's new)</button>`) : ''}
+        ${banned ? '<span class="tag b">banned</span>' : `<button class="danger" onclick="banIt(${m.id})">🚫 Ban</button>`}</div>`;
+    }).join('') || '<p class="help">No matches.</p>';
+  }, 250);
+}
+async function banIt(id) { const r = await api('/api/bans', { tmdbId: id, reason: $('banReason').value.trim() }); toast('🚫 ' + esc(r.msg)); $('banReason').value = ''; await loadBans(); banSearch($('banQ').value); }
+
+// ---------- 🔊 sounds ----------
+const SOUND_INFO = { fanfare: '🏆 Winner fanfare', celebrate: '🎉 Claimed celebration', music: '🎵 Battle music (loops)', lobby: '⏳ Countdown / chat timer music (loops)', go: '📣 Fight starts', tick: '⏱️ Countdown tick', final5: '⏱️ Last 5 seconds', suddendeath: '🚨 Sudden death', claimStart: '⏱️ Claim timer starts', ding: '💬 Winner typed in chat', buzzer: '⏰ Time\'s up', bonk: '💥 Pieces bump', land: '⬇️ Piece lands', dash: '💨 Dash', crumble: '🪨 Cliff crumbles', fall: '😱 Piece falls off', out: '❌ Knocked out', lucky: '🍀 Lucky save', alert: '⚠️ Event warning', comet: '☄️ Comet', smack: '👊 Comet hit', boom: '🌠 Meteor impact', collapse: '🪨 Edge collapse', earthquake: '🌋 Earthquake', meteors: '🌠 Meteor shower', wind: '🌬️ Gale', ice: '🧊 Ice age', tornado: '🌪️ Tornado', shockwave: '💥 Shockwave', thunder: '⚡ Thunder', lightning: '⚡ Lightning zap', boulder: '🪨 Boulder', swap: '🌀 Teleport swap', lowgrav: '🪐 Low gravity', queued: '📥 Event queued', joined: '➕ Someone joined', pop: '🫧 Pop' };
+let sounds = [], uploadFor = null;
+async function loadSounds() { sounds = (await fetch('/api/sounds/list').then(r => r.json())).sounds; drawSounds(); renderSound(); }
+function drawSounds() {
+  $('soundTable').innerHTML = `<tr><th>Sound</th><th>Using</th><th></th></tr>` + sounds.map(s => `<tr><td>${SOUND_INFO[s.name] || esc(s.name)} <small class="muted">${esc(s.name)}</small></td>
+    <td>${s.custom ? `<span class="tag p">🎵 ${esc(s.custom)}</span>` : '<span class="muted">built-in</span>'}</td>
+    <td style="white-space:nowrap;text-align:right"><button onclick="api('/api/sound-test',{name:'${s.name}'})">▶</button> <button onclick="pickSound('${s.name}')">⬆️ Upload</button>${s.custom ? ` <button class="ghost danger" onclick="api('/api/sounds/${s.name}',null,'DELETE').then(()=>{toast('Back to the built-in sound');loadSounds()})">Reset</button>` : ''}</td></tr>`).join('');
+}
+function pickSound(name) { uploadFor = name; $('sndFile').value = ''; $('sndFile').click(); }
+$('sndFile').onchange = async () => {
+  const f = $('sndFile').files[0]; if (!f || !uploadFor) return;
+  const ext = (f.name.split('.').pop() || 'mp3').toLowerCase();
+  const r = await fetch(`/api/sounds/upload?name=${uploadFor}&ext=${encodeURIComponent(ext)}`, { method: 'POST', body: f });
+  if (!r.ok) return toast('⚠️ ' + esc((await r.json().catch(() => ({}))).error || 'Upload failed'));
+  toast(`✅ ${esc(SOUND_INFO[uploadFor] || uploadFor)} now uses ${esc(f.name)}`); await loadSounds();
+  setTimeout(() => api('/api/sound-test', { name: uploadFor }), 600);
+};
+function renderSound() {
+  const st = S.settings, on = st.soundOn !== false;
+  $('bSnd').textContent = on ? '🔊 On' : '🔇 Muted'; $('bSnd').className = on ? '' : 'danger';
+  if (document.activeElement?.id !== 'bSfx') $('bSfx').value = st.sfxVolume ?? 70;
+  if (document.activeElement?.id !== 'bMus') $('bMus').value = st.musicVolume ?? 35;
+  $('bSfxVal').textContent = $('bSfx').value + '%'; $('bMusVal').textContent = $('bMus').value + '%';
+  $('sndToggle').textContent = on ? '🔊 Sound is ON' : '🔇 Sound is OFF';
+  $('sndToggle').className = on ? '' : 'danger';
+  if (document.activeElement?.id !== 'sfxVol') $('sfxVol').value = st.sfxVolume ?? 70;
+  if (document.activeElement?.id !== 'musVol') $('musVol').value = st.musicVolume ?? 35;
+  $('sfxVal').textContent = $('sfxVol').value + '%'; $('musVal').textContent = $('musVol').value + '%';
+}
+let volT;
+function volChange(k, v) { S.settings[k] = Number(v); renderSound(); clearTimeout(volT); volT = setTimeout(() => setSound({ [k]: Number(v) }), 120); }
+async function setSound(body) { Object.assign(S.settings, body); renderSound(); await api('/api/settings', body); }
+
+// ---------- 🧪 test ----------
+async function testBtn(btn, url) {
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Testing…';
+  try { const r = await api(url, {}); $('tConn').innerHTML = r.msg ? '✅ ' + esc(r.msg) : r.ok ? `✅ Works${r.sample ? ': ' + esc(r.sample) : r.count != null ? ` — ${r.count} films known` : ''}` : `⚠️ ${esc(r.error || 'Not working yet')}`; }
+  catch (e) { $('tConn').innerHTML = '⚠️ ' + esc(e.message); }
+  finally { btn.disabled = false; btn.textContent = old; }
+}
+async function practice() { setView('battle'); goFullscreen(); await api('/api/test/battle'); }
+
+// ---------- new battle dialog ----------
+let nlType = 'films';
+const NL_HELP = { films: 'Search and paste movie titles yourself. The winner gets the full movie winner screen (poster, genre, ratings). Great for theme nights.', text: 'Paste words or names — one per line. Great for games, snacks, challenges, anything.', pics: 'Drag in a bunch of pictures. Each picture becomes a piece on the cliff.', chat: 'Viewers type !join in Twitch chat and their profile picture becomes their piece. Perfect for giveaways.' };
+function newList() { $('nlName').value = ''; $('nlItems').value = ''; selType('films'); newlist.showModal(); $('nlName').focus(); }
+function selType(t) { nlType = t; [...$('nlType').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('nlHelp').textContent = NL_HELP[t]; }
+$('nlType').onclick = e => e.target.dataset.t && selType(e.target.dataset.t);
+async function createList() {
+  const r = await api('/api/lists', { name: $('nlName').value || 'New battle', type: nlType }), items = $('nlItems').value.trim();
+  newlist.close(); $('nlItems').value = ''; setView('pool');
+  if (items && r.id) { toast('Adding…'); const b = await api(`/api/lists/${r.id}/bulk`, { text: items }); toast(`Added ${b.added}${b.failed.length ? `<br><small>Skipped:<br>${b.failed.slice(0, 8).map(esc).join('<br>')}</small>` : ''}`, b.failed.length ? 8000 : 3000); }
+}
+
+// ---------- ⚙️ settings (sub-tabs) ----------
+function openSettings(force) {
+  if (!force && view !== 'settings') return setView('settings');
+  const s = S.settings, port = S.port, tw = S.status.twitch, o = S.owner, d = S.status.discord;
+  const f = (k, label, ph = '', type = 'text', extra = '') => `<label>${label}</label><input data-k="${k}" type="${type}" value="${esc(s[k])}" placeholder="${esc(ph)}" ${extra}>`;
+  const ck = (k, text, def = true) => `<label class="ck"><input type="checkbox" data-k="${k}" ${(def ? s[k] !== false : !!s[k]) ? 'checked' : ''}> <span>${text}</span></label>`;
+  const evOpts = sel => Object.entries(S.events).map(([k, e]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${e.icon} ${e.name}</option>`).join('');
+  const subs = {
+    account: `<h3>👤 Your account</h3>
+      ${o ? `<div class="row"><span class="me grow">${o.avatar ? `<img src="${esc(proxy(o.avatar))}">` : ''}Signed in with Twitch as ${esc(o.name)}</span><button onclick="location.href='/auth/twitch'">Sign in again</button><button class="ghost danger" onclick="if(confirm('Sign out of Twitch? Your lists and history stay saved.')) api('/auth/logout')">Sign out</button></div>`
+        : `<div class="row"><span class="grow muted">Not signed in. Everything is still saved on this computer.</span><button class="twitch" onclick="location.href='/auth/twitch'">Sign in with Twitch</button></div>`}
+      ${f('streamerName', 'Your name in the app (blank = your Twitch name)', S.owner?.name || 'your Twitch name')}
+      <h3 style="margin-top:18px">💾 Backup</h3>
+      <p class="help">Everything saves automatically. Download a backup to keep a copy or move to another computer.</p>
+      <div class="row"><button onclick="location.href='/api/backup'">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
+      <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
+    game: `<h3>⚔️ The battle</h3>
+      <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('gameSeconds', 'Fight length (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
+      ${ck('fairOdds', '<b>Exact odds</b> — the winner is drawn by the odds like a real wheel, and the fight plays it out. Off = pure chaos physics.', false)}
+      ${ck('autoFullscreen', 'Go fullscreen when a battle starts (back to the buttons a few seconds after the winner shows)')}
+      <h3 style="margin-top:18px">🎥 Camera</h3>
+      <div class="grid2">${f('cliffSize', 'Cliff size on screen (%) — 100 = small, 130 = default, 170 = huge', '130', 'number', 'min="60" max="250" step="5"')}</div>
+      ${ck('autoCamera', 'Auto camera — zooms in as the cliff crumbles so the action stays big')}
+      <h3 style="margin-top:18px">📥 Imports</h3>
+      ${f('wheelOfNamesKey', 'Wheel of Names API key (optional — only if a share link will not import)', 'paste here', 'password')}
+      <p class="help">Get one from your Wheel of Names account page if a share link says it needs a key. Copy-paste and files never need one.</p>
+      ${ck('replayOn', '🎬 Instant replay — show the final seconds again in slow motion (sports-style) before the winner card')}
+      <p class="help">During a battle you can also <b>scroll</b> on it to zoom, <b>drag</b> to move around, and <b>double-click</b> (or press 🎥 Auto under the game) to hand it back to the auto camera. Click any piece to <b>follow it</b> (like following a marble); <b>Tab</b> jumps to the next piece. Keys: <b>WASD</b>/arrows move, <b>Q</b>/<b>E</b> zoom, <b>O</b> whole cliff, <b>R</b> back to auto.</p>
+      <h3 style="margin-top:18px">🖼️ Background</h3>
+      <p class="help">Want your own sky? Put a picture named <code>background.png</code> (1920×1080) in your data folder and reload the game. Press <b>Open data folder</b> on the App tab.</p>`,
+    discord: `<h3>🤖 Discord bot</h3>
+      <p class="help">Status: <b>${esc(d.state)}</b>${d.error ? ' — ' + esc(d.error) : ''}${d.guilds?.length ? ' · in ' + d.guilds.map(esc).join(', ') : ''}</p>
+      ${(d.warnings || []).map(w => `<p class="help" style="color:var(--gold)">⚠️ ${esc(w)}</p>`).join('')}
+      <div class="grid2">${f('discordClientId', 'Application ID')}${f('discordToken', 'Bot token', '', 'password')}</div>
+      ${f('discordChannelName', 'Movie channel name', 'movies-royal')}
+      <p class="help">The bot makes this channel for you, pins a message with every command, and <code>/suggest</code> + <code>/swap</code> only work there. Already added the bot before? <a href="#" onclick="reinvite();return false">Re-invite it</a> so it gets permission to make channels and pin messages.</p>
+      <h3 style="margin-top:18px">🎬 Pick rules</h3>
+      <div class="grid2">${f('maxPerUser', 'Movies each person can pick', '', 'number')}<div><label>A new week starts on</label><select data-k="weekStart">${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((x, i) => `<option value="${i}" ${Number(s.weekStart ?? 0) === i ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
+      <p class="help">People can't add more until <b>all</b> their movies have been watched. When someone's movie wins, their other movies sit out until the new week.</p>
+      ${ck('banCurrentYear', `Block movies that came out this year (${new Date().getFullYear()}) — allow single ones on the Bans tab`)}
+      ${ck('chatGate', "Only put someone's movies on the cliff once they chat on Twitch this stream")}
+      <h3 style="margin-top:18px">🎟️ Wildcard spots</h3>
+      <div class="grid2">${f('spotName', 'Spot name (e.g. Kirb)')}${f('spotMax', 'Spots each week', '', 'number')}${f('spotTwitch', 'Their Twitch name (for the picture, optional)')}</div>
+      ${ck('autoSpots', 'Add the spots automatically every new week')}`,
+    luck: `<h3>🍀 Luck</h3>
+      ${ck('luckOn', '<b>Turn on luck</b> — every battle a Discord movie loses makes it a little more likely to win next time. It builds week to week. When one of your movies wins, all your other movies go back to 0.', false)}
+      ${f('luckPerBattle', 'Extra chance per battle (%)', '1', 'number', 'step="0.01" min="0"')}
+      <p class="help">Default is <b>1%</b> per battle, so a movie that lost 10 battles is 10% more likely to win. ${esc(s.spotName)} spots never get luck on their own — set theirs by hand in the Pool tab.</p>
+      <h3 style="margin-top:18px">🔁 Swaps (<code>/swap</code> in Discord)</h3>
+      <p class="help">People can trade one of their movies for a new one (1 for 1) without using a pick. Swaps lock when you go live on Twitch, and open again when your stream ends.</p>
+      ${ck('lockSwapsWhenLive', 'Lock swaps automatically when I go live')}
+      <div class="row"><span class="grow">Right now: <b style="color:${S.swapsLocked ? 'var(--bad)' : 'var(--good)'}">${S.swapsLocked ? '🔒 locked' : '🔓 open'}</b></span><button onclick="api('/api/swaps/lock',{locked:${!S.swapLock}}).then(()=>openSettings(true))">${S.swapLock ? 'Unlock' : 'Lock now'}</button></div>`,
+    twitch: `<h3>💜 Twitch</h3>
+      <p class="help">Status: <b>${esc(tw.state)}</b>${tw.login ? ' as ' + esc(tw.login) : ''} · chat: ${esc(tw.chat)}</p>
+      ${tw.login && !tw.canChat ? `<p class="help" style="color:var(--gold)">⚠️ To reply to <code>${esc(s.twitchMoviesCommand)}</code> in chat, Movie Royale needs one more permission. <a href="/auth/twitch">Sign in with Twitch again</a>.</p>` : ''}
+      <div class="grid2">${f('twitchMoviesCommand', '“What movies do I have?” chat command (add a name to see someone else’s)', '!mymovies')}${f('twitchCooldown', 'Cooldown per person (seconds)', '30', 'number')}</div>
+      ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
+      <p class="help">Replies to <code>${esc(s.twitchMoviesCommand)}</code> and winner posts come from <b>your own Twitch account</b> — no separate bot needed.</p>
+      <h3 style="margin-top:18px">⚡ Chaos on / off</h3><div class="chaosbar" data-chaos style="max-width:420px">${chaosButtons()}</div>
+      <p class="help">Turning channel points off also pauses your Movie Royale rewards on Twitch so nobody spends points by accident.</p>
+      <h3 style="margin-top:18px">⭐ Channel point rewards</h3>
+      <div id="rewardsBox"><p class="help">Loading your rewards from Twitch…</p></div>
+      <h3 style="margin-top:18px">💎 Bits</h3>
+      <p class="help">A cheer triggers the biggest tier it reaches.</p>
+      <div id="bits">${Object.entries(s.bits).map(([b, e]) => `<div class="row" style="margin-bottom:6px"><input class="rt" type="number" style="width:120px" value="${esc(b)}"> <span class="muted">bits or more →</span><select class="re" style="width:220px">${evOpts(e)}</select><button class="ghost danger" onclick="this.parentNode.remove();dirty()">✕</button></div>`).join('')}</div>
+      <button onclick="addRow('bits')">+ Tier</button>
+      <details style="margin-top:16px"><summary>Advanced: Twitch app keys</summary>
+        <p class="help">Redirect URL: <code>http://localhost:${port}/twitch/callback</code></p>
+        <div class="grid2">${f('twitchClientId', 'Client ID')}${f('twitchClientSecret', 'Client Secret', '', 'password')}</div>${f('twitchChannel', 'Channel to read chat from')}</details>`,
+    movies: `<h3>🎬 TMDB — movie search (free)</h3>
+      <p class="help"><a href="https://www.themoviedb.org/settings/api" target="_blank">themoviedb.org → Settings → API</a> → copy the <b>API Read Access Token</b>.</p>
+      ${f('tmdbKey', 'TMDB token', 'paste here')}
+      <h3 style="margin-top:18px">🍅 OMDb — Rotten Tomatoes + IMDb ratings (free)</h3>
+      <p class="help">Get a free key at <a href="https://www.omdbapi.com/apikey.aspx" target="_blank">omdbapi.com/apikey.aspx</a> (pick FREE), then click the link in the email they send to turn it on. The Letterboxd rating doesn't need a key.</p>
+      ${f('omdbKey', 'OMDb key', 'paste here')}
+      <h3 style="margin-top:18px">📗 Letterboxd</h3>
+      ${f('letterboxdUser', 'Letterboxd username')}
+      <p class="help">Movie Royale reads your <b>whole</b> Letterboxd profile by itself (every 6 hours, and when it starts), so watched movies are blocked automatically — nothing to download. Winners are remembered as watched too, even before you log them.
+      ${S.status.letterboxd.count} films known${S.status.letterboxd.lastRss ? ' · last synced ' + new Date(S.status.letterboxd.lastRss).toLocaleTimeString() : ''}${S.status.letterboxd.rssError ? ' · ⚠️ ' + esc(S.status.letterboxd.rssError) : ''} · <a href="#" onclick="api('/api/letterboxd/refresh').then(r=>toast('Synced. ' + r.count + ' films'));return false">Sync now</a></p>
+      <details><summary>Profile private or not working? Drop your Letterboxd export here</summary>
+        <p class="help">Letterboxd → Settings → Data → Export your data. Unzip it and drop <code>watched.csv</code> and <code>ratings.csv</code> below.</p>
+        <div class="drop" id="lbdrop" style="padding:14px">📄 Drop Letterboxd CSV files here</div></details>`,
+    app: `<h3>🖥️ Running in the background</h3>
+      <p class="help">The Discord bot and <code>!mymovies</code> only answer while Movie Royale is running. Keep it in the tray (by the clock).</p>
+      ${ck('runInBackground', 'Keep running in the tray when I close the window')}
+      ${ck('startWithWindows', 'Start Movie Royale when Windows starts (quietly, in the tray)', false)}
+      <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`
+  };
+  $('settingsBody').innerHTML = Object.entries(subs).map(([k, html]) => `<div class="sub${k === sub ? ' on' : ''}" data-s="${k}">${html}</div>`).join('');
+  $('settingsBody').oninput = $('settingsBody').onchange = e => { if (e.target.matches('[data-k], .rt, .re')) dirty(); };
+  settingsDirty = false; $('saveHint').textContent = 'Change anything, then press Save.';
+  const lbd = $('lbdrop');
+  lbd.ondragover = e => { e.preventDefault(); lbd.classList.add('over'); }; lbd.ondragleave = () => lbd.classList.remove('over');
+  lbd.ondrop = async e => { e.preventDefault(); lbd.classList.remove('over'); for (const file of e.dataTransfer.files) { if (!/\.csv$/i.test(file.name)) continue; const r = await fetch('/api/letterboxd/upload?name=' + encodeURIComponent(file.name), { method: 'POST', body: await file.text() }).then(r => r.json()); toast(`Loaded ${file.name}: ${r.count} films known`); } };
+  setSub(sub);
+}
+function dirty() { settingsDirty = true; $('saveHint').innerHTML = '<b style="color:var(--gold)">Unsaved changes</b>'; }
+async function reinvite() { const a = await fetch('/api/app').then(r => r.json()); if (!a.discordInvite) return toast('Paste the Application ID first.'); window.open(a.discordInvite, '_blank'); }
+
+// channel point rewards: edit name, price, on/off and what it does, right here
+let rewards = null;
+async function loadRewards() {
+  const box = $('rewardsBox'); if (!box) return;
+  const evOpts = sel => `<option value="">— does nothing —</option>` + Object.entries(S.events).map(([k, e]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${e.icon} ${e.name}</option>`).join('');
+  if (!S.status.twitch.login) { box.innerHTML = `<p class="help">Sign in with Twitch (top right) to create and edit your channel point rewards here.</p>`; return; }
+  try {
+    const r = await fetch('/api/twitch/rewards-list').then(r => r.json());
+    if (r.error) throw new Error(r.error);
+    rewards = r.rewards;
+    box.innerHTML = `<p class="help">Change a name, price or what it does, then press <b>Save</b> on that row — it updates on Twitch right away. Only rewards Movie Royale made can be edited here (Twitch's rule).</p>
+      ${rewards.length ? `<table class="rw"><tr><th>On</th><th>Reward name</th><th>Cost</th><th>Cooldown (s)</th><th>Does</th><th></th></tr>${rewards.map(x => `<tr data-id="${x.id}">
+        <td><input type="checkbox" class="r-on" ${x.enabled ? 'checked' : ''}></td>
+        <td><input class="r-title" value="${esc(x.title)}"></td>
+        <td><input class="r-cost" type="number" min="1" value="${x.cost}" style="width:90px"></td>
+        <td><input class="r-cd" type="number" min="0" value="${x.cooldown || 0}" style="width:80px"></td>
+        <td><select class="r-ev">${evOpts(x.event)}</select></td>
+        <td style="white-space:nowrap"><button class="primary" onclick="saveReward(this)">Save</button> <button class="ghost danger" title="Delete from Twitch" onclick="delReward(this)">✕</button></td></tr>`).join('')}</table>` : ''}
+      <div class="row" style="margin-top:8px"><button onclick="api('/api/twitch/rewards').then(r=>{toast(r.made.length ? 'Created: ' + r.made.map(esc).join(', ') : 'All rewards already exist');loadRewards()})">✨ ${rewards.length ? 'Add any missing rewards' : 'Create my channel point rewards'}</button></div>`;
+  } catch (e) {
+    box.innerHTML = `<p class="help">⚠️ ${esc(e.message)}${/affiliate|partner/i.test(e.message) ? '' : ' — try signing in with Twitch again.'}</p>`;
+  }
+}
+async function saveReward(btn) {
+  const tr = btn.closest('tr'), q = c => tr.querySelector(c);
+  await api('/api/twitch/rewards/' + tr.dataset.id, { title: q('.r-title').value.trim(), cost: Number(q('.r-cost').value), enabled: q('.r-on').checked, cooldown: Number(q('.r-cd').value) || 0, event: q('.r-ev').value || null }, 'PATCH');
+  toast('✅ Updated on Twitch'); loadRewards();
+}
+async function delReward(btn) { if (!confirm('Delete this reward from your Twitch channel?')) return; await api('/api/twitch/rewards/' + btn.closest('tr').dataset.id, null, 'DELETE'); toast('Deleted'); loadRewards(); }
+function addRow(id) {
+  const evOpts = Object.entries(S.events).map(([k, e]) => `<option value="${k}">${e.icon} ${e.name}</option>`).join('');
+  $(id).insertAdjacentHTML('beforeend', `<div class="row" style="margin-bottom:6px"><input class="rt" type="number" style="width:120px" placeholder="500"> <span class="muted">bits or more →</span><select class="re" style="width:220px">${evOpts}</select><button class="ghost danger" onclick="this.parentNode.remove();dirty()">✕</button></div>`);
+  dirty();
+}
+async function saveSettings() {
+  const body = {};
+  document.querySelectorAll('#settingsBody [data-k]').forEach(el => {
+    const k = el.dataset.k;
+    body[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' || k === 'weekStart' ? Number(el.value) : el.value.trim();
+  });
+  if ($('bits')) body.bits = Object.fromEntries([...document.querySelectorAll('#bits .row')].map(r => [r.querySelector('.rt').value.trim(), r.querySelector('.re').value]).filter(([k]) => k));
+  await api('/api/settings', body);
+  settingsDirty = false; $('saveHint').textContent = 'Saved.';
+}
+async function fillAppBox() {
+  const box = $('appBox'); if (!box) return;
+  const a = await fetch('/api/app').then(r => r.json());
+  box.innerHTML = `<div class="row"><span class="grow">Movie Royale <b>v${esc(a.version)}</b>${a.desktop ? '' : ' (running from source)'}</span></div>
+    ${a.desktop ? `<div class="row" style="margin-top:8px"><button class="primary" onclick="checkUpdate(this)">🔄 Check for updates</button>
+      <button onclick="$('updFile').click()">📦 Install update from file…</button><input type="file" id="updFile" accept=".exe" hidden onchange="installFile(this.files[0])"></div><div id="updMsg"></div>` : ''}
+    <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royale'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
+    <p class="help">When you post a new version there, Movie Royale asks to install it the next time it opens. Your lists, history and settings are kept.</p>`;
+}
+async function checkUpdate(btn) {
+  btn.disabled = true; btn.textContent = 'Checking…';
+  const r = await fetch('/api/update/check').then(r => r.json());
+  btn.disabled = false; btn.textContent = '🔄 Check for updates';
+  const m = $('updMsg');
+  if (!r.configured) m.innerHTML = '<p class="help">No update source set yet (see below).</p>';
+  else if (r.error) m.innerHTML = `<p class="help">⚠️ ${esc(r.error)}</p>`;
+  else if (!r.available) m.innerHTML = `<p class="help">✅ You're up to date (v${esc(r.version)}).</p>`;
+  else showUpdate(r);
+}
+function showUpdate(r) {
+  $('updBody').innerHTML = `<h3>✨ Update available: ${esc(r.latest)}</h3><p class="help">You have v${esc(r.version)}. Movie Royale will close, update, and open again — your lists, history and settings are kept.</p>
+    ${r.notes ? `<div class="card soft" style="white-space:pre-wrap;max-height:200px;overflow:auto;font-size:13px">${esc(r.notes)}</div>` : ''}
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="try{localStorage.setItem('skipUpd','${esc(r.latest)}')}catch{};upd.close()">Skip this version</button><button onclick="upd.close()">Later</button><button class="primary" onclick="installLatest('${esc(r.url)}', this)">Install now</button></div>`;
+  upd.showModal();
+}
+async function installLatest(url, btn) { btn.disabled = true; btn.textContent = 'Downloading… Movie Royale will restart'; await api('/api/update/install-latest', { url }); }
+async function installFile(file) {
+  if (!file) return;
+  if (!confirm(`Install ${file.name}? Movie Royale will close, update, and open again. Your lists and history are kept.`)) return;
+  toast('Installing update… Movie Royale will restart in a moment.', 10000);
+  const r = await fetch('/api/update/install-file', { method: 'POST', body: file });
+  if (!r.ok) toast('⚠️ ' + esc((await r.json().catch(() => ({}))).error || 'Update failed'));
+}
+async function restore(file) {
+  if (!file) return;
+  if (!confirm('Replace your current lists, history and settings with this backup?')) return;
+  let data; try { data = JSON.parse(await file.text()); } catch { return toast("⚠️ That file isn't a backup."); }
+  await api('/api/restore', data); toast('✅ Backup restored');
+}
+async function updateOnOpen() { // asks once each time the app opens, if there's a newer version posted
+  try {
+    const r = await fetch('/api/update/check').then(r => r.json());
+    let skip = null; try { skip = localStorage.getItem('skipUpd'); } catch {}
+    if (r.available && r.latest !== skip) showUpdate(r);
+  } catch {}
+}
+
+if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
+fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); });
+connect();
+</script>
+</body>
+</html>
