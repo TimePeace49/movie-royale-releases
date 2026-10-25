@@ -1,12 +1,14 @@
-// Movie Royale sound engine. Every sound is synthesized live with Web Audio, so there are no files to download.
+// Movie Royal sound engine. Every sound is synthesized live with Web Audio, so there are no files to download.
 // To replace any sound with your own, drop a file named after it into public/assets/sounds/
 // (e.g. fanfare.mp3, music.mp3, lobby.mp3, comet.wav). See SOUND_NAMES below.
 window.SFX = (() => {
   let ac = null, master, sfxBus, musicBus, comp, noiseBuf;
   const vol = { on: true, sfx: .7, music: .35 };
   const custom = {};      // name -> AudioBuffer
+  const mapCustom = {};   // map id -> { name -> AudioBuffer } (that map's own sounds)
+  let curMap = null;
   const lastPlay = {};    // name -> time, for rate limiting
-  const LIMIT = { bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05 };
+  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05 };
 
   function init() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; }
@@ -26,13 +28,19 @@ window.SFX = (() => {
 
   async function loadCustom() {
     for (const k of Object.keys(custom)) delete custom[k];
+    for (const k of Object.keys(mapCustom)) delete mapCustom[k];
     try {
-      const files = await fetch('/api/sounds').then(r => r.ok ? r.json() : []);
-      for (const f of files) {
+      const j = await fetch('/api/sounds?v=2').then(r => r.ok ? r.json() : { all: [], maps: {} });
+      for (const f of j.all || []) {
         const name = f.replace(/\.\w+$/, '').toLowerCase();
         try { custom[name] = await ac.decodeAudioData(await fetch('assets/sounds/' + encodeURIComponent(f) + '?t=' + Date.now()).then(r => r.arrayBuffer())); } catch {}
       }
+      for (const [m, files] of Object.entries(j.maps || {})) for (const f of files) {
+        const name = f.replace(/\.\w+$/, '').toLowerCase();
+        try { (mapCustom[m] ||= {})[name] = await ac.decodeAudioData(await fetch(`assets/sounds/maps/${encodeURIComponent(m)}/${encodeURIComponent(f)}?t=${Date.now()}`).then(r => r.arrayBuffer())); } catch {}
+      }
     } catch {}
+    if (mode) { const m = mode; stopMusic(); music(m); }
   }
 
   // ---------- building blocks ----------
@@ -52,6 +60,22 @@ window.SFX = (() => {
     f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
     env(g, t, a, v, dur);
     s.connect(f); f.connect(g); g.connect(bus); s.start(t, Math.random()); s.stop(t + a + dur + .05);
+  }
+  // cartoon toot: a low buzzy oscillator whose pitch AND volume flutter fast (that rubbery "brrrt"), through a muffled filter
+  function fart({ f0 = 95, f1 = 65, dur = .5, v = .35, rate = 26, at = 0, q = 2, cut = 650, pan = 0, squeal = 0, bus = sfxBus }) {
+    const t = now() + at, o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), am = ac.createGain(), amd = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(25, f1), t + dur);
+    if (squeal) { o.frequency.setValueAtTime(f1, t + dur * .82); o.frequency.exponentialRampToValueAtTime(f1 * squeal, t + dur); }
+    lfo.type = 'square'; lfo.frequency.setValueAtTime(rate, t);
+    for (let k = 1; k < 6; k++) lfo.frequency.setValueAtTime(rate * (.7 + Math.random() * .6), t + dur * k / 6); // wobbly, never even
+    lg.gain.value = f0 * .3; lfo.connect(lg); lg.connect(o.frequency);
+    am.gain.value = .55; amd.gain.value = .45; lfo.connect(amd); amd.connect(am.gain);
+    f.type = 'lowpass'; f.Q.value = q; f.frequency.setValueAtTime(cut, t); f.frequency.exponentialRampToValueAtTime(cut * .55, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .015); g.gain.setValueAtTime(v, t + dur * .7); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    let out = g; if (pan && ac.createStereoPanner) { const pn = ac.createStereoPanner(); pn.pan.value = pan; g.connect(pn); out = pn; }
+    o.connect(f); f.connect(am); am.connect(g); out.connect(bus);
+    o.start(t); lfo.start(t); o.stop(t + dur + .05); lfo.stop(t + dur + .05);
+    noise({ dur: dur * .8, v: v * .18, type: 'bandpass', f0: 320, q: 1.5, at, bus }); // a little air
   }
   const notes = (arr, step, fn) => arr.forEach((n, i) => n && fn(n, i * step));
   const hz = m => 440 * Math.pow(2, (m - 69) / 12); // midi -> Hz
@@ -104,6 +128,20 @@ window.SFX = (() => {
     buzzer: () => { tone({ type: 'sawtooth', f0: 110, dur: .8, v: .22 }); tone({ type: 'square', f0: 116, dur: .8, v: .12 }); },
     queued: () => notes([79, 84], .08, (n, at) => tone({ type: 'square', f0: hz(n), dur: .07, v: .08, at })),
     joined: () => tone({ type: 'triangle', f0: hz(84), f1: hz(91), dur: .12, v: .12 }),
+    // 💨 Whoopee Swamp sounds (all cartoon toots, all made right here)
+    toot: (o = {}) => { const p = (o.p || 1) * (.8 + Math.random() * .5); fart({ f0: 170 * p, f1: 120 * p, dur: .16 + Math.random() * .12, rate: 34, v: .28 * (o.v ?? 1), cut: 900, pan: o.pan || 0 }); },
+    pfft: (o = {}) => { noise({ dur: .22, v: .22 * (o.v ?? 1), type: 'bandpass', f0: 700, f1: 300, q: 2 }); fart({ f0: 240 * (o.p || 1), f1: 180, dur: .12, rate: 48, v: .12 * (o.v ?? 1), cut: 1200 }); },
+    brrap: (o = {}) => { const p = o.p || 1; fart({ f0: 92 * p, f1: 52 * p, dur: .8 + Math.random() * .5, rate: 21, v: .4 * (o.v ?? 1), cut: 560, pan: o.pan || 0 }); },
+    squeak: (o = {}) => { const p = o.p || 1; fart({ f0: 380 * p, f1: 560 * p, dur: .3 + Math.random() * .2, rate: 46, v: .18 * (o.v ?? 1), cut: 2400, q: 4 }); },
+    cushion: (o = {}) => { const p = (o.p || 1) * (.85 + Math.random() * .3); fart({ f0: 135 * p, f1: 62 * p, dur: .95, rate: 25, v: .45 * (o.v ?? 1), cut: 760, squeal: 2.6, pan: o.pan || 0 }); },
+    beans: () => { for (let i = 0; i < 9; i++) { const p = .6 + Math.random() * 1.3; fart({ f0: 120 * p, f1: 70 * p, dur: .35 + Math.random() * .7, rate: 20 + Math.random() * 25, v: .22, at: i * .09 + Math.random() * .1, cut: 500 + Math.random() * 900, pan: Math.random() * 1.6 - .8 }); } S.squeak({ p: 1.2 }); },
+    // 🎡 wheel sounds (upload your own under Sounds → 🎡 Wheel)
+    wheelSpin: () => S.claimStart(),
+    wheelTick: () => tone({ type: 'square', f0: 1400 + Math.random() * 200, dur: .025, v: .09 }),
+    wheelWin: () => S.celebrate(),
+    wheelMove: () => S.whoosh(),
+    wheelTimer: () => { for (let i = 0; i < 3; i++) { tone({ type: 'square', f0: 880, dur: .18, v: .2, at: i * .3 }); tone({ type: 'square', f0: 660, dur: .18, v: .14, at: i * .3 + .1 }); } },
+    wheelGrow: () => notes([72, 76, 79, 84], .07, (n, at) => tone({ type: 'triangle', f0: hz(n), dur: .14, v: .16, at })),
     whoosh: () => { noise({ dur: .55, v: .32, type: 'bandpass', f0: 300, f1: 4200, q: 1.2, a: .2 }); tone({ type: 'sine', f0: 140, f1: 60, dur: .5, v: .15, a: .15 }); },
     heartbeat: () => { tone({ type: 'sine', f0: 62, f1: 42, dur: .16, v: .45 }); tone({ type: 'sine', f0: 58, f1: 40, dur: .2, v: .32, at: .22 }); },
     slowhit: () => { noise({ dur: 1.4, v: .35, f0: 700, f1: 50, a: .02 }); tone({ type: 'sine', f0: 70, f1: 28, dur: 1.4, v: .5 }); tone({ type: 'sawtooth', f0: 110, f1: 40, dur: .9, v: .08 }); }
@@ -115,7 +153,7 @@ window.SFX = (() => {
     const t = performance.now() / 1000;
     if (LIMIT[name] && t - (lastPlay[name] || 0) < LIMIT[name]) return;
     lastPlay[name] = t;
-    const own = custom[String(name).toLowerCase()];
+    const nm = String(name).toLowerCase(), own = mapCustom[curMap]?.[nm] || (String(curMap).startsWith('wheel-') && mapCustom.wheel?.[nm]) || custom[nm]; // a wheel's own sounds → all wheels → everywhere
     if (own) {
       const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = own; g.gain.value = .9;
       if (opts?.p) s.playbackRate.value = opts.p; s.connect(g); g.connect(sfxBus); s.start(); return;
@@ -132,6 +170,14 @@ window.SFX = (() => {
   function sched() {
     while (nextT < ac.currentTime + .12) {
       const at = nextT - ac.currentTime, i = step % 16, bar = Math.floor(step / 16) % 4;
+      if (curMap === 'gas' && mode) { // 💨 oom-pah polka on the tuba, a kazoo tune, and a toot to end each bar
+        const fight = mode === 'fight', roots = [43, 38, 43, 38, 36, 38, 43, 43], root = roots[bar * 2 + (i >= 8 ? 1 : 0)];
+        if (i % 4 === 0) fart({ f0: hz(root), f1: hz(root) * .98, dur: STEP * 1.6, rate: 14, v: fight ? .16 : .1, at, cut: 420, q: 1, bus: musicBus }); // tuba "oom"
+        if (i % 4 === 2) [12, 16, 19].forEach(d => tone({ type: 'square', f0: hz(root + d + 12), dur: STEP * .8, v: fight ? .035 : .025, at, bus: musicBus })); // "pah"
+        if (fight) { if (i % 4 === 0) tone({ type: 'sine', f0: 120, f1: 50, dur: .1, v: .35, at, bus: musicBus }); if (i % 2 === 1) noise({ dur: .03, v: .06, type: 'highpass', f0: 7000, at, bus: musicBus }); }
+        if (fight && (intensity > .25 || bar % 2) && step % 2 === 0) { const kz = [67, 71, 74, 71, 72, 71, 69, 67, 66, 69, 72, 69, 67, 66, 67, 0][(step / 2) % 16]; if (kz) { tone({ type: 'sawtooth', f0: hz(kz), dur: STEP * 1.7, v: .045, at, bus: musicBus, detune: 12 }); tone({ type: 'square', f0: hz(kz), dur: STEP * 1.7, v: .025, at, bus: musicBus, detune: -9 }); } }
+        if (i === 14 && (bar === 3 || Math.random() < .3)) fart({ f0: 160 + Math.random() * 120, f1: 110, dur: .2, rate: 36, v: .14, at, cut: 1000, bus: musicBus }); // the joke
+      } else
       if (mode === 'fight') {
         const bass = bar % 2 ? bassB : bassA;
         if (bass[i]) tone({ type: 'sawtooth', f0: hz(bass[i]), dur: STEP * 1.6, v: .16, at, bus: musicBus });
@@ -153,7 +199,7 @@ window.SFX = (() => {
     if (m === mode) return;
     stopMusic();
     mode = m; if (!m) return;
-    const file = custom[m === 'fight' ? 'music' : 'lobby'];
+    const key = m === 'fight' ? 'music' : 'lobby', file = mapCustom[curMap]?.[key] || custom[key];
     if (file) { track = ac.createBufferSource(); track.buffer = file; track.loop = true; track.connect(musicBus); track.start(); return; }
     step = 0; nextT = ac.currentTime + .05; timer = setInterval(sched, 25);
   }
@@ -162,5 +208,8 @@ window.SFX = (() => {
 
   const blocked = () => ac && ac.state === 'suspended';
   const reload = () => { if (ac) loadCustom(); };
-  return { play, music, stopMusic, setIntensity, setVolume, init, blocked, reload, SOUND_NAMES };
+  // switching maps: that map's own sounds (and music) take over
+  function playOn(map, name, opts) { const keep = curMap; curMap = map || curMap; try { play(name, opts); } finally { curMap = keep; } }
+  function setMap(id) { if (id === curMap) return; const had = mapCustom[curMap]?.music || mapCustom[curMap]?.lobby, has = mapCustom[id]?.music || mapCustom[id]?.lobby; curMap = id; if (mode && (had || has)) { const m = mode; stopMusic(); music(m); } }
+  return { play, music, stopMusic, setIntensity, setVolume, init, blocked, reload, setMap, playOn, SOUND_NAMES };
 })();

@@ -1,0 +1,157 @@
+// 24/7 mode: a tiny copy of the Discord bot runs free on Cloudflare Workers, so /suggest works when this PC is off.
+// This file sets it up (one click in Settings) and keeps it in sync while Movie Royal is running.
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { db, save, ROOT, streamerName } from './store.js';
+import * as lb from './letterboxd.js';
+import { picksClosed, closedMsg, moviesList, picksUsed, wonThisWeek, backOn, swapsLocked, luckOn, suggest, swapMovie, claimManual } from './movies.js';
+import { helpText, peopleIndex } from './discord.js';
+
+const CF = 'https://api.cloudflare.com/client/v4';
+const DISCORD = 'https://discord.com/api/v10';
+const SCRIPT = 'movie-royal-bot';
+export const status = { lastSync: null, lastPush: null, lastError: null, pulled: 0, rejected: [] };
+let onChange = () => {}, timer = null, lastHash = '', busy = false;
+
+const cloud = () => db.settings.cloud || {};
+export const enabled = () => !!cloud().enabled && !!cloud().url;
+
+async function cf(token, method, p, body, isForm) {
+  const r = await fetch(CF + p, { method, headers: { Authorization: `Bearer ${token}`, ...(isForm || !body ? {} : { 'content-type': 'application/json' }) }, body: isForm ? body : body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.success === false) { const e = new Error((j.errors || []).map(x => x.message).join('; ') || `Cloudflare ${r.status}`); e.code = j.errors?.[0]?.code; e.status = r.status; throw e; }
+  return j.result;
+}
+async function discord(method, p, body) {
+  const token = (db.settings.discordToken || '').trim();
+  if (!token) throw new Error('Set up the Discord bot first (Settings → Discord).');
+  const r = await fetch(DISCORD + p, { method, headers: { Authorization: `Bot ${token}`, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`Discord: ${j.message || r.status}${j.errors ? ' ' + JSON.stringify(j.errors).slice(0, 200) : ''}`);
+  return j;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/** Everything the cloud bot needs to apply your rules. */
+export function buildConfig() {
+  const list = moviesList(), ids = new Set();
+  const pool = list.entries.filter(e => e.status !== 'removed').map(e => {
+    for (const b of e.backers || []) ids.add(b.discordId);
+    return { id: e.id, tmdbId: e.tmdbId || null, label: e.label, sub: e.sub || '', status: e.status, kind: e.kind || null, weight: e.weight || 1, luckPct: e.luckPct || 0, backers: (e.backers || []).map(b => ({ discordId: b.discordId, name: b.name })), collection: e.details?.collection || null };
+  });
+  for (const id of Object.keys(db.manualPeople || {})) ids.add(id);
+  const users = {}; for (const id of ids) users[id] = { used: picksUsed(id), wonThisWeek: wonThisWeek(id) };
+  const w = lb.exportWatched();
+  return {
+    v: 1, streamer: streamerName(), maxPerUser: Number(db.settings.maxPerUser) || 3, banCurrentYear: db.settings.banCurrentYear !== false,
+    yearAllow: (db.yearAllow || []).map(String), bans: (db.bans || []).map(b => ({ tmdbId: String(b.tmdbId), reason: b.reason || '' })),
+    watched: { tmdb: w.tmdb.map(String), keys: w.keys, slugs: w.slugs },
+    wonIds: list.entries.filter(e => e.status === 'watched' && e.tmdbId).map(e => String(e.tmdbId)),
+    pool, users, people: peopleIndex().map(p => ({ discordId: p.discordId, name: p.name })), links: db.links || {},
+    backOn: backOn(), swapsLocked: swapsLocked(), picksClosed: picksClosed(), closedMsg: closedMsg(), luckOn: luckOn(),
+    channels: Object.fromEntries(Object.entries(db.discordChannels || {}).map(([g, c]) => [g, c.channelId])),
+    helpText: helpText(), tmdbKey: db.settings.tmdbKey || '', botToken: db.settings.discordToken || '', publicKey: cloud().publicKey || ''
+  };
+}
+
+async function api(method, body) {
+  const c = cloud();
+  const r = await fetch(c.url + '/sync', { method, headers: { Authorization: `Bearer ${c.syncKey}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`24/7 bot: ${r.status} ${await r.text().catch(() => '')}`.trim());
+  return r.json();
+}
+
+async function tellUser(discordId, text) { // DM someone whose pick couldn't be added after all
+  try { const ch = await discord('POST', '/users/@me/channels', { recipient_id: discordId }); await discord('POST', `/channels/${ch.id}/messages`, { content: text, allowed_mentions: { parse: [] } }); } catch {}
+}
+
+/** Pull picks made in Discord while we were away, add them for real, then upload the latest rules. */
+export async function sync(force = false) {
+  if (!enabled() || busy) return status;
+  busy = true;
+  try {
+    const { queue = [] } = await api('GET');
+    const ack = [];
+    for (const op of queue) {
+      try {
+        const user = { discordId: op.user.discordId, name: op.user.name, avatar: op.user.avatar || null };
+        if (op.type === 'link') { db.links[user.discordId] = op.login; claimManual(user, op.login); }
+        else if (op.type === 'suggest') {
+          claimManual(user, db.links[user.discordId] || null);
+          const r = await suggest(String(op.movie.id), user, { cloud: true }); // the 24/7 bot already checked picks were open
+          if (!r.ok) { status.rejected.unshift({ at: Date.now(), name: user.name, movie: op.movie.title, why: r.msg.replace(/\*\*/g, '') }); tellUser(user.discordId, `🍿 Sorry — your pick **${op.movie.title}** couldn't be added after all: ${r.msg}`); }
+        } else if (op.type === 'swap') {
+          const r = await swapMovie(user, op.oldId, String(op.movie.id), true);
+          if (!r.ok) { status.rejected.unshift({ at: Date.now(), name: user.name, movie: op.movie.title, why: r.msg.replace(/\*\*/g, '') }); tellUser(user.discordId, `🍿 Sorry — your swap to **${op.movie.title}** couldn't be done: ${r.msg}`); }
+        }
+        ack.push(op.id); status.pulled++;
+      } catch (e) { console.error('[24/7] op failed', e.message); if (Date.now() - op.at > 864e5) ack.push(op.id); }
+    }
+    status.rejected = status.rejected.slice(0, 20);
+    if (queue.length) { save(); onChange(); }
+    const config = buildConfig(), hash = JSON.stringify(config);
+    const due = force || ack.length || (hash !== lastHash && Date.now() - (status.lastPush || 0) > 120000);
+    if (due) { await api('POST', { config, ack }); lastHash = hash; status.lastPush = Date.now(); }
+    status.lastSync = Date.now(); status.lastError = null;
+  } catch (e) { status.lastError = e.message; console.error('[24/7]', e.message); }
+  finally { busy = false; onChange(); }
+  return status;
+}
+
+export function start(changed) {
+  onChange = changed || onChange;
+  clearInterval(timer);
+  if (!enabled()) return;
+  setTimeout(() => sync(true), 3000);
+  timer = setInterval(() => sync(false), 60000);
+}
+
+/** One click: put the bot on Cloudflare, connect Discord to it. */
+export async function enable(cfToken) {
+  cfToken = String(cfToken || '').trim();
+  if (!cfToken) throw new Error('Paste your Cloudflare API token first.');
+  if (!db.settings.discordToken || !db.settings.discordClientId) throw new Error('Set up the Discord bot first (Settings → Discord).');
+  if (!db.settings.tmdbKey) throw new Error('Set up movie search (TMDB) first.');
+  const steps = [];
+  const accounts = await cf(cfToken, 'GET', '/accounts');
+  if (!accounts?.length) throw new Error('That Cloudflare token can’t see your account. Make it with the “Edit Cloudflare Workers” template.');
+  const accountId = accounts[0].id; steps.push('account');
+  const spaces = await cf(cfToken, 'GET', `/accounts/${accountId}/storage/kv/namespaces?per_page=100`);
+  let kv = spaces.find(n => n.title === 'movie-royal') || spaces.find(n => n.title === 'movie-royale'); // older setups used the misspelled name
+  if (!kv) kv = await cf(cfToken, 'POST', `/accounts/${accountId}/storage/kv/namespaces`, { title: 'movie-royal' });
+  steps.push('storage');
+  const syncKey = cloud().syncKey || crypto.randomBytes(24).toString('hex');
+  const code = fs.readFileSync(path.join(ROOT, 'src', 'cloud-worker.js'), 'utf8');
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ main_module: 'worker.js', compatibility_date: '2024-09-23', bindings: [{ type: 'kv_namespace', name: 'KV', namespace_id: kv.id }, { type: 'secret_text', name: 'SYNC_KEY', text: syncKey }] })], { type: 'application/json' }));
+  form.append('worker.js', new Blob([code], { type: 'application/javascript+module' }), 'worker.js');
+  await cf(cfToken, 'PUT', `/accounts/${accountId}/workers/scripts/${SCRIPT}`, form, true);
+  steps.push('bot uploaded');
+  let sub;
+  try { sub = (await cf(cfToken, 'GET', `/accounts/${accountId}/workers/subdomain`))?.subdomain; } catch {}
+  if (!sub) sub = (await cf(cfToken, 'PUT', `/accounts/${accountId}/workers/subdomain`, { subdomain: 'movieroyal-' + crypto.randomBytes(3).toString('hex') })).subdomain;
+  await cf(cfToken, 'POST', `/accounts/${accountId}/workers/scripts/${SCRIPT}/subdomain`, { enabled: true, previews_enabled: false });
+  const url = `https://${SCRIPT}.${sub}.workers.dev`;
+  steps.push('online at ' + url);
+  const app = await discord('GET', '/applications/@me');
+  db.settings.cloud = { enabled: true, url, accountId, kvId: kv.id, syncKey, publicKey: app.verify_key, at: Date.now() }; save();
+  // a brand-new workers.dev address can take a little while to come alive
+  let pushed = false, lastErr;
+  for (let i = 0; i < 20 && !pushed; i++) { try { await api('POST', { config: buildConfig() }); pushed = true; } catch (e) { lastErr = e; await sleep(3000); } }
+  if (!pushed) throw new Error(`The bot was uploaded but isn't answering yet (${lastErr?.message}). Wait a minute and press Turn on again.`);
+  lastHash = ''; steps.push('rules uploaded');
+  let linked = false;
+  for (let i = 0; i < 5 && !linked; i++) { try { await discord('PATCH', '/applications/@me', { interactions_endpoint_url: url + '/' }); linked = true; } catch (e) { lastErr = e; await sleep(4000); } }
+  if (!linked) throw new Error(`Couldn't connect Discord to the 24/7 bot: ${lastErr?.message}`);
+  steps.push('Discord connected');
+  start();
+  return { url, steps };
+}
+
+export async function disable() {
+  if (enabled()) { try { await sync(true); } catch {} }
+  try { await discord('PATCH', '/applications/@me', { interactions_endpoint_url: null }); } catch (e) { console.error('[24/7] unlink', e.message); }
+  db.settings.cloud = { ...cloud(), enabled: false }; save();
+  clearInterval(timer);
+}

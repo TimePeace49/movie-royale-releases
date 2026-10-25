@@ -1,0 +1,63 @@
+# Builds the Windows installer and publishes a GitHub Release.
+# How to use: on GitHub go to Actions → "Build & release" → Run workflow → type the version (e.g. 1.2.0) → Run.
+# (Pushing a tag like v1.2.0 does the same thing.)
+# Every copy built here checks THIS repo for updates automatically.
+name: Build & release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number, like 1.2.0 (must be higher than the last release)"
+        required: true
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Work out the version
+        id: v
+        run: |
+          V="${{ github.event.inputs.version }}"
+          if [ -z "$V" ]; then V="${GITHUB_REF_NAME#v}"; fi
+          V="${V#v}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        run: npm ci
+
+      - name: Stamp version + update source
+        run: |
+          npm pkg set version="${{ steps.v.outputs.version }}"
+          npm pkg set updateRepo="${{ github.repository }}"
+
+      - name: Build installer
+        run: npm run build:win
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.version }}
+          name: Movie Royal ${{ steps.v.outputs.version }}
+          files: dist/MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe
+          generate_release_notes: true
+          body: |
+            ## ⬇️ Download
+            Grab **MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe** below and run it.
+            Already have Movie Royal? It will offer this update the next time it opens.
+
+            If Windows says "Windows protected your PC", click **More info → Run anyway** (the app isn't code-signed).
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for what's new.

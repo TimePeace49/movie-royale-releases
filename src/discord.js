@@ -10,7 +10,7 @@ export const status = { state: 'off', error: null, tag: null, guilds: [], warnin
 let onChange = () => {};
 
 const commands = [
-  new SlashCommandBuilder().setName('suggest').setDescription('Put a movie into the Movie Royale')
+  new SlashCommandBuilder().setName('suggest').setDescription('Put a movie into the Movie Royal')
     .addStringOption(o => o.setName('movie').setDescription('Start typing a movie title').setRequired(true).setAutocomplete(true)),
   new SlashCommandBuilder().setName('swap').setDescription('Trade one of your movies for a different one (1 for 1, before the stream starts)')
     .addStringOption(o => o.setName('yours').setDescription('Which of your movies to swap out').setRequired(true).setAutocomplete(true))
@@ -18,20 +18,20 @@ const commands = [
   new SlashCommandBuilder().setName('mymovies').setDescription("See your movies and picks left — or someone else's")
     .addStringOption(o => o.setName('person').setDescription("Someone else's name (leave empty for yours)").setAutocomplete(true)),
   new SlashCommandBuilder().setName('mine').setDescription('Same as /mymovies'),
-  new SlashCommandBuilder().setName('list').setDescription('See every movie in the royale pool'),
+  new SlashCommandBuilder().setName('list').setDescription('See every movie in the battle royal pool'),
   new SlashCommandBuilder().setName('linktwitch').setDescription('Connect your Twitch name (your picture on the cliff + chat check-in)')
     .addStringOption(o => o.setName('username').setDescription('Your Twitch username').setRequired(true)),
-  new SlashCommandBuilder().setName('help').setDescription('How Movie Royale works')
+  new SlashCommandBuilder().setName('help').setDescription('How Movie Royal works')
 ].map(c => c.toJSON());
 
 const cut = (s, n = 100) => s.length > n ? s.slice(0, n - 1) + '…' : s;
 const active = () => moviesList().entries.filter(e => e.status === 'active');
 const channelName = () => (db.settings.discordChannelName || 'movies-royal').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
 
-function helpText() {
+export function helpText() {
   const max = db.settings.maxPerUser, tw = db.settings.twitchMoviesCommand || '!mymovies';
   return [
-    `**🍿 MOVIE ROYALE — how it works**`,
+    `**🍿 MOVIE ROYAL — how it works**`,
     `Your movies fight it out on a crumbling cliff on ${streamerName()}'s stream. Last one standing gets watched!`,
     ``,
     `**/suggest** — add a movie. Start typing and pick from the list. You get **${max} picks**, and ${max} new ones once all of yours have been picked.`,
@@ -52,7 +52,7 @@ async function setupGuild(g) {
   db.discordChannels ||= {};
   let ch = g.channels.cache.get(db.discordChannels[g.id]?.channelId) || g.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === channelName());
   try {
-    if (!ch) ch = await g.channels.create({ name: channelName(), type: ChannelType.GuildText, topic: `🍿 Movie Royale — /suggest a movie for ${streamerName()}'s stream. Commands are pinned.` });
+    if (!ch) ch = await g.channels.create({ name: channelName(), type: ChannelType.GuildText, topic: `🍿 Movie Royal — /suggest a movie for ${streamerName()}'s stream. Commands are pinned.` });
   } catch (e) { warn.push(`${g.name}: couldn't create #${channelName()} — give the bot "Manage Channels", or make the channel yourself.`); }
   if (!ch) return warn;
   const rec = db.discordChannels[g.id] = { ...(db.discordChannels[g.id] || {}), channelId: ch.id, name: ch.name };
@@ -179,7 +179,7 @@ async function handle(i) {
     const list = active().sort((a, b) => b.weight - a.weight);
     const total = list.reduce((s, e) => s + (e.weight || 1), 0) || 1;
     const lines = list.slice(0, 40).map((e, n) => `**${n + 1}.** ${e.kind === 'spot' ? '🎟️ ' : ''}${e.label}${e.sub ? ` (${e.sub})` : ''} — ${Math.round((e.weight || 1) / total * 1000) / 10}% · ${e.backers.map(b => b.name).join(', ') || streamerName()}`);
-    const embed = new EmbedBuilder().setTitle(`🍿 Movie Royale pool — ${list.length} movies`).setColor(0xf5a623)
+    const embed = new EmbedBuilder().setTitle(`🍿 Movie Royal pool — ${list.length} movies`).setColor(0xf5a623)
       .setDescription(lines.join('\n').slice(0, 4000) || 'Empty! Use /suggest to add one.');
     if (list.length > 40) embed.setFooter({ text: `+${list.length - 40} more` });
     return i.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -244,13 +244,30 @@ export function myMoviesText(discordId, plain = false) {
   return head + (mine.length ? '\n' + mine.map(e => `• ${e.label}${e.sub ? ` (${e.sub})` : ''}${tag(e)}${luck(e)}`).join('\n') : '');
 }
 
+/** Post a message in the movie channel(s) (used by the cloud bot sync). */
+/** Server members matching a name (for tagging someone to a movie in the app). */
+export async function searchMembers(q) {
+  if (!client || !q) return [];
+  const out = [];
+  for (const g of client.guilds.cache.values()) {
+    try { const ms = await g.members.search({ query: q, limit: 8 }); for (const m of ms.values()) if (!m.user.bot && !out.some(o => o.discordId === m.id)) out.push({ discordId: m.id, name: m.displayName || m.user.globalName || m.user.username, username: m.user.username, avatar: m.displayAvatarURL?.({ size: 64 }) || null }); } catch {}
+  }
+  return out.slice(0, 10);
+}
+export async function notify(text) {
+  if (!client) return;
+  for (const g of client.guilds.cache.values()) {
+    const id = db.discordChannels?.[g.id]?.channelId, ch = id && g.channels.cache.get(id);
+    if (ch) await ch.send({ content: text, allowedMentions: { users: (text.match(/<@(\d+)>/g) || []).map(x => x.slice(2, -1)) } }).catch(() => {});
+  }
+}
 export async function postTest() {
   if (!client) throw new Error('The Discord bot is not connected.');
   const out = [];
   for (const g of client.guilds.cache.values()) {
     const id = db.discordChannels?.[g.id]?.channelId, ch = id && g.channels.cache.get(id);
     if (!ch) { out.push(`${g.name}: no #${channelName()} channel yet`); continue; }
-    await ch.send({ content: `🧪 Movie Royale test message — the bot can post here. (${new Date().toLocaleTimeString()})` });
+    await ch.send({ content: `🧪 Movie Royal test message — the bot can post here. (${new Date().toLocaleTimeString()})` });
     out.push(`${g.name}: posted in #${ch.name}`);
   }
   return out;

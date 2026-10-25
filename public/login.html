@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Movie Royale · Connect Twitch</title>
+<title>Movie Royal · Connect Twitch</title>
 <style>
   :root { --bg:#120a24; --panel:#1d1238; --line:#3a2a66; --text:#f3edff; --dim:#a898cf; --gold:#ffc94a; --hot:#ff6a3d; --twitch:#9146ff; --bad:#f87171; }
   * { box-sizing:border-box; }
@@ -33,8 +33,8 @@
 </head>
 <body>
 <div class="card">
-  <h1>🍿 MOVIE ROYALE</h1>
-  <div class="tag">Battle royale wheel for your stream</div>
+  <h1>🍿 MOVIE ROYAL</h1>
+  <div class="tag">Battle royal wheel for your stream</div>
   <div id="body">Loading…</div>
 </div>
 <script>
@@ -52,7 +52,7 @@ async function show() {
       <p>Signing in with Twitch shows your name and picture and hooks up channel points, bits and chat. First, make a free Twitch app (2 minutes):</p>
       <ol>
         <li>Open the <a href="https://dev.twitch.tv/console/apps/create" target="_blank">Twitch Developer Console</a> and sign in.</li>
-        <li><b>Name:</b> anything, like <i>MovieRoyale${Math.floor(Math.random() * 900 + 100)}</i></li>
+        <li><b>Name:</b> anything, like <i>MovieRoyal${Math.floor(Math.random() * 900 + 100)}</i></li>
         <li><b>OAuth Redirect URL:</b> paste this:
           <div class="copy" style="margin-top:6px"><input readonly value="${cb}" id="cb"><button onclick="navigator.clipboard.writeText(document.getElementById('cb').value);this.textContent='Copied!'">Copy</button></div></li>
         <li><b>Category:</b> Other · <b>Client Type:</b> Confidential → <b>Create</b></li>
@@ -67,7 +67,7 @@ async function show() {
   document.getElementById('body').innerHTML = `${e}
     ${info.owner ? `<div class="owner">${info.owner.avatar ? `<img src="${esc(info.owner.avatar)}">` : ''}<span>Signed in as ${esc(info.owner.name)}</span></div>` : '<p style="text-align:center">Sign in with the Twitch account you stream on.</p>'}
     <a class="twitch" href="/auth/twitch">${TW} ${info.owner ? 'Sign in again' : 'Sign in with Twitch'}</a>
-    <div class="small"><a href="/control.html">← Back to Movie Royale</a><br>Everything is saved on this computer automatically, signed in or not.</div>`;
+    <div class="small"><a href="/control.html">← Back to Movie Royal</a><br>Everything is saved on this computer automatically, signed in or not.</div>`;
 }
 async function save() {
   const r = await fetch('/api/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ twitchClientId: document.getElementById('cid').value, twitchClientSecret: document.getElementById('sec').value }) });

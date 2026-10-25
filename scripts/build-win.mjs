@@ -1,4 +1,4 @@
-// Builds the Windows installer: dist/MovieRoyale-Setup-<version>.exe
+// Builds the Windows installer: dist/MovieRoyal-Setup-<version>.exe
 //   npm run build:win
 // 1) electron-builder packages the app (no installer)  2) app icon + version are stamped into the exe
 // 3) NSIS turns it into an installer with an uninstaller (works on Windows, macOS and Linux build machines)
@@ -12,17 +12,17 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const VER = pkg.version;
 const UNPACKED = path.join(ROOT, 'dist', 'win-unpacked');
-const OUT = path.join(ROOT, 'dist', `MovieRoyale-Setup-${VER}.exe`);
+const OUT = path.join(ROOT, 'dist', `MovieRoyal-Setup-${VER}.exe`);
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts });
 
-console.log(`\n▶ Packaging Movie Royale ${VER} for Windows…`);
+console.log(`\n▶ Packaging Movie Royal ${VER} for Windows…`);
 fs.rmSync(UNPACKED, { recursive: true, force: true });
 run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['electron-builder', '--win', 'dir', '--x64'], { shell: process.platform === 'win32' });
 
-console.log('\n▶ Stamping icon + version into MovieRoyale.exe…');
+console.log('\n▶ Stamping icon + version into MovieRoyal.exe…');
 const ResEdit = await import('resedit');
 const PELibrary = await import('pe-library');
-const exePath = path.join(UNPACKED, 'MovieRoyale.exe');
+const exePath = path.join(UNPACKED, 'MovieRoyal.exe');
 const exe = PELibrary.NtExecutable.from(fs.readFileSync(exePath), { ignoreCert: true });
 const res = PELibrary.NtExecutableResource.from(exe);
 const ico = ResEdit.Data.IconFile.from(fs.readFileSync(path.join(ROOT, 'build', 'icon.ico')));
@@ -32,7 +32,7 @@ ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, groupId, la
 const vi = ResEdit.Resource.VersionInfo.fromEntries(res.entries)[0] || ResEdit.Resource.VersionInfo.createEmpty();
 const [a, b, c] = VER.split('.').map(Number);
 vi.setFileVersion(a, b, c, 0, 1033); vi.setProductVersion(a, b, c, 0, 1033);
-vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: 'Movie Royale', FileDescription: 'Movie Royale', CompanyName: 'Movie Royale', FileVersion: VER, ProductVersion: VER, OriginalFilename: 'MovieRoyale.exe', InternalName: 'MovieRoyale', LegalCopyright: 'Movie Royale' });
+vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: 'Movie Royal', FileDescription: 'Movie Royal', CompanyName: 'Movie Royal', FileVersion: VER, ProductVersion: VER, OriginalFilename: 'MovieRoyal.exe', InternalName: 'MovieRoyal', LegalCopyright: 'Movie Royal' });
 vi.outputToResourceEntries(res.entries);
 res.outputResource(exe);
 fs.writeFileSync(exePath, Buffer.from(exe.generate()));

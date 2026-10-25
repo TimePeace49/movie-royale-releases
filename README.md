@@ -1,6 +1,6 @@
-# 🍿 Movie Royale
+# 🍿 Movie Royal
 
-**A battle-royale "wheel" for Twitch streamers.** Everything on your list becomes a piece on a floating cliff that crumbles from the edges. Pieces bump, dash and fly off. The last one standing wins.
+**A battle-royal "wheel" for Twitch streamers.** Everything on your list becomes a piece on a floating cliff that crumbles from the edges. Pieces bump, dash and fly off. The last one standing wins.
 
 Made for picking movies with chat: viewers suggest movies in **Discord**, anything you've already watched on **Letterboxd** is blocked, and **channel points & bits** let chat unleash chaos on everyone. It works for anything else too: games, snacks, challenges and giveaways.
 
@@ -16,9 +16,9 @@ Made for picking movies with chat: viewers suggest movies in **Discord**, anythi
 
 ## ⬇️ Download
 
-1. Go to **[Releases](../../releases/latest)** and download **`MovieRoyale-Setup-x.y.z.exe`** (Windows 10/11).
+1. Go to **[Releases](../../releases/latest)** and download **`MovieRoyal-Setup-x.y.z.exe`** (Windows 10/11).
 2. Run it. Windows may say **"Windows protected your PC"** because the app isn't code-signed. Click **More info → Run anyway**.
-3. Movie Royale opens a **step-by-step setup guide**. Every step has a test button, and every step is optional.
+3. Movie Royal opens a **step-by-step setup guide**. Every step has a test button, and every step is optional.
 
 It's free. Everything runs on your own PC: there are no accounts on our side and nothing to host. Updates show up inside the app ("Update available — install?").
 
@@ -30,7 +30,9 @@ It's free. Everything runs on your own PC: there are no accounts on our side and
 - A **camera** that follows the action. You can scroll to zoom, drag to move, or click a piece to follow it.
 - A **slow-motion instant replay** of the final seconds, sports-broadcast style.
 - **Winner card** with poster, year, genre, **Rotten Tomatoes / IMDb / Letterboxd** ratings and who picked it.
-- Up to **1000 pieces** on the cliff.
+- Up to **1000 pieces** on the cliff, which grows with the number of entries.
+- **16 maps**: space with low gravity, a lava lake that rises and swallows the cliff, Rainbow Road, the Hollywood sign crumbling in an earthquake, a neon city with lasers to jump, a Smash-style stage where KO'd pieces can fly back in, a desert with a giant sand worm, a castle with dragons, a bomb arena, a wrestling ring, Pong and more. You can pick one, go random, or let **chat vote** on it.
+- **Every power is a button** under the battle screen, and **🔀 Shuffle** scatters the pieces before the fight.
 
 **Discord movie picks**
 - `/suggest` searches movies as you type and shows `Title (Year)`.
@@ -42,12 +44,14 @@ It's free. Everything runs on your own PC: there are no accounts on our side and
   - Wildcard "Kirb" spots refill each week.
 - `/swap` trades one of your movies for another (it locks when you go live). `/mymovies` and `!mymovies name` show what's left.
 - The bot makes its own **#movies-royal** channel and pins a message listing every command.
+- **☁️ 24/7 mode:** a free Cloudflare copy of the bot keeps taking picks while your PC is off, and the app pulls them in when you open it.
 
 **Twitch**
 - **Channel points & bits** trigger chaos that hits everyone equally: comets, earthquakes, tornadoes, meteor showers, ice, low gravity… Edit reward prices right in the app, or turn points and bits off with one click.
 - Only people **chatting this stream** get their movies on the cliff.
 - **Claim timer**: if the winner types in chat, they win. The winner is also posted in chat.
 - **Chat battles**: viewers type `!join`, which is perfect for giveaways.
+- **Ball colors**: viewers type `!color pink` to recolor their piece. It's silent, so there's no chat spam.
 
 **And**
 - Custom battles: movies, text, pictures or Twitch chat. Paste big lists (commas or new lines, `x3` for triple odds).
@@ -69,13 +73,13 @@ The app has a setup guide built in. You'll need:
 
 Full instructions are in **[docs/GUIDE.md](docs/GUIDE.md)** and in the app's **❓ Help** tab.
 
-> **Note:** the Discord bot and Twitch features only answer while Movie Royale is running. Closing the window keeps it running in the tray, and it can start with Windows.
+> **Note:** Twitch features need Movie Royal running (it can sit in the tray and start with Windows). For Discord, turn on **☁️ 24/7 mode**: a free Cloudflare copy of the bot answers `/suggest` even when your PC is off.
 
 ## ❓ FAQ
 
 **Do I need a Twitch bot account?** No. Replies and winner posts come from your own account.
 
-**Where's my data?** `%APPDATA%\Movie Royale\data`. Updates and uninstalls don't touch it. Use **Settings → Download backup** to keep a copy.
+**Where's my data?** `%APPDATA%\Movie Royal\data`. Updates and uninstalls don't touch it. Use **Settings → Download backup** to keep a copy.
 
 **Mac / Linux?** The installer is Windows-only. You can run it from source on any OS (see below) and use it in your browser.
 
@@ -89,7 +93,7 @@ Needs [Node.js](https://nodejs.org) 20+.
 npm install
 npm start            # browser version at http://localhost:3737
 npm run desktop      # desktop window
-npm run build:win    # builds dist/MovieRoyale-Setup-<version>.exe (works on Windows, macOS or Linux)
+npm run build:win    # builds dist/MovieRoyal-Setup-<version>.exe (works on Windows, macOS or Linux)
 ```
 
 The code is laid out like this:

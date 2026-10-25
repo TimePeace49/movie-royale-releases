@@ -40,7 +40,7 @@ export function blockReason(movie, user = null, opts = {}) {
   if (db.settings.banCurrentYear !== false && movie.year === currentYear() && !(db.yearAllow || []).includes(String(movie.id)))
     return { short: `🚫 ${currentYear()} movie`, msg: `🚫 Movies from ${currentYear()} aren't allowed — **${label}** is too new. Pick another movie!` };
   const existing = findMovie(movie.id);
-  if (existing?.status === 'watched') return { short: '✅ already won', msg: `✅ **${label}** already won a royale and got watched.` };
+  if (existing?.status === 'watched') return { short: '✅ already won', msg: `✅ **${label}** already won a battle royal and got watched.` };
   if (movie.collection && !opts.ignoreSeries) {
     const sib = moviesList().entries.find(e => IN_POOL.includes(e.status) && e.details?.collection?.id === movie.collection.id && String(e.tmdbId) !== String(movie.id) && e.id !== opts.swapFrom);
     if (sib) return { short: `🚫 series taken`, msg: `🚫 **${sib.label}${sib.sub ? ` (${sib.sub})` : ''}** from the *${movie.collection.name}* is already picked, so no other movie from that series can go in. Pick something else!` };
@@ -53,8 +53,12 @@ export function blockReason(movie, user = null, opts = {}) {
 }
 
 /** value can be a TMDB id (from autocomplete) or free text. user = {discordId,name,avatar} or null for streamer */
-export async function suggest(value, user, opts = {}) { // opts.force: streamer adding for someone (skips pick limit)
+// picks can be closed (a toggle in the app, or automatically while you're live)
+export const picksClosed = () => !!db.picksClosed || (!!db.settings.closePicksWhenLive && !!db.live);
+export const closedMsg = () => `🔒 Movie picks are closed right now — ${streamerName()} will open them again soon. You can still use /mymovies and /list.`;
+export async function suggest(value, user, opts = {}) { // opts.force: streamer adding for someone (skips pick limit and closed picks)
   rollWeek();
+  if (!opts.force && !opts.cloud && picksClosed()) return { ok: false, msg: closedMsg() };
   let movie;
   if (/^\d+$/.test(String(value))) movie = await getMovie(value);
   else {
@@ -74,8 +78,8 @@ export async function suggest(value, user, opts = {}) { // opts.force: streamer 
   if (!existing) moviesList().entries.push(entry);
   save();
   const left = user ? db.settings.maxPerUser - picksUsed(user.discordId) : 0;
-  if (entry.status === 'benched') return { ok: true, public: false, picksLeft: left, msg: `🎬 **${label}** is saved! Your movie already won this week, so it sits out until **${backOn()}**, then it jumps into the royale.`, entry };
-  return { ok: true, public: true, picksLeft: left, msg: `🎬 **${label}** joined the royale${user ? `, suggested by <@${user.discordId}>` : ''}!`, entry };
+  if (entry.status === 'benched') return { ok: true, public: false, picksLeft: left, msg: `🎬 **${label}** is saved! Your movie already won this week, so it sits out until **${backOn()}**, then it jumps into the battle royal.`, entry };
+  return { ok: true, public: true, picksLeft: left, msg: `🎬 **${label}** joined the battle royal${user ? `, suggested by <@${user.discordId}>` : ''}!`, entry };
 }
 function makeEntry(movie, user, existing, luckPct = 0) {
   const entry = existing || { id: 'tmdb-' + movie.id, tmdbId: movie.id };
@@ -86,10 +90,22 @@ function makeEntry(movie, user, existing, luckPct = 0) {
   });
 }
 
+// ---------- change who picked a movie (e.g. you added it by hand for someone) ----------
+export function setOwner(entry, user) {
+  const prev = entry.backers?.[0];
+  if (prev?.discordId === user?.discordId) return false;
+  db.picks ||= {};
+  if (prev && db.picks[prev.discordId]) db.picks[prev.discordId] = Math.max(0, db.picks[prev.discordId] - 1); // the pick moves with the movie
+  entry.backers = user ? [user] : [];
+  if (user) db.picks[user.discordId] = (db.picks[user.discordId] || 0) + 1;
+  if (entry.status === 'active' || entry.status === 'benched') entry.status = user && wonThisWeek(user.discordId) ? 'benched' : 'active';
+  save(); return true;
+}
+
 // ---------- swaps: trade one of your movies for another, 1 for 1, until the stream starts ----------
 export const swapsLocked = () => !!db.swapLock || (db.settings.lockSwapsWhenLive !== false && !!db.live);
-export async function swapMovie(user, oldEntryId, newValue) {
-  if (swapsLocked()) return { ok: false, msg: `🔒 Swaps are closed — ${streamerName()} is live. You can swap again after the stream.` };
+export async function swapMovie(user, oldEntryId, newValue, force = false) {
+  if (!force && swapsLocked()) return { ok: false, msg: `🔒 Swaps are closed — ${streamerName()} is live. You can swap again after the stream.` };
   const l = moviesList(), old = l.entries.find(e => e.id === oldEntryId || String(e.tmdbId) === String(oldEntryId));
   if (!old || !IN_POOL.includes(old.status) || !old.backers?.some(b => b.discordId === user.discordId)) return { ok: false, msg: "That isn't one of your movies — pick one from the list." };
   let movie;
@@ -114,21 +130,31 @@ export async function swapMovie(user, oldEntryId, newValue) {
 // ---------- luck: every battle your movie is on the cliff it gets a little luckier, until one of your movies wins ----------
 export const luckOn = () => !!db.settings.luckOn;
 export const luckMultiplier = e => luckOn() ? 1 + Math.max(0, Number(e.luckPct) || 0) / 100 : 1;
-export function addLuck(entryIds) {
+export function addLuck(entryIds, streamKey = '') {
   if (!luckOn()) return;
   const per = Math.max(0, Number(db.settings.luckPerBattle ?? 0.01));
-  for (const e of moviesList().entries) if (entryIds.includes(e.id) && e.kind !== 'spot') e.luckPct = Math.round(((e.luckPct || 0) + per) * 10000) / 10000;
+  for (const e of moviesList().entries) {
+    if (!entryIds.includes(e.id)) continue;
+    if (e.kind === 'spot') { // wildcard spots (optional): at most +1% per stream
+      if (!db.settings.spotLuck || e.spotLuckKey === streamKey) continue;
+      e.spotLuckKey = streamKey; e.luckPct = Math.round(((e.luckPct || 0) + Math.min(1, per)) * 10000) / 10000;
+    } else e.luckPct = Math.round(((e.luckPct || 0) + per) * 10000) / 10000;
+  }
   save();
 }
-function resetLuckFor(discordId) {
-  for (const e of moviesList().entries) if (e.backers?.[0]?.discordId === discordId) e.luckPct = 0;
+// luck only starts over when one of your movies actually gets WATCHED (winning = watching; "put it back" gives the luck back)
+export function resetLuckFor(discordId) {
+  const snap = {};
+  for (const e of moviesList().entries) if (e.backers?.[0]?.discordId === discordId && e.luckPct) { snap[e.id] = e.luckPct; e.luckPct = 0; }
+  return snap;
 }
+export function giveLuckBack(snap) { for (const e of moviesList().entries) if (snap?.[e.id]) e.luckPct = Math.max(e.luckPct || 0, snap[e.id]); }
 
 /** After Letterboxd refreshes, retire any pooled movie you've since watched. */
 export function sweepWatched() {
   let n = 0;
   for (const e of moviesList().entries) {
-    if (e.status === 'active' && lb.lookup({ title: e.label, year: e.sub, tmdbId: e.tmdbId })) { e.status = 'watched'; n++; }
+    if (e.status === 'active' && lb.lookup({ title: e.label, year: e.sub, tmdbId: e.tmdbId })) { e.status = 'watched'; n++; if (e.backers?.[0]) resetLuckFor(e.backers[0].discordId); }
   }
   if (n) save();
   return n;
@@ -189,7 +215,7 @@ export function afterMovieWin(winnerId) {
   } else { // won a movie: sit out the rest of the week
     const who = w.backers[0].discordId;
     if (!week().winners.includes(who)) week().winners.push(who);
-    resetLuckFor(who); // their movie got picked: everyone of theirs starts over
+    w.luckSnap = resetLuckFor(who); // their movie gets watched: their luck starts over (kept so 'put it back' can undo it)
     w.status = 'watched'; w.wonAt = Date.now(); // landed on = picked: it leaves the pool and counts toward their picks
     lb.markWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId });
     for (const e of l.entries) if (e !== w && e.status === 'active' && e.backers?.[0]?.discordId === who) { e.status = 'benched'; benched++; }

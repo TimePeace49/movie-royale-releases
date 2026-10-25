@@ -1,4 +1,4 @@
-// Movie Royale — local server. Open http://localhost:3737 for the control panel.
+// Movie Royal — local server. Open http://localhost:3737 for the control panel.
 import express from 'express';
 import http from 'http';
 import fs from 'fs';
@@ -13,9 +13,15 @@ import * as lb from './letterboxd.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
 import { searchMovies } from './tmdb.js';
-import { claimManual, mergePerson } from './movies.js';
+import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
+import * as cloud from './cloud.js';
+import { MAP_LIST, mapById } from './maps.js';
+import * as wheel from './wheel.js';
+import { renameUser } from './rename.js';
+import * as donations from './donations.js';
+import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
 import { blockReason, banMovie, unbanMovie, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
 import { suggest, sweepWatched, picksUsed, addSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey } from './movies.js';
@@ -52,11 +58,12 @@ function refreshPreview(now = false) {
     if (previewList !== list.id) { previewIds = null; previewList = list.id; }
     const { fighters, total } = await buildFighters(list, previewIds);
     previewIds = fighters.map(f => f.id);
-    broadcast({ type: 'preview', fighters, total, listName: list.screenTitle || list.name, kind: list.type, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }, 'overlay');
+    broadcast({ type: 'preview', map: currentMap(), fighters, total, listName: list.screenTitle || list.name, kind: list.type, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }, 'overlay');
   }, now ? 0 : 300);
 }
 
 let historyVersion = 0;
+try { statsReady(); } catch (e) { console.error("[stats]", e.message); }
 function discordPeople() {
   const m = new Map();
   for (const e of getList('movies')?.entries || []) for (const b of e.backers || []) {
@@ -77,15 +84,17 @@ function publicState() {
   const mask = v => (v ? '••••••' + String(v).slice(-4) : '');
   const st = db.settings;
   return {
-    settings: { ...st, discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
+    cloud: { enabled: cloud.enabled(), url: st.cloud?.url || '', ...cloud.status },
+    settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
     week: { start: weekStartDate().toISOString(), backOn: backOn(), winners: db.week?.winners?.length || 0, spotWon: !!db.week?.spotWon },
-    historyVersion, owner: db.owner ? { name: db.owner.name, avatar: db.owner.avatar, login: db.owner.login } : null, people: discordPeople(),
+    historyVersion, wheelVer: wheel.W().ver || 0, wheelShow: !!wheel.W().show, owner: db.owner ? { name: db.owner.name, avatar: db.owner.avatar, login: db.owner.login } : null, people: discordPeople(),
     pendingEffects: db.pendingEffects, events: EVENTS,
-    status: { discord: discord.status, twitch: twitch.status, letterboxd: lb.stats(), overlays: [...wss.clients].filter(c => c.role === 'overlay').length },
+    status: { discord: discord.status, twitch: twitch.status, donations: donations.status, letterboxd: lb.stats(), overlays: [...wss.clients].filter(c => c.role === 'overlay').length },
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
-    chaos: chaosState(), live: !!db.live, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    maps: MAP_LIST, mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
+    backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, live: !!db.live, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -173,8 +182,10 @@ async function buildFighters(list, keepIds = null) {
       } else if (e.twitch) { ownerLogin = e.twitch; owner = e.label; image = users.get(e.twitch)?.avatar || e.image; }
       return {
         id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : 1) * 10000) / 10000, luck: list.type === 'movies' && luckOn() ? (e.luckPct || 0) : 0,
+        // the glow + flames show on every battle type and every map: movies use their luck, custom/chat/giveaway lists use their extra odds (x2 = 10%, x6 = 50% flames)
+        glow: e.luckPct > 0 ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10)),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
-        showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined),
+        showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
         backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null
       };
     })
@@ -206,11 +217,33 @@ function announceWinner(f, list) {
   if (db.settings.announceWinner === false || !twitch.status.canChat) return;
   const name = `${f.label}${f.sub ? ` (${f.sub})` : ''}`;
   const by = f.owner && f.showOwner ? (list?.type === 'chat' ? '' : ` — picked by ${f.owner}`) : '';
-  const msg = f.spot ? `🎟️ ${f.label} wins the Movie Royale — ${streamerName()}'s choice!`
-    : list?.type === 'chat' ? `🏆 @${f.ownerLogin || f.label} wins the ${list.screenTitle || list.name}!`
+  const msg = f.spot ? `🎟️ ${f.label} wins the Movie Royal — ${streamerName()}'s choice!`
+    : list?.giveaway ? `🎉 @${f.ownerLogin || f.label} wins the giveaway${giveawaySettings().prize ? `: ${giveawaySettings().prize}` : ''}! Type in chat to claim it.`
+    : list?.type === 'chat' ? `🏆 @${f.ownerLogin || f.label} wins the ${list.screenTitle || list.name}${f.series ? ` (best of ${f.series.bestOf})` : ''}!`
     : `🏆 ${list?.type === 'movies' || list?.type === 'films' ? 'Tonight’s movie' : 'Winner'}: ${name}${by}!`;
+  const lk = Math.round((f.luck || 0) * 10) / 10, odds = Math.round((f.weight || 1) * 100) / 100;
+  const luckNote = f.spot ? '' : lk > 0 ? ` 🍀 Won with ${lk}% luck!` : list?.type !== 'movies' && odds > 1 ? ` 🎲 Won with x${odds} odds!` : '';
   const wait = (db.settings.replayOn !== false ? 12 : 2) * 1000;
-  setTimeout(() => twitch.say(msg).catch(e => console.error('[twitch say]', e.message)), wait);
+  setTimeout(() => twitch.say(msg + luckNote).catch(e => console.error('[twitch say]', e.message)), wait);
+}
+// "!moviesroyal": every Twitch chat command in one reply (30s cooldown so it can't be spammed)
+let helpCd = 0;
+function helpChatText() {
+  const st = db.settings, parts = [];
+  parts.push(`${st.twitchMoviesCommand || '!mymovies'} (your movies, or add a name)`);
+  if (st.callsOn !== false) parts.push(`${st.callCommand || '!call'} <movie> (call the winner before the fight: +${st.callLuck ?? 1}% luck if you're right)`);
+  if (st.colorsOn !== false) parts.push(st.colorMode === 'points' ? `color: redeem "${st.colorReward}" and type a color` : `${st.colorCommand || '!color'} <color> (your ball color)`);
+  parts.push(`${st.joinCommand || '!join'} (chat battles)`);
+  if (giveawaySettings().command) parts.push(`${giveawaySettings().command} (giveaways)`);
+  parts.push('type 1-4 during a map vote');
+  { const wc = wheel.W().cmd; parts.push(`🎡 wheel: ${wc.respin} (use a saved respin) · ${wc.spins} (how many respins you have)`); }
+  return `🍿 Movie Royal commands: ${parts.join(' · ')}. Pick movies in Discord with /suggest.`;
+}
+function helpChatCommand(m) {
+  const cmd = String(db.settings.helpCommand || '!moviesroyal').trim().toLowerCase(); if (!cmd) return;
+  const first = m.text.toLowerCase().split(/\s+/)[0]; if (first !== cmd && first !== '!movieroyal') return;
+  if (Date.now() - helpCd < 30000 || !twitch.status.canChat) return; helpCd = Date.now();
+  twitch.say(helpChatText()).catch(() => {});
 }
 const chatCooldown = new Map();
 async function moviesChatCommand(m) {
@@ -234,18 +267,24 @@ const twitchHandlers = {
   change: pushState,
   live(isLive) {
     if (!!db.live === !!isLive) return;
-    db.live = !!isLive; if (isLive) stream().movies = 0; // new stream: movie count starts over
+    db.live = !!isLive; if (isLive) { stream().movies = 0; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
+    cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
+    if (db.settings.closePicksWhenLive && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
     save(); pushState();
     broadcast({ type: 'toast', text: isLive ? '🔴 You went live — Discord swaps are now locked.' : '⚫ Stream ended — Discord swaps are open again.' }, 'control');
     discord.refreshPinned?.();
   },
   async redeem(r) {
+    if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
+    if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
     if (db.settings.pointsOn === false) return; // channel point chaos switched off
     const entry = Object.entries(db.settings.rewards).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
     if (!entry) return;
     triggerEvent(entry[1], { name: r.name, avatar: await avatarFor(r.login) }, 'points');
   },
+  sub(sb) { try { wheel.onSub(sb); } catch (e) { console.error('[wheel sub]', e.message); } },
   async cheer(c) {
+    try { wheel.onBits(c); } catch (e) { console.error('[wheel bits]', e.message); }
     if (db.settings.bitsOn === false) return; // bits chaos switched off
     const tiers = Object.entries(db.settings.bits).map(([b, e]) => [Number(b), e]).filter(([b]) => c.bits >= b).sort((a, b) => b[0] - a[0]);
     if (!tiers.length) return;
@@ -254,7 +293,8 @@ const twitchHandlers = {
   async chat(m) {
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
-    moviesChatCommand(m);
+    wheel.wheelChat(m); // 🎡 !respin / !spins
+    moviesChatCommand(m); chatVote(m); chatColor(m); chatCall(m); helpChatCommand(m); giveawayChat(m);
     if (newFace) pushState(); // keeps "Recent chatters" in the control panel up to date
     if (live.rollcall && !live.rollcall.done) {
       const p = live.rollcall.people.find(x => !x.here && chatMatches(x, m));
@@ -271,7 +311,7 @@ const twitchHandlers = {
     // "!join" lists
     const list = getList(db.activeListId);
     const cmd = (db.settings.joinCommand || '!join').toLowerCase();
-    if (list?.type === 'chat' && list.joinOpen && m.text.toLowerCase().split(/\s+/)[0] === cmd) {
+    if (list?.type === 'chat' && !list.giveaway && list.joinOpen && m.text.toLowerCase().split(/\s+/)[0] === cmd) {
       if (list.entries.some(e => e.status === 'active' && e.twitch === m.login)) return;
       const e = addEntry(list, { label: m.name, twitch: m.login }); e.joined = true; // came from chat, so the winner screen shows their name
       save(); pushState();
@@ -379,7 +419,7 @@ wss.on('connection', (ws, req) => {
   ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control';
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
-  if (ws.role === 'overlay') { ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
+  if (ws.role === 'overlay') { ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
   ws.on('message', raw => {
@@ -390,25 +430,46 @@ wss.on('connection', (ws, req) => {
       live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
       const f = live.game.fighters.find(x => x.id === m.winnerId);
       if (!f) return;
-      if (live.game.test) { live.lastWinner = { ...f, listName: 'Practice round', at: Date.now(), test: true }; pushState(); return; } // practice rounds never touch real lists or history
+      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); return; } // practice rounds never touch real lists or history
       const list = getList(live.game.listId);
+      try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); } // full results + lifetime stats (every round, series rounds too)
+      // best of 3/5/7/9 (custom battles, chat battles, giveaways): first to win enough rounds takes it
+      let seriesInfo = null;
+      if (list && list.type !== 'movies' && (Number(list.bestOf) || 1) > 1) {
+        const bo = Number(list.bestOf), need = Math.ceil(bo / 2);
+        let sr = live.series; if (!sr || sr.listId !== list.id || sr.done || sr.bestOf !== bo) sr = live.series = { listId: list.id, bestOf: bo, need, wins: {}, names: {}, round: 0 };
+        sr.round++; (sr.games ||= []).push(live.game.id); sr.wins[f.id] = (sr.wins[f.id] || 0) + 1; sr.names[f.id] = f.label;
+        const tally = Object.entries(sr.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: sr.names[id], n }));
+        seriesInfo = { round: sr.round, bestOf: bo, need, tally, done: sr.wins[f.id] >= need };
+        broadcast({ type: 'series', gameId: live.game.id, series: seriesInfo, winnerId: f.id }, 'overlay');
+        if (!seriesInfo.done) {
+          live.lastWinner = { ...f, listId: list.id, listName: list.name, at: Date.now(), series: seriesInfo, interim: true, gameId: live.game.id };
+          if (twitch.status.canChat && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
+          if (db.settings.seriesAuto !== false) setTimeout(nextSeriesRound, (db.settings.replayOn !== false ? 19 : 8) * 1000);
+          save(); pushState(); return;
+        }
+        sr.done = true;
+      }
       const byId = new Map(live.game.fighters.map(x => [x.id, x]));
       const order = (Array.isArray(m.order) ? m.order : [f.id]).filter(id => byId.has(id));
       const totalW = live.game.fighters.reduce((a, x) => a + (x.weight || 1), 0) || 1;
       const slim = x => ({ label: x.label, sub: x.sub, owner: x.owner, image: x.image, poster: x.poster });
       const rec = {
         id: uid(), listId: list?.id, listName: list?.name, kind: list?.type, at: Date.now(),
-        winner: { ...slim(f), id: f.id, details: f.details || null, odds: (f.weight || 1) / totalW },
+        winner: { ...slim(f), id: f.id, details: f.details || null, odds: (f.weight || 1) / totalW, luck: f.luck || 0 },
         entrants: live.game.fighters.length, total: live.game.total,
         top: order.slice(0, 5).map(id => slim(byId.get(id))),
         events: (Array.isArray(m.events) ? m.events : []).slice(0, 40).map(e => ({ event: String(e.event), by: String(e.by || '').slice(0, 40) })),
-        claimed: null, outcome: null
+        claimed: null, outcome: null, gameId: live.game.id, map: live.game.map, rounds: live.series?.listId === list?.id && live.series?.games?.length > 1 ? live.series.games.slice() : undefined
       };
       db.history.push(rec); db.history = db.history.slice(-1000); historyVersion++;
-      live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id };
+      live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id, gameId: live.game.id };
+      if (seriesInfo) { live.lastWinner.series = seriesInfo; rec.series = seriesInfo; f.series = seriesInfo; }
+      if (list?.giveaway) { db.giveawayWinners ||= []; db.giveawayWinners.push({ login: f.ownerLogin || norm(f.label), name: f.label, prize: giveawaySettings().prize || giveawaySettings().title, at: Date.now() }); db.giveawayWinners = db.giveawayWinners.slice(-500); if (giveawaySettings().removeWinner) { const we = list.entries.find(x => x.id === f.id); if (we) we.status = 'out'; } }
       announceWinner(f, list);
+      { const c = resolveCalls(f, list); if (c) { live.lastWinner.calls = { total: c.total, right: c.right.length, names: c.right.slice(0, 8).map(o => o.name) }; rec.calls = live.lastWinner.calls; } }
       if (list?.type === 'movies') { stream().movies = (stream().movies || 0) + 1; } // movie # of the night
-      if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id && !x.spot).map(x => x.id)); // everyone who lost gets a little luckier
+      if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`); // everyone who lost gets a little luckier
       if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) fetchWinnerRatings(f, rec, live.game.id);
       if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
       save(); pushState();
@@ -429,7 +490,7 @@ app.use(express.json({ limit: '50mb' }));
 // The app only answers your own computer.
 const LOCAL = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const isLocal = req => process.env.ALLOW_LAN || LOCAL.has(req.socket.remoteAddress);
-app.use((req, res, next) => isLocal(req) ? next() : res.status(403).send('Movie Royale only runs on this computer.'));
+app.use((req, res, next) => isLocal(req) ? next() : res.status(403).send('Movie Royal only runs on this computer.'));
 const pendingStates = new Map();
 app.get('/api/login-info', (req, res) => res.json({
   ready: !!(db.settings.twitchClientId && db.settings.twitchClientSecret), port: PORT,
@@ -462,22 +523,38 @@ app.get('/twitch/callback', async (req, res) => {
     if (!db.settings.twitchChannel) db.settings.twitchChannel = user.login;
     save();
     twitch.start(twitchHandlers); pushState();
-    if (DESKTOP) return res.send(donePage(`Signed in as ${user.name}!`, 'You can close this tab and go back to Movie Royale.'));
+    if (DESKTOP) return res.send(donePage(`Signed in as ${user.name}!`, 'You can close this tab and go back to Movie Royal.'));
     res.redirect('/control.html?twitch=ok');
   } catch (e) { fail('Twitch sign-in failed: ' + e.message); }
 });
 app.post('/auth/logout', (req, res) => { db.owner = null; db.twitchToken = null; save(); twitch.start(twitchHandlers); pushState(); res.json({ ok: true }); });
 
 // backup / restore everything (lists, odds, history, settings, Discord picks)
+const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`; };
+// a dated safety copy of everything in data/backups (made before anything that wipes something, like resetting luck). Keeps the newest 30.
+function autoBackup(why) {
+  try {
+    const dir = path.join(DATA, 'backups'); fs.mkdirSync(dir, { recursive: true });
+    const { twitchToken, ...rest } = db;
+    fs.writeFileSync(path.join(dir, `movie-royal-backup-${stamp()}-${why}.json`), JSON.stringify(rest));
+    const old = fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort(); for (const f of old.slice(0, Math.max(0, old.length - 30))) fs.unlinkSync(path.join(dir, f));
+  } catch (e) { console.error('[backup]', e.message); }
+}
+// monthly reminder to download a backup (keeps it somewhere other than this PC)
+db.firstRunAt ||= Date.now();
+const backupDue = () => Date.now() - (db.lastBackupAt || db.firstRunAt) > 30 * 864e5 && Date.now() > (db.backupSnooze || 0);
+app.post('/api/backup/snooze', (req, res) => { db.backupSnooze = Date.now() + 7 * 864e5; save(); pushState(); res.json({ ok: true }); });
 app.get('/api/backup', (req, res) => {
+  db.lastBackupAt = Date.now(); save(); setTimeout(pushState, 200);
   const { twitchToken, ...rest } = db;
-  res.setHeader('Content-Disposition', `attachment; filename="movie-royale-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="movie-royal-backup-${stamp()}.json"`);
   res.type('application/json').send(JSON.stringify(rest, null, 1));
 });
 app.post('/api/restore', (req, res) => {
   const b = req.body;
-  if (!b || !Array.isArray(b.lists) || !b.settings) return res.status(400).json({ error: "That doesn't look like a Movie Royale backup." });
-  for (const k of ['settings', 'lists', 'activeListId', 'history', 'links', 'picks', 'pendingEffects']) if (k in b) db[k] = b[k];
+  if (!b || !Array.isArray(b.lists) || !b.settings) return res.status(400).json({ error: "That doesn't look like a Movie Royal backup." });
+  autoBackup('before-restore');
+  for (const k of ['settings', 'lists', 'activeListId', 'history', 'links', 'picks', 'pendingEffects', 'bans', 'manualPeople', 'yearAllow', 'colors', 'luckSaves']) if (k in b) db[k] = b[k];
   if (!db.lists.find(l => l.id === 'movies')) db.lists.unshift({ id: 'movies', name: 'Discord Movies', type: 'movies', entries: [] });
   historyVersion++; save(); discord.start(pushState); twitch.start(twitchHandlers); pushState();
   res.json({ ok: true });
@@ -485,6 +562,65 @@ app.post('/api/restore', (req, res) => {
 
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
+// ---------- 🎡 wheel ----------
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+setTimeout(startDonationFeed, 1500);
+setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
+wheel.initWheel({ broadcast, pushState, say: t => twitch.status.canChat && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve() });
+const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
+app.get('/api/wheel', (req, res) => { const w = wheel.W(); res.json({ wheels: w.wheels, activeId: w.activeId, show: w.show, last: w.last || null, rewards: w.rewards, costs: w.costs, pointsOn: w.pointsOn !== false, chatOn: w.chatOn !== false, ver: w.ver || 0, historyCount: w.history.length, palette: wheel.PAL, canPoints: !!twitch.status.userId, types: wheel.TYPES, mine: { ...w.mine, name: `${streamerName()}'s spins` }, bank: Object.values(w.bank).sort((a, b) => b.spins - a.spins || a.name.localeCompare(b.name)), grants: w.grants.slice(-300).reverse(), boosts: w.boosts, auto: w.auto, redeemLog: w.redeemLog, donations: { ...donations.status, se: !!db.settings.seJwt, sl: !!db.settings.slToken, seState: donations.status.se, slState: donations.status.sl }, cmd: w.cmd, growStep: w.growStep, timer: wheel.getTimer(), live: !!db.live }); });
+app.post('/api/wheel', (req, res) => { const w = wheel.newWheel(req.body?.name || 'New wheel', Array.isArray(req.body?.entries) ? req.body.entries : []); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
+app.put('/api/wheel/:id', (req, res) => {
+  const w = wheel.getWheel(req.params.id); if (!w) return res.status(404).json({ error: 'No such wheel' });
+  const b = req.body || {};
+  if (b.name != null) w.name = String(b.name).slice(0, 80) || w.name;
+  if (b.title != null) w.title = String(b.title).slice(0, 120);
+  if (b.spinSecs != null) w.spinSecs = Math.max(2, Math.min(60, Number(b.spinSecs) || 10));
+  if (b.removeWinner != null) w.removeWinner = !!b.removeWinner;
+  if (b.palette !== undefined) w.palette = Array.isArray(b.palette) && b.palette.length ? b.palette.filter(c => /^#[0-9a-f]{6}$/i.test(c)).slice(0, 24) : null;
+  if (Array.isArray(b.entries)) w.entries = b.entries.slice(0, 5000).map(wheel.cleanEntry);
+  if (b.opts && typeof b.opts === 'object') { const o = b.opts, cur = w.opts; for (const k of ['speed', 'growStep']) if (o[k] != null) cur[k] = Math.max(.1, Math.min(k === 'speed' ? 5 : 100, Number(o[k]) || 1)); for (const k of ['confetti', 'ticks', 'recent', 'showPct', 'chat', 'bankRespin']) if (o[k] != null) cur[k] = !!o[k]; for (const g of ['points', 'pop']) if (o[g]) for (const [k, v] of Object.entries(o[g])) if (k in cur[g]) cur[g][k] = !!v; if (o.void) { for (const k of ['on']) if (o.void[k] != null) cur.void[k] = !!o.void[k]; if (o.void.label) cur.void.label = String(o.void.label).slice(0, 40); if (o.void.weight != null) cur.void.weight = Math.max(.1, Number(o.void.weight) || 1); if (/^#[0-9a-f]{6}$/i.test(o.void.color || '')) cur.void.color = o.void.color; } }
+  wheel.syncVoid(w);
+  if (b.look && typeof b.look === 'object') w.look = { ...w.look, ...Object.fromEntries(Object.entries(b.look).filter(([k, v]) => ['bg', 'bgImage', 'rim', 'pointer', 'lines', 'textColor', 'font', 'hub', 'hubImage'].includes(k) ? typeof v === 'string' && v.length < 300 : k === 'bulbs' ? typeof v === 'boolean' : k === 'textScale' ? Number(v) > 0 : false)) };
+  wheelChanged(); res.json({ ok: true });
+});
+app.delete('/api/wheel/:id', (req, res) => { const w = wheel.W(); if (w.wheels.length <= 1) return res.status(400).json({ error: 'You need at least one wheel.' }); w.wheels = w.wheels.filter(x => x.id !== req.params.id); wheel.W(); wheelChanged(); res.json({ ok: true }); });
+app.post('/api/wheel/:id/duplicate', (req, res) => { const o = wheel.getWheel(req.params.id), b = req.body || {}; if (!o) return res.status(404).json({ error: 'No such wheel' }); const w = wheel.newWheel(String(b.name || '').trim() || o.name + ' (copy)', o.entries.map(e => { const c = { ...e, id: null }; if (b.resetSizes) c.weight = 1; if (b.resetCounts !== false && c.type === 'countdown') { c.count = c.countStart; c.on = true; } if (b.keepLook === false) { c.color = null; c.image = ''; } return c; }), { title: '', spinSecs: o.spinSecs, removeWinner: o.removeWinner, palette: b.keepLook === false ? null : o.palette, look: b.keepLook === false ? undefined : { ...o.look } }); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
+app.post('/api/wheel/active', (req, res) => { if (!wheel.getWheel(req.body?.id)) return res.status(404).json({ error: 'No such wheel' }); wheel.W().activeId = req.body.id; wheelChanged(); res.json({ ok: true }); });
+app.post('/api/wheel/show', (req, res) => { wheel.setShow(!!req.body?.show); wheelChanged(); res.json({ ok: true }); });
+app.post('/api/wheel/spin', (req, res) => { try { const b = req.body || {}; const by = b.by && String(b.by).trim() ? { name: String(b.by).trim().slice(0, 40), login: String(b.by).trim().replace(/^@/, '').toLowerCase(), source: 'mod' } : {}; res.json({ ok: true, ...wheel.request(String(b.kind || 'spin'), by, { wheelId: b.wheelId }) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/wheel/import', async (req, res) => { try { const w = await wheel.importWheel(req.body || {}); wheelChanged(); res.json({ ok: true, id: w.id, name: w.name, count: w.entries.length }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/wheel/settings', (req, res) => { const w = wheel.W(), b = req.body || {};
+  if (b.auto) for (const k of ['subSpins', 'giftSpins', 'bitsPer', 'bitsSpins', 'dollarsPer', 'popBits']) if (b.auto[k] != null) w.auto[k] = Math.max(0, Number(b.auto[k]) || 0);
+  if (b.auto?.tierMult != null) w.auto.tierMult = !!b.auto.tierMult;
+  if (b.cmd) for (const k of ['respin', 'spins']) if (b.cmd[k]) w.cmd[k] = String(b.cmd[k]).trim().split(/\s+/)[0].slice(0, 30);
+  if (b.growStep != null) w.growStep = Math.max(.1, Math.min(100, Number(b.growStep) || 1));
+  if (b.perStream != null) { w.mine.perStream = Math.max(0, Math.min(100, Math.round(Number(b.perStream) || 0))); } if (b.pointsOn != null) w.pointsOn = !!b.pointsOn; if (b.chatOn != null) w.chatOn = !!b.chatOn; for (const k of ['respin', 'up', 'down', 'grow']) { if (b.rewards?.[k] != null) w.rewards[k] = String(b.rewards[k]).slice(0, 45); if (b.costs?.[k] != null) w.costs[k] = Math.max(1, Number(b.costs[k]) || 1); } wheelChanged(); res.json({ ok: true }); });
+app.post('/api/wheel/rewards', async (req, res) => { try { const w = wheel.W(), made = []; const want = Array.isArray(req.body?.kinds) && req.body.kinds.length ? req.body.kinds : ['respin', 'up', 'down', 'grow']; for (const k of want) if (w.rewards[k] && await twitch.createReward({ title: w.rewards[k], cost: w.costs[k], prompt: wheel.REWARD_INFO[k].prompt, color: wheel.REWARD_INFO[k].color, input: !!wheel.REWARD_INFO[k].input, queue: true })) made.push(w.rewards[k]); await twitch.noInput([w.rewards.grow, w.rewards.shrink]).catch(() => {}); res.json({ ok: true, made }); } catch (e) { res.status(400).json({ error: e.message }); } });
+const wTry = fn => async (req, res) => { try { res.json({ ok: true, ...(await fn(req.body || {}, req)) }); } catch (e) { res.status(400).json({ error: e.message }); } };
+app.get('/api/renames', (req, res) => res.json(db.renames || []));
+app.post('/api/rename', wTry(b => { const r = renameUser(b.from, b.to); wheelChanged(); historyVersion++; pushState(); return r; }));
+app.post('/api/wheel/boost', wTry(b => { wheel.onMoney({ name: b.name, amount: b.amount }); return {}; }));
+app.post('/api/wheel/boost/:id', wTry((b, req) => wheel.boostAct(req.params.id, b)));
+app.post('/api/test/wheel-boost', wTry(b => { if (b.kind === 'bits') wheel.onBits({ bits: Number(b.bits) || 500, login: 'test_viewer', name: 'Test_Viewer' }); else wheel.onSub({ kind: b.kind || 'sub', login: 'test_viewer', name: 'Test_Viewer', tier: 1, recipient: 'someone' }); return {}; }));
+app.post('/api/wheel/unvoid', wTry(b => ({ text: wheel.unvoid(b.entryId, {}, 'by hand', b.wheelId) })));
+app.post('/api/test/donation', wTry(b => { wheel.onMoney({ name: b.name || 'Test_Donor', amount: Number(b.amount) || 10, source: 'test' }); return {}; }));
+app.post('/api/wheel/knock', wTry(b => ({ left: wheel.knock(Number(b.delta) || -1) })));
+app.post('/api/wheel/timer', wTry(b => { if (b.cmd === 'start') wheel.startTimer(b.mins, b.label); else wheel.timerCmd(b.cmd, b.mins); return { timer: wheel.getTimer() }; }));
+app.post('/api/wheel/mine', wTry(b => { if (b.action === 'reset') { wheel.newStream(); return {}; } if (b.action === 'set') { wheel.W().mine.left = Math.max(0, Math.round(Number(b.left) || 0)); wheelChanged(); return {}; } return wheel.useMine(); }));
+app.post('/api/wheel/bank', wTry(b => ({ spins: wheel.giveSpins(b.who, b.n, b.reason) })));
+app.post('/api/wheel/grow', wTry(b => ({ weight: wheel.grow(b.entryId, Number(b.amount) || 1, b.who ? { name: String(b.who).slice(0, 40), login: String(b.who).replace(/^@/, '').toLowerCase(), source: 'mod' } : {}, b.reason, b.wheelId) })));
+app.post('/api/wheel/reset-sizes', wTry(b => { b.undo ? wheel.undoReset(b.wheelId) : wheel.resetSizes(b.wheelId); return {}; }));
+app.post('/api/wheel/upload', express.raw({ type: '*/*', limit: '25mb' }), (req, res) => {
+  const name = String(req.query.name || 'file.png'), ext = (name.match(/\.(png|jpe?g|gif|webp|mp4|webm)$/i) || [, 'png'])[1].toLowerCase();
+  const file = 'wheel-' + uid() + '.' + ext; fs.writeFileSync(path.join(UPLOADS, file), req.body); res.json({ ok: true, url: '/uploads/' + file });
+});
+app.get('/api/wheel/history', (req, res) => res.json(wheel.history({ wheelId: String(req.query.wheelId || 'all'), limit: Math.min(50000, Number(req.query.limit) || 3000) })));
+app.delete('/api/wheel/history/:id', (req, res) => { const w = wheel.W(); w.history = w.history.filter(r => r.id !== req.params.id); wheelChanged(); res.json({ ok: true }); });
+app.get('/api/wheel/stats', (req, res) => res.json(wheel.wheelStats({ wheelId: String(req.query.wheelId || 'all'), since: Number(req.query.since) || 0, until: Number(req.query.until) || 0 })));
+app.get('/api/stats', (req, res) => res.json(statsView({ mode: String(req.query.mode || 'all'), map: String(req.query.map || 'all'), group: req.query.group === 'entries' ? 'entries' : 'people' })));
+app.get('/api/results', (req, res) => res.json(listResults(Math.min(600, Number(req.query.limit) || 100))));
+app.get('/api/results/:id', (req, res) => { const d = getResults(req.params.id); d ? res.json(d) : res.status(404).json({ error: 'No results saved for that round (results are kept from version 1.8.0 on).' }); });
 app.get('/api/history', (req, res) => {
   const id = req.query.listId;
   const lists = [...new Map(db.history.map(h => [h.listId || h.listName, { id: h.listId || null, name: h.listName }])).values()];
@@ -583,7 +719,7 @@ const VERSION = process.env.MR_VERSION || PKG.version;
 // where updates come from: your own setting, or the GitHub repo this copy was built from
 const updateRepo = () => (db.settings.updateRepo || PKG.updateRepo || '').trim();
 function donePage(title, msg) {
-  return `<!doctype html><meta charset="utf-8"><title>Movie Royale</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#120a24;color:#f3edff;font:18px Segoe UI,system-ui,sans-serif;text-align:center">
+  return `<!doctype html><meta charset="utf-8"><title>Movie Royal</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#120a24;color:#f3edff;font:18px Segoe UI,system-ui,sans-serif;text-align:center">
   <div><div style="font-size:64px">✅</div><h1 style="color:#ffc94a;margin:10px 0">${title.replace(/</g, '&lt;')}</h1><p>${msg}</p></div></body>`;
 }
 app.get('/api/app', (req, res) => res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [] }));
@@ -603,7 +739,7 @@ app.get('/api/update/check', async (req, res) => {
   const repo = updateRepo().replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '');
   if (!repo) return res.json({ configured: false, version: VERSION });
   try {
-    const r = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': 'MovieRoyale' }, signal: AbortSignal.timeout(10000) });
+    const r = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': 'MovieRoyal' }, signal: AbortSignal.timeout(10000) });
     if (!r.ok) throw new Error(r.status === 404 ? 'No releases found for ' + repo : 'GitHub ' + r.status);
     const j = await r.json(), asset = (j.assets || []).find(a => /\.exe$/i.test(a.name));
     res.json({ configured: true, version: VERSION, latest: j.tag_name, available: newer(j.tag_name, VERSION) && !!asset, url: asset?.browser_download_url, notes: (j.body || '').slice(0, 1500) });
@@ -616,8 +752,8 @@ function runInstaller(file, res) {
   setTimeout(() => globalThis.__desktop?.quit(), 600);
 }
 app.post('/api/update/install-file', express.raw({ type: '*/*', limit: '500mb' }), (req, res) => {
-  if (!req.body?.length || req.body.slice(0, 2).toString() !== 'MZ') return res.status(400).json({ error: "That isn't a Movie Royale installer (.exe)." });
-  const file = path.join(os.tmpdir(), 'MovieRoyale-Update.exe');
+  if (!req.body?.length || req.body.slice(0, 2).toString() !== 'MZ') return res.status(400).json({ error: "That isn't a Movie Royal installer (.exe)." });
+  const file = path.join(os.tmpdir(), 'MovieRoyal-Update.exe');
   fs.writeFileSync(file, req.body); runInstaller(file, res);
 });
 app.post('/api/update/install-latest', async (req, res) => {
@@ -625,7 +761,7 @@ app.post('/api/update/install-latest', async (req, res) => {
     const url = String(req.body?.url || '');
     if (!/^https:\/\/github\.com\//.test(url)) return res.status(400).json({ error: 'Bad update link' });
     const r = await fetch(url); if (!r.ok) throw new Error('Download failed (' + r.status + ')');
-    const file = path.join(os.tmpdir(), 'MovieRoyale-Update.exe');
+    const file = path.join(os.tmpdir(), 'MovieRoyal-Update.exe');
     fs.writeFileSync(file, Buffer.from(await r.arrayBuffer())); runInstaller(file, res);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -634,7 +770,7 @@ const RESTART_DISCORD = ['discordToken', 'discordClientId', 'discordGuildId'];
 const RESTART_TWITCH = ['twitchClientId', 'twitchClientSecret', 'twitchChannel'];
 app.post('/api/settings', (req, res) => {
   const body = req.body || {};
-  let rd = false, rt = false, rl = false; const rdName = db.settings.discordChannelName;
+  let rd = false, rt = false, rl = false; const rdName = db.settings.discordChannelName, mapWas = db.settings.map, colWas = db.settings.colorsOn;
   for (const [k, v] of Object.entries(body)) {
     if (!(k in db.settings)) continue;
     if (typeof v === 'string' && v.startsWith('••••••')) continue; // masked, unchanged
@@ -643,11 +779,15 @@ app.post('/api/settings', (req, res) => {
     if (RESTART_DISCORD.includes(k)) rd = true;
     if (RESTART_TWITCH.includes(k)) rt = true;
     if (k === 'letterboxdUser') rl = true;
+    if (k === 'seJwt' || k === 'slToken') startDonationFeed();
   }
   if ('weekStart' in body && db.week) db.week.key = weekKey(); // changing the start day never resets anyone mid-week
   if (['maxPerUser', 'banCurrentYear', 'luckOn', 'twitchMoviesCommand', 'streamerName'].some(k => k in body)) discord.refreshPinned?.();
   if ('discordChannelName' in body && body.discordChannelName !== undefined && rdName !== db.settings.discordChannelName) rd = true; // makes/finds the new channel
   if ('spotName' in body) for (const e of getList('movies')?.entries || []) if (e.kind === 'spot') e.label = `${db.settings.spotName || 'Kirb'}'s Pick`;
+  if ('map' in body && db.settings.map !== 'random' && !mapById(db.settings.map)) db.settings.map = 'random';
+  if (mapWas !== db.settings.map) { live.map = null; live.mapUsed = false; if (live.phase === 'idle') refreshPreview(true); }
+  if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows });
   broadcast(audioMsg(), 'overlay'); broadcast(camMsg(), 'overlay');
@@ -669,6 +809,7 @@ app.patch('/api/lists/:id', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (req.body.name != null) l.name = String(req.body.name).slice(0, 60);
   if (req.body.joinOpen != null) l.joinOpen = !!req.body.joinOpen;
+  if (req.body.bestOf != null && l.type !== 'movies') { l.bestOf = [1, 3, 5, 7, 9].includes(Number(req.body.bestOf)) ? Number(req.body.bestOf) : 1; if (live.series?.listId === l.id) live.series = null; if (l.giveaway) giveawaySettings().bestOf = l.bestOf; }
   if (req.body.screenTitle != null) { l.screenTitle = String(req.body.screenTitle).slice(0, 60); refreshPreview(); }
   save(); pushState(); res.json({ ok: true });
 });
@@ -722,6 +863,8 @@ app.patch('/api/lists/:id/entries/:eid', (req, res) => {
   if (req.body.label != null && l.type !== 'movies') e.label = String(req.body.label).slice(0, 80);
   if (req.body.status) setTimeout(() => refreshPreview(), 0);
   if (req.body.status) {
+    if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched' && e.backers?.[0]) e.luckSnap = resetLuckFor(e.backers[0].discordId); // watched: that person's luck starts over
+    if (l.type === 'movies' && req.body.status !== 'watched' && e.status === 'watched' && e.luckSnap) { giveLuckBack(e.luckSnap); delete e.luckSnap; }
     if (l.type === 'movies' && e.tmdbId) { if (req.body.status === 'watched') lb.markWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); else if (e.status === 'watched') lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); }
     e.status = req.body.status;
   }
@@ -862,8 +1005,298 @@ app.post('/api/chatbattle', (req, res) => {
   save(); pushState(); refreshPreview(true); res.json({ ok: true, id: l.id });
 });
 
+// ---------- 🎁 giveaways: a chat battle with rules (who can enter, extra odds for subs, past winners…) ----------
+const GA_DEFAULT = {
+  title: 'Giveaway', prize: '', command: '!enter',
+  everyone: true, followers: true, subs: true, vips: true, mods: true, minFollowDays: 0, minSubMonths: 0,
+  excludeBroadcaster: true, excludeBots: true, bots: 'nightbot, streamelements, streamlabs, moobot, fossabot, wizebot, soundalerts, sery_bot',
+  subMult1: 2, subMult2: 3, subMult3: 4, subMonthBonus: 0, followerMult: 1, vipMult: 1, modMult: 1,
+  maxEntrants: 0, pastWinners: 'never', autoCloseSeconds: 0, removeWinner: true, bestOf: 1,
+  announceOpen: true, announceWinner: true, confirmEntry: false
+};
+function giveawaySettings() { return (db.giveaway = { ...GA_DEFAULT, ...(db.giveaway || {}) }); }
+function giveawayList() {
+  let l = getList('giveaway');
+  if (!l) { l = { id: 'giveaway', name: 'Giveaway', type: 'chat', giveaway: true, entries: [], joinOpen: false }; db.lists.push(l); save(); }
+  return l;
+}
+giveawayList();
+let gaTimer = null;
+function gaWonBefore(login) {
+  const g = giveawaySettings(), w = (db.giveawayWinners || []).filter(x => x.login === login);
+  if (!w.length || g.pastWinners === 'never') return false;
+  const last = Math.max(...w.map(x => x.at));
+  if (g.pastWinners === 'always') return true;
+  if (g.pastWinners === 'week') return Date.now() - last < 7 * 864e5;
+  if (g.pastWinners === 'month') return Date.now() - last < 30 * 864e5;
+  return last >= (stream().startedAt || new Date().setHours(0, 0, 0, 0)); // this stream
+}
+async function giveawayChat(m) {
+  const l = getList('giveaway'); if (!l || !l.joinOpen) return;
+  const g = giveawaySettings(), cmd = String(g.command || '!enter').trim().toLowerCase();
+  if (!cmd || m.text.toLowerCase().split(/\s+/)[0] !== cmd) return;
+  const login = m.login.toLowerCase(), b = m.badges || {};
+  if (l.entries.some(e => e.status === 'active' && e.twitch === login)) return;
+  if (g.excludeBroadcaster && (b.broadcaster || login === (db.owner?.login || '').toLowerCase())) return;
+  if (g.excludeBots && String(g.bots).toLowerCase().split(/[\s,]+/).filter(Boolean).includes(login)) return;
+  if (g.maxEntrants > 0 && l.entries.filter(e => e.status === 'active').length >= g.maxEntrants) return;
+  if (gaWonBefore(login)) return;
+  let followed;
+  if (!g.everyone || g.minFollowDays > 0 || Number(g.followerMult) !== 1) { try { followed = await twitch.followedAt(m.userId); } catch { followed = undefined; } }
+  const follows = followed === undefined ? null : !!followed, followDays = followed ? (Date.now() - followed) / 864e5 : 0;
+  const isSub = !!b.sub && (b.months || 0) >= (g.minSubMonths || 0);
+  let ok = g.everyone || (g.subs && isSub) || (g.vips && b.vip) || (g.mods && (b.mod || b.broadcaster)) || (g.followers && follows !== false);
+  if (ok && g.minFollowDays > 0 && !isSub && !b.vip && !b.mod && follows !== null && (!follows || followDays < g.minFollowDays)) ok = false;
+  if (!ok) return;
+  let w = 1;
+  if (b.sub) w *= Number(b.tier >= 3 ? g.subMult3 : b.tier === 2 ? g.subMult2 : g.subMult1) || 1;
+  if (b.vip) w *= Number(g.vipMult) || 1;
+  if (b.mod) w *= Number(g.modMult) || 1;
+  if (follows) w *= Number(g.followerMult) || 1;
+  if (b.sub && g.subMonthBonus) w += (b.months || 0) * Number(g.subMonthBonus);
+  w = Math.max(.1, Math.round(w * 100) / 100);
+  if (l.entries.some(e => e.status === 'active' && e.twitch === login)) return; // (checked again after the follower lookup)
+  const e = addEntry(l, { label: m.name, twitch: login, weight: w }); e.joined = true;
+  e.badges = { sub: !!b.sub, tier: b.tier || 0, months: b.months || 0, vip: !!b.vip, mod: !!b.mod, follows };
+  save(); pushState(); fillTwitchAvatars(l);
+  broadcast({ type: 'joined', name: e.label }, 'overlay');
+  if (g.confirmEntry && twitch.status.canChat) twitch.say(`🎁 @${m.name} you're in${w !== 1 ? ` (x${w} odds)` : ''}!`).catch(() => {});
+}
+function giveawayOpen(open) {
+  const l = giveawayList(), g = giveawaySettings();
+  l.joinOpen = !!open; clearTimeout(gaTimer);
+  if (open) {
+    db.activeListId = l.id; l.screenTitle = `🎁 ${g.title}${g.prize ? ': ' + g.prize : ''}`; l.bestOf = Number(g.bestOf) || 1;
+    if (g.autoCloseSeconds > 0) gaTimer = setTimeout(() => { giveawayOpen(false); pushState(); if (twitch.status.canChat) twitch.say(`⏹ Giveaway entries are closed! ${l.entries.filter(e => e.status === 'active').length} people are in.`).catch(() => {}); }, g.autoCloseSeconds * 1000);
+    if (g.announceOpen && twitch.status.canChat) {
+      const who = g.everyone ? '' : ` (${[g.followers && 'followers', g.subs && 'subs', g.vips && 'VIPs', g.mods && 'mods'].filter(Boolean).join(', ')} only)`;
+      twitch.say(`🎁 GIVEAWAY${g.prize ? `: ${g.prize}` : ''}! Type ${g.command} to enter${who}.${g.subMult1 > 1 ? ` Subs get x${g.subMult1}+ odds!` : ''}${g.autoCloseSeconds > 0 ? ` Closes in ${Math.round(g.autoCloseSeconds)}s.` : ''}`).catch(() => {});
+    }
+  }
+  save();
+}
+app.get('/api/giveaway', (req, res) => res.json({ settings: giveawaySettings(), winners: (db.giveawayWinners || []).slice(-50).reverse(), canFollowers: !!twitch.status.canFollowers }));
+app.post('/api/giveaway', (req, res) => {
+  const b = req.body || {}, l = giveawayList();
+  if (b.settings) { const cur = giveawaySettings(); for (const k of Object.keys(GA_DEFAULT)) if (k in b.settings) cur[k] = typeof GA_DEFAULT[k] === 'number' ? Number(b.settings[k]) || 0 : typeof GA_DEFAULT[k] === 'boolean' ? !!b.settings[k] : String(b.settings[k]); db.giveaway = cur; l.bestOf = Number(cur.bestOf) || 1; if (l.joinOpen) l.screenTitle = `🎁 ${cur.title}${cur.prize ? ': ' + cur.prize : ''}`; }
+  if (b.open != null) giveawayOpen(b.open);
+  if (b.select) { db.activeListId = l.id; l.screenTitle = `🎁 ${giveawaySettings().title}${giveawaySettings().prize ? ': ' + giveawaySettings().prize : ''}`; l.bestOf = Number(giveawaySettings().bestOf) || 1; }
+  if (b.clear) for (const e of l.entries) if (e.status === 'active') e.status = 'removed';
+  if (b.clearWinners) db.giveawayWinners = [];
+  save(); pushState(); refreshPreview(true); res.json({ ok: true });
+});
+
+// ---------- 24/7 Discord bot (Cloudflare) ----------
+app.post('/api/cloud/enable', async (req, res) => {
+  try { const r = await cloud.enable(req.body?.token); pushState(); res.json({ ok: true, ...r }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/cloud/disable', async (req, res) => { await cloud.disable(); pushState(); res.json({ ok: true }); });
+app.post('/api/cloud/sync', async (req, res) => { const st = await cloud.sync(true); pushState(); res.json({ ok: !st.lastError, error: st.lastError, pulled: st.pulled }); });
+
+// ---------- maps: pick one, random, or let chat vote ----------
+function currentMap() {
+  if (!live.map) {
+    const want = db.settings.map || 'random';
+    if (mapById(want)) live.map = want;
+    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
+  }
+  return live.map;
+}
+function nextMap() { if (live.mapUsed) { db.lastMap = live.map; live.map = null; live.mapUsed = false; } }
+app.post('/api/map', (req, res) => {
+  const id = String(req.body?.id || 'random'); if (id !== 'random' && !mapById(id)) return res.status(400).json({ error: 'Unknown map' });
+  db.settings.map = id; save(); live.map = null; live.mapUsed = false; if (live.vote) endVote(true);
+  if (live.phase === 'idle') refreshPreview(true); pushState(); res.json({ ok: true, map: currentMap() });
+});
+app.post('/api/shuffle', (req, res) => { broadcast({ type: 'shuffle' }, 'overlay'); res.json({ ok: true }); });
+// chat vote: 4 random maps, type 1-4 in chat
+const voteMsg = quiet => ({ type: 'vote', vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt, quiet } });
+let voteBcast;
+function endVote(cancel) {
+  const v = live.vote; if (!v) return; clearTimeout(v.timer); live.vote = null;
+  if (cancel) { broadcast({ type: 'vote', vote: null }, 'overlay'); pushState(); return; }
+  const top = Math.max(...v.options.map(o => o.count)), best = v.options.filter(o => o.count === top), win = best[Math.floor(Math.random() * best.length)];
+  live.map = win.id; live.mapUsed = false;
+  broadcast({ type: 'voteEnd', id: win.id, name: win.name }, 'overlay');
+  broadcast({ type: 'toast', text: `🗳️ Chat picked ${win.icon} ${win.name} (${win.count} vote${win.count === 1 ? '' : 's'})` }, 'control');
+  if (twitch.status.canChat) twitch.say(`🗳️ Chat picked the map: ${win.icon} ${win.name}!`).catch(() => {});
+  if (live.phase === 'idle') refreshPreview(true); pushState();
+}
+app.post('/api/vote/start', (req, res) => {
+  if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'Start the vote before the battle.' });
+  if (live.vote) endVote(true);
+  const seconds = clampN(req.body?.seconds ?? db.settings.voteSeconds, 10, 180, 30);
+  const pool = MAP_LIST.slice().sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 }));
+  live.vote = { options: pool, voters: new Map(), endsAt: Date.now() + seconds * 1000 };
+  live.vote.timer = setTimeout(() => endVote(false), seconds * 1000);
+  broadcast(voteMsg(false), 'overlay'); pushState();
+  if (twitch.status.canChat) twitch.say(`🗳️ Vote for the map! Type the number: ${pool.map((o, i) => `${i + 1} = ${o.name}`).join(' · ')} (${seconds}s)`).catch(() => {});
+  res.json({ ok: true });
+});
+app.post('/api/vote/end', (req, res) => { endVote(!!req.body?.cancel); res.json({ ok: true }); });
+// ---------- chat calls the winner: "!call Heat" before the fight. Called it? +1% luck on your own movies ----------
+live.calls = new Map(); // twitch login -> { id, spot, label, name }
+let callsBcast;
+function chatCall(m) {
+  if (db.settings.callsOn === false || !m.login) return;
+  const cmd = String(db.settings.callCommand || '!call').trim().toLowerCase(), text = String(m.text).trim();
+  if (!cmd || !text.toLowerCase().startsWith(cmd + ' ')) return;
+  if (live.phase === 'running' || live.phase === 'ended') return; // calls close when the fight starts
+  const l = getList(db.activeListId); if (!l || l.type !== 'movies') return;
+  const q = norm(text.slice(cmd.length)); if (q.length < 2) return;
+  const pool = l.entries.filter(e => e.status === 'active');
+  const spot = pool.find(e => e.kind === 'spot');
+  if (spot && (norm(spot.label).startsWith(q) || q === norm(db.settings.spotName))) { live.calls.set(m.login.toLowerCase(), { spot: true, label: spot.label, name: m.name }); }
+  else {
+    const movies = pool.filter(e => e.kind !== 'spot'), one = arr => arr.length === 1 ? arr[0] : null;
+    const hit = movies.find(e => norm(e.label) === q) || one(movies.filter(e => norm(e.label).startsWith(q))) || one(movies.filter(e => norm(e.label).includes(q)));
+    if (!hit) return;
+    live.calls.set(m.login.toLowerCase(), { id: hit.id, label: hit.label, name: m.name });
+  }
+  clearTimeout(callsBcast); callsBcast = setTimeout(pushState, 400);
+}
+const callSummary = () => { const c = new Map(); for (const v of live.calls.values()) { const k = v.spot ? 'spot' : v.id; const x = c.get(k) || { label: v.label, n: 0 }; x.n++; c.set(k, x); } return [...c.values()].sort((a, b) => b.n - a.n); };
+function resolveCalls(f, list) {
+  if (!live.calls.size || list?.type !== 'movies') { live.calls.clear(); return null; }
+  const right = [...live.calls.entries()].filter(([, v]) => v.spot ? f.spot : v.id === f.id);
+  const total = live.calls.size; live.calls.clear();
+  if (!right.length) return { total, right: [] };
+  const amt = Math.max(0, Number(db.settings.callLuck ?? 1));
+  const byLogin = new Map(Object.entries(db.links || {}).map(([pid, login]) => [String(login).toLowerCase(), pid]));
+  const out = [];
+  for (const [login, v] of right) {
+    const pid = byLogin.get(login); let boosted = 0;
+    if (pid && amt) for (const e of list.entries) if (e.kind !== 'spot' && ['active', 'benched', 'paused', 'away'].includes(e.status) && e.backers?.[0]?.discordId === pid && e.id !== f.id) { e.luckPct = (e.luckPct || 0) + amt; boosted++; }
+    out.push({ login, name: v.name, boosted });
+  }
+  if (twitch.status.canChat) {
+    const names = out.slice(0, 12).map(o => '@' + o.login).join(' ') + (out.length > 12 ? ` +${out.length - 12} more` : '');
+    const lucky = out.some(o => o.boosted) ? ` +${amt}% luck on your movies 🍀` : '';
+    setTimeout(() => twitch.say(`🔮 ${out.length} of ${total} called it! ${names}${lucky}`).catch(() => {}), (db.settings.replayOn !== false ? 14 : 4) * 1000);
+  }
+  return { total, right: out };
+}
+function chatVote(m) {
+  const v = live.vote; if (!v) return;
+  const mm = String(m.text).trim().match(/^(?:!(?:vote|map)\s*)?([1-4])$/i); if (!mm) return;
+  const i = Number(mm[1]) - 1; if (!v.options[i]) return;
+  const prev = v.voters.get(m.login); if (prev === i) return;
+  if (prev != null) v.options[prev].count--;
+  v.options[i].count++; v.voters.set(m.login, i);
+  clearTimeout(voteBcast); voteBcast = setTimeout(() => { if (live.vote) { broadcast(voteMsg(true), 'overlay'); pushState(); } }, 250);
+}
+// ball colours: "!color red" / "!color #ff66aa" (silent, no reply in chat) or the channel point reward with text
+const NAMED = { red: '#ff3b3b', orange: '#ff8a1f', yellow: '#ffd93b', gold: '#ffc23b', lime: '#9dff3b', green: '#2fd65a', teal: '#1fd1c1', cyan: '#3bf2ff', blue: '#3b7bff', navy: '#23338f', purple: '#9b4dff', violet: '#b06bff', magenta: '#ff3bd8', pink: '#ff7ac8', hotpink: '#ff3b8d', brown: '#9a5a2e', white: '#f4f4f8', black: '#2a2a33', gray: '#8a8f9c', grey: '#8a8f9c', silver: '#c9ced8', maroon: '#8f1d2c', mint: '#7dffc4', peach: '#ffb38a', lavender: '#c8b6ff' };
+const colorCd = new Map();
+function setColor(login, raw) {
+  if (db.settings.colorsOn === false || !login) return false;
+  const v = String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (v === 'reset' || v === 'default') { if (db.colors) delete db.colors[login.toLowerCase()]; save(); broadcast({ type: 'recolor', login: login.toLowerCase(), color: null }, 'overlay'); if (live.phase === 'idle') refreshPreview(); return true; }
+  let hex = NAMED[v] || (/^#?[0-9a-f]{6}$/.test(v) ? '#' + v.replace('#', '') : /^#?[0-9a-f]{3}$/.test(v) ? '#' + v.replace('#', '').split('').map(c => c + c).join('') : null);
+  if (v === 'rainbow' || v === 'random') hex = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+  if (!hex) return false;
+  db.colors ||= {}; db.colors[login.toLowerCase()] = hex; save();
+  broadcast({ type: 'recolor', login: login.toLowerCase(), color: hex }, 'overlay'); // every piece of theirs changes color right away, even mid-fight
+  if (live.phase === 'idle') refreshPreview();
+  return true;
+}
+function chatColor(m) {
+  if (db.settings.colorsOn === false || db.settings.colorMode === 'points') return; // points mode: only the one reward changes colours
+  const cmd = String(db.settings.colorCommand ?? '!color').trim().toLowerCase(), parts = String(m.text).trim().split(/\s+/);
+  if (!cmd || !(parts[0].toLowerCase() === cmd || (cmd === '!color' && parts[0].toLowerCase() === '!colour')) || !parts[1]) return;
+  if (Date.now() - (colorCd.get(m.login) || 0) < 10000) return;
+  colorCd.set(m.login, Date.now());
+  setColor(m.login, parts.slice(1).join(''));
+}
+// quick add (Battle tab): a person + their movie in one go, e.g. to copy your old wheel exactly
+app.post('/api/quickadd', async (req, res) => {
+  try {
+    const who = String(req.body?.person || '').trim(), id = String(req.body?.tmdbId || '');
+    if (!who || !id) return res.status(400).json({ error: 'Type a name and pick a movie.' });
+    const p = discordPeople().find(x => norm(x.name) === norm(who) || (x.twitch && norm(x.twitch) === norm(who)));
+    const pid = p ? p.discordId : addManualPerson(who, /^[a-z0-9_]{3,25}$/i.test(who) ? who : '');
+    const u = personUser(pid); if (!u) return res.status(400).json({ error: 'Could not add that person.' });
+    const r = await suggest(id, u, { force: true }); save(); pushState(); refreshPreview();
+    res.json({ ...r, person: u.name });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ---------- who picked it: tag a movie to someone (updates the app, Discord and the 24/7 bot) ----------
+app.get('/api/people/find', async (req, res) => {
+  const q = String(req.query.q || '').trim().replace(/^@/, ''), nq = norm(q);
+  const known = discordPeople().filter(p => !q || norm(p.name).includes(nq) || (p.twitch && p.twitch.includes(q.toLowerCase()))).slice(0, 8)
+    .map(p => ({ discordId: p.discordId, name: p.name, twitch: p.twitch || '', manual: p.manual, known: true }));
+  const members = q.length >= 2 ? (await discord.searchMembers(q).catch(() => [])).filter(m => !known.some(k => k.discordId === m.discordId)) : [];
+  res.json([...known, ...members.map(m => ({ ...m, discord: true }))]);
+});
+app.post('/api/movies/:id/owner', async (req, res) => {
+  const e = getList('movies')?.entries.find(x => x.id === req.params.id);
+  if (!e || e.kind === 'spot') return res.status(404).json({ error: 'Movie not found.' });
+  try {
+    let u = null;
+    const b = req.body || {};
+    if (b.discordId) u = personUser(b.discordId) || { discordId: String(b.discordId), name: String(b.name || 'someone').slice(0, 40), avatar: b.avatar || null };
+    else if (String(b.person || '').trim()) {
+      const who = String(b.person).trim().replace(/^@/, '');
+      const p = discordPeople().find(x => norm(x.name) === norm(who) || (x.twitch && norm(x.twitch) === norm(who)));
+      u = personUser(p ? p.discordId : addManualPerson(who, /^[a-z0-9_]{3,25}$/i.test(who) ? who : ''));
+    }
+    if (!u && !b.nobody) return res.status(400).json({ error: 'Pick someone.' });
+    const prev = e.backers?.[0]?.name;
+    if (!setOwner(e, u)) return res.json({ ok: true, same: true });
+    pushState(); refreshPreview();
+    const label = `${e.label}${e.sub ? ` (${e.sub})` : ''}`;
+    if (u && !String(u.discordId).startsWith('manual-') && db.settings.announceOwner !== false) discord.notify(`🏷️ **${label}** is now tagged to <@${u.discordId}>${prev ? ` (was ${prev})` : ''} — it counts as one of their picks.`).catch(() => {});
+    if (db.settings.cloud?.enabled) cloud.sync(true).catch?.(() => {});
+    res.json({ ok: true, name: u?.name || null });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+// ---------- open / close movie picks ----------
+app.post('/api/picks-toggle', (req, res) => {
+  const b = req.body || {};
+  const was = picksClosed();
+  if ('open' in b) db.picksClosed = !b.open;
+  if ('whenLive' in b) db.settings.closePicksWhenLive = !!b.whenLive;
+  save(); pushState(); discord.refreshPinned?.();
+  const now = picksClosed();
+  if (was !== now && db.settings.announcePicks !== false) discord.notify(now ? '🔒 **Movie picks are closed** for now. Your movies are still in, and you can still check `/mymovies` and `/list`.' : '🍿 **Movie picks are open!** Use `/suggest` to add yours.').catch(() => {});
+  if (db.settings.cloud?.enabled) cloud.sync(true)?.catch?.(() => {});
+  res.json({ ok: true, closed: now });
+});
+
 // ---------- swaps ----------
 app.post('/api/swaps/lock', (req, res) => { db.swapLock = !!req.body?.locked; save(); pushState(); res.json({ ok: true }); });
+
+// ---------- luck saves: save everyone's luck, reset it for some battles, bring it back later ----------
+// movies keep LUCK; custom battles keep their ODDS (e.g. everyone at 1 for a week, then bring everyone's odds back)
+const isLuckList = l => l?.type === 'movies';
+const luckSnap = l => isLuckList(l) ? Object.fromEntries(l.entries.filter(e => e.luckPct > 0).map(e => [e.id, e.luckPct])) : Object.fromEntries(l.entries.filter(e => e.status !== 'removed').map(e => [e.id, e.weight || 1]));
+function saveLuck(name, listId = 'movies') {
+  const l = getList(listId) || getList('movies'), luck = luckSnap(l);
+  db.luckSaves ||= []; db.luckSaves.unshift({ id: uid(), at: Date.now(), name: String(name || '').slice(0, 60) || 'Saved luck', luck, listId: l.id, kind: isLuckList(l) ? 'luck' : 'odds' });
+  db.luckSaves = db.luckSaves.slice(0, 60);
+  return db.luckSaves[0];
+}
+const when = () => new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+app.post('/api/luck/save', (req, res) => { const s = saveLuck(req.body?.name || `Saved ${when()}`, req.body?.listId); save(); pushState(); res.json({ ok: true, id: s.id }); });
+app.post('/api/luck/reset', (req, res) => {
+  const l = getList(req.body?.listId || 'movies'); if (!l) return res.sendStatus(404);
+  saveLuck(`Before reset · ${when()}`, l.id); autoBackup(isLuckList(l) ? 'luck-reset' : 'odds-reset'); // always kept, just in case
+  const to = isLuckList(l) ? 0 : Math.max(.1, Number(req.body?.to) || 1);
+  for (const e of l.entries) { if (isLuckList(l)) e.luckPct = 0; else e.weight = to; }
+  save(); pushState(); refreshPreview(); res.json({ ok: true });
+});
+app.post('/api/luck/restore', (req, res) => {
+  const s = (db.luckSaves || []).find(x => x.id === req.body?.id); if (!s) return res.status(404).json({ error: 'That save is gone.' });
+  const l = getList(s.listId || 'movies'); if (!l) return res.status(404).json({ error: 'That battle is gone.' });
+  saveLuck(`Before bringing back “${s.name}” · ${when()}`, l.id);
+  autoBackup(isLuckList(l) ? 'luck-restore' : 'odds-restore');
+  for (const e of l.entries) { if (isLuckList(l)) e.luckPct = s.luck[e.id] || 0; else if (e.id in s.luck) e.weight = s.luck[e.id]; }
+  save(); pushState(); refreshPreview(); res.json({ ok: true, name: s.name });
+});
+app.delete('/api/luck/saves/:id', (req, res) => { db.luckSaves = (db.luckSaves || []).filter(x => x.id !== req.params.id); save(); pushState(); res.json({ ok: true }); });
 
 // ---------- luck (manual, e.g. for Kirb spots) ----------
 app.post('/api/luck', (req, res) => {
@@ -899,27 +1332,36 @@ app.delete('/api/twitch/rewards/:id', async (req, res) => {
 });
 
 // ---------- custom sounds ----------
-const SOUND_LIST = ['music', 'lobby', 'go', 'tick', 'final5', 'land', 'bonk', 'dash', 'crumble', 'fall', 'out', 'lucky', 'alert', 'comet', 'smack', 'boom', 'collapse', 'earthquake', 'meteors', 'wind', 'ice', 'tornado', 'shockwave', 'thunder', 'lightning', 'boulder', 'swap', 'lowgrav', 'suddendeath', 'fanfare', 'claimStart', 'pop', 'ding', 'celebrate', 'buzzer', 'queued', 'joined'];
+const SOUND_LIST = ['music', 'lobby', 'go', 'tick', 'final5', 'land', 'bonk', 'dash', 'crumble', 'fall', 'out', 'lucky', 'alert', 'comet', 'smack', 'boom', 'collapse', 'earthquake', 'meteors', 'wind', 'ice', 'tornado', 'shockwave', 'thunder', 'lightning', 'boulder', 'swap', 'lowgrav', 'suddendeath', 'fanfare', 'claimStart', 'pop', 'ding', 'celebrate', 'buzzer', 'queued', 'joined', 'wheelSpin', 'wheelTick', 'wheelWin', 'wheelMove', 'wheelTimer', 'wheelGrow'];
+// each map can have its own sounds too (data/sounds/maps/<map>/), they win over the all-maps ones on that map
+const soundScope = map => !!map && (!!mapById(map) || /^wheel(-[a-z0-9]+)?$/i.test(map)); // 🎡 the wheel has its own sounds too
+const soundDir = map => soundScope(map) ? path.join(DATA, 'sounds', 'maps', map) : path.join(DATA, 'sounds');
+const listDir = d => { try { return fs.readdirSync(d).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f)); } catch { return []; } };
 app.get('/api/sounds/list', (req, res) => {
-  const dir = path.join(DATA, 'sounds'); let files = []; try { files = fs.readdirSync(dir); } catch {}
-  res.json({ sounds: SOUND_LIST.map(n => ({ name: n, custom: files.find(f => f.replace(/\.\w+$/, '').toLowerCase() === n.toLowerCase()) || null })) });
+  const files = listDir(path.join(DATA, 'sounds')), map = soundScope(req.query.map) ? req.query.map : null, mf = map ? listDir(soundDir(map)) : [];
+  const find = (arr, n) => arr.find(f => f.replace(/\.\w+$/, '').toLowerCase() === n.toLowerCase()) || null;
+  const wheelScopes = () => { try { return fs.readdirSync(path.join(DATA, 'sounds', 'maps')).filter(d => /^wheel(-[a-z0-9]+)?$/i.test(d)); } catch { return []; } };
+  const perMap = Object.fromEntries([...new Set([...MAP_LIST.map(m => m.id), 'wheel', ...wheelScopes()])].map(id => [id, listDir(soundDir(id)).length]));
+  res.json({ map, perMap, sounds: SOUND_LIST.map(n => ({ name: n, custom: find(files, n), mapCustom: map ? find(mf, n) : null })) });
 });
 app.post('/api/sounds/upload', express.raw({ type: '*/*', limit: '30mb' }), (req, res) => {
   const name = String(req.query.name || ''), ext = String(req.query.ext || 'mp3').toLowerCase();
   if (!SOUND_LIST.includes(name) || !['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) return res.status(400).json({ error: 'Use an mp3, wav, ogg or m4a file.' });
-  const dir = path.join(DATA, 'sounds');
+  const dir = soundDir(req.query.map); fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) if (f.replace(/\.\w+$/, '').toLowerCase() === name.toLowerCase()) fs.rmSync(path.join(dir, f));
   fs.writeFileSync(path.join(dir, `${name}.${ext}`), req.body);
   broadcast({ type: 'reloadSounds' }, 'overlay'); res.json({ ok: true });
 });
 app.delete('/api/sounds/:name', (req, res) => {
-  const dir = path.join(DATA, 'sounds');
+  const dir = soundDir(req.query.map); fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(dir)) if (f.replace(/\.\w+$/, '').toLowerCase() === req.params.name.toLowerCase()) fs.rmSync(path.join(dir, f));
   broadcast({ type: 'reloadSounds' }, 'overlay'); res.json({ ok: true });
 });
 
 // ---------- Test tab: try every feature without waiting for real viewers ----------
-app.post('/api/test/chat', (req, res) => { const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!') }); res.json({ ok: true }); });
+app.post('/api/test/chat', (req, res) => { const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null }); res.json({ ok: true }); });
+app.post('/api/test/wheel-redeem-raw', (req, res) => { const b = req.body || {}; const ok = wheel.wheelRedeem({ title: String(b.title || ''), input: b.input, login: String(b.name || 'test').toLowerCase(), name: String(b.name || 'test'), cost: 100 }); res.json({ ok }); });
+app.post('/api/test/wheel-redeem', (req, res) => { const k = String(req.body?.kind || 'respin'), name = String(req.body?.name || 'test_viewer'); const ok = wheel.wheelRedeem({ title: wheel.W().rewards[k] || '', login: name.toLowerCase(), name }); res.json({ ok }); });
 app.post('/api/test/redeem', (req, res) => { triggerEvent(req.body?.event || 'random', { name: String(req.body?.name || 'test_viewer'), avatar: null }, req.body?.bits ? 'bits' : 'points'); res.json({ ok: true }); });
 app.post('/api/test/cheer', async (req, res) => { await twitchHandlers.cheer({ bits: Number(req.body?.bits) || 100, login: null, name: String(req.body?.name || 'test_viewer') }); res.json({ ok: true }); });
 app.post('/api/test/check-movie', async (req, res) => {
@@ -930,16 +1372,20 @@ app.post('/api/test/check-movie', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/test/discord', async (req, res) => { try { res.json({ msg: (await discord.postTest()).join(' · ') }); } catch (e) { res.status(400).json({ error: e.message }); } });
-app.post('/api/test/twitch-say', async (req, res) => { try { await twitch.say(String(req.body?.text || '🧪 Movie Royale test message')); res.json({ msg: 'Sent! Check your Twitch chat.' }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/test/twitch-say', async (req, res) => { try { await twitch.say(String(req.body?.text || '🧪 Movie Royal test message')); res.json({ msg: 'Sent! Check your Twitch chat.' }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/omdb', async (req, res) => res.json(await testOmdb()));
 app.post('/api/test/battle', async (req, res) => { // a practice round with made-up entries; your real lists and history aren't touched
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
   const names = ['Popcorn Pete', 'Reel Goblin', 'VHS Kid', 'Night Owl', 'Mia', 'Big Screen Bob', 'Lena', 'Ozzy', 'Frames', 'Snack Attack'];
   const movies = [['The Thing', '1982'], ['Heat', '1995'], ['Coco', '2017'], ['Jaws', '1975'], ['Alien', '1979'], ['Arrival', '2016'], ['Hot Fuzz', '2007'], ['Oldboy', '2003'], ['Paddington 2', '2017'], ['Knives Out', '2019']];
-  const fighters = movies.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, owner: names[i], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
-  live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true };
+  const count = clampN(req.body?.count, 2, Math.max(2, Number(db.settings.maxFighters) || 1000), 10);
+  const many = Array.from({ length: count }, (_, i) => i < movies.length ? movies[i] : [`${movies[i % movies.length][0]} ${Math.floor(i / movies.length) + 1}`, movies[i % movies.length][1]]);
+  const lucks = [0, 0, 5, 10, 20, 35, 50, 65, 80, 100]; // practice rounds show off the luck glow and flames
+  const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
+  const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
+  live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
-  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, listName: '🧪 Practice round', kind: 'films', lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: true, queued: [] }, 'overlay');
+  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: '🧪 Practice round', kind: 'films', lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: true, queued: [] }, 'overlay');
   pushState(); res.json({ ok: true });
 });
 
@@ -954,7 +1400,14 @@ app.post('/api/movies/add', async (req, res) => {
 });
 
 // game
+function nextSeriesRound() { // best-of: the next round starts by itself
+  const sr = live.series; if (!sr || sr.done || live.phase !== 'ended' || db.activeListId !== sr.listId) return;
+  if (live.claim) clearTimeout(live.claim.timer); live.claim = null; nextMap(); live.phase = 'idle'; live.game = null;
+  broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true);
+  setTimeout(() => startRound().then(err => { if (err) broadcast({ type: 'toast', text: '⚠️ ' + err }, 'control'); }), 2500);
+}
 async function startRound() { // returns an error message, or null when the round started
+  if (wheel.W().show) wheel.setShow(false); // a battle is starting: the battle goes on stream
   rollWeek();
   const list = getList(db.activeListId);
   const active = list?.entries.filter(e => e.status === 'active') || [];
@@ -966,18 +1419,25 @@ async function startRound() { // returns an error message, or null when the roun
     const on = fighters.map(f => `${f.label}${f.owner ? ' (' + f.owner + ')' : ''}`).join(', ') || 'nothing yet';
     return `Only ${fighters.length} movie on the cliff (${on}) — need at least 2. Movies join when their person types in Twitch chat. If someone typed but didn't get in, link them under "Recent chatters" in the Pool tab, or switch them on in the People tab.`;
   }
-  previewIds = null;
-  live.game = { id: uid(), listId: list.id, fighters, total };
+  previewIds = null; if (live.vote) endVote();
+  live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), startedAt: Date.now() }; live.mapUsed = true;
   live.phase = 'lobby'; live.claim = null;
   const queued = db.pendingEffects; db.pendingEffects = []; save();
   broadcast({
-    type: 'start', gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, movieNo: list.type === 'movies' ? (stream().movies || 0) + 1 : null,
-    lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: db.settings.fairOdds, chaos: chaosState(), queued
+    type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, movieNo: list.type === 'movies' ? (stream().movies || 0) + 1 : null,
+    lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: db.settings.fairOdds, chaos: chaosState(), queued,
+    series: list.type !== 'movies' && (Number(list.bestOf) || 1) > 1 ? (live.series && !live.series.done && live.series.listId === list.id ? { bestOf: live.series.bestOf, need: live.series.need, round: live.series.round + 1, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: live.series.names[id], n })) } : { bestOf: Number(list.bestOf), need: Math.ceil(Number(list.bestOf) / 2), round: 1, tally: [] }) : null
   }, 'overlay');
+  if (list.type !== 'movies' && live.series && (live.series.done || live.series.listId !== list.id)) live.series = null;
   pushState();
   return null;
 }
 function stopGather(silent) { if (!live.gather) return; clearTimeout(live.gather.timer); live.gather = null; if (!silent) broadcast({ type: 'gather', endsAt: null }, 'overlay'); }
+app.post('/api/stop', (req, res) => { // stop a battle mid-fight: no winner, nothing saved
+  if (live.phase !== 'lobby' && live.phase !== 'running') return res.json({ ok: true });
+  live.phase = 'idle'; live.game = null; live.claim = null; live.series = null; live.mapUsed = false;
+  broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true });
+});
 app.post('/api/start', async (req, res) => {
   stopGather(true);
   const err = await startRound();
@@ -1002,14 +1462,16 @@ app.post('/api/gather/start', (req, res) => {
   pushState(); res.json({ ok: true });
 });
 app.post('/api/gather/cancel', (req, res) => { stopGather(); pushState(); res.json({ ok: true }); });
-app.post('/api/reset', (req, res) => { live.phase = 'idle'; live.game = null; if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
+app.post('/api/reset', (req, res) => { nextMap(); live.phase = 'idle'; live.game = null; if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
 // sounds: any file in public/assets/sounds named after a sound (e.g. fanfare.mp3, music.mp3) replaces the built-in one
 const SOUND_DIRS = [path.join(DATA, 'sounds'), path.join(ROOT, 'public', 'assets', 'sounds')];
 app.get('/api/sounds', (req, res) => {
   const files = new Set();
   for (const d of SOUND_DIRS) { try { fs.readdirSync(d).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f)).forEach(f => files.add(f)); } catch {} }
+  if (req.query.v === '2') return res.json({ all: [...files], maps: Object.fromEntries([...new Set([...MAP_LIST.map(m => m.id), 'wheel', ...(() => { try { return fs.readdirSync(path.join(DATA, 'sounds', 'maps')).filter(d => /^wheel-/i.test(d)); } catch { return []; } })()])].map(id => [id, listDir(soundDir(id))]).filter(([, f]) => f.length)) });
   res.json([...files]);
 });
+app.get('/assets/sounds/maps/:map/:f', (req, res) => { const p = path.join(soundDir(req.params.map), path.basename(req.params.f)); fs.existsSync(p) && soundScope(req.params.map) ? res.sendFile(p) : res.sendStatus(404); });
 app.get('/assets/background.png', (req, res, next) => { // your own sky: put background.png in the data folder
   const p = path.join(DATA, 'background.png'); fs.existsSync(p) ? res.sendFile(p) : next();
 });
@@ -1018,13 +1480,13 @@ app.get('/assets/sounds/:f', (req, res, next) => { // your own sounds (data fold
   fs.existsSync(p) ? res.sendFile(p) : next();
 });
 app.post('/api/camera', (req, res) => { const a = String(req.body?.action || ''); if (['in', 'out', 'reset', 'auto', 'left', 'right', 'up', 'down', 'skip', 'next', 'prev', 'overview'].includes(a)) broadcast({ type: 'camera', action: a }, 'overlay'); res.json({ ok: true }); });
-app.post('/api/sound-test', (req, res) => { broadcast({ type: 'soundTest', name: req.body?.name || 'fanfare' }, 'overlay'); res.json({ ok: true }); });
+app.post('/api/sound-test', (req, res) => { broadcast({ type: 'soundTest', name: req.body?.name || 'fanfare', map: req.body?.map || null }, 'overlay'); res.json({ ok: true }); });
 app.post('/api/effect', (req, res) => { triggerEvent(req.body.event, { name: streamerName(), avatar: proxied(db.owner?.avatar) }, 'panel'); res.json({ ok: true }); });
 
 app.post('/api/winner/undo', (req, res) => { // movie winner didn't get watched after all: put it back
   const w = live.lastWinner; if (!w) return res.sendStatus(404);
   const e = getList(w.listId)?.entries.find(x => x.id === w.id);
-  if (e && e.status === 'watched') { e.status = 'active'; lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); }
+  if (e && e.status === 'watched') { e.status = 'active'; lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); if (e.luckSnap) { giveLuckBack(e.luckSnap); delete e.luckSnap; } }
   const h = findHistory(w.historyId); if (h) { h.outcome = 'put back'; historyVersion++; }
   live.lastWinner.undone = true; save(); pushState(); refreshPreview(); res.json({ ok: true });
 });
@@ -1053,7 +1515,7 @@ app.post('/api/claim/start', (req, res) => {
 });
 app.post('/api/claim/confirm', (req, res) => { finishClaim(true); res.json({ ok: true }); });
 app.post('/api/claim/close', (req, res) => { // close the pop-up and put the next round's pieces back on the cliff
-  if (live.claim) clearTimeout(live.claim.timer); live.claim = null;
+  if (live.claim) clearTimeout(live.claim.timer); live.claim = null; nextMap();
   live.phase = 'idle'; live.game = null;
   broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true });
 });
@@ -1069,10 +1531,29 @@ app.post('/api/letterboxd/upload', express.text({ type: '*/*', limit: '20mb' }),
 
 // twitch
 app.get('/twitch/login', (req, res) => res.redirect('/auth/twitch'));
+// ball colours: free (chat command) or channel points (ONE reward, viewer types any colour)
+async function colorRewardOnTwitch() { const t = (db.settings.colorReward || '').toLowerCase(); return t ? (await twitch.listRewards()).find(r => r.title.toLowerCase() === t) : null; }
+app.post('/api/colors/mode', async (req, res) => {
+  const mode = ['free', 'points', 'off'].includes(req.body?.mode) ? req.body.mode : 'free';
+  try {
+    if (mode === 'points') {
+      if (!twitch.status.userId) return res.status(400).json({ error: 'Sign in with Twitch first.' });
+      db.settings.colorReward ||= 'Royal: Ball color';
+      const have = await colorRewardOnTwitch();
+      if (have) await twitch.updateReward(have.id, { paused: false, enabled: true }); else await twitch.createColorReward(db.settings.colorReward);
+    } else if (twitch.status.userId) { // free or off: pause the reward (if you made one) so nobody spends points on it
+      const have = await colorRewardOnTwitch().catch(() => null); if (have) await twitch.updateReward(have.id, { paused: true }).catch(() => {});
+    }
+    db.settings.colorMode = mode === 'off' ? db.settings.colorMode : mode; db.settings.colorsOn = mode !== 'off';
+    save(); pushState(); if (live.phase === 'idle') refreshPreview();
+    res.json({ ok: true, mode, title: db.settings.colorReward });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/colors/clear', (req, res) => { db.colors = {}; save(); if (live.phase === 'idle') refreshPreview(); pushState(); res.json({ ok: true }); });
 app.post('/api/twitch/rewards', async (req, res) => { try { const made = await twitch.createRewards(); db.settings.rewardsCreated = true; save(); pushState(); res.json({ made }); } catch (e) { res.status(400).json({ error: e.message }); } });
 
-// test helper: pretend someone typed in Twitch chat (only when started with ROYALE_DEBUG=1)
-if (process.env.ROYALE_DEBUG) app.post('/api/debug/chat', (req, res) => { twitchHandlers.chat({ login: String(req.body.login || '').toLowerCase(), name: req.body.name || req.body.login, text: req.body.text || 'hi' }); res.json({ ok: true }); });
+// test helper: pretend someone typed in Twitch chat (only when started with ROYAL_DEBUG=1)
+if (process.env.ROYAL_DEBUG) app.post('/api/debug/chat', (req, res) => { twitchHandlers.chat({ login: String(req.body.login || '').toLowerCase(), name: req.body.name || req.body.login, text: req.body.text || 'hi' }); res.json({ ok: true }); });
 
 // image proxy + disk cache (keeps pictures working smoothly in OBS)
 app.get('/img', async (req, res) => {
@@ -1091,17 +1572,18 @@ app.get('/img', async (req, res) => {
 
 // ---------- boot ----------
 server.on('error', e => {
-  const msg = e.code === 'EADDRINUSE' ? `Movie Royale is already running (port ${PORT} is busy). Close the other copy and try again.` : e.message;
+  const msg = e.code === 'EADDRINUSE' ? `Movie Royal is already running (port ${PORT} is busy). Close the other copy and try again.` : e.message;
   console.error('\n  ' + msg + '\n');
   if (globalThis.__desktop) globalThis.__desktop.fatal(msg); else process.exit(1);
 });
 server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows });
   globalThis.__desktop?.ready(`http://localhost:${PORT}/`);
-  console.log(`\n  🍿 Movie Royale is running!\n  Open http://localhost:${PORT} in your browser (keep this window open while you stream)\n`);
+  console.log(`\n  🍿 Movie Royal is running!\n  Open http://localhost:${PORT} in your browser (keep this window open while you stream)\n`);
   const n = lb.loadCsvs();
   if (n) console.log(`  Letterboxd: loaded ${n} rows from your export`);
   discord.start(pushState);
+  cloud.start(pushState);
   twitch.start(twitchHandlers);
   if (rollWeek()) console.log('  New week: benched movies are back, spots refilled');
   restoreAway(true);

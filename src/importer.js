@@ -1,4 +1,4 @@
-// Turns lists from other tools into Movie Royale lines ("Name x3"):
+// Turns lists from other tools into Movie Royal lines ("Name x3"):
 // Wheel of Names (.wheel files, share links, copied entries), Marbles on Stream / any CSV, JSON or plain text.
 import { db } from './store.js';
 
@@ -81,7 +81,7 @@ export async function importLink(url) {
   let lastErr = null;
   for (const [href, headers] of tries) {
     try {
-      const r = await fetch(href, { headers: { 'User-Agent': 'MovieRoyale', Accept: 'application/json,text/plain,*/*', ...headers }, signal: AbortSignal.timeout(10000) });
+      const r = await fetch(href, { headers: { 'User-Agent': 'MovieRoyal', Accept: 'application/json,text/plain,*/*', ...headers }, signal: AbortSignal.timeout(10000) });
       if (!r.ok) { lastErr = new Error(`${r.status}`); continue; }
       const text = await r.text();
       const items = parseImport(text, u.pathname) || (/<html/i.test(text) ? [] : text.split(/\r?\n/).map(l => ({ label: clean(l), weight: 1 })).filter(x => x.label));

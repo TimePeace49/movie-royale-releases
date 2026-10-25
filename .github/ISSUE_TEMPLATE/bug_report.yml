@@ -1,0 +1,28 @@
+name: 🐛 Bug report
+description: Something isn't working right
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Movie Royal version
+      description: Settings → Account & updates shows it (e.g. 1.1.7)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      options: [Battle / game screen, Discord bot, Twitch (chat, points, bits), Letterboxd, Lists / importing, Installer / updates, Something else]
+  - type: textarea
+    id: shots
+    attributes:
+      label: Screenshots
+      description: Drag screenshots here if you have them. Please don't paste tokens or keys!

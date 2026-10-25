@@ -1,6 +1,257 @@
 # Changelog
 
-What changed in each version of Movie Royale. Newest first.
+What changed in each version of Movie Royal. Newest first.
+
+## 1.11.3
+- **The tab you're on picks what's on stream:**
+  - Battle tab = the battle, Wheel tab = the wheel. Other tabs leave it as it is.
+  - Starting a battle from anywhere also switches the stream back to the battle.
+  - In the Wheel tab you can still hide the wheel with 🙈 Hide the wheel on stream.
+
+## 1.11.2
+- **Refunds are all yours now:** the app never refunds, cancels or completes channel point redemptions, and never changes your rewards' queue setting. Redemptions wait in your Twitch reward queue for you. The 💸 refund spot type is gone (old ones become normal spots).
+
+## 1.11.1
+- **Your 3 spins per stream are gone from the wheel**: they're a battle thing.
+- **Grow / shrink with channel points:** viewers no longer type a spot. Each redemption pops up a box and you pick the spot (type it in, or press + / − on the spot). Older grow/shrink rewards on Twitch stop asking for text by themselves.
+- **New symbols:** respins use 🕳️, and the VOID spot is now a forged golden gauntlet (an original design: plate armor, rivets, engraved panels).
+
+## 1.11.0
+- **🕳️ Void spot** (optional for each wheel, off by default):
+  - If the wheel lands on VOID, it respins by itself, and whatever it lands on next is gone for the rest of the stream.
+  - Voided spots come back on their own next stream. You can bring one back by hand, or someone can save it with a sub, gift sub, bits or a donation (♻️ Undo void in the pop-up).
+- **Pop-ups for subs, gift subs, bits and donations:**
+  - Type the spot's name to 📈 grow it or 📉 shrink it, give 🎟️ respins, or ♻️ undo a void.
+  - Choices you've turned off for that wheel don't show. Undo void only shows once something has been voided.
+  - Pop-ups are smaller, show 2 at a time, and can be tucked away.
+- **📉 Shrink a spot:** from pop-ups or a "Wheel: Shrink a spot" channel point reward. Off by default. A spot can never shrink away to nothing. The + / − buttons on every spot stay.
+- **Channel point grow fixed and made smarter:**
+  - Reward names match even with different capital letters.
+  - Viewers can type part of a spot's name or its number.
+  - If nothing matches, you get a pop-up to pick the spot instead of the redemption failing.
+  - New list of the last redemptions the app saw (Wheel → 🌐 All wheels) so you can see what happened.
+- **⚙️ Wheel settings tab, per wheel:**
+  - Spinning: spin time, spin speed, tick sound, confetti, remove winner.
+  - On stream: recent spins, the % size, chat messages.
+  - Void spot settings.
+  - Which channel point actions work on that wheel, and whether saved respins work.
+  - Which pop-ups show and which choices they offer.
+  - Grow size, looks, and the wheel's own sounds.
+- **🌐 All wheels tab:** your spins per stream, chat commands, reward names and costs, donation connection and a test donation.
+- **💵 Donations:** connect StreamElements or Streamlabs (Setup guide → Donations, or Settings → Twitch) and tips pop up by themselves while the wheel is on stream.
+- **Reward queue:** when your stream ends, wheel/chaos redemptions still waiting in your Twitch reward queue are marked done for you. 💸 refund spots can still refund automatically during the stream (tick "refund by itself").
+- `!spins` is now **`!myspins`**, and the wheel commands are listed in `!moviesroyal`.
+
+## 1.11.0
+- **🕳️ Void spot** (optional for each wheel, off by default):
+  - If the wheel lands on VOID, it respins by itself, and whatever it lands on next is gone for the rest of the stream.
+  - A "🕳️ Voided tonight" box on stream shows chat every spot that's been voided.
+  - Voided spots come back on their own next stream. You can bring one back by hand, or someone can save it with a sub, gift sub, bits or a donation (♻️ Undo void in the pop-up).
+- **Pop-ups for subs, gift subs, bits and donations:**
+  - Type the spot's name to 📈 grow it or 📉 shrink it, give 🎟️ respins, or ♻️ undo a void.
+  - Choices you've turned off for that wheel don't show. Undo void only shows once something has been voided.
+  - Pop-ups are smaller, show 2 at a time, and can be tucked away.
+- **📉 Shrink a spot:** from pop-ups or a "Wheel: Shrink a spot" channel point reward. Off by default. A spot can never shrink away to nothing. The + / − buttons on every spot stay.
+- **Channel point grow fixed and made smarter:**
+  - Reward names match even with different capital letters.
+  - Viewers can type part of a spot's name or its number.
+  - If nothing matches, you get a pop-up to pick the spot instead of the redemption failing.
+  - New list of the last redemptions the app saw (Wheel → 🌐 All wheels) so you can see what happened.
+- **⚙️ Wheel settings tab, per wheel:**
+  - Spinning: spin time, spin speed, tick sound, confetti, remove winner.
+  - On stream: recent spins, the % size, chat messages.
+  - Void spot settings.
+  - Which channel point actions work on that wheel, and whether saved respins work.
+  - Which pop-ups show and which choices they offer.
+  - Grow size, looks, and the wheel's own sounds.
+- **🌐 All wheels tab:** your spins per stream, chat commands, reward names and costs, donation connection and a test donation.
+- **💵 Donations:** connect StreamElements or Streamlabs (Setup guide → Donations, or Settings → Twitch) and tips pop up by themselves while the wheel is on stream.
+- **Reward queue:** when your stream ends, wheel/chaos redemptions still waiting in your Twitch reward queue are marked done for you. 💸 refund spots can still refund automatically during the stream (tick "refund by itself").
+- `!spins` is now **`!myspins`**, and the wheel commands are listed in `!moviesroyal`.
+
+## 1.10.1
+- **⧉ Copying a wheel always copies every spot's rule**, plus its type (timer, countdown…), respin rules, color and picture. Just add and remove spots for the theme.
+
+## 1.10.0
+- **🎡 Spot types** (pick one when you add a spot, or change it with ⚙ on any spot):
+  - ⏱️ **Timer:** you pick the minutes. When it lands you get a Start timer button, and the countdown shows on stream next to the wheel (pause, +1 min, stop).
+  - ⚡ **Auto:** nothing to do. The winner just stays up until you spin again.
+  - 🔢 **Countdown:** has to land more than once (you pick how many). Each landing knocks one off, by itself or with a button, and a respin away puts it back. At 0 it leaves the wheel on the next spin.
+  - 💸 **Refund points:** refunds every channel point redemption under the number you pick (each one under it, not a total), by itself or with a button.
+  - Any spot can block **channel point respins** and/or **saved-spin respins**. Blocked channel point redemptions get their points back automatically, and blocked `!respin`s keep their spin.
+- **After it lands:** the whole wheel stays in view, and you get the buttons that fit: use your spin, start the timer, refund points, knock one off. There's also Grow this spot and Take it off the wheel.
+- **🎟️ Your spins:** you get 3 each stream (you pick the number), named "<your name>'s spins". They refill every time you go live.
+- **🎟️ Saved spins for viewers:** give anyone spins by hand, with a reason. They type `!respin` to use one, and `!spins` to see how many they have. If they don't have any, chat gets a friendly answer. Saved spins never expire, so they carry over to future streams until used. Everything given and used is tracked.
+- **📈 Growing spots:** + / − on any spot. Each grow works like Wheel of Names: one grow = the spot added one more time. You can also grow a spot from the result, use the Grow form (with who paid and why), or let viewers do it with a "Wheel: Grow a spot" channel point reward where they type the spot. ↺ Reset all sizes (with undo).
+- **💜 Subs, gift subs, bits and donations:** while the wheel is on stream, each one pops up a small box in the bottom-left of the control panel (never over the wheel), where you pick: grow a spot, grow several spots, or give them respins.
+  - Gift bombs fold into one box.
+  - Log donations with 💵.
+  - You set what each one is worth.
+  - When the wheel isn't on stream, saved spins can be handed out automatically instead.
+- **🎨 Looks:** rim, pointer, line and text colors; light bulbs on or off; font; text size; an emoji or picture in the middle; a picture on any spot; and a stream background (color, picture or video).
+- **🔊 Wheel sounds:** Sounds tab → 🎡 Wheel. Upload your own spin, tick, win, move, timer and grow sounds.
+- **⧉ New wheel from a copy:** making a new wheel can start from any wheel you have, for themed nights. You can keep or drop the rules, looks, sizes and countdowns.
+- **✏️ Name changes:** if someone changes their Twitch name, move everything over: Discord movie links, picks, ball color, history, stats, saved spins and wheel history. It's in the People tab and the Wheel → Spins tab.
+- Wheel history and stats now also track grows, refunds, timers, saved spins and your own spins.
+
+## 1.10.0
+- **🎡 Spot types** (pick one when you add a spot, or change it with ⚙ on any spot):
+  - ⏱️ **Timer:** you pick the minutes. When it lands you get a Start timer button, and the countdown shows on stream next to the wheel (pause, +1 min, stop).
+  - ⚡ **Auto:** nothing to do. The winner just stays up until you spin again.
+  - 🔢 **Countdown:** has to land more than once (you pick how many). Each landing knocks one off, by itself or with a button, and a respin away puts it back. At 0 it leaves the wheel on the next spin.
+  - 💸 **Refund points:** refunds every channel point redemption under the number you pick (each one under it, not a total), by itself or with a button.
+  - Any spot can block **channel point respins** and/or **saved-spin respins**. Blocked channel point redemptions get their points back automatically, and blocked `!respin`s keep their spin.
+- **After it lands:** the whole wheel stays in view, and you get the buttons that fit: use your spin, start the timer, refund points, knock one off. There's also Grow this spot and Take it off the wheel.
+- **🎟️ Your spins:** you get 3 each stream (you pick the number), named "<your name>'s spins". They refill every time you go live.
+- **🎟️ Saved spins for viewers:** give anyone spins by hand, with a reason. They type `!respin` to use one, and `!spins` to see how many they have. If they don't have any, chat gets a friendly answer. Saved spins never expire, so they carry over to future streams until used. Everything given and used is tracked.
+- **📈 Growing spots:** + / − on any spot. Each grow works like Wheel of Names: one grow = the spot added one more time. You can also grow a spot from the result, use the Grow form (with who paid and why), or let viewers do it with a "Wheel: Grow a spot" channel point reward where they type the spot. ↺ Reset all sizes (with undo).
+- **💜 Subs, gift subs, bits and donations:** while the wheel is on stream, each one pops up a small box in the bottom-left of the control panel (never over the wheel), where you pick: grow a spot, grow several spots, or give them respins.
+  - Gift bombs fold into one box.
+  - Log donations with 💵.
+  - You set what each one is worth.
+  - When the wheel isn't on stream, saved spins can be handed out automatically instead.
+- **🎨 Looks:** rim, pointer, line and text colors; light bulbs on or off; font; text size; an emoji or picture in the middle; a picture on any spot; and a stream background (color, picture or video).
+- **🔊 Wheel sounds:** Sounds tab → 🎡 Wheel. Upload your own spin, tick, win, move, timer and grow sounds.
+- **⧉ New wheel from a copy:** making a new wheel can start from any wheel you have, for themed nights. You can keep or drop the rules, looks, sizes and countdowns.
+- **✏️ Name changes** (Settings → Name changes): if someone changes their Twitch name, type the old and new name and everything moves over: Discord movie links and picks, ball color, chat battle and giveaway entries, history, stats, saved wheel spins and wheel history. Past name changes are listed.
+- Wheel history and stats now also track grows, refunds, timers, saved spins and your own spins.
+
+## 1.9.0
+- **🎡 New Wheel tab:** a full Wheel of Names replacement for wheel spin nights.
+  - **Wheels:** keep as many as you want. Make, copy, rename and delete them, and switch between them.
+  - **Spots:** each spot has its own size (2 = twice the chance), color and rule. You can also hide a spot, move it up or down the list, shuffle or sort A–Z, or edit everything as text (one per line, `x3` for size).
+  - **Importing from Wheel of Names:** paste a share link or open a `.wheel` / `.json` / `.txt` file. Colors, sizes and hidden entries come along.
+  - **On stream:** spins play on the battle screen as a full wheel scene: ticking, confetti, the result with its rule, how big the spot was, who spun it, and the last 5 spins. Click 📺 Show on stream / ⚔️ Back to the battle to switch.
+  - **Spinning:** 🎡 Spin, 🔁 Respin, ⬆️ Move up a spot, ⬇️ Move down a spot. Type who's spinning (blank = you), or click the wheel itself to spin.
+  - **Channel points:** respin, move up and move down rewards. One button adds them to Twitch, and you choose the names and costs. If several redemptions come in at once they wait their turn. The result can be posted in Twitch chat.
+  - **History:** every spin, respin and move is saved with the time, who did it, whether they used channel points (and the cost), where it landed, the spot's size on the wheel at that moment, and what it moved from. It's grouped by stream night, searchable, and you can download it as a CSV.
+  - **Stats:** for every spot: final landings, hits on spins and respins, respun away, moved onto, moved off, average size and last hit. For every person: spins, respins, moves up/down, channel point uses and points spent. Filter by all time, tonight, last 7 or 30 days, or one stream night, and by this wheel or all wheels. Search and sort any column.
+  - **Settings:** spin time, "take the winner off the wheel" (like Wheel of Names remove) and color themes.
+
+## 1.8.0
+- **📋 Full match results:** every round now saves its full finishing order: place, name, who picked it, luck, odds, and the time each piece went out. That time is shown two ways, as time into the match and as the real clock time. It also saves when the match started, how long it lasted, the map, whether it went to sudden death, and every power used with its time.
+  - Open results from the winner card (📋 Full results), from any round in History, or from History → 📋 Results, which lists every round including practice rounds and each round of a best-of series.
+  - Search inside the results, or download them as a CSV.
+- **📊 Stats tab** (History → 📊 Stats):
+  - The top shows the total battles run since you first installed, a count for each battle type, and the wild card spot record.
+  - For every person, or every movie or entry, it shows battles, wins, win %, 2nds, 3rds, 4ths, top 5s, top 10s, luck spent, and how many different movies they've had in battles.
+  - Filter by Movie matches, Custom battles, Chat royals or Giveaways, and by map. Search by name, and click any column to sort.
+  - Practice rounds never count. Winners and top 5s from your existing history are brought in.
+
+## 1.7.2
+- **🍀 Winner's luck on screen:** if the winner had luck, the winner card says how much (for example "🍀 Won with 35% luck", with a 🔥 at 50% or more). Custom and chat battles show extra odds instead ("🎲 Won with x3 odds"). The Twitch chat winner message says it too, and it's saved in the history.
+
+## 1.7.1
+- **💨 New map: Whoopee Swamp.** A goofy bean bog (cartoon toots only, Twitch safe).
+  - Pink whoopee cushions hide in the grass: step on one and PFFFT, you go flying (luck can save you). They blow back up after a few seconds.
+  - Green gas clouds drift over, and everyone inside says "P-U!" and runs from the smell.
+  - Every piece toots now and then, giving it a little boost in a random direction.
+  - Map power 🫘 **Bean Blast**: everyone toots at once and goes flying, the cushions refill and a giant gas cloud rolls in.
+  - Its own sounds: toots, pffts, long brraps, squeaks, whoopee cushions and a bean chorus, plus oom-pah polka music with a tuba and kazoo. Add your own sounds for this map in the Sounds tab.
+- **🧱 Tumble Tower is flipped:** the biggest floor is now on top and each floor below it is smaller. Pieces on the lower floors show through the floors above them, so you can always see them.
+
+## 1.7.0
+- **🧱 New map: Tumble Tower.** Four floors stacked up: the biggest on top, each floor below it smaller. Stand on a tile for 5 seconds (it turns red as time runs out) and it gives way, dropping you to the floor below. Fall through the bottom floor and you're out. Map power: 🫨 Tremor.
+- **🧭 Skip any part of setup:** every step has a "Skip this step" button and a "Skip the rest" button, and the top bar has "Skip setup". You can come back from Settings → Setup guide any time.
+- **Glow and flames in every battle and every map:** movies show their luck, and custom, chat and giveaway battles show their extra odds (x2 odds = 10% glow, x6 = flames).
+- **Kill feed fix:** in huge battles (like 1000 pieces) the top-right list no longer repeats the same names. A piece can only be counted out once.
+- **Updates reopen the app by themselves** when the installer finishes.
+
+## 1.6.2
+- **Luck glow and flames are much stronger:** a bright glow and aura ring from 5% luck, and from 50% big flames in the piece's own color, with embers. Practice rounds now give some pieces luck, so you can see what it looks like.
+
+## 1.6.1
+- **🗳️ Chat vote** shows a picture of each of the 4 maps on the battle screen.
+- **⏹ Stop battle:** during a fight, the Start button becomes Stop. It stops the battle with no winner, and nothing is saved.
+- **Saved odds for custom battles:** 💾 Save odds, ↺ Everyone to 1, 📂 Saved odds → Bring back (just like luck saves for Discord movies).
+- **🧭 Setup guide** has a new step for the free 24/7 Discord bot.
+- New defaults: **luck on**, **close movie picks when you go live on**, and **closing the window quits** (no tray). Your settings are switched over once; change them any time in Settings.
+- 👻 Ghosts float over the land (often right at someone), not over empty space.
+- 🐉 Bigger dragons with much bigger flames that burn the floor away.
+- 🍿 Way more butter: it starts as a drizzle and turns into a downpour.
+- 🍩 Much bigger bites, more often: almost the whole donut is gone by the end.
+
+## 1.6.0
+- **🐉 New map: Dragon Keep.** A castle courtyard where dragons swoop down, knocking pieces flying and burning holes in the floor.
+- **💣 New map: Blast Zone.** Giant bombs drop in, trap you, and blow up in a big cross (chain reactions too).
+- **🍿 Popcorn Panic reworked:** hot butter rains down. A drop on a piece butters it (luck can dodge it). Drops heat up the popcorn until it pops at random, shooting pieces off the map.
+- **👻 Haunted Hill:** bigger ghosts, and more of them. Get close and you panic and run for the edge, until you bump into someone.
+- **🍩 Sweet Donut:** a giant sugar monster takes huge bites. The middle of each bite goes in its mouth, and the edge falls off as crumbs.
+- **🏓 Pong:** the flaming ball goes straight through pieces instead of bouncing off them.
+- **🎵 Sounds for each map:** in the Sounds tab, pick a map and give it its own sounds (and music).
+
+## 1.5.0
+- **🎁 Giveaway tab.** Viewers type `!enter`, and a battle picks the winner on stream. You choose:
+  - **Who can enter:** everyone, followers, subs, VIPs, mods, how long they've followed, how many months they've subbed.
+  - **Extra odds:** per sub tier, loyalty per sub month, and for followers, VIPs and mods.
+  - **Rules:** past winners (can win again / not this stream / week / month / only once), max entries, entries that close by themselves, bots and you can't enter, take the winner out after they win.
+  - **Chat:** posts when entries open (and optionally confirms every entry). There's a 🔁 Reroll button and a past-winners list.
+  - Follower checks need one more Twitch permission: sign in with Twitch again once.
+- **🥊 Best of 3 / 5 / 7 / 9** for custom battles (on the Battle list), chat battles and giveaways. The screen shows the round and score, and the next round starts by itself (you can turn that off).
+- **Better endings:** a piece saved by luck now hops back onto the nearest land where you can see it, instead of warping across gaps. Fast pieces can't skip over gaps anymore. The winner is always standing on land.
+- **Power pop-ups** moved to the lower right corner of the battle screen.
+- **Camera:** ⬅ ➡ ⬆ ⬇ buttons under the battle to move around, you can zoom out much further, and 🗺️ always shows the whole map.
+- **🧪 Practice round:** pick the map.
+- **`!moviesroyal`** in Twitch chat lists every chat command (30s cooldown).
+
+## 1.4.5
+- **🍀 Luck you can see:** at 5% luck a piece starts to glow in its own color, brighter every 5%. At 50% it catches fire with flames in its color, bigger every 5%. It's just for looks.
+- **Bigger pieces hit harder:** they barely move when they bump a small piece, and the small one goes flying.
+- **🎨 Ball colors:** when a viewer picks a color, every one of their movies or entries changes right away, even mid-fight.
+- **🏓 Pong:** the ball is on fire, keeps getting faster, and blows up the pieces it hits (luck can dodge it).
+- **🌆 Neon City:** lasers sweep in from any angle, slow at first and faster later, with no more than 2 at a time. Pieces jump them. Get hit and luck might dodge it, otherwise you blow up. Land a jump on another piece and you both bounce off like bouncy balls.
+
+## 1.4.4
+- **🌋 Lava Lake is real lava now:** the land doesn't fall apart, it floods. Low ground and valleys go first, so islands form, and hills last. Tiles glow just before the lava gets there, pieces run for high ground, and touching lava means you're toasted. **Eruption** floods a whole patch at once.
+
+## 1.4.3
+- **🧪 Practice round player count:** on the Test tab, type how many pieces you want (2–1000) or press 10 / 50 / 200 / 1000.
+
+## 1.4.2
+- **🎬 Movie picks OPEN / CLOSED** button on the Battle tab. While picks are closed, Discord `/suggest` (and the 24/7 bot) tells people picks are closed. Everyone's movies stay in, `/mymovies` and `/list` still work, and you can still add movies yourself.
+- Optional: close picks automatically while you're live (Settings → Discord & picks). The bot posts in your movies channel when picks open or close (you can turn that off).
+- **🔮 Chat calls the winner:** before the fight, viewers type `!call Heat` (part of the title is enough). If that movie wins, everyone who called it is named in chat, and their own movies get +1% luck. The command never replies, and the amount and command can be changed in Settings.
+
+- **🍀 Luck saves:** 💾 Save luck, ↺ Reset luck and 📂 Luck saves (on the Battle list and in Settings → Luck). Reset it for a few battles, then bring it back. Resetting always saves first, and "Bring back" saves what you had too.
+- **Automatic safety backups:** resetting or bringing back luck, and restoring a backup, first saves a dated copy of everything in your data folder's `backups` folder (the newest 30 are kept).
+- **Monthly backup reminder:** once a month Movie Royal reminds you to download a backup, so a copy lives somewhere other than this PC. "Remind me in a week" snoozes it.
+- **Wildcard spots can get luck too** (off by default): Settings → Luck. They go up at most 1% per stream, and don't need anyone chatting.
+- **Luck only starts over when your movie gets watched** (a win counts). "Not watching it — put it back" now gives that person's luck back, and marking a movie ✅ watched resets its owner's luck like a win does.
+- Restoring a backup now also brings back bans, people you added by hand, ball colors and luck saves.
+
+## 1.4.1
+- **Real sudden death:** when time runs out and more than one piece is left, the fight keeps going. Every power (and the map's own power) goes off at random, faster and faster, and the cliff shrinks from the outside in, until one piece is left standing. The timer shows how many are left.
+
+## 1.4.0
+- **The name is spelled right everywhere now: Movie Royal.** The program is now `MovieRoyal.exe` in `Programs\Movie Royal`, and your data moves by itself to `%APPDATA%\Movie Royal` the first time 1.4.0 opens. The old copy, its shortcuts and its Apps entry are cleaned up when you install. In OBS, re-pick the window/audio capture once (it's now **MovieRoyal.exe**).
+- **Royal Rumble:** a smaller ring, and wrestlers come in two at a time, starting right away.
+- **Dune Sea:** wherever a worm comes up, the ground caves in behind it, leaving a sinkhole you can fall into. Worms never come up through sand that's already gone.
+- Fixed: a piece saved by luck could get thrown out of the ring again right after landing.
+
+## 1.3.0
+- **🗺️ 14 maps:** Crumbling Cliff, Deep Space (low gravity), Lava Lake (rising lava), Rainbow Road, Hollywood Sign (earthquake), Neon City (lasers to jump), Final Stage, Royal Rumble, Pong, Frozen Peak, Sweet Donut, Haunted Hill, Popcorn Panic and Dune Sea. Pick one or use 🎲 Random. Each map has its own power.
+- **Final Stage** plays like Smash: everyone starts on the upper platforms and drops to the main stage when they break. Powers send pieces flying off screen (KO!), but luck can fly them back in to land on the stage.
+- **🍀 Luck makes pieces bigger** again, slowly (about 6% bigger per 10% luck), and **bigger pieces hit harder**. The LUCKY! saves work the same as before.
+- **Final Stage** has big chunky pieces.
+- **Royal Rumble:** a tighter ring where masked wrestlers fly off the top rope (elbow drops, splashes, moonsaults, leg drops…), and everyone where they land goes flying out of the ring. The map power **Tag Team** sends in three.
+- **Rainbow Road** breaks apart from a different random spot every round.
+- **Dune Sea:** a smaller plateau where nobody falls off. Big sand worms burst out of the sand and swallow pieces whole.
+- **🗳️ Chat map vote:** chat types 1–4 to pick the next map.
+- **⚡ Every power is a button** under the battle screen, including the map power.
+- **🔀 Shuffle** moves every piece to a random spot before the fight.
+- **The cliff grows with the number of entries.**
+- **📋 The full list is back on the Battle tab** (scroll down), with luck, odds, ✅ watched, ⏸ pause and ✕ delete, plus **➕ Add** to type in a person and their movie and match your old wheel exactly.
+- **🎨 Ball colors:** free by default, so viewers just type `!color pink` (silent, no chat spam). Or switch to channel points, which adds just one reward where viewers type any color (it asks first). Can be turned off.
+- **⚡ Free powers in fullscreen:** move the mouse to bring up a power bar down the left side (drag it anywhere, it remembers), or press 1–9 / 0. You don't pay anything.
+- **Livelier battles:** pieces hunt each other and try to knock them off, circling to the inside first so the hit sends them toward the edge. Targets sometimes dodge, and a missed charge can carry the attacker right off the cliff (WHIFF!). Big crowds spread out instead of piling up in the middle.
+- **Fullscreen stays on** through the replay and winner card. Press Esc when you want out.
+- **👤 Change who picked a movie** (Battle list and Pool tab): tag it to anyone (people you know, new names, or anyone in your Discord). The pick moves to them, `/mymovies` updates, and the bot posts it in your movies channel.
+- Fixed: with exact odds, the winner could be a piece floating off the cliff. The winner now always ends up standing on the cliff.
+- Faster drawing in big rounds.
+- Fixed: the old winner card showed during the next fight.
+
+## 1.2.0
+- **☁️ 24/7 mode:** a free Cloudflare copy of the Discord bot answers `/suggest`, `/swap`, `/mymovies`, `/list` and `/linktwitch` even when your PC is off, with all your rules. The app pulls new picks in when it opens (and every minute while it's open). It's a one-click setup in Settings → Discord & picks.
 
 ## 1.1.8
 - Ready for GitHub: README with screenshots, guide, MIT license, one-click "Build & release" on GitHub, bug-report forms. Copies built on GitHub check that repo for updates automatically.
@@ -14,7 +265,7 @@ What changed in each version of Movie Royale. Newest first.
 - Pieces start spread evenly over the whole cliff (even with 1000), keep a little distance in big rounds instead of piling in the middle, and bounce off each other a bit more.
 
 ## 1.1.5
-- Fixed: the waiting screen showed "MOVIE ROYALE" on top of "GET READY". It now sits in one clean panel.
+- Fixed: the waiting screen showed "MOVIE ROYAL" on top of "GET READY". It now sits in one clean panel.
 
 ## 1.1.4
 - **📥 Import** from Wheel of Names (share link, `.wheel` file or copy-paste) and Marbles on Stream / any CSV, JSON or text file — Pool tab and the New battle box.

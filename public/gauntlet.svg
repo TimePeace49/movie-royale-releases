@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">
+  <!-- An original forged golden gauntlet (dwarven plate armor): the 🎡 wheel's VOID symbol -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1a8"/><stop offset=".35" stop-color="#f2c24a"/><stop offset=".7" stop-color="#c58a1c"/><stop offset="1" stop-color="#7a4f0c"/></linearGradient>
+    <linearGradient id="d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e0a93a"/><stop offset="1" stop-color="#6b430a"/></linearGradient>
+    <radialGradient id="h" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff7cf" stop-opacity=".9"/><stop offset="1" stop-color="#fff7cf" stop-opacity="0"/></radialGradient>
+  </defs>
+  <g stroke="#4a2e05" stroke-width="3" stroke-linejoin="round">
+    <!-- forearm cuff -->
+    <path d="M52 150 L148 150 L162 232 L38 232 Z" fill="url(#d)"/>
+    <path d="M46 176 L154 176" fill="none" stroke-width="2.5"/>
+    <path d="M42 204 L158 204" fill="none" stroke-width="2.5"/>
+    <path d="M60 188 q40 -10 80 0" fill="none" stroke="#fff1a8" stroke-opacity=".5" stroke-width="2"/>
+    <!-- back of the hand plate -->
+    <path d="M48 92 Q50 70 72 66 L132 66 Q154 70 154 94 L152 150 L50 150 Z" fill="url(#g)"/>
+    <!-- engraved knot on the back of the hand (no gem) -->
+    <path d="M100 88 L120 108 L100 128 L80 108 Z" fill="none" stroke-width="3"/>
+    <path d="M100 98 L110 108 L100 118 L90 108 Z" fill="#7a4f0c"/>
+    <path d="M62 98 Q100 84 140 98 M62 138 Q100 126 140 138" fill="none" stroke-width="2"/>
+    <!-- four finger lames curled into a fist -->
+    <path d="M52 66 Q50 42 62 34 L80 34 Q86 42 84 66 Z" fill="url(#g)"/>
+    <path d="M84 66 Q82 34 94 26 L112 26 Q118 34 116 66 Z" fill="url(#g)"/>
+    <path d="M116 66 Q114 36 126 30 L142 30 Q150 38 148 66 Z" fill="url(#g)"/>
+    <path d="M148 70 Q150 48 160 44 L172 46 Q178 56 172 92 L152 96 Z" fill="url(#g)"/>
+    <path d="M54 50 L82 50 M86 44 L114 44 M118 46 L146 46 M152 62 L174 64" fill="none" stroke-width="2"/>
+    <!-- thumb -->
+    <path d="M48 96 Q24 94 20 118 Q22 138 44 140 L52 136 Z" fill="url(#g)"/>
+    <path d="M26 116 L48 112" fill="none" stroke-width="2"/>
+  </g>
+  <!-- rivets -->
+  <g fill="#fff1a8" stroke="#4a2e05" stroke-width="1.5">
+    <circle cx="60" cy="160" r="4"/><circle cx="100" cy="160" r="4"/><circle cx="140" cy="160" r="4"/>
+    <circle cx="52" cy="220" r="4"/><circle cx="100" cy="220" r="4"/><circle cx="148" cy="220" r="4"/>
+    <circle cx="60" cy="80" r="3.5"/><circle cx="142" cy="80" r="3.5"/><circle cx="60" cy="142" r="3.5"/><circle cx="142" cy="142" r="3.5"/>
+  </g>
+  <path d="M60 74 Q100 64 140 74 L136 100 Q100 90 64 100 Z" fill="url(#h)"/>
+</svg>

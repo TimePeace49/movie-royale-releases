@@ -69,7 +69,7 @@ export async function refreshRss(user) {
   if (!user) return;
   try {
     const res = await fetch(`https://letterboxd.com/${encodeURIComponent(user)}/rss/`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MovieRoyale/1.0' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MovieRoyal/1.0' },
       signal: AbortSignal.timeout(10000)
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -122,7 +122,7 @@ export async function refreshProfile(user) {
     fs.writeFileSync(PROFILE_FILE(), JSON.stringify({ at: profile.at, slugs: [...slugs] }));
   } catch (e) { profile.error = e.message; }
 }
-/** Marking a movie watched in Movie Royale remembers it, so it can never be suggested again (even if Letterboxd misses it). */
+/** Marking a movie watched in Movie Royal remembers it, so it can never be suggested again (even if Letterboxd misses it). */
 export function markWatched(m) {
   if (!m?.title) return;
   add({ title: m.title, year: m.year, tmdbId: m.tmdbId });
@@ -156,3 +156,6 @@ function lookupMaps({ title, year, tmdbId }) {
 
 export const stars = r => r == null || isNaN(r) ? '' : '★'.repeat(Math.floor(r)) + (r % 1 ? '½' : '');
 export const stats = () => ({ count: Math.max(byKey.size, slugs.size), profileCount: slugs.size, profileAt: profile.at, profileError: profile.error, lastRss, rssError });
+
+/** Everything you've watched, compact, for the cloud bot. */
+export const exportWatched = () => ({ tmdb: [...byTmdb.keys()], keys: [...byKey.keys()], slugs: [...slugs] });
