@@ -619,7 +619,7 @@ function placeStage() {
     st.classList.remove('mini', 'hide');
     Object.assign(st.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', right: '', bottom: '' });
   } else {
-    st.classList.add('mini'); st.classList.toggle('hide', view === 'help' || view === 'settings');
+    st.classList.add('mini', 'hide'); // no little preview window on other tabs
     Object.assign(st.style, { left: '', top: '', width: '', height: '' });
   }
 }

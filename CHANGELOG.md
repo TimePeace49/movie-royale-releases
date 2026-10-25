@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.11.4
+- The little battle preview window in the corner of the other tabs is gone. The battle shows only in the Battle tab.
+
 ## 1.11.3
 - **The tab you're on picks what's on stream:**
   - Battle tab = the battle, Wheel tab = the wheel. Other tabs leave it as it is.
