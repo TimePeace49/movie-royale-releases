@@ -2,6 +2,24 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.14.0 (test build)
+- **🐀 New map: Plague Town.**
+  - A walled medieval town, seen straight down from above.
+  - Rats run out of the sewer grates and bite. A bitten ball is infected, and infected balls pass it on to anyone they bump into.
+  - Infected balls die after a few seconds unless luck pulls them through. Healthy balls run from the rats and the sick.
+  - Houses block everyone, the ground never breaks, and the plague bell tolls.
+  - Map power: 🐀 Rat Swarm.
+- **⚔️ New map: Battlefield.**
+  - Every ball starts on one side. An army that can't be hurt or stopped comes from the other.
+  - Archers rain arrows on the back rows, while knights and cavalry march in together.
+  - When the knights reach the front they crush it, and the cavalry rides down both sides and hits the flanks.
+  - The ground never breaks, but you can be pushed off the edge.
+  - Map power: 🐎 Royal Charge.
+- **🔊 Volume sliders on the 🎡 Wheel tab** (sounds and music), next to a sound on/off button.
+- **🕳️ You can grow or shrink the void yourself** with its + / −. Chat still can only change it with money (never with channel points).
+- Fart Farm now has real moo, stampede, UFO and beam sounds, and shows its right name in the map menus.
+- Fixed: Dune Sea did extra work while pieces were landing before the fight.
+
 ## 1.13.7 (test build)
 - **24/7 bot pop-up only when it's needed:** when Movie Royal opens, it only asks you to update the Cloudflare bot if that bot is actually older than the one in this version. Once you've updated it, the pop-up stays away until a future version changes the bot again. "Don't remind me again" also only lasts until the next bot update.
 

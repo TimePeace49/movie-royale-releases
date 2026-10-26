@@ -1801,7 +1801,7 @@ const MAPS = {
     start() {
       const A = this.A, B = this.B, n = fighters.length, k = clamp(Math.sqrt(n / 40), .8, 2.2);
       this.units = []; this.arrows = []; this.stage = 'march'; this.volley = 1.2; this.front = A;
-      const kRows = 3, kCols = Math.round(7 * k), gap = S * 1.5, kx = A * .55, cols = Math.min(kCols, Math.floor(B * 1.6 / gap));
+      const kRows = 3, kCols = Math.round(7 * k), gap = S * 2.2, kx = A * .55, cols = Math.min(kCols, Math.floor(B * 1.6 / gap));
       for (let r = 0; r < kRows; r++) for (let c = 0; c < cols; c++) this.units.push({ kind: 'knight', x: kx + r * gap, y: (c - (cols - 1) / 2) * gap, vx: 0, vy: 0, ph: rnd(6.3), hit: 0 });
       const aCols = Math.min(Math.round(6 * k), Math.floor(B * 1.6 / gap)); for (let r = 0; r < 2; r++) for (let c = 0; c < aCols; c++) this.units.push({ kind: 'archer', x: A * .92 + r * gap * .8, y: (c - (aCols - 1) / 2) * gap * 1.1, vx: 0, vy: 0, ph: rnd(6.3), draw: rnd(1) });
       const cav = Math.round(4 * k); for (const side of [-1, 1]) for (let i = 0; i < cav; i++) this.units.push({ kind: 'cav', side, x: kx + (i % 2) * gap * 1.4, y: side * (B * .62 + Math.floor(i / 2) * gap * 1.2), vx: 0, vy: 0, ph: rnd(6.3), lane: side * (B * .9) });
@@ -1844,16 +1844,21 @@ const MAPS = {
         u.x = clamp(u.x + u.vx * dt, -A * 1.05, A * 1.1); u.y = clamp(u.y + u.vy * dt, -B * .98, B * .98);
         if (u.kind === 'archer') continue;
         // nothing stops them: pieces in the way get crushed or thrown
-        const R = u.kind === 'cav' ? S * 1.25 : S * .95;
+        const R = u.kind === 'cav' ? S * 1.7 : S * 1.3;
         for (const f of l) {
           const ex = f.x - u.x, ey = f.y - u.y, ed = Math.hypot(ex, ey), m = R + f.r;
           if (ed >= m || winner) continue;
           if (ed > 0) { f.x = u.x + ex / ed * m; f.y = u.y + ey / ed * m; }
           if (this.stage === 'march') { push(f, ex / (ed || 1) * 500, ey / (ed || 1) * 500); continue; }
-          if (u.kind === 'cav') { if (blastOrDodge(f, '#ffffff', pick(['TRAMPLED!', 'CHARGE!', '🐎 RUN DOWN!']))) SFX.play('smack', { v: .5 }); }
-          else if ((u.hit -= dt) <= 0) { u.hit = .12; if (blastOrDodge(f, '#c8d0e0', pick(['CRUSHED!', '⚔️ SLAIN!', 'SHIELD BASH!']))) SFX.play('clash', { v: .5 }); }
+          if (cfg.fair && f === destined) { push(f, ex / (ed || 1) * 400, ey / (ed || 1) * 400); continue; } // the drawn winner gets shoved, never hit
+          if (u.kind === 'cav') { if ((u.hit -= dt) <= 0) { u.hit = .25; if (blastOrDodge(f, '#ffffff', pick(['TRAMPLED!', 'CHARGE!', '🐎 RUN DOWN!']))) SFX.play('smack', { v: .5 }); } }
+          else if ((u.hit -= dt) <= 0) { u.hit = .45; if (blastOrDodge(f, '#c8d0e0', pick(['CRUSHED!', '⚔️ SLAIN!', 'SHIELD BASH!']))) SFX.play('clash', { v: .5 }); }
         }
       }
+      for (let i = 0; i < this.units.length; i++) for (let j = i + 1; j < this.units.length; j++) { // they keep their spacing instead of piling up
+        const a = this.units[i], b = this.units[j]; if (a.kind === 'archer' || b.kind === 'archer') continue; const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), m = S * 2.2;
+        if (d < m && d > 0) { const k2 = (m - d) / 2; a.x -= dx / d * k2; a.y -= dy / d * k2; b.x += dx / d * k2; b.y += dy / d * k2; } }
+      if (cfg.fair && destined?.alive && !isSolid(destined.x, destined.y) && !destined.ret && !destined.launch) { const tl = nearestLand(destined); if (tl) hopTo(destined, tl, false); } // the drawn winner never gets shoved off the field
       function nearest(u, list) { let b = null, bd = 1e9; for (let j = 0; j < (list.length > 60 ? 25 : list.length); j++) { const f = list.length > 60 ? pick(list) : list[j]; const d = Math.hypot(f.x - u.x, f.y - u.y); if (d < bd) { bd = d; b = f; } } return b; }
       // pieces back away from the army (there's nowhere to go but the edge)
       for (const f of l) { let ax = 0, ay = 0; for (const u of this.units) { if (u.kind === 'archer') continue; const dx = f.x - u.x, dy = f.y - u.y, d = Math.hypot(dx, dy); if (d < S * 6 && d > 0) { ax += dx / d; ay += dy / d; } } const a = Math.hypot(ax, ay); if (a > 0) { f.vx += ax / a * 500 * dt; f.vy += ay / a * 500 * dt; } }
@@ -1865,8 +1870,8 @@ const MAPS = {
       const units = (this.units || []).slice().sort((a, b) => a.y - b.y);
       for (const u of units) {
         const X = sx(u.x), Y = sy(u.y), face = u.vx > 5 ? 1 : -1, bob = Math.abs(Math.sin(u.ph)) * (u.kind === 'cav' ? 5 : 2);
-        ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(X, Y, u.kind === 'cav' ? 30 : 16, u.kind === 'cav' ? 11 : 7, 0, 0, 7); ctx.fill();
-        ctx.save(); ctx.translate(X, Y - bob); ctx.scale(face, 1); ctx.lineWidth = 2.5; ctx.strokeStyle = '#1a1a22';
+        ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(X, Y, u.kind === 'cav' ? 48 : 26, u.kind === 'cav' ? 17 : 11, 0, 0, 7); ctx.fill();
+        ctx.save(); ctx.translate(X, Y - bob); ctx.scale(face * 1.6, 1.6); ctx.lineWidth = 2.5; ctx.strokeStyle = '#1a1a22';
         if (u.kind === 'cav') { // 🐎 a horse and rider with a lance
           const leg = Math.sin(u.ph * 1.6) * 7; ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 5;
           for (const [lx, s] of [[-16, 1], [-10, -1], [12, -1], [18, 1]]) { ctx.beginPath(); ctx.moveTo(lx, -20); ctx.lineTo(lx + leg * s, 0); ctx.stroke(); }
@@ -2105,7 +2110,7 @@ function launch(f, ang, sp = 1500, dur = .85) { f.launch = { vx: Math.cos(ang) *
 function blastOrDodge(f, col = '#ffb347', what = 'BOOM!') {
   if (!f.alive) return true;
   const n = alive().length, keep = (cfg.fair && f === destined) || n <= 1 || (n <= 2 && t < cfg.game - 2.5);
-  if (keep || (t - luckCool >= (n > 200 ? 16 : n > 40 ? 10 : 6) && Math.random() < luckChance(f) && (luckCool = t))) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); if (n < 40) floaters.push({ text: (f.luck || 0) >= 5 ? '🍀 DODGED!' : 'DODGED!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: .9, color: '#7dffb0' }); return false; }
+  if (keep || (t - luckCool >= (n > 200 ? 16 : n > 40 ? 10 : 6) && Math.random() < luckChance(f) && (luckCool = t))) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); if (n < 40 && !keep) floaters.push({ text: (f.luck || 0) >= 5 ? '🍀 DODGED!' : 'DODGED!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: .9, color: '#7dffb0' }); return false; }
   const X = sx(f.x), Y = sy(f.y) - f.r;
   for (let j = 0; j < 34; j++) { const a = rnd(6.3), v = rnd(120, 480); parts.push({ x: X, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, g: 500, life: rnd(.4, .9), max: .9, size: rnd(3, 7), color: pick([f.color || '#fff', col, '#fff3c4', '#ff7a3d']) }); }
   flash = Math.max(flash, .2); flashColor = col; shake = Math.max(shake, 9); SFX.play('boom');
