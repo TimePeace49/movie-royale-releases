@@ -1284,7 +1284,7 @@ function mapRuns() {
   if (!db.mapRuns) { db.mapRuns = {}; for (const h of db.history || []) if (h.map && mapById(h.map)) db.mapRuns[h.map] = { rev: 1, at: h.at }; } // older versions: count maps your history shows
   return db.mapRuns;
 }
-function mapsWithTags() { const r = mapRuns(); return MAP_LIST.map(m => ({ ...m, tag: !r[m.id] ? 'new' : (r[m.id].rev || 1) < (m.rev || 1) ? 'updated' : null })); }
+function mapsWithTags() { const r = mapRuns(); return MAP_LIST.map(m => ({ ...m, tag: !r[m.id] ? 'new' : (r[m.id].rev || 1) < (m.rev || 1) ? 'updated' : null })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })); } /* A to Z in every map menu */
 function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; mapRuns()[id] = { rev: m.rev || 1, at: Date.now() }; } // only battles while you're live count
 function currentMap() {
   if (!live.map) {

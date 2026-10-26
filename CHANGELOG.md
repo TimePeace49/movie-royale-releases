@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.15.2 (test build)
+- **🗺️ Maps are in A to Z order** in every map menu.
+
 ## 1.15.1 (test build)
 - **📺 See your tests:** every test in the 🧪 Test tab (Doomsday preview, wheel landings, pop-ups, practice battles…) now pops up a little window showing what's on stream right now. Drag it by its top bar, resize it from the bottom-right corner, ⤢ makes it big, ✕ closes it. There's also a "📺 Show the stream screen" button at the top of the Test tab.
 
