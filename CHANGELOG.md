@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.5 (test build)
+- **☁️ 24/7 bot answers faster:** `/linktwitch` replies right away and saves the link right after, and every command does one less lookup before answering. If something still goes wrong, the bot replies with the reason instead of "The application did not respond". (The app asks you to update the bot again.)
+
 ## 1.13.4
 - **☁️ Update reminder:** if you use the 24/7 Discord bot and it's older than this version, Movie Royal asks you to update it every time it opens (paste your Cloudflare token, one click), until it's done.
 

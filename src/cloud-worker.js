@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 2; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 3; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -68,8 +68,8 @@ async function verify(req, body, publicKey) {
 }
 
 // ---------- state = what the app uploaded + picks made since ----------
-async function loadState(env) {
-  const [cfg, queue] = await Promise.all([env.KV.get('config', 'json'), env.KV.get('queue', 'json')]);
+async function loadState(env, cfg0) {
+  const [cfg, queue] = await Promise.all([cfg0 || env.KV.get('config', 'json'), env.KV.get('queue', 'json')]);
   if (!cfg) return null;
   const s = { cfg, queue: queue || [], pool: (cfg.pool || []).map(e => ({ ...e })), users: JSON.parse(JSON.stringify(cfg.users || {})), links: { ...(cfg.links || {}) } };
   for (const op of s.queue) applyOp(s, op);
@@ -185,7 +185,7 @@ async function interaction(req, env, ctx) {
   if (!(await verify(req, body, cfg?.publicKey))) return new Response('bad signature', { status: 401 });
   const i = JSON.parse(body);
   if (i.type === 1) return json({ type: 1 }); // Discord checking the URL
-  const s = await loadState(env);
+  const s = await loadState(env, cfg);
   if (!s) return reply('🍿 Movie Royal is still being set up — open the app once.');
   const du = i.member?.user || i.user;
   const user = { discordId: du.id, name: i.member?.nick || du.global_name || du.username, avatar: du.avatar ? `https://cdn.discordapp.com/avatars/${du.id}/${du.avatar}.png?size=128` : null };
@@ -238,7 +238,7 @@ async function interaction(req, env, ctx) {
   if (name === 'linktwitch') {
     const login = String(opt(i, 'username') || '').trim().replace(/^@/, '').toLowerCase();
     if (!/^[a-z0-9_]{3,25}$/.test(login)) return reply("That doesn't look like a Twitch username.");
-    await enqueue(env, { id: crypto.randomUUID(), at: Date.now(), type: 'link', user, login });
+    ctx.waitUntil(enqueue(env, { id: crypto.randomUUID(), at: Date.now(), type: 'link', user, login }).catch(e => console.error('link', e))); // answer Discord right away, save it right after
     return reply(`Linked! Your piece will use **${login}**'s Twitch picture, and chatting as ${login} on Twitch puts your movies on the cliff.`);
   }
   return reply('🤔 Unknown command.');
