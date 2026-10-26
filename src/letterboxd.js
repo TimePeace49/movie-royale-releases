@@ -159,3 +159,46 @@ export const stats = () => ({ count: Math.max(byKey.size, slugs.size), profileCo
 
 /** Everything you've watched, compact, for the cloud bot. */
 export const exportWatched = () => ({ tmdb: [...byTmdb.keys()], keys: [...byKey.keys()], slugs: [...slugs] });
+
+/** Read the films on a Letterboxd page (a list, or a "films" page like the lowest rated), in order, up to max.
+ *  Returns [{ slug, title, year }]. Works page by page like a browser would. */
+export const WORST_URL = 'https://letterboxd.com/films/by/rating-lowest/';
+export async function fetchFilmList(url, max = 500, onPage = () => {}) {
+  let base = String(url || WORST_URL).trim(); if (!/^https?:\/\//.test(base)) base = 'https://' + base;
+  base = base.replace(/[?#].*$/, '').replace(/\/page\/\d+\/?$/, '').replace(/\/?$/, '/');
+  const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9', 'X-Requested-With': 'XMLHttpRequest' };
+  // "films" pages load their posters separately (an "ajax" address); lists are plain pages
+  const variants = /letterboxd\.com\/films\//.test(base) && !/\/ajax\//.test(base) ? [base.replace('letterboxd.com/films/', 'letterboxd.com/films/ajax/'), base] : [base];
+  const out = [], seen = new Set();
+  let use = null, lastErr = null;
+  for (let page = 1; page <= 60 && out.length < max; page++) {
+    let html = null;
+    for (const v of use ? [use] : variants) {
+      try {
+        const res = await fetch(page > 1 ? `${v}page/${page}/` : v, { headers, signal: AbortSignal.timeout(20000) });
+        if (!res.ok) { lastErr = new Error('Letterboxd said ' + res.status); continue; }
+        const h = await res.text();
+        if (/data-(?:film|item)-slug=|data-target-link="\/film\//.test(h)) { html = h; use = v; break; }
+        lastErr = new Error('no films on that page');
+      } catch (e) { lastErr = e; }
+    }
+    if (!html) break;
+    let n = 0;
+    for (const m of html.matchAll(/<[^>]*(?:data-(?:film|item)-slug="[^"]+"|data-target-link="\/film\/[^"]+")[^>]*>/g)) {
+      const tag = m[0];
+      const slug = (tag.match(/data-(?:film|item)-slug="([^"]+)"/)?.[1] || tag.match(/data-target-link="\/film\/([^"\/]+)\/?"/)?.[1] || '').replace(/^\/?film\//, '').replace(/\/$/, '');
+      if (!slug || seen.has(slug)) continue;
+      const nm = decodeHtml(tag.match(/data-(?:film|item)-name="([^"]+)"/)?.[1] || tag.match(/data-(?:film|item)-full-display-name="([^"]+)"/)?.[1] || '');
+      const ym = nm.match(/^(.*?)\s*\((\d{4})\)$/), y2 = tag.match(/data-film-release-year="(\d{4})"/)?.[1];
+      const title = ym ? ym[1] : nm || slug.replace(/-\d{4}$/, '').replace(/-/g, ' ');
+      const year = ym ? ym[2] : y2 || (slug.match(/-(\d{4})$/)?.[1] || '');
+      seen.add(slug); out.push({ slug, title, year }); n++;
+      if (out.length >= max) break;
+    }
+    onPage(page, out.length);
+    if (!n) break;
+    await sleep(400);
+  }
+  if (!out.length) throw new Error(`Couldn't read the films from Letterboxd${lastErr ? ` (${lastErr.message})` : ''}. Try again later, or paste a Letterboxd list link instead.`);
+  return out;
+}

@@ -242,6 +242,13 @@ export function afterMovieWin(winnerId) {
   save();
   return { benched, spotsRemoved, person: isSpot(w) ? null : w.backers?.[0]?.name };
 }
+/** Test tab: nobody is on a cooldown any more (won this week, out tonight, sat out). Spots are handled by resetSpots. */
+export function resetCooldowns() {
+  const l = moviesList(); let back = 0;
+  week().winners = [];
+  for (const e of l.entries) if (!isSpot(e) && ['benched', 'away'].includes(e.status)) { e.status = 'active'; delete e.awayDay; delete e.satOut; back++; }
+  save(); return { back };
+}
 /** The streamer pressed ⏭️ Pass on a claim (too late to watch, etc.): the movie goes back in, luck and the week's cooldown are undone. */
 export function undoMovieWin(winnerId) {
   const l = moviesList(), w = l.entries.find(e => e.id === winnerId); if (!w) return false;

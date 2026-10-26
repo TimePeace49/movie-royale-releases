@@ -13,7 +13,7 @@ import * as lb from './letterboxd.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
 import { searchMovies } from './tmdb.js';
-import { undoMovieWin } from './movies.js';
+import { undoMovieWin, resetCooldowns } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
@@ -565,7 +565,7 @@ wss.on('connection', (ws, req) => {
       live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
       const f = live.game.fighters.find(x => x.id === m.winnerId);
       if (!f) return;
-      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); return; } // practice rounds never touch real lists or history
+      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); return; } // practice rounds never touch real lists or history
       const list = getList(live.game.listId);
       try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
       markMapRun(live.game.map); // full results + lifetime stats (every round, series rounds too)
@@ -1238,6 +1238,50 @@ async function addFilm(l, value) {
     details: { director: m.director, cast: m.cast, genres: m.genres, synopsis: m.synopsis, runtime: m.runtime, collection: m.collection, imdbId: m.imdbId } };
   l.entries.push(e); return e;
 }
+// 💩 a battle pool made from a Letterboxd page (default: the 500 lowest rated films). "🔄 Update from Letterboxd" fetches it again:
+// new films come in, films that dropped off the list leave, everything else (odds, paused…) stays as you set it.
+async function syncLetterboxdList(l) {
+  const src = l.source || {}; l.job = { running: true, step: 'Reading Letterboxd…', done: 0, total: 0, at: Date.now() }; pushState();
+  try {
+    const films = await lb.fetchFilmList(src.url || lb.WORST_URL, src.max || 500, (page, n) => { l.job.step = `Reading Letterboxd… page ${page} (${n} films)`; pushState(); });
+    const want = new Set(films.map(f => f.slug)), have = new Map(l.entries.filter(e => e.lbSlug && e.status !== 'removed').map(e => [e.lbSlug, e]));
+    const cache = (db.lbTmdb ||= {}); let added = 0, gone = 0, missed = [];
+    films.forEach((f, i) => { const e = have.get(f.slug); if (e) e.lbRank = i + 1; });
+    const todo = films.map((f, i) => ({ ...f, rank: i + 1 })).filter(f => !have.has(f.slug));
+    l.job = { running: true, step: 'Looking up the movies…', done: 0, total: todo.length, at: Date.now() }; pushState();
+    let k = 0;
+    const worker = async () => {
+      while (k < todo.length) {
+        const f = todo[k++];
+        try {
+          let id = cache[f.slug];
+          if (!id) { const r = await searchMovies(f.title); const hit = r.find(m => f.year && String(m.year) === String(f.year)) || r.find(m => m.title.toLowerCase() === f.title.toLowerCase()) || r[0]; if (!hit) throw new Error('not on TMDB'); id = cache[f.slug] = String(hit.id); }
+          if (!l.entries.some(e => String(e.tmdbId) === String(id) && e.status !== 'removed')) { const e = await addFilm(l, id); e.lbSlug = f.slug; e.lbRank = f.rank; added++; }
+          else { const e = l.entries.find(x => String(x.tmdbId) === String(id) && x.status !== 'removed'); e.lbSlug ||= f.slug; e.lbRank = f.rank; }
+        } catch (err) { missed.push(`${f.title}${f.year ? ` (${f.year})` : ''}`); }
+        l.job.done++; if (l.job.done % 10 === 0) pushState();
+      }
+    };
+    await Promise.all(Array.from({ length: 5 }, worker));
+    for (const e of l.entries) if (e.lbSlug && !want.has(e.lbSlug) && ['active', 'paused'].includes(e.status)) { e.status = 'removed'; gone++; }
+    l.source = { ...src, kind: 'letterboxd', url: src.url || lb.WORST_URL, max: src.max || 500, at: Date.now(), count: films.length, added, gone, missed: missed.slice(0, 50), error: null };
+    l.job = null; save(); pushState(); refreshPreview();
+    broadcast({ type: 'toast', text: `🎞️ “${l.name}” is up to date: ${films.length} films (${added} new${gone ? `, ${gone} dropped off` : ''}${missed.length ? `, ${missed.length} not found` : ''})` }, 'control');
+  } catch (e) {
+    l.source = { ...src, error: e.message, at: src.at || null }; l.job = null; save(); pushState();
+    broadcast({ type: 'toast', text: `⚠️ Letterboxd: ${e.message}` }, 'control');
+  }
+}
+app.post('/api/lists/letterboxd', (req, res) => { // make a new Letterboxd battle, or update one
+  const b = req.body || {}; let l = b.listId ? getList(b.listId) : null;
+  if (l?.job?.running) return res.status(400).json({ error: 'Already updating, give it a minute.' });
+  if (!l) {
+    l = { id: uid(), name: String(b.name || '💩 Letterboxd’s worst 500').slice(0, 60), type: 'films', entries: [], joinOpen: false, source: { kind: 'letterboxd', url: String(b.url || '').trim() || lb.WORST_URL, max: Math.max(10, Math.min(2000, Number(b.max) || 500)) } };
+    db.lists.push(l); db.activeListId = l.id; leaveEnded(); save();
+  } else if (b.url != null || b.max != null) l.source = { ...(l.source || {}), kind: 'letterboxd', url: String(b.url || l.source?.url || lb.WORST_URL).trim(), max: Math.max(10, Math.min(2000, Number(b.max) || l.source?.max || 500)) };
+  syncLetterboxdList(l);
+  pushState(); res.json({ ok: true, id: l.id });
+});
 app.post('/api/lists/:id/film', async (req, res) => {
   const l = getList(req.params.id); if (!l || l.type !== 'films') return res.sendStatus(404);
   try { const e = await addFilm(l, req.body?.tmdbId || req.body?.query); save(); pushState(); res.json({ ok: true, msg: `Added ${e.label} (${e.sub})` }); }
@@ -1678,6 +1722,17 @@ app.delete('/api/sounds/:name', (req, res) => {
 
 // ---------- Test tab: try every feature without waiting for real viewers ----------
 app.post('/api/test/alert', (req, res) => { chatlog.onAlert({ kind: String(req.body?.kind || 'sub'), login: 'test_viewer', name: 'Test_Viewer', amount: 5, text: String(req.body?.text || 'subscribed · 5 months') }); res.json({ ok: true }); });
+app.post('/api/test/discord-battle', async (req, res) => { // a Discord movies battle with the real pieces on the cliff, but it changes nothing (no winner, no luck, no cooldowns)
+  if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
+  leaveEnded(); if (db.activeListId !== 'movies') { db.activeListId = 'movies'; previewIds = null; }
+  const err = await startRound({ test: true }); err ? res.status(400).json({ error: err }) : res.json({ ok: true });
+});
+app.post('/api/test/reset-cooldowns', (req, res) => { // for testing: everyone's movies back in, nobody benched or out tonight
+  const r = resetCooldowns(); db.noShowStreak = 0; resetSpots(); save(); pushState(); refreshPreview(true); res.json({ ok: true, ...r });
+});
+app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyone with a movie typed in chat
+  const st = stream(); st.active = [...new Set([...st.active, ...discordPeopleWithMovies().map(p => p.key)])]; save(); pushState(); refreshPreview(true); res.json({ ok: true, people: st.active.length });
+});
 app.post('/api/test/claim-chat', (req, res) => { // Test tab: the movie winner "types in chat"
   const w = live.lastWinner; if (!w || w.test || w.spot || live.phase !== 'ended') return res.json({ ok: false, error: 'Finish a real battle first (the winner card has to be up).' });
   const login = (w.ownerLogin || norm(w.owner || 'winner')).toLowerCase();
@@ -1737,7 +1792,7 @@ function nextSeriesRound() { // best-of: the next round starts by itself
   broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true);
   setTimeout(() => startRound().then(err => { if (err) broadcast({ type: 'toast', text: '⚠️ ' + err }, 'control'); }), 2500);
 }
-async function startRound() { // returns an error message, or null when the round started
+async function startRound(opts = {}) { // returns an error message, or null when the round started (opts.test: a test battle with the real pieces that changes nothing)
   if (wheel.W().show) wheel.setShow(false); // a battle is starting: the battle goes on stream
   rollWeek();
   const list = getList(db.activeListId);
@@ -1751,9 +1806,9 @@ async function startRound() { // returns an error message, or null when the roun
     return `Only ${fighters.length} movie on the cliff (${on}) — need at least 2. Movies join when their person types in Twitch chat. If someone typed but didn't get in, link them under "Recent chatters" in the Pool tab, or switch them on in the People tab.`;
   }
   previewIds = null; if (live.vote) endVote();
-  live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), startedAt: Date.now() }; live.mapUsed = true;
+  live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), startedAt: Date.now(), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test;
   live.phase = 'lobby'; live.claim = null;
-  const queued = db.pendingEffects; db.pendingEffects = []; save();
+  const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
     type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, movieNo: list.type === 'movies' ? (stream().movies || 0) + 1 : null,
     lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: db.settings.fairOdds && !(list.type === 'chat' && (list.fun?.powerups || Object.values(list.fun?.wacky || {}).some(Boolean))), fun: list.type === 'chat' ? { ...(list.fun?.wacky || {}) } : null, chaos: chaosState(), queued,

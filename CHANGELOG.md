@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.20.0 (test build)
+- **💩 New battle: Letterboxd’s worst 500.** The 500 lowest rated movies on Letterboxd as a battle pool (+ New battle → 💩 Make it). Press **🔄 Update from Letterboxd** in the 🎬 Movie Pool tab any time: new films come in, ones that dropped off leave, and your odds and pauses stay. You can point it at any other Letterboxd page or list too.
+- **🧪 Test tab → ⚔️ Discord battle tests:** reset everyone's cooldowns, put everyone on the cliff, and run a test Discord battle with the real movies that changes nothing (no winner, no luck, no cooldowns). Then press Next round and see if the balls come back.
+- **📌 Pinned messages** has its own card in the Test tab.
+- **✅ Checklist:** a second tab in the Test tab. It shows what's set up (Twitch, chat, Discord, the 24/7 bot, TMDB, Letterboxd, the game screen) and a list of things to try once, with "Try it" buttons. Your ticks are remembered.
+- **The main tabs always stay at the top:** the page can't scroll them away any more.
+
 ## 1.19.1 (test build)
 - **📺 The test screen pop-up resizes properly:** grab any bottom corner (the gold triangles) or the left, right or bottom edge and drag. It remembers its size.
 

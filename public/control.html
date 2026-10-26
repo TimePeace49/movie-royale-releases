@@ -26,7 +26,7 @@
   textarea { min-height:110px; resize:vertical; }
   a { color:var(--gold); }
   /* header + main tabs */
-  header { height:var(--hdr); display:flex; align-items:center; gap:14px; padding:0 16px; border-bottom:1px solid var(--line); background:rgba(18,10,36,.85); }
+  header { position:sticky; top:0; z-index:45; height:var(--hdr); display:flex; align-items:center; gap:14px; padding:0 16px; border-bottom:1px solid var(--line); background:rgba(18,10,36,.85); }
   header h1 { margin:0; font-size:20px; font-family:'Lilita One', Impact, sans-serif; letter-spacing:.5px; color:var(--gold); white-space:nowrap; }
   nav { display:flex; gap:2px; height:100%; overflow-x:auto; }
   nav button { background:transparent; border:0; border-bottom:3px solid transparent; border-radius:0; padding:0 12px; color:var(--dim); font-weight:700; white-space:nowrap; height:100%; }
@@ -39,7 +39,8 @@
   .me img { width:30px; height:30px; border-radius:50%; border:2px solid var(--twitch); }
   .live { background:#e91916; color:#fff; font-weight:800; font-size:11px; padding:2px 7px; border-radius:6px; letter-spacing:1px; }
   /* views fill the window; only inner panes scroll */
-  .view { display:none; height:calc(100vh - var(--hdr)); padding:14px 16px; gap:14px; }
+  .view { display:none; height:calc(100vh - var(--hdr)); padding:14px 16px; gap:14px; overflow:auto; box-sizing:border-box; } /* each tab scrolls inside itself: the main tabs at the top never scroll away */
+  html { height:100%; overflow:hidden; }
   .view.on { display:grid; }
   .pane { min-height:0; overflow:auto; }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
@@ -263,6 +264,11 @@
   #v-sounds { grid-template-columns:340px 1fr; }
   #v-test { grid-template-columns:repeat(3, 1fr); align-content:start; overflow:auto; }
   #v-test .card + .card { margin-top:0; }
+  #v-test.checkmode > .card:not(#tCheck):not(.ttabs) { display:none; }
+  #v-test:not(.checkmode) > #tCheck { display:none; }
+  .ckl { display:grid; grid-template-columns:28px 1fr auto; gap:6px 10px; align-items:center; }
+  .ckl .ok { color:var(--good); } .ckl .no { color:var(--bad); } .ckl .mid { color:var(--gold); }
+  .ckl h4 { grid-column:1 / -1; margin:12px 0 2px; }
   #v-help { grid-template-columns:1fr; padding:0; }
   #v-help iframe { width:100%; height:100%; border:0; }
   /* settings: sub-tabs down the left */
@@ -502,6 +508,24 @@
 
 <!-- 🧪 TEST -->
 <section class="view" id="v-test">
+  <div class="card ttabs" style="grid-column:1 / -1;padding:8px"><div class="seg"><button id="tTabTests" class="on" onclick="testTab('tests')">🧪 Tests</button><button id="tTabCheck" onclick="testTab('check')">✅ Checklist</button></div></div>
+  <div class="card" id="tCheck" style="grid-column:1 / -1"></div>
+  <div class="card" style="grid-column:1 / -1">
+    <h3>⚔️ Discord battle tests</h3>
+    <p class="help">Rule things out when balls don't come back. Not live? That doesn't matter: chat, the cliff and battles all work the same when you're offline.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap">
+      <button onclick="if(confirm('Reset everyone\'s cooldowns? Movies that won this week, sat out or were out tonight all come back, and wild spots refill.')) api('/api/test/reset-cooldowns').then(r=>toast('↺ Cooldowns reset: '+r.back+' movies back in'))">↺ Reset everyone's cooldowns</button>
+      <button onclick="api('/api/test/everyone-in').then(r=>toast('🟢 Everyone with a movie is on the cliff ('+r.people+' people)'))">🟢 Put everyone on the cliff</button>
+      <button class="primary" onclick="api('/api/test/discord-battle').then(()=>{toast('⚔️ Test Discord battle! It changes nothing: no winner, no luck, no cooldowns.');})">⚔️ Run a test Discord battle</button>
+      <button onclick="api('/api/claim/close').then(()=>toast('Next round: watch the balls come back'))">Next round →</button>
+    </div>
+    <p class="help" style="margin:6px 0 0">Try it: reset cooldowns → put everyone on the cliff → run a test battle → press Next round. If the balls come back, cooldowns were the reason they were missing (movies that won sit out for the week).</p>
+  </div>
+  <div class="card">
+    <h3>📌 Pinned messages</h3>
+    <p class="help">Sends a test message in your Twitch chat and pins it at the top (the same way a claimed movie gets pinned). Needs Twitch signed in.</p>
+    <button class="primary" onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button>
+  </div>
   <div class="card" style="grid-column:1 / -1"><p class="help" style="margin:0">📺 Every test here pops up a little window showing what's on stream right now, so you can see it (drag it by the top bar, resize it from a corner or edge). <button onclick="peek(true)">📺 Show the stream screen</button></p></div>
   <div class="card" style="grid-column:1 / -1" id="wTestCard"></div>
   <div class="card">
@@ -594,6 +618,7 @@
 
 <dialog id="newlist"><div class="inner">
   <h3>New battle</h3>
+  <div class="card soft" style="margin:0 0 10px;padding:10px"><b>💩 Letterboxd’s worst 500</b><p class="help" style="margin:4px 0 8px">A ready-made battle of the 500 lowest rated movies on Letterboxd. Press 🔄 Update in the 🎬 Movie Pool tab any time to get the latest list.</p><button class="primary" onclick="newlist.close();lbWorst()">💩 Make it</button></div>
   <label>Name</label><input id="nlName" placeholder="e.g. Horror night, Snack wheel, Giveaway">
   <label>What goes in it?</label>
   <div class="seg" id="nlType">
@@ -655,6 +680,53 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const isMovieList = l => l && (l.type === 'movies' || l.type === 'films');
 
 function toast(msg, ms = 3500) { let box = $('toasts'); if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); } const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = msg; box.appendChild(d); setTimeout(() => d.remove(), ms); }
+// the main tabs always stay on screen: the page itself never scrolls (each tab scrolls inside itself)
+addEventListener('scroll', e => { if (e.target === document || e.target === document.body || e.target === document.documentElement) { if (scrollY) scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; } }, true);
+// ✅ Test tab → Checklist: what's set up (checked by itself) + things to try once (you tick them, they're remembered on this computer)
+function testTab(t) { $('v-test').classList.toggle('checkmode', t === 'check'); $('tTabTests').classList.toggle('on', t !== 'check'); $('tTabCheck').classList.toggle('on', t === 'check'); if (t === 'check') drawChecklist(); try { localStorage.testTab = t; } catch {} }
+let ckDone = {}; try { ckDone = JSON.parse(localStorage.ckDone || '{}'); } catch {}
+function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); }
+function drawChecklist() {
+  const box = $('tCheck'); if (!box || !S) return;
+  const st = S.status || {}, tw = st.twitch || {}, dc = st.discord || {}, c = S.cloud || {}, set = S.settings || {};
+  const auto = (ok, label, fix, mid) => `<span class="${ok ? 'ok' : mid ? 'mid' : 'no'}">${ok ? '✅' : mid ? '🟡' : '❌'}</span><span>${label}</span><span>${!ok && fix ? fix : ''}</span>`;
+  const go = (v, s2) => `<button class="ghost" style="padding:3px 9px" onclick="setView('${v}')${s2 ? `;setSub('${s2}')` : ''}">Fix it</button>`;
+  const man = (k, label, act) => `<span><input type="checkbox" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span>${label}${ckDone[k] ? ` <small class="muted">(${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span>${act || ''}</span>`;
+  const T = (txt, js) => `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests');${js}">${txt}</button>`;
+  const manual = [
+    ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
+    ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').catch(()=>{})")],
+    ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', ''],
+    ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', ''],
+    ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message'))")],
+    ['sitout', '!sitout and !imback work in chat', ''],
+    ['chaos', 'A channel point / bits chaos event hits the battle', ''],
+    ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Wheel tab', "setView('wheel')")],
+    ['wheelPoints', 'A wheel channel point reward (respin / move) works', ''],
+    ['money', 'A sub / bits / donation pop-up shows up on the wheel', ''],
+    ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', ''],
+    ['discordClosed', '/suggest and /linktwitch work in Discord with Movie Royal CLOSED (24/7 bot)', T('Check bot', "cloudCheck()")],
+    ['obs', 'OBS: the game screen shows in your scene with sound', ''],
+    ['update', 'Movie Royal updates itself (Settings → Account)', '']
+  ];
+  const doneN = manual.filter(([k]) => ckDone[k]).length;
+  box.innerHTML = `<div class="row" style="align-items:center"><h3 class="grow" style="margin:0">✅ Is everything working?</h3><span class="pill">${doneN}/${manual.length} tried</span><button class="ghost" onclick="if(confirm('Untick everything on the checklist?')){ckDone={};try{localStorage.ckDone='{}'}catch{};drawChecklist()}">Untick all</button></div>
+    <div class="ckl">
+      <h4>Set up (checked by itself)</h4>
+      ${auto(tw.state === 'online', `Twitch signed in${tw.login ? ` as <b>${esc(tw.login)}</b>` : ''}`, '<a class="btn ghost" href="/auth/twitch" style="padding:3px 9px">Sign in</a>')}
+      ${auto(/^reading/.test(tw.chat || ''), `Reading Twitch chat${tw.chat ? ` <small class="muted">(${esc(tw.chat)})</small>` : ''}`, go('settings', 'twitch'))}
+      ${auto(!!tw.canChat, 'Movie Royal can post in Twitch chat', '<a class="btn ghost" href="/auth/twitch" style="padding:3px 9px">Sign in again</a>')}
+      ${auto(dc.state === 'online', `Discord bot online${dc.tag ? ` <small class="muted">(${esc(dc.tag)})</small>` : ''}`, go('settings', 'discord'))}
+      ${auto(c.enabled && c.linked !== false, c.enabled ? (c.linked === false ? '24/7 Discord bot is on but NOT connected to Discord' : '24/7 Discord bot on (works with Movie Royal closed)') : '24/7 Discord bot is off (Discord only works while Movie Royal is open)', `<button class="ghost" style="padding:3px 9px" onclick="cloudCheck(this)">Check</button>`, !c.enabled)}
+      ${auto(!!set.tmdbKey, 'Movie search (TMDB) set up', go('settings', 'movies'))}
+      ${auto(!!set.letterboxdUser && !st.letterboxd?.profileError, `Letterboxd${set.letterboxdUser ? ` (<b>${esc(set.letterboxdUser)}</b>, ${st.letterboxd?.count || 0} watched)` : ''}`, go('settings', 'movies'), !set.letterboxdUser)}
+      ${auto((st.overlays || 0) > 0, `Game screen open (${st.overlays || 0} — the app counts as one, OBS as another)`, '')}
+      ${auto(!(S.rewardsByHand || []).length, (S.rewardsByHand || []).length ? `Channel point rewards made by hand on Twitch: ${S.rewardsByHand.map(esc).join(', ')}` : 'Channel point rewards are Movie Royal\'s own (it can pause them)', go('settings', 'twitch'))}
+      ${auto(!S.live || true, S.live ? '🔴 You are live' : '⚫ Not live (fine for testing: everything works offline too)', '', !S.live)}
+      <h4>Try each one once</h4>
+      ${manual.map(([k, l, a]) => man(k, l, a)).join('')}
+    </div>`;
+}
 async function api(url, body, method = 'POST') {
   if (method === 'POST' && view !== 'battle' && (view === 'test' || url.startsWith('/api/test/'))) peek(true); // testing something? show the stream screen
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -693,7 +765,7 @@ function setView(v) {
   if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
-  if (v === 'test') drawWheelTest();
+  if (v === 'test') { drawWheelTest(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
@@ -785,7 +857,7 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); }
+function render() { renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); if (view === 'test' && $('v-test').classList.contains('checkmode') && !document.activeElement?.closest?.('#tCheck')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }
@@ -1225,7 +1297,7 @@ function renderPool() {
     </details>`;
   $('poolMain').innerHTML = `<div class="card">
       <div class="listhead"><input class="grow" value="${esc(l.name)}" ${l.type === 'movies' ? 'readonly' : ''} onchange="api('/api/lists/${l.id}', {name:this.value}, 'PATCH')"><span class="pill">${TYPE[l.type]}</span><span class="pill">${active.length} in the pool</span></div>
-      ${add}</div>
+      ${l.source?.kind === 'letterboxd' ? lbCard(l) : ''}${add}</div>
     <div class="card tablecard">
       <div class="row" style="margin-bottom:6px">
         <h2 class="grow" style="margin:0">Pool &amp; odds ${l.type === 'movies' && S.luckOn ? '<span class="luck">🍀 luck is on</span>' : ''}</h2>
@@ -2160,6 +2232,14 @@ const NL_HELP = { films: 'Search and paste movie titles yourself. The winner get
 function newList() { $('nlName').value = ''; $('nlItems').value = ''; selType('films'); newlist.showModal(); $('nlName').focus(); }
 function selType(t) { nlType = t; [...$('nlType').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('nlHelp').textContent = NL_HELP[t]; }
 $('nlType').onclick = e => e.target.dataset.t && selType(e.target.dataset.t);
+async function lbWorst(url) { const r = await api('/api/lists/letterboxd', url ? { url, name: '🎞️ Letterboxd battle' } : {}); toast('🎞️ Getting the films from Letterboxd… (about a minute)', 5000); setView('pool'); }
+function lbCard(l) { // a battle that comes from Letterboxd: update it, or point it at another Letterboxd page
+  const src = l.source || {}, j = l.job, ago = src.at ? new Date(src.at).toLocaleString() : 'never';
+  return `<div class="card soft" style="margin:8px 0;padding:10px"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b class="grow">🎞️ From Letterboxd</b>${j?.running ? `<span class="pill">⏳ ${esc(j.step)}${j.total ? ` ${j.done}/${j.total}` : ''}</span>` : `<button class="primary" onclick="api('/api/lists/letterboxd',{listId:'${l.id}'}).then(()=>toast('🔄 Updating from Letterboxd…'))">🔄 Update from Letterboxd</button>`}</div>
+    <p class="help" style="margin:6px 0">Last updated: <b>${esc(ago)}</b>${src.count ? ` · ${src.count} films on the list` : ''}${src.added != null && src.at ? ` · last time: ${src.added} new${src.gone ? `, ${src.gone} dropped off` : ''}` : ''}${src.error ? ` · <span style="color:var(--bad)">⚠️ ${esc(src.error)}</span>` : ''}</p>
+    ${src.missed?.length ? `<details><summary class="help">${src.missed.length} film${src.missed.length === 1 ? '' : 's'} couldn't be found on TMDB</summary><p class="help">${src.missed.map(esc).join(', ')}</p></details>` : ''}
+    <details><summary class="help">Use a different Letterboxd page</summary><div class="row" style="gap:6px;margin-top:6px"><input class="grow" id="lbUrl" value="${esc(src.url || '')}" placeholder="https://letterboxd.com/films/by/rating-lowest/"><input id="lbMax" type="number" min="10" max="2000" style="width:90px" value="${src.max || 500}" title="How many films"><button onclick="api('/api/lists/letterboxd',{listId:'${l.id}',url:$('lbUrl').value,max:$('lbMax').value}).then(()=>toast('🔄 Updating from Letterboxd…'))">Use it</button></div><p class="help">Any Letterboxd list link works too (like letterboxd.com/someone/list/worst-movies/).</p></details></div>`;
+}
 async function createList() {
   const r = await api('/api/lists', { name: $('nlName').value || 'New battle', type: nlType }), items = $('nlItems').value.trim();
   newlist.close(); $('nlItems').value = ''; setView('pool');

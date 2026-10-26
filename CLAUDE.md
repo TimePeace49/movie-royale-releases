@@ -58,6 +58,10 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Cliff self-heal:** game screens send `{type:'cliff'}` every 4 s; if one doesn't match `lastPreview` twice, the server re-sends it with `heal:true`.
 - **Hidden health:** `hurt(f, dmg)` in game.html (hard bumps + big `push` hits); 0 = `blastOrDodge(..., 'K.O.!')`; the fair-odds winner never dies from it.
 
+- **Letterboxd battles:** list `source: {kind:'letterboxd', url, max}`; `syncLetterboxdList` (server) uses `lb.fetchFilmList` (films pages via the `/films/ajax/` address, lists as-is) + TMDB search; entries keep `lbSlug`. Couldn't test real Letterboxd from the cloud session (blocked) — only a mock.
+- **Test tab** has two tabs: 🧪 Tests and ✅ Checklist (`drawChecklist`; ticks in localStorage `ckDone`). Add new testable features to both.
+- **Test Discord battle:** `startRound({test:true})` = real pieces, `live.game.test` (no history, luck, cooldowns).
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 
