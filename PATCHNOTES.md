@@ -3,6 +3,17 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.26.0: What's new
+Everything since 1.25.0.
+
+- **⌨️ Key binds** (Settings → ⌨️ Key binds): keyboard shortcuts for every tab, sorted by tab. Space spins the wheel, R respins, ↑ / ↓ move it, Ctrl+Z undoes, G starts the battle, Y / P accept / pass the winner, N next round, 1–0 fire powers, Alt+1 to Alt+0 jump between tabs, and more. Click a key to change it.
+  - Each key only works on its own tab, and never while you're typing in a box. Only the Ctrl / Alt ones work everywhere.
+- **Ctrl+H** turns help mode on and off.
+- **⚠️ on the 🧪 Test tab** shows how many new errors there are.
+- **📺 Preview window:** it comes back when you open the 🧪 Test tab, has a Show / Hide button, and **⧉ Pop out** puts it in its own window for another monitor (no sound).
+- **Tests show the right screen:** battle tests (the winner claiming, !sitout, !join…) put the battle on stream, wheel tests (up, down, !respin, redeems, money pop-ups) put the wheel on stream. No preview window on the 🎡 Wheel tab while the wheel is on stream.
+- **✅ Checklist** is easier to read: each item is its own box with a colored edge, and its button right next to it.
+
 ## v1.25.0: What's new
 Everything since 1.24.0.
 

@@ -2,7 +2,7 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.26.0 (test build)
+## 1.26.0 (latest release)
 - **⚠️ on the 🧪 Test tab** when something goes wrong: a red number shows how many new errors there are. It goes away once you open ⚠️ Errors.
 - **📺 Preview window:** it comes back by itself when you go back to the 🧪 Test tab. The Test tab has 📺 Show / Hide the preview window, and **⧉ Pop out to another monitor**, which opens it in its own window you can drag anywhere (no sound; Movie Royal already plays it). The preview's top bar has ⧉ Pop out too. Close the popped-out window to bring it back.
 - **Ctrl+H** turns help mode on and off.
