@@ -119,10 +119,18 @@
   #wEntTable tr.dragging { opacity:.45; }
   #wEntTable tr.dropAbove td { box-shadow:inset 0 3px 0 var(--gold); }
   #wEntTable tr.dropBelow td { box-shadow:inset 0 -3px 0 var(--gold); }
-  #stage.peek { z-index:60; border:2px solid var(--gold); resize:both; min-width:320px; min-height:210px; padding-top:34px; box-shadow:0 20px 80px #000c; }
+  #stage.peek { z-index:60; border:2px solid var(--gold); min-width:320px; min-height:210px; padding-top:34px; box-shadow:0 20px 80px #000c; }
   #stage.peek iframe { top:34px; height:calc(100% - 34px); }
   #peekBar { display:none; }
   #stage.peek #peekBar { display:flex; position:absolute; left:0; right:0; top:0; height:34px; align-items:center; gap:8px; padding:0 6px 0 12px; background:#1d1233; cursor:move; user-select:none; font-size:13px; font-weight:700; z-index:3; }
+  .pgrip { display:none; position:absolute; z-index:4; }
+  #stage.peek .pgrip { display:block; }
+  .pgrip[data-d=se] { right:0; bottom:0; width:22px; height:22px; cursor:nwse-resize; background:linear-gradient(135deg, transparent 50%, var(--gold) 50%); border-bottom-right-radius:12px; }
+  .pgrip[data-d=sw] { left:0; bottom:0; width:22px; height:22px; cursor:nesw-resize; background:linear-gradient(225deg, transparent 50%, var(--gold) 50%); border-bottom-left-radius:12px; }
+  .pgrip[data-d=e] { right:0; top:34px; bottom:22px; width:8px; cursor:ew-resize; }
+  .pgrip[data-d=w] { left:0; top:34px; bottom:22px; width:8px; cursor:ew-resize; }
+  .pgrip[data-d=s] { left:22px; right:22px; bottom:0; height:8px; cursor:ns-resize; }
+  .pgrip:hover { background-color:#ffc94a55; }
   #peekBar span { flex:1; } #peekBar button { padding:3px 10px; font-size:12px; }
   #stage:fullscreen { border-radius:0; border:0; }
   #fsBar { display:none; }
@@ -297,7 +305,8 @@
 <div id="stage">
   <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royal game"></iframe>
   <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
-  <div id="peekBar" title="Drag to move. Drag the bottom-right corner to resize."><span>📺 What's on stream right now</span><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
+  <div class="pgrip" data-d="se" title="Drag to resize"></div><div class="pgrip" data-d="sw" title="Drag to resize"></div><div class="pgrip" data-d="e"></div><div class="pgrip" data-d="w"></div><div class="pgrip" data-d="s"></div>
+  <div id="peekBar" title="Drag to move. Drag a corner or edge to resize."><span>📺 What's on stream right now</span><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
   <div class="away"><div style="font-size:36px">🪟</div><div>The game is open in its own window.</div><button onclick="event.stopPropagation();bringBack()">Bring it back here</button></div>
 </div>
 
@@ -493,7 +502,7 @@
 
 <!-- 🧪 TEST -->
 <section class="view" id="v-test">
-  <div class="card" style="grid-column:1 / -1"><p class="help" style="margin:0">📺 Every test here pops up a little window showing what's on stream right now, so you can see it (drag it around, resize it from the corner). <button onclick="peek(true)">📺 Show the stream screen</button></p></div>
+  <div class="card" style="grid-column:1 / -1"><p class="help" style="margin:0">📺 Every test here pops up a little window showing what's on stream right now, so you can see it (drag it by the top bar, resize it from a corner or edge). <button onclick="peek(true)">📺 Show the stream screen</button></p></div>
   <div class="card" style="grid-column:1 / -1" id="wTestCard"></div>
   <div class="card">
     <h3>💬 Pretend to be a chatter</h3>
@@ -721,6 +730,18 @@ function peekBig() { const small = $('stage').getBoundingClientRect().width > 70
   $('peekBar').addEventListener('pointerdown', e => { if (e.target.closest('button')) return; const r = $('stage').getBoundingClientRect(); d = { dx: e.clientX - r.left, dy: e.clientY - r.top }; $('peekBar').setPointerCapture(e.pointerId); $('game').style.pointerEvents = 'none'; });
   $('peekBar').addEventListener('pointermove', e => { if (!d) return; $('stage').style.left = Math.max(0, Math.min(e.clientX - d.dx, innerWidth - 120)) + 'px'; $('stage').style.top = Math.max(0, Math.min(e.clientY - d.dy, innerHeight - 40)) + 'px'; });
   $('peekBar').addEventListener('pointerup', () => { if (!d) return; d = null; $('game').style.pointerEvents = ''; peekSave(); });
+  // resize from any corner or edge (the game picture can't swallow the drag)
+  let z = null;
+  document.querySelectorAll('.pgrip').forEach(g => {
+    g.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); const r = $('stage').getBoundingClientRect(); z = { d: g.dataset.d, x: e.clientX, y: e.clientY, r }; g.setPointerCapture(e.pointerId); $('game').style.pointerEvents = 'none'; });
+    g.addEventListener('pointermove', e => {
+      if (!z) return; const st = $('stage').style, dx = e.clientX - z.x, dy = e.clientY - z.y, r = z.r;
+      if (z.d.includes('e')) st.width = Math.max(320, Math.min(innerWidth - r.left, r.width + dx)) + 'px';
+      if (z.d.includes('w')) { const w = Math.max(320, Math.min(r.right, r.width - dx)); st.width = w + 'px'; st.left = (r.right - w) + 'px'; }
+      if (z.d.includes('s')) st.height = Math.max(210, Math.min(innerHeight - r.top, r.height + dy)) + 'px';
+    });
+    g.addEventListener('pointerup', () => { if (!z) return; z = null; $('game').style.pointerEvents = ''; peekSave(); });
+  });
   new ResizeObserver(() => { if ($('stage').classList.contains('peek')) peekSave(); }).observe($('stage'));
 })();
 window.addEventListener('resize', placeStage);
