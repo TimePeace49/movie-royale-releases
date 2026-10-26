@@ -21,6 +21,6 @@ export const MAP_LIST = [
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
 // map menus until it's been played on stream again. (Maps never played on stream show "NEW".)
-const REV = { };
+const REV = { gas: 2 };
 for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
 export const mapById = id => MAP_LIST.find(m => m.id === id);

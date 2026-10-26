@@ -56,9 +56,24 @@ export function blockReason(movie, user = null, opts = {}) {
 // picks can be closed (a toggle in the app, or automatically while you're live)
 export const picksClosed = () => !!db.picksClosed || (!!db.settings.closePicksWhenLive && !!db.live);
 export const closedMsg = () => `🔒 Movie picks are closed right now — ${streamerName()} will open them again soon. You can still use /mymovies and /list.`;
+// 🎟️ a free replacement pick: their movie got watched some other way (marked ✅ by hand, or Letterboxd) instead of winning a battle.
+// It skips the pick limit and closed picks, just for that one movie, and they can use it any time.
+export const freePicks = id => (db.freePicks || {})[id] || 0;
+let onWatchedElsewhere = () => {};
+export function setWatchedElsewhereHook(fn) { onWatchedElsewhere = fn; }
+export function watchedElsewhere(e) {
+  const b = e?.backers?.[0]; if (!b || isSpot(e) || e.freePick) return;
+  db.freePicks ||= {}; db.freePicks[b.discordId] = freePicks(b.discordId) + 1; e.freePick = true; save();
+  try { onWatchedElsewhere(e, b); } catch {}
+}
+export function unwatchedElsewhere(e) { // put back in the pool: take the free pick back if it wasn't used
+  const b = e?.backers?.[0]; if (!b || !e.freePick) return;
+  delete e.freePick; if (freePicks(b.discordId) > 0) db.freePicks[b.discordId]--; save();
+}
 export async function suggest(value, user, opts = {}) { // opts.force: streamer adding for someone (skips pick limit and closed picks)
   rollWeek();
-  if (!opts.force && !opts.cloud && picksClosed()) return { ok: false, msg: closedMsg() };
+  const free = !!user && freePicks(user.discordId) > 0;
+  if (!opts.force && !opts.cloud && !free && picksClosed()) return { ok: false, msg: closedMsg() };
   let movie;
   if (/^\d+$/.test(String(value))) movie = await getMovie(value);
   else {
@@ -72,12 +87,14 @@ export async function suggest(value, user, opts = {}) { // opts.force: streamer 
 
   const existing = findMovie(movie.id);
 
-  if (user && !opts.force && picksUsed(user.discordId) >= db.settings.maxPerUser) return { ok: false, msg: lockedMsg(user.discordId) };
-  if (user) usePick(user.discordId);
+  if (user && !opts.force && !free && picksUsed(user.discordId) >= db.settings.maxPerUser) return { ok: false, msg: lockedMsg(user.discordId) };
+  if (free) db.freePicks[user.discordId]--; // the replacement pick doesn't count toward their picks
+  else if (user) usePick(user.discordId);
   const entry = makeEntry(movie, user, existing);
   if (!existing) moviesList().entries.push(entry);
   save();
   const left = user ? db.settings.maxPerUser - picksUsed(user.discordId) : 0;
+  if (free) { const r = { ok: true, public: entry.status !== 'benched', picksLeft: left, msg: `🎬 **${label}** joined the battle royal${user ? `, suggested by <@${user.discordId}>` : ''}! (free replacement pick)`, entry }; if (entry.status === 'benched') r.msg = `🎬 **${label}** is saved (free replacement pick)! Your movie already won this week, so it sits out until **${backOn()}**.`; return r; }
   if (entry.status === 'benched') return { ok: true, public: false, picksLeft: left, msg: `🎬 **${label}** is saved! Your movie already won this week, so it sits out until **${backOn()}**, then it jumps into the battle royal.`, entry };
   return { ok: true, public: true, picksLeft: left, msg: `🎬 **${label}** joined the battle royal${user ? `, suggested by <@${user.discordId}>` : ''}!`, entry };
 }
@@ -135,6 +152,7 @@ export function addLuck(entryIds, streamKey = '') {
   const per = Math.max(0, Number(db.settings.luckPerBattle ?? 0.01));
   for (const e of moviesList().entries) {
     if (!entryIds.includes(e.id)) continue;
+    if (e.status === 'benched' || (e.backers?.[0] && wonThisWeek(e.backers[0].discordId))) continue; // on cooldown after their movie got watched: no luck
     if (e.kind === 'spot') { // wildcard spots (optional): at most +1% per stream
       if (!db.settings.spotLuck || e.spotLuckKey === streamKey) continue;
       e.spotLuckKey = streamKey; e.luckPct = Math.round(((e.luckPct || 0) + Math.min(1, per)) * 10000) / 10000;
@@ -154,7 +172,7 @@ export function giveLuckBack(snap) { for (const e of moviesList().entries) if (s
 export function sweepWatched() {
   let n = 0;
   for (const e of moviesList().entries) {
-    if (e.status === 'active' && lb.lookup({ title: e.label, year: e.sub, tmdbId: e.tmdbId })) { e.status = 'watched'; n++; if (e.backers?.[0]) resetLuckFor(e.backers[0].discordId); }
+    if (e.status === 'active' && lb.lookup({ title: e.label, year: e.sub, tmdbId: e.tmdbId })) { e.status = 'watched'; n++; if (e.backers?.[0]) resetLuckFor(e.backers[0].discordId); watchedElsewhere(e); }
   }
   if (n) save();
   return n;

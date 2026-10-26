@@ -13,7 +13,7 @@ import * as lb from './letterboxd.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
 import { searchMovies } from './tmdb.js';
-import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson } from './movies.js';
+import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
@@ -71,6 +71,12 @@ function refreshPreview(now = false) {
   }, now ? 0 : 300);
 }
 
+setWatchedElsewhereHook((e, b) => {
+  const manual = String(b.discordId).startsWith('manual-'), who = manual ? `**${b.name}**` : `<@${b.discordId}>`;
+  discord.notify(`🎬 ${who}, your movie **${e.label}${e.sub ? ` (${e.sub})` : ''}** got watched! You get a **free pick** to replace it: use \`/suggest\` any time, even if picks are closed or you've used all your picks. It only counts for this one movie.`).catch(() => {});
+  broadcast({ type: 'toast', text: `🎟️ ${b.name} gets a free replacement pick for ${e.label} (told them in Discord)` }, 'control');
+  if (cloud.enabled()) cloud.sync(true).catch?.(() => {});
+});
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const VERSION = process.env.MR_VERSION || PKG.version;
 let historyVersion = 0;
@@ -87,7 +93,7 @@ function discordPeople() {
   for (const [id, login] of Object.entries(db.links || {})) if (!m.has(id) && login) { const n = db.linkNames?.[id]; m.set(id, { discordId: id, name: n?.name || login, avatar: n?.avatar || null, active: [], watched: 0 }); } // linked their Twitch in Discord, no movies yet
   for (const p of m.values()) p.manual = String(p.discordId).startsWith('manual-');
   const on = activeSet();
-  return [...m.values()].map(p => ({ ...p, twitch: db.links[p.discordId] || '', used: picksUsed(p.discordId), max: db.settings.maxPerUser, chatting: on.has(p.discordId) }))
+  return [...m.values()].map(p => ({ ...p, twitch: db.links[p.discordId] || '', used: picksUsed(p.discordId), free: freePicks(p.discordId), max: db.settings.maxPerUser, chatting: on.has(p.discordId) }))
     .sort((a, b) => b.active.length - a.active.length || a.name.localeCompare(b.name));
 }
 function findHistory(id) { return id && db.history.find(h => h.id === id); }
@@ -986,6 +992,8 @@ app.patch('/api/lists/:id/entries/:eid', (req, res) => {
   if (req.body.status) {
     if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched' && e.backers?.[0]) e.luckSnap = resetLuckFor(e.backers[0].discordId); // watched: that person's luck starts over
     if (l.type === 'movies' && req.body.status !== 'watched' && e.status === 'watched' && e.luckSnap) { giveLuckBack(e.luckSnap); delete e.luckSnap; }
+    if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched') setTimeout(() => watchedElsewhere(e), 0); // watched outside a battle: they get a free replacement pick
+    if (l.type === 'movies' && req.body.status !== 'watched' && e.status === 'watched') unwatchedElsewhere(e);
     if (l.type === 'movies' && e.tmdbId) { if (req.body.status === 'watched') lb.markWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); else if (e.status === 'watched') lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); }
     e.status = req.body.status;
   }
@@ -1297,7 +1305,7 @@ function resolveCalls(f, list) {
   const out = [];
   for (const [login, v] of right) {
     const pid = byLogin.get(login); let boosted = 0;
-    if (pid && amt) for (const e of list.entries) if (e.kind !== 'spot' && ['active', 'benched', 'paused', 'away'].includes(e.status) && e.backers?.[0]?.discordId === pid && e.id !== f.id) { e.luckPct = (e.luckPct || 0) + amt; boosted++; }
+    if (pid && amt && !wonThisWeek(pid)) for (const e of list.entries) if (e.kind !== 'spot' && ['active', 'paused', 'away'].includes(e.status) && e.backers?.[0]?.discordId === pid && e.id !== f.id) { e.luckPct = (e.luckPct || 0) + amt; boosted++; }
     out.push({ login, name: v.name, boosted });
   }
   if (twitch.status.canChat) {
@@ -1511,6 +1519,7 @@ app.post('/api/test/twitch-say', async (req, res) => { try { await twitch.say(St
 app.post('/api/test/omdb', async (req, res) => res.json(await testOmdb()));
 app.post('/api/test/battle', async (req, res) => { // a practice round with made-up entries; your real lists and history aren't touched
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
+  if (wheel.W().show) wheel.setShow(false); // the battle goes on stream
   const names = ['Popcorn Pete', 'Reel Goblin', 'VHS Kid', 'Night Owl', 'Mia', 'Big Screen Bob', 'Lena', 'Ozzy', 'Frames', 'Snack Attack'];
   const movies = [['The Thing', '1982'], ['Heat', '1995'], ['Coco', '2017'], ['Jaws', '1975'], ['Alien', '1979'], ['Arrival', '2016'], ['Hot Fuzz', '2007'], ['Oldboy', '2003'], ['Paddington 2', '2017'], ['Knives Out', '2019']];
   const count = clampN(req.body?.count, 2, Math.max(2, Number(db.settings.maxFighters) || 1000), 10);

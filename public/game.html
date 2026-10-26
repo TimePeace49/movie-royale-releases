@@ -698,7 +698,7 @@ const MAPS = {
     onFall(f) {
       if (f.flying) return true;
       const ox = f.x, oy = f.y, ll = f.lastLucky; f.lastLucky = t; // no "LUCKY!" pop yet, it shows on landing
-      const saved = luckSave(f), land = saved && f.ret ? { x: f.ret.tx, y: f.ret.ty } : saved ? { x: f.x, y: f.y } : null; f.ret = null;
+      const saved = luckSave(f), lucky = !!f.ret?.lucky, land = saved && f.ret ? { x: f.ret.tx, y: f.ret.ty, lucky } : saved ? { x: f.x, y: f.y } : null; f.ret = null;
       f.lastLucky = ll; f.x = ox; f.y = oy;
       let vx = f.vx, vy = f.vy, sp = Math.hypot(vx, vy);
       if (sp < 60) { const a = Math.atan2(oy, ox || .01); vx = Math.cos(a); vy = Math.sin(a); sp = 1; }
@@ -724,7 +724,8 @@ const MAPS = {
       f.x = fl.fx + (fl.land.x - fl.fx) * e; f.y = fl.fy + (fl.land.y - fl.fy) * e; f.hop = Math.sin(Math.PI * k) * 420 + (1 - k) * 120;
       if (k >= 1) {
         f.flying = null; f.hop = 0; f.vhop = 0; f.safeUntil = t + .7; f.think = 0; f.plat = tileAt(f.x, f.y)?.up || 0;
-        f.lastLucky = t; SFX.play('lucky'); shake = Math.max(shake, 5);
+        if (!fl.land.lucky) { SFX.play('land'); return; }
+        f.lastLucky = t; SFX.play('lucky'); shake = Math.max(shake, 5); window.__luckyN = (window.__luckyN || 0) + 1;
         floaters.push({ text: 'LUCKY! BACK ON!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 30, life: 1.4, color: '#7dffb0' }); sparkle(sx(f.x), sy(f.y) - f.r, '#7dffb0', 24);
       }
     },
@@ -1157,113 +1158,209 @@ const MAPS = {
     power: { name: 'TREMOR', icon: '🫨', fn() { shake = 16; SFX.play('earthquake'); for (const tl of tiles) if (tl.state === 0 && tl !== winTile && Math.random() < .5) tl.touch += rnd(2, 4.5); } }
   },
   gas: {
-    // 💨 Whoopee Swamp: a goofy bean-field bog. Whoopee cushions hide in the grass (step on one: PFFFT, you go flying),
-    // green gas clouds drift over and everyone runs from the smell, and pieces toot themselves around at random.
-    name: 'Whoopee Swamp', icon: '💨', shape: SHAPES.hex,
-    tops: () => Array.from({ length: 5 }, (_, i) => makeTopP({ c1: `hsl(${78 + i * 4},62%,${52 - i * 2}%)`, c2: `hsl(${88 + i * 3},58%,${36 - i}%)`, specks: ['#d9f27a88', '#4f7a1e66'], speckN: 14, edge: 'rgba(240,255,170,.35)',
-      deco: g => { if (Math.random() < .5) for (let k = 0; k < 3; k++) { const x = rnd(14, TOP_W - 14), y = rnd(10, TOP_H - 10); g.fillStyle = pick(['#8a4a26', '#a0582c', '#6f3a1e']); g.beginPath(); g.ellipse(x, y, 5, 3.2, rnd(3), 0, 7); g.fill(); g.fillStyle = '#ffffff55'; g.beginPath(); g.arc(x - 1.5, y - 1, 1.2, 0, 7); g.fill(); } // beans!
-        if (Math.random() < .3) { const x = rnd(20, TOP_W - 20), y = rnd(12, TOP_H - 12); g.fillStyle = '#3f8f3a'; g.beginPath(); g.ellipse(x, y, 11, 6, 0, .3, 6.1); g.lineTo(x, y); g.fill(); } } })), // lily pads
-    wall: { cols: ['#6b5a2a', '#4f421e', '#3a2f17', '#211a0c'], lip: '#7fb83a', roots: '#5e8f2a', lit: 'rgba(220,255,120,.07)' },
+    // 💨 Fart Farm: a meadow on a farm. Cow herds stampede across the field and trample anyone in the way (and they fart
+    // as they run: whoever's behind a cow gets blasted, and the stink sends pieces running). UFOs float in, shine a
+    // spotlight, then beam pieces up into the saucer. Everybody toots now and then too.
+    name: 'Fart Farm', icon: '💨', shape: SHAPES.hex,
+    tops: () => Array.from({ length: 5 }, (_, i) => makeTopP({ c1: `hsl(${96 + i * 3},55%,${50 - i * 2}%)`, c2: `hsl(${104 + i * 2},50%,${38 - i}%)`, specks: ['#e8f7a066', '#2f6a1e55'], speckN: 18, edge: 'rgba(230,255,180,.3)',
+      deco: g => {
+        if (Math.random() < .45) for (let k = 0; k < 4; k++) { const x = rnd(10, TOP_W - 10), y = rnd(8, TOP_H - 8); g.fillStyle = pick(['#ffffff', '#ffe14d', '#ff9ad5', '#b9a7ff']); for (let p = 0; p < 5; p++) { g.beginPath(); g.arc(x + Math.cos(p * 1.26) * 2.6, y + Math.sin(p * 1.26) * 2.6, 1.8, 0, 7); g.fill(); } g.fillStyle = '#ffcf33'; g.beginPath(); g.arc(x, y, 1.4, 0, 7); g.fill(); } // daisies
+        if (Math.random() < .2) { const x = rnd(18, TOP_W - 18), y = rnd(10, TOP_H - 10); g.fillStyle = '#6a4a20'; g.beginPath(); g.ellipse(x, y, 8, 4.5, rnd(3), 0, 7); g.fill(); g.fillStyle = '#8a6430'; g.beginPath(); g.ellipse(x - 1, y - 1, 5, 2.5, 0, 0, 7); g.fill(); } // cow pie
+        if (Math.random() < .25) { const x = rnd(14, TOP_W - 14), y = rnd(8, TOP_H - 8); g.strokeStyle = '#d9c25a'; g.lineWidth = 1.6; for (let k = 0; k < 6; k++) { g.beginPath(); g.moveTo(x + rnd(-6, 6), y + rnd(-3, 3)); g.lineTo(x + rnd(-8, 8), y + rnd(-3, 3)); g.stroke(); } } // straw
+      } })),
+    wall: { cols: ['#7a5230', '#5e3e22', '#432c17', '#291a0c'], lip: '#6ab43a', roots: '#4f8a2a', lit: 'rgba(255,240,170,.07)' },
     sky(g) {
-      skyGrad(g, [[0, '#bfe36a'], [.45, '#e6f29a'], [1, '#a7c94f']]);
-      glowBall(g, 420, 210, 260, 'rgba(255,250,200,.6)', 'rgba(255,250,200,0)'); glowBall(g, 420, 210, 85, '#fffbd0', '#f4ec9a');
-      hills(g, [['#8fb547', 800, 120, .004], ['#6f9a33', 870, 90, .006], ['#557a26', 940, 60, .01]]);
-      for (let i = 0; i < 26; i++) { const x = rnd(W), y = rnd(860, 1060); g.strokeStyle = '#3f6a1c'; g.lineWidth = 4; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + rnd(-14, 14), y - 60, x + rnd(-8, 8), y - rnd(80, 130)); g.stroke(); g.fillStyle = '#6b3d1c'; g.beginPath(); g.ellipse(x, y - rnd(90, 130), 6, 18, 0, 0, 7); g.fill(); } // cattails
+      skyGrad(g, [[0, '#5fb4ff'], [.5, '#a9dcff'], [.8, '#e8f6ff'], [1, '#d6f0c0']]);
+      glowBall(g, 1560, 200, 220, 'rgba(255,250,210,.7)', 'rgba(255,250,210,0)'); glowBall(g, 1560, 200, 78, '#fffbe0', '#ffe98a');
+      hills(g, [['#8ccf5a', 760, 120, .004], ['#6fb543', 830, 95, .006], ['#549a32', 900, 70, .01]]);
+      // the barn, the silo and a windmill on the hill
+      const bx = 300, by = 760; g.fillStyle = '#b8282a'; g.fillRect(bx, by - 150, 210, 150); g.beginPath(); g.moveTo(bx - 14, by - 150); g.lineTo(bx + 105, by - 230); g.lineTo(bx + 224, by - 150); g.closePath(); g.fill();
+      g.fillStyle = '#f4efe4'; g.fillRect(bx + 70, by - 90, 70, 90); g.strokeStyle = '#f4efe4'; g.lineWidth = 6; g.beginPath(); g.moveTo(bx + 70, by - 90); g.lineTo(bx + 140, by); g.moveTo(bx + 140, by - 90); g.lineTo(bx + 70, by); g.stroke();
+      g.fillStyle = '#5a1416'; g.fillRect(bx + 88, by - 200, 34, 30);
+      g.fillStyle = '#c9cfd6'; g.fillRect(bx + 230, by - 230, 70, 230); g.beginPath(); g.arc(bx + 265, by - 230, 35, Math.PI, 0); g.fill(); g.fillStyle = '#a9b0b8'; for (let i = 0; i < 6; i++) g.fillRect(bx + 230, by - 210 + i * 36, 70, 4);
+      const wx = 1680, wy = 820; g.fillStyle = '#7a6a5a'; g.beginPath(); g.moveTo(wx - 18, wy); g.lineTo(wx - 6, wy - 200); g.lineTo(wx + 6, wy - 200); g.lineTo(wx + 18, wy); g.fill();
+      g.strokeStyle = '#efe7d6'; g.lineWidth = 10; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .3; g.beginPath(); g.moveTo(wx, wy - 200); g.lineTo(wx + Math.cos(a) * 90, wy - 200 + Math.sin(a) * 90); g.stroke(); }
+      g.strokeStyle = '#d8c39a'; g.lineWidth = 5; for (let x = 0; x < W; x += 70) { g.beginPath(); g.moveTo(x, 900); g.lineTo(x, 960); g.stroke(); } g.beginPath(); g.moveTo(0, 915); g.lineTo(W, 915); g.moveTo(0, 945); g.lineTo(W, 945); g.stroke(); // fence
     },
-    clouds: '#e8f5b0', fog: ['rgba(190,235,90,.18)', 'rgba(150,200,60,.55)'],
-    animBack() { // swamp bubbles rising and popping
-      for (let i = 0; i < 14; i++) { const ph = (clock * .35 + i * .137) % 1, x = (i * 397) % W, y = H - ph * 520; ctx.strokeStyle = `rgba(230,255,160,${.5 * (1 - ph)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + Math.sin(clock * 2 + i) * 10, y, 6 + i % 4 * 3, 0, 7); ctx.stroke(); }
+    clouds: '#ffffff', fog: ['rgba(220,245,200,.15)', 'rgba(150,200,110,.5)'],
+    animBack() { // a lazy UFO far away, blinking
+      const x = (clock * 40) % (W + 400) - 200, y = 140 + Math.sin(clock * .7) * 20;
+      ctx.fillStyle = 'rgba(70,80,100,.55)'; ctx.beginPath(); ctx.ellipse(x, y, 34, 9, 0, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(160,230,255,.6)'; ctx.beginPath(); ctx.ellipse(x, y - 6, 14, 9, 0, Math.PI, 0); ctx.fill();
+      if (Math.sin(clock * 6) > 0) { ctx.fillStyle = '#9dff7a'; ctx.beginPath(); ctx.arc(x, y + 2, 2.5, 0, 7); ctx.fill(); }
     },
     puff(x, y, n = 6, big = 1) { for (let j = 0; j < n; j++) parts.push({ x: sx(x) + rnd(-10, 10), y: sy(y) - rnd(5, 25), vx: rnd(-50, 50) * big, vy: rnd(-70, -10) * big, g: -25, life: rnd(.6, 1.2), max: 1.2, size: rnd(6, 13) * big, color: pick(['#b5e05acc', '#9ccc3ccc', '#d4ee8acc', '#c8e86acc']) }); },
     start() {
-      this.stink = []; this.nextCloud = 2;
-      const land = tiles.filter(tl => tl.state === 0).sort(() => Math.random() - .5), want = clamp(Math.round(tiles.length / 20), 4, 24);
-      this.cushions = [];
-      for (const tl of land) { if (this.cushions.length >= want) break; if (this.cushions.some(c => Math.hypot(c.x - tl.x, c.y - tl.y) < S * 4)) continue; this.cushions.push({ x: tl.x, y: tl.y, full: 1, refill: 0, wob: rnd(6.3), hit: -9 }); }
-      for (const f of fighters) f.tootIn = rnd(1.5, 7);
+      this.cows = []; this.ufos = []; this.stink = []; this.nextHerd = 2.2; this.nextUfo = 4.5;
+      for (const f of fighters) f.tootIn = rnd(2, 9);
     },
-    cloud(big) {
-      const l = alive(), land = solid.filter(tl => tl.state === 0), aim = l.length && Math.random() < .6 ? pick(l) : pick(land.length ? land : tiles); if (!aim) return;
-      const a = rnd(6.283), Rr = ISLAND_R + 250;
-      this.stink.push({ x: aim.x + Math.cos(a) * Rr, y: aim.y + Math.sin(a) * Rr, tx: aim.x - Math.cos(a) * Rr, ty: aim.y - Math.sin(a) * Rr, sp: rnd(120, 190), size: S * (big ? 5 : rnd(2.6, 3.6)), ph: rnd(6.3), pu: 0 });
-      SFX.play('brrap', { p: big ? .75 : rnd(.9, 1.2), v: .8 });
+    // a herd of cows charges straight across the field (through the crowd)
+    herd(n, big) {
+      const l = alive(), aim = l.length ? pick(l) : { x: 0, y: 0 }, a = rnd(6.283), ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux;
+      n = n || (Math.random() < .5 ? 2 : Math.random() < .5 ? 1 : 3);
+      for (let i = 0; i < n; i++) {
+        const off = (i - (n - 1) / 2) * S * 4.2 + rnd(-S * .5, S * .5), lag = big ? i * .14 : i * .4 + rnd(0, .25);
+        // start right at the edge of the island on the line through the target, so they run in over the grass (never out of the sky)
+        const ox = aim.x + px * off, oy = aim.y + py * off, b = ox * ux + oy * uy, c0 = ox * ox + oy * oy - (ISLAND_R + S) ** 2, disc = Math.max(0, b * b - c0), back = b + Math.sqrt(disc);
+        const sp = rnd(520, 620) + (big ? 110 : 0), sx0 = ox - ux * back, sy0 = oy - uy * back, span = 2 * Math.sqrt(disc) + S * 6;
+        this.cows.push({ x: sx0 - ux * lag * sp, y: sy0 - uy * lag * sp, ux, uy, sp, size: rnd(1.9, 2.3) * (big ? 1.2 : 1), ex: sx0, ey: sy0, ph: rnd(6.3), warn: 1.2 + lag, fartIn: rnd(.3, .8), life: (span + lag * sp) / sp, spot: Math.floor(rnd(1e6)), hit: new Set() });
+      }
+      SFX.play('moo', { p: rnd(.85, 1.15) }); setTimeout(() => SFX.play('stampede'), 250);
+    },
+    // a UFO picks a crowded spot, shines a spotlight, then beams pieces up
+    ufo() {
+      const l = alive().filter(f => !f.eaten); if (l.length < 2) return;
+      let best = null, bs = -1; for (let j = 0; j < 8; j++) { const c = pick(l), sc = l.length > 60 ? crowdAt(c.x, c.y) : l.filter(o => Math.hypot(o.x - c.x, o.y - c.y) < S * 3).length; if (sc > bs) { bs = sc; best = c; } }
+      const from = rnd(6.283), r = S * (2.6 + Math.min(1.6, l.length / 150));
+      this.ufos.push({ x: best.x + Math.cos(from) * 2200, y: best.y + Math.sin(from) * 2200, tx: best.x, ty: best.y, r, u: 0, stage: 'fly', victims: [], ph: rnd(6.3) });
+      SFX.play('ufo');
     },
     update(dt) {
-      if (!this.cushions) this.start();
-      const k = clamp(t / cfg.game, 0, 1), l = alive(), n = l.length;
-      // whoopee cushions: step on a full one and PFFFT, off you go
-      for (const c of this.cushions) {
-        const tl = tileAt(c.x, c.y); if (!tl || tl.state >= 2) { c.gone = true; continue; }
-        if (!c.full) { if ((c.refill -= dt) <= 0) c.full = 1; continue; }
-        for (const f of l) {
-          if (f.launch || f.ret || (f.hop || 0) > 25 || Math.hypot(f.x - c.x, f.y - c.y) > S * .8) continue;
-          c.full = 0; c.refill = rnd(2.2, 3.6) - k; c.hit = t;
-          SFX.play('cushion', { pan: clamp((sx(c.x) - CX) / 900, -1, 1) }); shake = Math.max(shake, 5); this.puff(c.x, c.y, n > 120 ? 6 : 14, 1.4);
-          const out = Math.atan2(f.y || rnd(-1, 1), f.x || rnd(-1, 1)) + rnd(-1.1, 1.1); launch(f, out, rnd(1100, 1600));
-          for (const o of l) if (o !== f && !o.launch && Math.hypot(o.x - c.x, o.y - c.y) < S * 2) { const d = Math.hypot(o.x - c.x, o.y - c.y) || 1; push(o, (o.x - c.x) / d * 650, (o.y - c.y) / d * 650); }
-          if (n < 60) floaters.push({ text: pick(['PFFFT!', 'TOOT!', 'BRAAAP!', '💨 WHOOPS!']), x: sx(c.x), y: sy(c.y) - 70, life: 1, color: '#e9ff9a' });
-          break;
+      if (!this.cows) this.start();
+      const k = clamp(t / cfg.game, 0, 1), l = alive(), n = l.length, crowdK = 1 + Math.min(2, n / 150);
+      if ((this.nextHerd -= dt) <= 0) { this.nextHerd = (rnd(3, 4.2) - 1.8 * k) / crowdK; if (this.cows.length < 10) this.herd(); }
+      if ((this.nextUfo -= dt) <= 0) { this.nextUfo = (rnd(4.5, 6) - 2.4 * k) / crowdK; if (this.ufos.length < 2) this.ufo(); }
+      // 🐄 cows
+      for (let i = this.cows.length - 1; i >= 0; i--) {
+        const c = this.cows[i];
+        if (c.warn > 0) { c.warn -= dt; // dust at the edge where they come from: some pieces see it coming and get out of the way
+          if (c.warn < .6 && !c.told) { c.told = true; for (const f of l) { if (f.launch || f.ret || f.eaten || Math.random() > .45) continue; const rx = f.x - c.x, ry = f.y - c.y, side = rx * -c.uy + ry * c.ux; if (Math.abs(side) < S * 2.5) push(f, -c.uy * Math.sign(side || 1) * 420, c.ux * Math.sign(side || 1) * 420); } }
+          continue; }
+        c.x += c.ux * c.sp * dt; c.y += c.uy * c.sp * dt; c.life -= dt;
+        if (c.life <= 0) { this.cows.splice(i, 1); continue; }
+        const on = isSolid(c.x, c.y), rr = S * .95 * c.size; // only on solid ground: no cows running through the sky
+        c.al = clamp((c.al || 0) + (on ? 4 : -4) * dt, 0, 1);
+        if (on && Math.random() < dt * 14) parts.push({ x: sx(c.x - c.ux * rr) + rnd(-12, 12), y: sy(c.y - c.uy * rr), vx: rnd(-40, 40), vy: rnd(-90, -30), g: 160, life: .6, max: .6, size: rnd(4, 8), color: pick(['#b8a27acc', '#9c8a62cc', '#d1c08ecc']) }); // dust
+        if (on) for (const f of l) { // TRAMPLED
+          if (c.hit.has(f) || f.launch || f.ret || f.eaten || f.flying) continue;
+          if (Math.hypot(f.x - c.x, f.y - c.y) > rr + f.r * .8) continue;
+          c.hit.add(f); const side = (f.x - c.x) * -c.uy + (f.y - c.y) * c.ux, ang = Math.atan2(c.uy, c.ux) + Math.sign(side || 1) * rnd(.5, 1.1);
+          launch(f, ang, rnd(1000, 1400)); f.squash = t + .35; shake = Math.max(shake, 7); SFX.play('smack', { v: .8 }); this.puff(f.x, f.y, 4, .6);
+          if (n < 50) floaters.push({ text: pick(['TRAMPLED!', 'MOOOVE!', '🐄💥', 'STAMPEDE!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: .9, color: '#fff1b0' });
+        }
+        if (on && (c.fartIn -= dt) <= 0) { // 💨 the cow lets one rip: anyone behind gets blasted back
+          c.fartIn = rnd(.8, 1.6);
+          const bx = c.x - c.ux * rr * 1.3, by = c.y - c.uy * rr * 1.3; this.puff(bx, by, n > 150 ? 8 : 16, 2.2);
+          if (n < 120) floaters.push({ text: pick(['BRAAAP!', 'PFFFT!', '💨💨', 'THBPPT!']), x: sx(bx), y: sy(by) - 40, life: .8, color: '#d9ff7a' });
+          SFX.play(Math.random() < .5 ? 'brrap' : 'toot', { p: rnd(.6, .85), pan: clamp((sx(bx) - CX) / 900, -1, 1) });
+          for (const f of l) { if (f.launch || f.ret || f.eaten) continue; const dx = f.x - bx, dy = f.y - by, d = Math.hypot(dx, dy); if (d > S * 3.4 || dx * c.ux + dy * c.uy > S * .5) continue; push(f, dx / (d || 1) * 820 - c.ux * 380, dy / (d || 1) * 820 - c.uy * 380); }
+          if (Math.hypot(bx, by) < ISLAND_R && Math.random() < .45 && this.stink.length < 6) this.stink.push({ x: bx, y: by, vx: rnd(-40, 40), vy: rnd(-40, 40), size: S * rnd(2.2, 3), life: rnd(3, 4.5), ph: rnd(6.3), pu: 0 });
         }
       }
-      this.cushions = this.cushions.filter(c => !c.gone);
-      // gas clouds drift over: anyone inside gets a whiff and runs for it
-      if ((this.nextCloud -= dt) <= 0) { this.nextCloud = rnd(2, 3.4) - 1.2 * k; if (this.stink.length < 6) this.cloud(); }
+      // 🤢 stink clouds the cows leave behind: anyone inside runs for it
       for (let i = this.stink.length - 1; i >= 0; i--) {
-        const g = this.stink[i], dx = g.tx - g.x, dy = g.ty - g.y, d = Math.hypot(dx, dy);
-        if (d < 20) { this.stink.splice(i, 1); continue; }
-        g.x += dx / d * g.sp * dt + Math.cos(clock + g.ph) * 30 * dt; g.y += dy / d * g.sp * dt + Math.sin(clock * 1.3 + g.ph) * 25 * dt; g.pu -= dt;
+        const g = this.stink[i]; g.life -= dt * (Math.hypot(g.x, g.y) > ISLAND_R ? 4 : 1); if (g.life <= 0) { this.stink.splice(i, 1); continue; }
+        g.x += (g.vx + Math.cos(clock + g.ph) * 25) * dt; g.y += (g.vy + Math.sin(clock * 1.3 + g.ph) * 20) * dt; g.pu -= dt;
         for (const f of l) {
-          if (f.fear || f.launch || f.ret) continue;
+          if (f.fear || f.launch || f.ret || f.eaten) continue;
           const fx = f.x - g.x, fy = f.y - g.y, fd = Math.hypot(fx, fy); if (fd > g.size) continue;
           if (cfg.fair && f === destined && Math.random() < .5) continue;
-          const od = Math.hypot(f.x, f.y) || 1; let ux = fx / (fd || 1) + f.x / od * .5, uy = fy / (fd || 1) + f.y / od * .5; const ul = Math.hypot(ux, uy) || 1;
-          f.fear = { dx: ux / ul, dy: uy / ul, until: t + rnd(1.2, 2.2) };
+          const od = Math.hypot(f.x, f.y) || 1; let ux = fx / (fd || 1) + f.x / od * .4, uy = fy / (fd || 1) + f.y / od * .4; const ul = Math.hypot(ux, uy) || 1;
+          f.fear = { dx: ux / ul, dy: uy / ul, until: t + rnd(.9, 1.6) };
           if (n < 40 && Math.random() < .5) floaters.push({ text: pick(['P-U!', '🤢', 'EWWW!', '😵']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 20, life: .9, color: '#e9ff9a' });
-          if (g.pu <= 0) { g.pu = 1; SFX.play('squeak', { p: rnd(.8, 1.3), v: .7 }); }
+          if (g.pu <= 0) { g.pu = 1; SFX.play('squeak', { p: rnd(.8, 1.3), v: .6 }); }
         }
+      }
+      // 🛸 UFOs
+      for (let i = this.ufos.length - 1; i >= 0; i--) {
+        const u = this.ufos[i]; u.u += dt;
+        if (u.stage === 'fly') { const dx = u.tx - u.x, dy = u.ty - u.y, d = Math.hypot(dx, dy), sp = Math.max(500, d * 2.6); if (d < 12) { u.stage = 'aim'; u.u = 0; SFX.play('ufo', { p: 1.3 }); } else { u.x += dx / d * Math.min(d, sp * dt); u.y += dy / d * Math.min(d, sp * dt); } continue; }
+        if (u.stage === 'aim') { // the spotlight: get out of the circle!
+          if (u.u > .5) for (const f of l) if (!f.eaten && !f.launch && Math.hypot(f.x - u.x, f.y - u.y) < u.r * 1.4 && Math.random() < dt * .9) { const d = Math.hypot(f.x - u.x, f.y - u.y) || 1; push(f, (f.x - u.x) / d * 260, (f.y - u.y) / d * 260); }
+          if (u.u >= 1.1) { u.stage = 'beam'; u.u = 0; SFX.play('beam');
+            const cap = 3 + Math.floor(n / 50);
+            for (const f of l.filter(f => !f.eaten && !f.launch && !f.ret && !f.flying && t >= (f.safeUntil || 0) && Math.hypot(f.x - u.x, f.y - u.y) < u.r).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y)).slice(0, cap)) {
+              f.eaten = u; f.vx = f.vy = 0; f.target = null; f.think = 99; f.fear = null; f.safeUntil = t + 99; f.ex = f.x - u.x; f.ey = f.y - u.y; u.victims.push(f);
+            }
+          }
+          continue; }
+        if (u.stage === 'beam') {
+          const k2 = clamp(u.u / 1.7, 0, 1);
+          for (const f of u.victims) { f.x = u.x + f.ex * (1 - k2 * .92) + Math.sin(clock * 5 + f.wob) * 8 * k2; f.y = u.y + f.ey * (1 - k2 * .92); f.hop = Math.pow(k2, 1.4) * (u.h || 260) * .92; f.spinA = (f.spinA || 0) + dt * 6 * k2; }
+          if (u.u >= 1.7) { // in the saucer... unless luck gets them out
+            const left = alive().length;
+            for (const f of u.victims) {
+              const keep = (cfg.fair && f === destined) || left <= 1 || (left <= 2 && t < cfg.game - 2.5);
+              if (keep || (t - luckCool >= (left > 200 ? 16 : left > 40 ? 10 : 6) && Math.random() < luckChance(f) && (luckCool = t))) { // slipped out of the beam (real luck only)
+                f.eaten = null; f.safeUntil = t + .4; f.think = 0; f.vhop = -200;
+                if (!keep && left < 60) floaters.push({ text: (f.luck || 0) >= 5 ? '🍀 SLIPPED OUT!' : 'SLIPPED OUT!', x: sx(f.x), y: sy(f.y) - f.hop - f.r * 2 - 10, life: 1, color: '#7dffb0' });
+                continue;
+              }
+              f.eaten = null; f.safeUntil = 0; f.hop = 0; f.noLuck = true; fall(f); f.noLuck = false; f.fz = 5000; // abducted!
+            }
+            if (u.victims.some(f => !f.alive) && alive().length < 60) floaters.push({ text: 'ABDUCTED!', x: sx(u.x), y: sy(u.y) - 380, life: 1.1, color: '#9dff7a' });
+            u.victims = []; u.stage = 'leave'; u.u = 0; SFX.play('ufo', { p: 1.6 });
+          }
+          continue; }
+        if (u.stage === 'leave') { u.y -= 900 * dt * (1 + u.u * 2); u.x += Math.cos(u.ph) * 300 * dt; if (u.u > 2) this.ufos.splice(i, 1); }
       }
       // everybody toots now and then: a little rocket boost in a random direction
       for (const f of l) {
-        if ((f.tootIn = (f.tootIn ?? rnd(1, 6)) - dt) > 0) continue;
-        f.tootIn = rnd(3, 8) * (1 - .45 * k);
-        if (f.launch || f.ret || f.fear) continue;
-        const a = rnd(6.283), pw = rnd(380, 620); push(f, Math.cos(a) * pw, Math.sin(a) * pw);
-        const bx = f.x - Math.cos(a) * f.r, by = f.y - Math.sin(a) * f.r; this.puff(bx, by, n > 150 ? 2 : n > 60 ? 3 : 5, .8);
-        SFX.play(Math.random() < .8 ? 'toot' : 'pfft', { pan: clamp((sx(f.x) - CX) / 900, -1, 1), v: .8 });
-        if (n < 25 && Math.random() < .35) floaters.push({ text: pick(['toot!', 'pfft!', 'oops', '💨']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 18, life: .8, color: '#f3ffc4' });
+        if ((f.tootIn = (f.tootIn ?? rnd(2, 8)) - dt) > 0) continue;
+        f.tootIn = rnd(5, 11) * (1 - .4 * k);
+        if (f.launch || f.ret || f.fear || f.eaten) continue;
+        const a = rnd(6.283), pw = rnd(320, 520); push(f, Math.cos(a) * pw, Math.sin(a) * pw);
+        this.puff(f.x - Math.cos(a) * f.r, f.y - Math.sin(a) * f.r, n > 150 ? 2 : n > 60 ? 3 : 5, .8);
+        SFX.play(Math.random() < .8 ? 'toot' : 'pfft', { pan: clamp((sx(f.x) - CX) / 900, -1, 1), v: .7 });
       }
     },
-    drawFloor() { // the whoopee cushions
-      for (const c of this.cushions || []) {
-        const tl = tileAt(c.x, c.y); if (!tl || tl.state >= 2) continue;
-        const X = sx(c.x), Y = sy(c.y) + (tl.state === 1 ? Math.sin(clock * 40) * 1.5 : 0), r = S * .78;
-        const fill = c.full ? 1 : clamp(1 - Math.max(0, c.refill) / 3, .15, .9), squash = t - c.hit < .35 ? 1 - (t - c.hit) / .35 : 0, h = r * .55 * fill * (1 - .7 * squash) * (1 + .04 * Math.sin(clock * 3 + c.wob));
-        ctx.fillStyle = 'rgba(30,40,10,.35)'; ctx.beginPath(); ctx.ellipse(X, Y + 2, r * 1.05, r * K * .9, 0, 0, 7); ctx.fill();
-        ctx.fillStyle = '#b8123f'; ctx.beginPath(); ctx.ellipse(X + r * .95, Y - h * .3, r * .26, r * .14, .2, 0, 7); ctx.fill(); // the nozzle
-        const gr = ctx.createRadialGradient(X - r * .3, Y - h - r * .1, 2, X, Y - h * .4, r * 1.1); gr.addColorStop(0, '#ff8fb8'); gr.addColorStop(.6, '#ef3f7a'); gr.addColorStop(1, '#a8123a');
-        ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(X, Y - h * .45, r, r * K * .8 + h * .55, 0, 0, 7); ctx.fill();
-        ctx.strokeStyle = '#7d0d2b'; ctx.lineWidth = 2; ctx.stroke();
-        if (fill > .6) { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(X - r * .35, Y - h - r * .12, r * .22, r * .1, -.4, 0, 7); ctx.fill(); }
+    drawFloor() { // shadows, the spotlight and the UFO beam on the ground
+      for (const c of this.cows || []) {
+        if (c.warn > 0) { // ⚠️ dust and an arrow at the edge where the herd comes in
+          if (!isSolid(c.ex + c.ux * S * 2, c.ey + c.uy * S * 2)) continue;
+          const ex = c.ex, ey = c.ey, a = .35 + .25 * Math.sin(clock * 20);
+          ctx.fillStyle = `rgba(170,135,80,${a})`; ctx.beginPath(); ctx.ellipse(sx(ex), sy(ey), S * 2.4, S * 1.05, 0, 0, 7); ctx.fill();
+          ctx.strokeStyle = `rgba(255,240,170,${a + .3})`; ctx.lineWidth = 6; ctx.lineCap = 'round'; const tx = ex + c.ux * S * 3, ty = ey + c.uy * S * 3;
+          ctx.beginPath(); ctx.moveTo(sx(ex), sy(ey)); ctx.lineTo(sx(tx), sy(ty)); ctx.stroke(); continue; }
+        if (!(c.al > .02)) continue;
+        ctx.fillStyle = `rgba(30,25,10,${.3 * c.al})`; ctx.beginPath(); ctx.ellipse(sx(c.x), sy(c.y) + 4, S * 1.4 * c.size, S * .58 * c.size, 0, 0, 7); ctx.fill(); }
+      for (const u of this.ufos || []) {
+        if (u.stage === 'aim') { const a = .25 + .2 * Math.sin(clock * 16); ctx.fillStyle = `rgba(190,255,150,${a})`; ctx.strokeStyle = 'rgba(220,255,190,.9)'; ctx.lineWidth = 3; ctx.setLineDash([12, 10]); ctx.beginPath(); ctx.ellipse(sx(u.tx), sy(u.ty), u.r, u.r * K, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
+        if (u.stage === 'beam') { const gr = ctx.createRadialGradient(sx(u.x), sy(u.y), 4, sx(u.x), sy(u.y), u.r); gr.addColorStop(0, 'rgba(210,255,170,.6)'); gr.addColorStop(1, 'rgba(160,255,120,.15)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(sx(u.x), sy(u.y), u.r, u.r * K, 0, 0, 7); ctx.fill(); }
+        if (u.stage !== 'leave') { ctx.fillStyle = 'rgba(10,20,10,.25)'; ctx.beginPath(); ctx.ellipse(sx(u.x), sy(u.y), S * 2.2, S * .9, 0, 0, 7); ctx.fill(); }
       }
     },
-    drawOver() { // gas clouds with cartoon stink lines
+    drawOver() {
+      // stink clouds
       for (const g of this.stink || []) {
-        const X = sx(g.x), Y = sy(g.y) - g.size * .55, s = g.size;
-        ctx.save(); ctx.globalAlpha = .55;
-        for (let j = 0; j < 7; j++) { const a = j / 7 * 6.283 + g.ph, rr = s * (.42 + .1 * Math.sin(clock * 2 + j + g.ph)); glowBall(ctx, X + Math.cos(a) * s * .45, Y + Math.sin(a) * s * .45 * K, rr, 'rgba(170,220,70,.85)', 'rgba(150,200,50,0)'); }
-        glowBall(ctx, X, Y, s * .7, 'rgba(190,235,90,.9)', 'rgba(160,210,60,0)');
-        ctx.globalAlpha = .8; ctx.strokeStyle = '#5c8a1e'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-        for (let j = -1; j <= 1; j++) { const lx = X + j * s * .35, ly = Y - s * .55; ctx.beginPath(); for (let u = 0; u <= 1.001; u += .1) { const yy = ly - u * s * .5, xx = lx + Math.sin(u * 9 + clock * 6 + j) * 7; u ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); } ctx.stroke(); }
+        const X = sx(g.x), Y = sy(g.y) - g.size * .55, s = g.size, fade = clamp(g.life, 0, 1);
+        ctx.save(); ctx.globalAlpha = .55 * fade;
+        for (let j = 0; j < 6; j++) { const a = j / 6 * 6.283 + g.ph, rr = s * (.42 + .1 * Math.sin(clock * 2 + j + g.ph)); glowBall(ctx, X + Math.cos(a) * s * .45, Y + Math.sin(a) * s * .45 * K, rr, 'rgba(170,220,70,.85)', 'rgba(150,200,50,0)'); }
+        ctx.globalAlpha = .75 * fade; ctx.strokeStyle = '#5c8a1e'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        for (let j = -1; j <= 1; j++) { const lx = X + j * s * .35, ly = Y - s * .5; ctx.beginPath(); for (let u = 0; u <= 1.001; u += .1) { const yy = ly - u * s * .45, xx = lx + Math.sin(u * 9 + clock * 6 + j) * 7; u ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); } ctx.stroke(); }
         ctx.restore();
       }
+      // 🐄 the cows (original cartoon cows)
+      for (const c of this.cows || []) {
+        const al = c.al || 0; if (al <= .02) continue;
+        const X = sx(c.x), Y = sy(c.y), s = S * 1.05 * c.size, face = c.ux >= 0 ? 1 : -1, run = Math.sin(clock * 18 + c.ph), bob = Math.abs(run) * 6;
+        ctx.save(); ctx.globalAlpha = al; ctx.translate(X, Y - bob); ctx.scale(face, 1);
+        ctx.fillStyle = '#2b2622'; for (const [lx, ph] of [[-.7, 0], [-.35, Math.PI], [.4, Math.PI], [.75, 0]]) { const sw = Math.sin(clock * 18 + c.ph + ph) * s * .18; ctx.fillRect(lx * s + sw - s * .08, -s * .35, s * .16, s * .5); } // legs
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2b2622'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(0, -s * .62, s * 1.05, s * .52, 0, 0, 7); ctx.fill(); ctx.stroke(); // body
+        ctx.fillStyle = '#2b2622'; const R0 = (c.spot % 97) / 97; for (let j = 0; j < 3; j++) { ctx.beginPath(); ctx.ellipse((-.5 + j * .45 + R0 * .2) * s, (-.72 + (j % 2) * .2) * s, s * (.22 + (j % 2) * .08), s * .15, j, 0, 7); ctx.fill(); } // spots
+        ctx.strokeStyle = '#2b2622'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-s * 1.02, -s * .75); ctx.quadraticCurveTo(-s * 1.4, -s * (.9 + run * .2), -s * 1.35, -s * .45); ctx.stroke(); // tail
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(s * 1.12, -s * .95, s * .38, s * .32, .2, 0, 7); ctx.fill(); ctx.stroke(); // head
+        ctx.fillStyle = '#ffb3c6'; ctx.beginPath(); ctx.ellipse(s * 1.38, -s * .86, s * .2, s * .16, .2, 0, 7); ctx.fill(); ctx.stroke(); // snout
+        ctx.fillStyle = '#2b2622'; ctx.beginPath(); ctx.arc(s * 1.14, -s * 1.04, s * .055, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(s * 1.42, -s * .88, s * .03, 0, 7); ctx.arc(s * 1.32, -s * .84, s * .03, 0, 7); ctx.fill();
+        ctx.fillStyle = '#f1e2b0'; ctx.beginPath(); ctx.moveTo(s * .95, -s * 1.22); ctx.lineTo(s * .88, -s * 1.42); ctx.lineTo(s * 1.03, -s * 1.25); ctx.fill(); ctx.stroke(); // horn
+        ctx.restore();
+      }
+      // 🛸 the UFOs and their beams
+      for (const u of this.ufos || []) {
+        const H0 = u.h = Math.min(300, Math.max(150, sy(u.y) - 90)), X = sx(u.x), Y = sy(u.y) - H0 + Math.sin(clock * 2 + u.ph) * 8, w = S * 3.6;
+        if (u.stage === 'beam') { const gr = ctx.createLinearGradient(0, Y, 0, sy(u.y)); gr.addColorStop(0, 'rgba(200,255,160,.75)'); gr.addColorStop(1, 'rgba(160,255,120,.18)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(X - w * .35, Y + 10); ctx.lineTo(X + w * .35, Y + 10); ctx.lineTo(X + u.r, sy(u.y)); ctx.lineTo(X - u.r, sy(u.y)); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = 'rgba(240,255,220,.5)'; ctx.lineWidth = 2; for (let j = 0; j < 4; j++) { const yy = Y + 20 + ((clock * 240 + j * 80) % (sy(u.y) - Y - 20)); const ww = w * .35 + (u.r - w * .35) * (yy - Y) / (sy(u.y) - Y); ctx.beginPath(); ctx.ellipse(X, yy, ww, ww * K * .4, 0, 0, 7); ctx.stroke(); }
+          for (const f of u.victims) drawFighter(f); }
+        ctx.fillStyle = 'rgba(150,230,255,.75)'; ctx.beginPath(); ctx.ellipse(X, Y - 6, w * .38, w * .3, 0, Math.PI, 0); ctx.fill(); // dome
+        const body = ctx.createLinearGradient(0, Y - 12, 0, Y + 14); body.addColorStop(0, '#d9dee6'); body.addColorStop(1, '#6a7280');
+        ctx.fillStyle = body; ctx.strokeStyle = '#3a404a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(X, Y, w, w * .26, 0, 0, 7); ctx.fill(); ctx.stroke();
+        for (let j = 0; j < 7; j++) { const a = j / 7 * 6.283 + clock * 3; ctx.fillStyle = Math.sin(clock * 10 + j) > 0 ? '#9dff7a' : '#ffe14d'; ctx.beginPath(); ctx.arc(X + Math.cos(a) * w * .78, Y + Math.sin(a) * w * .12, 4, 0, 7); ctx.fill(); }
+      }
     },
-    snap() { return { c: (this.stink || []).map(g => ({ ...g })), u: (this.cushions || []).map(c => ({ ...c })) }; },
-    restore(v) { this.stink = (v?.c || []).map(g => ({ ...g })); this.cushions = (v?.u || []).map(c => ({ ...c })); },
-    power: { name: 'BEAN BLAST', icon: '🫘', fn() { // everyone toots at once
-      const m = MAPS.gas; SFX.play('beans'); shake = 18; flash = .35; flashColor = '#c8f060';
-      for (const f of alive()) { if (f.launch || f.ret) continue; const a = rnd(6.283), pw = rnd(700, 1100); push(f, Math.cos(a) * pw, Math.sin(a) * pw); m.puff(f.x - Math.cos(a) * f.r, f.y - Math.sin(a) * f.r, alive().length > 100 ? 2 : 6, 1.2); }
-      for (const c of m.cushions || []) c.full = 1;
-      m.cloud(true);
+    snap() { return { c: (this.cows || []).map(c => ({ ...c, hit: null })), g: (this.stink || []).map(g => ({ ...g })), u: (this.ufos || []).map(u => ({ ...u, victims: [] })) }; },
+    restore(v) { this.cows = (v?.c || []).map(c => ({ ...c, hit: new Set() })); this.stink = (v?.g || []).map(g => ({ ...g })); this.ufos = (v?.u || []).map(u => ({ ...u, victims: [] })); },
+    power: { name: 'STAMPEDE', icon: '🐄', fn() { // a huge herd charges through, farting all the way
+      const m = MAPS.gas; SFX.play('beans'); shake = 14; m.herd(6, true); setTimeout(() => m.herd(4, true), 900);
     } }
   },
   castle: {
@@ -1634,7 +1731,7 @@ function shufflePieces() {
 
 function push(f, vx, vy) {
   if (!f.alive) return;
-  let k = 1 / Math.sqrt(f.mass);
+  let k = 1 / Math.pow(f.mass, .8); // big pieces barely budge, small ones fly
   if (cfg.fair && f === destined) k *= .55;
   if (t < mods.gravUntil) k *= 1.5; else if (MAP.lowGrav) k *= 1.2;
   f.vx += vx * k; f.vy += vy * k;
@@ -1655,17 +1752,24 @@ function pickSafe(f) {
   if (best) f.target = { x: best.x + rnd(-14, 14), y: best.y + rnd(-14, 14) };
 }
 
+// 🍀 real luck is rare: only pieces that actually have luck can get lucky (a bit over half their luck % as a chance),
+// and only one lucky save every several seconds on the whole map (longer in huge battles), so a LUCKY! feels like
+// "ooh, I got lucky" and almost never happens. (The hops that keep the round going to the end, or keep the drawn
+// winner in with fair odds, are quiet: no LUCKY.)
+const luckChance = f => (f.luck || 0) > 0 ? Math.min(.45, Math.min(f.luck, 60) / 100 * .6) : 0;
+let luckCool = -99;
 function luckSave(f) {
   const n = alive().length;
   if (t < (f.safeUntil || 0)) return true; // just got saved, still landing
-  let chance = n <= 1 ? 1 : cfg.fair ? (f === destined ? 1 : (f.saves ? .05 : .12)) : (f.saves ? .04 : .14 * clamp(f.mass, .6, 2));
-  // keep the round going ~the full timer: the final two hang on until the last seconds, then sudden death decides
-  if (n <= 2 && t < cfg.game - 2.5) chance = 1;
-  else if (n <= 4 && t < cfg.game * .55 && Math.random() < .6) chance = 1;
-  if (Math.random() > chance) return false;
+  const forced = n <= 1 || (cfg.fair && f === destined) || (n <= 2 && t < cfg.game - 2.5) || (n <= 4 && t < cfg.game * .55 && Math.random() < .6);
+  if (!forced) {
+    if (t - luckCool < (n > 200 ? 16 : n > 40 ? 10 : 6)) return false;
+    if (Math.random() >= luckChance(f)) return false;
+  }
   const best = nearestLand(f);
   if (!best) return false; // nowhere left to land (nearestLand already keeps the last bit of ground for the last one)
-  hopTo(f, best, true);
+  hopTo(f, best, !forced);
+  if (!forced) luckCool = t;
   return true;
 }
 // the closest solid ground (that isn't about to go); used by luck saves and the final check
@@ -1691,7 +1795,7 @@ function stepHop(f, dt) {
   if (k < 1) return;
   f.ret = null; f.hop = 0; f.safeUntil = t + .25; f.think = 0; if (r.lvl != null) { f.lvl = r.lvl; f.zo = r.z1; f.drop = null; }
   if (r.lucky && t - (f.lastLucky ?? -9) > 2.5) {
-    f.lastLucky = t; SFX.play('lucky');
+    f.lastLucky = t; SFX.play('lucky'); window.__luckyN = (window.__luckyN || 0) + 1;
     floaters.push({ text: 'LUCKY!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 30, life: 1.3, color: '#7dffb0' });
     sparkle(sx(f.x), sy(f.y) - f.r, '#7dffb0', 22);
   }
@@ -1703,7 +1807,7 @@ function launch(f, ang, sp = 1500, dur = .85) { f.launch = { vx: Math.cos(ang) *
 function blastOrDodge(f, col = '#ffb347', what = 'BOOM!') {
   if (!f.alive) return true;
   const n = alive().length, keep = (cfg.fair && f === destined) || n <= 1 || (n <= 2 && t < cfg.game - 2.5);
-  if (keep || Math.random() < Math.min(.65, .12 + (f.luck || 0) / 100)) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); if (n < 40) floaters.push({ text: (f.luck || 0) >= 5 ? '🍀 DODGED!' : 'DODGED!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: .9, color: '#7dffb0' }); return false; }
+  if (keep || (t - luckCool >= (n > 200 ? 16 : n > 40 ? 10 : 6) && Math.random() < luckChance(f) && (luckCool = t))) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); if (n < 40) floaters.push({ text: (f.luck || 0) >= 5 ? '🍀 DODGED!' : 'DODGED!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: .9, color: '#7dffb0' }); return false; }
   const X = sx(f.x), Y = sy(f.y) - f.r;
   for (let j = 0; j < 34; j++) { const a = rnd(6.3), v = rnd(120, 480); parts.push({ x: X, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, g: 500, life: rnd(.4, .9), max: .9, size: rnd(3, 7), color: pick([f.color || '#fff', col, '#fff3c4', '#ff7a3d']) }); }
   flash = Math.max(flash, .2); flashColor = col; shake = Math.max(shake, 9); SFX.play('boom');
@@ -1800,7 +1904,7 @@ function updateFighters(dt) {
       if (a.dashing > 0) a.whiffAt = null; if (b.dashing > 0) b.whiffAt = null;
       if (a.dashing > 0) push(b, nx * 180 * Math.sqrt(a.mass), ny * 180 * Math.sqrt(a.mass));
       if (b.dashing > 0) push(a, -nx * 180 * Math.sqrt(b.mass), -ny * 180 * Math.sqrt(b.mass));
-      const kb = clamp(150 * (a.mass - b.mass), -360, 360); // the bigger piece knocks the smaller one back
+      const kb = clamp(260 * (a.mass - b.mass) / Math.min(a.mass, b.mass), -620, 620); // the bigger piece knocks the smaller one back (much more when it's a lot bigger)
       if (kb > 0) push(b, nx * kb, ny * kb); else if (kb < 0) push(a, nx * kb, ny * kb);
       if (list.length > 80 && Math.random() > 40 / list.length) return; // crowded: only a few bumps make noise/sparks
       if (-vn > 120) SFX.play('bonk', { p: 1.2 / Math.sqrt((a.mass + b.mass) / 2), v: clamp(-vn / 450, .35, 1.2), pan: clamp((sx(a.x) - CX) / 900, -1, 1) });
@@ -1857,7 +1961,7 @@ function drawFighter(f, lobby) {
   const lift = lobby ? f.h : f.hop || 0;
   const bob = f.alive ? Math.sin(clock * 6 + f.wob) * 1.5 : 0;
   const cy = gy - f.r - 6 - lift + bob + (f.falling ? f.fz : 0);
-  if (!f.falling && !(f.dashing > 0) && cam.follow !== f && winner !== f) { // fast path: no save/restore
+  if (!f.falling && !(f.dashing > 0) && cam.follow !== f && winner !== f && !(f.squash > t) && !f.eaten) { // fast path: no save/restore
     ctx.fillStyle = lobby ? `rgba(20,10,30,${clamp(.4 - f.h / 2500, .05, .4)})` : 'rgba(20,10,30,.38)'; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill();
     if ((f.glow ?? f.luck) >= 5) drawLuckFx(f, x, cy);
     ctx.drawImage(f.token, x - D / 2, cy - D / 2, D, D);
@@ -1869,6 +1973,8 @@ function drawFighter(f, lobby) {
   if ((f.glow ?? f.luck) >= 5 && !f.falling) drawLuckFx(f, x, cy);
   if (f.dashing > 0) { ctx.globalAlpha *= .4; ctx.drawImage(f.token, x - D / 2 - f.vx * .04, cy - D / 2 - f.vy * .04 * K, D, D); ctx.globalAlpha = f.falling ? clamp(1 - f.fz / 900, 0, 1) : 1; }
   ctx.translate(x, cy); if (f.falling) ctx.rotate(f.fz * .006 * (f.vx > 0 ? 1 : -1));
+  if (f.squash > t) ctx.scale(1.4, .55); // trampled flat
+  if (f.eaten) { const k = clamp(lift / ((f.eaten.h || 260) * .92), 0, 1); ctx.rotate(f.spinA || 0); ctx.scale(1 - k * .55, 1 - k * .55); } // spinning up into the saucer
   ctx.drawImage(f.token, -D / 2, -D / 2, D, D);
   if (cam.follow === f && winner !== f) { ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.arc(0, 0, f.r + 8, clock * 2, clock * 2 + 6.3); ctx.stroke(); ctx.setLineDash([]); }
   if (winner === f) { ctx.strokeStyle = '#ffc94a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, f.r + 9 + Math.sin(clock * 8) * 2, 0, 7); ctx.stroke(); }
@@ -2715,7 +2821,7 @@ function frame(now) {
   if (replay) stepReplay(dt);
   else if (phase === 'lobby' || phase === 'waiting') {
     if (phase === 'lobby') lobbyLeft -= dt;
-    for (const f of fighters) { if (f.h > 0) { f.vh -= 1600 * dt; f.h = Math.max(0, f.h + f.vh * dt); if (f.h === 0) { if (f.vh < -400) { SFX.play('land', { p: 1 / Math.sqrt(f.mass) }); f.vh = -f.vh * .35; f.h = .1; shake = Math.max(shake, 2); } else f.vh = 0; } } }
+    for (const f of fighters) { if (f.h > 0) { f.vh -= 1600 * dt; f.h = Math.max(0, f.h + f.vh * dt); if (f.h === 0) { if (f.vh < -400) { SFX.play('land', { p: 1 / Math.sqrt(f.mass) }); f.vh = -f.vh * .35 / Math.sqrt(f.mass); f.h = .1; shake = Math.max(shake, 2); } else f.vh = 0; } } }
     if (phase === 'lobby') {
       const sec = Math.ceil(lobbyLeft); if (sec !== lastTick && sec > 0) { lastTick = sec; if (sec <= 5) SFX.play('tick', { high: sec <= 3 }); }
       if (lobbyLeft <= 0) beginRound();

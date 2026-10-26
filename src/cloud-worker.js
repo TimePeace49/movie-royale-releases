@@ -11,13 +11,20 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
+export const WORKER_V = 2; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     try {
       if (url.pathname === '/sync') return await sync(req, env);
-      if (url.pathname === '/health') return json({ ok: true, at: Date.now() });
-      if (req.method === 'POST' && url.pathname === '/') return await interaction(req, env, ctx);
+      if (url.pathname === '/health') return json({ ok: true, at: Date.now(), v: WORKER_V });
+      if (req.method === 'POST' && url.pathname === '/') {
+        try { return await interaction(req, env, ctx); }
+        catch (e) { // never leave Discord hanging ("the application did not respond"): say what went wrong
+          console.error(e); const m = String(e?.message || e);
+          return reply(/limit/i.test(m) ? "⚠️ The 24/7 bot hit Cloudflare's free daily limit. It works again tomorrow — tell the streamer if this keeps happening." : `⚠️ Something went wrong (${m.slice(0, 150)}). Try again in a minute.`);
+        }
+      }
       return new Response('Movie Royal bot is running 🍿', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
     } catch (e) {
       console.error(e);
@@ -33,7 +40,10 @@ async function sync(req, env) {
   if ((req.headers.get('authorization') || '') !== `Bearer ${env.SYNC_KEY}`) return json({ error: 'bad key' }, 401);
   if (req.method === 'GET') return json({ queue: (await env.KV.get('queue', 'json')) || [] });
   const body = await req.json();
-  if (body.config) await env.KV.put('config', JSON.stringify({ ...body.config, syncedAt: Date.now() }));
+  if (body.config) { // only write when something changed: Cloudflare's free plan allows about 1,000 writes a day
+    const next = JSON.stringify(body.config), cur = await env.KV.get('config');
+    if (cur !== next) await env.KV.put('config', next);
+  }
   if (Array.isArray(body.ack) && body.ack.length) {
     const q = (await env.KV.get('queue', 'json')) || [];
     const done = new Set(body.ack);
@@ -71,7 +81,7 @@ function applyOp(s, op) {
   if (op.type === 'suggest') {
     const u = userOf(s, op.user.discordId);
     s.pool.push({ id: 'tmdb-' + op.movie.id, tmdbId: op.movie.id, label: op.movie.title, sub: op.movie.year, status: u.wonThisWeek ? 'benched' : 'active', backers: [{ discordId: op.user.discordId, name: op.user.name }], collection: op.movie.collection || null, weight: 1, pending: true });
-    u.used = (u.used || 0) + 1;
+    if ((u.free || 0) > 0) u.free--; else u.used = (u.used || 0) + 1; // a free replacement pick doesn't count
   } else if (op.type === 'swap') {
     const old = s.pool.find(e => e.id === op.oldId);
     const benched = old?.status === 'benched';
@@ -241,13 +251,14 @@ async function pickMovie(s, value) {
   return { m: await movie(s.cfg, id) };
 }
 async function doSuggest(env, s, user, value, ch) {
-  if (s.cfg.picksClosed) return s.cfg.closedMsg || '🔒 Movie picks are closed right now.';
+  const free = (userOf(s, user.discordId).free || 0) > 0; // free replacement pick: skips closed picks and the pick limit
+  if (s.cfg.picksClosed && !free) return s.cfg.closedMsg || '🔒 Movie picks are closed right now.';
   const max = s.cfg.maxPerUser || 3;
   const { m, err, block } = await pickMovie(s, value);
   if (err) return err;
   if (block) return block.msg;
   const b = blockReason(s, m); if (b) return b.msg;
-  if (picksUsed(s, user.discordId) >= max) {
+  if (!free && picksUsed(s, user.discordId) >= max) {
     const left = mineOf(s, user.discordId);
     return `🔒 You've used all ${max} picks. You get ${max} new ones once all of them have been picked — still waiting on: ${left.map(e => `**${e.label} (${e.sub})**`).join(', ')}.`;
   }

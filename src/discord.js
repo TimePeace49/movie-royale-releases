@@ -3,7 +3,7 @@
 import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, MessageFlags, ChannelType, PermissionFlagsBits } from 'discord.js';
 import { db, save, streamerName } from './store.js';
 import { searchMovies, getMany, cachedMovie } from './tmdb.js';
-import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, swapMovie, swapsLocked, luckOn } from './movies.js';
+import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, swapMovie, swapsLocked, luckOn, freePicks } from './movies.js';
 
 let client = null;
 export const status = { state: 'off', error: null, tag: null, guilds: [], warnings: [] };
@@ -237,6 +237,7 @@ export function myMoviesText(discordId, plain = false) {
   const used = picksUsed(discordId), max = db.settings.maxPerUser;
   const b = s => plain ? s : `**${s}**`;
   let head = used >= max ? `🔒 All ${max} picks used — you get ${max} new ones once these have all been picked.` : `🎟️ You have ${b(max - used)} of ${max} picks left.`;
+  if (freePicks(discordId)) head += ` 🎟️ Plus ${b(freePicks(discordId))} free replacement pick${freePicks(discordId) === 1 ? '' : 's'} (use it any time).`;
   if (wonThisWeek(discordId)) head = `🏆 Your movie won this week — your movies sit out until ${b(backOn())}. ` + head;
   if (!plain && !swapsLocked() && mine.length) head += ' (You can /swap any of them until the stream starts.)';
   const tag = e => e.status === 'benched' ? ` 💤 back ${backOn()}` : e.status === 'paused' ? ' ⏸ paused' : e.status === 'away' ? ' 💤 out tonight' : '';

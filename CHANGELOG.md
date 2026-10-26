@@ -2,6 +2,22 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.3 (test build)
+- **🎟️ Free replacement pick:** if someone's movie gets watched outside a battle (you mark it ✅, or it shows up on your Letterboxd), Movie Royal tells them in the Discord channel that they can pick a new movie. That one pick works any time, even with picks closed or all their picks used, and even if they still have other movies in the pool. It shows in the People tab and in `/mymovies`.
+- **🍀 Luck cooldown:** people whose movie got watched this week don't build luck until the new week (from losing battles or from calling the winner).
+- **🍀 LUCKY! is rare now:** only pieces that actually have luck can get lucky, and only once every 6–16 seconds on the whole map (longer in big battles). The same goes for "DODGED!" and slipping out of a UFO beam. No more LUCKY spam in 1000-ball battles.
+- **⚖️ Big balls hit harder:** bigger pieces knock smaller ones much further and barely bounce themselves.
+- **💨 Fart Farm rebuilt:**
+  - Big cows stampede in from the edge of the island (with a dust warning first), trampling pieces flat and sending them flying.
+  - They let rip big green farts that blast pieces behind them.
+  - Cows only show on solid ground (no more cows running through the sky).
+  - UFOs are bigger and stay on screen, with a wide beam that pulls pieces spinning up into the saucer.
+- **☁️ 24/7 Discord bot fixes:**
+  - The bot always answers now. Before, `/linktwitch` (and other commands) could show "The application did not respond".
+  - It writes much less to Cloudflare, so it stays under the free plan's daily limit.
+  - When the 24/7 bot needs an update, Settings → Discord shows an **Update** button (paste your Cloudflare token).
+- Practice rounds hide the wheel so the battle shows on stream.
+
 ## 1.13.2 (test build)
 - **🎡 Spots list:** the Rule column is now a dropdown (⏱️ Timer, ⚡ Auto, 🔢 Countdown), so you can see and change each spot's rule at a glance. Countdown spots show how many are left next to it. The words that show on stream when it lands moved into ⚙ on the spot.
 - **🧪 Test tab → 🎡 Wheel tests:**

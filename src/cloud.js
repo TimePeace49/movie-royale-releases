@@ -11,7 +11,13 @@ import { helpText, peopleIndex } from './discord.js';
 const CF = 'https://api.cloudflare.com/client/v4';
 const DISCORD = 'https://discord.com/api/v10';
 const SCRIPT = 'movie-royal-bot';
-export const status = { lastSync: null, lastPush: null, lastError: null, pulled: 0, rejected: [] };
+export const status = { lastSync: null, lastPush: null, lastError: null, pulled: 0, rejected: [], outdated: false };
+// the version of the 24/7 bot that comes with this copy of Movie Royal (the bot on Cloudflare only changes when you update it)
+const BOT_V = (() => { try { return Number((fs.readFileSync(path.join(ROOT, 'src', 'cloud-worker.js'), 'utf8').match(/WORKER_V = (\d+)/) || [])[1]) || 1; } catch { return 1; } })();
+let checkedV = false;
+async function checkVersion() {
+  try { const r = await fetch(cloud().url + '/health', { signal: AbortSignal.timeout(10000) }); const j = await r.json(); status.botV = Number(j.v) || 1; status.outdated = status.botV < BOT_V; checkedV = true; } catch {}
+}
 let onChange = () => {}, timer = null, lastHash = '', busy = false;
 
 const cloud = () => db.settings.cloud || {};
@@ -41,7 +47,7 @@ export function buildConfig() {
     return { id: e.id, tmdbId: e.tmdbId || null, label: e.label, sub: e.sub || '', status: e.status, kind: e.kind || null, weight: e.weight || 1, luckPct: e.luckPct || 0, backers: (e.backers || []).map(b => ({ discordId: b.discordId, name: b.name })), collection: e.details?.collection || null };
   });
   for (const id of Object.keys(db.manualPeople || {})) ids.add(id);
-  const users = {}; for (const id of ids) users[id] = { used: picksUsed(id), wonThisWeek: wonThisWeek(id) };
+  const users = {}; for (const id of ids) { const free = (db.freePicks || {})[id] || 0; users[id] = { used: Math.max(0, picksUsed(id) - free), free, wonThisWeek: wonThisWeek(id) }; } // free replacement picks (older 24/7 bots just see fewer picks used)
   const w = lb.exportWatched();
   return {
     v: 1, streamer: streamerName(), maxPerUser: Number(db.settings.maxPerUser) || 3, banCurrentYear: db.settings.banCurrentYear !== false,
@@ -94,6 +100,7 @@ export async function sync(force = false) {
     const due = force || ack.length || (hash !== lastHash && Date.now() - (status.lastPush || 0) > 120000);
     if (due) { await api('POST', { config, ack }); lastHash = hash; status.lastPush = Date.now(); }
     status.lastSync = Date.now(); status.lastError = null;
+    if (!checkedV) await checkVersion();
   } catch (e) { status.lastError = e.message; console.error('[24/7]', e.message); }
   finally { busy = false; onChange(); }
   return status;
@@ -145,6 +152,7 @@ export async function enable(cfToken) {
   for (let i = 0; i < 5 && !linked; i++) { try { await discord('PATCH', '/applications/@me', { interactions_endpoint_url: url + '/' }); linked = true; } catch (e) { lastErr = e; await sleep(4000); } }
   if (!linked) throw new Error(`Couldn't connect Discord to the 24/7 bot: ${lastErr?.message}`);
   steps.push('Discord connected');
+  checkedV = false; status.outdated = false;
   start();
   return { url, steps };
 }
