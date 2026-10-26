@@ -1718,6 +1718,8 @@ app.post('/api/claim/close', (req, res) => { // close the pop-up and put the nex
   broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true });
 });
 
+app.post('/api/win/hide', (req, res) => { broadcast({ type: 'winHide' }, 'overlay'); res.json({ ok: true }); }); // just hides the winner pop-up on stream
+
 // letterboxd
 app.post('/api/letterboxd/refresh', async (req, res) => { lb.loadCsvs(); await Promise.all([lb.refreshRss(db.settings.letterboxdUser), lb.refreshProfile(db.settings.letterboxdUser)]); const n = sweepWatched(); pushState(); res.json({ ok: true, retired: n, ...lb.stats() }); });
 app.post('/api/letterboxd/upload', express.text({ type: '*/*', limit: '20mb' }), (req, res) => {

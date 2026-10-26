@@ -15,6 +15,10 @@ What changed in each version of Movie Royal. Newest first.
   - **Wacky effects:** super bouncy, low gravity, random tiny/giant sizes, big balls, chaos rain (a random chaos event every few seconds), disco lights.
   - With fun mode on, the fight decides the winner (not the odds).
 - **🧪 Test tab:** pretend a ball power-up.
+- **✕ on the winner pop-up:** close the winning movie card on the game screen any time (or press "✕ Hide the pop-up on stream" on the Battle tab's winner card).
+
+## 1.14.1
+- **Fixed: nothing worked after updating to 1.13.6** (blank battle screen, tabs not responding).
 
 ## 1.14.0 (test build)
 - **🐀 New map: Plague Town.**

@@ -815,6 +815,7 @@ function renderWinner() {
       ${c && !c.done ? `<button onclick="api('/api/claim/confirm')">✅ They're here (claim manually)</button>` : ''}
       ${w.spot || w.test ? '' : w.kind === 'movies' ? (w.undone ? '<p class="help">↩️ Put back in the pool.</p>' : `<button class="ghost" onclick="if(confirm('Not watching it after all? This puts it back in the pool.')) api('/api/winner/undo').then(()=>toast('Put back in the pool'))">↩️ Not watching it — put it back</button>`) : `<button onclick="api('/api/winner/out').then(()=>toast('Done'))">🚪 Take winner out of the pool</button>`}
       ${w.gameId ? `<button class="ghost" onclick="showResults('${esc(w.gameId)}')">📋 Full results</button>` : ''}
+      <button class="ghost" onclick="api('/api/win/hide').then(()=>toast('Pop-up hidden on stream'))">✕ Hide the pop-up on stream</button>
       <button onclick="api('/api/claim/close')">Next round →</button>
     </div>`;
 }
