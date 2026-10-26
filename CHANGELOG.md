@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.12.1 (test build)
+- **🔴 NEW / 🔵 UPDATED map tags** in the map menus (Battle tab, Test tab and Settings):
+  - NEW means you've never played that map on stream.
+  - UPDATED means the map changed since you last played it on stream.
+  - Tags only go away after a battle on that map while you're live. Practice rounds and offline battles don't count.
+- **💬 Chat: pop out any of the 3 parts.** Chat, Alerts and Find someone each have their own ⧉ Pop out, plus ⧉ All 3 for everything in one window, so you can spread them over your screens.
+- **🔊 Sounds moved into Settings** (Settings → 🔊 Sounds).
+
 ## 1.12.0 (test build)
 - **💬 New Chat tab:**
   - Your Twitch chat with badges and emotes: Twitch, 7TV, BTTV and FFZ.

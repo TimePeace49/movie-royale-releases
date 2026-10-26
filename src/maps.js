@@ -19,4 +19,8 @@ export const MAP_LIST = [
   { id: 'gas', power: '🫘 Bean Blast', name: 'Whoopee Swamp', icon: '💨', desc: 'A goofy bean bog. Step on a whoopee cushion and PFFFT, you go flying. Gas clouds drift over and everyone runs from the smell, and pieces toot themselves around.' },
   { id: 'bombs', power: '💣 Mega Bomb', name: 'Blast Zone', icon: '💣', desc: 'Giant bombs drop in, trap you and blow up in a big cross. Get out of the lines!' },
 ];
+// 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
+// map menus until it's been played on stream again. (Maps never played on stream show "NEW".)
+const REV = { };
+for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
 export const mapById = id => MAP_LIST.find(m => m.id === id);

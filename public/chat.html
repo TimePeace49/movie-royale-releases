@@ -23,21 +23,25 @@
   .muted { color:var(--dim); font-size:13px; }
   .pill { display:inline-block; padding:2px 8px; margin:2px; border-radius:20px; background:#ffffff12; cursor:pointer; font-size:13px; }
   #paused { display:none; text-align:center; font-size:13px; padding:4px; background:#ffc94a; color:#1a1030; cursor:pointer; }
+  .pop { padding:4px 9px; font-size:13px; }
+  body.solo #app { grid-template-columns:1fr; grid-template-rows:1fr; }
+  body.solo .side { display:contents; }
+  body.solo [data-panel]:not(.solo-on) { display:none !important; }
   .warn { padding:8px 12px; background:#3a2a10; color:#ffd98a; font-size:13px; border-bottom:1px solid var(--line); }
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="card">
-    <div class="head"><b>💬 <span id="chanName">Chat</span></b><input id="filter" placeholder="🔎 Filter chat…" style="max-width:220px" oninput="drawAll()"><button id="popBtn" onclick="popOut()" title="Open chat in its own window">⧉ Pop out</button></div>
+  <div class="card" data-panel="chat">
+    <div class="head"><b>💬 <span id="chanName">Chat</span></b><input id="filter" placeholder="🔎 Filter chat…" style="max-width:220px" oninput="drawAll()"><button class="pop" onclick="popOut('chat')" title="Open just the chat in its own window">⧉ Pop out</button><button class="pop" id="popAll" onclick="popOut('all')" title="Open chat, alerts and find someone together in their own window">⧉ All 3</button></div>
     <div id="permWarn"></div>
     <div id="msgs"></div>
     <div id="paused" onclick="stick=true;scrollDown()">⏸ Chat paused while you scroll — click to jump to new messages</div>
     <form id="say" onsubmit="send(event)"><input id="sayTx" placeholder="Send a message in your chat…" autocomplete="off"><button class="pri">Send</button></form>
   </div>
   <div class="side">
-    <div class="card" style="flex:1.2"><div class="head"><b>🔔 Alerts</b><span class="muted">subs, gifts, bits, raids, follows, tips…</span></div><div id="alerts"></div></div>
-    <div class="card" style="flex:1"><div class="head"><b>🔎 Find someone</b></div>
+    <div class="card" style="flex:1.2" data-panel="alerts"><div class="head"><b>🔔 Alerts</b><span class="muted">subs, gifts, bits, raids, follows, tips…</span><button class="pop" onclick="popOut('alerts')" title="Open the alerts in their own window">⧉ Pop out</button></div><div id="alerts"></div></div>
+    <div class="card" style="flex:1" data-panel="find"><div class="head"><b>🔎 Find someone</b><button class="pop" onclick="popOut('find')" title="Open Find someone in its own window">⧉ Pop out</button></div>
       <div style="padding:8px;display:flex;gap:6px"><input id="who" placeholder="Name or part of a name…" oninput="findWho()"><input id="what" placeholder="…or words they said" oninput="findWho()"></div>
       <div id="found" class="muted">Type a name to find them. Click a name to copy it, double-click for their profile.</div></div>
   </div>
@@ -48,7 +52,10 @@
 const $ = id => document.getElementById(id), esc = ChatUI.esc;
 const embed = new URLSearchParams(location.search).has('embed');
 document.head.insertAdjacentHTML('beforeend', `<style>${ChatUI.CSS}</style>`);
-if (!embed) $('popBtn').style.display = 'none';
+// ?panel=chat | alerts | find opens just that one (each can sit on its own screen)
+const solo = new URLSearchParams(location.search).get('panel');
+if (solo) { document.body.classList.add('solo'); document.querySelector(`[data-panel="${solo}"]`)?.classList.add('solo-on'); document.title = `Movie Royal — ${{ chat: 'Chat', alerts: 'Alerts', find: 'Find someone' }[solo] || 'Chat'}`; }
+document.querySelectorAll('.pop').forEach(b => { if (!embed && (b.id === 'popAll' || solo)) b.style.display = 'none'; }); // a popped-out window can still pop out single panels
 let msgs = [], alerts = [], stick = true, info = {};
 function scrollDown() { const b = $('msgs'); b.scrollTop = b.scrollHeight; $('paused').style.display = 'none'; }
 $('msgs').addEventListener('scroll', () => { const b = $('msgs'); stick = b.scrollHeight - b.scrollTop - b.clientHeight < 40; if (stick) $('paused').style.display = 'none'; });
@@ -79,8 +86,11 @@ let ft; function findWho() { clearTimeout(ft); ft = setTimeout(async () => {
   box.innerHTML = l.length ? l.map(v => `<span class="pill" data-user="${esc(v.login)}" title="${v.msgs} messages · last seen ${esc(v.last ? new Date(v.last).toLocaleString() : '')}" onclick="copyName('${esc(v.login)}', this)">${esc(v.name)}</span>`).join('') : 'Nobody by that name has chatted yet.';
 }, 250); }
 function copyName(n, el) { navigator.clipboard?.writeText(n); const t = el.textContent; el.textContent = '✅ copied'; setTimeout(() => el.textContent = t, 900); }
-function popOut() { window.open('/chat.html', 'royal-chat', 'width=560,height=860'); }
-const fit = () => document.body.classList.toggle('narrow', innerWidth < 760); addEventListener('resize', fit); fit();
+function popOut(which) {
+  const size = { chat: 'width=560,height=860', alerts: 'width=420,height=640', find: 'width=420,height=640', all: 'width=1100,height=860' }[which];
+  window.open(which === 'all' ? '/chat.html' : '/chat.html?panel=' + which, 'royal-' + which, size);
+}
+const fit = () => document.body.classList.toggle('narrow', innerWidth < 760 && !solo); addEventListener('resize', fit); fit();
 load(); connect();
 </script>
 </body>

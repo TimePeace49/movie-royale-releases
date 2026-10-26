@@ -177,6 +177,7 @@
   .round .ev { margin-top:5px; font-size:12px; color:var(--dim); }
   #v-bans { grid-template-columns:1fr 1fr; }
   #v-bans.inset { height:auto; padding:0; display:grid; }
+  #v-sounds.inset { height:auto; padding:0; display:grid; }
   #v-chat, #v-giveaway { grid-template-columns:400px 1fr; }
   #v-wheel { grid-template-columns:minmax(560px,1fr) 640px; }
   #v-wheel .pane { min-height:0; overflow:auto; }
@@ -248,7 +249,6 @@
     <button data-v="tchat">💬 Chat</button>
     <button data-v="people">👥 People</button>
     <button data-v="history">📜 History</button>
-    <button data-v="sounds">🔊 Sounds</button>
     <button data-v="test">🧪 Test</button>
     <button data-v="help">❓ Help</button>
     <button data-v="settings">⚙️ Settings</button>
@@ -511,6 +511,7 @@
     <button data-s="app">🖥️ App &amp; background</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
+    <button data-s="sounds">🔊 Sounds</button>
     <button data-s="notes">📝 Patch notes</button>
     <p class="help" style="margin-top:14px">Need a hand connecting things? <a href="/setup.html">🧭 Setup guide</a></p>
   </div>
@@ -620,7 +621,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); if (typeof drawBoosts === 'function') drawBoosts();
 }
-function setSub(s) { sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } }
+function setSub(s) { sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -714,7 +715,7 @@ function renderView() {
   else if (view === 'people') renderPeople();
   else if (view === 'history') { if (histVer !== S.historyVersion || !hist) loadHistory(); }
   else if (view === 'settings' && sub === 'bans') renderBanSide();
-  else if (view === 'sounds') renderSound();
+  else if (view === 'settings' && sub === 'sounds') renderSound(); // 🔊 Sounds lives inside Settings
 }
 function renderHeader() {
   const st = S.status, d = st.discord, tw = st.twitch, lb = st.letterboxd;
@@ -750,9 +751,9 @@ function renderBattle() {
   else gb.textContent = '⏱️ 2-min chat timer, then start';
   const mp = (S.maps || []).find(m => m.id === S.mapNow), pkey = (mp?.id || '') + Object.keys(S.events).join();
   if ($('events').dataset.k !== pkey) { $('events').dataset.k = pkey; $('fsPowers').innerHTML = $('events').innerHTML = Object.entries(S.events).map(([k, e]) => k === 'mappower' ? (mp?.power ? `<button class="mp" title="${esc(mp.name)}'s special power" onclick="api('/api/effect',{event:'mappower'})">${esc(mp.power)}</button>` : '') : `<button title="${esc(e.desc)}" onclick="api('/api/effect',{event:'${k}'})">${e.icon} ${esc(e.name)}</button>`).join(''); }
-  if (document.activeElement !== $('mapSel')) $('mapSel').innerHTML = `<option value="random" ${S.settings.map === 'random' ? 'selected' : ''}>🎲 Random${S.settings.map === 'random' && mp ? ` (next: ${esc(mp.name)})` : ''}</option>` + (S.maps || []).map(m => `<option value="${m.id}" ${S.settings.map === m.id ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join('');
+  if (document.activeElement !== $('mapSel')) $('mapSel').innerHTML = `<option value="random" ${S.settings.map === 'random' ? 'selected' : ''}>🎲 Random${S.settings.map === 'random' && mp ? ` (next: ${esc(mp.name)})` : ''}</option>` + (S.maps || []).map(m => mapOpt(m, S.settings.map === m.id)).join('');
   renderVote(); renderBattleList(); renderCalls();
-  if ($('pracMap') && !$('pracMap').options.length) $('pracMap').innerHTML = `<option value="">Same as the battle</option><option value="random">🎲 Random</option>` + (S.maps || []).map(m => `<option value="${m.id}">${m.icon} ${esc(m.name)}</option>`).join('');
+  if ($('pracMap') && !$('pracMap').options.length) $('pracMap').innerHTML = `<option value="">Same as the battle</option><option value="random">🎲 Random</option>` + (S.maps || []).map(m => mapOpt(m, false)).join('');
   renderSeries();
   if (!$('tEvent').options.length) $('tEvent').innerHTML = Object.entries(S.events).map(([k, e]) => `<option value="${k}">${e.icon} ${esc(e.name)}</option>`).join('');
   if (!$('sndTest').options.length) $('sndTest').innerHTML = Object.entries(SOUND_INFO).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
@@ -836,6 +837,8 @@ function renderCalls() {
   const cmd = esc(S.settings.callCommand || '!call');
   box.innerHTML = `<h2>🔮 Chat calls the winner</h2>${c.count ? c.top.map(x => `<div class="row" style="margin:3px 0"><span class="grow">${esc(x.label)}</span><b>${x.n}</b></div>`).join('') + `<p class="help" style="margin-top:6px">${c.count} call${c.count === 1 ? '' : 's'}${c.open ? ' · closes when the fight starts' : ''}</p>` : `<p class="help">Chat types <code>${cmd} Heat</code> before the fight. Call the winner and your own movies get +${esc(String(S.settings.callLuck ?? 1))}% luck.</p>`}`;
 }
+// map menu entries with the 🔴 NEW / 🔵 UPDATED tags
+const mapOpt = (m, sel) => `<option value="${m.id}" ${sel ? 'selected' : ''} ${m.tag === 'new' ? 'style="color:#ff5c5c"' : m.tag === 'updated' ? 'style="color:#5cb8ff"' : ''}>${m.icon} ${esc(m.name)}${m.tag === 'new' ? '  🔴 NEW' : m.tag === 'updated' ? '  🔵 UPDATED' : ''}</option>`;
 const mapName = id => { const m = (S.maps || []).find(x => x.id === id); return m ? `${m.icon} ${m.name}` : id === '?' ? 'Unknown map' : id; };
 async function voteClick() { if (S.vote) await api('/api/vote/end'); else { await api('/api/vote/start', { seconds: S.settings.voteSeconds || 120 }); toast('🗳️ Map vote started — chat types 1, 2, 3 or 4'); } }
 function renderVote() {
@@ -1565,7 +1568,7 @@ function drawWSettings() {
     <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px;align-items:center"><b>Background on stream</b><input type="color" value="${esc(/^#/.test(L.bg || '') ? L.bg : '#1b0d36')}" onchange="wLook('bg',this.value)"><button onclick="wPic(u=>wLook('bgImage',u))">🖼️ Picture or video</button>${L.bg || L.bgImage ? `<button class="ghost" onclick="wLook('bg','');wLook('bgImage','')">Default background</button>` : ''}</div>
     <h4 style="margin:18px 0 4px">🔊 Sounds for this wheel</h4>
     <table class="rw">${WSOUNDS.map(([n, label]) => `<tr><td>${label}</td><td>${snd(n)}</td><td><button class="ghost" onclick="api('/api/sound-test',{name:'${n}',map:'wheel-${w.id}'})">▶️</button><button class="ghost" onclick="wSoundUp('${n}')">⬆️ Use my own</button>${wSnd?.sounds?.find(s => s.name === n)?.mapCustom ? `<button class="ghost danger" onclick="api('/api/sounds/${n}?map=wheel-${w.id}',null,'DELETE').then(loadWSounds)">✕</button>` : ''}</td></tr>`).join('')}</table>
-    <p class="help">mp3, wav, ogg or m4a. Sounds you set in the Sounds tab under 🎡 Wheel play on every wheel that doesn't have its own.</p>`;
+    <p class="help">mp3, wav, ogg or m4a. Sounds you set in Settings → 🔊 Sounds under 🎡 Wheel play on every wheel that doesn't have its own.</p>`;
 }
 function drawWGlobal() {
   const D = WD.donations || {};
@@ -1829,7 +1832,8 @@ async function createList() {
 // ---------- ⚙️ settings (sub-tabs) ----------
 function openSettings(force) {
   if (!force && view !== 'settings') return setView('settings');
-  { const vb = $('v-bans'); if (vb && vb.closest('#settingsBody')) document.body.appendChild(vb); vb?.classList.remove('on'); } // 🚫 Banned Movies lives inside Settings
+  { const vb = $('v-bans'); if (vb && vb.closest('#settingsBody')) document.body.appendChild(vb); vb?.classList.remove('on'); }
+  { const vs = $('v-sounds'); if (vs && vs.closest('#settingsBody')) document.body.appendChild(vs); vs?.classList.remove('on'); } // 🚫 Banned Movies lives inside Settings
   const s = S.settings, port = S.port, tw = S.status.twitch, o = S.owner, d = S.status.discord;
   const f = (k, label, ph = '', type = 'text', extra = '') => `<label>${label}</label><input data-k="${k}" type="${type}" value="${esc(s[k])}" placeholder="${esc(ph)}" ${/Command$|^spotName$|^colorReward$|^streamerName$|^twitchChannel$|^discordChannelName$|^letterboxdUser$/.test(k) ? 'class="short"' : ''} ${extra}>`;
   const ck = (k, text, def = true) => `<label class="ck"><input type="checkbox" data-k="${k}" ${(def ? s[k] !== false : !!s[k]) ? 'checked' : ''}> <span>${text}</span></label>`;
@@ -1850,7 +1854,7 @@ function openSettings(force) {
       ${f('helpCommand', 'Chat command that lists every chat command', '!moviesroyal')}
       ${ck('autoFullscreen', 'Go fullscreen when a battle starts (press Esc to leave)')}
       <h3 style="margin-top:18px">🗺️ Maps</h3>
-      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${(S.maps || []).map(m => `<option value="${m.id}" ${s.map === m.id ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join('')}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
+      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${(S.maps || []).map(m => mapOpt(m, s.map === m.id)).join('')}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
       <p class="help">You can also change the map under the battle screen, or press 🗳️ Chat vote: 4 random maps, chat types 1–4. The vote lasts the number of seconds above (120 seconds = 2 minutes).</p>
       <h3 style="margin-top:18px">🎥 Camera</h3>
       <div class="grid2">${f('cliffSize', 'Cliff size on screen (%) — 100 = small, 130 = default, 170 = huge', '130', 'number', 'min="60" max="250" step="5"')}</div>
@@ -1942,6 +1946,7 @@ function openSettings(force) {
       ${ck('startWithWindows', 'Start Movie Royal when Windows starts (quietly, in the tray)', false)}
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
     bans: `<div id="bansSlot"></div>`,
+    sounds: `<div id="soundsSlot"></div>`,
     notes: `<h3>📝 Patch notes</h3><p class="help">What changed in each latest release. You're on v${esc(S.version || '')}.</p><div id="notesBody" class="help">Loading…</div>`,
     names: `<h3>✏️ Name changes</h3>
       <p class="help">Someone changed their Twitch name? Type the old name and the new one and everything moves over by itself: their Discord movie link and picks, ball color, chat battle and giveaway entries, battle history, stats, saved wheel spins and wheel history.</p>
