@@ -110,6 +110,11 @@
   #stage.mini iframe { pointer-events:none; }
   #stage.mini::after { content:'⚔️ Battle — click to open'; position:absolute; left:0; right:0; bottom:0; padding:4px 10px; font-size:11px; font-weight:700; background:linear-gradient(transparent, #000c); }
   #stage.mini.hide { display:none; }
+  #stage.peek { z-index:60; border:2px solid var(--gold); resize:both; min-width:320px; min-height:210px; padding-top:34px; box-shadow:0 20px 80px #000c; }
+  #stage.peek iframe { top:34px; height:calc(100% - 34px); }
+  #peekBar { display:none; }
+  #stage.peek #peekBar { display:flex; position:absolute; left:0; right:0; top:0; height:34px; align-items:center; gap:8px; padding:0 6px 0 12px; background:#1d1233; cursor:move; user-select:none; font-size:13px; font-weight:700; z-index:3; }
+  #peekBar span { flex:1; } #peekBar button { padding:3px 10px; font-size:12px; }
   #stage:fullscreen { border-radius:0; border:0; }
   #fsBar { display:none; }
   #backupNag { position:fixed; z-index:60; left:50%; top:66px; transform:translateX(-50%); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#1d1238f2; border:1px solid var(--gold); border-radius:14px; box-shadow:0 10px 40px #0008; font-weight:700; }
@@ -274,6 +279,7 @@
 <div id="stage">
   <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royal game"></iframe>
   <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
+  <div id="peekBar" title="Drag to move. Drag the bottom-right corner to resize."><span>📺 What's on stream right now</span><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
   <div class="away"><div style="font-size:36px">🪟</div><div>The game is open in its own window.</div><button onclick="event.stopPropagation();bringBack()">Bring it back here</button></div>
 </div>
 
@@ -469,6 +475,7 @@
 
 <!-- 🧪 TEST -->
 <section class="view" id="v-test">
+  <div class="card" style="grid-column:1 / -1"><p class="help" style="margin:0">📺 Every test here pops up a little window showing what's on stream right now, so you can see it (drag it around, resize it from the corner). <button onclick="peek(true)">📺 Show the stream screen</button></p></div>
   <div class="card" style="grid-column:1 / -1" id="wTestCard"></div>
   <div class="card">
     <h3>💬 Pretend to be a chatter</h3>
@@ -611,6 +618,7 @@ const isMovieList = l => l && (l.type === 'movies' || l.type === 'films');
 
 function toast(msg, ms = 3500) { let box = $('toasts'); if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); } const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = msg; box.appendChild(d); setTimeout(() => d.remove(), ms); }
 async function api(url, body, method = 'POST') {
+  if (method === 'POST' && view !== 'battle' && (view === 'test' || url.startsWith('/api/test/'))) peek(true); // testing something? show the stream screen
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { toast('⚠️ ' + esc(j.error || 'Something went wrong')); throw new Error(j.error); }
@@ -663,11 +671,29 @@ function placeStage() {
     const r = $('stageSize').getBoundingClientRect();
     st.classList.remove('mini', 'hide');
     Object.assign(st.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', right: '', bottom: '' });
+  } else if (peekOn) { // the pop-up window that shows the stream screen while you test things
+    st.classList.remove('mini', 'hide'); st.classList.add('peek');
+    let p = {}; try { p = JSON.parse(localStorage.peekPos || '{}'); } catch {}
+    const w = Math.min(p.w || 560, innerWidth - 20), h = Math.min(p.h || 349, innerHeight - 20);
+    const x = Math.max(0, Math.min(p.x ?? innerWidth - w - 20, innerWidth - 120)), y = Math.max(0, Math.min(p.y ?? innerHeight - h - 20, innerHeight - 40));
+    Object.assign(st.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', right: '', bottom: '' });
   } else {
     st.classList.add('mini', 'hide'); // no little preview window on other tabs
     Object.assign(st.style, { left: '', top: '', width: '', height: '' });
   }
+  if (view === 'battle' || !peekOn) st.classList.remove('peek');
 }
+let peekOn = false;
+function peek(on = true) { peekOn = on; placeStage(); }
+function peekSave() { const r = $('stage').getBoundingClientRect(); try { localStorage.peekPos = JSON.stringify({ x: r.left, y: r.top, w: r.width, h: r.height }); } catch {} }
+function peekBig() { const small = $('stage').getBoundingClientRect().width > 700, w = small ? 560 : Math.min(innerWidth - 40, 1280), h = Math.round(w * 9 / 16) + 34; try { localStorage.peekPos = JSON.stringify(small ? { w, h } : { x: (innerWidth - w) / 2, y: Math.max(10, (innerHeight - h) / 2), w, h }); } catch {} placeStage(); }
+(() => { // drag the pop-up by its top bar; remember where it was left
+  let d = null;
+  $('peekBar').addEventListener('pointerdown', e => { if (e.target.closest('button')) return; const r = $('stage').getBoundingClientRect(); d = { dx: e.clientX - r.left, dy: e.clientY - r.top }; $('peekBar').setPointerCapture(e.pointerId); $('game').style.pointerEvents = 'none'; });
+  $('peekBar').addEventListener('pointermove', e => { if (!d) return; $('stage').style.left = Math.max(0, Math.min(e.clientX - d.dx, innerWidth - 120)) + 'px'; $('stage').style.top = Math.max(0, Math.min(e.clientY - d.dy, innerHeight - 40)) + 'px'; });
+  $('peekBar').addEventListener('pointerup', () => { if (!d) return; d = null; $('game').style.pointerEvents = ''; peekSave(); });
+  new ResizeObserver(() => { if ($('stage').classList.contains('peek')) peekSave(); }).observe($('stage'));
+})();
 window.addEventListener('resize', placeStage);
 $('v-battle').addEventListener('scroll', placeStage, { passive: true });
 new ResizeObserver(placeStage).observe($('stageSize'));
