@@ -336,8 +336,11 @@ export function giveSpins(who, n, reason = '', by = {}) {
   return b.spins;
 }
 function refundBank(by) { const b = W().bank[bkey(by.login || by.name)]; if (b) { b.spins++; b.used = Math.max(0, b.used - 1); save(); } }
-export function useMine() { // (kept for older saves: your own spins are a battle thing now)
-  return request('respin', { name: streamerName(), source: 'you' });
+export function useMine() { // the streamer's own respins: a few per stream (3 by default), they come back when a new stream starts
+  const st = W(); if (!st.last) throw new Error('Spin the wheel first.');
+  if ((st.mine.left || 0) <= 0) throw new Error(`No streamer respins left this stream (you get ${st.mine.perStream} each stream).`);
+  st.mine.left--; save();
+  try { return { ...request('respin', { name: streamerName(), source: 'mine' }), left: st.mine.left }; } catch (e) { st.mine.left++; save(); throw e; }
 }
 const streamKey = () => db.stream?.startedAt || W().streamAt || (W().streamAt = Date.now());
 export function newStream() { const st = W(); st.mine.left = st.mine.perStream; st.streamAt = Date.now(); st.voidHits = {}; for (const w of st.wheels) for (const e of w.entries) e.voided = null; refresh(); }

@@ -200,8 +200,8 @@ export function rollWeek(force = false) {
   if (!force && db.week?.key === k) return null;
   const l = moviesList();
   let back = 0;
-  l.entries = l.entries.filter(e => !(isSpot(e) && e.status !== 'active')); // clean up used spots
-  for (const e of l.entries) if (e.status === 'benched') { e.status = 'active'; back++; }
+  l.entries = l.entries.filter(e => !(isSpot(e) && !['active', 'benched', 'paused'].includes(e.status))); // clean up used spots (old saves)
+  for (const e of l.entries) { delete e.forceIn; if (e.status === 'benched') { e.status = 'active'; if (!isSpot(e)) back++; } }
   db.week = { key: k, winners: [], spotWon: false };
   const spots = db.settings.autoSpots !== false || force ? addSpots() : 0;
   save();
@@ -225,10 +225,9 @@ export function afterMovieWin(winnerId) {
   const l = moviesList(), w = l.entries.find(e => e.id === winnerId);
   if (!w) return { benched: 0, spotsRemoved: 0 };
   let benched = 0, spotsRemoved = 0;
-  if (isSpot(w)) { // a Kirb spot won: all of them are gone for the rest of the week
-    spotsRemoved = l.entries.filter(e => isSpot(e)).length;
-    l.entries = l.entries.filter(e => !isSpot(e) || e === w);
-    w.status = 'used'; week().spotWon = true;
+  if (isSpot(w)) { // a Kirb spot won: all of them sit out (hidden, not deleted) for the rest of the week
+    for (const e of l.entries) if (isSpot(e) && e.status === 'active') { e.status = 'benched'; spotsRemoved++; }
+    w.status = 'benched'; week().spotWon = true;
   } else if (!w.backers?.[0]) { w.status = 'watched'; w.wonAt = Date.now(); lb.markWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId }); // your own movie
   } else { // won a movie: sit out the rest of the week
     const who = w.backers[0].discordId;
@@ -236,10 +235,19 @@ export function afterMovieWin(winnerId) {
     w.luckSnap = resetLuckFor(who); // their movie gets watched: their luck starts over (kept so 'put it back' can undo it)
     w.status = 'watched'; w.wonAt = Date.now(); // landed on = picked: it leaves the pool and counts toward their picks
     lb.markWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId });
-    for (const e of l.entries) if (e !== w && e.status === 'active' && e.backers?.[0]?.discordId === who) { e.status = 'benched'; benched++; }
+    for (const e of l.entries) if (e !== w && e.status === 'active' && e.backers?.[0]?.discordId === who) { e.status = 'benched'; delete e.forceIn; benched++; }
   }
   save();
   return { benched, spotsRemoved, person: isSpot(w) ? null : w.backers?.[0]?.name };
+}
+/** Battle tab "Reset wild spots": every wildcard spot back in and refilled, even if one won this week. */
+export function resetSpots() {
+  const l = moviesList(); let back = 0;
+  l.entries = l.entries.filter(e => !(isSpot(e) && !['active', 'benched', 'paused'].includes(e.status)));
+  for (const e of l.entries) if (isSpot(e) && e.status !== 'active') { e.status = 'active'; delete e.forceIn; back++; }
+  week().spotWon = false;
+  const added = addSpots(); save();
+  return { back, added, total: l.entries.filter(e => isSpot(e) && e.status === 'active').length };
 }
 /** The New week button: same as the automatic rollover, right now. */
 export function newWeek() { return rollWeek(true); }

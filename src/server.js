@@ -26,7 +26,7 @@ import * as chatlog from './chat.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
 import { blockReason, banMovie, unbanMovie, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
-import { suggest, sweepWatched, picksUsed, addSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey } from './movies.js';
+import { suggest, sweepWatched, picksUsed, addSpots, resetSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey } from './movies.js';
 
 const PORT = Number(process.env.PORT) || 3737;
 const app = express();
@@ -166,7 +166,7 @@ function weightedPick(arr, w = x => x.weight || 1) {
 
 async function buildFighters(list, keepIds = null) {
   let pool = list.entries.filter(e => e.status === 'active');
-  if (list.type === 'movies' && db.settings.chatGate !== false) { const on = activeSet(); pool = pool.filter(e => e.kind === 'spot' || !e.backers?.length || on.has(e.backers[0].discordId)); }
+  if (list.type === 'movies' && db.settings.chatGate !== false) { const on = activeSet(); pool = pool.filter(e => e.kind === 'spot' || e.forceIn || !e.backers?.length || on.has(e.backers[0].discordId)); } // forceIn = you put it back yourself
   const max = Math.max(2, Number(db.settings.maxFighters) || 40);
   let picked = pool;
   if (pool.length > max) { // weighted qualifiers (keeps whoever is already waiting on the cliff)
@@ -228,22 +228,37 @@ function powerUp(r, kind) {
 // pause the channel point rewards that can't do anything right now, unpause the ones that can
 // (ground-breaking chaos on maps where nothing breaks; ball power-ups outside a chat battle with power-ups on)
 let rewardKey = '', rewardBusy = false;
-async function syncRewards() {
-  if (!twitch.status.userId || rewardBusy) return;
-  const st = db.settings, on = st.pointsOn !== false, map = mapById(currentMap()), l = getList(db.activeListId);
-  const want = {};
-  for (const [title, ev] of Object.entries(st.rewards || {})) want[title.toLowerCase()] = !on || (!!map?.solid && GROUND_EVENTS.includes(ev));
-  const powersOn = on && l?.type === 'chat' && !!l.fun?.powerups;
+// Every channel point reward Movie Royal made is paused unless it can be used right now:
+// battle chaos only while the battle is on stream (and never ground-breakers on solid maps), ball power-ups only in a fun chat battle,
+// wheel rewards only while the wheel is on stream, the ball color reward only while the battle is up. Anything else the app made stays paused.
+// (Pausing only. Never refunds, cancels or completes anything.)
+function rewardWants() {
+  const st = db.settings, on = st.pointsOn !== false, map = mapById(currentMap()), l = getList(db.activeListId), W = wheel.W(), wheelUp = !!W.show;
+  const want = {}; // title → should it be paused?
+  for (const [title, ev] of Object.entries(st.rewards || {})) want[title.toLowerCase()] = !on || wheelUp || (!!map?.solid && GROUND_EVENTS.includes(ev));
+  const powersOn = on && !wheelUp && l?.type === 'chat' && !!l.fun?.powerups;
   for (const title of Object.keys(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn;
-  const key = JSON.stringify(want); if (key === rewardKey) return;
+  const wh = W.wheels.find(w => w.id === W.activeId), P = { respin: true, move: true, up: true, down: true, grow: true, shrink: false, ...(wh?.opts?.points || {}) };
+  for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(wheelUp && W.pointsOn !== false && P[kind] !== false);
+  if (st.colorReward) want[st.colorReward.toLowerCase()] = !(st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
+  return want;
+}
+async function syncRewards(all = null) {
+  if (!twitch.status.userId || rewardBusy) return;
+  const want = all == null ? rewardWants() : null;
+  const key = all == null ? JSON.stringify(want) : 'all:' + all; if (key === rewardKey) return;
   rewardBusy = true;
   try {
-    const mine = (await twitch.listRewards()).filter(r => r.title.toLowerCase() in want);
-    await Promise.allSettled(mine.filter(r => r.paused !== want[r.title.toLowerCase()]).map(r => twitch.updateReward(r.id, { paused: want[r.title.toLowerCase()] })));
+    const mine = await twitch.listRewards(); // only the rewards this app made
+    const pause = r => all != null ? all : (r.title.toLowerCase() in want ? want[r.title.toLowerCase()] : true);
+    await Promise.allSettled(mine.filter(r => r.paused !== pause(r)).map(r => twitch.updateReward(r.id, { paused: pause(r) })));
     rewardKey = key;
   } catch (e) { console.error('[rewards]', e.message); }
   finally { rewardBusy = false; }
 }
+setInterval(() => syncRewards().catch(() => {}), 15000); // follows the wheel / battle on stream
+setInterval(() => { rewardKey = ''; }, 5 * 60000); // and double-checks Twitch every few minutes
+setTimeout(() => { rewardKey = ''; syncRewards().catch(() => {}); }, 8000);
 
 // ---------- chaos events from channel points / bits ----------
 function triggerEvent(event, by, source) {
@@ -1040,6 +1055,8 @@ app.patch('/api/lists/:id/entries/:eid', (req, res) => {
     if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched') setTimeout(() => watchedElsewhere(e), 0); // watched outside a battle: they get a free replacement pick
     if (l.type === 'movies' && req.body.status !== 'watched' && e.status === 'watched') unwatchedElsewhere(e);
     if (l.type === 'movies' && e.tmdbId) { if (req.body.status === 'watched') lb.markWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); else if (e.status === 'watched') lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); }
+    if (req.body.status === 'active' && ['benched', 'paused', 'away'].includes(e.status) && req.body.force !== false) e.forceIn = true; // you put it back yourself: skips cooldowns and the chat check
+    else if (req.body.status !== 'active') delete e.forceIn;
     e.status = req.body.status;
   }
   save(); pushState(); res.json({ ok: true });
@@ -1098,6 +1115,7 @@ app.post('/api/rollcall/end', (req, res) => { endRollcall(); res.json({ ok: true
 app.post('/api/rollcall/cancel', (req, res) => { if (live.rollcall) clearTimeout(live.rollcall.timer); live.rollcall = null; broadcast({ type: 'rollcallClose' }, 'overlay'); pushState(); res.json({ ok: true }); });
 app.post('/api/rollcall/close', (req, res) => { live.rollcall = null; broadcast({ type: 'rollcallClose' }, 'overlay'); pushState(); res.json({ ok: true }); });
 app.post('/api/rollcall/restore', (req, res) => { const n = restoreAway(); live.rollcall = null; broadcast({ type: 'rollcallClose' }, 'overlay'); pushState(); refreshPreview(); res.json({ back: n }); });
+app.post('/api/movies/reset-spots', (req, res) => { rollWeek(); const r = resetSpots(); pushState(); refreshPreview(true); res.json(r); });
 app.post('/api/movies/spots', (req, res) => { rollWeek(); const n = addSpots(); pushState(); res.json({ added: n, spotWon: !!db.week?.spotWon }); });
 app.post('/api/movies/new-week', (req, res) => { const r = newWeek(); pushState(); res.json(r); });
 // ---------- custom movie lists ("Movies" battles: your own picks, full winner screen) ----------
@@ -1155,6 +1173,9 @@ app.post('/api/powerups/rewards', async (req, res) => { // add the ball power-up
     res.json({ ok: true, made });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+app.post('/api/rewards/pause-all', async (req, res) => { // the app is closing: nothing can be redeemed while it's off
+  rewardBusy = false; rewardKey = ''; await syncRewards(true).catch(() => {}); rewardKey = 'closed'; res.json({ ok: true });
+});
 app.post('/api/chaos-toggle', async (req, res) => {
   const b = req.body || {}, msgs = [];
   if (b.points != null) db.settings.pointsOn = !!b.points;
@@ -1162,12 +1183,8 @@ app.post('/api/chaos-toggle', async (req, res) => {
   save(); pushState(); refreshPreview(true); rewardKey = '';
   // also pause/unpause the rewards on Twitch so nobody spends points on something that won't happen
   if (b.points != null && twitch.status.userId) {
-    try {
-      const titles = new Set(Object.keys(db.settings.rewards).map(t => t.toLowerCase()));
-      const mine = (await twitch.listRewards()).filter(r => titles.has(r.title.toLowerCase()));
-      await Promise.allSettled(mine.map(r => twitch.updateReward(r.id, { paused: !db.settings.pointsOn })));
-      if (mine.length) msgs.push(`${mine.length} reward${mine.length === 1 ? '' : 's'} ${db.settings.pointsOn ? 'unpaused' : 'paused'} on Twitch`);
-    } catch (e) { msgs.push(`couldn't update Twitch: ${e.message}`); }
+    rewardBusy = false; await syncRewards().catch(() => {}); // the rewards follow what's usable right now
+    msgs.push(db.settings.pointsOn ? 'rewards turn on on Twitch whenever they can be used' : 'rewards paused on Twitch');
   }
   res.json({ ok: true, ...chaosState(), msg: msgs.join(' · ') });
 });

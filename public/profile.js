@@ -57,7 +57,7 @@ window.Profile = (() => {
   }
   async function post(url, body) { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()); if (r.error) alert('⚠️ ' + r.error); return r; }
   async function mod(action, seconds, ask) {
-    if (ask) { const m = prompt('Time out for how many minutes?', '30'); if (!m) return; seconds = Math.max(1, Number(m) || 30) * 60; }
+    if (ask) { const m = await ask('Time out for how many minutes?', '30'); if (!m) return; seconds = Math.max(1, Number(m) || 30) * 60; }
     if (action === 'ban' && !confirm(`Ban ${cur.name} from your chat?`)) return;
     const r = await post('/api/chat/mod', { action, login: cur.login, seconds }); if (!r.error) alert(action === 'unban' ? '↩️ Unbanned.' : action === 'ban' ? '🔨 Banned.' : '⏱ Timed out.');
   }

@@ -110,6 +110,12 @@
   #stage.mini iframe { pointer-events:none; }
   #stage.mini::after { content:'⚔️ Battle — click to open'; position:absolute; left:0; right:0; bottom:0; padding:4px 10px; font-size:11px; font-weight:700; background:linear-gradient(transparent, #000c); }
   #stage.mini.hide { display:none; }
+  #wMineBtn.used { opacity:.4; filter:grayscale(1); cursor:not-allowed; }
+  #wEntTable .wgrip { cursor:grab; color:var(--dim); font-size:18px; padding:0 4px; user-select:none; touch-action:none; text-align:center; }
+  #wEntTable .wgrip:hover { color:var(--gold); }
+  #wEntTable tr.dragging { opacity:.45; }
+  #wEntTable tr.dropAbove td { box-shadow:inset 0 3px 0 var(--gold); }
+  #wEntTable tr.dropBelow td { box-shadow:inset 0 -3px 0 var(--gold); }
   #stage.peek { z-index:60; border:2px solid var(--gold); resize:both; min-width:320px; min-height:210px; padding-top:34px; box-shadow:0 20px 80px #000c; }
   #stage.peek iframe { top:34px; height:calc(100% - 34px); }
   #peekBar { display:none; }
@@ -391,7 +397,7 @@
   <div class="wsplit" title="Drag to make either side bigger (double-click to reset)" onpointerdown="wSplit(event)" ondblclick="wSplitSet(640)"></div>
   <div class="pane"><div class="card" id="wheelRight">
     <canvas id="wheelCv" width="900" height="900" title="Click to spin"></canvas>
-    <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
+    <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button id="wMineBtn" onclick="wMine()" title="Your own respins: you get a few each stream. They come back when you go live again.">🎟️ Streamer respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
     <div id="wUndoList"></div>
     <div class="row" style="margin-top:10px;gap:8px"><input id="wBy" class="grow" placeholder="Who's spinning? (blank = you)"><button class="ghost" onclick="wUndo()" title="Take back the last thing that happened on the wheel">⏪ Undo</button><button class="ghost" onclick="wUndoMenu()" title="Go back several steps">⏪ Go back…</button><button id="wShowBtn" onclick="wShow()">📺 Show on stream</button></div>
     <div class="row" style="margin-top:8px;gap:10px;align-items:center;flex-wrap:nowrap"><button id="wSnd" style="padding:4px 10px;white-space:nowrap" onclick="setSound({soundOn: !S.settings.soundOn})"></button>
@@ -602,6 +608,7 @@
 </div></dialog>
 
 <script src="wheel.js"></script>
+<script src="ask.js"></script>
 <script src="chat.js"></script>
 <script src="profile.js"></script>
 <script>
@@ -835,7 +842,7 @@ function renderWinner() {
     <p style="margin:8px 0"><b>${claimTxt}</b></p>
     ${w.calls?.total ? `<p class="help">🔮 ${w.calls.right} of ${w.calls.total} called it${w.calls.names?.length ? ': ' + w.calls.names.map(esc).join(', ') : ''}</p>` : ''}
     ${w.benched ? `<p class="help">💤 ${w.benched} other movie${w.benched === 1 ? '' : 's'} from ${esc(w.owner)} sit out until the new week.</p>` : ''}
-    ${w.spotsRemoved ? `<p class="help">🎟️ All ${esc(S.settings.spotName)} spots are gone for the week.</p>` : ''}</div>
+    ${w.spotsRemoved ? `<p class="help">🎟️ The other ${esc(S.settings.spotName)} spots sit out until the new week (hidden, not deleted). <a href="#" onclick="resetSpotsClick();return false">Reset wild spots</a> brings them back.</p>` : ''}</div>
     <div class="stack">
       ${w.spot || w.test ? '' : `<button class="primary" onclick="api('/api/claim/start',{seconds:30})">⏱️ Start 30s claim timer</button>`}
       ${c && !c.done ? `<button onclick="api('/api/claim/confirm')">✅ They're here (claim manually)</button>` : ''}
@@ -916,7 +923,7 @@ function renderBattleList() {
   if (blFor !== l.id + l.type) {
     blFor = l.id + l.type;
     let add = '';
-    if (l.type === 'movies') add = `<div class="row"><b>➕ Add</b><input id="qaPerson" style="width:200px" placeholder="Person (name or Twitch)" list="qaPeople"><datalist id="qaPeople"></datalist>
+    if (l.type === 'movies') add = `<div class="row" style="margin-bottom:6px"><button onclick="resetSpotsClick()" title="Puts every wild spot back in the battle and fills them back up, even if one already won this week">🎟️ Reset wild spots</button><span class="help" style="margin:0">Movies that sit out are just hidden, never deleted. Press ▶ on one to put it straight back in (skips the cooldown and the chat check).</span></div><div class="row"><b>➕ Add</b><input id="qaPerson" style="width:200px" placeholder="Person (name or Twitch)" list="qaPeople"><datalist id="qaPeople"></datalist>
       <input id="qaMovie" class="grow" placeholder="…and their movie: start typing" oninput="qaSearch(this.value)"></div><div class="results" id="qaRes"></div>
       <p class="help" style="margin:4px 0 0">Makes the cliff look exactly like your wheel: pick the person (new names are added for you), then click their movie. Picks limits don't apply when you add by hand.</p>`;
     else if (l.type === 'films') add = `<div class="row"><b>➕ Add</b><input id="qaMovie" class="grow" placeholder="Start typing a movie…" oninput="qaSearch(this.value)"></div><div class="results" id="qaRes"></div>`;
@@ -931,16 +938,16 @@ function renderBattleList() {
   const act = l.entries.filter(e => e.status === 'active'), luckOnNow = l.type === 'movies' && S.luckOn;
   const total = act.reduce((s, e) => s + (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1), 0) || 1;
   $('blTitle').innerHTML = `📋 ${esc(l.name)} <span class="pill">${act.length} in</span>${show.length > act.length ? ` <span class="pill">${show.length - act.length} sitting out</span>` : ''}`;
-  const tag = { paused: '<span class="tag p">⏸ paused</span>', benched: '<span class="tag b">💤 won this week</span>', away: '<span class="tag b">📣 out tonight</span>' };
+  const tag = { paused: '<span class="tag p">⏸ paused</span>', benched: '<span class="tag b">💤 won this week</span>', away: '<span class="tag b">📣 out tonight</span>' }, spotTag = '<span class="tag b">💤 a wild spot won this week</span>';
   const rows = show.sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || (b.weight - a.weight) || a.label.localeCompare(b.label)).slice(0, 600).map(e => {
     const spot = e.kind === 'spot', on = e.status === 'active', pct = on ? (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1) / total * 100 : 0;
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const who = l.type === 'movies' ? (spot ? 'Wildcard' : e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you') : '';
-    return `<tr style="${on ? '' : 'opacity:.55'}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b> ${tag[e.status] || ''}<br><small class="muted">${[esc(e.sub || ''), who].filter(Boolean).join(' · ')}</small></td>
+    return `<tr style="${on ? '' : 'opacity:.55'}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b> ${spot && e.status === 'benched' ? spotTag : tag[e.status] || ''}${on && e.forceIn ? ' <span class="tag w" title="You put it back yourself: no cooldown, no chat check">▶ put back by you</span>' : ''}<br><small class="muted">${[esc(e.sub || ''), who].filter(Boolean).join(' · ')}</small></td>
       ${l.type === 'movies' ? `<td class="luck" title="Luck: extra % chance">${S.luckOn ? `🍀 <input type="number" step="0.5" min="0" value="${+(e.luckPct || 0).toFixed(2)}" style="width:62px;padding:2px 4px" onchange="api('/api/luck',{listId:'${l.id}',id:'${e.id}',luckPct:this.value})">%` : '<span class="muted">luck off</span>'}</td>` : ''}
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div></td>
       <td style="white-space:nowrap">${on ? `<div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small>` : ''}</td>
-      <td style="white-space:nowrap;text-align:right">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}${on ? `<button class="ghost" title="Disable for now (pause)" onclick="setStatus('${e.id}','paused')">⏸</button>` : `<button class="ghost" title="Put back in" onclick="setStatus('${e.id}','active')">▶</button>`}<button class="ghost danger" title="Delete" onclick="if(confirm('Delete ${esc(e.label).replace(/'/g, '')}?')) setStatus('${e.id}','removed')">✕</button></td></tr>`;
+      <td style="white-space:nowrap;text-align:right">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}${on ? `<button class="ghost" title="Disable for now (pause)" onclick="setStatus('${e.id}','paused')">⏸</button>` : `<button class="ghost" title="Put it back in the battle now (skips the cooldown and the chat check)" onclick="setStatus('${e.id}','active')">▶</button>`}<button class="ghost danger" title="Delete" onclick="if(confirm('Delete ${esc(e.label).replace(/'/g, '')}?')) setStatus('${e.id}','removed')">✕</button></td></tr>`;
   }).join('');
   if (document.activeElement?.matches?.('#blTable input, #blTable select, #blTable textarea')) return; // don't redraw under your cursor while typing in it
   $('blTable').innerHTML = show.length ? `<table><tr><th></th><th>Entry</th>${l.type === 'movies' ? '<th>Luck</th>' : ''}<th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>` : '<div class="empty">Nothing in this battle yet — add some above.</div>';
@@ -1217,6 +1224,7 @@ function chattersCard() {
       <table style="margin-top:6px">${S.recentChatters.map(c => `<tr><td><b data-user="${esc(c.login || c.name)}" style="cursor:pointer">${esc(c.name)}</b></td><td>${c.person ? `<span class="tag w">✓ ${esc(c.person)}</span>` : `<select style="width:auto;padding:3px 6px" onchange="if(this.value) api('/api/chatters/link',{login:'${esc(c.login)}',discordId:this.value}).then(()=>toast('Linked ${esc(c.name)}'))"><option value="">This is…</option>${S.people.map(p => `<option value="${esc(p.discordId)}">${esc(p.name)}</option>`).join('')}</select>`}</td></tr>`).join('')}</table></details>` : ''}</div>`;
 }
 async function newWeekClick() { const r = await api('/api/movies/new-week'); toast(`🗓️ New week! ${plural(r.back, 'benched movie')} back, ${plural(r.spots, esc(S.settings.spotName) + ' spot')} added`); }
+async function resetSpotsClick() { const r = await api('/api/movies/reset-spots'); toast(`🎟️ ${plural(r.total, esc(S.settings.spotName) + ' spot')} in the battle`); }
 async function addSpotsClick() { const r = await api('/api/movies/spots'); toast(r.added ? `Added ${plural(r.added, esc(S.settings.spotName) + ' spot')}` : r.spotWon ? `A ${esc(S.settings.spotName)} spot already won this week — they come back ${esc(S.week.backOn)} (or press New week).` : `Already at ${S.settings.spotMax} ${esc(S.settings.spotName)} spots`); }
 // ---------- 👤 change who picked a movie ----------
 let owFor = null, owT;
@@ -1474,7 +1482,10 @@ let WD = null, wVer = -1, wTab = 'spots', wBulk = false, WVc = null, wSpinning =
 let wsF = { range: 'all', wheel: 'this', group: 'spots', date: '' }, wsSort = { k: 'landed', dir: -1 }, wsQ = '', wsData = null;
 const THEMES = { 'Wheel classic': null, 'Pastel': ['#ffb3c1', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#a0c4ff', '#bdb2ff', '#ffc6ff'], 'Neon': ['#ff2e88', '#ffe600', '#00f0ff', '#7cff00', '#ff7a00', '#b026ff'], 'Movie Royal': ['#ffc94a', '#ff6a3d', '#9b4dff', '#2a1846', '#ff4f6d', '#4fc3ff'], 'Ocean': ['#03045e', '#0077b6', '#00b4d8', '#90e0ef', '#48cae4', '#023e8a'], 'Halloween': ['#ff7518', '#1a1a1a', '#6a0dad', '#39ff14', '#ffb347', '#3d0c45'], 'Christmas': ['#c1121f', '#2d6a4f', '#ffffff', '#ffd166', '#40916c', '#9d0208'], 'Grayscale': ['#222222', '#555555', '#888888', '#bbbbbb', '#eeeeee'] };
 const wCur = () => WD?.wheels.find(w => w.id === WD.activeId);
-async function loadWheel() { WD = await fetch('/api/wheel').then(r => r.json()); wVer = WD.ver; drawWheelPreview(); drawBoosts(WD.boosts || []); drawRound(); }
+async function loadWheel() { WD = await fetch('/api/wheel').then(r => r.json()); wVer = WD.ver; drawWheelPreview(); drawBoosts(WD.boosts || []); drawRound(); drawMine(); }
+function drawMine() { const b = $('wMineBtn'); if (!b || !WD?.mine) return; const n = WD.mine.left || 0, of = WD.mine.perStream ?? 3; b.innerHTML = `🎟️ Streamer respin <b>${n}/${of}</b>`; b.classList.toggle('used', n <= 0); b.title = n > 0 ? `Your own respins: ${n} of ${of} left this stream. They come back when you go live again (right-click to refill now).` : `All ${of} streamer respins used this stream. They come back when you go live again (right-click to refill now).`; }
+async function wMine() { if ((WD?.mine?.left || 0) <= 0) return toast('No streamer respins left this stream. They come back when you go live.'); try { const r = await api('/api/wheel/mine', {}); WD.mine.left = r.left ?? WD.mine.left; drawMine(); } catch {} }
+document.addEventListener('contextmenu', e => { if (e.target.closest?.('#wMineBtn')) { e.preventDefault(); if (confirm('Refill your streamer respins now? (They also refill by themselves when you go live.)')) api('/api/wheel/mine', { action: 'set', left: WD?.mine?.perStream ?? 3 }).then(loadWheel); } });
 let wKey = '';
 const wTyping = () => document.activeElement?.matches?.('#wBody input[type=text], #wBody textarea, #wBody input[type=number]');
 function renderWheel(fromState) {
@@ -1524,14 +1535,14 @@ function drawSpots() {
         <div class="row" style="gap:8px;margin-top:6px;flex-wrap:wrap"><input id="wAdd" class="grow" style="min-width:200px" placeholder="Spot name (press Enter)…" onkeydown="if(event.key==='Enter'){wAddSpot(this.value);}">${typeSel(wAddType, "wAddType=this.value;wAddOpt={};renderWheel()")}<button class="primary" onclick="wAddSpot($('wAdd').value)">Add</button></div>
         <div class="row" style="gap:10px;margin-top:6px;flex-wrap:wrap">${typeFields({ type: wAddType, ...wAddOpt }, 'new')}</div>
         <p class="help" style="margin:6px 0 0">${TYPE_HELP[wAddType]}</p></div>
-      <table class="went" style="width:100%"><thead><tr><th title="⏸ pause a spot (off the wheel, still in this list) / ▶ put it back">⏯</th><th>🎨</th><th style="text-align:left">Spot</th><th title="Size: 2 = twice as big">Size</th><th>%</th><th style="text-align:left">Rule</th><th></th></tr></thead><tbody>
-      ${w.entries.map((e, i) => `<tr class="${e.on === false || !e.weight || e.voided ? 'off' : ''}"><td>${e.voided ? `<button class="ghost" title="Taken off by the void tonight. Press to bring it back." onclick="wUnvoid('${e.id}','${w.id}')">▶</button>` : e.on !== false ? `<button class="ghost" title="On the wheel. Press to pause it (it stays in this list)." onclick="wEnt(${i},{on:false})">⏸</button>` : `<button class="primary" style="padding:4px 9px" title="Paused: not on the wheel. Press to put it back on." onclick="wEnt(${i},{on:true})">▶</button>`}</td>
+      <table class="went" id="wEntTable" style="width:100%"><thead><tr><th title="Drag ⠿ to move a spot up or down the list"></th><th title="⏸ pause a spot (off the wheel, still in this list) / ▶ put it back">⏯</th><th>🎨</th><th style="text-align:left">Spot</th><th title="Size: 2 = twice as big">Size</th><th>%</th><th style="text-align:left">Rule</th><th></th></tr></thead><tbody>
+      ${w.entries.map((e, i) => `<tr data-i="${i}" class="${e.on === false || !e.weight || e.voided ? 'off' : ''}"><td class="wgrip" title="Drag to move this spot">⠿</td><td>${e.voided ? `<button class="ghost" title="Taken off by the void tonight. Press to bring it back." onclick="wUnvoid('${e.id}','${w.id}')">▶</button>` : e.on !== false ? `<button class="ghost" title="On the wheel. Press to pause it (it stays in this list)." onclick="wEnt(${i},{on:false})">⏸</button>` : `<button class="primary" style="padding:4px 9px" title="Paused: not on the wheel. Press to put it back on." onclick="wEnt(${i},{on:true})">▶</button>`}</td>
         <td><input type="color" value="${e.color || autoCol(e)}" title="${e.color ? 'Custom color (right-click to reset)' : 'Auto color'}" onchange="wEnt(${i},{color:this.value})" oncontextmenu="event.preventDefault();wEnt(${i},{color:null})"></td>
         <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
         <td style="white-space:nowrap">${e.type === 'void' ? `<button class="ghost" title="Shrink the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><span class="muted" title="Chat can only change the void with money (subs, gift subs, bits, donations). You can always change it." style="padding:0 6px">💵 / you</span><button class="ghost" title="Grow the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
         <td style="white-space:nowrap">${e.type === 'void' ? '<b>🕳️ Void</b>' : !w.opts.rules ? '<span class="muted" title="Rules are off for this wheel (⚙️ Wheel settings)">plain</span>' : `${typeSel(e.type, `wEnt(${i},{type:this.value${e.type !== 'countdown' ? `,count:${e.countStart ?? 3},countStart:${e.countStart ?? 3}` : ''}})`)}${e.type === 'countdown' ? ` <small class="muted">${e.count}/${e.countStart} left</small>` : ''}`}${e.rule ? `<div class="muted" style="font-size:12px;max-width:220px;white-space:normal" title="${esc(e.rule)}">📜 ${esc(e.rule.length > 60 ? e.rule.slice(0, 60) + '…' : e.rule)}</div>` : ''}</td>
-        <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost" title="Move up" onclick="wMove(${i},-1)">▲</button><button class="ghost" title="Move down" onclick="wMove(${i},1)">▼</button><button class="ghost danger" title="Delete" onclick="wDel(${i})">✕</button></td></tr>
-        ${wOpen === e.id ? `<tr><td></td><td colspan="6" style="padding:10px 6px 14px"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
+        <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost danger" title="Delete" onclick="wDel(${i})">✕</button></td></tr>
+        ${wOpen === e.id ? `<tr><td></td><td></td><td colspan="6" style="padding:10px 6px 14px"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
           <p class="help" style="margin:4px 0 8px">${TYPE_HELP[e.type || 'timer'] || ''}</p>
           <label>📜 Words shown on stream when it lands (optional)<textarea placeholder="e.g. Play one round of Mario Kart" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></label>
           <div class="row" style="gap:14px;flex-wrap:wrap"><label class="ck"><input type="checkbox" ${e.noPointRespin ? 'checked' : ''} onchange="wEnt(${i},{noPointRespin:this.checked})"> <span>🚫 No channel point respins</span></label><label class="ck"><input type="checkbox" ${e.noBankRespin ? 'checked' : ''} onchange="wEnt(${i},{noBankRespin:this.checked})"> <span>🚫 No respins from given/saved spins</span></label></div>
@@ -1543,7 +1554,7 @@ function drawSpots() {
 function wGrow(i, d) { const w = wCur(), e = w.entries[i]; api('/api/wheel/grow', { entryId: e.id, amount: d, wheelId: w.id }).then(r => { toast(`${d > 0 ? '📈' : '📉'} “${esc(e.text)}” is now ${r.pct}% of the wheel.`); loadWheel().then(() => renderWheel()); }).catch(() => {}); }
 function wSnd1(cb) { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*,.mp3,.wav,.ogg,.m4a'; inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const r = await fetch('/api/wheel/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()); if (r.url) cb(r.url); }; inp.click(); }
 function wPlay(u) { try { const a = new Audio(u); a.volume = .8; a.play(); } catch {} }
-async function wNewFolder(move) { const n = (prompt('Name for the new folder:') || '').trim(); if (!n) { if (move) renderWheel(); return; } await api('/api/wheel/folders', { name: n }); if (move) { await api('/api/wheel/' + wCur().id, { folder: n }, 'PUT'); } wFolder = move ? n : wFolder; await loadWheel(); wKey = ''; renderWheel(); toast(`📁 Folder “${esc(n)}” made.${move ? ' This wheel is in it now.' : ' Pick it on a wheel (✏️ Spots → Folder) to move the wheel in.'}`); }
+async function wNewFolder(move) { const n = (await ask('Name for the new folder:') || '').trim(); if (!n) { if (move) renderWheel(); return; } await api('/api/wheel/folders', { name: n }); if (move) { await api('/api/wheel/' + wCur().id, { folder: n }, 'PUT'); } wFolder = move ? n : wFolder; await loadWheel(); wKey = ''; renderWheel(); toast(`📁 Folder “${esc(n)}” made.${move ? ' This wheel is in it now.' : ' Pick it on a wheel (✏️ Spots → Folder) to move the wheel in.'}`); }
 async function wUnvoid(entryId, wheelId) {
   let r = await api('/api/wheel/unvoid', { entryId, wheelId });
   if (r.needOverride) { if (!confirm(`You already brought back a voided spot this month.\n\nThe rule is 1 per month. Bring back “${r.text}” anyway?`)) return; r = await api('/api/wheel/unvoid', { entryId, wheelId, force: true }); }
@@ -1559,6 +1570,31 @@ async function wUndoTo(id, n) { if (n > 1 && !confirm(`Go back ${n} steps?`)) re
 function wPic(cb) { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,video/mp4,video/webm'; inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const r = await fetch('/api/wheel/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()); if (r.url) cb(r.url); }; inp.click(); }
 function wPut(body, now) { const w = wCur(); Object.assign(w, body); drawWheelPreview(); clearTimeout(wSaveT); wSaveT = setTimeout(async () => { wSaveT = null; await api('/api/wheel/' + w.id, { name: w.name, title: w.title, entries: w.entries, spinSecs: w.spinSecs, removeWinner: w.removeWinner, palette: w.palette, look: w.look, folder: w.folder || '' }, 'PUT'); wVer = -1; }, now ? 0 : 400); }
 function wEnt(i, ch) { const w = wCur(); Object.assign(w.entries[i], ch); wPut({}); if (!('text' in ch || 'rule' in ch)) { document.activeElement?.blur(); renderWheel(); } }
+function wMoveTo(i, j) { const w = wCur(); if (i === j || j < 0 || j > w.entries.length) return; const [e] = w.entries.splice(i, 1); w.entries.splice(j > i ? j - 1 : j, 0, e); wPut({}); renderWheel(); }
+(() => { // drag ⠿ to move a spot, like sorting a YouTube playlist
+  let drag = null;
+  document.addEventListener('pointerdown', e => {
+    const g = e.target.closest?.('#wEntTable .wgrip'); if (!g) return;
+    const tr = g.closest('tr'); e.preventDefault();
+    drag = { from: +tr.dataset.i, tr, to: +tr.dataset.i }; tr.classList.add('dragging'); document.body.style.cursor = 'grabbing';
+  });
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const rows = [...document.querySelectorAll('#wEntTable tr[data-i]')];
+    rows.forEach(r => r.classList.remove('dropAbove', 'dropBelow'));
+    let to = rows.length; for (const r of rows) { const b = r.getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) { to = +r.dataset.i; break; } }
+    drag.to = to;
+    const tgt = rows.find(r => +r.dataset.i === to); if (tgt) tgt.classList.add('dropAbove'); else rows[rows.length - 1]?.classList.add('dropBelow');
+    let sc = $('wEntTable').parentElement; while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement; // scroll while dragging near the edge
+    sc = sc && sc !== document.body ? sc : document.scrollingElement; const sb = sc.getBoundingClientRect?.() || { top: 0, bottom: innerHeight };
+    if (e.clientY < Math.max(sb.top, 0) + 50) sc.scrollTop -= 14; if (e.clientY > Math.min(sb.bottom || innerHeight, innerHeight) - 50) sc.scrollTop += 14;
+  });
+  document.addEventListener('pointerup', () => {
+    if (!drag) return; const d = drag; drag = null; document.body.style.cursor = '';
+    document.querySelectorAll('#wEntTable tr').forEach(r => r.classList.remove('dropAbove', 'dropBelow', 'dragging'));
+    if (d.to !== d.from && d.to !== d.from + 1) wMoveTo(d.from, d.to);
+  });
+})();
 function wMove(i, d) { const w = wCur(), j = i + d; if (j < 0 || j >= w.entries.length) return; [w.entries[i], w.entries[j]] = [w.entries[j], w.entries[i]]; wPut({}); renderWheel(); }
 function wDel(i) { const w = wCur(); w.entries.splice(i, 1); wPut({}); renderWheel(); }
 function wAddSpot(v) {
@@ -1583,7 +1619,7 @@ async function wNewGo() {
   wNewDlg.close(); await loadWheel(); wTab = 'spots'; wBulk = !from; renderWheel(); toast(from ? '⧉ Copied! Change whatever fits the theme.' : '✨ New wheel made. Type your spots, one per line.');
 }
 async function wImport() {
-  const how = prompt('Paste a Wheel of Names share link (wheelofnames.com/abc-xyz)\n\n…or leave it empty and press OK to open a .wheel / .json / .txt file from your computer.', '');
+  const how = await ask('Paste a Wheel of Names share link (wheelofnames.com/abc-xyz)\n\n…or leave it empty and press OK to open a .wheel / .json / .txt file from your computer.', '');
   if (how === null) return;
   if (how.trim()) { try { const r = await api('/api/wheel/import', { url: how.trim() }); toast(`📥 Imported “${esc(r.name)}” with ${r.count} spots.`); await loadWheel(); renderWheel(); } catch {} return; }
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.wheel,.json,.txt,.csv';
@@ -1800,6 +1836,8 @@ function drawWGlobal() {
     <h4 style="margin:4px 0">💬 Chat commands</h4>
     <div class="row" style="gap:10px;flex-wrap:wrap"><label>Use a saved respin <input style="width:120px" value="${esc(WD.cmd.respin)}" onchange="api('/api/wheel/settings',{cmd:{respin:this.value}}).then(loadWheel)"></label><label>See your respins <input style="width:120px" value="${esc(WD.cmd.spins)}" onchange="api('/api/wheel/settings',{cmd:{spins:this.value}}).then(loadWheel)"></label></div>
     <p class="help">Both are listed in <code>${esc(S.settings.helpCommand || '!moviesroyal')}</code>.</p>
+    <h4 style="margin:16px 0 4px">🎟️ Streamer respins</h4>
+    <div class="row" style="gap:10px;align-items:center"><label>Respins you get each stream <input type="number" min="0" max="100" style="width:90px" value="${WD.mine?.perStream ?? 3}" onchange="api('/api/wheel/settings',{perStream:this.value}).then(()=>api('/api/wheel/mine',{action:'set',left:this.value})).then(loadWheel)"></label><span class="help">The 🎟️ Streamer respin button under the wheel. It turns gray when they're used up, and fills back up when you go live.</span></div>
     <h4 style="margin:16px 0 4px">💜 Channel point rewards</h4>
     <label class="ck"><input type="checkbox" ${WD.pointsOn ? 'checked' : ''} onchange="api('/api/wheel/settings',{pointsOn:this.checked}).then(loadWheel)"> <span>Wheel channel point rewards are on (each wheel can turn single ones off in ⚙️ Wheel settings)</span></label>
     <label class="ck"><input type="checkbox" ${WD.chatOn ? 'checked' : ''} onchange="api('/api/wheel/settings',{chatOn:this.checked}).then(loadWheel)"> <span>The wheel can talk in Twitch chat at all</span></label>
@@ -1856,7 +1894,7 @@ function drawWSpins() {
 async function wGive() { const who = $('gsWho').value.trim(), n = Number($('gsN').value); if (!who) return toast('Type who gets the spins.'); const r = await api('/api/wheel/bank', { who, n, reason: $('gsWhy').value.trim() }); toast(`🎟️ ${esc(who)} has ${r.spins} spin${r.spins === 1 ? '' : 's'} now.`); await loadWheel(); renderWheel(); }
 async function wGiveTo(who, n) { await api('/api/wheel/bank', { who, n, reason: n > 0 ? 'given' : 'taken away' }); await loadWheel(); renderWheel(); }
 async function wGrowGo() { const r = await api('/api/wheel/grow', { entryId: $('grSpot').value, amount: Number($('grN').value) || 1, who: $('grWho').value.trim() || WD.streamer, reason: $('grWhy').value.trim(), wheelId: wCur().id, money: true }); toast(`📈 Done! It's now ${r.pct}% of the wheel.`); await loadWheel(); renderWheel(); }
-async function wDonation() { const who = prompt('Who donated?'); if (!who) return; const amt = prompt('How much? (just the number, like 10 for $10)'); if (!amt) return; await api('/api/wheel/boost', { name: who, kind: 'money', amount: Number(amt) }); }
+async function wDonation() { const who = await ask('Who donated?'); if (!who) return; const amt = await ask('How much? (just the number, like 10 for $10)'); if (!amt) return; await api('/api/wheel/boost', { name: who, kind: 'money', amount: Number(amt) }); }
 // 💜 sub / gift / bits / donation pop-ups (bottom-left, never over the wheel)
 let boostList = [], boostMin = false;
 function drawBoosts(list) {

@@ -79,7 +79,15 @@ function applySettings(p) {
 }
 
 app.on('second-instance', () => showWindow());
-app.on('before-quit', () => { quitting = true; });
+let rewardsPaused = false;
+app.on('before-quit', e => { // pause every Movie Royal channel point reward on Twitch while the app is closed
+  quitting = true;
+  if (rewardsPaused) return;
+  e.preventDefault(); rewardsPaused = true;
+  const done = () => app.quit();
+  const t = setTimeout(done, 5000);
+  fetch(BASE + '/api/rewards/pause-all', { method: 'POST' }).catch(() => {}).finally(() => { clearTimeout(t); done(); });
+});
 app.on('window-all-closed', () => { if (!prefs.runInBackground || quitting) app.quit(); });
 
 // Esc leaves fullscreen (the battle screen) in every window, like it does in a browser

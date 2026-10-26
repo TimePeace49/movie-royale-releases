@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.16.0 (test build)
+- **🎟️ Streamer respin** button under the wheel: you get 3 each stream (change it in 🌐 All wheels). It shows how many are left and turns gray when they're used up. They fill back up when you go live (right-click it to refill early).
+- **↕️ Drag spots to sort them:** on the wheel's ✏️ Spots list, grab the ⠿ on the left of a spot and drop it where you want it, like sorting a YouTube playlist. The ▲ ▼ arrows are gone.
+- **Fixed: 📥 Import and 📁➕ New folder on the Wheel tab didn't do anything** in the app. The timeout / ban boxes in chat had the same problem and work now too.
+- **🎟️ Reset wild spots** button on the Battle tab: puts every wild spot back in, even if one already won this week.
+- **Nothing gets deleted when a movie wins:** when a wild spot wins, the other wild spots are just hidden until the new week. A person's other movies are hidden the same way, as before.
+- **▶ puts a hidden movie straight back in:** it skips the "won this week" cooldown and the chat check. It shows "▶ put back by you".
+- **💜 Channel point rewards only turn on when they can be used:** everything Movie Royal made on Twitch is paused unless it works right now. Battle chaos only while the battle is on stream, wheel rewards only while the wheel is on stream, ball power-ups only in a fun chat battle. Everything gets paused when you close Movie Royal.
+
 ## 1.15.2 (test build)
 - **🗺️ Maps are in A to Z order** in every map menu.
 

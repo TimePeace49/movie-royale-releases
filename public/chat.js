@@ -25,9 +25,9 @@ window.ChatUI = (() => {
   function alertRow(a) { return `<div class="ca ca-${esc(a.kind)}"><span class="ct">${new Date(a.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span> ${ICON[a.kind] || '🔔'} <b data-user="${esc(a.login || '')}">${esc(a.name || '')}</b> ${text(a.text || '')}</div>`; }
   async function mod(action, login, id) {
     let seconds = 600, reason = '';
-    if (action === 'timeout') { const s = prompt(`Time out ${login} for how many minutes?`, '10'); if (s === null) return; seconds = Math.max(1, Number(s) || 10) * 60; reason = prompt('Reason (optional)', '') || ''; }
+    if (action === 'timeout') { const s = await ask(`Time out ${login} for how many minutes?`, '10'); if (s === null) return; seconds = Math.max(1, Number(s) || 10) * 60; reason = await ask('Reason (optional)', '') || ''; }
     if (action === 'ban' && !confirm(`Ban ${login} from your chat?`)) return;
-    if (action === 'ban') reason = prompt('Reason (optional)', '') || '';
+    if (action === 'ban') reason = await ask('Reason (optional)', '') || '';
     const r = await fetch('/api/chat/mod', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, login, id, seconds, reason }) }).then(r => r.json());
     if (r.error) alert('⚠️ ' + r.error);
   }

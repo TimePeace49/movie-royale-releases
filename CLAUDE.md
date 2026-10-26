@@ -36,12 +36,16 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Grow/shrink with channel points:** chat never types the spot — a pop-up lets Derek pick (or he uses + / −).
 - **Saved respins** never expire; `!respin` uses one, `!myspins` shows the count (friendly reply if none). Both are in `!moviesroyal`.
 - **Refunds: never.** The app must not refund, cancel or complete channel point redemptions or change reward queue settings. Derek does refunds himself.
-- The "3 spins per stream" idea is for battles only, not the wheel.
+- **Streamer respins:** 🎟️ button under the wheel, `perStream` (default 3) per stream, refills when Derek goes live (`newStream`), gray when used up (`wheel.useMine`, source `mine`).
 - Copying a wheel always copies every spot's rule, type and settings.
 - Each wheel has its own settings tab (spin time/speed, sounds, looks, pop-ups, channel point actions…). Shared stuff is in "🌐 All wheels".
 - Name changes: Settings → ✏️ Name changes moves everything (movies, history, stats, spins) to the new name.
 
 - **24/7 bot (`src/cloud-worker.js`):** it only changes on Cloudflare when Derek updates it. Whenever you change that file, bump `WORKER_V` at its top: the app then pops up "Update your 24/7 Discord bot" once on open (only while the bot is older; "Don't remind me again" lasts until the next bump).
+
+- **Channel point rewards:** `syncRewards()` in server.js pauses every reward the app made (manageable rewards) unless it's usable right now; the desktop app pauses them all on quit (`/api/rewards/pause-all`). Pausing only — never refunds.
+- **Wild (Kirb) spots and a winner's other movies are hidden (`benched`), never deleted.** ▶ on the Battle tab sets `forceIn` (skips cooldown + chat check). "Reset wild spots" = `resetSpots()`.
+- **Never use `prompt()`** in pages: the Windows app blocks it. Use `await ask(question, default)` from `public/ask.js`.
 
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
