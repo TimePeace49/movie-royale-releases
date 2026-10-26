@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 3; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 4; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -21,7 +21,7 @@ export default {
       if (req.method === 'POST' && url.pathname === '/') {
         try { return await interaction(req, env, ctx); }
         catch (e) { // never leave Discord hanging ("the application did not respond"): say what went wrong
-          console.error(e); const m = String(e?.message || e);
+          console.error(e); const m = String(e?.message || e); ctx.waitUntil(debugPost(env, null, 'a command failed', m));
           return reply(/limit/i.test(m) ? "⚠️ The 24/7 bot hit Cloudflare's free daily limit. It works again tomorrow — tell the streamer if this keeps happening." : `⚠️ Something went wrong (${m.slice(0, 150)}). Try again in a minute.`);
         }
       }
@@ -139,6 +139,15 @@ async function manyMovies(cfg, ids, ms = 1600) {
   return out;
 }
 
+// 🐞 problems go to the mods-only #movie-royal-debug channel (set up by the app)
+async function debugPost(env, cfg, what, msg) {
+  try {
+    cfg ||= await env.KV.get('config', 'json');
+    const text = `⚠️ **24/7 Discord bot: ${what}**\n👉 If it keeps happening: tell Claude (Movie Royal → 🧪 Test → ⚠️ Errors → 🛠️ For Claude).\n\`\`\`\n${String(msg).slice(0, 900)}\n24/7 bot v${WORKER_V} · ${new Date().toISOString()}\n\`\`\``;
+    for (const ch of cfg?.debugChannels || []) await post(cfg, ch, text);
+  } catch {}
+}
+
 // ---------- Discord helpers ----------
 const cut = t => t.length > 100 ? t.slice(0, 99) + '…' : t;
 const reply = (content, ephemeral = true) => json({ type: 4, data: { content, flags: ephemeral ? EPH : 0, allowed_mentions: { parse: [] } } });
@@ -216,7 +225,7 @@ async function interaction(req, env, ctx) {
     ctx.waitUntil((async () => {
       const ch = home || i.channel_id;
       try { await followup(i, await (name === 'suggest' ? doSuggest(env, s, user, opt(i, 'movie'), ch) : doSwap(env, s, user, opt(i, 'yours'), opt(i, 'new'), ch))); }
-      catch (e) { await followup(i, '⚠️ Something went wrong: ' + (e.message || e)); }
+      catch (e) { await followup(i, '⚠️ Something went wrong: ' + (e.message || e)); await debugPost(env, s.cfg, `/${name} by ${user.name} failed`, String(e?.message || e)); }
     })());
     return json({ type: 5, data: { flags: EPH } }); // "thinking…" while we look the movie up
   }

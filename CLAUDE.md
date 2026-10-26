@@ -63,6 +63,8 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Test tab** has three tabs: 🧪 Tests, ✅ Checklist and ⚠️ Errors (`drawChecklist`; ticks in localStorage `ckDone`). Add new testable features to both.
 - **Test Discord battle:** `startRound({test:true})` = real pieces, `live.game.test` (no history, luck, cooldowns).
 
+- **Discord debug channel:** `#movie-royal-debug` (discord.js `setupDebug`): @everyone can't see, mod roles (admin/manage server/manage messages/moderate/kick/ban) read-only, bot posts; pinned "don't type" note + topic. Errors with source discord / 24/7 (or all, `discordDebugAll`) → `discord.postDebug`. The worker posts its errors there too (`cfg.debugChannels`, `debugPost`). Never `console.error` inside the posting code (loop).
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 

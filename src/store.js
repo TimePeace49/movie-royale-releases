@@ -54,6 +54,7 @@ const defaults = () => ({
     botSkipV: 0, // 24/7 bot update pop-up: "don't remind me" for this bot version (it comes back when a newer bot update is needed)
     updateRepo: '', setupSeen: false, rewardsCreated: false, streamSetup: false,
     fairOdds: true,
+    discordDebug: true,      // 🐞 a mods-only #movie-royal-debug channel where the bot posts Discord problems
     claimApprove: true,      // the winner types in chat: the claim timer stops and YOU press ✅ Accept or ⏭️ Pass
     pinWinner: true,         // a claimed movie gets pinned in Twitch chat (title, year, who picked it)
     sitOutCommand: '!sitout', backCommand: '!imback', // chat: take your movies out of tonight's battles / put them back

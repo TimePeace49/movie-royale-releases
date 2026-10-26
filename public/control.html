@@ -538,6 +538,11 @@
     <button onclick="api('/api/lists/numbers',{from:1,to:10}).then(r=>{toast('🔢 1 to 10 battle made');setView('battle')})">🔢 Make a 1–10 battle</button>
   </div>
   <div class="card">
+    <h3>🐞 Discord debug channel</h3>
+    <p class="help">Posts a pretend problem in the hidden <code>#movie-royal-debug</code> channel (only mods and the server owner can see it).</p>
+    <div class="row" style="gap:6px"><button class="primary" onclick="api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent: check #movie-royal-debug in Discord':'⚠️ The bot is offline, or the channel isn\'t made yet (Settings → Discord → Make / fix)'))">🐞 Send a test problem</button><button onclick="api('/api/discord/debug-setup').then(r=>toast(r.warnings?.length ? '⚠️ '+r.warnings.map(esc).join('<br>') : '🐞 #movie-royal-debug is set up and locked', 8000))">Make / fix the channel</button></div>
+  </div>
+  <div class="card">
     <h3>📌 Pinned messages</h3>
     <p class="help">Sends a test message in your Twitch chat and pins it at the top (the same way a claimed movie gets pinned). Needs Twitch signed in.</p>
     <button class="primary" onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button>
@@ -767,6 +772,7 @@ function drawChecklist() {
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
     ['money', 'A sub / bits / donation pop-up shows up on the wheel', T('Try it', "api('/api/wheel/show',{show:true}).then(()=>api('/api/test/wheel-boost',{kind:'bits',bits:500})).then(()=>toast('💎 Test 500 bits: the pop-up shows on the left of the Wheel tab'))")],
     ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', ''],
+    ['discordDebug', '🐞 A test problem shows up in the hidden #movie-royal-debug channel (and normal members can\'t see it)', T('Try it', "api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent: check #movie-royal-debug':'⚠️ Bot offline or channel not made yet'))")],
     ['discordClosed', '/suggest and /linktwitch work in Discord with Movie Royal CLOSED (24/7 bot)', T('Check bot', "cloudCheck()")],
     ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "api('/api/test/obs-mute',{}).then(r=>toast('🎥 OBS mic + camera off for 5 seconds'+(r.cam?'':' (camera not found)'))).catch(()=>{})")],
     ['update', 'Movie Royal updates itself (Settings → Account)', '']
@@ -2356,6 +2362,10 @@ function openSettings(force) {
       <div class="grid2">${f('discordClientId', 'Application ID')}${f('discordToken', 'Bot token', '', 'password')}</div>
       ${f('discordChannelName', 'Movie channel name', 'movies-royal')}
       <p class="help">The bot makes this channel for you, pins a message with every command, and <code>/suggest</code> + <code>/swap</code> only work there. Already added the bot before? <a href="#" onclick="reinvite();return false">Re-invite it</a> so it gets permission to make channels and pin messages.</p>
+      <h3 style="margin-top:18px">🐞 Debug channel</h3>
+      ${ck('discordDebug', '🐞 Keep a hidden <code>#movie-royal-debug</code> channel (only mods and the server owner can see it). The bot posts Discord problems there, in plain words plus tech details. Nobody but the bot can type in it, and a pinned message says not to.')}
+      ${ck('discordDebugAll', 'Post every Movie Royal problem there, not just Discord ones', false)}
+      <div class="row" style="gap:6px"><button onclick="api('/api/discord/debug-setup').then(r=>toast(r.warnings?.length ? '⚠️ '+r.warnings.map(esc).join('<br>') : '🐞 #movie-royal-debug is set up and locked', 8000))">🐞 Make / fix the debug channel</button><button class="ghost" onclick="api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent a test problem to #movie-royal-debug':'⚠️ The bot is offline, or the debug channel isn\'t made yet'))">Send a test</button></div>
       <h3 style="margin-top:18px">☁️ 24/7 mode — Discord works when your PC is off</h3>
       <div id="cloudBox">${cloudHTML()}</div>
       <h3 style="margin-top:18px">🎬 Pick rules</h3>

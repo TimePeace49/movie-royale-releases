@@ -71,6 +71,60 @@ async function setupGuild(g) {
 }
 export async function refreshPinned() { if (!client) return; for (const g of client.guilds.cache.values()) await setupGuild(g); }
 
+// 🐞 #movie-royal-debug: a hidden channel only mods and the server owner can see. Movie Royal posts its Discord problems there
+// (plain words + the tech details). Nobody but the bot can type in it; a pinned message (and the channel topic) says so.
+const DEBUG_NAME = 'movie-royal-debug';
+const DEBUG_NOTE = '🔒 **Movie Royal debug channel.** Only mods and the server owner can see this. The bot posts Discord problems here automatically (what went wrong in plain words, plus tech details for fixing it). **Please don\'t type, edit or delete anything in here.**';
+const DEBUG_TOPIC = '🔒 Movie Royal debug: the bot posts problems here. Mods only. Please don\'t type or edit anything.';
+async function setupDebug(g) {
+  const warn = [];
+  if (db.settings.discordDebug === false) return warn;
+  db.discordDebug ||= {};
+  const P = PermissionFlagsBits;
+  const modRoles = g.roles.cache.filter(r => r.id !== g.id && !r.managed && r.permissions.any([P.Administrator, P.ManageGuild, P.ManageMessages, P.ModerateMembers, P.KickMembers, P.BanMembers]));
+  const overwrites = [
+    { id: g.id, deny: [P.ViewChannel, P.SendMessages] }, // everyone: can't see it
+    ...modRoles.map(r => ({ id: r.id, allow: [P.ViewChannel, P.ReadMessageHistory], deny: [P.SendMessages, P.SendMessagesInThreads, P.CreatePublicThreads, P.CreatePrivateThreads, P.AddReactions] })), // mods: read only
+    { id: client.user.id, allow: [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.ManageMessages, P.EmbedLinks] } // the bot posts
+  ];
+  let ch = g.channels.cache.get(db.discordDebug[g.id]?.channelId) || g.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === DEBUG_NAME);
+  try {
+    if (!ch) ch = await g.channels.create({ name: DEBUG_NAME, type: ChannelType.GuildText, topic: DEBUG_TOPIC, permissionOverwrites: overwrites, reason: 'Movie Royal debug channel (mods only)' });
+    else {
+      await ch.permissionOverwrites.set(overwrites, 'Movie Royal debug channel: mods only, bot posts').catch(() => warn.push(`${g.name}: couldn't lock #${DEBUG_NAME} — give the bot "Manage Roles", or set it to mods-only yourself.`));
+      if (ch.topic !== DEBUG_TOPIC) await ch.setTopic(DEBUG_TOPIC).catch(() => {});
+    }
+  } catch (e) { warn.push(`${g.name}: couldn't make the #${DEBUG_NAME} channel (${e.message}).`); return warn; }
+  const rec = db.discordDebug[g.id] = { ...(db.discordDebug[g.id] || {}), channelId: ch.id };
+  try { // the pinned "don't type here" message: always there and pinned
+    let msg = rec.pinId ? await ch.messages.fetch(rec.pinId).catch(() => null) : null;
+    if (msg && msg.content !== DEBUG_NOTE) await msg.edit({ content: DEBUG_NOTE }).catch(() => { msg = null; });
+    if (!msg) msg = await ch.send({ content: DEBUG_NOTE, allowedMentions: { parse: [] } });
+    if (!msg.pinned) await msg.pin().catch(() => warn.push(`${g.name}: couldn't pin the note in #${DEBUG_NAME} — give the bot "Manage Messages".`));
+    rec.pinId = msg.id;
+  } catch (e) { warn.push(`${g.name}: couldn't post in #${DEBUG_NAME} (${e.message}).`); }
+  save();
+  return warn;
+}
+export async function setupDebugAll() { if (!client) throw new Error('The Discord bot isn\'t online.'); const w = []; for (const g of client.guilds.cache.values()) w.push(...await setupDebug(g)); return w; }
+// posting problems: a few at a time, never in a loop (posting errors are only printed, not logged again)
+let debugQ = [], debugT = null;
+export function postDebug(text) {
+  if (!client || db.settings.discordDebug === false || !Object.keys(db.discordDebug || {}).length) return;
+  debugQ.push(String(text).slice(0, 1800)); if (debugQ.length > 20) debugQ = debugQ.slice(-20);
+  if (!debugT) debugT = setTimeout(flushDebug, 3000);
+}
+async function flushDebug() {
+  debugT = null; const items = debugQ.splice(0); if (!items.length) return;
+  let msg = ''; const parts = [];
+  for (const it of items) { if ((msg + '\n\n' + it).length > 1900) { parts.push(msg); msg = it; } else msg = msg ? msg + '\n\n' + it : it; }
+  if (msg) parts.push(msg);
+  for (const [gid, rec] of Object.entries(db.discordDebug || {})) {
+    const ch = client?.channels.cache.get(rec.channelId); if (!ch) continue;
+    for (const p of parts) await ch.send({ content: p, allowedMentions: { parse: [] } }).catch(e => console.log('[discord debug] could not post:', e.message));
+  }
+}
+
 export async function start(changed) {
   onChange = changed || onChange;
   await stop();
@@ -83,7 +137,7 @@ export async function start(changed) {
       try { await rest.put(Routes.applicationGuildCommands(s.discordClientId, guildId), { body: commands }); }
       catch (e) { console.error('[discord] commands for', guildId, e.message); }
     };
-    const prep = async g => { await register(g.id); return setupGuild(g); };
+    const prep = async g => { await register(g.id); const w = await setupGuild(g); w.push(...await setupDebug(g).catch(e => [`${g.name}: debug channel: ${e.message}`])); return w; };
     client = new Client({ intents: [GatewayIntentBits.Guilds] });
     client.once('ready', async () => {
       status.state = 'online'; status.tag = client.user.tag;
@@ -95,7 +149,7 @@ export async function start(changed) {
     client.on('guildCreate', async g => { status.guilds = client.guilds.cache.map(x => x.name); status.warnings.push(...await prep(g)); onChange(); });
     client.on('guildDelete', () => { status.guilds = client.guilds.cache.map(x => x.name); onChange(); });
     client.on('interactionCreate', i => handle(i).catch(err => {
-      console.error('[discord]', err.message);
+      console.error('[discord]', `/${i.commandName || '?'} by ${i.user?.username || '?'}: ${err.message}`, err);
       const reply = { content: '⚠️ ' + err.message, flags: MessageFlags.Ephemeral };
       if (i.isRepliable?.()) (i.deferred || i.replied ? i.followUp(reply) : i.reply(reply)).catch(() => {});
     }));

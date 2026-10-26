@@ -60,6 +60,7 @@ export function buildConfig() {
     pool, users, people: peopleIndex().map(p => ({ discordId: p.discordId, name: p.name })), links: db.links || {},
     backOn: backOn(), swapsLocked: swapsLocked(), picksClosed: picksClosed(), closedMsg: closedMsg(), luckOn: luckOn(),
     channels: Object.fromEntries(Object.entries(db.discordChannels || {}).map(([g, c]) => [g, c.channelId])),
+    debugChannels: db.settings.discordDebug === false ? [] : Object.values(db.discordDebug || {}).map(r => r.channelId).filter(Boolean),
     helpText: helpText(), tmdbKey: db.settings.tmdbKey || '', botToken: db.settings.discordToken || '', publicKey: cloud().publicKey || ''
   };
 }

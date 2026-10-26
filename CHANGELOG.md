@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.22.0 (test build)
+- **🐞 Discord debug channel:** the bot makes a hidden `#movie-royal-debug` channel that only mods and the server owner can see. Whenever something goes wrong with Discord (a command failing, the bot losing its connection, the 24/7 bot having a problem), it posts there: what went wrong in plain words, plus the tech details for fixing it.
+  - Nobody but the bot can type in it. A pinned message (and the channel description at the top) says not to type or edit anything.
+  - Settings → Discord: switch it on or off, "Make / fix the debug channel", and an option to post every Movie Royal problem there.
+  - 🧪 Test tab and ✅ Checklist: "Send a test problem".
+  - The 24/7 bot posts its problems there too. **Update the 24/7 bot once** (the app asks you).
+
 ## 1.21.8 (test build)
 - **✅ Checklist: "Try it" on everything you can test offline.** You don't need to be live or have anyone in chat:
   - someone typing in chat to join, a winner claiming (✅ Accept / ⏭️ Pass), `!sitout` / `!imback`

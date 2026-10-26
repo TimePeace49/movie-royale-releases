@@ -1816,7 +1816,16 @@ app.get('/api/debug-report', (req, res) => { // everything Claude needs to find 
     watch('cl', '24/7', cloud.status.lastError); watch('cll', '24/7', cloud.status.linkError); watch('obs', 'obs', obs.status.error);
   }, 10000);
 }
-errlog.setOnNew(() => broadcast({ type: 'errorLogged' }, 'control'));
+const debugText = e => { const p = errlog.plain(e); return `⚠️ **${p.who}: ${p.what}**${p.fix ? `\n👉 ${p.fix}` : ''}\n\`\`\`\n[${e.source}] ${String(e.msg).slice(0, 700)}${e.detail ? '\n' + e.detail.split('\n').slice(0, 5).join('\n').slice(0, 600) : ''}\nMovie Royal ${VERSION} · ${new Date(e.at).toLocaleString()}\n\`\`\``; };
+errlog.setOnNew(e => {
+  broadcast({ type: 'errorLogged' }, 'control');
+  if (['discord', '24/7', 'cloud'].includes(e.source) || db.settings.discordDebugAll) discord.postDebug(debugText(e)); // 🐞 Discord problems go to the mods-only #movie-royal-debug channel too
+});
+app.post('/api/discord/debug-setup', async (req, res) => { try { const w = await discord.setupDebugAll(); pushState(); res.json({ ok: true, warnings: w }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/test/discord-debug', (req, res) => { // Test tab: a pretend problem in the debug channel
+  discord.postDebug(debugText({ source: 'discord', msg: 'This is a test from the 🧪 Test tab. If you can read this, the debug channel works!', detail: '', at: Date.now() }));
+  res.json({ ok: !!Object.keys(db.discordDebug || {}).length && discord.status.state === 'online' });
+});
 app.post('/api/test/chat-join', (req, res) => { // someone with Discord movies "types in Twitch chat"
   const on = activeSet(), p = discordPeople().find(x => !on.has(x.discordId) && getList('movies')?.entries.some(e => e.status === 'active' && e.backers?.[0]?.discordId === x.discordId)) || discordPeople()[0];
   if (!p) return res.json({ ok: false, error: 'Nobody has Discord movies yet.' });
