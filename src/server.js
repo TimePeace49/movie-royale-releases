@@ -744,6 +744,27 @@ app.put('/api/wheel/:id', (req, res) => {
 app.delete('/api/wheel/:id', (req, res) => { const w = wheel.W(); if (w.wheels.length <= 1) return res.status(400).json({ error: 'You need at least one wheel.' }); w.wheels = w.wheels.filter(x => x.id !== req.params.id); wheel.W(); wheelChanged(); res.json({ ok: true }); });
 app.post('/api/wheel/:id/duplicate', (req, res) => { const o = wheel.getWheel(req.params.id), b = req.body || {}; if (!o) return res.status(404).json({ error: 'No such wheel' }); const w = wheel.newWheel(String(b.name || '').trim() || o.name + ' (copy)', o.entries.filter(e => e.type !== 'void').map(e => { const c = { ...e, id: null, voided: null }; if (b.resetSizes) c.weight = 1; if (b.resetCounts !== false && c.type === 'countdown') { c.count = c.countStart; c.on = true; } if (b.keepLook === false) { c.color = null; c.image = ''; } return c; }), { title: '', folder: o.folder || '', spinSecs: o.spinSecs, removeWinner: o.removeWinner, opts: JSON.parse(JSON.stringify(o.opts)), palette: b.keepLook === false ? null : o.palette, look: b.keepLook === false ? undefined : { ...o.look } }); wheel.syncVoid(w); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
 app.post('/api/wheel/active', (req, res) => { if (!wheel.getWheel(req.body?.id)) return res.status(404).json({ error: 'No such wheel' }); wheel.W().activeId = req.body.id; wheelChanged(); res.json({ ok: true }); });
+// 🧪 every test puts the right thing on stream: battle tests show the battle, wheel tests show the wheel (so the preview window shows it)
+const WHEEL_TESTS = /^\/(wheel-boost|donation|wheel-land|doom-preview|wheel-redeem|wheel-redeem-raw)$/, BATTLE_TESTS = /^\/(discord-battle|chat-join|sitout|everyone-in|claim-chat|power|redeem|cheer|battle)$/;
+function testScene(path, body) {
+  if (WHEEL_TESTS.test(path)) return 'wheel';
+  if (BATTLE_TESTS.test(path)) return 'battle';
+  if (path === '/chat') { // pretend chat: what they typed decides
+    const t = String(body?.text || '').trim().toLowerCase(), first = t.split(/\s+/)[0], cmd = wheel.W().cmd || {}, name = String(body?.name || '').toLowerCase();
+    if (['up', 'down', String(cmd.respin || '!respin').toLowerCase(), String(cmd.spins || '!myspins').toLowerCase()].includes(first)) return 'wheel';
+    const battleCmds = [db.settings.joinCommand || '!join', db.settings.sitOutCommand || '!sitout', db.settings.backCommand || '!imback', db.settings.twitchMoviesCommand || '!mymovies', db.settings.callCommand || '!call', db.settings.colorCommand || '!color', giveawaySettings().command || '!enter'].map(x => String(x).toLowerCase());
+    if (battleCmds.includes(first)) return 'battle';
+    if (live.claim && !live.claim.done && isWinnerMsg(live.claim.winner, { login: name, name: body?.name || '' })) return 'battle'; // the winner claiming
+    if (live.vote && /^[1-4]$/.test(t)) return 'battle'; // map vote
+  }
+  return null;
+}
+app.use('/api/test', (req, res, next) => {
+  try { const sc = req.method === 'POST' && testScene(req.path, req.body); const on = !!wheel.W().show;
+    if (sc === 'battle' && on) { wheel.setShow(false); wheelChanged(); } else if (sc === 'wheel' && !on) { wheel.setShow(true); wheelChanged(); }
+  } catch (e) { console.error('[test scene]', e.message); }
+  next();
+});
 app.post('/api/wheel/show', (req, res) => { wheel.setShow(!!req.body?.show); wheelChanged(); res.json({ ok: true }); });
 app.post('/api/wheel/spin', (req, res) => { try { const b = req.body || {}; const by = b.by && String(b.by).trim() ? { name: String(b.by).trim().slice(0, 40), login: String(b.by).trim().replace(/^@/, '').toLowerCase(), source: 'mod' } : {}; res.json({ ok: true, ...wheel.request(String(b.kind || 'spin'), by, { wheelId: b.wheelId }) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/wheel/import', async (req, res) => { try { const w = await wheel.importWheel(req.body || {}); wheelChanged(); res.json({ ok: true, id: w.id, name: w.name, count: w.entries.length }); } catch (e) { res.status(400).json({ error: e.message }); } });

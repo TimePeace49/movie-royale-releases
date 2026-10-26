@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.25.1 (test build)
+- **Tests show the right screen:** every test now puts the right thing on stream, so the 📺 preview window shows it. Battle tests (the winner claiming with "I'm here", !sitout, !imback, !join, !mymovies, chat joining, chaos, practice battles) show the **battle**. Wheel tests (up, down, !respin, !myspins, wheel redeems, money pop-ups) show the **wheel**. Before, "I'm here" could show the wheel if the wheel was the last thing on stream.
+- **No preview window on the 🎡 Wheel tab** while the wheel is on stream (you can already see it there). 💬 Pretend chat stays open. If you test a battle thing from the Wheel tab, the preview pops up to show the battle.
+
 ## 1.25.0 (latest release)
 - **❓ Help mode explains everything:** press ❓, then click any button, box, checkbox or menu on any tab (or in a pop-up window). A window explains exactly what that one thing does, in plain words, with the matching part of the Help tab underneath. Nothing gets clicked for real. Help mode stays on so you can click the next thing; Esc or ❓ stops it.
 - **💬 Pretend chat window** (🧪 Test tab): type as any viewer. It stays open on every tab (drag it anywhere) and shows Movie Royal's replies.

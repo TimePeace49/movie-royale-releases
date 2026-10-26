@@ -1000,6 +1000,7 @@ function setView(v) {
   view = v;
   if (S && v === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); // Battle tab = the battle on stream
   if (S && v === 'wheel' && !S.wheelShow) api('/api/wheel/show', { show: true }).catch(() => {}); // Wheel tab = the wheel on stream
+  if (v === 'wheel') peekOn = false; // the Wheel tab shows the wheel itself: no preview window (💬 Pretend chat stays open)
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
   if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
@@ -1021,7 +1022,7 @@ function placeStage() {
     const r = $('stageSize').getBoundingClientRect();
     st.classList.remove('mini', 'hide');
     Object.assign(st.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', right: '', bottom: '' });
-  } else if (peekOn) { // the pop-up window that shows the stream screen while you test things
+  } else if (peekOn && !(view === 'wheel' && S?.wheelShow)) { // the pop-up window that shows the stream screen while you test things (not on the Wheel tab while the wheel is on stream: you can see it there)
     st.classList.remove('mini', 'hide'); st.classList.add('peek');
     let p = {}; try { p = JSON.parse(localStorage.peekPos || '{}'); } catch {}
     const w = Math.min(p.w || 560, innerWidth - 20), h = Math.min(p.h || 349, innerHeight - 20);
@@ -1106,7 +1107,7 @@ function renderClaimBar() {
   b.innerHTML = `<span style="font-size:24px">✋</span><span class="grow"><b>${esc(c.waiting.name)}</b> is here for <b>${esc(w?.label || 'the winner')}</b>${w?.test ? ' <small class="muted">(test: nothing changes)</small>' : ''}<br><small class="muted">“${esc(String(c.waiting.text).slice(0, 90))}”</small></span>
     <button class="primary" onclick="api('/api/claim/accept').then(()=>toast('✅ Claimed!'))">✅ Accept winner</button><button class="danger" onclick="api('/api/claim/pass').then(()=>toast('⏭️ Passed: back in the pool, they keep their luck'))">⏭️ Pass</button>`;
 }
-function render() { if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { if (view === 'wheel' && peekOn) placeStage(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderClaimBar(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
