@@ -17,6 +17,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 1. Bump `version` in `package.json` and add a plain-English entry at the top of `CHANGELOG.md` (and `public/help.html` if it's a feature).
 2. Test: `PORT=3801 MOVIE_ROYAL_DATA=/tmp/somewhere node src/server.js`, then drive `game.html` / `control.html` with Playwright. Every battle map must end with the winner on land (`window.__royalCheck()`).
 3. Commit, push to `main`, then publish a **pre-release** by pushing the tag `v<version>` (the "Build & release" workflow builds the installer and publishes it as a test build).
+   If a tag push is refused, start the workflow instead: `gh api -X POST repos/TimePeace49/movie-royale-releases/actions/workflows/release.yml/dispatches -f ref=main -f 'inputs[version]=<version>' -F 'inputs[latest]=false'` (GraphQL / `gh workflow run` don't work from Claude sessions).
 4. Only when Derek says to make a **latest release**: run the workflow with `latest: true` (or promote the pre-release with `gh release edit v<x> --prerelease=false --latest`), and write **patch notes** covering everything since the previous latest release: put them in the release body (start it with `## What's new`) and add the same section at the top of `PATCHNOTES.md`. The app's 📝 Patch notes tab shows them.
 5. Building locally (`node scripts/build-win.mjs`) is only needed to hand Derek an installer directly.
 
