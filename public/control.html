@@ -2150,10 +2150,10 @@ function cloudHTML() {
     <p class="help">The token is only used for this setup and isn’t saved. Needs the Discord bot and TMDB set up first.</p>`;
 }
 async function cloudOn(btn) {
-  const token = $('cfToken').value.trim(); if (!token) return toast('Paste your Cloudflare API token first');
-  btn.disabled = true; btn.textContent = 'Setting up… (up to a minute)';
-  try { const r = await api('/api/cloud/enable', { token }); toast(`☁️ 24/7 mode is on!<br><small>${esc(r.url)}</small>`, 6000); openSettings(true); }
-  catch { btn.disabled = false; btn.textContent = '☁️ Turn on 24/7 mode'; }
+  const inp = btn.closest('.row')?.querySelector('input') || $('cfToken'), token = inp.value.trim(); if (!token) { toast('Paste your Cloudflare API token first'); return false; }
+  const was = btn.textContent; btn.disabled = true; btn.textContent = 'Setting up… (up to a minute)';
+  try { const r = await api('/api/cloud/enable', { token }); toast(`☁️ The 24/7 bot is on and up to date!<br><small>${esc(r.url)}</small>`, 6000); if (view === 'settings') openSettings(true); return true; }
+  catch { btn.disabled = false; btn.textContent = was; return false; }
 }
 async function cloudSync(btn) { btn.disabled = true; const r = await api('/api/cloud/sync'); btn.disabled = false; toast(r.ok ? '✅ Synced' : '⚠️ ' + esc(r.error || 'Sync failed')); if ($('cloudBox')) $('cloudBox').innerHTML = cloudHTML(); }
 async function reinvite() { const a = await fetch('/api/app').then(r => r.json()); if (!a.discordInvite) return toast('Paste the Application ID first.'); window.open(a.discordInvite, '_blank'); }
@@ -2288,6 +2288,17 @@ async function whatsNew() { // an update added something to set up? ask once
     upd.showModal();
   } catch {}
 }
+async function botUpdateOnOpen() { // the 24/7 Discord bot on Cloudflare is older than this version: ask every time the app opens until it's updated
+  try {
+    if (upd.open) return setTimeout(botUpdateOnOpen, 3000);
+    const r = await fetch('/api/cloud/outdated').then(r => r.json()); if (!r.outdated) return;
+    $('updBody').innerHTML = `<h3>☁️ Update your 24/7 Discord bot</h3><p class="help">This version of Movie Royal comes with fixes for the Discord bot that runs on Cloudflare: <code>/linktwitch</code> and other commands always answer now, it stays under Cloudflare's free daily limit, and free replacement picks work. The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token once.</p>
+      <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&upd.close())">🔄 Update the bot</button></div>
+      <p class="help">No token? Make one at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → <b>Create Token</b> → <b>Edit Cloudflare Workers</b> template → your account + All zones → <b>Create Token</b> → <b>Copy</b>.</p>
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button onclick="upd.close()">Later</button></div>`;
+    upd.showModal();
+  } catch {}
+}
 async function updateOnOpen() { // asks once each time the app opens, if there's a newer version posted
   try {
     const r = await fetch('/api/update/check').then(r => r.json());
@@ -2297,7 +2308,7 @@ async function updateOnOpen() { // asks once each time the app opens, if there's
 }
 
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
-fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 </body>

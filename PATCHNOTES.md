@@ -3,6 +3,34 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.13.4: What's new
+Everything since 1.13.0.
+
+### ☁️ 24/7 Discord bot
+- **Update it once:** Movie Royal asks when it opens. Paste your Cloudflare API token and press Update.
+- After that, `/linktwitch` and the other commands always answer (no more "The application did not respond").
+- It stays under Cloudflare's free daily limit.
+
+### 🎬 Movies & luck
+- **🎟️ Free replacement pick:** if a movie gets watched outside a battle (marked ✅ or on your Letterboxd), its person is told in Discord they can pick a new one. That one pick works any time, even with picks closed, all picks used, or other movies still in the pool.
+- **🍀 Luck cooldown:** after someone's movie gets watched, they don't build luck until the new week.
+- **🍀 LUCKY! is rare:** only balls that have luck can get lucky, and only once every several seconds on the whole map. The same goes for DODGED! and slipping out of a UFO beam. No more spam in big battles.
+
+### ⚔️ Battles
+- **Big balls hit harder:** they knock small ones further and barely bounce themselves.
+- **💨 Fart Farm rebuilt:** big stampeding, farting cows that trample balls flat, and big UFOs that beam balls up into the saucer.
+- **Fixed:** balls not showing up on the cliff after a finished battle (until a restart).
+- **Fixed:** ⏸ / ▶ in the Battle tab list didn't update, so paused movies couldn't be put back.
+- Someone listed twice gets all their movies on the cliff from their first chat.
+
+### 🎡 Wheel
+- The **Rule** column is a dropdown (Timer / Auto / Countdown), so you can see and change rules at a glance.
+- Drag the line between the spot list and the wheel to resize them. The round timer pop-up can be resized too.
+
+### 👥 People & testing
+- **People tab:** shows everyone who linked their Twitch in Discord, plus a 🔄 Refresh button.
+- **🧪 Test → 🎡 Wheel tests:** land on any spot, pretend redeems, chat, subs, bits and donations, the round timer, and a Doomsday preview that doesn't end your stream.
+
 ## v1.13.0: What's new
 Everything since 1.11.4.
 

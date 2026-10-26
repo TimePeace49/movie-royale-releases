@@ -15,6 +15,8 @@ export const status = { lastSync: null, lastPush: null, lastError: null, pulled:
 // the version of the 24/7 bot that comes with this copy of Movie Royal (the bot on Cloudflare only changes when you update it)
 const BOT_V = (() => { try { return Number((fs.readFileSync(path.join(ROOT, 'src', 'cloud-worker.js'), 'utf8').match(/WORKER_V = (\d+)/) || [])[1]) || 1; } catch { return 1; } })();
 let checkedV = false;
+/** Is the bot on Cloudflare older than the one that comes with this version? (checks once) */
+export async function botOutdated() { if (!enabled()) return false; if (!checkedV) await checkVersion(); return !!status.outdated; }
 async function checkVersion() {
   try { const r = await fetch(cloud().url + '/health', { signal: AbortSignal.timeout(10000) }); const j = await r.json(); status.botV = Number(j.v) || 1; status.outdated = status.botV < BOT_V; checkedV = true; } catch {}
 }

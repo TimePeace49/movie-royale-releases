@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.4
+- **☁️ Update reminder:** if you use the 24/7 Discord bot and it's older than this version, Movie Royal asks you to update it every time it opens (paste your Cloudflare token, one click), until it's done.
+
 ## 1.13.3 (test build)
 - **🎟️ Free replacement pick:** if someone's movie gets watched outside a battle (you mark it ✅, or it shows up on your Letterboxd), Movie Royal tells them in the Discord channel that they can pick a new movie. That one pick works any time, even with picks closed or all their picks used, and even if they still have other movies in the pool. It shows in the People tab and in `/mymovies`.
 - **🍀 Luck cooldown:** people whose movie got watched this week don't build luck until the new week (from losing battles or from calling the winner).
