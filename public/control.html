@@ -750,12 +750,12 @@ function drawChecklist() {
   const auto = (ok, label, fix, mid) => `<span class="${ok ? 'ok' : mid ? 'mid' : 'no'}">${ok ? '✅' : mid ? '🟡' : '❌'}</span><span>${label}</span><span>${!ok && fix ? fix : ''}</span>`;
   const go = (v, s2) => `<button class="ghost" style="padding:3px 9px" onclick="setView('${v}')${s2 ? `;setSub('${s2}')` : ''}">Fix it</button>`;
   const man = (k, label, act) => `<span><input type="checkbox" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span>${label}${ckDone[k] ? ` <small class="muted">(${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span>${act || ''}</span>`;
-  const T = (txt, js) => `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests');${js}">${txt}</button>`;
+  const T = (txt, js) => `<button class="ghost" style="padding:3px 9px" onclick="peek(true);${js}">${txt}</button>`; // stays on the checklist: the pop-up window shows what happens
   const manual = [
     ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
     ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').catch(()=>{})")],
     ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', ''],
-    ['numbers', 'A 🔢 number battle plays', T('Try it', "api('/api/lists/numbers',{from:1,to:10}).then(()=>setView('battle'))")],
+    ['numbers', 'A 🔢 number battle plays', T('Try it', "api('/api/lists/numbers',{from:1,to:10}).then(()=>toast('🔢 1 to 10 battle made: it is on the cliff now'))")],
     ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', ''],
     ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message'))")],
     ['sitout', '!sitout and !imback work in chat', ''],

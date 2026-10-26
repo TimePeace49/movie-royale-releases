@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.5 (test build)
+- **✅ Checklist "Try it" buttons stay on the checklist:** they no longer jump to the 🧪 Tests page. The pop-up window shows what happens on stream.
+
 ## 1.21.4 (test build)
 - **📗 Letterboxd "HTTP 403":** Letterboxd turns away plain requests for your full watched list. Movie Royal now reads it like a real browser does, in the background. (Your newest watched movies always came in anyway, from your Letterboxd feed.)
 - **⚠️ Errors** no longer fills up with a harmless "DeprecationWarning" from the Discord bot every time the app opens.
