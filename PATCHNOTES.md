@@ -3,6 +3,49 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.21.2: What's new
+Everything since 1.14.1.
+
+**Fixes**
+- **🎯 Balls come back on the cliff after a battle.** After the first battle, Twitch pictures crashed the game screen and left the cliff empty. Fixed.
+- **☁️ 24/7 Discord bot:** Movie Royal checks that Discord is really connected to the 24/7 bot, and reconnects it by itself if not. Before, `/suggest` and `/linktwitch` could stop working once the app closed. There's a "🔍 Check it works when I'm closed" button in Settings → Discord.
+- **Closing Movie Royal** while the 24/7 bot is off (or not connected) asks first, and can turn it on before closing.
+- **📥 Import** and **📁➕ New folder** on the Wheel tab work again, and so do the timeout / ban boxes in chat.
+- **💜 Channel point rewards** Movie Royal made stay paused unless you're live and they can be used right now (battle chaos while the battle is on stream, wheel rewards while the wheel is up, power-ups in fun chat battles). They're all paused when you close Movie Royal. You get a warning about any rewards made by hand on Twitch, since Movie Royal can't pause those.
+- The main tabs always stay at the top of the screen.
+
+**Battles**
+- **🦸 New map: Hero City:** made-up villains knock balls off the roof.
+- **❤️ Hidden health:** balls can only take so many hard hits before they're knocked out (K.O.!). Bigger balls are tougher, and they flash red when hurt.
+- **🐀 Plague Town:** infected balls are much easier to spot.
+- **🗺️ Chaos fits the map:** no ground-breaking events on maps where the ground can't break.
+- **🎉 Fun mode for chat battles:** chat can buy power-ups for their own ball (Shield, Mega, Turbo), plus wacky effects (super bouncy, low gravity, random sizes, big heads, chaos rain, disco).
+- **✋ You decide on claims:** when the winner types in chat, the timer stops and you press ✅ Accept or ⏭️ Pass. A pass puts the movie back, and they keep their luck.
+- **📌 The claimed movie gets pinned in Twitch chat:** "2nd movie tonight: Title (Year) · picked by Name".
+- **🛌 `!sitout` / `!imback`:** viewers who can't stay up take their movies out of tonight's battles, or put them back.
+- **🎟️ Wild spots are hidden, not deleted,** when one wins. "Reset wild spots" is on the Battle tab, and ▶ puts any hidden movie straight back in.
+- **💩 Letterboxd's worst 500:** a battle of the 500 lowest rated (English) movies on Letterboxd. It updates with one button.
+- **🔢 Number battles:** every ball is a number (pick 1 to whatever).
+- **✕ on the winner pop-up**, and a "Hide the pop-up on stream" button.
+- Maps are in A to Z order, and ↺ Reset sits back on the same line as the other buttons.
+
+**🎡 Wheel**
+- **🎟️ Streamer respins:** 3 of your own respins each stream. The button turns gray when they're used up.
+- **Drag spots to sort them,** and **👁️ / 🙈** to make a spot invisible without deleting it.
+- **New spot rules:** ⏱️🔢 Timer + countdown, and ⏱️🏆 Timer + max wins a night.
+- **🔗 Links on spots:** a button opens the spot's web page when it wins.
+- **🪟 Pop out** the wheel into its own window. The round timer pop-up shows the winner. There are volume sliders, and you can grow or shrink the void yourself.
+- **📤 Export / 📥 Import** wheels and battles as files to share with other streamers.
+
+**🧪 Test tab**
+- **Every test pops up a window** showing what's on stream. You can drag and resize it.
+- **✅ Checklist:** what's set up, plus things to try once.
+- **⚠️ Errors:** a history of every problem, in plain words. There's also a tech report you can paste to Claude.
+- **Discord battle tests:** reset cooldowns, put everyone on the cliff, run a test battle that changes nothing, "Why is nobody on the cliff?", and pretend people chat.
+- Tests for pinning, claims, the 24/7 bot, the command list and number battles.
+- **📗 Letterboxd updates** every time Movie Royal opens.
+- **`!moviesroyal`** lists all the chat commands.
+
 ## v1.14.1: What's new
 Everything since 1.13.6.
 
