@@ -15,6 +15,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - The tab picks what's on stream: Battle tab = battle, Wheel tab = wheel.
 
 ## Every change
+0. **Anything Derek can try in the app gets a way to test it in the 🧪 Test tab** (he asked for this for every future feature).
 1. Bump `version` in `package.json` and add a plain-English entry at the top of `CHANGELOG.md` (and `public/help.html` if it's a feature).
 2. Run `node scripts/check-pages.mjs` (catches syntax mistakes in the pages; the release workflow runs it too — a `//` comment in the middle of a one-line statement broke the whole control panel in 1.13.6). Then test: `PORT=3801 MOVIE_ROYAL_DATA=/tmp/somewhere node src/server.js`, then drive `game.html` / `control.html` with Playwright. Every battle map must end with the winner on land (`window.__royalCheck()`).
 3. Commit, push to `main`, then publish a **pre-release** by pushing the tag `v<version>` (the "Build & release" workflow builds the installer and publishes it as a test build).
@@ -49,6 +50,9 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 
 - **Closing the app** with the 24/7 bot off asks first (`tryQuit` in main.cjs → `closeAsk()` in control.html; setting `closeAskBot`).
 - **Share files:** `/api/wheel/:id/export`, `/api/lists/:id/export` → JSON with `movieRoyal: 'wheel'|'battle'`, own uploads packed as data URLs; `/api/share/import` makes a NEW wheel/battle.
+
+- **Claims:** `claimApprove` (default on): winner types in chat → timer stops (`claimWait`), Derek presses ✅ Accept (`/api/claim/accept`) or ⏭️ Pass (`/api/claim/pass` → `undoMovieWin`: back in pool, luck + week cooldown undone). `pinWinner`: claimed movie pinned in Twitch chat (`twitch.sayAndPin`). `!sitout` / `!imback` set a viewer's movies `away` for tonight.
+- **Spot links:** `entry.link` (cleanLink), shown as 🔗 Open on the result / round timer pop-up.
 
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).

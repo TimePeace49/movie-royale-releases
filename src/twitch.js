@@ -266,7 +266,16 @@ export async function say(message) {
   const j = await helix('chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: status.userId, sender_id: status.userId, message: String(message).slice(0, 490) }) });
   const r = j.data?.[0];
   if (r && r.is_sent === false) throw new Error(r.drop_reason?.message || 'Twitch dropped the message');
-  return true;
+  return r?.message_id || true;
+}
+/** Say something and pin it at the top of chat (needs a sign-in that allows managing chat messages). */
+export async function sayAndPin(message) {
+  const id = await say(message);
+  if (typeof id !== 'string') throw new Error('Twitch did not give the message back to pin it');
+  if (!(status.scopes || []).includes('moderator:manage:chat_messages')) throw new Error('Sign in with Twitch again so Movie Royal can pin messages');
+  const q = `chat/pins?broadcaster_id=${status.userId}&moderator_id=${status.userId}&message_id=${encodeURIComponent(id)}`;
+  try { await helix(q, { method: 'POST', body: '{}' }); } catch (e) { if (!/404|405|not found|method/i.test(e.message)) throw e; await helix(q, { method: 'PUT', body: '{}' }); }
+  return id;
 }
 
 /** Channel point rewards Movie Royal made (the only ones Twitch lets us edit). */

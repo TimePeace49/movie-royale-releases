@@ -503,6 +503,14 @@
     <button class="primary" style="margin-top:10px" onclick="api('/api/test/chat',{name:$('tName').value,text:$('tText').value}).then(()=>toast('Sent as '+esc($('tName').value)))">Send fake chat</button>
   </div>
   <div class="card">
+    <h3>🎬 Movie winner: claim, pass, pin, sit out</h3>
+    <p class="help">After a Discord movies battle (a real one, not a practice round): pretend the winner typed in chat. The claim timer stops and ✅ Accept / ⏭️ Pass show up on the Battle tab's winner card.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="api('/api/test/claim-chat').then(r=>toast(r.ok?'✋ The winner said hi':'⚠️ '+esc(r.error||'')))">✋ Winner types in chat</button>
+      <button onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button></div>
+    <label style="margin-top:8px">A viewer's Twitch name</label><input id="tSitName" value="test_viewer">
+    <div class="row" style="gap:6px;margin-top:6px"><button onclick="api('/api/test/chat',{name:$('tSitName').value,text:S.settings.sitOutCommand||'!sitout'}).then(()=>toast('Sent '+esc(S.settings.sitOutCommand||'!sitout')))">🛌 They type !sitout</button><button onclick="api('/api/test/chat',{name:$('tSitName').value,text:S.settings.backCommand||'!imback'}).then(()=>toast('Sent '+esc(S.settings.backCommand||'!imback')))">🙋 They type !imback</button></div>
+  </div>
+  <div class="card">
     <h3>⚡ Pretend channel points / bits</h3>
     <p class="help">Fires a chaos event as if a viewer redeemed it. If no battle is running it gets queued for the next one, just like the real thing.</p>
     <label>Event</label><select id="tEvent"></select>
@@ -850,7 +858,7 @@ function renderWinner() {
   if (!w || S.phase === 'lobby' || S.phase === 'running' || (S.phase === 'idle' && !S.claim)) { wc.style.display = 'none'; return; }
   wc.style.display = '';
   const c = S.claim;
-  const claimTxt = w.spot ? `🎟️ Wildcard — your pick!` : w.test ? '🧪 Practice round' : !c ? (w.owner ? `If ${esc(w.owner)} types in chat now, they win instantly` : '') : c.done ? (c.claimed ? (c.instant ? '✅ Claimed instantly in chat!' : '✅ Claimed!') : '⏰ Nobody claimed') : '⏳ Claim timer running…';
+  const claimTxt = w.spot ? `🎟️ Wildcard — your pick!` : w.test ? '🧪 Practice round' : c?.waiting ? `✋ ${esc(c.waiting.name)} is here: “${esc(c.waiting.text.slice(0, 80))}”. Accept or pass?` : !c ? (w.owner ? `If ${esc(w.owner)} types in chat now, the claim timer stops and you accept or pass` : '') : c.done ? (c.passed ? `⏭️ Passed: back in the pool${w.owner ? `, ${esc(w.owner)} keeps their luck` : ''}` : c.claimed ? (c.instant ? '✅ Claimed instantly in chat!' : '✅ Claimed!') : '⏰ Nobody claimed') : '⏳ Claim timer running…';
   const r = w.ratings;
   wc.innerHTML = `<h2>Winner</h2><div class="winner">
     ${w.spot ? '<div style="font-size:48px">🎟️</div>' : w.poster ? `<img src="${esc(proxy(w.poster))}">` : w.image ? `<img src="${esc(proxy(w.image))}" style="width:80px;height:80px;border-radius:50%">` : ''}
@@ -862,8 +870,9 @@ function renderWinner() {
     ${w.benched ? `<p class="help">💤 ${w.benched} other movie${w.benched === 1 ? '' : 's'} from ${esc(w.owner)} sit out until the new week.</p>` : ''}
     ${w.spotsRemoved ? `<p class="help">🎟️ The other ${esc(S.settings.spotName)} spots sit out until the new week (hidden, not deleted). <a href="#" onclick="resetSpotsClick();return false">Reset wild spots</a> brings them back.</p>` : ''}</div>
     <div class="stack">
-      ${w.spot || w.test ? '' : `<button class="primary" onclick="api('/api/claim/start',{seconds:30})">⏱️ Start 30s claim timer</button>`}
-      ${c && !c.done ? `<button onclick="api('/api/claim/confirm')">✅ They're here (claim manually)</button>` : ''}
+      ${w.spot || w.test || c?.waiting || c?.passed ? '' : `<button class="primary" onclick="api('/api/claim/start',{seconds:30})">⏱️ Start 30s claim timer</button>`}
+      ${c?.waiting ? `<button class="primary" onclick="api('/api/claim/accept')">✅ Accept winner</button><button class="danger" onclick="api('/api/claim/pass').then(()=>toast('⏭️ Passed: their movie is back in and they keep their luck'))">⏭️ Pass (not tonight)</button>` : c && !c.done ? `<button onclick="api('/api/claim/confirm')">✅ They're here (claim manually)</button>` : ''}
+      ${!w.spot && !w.test && w.kind === 'movies' && !c?.waiting && !c?.passed && !w.undone ? `<button class="ghost" onclick="if(confirm('Pass on this movie? It goes back in the pool and they keep their luck.')) api('/api/claim/pass')">⏭️ Pass (not tonight)</button>` : ''}
       ${w.spot || w.test ? '' : w.kind === 'movies' ? (w.undone ? '<p class="help">↩️ Put back in the pool.</p>' : `<button class="ghost" onclick="if(confirm('Not watching it after all? This puts it back in the pool.')) api('/api/winner/undo').then(()=>toast('Put back in the pool'))">↩️ Not watching it — put it back</button>`) : `<button onclick="api('/api/winner/out').then(()=>toast('Done'))">🚪 Take winner out of the pool</button>`}
       ${w.gameId ? `<button class="ghost" onclick="showResults('${esc(w.gameId)}')">📋 Full results</button>` : ''}
       <button class="ghost" onclick="api('/api/win/hide').then(()=>toast('Pop-up hidden on stream'))">✕ Hide the pop-up on stream</button>
@@ -1574,6 +1583,7 @@ function drawSpots() {
         <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost danger" title="Delete" onclick="wDel(${i})">✕</button></td></tr>
         ${wOpen === e.id ? `<tr><td></td><td></td><td colspan="6" style="padding:10px 6px 14px"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
           <p class="help" style="margin:4px 0 8px">${TYPE_HELP[e.type || 'timer'] || ''}</p>
+          <label>🔗 Link to a web page (optional): a button opens it when this spot wins<input type="url" placeholder="e.g. https://www.geoguessr.com" value="${esc(e.link || '')}" onchange="wEnt(${i},{link:this.value.trim()})"></label>${e.link ? `<p class="help" style="margin:2px 0 8px"><a href="#" onclick="wLink('${esc(e.link)}');return false">🔗 Try it</a></p>` : ''}
           <label>📜 Words shown on stream when it lands (optional)<textarea placeholder="e.g. Play one round of Mario Kart" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></label>
           <div class="row" style="gap:14px;flex-wrap:wrap"><label class="ck"><input type="checkbox" ${e.noPointRespin ? 'checked' : ''} onchange="wEnt(${i},{noPointRespin:this.checked})"> <span>🚫 No channel point respins</span></label><label class="ck"><input type="checkbox" ${e.noBankRespin ? 'checked' : ''} onchange="wEnt(${i},{noBankRespin:this.checked})"> <span>🚫 No respins from given/saved spins</span></label></div>
           <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.image ? `<img src="${esc(e.image)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : ''}<button onclick="wPic(url=>wEnt(${i},{image:url}))">🖼️ ${e.image ? 'Change' : 'Add a'} picture</button>${e.image ? `<button class="ghost" onclick="wEnt(${i},{image:''})">Remove picture</button>` : ''}</div>
@@ -1666,7 +1676,7 @@ function drawWheelResult() {
   const respin = `<button class="primary" onclick="wSpin('respin')">🔁 ${esc(me)} respin</button>`;
   if (F) { // ⏱️ time ran out: this is what we do
     $('wResult').innerHTML = `<div class="wres wfinal"><div class="muted">⏱️ TIME! The wheel has spoken · ${esc(new Date(F.at).toLocaleTimeString())}</div>
-      <div class="t" style="font-size:32px">🏆 ${esc(F.text)}</div><div class="muted">🍀 ${F.pct}% of the wheel</div>${F.rule ? `<div class="r">📜 ${esc(F.rule)}</div>` : ''}
+      <div class="t" style="font-size:32px">🏆 ${esc(F.text)}</div><div class="muted">🍀 ${F.pct}% of the wheel</div>${F.rule ? `<div class="r">📜 ${esc(F.rule)}</div>` : ''}${linkBtn(F, true)}
       <p class="help" style="margin:8px 0 0">Respins and moves are closed for this round. Press 🎡 SPIN to start a new round (or ⏪ Undo if something went wrong).</p></div>`;
     return;
   }
@@ -1676,6 +1686,7 @@ function drawWheelResult() {
   else if (type === 'countdown') acts += `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><b>🔢 ${e.count} of ${e.countStart} left${e.count === 0 ? ' — leaves on the next spin' : ''}</b><button class="ghost" ${e.count <= 0 ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:-1}).then(loadWheel).then(drawWheelResult)">➖ Knock one off</button><button class="ghost" ${e.count >= e.countStart ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:1}).then(loadWheel).then(drawWheelResult)">➕ Put one back</button></div>
     ${R ? '<p class="help" style="margin:0">⏸️ The round timer waits until you spin again.</p>' : ''}<div class="row" style="gap:6px">${respin}</div>`;
   else if (type !== 'void') acts += `<div class="row" style="gap:6px">${respin}</div>`;
+  acts += linkBtn(r);
   const src = r.by?.source === 'points' ? ' 💜 points' : r.by?.source === 'bank' ? ' 🎟️ saved spin' : r.by?.source === 'mine' ? ' 🎟️ your spin' : r.by?.source === 'void' ? ' 🕳️ the void' : '';
   $('wResult').innerHTML = `<div class="wres" style="border-color:${esc(r.color)}"><div class="muted">${{ spin: '🎡 Landed on', respin: '🔁 Respin landed on', up: '⬆️ Moved up to', down: '⬇️ Moved down to' }[r.kind]} · ${esc(new Date(r.at).toLocaleTimeString())} · ${esc(r.by?.name || '')}${src}</div>
     <div class="t">${esc(r.text)}${rules && type === 'auto' ? ' <span class="muted" style="font-size:16px">(auto)</span>' : ''}</div><div class="muted">🍀 ${r.pct}% of the wheel${r.from ? ` · was ${esc(r.from.text)}` : ''}${r.voided ? ' · 🕳️ voided for tonight' : ''}</div>${r.rule ? `<div class="r">📜 ${esc(r.rule)}</div>` : ''}
@@ -1692,7 +1703,7 @@ function drawRound() {
   const why = { auto: '⚡ Paused: auto spot. Spin again to carry on.', countdown: '🔢 Paused: countdown spot. Spin again to carry on.', you: '⏸️ Paused by you' }[R.why] || '';
   const head = `<div class="row drag" style="justify-content:space-between;align-items:center" onpointerdown="wRoundDrag(event)" title="Drag to move it"><b>⏱️ Round timer</b><span><button class="ghost" style="padding:2px 8px" title="${wRoundMin ? 'Show' : 'Make it small'}" onclick="wRoundMin=!wRoundMin;drawRound()">${wRoundMin ? '▸' : '▾'}</button>${R.state === 'ended' ? `<button class="ghost" style="padding:2px 8px" title="Close" onclick="wRoundGone='${key}';drawRound()">✕</button>` : ''}</span></div>`;
   const L = R.state === 'ended' ? WD.final : WD.last?.wheelId === R.wheelId ? WD.last : null; // the winner so far (or the final winner)
-  const who = wSpinning && R.state !== 'ended' ? '<div class="who">🎡 …</div>' : L ? `<div class="who">${R.state === 'ended' ? '🏆 WINNER: ' : '🎯 '}${esc(L.text)}</div>` : '';
+  const who = wSpinning && R.state !== 'ended' ? '<div class="who">🎡 …</div>' : L ? `<div class="who">${R.state === 'ended' ? '🏆 WINNER: ' : '🎯 '}${esc(L.text)}</div>${R.state === 'ended' ? `<div style="text-align:center">${linkBtn(L, true)}</div>` : ''}` : '';
   if (wRoundMin) { box.innerHTML = head + `<div class="big" style="font-size:30px" id="wrBig"></div>${who}`; wRoundTick(); return; }
   box.innerHTML = head + `<div class="big" id="wrBig"></div>${who}<div class="bar"><i id="wrBar"></i></div>
     <div class="why">${R.state === 'armed' ? 'Starts when the spin lands' : R.state === 'ending' ? '⏱️ Time! Whatever this spin lands on wins' : R.state === 'ended' ? (L ? 'The wheel has spoken!' : 'Time is up') : L ? `That's the winner if the time runs out now. ${why}` : why}</div>
@@ -1728,6 +1739,9 @@ async function wRoundCmd(cmd, secs) { try { const r = await api('/api/wheel/time
 function wGrowLast(d) { const r = WD.last; api('/api/wheel/grow', { entryId: r.entryId, amount: d, wheelId: r.wheelId }).then(x => { toast(`${d > 0 ? '📈' : '📉'} “${esc(r.text)}” is now ${x.pct}% of the wheel.`); loadWheel().then(() => renderWheel()); }).catch(() => {}); }
 function wHideLast() { const r = WD.last, w = WD.wheels.find(x => x.id === r.wheelId); const e = w?.entries.find(x => x.id === r.entryId); if (!e) return; if (w.id !== WD.activeId) WD.activeId = w.id; e.on = false; wPut({}, true); renderWheel(); toast(`🙈 “${esc(e.text)}” is invisible: off the wheel, still in the list (press 🙈 to show it again).`); }
 async function wSpin(kind) { try { await api('/api/wheel/spin', { kind, by: $('wBy').value.trim() }); } catch {} }
+function wLink(u) { if (!/^https?:\/\//i.test(u || '')) u = 'https://' + u; window.open(u, '_blank'); }
+const linkHost = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+const linkBtn = (rec, big) => { const e = rec && WD?.wheels.find(x => x.id === rec.wheelId)?.entries.find(x => x.id === rec.entryId), u = e?.link || rec?.link; return u ? `<button class="${big ? 'primary' : ''}" style="margin-top:6px" onclick="wLink('${esc(u)}')">🔗 Open ${esc(linkHost(u))}</button>` : ''; };
 function wPopOut() { const w = window.open('/game.html?wheel=1', 'royal-wheel', 'width=1280,height=720'); if (!w) toast('Your browser blocked the pop-up. Allow pop-ups for this page.'); }
 function wShow() { api('/api/wheel/show', { show: !S.wheelShow }); }
 function wheelSpinMsg(m) {
@@ -2209,6 +2223,9 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🎨 Ball colors</h3>
       ${colorHTML(s)}
       ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
+      ${ck('pinWinner', '📌 Pin the movie in Twitch chat once the winner claims it (title, year, who picked it)')}
+      ${ck('claimApprove', '✋ When the winner types in chat, stop the claim timer and let me ✅ Accept or ⏭️ Pass (a pass puts the movie back and they keep their luck)')}
+      <div class="grid2">${f('sitOutCommand', '🛌 “Sit out tonight” chat command (their movies skip tonight’s battles)', '!sitout')}${f('backCommand', '🙋 “I’m back” chat command', '!imback')}</div>
       <p class="help">Replies to <code>${esc(s.twitchMoviesCommand)}</code> and winner posts come from <b>your own Twitch account</b> — no separate bot needed.</p>
       <h3 style="margin-top:18px">⚡ Chaos on / off</h3><div class="chaosbar" data-chaos style="max-width:420px">${chaosButtons()}</div>
       <p class="help">Turning channel points off also pauses your Movie Royal rewards on Twitch so nobody spends points by accident.</p>

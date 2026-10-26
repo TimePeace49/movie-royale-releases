@@ -49,11 +49,13 @@ export function newWheel(name, entries = [], extra = {}) {
 }
 const num = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const fileOk = v => /^(\/uploads\/[\w.-]+|https?:\/\/\S+)$/.test(v || '') ? v : '';
+// 🔗 an optional web page for a spot (a game, a site…): a button opens it when the spot wins
+export const cleanLink = v => { let u = String(v || '').trim(); if (!u) return ''; if (!/^https?:\/\//i.test(u)) u = 'https://' + u; try { const x = new URL(u); return /^https?:$/.test(x.protocol) && x.hostname.includes('.') ? x.href.slice(0, 500) : ''; } catch { return ''; } };
 export function cleanEntry(e) {
   const type = TYPES[e.type] ? e.type : 'timer'; // old normal / timer / refund spots are all timer spots now
   const out = { id: e.id || uid(), text: String(e.text ?? e.label ?? '').slice(0, 200), weight: e.weight === 0 || e.weight === '0' ? 0 : num(e.weight, 1, 0, 1e7) || 1, color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : null,
     rule: String(e.rule || '').slice(0, 2000), on: e.on !== false && e.enabled !== false, type, voided: e.voided || null, image: fileOk(e.image === '/gauntlet.svg' ? '' : e.image), sound: fileOk(e.sound),
-    noPointRespin: !!e.noPointRespin, noBankRespin: !!e.noBankRespin };
+    noPointRespin: !!e.noPointRespin, noBankRespin: !!e.noBankRespin, link: cleanLink(e.link) };
   if (type === 'countdown') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); out.autoKnock = e.autoKnock !== false; }
   if (type === 'timercount') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); } // a timer spot: each WIN takes one off, at 0 it goes invisible
   if (type === 'timermax') { out.maxWins = Math.round(num(e.maxWins, 1, 1, 1000)); out.wins = Math.round(num(e.wins, 0, 0, 1000)); out.maxedOff = !!e.maxedOff; } // a timer spot that can only win so many times a night
@@ -264,7 +266,7 @@ function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Te
   if (kind !== 'spin' && prev?.knocked) { const pe = getWheel(prev.wheelId)?.entries.find(e => e.id === prev.entryId); if (pe && pe.type === 'countdown') pe.count = Math.min(pe.countStart, pe.count + 1); }
   const spinId = kind === 'spin' ? uid() : prev?.spinId || uid();
   const type = rules ? s.e.type : 'timer';
-  const rec = { id: uid(), at: Date.now(), wheelId: w.id, wheelName: w.name, kind, by: { ...by }, spinId, entryId: s.e.id, text: s.e.text, rule: rules ? s.e.rule || '' : '', pct: s.pct, color: s.color, spots: sl.length, type, sound: s.e.sound || '',
+  const rec = { id: uid(), at: Date.now(), wheelId: w.id, wheelName: w.name, kind, by: { ...by }, spinId, entryId: s.e.id, text: s.e.text, rule: rules ? s.e.rule || '' : '', pct: s.pct, color: s.color, spots: sl.length, type, sound: s.e.sound || '', link: s.e.link || '',
     from: kind === 'spin' ? null : prev ? { entryId: prev.entryId, text: prev.text, pct: prev.pct } : null };
   if (type === 'countdown') { rec.countBefore = s.e.count; if (s.e.autoKnock && s.e.count > 0) { s.e.count--; rec.knocked = true; } rec.countLeft = s.e.count; }
   if (by.source === 'void' && type !== 'void') rec.voided = true;

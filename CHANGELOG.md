@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.18.0 (test build)
+- **🔗 Links on wheel spots:** give a spot a web page (a game, a site…) in its ⚙. When it wins, a "🔗 Open" button shows on the result and in the round timer pop-up. On stream, the card shows the site name.
+- **✋ You decide on claims:** when the movie winner types in chat, the claim timer stops and you press **✅ Accept winner** or **⏭️ Pass (not tonight)**. A pass puts their movie back in the battle, and they keep their luck and aren't benched for the week. You can switch this off in Settings → Twitch.
+- **📌 Claimed movies get pinned in Twitch chat:** title, year and who picked it. You can switch it off in Settings → Twitch.
+- **🛌 `!sitout` / `!imback` in chat:** viewers who can't stay up take their movies out of tonight's battles, or put them back. Both are in `!moviesroyal`, and you can rename them in Settings → Twitch.
+- **🧪 Test tab:** new "Movie winner" card: pretend the winner typed in chat, test pinning, and try !sitout / !imback.
+
 ## 1.17.0 (test build)
 - **☁️ Closing Movie Royal while the 24/7 bot is off** now asks first, because the Discord bot stops too. Paste your Cloudflare token and press "Turn on 24/7, then close", or close anyway (there's a "don't ask again" box).
 - **💜 Channel points:** Movie Royal's rewards stay paused unless you're live (or a battle is going) and they can be used right now. If a reward with one of Movie Royal's names was made by hand on Twitch, Movie Royal can't pause it, so a warning tells you which one to delete and make again from the app.

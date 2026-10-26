@@ -231,14 +231,26 @@ export function afterMovieWin(winnerId) {
   } else if (!w.backers?.[0]) { w.status = 'watched'; w.wonAt = Date.now(); lb.markWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId }); // your own movie
   } else { // won a movie: sit out the rest of the week
     const who = w.backers[0].discordId;
+    w.winAdded = !week().winners.includes(who);
     if (!week().winners.includes(who)) week().winners.push(who);
     w.luckSnap = resetLuckFor(who); // their movie gets watched: their luck starts over (kept so 'put it back' can undo it)
     w.status = 'watched'; w.wonAt = Date.now(); // landed on = picked: it leaves the pool and counts toward their picks
     lb.markWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId });
-    for (const e of l.entries) if (e !== w && e.status === 'active' && e.backers?.[0]?.discordId === who) { e.status = 'benched'; delete e.forceIn; benched++; }
+    w.benchedIds = [];
+    for (const e of l.entries) if (e !== w && e.status === 'active' && e.backers?.[0]?.discordId === who) { e.status = 'benched'; delete e.forceIn; benched++; w.benchedIds.push(e.id); }
   }
   save();
   return { benched, spotsRemoved, person: isSpot(w) ? null : w.backers?.[0]?.name };
+}
+/** The streamer pressed ⏭️ Pass on a claim (too late to watch, etc.): the movie goes back in, luck and the week's cooldown are undone. */
+export function undoMovieWin(winnerId) {
+  const l = moviesList(), w = l.entries.find(e => e.id === winnerId); if (!w) return false;
+  if (w.status === 'watched') { w.status = 'active'; delete w.wonAt; lb.unmarkWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId }); }
+  if (w.luckSnap) { giveLuckBack(w.luckSnap); delete w.luckSnap; }
+  const who = w.backers?.[0]?.discordId;
+  if (who && w.winAdded) week().winners = week().winners.filter(x => x !== who);
+  for (const id of w.benchedIds || []) { const e = l.entries.find(x => x.id === id); if (e && e.status === 'benched') e.status = 'active'; }
+  delete w.winAdded; delete w.benchedIds; save(); return true;
 }
 /** Battle tab "Reset wild spots": every wildcard spot back in and refilled, even if one won this week. */
 export function resetSpots() {

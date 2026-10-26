@@ -2803,6 +2803,7 @@ function wlCard(r, k) {
   $('wlR').textContent = wlOpts.rules === false ? '' : r.rule || '';
   const tp = r.voided ? `<span>${VX} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${VX} respinning…</span>` : r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : r.type === 'auto' ? '<span>⚡ auto</span>' : '';
   $('wlM').innerHTML = tp + `${wlOpts.showPct === false ? '' : `<span>🍀 ${r.pct}% of the wheel</span>`}<span>${r.by?.source === 'points' ? '💜' : '👤'} ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ' (channel points)' : ''}</span>${r.from ? `<span>was: ${esc(r.from.text)}</span>` : ''}`;
+  if (r.link) { let h = r.link; try { h = new URL(r.link).hostname.replace(/^www\./, ''); } catch {} $('wlM').innerHTML += `<span>🔗 ${esc(h)}</span>`; } // the spot's web page
   $('wlCard').style.borderColor = r.color || '#ffc94a';
   $('wlCard').classList.remove('off');
 }
@@ -3077,6 +3078,20 @@ function endRoll(m) {
   setTimeout(() => r.classList.add('hidden'), 9000);
 }
 function claimExpired() { SFX.play('buzzer'); clearInterval(claimTimer); $('claim').classList.add('expired'); $('cNum').textContent = '0'; $('cSub').innerHTML = "⏰ Time's up — no claim!"; }
+// the winner typed in chat: the countdown stops while the streamer accepts or passes
+function claimWaiting(m) {
+  if ($('claim').classList.contains('hidden')) startClaim(m.winner, 30, []);
+  clearInterval(claimTimer); SFX.play('fanfare');
+  $('cNum').textContent = '✋'; $('ringArc').style.strokeDashoffset = 0;
+  $('cSub').innerHTML = `<b style="color:#7dffb0">${esc(m.name)}</b> is here! Waiting for ${esc(m.streamer || 'the streamer')} to accept…`;
+  $('cWho').innerHTML = `${esc(m.name)}<small>✋ is here!</small>`;
+}
+function claimPassed(m) {
+  if ($('claim').classList.contains('hidden')) return;
+  clearInterval(claimTimer); SFX.play('whoosh');
+  $('cNum').textContent = '⏭️'; $('cSub').innerHTML = `Not tonight! ${m.winner?.owner ? `${esc(m.winner.owner)}'s movie` : 'It'} goes back in the battle and keeps its luck.`;
+  setTimeout(hideClaim, 5000);
+}
 function hideClaim() { clearInterval(claimTimer); $('claim').classList.add('hidden'); }
 
 // ================= main loop =================
@@ -3344,7 +3359,7 @@ function connect() {
   sock.onmessage = e => handleMsg(JSON.parse(e.data));
 }
 function handleMsg(m) {
-    if (replay && ['claimStart', 'claimedDirect', 'claimed', 'claimExpired', 'chat'].includes(m.type)) { replay.pending.push(m); return; } // after the replay
+    if (replay && ['claimStart', 'claimedDirect', 'claimed', 'claimExpired', 'chat', 'claimWaiting', 'claimPassed'].includes(m.type)) { replay.pending.push(m); return; } // after the replay
     if (replay && (m.type === 'start' || m.type === 'reset' || m.type === 'claimClose')) endReplay(true);
     if ((m.type === 'wheelSpin' && m.kind === 'spin') || m.type === 'wheelUndo') document.getElementById('wlDoom')?.remove(); // a fresh spin (or ⏪ undo) clears Doomsday
     if (m.type === 'wheel' || m.type === 'wheelSpin') { wheelMsg(m); return; }
@@ -3371,6 +3386,8 @@ function handleMsg(m) {
     else if (m.type === 'rollcallClose') { clearInterval(rollTimer); $('roll').classList.add('hidden'); }
     else if (m.type === 'claimedDirect') { claimWinner = m.winner; claimed(m.text); }
     else if (m.type === 'claimExpired') claimExpired();
+    else if (m.type === 'claimWaiting') claimWaiting(m);
+    else if (m.type === 'claimPassed') claimPassed(m);
     else if (m.type === 'ratings') { ratingsById[m.id] = m.ratings; const f = winner?.id === m.id ? winner : claimWinner?.id === m.id ? claimWinner : null; if (f && !$('win').classList.contains('hidden')) $('wRatings').innerHTML = ratingsHtml(m.ratings, false); }
     else if (m.type === 'reloadSounds') SFX.reload();
     else if (m.type === 'shuffle') shufflePieces();
