@@ -58,7 +58,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Cliff self-heal:** game screens send `{type:'cliff'}` every 4 s; if one doesn't match `lastPreview` twice, the server re-sends it with `heal:true`.
 - **Hidden health:** `hurt(f, dmg)` in game.html (hard bumps + big `push` hits); 0 = `blastOrDodge(..., 'K.O.!')`; the fair-odds winner never dies from it.
 
-- **Letterboxd battles:** list `source: {kind:'letterboxd', url, max}`; `syncLetterboxdList` (server) uses `lb.fetchFilmList` (films pages via the `/films/ajax/` address, lists as-is) + TMDB search; entries keep `lbSlug`. Couldn't test real Letterboxd from the cloud session (blocked) — only a mock.
+- **Letterboxd battles (REMOVED from the app at Derek's request in 1.21.3, Letterboxd blocked it; server code left unused):** list `source: {kind:'letterboxd', url, max}`; `syncLetterboxdList` (server) uses `lb.fetchFilmList` (films pages via the `/films/ajax/` address, lists as-is) + TMDB search; entries keep `lbSlug`. Couldn't test real Letterboxd from the cloud session (blocked) — only a mock.
 - **Error history:** `src/errlog.js` (data/errors.json). Every `console.error('[source] …')` on the server is logged automatically, plus game screen + control panel errors and status errors. Test tab → ⚠️ Errors shows plain words (`errlog.plain`) and `/api/debug-report` (tech, no secrets). Derek may paste that report: read it first.
 - **Test tab** has three tabs: 🧪 Tests, ✅ Checklist and ⚠️ Errors (`drawChecklist`; ticks in localStorage `ckDone`). Add new testable features to both.
 - **Test Discord battle:** `startRound({test:true})` = real pieces, `live.game.test` (no history, luck, cooldowns).

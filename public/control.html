@@ -632,7 +632,6 @@
 <dialog id="newlist"><div class="inner">
   <h3>New battle</h3>
   <div class="card soft" style="margin:0 0 10px;padding:10px"><b>🔢 Pick a number</b><p class="help" style="margin:4px 0 8px">Every ball is a number. The last one standing is the number.</p><div class="row" style="gap:6px;align-items:center">From <input id="nlFrom" type="number" value="1" style="width:90px"> to <input id="nlTo" type="number" value="10" style="width:90px"><button class="primary" onclick="numbersBattle()">🔢 Make it</button></div></div>
-  <div class="card soft" style="margin:0 0 10px;padding:10px"><b>💩 Letterboxd’s worst 500</b><p class="help" style="margin:4px 0 8px">A ready-made battle of the 500 lowest rated movies on Letterboxd. Press 🔄 Update in the 🎬 Movie Pool tab any time to get the latest list.</p><button class="primary" onclick="newlist.close();lbWorst()">💩 Make it</button></div>
   <label>Name</label><input id="nlName" placeholder="e.g. Horror night, Snack wheel, Giveaway">
   <label>What goes in it?</label>
   <div class="seg" id="nlType">
@@ -757,7 +756,6 @@ function drawChecklist() {
     ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').catch(()=>{})")],
     ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', ''],
     ['numbers', 'A 🔢 number battle plays', T('Try it', "api('/api/lists/numbers',{from:1,to:10}).then(()=>setView('battle'))")],
-    ['letterboxd500', '💩 Letterboxd’s worst 500 fills up (+ New battle)', ''],
     ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', ''],
     ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message'))")],
     ['sitout', '!sitout and !imback work in chat', ''],
@@ -1361,7 +1359,7 @@ function renderPool() {
     </details>`;
   $('poolMain').innerHTML = `<div class="card">
       <div class="listhead"><input class="grow" value="${esc(l.name)}" ${l.type === 'movies' ? 'readonly' : ''} onchange="api('/api/lists/${l.id}', {name:this.value}, 'PATCH')"><span class="pill">${TYPE[l.type]}</span><span class="pill">${active.length} in the pool</span></div>
-      ${l.source?.kind === 'letterboxd' ? lbCard(l) : ''}${add}</div>
+      ${add}</div>
     <div class="card tablecard">
       <div class="row" style="margin-bottom:6px">
         <h2 class="grow" style="margin:0">Pool &amp; odds ${l.type === 'movies' && S.luckOn ? '<span class="luck">🍀 luck is on</span>' : ''}</h2>
