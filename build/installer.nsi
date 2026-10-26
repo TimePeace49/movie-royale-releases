@@ -36,15 +36,34 @@ VIAddVersionKey "LegalCopyright" "Movie Royal"
 !define MUI_FINISHPAGE_TITLE "Movie Royal is ready"
 !define MUI_FINISHPAGE_TEXT "Movie Royal ${VER} is installed and opening now.$\r$\n$\r$\nClick Finish to close this window."
 
+; in-app updates (/UPDATE): skip the questions and just show the progress bar, then close by itself
+Var IsUpdate
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_WELCOME
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_DIRECTORY
+!define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Movie Royal is updated"
+!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "Opening Movie Royal again…"
 !insertmacro MUI_PAGE_INSTFILES
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
+Function SkipOnUpdate
+  StrCmp $IsUpdate "1" 0 +2
+  Abort
+FunctionEnd
+
 Function .onInit
+  StrCpy $IsUpdate "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/UPDATE" $R1
+  IfErrors +3 0
+  StrCpy $IsUpdate "1"
+  SetAutoClose true
   ; close a running copy so its files can be replaced (updates)
   nsExec::Exec 'taskkill /F /IM "${EXE}"'
   nsExec::Exec 'taskkill /F /IM "${OLDEXE}"'

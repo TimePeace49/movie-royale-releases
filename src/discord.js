@@ -65,11 +65,33 @@ async function setupGuild(g) {
     if (msg && rec.pinText !== text) { await msg.edit({ content: text }).catch(() => { msg = null; }); }
     if (!msg) { msg = await ch.send({ content: text, allowedMentions: { parse: [] } }); await msg.pin().catch(() => warn.push(`${g.name}: couldn't pin the commands message — give the bot "Manage Messages".`)); }
     rec.pinId = msg.id; rec.pinText = text;
+    await keepPinOnTop(ch, msg.id);
   } catch (e) { warn.push(`${g.name}: couldn't post in #${ch.name} (${e.message}).`); }
   save();
   return warn;
 }
 export async function refreshPinned() { if (!client) return; for (const g of client.guilds.cache.values()) await setupGuild(g); }
+
+// 📌 keep Movie Royal's pinned message at the TOP of the channel's pins (if other messages got pinned after it, pin ours again)
+// and clean up the little "pinned a message" notice that makes.
+async function keepPinOnTop(ch, pinId) {
+  try {
+    if (!ch || !pinId) return;
+    const pins = await ch.messages.fetchPinned();
+    const first = pins.first(), ours = pins.get(pinId);
+    if (ours && first?.id === pinId) return; // already on top
+    const msg = ours || await ch.messages.fetch(pinId).catch(() => null); if (!msg) return;
+    if (ours) await msg.unpin().catch(() => {});
+    await msg.pin();
+    const recent = await ch.messages.fetch({ limit: 10 }).catch(() => null); // remove the "… pinned a message" notice
+    for (const m of recent?.values() || []) if (m.type === 6 && m.author?.id === client.user.id) await m.delete().catch(() => {});
+  } catch (e) { console.log('[discord pins]', e.message); }
+}
+export async function keepPinsOnTop() {
+  if (!client) return;
+  for (const [gid, rec] of Object.entries(db.discordChannels || {})) await keepPinOnTop(client.channels.cache.get(rec.channelId), rec.pinId);
+  for (const [gid, rec] of Object.entries(db.discordDebug || {})) await keepPinOnTop(client.channels.cache.get(rec.channelId), rec.pinId);
+}
 
 // 🐞 #movie-royal-debug: a hidden channel only mods and the server owner can see. Movie Royal posts its Discord problems there
 // (plain words + the tech details). Nobody but the bot can type in it; a pinned message (and the channel topic) says so.
@@ -101,7 +123,7 @@ async function setupDebug(g) {
     if (msg && msg.content !== DEBUG_NOTE) await msg.edit({ content: DEBUG_NOTE }).catch(() => { msg = null; });
     if (!msg) msg = await ch.send({ content: DEBUG_NOTE, allowedMentions: { parse: [] } });
     if (!msg.pinned) await msg.pin().catch(() => warn.push(`${g.name}: couldn't pin the note in #${DEBUG_NAME} — give the bot "Manage Messages".`));
-    rec.pinId = msg.id;
+    rec.pinId = msg.id; await keepPinOnTop(ch, msg.id);
   } catch (e) { warn.push(`${g.name}: couldn't post in #${DEBUG_NAME} (${e.message}).`); }
   save();
   return warn;
@@ -147,6 +169,8 @@ export async function start(changed) {
       onChange();
     });
     client.on('guildCreate', async g => { status.guilds = client.guilds.cache.map(x => x.name); status.warnings.push(...await prep(g)); onChange(); });
+    let pinT = null; // someone pinned something else: put ours back on top (a few seconds later)
+    client.on('channelPinsUpdate', ch => { const ids = [...Object.values(db.discordChannels || {}), ...Object.values(db.discordDebug || {})].map(r => r.channelId); if (!ids.includes(ch.id)) return; clearTimeout(pinT); pinT = setTimeout(() => keepPinsOnTop(), 4000); });
     client.on('guildDelete', () => { status.guilds = client.guilds.cache.map(x => x.name); onChange(); });
     client.on('interactionCreate', i => handle(i).catch(err => {
       console.error('[discord]', `/${i.commandName || '?'} by ${i.user?.username || '?'}: ${err.message}`, err);
@@ -333,3 +357,50 @@ export async function postTest() {
 // View Channel + Send Messages + Manage Channels (to make #movies-royal) + Manage Messages (to pin) + Embed Links + Read History
 export const inviteUrl = () => db.settings.discordClientId
   ? `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(db.settings.discordClientId)}&scope=bot+applications.commands&permissions=93200` : null;
+
+/** 🤖 Discord self-test (🧪 Test tab): checks everything the bot can check by itself, without real people.
+ *  (Bots can't press other bots' slash commands, so this runs the same code the commands use, with a pretend user.) */
+export async function selfTest() {
+  const out = [], add = (ok, label, detail = '') => out.push({ ok, label, detail });
+  add(status.state === 'online', 'The bot is online', status.state === 'online' ? status.tag || '' : status.error || status.state);
+  if (!client || status.state !== 'online') return out;
+  const P = PermissionFlagsBits;
+  for (const g of client.guilds.cache.values()) {
+    add(true, `In the server “${g.name}”`);
+    const me = g.members.me;
+    const rec = db.discordChannels?.[g.id], ch = rec && g.channels.cache.get(rec.channelId);
+    add(!!ch, `#${channelName()} exists`, ch ? '' : 'Settings → Discord: the bot makes it when it starts (needs "Manage Channels").');
+    if (ch) {
+      const p = ch.permissionsFor(me);
+      add(p?.has([P.ViewChannel, P.SendMessages]), 'The bot can post in it');
+      const pins = await ch.messages.fetchPinned().catch(() => null);
+      add(!!pins?.get(rec.pinId), 'The commands message is pinned', pins ? '' : "couldn't read the pins");
+      add(pins?.first()?.id === rec.pinId, 'It is the top pin', pins?.first()?.id === rec.pinId ? '' : 'it gets moved back to the top by itself');
+      const everyone = ch.permissionsFor(g.roles.everyone);
+      add(everyone?.has(P.ViewChannel) && everyone?.has(P.UseApplicationCommands), 'Everyone can see it and use the commands');
+    }
+    try {
+      const cmds = await g.commands.fetch();
+      const want = commands.map(c => c.name), have = new Set(cmds.filter(c => c.applicationId === client.user.id).map(c => c.name));
+      const missing = want.filter(n => !have.has(n));
+      add(!missing.length, `Slash commands are set up (${want.map(n => '/' + n).join(' ')})`, missing.length ? 'missing: ' + missing.map(n => '/' + n).join(' ') + ' (restart Movie Royal)' : '');
+    } catch (e) { add(false, 'Slash commands are set up', e.message); }
+    const drec = db.discordDebug?.[g.id], dch = drec && g.channels.cache.get(drec.channelId);
+    if (db.settings.discordDebug !== false) {
+      add(!!dch, '#movie-royal-debug exists', dch ? '' : 'Settings → Discord → Make / fix the debug channel');
+      if (dch) {
+        add(!dch.permissionsFor(g.roles.everyone)?.has(P.ViewChannel), 'Normal members can NOT see the debug channel');
+        const mods = g.roles.cache.filter(r => r.id !== g.id && !r.managed && !r.permissions.has(P.Administrator) && r.permissions.any([P.ManageGuild, P.ManageMessages, P.ModerateMembers, P.KickMembers, P.BanMembers]));
+        add(mods.every(r => dch.permissionsFor(r)?.has(P.ViewChannel) && !dch.permissionsFor(r)?.has(P.SendMessages)), `Mods can read it but not type in it${mods.size ? ` (${mods.map(r => r.name).join(', ')})` : ' (no mod roles found: the owner and admins still see it)'}`);
+        const dp = await dch.messages.fetchPinned().catch(() => null);
+        add(!!dp?.get(drec.pinId), 'The "don\'t type here" note is pinned');
+      }
+    }
+  }
+  // the same code the commands run, with a pretend user (nothing is added or changed)
+  const fake = { discordId: 'selftest', name: 'Self-test' };
+  try { const ch = await movieChoices('Jaws', fake); add(ch.length > 0, '/suggest movie search works', ch.length ? `found ${ch.length}, like “${ch[0].name}”` : 'no results (check the TMDB key)'); } catch (e) { add(false, '/suggest movie search works', e.message); }
+  try { const t = myMoviesText('selftest'); add(!!t, '/mymovies answers', t.split('\n')[0].slice(0, 90)); } catch (e) { add(false, '/mymovies answers', e.message); }
+  try { const t = helpText(); add(t.length > 50, '/help text is ready'); } catch (e) { add(false, '/help text is ready', e.message); }
+  return out;
+}

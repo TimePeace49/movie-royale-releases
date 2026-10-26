@@ -65,6 +65,11 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 
 - **Discord debug channel:** `#movie-royal-debug` (discord.js `setupDebug`): @everyone can't see, mod roles (admin/manage server/manage messages/moderate/kick/ban) read-only, bot posts; pinned "don't type" note + topic. Errors with source discord / 24/7 (or all, `discordDebugAll`) → `discord.postDebug`. The worker posts its errors there too (`cfg.debugChannels`, `debugPost`). Never `console.error` inside the posting code (loop).
 
+- **Pretend live:** `live.fakeLive` (not saved): `/api/test/live` runs the in-app new-stream bits only. Twitch rewards, Discord swap locks, map NEW tags still follow the real `db.live`.
+- **Pins on top:** `discord.keepPinOnTop` re-pins Movie Royal's message when another pin is newer (on start, `channelPinsUpdate`, every 30 min) and deletes the "pinned a message" notice.
+- **Updates:** the installer runs with `/UPDATE` (no `/S`): welcome/folder/finish pages are skipped, but its progress bar shows. The control panel shows the download bar (`updProgress`).
+- **Discord self-test:** `discord.selfTest()` + `/api/test/discord-selftest`. Real test bots/users can't be made: bots can't use other bots' slash commands and user-account bots break Discord's rules.
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 

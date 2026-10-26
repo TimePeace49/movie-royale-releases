@@ -134,7 +134,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, live: !!db.live, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -1012,7 +1012,7 @@ function runInstaller(file, res) {
   if (!DESKTOP || process.platform !== 'win32') return res.status(400).json({ error: 'Updates install from the Windows app.' });
   // run the installer quietly, then open Movie Royal again once it's done (a little helper script waits for it)
   const exe = process.execPath, bat = path.join(os.tmpdir(), 'MovieRoyal-Update.cmd');
-  fs.writeFileSync(bat, `@echo off\r\nstart "" /wait "${file}" /S /UPDATE\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${exe}"\r\n`);
+  fs.writeFileSync(bat, `@echo off\r\nstart "" /wait "${file}" /UPDATE\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${exe}"\r\n`); // the installer shows its progress bar, then closes by itself
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^ELECTRON_/i.test(k)));
   spawn('cmd.exe', ['/c', bat], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();
   res.json({ ok: true });
@@ -1029,7 +1029,13 @@ app.post('/api/update/install-latest', async (req, res) => {
     if (!/^https:\/\/github\.com\//.test(url)) return res.status(400).json({ error: 'Bad update link' });
     const r = await fetch(url); if (!r.ok) throw new Error('Download failed (' + r.status + ')');
     const file = path.join(os.tmpdir(), 'MovieRoyal-Update.exe');
-    fs.writeFileSync(file, Buffer.from(await r.arrayBuffer())); runInstaller(file, res);
+    // download with a progress bar in the app (the control panel shows how far along it is)
+    const total = Number(r.headers.get('content-length')) || 0, chunks = []; let got = 0, last = 0;
+    const tell = stage => broadcast({ type: 'updProgress', stage, got, total }, 'control');
+    tell('download');
+    for await (const ch of r.body) { chunks.push(ch); got += ch.length; if (Date.now() - last > 250) { last = Date.now(); tell('download'); } }
+    tell('install');
+    fs.writeFileSync(file, Buffer.concat(chunks)); runInstaller(file, res);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -1822,6 +1828,16 @@ errlog.setOnNew(e => {
   if (['discord', '24/7', 'cloud'].includes(e.source) || db.settings.discordDebugAll) discord.postDebug(debugText(e)); // 🐞 Discord problems go to the mods-only #movie-royal-debug channel too
 });
 app.post('/api/discord/debug-setup', async (req, res) => { try { const w = await discord.setupDebugAll(); pushState(); res.json({ ok: true, warnings: w }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/test/discord-selftest', async (req, res) => { // 🤖 everything about Discord the app can check by itself
+  try {
+    const out = await discord.selfTest();
+    if (cloud.enabled()) { const st = await cloud.checkLink(true); out.push({ ok: !!st.linked && st.botUp !== false, label: '24/7 bot: Discord is connected to it (works with Movie Royal closed)', detail: st.linkError || (st.botUp === false ? "the 24/7 bot isn't answering" : '') }); }
+    else out.push({ ok: null, label: '24/7 bot is off (Discord only works while Movie Royal is open)' });
+    const bad = out.filter(x => x.ok === false);
+    discord.postDebug(`🤖 **Discord self-test:** ${bad.length ? `${bad.length} problem${bad.length === 1 ? '' : 's'}` : 'everything passed ✅'}\n${out.map(x => `${x.ok === false ? '❌' : x.ok ? '✅' : '🟡'} ${x.label}${x.detail ? ` — ${x.detail}` : ''}`).join('\n')}`);
+    res.json({ ok: true, results: out });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/test/discord-debug', (req, res) => { // Test tab: a pretend problem in the debug channel
   discord.postDebug(debugText({ source: 'discord', msg: 'This is a test from the 🧪 Test tab. If you can read this, the debug channel works!', detail: '', at: Date.now() }));
   res.json({ ok: !!Object.keys(db.discordDebug || {}).length && discord.status.state === 'online' });
@@ -1856,7 +1872,12 @@ app.post('/api/test/wheel-land', wTry(b => wheel.request(b.kind === 'respin' ? '
 app.post('/api/test/doom-preview', (req, res) => { broadcast({ type: 'wheelDoom', text: `${streamerName().toUpperCase()} WILL RETURN FOR DOOMSDAY!!!`, preview: true }, 'overlay'); res.json({ ok: true }); }); // just the screen, nothing turns off
 app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));
 app.post('/api/test/power', (req, res) => { const kind = String(req.body?.kind || 'shield'), name = String(req.body?.name || 'test_viewer'); const title = Object.entries(db.settings.powerRewards || {}).find(([, k]) => k === kind)?.[0]; if (!title) return res.status(400).json({ error: 'no such power-up' }); twitchHandlers.redeem({ title, login: name.toLowerCase(), name, input: '' }); res.json({ ok: true }); }); // Test tab: pretend someone redeemed a ball power-up
-app.post('/api/test/live', (req, res) => { twitchHandlers.live(!!req.body?.live); res.json({ ok: true, live: !!db.live }); }); // Test tab: pretend you went live / offline
+app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / offline. Only inside Movie Royal: Twitch, Discord and your rewards don't change.
+  const on = !!req.body?.live, was = !!live.fakeLive; live.fakeLive = on;
+  if (on && !was && !db.live) { stream().movies = 0; stream().startedAt = Date.now(); wheel.newStream(); } // what a new stream does inside the app
+  broadcast({ type: 'toast', text: on ? '🔴 Pretending you\'re live (only inside Movie Royal: Twitch and Discord don\'t know)' : '⚫ Stopped pretending to be live' }, 'control');
+  save(); pushState(); res.json({ ok: true, live: on });
+}); // Test tab: pretend you went live / offline
 app.post('/api/test/wheel-redeem-raw', (req, res) => { const b = req.body || {}; const ok = wheel.wheelRedeem({ title: String(b.title || ''), input: b.input, login: String(b.name || 'test').toLowerCase(), name: String(b.name || 'test'), cost: 100 }); res.json({ ok }); });
 app.post('/api/test/wheel-redeem', (req, res) => { const k = String(req.body?.kind || 'respin'), name = String(req.body?.name || 'test_viewer'); const ok = wheel.wheelRedeem({ title: wheel.W().rewards[k] || '', login: name.toLowerCase(), name }); res.json({ ok }); });
 app.post('/api/test/redeem', (req, res) => { triggerEvent(req.body?.event || 'random', { name: String(req.body?.name || 'test_viewer'), avatar: null }, req.body?.bits ? 'bits' : 'points'); res.json({ ok: true }); });
@@ -2102,6 +2123,7 @@ server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
   twitch.start(twitchHandlers);
   if (rollWeek()) console.log('  New week: benched movies are back, spots refilled');
   restoreAway(true);
+  setInterval(() => discord.keepPinsOnTop().catch?.(() => {}), 30 * 60 * 1000); // 📌 Movie Royal's pinned messages stay on top
   setInterval(() => { const a = rollWeek(), b = restoreAway(true); if (a || b) { pushState(); refreshPreview(); } }, 5 * 60 * 1000);
   const tick = async () => { await lb.refreshRss(db.settings.letterboxdUser); sweepWatched(); pushState(); };
   tick(); setInterval(tick, 30 * 60 * 1000);

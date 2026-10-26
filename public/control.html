@@ -135,6 +135,7 @@
   #peekBar span { flex:1; } #peekBar button { padding:3px 10px; font-size:12px; }
   #stage:fullscreen { border-radius:0; border:0; }
   #fsBar { display:none; }
+  @keyframes updPulse { from { opacity:.6 } to { opacity:1 } }
   #claimBar { position:fixed; z-index:62; left:50%; top:66px; transform:translateX(-50%); width:min(760px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:12px 16px; background:#163a26f2; border:2px solid #7dffb0; border-radius:14px; box-shadow:0 14px 50px #000c; font-size:15px; }
   #claimBar button { white-space:nowrap; }
   #handNag { position:fixed; z-index:59; left:50%; bottom:16px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a1420f2; border:1px solid #ff8a7a; border-radius:12px; font-size:13px; box-shadow:0 10px 40px #000a; }
@@ -321,7 +322,7 @@
   <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royal game"></iframe>
   <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
   <div class="pgrip" data-d="se" title="Drag to resize"></div><div class="pgrip" data-d="sw" title="Drag to resize"></div><div class="pgrip" data-d="e"></div><div class="pgrip" data-d="w"></div><div class="pgrip" data-d="s"></div>
-  <div id="peekBar" title="Drag to move. Drag a corner or edge to resize."><span>📺 What's on stream right now</span><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
+  <div id="peekBar" title="Drag to move. Drag a corner or edge to resize."><span>📺 What's on stream right now</span><button id="peekGo" onclick="event.stopPropagation();peek(false);setView(S?.wheelShow ? 'wheel' : 'battle')">↗ Battle tab</button><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
   <div class="away"><div style="font-size:36px">🪟</div><div>The game is open in its own window.</div><button onclick="event.stopPropagation();bringBack()">Bring it back here</button></div>
 </div>
 
@@ -521,6 +522,11 @@
   <div class="card" id="tCheck" style="grid-column:1 / -1"></div>
   <div class="card" id="tErr" style="grid-column:1 / -1"></div>
   <div class="card" style="grid-column:1 / -1">
+    <div class="row" style="align-items:center;gap:10px"><h3 class="grow" style="margin:0">🔴 Pretend I'm live</h3><span id="fakeLiveTag"></span>
+      <button class="primary" onclick="api('/api/test/live',{live:!S.fakeLive})" id="fakeLiveBtn">🔴 Pretend I'm live</button></div>
+    <p class="help" style="margin:6px 0 0">Movie Royal acts like you just went live: streamer respins refill, voided spots come back, the movie count starts over, and it shows LIVE. It's fake: Twitch, Discord and your channel point rewards don't change. Press again to stop.</p>
+  </div>
+  <div class="card" style="grid-column:1 / -1">
     <h3>⚔️ Discord battle tests</h3>
     <p class="help">Rule things out when balls don't come back. Not live? That doesn't matter: chat, the cliff and battles all work the same when you're offline.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap">
@@ -539,6 +545,11 @@
     <h3>🔢 Number battle</h3>
     <p class="help">Makes a battle where every ball is a number (it shows up as a new battle you can delete after).</p>
     <button onclick="api('/api/lists/numbers',{from:1,to:10}).then(r=>{toast('🔢 1 to 10 battle made');setView('battle')})">🔢 Make a 1–10 battle</button>
+  </div>
+  <div class="card" style="grid-column:1 / -1">
+    <h3>🤖 Discord self-test</h3>
+    <p class="help">Checks everything about Discord that Movie Royal can check by itself: the bot, the channels, the pinned messages, the slash commands, who can see the debug channel, and the 24/7 bot. It runs the same code /suggest and /mymovies use, with a pretend user (nothing gets added). The results go to #movie-royal-debug too.</p>
+    <button class="primary" onclick="discordSelfTest(this)">🤖 Run the Discord self-test</button><div id="dSelf" style="margin-top:8px"></div>
   </div>
   <div class="card">
     <h3>🐞 Discord debug channel</h3>
@@ -744,6 +755,13 @@ async function drawErrors() {
 }
 // errors in this control panel itself go in the history too
 addEventListener('error', e => { try { fetch('/api/errors/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'control panel', msg: e.message, detail: `${(e.filename || '').split('/').pop()}:${e.lineno}:${e.colno}\n${e.error?.stack || ''}` }) }); } catch {} });
+async function discordSelfTest(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  try { const r = await api('/api/test/discord-selftest'); const box = $('dSelf');
+    const html = r.results.map(x => `<div class="help" style="margin:3px 0">${x.ok === false ? '❌' : x.ok ? '✅' : '🟡'} ${esc(x.label)}${x.detail ? ` <span class="muted">— ${esc(x.detail)}</span>` : ''}</div>`).join('');
+    if (box) box.innerHTML = html; const bad = r.results.filter(x => x.ok === false).length; toast(bad ? `🤖 Discord self-test: ${bad} problem${bad === 1 ? '' : 's'} (see the Test tab)` : '🤖 Discord self-test: everything passed ✅', 6000);
+  } catch {} finally { if (btn) { btn.disabled = false; btn.textContent = '🤖 Run the Discord self-test'; } }
+}
 // ✅ Test tab → Checklist: what's set up (checked by itself) + things to try once (you tick them, they're remembered on this computer)
 function testTab(t) {
   $('v-test').classList.toggle('checkmode', t === 'check'); $('v-test').classList.toggle('errmode', t === 'errors');
@@ -774,7 +792,7 @@ function drawChecklist() {
     ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/wheel/timer',{cmd:'end'}).catch(()=>{}),13000)).then(()=>toast('🎡 Spinning: the round timer ends 13 seconds from now'))")],
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
     ['money', 'A sub / bits / donation pop-up shows up on the wheel', T('Try it', "api('/api/wheel/show',{show:true}).then(()=>api('/api/test/wheel-boost',{kind:'bits',bits:500})).then(()=>toast('💎 Test 500 bits: the pop-up shows on the left of the Wheel tab'))")],
-    ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', ''],
+    ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', T('Self-test', "discordSelfTest()")],
     ['discordDebug', '🐞 A test problem shows up in the hidden #movie-royal-debug channel (and normal members can\'t see it)', T('Try it', "api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent: check #movie-royal-debug':'⚠️ Bot offline or channel not made yet'))")],
     ['discordClosed', '/suggest and /linktwitch work in Discord with Movie Royal CLOSED (24/7 bot)', T('Check bot', "cloudCheck()")],
     ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "api('/api/test/obs-mute',{}).then(r=>toast('🎥 OBS mic + camera off for 5 seconds'+(r.cam?'':' (camera not found)'))).catch(()=>{})")],
@@ -817,6 +835,7 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.type === 'toast') toast(esc(m.text));
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
+    if (m.type === 'updProgress') updBar(m);
     if (m.type === 'errorLogged') { clearTimeout(window.errT); window.errT = setTimeout(loadErrors, 800); }
     if (m.type === 'wheelRound' && WD) { WD.round = m.round; if (m.final) { WD.final = m.final; toast('⏱️ TIME! The wheel has spoken: 🏆 ' + esc(m.final.text), 6000); } drawRound(); if (view === 'wheel') drawWheelResult(); }
     if (m.type === 'wheelBoosts') drawBoosts(m.boosts);
@@ -942,7 +961,8 @@ function renderClaimBar() {
   b.innerHTML = `<span style="font-size:24px">✋</span><span class="grow"><b>${esc(c.waiting.name)}</b> is here for <b>${esc(w?.label || 'the winner')}</b>${w?.test ? ' <small class="muted">(test: nothing changes)</small>' : ''}<br><small class="muted">“${esc(String(c.waiting.text).slice(0, 90))}”</small></span>
     <button class="primary" onclick="api('/api/claim/accept').then(()=>toast('✅ Claimed!'))">✅ Accept winner</button><button class="danger" onclick="api('/api/claim/pass').then(()=>toast('⏭️ Passed: back in the pool, they keep their luck'))">⏭️ Pass</button>`;
 }
-function render() { renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderClaimBar(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
+function render() { if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+  renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderClaimBar(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }
@@ -998,7 +1018,8 @@ function renderHeader() {
     [`Letterboxd: ${lb.count} films${lb.rssError ? ' — ' + lb.rssError : ''}`, lb.count ? 'on' : ''],
     [`Game screen: ${st.overlays ? 'ready' : 'not open'}`, st.overlays ? 'on' : 'err']
   ].map(([t, c]) => `<span class="dot ${c}" title="${esc(t)}"></span>`).join('');
-  $('liveTag').innerHTML = S.live ? '<span class="live" title="Discord swaps are locked while you\'re live">LIVE</span>' : '';
+  $('liveTag').innerHTML = S.live ? (S.fakeLive ? '<span class="live" title="Pretend live (🧪 Test tab): only inside Movie Royal">LIVE (pretend)</span>' : '<span class="live" title="Discord swaps are locked while you\'re live">LIVE</span>') : '';
+  if ($('fakeLiveBtn')) { $('fakeLiveBtn').textContent = S.fakeLive ? '⚫ Stop pretending' : '🔴 Pretend I\'m live'; $('fakeLiveBtn').className = S.fakeLive ? 'danger' : 'primary'; }
   const o = S.owner;
   $('me').innerHTML = o ? `<span class="me" title="Signed in with Twitch">${o.avatar ? `<img src="${esc(proxy(o.avatar))}">` : ''}${esc(o.name)}</span>` : `<button class="twitch" onclick="location.href='/auth/twitch'">Sign in with Twitch</button>`;
   const peopleTab = document.querySelector('#nav [data-v="people"]'); peopleTab.innerHTML = `👥 People <span class="pill">${S.people.length}</span>`;
@@ -1589,7 +1610,7 @@ async function drawWheelTest() {
       ${B('📺 Preview the screen (8 sec)', T('/api/test/doom-preview', {}, 'Showing it on the game screen'))}${B('🎥 OBS: mic + camera off for 5 sec', "toast('Turning them off for 5 seconds…');api('/api/test/obs-mute',{}).then(r=>toast('✅ Back on'+(r.cam?'':' (camera not found in any scene)'))).catch(()=>{})")}
       <span class="help" style="margin:0">Neither one ends your stream.</span></div>
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">🔴 Going live</b>
-      ${B('Pretend I went live', T('/api/test/live', { live: true }, '🔴 Pretending you are live'))}${B('Pretend I went offline', T('/api/test/live', { live: false }, '⚫ Offline'))}
+      ${B('🔴 Pretend I went live', T('/api/test/live', { live: true }, '🔴 Pretending you are live (just inside Movie Royal)'))}${B('⚫ Stop pretending', T('/api/test/live', { live: false }, '⚫ Offline'))}
       ${B('🔔 Test alert in Chat tab', T('/api/test/alert', { kind: 'sub' }, 'Alert sent'), 'ghost')}</div>`;
 }
 async function peopleRefresh(btn) {
@@ -2649,7 +2670,17 @@ function showUpdate(r) {
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="try{localStorage.setItem('skipUpd','${esc(r.latest)}')}catch{};upd.close()">Skip this version</button><button onclick="upd.close()">Later</button><button class="primary" onclick="installLatest('${esc(r.url)}', this)">Install now</button></div>`;
   upd.showModal();
 }
-async function installLatest(url, btn) { btn.disabled = true; btn.textContent = 'Downloading… Movie Royal will restart'; await api('/api/update/install-latest', { url }); }
+async function installLatest(url, btn) { btn.disabled = true; btn.textContent = 'Downloading…'; updBar({ stage: 'download', got: 0, total: 0 }); try { await api('/api/update/install-latest', { url }); } catch { updBar(null); btn.disabled = false; btn.textContent = 'Try again'; } }
+// ⬇️ update progress: a bar while it downloads, then a note while it installs (the installer shows its own bar, then Movie Royal opens again)
+function updBar(m) {
+  let b = $('updBar');
+  if (!m) { b?.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'updBar'; b.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#000b;display:flex;align-items:center;justify-content:center'; document.body.appendChild(b); }
+  const pct = m.total ? Math.min(100, Math.round(m.got / m.total * 100)) : null, mb = n => (n / 1048576).toFixed(1);
+  b.innerHTML = `<div class="card" style="width:min(520px,92vw);margin:0;text-align:center"><h2 style="margin-top:0">${m.stage === 'install' ? '📦 Installing the update…' : '⬇️ Downloading the update…'}</h2>
+    <div style="height:16px;border-radius:9px;background:#ffffff18;overflow:hidden;margin:14px 0"><div style="height:100%;width:${m.stage === 'install' ? 100 : pct ?? 8}%;background:linear-gradient(90deg,#ffc94a,#ff6a3d);transition:width .25s${m.stage === 'install' || pct == null ? ';animation:updPulse 1s infinite alternate' : ''}"></div></div>
+    <p class="help" style="margin:0">${m.stage === 'install' ? 'Movie Royal closes now, the installer shows its progress, then Movie Royal opens again by itself (about 30 seconds). Your lists and settings are kept.' : pct != null ? `${pct}% · ${mb(m.got)} of ${mb(m.total)} MB` : `${mb(m.got)} MB so far…`}</p></div>`;
+}
 async function installFile(file) {
   if (!file) return;
   if (!confirm(`Install ${file.name}? Movie Royal will close, update, and open again. Your lists and history are kept.`)) return;

@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.23.0 (test build)
+- **🔴 Pretend I'm live** (🧪 Test tab): Movie Royal acts like you just went live (streamer respins refill, voided spots come back, movie count starts over, it shows LIVE (pretend)). It's only inside Movie Royal: Twitch, Discord and your channel point rewards don't change.
+- **📌 Movie Royal's pinned messages stay on top** in Discord: if someone pins something else, the bot moves its message back to the top of the pins by itself (and cleans up the "pinned a message" notice).
+- **↗ Go to the Battle / Wheel tab** button on the test pop-up window, depending on what's on stream.
+- **⬇️ Update progress bar:** updating from inside Movie Royal shows a download bar (%, MB). Then the installer shows its own progress bar instead of working invisibly, and Movie Royal opens again by itself.
+- **🤖 Discord self-test** (🧪 Test tab, and the checklist): checks the bot, the channels, the pinned messages (and that they're on top), the slash commands, that normal members can't see the debug channel and mods can't type in it, and the 24/7 bot. It also runs the /suggest and /mymovies code with a pretend user (nothing gets added). The results go to #movie-royal-debug too.
+
 ## 1.22.2 (test build)
 - **✋ Accept / Pass shows up on every tab:** when a movie winner types in chat, a green bar pops up at the top of whatever tab you're on, with **✅ Accept winner** and **⏭️ Pass**. The claim counts once you press one. Before, the buttons were only on the Battle tab's winner card, so the checklist test looked like it did nothing.
 
