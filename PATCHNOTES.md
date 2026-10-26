@@ -3,6 +3,12 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.13.6: What's new
+Everything since 1.13.4.
+
+- **☁️ 24/7 Discord bot answers faster:** `/linktwitch` replies right away and every command does one less lookup before answering. If something still goes wrong, the bot says why instead of "The application did not respond". Update the bot once with the 🔄 Update button in Settings → Discord (paste your Cloudflare token).
+- **No more 24/7 bot pop-up** when Movie Royal opens. The update button stays in Settings → Discord.
+
 ## v1.13.4: What's new
 Everything since 1.13.0.
 
