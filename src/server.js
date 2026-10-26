@@ -451,7 +451,7 @@ const twitchHandlers = {
 const isWinnerMsg = (w, m) => !!w && ((w.ownerLogin && m.login === w.ownerLogin.toLowerCase()) || (w.owner && norm(w.owner) === norm(m.name)));
 // 📌 a claimed movie gets pinned at the top of Twitch chat
 function pinWinner(w) {
-  if (!w || db.settings.pinWinner === false || !twitch.status.canChat) return;
+  if (!w || w.test || db.settings.pinWinner === false || !twitch.status.canChat) return; // (test battles never pin)
   if (!(w.kind === 'movies' || w.tmdbId) || w.spot) return;
   const n = stream().movies || 1, nth = n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
   const text = `📌🍿 ${nth} movie tonight: ${w.label}${w.sub ? ` (${w.sub})` : ''}${w.owner ? ` · picked by ${w.owner}` : ''}`;
@@ -554,7 +554,7 @@ function finishClaim(claimed, text) {
   live.claim.done = true; delete live.claim.waiting;
   if (claimed) pinWinner(live.claim.winner);
   const h = findHistory(live.claim.winner?.historyId); if (h) { h.claimed = claimed; historyVersion++; save(); }
-  if (live.claim.winner?.kind === 'movies') db.noShowStreak = claimed ? 0 : (db.noShowStreak || 0) + 1;
+  if (live.claim.winner?.kind === 'movies' && !live.claim.winner.test) db.noShowStreak = claimed ? 0 : (db.noShowStreak || 0) + 1;
   save();
   broadcast({ type: claimed ? 'claimed' : 'claimExpired', text: text || '' }, 'overlay');
   pushState();
@@ -1817,6 +1817,17 @@ app.get('/api/debug-report', (req, res) => { // everything Claude needs to find 
   }, 10000);
 }
 errlog.setOnNew(() => broadcast({ type: 'errorLogged' }, 'control'));
+app.post('/api/test/chat-join', (req, res) => { // someone with Discord movies "types in Twitch chat"
+  const on = activeSet(), p = discordPeople().find(x => !on.has(x.discordId) && getList('movies')?.entries.some(e => e.status === 'active' && e.backers?.[0]?.discordId === x.discordId)) || discordPeople()[0];
+  if (!p) return res.json({ ok: false, error: 'Nobody has Discord movies yet.' });
+  const name = p.twitch || p.name; twitchHandlers.chat({ login: name.toLowerCase(), name, text: 'hi! 👋' }); res.json({ ok: true, name: p.name });
+});
+app.post('/api/test/sitout', async (req, res) => { // someone types !sitout, then !imback a few seconds later
+  const p = discordPeople().find(x => getList('movies')?.entries.some(e => ['active', 'away'].includes(e.status) && e.backers?.[0]?.discordId === x.discordId));
+  if (!p) return res.json({ ok: false, error: 'Nobody has Discord movies yet.' });
+  const name = p.twitch || p.name, say = t => twitchHandlers.chat({ login: name.toLowerCase(), name, text: t });
+  say(db.settings.sitOutCommand || '!sitout'); setTimeout(() => say(db.settings.backCommand || '!imback'), 5000); res.json({ ok: true, name: p.name });
+});
 app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyone with a movie typed in chat
   if (live.phase === 'ended') leaveEnded(); // a battle that finished but never got "Next round"
   if (db.activeListId !== 'movies') { db.activeListId = 'movies'; previewIds = null; }
@@ -1825,7 +1836,8 @@ app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyo
   save(); pushState(); refreshPreview(true); res.json({ ok: true, people: st.active.length, spots: sp.total });
 });
 app.post('/api/test/claim-chat', (req, res) => { // Test tab: the movie winner "types in chat"
-  const w = live.lastWinner; if (!w || w.test || w.spot || live.phase !== 'ended') return res.json({ ok: false, error: 'Finish a real battle first (the winner card has to be up).' });
+  const w = live.lastWinner; if (!w || w.spot || live.phase !== 'ended') return res.json({ ok: false, error: w?.spot ? 'A wild spot won: run the test battle again until a movie wins.' : 'Run a battle first (the winner card has to be up).' });
+  if (!live.claim || live.claim.done) { live.claim = { winner: w, endsAt: Date.now() + 30000, claimed: false, done: false }; live.claim.timer = setTimeout(() => finishClaim(false), 30000); broadcast({ type: 'claimStart', winner: w, seconds: 30, recent: [] }, 'overlay'); } // start the claim timer if it isn't going
   const login = (w.ownerLogin || norm(w.owner || 'winner')).toLowerCase();
   twitchHandlers.chat({ login, name: w.owner || login, text: "I'm here! 🍿" }); res.json({ ok: true });
 });
@@ -2001,7 +2013,7 @@ app.post('/api/claim/accept', (req, res) => { // ✅ they're here and they're wa
 app.post('/api/claim/pass', (req, res) => { // ⏭️ not tonight (too late, etc.): their movie goes back in and they keep their luck
   const c = live.claim, w = c?.winner || live.lastWinner; if (!w) return res.status(400).json({ error: 'No winner to pass on.' });
   if (c) { clearTimeout(c.timer); c.done = true; c.claimed = false; c.passed = true; delete c.waiting; } else live.claim = { winner: w, done: true, claimed: false, passed: true };
-  if (getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); if (!w.passed && stream().movies > 0) stream().movies--; } // not watched: it doesn't count as tonight's movie
+  if (!w.test && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); if (!w.passed && stream().movies > 0) stream().movies--; } // not watched: it doesn't count as tonight's movie
   const h = findHistory(w.historyId); if (h) { h.claimed = 'passed'; h.outcome = 'passed'; historyVersion++; }
   live.lastWinner.passed = true; save();
   broadcast({ type: 'claimPassed', winner: w }, 'overlay'); pushState(); refreshPreview(); res.json({ ok: true });

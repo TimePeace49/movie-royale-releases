@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.8 (test build)
+- **✅ Checklist: "Try it" on everything you can test offline.** You don't need to be live or have anyone in chat:
+  - someone typing in chat to join, a winner claiming (✅ Accept / ⏭️ Pass), `!sitout` / `!imback`
+  - a chaos event hitting the battle, a number battle
+  - the wheel spinning and the round timer ending, a channel point respin on the wheel, a bits pop-up, OBS
+- **Claims work on test battles too,** and they change nothing: no pin in chat, no luck change, nothing in history.
+
 ## 1.21.7 (test build)
 - **Tabs stay put when you scroll:** the main tabs never move. The sub tabs and tool bars stay at the top while the rest scrolls: 🧪 Tests / ✅ Checklist / ⚠️ Errors, the wheel's ✏️ Spots / ⚙️ Wheel settings…, 📜 History's tabs and search, and 👥 People's add and 🔄 Refresh bar.
 

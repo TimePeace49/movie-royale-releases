@@ -754,21 +754,21 @@ function drawChecklist() {
   const go = (v, s2) => `<button class="ghost" style="padding:3px 9px" onclick="setView('${v}')${s2 ? `;setSub('${s2}')` : ''}">Fix it</button>`;
   const man = (k, label, act) => `<span><input type="checkbox" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span>${label}${ckDone[k] ? ` <small class="muted">(${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span>${act || ''}</span>`;
   const T = (txt, js) => `<button class="ghost" style="padding:3px 9px" onclick="peek(true);${js}">${txt}</button>`; // stays on the checklist: the pop-up window shows what happens
-  const manual = [
+  const manual = [ // "Try it" = works offline (not live, nobody else needed); the pop-up window shows what happens
     ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
-    ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').catch(()=>{})")],
-    ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', ''],
+    ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').then(()=>toast('Test battle! When it ends, press Next round on the winner card and watch the balls come back')).catch(()=>{})")],
+    ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', T('Try it', "api('/api/test/chat-join').then(r=>toast(r.ok?'💬 '+esc(r.name)+' typed in chat: their movies join the cliff':'⚠️ '+esc(r.error)))")],
+    ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', T('Try it', "api('/api/test/claim-chat').then(r=>toast(r.ok?'✋ The winner typed in chat: press ✅ Accept or ⏭️ Pass on the Battle tab winner card':'⚠️ '+esc(r.error)+' (Try it on the test Discord battle first)', 7000))")],
+    ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message in your Twitch chat'))")],
+    ['sitout', '!sitout and !imback work in chat', T('Try it', "api('/api/test/sitout').then(r=>toast(r.ok?'🛌 '+esc(r.name)+' typed !sitout (their movies leave the cliff), then !imback in 5 seconds':'⚠️ '+esc(r.error), 7000))")],
+    ['chaos', 'A channel point / bits chaos event hits the battle', T('Try it', "api('/api/test/battle',{count:12}).then(()=>setTimeout(()=>api('/api/test/redeem',{event:'comet',name:'test_viewer'}),7000)).then(()=>toast('Practice battle: a ☄️ comet hits once the fight starts'))")],
     ['numbers', 'A 🔢 number battle plays', T('Try it', "api('/api/lists/numbers',{from:1,to:10}).then(()=>toast('🔢 1 to 10 battle made: it is on the cliff now'))")],
-    ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', ''],
-    ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message'))")],
-    ['sitout', '!sitout and !imback work in chat', ''],
-    ['chaos', 'A channel point / bits chaos event hits the battle', ''],
-    ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Wheel tab', "setView('wheel')")],
-    ['wheelPoints', 'A wheel channel point reward (respin / move) works', ''],
-    ['money', 'A sub / bits / donation pop-up shows up on the wheel', ''],
+    ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/wheel/timer',{cmd:'end'}).catch(()=>{}),13000)).then(()=>toast('🎡 Spinning: the round timer ends 13 seconds from now'))")],
+    ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
+    ['money', 'A sub / bits / donation pop-up shows up on the wheel', T('Try it', "api('/api/wheel/show',{show:true}).then(()=>api('/api/test/wheel-boost',{kind:'bits',bits:500})).then(()=>toast('💎 Test 500 bits: the pop-up shows on the left of the Wheel tab'))")],
     ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', ''],
     ['discordClosed', '/suggest and /linktwitch work in Discord with Movie Royal CLOSED (24/7 bot)', T('Check bot', "cloudCheck()")],
-    ['obs', 'OBS: the game screen shows in your scene with sound', ''],
+    ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "api('/api/test/obs-mute',{}).then(r=>toast('🎥 OBS mic + camera off for 5 seconds'+(r.cam?'':' (camera not found)'))).catch(()=>{})")],
     ['update', 'Movie Royal updates itself (Settings → Account)', '']
   ];
   const doneN = manual.filter(([k]) => ckDone[k]).length;
