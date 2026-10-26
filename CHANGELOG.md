@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.26.0 (test build)
+- **⚠️ on the 🧪 Test tab** when something goes wrong: a red number shows how many new errors there are. It goes away once you open ⚠️ Errors.
+- **📺 Preview window:** it comes back by itself when you go back to the 🧪 Test tab. The Test tab has 📺 Show / Hide the preview window, and **⧉ Pop out to another monitor**, which opens it in its own window you can drag anywhere (no sound; Movie Royal already plays it). The preview's top bar has ⧉ Pop out too. Close the popped-out window to bring it back.
+- **Ctrl+H** turns help mode on and off.
+- **⌨️ Key binds** (Settings → ⌨️ Key binds): keyboard shortcuts for every tab, sorted by tab. A few: Space spins the wheel, R respins, ↑ / ↓ move it, Ctrl+Z undoes, G starts the battle, Y / P accept / pass the winner, N next round, 1–0 fire powers, Alt+1 to Alt+0 jump between tabs. Click any key to change it (Esc keeps it, Backspace turns it off). Changes save right away.
+  - Each key only works on its own tab, and never while you're typing in a box (chat, names, titles…). Only the Ctrl / Alt ones work everywhere.
+- ✅ Checklist: key binds and the pop-out preview.
+
 ## 1.25.2 (test build)
 - **✅ Checklist is easier to read:** every item is its own box with a colored edge (red = needs fixing, yellow = optional, green = working, purple = still to try), and its button sits right next to it, so it's easy to tell which button goes with which line.
 

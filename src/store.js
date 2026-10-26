@@ -57,6 +57,7 @@ const defaults = () => ({
     discordDebug: true,      // 🐞 a mods-only #movie-royal-debug channel where the bot posts Discord problems
     claimApprove: true,      // the winner types in chat: the claim timer stops and YOU press ✅ Accept or ⏭️ Pass
     pinWinner: true,         // a claimed movie gets pinned in Twitch chat (title, year, who picked it)
+    keybinds: {}, // ⌨️ key binds you changed (id → key, '' = off); the rest use the defaults in control.html
     sitOutCommand: '!sitout', backCommand: '!imback', // chat: take your movies out of tonight's battles / put them back
     joinCommand: '!join',
     // channel point reward title -> event

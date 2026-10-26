@@ -288,6 +288,12 @@
   #v-test .card + .card { margin-top:0; }
   #v-test.checkmode > .card:not(#tCheck):not(.ttabs), #v-test.errmode > .card:not(#tErr):not(.ttabs) { display:none; }
   #v-test:not(.checkmode) > #tCheck, #v-test:not(.errmode) > #tErr { display:none; }
+  .kbGrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:6px 12px; }
+  .kbRow { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:10px; background:#ffffff0a; border:1px solid #ffffff14; }
+  .kbRow.clash { border-color:var(--bad); }
+  .kbKey { min-width:92px; font-family:ui-monospace, Consolas, monospace; font-weight:800; padding:4px 10px; border-radius:8px; background:#2a1d4a; border:1px solid #9b7bff; border-bottom-width:3px; }
+  .kbKey.off { opacity:.55; font-weight:400; } .kbKey.wait { background:var(--gold); color:#1a1030; border-color:var(--gold); }
+  #errNav:not(:empty) { display:inline-block; background:var(--bad); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:5px; line-height:17px; box-shadow:0 0 0 2px #0006; animation:updPulse 1s ease-in-out infinite alternate; }
   #errN:not(:empty) { background:var(--bad); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:4px; }
   .errl { border-bottom:1px solid var(--line); padding:8px 0; } .errl b { color:#ffb4a8; }
   #errTech { width:100%; min-height:420px; font:12px/1.4 Consolas, monospace; white-space:pre; }
@@ -329,13 +335,13 @@
     <button data-v="tchat">💬 Chat</button>
     <button data-v="people">👥 People</button>
     <button data-v="history">📜 History</button>
-    <button data-v="test">🧪 Test</button>
+    <button data-v="test">🧪 Test<span id="errNav" title="Something went wrong: see 🧪 Test → ⚠️ Errors"></span></button>
     <button data-v="help">❓ Help</button>
     <button data-v="settings">⚙️ Settings</button>
   </nav>
   <div class="dots" id="dots"></div>
   <span id="liveTag"></span>
-  <button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
+  <button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does (Ctrl+H)" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
   <div id="me"></div>
 </header>
 
@@ -355,7 +361,7 @@
   <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royal game"></iframe>
   <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
   <div class="pgrip" data-d="se" title="Drag to resize"></div><div class="pgrip" data-d="sw" title="Drag to resize"></div><div class="pgrip" data-d="e"></div><div class="pgrip" data-d="w"></div><div class="pgrip" data-d="s"></div>
-  <div id="peekBar" title="Drag to move. Drag a corner or edge to resize."><span>📺 What's on stream right now</span><button id="peekGo" onclick="event.stopPropagation();peek(false);setView(S?.wheelShow ? 'wheel' : 'battle')">↗ Battle tab</button><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
+  <div id="peekBar" title="Drag to move. Drag a corner or edge to resize."><span>📺 What's on stream right now</span><button onclick="event.stopPropagation();previewPop()" title="Open the preview in its own window (put it on another monitor)">⧉ Pop out</button><button id="peekGo" onclick="event.stopPropagation();peek(false);setView(S?.wheelShow ? 'wheel' : 'battle')">↗ Battle tab</button><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
   <div class="away"><div style="font-size:36px">🪟</div><div>The game is open in its own window.</div><button onclick="event.stopPropagation();bringBack()">Bring it back here</button></div>
 </div>
 
@@ -555,6 +561,8 @@
   <div class="card" id="tCheck" style="grid-column:1 / -1"></div>
   <div class="card" id="tErr" style="grid-column:1 / -1"></div>
   <div class="card" style="grid-column:1 / -1">
+    <div class="row" style="align-items:center;gap:10px;margin-bottom:10px"><h3 class="grow" style="margin:0">📺 Preview window</h3><button class="primary" id="prevBtn" onclick="previewToggle()">📺 Hide the preview window</button><button onclick="previewPop()" title="Open the preview in its own window (put it on another monitor)">⧉ Pop out to another monitor</button></div>
+    <p class="help" style="margin:0 0 12px">A little window that shows what's on stream while you test. It comes back by itself when you open the 🧪 Test tab. ⧉ Pop out puts it in its own window you can drag to another monitor (no sound; Movie Royal already plays it). Close that window to bring it back here.</p>
     <div class="row" style="align-items:center;gap:10px"><h3 class="grow" style="margin:0">🔴 Pretend I'm live</h3><span id="fakeLiveTag"></span>
       <button class="primary" onclick="api('/api/test/live',{live:!S.fakeLive})" id="fakeLiveBtn">🔴 Pretend I'm live</button></div>
     <p class="help" style="margin:6px 0 0">Movie Royal acts like you just went live: streamer respins refill, voided spots come back, the movie count starts over, and it shows LIVE. It's fake: Twitch, Discord and your channel point rewards don't change. Press again to stop.</p>
@@ -672,6 +680,7 @@
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
     <button data-s="sounds">🔊 Sounds</button>
+    <button data-s="keys">⌨️ Key binds</button>
     <button data-s="notes">📝 Patch notes</button>
     <p class="help" style="margin-top:14px">Need a hand connecting things? <a href="/setup.html">🧭 Setup guide</a></p>
   </div>
@@ -769,7 +778,7 @@ async function cliffWhy() {
 // ⚠️ Test tab → Errors: the history of everything that went wrong, in plain words, and a tech report to paste to Claude
 let errView = (() => { try { return localStorage.errView || 'plain'; } catch { return 'plain'; } })(), errList = [];
 function errSeen() { try { localStorage.errSeen = Date.now(); } catch {} errBadge(); }
-function errBadge() { let seen = 0; try { seen = Number(localStorage.errSeen || 0); } catch {} const n = errList.filter(e => e.at > seen).length; if ($('errN')) $('errN').textContent = n ? n : ''; }
+function errBadge() { let seen = 0; try { seen = Number(localStorage.errSeen || 0); } catch {} const n = errList.filter(e => e.at > seen).length; if ($('errN')) $('errN').textContent = n ? n : ''; if ($('errNav')) $('errNav').textContent = n ? '⚠️ ' + n : ''; }
 async function loadErrors() { errList = await fetch('/api/errors').then(r => r.json()).catch(() => errList); errBadge(); if ($('v-test')?.classList.contains('errmode')) { errSeen(); drawErrors(); } }
 async function drawErrors() {
   const box = $('tErr'); if (!box) return;
@@ -799,9 +808,9 @@ async function discordSelfTest(btn) {
 }
 // ❓ help mode: click any button, box or heading and the Help tab opens at the part that explains it
 function helpMode(on) {
-  document.body.classList.toggle('helpmode', on);
+  document.body.classList.toggle('helpmode', on); if (!on && $('hmDlg')?.open) $('hmDlg').close();
   $('helpModeTip')?.remove();
-  if (on) { const t = document.createElement('div'); t.id = 'helpModeTip'; t.textContent = '❓ Click anything to read what it does (Esc to stop)'; document.body.appendChild(t); }
+  if (on) { const t = document.createElement('div'); t.id = 'helpModeTip'; t.textContent = '❓ Click anything to read what it does (Esc or Ctrl+H to stop)'; document.body.appendChild(t); }
 }
 // ❓ help mode: clicking anything explains it right there (helpinfo.js), plus what the Help tab says about it
 const hmOn = () => document.body.classList.contains('helpmode');
@@ -812,6 +821,117 @@ document.addEventListener('click', e => {
   helpExplain(e.target.closest('button, label, summary, th, a, h2, h3, h4, select, input, textarea, .chip, td, .pill') || e.target);
 }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && hmOn() && !$('hmDlg').open) helpMode(false); });
+// ⌨️ KEY BINDS: each one only works on its own tab (or "any tab"), never while you're typing in a box (only the Ctrl / Alt ones do).
+// Each key presses the same button you'd click, so it does exactly what the button does. Changed keys are saved in settings.keybinds.
+const kbVis = el => !!el && el.offsetParent !== null && !el.disabled;
+function kbClick(scope, re, why) { // press the visible button in that part of the screen whose words match
+  const b = [...document.querySelectorAll(`${scope} button, ${scope} .btn`)].find(x => kbVis(x) && re.test(x.textContent.trim()));
+  if (b) { b.click(); return true; } toast(`⌨️ ${why || 'That button'} isn't on screen right now`); return false;
+}
+function kbFocus(scope, re) { const i = [...document.querySelectorAll(`${scope} input, ${scope} textarea`)].find(x => kbVis(x) && re.test(x.placeholder || '')); if (i) { i.focus(); i.select?.(); } else toast('⌨️ No box to type in here right now'); }
+const kbPower = i => { const b = [...document.querySelectorAll('#events button')].filter(kbVis)[i]; if (b) { b.click(); toast('⚡ ' + esc(b.textContent.trim())); } };
+const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings' };
+const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typing?]
+  ['help', 'any', '❓ Help mode on / off', 'Ctrl+H', () => helpMode(!hmOn()), true],
+  ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
+  ['b-start', 'battle', '▶ START ROYAL', 'G', () => kbClick('#v-battle', /START ROYAL/, 'START ROYAL')],
+  ['b-timer', 'battle', '⏱️ 2-min chat timer, then start', 'T', () => kbClick('#v-battle', /chat timer/i, 'The chat timer')],
+  ['b-vote', 'battle', '🗳️ Chat vote on the map', 'V', () => kbClick('#v-battle', /Chat vote|End vote now/, 'Chat vote')],
+  ['b-shuffle', 'battle', '🔀 Shuffle the pieces', 'X', () => kbClick('#v-battle', /^🔀 Shuffle$/, 'Shuffle')],
+  ['b-full', 'battle', '⛶ Fullscreen', 'F', () => kbClick('#v-battle', /Fullscreen/, 'Fullscreen')],
+  ['b-skip', 'battle', '⏭ Skip the replay', 'K', () => kbClick('#v-battle', /Skip replay/, 'Skip replay')],
+  ['b-claim', 'battle', '⏱️ Start the 30s claim timer', 'C', () => kbClick('#v-battle', /Start 30s claim timer/, 'The claim timer')],
+  ['b-accept', 'battle', '✅ Accept the winner', 'Y', () => kbClick('#claimBar, #v-battle', /Accept winner|They're here/, 'Accept')],
+  ['b-pass', 'battle', '⏭️ Pass on the winner', 'P', () => kbClick('#claimBar, #v-battle', /^⏭️ Pass/, 'Pass')],
+  ['b-next', 'battle', 'Next round →', 'N', () => kbClick('#v-battle', /Next round/, 'Next round')],
+  ['b-points', 'battle', '⭐ Channel point chaos on / off', 'Alt+P', () => kbClick('#v-battle', /Points (ON|OFF)/, 'Points ON/OFF')],
+  ['b-bits', 'battle', '💎 Bits chaos on / off', 'Alt+B', () => kbClick('#v-battle', /Bits (ON|OFF)/, 'Bits ON/OFF')],
+  ['b-picks', 'battle', '🎬 Movie picks open / closed', '', () => kbClick('#v-battle', /Movie picks (OPEN|CLOSED)/, 'Movie picks')],
+  ['b-roll', 'battle', '📣 2-minute roll call', '', () => kbClick('#v-battle', /roll call/i, 'Roll call')],
+  ['b-new', 'battle', '➕ New battle', '', () => newList()],
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((k, i) => [`b-pow${i + 1}`, 'battle', `⚡ Power #${i + 1} in the Powers row`, String(k), () => kbPower(i)]),
+  ['p-new', 'pool', '➕ New battle', 'N', () => newList()],
+  ['p-find', 'pool', '🔎 Jump to the filter box', '/', () => kbFocus('#v-pool', /filter|search/i)],
+  ['c-open', 'chat', '▶ Open / close joining', 'O', () => kbClick('#v-chat', /(Open|Close) joining/, 'Open joining')],
+  ['c-start', 'chat', '▶ START CHAT BATTLE', 'G', () => kbClick('#v-chat', /START CHAT BATTLE/, 'Start chat battle')],
+  ['c-find', 'chat', '🔎 Jump to Find someone', '/', () => kbFocus('#v-chat', /find/i)],
+  ['g-open', 'giveaway', '▶ Open / close entries', 'O', () => kbClick('#v-giveaway', /(Open|Close) entries/, 'Open entries')],
+  ['g-start', 'giveaway', '▶ START GIVEAWAY', 'G', () => kbClick('#v-giveaway', /START GIVEAWAY/, 'Start giveaway')],
+  ['g-reroll', 'giveaway', '🔁 Reroll', 'R', () => kbClick('#v-giveaway', /Reroll/, 'Reroll')],
+  ['w-spin', 'wheel', '🎡 SPIN', 'Space', () => wSpin('spin')],
+  ['w-respin', 'wheel', '🔁 Respin', 'R', () => wSpin('respin')],
+  ['w-mine', 'wheel', '🎟️ Streamer respin', 'M', () => wMine()],
+  ['w-up', 'wheel', '⬆️ Up', 'ArrowUp', () => wSpin('up')],
+  ['w-down', 'wheel', '⬇️ Down', 'ArrowDown', () => wSpin('down')],
+  ['w-undo', 'wheel', '⏪ Undo', 'Ctrl+Z', () => wUndo()],
+  ['w-show', 'wheel', '🙈 Hide / 📺 show the wheel on stream', 'H', () => wShow()],
+  ['w-timer', 'wheel', '⏱️ Round timer stop / start', 'S', () => wRoundCmd(WD?.round?.state === 'running' ? 'pause' : 'start')],
+  ['w-add', 'wheel', '⏱️ Round timer +30 seconds', '=', () => wRoundCmd('add', 30)],
+  ['w-end', 'wheel', '⏹ End the round now (asks first)', 'E', () => { if (confirm('End the round now? Whatever the wheel is on wins.')) wRoundCmd('end'); }],
+  ['t-msg', 'tchat', '💬 Jump to the message box', 'Enter', () => kbFocus('#v-tchat', /message|say|send|chat/i)],
+  ['t-find', 'tchat', '🔎 Jump to Find someone', '/', () => kbFocus('#v-tchat', /find|name|search/i)],
+  ['pe-refresh', 'people', '🔄 Refresh', 'R', () => kbClick('#v-people', /Refresh/, 'Refresh')],
+  ['pe-find', 'people', '🔎 Jump to the search box', '/', () => kbFocus('#v-people', /search|find|filter|name/i)],
+  ['h-find', 'history', '🔎 Jump to the search box', '/', () => kbFocus('#v-history', /search/i)],
+  ['x-tests', 'test', '🧪 Tests', '1', () => testTab('tests')],
+  ['x-check', 'test', '✅ Checklist', '2', () => testTab('check')],
+  ['x-errors', 'test', '⚠️ Errors', '3', () => testTab('errors')],
+  ['x-chat', 'test', '💬 Pretend chat on / off', 'C', () => pchat(!$('pchat').classList.contains('on'))],
+  ['x-live', 'test', '🔴 Pretend I\'m live on / off', 'L', () => api('/api/test/live', { live: !S.fakeLive })],
+  ['x-prev', 'test', '📺 Preview window on / off', 'V', () => previewToggle()],
+  ['x-pop', 'test', '⧉ Pop the preview out', 'Shift+V', () => previewPop()],
+  ['x-battle', 'test', '⚔️ Run a test Discord battle', 'B', () => kbClick('#v-test', /Run a test Discord battle/, 'Test Discord battle')],
+  ['x-claim', 'test', '✋ Winner types in chat', 'W', () => claimTest()],
+  ['s-save', 'settings', '💾 Save', 'Ctrl+S', () => saveSettings(), true],
+];
+const kbKey = id => { const m = S?.settings?.keybinds || {}; return id in m ? m[id] : (KEYBINDS.find(k => k[0] === id) || [])[3] || ''; };
+function kbCombo(e) { // the key you pressed, as text: "Ctrl+Z", "Shift+V", "Space", "G"
+  if (['Control', 'Alt', 'Shift', 'Meta', 'AltGraph'].includes(e.key)) return '';
+  let k = e.key === ' ' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  if (/^Digit\d$/.test(e.code) && (e.altKey || e.ctrlKey)) k = e.code.slice(5); // Alt+1 types odd characters on some keyboards
+  const single = k.length === 1 && !/[A-Z0-9]/.test(k); // ?, =, / … already include Shift
+  return [e.ctrlKey || e.metaKey ? 'Ctrl' : '', e.altKey ? 'Alt' : '', e.shiftKey && !single ? 'Shift' : '', k].filter(Boolean).join('+');
+}
+const kbTyping = t => !!t && (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|range|color|file)$/.test(t.type)));
+let kbCatch = null; // the key bind you're changing (waiting for a key)
+document.addEventListener('keydown', e => {
+  if (kbCatch) { // changing a key bind: this press is the new key
+    const c = kbCombo(e); if (!c) return; e.preventDefault(); e.stopPropagation();
+    const id = kbCatch; kbCatch = null;
+    if (e.key === 'Escape') return drawKeybinds();
+    kbSet(id, e.key === 'Backspace' || e.key === 'Delete' ? '' : c); return;
+  }
+  if (e.repeat || e.defaultPrevented) return;
+  const c = kbCombo(e); if (!c) return;
+  const typing = kbTyping(e.target), modal = [...document.querySelectorAll('dialog')].some(d => d.open);
+  const bind = KEYBINDS.find(k => kbKey(k[0]) === c && (k[1] === 'any' || k[1] === view));
+  if (!bind) return;
+  const anyTimeKey = bind[5] || /^(Ctrl|Alt)\+/.test(c);
+  if ((typing || modal || hmOn()) && !(anyTimeKey && (bind[0] === 'help' || !modal))) return; // typing in a box / a window is open: leave the keys alone
+  if (hmOn() && bind[0] !== 'help') return;
+  if (/^b-pow/.test(bind[0]) && document.fullscreenElement === $('stage')) return; // fullscreen already has 1–9, 0
+  e.preventDefault(); e.stopPropagation();
+  try { bind[4](); } catch (err) { console.error(err); }
+});
+async function kbSet(id, key) {
+  const m = { ...(S.settings.keybinds || {}) }, def = (KEYBINDS.find(k => k[0] === id) || [])[3] || '';
+  if (key === def) delete m[id]; else m[id] = key;
+  S.settings.keybinds = m; drawKeybinds();
+  try { await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keybinds: m }) }); toast(key ? `⌨️ Saved: ${esc(key)}` : '⌨️ Key bind turned off'); } catch {}
+}
+async function kbResetAll() { if (!confirm('Put every key bind back to how it came?')) return; S.settings.keybinds = {}; drawKeybinds(); await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keybinds: {} }) }); toast('⌨️ Key binds are back to how they came'); }
+function kbStart(id) { kbCatch = id; drawKeybinds(); }
+function drawKeybinds() {
+  const box = $('kbBody'); if (!box) return;
+  const groups = Object.keys(TAB_NAMES).map(t => [t, KEYBINDS.filter(k => k[1] === t)]).filter(([, l]) => l.length);
+  const clash = (k) => { const key = kbKey(k[0]); return key && KEYBINDS.some(o => o[0] !== k[0] && kbKey(o[0]) === key && (o[1] === k[1] || o[1] === 'any' || k[1] === 'any')); };
+  box.innerHTML = `<div class="row" style="align-items:center;gap:8px;margin-bottom:6px"><span class="help grow" style="margin:0">Click a key to change it, then press the new key (Esc = keep it, Backspace = turn it off). Changes save right away. Each key only works on its own tab, and never while you're typing in a box, so typing in chat or a name box is safe. Only the Ctrl / Alt ones work anywhere. If you clicked inside the game screen, click outside it first.</span><button class="ghost" onclick="kbResetAll()">↺ Put them all back</button></div>
+    ${groups.map(([t, l]) => `<h4 style="margin:14px 0 6px">${TAB_NAMES[t]}${t === 'any' ? '' : ' tab'}</h4><div class="kbGrid">${l.map(k => { const key = kbKey(k[0]), def = k[3], wait = kbCatch === k[0];
+      return `<div class="kbRow${clash(k) ? ' clash' : ''}"><span class="grow">${esc(k[2])}${clash(k) ? ' <small style="color:var(--bad)">(same key as another one)</small>' : ''}</span>
+        <button class="kbKey${wait ? ' wait' : ''}${key ? '' : ' off'}" title="Click, then press the new key" onclick="kbStart('${k[0]}')">${wait ? 'Press a key…' : key ? esc(key) : 'not set'}</button>
+        <button class="ghost" style="padding:3px 8px;visibility:${key !== def ? 'visible' : 'hidden'}" title="Put this one back to how it came (${esc(def || 'not set')})" onclick="kbSet('${k[0]}', '${esc(def)}')">↺</button></div>`; }).join('')}</div>`).join('')}`;
+}
+
 const hmClean = t => String(t || '').replace(/\s+/g, ' ').trim();
 function hmLabel(el) {
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
@@ -939,6 +1059,8 @@ function drawChecklist() {
     ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/wheel/timer',{cmd:'end'}).catch(()=>{}),13000)).then(()=>toast('🎡 Spinning: the round timer ends 13 seconds from now'))")],
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
     ['wheelMove', '↕️ A viewer redeems Move a spot and types up / down in chat', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>{pchat(true,'test_viewer');pcRedeem('move');toast('↕️ test_viewer redeemed a Move: press up or down in 💬 Pretend chat',7000)},11000)).then(()=>toast('🎡 Spinning first…'))")],
+    ['keys', '⌨️ Key binds work (Space spins on the Wheel tab, Ctrl+H help mode…)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('keys')">See them</button>`],
+    ['prevPop', '⧉ The preview window pops out to another monitor', `<button class="ghost" style="padding:3px 9px" onclick="previewPop()">Try it</button>`],
     ['pchat', '💬 Pretend chat: type as any viewer and see Movie Royal\'s replies', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true)">Open it</button>`],
     ['money', 'A sub / bits / donation pop-up shows up on the wheel', T('Try it', "api('/api/wheel/show',{show:true}).then(()=>api('/api/test/wheel-boost',{kind:'bits',bits:500})).then(()=>toast('💎 Test 500 bits: the pop-up shows on the left of the Wheel tab'))")],
     ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', T('Self-test', "discordSelfTest()")],
@@ -1009,6 +1131,7 @@ function setView(v) {
   if (S && v === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); // Battle tab = the battle on stream
   if (S && v === 'wheel' && !S.wheelShow) api('/api/wheel/show', { show: true }).catch(() => {}); // Wheel tab = the wheel on stream
   if (v === 'wheel') peekOn = false; // the Wheel tab shows the wheel itself: no preview window (💬 Pretend chat stays open)
+  if (v === 'test' && !(prevWin && !prevWin.closed)) peekOn = true; // back on the Test tab: the preview window comes back (unless it's popped out)
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
   if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
@@ -1019,7 +1142,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'keys') setTimeout(drawKeybinds, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -1043,7 +1166,17 @@ function placeStage() {
   if (view === 'battle' || !peekOn) st.classList.remove('peek');
 }
 let peekOn = false;
-function peek(on = true) { peekOn = on; placeStage(); }
+function peek(on = true) { if (on && prevWin && !prevWin.closed) return; peekOn = on; placeStage(); drawPrevBtns(); } // (popped out on another monitor: that window shows it)
+let prevWin = null;
+function previewPop() { // 📺 the preview in its own window, for another monitor (no sound: the app plays it)
+  if (prevWin && !prevWin.closed) { prevWin.focus(); return; }
+  prevWin = window.open('/game.html?preview=1', 'royal-preview', 'width=960,height=540');
+  if (!prevWin) return toast('Your browser blocked the pop-up. Allow pop-ups for this page.');
+  peekOn = false; placeStage(); drawPrevBtns();
+  const iv = setInterval(() => { if (!prevWin || prevWin.closed) { clearInterval(iv); prevWin = null; drawPrevBtns(); if (view === 'test') peek(true); } }, 800);
+}
+function previewToggle() { if (prevWin && !prevWin.closed) { prevWin.close(); prevWin = null; peek(true); } else peek(!peekOn); drawPrevBtns(); }
+function drawPrevBtns() { const b = $('prevBtn'), popped = prevWin && !prevWin.closed; if (b) b.textContent = popped ? '📺 Bring the preview back here' : peekOn ? '📺 Hide the preview window' : '📺 Show the preview window'; }
 function peekSave() { const r = $('stage').getBoundingClientRect(); try { localStorage.peekPos = JSON.stringify({ x: r.left, y: r.top, w: r.width, h: r.height }); } catch {} }
 function peekBig() { const small = $('stage').getBoundingClientRect().width > 700, w = small ? 560 : Math.min(innerWidth - 40, 1280), h = Math.round(w * 9 / 16) + 34; try { localStorage.peekPos = JSON.stringify(small ? { w, h } : { x: (innerWidth - w) / 2, y: Math.max(10, (innerHeight - h) / 2), w, h }); } catch {} placeStage(); }
 (() => { // drag the pop-up by its top bar; remember where it was left
@@ -1115,7 +1248,7 @@ function renderClaimBar() {
   b.innerHTML = `<span style="font-size:24px">✋</span><span class="grow"><b>${esc(c.waiting.name)}</b> is here for <b>${esc(w?.label || 'the winner')}</b>${w?.test ? ' <small class="muted">(test: nothing changes)</small>' : ''}<br><small class="muted">“${esc(String(c.waiting.text).slice(0, 90))}”</small></span>
     <button class="primary" onclick="api('/api/claim/accept').then(()=>toast('✅ Claimed!'))">✅ Accept winner</button><button class="danger" onclick="api('/api/claim/pass').then(()=>toast('⏭️ Passed: back in the pool, they keep their luck'))">⏭️ Pass</button>`;
 }
-function render() { if (view === 'wheel' && peekOn) placeStage(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderClaimBar(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -2644,6 +2777,7 @@ function openSettings(force) {
       <p class="help">The test never changes anything in OBS. It lists your sources so you can pick your mic and camera from the boxes above.</p>`,
     bans: `<div id="bansSlot"></div>`,
     sounds: `<div id="soundsSlot"></div>`,
+    keys: `<h3>⌨️ Key binds</h3><div id="kbBody"></div>`,
     notes: `<h3>📝 Patch notes</h3><p class="help">What changed in each latest release. You're on v${esc(S.version || '')}.</p><div id="notesBody" class="help">Loading…</div>`,
     names: `<h3>✏️ Name changes</h3>
       <p class="help">Someone changed their Twitch name? Type the old name and the new one and everything moves over by itself: their Discord movie link and picks, ball color, chat battle and giveaway entries, battle history, stats, saved wheel spins and wheel history.</p>

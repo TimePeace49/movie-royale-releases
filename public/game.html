@@ -2813,6 +2813,8 @@ function wlRound(rd) {
   tick(); if (wlRoundS && wlRoundS.state === 'running') wlRoundT = setInterval(tick, 200);
 }
 let wlId = '', wlOpts = {};
+const PREVIEW_WIN = new URLSearchParams(location.search).has('preview'); // 📺 the test preview popped out (another monitor): shows what's on stream, no sound
+if (PREVIEW_WIN) { document.title = 'Movie Royal — Preview (what\'s on stream)'; setTimeout(() => window.SFX?.setVolume({ on: false }), 0); }
 const WHEEL_ONLY = new URLSearchParams(location.search).has('wheel'); // the wheel popped out in its own window: always the wheel, no sound (the app already plays it)
 function wlSet(on) { if (WHEEL_ONLY) on = true; SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
 function wlVoided(w) { const el = $('wlVoid'); if (!w || !w.voidOn) { el.style.display = 'none'; return; } const v = w.voided || []; el.style.display = ''; el.innerHTML = `<div class="h">${VX} VOIDED TONIGHT</div>${v.length ? v.slice(0, 8).map(t => `<div class="x">${esc(t)}</div>`).join('') + (v.length > 8 ? `<div>+${v.length - 8} more</div>` : '') : '<div style="opacity:.6">Nothing yet… 👀</div>'}`; }
@@ -3381,7 +3383,7 @@ addEventListener('error', e => { if (Date.now() - lastErrAt < 5000) return; last
 addEventListener('unhandledrejection', e => { if (Date.now() - lastErrAt < 5000) return; lastErrAt = Date.now(); send({ type: 'overlayError', msg: String(e.reason?.message || e.reason || 'error').slice(0, 200), where: '', phase }); });
 if (!WHEEL_ONLY) setInterval(() => send({ type: 'cliff', phase, key: fighters.map(f => f.id).sort().join(',') }), 4000); // check in: the app re-sends the pieces if this screen missed them
 function connect() {
-  sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=overlay${WHEEL_ONLY ? '&side=1' : ''}`);
+  sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=overlay${WHEEL_ONLY || PREVIEW_WIN ? '&side=1' : ''}`);
   sock.onopen = () => connected = true;
   sock.onclose = () => { connected = false; setTimeout(connect, 2000); };
   sock.onmessage = e => handleMsg(JSON.parse(e.data));
@@ -3400,7 +3402,7 @@ function handleMsg(m) {
     else if (m.type === 'power') powerMsg(m);
     else if (m.type === 'effect') receiveEffect(m.effect);
     else if (m.type === 'queued') SFX.play('queued'), pendingCount++, floaters.push({ scr: 1, text: `${(EV_INFO[m.effect.event] || ['⚡'])[0]} queued for next round!`, x: CX, y: 260, life: 2.5, color: '#ffd98a' });
-    else if (m.type === 'audio') SFX.setVolume({ on: m.on && !WHEEL_ONLY, sfx: m.sfx, music: m.music });
+    else if (m.type === 'audio') SFX.setVolume({ on: m.on && !WHEEL_ONLY && !PREVIEW_WIN, sfx: m.sfx, music: m.music });
     else if (m.type === 'soundTest') { if (m.name === 'music') { SFX.music('fight'); SFX.setIntensity(.7); setTimeout(() => phase !== 'running' && SFX.stopMusic(), 6000); } else if (m.map) SFX.playOn(m.map, m.name); else SFX.play(m.name); }
     else if (m.type === 'reset') { SFX.stopMusic(); phase = 'idle'; fighters = []; hideWin(); hideClaim(); buildIsland(); }
     else if (m.type === 'claimStart') startClaim(m.winner, m.seconds, m.recent);
