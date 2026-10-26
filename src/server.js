@@ -1302,6 +1302,14 @@ async function syncLetterboxdList(l) {
     broadcast({ type: 'toast', text: `⚠️ Letterboxd: ${e.message}` }, 'control');
   }
 }
+app.post('/api/lists/numbers', (req, res) => { // 🔢 a battle where every ball is a number (pick a number from 1 to N)
+  const a = Math.round(Number(req.body?.from) || 1), b = Math.round(Number(req.body?.to) || 10), lo = Math.min(a, b), hi = Math.max(a, b);
+  if (hi - lo + 1 > 1000) return res.status(400).json({ error: 'That is more than 1,000 numbers. Pick a smaller range.' });
+  if (hi - lo + 1 < 2) return res.status(400).json({ error: 'Pick at least 2 numbers.' });
+  const l = { id: uid(), name: String(req.body?.name || `🔢 ${lo} to ${hi}`).slice(0, 60), type: 'text', entries: [], joinOpen: false, numbers: { from: lo, to: hi } };
+  for (let n = lo; n <= hi; n++) l.entries.push({ id: uid(), label: String(n), sub: '', weight: 1, status: 'active', addedAt: Date.now() });
+  db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); pushState(); refreshPreview(true); res.json({ ok: true, id: l.id, count: l.entries.length });
+});
 app.post('/api/lists/letterboxd', (req, res) => { // make a new Letterboxd battle, or update one
   const b = req.body || {}; let l = b.listId ? getList(b.listId) : null;
   if (l?.job?.running) return res.status(400).json({ error: 'Already updating, give it a minute.' });

@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.1 (test build)
+- **💩 Fixed: Letterboxd said 403** when making the worst 500 battle. Letterboxd turns away plain requests for its film pages, so Movie Royal now reads them like a real browser does (hidden in the background), page by page (`/page/2/`, `/page/3/`…).
+- **🔢 Number battles:** + New battle → 🔢 Pick a number, from 1 to whatever you want (up to 1,000). Every ball is a number. There's a 🔢 button in the Test tab too.
+
 ## 1.21.0 (test build)
 - **⚠️ Errors tab** (🧪 Test tab → ⚠️ Errors): a history of everything that went wrong in Movie Royal, kept even after you close it. Covers Twitch, Discord, the 24/7 bot, Letterboxd, OBS, the game screen and the control panel. A red number shows how many are new.
   - **🗣️ In plain words:** what went wrong and what to do about it.

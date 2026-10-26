@@ -173,13 +173,24 @@ export async function fetchFilmList(url, max = 500, onPage = () => {}) {
   let use = null, lastErr = null;
   for (let page = 1; page <= 60 && out.length < max; page++) {
     let html = null;
+    const hasFilms = h => /data-(?:film|item)-slug=|data-target-link="\/film\//.test(h);
     for (const v of use ? [use] : variants) {
+      if (v === 'browser') break;
       try {
         const res = await fetch(page > 1 ? `${v}page/${page}/` : v, { headers, signal: AbortSignal.timeout(20000) });
         if (!res.ok) { lastErr = new Error('Letterboxd said ' + res.status); continue; }
         const h = await res.text();
-        if (/data-(?:film|item)-slug=|data-target-link="\/film\//.test(h)) { html = h; use = v; break; }
+        if (hasFilms(h)) { html = h; use = v; break; }
         lastErr = new Error('no films on that page');
+      } catch (e) { lastErr = e; }
+    }
+    // Letterboxd turns away plain requests for some pages (403): read them like a real browser does instead (Windows app only)
+    if (!html && globalThis.__desktop?.getPage && (!use || use === 'browser')) {
+      const url = page > 1 ? `${base}page/${page}/` : base;
+      try {
+        let r = await globalThis.__desktop.getPage(url);
+        if (r.status !== 200 || !hasFilms(r.text)) r = await globalThis.__desktop.getPage(url, { render: true, wait: '[data-film-slug],[data-item-slug],[data-target-link^="/film/"]' });
+        if (hasFilms(r.text)) { html = r.text; use = 'browser'; } else lastErr = new Error(r.status === 200 ? 'no films on that page' : 'Letterboxd said ' + r.status);
       } catch (e) { lastErr = e; }
     }
     if (!html) break;

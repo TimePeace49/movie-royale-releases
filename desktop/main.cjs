@@ -1,5 +1,5 @@
 // Movie Royal desktop app: runs the local server and shows it in its own window.
-const { app, BrowserWindow, shell, dialog, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, shell, dialog, Menu, Tray, nativeImage, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
@@ -121,6 +121,22 @@ app.whenReady().then(async () => {
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
     refocus: () => { const w = BrowserWindow.getFocusedWindow() || win; if (w && !w.isDestroyed()) { w.blur(); setTimeout(() => !w.isDestroyed() && w.focus(), 30); } },
     quit: () => { closeOk = true; quitting = true; app.quit(); }, // no questions (updates, or after you answered)
+    // read a web page like a real browser does (some sites, like Letterboxd's film pages, turn away plain requests)
+    getPage: async (url, { render = false, wait = 'body', timeout = 25000 } = {}) => {
+      const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+      if (!render) { const r = await net.fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' } }); return { status: r.status, text: await r.text() }; }
+      const w = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { backgroundThrottling: false } });
+      try {
+        await w.loadURL(url, { userAgent: UA }).catch(() => {});
+        const end = Date.now() + timeout;
+        while (Date.now() < end) { // wait until the page has drawn what we need (scrolling makes lazy pictures load)
+          const n = await w.webContents.executeJavaScript(`window.scrollTo(0, document.body.scrollHeight); document.querySelectorAll(${JSON.stringify(wait)}).length`).catch(() => 0);
+          if (n > 0) { await new Promise(r => setTimeout(r, 800)); break; }
+          await new Promise(r => setTimeout(r, 700));
+        }
+        return { status: 200, text: await w.webContents.executeJavaScript('document.documentElement.outerHTML') };
+      } finally { w.destroy(); }
+    },
     applySettings,
     openPath: p => shell.openPath(p),
     fatal: msg => { dialog.showErrorBox('Movie Royal', msg); app.quit(); },
