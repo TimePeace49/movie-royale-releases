@@ -383,6 +383,9 @@
     <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
     <div id="wUndoList"></div>
     <div class="row" style="margin-top:10px;gap:8px"><input id="wBy" class="grow" placeholder="Who's spinning? (blank = you)"><button class="ghost" onclick="wUndo()" title="Take back the last thing that happened on the wheel">⏪ Undo</button><button class="ghost" onclick="wUndoMenu()" title="Go back several steps">⏪ Go back…</button><button id="wShowBtn" onclick="wShow()">📺 Show on stream</button></div>
+    <div class="row" style="margin-top:8px;gap:10px;align-items:center;flex-wrap:nowrap"><button id="wSnd" style="padding:4px 10px;white-space:nowrap" onclick="setSound({soundOn: !S.settings.soundOn})"></button>
+      <label style="margin:0;white-space:nowrap" title="Wheel sounds, ticks, pop-ups">🔊 Sounds <span id="wSfxVal"></span></label><input type="range" min="0" max="100" id="wSfx" class="grow" style="min-width:60px" oninput="volChange('sfxVolume', this.value)">
+      <label style="margin:0;white-space:nowrap">🎵 Music <span id="wMusVal"></span></label><input type="range" min="0" max="100" id="wMus" class="grow" style="min-width:60px" oninput="volChange('musicVolume', this.value)"></div>
     <div id="wResult"></div>
   </div></div>
 </section>
@@ -1420,6 +1423,7 @@ function renderWheel(fromState) {
   if (!WD || (S.wheelVer !== wVer && !wSaveT && !wTyping())) return loadWheel().then(() => renderWheel());
   $('wShowBtn').textContent = S.wheelShow ? '🙈 Hide the wheel on stream' : '📺 Show on stream';
   $('wShowBtn').classList.toggle('primary', !S.wheelShow);
+  renderSound();
   drawWheelResult();
   const key = wVer + '|' + wTab + '|' + WD.activeId;
   if (fromState && key === wKey) return; // nothing changed: leave the editor alone
@@ -1466,7 +1470,7 @@ function drawSpots() {
       ${w.entries.map((e, i) => `<tr class="${e.on === false || !e.weight ? 'off' : ''}"><td><input type="checkbox" ${e.on !== false ? 'checked' : ''} onchange="wEnt(${i},{on:this.checked})"></td>
         <td><input type="color" value="${e.color || autoCol(e)}" title="${e.color ? 'Custom color (right-click to reset)' : 'Auto color'}" onchange="wEnt(${i},{color:this.value})" oncontextmenu="event.preventDefault();wEnt(${i},{color:null})"></td>
         <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
-        <td style="white-space:nowrap">${e.type === 'void' ? `<span class="muted" title="Only money (subs, gift subs, bits, donations) can grow or shrink the void">💵 only</span>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
+        <td style="white-space:nowrap">${e.type === 'void' ? `<button class="ghost" title="Shrink the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><span class="muted" title="Chat can only change the void with money (subs, gift subs, bits, donations). You can always change it." style="padding:0 6px">💵 / you</span><button class="ghost" title="Grow the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
         <td style="white-space:nowrap">${e.type === 'void' ? '<b>🕳️ Void</b>' : !w.opts.rules ? '<span class="muted" title="Rules are off for this wheel (⚙️ Wheel settings)">plain</span>' : `${typeSel(e.type, `wEnt(${i},{type:this.value${e.type !== 'countdown' ? `,count:${e.countStart ?? 3},countStart:${e.countStart ?? 3}` : ''}})`)}${e.type === 'countdown' ? ` <small class="muted">${e.count}/${e.countStart} left</small>` : ''}`}${e.rule ? `<div class="muted" style="font-size:12px;max-width:220px;white-space:normal" title="${esc(e.rule)}">📜 ${esc(e.rule.length > 60 ? e.rule.slice(0, 60) + '…' : e.rule)}</div>` : ''}</td>
         <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost" title="Move up" onclick="wMove(${i},-1)">▲</button><button class="ghost" title="Move down" onclick="wMove(${i},1)">▼</button><button class="ghost danger" title="Delete" onclick="wDel(${i})">✕</button></td></tr>
         ${wOpen === e.id ? `<tr><td></td><td colspan="6" style="padding:10px 6px 14px"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
@@ -1705,7 +1709,7 @@ function drawWSettings() {
     ${O.rules !== false ? `<h4 style="margin:16px 0 4px">🕳️ Void spot</h4>
     ${tg('void.on', V.on, 'Put a VOID spot on this wheel. Land on it and the wheel respins by itself, and whatever it lands on next is gone for the rest of the stream.')}
     ${V.on ? `<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px"><label>Name <input style="width:150px" value="${esc(V.label)}" onchange="wOpt('void.label',this.value)"></label><label>Size <input type="number" min="0.1" step="0.5" style="width:70px" value="${V.weight}" onchange="wOpt('void.weight',Number(this.value))"></label><label style="display:flex;align-items:center;gap:6px">Color <input type="color" value="${esc(V.color)}" onchange="wOpt('void.color',this.value)"></label></div>
-      <p class="help">Only money (subs, gift subs, bits, donations) can grow or shrink the void. Its + / − on the Spots list is locked.</p>
+      <p class="help">Chat can only grow or shrink the void with money (subs, gift subs, bits, donations). You can always change it with its + / − on the Spots list.</p>
       <label>If the void lands on itself it grows. After <input type="number" min="1" max="100" style="width:70px" value="${V.landings ?? 5}" onchange="wOpt('void.landings',Number(this.value))"> landings on itself it has swallowed (almost) the whole wheel.</label>
       ${tg('void.doomsday', V.doomsday, `☠️ ${esc(WD.streamer || 'Streamer')} will return for Doomsday`)}
       ${V.doomsday ? `<p class="help" style="margin-left:22px">When the void swallows the wheel: a full-screen <b>“${esc((WD.streamer || 'Streamer').toUpperCase())} WILL RETURN FOR DOOMSDAY!!!”</b>, your mic and camera go off right away, and the stream ends 15 seconds later. No goodbye. Needs OBS connected (Settings → 🎥 OBS) ${WD.obs?.set ? '' : '<b style="color:#ffb547">— not set up yet</b>'}.</p>` : ''}
@@ -1964,6 +1968,12 @@ function renderSound() {
   if (document.activeElement?.id !== 'sfxVol') $('sfxVol').value = st.sfxVolume ?? 70;
   if (document.activeElement?.id !== 'musVol') $('musVol').value = st.musicVolume ?? 35;
   $('sfxVal').textContent = $('sfxVol').value + '%'; $('musVal').textContent = $('musVol').value + '%';
+  if ($('wSfx')) { // 🎡 Wheel tab sliders
+    $('wSnd').textContent = on ? '🔊 On' : '🔇 Muted'; $('wSnd').className = on ? '' : 'danger';
+    if (document.activeElement?.id !== 'wSfx') $('wSfx').value = st.sfxVolume ?? 70;
+    if (document.activeElement?.id !== 'wMus') $('wMus').value = st.musicVolume ?? 35;
+    $('wSfxVal').textContent = $('wSfx').value + '%'; $('wMusVal').textContent = $('wMus').value + '%';
+  }
 }
 let volT;
 function volChange(k, v) { S.settings[k] = Number(v); renderSound(); clearTimeout(volT); volT = setTimeout(() => setSound({ [k]: Number(v) }), 120); }

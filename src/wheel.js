@@ -453,7 +453,7 @@ export function grow(entryId, amount = 1, by = {}, reason = '', wheelId, money) 
   const st = W(), w = getWheel(wheelId) || (st.last && getWheel(st.last.wheelId)?.entries.some(e => e.id === entryId) ? getWheel(st.last.wheelId) : active());
   const e = w?.entries.find(x => x.id === entryId); if (!e) throw new Error('No such spot.');
   if (e.voided) throw new Error(`“${e.text}” is voided. Bring it back first.`);
-  if (e.type === 'void' && !money) throw new Error('Only money (subs, gift subs, bits, donations) can grow or shrink the VOID.');
+  if (e.type === 'void' && !money && by.source && !['you', 'mod'].includes(by.source)) throw new Error('Only money (subs, gift subs, bits, donations) or the streamer can grow or shrink the VOID.');
   if (!e.on || !(e.weight > 0)) { e.on = true; e.weight = e.weight > 0 ? e.weight : 1; }
   snap(`${amount > 0 ? 'grew' : 'shrank'} ${e.text}`);
   const before = pctOf(w, e), step = (Number(w.opts.growPct) || 10) / 100;

@@ -213,7 +213,8 @@ addEventListener('resize', fit); fit();
 addEventListener('pointerdown', () => SFX.init());
 SFX.init();
 
-const W = 1920, H = 1080, CX = 960, CY = 615, K = 0.55, S = 30, SQ3 = Math.sqrt(3);
+const W = 1920, H = 1080, CX = 960, CY = 615, S = 30, SQ3 = Math.sqrt(3);
+let K = 0.55; // how flat the view is: 0.55 = the usual tilted view, 1 = straight down (Plague Town)
 let R = 10; // cliff size in tiles: grows with the number of pieces
 const HW = S * SQ3 / 2; // half hex width
 const rnd = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
@@ -357,7 +358,7 @@ function buildIsland(n = fighters.length || 12) {
   camOpt.waitFit = wz; camOpt.waitMid = (y0 + y1) / 2 - 10;
 }
 
-function crumbleSoon(tl, delay) { if (tl.state < 2) { tl.crumble = Math.min(tl.crumble, t + delay); } }
+function crumbleSoon(tl, delay) { if (MAP.hardGround) return; if (tl.state < 2) { tl.crumble = Math.min(tl.crumble, t + delay); } }
 
 function updateTiles(dt) {
   solid = [];
@@ -670,7 +671,7 @@ const MAPS = {
       for (let i = 0; i < 3; i++) { const [cx, cy, base] = plats[i]; if (Math.abs(p.x - cx) < Rw * .4 && Math.abs(p.y - cy) < Rw * .17) return { nd: base + rnd(.08), up: i + 1 }; }
       return null;
     },
-    spawn: tl => tl.up > 0,
+    spawnAt: tl => tl.up > 0,
     canGo: (f, tl) => (tl.up || 0) === (f.plat || 0),
     sameLevel: (f, o) => (f.plat || 0) === (o.plat || 0),
     tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(265,30%,${30 - i * 2}%)`, c2: `hsl(255,35%,${16 - i}%)`, specks: ['#7dd3fc55'], speckN: 6, edge: 'rgba(125,211,252,.7)', glow: true })),
@@ -1606,7 +1607,304 @@ const MAPS = {
     snap() { return (this.worms || []).map(w => ({ ...w, victims: [] })); },
     restore(v) { this.worms = (v || []).map(w => ({ ...w, victims: [] })); },
     power: { name: 'WORM FRENZY', icon: '🪱', fn() { const m = MAPS.desert; for (let i = 0; i < 3; i++) setTimeout(() => m.spawn(true), i * 350); shake = 12; } }
+  },
+  plague: {
+    // 🐀 Plague Town: a walled medieval town seen from above. Nothing crumbles. Rats scurry out of the sewers and bite:
+    // a bitten piece is infected, and every infected piece passes it on to anyone it bumps into. Infected pieces die
+    // after a few seconds (luck can pull you through). Healthy pieces run from the rats and the sick. Houses block everyone.
+    name: 'Plague Town', icon: '🐀', K: 1, noCrumble: true, hardGround: true, rScale: 1, wallScale: .3,
+    shape: (q, r, p, R) => SHAPES.rect(q, r, p, R, { a: 1, b: .56 }),
+    tops: () => [makeTopP({ c1: '#6b6258', c2: '#574f46', specks: ['#0003'], speckN: 8, edge: 'rgba(0,0,0,.2)' })],
+    wall: { cols: ['#5a5048', '#463e37', '#2f2924', '#1c1814'], flat: true, lines: false },
+    sky(g) {
+      skyGrad(g, [[0, '#14121c'], [.5, '#2a2430'], [1, '#3a3028']]);
+      for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${pick(['70,90,50', '60,70,40', '90,80,60'])},${rnd(.15, .4)})`; g.beginPath(); g.arc(rnd(W), rnd(H), rnd(2, 9), 0, 7); g.fill(); } // muddy fields around the walls
+    },
+    clouds: '#4a4450', fog: ['rgba(120,140,90,.10)', 'rgba(20,24,16,.55)'],
+    canGo: (f, tl) => !tl.bld,
+    spawnAt: tl => !tl.bld,
+    flood() {}, // the town never breaks apart
+    afterBuild(R) {
+      const A = this.A = R * S * SQ3, B = this.B = A * .56, cell = S * 8.5;
+      const cols = Math.max(3, Math.round(A * 2 / cell)), rows = Math.max(2, Math.round(B * 2 / cell)), cw = (A * 2 - S * 2) / cols, ch = (B * 2 - S * 2) / rows;
+      this.blds = []; this.drains = [];
+      const mc = (cols - 1) / 2, mr = (rows - 1) / 2;
+      for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+        const x0 = -A + S + c * cw, y0 = -B + S + r * ch, cx = x0 + cw / 2, cy = y0 + ch / 2;
+        if (Math.abs(c - mc) <= .5 && Math.abs(r - mr) <= .5) { this.square = { x: cx, y: cy, w: cw, h: ch }; continue; } // the town square (a well in the middle)
+        if (Math.random() < .12) continue; // an open yard now and then
+        const w = cw * rnd(.42, .6), h = ch * rnd(.42, .6), jx = rnd(-1, 1) * (cw - w) * .2, jy = rnd(-1, 1) * (ch - h) * .2;
+        this.blds.push({ x0: cx - w / 2 + jx, y0: cy - h / 2 + jy, x1: cx + w / 2 + jx, y1: cy + h / 2 + jy, roof: pick(['#8a3b2a', '#7a4a2a', '#6a5a4a', '#94502e', '#5e3a2e']), ridgeX: w > h, chim: Math.random() < .6 });
+        if (Math.random() < .5) this.drains.push({ x: x0 + rnd(.1, .9) * cw * .2 + (Math.random() < .5 ? 0 : cw * .8), y: cy + rnd(-ch * .3, ch * .3) });
+      }
+      if (!this.square) this.square = { x: 0, y: 0, w: cw, h: ch };
+      for (const [x, y] of [[-A + S * 1.6, 0], [A - S * 1.6, 0], [0, -B + S * 1.6], [0, B - S * 1.6]]) this.drains.push({ x, y }); // grates by the gates
+      const pad = S * .25; for (const tl of tiles) tl.bld = this.blds.some(b => tl.x > b.x0 - pad && tl.x < b.x1 + pad && tl.y > b.y0 - pad && tl.y < b.y1 + pad);
+      this.paint();
+    },
+    // the town is painted once (cobbles, houses, roofs, the wall) and reused every frame
+    paint() {
+      const A = this.A, B = this.B, P = S * 2.2, c = document.createElement('canvas'); c.width = Math.ceil(A * 2 + P * 2); c.height = Math.ceil(B * 2 + P * 2);
+      const g = c.getContext('2d'), X = x => x + A + P, Y = y => y + B + P;
+      g.fillStyle = '#4e463e'; g.fillRect(X(-A), Y(-B), A * 2, B * 2);
+      for (let i = 0; i < A * B / 90; i++) { const x = rnd(-A, A), y = rnd(-B, B); g.fillStyle = `hsl(30,${rnd(4, 12)}%,${rnd(30, 44)}%)`; g.beginPath(); g.ellipse(X(x), Y(y), rnd(5, 10), rnd(4, 7), rnd(3), 0, 7); g.fill(); } // cobbles
+      for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(60,40,20,.25)'; g.beginPath(); g.ellipse(X(rnd(-A, A)), Y(rnd(-B, B)), rnd(20, 60), rnd(10, 30), rnd(3), 0, 7); g.fill(); } // mud
+      const sq = this.square; g.fillStyle = '#8a7f6e'; g.fillRect(X(sq.x - sq.w * .4), Y(sq.y - sq.h * .4), sq.w * .8, sq.h * .8); g.strokeStyle = '#6a6052'; g.lineWidth = 2;
+      for (let x = -sq.w * .4; x < sq.w * .4; x += 22) for (let y = -sq.h * .4; y < sq.h * .4; y += 22) g.strokeRect(X(sq.x + x), Y(sq.y + y), 22, 22); // flagstones
+      g.fillStyle = '#3a3a3e'; g.beginPath(); g.arc(X(sq.x), Y(sq.y), S * .9, 0, 7); g.fill(); g.fillStyle = '#1a2a3a'; g.beginPath(); g.arc(X(sq.x), Y(sq.y), S * .6, 0, 7); g.fill(); // the well
+      for (const d of this.drains) { g.fillStyle = '#222'; g.fillRect(X(d.x) - 12, Y(d.y) - 12, 24, 24); g.strokeStyle = '#555'; g.lineWidth = 2; for (let k = -8; k <= 8; k += 5) { g.beginPath(); g.moveTo(X(d.x) + k, Y(d.y) - 10); g.lineTo(X(d.x) + k, Y(d.y) + 10); g.stroke(); } }
+      for (const b of this.blds) { // houses from above: a shadow, the walls, then the roof with its ridge
+        const w = b.x1 - b.x0, h = b.y1 - b.y0;
+        g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(X(b.x0) + 10, Y(b.y0) + 12, w, h);
+        g.fillStyle = '#d8c8a8'; g.fillRect(X(b.x0), Y(b.y0), w, h);
+        g.fillStyle = b.roof; g.fillRect(X(b.x0) + 4, Y(b.y0) + 4, w - 8, h - 8);
+        g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 1.5;
+        if (b.ridgeX) { for (let y = 8; y < h - 8; y += 9) { g.beginPath(); g.moveTo(X(b.x0) + 4, Y(b.y0) + y); g.lineTo(X(b.x1) - 4, Y(b.y0) + y); g.stroke(); } g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(X(b.x0) + 4, Y(b.y0) + 4, w - 8, h / 2 - 4); g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(b.x0) + 4, Y(b.y0) + h / 2); g.lineTo(X(b.x1) - 4, Y(b.y0) + h / 2); g.stroke(); }
+        else { for (let x = 8; x < w - 8; x += 9) { g.beginPath(); g.moveTo(X(b.x0) + x, Y(b.y0) + 4); g.lineTo(X(b.x0) + x, Y(b.y1) - 4); g.stroke(); } g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(X(b.x0) + 4, Y(b.y0) + 4, w / 2 - 4, h - 8); g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(b.x0) + w / 2, Y(b.y0) + 4); g.lineTo(X(b.x0) + w / 2, Y(b.y1) - 4); g.stroke(); }
+        if (b.chim) { g.fillStyle = '#5a4a40'; g.fillRect(X(b.x0) + w * .7, Y(b.y0) + h * .2, 14, 14); g.fillStyle = '#222'; g.fillRect(X(b.x0) + w * .7 + 3, Y(b.y0) + h * .2 + 3, 8, 8); }
+      }
+      // the town wall all the way around, with a gate on each side
+      g.fillStyle = '#6e665c'; const T = S * .9;
+      g.fillRect(X(-A) - T, Y(-B) - T, A * 2 + T * 2, T); g.fillRect(X(-A) - T, Y(B), A * 2 + T * 2, T); g.fillRect(X(-A) - T, Y(-B), T, B * 2); g.fillRect(X(A), Y(-B), T, B * 2);
+      g.fillStyle = '#8a8276'; for (let x = -A - T; x < A + T; x += 18) { g.fillRect(X(x), Y(-B) - T, 10, 8); g.fillRect(X(x), Y(B) + T - 8, 10, 8); } for (let y = -B; y < B; y += 18) { g.fillRect(X(-A) - T, Y(y), 8, 10); g.fillRect(X(A) + T - 8, Y(y), 8, 10); }
+      for (const [x, y] of [[-A, -B], [A, -B], [A, B], [-A, B]]) { g.fillStyle = '#5e564c'; g.beginPath(); g.arc(X(x), Y(y), T * 1.3, 0, 7); g.fill(); g.fillStyle = '#7a3a2a'; g.beginPath(); g.arc(X(x), Y(y), T * .9, 0, 7); g.fill(); } // corner towers
+      this.img = c; this.P = P;
+    },
+    start() {
+      this.rats = []; this.graves = []; this.next = .4; this.bell = 0;
+      for (const f of fighters) { f.sick = null; f.sickDie = 0; }
+      const n = fighters.length; for (let i = 0; i < Math.min(60, 3 + Math.ceil(n / 14)); i++) this.rat();
+    },
+    rat() {
+      const d = pick(this.drains || [{ x: 0, y: 0 }]);
+      this.rats.push({ x: d.x + rnd(-8, 8), y: d.y + rnd(-8, 8), vx: 0, vy: 0, ang: rnd(6.3), tgt: null, think: 0, rest: rnd(.2, .8), sp: rnd(230, 300), ph: rnd(6.3) });
+    },
+    infect(f, by) {
+      if (f.sick || !f.alive || winner) return;
+      const k = clamp(t / cfg.game, 0, 1);
+      f.sick = t; f.sickDie = t + rnd(.85, 1.15) * (7 - 3.8 * k);
+      const n = alive().length;
+      if (n < 60) floaters.push({ text: by === 'rat' ? pick(['BITTEN!', '🐀 INFECTED!', 'RAT BITE!']) : pick(['CAUGHT IT!', '🤢 INFECTED!', 'ACHOO!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 20, life: 1, color: '#b8e06a' });
+      SFX.play(by === 'rat' ? 'rat' : 'cough', { v: .6 });
+    },
+    // keep everyone out of the houses and inside the town wall
+    walls(o, r) {
+      const A = this.A - S * .9 - r, B = this.B - S * .9 - r;
+      if (o.x < -A) { o.x = -A; o.vx = Math.abs(o.vx) * .3; } if (o.x > A) { o.x = A; o.vx = -Math.abs(o.vx) * .3; }
+      if (o.y < -B) { o.y = -B; o.vy = Math.abs(o.vy) * .3; } if (o.y > B) { o.y = B; o.vy = -Math.abs(o.vy) * .3; }
+      for (const b of this.blds) {
+        if (o.x < b.x0 - r || o.x > b.x1 + r || o.y < b.y0 - r || o.y > b.y1 + r) continue;
+        const nx = clamp(o.x, b.x0, b.x1), ny = clamp(o.y, b.y0, b.y1), dx = o.x - nx, dy = o.y - ny, d = Math.hypot(dx, dy);
+        if (d > 0 && d < r) { o.x = nx + dx / d * r; o.y = ny + dy / d * r; const vn = o.vx * dx / d + o.vy * dy / d; if (vn < 0) { o.vx -= vn * dx / d * 1.3; o.vy -= vn * dy / d * 1.3; } }
+        else if (d === 0) { const l = o.x - b.x0, rt = b.x1 - o.x, tp = o.y - b.y0, bt = b.y1 - o.y, m = Math.min(l, rt, tp, bt); if (m === l) o.x = b.x0 - r; else if (m === rt) o.x = b.x1 + r; else if (m === tp) o.y = b.y0 - r; else o.y = b.y1 + r; }
+      }
+    },
+    update(dt) {
+      if (!this.rats) this.start();
+      const k = clamp(t / cfg.game, 0, 1), l = alive(), n = l.length;
+      for (const f of l) if (!f.launch && !f.ret) this.walls(f, f.r);
+      if (winner) return;
+      // more rats as time goes on
+      if ((this.next -= dt) <= 0) { this.next = (1.4 - .9 * k) / (1 + n / 120); if (this.rats.length < Math.min(70, 6 + n / 6)) this.rat(); }
+      if ((this.bell -= dt) <= 0) { this.bell = rnd(7, 11); SFX.play('bell', { v: .5 }); }
+      const healthy = l.filter(f => !f.sick && !f.eaten), sick = l.filter(f => f.sick);
+      // 🐀 rats run for the nearest healthy piece and bite
+      for (const r of this.rats) {
+        r.ph += dt * 30; r.think -= dt;
+        if (r.rest > 0) { r.rest -= dt; r.vx *= .9; r.vy *= .9; }
+        else {
+          if (r.think <= 0 || !r.tgt?.alive || r.tgt.sick) { r.think = .35; let best = null, bd = 1e9; for (let j = 0; j < (healthy.length > 40 ? 30 : healthy.length); j++) { const f = healthy.length > 40 ? pick(healthy) : healthy[j]; if (cfg.fair && f === destined && healthy.length > 1 && Math.random() < .7) continue; const d = Math.hypot(f.x - r.x, f.y - r.y); if (d < bd) { bd = d; best = f; } } r.tgt = best; }
+          const f = r.tgt, sp = r.sp * (1 + .5 * k);
+          if (f) { const dx = f.x - r.x + Math.sin(r.ph * .2) * 20, dy = f.y - r.y + Math.cos(r.ph * .17) * 20, d = Math.hypot(dx, dy) || 1; r.vx += (dx / d * sp - r.vx) * Math.min(1, dt * 6); r.vy += (dy / d * sp - r.vy) * Math.min(1, dt * 6);
+            if (Math.hypot(f.x - r.x, f.y - r.y) < f.r + 10 && !f.launch && !f.ret) { this.infect(f, 'rat'); r.rest = rnd(.8, 1.6); r.tgt = null; r.vx = -r.vx; r.vy = -r.vy; } }
+          else { r.vx *= .95; r.vy *= .95; }
+        }
+        r.x += r.vx * dt; r.y += r.vy * dt; this.walls(r, 8); if (Math.hypot(r.vx, r.vy) > 20) r.ang = Math.atan2(r.vy, r.vx);
+      }
+      // 🤢 the sick pass it on to anyone they bump into
+      if (sick.length && healthy.length) {
+        const cell = S * 2, grid = new Map(); for (const f of healthy) { const key = Math.floor(f.x / cell) + ',' + Math.floor(f.y / cell); (grid.get(key) || grid.set(key, []).get(key)).push(f); }
+        for (const s of sick) { const gx = Math.floor(s.x / cell), gy = Math.floor(s.y / cell);
+          for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const f of grid.get((gx + i) + ',' + (gy + j)) || []) if (!f.sick && Math.hypot(f.x - s.x, f.y - s.y) < (f.r + s.r) * 1.08 && Math.random() < 1 - Math.exp(-dt * 7)) this.infect(f, 'touch'); }
+      }
+      // 🏃 healthy pieces run from rats and from the sick
+      for (const f of healthy) {
+        if (f.launch || f.ret) continue;
+        let ax = 0, ay = 0; const R2 = S * 5;
+        for (const r of this.rats) { const dx = f.x - r.x, dy = f.y - r.y, d = Math.hypot(dx, dy); if (d < R2 && d > 0) { ax += dx / d * (1 - d / R2); ay += dy / d * (1 - d / R2); } }
+        for (const s of sick.length > 80 ? sick.slice(0, 80) : sick) { const dx = f.x - s.x, dy = f.y - s.y, d = Math.hypot(dx, dy); if (d < R2 && d > 0) { ax += dx / d * (1 - d / R2) * .8; ay += dy / d * (1 - d / R2) * .8; } }
+        const a = Math.hypot(ax, ay); if (a > .05) { f.vx += ax / a * 900 * dt * Math.min(1, a); f.vy += ay / a * 900 * dt * Math.min(1, a); f.target = null; }
+      }
+      // ☠️ the sick get weaker, then die (unless luck pulls them through)
+      for (const f of sick) {
+        f.vx *= Math.exp(-dt * 1.2); f.vy *= Math.exp(-dt * 1.2);
+        if (t < f.sickDie || winner) continue;
+        const left = alive().length, keep = (cfg.fair && f === destined) || left <= 1 || (left <= 2 && t < cfg.game - 2.5);
+        if (keep || (t - luckCool >= (left > 200 ? 16 : left > 40 ? 10 : 6) && Math.random() < luckChance(f) && (luckCool = t))) {
+          f.sick = null; if (!keep || left < 60) floaters.push({ text: keep ? 'RECOVERED!' : '🍀 LUCKY! RECOVERED!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: 1.2, color: '#7dffb0' }); if (!keep) { SFX.play('lucky'); window.__luckyN = (window.__luckyN || 0) + 1; }
+          continue;
+        }
+        for (let j = 0; j < 16; j++) { const a = rnd(6.3), v = rnd(60, 220); parts.push({ x: sx(f.x), y: sy(f.y) - f.r, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, g: -40, life: rnd(.6, 1.1), max: 1.1, size: rnd(4, 9), color: pick(['#9ccc3ccc', '#6a8a2acc', '#c8e86acc']) }); }
+        if (left < 60) floaters.push({ text: pick(['☠️ PLAGUE!', 'BRING OUT YOUR DEAD!', '☠️']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: 1, color: '#d7f08a' });
+        this.graves.push({ x: f.x, y: f.y, life: 8 }); SFX.play('out', { v: .6 });
+        f.sick = null; f.noLuck = true; fall(f); f.noLuck = false; f.fz = 5000;
+      }
+      for (let i = this.graves.length - 1; i >= 0; i--) if ((this.graves[i].life -= dt) <= 0) this.graves.splice(i, 1);
+    },
+    drawWorld(pre) {
+      if (!this.img) return;
+      ctx.drawImage(this.img, sx(-this.A - this.P), sy(-this.B - this.P));
+      drawHazardsGround();
+      for (const gv of this.graves || []) { const a = clamp(gv.life, 0, 1); ctx.globalAlpha = a; ctx.font = '26px serif'; ctx.textAlign = 'center'; ctx.fillText('🪦', sx(gv.x), sy(gv.y) + 8); ctx.globalAlpha = 1; }
+      const live = fighters.filter(f => !f.falling).sort((a, b) => a.y - b.y), ys = new Map();
+      for (const f of live) ys.set(f, drawFighter(f, pre));
+      for (const f of live) if (f.sick && f.alive) { // green fever glow and a cloud of flies
+        const cy = ys.get(f), k = clamp((t - f.sick) / Math.max(.1, f.sickDie - f.sick), 0, 1);
+        ctx.fillStyle = `rgba(120,200,40,${.25 + .3 * k})`; ctx.beginPath(); ctx.arc(sx(f.x), cy, f.r + 3, 0, 7); ctx.fill();
+        ctx.fillStyle = '#111'; for (let j = 0; j < 4; j++) { const a = clock * 5 + j * 1.6 + (f.wob || 0); ctx.beginPath(); ctx.arc(sx(f.x) + Math.cos(a) * (f.r + 10), cy - f.r * .6 + Math.sin(a * 1.3) * 8, 2, 0, 7); ctx.fill(); }
+      }
+      const crowd = live.length > 50;
+      for (const f of live) if (!crowd || f === winner) drawLabel(f, ys.get(f), pre);
+      for (const r of this.rats || []) { // 🐀 a little rat seen from above
+        ctx.save(); ctx.translate(sx(r.x), sy(r.y)); ctx.rotate(r.ang);
+        ctx.strokeStyle = '#c9a0a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.quadraticCurveTo(-18, Math.sin(r.ph) * 6, -26, Math.sin(r.ph * .7) * 4); ctx.stroke(); // tail
+        ctx.fillStyle = '#4a4040'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 6.5, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(10, 0, 6, 4, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#7a6a6a'; ctx.beginPath(); ctx.arc(7, -5, 2.6, 0, 7); ctx.arc(7, 5, 2.6, 0, 7); ctx.fill(); ctx.fillStyle = '#ff6a6a'; ctx.beginPath(); ctx.arc(14, -1.8, 1.2, 0, 7); ctx.arc(14, 1.8, 1.2, 0, 7); ctx.fill();
+        ctx.restore();
+      }
+      for (const f of fighters) if (f.falling && f.fz < 1000) drawFighter(f);
+    },
+    snap() { return { r: (this.rats || []).map(r => ({ ...r, tgt: null })), g: (this.graves || []).map(g => ({ ...g })) }; },
+    restore(v) { this.rats = (v?.r || []).map(r => ({ ...r })); this.graves = (v?.g || []).map(g => ({ ...g })); },
+    power: { name: 'RAT SWARM', icon: '🐀', fn() { const m = MAPS.plague; if (!m.rats) return; for (let i = 0; i < 14; i++) m.rat(); SFX.play('rat'); shake = 6; } }
+  },
+  warfield: {
+    // ⚔️ Battlefield: every piece starts on the left. An army of knights, cavalry and archers comes from the right.
+    // They can't be hurt and they can't be stopped. Archers rain arrows on the back rows, the knights march in a
+    // block and crush the front, and once they're close the cavalry swings out and hits both sides. Nothing crumbles.
+    name: 'Battlefield', icon: '⚔️', noCrumble: true, hardGround: true, rScale: 1, wallScale: .55,
+    shape: (q, r, p, R) => SHAPES.rect(q, r, p, R, { a: 1.05, b: .62 }),
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(${88 + i * 4},${42 - i * 3}%,${42 - i * 2}%)`, c2: `hsl(${92 + i * 3},40%,${34 - i}%)`, specks: ['#d8e09a55', '#2a4a1a55'], speckN: 14, edge: 'rgba(200,230,150,.18)',
+      deco: g => { if (Math.random() < .3) { g.strokeStyle = 'rgba(80,60,30,.35)'; g.lineWidth = 3; g.beginPath(); g.moveTo(rnd(TOP_W), rnd(TOP_H)); g.lineTo(rnd(TOP_W), rnd(TOP_H)); g.stroke(); } } })),
+    wall: { cols: ['#5e4a30', '#4a3a24', '#33281a', '#1e170e'], lip: '#6a9a3a', lipH: 2, lit: 'rgba(255,230,180,.08)' },
+    sky(g) {
+      skyGrad(g, [[0, '#3a4a6a'], [.45, '#8a8a9a'], [.75, '#c8a880'], [1, '#8a7050']]);
+      glowBall(g, 1500, 260, 200, 'rgba(255,220,170,.5)', 'rgba(255,200,140,0)');
+      hills(g, [['#5a6a4a', 720, 140, .004], ['#4a5a3a', 800, 110, .006], ['#3a4a2a', 860, 80, .01]]);
+      for (let i = 0; i < 9; i++) { const x = 120 + i * 210 + rnd(-40, 40), y = 700 + rnd(-30, 30); g.strokeStyle = '#3a2a1a'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 90); g.stroke(); g.fillStyle = pick(['#8a1a1a', '#1a3a8a', '#c8a020']); g.beginPath(); g.moveTo(x, y - 90); g.lineTo(x + 34, y - 80); g.lineTo(x, y - 68); g.fill(); } // banners on the far hills
+    },
+    clouds: '#9a9aa8', fog: ['rgba(200,190,170,.12)', 'rgba(60,50,40,.5)'],
+    flood() {},
+    afterBuild(R) { this.A = R * S * SQ3 * 1.05; this.B = R * S * SQ3 * .62; },
+    spawnAt(tl) { return tl.x < -MAPS.warfield.A * .12; },
+    canGo(f, tl) { return phase !== 'running' || tl.x < (MAPS.warfield.front ?? 1e9) - S * 2; },
+    start() {
+      const A = this.A, B = this.B, n = fighters.length, k = clamp(Math.sqrt(n / 40), .8, 2.2);
+      this.units = []; this.arrows = []; this.stage = 'march'; this.volley = 1.2; this.front = A;
+      const kRows = 3, kCols = Math.round(7 * k), gap = S * 1.5, kx = A * .55, cols = Math.min(kCols, Math.floor(B * 1.6 / gap));
+      for (let r = 0; r < kRows; r++) for (let c = 0; c < cols; c++) this.units.push({ kind: 'knight', x: kx + r * gap, y: (c - (cols - 1) / 2) * gap, vx: 0, vy: 0, ph: rnd(6.3), hit: 0 });
+      const aCols = Math.min(Math.round(6 * k), Math.floor(B * 1.6 / gap)); for (let r = 0; r < 2; r++) for (let c = 0; c < aCols; c++) this.units.push({ kind: 'archer', x: A * .92 + r * gap * .8, y: (c - (aCols - 1) / 2) * gap * 1.1, vx: 0, vy: 0, ph: rnd(6.3), draw: rnd(1) });
+      const cav = Math.round(4 * k); for (const side of [-1, 1]) for (let i = 0; i < cav; i++) this.units.push({ kind: 'cav', side, x: kx + (i % 2) * gap * 1.4, y: side * (B * .62 + Math.floor(i / 2) * gap * 1.2), vx: 0, vy: 0, ph: rnd(6.3), lane: side * (B * .9) });
+      SFX.play('horn');
+    },
+    // the line of the army's front (where the knights are), for the pieces' AI and the spawn
+    update(dt) {
+      if (!this.units) this.start();
+      const A = this.A, B = this.B, l = alive().filter(f => !f.launch && !f.ret), n = l.length, T = cfg.game;
+      const ballFront = l.length ? Math.max(...l.map(f => f.x)) : 0, knights = this.units.filter(u => u.kind === 'knight');
+      const kFront = knights.length ? Math.min(...knights.map(u => u.x)) : 0; this.front = kFront;
+      const march = (A * .55 - (ballFront + S * 3)) / (T * .3); // knights and cavalry walk in together, and meet the front about a third of the way in
+      if (this.stage === 'march' && kFront - ballFront < S * 4) { this.stage = 'clash'; this.clashAt = t; SFX.play('horn', { p: 1.2 }); SFX.play('clash'); shake = 10; }
+      if (this.stage === 'clash' && t - this.clashAt > T * .25) this.stage = 'hunt';
+      // 🏹 archers: volleys on the back rows
+      if ((this.volley -= dt) <= 0 && l.length) {
+        this.volley = clamp(1.6 - .9 * (t / T), .6, 1.6); const back = l.slice().sort((a, b) => a.x - b.x), shots = Math.min(40, Math.max(2, Math.ceil(n / 9)));
+        const archers = this.units.filter(u => u.kind === 'archer');
+        for (let i = 0; i < shots; i++) { const f = back[Math.floor(Math.random() * Math.max(1, back.length * .4))], a = pick(archers); if (!f || !a) break; const tx = f.x + rnd(-S, S) + f.vx * .9, ty = f.y + rnd(-S, S) + f.vy * .9; this.arrows.push({ x0: a.x, y0: a.y, tx, ty, u: -i * .03, dur: clamp(Math.hypot(tx - a.x, ty - a.y) / 1100, .7, 1.6) }); a.draw = 0; }
+        SFX.play('arrows');
+      }
+      for (let i = this.arrows.length - 1; i >= 0; i--) {
+        const ar = this.arrows[i]; ar.u += dt / ar.dur; if (ar.u < 1) continue;
+        this.arrows.splice(i, 1);
+        if (!winner) for (const f of l) if (Math.hypot(f.x - ar.tx, f.y - ar.ty) < f.r + 6) { blastOrDodge(f, '#d8c8a0', pick(['ARROWED!', '🏹 HIT!', 'VOLLEY!'])); break; }
+        parts.push({ x: sx(ar.tx), y: sy(ar.ty), vx: 0, vy: -20, g: 0, life: 1.5, max: 1.5, size: 3, color: '#6a4a2a' });
+      }
+      // units move: knights march, then charge; cavalry rides with them, then sweeps the flanks; then everyone hunts
+      for (const u of this.units) {
+        u.ph += dt * 10; let tx = u.x, ty = u.y, sp = 0;
+        if (u.kind === 'archer') { u.draw = Math.min(1, (u.draw || 0) + dt); if (this.stage === 'hunt') { tx = u.x - 60; sp = 60; } }
+        else if (this.stage === 'march') { tx = u.x - 100; ty = u.y; sp = Math.max(60, march); }
+        else if (u.kind === 'knight') { const f = this.stage === 'hunt' ? nearest(u, l) : null; if (f) { tx = f.x; ty = f.y; sp = 260; } else { tx = u.x - 100; ty = u.y; sp = 230; } }
+        else { // cavalry: ride hard down the side, then turn in on the back and the flank
+          if (this.stage === 'clash' && !u.turned) { tx = -A * .85; ty = u.lane; sp = 620; if (u.x < -A * .4) u.turned = true; }
+          else { const f = nearest(u, l); if (f) { tx = f.x; ty = f.y; sp = 520; } }
+        }
+        const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy) || 1;
+        u.vx += (dx / d * sp - u.vx) * Math.min(1, dt * 4); u.vy += (dy / d * sp - u.vy) * Math.min(1, dt * 4);
+        u.x = clamp(u.x + u.vx * dt, -A * 1.05, A * 1.1); u.y = clamp(u.y + u.vy * dt, -B * .98, B * .98);
+        if (u.kind === 'archer') continue;
+        // nothing stops them: pieces in the way get crushed or thrown
+        const R = u.kind === 'cav' ? S * 1.25 : S * .95;
+        for (const f of l) {
+          const ex = f.x - u.x, ey = f.y - u.y, ed = Math.hypot(ex, ey), m = R + f.r;
+          if (ed >= m || winner) continue;
+          if (ed > 0) { f.x = u.x + ex / ed * m; f.y = u.y + ey / ed * m; }
+          if (this.stage === 'march') { push(f, ex / (ed || 1) * 500, ey / (ed || 1) * 500); continue; }
+          if (u.kind === 'cav') { if (blastOrDodge(f, '#ffffff', pick(['TRAMPLED!', 'CHARGE!', '🐎 RUN DOWN!']))) SFX.play('smack', { v: .5 }); }
+          else if ((u.hit -= dt) <= 0) { u.hit = .12; if (blastOrDodge(f, '#c8d0e0', pick(['CRUSHED!', '⚔️ SLAIN!', 'SHIELD BASH!']))) SFX.play('clash', { v: .5 }); }
+        }
+      }
+      function nearest(u, list) { let b = null, bd = 1e9; for (let j = 0; j < (list.length > 60 ? 25 : list.length); j++) { const f = list.length > 60 ? pick(list) : list[j]; const d = Math.hypot(f.x - u.x, f.y - u.y); if (d < bd) { bd = d; b = f; } } return b; }
+      // pieces back away from the army (there's nowhere to go but the edge)
+      for (const f of l) { let ax = 0, ay = 0; for (const u of this.units) { if (u.kind === 'archer') continue; const dx = f.x - u.x, dy = f.y - u.y, d = Math.hypot(dx, dy); if (d < S * 6 && d > 0) { ax += dx / d; ay += dy / d; } } const a = Math.hypot(ax, ay); if (a > 0) { f.vx += ax / a * 500 * dt; f.vy += ay / a * 500 * dt; } }
+    },
+    drawFloor() {
+      for (const ar of this.arrows || []) if (ar.u > .85) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(sx(ar.tx), sy(ar.ty), 8, 4, 0, 0, 7); ctx.fill(); }
+    },
+    drawOver() {
+      const units = (this.units || []).slice().sort((a, b) => a.y - b.y);
+      for (const u of units) {
+        const X = sx(u.x), Y = sy(u.y), face = u.vx > 5 ? 1 : -1, bob = Math.abs(Math.sin(u.ph)) * (u.kind === 'cav' ? 5 : 2);
+        ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(X, Y, u.kind === 'cav' ? 30 : 16, u.kind === 'cav' ? 11 : 7, 0, 0, 7); ctx.fill();
+        ctx.save(); ctx.translate(X, Y - bob); ctx.scale(face, 1); ctx.lineWidth = 2.5; ctx.strokeStyle = '#1a1a22';
+        if (u.kind === 'cav') { // 🐎 a horse and rider with a lance
+          const leg = Math.sin(u.ph * 1.6) * 7; ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 5;
+          for (const [lx, s] of [[-16, 1], [-10, -1], [12, -1], [18, 1]]) { ctx.beginPath(); ctx.moveTo(lx, -20); ctx.lineTo(lx + leg * s, 0); ctx.stroke(); }
+          ctx.fillStyle = '#6a4220'; ctx.strokeStyle = '#2a1608'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(0, -26, 26, 11, 0, 0, 7); ctx.fill(); ctx.stroke(); // body
+          ctx.beginPath(); ctx.moveTo(18, -30); ctx.lineTo(30, -48); ctx.lineTo(40, -44); ctx.lineTo(28, -26); ctx.closePath(); ctx.fill(); ctx.stroke(); // neck + head
+          ctx.fillStyle = '#1a1008'; ctx.fillRect(22, -50, 10, 4); // mane
+          ctx.fillStyle = '#8a1a1a'; ctx.fillRect(-14, -34, 22, 8); // saddle cloth
+          ctx.fillStyle = '#9aa2b0'; ctx.strokeStyle = '#1a1a22'; ctx.beginPath(); ctx.roundRect(-6, -56, 14, 22, 4); ctx.fill(); ctx.stroke(); // rider
+          ctx.beginPath(); ctx.arc(1, -62, 7, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1a1a22'; ctx.fillRect(2, -63, 6, 2); // helmet
+          ctx.strokeStyle = '#c8b080'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-4, -46); ctx.lineTo(48, -54); ctx.stroke(); ctx.fillStyle = '#d8dce4'; ctx.beginPath(); ctx.moveTo(48, -58); ctx.lineTo(58, -54); ctx.lineTo(48, -50); ctx.fill(); // lance
+        } else if (u.kind === 'knight') { // 🛡️ armored knight with a shield and sword
+          const step = Math.sin(u.ph) * 4; ctx.strokeStyle = '#2a2a33'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-4, -14); ctx.lineTo(-4 + step, 0); ctx.moveTo(4, -14); ctx.lineTo(4 - step, 0); ctx.stroke();
+          ctx.fillStyle = '#a8b0bc'; ctx.strokeStyle = '#1a1a22'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.roundRect(-9, -36, 18, 24, 4); ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, -42, 8, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1a1a22'; ctx.fillRect(1, -44, 7, 2.5);
+          ctx.fillStyle = '#c8202a'; ctx.beginPath(); ctx.moveTo(8, -34); ctx.lineTo(20, -34); ctx.lineTo(20, -22); ctx.quadraticCurveTo(14, -12, 8, -22); ctx.closePath(); ctx.fill(); ctx.stroke(); // shield
+          ctx.fillStyle = '#f0d040'; ctx.fillRect(13, -31, 2, 12); ctx.fillRect(10, -27, 8, 2);
+          const sw = this.stage !== 'march' ? Math.sin(u.ph * 1.5) * .8 : -.6; ctx.save(); ctx.translate(-8, -28); ctx.rotate(-1.2 + sw); ctx.fillStyle = '#e0e4ea'; ctx.fillRect(0, -2, 26, 4); ctx.fillStyle = '#6a4a20'; ctx.fillRect(-6, -3, 7, 6); ctx.restore(); // sword
+        } else { // 🏹 archer in a green hood with a longbow
+          ctx.fillStyle = '#3a6a2a'; ctx.beginPath(); ctx.roundRect(-8, -32, 16, 22, 4); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#d8b088'; ctx.beginPath(); ctx.arc(0, -38, 6.5, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#2a5a1a'; ctx.beginPath(); ctx.arc(0, -40, 7.5, Math.PI, 0); ctx.fill();
+          ctx.strokeStyle = '#2a2a33'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-3, -10); ctx.lineTo(-3, 0); ctx.moveTo(3, -10); ctx.lineTo(3, 0); ctx.stroke();
+          const pull = (u.draw || 0) * 8; ctx.strokeStyle = '#7a4a1a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(-6, -26, 16, -1.2, 1.2, true); ctx.stroke(); // bow (faces left, toward the pieces)
+          ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6 + Math.cos(-1.2) * -16 * -1, -26 + Math.sin(-1.2) * 16); ctx.lineTo(-6 + 16 * .36 + pull, -26); ctx.lineTo(-6 + Math.cos(1.2) * 16, -26 + Math.sin(1.2) * 16); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      for (const ar of this.arrows || []) { // arrows arc high over the field
+        if (ar.u < 0) continue; const u = clamp(ar.u, 0, 1), x = ar.x0 + (ar.tx - ar.x0) * u, y = ar.y0 + (ar.ty - ar.y0) * u, h = Math.sin(Math.PI * u) * 260 + 40 * (1 - u);
+        const u2 = clamp(u + .02, 0, 1), x2 = ar.x0 + (ar.tx - ar.x0) * u2, y2 = ar.y0 + (ar.ty - ar.y0) * u2, h2 = Math.sin(Math.PI * u2) * 260 + 40 * (1 - u2);
+        const X = sx(x), Y = sy(y) - h, ang = Math.atan2((sy(y2) - h2) - Y, sx(x2) - X);
+        ctx.save(); ctx.translate(X, Y); ctx.rotate(ang); ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(8, 0); ctx.stroke(); ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(8, -3); ctx.lineTo(13, 0); ctx.lineTo(8, 3); ctx.fill(); ctx.fillStyle = '#e8e0d0'; ctx.fillRect(-15, -2.5, 5, 5); ctx.restore();
+      }
+    },
+    snap() { return { u: (this.units || []).map(u => ({ ...u })), a: (this.arrows || []).map(a => ({ ...a })), s: this.stage }; },
+    restore(v) { this.units = (v?.u || []).map(u => ({ ...u })); this.arrows = (v?.a || []).map(a => ({ ...a })); this.stage = v?.s || 'march'; },
+    power: { name: 'ROYAL CHARGE', icon: '🐎', fn() { const m = MAPS.warfield; if (!m.units) return; const B = m.B, A = m.A; for (const side of [-1, 1]) for (let i = 0; i < 4; i++) m.units.push({ kind: 'cav', side, x: A, y: side * B * (.3 + i * .15), vx: -600, vy: 0, ph: rnd(6.3), lane: side * B * .5, turned: true }); SFX.play('horn'); SFX.play('gallop'); shake = 10; } }
   }
+
 };
 const MAP_IDS = Object.keys(MAPS);
 let MAP = MAPS.classic, mapId = 'classic';
@@ -1619,7 +1917,7 @@ function wallFor(h) {
 function setMap(id) {
   if (!MAPS[id]) id = 'classic';
   if (id === mapId && MAP._tops) return false;
-  mapId = id; MAP = MAPS[id]; SFX.setMap?.(id);
+  mapId = id; MAP = MAPS[id]; SFX.setMap?.(id); K = MAP.K || 0.55;
   MAP._tops ||= MAP.tops();
   const g = bg.getContext('2d'); g.clearRect(0, 0, W, H); g.save(); MAP.sky(g); g.restore();
   for (const c of clouds) c.col = MAP.clouds;
@@ -1712,7 +2010,7 @@ const alive = () => fighters.filter(f => f.alive);
 /** n evenly spread spots over the whole map (any shape), shuffled; skips spots near pieces that stay. */
 function spreadSlots(n, out = [], keep = []) {
   let ok = tiles.filter(tl => tl.state < 2);
-  if (MAP.spawn) { const pref = ok.filter(MAP.spawn); if (pref.length * 2.5 >= n) ok = pref; } // e.g. Final Stage: everyone starts up on the platforms
+  if (MAP.spawnAt) { const pref = ok.filter(MAP.spawnAt); if (pref.length * 2.5 >= n) ok = pref; } // e.g. Final Stage: everyone starts up on the platforms
   const pool = ok.map(tl => ({ x: tl.x, y: tl.y })); if (!pool.length) return out;
   for (let i = pool.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]]; }
   // farthest-point-ish: take every k-th tile so spots cover the whole map, add a little jitter inside the tile

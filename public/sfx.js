@@ -8,7 +8,7 @@ window.SFX = (() => {
   const mapCustom = {};   // map id -> { name -> AudioBuffer } (that map's own sounds)
   let curMap = null;
   const lastPlay = {};    // name -> time, for rate limiting
-  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05 };
+  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05 };
 
   function init() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; }
@@ -144,6 +144,18 @@ window.SFX = (() => {
     wheelMove: () => S.whoosh(),
     wheelTimer: () => { for (let i = 0; i < 3; i++) { tone({ type: 'square', f0: 880, dur: .18, v: .2, at: i * .3 }); tone({ type: 'square', f0: 660, dur: .18, v: .14, at: i * .3 + .1 }); } },
     wheelGrow: () => notes([72, 76, 79, 84], .07, (n, at) => tone({ type: 'triangle', f0: hz(n), dur: .14, v: .16, at })),
+    // 🐄 Fart Farm, 🐀 Plague Town and ⚔️ Battlefield
+    moo: (o = {}) => { const p = o.p || 1; tone({ type: 'sawtooth', f0: 165 * p, f1: 118 * p, dur: .9, v: .14 * (o.v ?? 1), a: .12 }); tone({ type: 'square', f0: 168 * p, f1: 120 * p, dur: .85, v: .05 * (o.v ?? 1), a: .15 }); tone({ type: 'sine', f0: 82 * p, f1: 60 * p, dur: .9, v: .18 * (o.v ?? 1), a: .1 }); },
+    stampede: () => { noise({ dur: 1.8, v: .3, f0: 260, f1: 120, a: .25 }); for (let i = 0; i < 14; i++) tone({ type: 'sine', f0: 70 + Math.random() * 20, f1: 38, dur: .09, v: .3, at: i * .12 + Math.random() * .04 }); },
+    ufo: (o = {}) => { const p = o.p || 1; for (let i = 0; i < 6; i++) tone({ type: 'sine', f0: 520 * p, f1: 900 * p, dur: .12, v: .1, at: i * .12 }); tone({ type: 'triangle', f0: 260 * p, dur: .8, v: .08 }); },
+    beam: () => { tone({ type: 'sine', f0: 260, f1: 1400, dur: 1.6, v: .16, a: .1 }); tone({ type: 'triangle', f0: 520, f1: 2400, dur: 1.6, v: .07, a: .1 }); noise({ dur: 1.6, v: .06, type: 'bandpass', f0: 1500, q: 2, a: .2 }); },
+    rat: (o = {}) => { for (let i = 0; i < 3; i++) tone({ type: 'square', f0: 2300 + Math.random() * 600, f1: 3100, dur: .05, v: .06 * (o.v ?? 1), at: i * .07 }); },
+    cough: (o = {}) => { for (const at of [0, .22]) noise({ dur: .16, v: .28 * (o.v ?? 1), type: 'bandpass', f0: 900, f1: 500, q: 1.4, at }); },
+    bell: (o = {}) => { for (const [f, v, d] of [[196, .22, 3], [392, .1, 2.2], [541, .08, 1.6], [784, .04, 1.2]]) tone({ type: 'sine', f0: f, dur: d, v: v * (o.v ?? 1), a: .004 }); },
+    arrows: () => { for (let i = 0; i < 7; i++) noise({ dur: .4, v: .09, type: 'bandpass', f0: 3200, f1: 900, q: 7, at: i * .05 + Math.random() * .05 }); },
+    clash: (o = {}) => { tone({ type: 'square', f0: 1900, f1: 1700, dur: .1, v: .1 * (o.v ?? 1) }); tone({ type: 'sine', f0: 2700, dur: .45, v: .1 * (o.v ?? 1) }); tone({ type: 'sine', f0: 3900, dur: .3, v: .05 * (o.v ?? 1) }); noise({ dur: .12, v: .2 * (o.v ?? 1), type: 'highpass', f0: 3000 }); },
+    horn: (o = {}) => { const p = o.p || 1; tone({ type: 'sawtooth', f0: 98 * p, f1: 104 * p, dur: 1.5, v: .2, a: .18 }); tone({ type: 'sawtooth', f0: 147 * p, f1: 156 * p, dur: 1.5, v: .1, a: .22 }); tone({ type: 'sine', f0: 49 * p, dur: 1.5, v: .2, a: .2 }); },
+    gallop: () => { for (let i = 0; i < 10; i++) { tone({ type: 'sine', f0: 95, f1: 50, dur: .07, v: .28, at: i * .14 }); tone({ type: 'sine', f0: 85, f1: 45, dur: .07, v: .2, at: i * .14 + .05 }); } },
     whoosh: () => { noise({ dur: .55, v: .32, type: 'bandpass', f0: 300, f1: 4200, q: 1.2, a: .2 }); tone({ type: 'sine', f0: 140, f1: 60, dur: .5, v: .15, a: .15 }); },
     heartbeat: () => { tone({ type: 'sine', f0: 62, f1: 42, dur: .16, v: .45 }); tone({ type: 'sine', f0: 58, f1: 40, dur: .2, v: .32, at: .22 }); },
     slowhit: () => { noise({ dur: 1.4, v: .35, f0: 700, f1: 50, a: .02 }); tone({ type: 'sine', f0: 70, f1: 28, dur: 1.4, v: .5 }); tone({ type: 'sawtooth', f0: 110, f1: 40, dur: .9, v: .08 }); }

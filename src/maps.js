@@ -16,7 +16,9 @@ export const MAP_LIST = [
   { id: 'desert', power: '🪱 Worm Frenzy', name: 'Dune Sea', icon: '🏜️', desc: 'Nobody falls off: a giant sand worm bursts up and swallows pieces whole.' },
   { id: 'castle', power: '🐉 Dragon Raid', name: 'Dragon Keep', icon: '🐉', desc: 'A castle courtyard. Dragons swoop down, knocking pieces flying and burning holes in the floor.' },
   { id: 'tiers', power: '🫨 Tremor', name: 'Tumble Tower', icon: '🧱', desc: 'Four floors stacked up: the biggest on top, each one below it smaller. Stand on a tile for 5 seconds and it gives way: drop to the floor below. Fall through the bottom and you are out.' },
-  { id: 'gas', power: '🫘 Bean Blast', name: 'Whoopee Swamp', icon: '💨', desc: 'A goofy bean bog. Step on a whoopee cushion and PFFFT, you go flying. Gas clouds drift over and everyone runs from the smell, and pieces toot themselves around.' },
+  { id: 'gas', power: '🐄 Stampede', name: 'Fart Farm', icon: '💨', desc: 'Big cows stampede across the field, trampling pieces flat and farting on whoever is behind them. UFOs beam pieces up into the saucer.' },
+  { id: 'plague', power: '🐀 Rat Swarm', name: 'Plague Town', icon: '🐀', desc: 'A walled medieval town seen from above. Rats bite and infect you, and the sick pass it on to anyone they bump. Run from the rats! Nothing crumbles.' },
+  { id: 'warfield', power: '🐎 Royal Charge', name: 'Battlefield', icon: '⚔️', desc: 'Every piece on one side, an unstoppable army on the other: archers hit the back rows, knights crush the front, and the cavalry hits both sides. Nothing crumbles.' },
   { id: 'bombs', power: '💣 Mega Bomb', name: 'Blast Zone', icon: '💣', desc: 'Giant bombs drop in, trap you and blow up in a big cross. Get out of the lines!' },
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
