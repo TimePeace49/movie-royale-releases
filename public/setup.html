@@ -83,7 +83,8 @@ const STEPS = [
   { id: 'discord', title: 'Discord bot', sub: '/suggest movies', done: () => S.status.discord.state === 'online' && (A.guilds || []).length > 0 },
   { id: 'cloud', title: '24/7 Discord bot', sub: 'Picks while your PC is off', done: () => !!S.cloud?.enabled },
   { id: 'donations', title: 'Donations', sub: 'Tips pop up for the wheel', done: () => !!(S.settings.seJwt || S.settings.slToken) },
-  { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup }
+  { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup },
+  { id: 'obs', title: 'OBS control', sub: 'For the wheel\'s Doomsday', done: () => !!(S.settings.obsMic || S.settings.obsCam) }
 ];
 
 async function load() {
@@ -271,8 +272,29 @@ const PAGES = {
     </ol>
     <label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" style="width:auto" ${S.settings.streamSetup ? 'checked' : ''} onchange="api('/api/settings',{streamSetup:this.checked}).then(load)"> I've added it to OBS</label>
     ${nav()}`;
+  },
+  obs() {
+    return `<h2>OBS control (optional)</h2><p class="why">Only for the 🎡 wheel's <b>☠️ Doomsday</b> (Wheel → ⚙️ Wheel settings → Void spot). When the void swallows the whole wheel, Movie Royal turns your mic and camera off right away and ends your stream 15 seconds later. Skip this if you don't use it.</p>
+    <ol class="steps">
+      <li>In OBS (version 28 or newer): <b>Tools</b> → <b>WebSocket Server Settings</b>.</li>
+      <li>Tick <b>Enable WebSocket server</b>. Leave the port at <b>4455</b>.</li>
+      <li>Press <b>Show Connect Info</b> and copy the <b>Server Password</b>. Paste it here:<div class="field"><input id="obsPw" type="password" placeholder="${S.settings.obsPassword ? 'Saved — paste a new one to replace it' : 'password from OBS'}" autocomplete="off"></div></li>
+      <li>Press <b>Connect</b>, then pick your mic and camera:<div class="field"><input id="obsMic" list="obsIn" placeholder="Your mic (audio source name)" value="${esc(S.settings.obsMic || '')}"></div><div class="field"><input id="obsCam" list="obsIn" placeholder="Your camera (source name)" value="${esc(S.settings.obsCam || '')}"></div><datalist id="obsIn"></datalist></li>
+    </ol>
+    ${note('obs')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="saveObs(this)">Connect &amp; save</button></div>
+    <p class="help">Connecting never changes anything in OBS. You can change this later in Settings → 🎥 OBS.</p>
+    ${nav()}`;
   }
 };
+async function saveObs(btn) {
+  btn.disabled = true; const pw = $('obsPw').value.trim(), body = { obsMic: $('obsMic').value.trim(), obsCam: $('obsCam').value.trim() }; if (pw) body.obsPassword = pw;
+  try {
+    await api('/api/settings', body); const r = await api('/api/obs/test', {});
+    msg.obs = { ok: true, text: `Connected to OBS ${esc(r.obs || '')}.${body.obsMic || body.obsCam ? ' Mic and camera saved.' : ' Now pick your mic and camera from the boxes and press it again.'}` };
+    await load(); $('obsIn').innerHTML = r.inputs.map(i => `<option value="${esc(i.name)}">${esc(i.kind)}</option>`).join('');
+  } catch (e) { msg.obs = { ok: false, text: esc(e.message) }; await load(); }
+}
 
 async function saveTwitch() {
   const id = $('cid').value.trim(), sec = $('sec').value.trim();

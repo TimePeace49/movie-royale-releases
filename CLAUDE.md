@@ -23,10 +23,17 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 5. Building locally (`node scripts/build-win.mjs`) is only needed to hand Derek an installer directly.
 
 ## Rules Derek has set (keep them)
-- **Wheel spot types:** normal, ⏱️ timer (start button + on-stream countdown), ⚡ auto (just shows the winner), 🔢 countdown (each landing knocks one off; 0 = leaves next spin). Any spot can block channel point respins and/or saved-spin respins.
-- **Void spot** (per wheel, off by default): lands → auto respin → that spot is voided for the rest of the stream; on-stream "voided tonight" list; subs/gifts/bits/donations can undo it. Void symbol = the original golden gauntlet (`public/gauntlet.svg`), respin symbol = 🕳️.
+- **Round timer** (per wheel, default 2 min, minutes or seconds): starts when the first spin lands; respins/moves keep going until it runs out, then the current spot is the final winner (`final`). Auto + countdown landings pause it until Derek spins again; he can pause/start any time from the left-side pop-up. "Money" = subs, gift subs, bits, donations, or ones logged by hand.
+- **Wheel spot types (dropdown):** ⏱️ timer (= normal spot, clock keeps going, respin button), ⚡ auto (pauses clock, wheel shows "(auto)"), 🔢 countdown (each landing knocks one off, pauses clock, wheel shows "(n)"; 0 = leaves next spin). Any spot can block channel point respins and/or saved-spin respins. Each spot can have its own sound. "Rules off" = plain wheel.
+- **+ / −** = ±10% of the whole wheel (setting `growPct`), others shrink evenly. The void's size is frozen when others change and only money can change it.
+- **Respin collisions:** respins within `collide.secs` of each other → first spins, the rest become saved respins.
+- **Void spot** (per wheel, off by default): lands → auto respin → that spot is voided for the rest of the stream; on-stream "voided tonight" list; money can bring spots back. Void landing on void = it grows and respins; after `landings` hits it fills the wheel → optional "[name] will return for Doomsday" (fullscreen, OBS mic mute + camera hide, StopStream after 15 s via `src/obs.js`). Symbols: respin = 🔁, void / bring back = 🕳️. No gauntlet.
+- **Monthly bring-back:** Derek can bring back 1 voided spot per month himself; overriding it fires the 🚨 "rule breaker" siren pop-up on stream. **SECRET:** never mention the siren pop-up in settings text, help, the changelog or patch notes.
+- **Undo:** ⏪ Undo / Go back… restores the wheel, sizes, round timer, saved spins (snapshots in `wheel.js`).
+- **Move a spot** reward: after redeeming, the viewer types up/down in chat (2 min). Redeems are logged in wheel history.
+- Wheels can be put in **folders**.
 - **Pop-ups** for subs / gift subs / bits / donations while the wheel is on stream: grow (type the spot), shrink (off by default), give respins, undo void (only once something is voided). Each choice can be turned off per wheel; off = not shown.
-- **Grow/shrink with channel points:** chat never types the spot — a pop-up lets Derek pick (or he uses + / −). Grow = +1 size, like adding the spot again in Wheel of Names.
+- **Grow/shrink with channel points:** chat never types the spot — a pop-up lets Derek pick (or he uses + / −).
 - **Saved respins** never expire; `!respin` uses one, `!myspins` shows the count (friendly reply if none). Both are in `!moviesroyal`.
 - **Refunds: never.** The app must not refund, cancel or complete channel point redemptions or change reward queue settings. Derek does refunds himself.
 - The "3 spins per stream" idea is for battles only, not the wheel.

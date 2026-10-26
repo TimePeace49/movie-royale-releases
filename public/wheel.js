@@ -55,7 +55,7 @@ window.WheelView = (() => {
         const pic = img(s.e.image), ps = pic ? Math.min(span * R * .8 * .9, R * .24) : 0, outer = pic && ps > 14 ? R * .93 - ps - R * .03 : R * .93;
         g.save(); g.translate(cx, cy); g.rotate((a0 + a1) / 2);
         if (pic && ps > 14) { g.save(); g.beginPath(); g.arc(R * .93 - ps / 2, 0, ps / 2, 0, TAU); g.clip(); g.rotate(0); g.drawImage(pic, R * .93 - ps, -ps / 2, ps, ps); g.restore(); }
-        const txt = String(s.e.text || ''); const fs = Math.min(R * .085, chord * .8, (R * .78) / Math.max(4, txt.length) * 1.8) * (Number(L.textScale) || 1);
+        const txt = String(s.e.label || s.e.text || ''); /* countdown spots show (3), auto spots show (auto) */ const fs = Math.min(R * .085, chord * .8, (R * .78) / Math.max(4, txt.length) * 1.8) * (Number(L.textScale) || 1);
         if (fs >= 6) {
           g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = `800 ${fs}px ${L.font || 'Inter'}, Inter, sans-serif`; g.fillStyle = L.textColor || ink(s.color);
           let t = txt; const max = outer - R * .18; while (t.length > 1 && g.measureText(t).width > max) t = t.slice(0, -2) + '…';

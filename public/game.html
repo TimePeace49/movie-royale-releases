@@ -2215,10 +2215,10 @@ function rebuildKeep(n) {
   fighters.forEach((f, i) => { const p = spots[i]; if (p) { f.x = p.x; f.y = p.y; f.vx = f.vy = 0; f.h = rnd(300, 700); f.vh = 0; } });
 }
 // ---------- 🎡 the wheel scene ----------
-const GXI = '<img class="gx" src="gauntlet.svg">';
+const VX = '🕳️', RX = '🔁';
 let WV = null, wlShow = false, wlSpinning = false, wlRecent = [], wlConf = [], wlConfOn = false;
 function wlInit() { if (WV) return; WV = WheelView.create($('wlCanvas'), { pointerRoom: 30 }); WV.onTick = () => { if (wlOpts.ticks !== false) SFX.play('wheelTick'); }; }
-let wlTimerS = null, wlTimerT = null, wlLookKey = '';
+let wlRoundS = null, wlRoundT = null, wlLookKey = '';
 function wlLook(w) { // background: color / gradient / picture / video
   const L = w?.look || {}, key = (L.bg || '') + '|' + (L.bgImage || ''); if (key === wlLookKey) return; wlLookKey = key;
   const bg = $('wlBg'); bg.innerHTML = ''; bg.style.background = '';
@@ -2226,63 +2226,93 @@ function wlLook(w) { // background: color / gradient / picture / video
   else if (L.bgImage) bg.style.background = `center/cover no-repeat url("${L.bgImage}")`;
   else if (L.bg) bg.style.background = L.bg;
 }
-function wlTimer(tm, ding) {
-  wlTimerS = tm ? { ...tm, at: performance.now() } : null; clearInterval(wlTimerT);
-  if (ding) SFX.play('wheelTimer');
+// ⏱️ the round timer on stream
+function wlRound(rd) {
+  wlRoundS = rd ? { ...rd, at: performance.now() } : null; clearInterval(wlRoundT);
   const tick = () => {
-    const el = $('wlTimer'); if (!wlTimerS) { el.classList.add('off'); return; }
-    const left = wlTimerS.paused ? wlTimerS.left : Math.max(0, wlTimerS.left - (performance.now() - wlTimerS.at));
-    const sec = Math.ceil(left / 1000); $('wlTn').textContent = left <= 0 ? "TIME!" : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-    $('wlTl').textContent = `⏱️ ${wlTimerS.label}${wlTimerS.paused ? ' (paused)' : ''}`; $('wlTb').style.width = (wlTimerS.total ? left / wlTimerS.total * 100 : 0) + '%';
-    el.classList.remove('off'); el.classList.toggle('hurry', left > 0 && left < 10000 && !wlTimerS.paused); el.classList.toggle('done', left <= 0);
+    const el = $('wlTimer'), R = wlRoundS;
+    if (!R || R.state === 'ended' || !R.total) { el.classList.add('off'); return; }
+    const left = R.state === 'running' ? Math.max(0, R.left - (performance.now() - R.at)) : R.left, sec = Math.ceil(left / 1000);
+    $('wlTn').textContent = R.state === 'ending' || left <= 0 ? 'TIME!' : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    $('wlTl').textContent = R.state === 'armed' ? '⏱️ Starts when the wheel lands' : R.state === 'paused' ? (R.why === 'auto' ? '⏸ Paused for the ⚡ auto spot' : R.why === 'countdown' ? '⏸ Paused for the 🔢 countdown spot' : '⏸ Paused') : R.state === 'ending' ? '⏱️ Last spin!' : '⏱️ Keep spinning!';
+    $('wlTb').style.width = (R.total ? left / R.total * 100 : 0) + '%';
+    el.classList.remove('off'); el.classList.toggle('hurry', R.state === 'running' && left < 10000); el.classList.toggle('done', left <= 0);
   };
-  tick(); if (wlTimerS && !wlTimerS.paused) wlTimerT = setInterval(tick, 200);
+  tick(); if (wlRoundS && wlRoundS.state === 'running') wlRoundT = setInterval(tick, 200);
 }
-function wlMine(m) { return; if (m) $('wlMine').textContent = `🎟️ ${m.name}: ${m.left}${m.per ? '/' + m.per : ''}`; }
 let wlId = '', wlOpts = {};
 function wlSet(on) { SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
-function wlVoided(w) { const el = $('wlVoid'); if (!w || !w.voidOn) { el.style.display = 'none'; return; } const v = w.voided || []; el.style.display = ''; el.innerHTML = `<div class="h">${GXI} VOIDED TONIGHT</div>${v.length ? v.slice(0, 8).map(t => `<div class="x">${esc(t)}</div>`).join('') + (v.length > 8 ? `<div>+${v.length - 8} more</div>` : '') : '<div style="opacity:.6">Nothing yet… 👀</div>'}`; }
-function wlUse(w) { if (!w) return; wlVoided(w); wlId = w.id; wlOpts = w.opts || {}; $('wlRecent').style.display = wlOpts.recent === false ? 'none' : ''; if (wlShow) SFX.setMap?.('wheel-' + wlId); }
+function wlVoided(w) { const el = $('wlVoid'); if (!w || !w.voidOn) { el.style.display = 'none'; return; } const v = w.voided || []; el.style.display = ''; el.innerHTML = `<div class="h">${VX} VOIDED TONIGHT</div>${v.length ? v.slice(0, 8).map(t => `<div class="x">${esc(t)}</div>`).join('') + (v.length > 8 ? `<div>+${v.length - 8} more</div>` : '') : '<div style="opacity:.6">Nothing yet… 👀</div>'}`; }
+function wlUse(w) { if (!w) return; wlVoided(w); wlId = w.id; wlOpts = { ...(w.opts || {}), rules: w.rules !== false }; $('wlRecent').style.display = wlOpts.recent === false ? 'none' : ''; if (wlShow) SFX.setMap?.('wheel-' + wlId); }
 function wlCard(r, k) {
   if (!r) { $('wlCard').classList.add('off'); return; }
-  $('wlK').innerHTML = k || (r.voided ? `${GXI} The void ate` : r.type === 'void' ? `${GXI} The void! Respinning…` : r.kind === 'respin' ? '🕳️ Respin landed on' : r.kind === 'up' ? '⬆️ Moved up to' : r.kind === 'down' ? '⬇️ Moved down to' : '🎡 The wheel says');
+  $('wlK').innerHTML = k || (r.voided ? `${VX} The void ate` : r.type === 'void' ? `${VX} The void! Respinning…` : r.kind === 'respin' ? `${RX} Respin landed on` : r.kind === 'up' ? '⬆️ Moved up to' : r.kind === 'down' ? '⬇️ Moved down to' : '🎡 The wheel says');
   $('wlT').textContent = r.text; $('wlT').style.fontSize = r.text.length > 40 ? '40px' : r.text.length > 22 ? '52px' : '64px';
-  $('wlR').textContent = r.rule || '';
-  const tp = r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : r.type === 'timer' ? `<span>⏱️ ${r.timerMins} min timer</span>` : r.type === 'auto' ? '<span>⚡ auto</span>' : '';
-  const tp2 = r.voided ? `<span>${GXI} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${GXI} respinning…</span>` : tp;
-  $('wlM').innerHTML = tp2 + `${wlOpts.showPct === false ? '' : `<span>🍀 ${r.pct}% of the wheel</span>`}<span>${r.by?.source === 'points' ? '💜' : '👤'} ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ' (channel points)' : ''}</span>${r.from ? `<span>was: ${esc(r.from.text)}</span>` : ''}`;
+  $('wlR').textContent = wlOpts.rules === false ? '' : r.rule || '';
+  const tp = r.voided ? `<span>${VX} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${VX} respinning…</span>` : r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : r.type === 'auto' ? '<span>⚡ auto</span>' : '';
+  $('wlM').innerHTML = tp + `${wlOpts.showPct === false ? '' : `<span>🍀 ${r.pct}% of the wheel</span>`}<span>${r.by?.source === 'points' ? '💜' : '👤'} ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ' (channel points)' : ''}</span>${r.from ? `<span>was: ${esc(r.from.text)}</span>` : ''}`;
   $('wlCard').style.borderColor = r.color || '#ffc94a';
   $('wlCard').classList.remove('off');
 }
-function wlRecentDraw() { $('wlRecent').innerHTML = wlRecent.slice(0, 5).map(r => `<div><i style="background:${esc(r.color)}"></i>${{ spin: '🎡', respin: '🕳️', up: '⬆️', down: '⬇️' }[r.kind] || '🎡'} ${esc(r.text.length > 42 ? r.text.slice(0, 41) + '…' : r.text)}<span class="muted">${esc(r.by?.name || '')} · ${new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></div>`).join(''); }
+function wlRecentDraw() { $('wlRecent').innerHTML = wlRecent.slice(0, 5).map(r => `<div><i style="background:${esc(r.color)}"></i>${{ spin: '🎡', respin: RX, up: '⬆️', down: '⬇️' }[r.kind] || '🎡'} ${esc(r.text.length > 42 ? r.text.slice(0, 41) + '…' : r.text)}<span class="muted">${esc(r.by?.name || '')} · ${new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></div>`).join(''); }
 function wlBanner(html, ms = 1800) { const b = $('wlBanner'); b.innerHTML = html; b.classList.add('on'); clearTimeout(wlBanner.t); wlBanner.t = setTimeout(() => b.classList.remove('on'), ms); }
-function wlConfetti(color) {
+function wlConfetti(color, n = 220) {
   const cols = [color || '#ffc94a', '#ffc94a', '#ff4f6d', '#5ce1a7', '#4fc3ff', '#fff'];
-  for (let i = 0; i < 220; i++) wlConf.push({ x: 540 + Math.random() * 80 - 40, y: 540, vx: (Math.random() - .5) * 1500, vy: -Math.random() * 1300 - 200, r: Math.random() * 6.3, vr: (Math.random() - .5) * 14, w: 8 + Math.random() * 10, h: 5 + Math.random() * 7, c: cols[i % cols.length], life: 3 + Math.random() * 2 });
+  for (let i = 0; i < n; i++) wlConf.push({ x: 540 + Math.random() * 80 - 40, y: 540, vx: (Math.random() - .5) * 1500, vy: -Math.random() * 1300 - 200, r: Math.random() * 6.3, vr: (Math.random() - .5) * 14, w: 8 + Math.random() * 10, h: 5 + Math.random() * 7, c: cols[i % cols.length], life: 3 + Math.random() * 2 });
   if (!wlConfOn) { wlConfOn = true; let last = performance.now(); const g = $('wlFx').getContext('2d');
     const step = now => { const dt = Math.min(.05, (now - last) / 1000); last = now; g.clearRect(0, 0, 1920, 1080);
       for (const p of wlConf) { p.vy += 1400 * dt; p.vx *= .99; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt; p.life -= dt; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.globalAlpha = Math.min(1, p.life); g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 2))); g.restore(); }
       wlConf = wlConf.filter(p => p.life > 0 && p.y < 1200); if (wlConf.length) requestAnimationFrame(step); else { wlConfOn = false; g.clearRect(0, 0, 1920, 1080); } };
     requestAnimationFrame(step); }
 }
+let wlSnd = null;
+function wlLandSound(r) { // a spot's own sound, or the normal win sound
+  try { wlSnd?.pause(); } catch {}
+  if (r.sound) { wlSnd = new Audio(r.sound); wlSnd.volume = .9; wlSnd.play().catch(() => {}); return; }
+  if (wlOpts.winSound !== false) SFX.play('wheelWin');
+}
+function wlFinal(f) { // ⏱️ time ran out: this is what we do
+  if (!f) return;
+  wlCard(f, '🏆 TIME! The wheel has spoken');
+  wlBanner(`🏆 ${esc(f.text)}<small>⏱️ Time ran out — this is what we do!</small>`, 4200);
+  SFX.play('wheelTimer'); setTimeout(() => wlLandSound(f), 700);
+  if (wlOpts.confetti !== false) { wlConfetti(f.color, 320); setTimeout(() => wlConfetti(f.color, 220), 600); }
+}
+// full-screen moments
+function wlBig(id, html, css) { let el = document.getElementById(id); if (!el) { el = document.createElement('div'); el.id = id; $('stage').appendChild(el); } el.style.cssText = css; el.innerHTML = html; return el; }
+function wlCss() { if (!document.getElementById('doomCss')) document.head.insertAdjacentHTML('beforeend', '<style id="doomCss">@keyframes doomIn{from{opacity:0;transform:scale(1.4)}to{opacity:1;transform:none}}@keyframes doomPulse{from{transform:scale(1);filter:drop-shadow(0 0 20px #f00)}to{transform:scale(1.25);filter:drop-shadow(0 0 70px #f00)}}@keyframes siren{0%,49%{background:rgba(255,0,0,.55)}50%,100%{background:rgba(0,60,255,.55)}}@keyframes sirenShake{0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(-8px,4px) rotate(-1deg)}75%{transform:translate(8px,-4px) rotate(1deg)}}</style>'); }
+function wlDoom(text) {
+  wlCss(); SFX.play('doom');
+  const el = wlBig('wlDoom', `<div style="font-size:150px;animation:doomPulse 1.2s ease-in-out infinite alternate">${VX}</div><div class="display" style="font-size:96px;line-height:1.05;margin-top:20px;text-shadow:0 0 40px #ff2a2a,0 8px 0 #000">${esc(text)}</div>`,
+    'position:absolute;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px;color:#fff;background:radial-gradient(circle,#3a0000 0%,#000 70%);animation:doomIn 1.5s ease-out;');
+  return el;
+}
+function wlSiren(who, text) { // 🚨
+  wlCss(); SFX.play('siren');
+  const icons = Array.from({ length: 18 }, (_, i) => `<span style="position:absolute;left:${(i * 97) % 1800 + 40}px;top:${(i * 211) % 900 + 60}px;font-size:${70 + (i % 4) * 30}px;animation:sirenShake .3s infinite">🚨</span>`).join('');
+  const el = wlBig('wlSiren', `${icons}<div style="position:relative;background:#000d;border:8px solid #ff2a2a;border-radius:30px;padding:36px 60px;animation:sirenShake .25s infinite"><div class="display" style="font-size:110px;color:#ff3b3b">🚨 RULE BREAKER! 🚨</div><div class="display" style="font-size:52px;margin-top:10px">${esc(who).toUpperCase()} IS BRINGING BACK A VOIDED SPOT!</div><div style="font-size:34px;font-weight:800;margin-top:14px">“${esc(text)}” · this is NOT allowed · call the wheel police 🚓</div></div>`,
+    'position:absolute;inset:0;z-index:91;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;animation:siren .5s steps(1) infinite;');
+  clearTimeout(wlSiren.t); wlSiren.t = setTimeout(() => el.remove(), 7000);
+}
 function wheelMsg(m) {
   wlInit();
+  if (m.type === 'wheelRound') { wlRound(m.round); if (m.final) wlFinal(m.final); return; }
   if (m.type === 'wheel') {
     wlSet(!!m.show);
-    if (m.timer !== undefined) wlTimer(m.timer); wlMine(m.mine); wlUse(m.wheel);
+    wlUse(m.wheel); if (m.round !== undefined) wlRound(m.round);
     if (!wlSpinning && m.wheel) { wlLook(m.wheel); WV.set(m.wheel, m.wheel.rot); $('wlTitle').textContent = m.wheel.title || m.wheel.name; $('wlSub').textContent = `${m.wheel.entries.length} spots`; }
-    if (!wlSpinning) { wlCard(m.last); if (m.last && !wlRecent.some(r => r.id === m.last.id)) { wlRecent.unshift(m.last); wlRecentDraw(); } }
+    if (!wlSpinning) { m.final ? wlCard(m.final, '🏆 The wheel has spoken') : wlCard(m.last); if (m.last && !wlRecent.some(r => r.id === m.last.id)) { wlRecent.unshift(m.last); wlRecentDraw(); } }
     return;
   }
   // a spin / respin / move
-  const r = m.result; wlUse(m.wheel); wlSet(true); wlSpinning = true; $('wlCard').classList.add('off'); wlMine(m.mine); if (m.kind === 'spin') wlTimer(null);
+  const r = m.result; wlUse(m.wheel); wlSet(true); wlSpinning = true; $('wlCard').classList.add('off'); if (m.round !== undefined) wlRound(m.round);
   wlLook(m.wheel); WV.set(m.wheel, m.from); $('wlTitle').textContent = m.wheel.title || m.wheel.name; $('wlSub').textContent = `${m.wheel.entries.length} spots`;
-  if (m.by?.source === 'bank' || m.by?.source === 'mine') wlBanner(`🕳️ RESPIN!<small>${esc(m.by.name)} used ${m.by.source === 'mine' ? 'one of their own spins' : 'a saved spin'}</small>`, 2200);
-  else if (m.by?.source === 'points') wlBanner(`${m.kind === 'respin' ? '🕳️ RESPIN!' : m.kind === 'up' ? '⬆️ MOVE UP!' : m.kind === 'down' ? '⬇️ MOVE DOWN!' : '🎡 SPIN!'}<small>${esc(m.by.name)} used channel points</small>`, 2200);
+  if (m.by?.source === 'bank') wlBanner(`${RX} RESPIN!<small>${esc(m.by.name)} used a saved respin</small>`, 2200);
+  else if (m.by?.source === 'points') wlBanner(`${m.kind === 'respin' ? `${RX} RESPIN!` : m.kind === 'up' ? '⬆️ MOVE UP!' : m.kind === 'down' ? '⬇️ MOVE DOWN!' : '🎡 SPIN!'}<small>${esc(m.by.name)} used channel points</small>`, 2200);
   SFX.play(m.kind === 'up' || m.kind === 'down' ? 'wheelMove' : 'wheelSpin');
   WV.spin({ from: m.from, to: m.to, dur: m.dur, ease: m.ease }, () => {
     wlSpinning = false; WV.highlight(m.index);
-    if (r.type !== 'void') { SFX.play('wheelWin'); if (wlOpts.confetti !== false) wlConfetti(r.color); } wlCard(r);
+    if (r.type !== 'void') { wlLandSound(r); if (wlOpts.confetti !== false) wlConfetti(r.color); } wlCard(r);
     wlRecent.unshift(r); wlRecent = wlRecent.slice(0, 20); wlRecentDraw();
   });
 }
@@ -2760,8 +2790,11 @@ function connect() {
 function handleMsg(m) {
     if (replay && ['claimStart', 'claimedDirect', 'claimed', 'claimExpired', 'chat'].includes(m.type)) { replay.pending.push(m); return; } // after the replay
     if (replay && (m.type === 'start' || m.type === 'reset' || m.type === 'claimClose')) endReplay(true);
+    if ((m.type === 'wheelSpin' && m.kind === 'spin') || m.type === 'wheelUndo') document.getElementById('wlDoom')?.remove(); // a fresh spin (or ⏪ undo) clears Doomsday
     if (m.type === 'wheel' || m.type === 'wheelSpin') { wheelMsg(m); return; }
-    if (m.type === 'wheelTimer') { wlInit(); wlTimer(m.timer, m.ding); return; }
+    if (m.type === 'wheelRound') { wheelMsg(m); return; }
+    if (m.type === 'wheelDoom') { wlDoom(m.text); return; }
+    if (m.type === 'wheelSiren') { wlSiren(m.who, m.text); return; }
     if (m.type === 'wheelBanner') { wlInit(); if (wlShow) { wlBanner(m.html, 2600); SFX.play('wheelGrow'); } return; }
     if (m.type === 'start') startGame(m);
     else if (m.type === 'preview') applyPreview(m);

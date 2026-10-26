@@ -50,6 +50,7 @@ const defaults = () => ({
     ideasDoc: 'https://docs.google.com/document/d/1bcgwJP3jX2ixkwlaRS19mUdGvotVIDAppZ6AkFOTRck/edit?usp=sharing', // 💡 linked in the pinned Discord message
     betaUpdates: false, lastSeenVersion: '', // also install pre-releases (test builds)
     seJwt: '', slToken: '', // 💵 StreamElements / Streamlabs donations
+    obsUrl: 'ws://127.0.0.1:4455', obsPassword: '', obsMic: '', obsCam: '', // 🎥 OBS (the wheel's Doomsday)
     updateRepo: '', setupSeen: false, rewardsCreated: false, streamSetup: false,
     fairOdds: true,
     joinCommand: '!join',

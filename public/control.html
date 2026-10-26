@@ -200,6 +200,16 @@
   #boosts { position:fixed; left:14px; bottom:14px; z-index:50; display:flex; flex-direction:column-reverse; gap:8px; width:310px; max-height:calc(100vh - 90px); overflow:auto; }
   .boost { background:var(--panel); border:2px solid #9b4dff; border-radius:14px; padding:10px 12px; font-size:14px; box-shadow:0 12px 40px #000a; animation:boostIn .3s ease-out; }
   @keyframes boostIn { from { transform:translateX(-30px); opacity:0; } }
+  #wRound { position:fixed; left:14px; top:250px; z-index:55; width:300px; background:var(--panel); border:3px solid #ffc94a; border-radius:18px; padding:14px 16px; box-shadow:0 16px 50px #000c; animation:boostIn .3s ease-out; }
+  #wRound.paused { border-color:#4fc3ff; } #wRound.low { border-color:#ff4f6d; animation:wrPulse 1s infinite; } #wRound.ended { border-color:#7dffb0; }
+  #wRound .big { font-size:60px; font-weight:800; text-align:center; line-height:1.05; font-variant-numeric:tabular-nums; margin:4px 0; }
+  #wRound .drag { cursor:move; user-select:none; }
+  #wRound .why { text-align:center; font-size:13px; color:var(--dim,#a99cc9); min-height:18px; }
+  #wRound .bar { height:8px; border-radius:6px; background:#ffffff18; overflow:hidden; margin:6px 0 10px; } #wRound .bar i { display:block; height:100%; background:linear-gradient(90deg,#ffc94a,#ff6a3d); }
+  #wRound .btns { display:grid; grid-template-columns:1fr 1fr; gap:6px; } #wRound .btns button { padding:10px 6px; font-weight:700; }
+  @keyframes wrPulse { 50% { box-shadow:0 0 0 6px #ff4f6d55, 0 16px 50px #000c; } }
+  .wfinal { border-left-color:#7dffb0 !important; background:linear-gradient(90deg,#1d3a2a,var(--panel2)) !important; }
+  #wUndoList { margin-top:8px; max-height:260px; overflow:auto; }
   .night { margin:14px 0 6px; font-weight:800; color:var(--gold,#ffc94a); }
   #v-giveaway .pane { display:flex; flex-direction:column; gap:14px; }
   .badgeS { font-size:11px; font-weight:800; padding:1px 5px; border-radius:6px; background:#ffffff1a; margin-left:3px; }
@@ -368,8 +378,9 @@
   <div class="pane"><div class="card" id="wheelLeft"><div class="empty">Loading…</div></div></div>
   <div class="pane"><div class="card" id="wheelRight">
     <canvas id="wheelCv" width="900" height="900" title="Click to spin"></canvas>
-    <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🕳️ Respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
-    <div class="row" style="margin-top:10px;gap:8px"><input id="wBy" class="grow" placeholder="Who's spinning? (blank = you)"><button id="wShowBtn" onclick="wShow()">📺 Show on stream</button></div>
+    <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
+    <div id="wUndoList"></div>
+    <div class="row" style="margin-top:10px;gap:8px"><input id="wBy" class="grow" placeholder="Who's spinning? (blank = you)"><button class="ghost" onclick="wUndo()" title="Take back the last thing that happened on the wheel">⏪ Undo</button><button class="ghost" onclick="wUndoMenu()" title="Go back several steps">⏪ Go back…</button><button id="wShowBtn" onclick="wShow()">📺 Show on stream</button></div>
     <div id="wResult"></div>
   </div></div>
 </section>
@@ -509,6 +520,7 @@
     <button data-s="twitch">💜 Twitch &amp; channel points</button>
     <button data-s="movies">🎬 Movie info (TMDB, OMDb, Letterboxd)</button>
     <button data-s="app">🖥️ App &amp; background</button>
+    <button data-s="obs">🎥 OBS</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
     <button data-s="sounds">🔊 Sounds</button>
@@ -546,6 +558,7 @@
   <div class="row" style="justify-content:flex-end;gap:8px;margin-top:14px"><button onclick="wNewDlg.close()">Cancel</button><button class="primary" onclick="wNewGo()">Make it</button></div>
 </div></dialog>
 <div id="boosts"></div>
+<div id="wRound" style="display:none"></div>
 
 <dialog id="resDlg" class="wide"><div class="inner" id="resBody"></div></dialog>
 
@@ -594,7 +607,7 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.type === 'toast') toast(esc(m.text));
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
-    if (m.type === 'wheelTimer' && WD) { WD.timer = m.timer; if (m.ding) toast('⏱️ Time is up!'); if (view === 'wheel') drawWheelResult(); }
+    if (m.type === 'wheelRound' && WD) { WD.round = m.round; if (m.final) { WD.final = m.final; toast('⏱️ TIME! The wheel has spoken: 🏆 ' + esc(m.final.text), 6000); } drawRound(); if (view === 'wheel') drawWheelResult(); }
     if (m.type === 'wheelBoosts') drawBoosts(m.boosts);
     if (m.type === 'state') {
       const was = S?.phase; S = m.state; render();
@@ -619,7 +632,7 @@ function setView(v) {
   if (v === 'bans') loadBans();
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
-  placeStage(); renderView(); if (typeof drawBoosts === 'function') drawBoosts();
+  placeStage(); renderView(); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
 function setSub(s) { sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
@@ -1353,11 +1366,12 @@ function roundHTML(h) {
 }
 
 // ---------- 🎡 wheel ----------
+let wFolder = null, wHistKind = '';
 let WD = null, wVer = -1, wTab = 'spots', wBulk = false, WVc = null, wSpinning = false, wSaveT = null, wHist = null, wHistQ = '', wHistWheel = 'this';
 let wsF = { range: 'all', wheel: 'this', group: 'spots', date: '' }, wsSort = { k: 'landed', dir: -1 }, wsQ = '', wsData = null;
 const THEMES = { 'Wheel classic': null, 'Pastel': ['#ffb3c1', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#a0c4ff', '#bdb2ff', '#ffc6ff'], 'Neon': ['#ff2e88', '#ffe600', '#00f0ff', '#7cff00', '#ff7a00', '#b026ff'], 'Movie Royal': ['#ffc94a', '#ff6a3d', '#9b4dff', '#2a1846', '#ff4f6d', '#4fc3ff'], 'Ocean': ['#03045e', '#0077b6', '#00b4d8', '#90e0ef', '#48cae4', '#023e8a'], 'Halloween': ['#ff7518', '#1a1a1a', '#6a0dad', '#39ff14', '#ffb347', '#3d0c45'], 'Christmas': ['#c1121f', '#2d6a4f', '#ffffff', '#ffd166', '#40916c', '#9d0208'], 'Grayscale': ['#222222', '#555555', '#888888', '#bbbbbb', '#eeeeee'] };
 const wCur = () => WD?.wheels.find(w => w.id === WD.activeId);
-async function loadWheel() { WD = await fetch('/api/wheel').then(r => r.json()); wVer = WD.ver; drawWheelPreview(); drawBoosts(WD.boosts || []); }
+async function loadWheel() { WD = await fetch('/api/wheel').then(r => r.json()); wVer = WD.ver; drawWheelPreview(); drawBoosts(WD.boosts || []); drawRound(); }
 let wKey = '';
 const wTyping = () => document.activeElement?.matches?.('#wBody input[type=text], #wBody textarea, #wBody input[type=number]');
 function renderWheel(fromState) {
@@ -1371,8 +1385,12 @@ function renderWheel(fromState) {
   wKey = key;
   const w = wCur();
   const tabs = [['spots', '✏️ Spots'], ['wsettings', '⚙️ Wheel settings'], ['spins', '🎟️ Spins & growing'], ['history', '📜 History'], ['stats', '📊 Stats'], ['global', '🌐 All wheels']];
+  if (wFolder === null) wFolder = w.folder || '';
+  const inFolder = WD.wheels.filter(x => wFolder === '*' || (x.folder || '') === wFolder || x.id === WD.activeId);
   $('wheelLeft').innerHTML = `<div class="wsticky"><div class="row" style="gap:8px;flex-wrap:wrap">
-      <select style="width:auto;max-width:260px" onchange="api('/api/wheel/active',{id:this.value}).then(loadWheel).then(renderWheel)">${WD.wheels.map(x => `<option value="${x.id}" ${x.id === WD.activeId ? 'selected' : ''}>🎡 ${esc(x.name)} (${x.entries.length})</option>`).join('')}</select>
+      <select style="width:auto;max-width:180px" title="Folder" onchange="wFolder=this.value;wKey='';renderWheel()"><option value="*" ${wFolder === '*' ? 'selected' : ''}>📂 Every wheel</option><option value="" ${wFolder === '' ? 'selected' : ''}>📁 No folder</option>${(WD.folders || []).map(f => `<option value="${esc(f)}" ${f === wFolder ? 'selected' : ''}>📁 ${esc(f)} (${WD.wheels.filter(x => x.folder === f).length})</option>`).join('')}</select>
+      <select style="width:auto;max-width:240px" onchange="api('/api/wheel/active',{id:this.value}).then(loadWheel).then(renderWheel)">${inFolder.map(x => `<option value="${x.id}" ${x.id === WD.activeId ? 'selected' : ''}>🎡 ${esc(x.name)} (${x.entries.length})</option>`).join('')}</select>
+      <button class="ghost" onclick="wNewFolder()" title="Make a new folder">📁➕</button>
       <button onclick="wNew()">➕ New wheel</button><button onclick="wImport()">📥 Import</button><button class="ghost" onclick="api('/api/wheel/${w.id}/duplicate').then(loadWheel).then(renderWheel)">⧉ Copy</button>
       <button class="ghost danger" onclick="if(confirm('Delete the wheel “${esc(w.name).replace(/'/g, '')}”? Its history stays.')) api('/api/wheel/${w.id}',null,'DELETE').then(loadWheel).then(renderWheel)">🗑</button></div>
     <div class="seg" style="margin:12px 0 8px">${tabs.map(([k, n]) => `<button class="${wTab === k ? 'on' : ''}" onclick="wTab='${k}';renderWheel()">${n}</button>`).join('')}</div></div>
@@ -1380,21 +1398,22 @@ function renderWheel(fromState) {
   if (wTab === 'spots') drawSpots(); else if (wTab === 'spins') drawWSpins(); else if (wTab === 'history') drawWHist(); else if (wTab === 'stats') drawWStats(); else if (wTab === 'global') drawWGlobal(); else drawWSettings();
 }
 function wPct(w) { const on = w.entries.filter(e => e.on !== false && e.weight > 0), tot = on.reduce((a, e) => a + Number(e.weight), 0) || 1; return e => e.on !== false && e.weight > 0 ? Math.round(e.weight / tot * 1000) / 10 : 0; }
-const TYPE_HELP = { normal: 'Just shows the spot.', timer: 'Gives you a ⏱️ Start timer button with the time you pick.', auto: 'Nothing to do: it just shows the winner until you spin again.', countdown: 'Has to be landed on more than once: each landing takes one off. At 0 it leaves the wheel on the next spin.', };
-let wOpen = null, wAddType = 'normal', wAddOpt = {};
+const TYPE_HELP = { timer: 'A normal spot. The round timer keeps going and you get a 🔁 respin button.', auto: 'The round timer pauses. Do the thing, then spin again and the timer carries on. Shows (auto) on the wheel.', countdown: 'Has to be landed on more than once: each landing takes one off and the round timer pauses until you spin again. At 0 it leaves the wheel on the next spin. Shows how many are left in ( ) on the wheel.' };
+let wOpen = null, wAddType = 'timer', wAddOpt = {};
 function typeFields(e, i) { // the settings that go with each kind of spot (i = row index, or 'new' for the add row)
   const on = (k, v) => i === 'new' ? `wAddOpt.${k}=${v}` : `wEnt(${i},{${k}:${v}})`;
-  const t = e.type || 'normal';
-  if (t === 'timer') return `<label>Minutes <input type="number" min="0.1" step="0.5" style="width:80px" value="${e.timerMins ?? 5}" onchange="${on('timerMins', 'Number(this.value)')}"></label>`;
+  const t = e.type || 'timer';
   if (t === 'countdown') return `<label>Lands needed <input type="number" min="1" style="width:70px" value="${e.countStart ?? 3}" onchange="${on('countStart', 'Number(this.value)')}${i === 'new' ? '' : `;wEnt(${i},{count:Number(this.value)})`}"></label>${i === 'new' ? '' : ` <label>Left now <input type="number" min="0" style="width:70px" value="${e.count ?? e.countStart ?? 3}" onchange="${on('count', 'Number(this.value)')}"></label>`} <label class="ck"><input type="checkbox" ${e.autoKnock !== false ? 'checked' : ''} onchange="${on('autoKnock', 'this.checked')}"> <span>take one off by itself when it lands</span></label>`;
   return '';
 }
 function drawSpots() {
   const w = wCur(), pct = wPct(w), pal = w.palette || WD.palette; let k = 0;
   const autoCol = e => e.on !== false && e.weight > 0 ? pal[(k++) % pal.length] : '#777777';
-  const typeSel = (val, onch) => `<select style="width:auto" onchange="${onch}">${Object.entries(WD.types).filter(([v]) => v !== 'void').map(([v, n]) => `<option value="${v}" ${v === (val || 'normal') ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
-  const badge = e => e.type === 'timer' ? `⏱️ ${e.timerMins}m` : e.type === 'countdown' ? `🔢 ${e.count}/${e.countStart}` : e.type === 'auto' ? '⚡ auto' : '';
-  $('wBody').innerHTML = `<div class="row" style="gap:8px"><label class="grow">Wheel name<input value="${esc(w.name)}" onchange="wPut({name:this.value})"></label><label class="grow">Title on stream (optional)<input value="${esc(w.title || '')}" placeholder="${esc(w.name)}" onchange="wPut({title:this.value})"></label></div>
+  const typeSel = (val, onch) => `<select style="width:auto" onchange="${onch}">${Object.entries(WD.types).filter(([v]) => v !== 'void').map(([v, n]) => `<option value="${v}" ${v === (val || 'timer') ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+  const badge = e => !w.opts.rules ? '' : e.type === 'countdown' ? `🔢 ${e.count}/${e.countStart}` : e.type === 'auto' ? '⚡ auto' : '';
+  $('wBody').innerHTML = `<div class="row" style="gap:8px;flex-wrap:wrap"><label class="grow">Wheel name<input value="${esc(w.name)}" onchange="wPut({name:this.value})"></label><label class="grow">Title on stream (optional)<input value="${esc(w.title || '')}" placeholder="${esc(w.name)}" onchange="wPut({title:this.value})"></label>
+      <label>📁 Folder<select style="width:auto" onchange="if(this.value==='+new'){wNewFolder(true)}else{wPut({folder:this.value},true);wFolder=this.value;wKey='';setTimeout(renderWheel,50)}"><option value="">No folder</option>${(WD.folders || []).map(f => `<option ${f === (w.folder || '') ? 'selected' : ''}>${esc(f)}</option>`).join('')}<option value="+new">➕ New folder…</option></select></label></div>
+    ${w.opts.rules ? '' : `<p class="help" style="color:#ffd98a">🎡 Plain wheel: rules are off (no timer, auto or countdown spots, no void). Turn them back on in ⚙️ Wheel settings.</p>`}
     <div class="row" style="margin:10px 0;gap:8px;flex-wrap:wrap"><button onclick="wShuffle()">🔀 Shuffle</button><button onclick="wSort()">🔤 Sort A–Z</button><button onclick="wAllOn()">👁 Show all</button><button onclick="if(confirm('Set every spot on this wheel back to size 1? (You can undo it.)')) api('/api/wheel/reset-sizes',{wheelId:'${w.id}'}).then(loadWheel).then(()=>renderWheel())">↺ Reset all sizes</button>${w.sizeBackup ? `<button class="ghost" onclick="api('/api/wheel/reset-sizes',{wheelId:'${w.id}',undo:true}).then(loadWheel).then(()=>renderWheel())">↩️ Undo reset</button>` : ''}<span class="grow"></span><button class="${wBulk ? 'primary' : ''}" onclick="wBulk=!wBulk;renderWheel()">${wBulk ? '✅ Done (back to the table)' : '📝 Edit as text'}</button></div>
     ${wBulk ? `<p class="help">One spot per line, just like Wheel of Names. Add <code>x3</code> at the end to make a spot 3 times bigger. Rules, colors and spot types are kept for spots with the same name.</p><textarea id="wBulkTx" style="width:100%;min-height:420px;font-size:15px">${esc(w.entries.map(e => e.text + (e.weight !== 1 ? ' x' + e.weight : '')).join('\n'))}</textarea><div class="row" style="justify-content:flex-end;margin-top:8px"><button class="primary" onclick="wBulkSave()">💾 Save spots</button></div>`
     : `<div class="card" style="background:var(--panel2);margin-bottom:10px;padding:12px"><b>➕ New spot</b>
@@ -1404,20 +1423,36 @@ function drawSpots() {
       <table class="went" style="width:100%"><thead><tr><th title="On the wheel">👁</th><th>🎨</th><th style="text-align:left">Spot</th><th title="Size: 2 = twice as big">Size</th><th>%</th><th style="text-align:left">Rule</th><th></th></tr></thead><tbody>
       ${w.entries.map((e, i) => `<tr class="${e.on === false || !e.weight ? 'off' : ''}"><td><input type="checkbox" ${e.on !== false ? 'checked' : ''} onchange="wEnt(${i},{on:this.checked})"></td>
         <td><input type="color" value="${e.color || autoCol(e)}" title="${e.color ? 'Custom color (right-click to reset)' : 'Auto color'}" onchange="wEnt(${i},{color:this.value})" oncontextmenu="event.preventDefault();wEnt(${i},{color:null})"></td>
-        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.voided ? `<small style="color:#ff8a7a"><img src="gauntlet.svg" style="height:1.1em;vertical-align:-3px"> voided tonight <a href="#" onclick="api('/api/wheel/unvoid',{entryId:'${e.id}',wheelId:'${w.id}'}).then(loadWheel).then(()=>renderWheel());return false">bring back</a></small>` : ''}${badge(e) || e.noPointRespin || e.noBankRespin ? `<small class="muted">${badge(e)}${e.noPointRespin || e.noBankRespin ? ' 🚫 respins' : ''}</small>` : ''}</td>
-        <td style="white-space:nowrap"><button class="ghost" title="Shrink" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${e.weight}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow" onclick="wGrow(${i},1)">+</button></td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
+        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${badge(e) || e.noPointRespin || e.noBankRespin ? `<small class="muted">${badge(e)}${e.noPointRespin || e.noBankRespin ? ' 🚫 respins' : ''}</small>` : ''}</td>
+        <td style="white-space:nowrap">${e.type === 'void' ? `<span class="muted" title="Only money (subs, gift subs, bits, donations) can grow or shrink the void">💵 only</span>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
         <td style="min-width:160px;width:36%"><textarea placeholder="Rule for this spot…" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></td>
         <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost" title="Move up" onclick="wMove(${i},-1)">▲</button><button class="ghost" title="Move down" onclick="wMove(${i},1)">▼</button><button class="ghost danger" title="Delete" onclick="wDel(${i})">✕</button></td></tr>
         ${wOpen === e.id ? `<tr><td></td><td colspan="6" style="padding:10px 6px 14px"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
-          <p class="help" style="margin:4px 0 8px">${TYPE_HELP[e.type || 'normal']}</p>
+          <p class="help" style="margin:4px 0 8px">${TYPE_HELP[e.type || 'timer'] || ''}</p>
           <div class="row" style="gap:14px;flex-wrap:wrap"><label class="ck"><input type="checkbox" ${e.noPointRespin ? 'checked' : ''} onchange="wEnt(${i},{noPointRespin:this.checked})"> <span>🚫 No channel point respins</span></label><label class="ck"><input type="checkbox" ${e.noBankRespin ? 'checked' : ''} onchange="wEnt(${i},{noBankRespin:this.checked})"> <span>🚫 No respins from given/saved spins</span></label></div>
-          <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.image ? `<img src="${esc(e.image)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : ''}<button onclick="wPic(url=>wEnt(${i},{image:url}))">🖼️ ${e.image ? 'Change' : 'Add a'} picture</button>${e.image ? `<button class="ghost" onclick="wEnt(${i},{image:''})">Remove picture</button>` : ''}</div></td></tr>` : ''}`).join('')}
+          <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.image ? `<img src="${esc(e.image)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : ''}<button onclick="wPic(url=>wEnt(${i},{image:url}))">🖼️ ${e.image ? 'Change' : 'Add a'} picture</button>${e.image ? `<button class="ghost" onclick="wEnt(${i},{image:''})">Remove picture</button>` : ''}</div>
+          <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.sound ? `<button class="ghost" onclick="wPlay('${esc(e.sound)}')">▶️</button><span class="muted">🔊 plays when it lands here</span>` : ''}<button onclick="wSnd1(url=>wEnt(${i},{sound:url}))">🔊 ${e.sound ? 'Change' : 'Add a'} sound for this spot</button>${e.sound ? `<button class="ghost" onclick="wEnt(${i},{sound:''})">Remove sound</button>` : ''}</div></td></tr>` : ''}`).join('')}
       </tbody></table>
-      <p class="help">${w.entries.filter(e => e.on !== false).length} spots on the wheel${w.entries.some(e => e.on === false) ? ` · ${w.entries.filter(e => e.on === false).length} hidden` : ''}. + / − grows a spot by ${WD.growStep} (like adding it to Wheel of Names one more time). ⚙ has the spot's type, respin rules and picture. Changes save by themselves.</p>`}`;
+      <p class="help">${w.entries.filter(e => e.on !== false).length} spots on the wheel${w.entries.some(e => e.on === false) ? ` · ${w.entries.filter(e => e.on === false).length} hidden` : ''}. + / − makes a spot ${w.opts.growPct || 10}% of the wheel bigger or smaller (the other spots make room). ⚙ has the spot's type, respin rules, picture and sound. Changes save by themselves.</p>`}`;
 }
-function wGrow(i, d) { const w = wCur(), e = w.entries[i]; api('/api/wheel/grow', { entryId: e.id, amount: d, wheelId: w.id }).then(r => { e.weight = r.weight; wVer = -1; renderWheel(); drawWheelPreview(); }); }
+function wGrow(i, d) { const w = wCur(), e = w.entries[i]; api('/api/wheel/grow', { entryId: e.id, amount: d, wheelId: w.id }).then(r => { toast(`${d > 0 ? '📈' : '📉'} “${esc(e.text)}” is now ${r.pct}% of the wheel.`); loadWheel().then(() => renderWheel()); }).catch(() => {}); }
+function wSnd1(cb) { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*,.mp3,.wav,.ogg,.m4a'; inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const r = await fetch('/api/wheel/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()); if (r.url) cb(r.url); }; inp.click(); }
+function wPlay(u) { try { const a = new Audio(u); a.volume = .8; a.play(); } catch {} }
+async function wNewFolder(move) { const n = (prompt('Name for the new folder:') || '').trim(); if (!n) { if (move) renderWheel(); return; } await api('/api/wheel/folders', { name: n }); if (move) { await api('/api/wheel/' + wCur().id, { folder: n }, 'PUT'); } wFolder = move ? n : wFolder; await loadWheel(); wKey = ''; renderWheel(); toast(`📁 Folder “${esc(n)}” made.${move ? ' This wheel is in it now.' : ' Pick it on a wheel (✏️ Spots → Folder) to move the wheel in.'}`); }
+async function wUnvoid(entryId, wheelId) {
+  let r = await api('/api/wheel/unvoid', { entryId, wheelId });
+  if (r.needOverride) { if (!confirm(`You already brought back a voided spot this month.\n\nThe rule is 1 per month. Bring back “${r.text}” anyway?`)) return; r = await api('/api/wheel/unvoid', { entryId, wheelId, force: true }); }
+  await loadWheel(); renderWheel();
+}
+async function wUndo() { try { const r = await api('/api/wheel/undo', {}); toast(`⏪ Went back to before ${esc(r.label)}.`); await loadWheel(); renderWheel(); drawWheelResult(); } catch {} }
+async function wUndoMenu() {
+  const box = $('wUndoList'); if (box.innerHTML) { box.innerHTML = ''; return; }
+  const l = await fetch('/api/wheel/undo').then(r => r.json());
+  box.innerHTML = `<div class="wres" style="margin-top:0"><div class="row" style="justify-content:space-between"><b>⏪ Go back to before…</b><button class="ghost" onclick="$('wUndoList').innerHTML=''">✕</button></div>${l.length ? l.map((u, i) => `<div class="row" style="gap:8px;margin-top:6px;align-items:center"><span class="muted" style="width:80px">${esc(new Date(u.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }))}</span><span class="grow">${esc(u.label)}</span><button class="ghost" onclick="wUndoTo('${u.id}',${i + 1})">⏪ ${i ? `${i + 1} steps` : '1 step'}</button></div>`).join('') : '<p class="help">Nothing to go back to yet.</p>'}<p class="help">Puts the wheel, spot sizes, the round timer and saved spins back the way they were. The timer waits for you after going back.</p></div>`;
+}
+async function wUndoTo(id, n) { if (n > 1 && !confirm(`Go back ${n} steps?`)) return; try { await api('/api/wheel/undo', { id }); toast(`⏪ Went back ${n} step${n === 1 ? '' : 's'}.`); $('wUndoList').innerHTML = ''; await loadWheel(); renderWheel(); drawWheelResult(); } catch {} }
 function wPic(cb) { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,video/mp4,video/webm'; inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const r = await fetch('/api/wheel/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()); if (r.url) cb(r.url); }; inp.click(); }
-function wPut(body, now) { const w = wCur(); Object.assign(w, body); drawWheelPreview(); clearTimeout(wSaveT); wSaveT = setTimeout(async () => { wSaveT = null; await api('/api/wheel/' + w.id, { name: w.name, title: w.title, entries: w.entries, spinSecs: w.spinSecs, removeWinner: w.removeWinner, palette: w.palette, look: w.look }, 'PUT'); wVer = -1; }, now ? 0 : 400); }
+function wPut(body, now) { const w = wCur(); Object.assign(w, body); drawWheelPreview(); clearTimeout(wSaveT); wSaveT = setTimeout(async () => { wSaveT = null; await api('/api/wheel/' + w.id, { name: w.name, title: w.title, entries: w.entries, spinSecs: w.spinSecs, removeWinner: w.removeWinner, palette: w.palette, look: w.look, folder: w.folder || '' }, 'PUT'); wVer = -1; }, now ? 0 : 400); }
 function wEnt(i, ch) { const w = wCur(); Object.assign(w.entries[i], ch); wPut({}); if (!('text' in ch || 'rule' in ch)) { document.activeElement?.blur(); renderWheel(); } }
 function wMove(i, d) { const w = wCur(), j = i + d; if (j < 0 || j >= w.entries.length) return; [w.entries[i], w.entries[j]] = [w.entries[j], w.entries[i]]; wPut({}); renderWheel(); }
 function wDel(i) { const w = wCur(); w.entries.splice(i, 1); wPut({}); renderWheel(); }
@@ -1450,31 +1485,72 @@ async function wImport() {
   inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const text = await f.text(); try { const r = await api('/api/wheel/import', { text, name: f.name.replace(/\.(wheel|json|txt|csv)$/i, '') === 'wheel' ? '' : '' }); toast(`📥 Imported “${esc(r.name)}” with ${r.count} spots.`); await loadWheel(); renderWheel(); } catch {} };
   inp.click();
 }
-function drawWheelPreview() { if (!WD) return; if (!WVc) { WVc = WheelView.create($('wheelCv'), { pointerRoom: 26 }); $('wheelCv').onclick = () => wSpin('spin'); } if (wSpinning) return; const w = wCur(); if (!w) return; const pal = w.palette || WD.palette; let k = 0; WVc.set({ ...w, entries: w.entries.filter(e => e.on !== false && e.weight > 0).map(e => ({ ...e, color: e.color || pal[(k++) % pal.length] })) }, w.rot || 0); }
+function drawWheelPreview() { if (!WD) return; if (!WVc) { WVc = WheelView.create($('wheelCv'), { pointerRoom: 26 }); $('wheelCv').onclick = () => wSpin('spin'); } if (wSpinning) return; const w = wCur(); if (!w) return; const pal = w.palette || WD.palette; let k = 0; const rules = w.opts?.rules !== false; WVc.set({ ...w, entries: w.entries.filter(e => e.on !== false && e.weight > 0 && !e.voided).map(e => ({ ...e, label: rules && e.type === 'countdown' ? `${e.text} (${e.count})` : rules && e.type === 'auto' ? `${e.text} (auto)` : '', color: e.color || pal[(k++) % pal.length] })) }, w.rot || 0); }
 const wFmt = ms => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 function drawWheelResult() {
-  const r = WD?.last; if (!r || wSpinning) { if (!r) $('wResult').innerHTML = ''; return; }
-  const w = WD.wheels.find(x => x.id === r.wheelId), e = w?.entries.find(x => x.id === r.entryId) || {}, tm = WD.timer, mine = WD.mine;
-  const tleft = tm ? (tm.paused ? tm.left : Math.max(0, tm.endsAt - Date.now())) : 0;
+  const r = WD?.last, F = WD?.final; if (wSpinning) return;
+  if (!r && !F) { $('wResult').innerHTML = ''; return; }
+  const w = WD.wheels.find(x => x.id === (r || F).wheelId), e = w?.entries.find(x => x.id === (r || F).entryId) || {}, rules = w?.opts?.rules !== false;
+  const me = WD.streamer && WD.streamer !== 'the streamer' ? WD.streamer + "'s" : 'Your', R = WD.round && WD.round.wheelId === w?.id ? WD.round : null;
+  const respin = `<button class="primary" onclick="wSpin('respin')">🔁 ${esc(me)} respin</button>`;
+  if (F) { // ⏱️ time ran out: this is what we do
+    $('wResult').innerHTML = `<div class="wres wfinal"><div class="muted">⏱️ TIME! The wheel has spoken · ${esc(new Date(F.at).toLocaleTimeString())}</div>
+      <div class="t" style="font-size:32px">🏆 ${esc(F.text)}</div><div class="muted">🍀 ${F.pct}% of the wheel</div>${F.rule ? `<div class="r">📜 ${esc(F.rule)}</div>` : ''}
+      <p class="help" style="margin:8px 0 0">Respins and moves are closed for this round. Press 🎡 SPIN to start a new round (or ⏪ Undo if something went wrong).</p></div>`;
+    return;
+  }
+  const type = rules ? (r.type || e.type || 'timer') : 'timer';
   let acts = '';
-  if (e.type === 'auto') acts += `<p class="help" style="margin:0">⚡ Auto spot: nothing to do. It stays on screen until you spin again.</p>`;
-  if (e.type === 'timer') acts += tm ? `<div class="row" style="gap:6px;align-items:center"><b style="font-size:22px" id="wTimerTxt">⏱️ ${tleft <= 0 ? 'TIME!' : wFmt(tleft)}</b>${tm.paused ? `<button onclick="api('/api/wheel/timer',{cmd:'resume'})">▶️ Resume</button>` : `<button onclick="api('/api/wheel/timer',{cmd:'pause'})">⏸ Pause</button>`}<button onclick="api('/api/wheel/timer',{cmd:'add',mins:1})">+1 min</button><button class="ghost danger" onclick="api('/api/wheel/timer',{cmd:'stop'})">⏹ Stop</button></div>`
-    : `<button class="primary" onclick="api('/api/wheel/timer',{cmd:'start',mins:${e.timerMins || 5}})">⏱️ Start ${e.timerMins || 5}-minute timer</button>`;
-  if (e.type === 'countdown') acts += `<div class="row" style="gap:6px;align-items:center"><b>🔢 ${e.count} of ${e.countStart} left${e.count === 0 ? ' — leaves on the next spin' : ''}</b><button ${e.count <= 0 ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:-1}).then(loadWheel).then(drawWheelResult)">➖ Knock one off</button><button class="ghost" ${e.count >= e.countStart ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:1}).then(loadWheel).then(drawWheelResult)">➕ Put one back</button></div>`;
-  $('wResult').innerHTML = `<div class="wres" style="border-color:${esc(r.color)}"><div class="muted">${{ spin: '🎡 Landed on', respin: '🕳️ Respin landed on', up: '⬆️ Moved up to', down: '⬇️ Moved down to' }[r.kind]} · ${esc(new Date(r.at).toLocaleTimeString())} · ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ' 💜 points' : r.by?.source === 'bank' ? ' 🎟️ saved spin' : r.by?.source === 'mine' ? ' 🎟️ your spin' : ''}</div>
-    <div class="t">${esc(r.text)}</div><div class="muted">🍀 ${r.pct}% of the wheel${r.from ? ` · was ${esc(r.from.text)}` : ''}</div>${r.rule ? `<div class="r">📜 ${esc(r.rule)}</div>` : ''}
+  if (type === 'auto') acts += `<p class="help" style="margin:0">⚡ <b>Auto spot</b>: ${R ? 'the round timer is paused. ' : ''}Do it, then spin again${R ? ' and the timer carries on' : ''}.</p><div class="row" style="gap:6px">${respin}</div>`;
+  else if (type === 'countdown') acts += `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><b>🔢 ${e.count} of ${e.countStart} left${e.count === 0 ? ' — leaves on the next spin' : ''}</b><button class="ghost" ${e.count <= 0 ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:-1}).then(loadWheel).then(drawWheelResult)">➖ Knock one off</button><button class="ghost" ${e.count >= e.countStart ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:1}).then(loadWheel).then(drawWheelResult)">➕ Put one back</button></div>
+    ${R ? '<p class="help" style="margin:0">⏸ The round timer waits until you spin again.</p>' : ''}<div class="row" style="gap:6px">${respin}</div>`;
+  else if (type !== 'void') acts += `<div class="row" style="gap:6px">${respin}</div>`;
+  const src = r.by?.source === 'points' ? ' 💜 points' : r.by?.source === 'bank' ? ' 🎟️ saved spin' : r.by?.source === 'mine' ? ' 🎟️ your spin' : r.by?.source === 'void' ? ' 🕳️ the void' : '';
+  $('wResult').innerHTML = `<div class="wres" style="border-color:${esc(r.color)}"><div class="muted">${{ spin: '🎡 Landed on', respin: '🔁 Respin landed on', up: '⬆️ Moved up to', down: '⬇️ Moved down to' }[r.kind]} · ${esc(new Date(r.at).toLocaleTimeString())} · ${esc(r.by?.name || '')}${src}</div>
+    <div class="t">${esc(r.text)}${rules && type === 'auto' ? ' <span class="muted" style="font-size:16px">(auto)</span>' : ''}</div><div class="muted">🍀 ${r.pct}% of the wheel${r.from ? ` · was ${esc(r.from.text)}` : ''}${r.voided ? ' · 🕳️ voided for tonight' : ''}</div>${r.rule ? `<div class="r">📜 ${esc(r.rule)}</div>` : ''}
     ${acts ? `<div style="margin-top:10px;display:grid;gap:8px">${acts}</div>` : ''}
-    <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="ghost" onclick="wGrowLast(1)">📈 Grow this spot</button><button class="ghost" onclick="wHideLast()">🙈 Take it off the wheel</button></div></div>`;
-  wTimerTick();
+    <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">${e.type !== 'void' ? `<button class="ghost" onclick="wGrowLast(1)">📈 Grow this spot</button><button class="ghost" onclick="wGrowLast(-1)">📉 Shrink it</button>` : ''}<button class="ghost" onclick="wHideLast()">🙈 Take it off the wheel</button></div></div>`;
 }
-function wTimerTick() { clearTimeout(wTimerTick.t); wTimerTick.t = setTimeout(() => { const el = $('wTimerTxt'), tm = WD?.timer; if (!el || !tm || tm.paused) return; const l = Math.max(0, tm.endsAt - Date.now()); el.textContent = '⏱️ ' + (l <= 0 ? 'TIME!' : wFmt(l)); if (l > 0) wTimerTick(); }, 250); }
-function wGrowLast(d) { const r = WD.last; api('/api/wheel/grow', { entryId: r.entryId, amount: d, wheelId: r.wheelId }).then(x => { toast(`📈 “${esc(r.text)}” is now size ${x.weight}.`); loadWheel().then(() => renderWheel()); }); }
+// ⏱️ the round timer pop-up (left side)
+let wRoundMin = false, wRoundGone = '';
+function drawRound() {
+  const box = $('wRound'); if (!box) return; const R = WD?.round;
+  const key = R ? R.wheelId + R.total : '';
+  if (!R || view !== 'wheel' || (R.state === 'ended' && wRoundGone === key)) { box.style.display = 'none'; return; }
+  box.style.display = ''; box.className = R.state === 'running' ? (R.endsAt - Date.now() < 10500 ? 'low' : '') : R.state === 'ended' ? 'ended' : 'paused';
+  const why = { auto: '⚡ Paused: auto spot. Spin again to carry on.', countdown: '🔢 Paused: countdown spot. Spin again to carry on.', you: '⏸ Paused by you' }[R.why] || '';
+  const head = `<div class="row drag" style="justify-content:space-between;align-items:center" onpointerdown="wRoundDrag(event)" title="Drag to move it"><b>⏱️ Round timer</b><span><button class="ghost" style="padding:2px 8px" title="${wRoundMin ? 'Show' : 'Make it small'}" onclick="wRoundMin=!wRoundMin;drawRound()">${wRoundMin ? '▸' : '▾'}</button>${R.state === 'ended' ? `<button class="ghost" style="padding:2px 8px" title="Close" onclick="wRoundGone='${key}';drawRound()">✕</button>` : ''}</span></div>`;
+  if (wRoundMin) { box.innerHTML = head + `<div class="big" style="font-size:30px" id="wrBig"></div>`; wRoundTick(); return; }
+  box.innerHTML = head + `<div class="big" id="wrBig"></div><div class="bar"><i id="wrBar"></i></div>
+    <div class="why">${R.state === 'armed' ? 'Starts when the spin lands' : R.state === 'ending' ? '⏱️ Time! Whatever this spin lands on wins' : R.state === 'ended' ? `🏆 ${esc(WD.final?.text || 'Time is up')}` : why}</div>
+    ${R.state === 'ended' ? '' : `<div class="btns" style="margin-top:8px">${R.state === 'running' ? `<button onclick="wRoundCmd('pause')">⏸ Stop</button>` : `<button class="primary" onclick="wRoundCmd('start')">▶️ Start</button>`}<button onclick="wRoundCmd('add',30)">➕ 30 sec</button>
+      <button class="ghost" onclick="wRoundCmd('add',-30)">➖ 30 sec</button><button class="ghost danger" onclick="if(confirm('End the round now? Whatever the wheel is on wins.')) wRoundCmd('end')">⏹ End now</button></div>`}`;
+  wRoundTick();
+}
+function wRoundDrag(ev) {
+  if (ev.target.closest('button')) return; const box = $('wRound'), r = box.getBoundingClientRect(), dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+  const mv = e => { box.style.left = Math.max(0, Math.min(innerWidth - 80, e.clientX - dx)) + 'px'; box.style.top = Math.max(0, Math.min(innerHeight - 60, e.clientY - dy)) + 'px'; };
+  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); try { localStorage.wRoundPos = JSON.stringify([box.style.left, box.style.top]); } catch {} };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+}
+try { const p = JSON.parse(localStorage.wRoundPos || 'null'); if (p) addEventListener('DOMContentLoaded', () => { const b = $('wRound'); if (b) { b.style.left = p[0]; b.style.top = p[1]; } }); } catch {}
+function wRoundLeft(R) { return R.state === 'running' ? Math.max(0, R.endsAt - Date.now()) : R.left; }
+function wRoundTick() {
+  clearTimeout(wRoundTick.t); const R = WD?.round, big = $('wrBig'); if (!R || !big) return;
+  const l = wRoundLeft(R); big.textContent = R.state === 'ended' || R.state === 'ending' ? 'TIME!' : wFmt(l);
+  const bar = $('wrBar'); if (bar) bar.style.width = (R.total ? Math.max(0, Math.min(100, l / R.total * 100)) : 0) + '%';
+  const box = $('wRound'); if (R.state === 'running') box.className = l < 10500 ? 'low' : '';
+  if (R.state === 'running') wRoundTick.t = setTimeout(wRoundTick, 250);
+}
+async function wRoundCmd(cmd, secs) { try { const r = await api('/api/wheel/timer', { cmd, secs }); WD.round = r.round; drawRound(); } catch {} }
+function wGrowLast(d) { const r = WD.last; api('/api/wheel/grow', { entryId: r.entryId, amount: d, wheelId: r.wheelId }).then(x => { toast(`${d > 0 ? '📈' : '📉'} “${esc(r.text)}” is now ${x.pct}% of the wheel.`); loadWheel().then(() => renderWheel()); }).catch(() => {}); }
 function wHideLast() { const r = WD.last, w = WD.wheels.find(x => x.id === r.wheelId); const e = w?.entries.find(x => x.id === r.entryId); if (!e) return; if (w.id !== WD.activeId) WD.activeId = w.id; e.on = false; wPut({}, true); renderWheel(); toast(`🙈 “${esc(e.text)}” is off the wheel (turn it back on in Spots).`); }
 async function wSpin(kind) { try { await api('/api/wheel/spin', { kind, by: $('wBy').value.trim() }); } catch {} }
 function wShow() { api('/api/wheel/show', { show: !S.wheelShow }); }
 function wheelSpinMsg(m) {
   if (!WVc) { if (!WD) return; drawWheelPreview(); }
-  wSpinning = true; $('wResult').innerHTML = `<div class="wres"><div class="t">${m.kind === 'respin' ? '🕳️ Respinning…' : m.kind === 'spin' ? '🎡 Spinning…' : '↕️ Moving…'}</div><div class="muted">${esc(m.by?.name || '')}${m.by?.source === 'points' ? ' 💜 channel points' : ''}</div></div>`;
+  if (WD && 'round' in m) { WD.round = m.round; if (m.kind === 'spin') WD.final = null; drawRound(); }
+  wSpinning = true; $('wResult').innerHTML = `<div class="wres"><div class="t">${m.kind === 'respin' ? '🔁 Respinning…' : m.kind === 'spin' ? '🎡 Spinning…' : '↕️ Moving…'}</div><div class="muted">${esc(m.by?.name || '')}${m.by?.source === 'points' ? ' 💜 channel points' : ''}</div></div>`;
   WVc.set(m.wheel, m.from); WVc.spin({ from: m.from, to: m.to, dur: m.dur, ease: m.ease }, () => { wSpinning = false; WVc.highlight(m.index); loadWheel().then(() => { drawWheelResult(); if (view === 'wheel' && wTab !== 'spots') renderWheel(); }); });
 }
 // 📜 wheel history, grouped by stream night
@@ -1482,16 +1558,35 @@ async function drawWHist() {
   const w = wCur(), id = wHistWheel === 'this' ? w.id : 'all';
   wHist = await fetch('/api/wheel/history?wheelId=' + id).then(r => r.json());
   if (wTab !== 'history') return;
-  const q = wHistQ.toLowerCase(), rows = wHist.filter(r => !q || [r.text, r.by?.name, r.wheelName, r.from?.text].some(v => String(v || '').toLowerCase().includes(q)));
+  const KG = { spins: ['spin', 'respin', 'up', 'down', 'final'], redeem: ['redeem', 'collide'], grow: ['grow', 'reset'], void: ['void', 'voidgrow', 'unvoid', 'doomsday'] };
+  const q = wHistQ.toLowerCase(), rows = wHist.filter(r => (!wHistKind || KG[wHistKind].includes(r.kind)) && (!q || [r.text, r.by?.name, r.wheelName, r.from?.text, r.input].some(v => String(v || '').toLowerCase().includes(q))));
   let night = '', html = '';
-  const ico = { spin: '🎡', respin: '🕳️', up: '⬆️', down: '⬇️' };
+  const ico = { spin: '🎡', respin: '🔁', up: '⬆️', down: '⬇️', final: '🏆', redeem: '💜', void: '🕳️', voidgrow: '🕳️', doomsday: '☠️', unvoid: '🕳️', grow: '📈', knock: '🔢', collide: '🎟️', undo: '⏪', reset: '↺' };
+  const who = r => esc(r.by?.name || '') + (r.by?.source === 'points' ? ` 💜 channel points${r.by.cost ? ` (${r.by.cost})` : ''}` : r.by?.source === 'bank' ? ' 🎟️ saved spin' : '');
+  const line = r => {
+    const k = r.kind;
+    if (['spin', 'respin', 'up', 'down'].includes(k)) return [`${r.pct}%${r.from ? ` · from ${esc(r.from.text)}` : ''}${r.voided ? ' · 🕳️ voided' : ''}`, `${{ spin: 'Spun', respin: 'Respin', up: 'Moved up', down: 'Moved down' }[k]} by ${who(r)}`];
+    if (k === 'final') return [`${r.pct}% · 🏆 the winner`, '⏱️ The round timer ran out on this spot'];
+    if (k === 'redeem') return [r.input ? `typed “${esc(r.input)}”` : 'channel point redeem', `${who(r)} → ${esc(r.result || '')}`];
+    if (k === 'void') return ['voided for tonight', 'The void took it'];
+    if (k === 'voidgrow') return [`the void is now ${r.pct}% of the wheel (${r.hits} of ${r.of})`, 'The void landed on itself and grew'];
+    if (k === 'doomsday') return ['the void swallowed the wheel', 'Doomsday'];
+    if (k === 'unvoid') return [`back from the void${r.reason ? ` · ${esc(r.reason)}` : ''}${r.broke ? ' · ⚠️ over the 1-a-month rule' : ''}`, `Brought back by ${who(r)}`];
+    if (k === 'grow') return [`${r.before}% → ${r.after}%${r.reason ? ` · ${esc(r.reason)}` : ''}`, `${r.amount >= 0 ? 'Grown' : 'Shrunk'} by ${who(r)}`];
+    if (k === 'knock') return [`${r.countLeft} left`, `${r.amount < 0 ? 'Knocked one off' : 'Put one back'} (${who(r)})`];
+    if (k === 'collide') return ['', `${who(r)} — came in at the same time as another respin, kept as a saved respin`];
+    if (k === 'undo') return [r.steps ? `${r.steps} step${r.steps === 1 ? '' : 's'}` : '', `⏪ Undo by ${who(r)}`];
+    return ['', who(r)];
+  };
   for (const r of rows) {
     const n = new Date(r.at).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     if (n !== night) { night = n; html += `<div class="night">🌙 ${esc(n)}</div>`; }
-    html += `<div class="lrow" style="gap:10px"><span class="muted" style="width:86px">${esc(new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }))}</span><span>${ico[r.kind]}</span><span class="grow"><b>${esc(r.text)}</b> <span class="muted">· ${r.pct}%${r.from ? ` · from ${esc(r.from.text)}` : ''}${id === 'all' ? ` · ${esc(r.wheelName)}` : ''}</span><br><small class="muted">${r.kind === 'spin' ? 'Spun' : r.kind === 'respin' ? 'Respin' : r.kind === 'up' ? 'Moved up' : 'Moved down'} by ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ` 💜 channel points${r.by.cost ? ` (${r.by.cost})` : ''}` : ''}</small></span><button class="ghost danger" title="Delete" onclick="if(confirm('Delete this from the wheel history?')) api('/api/wheel/history/${r.id}',null,'DELETE').then(drawWHist)">✕</button></div>`;
+    const [sub, by] = line(r);
+    html += `<div class="lrow" style="gap:10px"><span class="muted" style="width:86px">${esc(new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }))}</span><span>${ico[r.kind] || '•'}</span><span class="grow"><b>${esc(r.text)}</b> <span class="muted">${sub ? '· ' + sub : ''}${id === 'all' ? ` · ${esc(r.wheelName || '')}` : ''}</span><br><small class="muted">${by}</small></span><button class="ghost danger" title="Delete" onclick="if(confirm('Delete this from the wheel history?')) api('/api/wheel/history/${r.id}',null,'DELETE').then(drawWHist)">✕</button></div>`;
   }
   $('wBody').innerHTML = `<div class="row" style="gap:8px;margin-bottom:8px"><input id="wHq" class="grow" placeholder="🔎 Search a spot or a name…" value="${esc(wHistQ)}" oninput="wHistQ=this.value;drawWHist()"><select style="width:auto" onchange="wHistWheel=this.value;drawWHist()"><option value="this" ${wHistWheel === 'this' ? 'selected' : ''}>This wheel</option><option value="all" ${wHistWheel === 'all' ? 'selected' : ''}>All wheels</option></select><button class="ghost" onclick="wHistCsv()">⬇️ CSV</button></div>
-    ${rows.length ? html : `<div class="empty">${q ? 'Nothing matches.' : 'No spins yet.'}</div>`}`;
+    <div class="row" style="gap:6px;margin-bottom:6px;flex-wrap:wrap">${[['', 'Everything'], ['spins', '🎡 Spins'], ['redeem', '💜 Redeems'], ['grow', '📈 Grows'], ['void', '🕳️ Void']].map(([k, n]) => `<button class="${wHistKind === k ? 'primary' : 'ghost'}" onclick="wHistKind='${k}';drawWHist()">${n}</button>`).join('')}</div>
+    ${rows.length ? html : `<div class="empty">${q ? 'Nothing matches.' : 'Nothing here yet.'}</div>`}`;
   const el = $('wHq'); if (wHistQ) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
 function wHistCsv() { const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`; const lines = [['When', 'Wheel', 'What', 'Landed on', 'Size %', 'From', 'Who', 'Channel points', 'Cost', 'Rule'].map(q).join(',')].concat(wHist.map(r => [new Date(r.at).toLocaleString(), r.wheelName, r.kind, r.text, r.pct, r.from?.text || '', r.by?.name || '', r.by?.source === 'points' ? 'yes' : '', r.by?.cost || '', r.rule].map(q).join(','))); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'wheel-history.csv'; a.click(); }
@@ -1538,25 +1633,39 @@ function drawWSettings() {
   const col = (k, label, def) => `<label style="display:flex;align-items:center;gap:8px">${label}<input type="color" value="${esc(L[k] || def)}" onchange="wLook('${k}',this.value)"></label>`;
   const snd = n => { const x = wSnd?.sounds?.find(s => s.name === n); return x?.mapCustom ? `<b>${esc(x.mapCustom)}</b>` : '<span class="muted">built-in</span>'; };
   $('wBody').innerHTML = `<p class="help" style="margin-top:0">Everything here is just for <b>${esc(w.name)}</b>. Each wheel keeps its own settings.</p>
-    <h4 style="margin:4px 0">🎡 Spinning</h4>
+    <label class="ck" style="font-size:16px"><input type="checkbox" ${O.rules !== false ? 'checked' : ''} onchange="wOpt('rules',this.checked)"> <span><b>📜 Rules on</b> (timer, auto and countdown spots, the round timer, the void). Turn off for a plain wheel that just spins.</span></label>
+    <h4 style="margin:12px 0 4px">🎡 Spinning</h4>
     <label>Spin time: <b id="wSecV">${w.spinSecs}</b> seconds<input type="range" min="2" max="40" value="${w.spinSecs}" oninput="$('wSecV').textContent=this.value" onchange="wPut({spinSecs:Number(this.value)},true)"></label>
     <label>Spin speed: <b id="wSpV">${O.speed}×</b><input type="range" min="0.3" max="3" step="0.1" value="${O.speed}" oninput="$('wSpV').textContent=this.value+'×'" onchange="wOpt('speed',Number(this.value))"></label>
-    ${tg('ticks', O.ticks, '🔘 Tick sound as spots pass the pointer')}${tg('confetti', O.confetti, '🎉 Confetti when it lands')}
+    ${tg('ticks', O.ticks, '🔘 Tick sound as spots pass the pointer')}${tg('winSound', O.winSound !== false, '🎉 Sound when it lands (a spot with its own sound plays that instead)')}${tg('confetti', O.confetti, '🎉 Confetti when it lands')}
+    ${O.rules !== false ? `<h4 style="margin:16px 0 4px">⏱️ Round timer</h4>
+    ${tg('round.on', O.round?.on !== false, 'Start a round timer when the first spin lands. Keep spinning (respins, moves) until it runs out: the spot it is on then wins.')}
+    ${O.round?.on !== false ? `<div class="row" style="gap:8px;align-items:center;margin-left:22px"><span>Timer length</span><input type="number" min="1" style="width:80px" value="${O.round?.len ?? 2}" onchange="wOpt('round.len',Number(this.value))"><select style="width:auto" onchange="wOpt('round.unit',this.value)"><option value="min" ${O.round?.unit !== 'sec' ? 'selected' : ''}>minutes</option><option value="sec" ${O.round?.unit === 'sec' ? 'selected' : ''}>seconds</option></select></div>
+    <p class="help" style="margin-left:22px">⚡ Auto and 🔢 countdown spots pause it until you spin again. You can stop / start it any time from the pop-up on the left.</p>` : ''}` : ''}
+    <h4 style="margin:16px 0 4px">🔁 Respins at the same time</h4>
+    ${tg('collide.on', O.collide?.on !== false, 'If two or more respins (channel points or saved spins) come in close together, the first one spins and everyone else keeps theirs as a saved respin')}
+    ${O.collide?.on !== false ? `<label style="margin-left:22px">"Close together" means within <input type="number" min="1" max="120" style="width:70px" value="${O.collide?.secs ?? 5}" onchange="wOpt('collide.secs',Number(this.value))"> seconds of the last respin</label>` : ''}
+    <h4 style="margin:16px 0 4px">📈 Growing and shrinking</h4>
+    <label>Each + / − (and each grow or shrink) changes a spot by <input type="number" min="1" max="50" style="width:70px" value="${O.growPct ?? 10}" onchange="wOpt('growPct',Number(this.value))">% of the whole wheel <span class="help">(a 20% spot becomes ${20 + (O.growPct ?? 10)}%, the other spots make room)</span></label>
     <label class="ck"><input type="checkbox" ${w.removeWinner ? 'checked' : ''} onchange="wPut({removeWinner:this.checked},true)"> <span>Take the winner off the wheel when the next spin starts (like Wheel of Names "remove")</span></label>
     <h4 style="margin:16px 0 4px">📺 On stream</h4>
     ${tg('recent', O.recent, 'Show the last 5 spins')}${tg('showPct', O.showPct, 'Show how big the spot was (🍀 %)')}${tg('chat', O.chat, 'Talk in Twitch chat about this wheel (results, voids, grows)')}
-    <h4 style="margin:16px 0 4px"><img src="gauntlet.svg" style="height:1.1em;vertical-align:-3px"> Void spot</h4>
+    ${O.rules !== false ? `<h4 style="margin:16px 0 4px">🕳️ Void spot</h4>
     ${tg('void.on', V.on, 'Put a VOID spot on this wheel. Land on it and the wheel respins by itself, and whatever it lands on next is gone for the rest of the stream.')}
     ${V.on ? `<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px"><label>Name <input style="width:150px" value="${esc(V.label)}" onchange="wOpt('void.label',this.value)"></label><label>Size <input type="number" min="0.1" step="0.5" style="width:70px" value="${V.weight}" onchange="wOpt('void.weight',Number(this.value))"></label><label style="display:flex;align-items:center;gap:6px">Color <input type="color" value="${esc(V.color)}" onchange="wOpt('void.color',this.value)"></label></div>
-      ${(() => { const vd = w.entries.filter(e => e.voided); return vd.length ? `<p class="help">Voided right now: ${vd.map(e => `<b>${esc(e.text)}</b> <button class="ghost" onclick="api('/api/wheel/unvoid',{entryId:'${e.id}',wheelId:'${w.id}'}).then(loadWheel).then(()=>renderWheel())">♻️ bring back</button>`).join(' ')}</p>` : '<p class="help">Voided spots come back by themselves next stream, or when someone saves them with a sub, gift sub, bits or a donation.</p>'; })()}` : ''}
+      <p class="help">Only money (subs, gift subs, bits, donations) can grow or shrink the void. Its + / − on the Spots list is locked.</p>
+      <label>If the void lands on itself it grows. After <input type="number" min="1" max="100" style="width:70px" value="${V.landings ?? 5}" onchange="wOpt('void.landings',Number(this.value))"> landings on itself it has swallowed (almost) the whole wheel.</label>
+      ${tg('void.doomsday', V.doomsday, `☠️ ${esc(WD.streamer || 'Streamer')} will return for Doomsday`)}
+      ${V.doomsday ? `<p class="help" style="margin-left:22px">When the void swallows the wheel: a full-screen <b>“${esc((WD.streamer || 'Streamer').toUpperCase())} WILL RETURN FOR DOOMSDAY!!!”</b>, your mic and camera go off right away, and the stream ends 15 seconds later. No goodbye. Needs OBS connected (Settings → 🎥 OBS) ${WD.obs?.set ? '' : '<b style="color:#ffb547">— not set up yet</b>'}.</p>` : ''}
+      ${tg('void.monthly', V.monthly !== false, '📅 You can bring back 1 voided spot per month yourself (money from chat can always bring spots back)')}
+      ${(() => { const vd = w.entries.filter(e => e.voided); return vd.length ? `<p class="help">Voided right now: ${vd.map(e => `<b>${esc(e.text)}</b> <button class="ghost" onclick="wUnvoid('${e.id}','${w.id}')">🕳️ bring back</button>`).join(' ')}</p>` : '<p class="help">Voided spots come back by themselves next stream, or when someone saves them with a sub, gift sub, bits or a donation.</p>'; })()}` : ''}` : ''}
     <h4 style="margin:16px 0 4px">💜 Channel points on this wheel</h4>
-    <div class="row" style="gap:14px;flex-wrap:wrap">${tg('points.respin', P.respin, '🕳️ Respin')}${tg('points.up', P.up, '⬆️ Move up')}${tg('points.down', P.down, '⬇️ Move down')}${tg('points.grow', P.grow, '📈 Grow a spot')}${tg('points.shrink', P.shrink, '📉 Shrink a spot')}</div>
+    <div class="row" style="gap:14px;flex-wrap:wrap">${tg('points.respin', P.respin, '🔁 Respin')}${tg('points.move', P.move !== false, '↕️ Move a spot (they type up or down)')}${tg('points.up', P.up, '⬆️ Move up')}${tg('points.down', P.down, '⬇️ Move down')}${tg('points.grow', P.grow, '📈 Grow a spot')}${tg('points.shrink', P.shrink, '📉 Shrink a spot')}</div>
     ${tg('bankRespin', O.bankRespin, `🎟️ Saved spins can be used here (<code>${esc(WD.cmd.respin)}</code>)`)}
     <h4 style="margin:16px 0 4px">🎁 Pop-up for subs, gift subs, bits and donations</h4>
     ${tg('pop.on', Q.on, 'Show the pop-up while this wheel is on stream')}
     ${Q.on ? `<div style="margin-left:22px"><div class="row" style="gap:14px;flex-wrap:wrap"><span class="muted">Pop up for:</span>${tg('pop.sub', Q.sub, '⭐ subs')}${tg('pop.gift', Q.gift, '🎁 gift subs')}${tg('pop.bits', Q.bits, '💎 bits')}${tg('pop.money', Q.money, '💵 donations')}</div>
-      <div class="row" style="gap:14px;flex-wrap:wrap"><span class="muted">Choices in it:</span>${tg('pop.grow', Q.grow, '📈 grow a spot')}${tg('pop.shrink', Q.shrink, '📉 shrink a spot')}${tg('pop.spins', Q.spins, '🎟️ give respins')}${V.on ? tg('pop.unvoid', Q.unvoid, '♻️ undo a void') : ''}</div></div>` : ''}
-    <label style="margin-top:8px">Each grow / shrink changes the size by <input type="number" min="0.1" step="0.1" style="width:80px" value="${O.growStep}" onchange="wOpt('growStep',Number(this.value))"> <span class="help">(1 = like adding the spot to Wheel of Names one more time)</span></label>
+      <div class="row" style="gap:14px;flex-wrap:wrap"><span class="muted">Choices in it:</span>${tg('pop.grow', Q.grow, '📈 grow a spot')}${tg('pop.shrink', Q.shrink, '📉 shrink a spot')}${tg('pop.spins', Q.spins, '🎟️ give respins')}${V.on ? tg('pop.unvoid', Q.unvoid, '🕳️ bring back a voided spot') : ''}</div></div>` : ''}
     <h4 style="margin:18px 0 4px">🎨 Looks</h4>
     <div><b>Spot colors</b><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:6px">${Object.entries(THEMES).map(([n, p]) => `<button class="${JSON.stringify(p) === cur ? 'primary' : ''}" onclick='wPut({palette:${JSON.stringify(p)}},true);renderWheel()'>${(p || WD.palette).slice(0, 6).map(c => `<span style="display:inline-block;width:10px;height:14px;background:${c}"></span>`).join('')} ${n}</button>`).join('')}</div><p class="help">Spots with their own color or picture (⚙ in Spots) keep it.</p></div>
     <div class="row" style="gap:16px;flex-wrap:wrap;margin-top:8px">${col('rim', 'Rim', '#2a1846')}${col('pointer', 'Pointer', '#ffffff')}${col('lines', 'Lines between spots', '#ffffff')}${col('textColor', 'Text', '#ffffff')}${L.textColor ? `<button class="ghost" onclick="wLook('textColor','')">Auto text color</button>` : ''}</div>
@@ -1581,9 +1690,9 @@ function drawWGlobal() {
     <label class="ck"><input type="checkbox" ${WD.pointsOn ? 'checked' : ''} onchange="api('/api/wheel/settings',{pointsOn:this.checked}).then(loadWheel)"> <span>Wheel channel point rewards are on (each wheel can turn single ones off in ⚙️ Wheel settings)</span></label>
     <label class="ck"><input type="checkbox" ${WD.chatOn ? 'checked' : ''} onchange="api('/api/wheel/settings',{chatOn:this.checked}).then(loadWheel)"> <span>The wheel can talk in Twitch chat at all</span></label>
     <table class="rw" style="margin-top:8px"><tr><th style="text-align:left">What</th><th style="text-align:left">Reward name on Twitch</th><th>Cost</th></tr>
-      ${[['respin', '🕳️ Respin'], ['up', '⬆️ Move up a spot'], ['down', '⬇️ Move down a spot'], ['grow', '📈 Grow a spot (you pick which)'], ['shrink', '📉 Shrink a spot (you pick which)']].map(([k, n]) => `<tr><td>${n}</td><td><input value="${esc(WD.rewards[k])}" onchange="api('/api/wheel/settings',{rewards:{${k}:this.value}}).then(loadWheel)"></td><td><input type="number" style="width:90px" value="${WD.costs[k]}" onchange="api('/api/wheel/settings',{costs:{${k}:this.value}}).then(loadWheel)"></td></tr>`).join('')}</table>
+      ${[['respin', '🔁 Respin'], ['move', '↕️ Move a spot (they type up or down in chat)'], ['up', '⬆️ Move up a spot'], ['down', '⬇️ Move down a spot'], ['grow', '📈 Grow a spot (you pick which)'], ['shrink', '📉 Shrink a spot (you pick which)']].map(([k, n]) => `<tr><td>${n}</td><td><input value="${esc(WD.rewards[k])}" onchange="api('/api/wheel/settings',{rewards:{${k}:this.value}}).then(loadWheel)"></td><td><input type="number" style="width:90px" value="${WD.costs[k]}" onchange="api('/api/wheel/settings',{costs:{${k}:this.value}}).then(loadWheel)"></td></tr>`).join('')}</table>
     <div class="row" style="margin-top:10px"><button class="primary" ${WD.canPoints ? '' : 'disabled title="Sign in with Twitch first"'} onclick="if(confirm('Add the wheel rewards that are missing to your Twitch channel points?')) api('/api/wheel/rewards').then(r=>{toast(r.made.length ? '✅ Added: ' + r.made.map(esc).join(', ') : 'They are already on Twitch.');loadWheel()})">✨ Add missing rewards to Twitch</button></div>
-    <p class="help">The reward name on Twitch has to match the name here. Grow / shrink: a pop-up asks you which spot (type it in, or press + / − on the spot yourself). Up = the spot above in your list, Down = the spot below.<br>
+    <p class="help">The reward name on Twitch has to match the name here. Grow / shrink: a pop-up asks you which spot (type it in, or press + / − on the spot yourself). Move a spot: after redeeming, they type <b>up</b> or <b>down</b> in chat (2 minutes to choose) and it moves; it's saved in the wheel history. Up = the spot above, Down = the spot below.<br>
     Refunds are yours: the app never refunds or completes redemptions. They wait in your Twitch reward queue so you can refund them there.</p>
     <details style="margin-top:8px"><summary>📜 Last channel point redemptions the app saw (${(WD.redeemLog || []).length})</summary>
       <div class="help" style="max-height:220px;overflow:auto">${(WD.redeemLog || []).map(x => `<div>${esc(new Date(x.at).toLocaleTimeString())} · <b>${esc(x.name)}</b> “${esc(x.title)}”${x.input ? ` (typed “${esc(x.input)}”)` : ''} → ${esc(x.result)}</div>`).join('') || 'None yet. If a reward does nothing, check here: “not a wheel reward” means its name on Twitch doesn\'t match the one above.'}</div></details>
@@ -1612,8 +1721,8 @@ function drawWSpins() {
     <p class="help">They type <code>${esc(WD.cmd.respin)}</code> in chat to use one (it respins the wheel), and <code>${esc(WD.cmd.spins)}</code> to see how many they have. Use a minus number to take spins away.</p>
     ${WD.bank.length ? `<div class="stwrap" style="max-height:300px"><table class="st"><thead><tr><th class="l">Who</th><th>Has now</th><th>Ever given</th><th>Used</th><th></th></tr></thead><tbody>${WD.bank.map(b => `<tr><td class="l"><span data-user="${esc(b.login)}" style="cursor:pointer">${esc(b.name)}</span></td><td><b>${b.spins}</b></td><td>${b.got}</td><td>${b.used}</td><td><button class="ghost" onclick="wGiveTo('${esc(b.name).replace(/'/g, '')}',1)">+1</button><button class="ghost" ${b.spins ? '' : 'disabled'} onclick="wGiveTo('${esc(b.name).replace(/'/g, '')}',-1)">−1</button></td></tr>`).join('')}</tbody></table></div>` : ''}
     <h4 style="margin:16px 0 6px">📈 Grow a spot</h4>
-    <div class="row" style="gap:8px;flex-wrap:wrap"><select id="grSpot" class="grow">${w.entries.map(e => `<option value="${e.id}">${esc(e.text)} (size ${e.weight})</option>`).join('')}</select><input id="grN" type="number" style="width:70px" value="1" title="How many grows"><input id="grWho" style="width:160px" placeholder="Who paid for it?"><input id="grWhy" style="width:180px" placeholder="Why? (sub, bits, $)"><button class="primary" onclick="wGrowGo()">📈 Grow</button></div>
-    <p class="help">Each grow adds ${WD.growStep} to the spot's size. It's saved in the history with who and why, and pops up on stream.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><select id="grSpot" class="grow">${w.entries.filter(e => !e.voided && e.on !== false).map(e => `<option value="${e.id}">${esc(e.text)} (${wPct(w)(e)}%)</option>`).join('')}</select><input id="grN" type="number" style="width:70px" value="1" title="How many grows"><input id="grWho" style="width:160px" placeholder="Who paid for it?"><input id="grWhy" style="width:180px" placeholder="Why? (sub, bits, $)"><button class="primary" onclick="wGrowGo()">📈 Grow</button></div>
+    <p class="help">For money (subs, gift subs, bits, donations) you log by hand. Each grow makes the spot ${w.opts.growPct || 10}% of the wheel bigger (a minus number shrinks it). This can also grow or shrink the void. It's saved in the history with who and why, and pops up on stream.</p>
     <h4 style="margin:16px 0 6px">💜 Subs, gift subs, bits & donations</h4>
     <p class="help" style="margin-top:0">While the wheel is on stream, every sub, gift sub or cheer (of at least the bits below) pops up a little box in the corner of this window. Pick <b>grow a spot</b>, <b>grow several spots</b> or <b>give respins</b>. It never covers the wheel. When the wheel isn't on stream, the automatic spins below are given instead.</p>
     <div class="row" style="gap:14px;flex-wrap:wrap;align-items:center">
@@ -1632,7 +1741,7 @@ function drawWSpins() {
 }
 async function wGive() { const who = $('gsWho').value.trim(), n = Number($('gsN').value); if (!who) return toast('Type who gets the spins.'); const r = await api('/api/wheel/bank', { who, n, reason: $('gsWhy').value.trim() }); toast(`🎟️ ${esc(who)} has ${r.spins} spin${r.spins === 1 ? '' : 's'} now.`); await loadWheel(); renderWheel(); }
 async function wGiveTo(who, n) { await api('/api/wheel/bank', { who, n, reason: n > 0 ? 'given' : 'taken away' }); await loadWheel(); renderWheel(); }
-async function wGrowGo() { const r = await api('/api/wheel/grow', { entryId: $('grSpot').value, amount: Number($('grN').value) || 1, who: $('grWho').value.trim(), reason: $('grWhy').value.trim(), wheelId: wCur().id }); toast(`📈 Grown! New size: ${r.weight}`); await loadWheel(); renderWheel(); }
+async function wGrowGo() { const r = await api('/api/wheel/grow', { entryId: $('grSpot').value, amount: Number($('grN').value) || 1, who: $('grWho').value.trim() || WD.streamer, reason: $('grWhy').value.trim(), wheelId: wCur().id, money: true }); toast(`📈 Done! It's now ${r.pct}% of the wheel.`); await loadWheel(); renderWheel(); }
 async function wDonation() { const who = prompt('Who donated?'); if (!who) return; const amt = prompt('How much? (just the number, like 10 for $10)'); if (!amt) return; await api('/api/wheel/boost', { name: who, kind: 'money', amount: Number(amt) }); }
 // 💜 sub / gift / bits / donation pop-ups (bottom-left, never over the wheel)
 let boostList = [], boostMin = false;
@@ -1643,7 +1752,7 @@ function drawBoosts(list) {
   if (view !== 'wheel') { box.innerHTML = ''; return; } // pop-ups only show in the Wheel tab (the Wheel button shows how many are waiting)
   const w = WD.wheels.find(x => x.id === WD.activeId) || wCur(); if (!w) return;
   const Q = w.opts?.pop || {}, voidOn = w.opts?.void?.on, voided = w.entries.filter(e => e.voided);
-  const names = `<datalist id="bxSpots">${w.entries.filter(e => e.text && e.type !== 'void' && !e.voided).map(e => `<option value="${esc(e.text)}">`).join('')}</datalist>`;
+  const names = `<datalist id="bxSpots">${w.entries.filter(e => e.text && e.type !== 'void' && !e.voided).map(e => `<option value="${esc(e.text)}">`).join('')}</datalist><datalist id="bxSpotsV">${w.entries.filter(e => e.text && !e.voided && e.on !== false).map(e => `<option value="${esc(e.text)}">`).join('')}</datalist>`;
   if (!boostList.length) { box.innerHTML = ''; return; }
   const head = `<div class="row" style="justify-content:space-between;gap:6px"><button class="${boostMin ? 'primary' : 'ghost'}" style="padding:6px 12px" onclick="boostMin=!boostMin;drawBoosts()">${boostMin ? `🎁 ${boostList.length} waiting — show` : '▾ Tuck away'}</button></div>`;
   if (boostMin) { box.innerHTML = head; return; }
@@ -1652,10 +1761,10 @@ function drawBoosts(list) {
     return `<div class="boost" id="bo-${b.id}">
       <div class="row" style="justify-content:space-between;align-items:flex-start"><div><b>${b.icon} ${esc(b.title)}</b><div class="muted" style="font-size:12px">${esc(new Date(b.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))}${boostList.length > 2 ? ` · ${boostList.length - 2} more waiting` : ''}</div></div><button class="ghost" title="Skip" onclick="boostDo('${b.id}','dismiss')">✕</button></div>
       ${only ? '' : `<div class="row" style="gap:6px;margin-top:8px;align-items:center"><span>Worth</span><input type="number" min="1" value="${b.suggest}" id="bn-${b.id}" style="width:64px"><span class="muted">grows / shrinks / respins</span></div>`}
-      ${can('grow') || can('shrink') ? `<div class="row" style="gap:6px;margin-top:8px"><input id="bt-${b.id}" class="grow" list="bxSpots" placeholder="Type a spot…" value="${esc(b.text || '')}" onkeydown="if(event.key==='Enter') boostDo('${b.id}','${can('grow') ? 'grow' : 'shrink'}')"></div>
+      ${can('grow') || can('shrink') ? `<div class="row" style="gap:6px;margin-top:8px"><input id="bt-${b.id}" class="grow" list="${b.kind !== 'points' && voidOn ? 'bxSpotsV' : 'bxSpots'}" placeholder="Type a spot${b.kind !== 'points' && voidOn ? ' (or the void)' : ''}…" value="${esc(b.text || '')}" onkeydown="if(event.key==='Enter') boostDo('${b.id}','${can('grow') ? 'grow' : 'shrink'}')"></div>
         <div class="row" style="gap:6px;margin-top:6px">${can('grow') ? `<button class="primary" onclick="boostDo('${b.id}','grow')">📈 Grow it</button>` : ''}${can('shrink') ? `<button onclick="boostDo('${b.id}','shrink')">📉 Shrink it</button>` : ''}</div>` : ''}
       ${can('spins') ? `<div class="row" style="gap:6px;margin-top:6px"><button onclick="boostDo('${b.id}','spins')">🎟️ Give ${esc(b.name)} respins</button></div>` : ''}
-      ${can('unvoid') ? `<div class="row" style="gap:6px;margin-top:6px"><select id="bv-${b.id}" class="grow">${voided.map(e => `<option value="${e.id}">${esc(e.text)}</option>`).join('')}</select><button onclick="boostDo('${b.id}','unvoid',{entryId:$('bv-${b.id}').value})">♻️ Undo void</button></div>` : ''}
+      ${can('unvoid') ? `<div class="row" style="gap:6px;margin-top:6px"><select id="bv-${b.id}" class="grow">${voided.map(e => `<option value="${e.id}">${esc(e.text)}</option>`).join('')}</select><button onclick="boostDo('${b.id}','unvoid',{entryId:$('bv-${b.id}').value})">🕳️ Bring it back</button></div>` : ''}
     </div>`; }).join('');
 }
 async function boostDo(id, action, extra = {}) {
@@ -1945,6 +2054,14 @@ function openSettings(force) {
       ${ck('runInBackground', 'Keep running in the tray when I close the window')}
       ${ck('startWithWindows', 'Start Movie Royal when Windows starts (quietly, in the tray)', false)}
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
+    obs: `<h3>🎥 OBS (optional)</h3>
+      <p class="help">Only needed for the wheel's <b>☠️ Doomsday</b>: when the void swallows the wheel, Movie Royal turns your mic and camera off right away and ends the stream 15 seconds later.<br>
+      In OBS: <b>Tools → WebSocket Server Settings</b> → tick <b>Enable WebSocket server</b> → <b>Show Connect Info</b> → copy the password here. (OBS 28 or newer has it built in.)</p>
+      ${f('obsUrl', 'OBS address (leave this unless you changed the port in OBS)', 'ws://127.0.0.1:4455')}
+      ${f('obsPassword', 'OBS WebSocket password', 'paste here', 'password')}
+      <div>${f('obsMic', 'Your mic in OBS (the name of the audio source)', 'Mic/Aux', 'text', 'list="obsIn"')}${f('obsCam', 'Your camera in OBS (the name of the source)', 'Video Capture Device', 'text', 'list="obsIn"')}</div><datalist id="obsIn"></datalist>
+      <div class="row" style="gap:8px;margin-top:8px;align-items:center"><button onclick="obsTest()">🔌 Save &amp; test the connection</button><span id="obsRes" class="help" style="margin:0"></span></div>
+      <p class="help">The test never changes anything in OBS. It lists your sources so you can pick your mic and camera from the boxes above.</p>`,
     bans: `<div id="bansSlot"></div>`,
     sounds: `<div id="soundsSlot"></div>`,
     notes: `<h3>📝 Patch notes</h3><p class="help">What changed in each latest release. You're on v${esc(S.version || '')}.</p><div id="notesBody" class="help">Loading…</div>`,
@@ -2037,6 +2154,11 @@ async function setColorMode(mode, el) {
   let r; try { r = await api('/api/colors/mode', { mode }); } catch { document.querySelector(`input[name=colMode][onclick*="'${cur}'"]`).checked = true; return; }
   toast(mode === 'points' ? `🎨 Added the “${esc(r.title)}” reward` : mode === 'free' ? '🎨 Colors are free (chat command)' + (cur === 'points' ? ' — the reward is paused' : '') : '🎨 Ball colors off');
   setTimeout(() => openSettings(true), 400);
+}
+async function obsTest() {
+  await saveSettings(); const el = $('obsRes'); el.textContent = 'Connecting…';
+  try { const r = await api('/api/obs/test', {}); el.innerHTML = `✅ Connected to OBS ${esc(r.obs || '')}. ${r.inputs.length} sources found — pick your mic and camera above, then Save.`; $('obsIn').innerHTML = r.inputs.map(i => `<option value="${esc(i.name)}">${esc(i.kind)}</option>`).join(''); }
+  catch (e) { el.textContent = '⚠️ ' + (e.message || 'Could not connect'); }
 }
 async function saveSettings() {
   const body = {};

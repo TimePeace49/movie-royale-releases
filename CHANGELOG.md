@@ -2,6 +2,31 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.0 (test build)
+- **🎡 Wheel round timer:**
+  - Starts when the first spin lands (2 minutes by default, set minutes or seconds per wheel).
+  - Keep spinning with respins and moves. When time runs out, the spot the wheel is on wins ("The wheel has spoken").
+  - ⚡ Auto and 🔢 countdown spots pause it until you spin again.
+  - A big timer pop-up on the left with Stop / Start, ±30 seconds and End now. You can drag it around.
+- **Spot types are now ⏱️ timer, ⚡ auto and 🔢 countdown** (a dropdown). Old normal spots became timer spots. Countdown spots show how many are left in ( ) on the wheel, auto spots show (auto).
+- **After a landing:** a 🔁 respin button, plus knock buttons on countdown spots.
+- **🔁 Respins at the same time:** the first one spins, everyone else keeps theirs as a saved respin. You pick how many seconds counts as "the same time".
+- **📜 Plain wheel:** turn rules off for a wheel that just spins.
+- **📁 Folders** for your wheels: pick a folder, then the wheel in it.
+- **📈 + / −** now grows or shrinks a spot by 10% of the whole wheel (the other spots make room). You can change the %.
+- **🕳️ Void changes:**
+  - Only money (subs, gift subs, bits, donations, or ones you log by hand) can grow or shrink the void.
+  - If the void lands on itself it grows and respins. After the number of landings you pick, it has swallowed the wheel.
+  - New optional **☠️ [your name] will return for Doomsday**: a full-screen message, mic and camera off, and the stream ends 15 seconds later.
+  - You can bring back 1 voided spot per month yourself.
+- **🎥 OBS connection** (Settings → 🎥 OBS, and a new setup guide step) for Doomsday.
+- **⏪ Undo / Go back…** under the wheel takes back the last step or several.
+- **↕️ Move a spot** channel point reward: the viewer types up or down in chat after redeeming.
+- **📜 Wheel history** now shows channel point redeems, grows, voids, undos and the final winner, with filter buttons.
+- **🔊 A sound for each spot** (⚙ on a spot) that plays when the wheel lands there.
+- **📥 Wheel of Names import** brings pictures, the middle picture, background, colors, title, spin time, confetti, sounds on/off and remove-winner along.
+- The respin symbol is now 🔁. The gauntlet is gone; 🕳️ is the void and "bring back a voided spot".
+
 ## 1.12.1 (test build)
 - **🔴 NEW / 🔵 UPDATED map tags** in the map menus (Battle tab, Test tab and Settings):
   - NEW means you've never played that map on stream.

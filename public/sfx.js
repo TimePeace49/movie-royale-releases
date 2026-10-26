@@ -137,6 +137,8 @@ window.SFX = (() => {
     beans: () => { for (let i = 0; i < 9; i++) { const p = .6 + Math.random() * 1.3; fart({ f0: 120 * p, f1: 70 * p, dur: .35 + Math.random() * .7, rate: 20 + Math.random() * 25, v: .22, at: i * .09 + Math.random() * .1, cut: 500 + Math.random() * 900, pan: Math.random() * 1.6 - .8 }); } S.squeak({ p: 1.2 }); },
     // 🎡 wheel sounds (upload your own under Sounds → 🎡 Wheel)
     wheelSpin: () => S.claimStart(),
+    siren: () => { for (let i = 0; i < 12; i++) { tone({ type: 'sawtooth', f0: 650, f1: 1250, dur: .25, v: .35, at: i * .5 }); tone({ type: 'sawtooth', f0: 1250, f1: 650, dur: .25, v: .35, at: i * .5 + .25 }); tone({ type: 'square', f0: 900, f1: 1400, dur: .25, v: .12, at: i * .5 + .1 }); } },
+    doom: () => { tone({ type: 'sine', f0: 70, f1: 28, dur: 6, v: .6, a: .3 }); tone({ type: 'sawtooth', f0: 55, f1: 30, dur: 6, v: .2, a: .4 }); noise({ dur: 5, v: .25, f0: 400, f1: 60, a: .5 }); [0, 1.2, 2.4].forEach(at => tone({ type: 'square', f0: 110, f1: 55, dur: .9, v: .2, at })); },
     wheelTick: () => tone({ type: 'square', f0: 1400 + Math.random() * 200, dur: .025, v: .09 }),
     wheelWin: () => S.celebrate(),
     wheelMove: () => S.whoosh(),
