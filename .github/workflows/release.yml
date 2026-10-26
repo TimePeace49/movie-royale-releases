@@ -50,6 +50,29 @@ jobs:
       - name: Build installer
         run: npm run build:win
 
+      - name: Write the release notes
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          {
+            if [ "${{ github.event.inputs.latest }}" = "true" ]; then
+              # the newest section of PATCHNOTES.md (everything since the last latest release)
+              awk '/^## v/{n++} n==1' PATCHNOTES.md | sed '1s/^## .*/## What'"'"'s new/'
+              echo
+            fi
+            echo "## ⬇️ Download"
+            echo "Grab **MovieRoyal-Setup-$V.exe** below and run it."
+            echo "Already have Movie Royal? It will offer this update the next time it opens."
+            if [ "${{ github.event.inputs.latest }}" != "true" ]; then
+              echo
+              echo '> 🧪 **This is a test build (pre-release).** Only copies with "Also install test builds" turned on (Settings → Account & updates) will offer it.'
+            fi
+            echo
+            echo 'If Windows says "Windows protected your PC", click **More info → Run anyway** (the app isn'"'"'t code-signed).'
+            echo
+            echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for every change."
+          } > release-notes.md
+          cat release-notes.md
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
@@ -58,13 +81,4 @@ jobs:
           prerelease: ${{ github.event.inputs.latest != 'true' }}
           make_latest: ${{ github.event.inputs.latest == 'true' && 'true' || 'false' }}
           files: dist/MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe
-          generate_release_notes: true
-          body: |
-            ## ⬇️ Download
-            Grab **MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe** below and run it.
-            Already have Movie Royal? It will offer this update the next time it opens.
-            ${{ github.event.inputs.latest != 'true' && '> 🧪 **This is a test build (pre-release).** Only copies with "Also install test builds" turned on (Settings → Account & updates) will offer it.' || '' }}
-
-            If Windows says "Windows protected your PC", click **More info → Run anyway** (the app isn't code-signed).
-
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for what's new.
+          body_path: release-notes.md
