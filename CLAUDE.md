@@ -70,7 +70,8 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Updates:** the installer runs with `/UPDATE` (no `/S`): welcome/folder/finish pages are skipped, but its progress bar shows. The control panel shows the download bar (`updProgress`).
 - **Discord self-test:** `discord.selfTest()` + `/api/test/discord-selftest`. Real test bots/users can't be made: bots can't use other bots' slash commands and user-account bots break Discord's rules.
 
-- **Help mode:** ❓ in the header → next click opens `help.html#find=<words>` (help.html scores sections, scrolls + highlights). New features: write help text with words that match their buttons.
+- **Help mode:** ❓ in the header → clicks are blocked and `helpExplain(el)` shows `#hmDlg`: the plain-words note from `public/helpinfo.js` (`H(regex on the thing's words, title, text, [tab/card ctx])`, first match wins; `tip:` + title tooltip is tried first; `SECTION()` / `SECFIX` pick the Help tab part) + the matching help.html section. **Every new button/box/option needs an `H(...)` line** (Derek wants every option explained). Check coverage with a Playwright run of `helpFind(hmLabel(el), where, el.id)` over every tab. help.html: one `<h2>` per `<section>`.
+- **Pretend chat:** `#pchat` window (`pchat(on,name)`, `pcSend`, `pcRedeem`), stays open across tabs. `/api/test/claim-chat {say:false}` makes a pretend test winner if none. `twitch.sayListeners` → `botSay` shows replies; `twitch.canSay()` / `twitch.pretend.until` let replies show while signed out (10 min after a pretend chat). `/api/test/wheel-redeem` uses `testKind`.
 - **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
 ## Things we said no to

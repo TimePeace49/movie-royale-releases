@@ -261,7 +261,12 @@ export async function followedAt(userId) {
 }
 
 /** Say something in your chat as you (needs the "send chat" permission from signing in). */
+export const sayListeners = new Set(); // 💬 the pretend chat window shows what Movie Royal says in chat
+export const pretend = { until: 0 }; // 🧪 someone is using pretend chat: replies show in the window even when you're not signed in
+export const canSay = () => !!status.canChat || Date.now() < pretend.until;
 export async function say(message) {
+  for (const f of sayListeners) { try { f(String(message)); } catch {} }
+  if (!status.canChat && Date.now() < pretend.until) return true; // testing while signed out: shown in the pretend chat window only
   if (!status.userId) throw new Error('Sign in with Twitch first');
   if (!status.canChat) throw new Error('Sign in with Twitch again so Movie Royal can reply in chat (new permission)');
   const j = await helix('chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: status.userId, sender_id: status.userId, message: String(message).slice(0, 490) }) });

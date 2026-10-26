@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.25.0 (latest release)
+- **❓ Help mode explains everything:** press ❓, then click any button, box, checkbox or menu on any tab (or in a pop-up window). A window explains exactly what that one thing does, in plain words, with the matching part of the Help tab underneath. Nothing gets clicked for real. Help mode stays on so you can click the next thing; Esc or ❓ stops it.
+- **💬 Pretend chat window** (🧪 Test tab): type as any viewer. It stays open on every tab (drag it anywhere) and shows Movie Royal's replies.
+  - **✋ Winner types in chat** now always works: if no movie has won (or a wild spot won), Movie Royal makes a pretend winner from your Discord movies that changes nothing. The window opens as the winner; type anything and the green ✅ Accept / ⏭️ Pass bar shows.
+  - Buttons for **up** / **down** after a ↕️ Move redeem, !respin, !myspins, !mymovies, !sitout, !imback, !join, plus 🎡 Respin / Move / Up / Down redeems as that viewer.
+- Pretend wheel redeems work even before the reward exists on Twitch.
+- ✅ Checklist: new Try-its for ↕️ Move a spot (redeem, then type up / down) and 💬 Pretend chat.
+- Help tab: a few topics were stuck together (the Wheel, History and the testing topics). Each one is its own part now, so searching finds the right one.
+
 ## 1.24.0 (latest release)
 - **❓ Help mode:** press ❓ at the top, then click any button or option. The ❓ Help tab opens at the part that explains it. Press Esc to stop.
 - **🔢 Number battles:** "🔢 Numbers" is now a tab next to Text in the ➕ New battle window. In the 🎬 Movie Pool tab you can change the range later ("Update the numbers": numbers you keep keep their odds) or click a number to edit it.

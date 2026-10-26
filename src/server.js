@@ -235,7 +235,7 @@ async function buildFighters(list, keepIds = null) {
 // ---------- 🎉 chat battle power-ups: a viewer powers up their own ball ----------
 const POWER_INFO = { shield: { icon: '🛡️', say: 'a shield (it saves them once)' }, mega: { icon: '💪', say: 'a MEGA ball' }, turbo: { icon: '⚡', say: 'turbo speed' } };
 function powerUp(r, kind) {
-  const l = getList(db.activeListId), say = t => { if (twitch.status.canChat) twitch.say(t).catch(() => {}); };
+  const l = getList(db.activeListId), say = t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); };
   if (!(l?.type === 'chat' && l.fun?.powerups)) return say(`@${r.name} power-ups only work during a chat battle with power-ups turned on.`);
   const e = l.entries.find(x => x.status === 'active' && norm(x.twitch || x.label) === norm(r.login));
   if (!e) return say(`@${r.name} you're not in the battle yet: type ${db.settings.joinCommand || '!join'} first!`);
@@ -312,7 +312,7 @@ async function fetchWinnerRatings(f, rec, gameId) {
 }
 // winner goes into Twitch chat once the replay on screen is done (so chat doesn't spoil it)
 function announceWinner(f, list) {
-  if (db.settings.announceWinner === false || !twitch.status.canChat) return;
+  if (db.settings.announceWinner === false || !twitch.canSay()) return;
   const name = `${f.label}${f.sub ? ` (${f.sub})` : ''}`;
   const by = f.owner && f.showOwner ? (list?.type === 'chat' ? '' : ` — picked by ${f.owner}`) : '';
   const msg = f.spot ? `🎟️ ${f.label} wins the Movie Royal — ${streamerName()}'s choice!`
@@ -349,14 +349,14 @@ function helpChatText() {
 function helpChatCommand(m) {
   const cmd = String(db.settings.helpCommand || '!moviesroyal').trim().toLowerCase(); if (!cmd) return;
   const first = m.text.toLowerCase().split(/\s+/)[0]; if (first !== cmd && first !== '!movieroyal') return;
-  if (Date.now() - helpCd < 30000 || !twitch.status.canChat) return; helpCd = Date.now();
+  if (Date.now() - helpCd < 30000 || !twitch.canSay()) return; helpCd = Date.now();
   sayLong(helpChatText());
 }
 // !sitout / !imback: a viewer takes their movies out of tonight's battles (too late to watch) or puts them back
 function sitOutChat(m) {
   const first = m.text.toLowerCase().split(/\s+/)[0], out = String(db.settings.sitOutCommand || '!sitout').toLowerCase(), back = String(db.settings.backCommand || '!imback').toLowerCase();
   if (first !== out && first !== back) return;
-  const p = discordPeople().find(x => chatMatches({ ...x, login: x.twitch || null }, m)); if (!p) { if (twitch.status.canChat) twitch.say(`@${m.name} I don't see any movies for you yet.`).catch(() => {}); return; }
+  const p = discordPeople().find(x => chatMatches({ ...x, login: x.twitch || null }, m)); if (!p) { if (twitch.canSay()) twitch.say(`@${m.name} I don't see any movies for you yet.`).catch(() => {}); return; }
   let n = 0;
   for (const e of getList('movies')?.entries || []) {
     if (e.kind === 'spot' || e.backers?.[0]?.discordId !== p.discordId) continue;
@@ -366,7 +366,7 @@ function sitOutChat(m) {
   if (first === back) { const st = stream(); if (!st.active.includes(p.discordId)) st.active.push(p.discordId); }
   save(); pushState(); refreshPreview();
   broadcast({ type: 'toast', text: first === out ? `🛌 ${p.name} sat out tonight (${n} movie${n === 1 ? '' : 's'} off the cliff)` : `🙋 ${p.name} is back in (${n} movie${n === 1 ? '' : 's'})` }, 'control');
-  if (twitch.status.canChat) twitch.say(first === out ? `@${m.name} 🛌 your movies sit out the rest of tonight's battles. Type ${back} if you change your mind!` : `@${m.name} 🙋 your movies are back in the battle!`).catch(() => {});
+  if (twitch.canSay()) twitch.say(first === out ? `@${m.name} 🛌 your movies sit out the rest of tonight's battles. Type ${back} if you change your mind!` : `@${m.name} 🙋 your movies are back in the battle!`).catch(() => {});
 }
 const chatCooldown = new Map();
 async function moviesChatCommand(m) {
@@ -599,7 +599,7 @@ wss.on('connection', (ws, req) => {
         broadcast({ type: 'series', gameId: live.game.id, series: seriesInfo, winnerId: f.id }, 'overlay');
         if (!seriesInfo.done) {
           live.lastWinner = { ...f, listId: list.id, listName: list.name, at: Date.now(), series: seriesInfo, interim: true, gameId: live.game.id };
-          if (twitch.status.canChat && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
+          if (twitch.canSay() && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
           if (db.settings.seriesAuto === true) setTimeout(nextSeriesRound, (db.settings.replayOn !== false ? 19 : 8) * 1000);
           save(); pushState(); return;
         }
@@ -722,7 +722,7 @@ const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: 
 const startDonationFeed = () => donations.startDonations({ tip: t => { try { chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
-wheel.initWheel({ broadcast, pushState, say: t => twitch.status.canChat && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday() });
+wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday() });
 const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
 app.get('/api/wheel', (req, res) => { const w = wheel.W(); res.json({ wheels: w.wheels, activeId: w.activeId, show: w.show, last: w.last || null, rewards: w.rewards, costs: w.costs, pointsOn: w.pointsOn !== false, chatOn: w.chatOn !== false, ver: w.ver || 0, historyCount: w.history.length, palette: wheel.PAL, canPoints: !!twitch.status.userId, types: wheel.TYPES, mine: { ...w.mine, name: `${streamerName()}'s spins` }, bank: Object.values(w.bank).sort((a, b) => b.spins - a.spins || a.name.localeCompare(b.name)), grants: w.grants.slice(-300).reverse(), boosts: w.boosts, auto: w.auto, redeemLog: w.redeemLog, donations: { ...donations.status, se: !!db.settings.seJwt, sl: !!db.settings.slToken, seState: donations.status.se, slState: donations.status.sl }, cmd: w.cmd, streamer: streamerName(), round: wheel.getRound(), undo: wheel.undoList(), folders: w.folders, final: w.final || null, bringBack: w.bringBack, live: !!db.live, obs: { set: !!(db.settings.obsMic || db.settings.obsCam || db.settings.obsPassword), ...obs.status } }); });
 app.post('/api/wheel', (req, res) => { const w = wheel.newWheel(req.body?.name || 'New wheel', Array.isArray(req.body?.entries) ? req.body.entries : []); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
@@ -1494,15 +1494,15 @@ async function giveawayChat(m) {
   e.badges = { sub: !!b.sub, tier: b.tier || 0, months: b.months || 0, vip: !!b.vip, mod: !!b.mod, follows };
   save(); pushState(); fillTwitchAvatars(l);
   broadcast({ type: 'joined', name: e.label }, 'overlay');
-  if (g.confirmEntry && twitch.status.canChat) twitch.say(`🎁 @${m.name} you're in${w !== 1 ? ` (x${w} odds)` : ''}!`).catch(() => {});
+  if (g.confirmEntry && twitch.canSay()) twitch.say(`🎁 @${m.name} you're in${w !== 1 ? ` (x${w} odds)` : ''}!`).catch(() => {});
 }
 function giveawayOpen(open) {
   const l = giveawayList(), g = giveawaySettings();
   l.joinOpen = !!open; clearTimeout(gaTimer);
   if (open) {
     db.activeListId = l.id; l.screenTitle = `🎁 ${g.title}${g.prize ? ': ' + g.prize : ''}`; l.bestOf = Number(g.bestOf) || 1;
-    if (g.autoCloseSeconds > 0) gaTimer = setTimeout(() => { giveawayOpen(false); pushState(); if (twitch.status.canChat) twitch.say(`⏹ Giveaway entries are closed! ${l.entries.filter(e => e.status === 'active').length} people are in.`).catch(() => {}); }, g.autoCloseSeconds * 1000);
-    if (g.announceOpen && twitch.status.canChat) {
+    if (g.autoCloseSeconds > 0) gaTimer = setTimeout(() => { giveawayOpen(false); pushState(); if (twitch.canSay()) twitch.say(`⏹ Giveaway entries are closed! ${l.entries.filter(e => e.status === 'active').length} people are in.`).catch(() => {}); }, g.autoCloseSeconds * 1000);
+    if (g.announceOpen && twitch.canSay()) {
       const who = g.everyone ? '' : ` (${[g.followers && 'followers', g.subs && 'subs', g.vips && 'VIPs', g.mods && 'mods'].filter(Boolean).join(', ')} only)`;
       twitch.say(`🎁 GIVEAWAY${g.prize ? `: ${g.prize}` : ''}! Type ${g.command} to enter${who}.${g.subMult1 > 1 ? ` Subs get x${g.subMult1}+ odds!` : ''}${g.autoCloseSeconds > 0 ? ` Closes in ${Math.round(g.autoCloseSeconds)}s.` : ''}`).catch(() => {});
     }
@@ -1562,7 +1562,7 @@ function endVote(cancel) {
   live.map = win.id; live.mapUsed = false;
   broadcast({ type: 'voteEnd', id: win.id, name: win.name }, 'overlay');
   broadcast({ type: 'toast', text: `🗳️ Chat picked ${win.icon} ${win.name} (${win.count} vote${win.count === 1 ? '' : 's'})` }, 'control');
-  if (twitch.status.canChat) twitch.say(`🗳️ Chat picked the map: ${win.icon} ${win.name}!`).catch(() => {});
+  if (twitch.canSay()) twitch.say(`🗳️ Chat picked the map: ${win.icon} ${win.name}!`).catch(() => {});
   if (live.phase === 'idle') refreshPreview(true); pushState();
 }
 app.post('/api/vote/start', (req, res) => {
@@ -1573,7 +1573,7 @@ app.post('/api/vote/start', (req, res) => {
   live.vote = { options: pool, voters: new Map(), endsAt: Date.now() + seconds * 1000 };
   live.vote.timer = setTimeout(() => endVote(false), seconds * 1000);
   broadcast(voteMsg(false), 'overlay'); pushState();
-  if (twitch.status.canChat) twitch.say(`🗳️ Vote for the map! Type the number: ${pool.map((o, i) => `${i + 1} = ${o.name}`).join(' · ')} (${seconds}s)`).catch(() => {});
+  if (twitch.canSay()) twitch.say(`🗳️ Vote for the map! Type the number: ${pool.map((o, i) => `${i + 1} = ${o.name}`).join(' · ')} (${seconds}s)`).catch(() => {});
   res.json({ ok: true });
 });
 app.post('/api/vote/end', (req, res) => { endVote(!!req.body?.cancel); res.json({ ok: true }); });
@@ -1612,7 +1612,7 @@ function resolveCalls(f, list) {
     if (pid && amt && !wonThisWeek(pid)) for (const e of list.entries) if (e.kind !== 'spot' && ['active', 'paused', 'away'].includes(e.status) && e.backers?.[0]?.discordId === pid && e.id !== f.id) { e.luckPct = (e.luckPct || 0) + amt; boosted++; }
     out.push({ login, name: v.name, boosted });
   }
-  if (twitch.status.canChat) {
+  if (twitch.canSay()) {
     const names = out.slice(0, 12).map(o => '@' + o.login).join(' ') + (out.length > 12 ? ` +${out.length - 12} more` : '');
     const lucky = out.some(o => o.boosted) ? ` +${amt}% luck on your movies 🍀` : '';
     setTimeout(() => twitch.say(`🔮 ${out.length} of ${total} called it! ${names}${lucky}`).catch(() => {}), (db.settings.replayOn !== false ? 14 : 4) * 1000);
@@ -1896,14 +1896,26 @@ app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyo
   const sp = resetSpots(); // the wild spots too
   save(); pushState(); refreshPreview(true); res.json({ ok: true, people: st.active.length, spots: sp.total });
 });
+twitch.sayListeners.add(t => broadcast({ type: 'botSay', text: t }, 'control'));
 app.post('/api/test/claim-chat', (req, res) => { // Test tab: the movie winner "types in chat"
-  const w = live.lastWinner; if (!w || w.spot || live.phase !== 'ended') return res.json({ ok: false, error: w?.spot ? 'A wild spot won: run the test battle again until a movie wins.' : 'Run a battle first (the winner card has to be up).' });
+  let w = live.lastWinner;
+  if (!w || w.spot || live.phase !== 'ended' || !(w.ownerLogin || w.owner)) { // no movie winner up: make a pretend one (a test winner changes nothing)
+    if (live.phase === 'lobby' || live.phase === 'running') return res.json({ ok: false, error: 'Wait for the battle to end first.' });
+    const pool = (getList('movies')?.entries || []).filter(e => e.status === 'active' && e.kind !== 'spot' && e.backers?.[0]);
+    if (!pool.length) return res.json({ ok: false, error: 'Nobody has a Discord movie yet, so there is no winner to pretend with.' });
+    const e = pool[Math.floor(Math.random() * pool.length)], b = e.backers[0], login = db.links?.[b.discordId] || null;
+    if (live.claim) clearTimeout(live.claim.timer);
+    w = live.lastWinner = { ...e, owner: b.name, ownerLogin: login, kind: 'movies', test: true, listId: 'movies', listName: '🧪 Pretend winner', at: Date.now() };
+    live.claim = null; live.phase = 'ended';
+    pushState();
+  }
   if (!live.claim || live.claim.done) { live.claim = { winner: w, endsAt: Date.now() + 30000, claimed: false, done: false }; live.claim.timer = setTimeout(() => finishClaim(false), 30000); broadcast({ type: 'claimStart', winner: w, seconds: 30, recent: [] }, 'overlay'); } // start the claim timer if it isn't going
   const login = (w.ownerLogin || norm(w.owner || 'winner')).toLowerCase();
-  twitchHandlers.chat({ login, name: w.owner || login, text: "I'm here! 🍿" }); res.json({ ok: true });
+  if (req.body?.say === false) return res.json({ ok: true, name: w.owner || login, login, label: w.label }); // the pretend chat window types it instead
+  twitchHandlers.chat({ login, name: w.owner || login, text: "I'm here! 🍿" }); res.json({ ok: true, name: w.owner || login, login, label: w.label });
 });
 app.post('/api/test/pin', async (req, res) => { try { await twitch.sayAndPin('📌 Movie Royal test: pinned messages work! (unpin it any time)'); res.json({ ok: true }); } catch (e) { res.status(400).json({ error: e.message }); } });
-app.post('/api/test/chat', (req, res) => { const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null, emotes: req.body?.emotes || '', color: req.body?.color || null, badgeList: req.body?.badgeList || '' }); res.json({ ok: true }); });
+app.post('/api/test/chat', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null, emotes: req.body?.emotes || '', color: req.body?.color || null, badgeList: req.body?.badgeList || '' }); res.json({ ok: true }); });
 app.post('/api/test/wheel-land', wTry(b => wheel.request(b.kind === 'respin' ? 'respin' : 'spin', {}, { force: String(b.entryId || ''), wheelId: b.wheelId }))); // Test tab: land on a spot you pick
 app.post('/api/test/doom-preview', (req, res) => { broadcast({ type: 'wheelDoom', text: `${streamerName().toUpperCase()} WILL RETURN FOR DOOMSDAY!!!`, preview: true }, 'overlay'); res.json({ ok: true }); }); // just the screen, nothing turns off
 app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));
@@ -1915,7 +1927,7 @@ app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / 
   save(); pushState(); res.json({ ok: true, live: on });
 }); // Test tab: pretend you went live / offline
 app.post('/api/test/wheel-redeem-raw', (req, res) => { const b = req.body || {}; const ok = wheel.wheelRedeem({ title: String(b.title || ''), input: b.input, login: String(b.name || 'test').toLowerCase(), name: String(b.name || 'test'), cost: 100 }); res.json({ ok }); });
-app.post('/api/test/wheel-redeem', (req, res) => { const k = String(req.body?.kind || 'respin'), name = String(req.body?.name || 'test_viewer'); const ok = wheel.wheelRedeem({ title: wheel.W().rewards[k] || '', login: name.toLowerCase(), name }); res.json({ ok }); });
+app.post('/api/test/wheel-redeem', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const k = String(req.body?.kind || 'respin'), name = String(req.body?.name || 'test_viewer'); const ok = wheel.wheelRedeem({ title: wheel.W().rewards[k] || k, testKind: k, login: name.toLowerCase().replace(/\s+/g, '_'), name }); res.json({ ok }); });
 app.post('/api/test/redeem', (req, res) => { triggerEvent(req.body?.event || 'random', { name: String(req.body?.name || 'test_viewer'), avatar: null }, req.body?.bits ? 'bits' : 'points'); res.json({ ok: true }); });
 app.post('/api/test/cheer', async (req, res) => { await twitchHandlers.cheer({ bits: Number(req.body?.bits) || 100, login: null, name: String(req.body?.name || 'test_viewer') }); res.json({ ok: true }); });
 app.post('/api/test/check-movie', async (req, res) => {

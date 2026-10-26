@@ -139,6 +139,19 @@
   body.helpmode, body.helpmode * { cursor:help !important; }
   body.helpmode #helpModeBtn { background:var(--gold); color:#1a1030; }
   #helpModeTip { position:fixed; z-index:70; left:50%; top:62px; transform:translateX(-50%); padding:8px 14px; border-radius:12px; background:#ffc94a; color:#1a1030; font-weight:700; box-shadow:0 10px 30px #000a; }
+  #hmDlg { max-width:min(640px, calc(100vw - 32px)); }
+  #hmDlg h3 { margin:0 0 4px; font-size:20px; }
+  #hmDlg .where { margin:0 0 10px; color:var(--muted); font-size:13px; }
+  #hmDlg .what { font-size:16px; line-height:1.55; margin:0 0 10px; }
+  #hmDlg details { margin:8px 0; padding:8px 10px; border-radius:10px; background:#ffffff0d; }
+  #hmDlg details summary { cursor:pointer; font-weight:700; }
+  #hmDlg details .body { margin-top:6px; font-size:14px; line-height:1.5; max-height:300px; overflow:auto; }
+  #pchat { position:fixed; z-index:64; right:16px; bottom:16px; width:360px; max-width:calc(100vw - 32px); display:none; flex-direction:column; gap:6px; padding:10px; background:#1a1030f5; border:2px solid #9b7bff; border-radius:14px; box-shadow:0 12px 40px #000c; }
+  #pchat.on { display:flex; }
+  #pchat .pcHead { display:flex; align-items:center; gap:6px; cursor:move; user-select:none; font-weight:800; }
+  #pchat .pcLog { height:150px; overflow:auto; font-size:13px; background:#0006; border-radius:8px; padding:6px 8px; }
+  #pchat .pcLog .me { color:#cfe; } #pchat .pcLog .bot { color:#ffc94a; }
+  #pchat button { padding:4px 8px; font-size:13px; }
   #claimBar { position:fixed; z-index:62; left:50%; top:66px; transform:translateX(-50%); width:min(760px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:12px 16px; background:#163a26f2; border:2px solid #7dffb0; border-radius:14px; box-shadow:0 14px 50px #000c; font-size:15px; }
   #claimBar button { white-space:nowrap; }
   #handNag { position:fixed; z-index:59; left:50%; bottom:16px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a1420f2; border:1px solid #ff8a7a; border-radius:12px; font-size:13px; box-shadow:0 10px 40px #000a; }
@@ -321,6 +334,14 @@
 <div id="backupNag" style="display:none"></div>
 <div id="handNag" style="display:none"></div>
 <div id="claimBar" style="display:none"></div>
+<dialog id="hmDlg"><div class="inner" id="hmBody"></div></dialog>
+<div id="pchat"><div class="pcHead" id="pcHead"><span class="grow">💬 Pretend chat <small class="muted" style="font-weight:400">(type as anyone)</small></span><button class="ghost" title="Close" onclick="pchat(false)">✕</button></div>
+  <div class="row" style="gap:4px"><input id="pcName" class="grow" list="pcNames" placeholder="Who's typing? (Twitch name)"><datalist id="pcNames"></datalist><button class="ghost" title="The battle winner" onclick="pcWinner()">🏆 Winner</button></div>
+  <div class="pcLog" id="pcLog"><span class="muted">Type as a viewer. Movie Royal reacts like it's real chat, and its replies show here in gold.</span></div>
+  <div class="row" style="gap:4px"><input id="pcText" class="grow" placeholder="Message… (Enter sends)" onkeydown="if(event.key==='Enter')pcSend()"><button class="primary" onclick="pcSend()">Send</button></div>
+  <div class="row" style="gap:4px;flex-wrap:wrap"><button onclick="pcSend(&quot;I'm here! 🍿&quot;)">✋ I'm here!</button><button onclick="pcSend('up')">up</button><button onclick="pcSend('down')">down</button><button onclick="pcSend(WD?.cmd?.respin||'!respin')">!respin</button><button onclick="pcSend('!myspins')">!myspins</button><button onclick="pcSend('!mymovies')">!mymovies</button><button onclick="pcSend('!sitout')">!sitout</button><button onclick="pcSend('!imback')">!imback</button><button onclick="pcSend('!join')">!join</button></div>
+  <div class="row" style="gap:4px;flex-wrap:wrap;align-items:center"><small class="muted">🎡 Redeem:</small><button onclick="pcRedeem('respin')">🔁 Respin</button><button onclick="pcRedeem('move')">↕️ Move</button><button onclick="pcRedeem('up')">⬆️ Up</button><button onclick="pcRedeem('down')">⬇️ Down</button></div>
+</div>
 
 <div id="stage">
   <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royal game"></iframe>
@@ -529,6 +550,8 @@
     <div class="row" style="align-items:center;gap:10px"><h3 class="grow" style="margin:0">🔴 Pretend I'm live</h3><span id="fakeLiveTag"></span>
       <button class="primary" onclick="api('/api/test/live',{live:!S.fakeLive})" id="fakeLiveBtn">🔴 Pretend I'm live</button></div>
     <p class="help" style="margin:6px 0 0">Movie Royal acts like you just went live: streamer respins refill, voided spots come back, the movie count starts over, and it shows LIVE. It's fake: Twitch, Discord and your channel point rewards don't change. Press again to stop.</p>
+    <div class="row" style="align-items:center;gap:10px;margin-top:10px"><h3 class="grow" style="margin:0">💬 Pretend chat</h3><button class="primary" id="pcBtn" onclick="pchat(!$('pchat').classList.contains('on'))">💬 Pretend chat</button></div>
+    <p class="help" style="margin:6px 0 0">A small window where you type as any viewer: the battle winner claiming, “up” / “down” after a Move redeem, !respin, !sitout… It stays open on every tab (drag it by its top bar), and Movie Royal's replies show in it.</p>
   </div>
   <div class="card" style="grid-column:1 / -1">
     <h3>⚔️ Discord battle tests</h3>
@@ -569,8 +592,8 @@
   </div>
   <div class="card">
     <h3>🎬 Movie winner: claim, pass, pin, sit out</h3>
-    <p class="help">After a Discord movies battle (a real one, not a practice round): pretend the winner typed in chat. The claim timer stops and ✅ Accept / ⏭️ Pass show up on the Battle tab's winner card.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="api('/api/test/claim-chat').then(r=>toast(r.ok?'✋ The winner said hi':'⚠️ '+esc(r.error||'')))">✋ Winner types in chat</button>
+    <p class="help">Pretend the movie winner is in chat. If no movie has won (or a wild spot won), Movie Royal makes a pretend winner from your Discord movies (it changes nothing). The 💬 Pretend chat window opens as the winner: type anything and the green ✅ Accept / ⏭️ Pass bar shows at the top, on every tab.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="claimTest()">✋ Winner types in chat</button>
       <button onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button>
       <button onclick="cloudCheck(this)">☁️ Check the 24/7 Discord bot</button>
       <button onclick="api('/api/test/chat',{name:'test_viewer',text:S.settings.helpCommand||'!moviesroyal'}).then(()=>toast('Asked for the command list (it posts in your Twitch chat; once every 30 seconds)'))">📜 Post the command list in chat</button></div>
@@ -698,6 +721,7 @@
 
 <script src="wheel.js"></script>
 <script src="ask.js"></script>
+<script src="helpinfo.js"></script>
 <script src="chat.js"></script>
 <script src="profile.js"></script>
 <script>
@@ -771,18 +795,104 @@ function helpMode(on) {
   $('helpModeTip')?.remove();
   if (on) { const t = document.createElement('div'); t.id = 'helpModeTip'; t.textContent = '❓ Click anything to read what it does (Esc to stop)'; document.body.appendChild(t); }
 }
+// ❓ help mode: clicking anything explains it right there (helpinfo.js), plus what the Help tab says about it
+const hmOn = () => document.body.classList.contains('helpmode');
+document.addEventListener('mousedown', e => { if (hmOn() && !e.target.closest('#helpModeBtn, #hmDlg')) { e.preventDefault(); e.stopPropagation(); } }, true); // dropdowns and boxes don't open
 document.addEventListener('click', e => {
-  if (!document.body.classList.contains('helpmode') || e.target.closest('#helpModeBtn')) return;
+  if (!hmOn() || e.target.closest('#helpModeBtn, #hmDlg')) return;
   e.preventDefault(); e.stopPropagation();
-  const el = e.target.closest('button, label, summary, th, a, h2, h3, h4, select, input, .chip, td') || e.target;
-  const card = el.closest('.card, .pane, section');
-  const head = card?.querySelector('h2, h3')?.textContent || '';
-  const own = (el.textContent || el.title || el.placeholder || el.getAttribute?.('aria-label') || '').trim().slice(0, 80);
-  const tab = document.querySelector('#nav button.on')?.textContent || '';
-  helpMode(false); setView('help');
-  $('helpFrame').src = '/help.html#find=' + encodeURIComponent(`${own} ${own} ${head} ${tab}`);
+  helpExplain(e.target.closest('button, label, summary, th, a, h2, h3, h4, select, input, textarea, .chip, td, .pill') || e.target);
 }, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('helpmode')) helpMode(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && hmOn() && !$('hmDlg').open) helpMode(false); });
+const hmClean = t => String(t || '').replace(/\s+/g, ' ').trim();
+function hmLabel(el) {
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
+    const lab = el.closest('label') || (el.id && document.querySelector(`label[for="${el.id}"]`));
+    if (lab) return hmClean(lab.textContent);
+    if (el.tagName === 'SELECT') { const prev = el.previousElementSibling; return hmClean(prev && /LABEL|SPAN|B|SMALL/.test(prev.tagName) ? prev.textContent : el.title || el.options[el.selectedIndex]?.text || ''); }
+    const prev = el.previousElementSibling, prevT = prev && !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(prev.tagName) ? hmClean(prev.textContent) : '';
+    const par = el.parentElement, parLab = par && par.children.length <= 3 ? par.querySelector('label, b, span.lbl') : null;
+    return hmClean((prevT && prevT.length < 90 ? prevT : '') || (parLab && parLab !== el ? parLab.textContent : '') || el.placeholder || el.title || el.getAttribute('aria-label') || el.type);
+  }
+  return hmClean(el.textContent || el.title || el.getAttribute?.('aria-label') || '');
+}
+let hmSecs = null;
+async function hmSections() {
+  if (hmSecs) return hmSecs;
+  try { const d = new DOMParser().parseFromString(await (await fetch('/help.html')).text(), 'text/html');
+    hmSecs = [...d.querySelectorAll('section')].map(x => { const h = x.querySelector('h2'); const head = h?.textContent || ''; h?.remove(); return { head, k: x.dataset.k || '', html: x.innerHTML, text: hmClean(x.textContent).toLowerCase() }; });
+  } catch { hmSecs = []; }
+  return hmSecs;
+}
+const hmWords = q => [...new Set(String(q).toLowerCase().replace(/[^\p{L}\p{N}!#/ ]/gu, ' ').split(/\s+/).filter(w => w.length > 2 && !/^(the|and|for|you|your|this|that|with|are|off|all|its|it's|from|what|when|can|one|out|get|movie|movies|royal|it's|them|they|their|here|there|then|than|into|only|just|like|each|every|makes|shows|show|turns|right|away|more|less|time|once|button|press|click)$/.test(w)))];
+function hmBest(secs, name, more = '') { // name words count most (heading ×6, body ×2), the explanation's words a little (body ×1)
+  const nw = hmWords(name), mw = hmWords(more).filter(w => !nw.includes(w));
+  let best = null, top = 0;
+  for (const x of secs) { const h = (x.head + ' ' + x.k).toLowerCase(); let sc = 0;
+    for (const w of nw) { if (h.includes(w)) sc += 6; if (x.text.includes(w)) sc += 2; }
+    for (const w of mw) if (x.text.includes(w)) sc += 1;
+    if (sc > top) { top = sc; best = x; best.hs = nw.filter(w => x.head.toLowerCase().includes(w)).length; } }
+  return best && (best.hs >= 1 || top >= 8) ? best : null; // a weak guess shows nothing rather than the wrong part
+}
+const SECFIXED = h => !!h && h.secFixed;
+async function helpExplain(el) {
+  const label = hmLabel(el), card = el.closest('.card, .pane, dialog, .sub, section, #pchat, #claimBar');
+  const hs = card ? [...card.querySelectorAll('h2, h3, h4')].filter(h => h === el || h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING || h.contains(el)) : [];
+  const head = hmClean((hs[hs.length - 1] || (card?.tagName === 'DIALOG' ? card.querySelector('h2, h3, h4') : null))?.textContent || '');
+  const tab = hmClean(document.querySelector('#nav button.on')?.textContent || '');
+  const where = `${tab} › ${head}`;
+  const hit = !window.helpFind ? null : (el.title && window.helpFind('tip:' + el.title, where)) || window.helpFind(label, where, el.id) || (label ? null : window.helpFind(head, where));
+  const tip = el.title && !hit?.text.includes(el.title) ? el.title : '';
+  const cardHelp = card ? [...card.querySelectorAll('p.help, .help')].map(p => hmClean(p.textContent)).filter(Boolean).slice(0, 3) : [];
+  const secs = await hmSections(), best = hmBest(secs, hit ? `${hit.title} ${label.slice(0, 60)}` : `${label} ${head}`, hit ? hit.text : ''),
+    hinted = hit?.sec && hit.sec !== 'none' && secs.find(x => x.head.toLowerCase().includes(hit.sec.toLowerCase())),
+    sec = hit?.sec === 'none' ? null : SECFIXED(hit) ? hinted : best && best.hs >= 2 ? best : hinted || best; // a section named after it wins, then the one its group belongs to
+  const title = hit?.title || label.slice(0, 70) || head || 'This part';
+  $('hmBody').innerHTML = `<h3>❓ ${esc(title)}</h3><p class="where">📍 ${esc(tab)}${head && head !== title ? ` › ${esc(head)}` : ''}${hit && label && !title.includes(label.slice(0, 20)) ? ` · <i>${esc(label.slice(0, 60))}</i>` : ''}</p>
+    ${hit ? `<p class="what">${esc(hit.text)}</p>` : tip || cardHelp.length ? '' : `<p class="what">There's no short note for this one yet, but here's what the Help tab says about it.</p>`}
+    ${tip ? `<p class="what">💡 ${esc(tip)}</p>` : ''}
+    ${!hit && cardHelp.length ? `<p class="what">${cardHelp.map(esc).join('<br><br>')}</p>` : hit && cardHelp.length ? `<details><summary>📋 More on this part of the screen</summary><div class="body">${cardHelp.map(esc).join('<br><br>')}</div></details>` : ''}
+    ${sec ? `<details ${hit && hit.text.length > 160 ? '' : 'open'}><summary>📖 From the Help tab: ${esc(sec.head)}</summary><div class="body">${sec.html}</div></details>` : ''}
+    <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">${sec ? `<button class="ghost" onclick="hmDlg.close();helpMode(false);setView('help');$('helpFrame').src='/help.html#find='+encodeURIComponent(${esc(JSON.stringify(sec.head))})">📖 Open it in the Help tab</button>` : ''}<span class="grow"></span><button onclick="hmDlg.close();helpMode(false)">Stop help mode</button><button class="primary" onclick="hmDlg.close()">Got it</button></div>
+    <p class="help" style="margin:8px 0 0">Help mode stays on: press Got it, then click something else. Esc or ❓ stops it.</p>`;
+  if (!$('hmDlg').open) $('hmDlg').showModal();
+}
+// 💬 Pretend chat: type as any viewer (the winner claiming, "up" / "down" after a Move, !respin…). Stays open on every tab.
+function pchat(on, name) {
+  $('pchat').classList.toggle('on', on); try { localStorage.pchat = on ? '1' : ''; } catch {}
+  if (name) $('pcName').value = name;
+  if (on) { pcFill(); if (!$('pcName').value) $('pcName').value = 'test_viewer'; }
+}
+function pcFill() {
+  const n = new Set(); const w = S?.lastWinner; if (w?.owner) n.add(w.owner);
+  (S?.recentChatters || S?.chatters || []).forEach(c => n.add(c.name || c.login || c)); (S?.people || []).forEach(p => n.add(p.twitch || p.name));
+  $('pcNames').innerHTML = [...n].filter(Boolean).slice(0, 80).map(x => `<option value="${esc(String(x))}">`).join('');
+}
+function pcLog(cls, who, text) { const b = $('pcLog'); if (b.firstElementChild?.classList.contains('muted')) b.innerHTML = ''; b.insertAdjacentHTML('beforeend', `<div class="${cls}"><b>${esc(who)}:</b> ${esc(text)}</div>`); b.scrollTop = b.scrollHeight; while (b.children.length > 60) b.firstElementChild.remove(); }
+async function pcSend(text) {
+  text = text ?? $('pcText').value.trim(); if (!text) return; const name = $('pcName').value.trim().replace(/^@/, '') || 'test_viewer';
+  pcLog('me', name, text); if (text === $('pcText').value.trim()) $('pcText').value = '';
+  try { await api('/api/test/chat', { name, text }); } catch {}
+}
+async function pcRedeem(kind) {
+  const name = $('pcName').value.trim().replace(/^@/, '') || 'test_viewer';
+  pcLog('me', name, `🎡 redeemed ${({ respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down' })[kind]}${kind === 'move' ? ' (now type up or down)' : ''}`);
+  try { const r = await api('/api/test/wheel-redeem', { kind, name }); if (!r.ok) pcLog('bot', 'Movie Royal', 'That reward is off (wheel channel points switched off?)'); } catch {}
+}
+function pcWinner() { const w = S?.lastWinner; if (w?.owner && !w.spot) $('pcName').value = w.owner; else toast('No movie winner right now: use ✋ Winner types in chat on the 🧪 Test tab to make a pretend one'); }
+async function claimTest() { // 🧪 the winner claims: the pretend chat window opens as them, you type it (or press ✋ I'm here!)
+  const r = await api('/api/test/claim-chat', { say: false }).catch(() => null); if (!r) return;
+  if (!r.ok) return toast('⚠️ ' + esc(r.error || ''));
+  pchat(true, r.name); pcLog('bot', 'Movie Royal', `🏆 ${r.label} won! You're ${r.name} now: type anything (or press ✋ I'm here!) and the green ✅ Accept / ⏭️ Pass bar shows at the top.`);
+  toast(`✋ You're ${esc(r.name)} in 💬 Pretend chat: type anything to claim`, 6000);
+}
+(() => { // drag the pretend chat window by its top bar
+  let d = null; const box = () => $('pchat');
+  document.addEventListener('mousedown', e => { if (!e.target.closest('#pcHead') || e.target.closest('button')) return; const r = box().getBoundingClientRect(); d = { x: e.clientX - r.left, y: e.clientY - r.top }; e.preventDefault(); });
+  document.addEventListener('mousemove', e => { if (!d) return; const b = box(); b.style.left = Math.max(0, Math.min(innerWidth - 80, e.clientX - d.x)) + 'px'; b.style.top = Math.max(0, Math.min(innerHeight - 40, e.clientY - d.y)) + 'px'; b.style.right = 'auto'; b.style.bottom = 'auto'; });
+  document.addEventListener('mouseup', () => { d = null; });
+  try { if (localStorage.pchat) setTimeout(() => pchat(true), 500); } catch {}
+})();
 async function wTakeover(btn) {
   const was = btn.textContent; btn.disabled = true; btn.textContent = 'Working…';
   try { const r = await api('/api/wheel/rewards/takeover');
@@ -813,13 +923,15 @@ function drawChecklist() {
     ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
     ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').then(()=>toast('Test battle! When it ends, press Next round on the winner card and watch the balls come back')).catch(()=>{})")],
     ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', T('Try it', "api('/api/test/chat-join').then(r=>toast(r.ok?'💬 '+esc(r.name)+' typed in chat: their movies join the cliff':'⚠️ '+esc(r.error)))")],
-    ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', T('Try it', "api('/api/test/claim-chat').then(r=>toast(r.ok?'✋ The winner typed in chat: press ✅ Accept or ⏭️ Pass in the green bar at the top':'⚠️ '+esc(r.error)+' (Try it on the test Discord battle first)', 7000))")],
+    ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', T('Try it', "claimTest()")],
     ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message in your Twitch chat'))")],
     ['sitout', '!sitout and !imback work in chat', T('Try it', "api('/api/test/sitout').then(r=>toast(r.ok?'🛌 '+esc(r.name)+' typed !sitout (their movies leave the cliff), then !imback in 5 seconds':'⚠️ '+esc(r.error), 7000))")],
     ['chaos', 'A channel point / bits chaos event hits the battle', T('Try it', "api('/api/test/battle',{count:12}).then(()=>setTimeout(()=>api('/api/test/redeem',{event:'comet',name:'test_viewer'}),7000)).then(()=>toast('Practice battle: a ☄️ comet hits once the fight starts'))")],
     ['numbers', 'A 🔢 number battle plays', T('Try it', "api('/api/lists/numbers',{from:1,to:10}).then(()=>toast('🔢 1 to 10 battle made: it is on the cliff now'))")],
     ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/wheel/timer',{cmd:'end'}).catch(()=>{}),13000)).then(()=>toast('🎡 Spinning: the round timer ends 13 seconds from now'))")],
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
+    ['wheelMove', '↕️ A viewer redeems Move a spot and types up / down in chat', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>{pchat(true,'test_viewer');pcRedeem('move');toast('↕️ test_viewer redeemed a Move: press up or down in 💬 Pretend chat',7000)},11000)).then(()=>toast('🎡 Spinning first…'))")],
+    ['pchat', '💬 Pretend chat: type as any viewer and see Movie Royal\'s replies', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true)">Open it</button>`],
     ['money', 'A sub / bits / donation pop-up shows up on the wheel', T('Try it', "api('/api/wheel/show',{show:true}).then(()=>api('/api/test/wheel-boost',{kind:'bits',bits:500})).then(()=>toast('💎 Test 500 bits: the pop-up shows on the left of the Wheel tab'))")],
     ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', T('Self-test', "discordSelfTest()")],
     ['discordDebug', '🐞 A test problem shows up in the hidden #movie-royal-debug channel (and normal members can\'t see it)', T('Try it', "api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent: check #movie-royal-debug':'⚠️ Bot offline or channel not made yet'))")],
@@ -868,6 +980,7 @@ function connect() {
     if (m.type === 'toast') toast(esc(m.text));
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
+    if (m.type === 'botSay') pcLog('bot', 'Movie Royal', m.text);
     if (m.type === 'errorLogged') { clearTimeout(window.errT); window.errT = setTimeout(loadErrors, 800); }
     if (m.type === 'wheelRound' && WD) { WD.round = m.round; if (m.final) { WD.final = m.final; toast('⏱️ TIME! The wheel has spoken: 🏆 ' + esc(m.final.text), 6000); } drawRound(); if (view === 'wheel') drawWheelResult(); }
     if (m.type === 'wheelBoosts') drawBoosts(m.boosts);
@@ -1627,7 +1740,7 @@ async function drawWheelTest() {
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">👤 Pretend viewer</b><input id="wtWho" style="width:170px" value="${esc(keepWho || 'test_viewer')}"><span class="help" style="margin:0">Used by the buttons below.</span></div>
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">💜 Channel points</b>
       ${[['respin', '🔁 Respin'], ['move', '↕️ Move a spot'], ['up', '⬆️ Up'], ['down', '⬇️ Down'], ['grow', '📈 Grow'], ['shrink', '📉 Shrink']].map(([k, n]) => B(n, `api('/api/test/wheel-redeem',{kind:'${k}',name:$('wtWho').value}).then(r=>toast(r.ok?'Redeemed ${n}':'Not a wheel reward (check the names in 🌐 All wheels)'))`)).join('')}
-      <span class="help" style="margin:0">After ↕️ Move, press “says up” or “says down”.</span></div>
+      <span class="help" style="margin:0">After ↕️ Move, press “up” or “down” below, or type it yourself in</span>${B('💬 Pretend chat', "pchat(true,$('wtWho').value)")}</div>
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">💬 Chat says</b>
       ${[['up', 'up'], ['down', 'down'], [WD.cmd.respin, WD.cmd.respin], [WD.cmd.spins, WD.cmd.spins]].map(([t, n]) => B(`“${esc(n)}”`, `api('/api/test/chat',{name:$('wtWho').value,text:'${esc(t)}'}).then(()=>toast('Sent'))`)).join('')}
       ${B('🎟️ Give them 1 saved respin', "api('/api/wheel/bank',{who:$('wtWho').value,n:1,reason:'test'}).then(r=>toast('They have '+r.spins))")}

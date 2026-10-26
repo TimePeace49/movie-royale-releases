@@ -514,7 +514,7 @@ export const findSpotIn = (wheelId, text) => findSpot(getWheel(wheelId) || activ
 function logRedeem(r, result) { const st = W(); log({ kind: 'redeem', wheelId: lastWheel()?.id, wheelName: lastWheel()?.name, text: r.title, input: r.input || '', result, by: { name: r.name, login: r.login, source: 'points', cost: r.cost || 0 } }); bump(); }
 export function wheelRedeem(r) {
   const st = W();
-  const kind = Object.entries(st.rewards).find(([, t]) => t && norm(t) === norm(r.title))?.[0];
+  const kind = r.testKind || Object.entries(st.rewards).find(([, t]) => t && norm(t) === norm(r.title))?.[0]; // (testKind: 🧪 pretend redeems work even before the reward exists on Twitch)
   const logIt = result => { st.redeemLog.unshift({ at: Date.now(), title: r.title, name: r.name, input: r.input || '', cost: r.cost || 0, result }); st.redeemLog = st.redeemLog.slice(0, 60); if (kind) logRedeem(r, result); bump(); };
   if (!kind) { logIt('not a wheel reward'); return false; }
   if (st.pointsOn === false) { logIt('wheel channel points are switched off'); return false; }

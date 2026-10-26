@@ -3,6 +3,16 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.25.0: What's new
+Everything since 1.24.0.
+
+- **❓ Help mode explains everything:** press ❓, then click any button, box, checkbox or menu on any tab. A window explains exactly what it does in plain words, with the matching part of the Help tab underneath. Nothing gets clicked for real, and help mode stays on so you can click the next thing (Esc or ❓ stops it).
+- **💬 Pretend chat window** (🧪 Test tab): type as any viewer, on any tab. It shows Movie Royal's replies too.
+  - **✋ Winner types in chat** always works now: with no movie winner up, Movie Royal makes a pretend one that changes nothing. Type anything as them and ✅ Accept / ⏭️ Pass shows up.
+  - One-click **up** / **down** after a ↕️ Move redeem, !respin, !myspins, !sitout and more, plus wheel channel point redeems as that viewer.
+- ✅ Checklist: try ↕️ Move a spot and 💬 Pretend chat.
+- The Help tab's search finds the right topic more often.
+
 ## v1.24.0: What's new
 Everything since 1.21.2.
 
