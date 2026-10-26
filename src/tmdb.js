@@ -13,7 +13,7 @@ function req(pathAndQuery) {
     .then(r => { if (!r.ok) throw new Error('TMDB HTTP ' + r.status); return r.json(); });
 }
 
-const shape = m => ({ id: m.id, title: m.title, year: (m.release_date || '').slice(0, 4), poster: m.poster_path ? IMG + m.poster_path : null, popularity: m.popularity || 0 });
+const shape = m => ({ id: m.id, title: m.title, year: (m.release_date || '').slice(0, 4), poster: m.poster_path ? IMG + m.poster_path : null, popularity: m.popularity || 0, lang: m.original_language || '' });
 
 export async function searchMovies(q) {
   q = (q || '').trim();

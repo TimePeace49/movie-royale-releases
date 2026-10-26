@@ -1243,19 +1243,31 @@ async function addFilm(l, value) {
 async function syncLetterboxdList(l) {
   const src = l.source || {}; l.job = { running: true, step: 'Reading Letterboxd…', done: 0, total: 0, at: Date.now() }; pushState();
   try {
-    const films = await lb.fetchFilmList(src.url || lb.WORST_URL, src.max || 500, (page, n) => { l.job.step = `Reading Letterboxd… page ${page} (${n} films)`; pushState(); });
+    const english = src.english !== false, max = src.max || 500;
+    let films = await lb.fetchFilmList(src.url || lb.WORST_URL, english ? max * 3 : max, (page, n) => { l.job.step = `Reading Letterboxd… page ${page} (${n} films)`; pushState(); }); // English only: read extra, since some get skipped
+    const cache = (db.lbTmdb ||= {}); let added = 0, gone = 0, missed = [], foreign = 0;
+    // find each film on TMDB (remembered, so updates are quick), then keep the first `max` (English ones only, unless that's switched off)
+    l.job = { running: true, step: 'Looking up the movies…', done: 0, total: films.length, at: Date.now() }; pushState();
+    const look = async f => {
+      let c = cache[f.slug]; if (typeof c === 'string') c = { id: c };
+      if (!c?.id) { const r = await searchMovies(f.title); const hit = r.find(m => f.year && String(m.year) === String(f.year)) || r.find(m => m.title.toLowerCase() === f.title.toLowerCase()) || r[0]; if (!hit) throw new Error('not on TMDB'); c = { id: String(hit.id), lang: hit.lang || '' }; }
+      if (c.lang == null || c.lang === '') { const m = await tmdbMovie(c.id).catch(() => null); c.lang = m?.lang || ''; }
+      cache[f.slug] = c; return c;
+    };
+    { let k = 0; await Promise.all(Array.from({ length: 6 }, async () => { while (k < films.length) { const f = films[k++]; try { f.tm = await look(f); } catch { f.tm = null; } l.job.done++; if (l.job.done % 15 === 0) pushState(); } })); }
+    if (english) { foreign = films.filter(f => f.tm && f.tm.lang && f.tm.lang !== 'en').length; films = films.filter(f => !f.tm || !f.tm.lang || f.tm.lang === 'en'); }
+    films = films.slice(0, max);
     const want = new Set(films.map(f => f.slug)), have = new Map(l.entries.filter(e => e.lbSlug && e.status !== 'removed').map(e => [e.lbSlug, e]));
-    const cache = (db.lbTmdb ||= {}); let added = 0, gone = 0, missed = [];
     films.forEach((f, i) => { const e = have.get(f.slug); if (e) e.lbRank = i + 1; });
     const todo = films.map((f, i) => ({ ...f, rank: i + 1 })).filter(f => !have.has(f.slug));
-    l.job = { running: true, step: 'Looking up the movies…', done: 0, total: todo.length, at: Date.now() }; pushState();
+    l.job = { running: true, step: 'Adding the movies…', done: 0, total: todo.length, at: Date.now() }; pushState();
     let k = 0;
     const worker = async () => {
       while (k < todo.length) {
         const f = todo[k++];
         try {
-          let id = cache[f.slug];
-          if (!id) { const r = await searchMovies(f.title); const hit = r.find(m => f.year && String(m.year) === String(f.year)) || r.find(m => m.title.toLowerCase() === f.title.toLowerCase()) || r[0]; if (!hit) throw new Error('not on TMDB'); id = cache[f.slug] = String(hit.id); }
+          if (!f.tm?.id) throw new Error('not on TMDB');
+          const id = f.tm.id;
           if (!l.entries.some(e => String(e.tmdbId) === String(id) && e.status !== 'removed')) { const e = await addFilm(l, id); e.lbSlug = f.slug; e.lbRank = f.rank; added++; }
           else { const e = l.entries.find(x => String(x.tmdbId) === String(id) && x.status !== 'removed'); e.lbSlug ||= f.slug; e.lbRank = f.rank; }
         } catch (err) { missed.push(`${f.title}${f.year ? ` (${f.year})` : ''}`); }
@@ -1264,9 +1276,9 @@ async function syncLetterboxdList(l) {
     };
     await Promise.all(Array.from({ length: 5 }, worker));
     for (const e of l.entries) if (e.lbSlug && !want.has(e.lbSlug) && ['active', 'paused'].includes(e.status)) { e.status = 'removed'; gone++; }
-    l.source = { ...src, kind: 'letterboxd', url: src.url || lb.WORST_URL, max: src.max || 500, at: Date.now(), count: films.length, added, gone, missed: missed.slice(0, 50), error: null };
+    l.source = { ...src, kind: 'letterboxd', url: src.url || lb.WORST_URL, max, english, at: Date.now(), count: films.length, added, gone, foreign, missed: missed.slice(0, 50), error: null };
     l.job = null; save(); pushState(); refreshPreview();
-    broadcast({ type: 'toast', text: `🎞️ “${l.name}” is up to date: ${films.length} films (${added} new${gone ? `, ${gone} dropped off` : ''}${missed.length ? `, ${missed.length} not found` : ''})` }, 'control');
+    broadcast({ type: 'toast', text: `🎞️ “${l.name}” is up to date: ${films.length} films (${added} new${gone ? `, ${gone} dropped off` : ''}${foreign ? `, ${foreign} not in English skipped` : ''}${missed.length ? `, ${missed.length} not found` : ''})` }, 'control');
   } catch (e) {
     l.source = { ...src, error: e.message, at: src.at || null }; l.job = null; save(); pushState();
     broadcast({ type: 'toast', text: `⚠️ Letterboxd: ${e.message}` }, 'control');
@@ -1278,7 +1290,7 @@ app.post('/api/lists/letterboxd', (req, res) => { // make a new Letterboxd battl
   if (!l) {
     l = { id: uid(), name: String(b.name || '💩 Letterboxd’s worst 500').slice(0, 60), type: 'films', entries: [], joinOpen: false, source: { kind: 'letterboxd', url: String(b.url || '').trim() || lb.WORST_URL, max: Math.max(10, Math.min(2000, Number(b.max) || 500)) } };
     db.lists.push(l); db.activeListId = l.id; leaveEnded(); save();
-  } else if (b.url != null || b.max != null) l.source = { ...(l.source || {}), kind: 'letterboxd', url: String(b.url || l.source?.url || lb.WORST_URL).trim(), max: Math.max(10, Math.min(2000, Number(b.max) || l.source?.max || 500)) };
+  } else if (b.url != null || b.max != null || b.english != null) l.source = { ...(l.source || {}), ...(b.english != null ? { english: !!b.english } : {}), kind: 'letterboxd', url: String(b.url || l.source?.url || lb.WORST_URL).trim(), max: Math.max(10, Math.min(2000, Number(b.max) || l.source?.max || 500)) };
   syncLetterboxdList(l);
   pushState(); res.json({ ok: true, id: l.id });
 });
