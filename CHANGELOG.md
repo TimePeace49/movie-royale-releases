@@ -2,6 +2,20 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.15.0 (test build)
+- **🦸 New map: Hero City.** A rooftop fight above the city at night. Villains made up for Movie Royal attack:
+  - 🤖 Mecha Brute's giant fist smashes down: everyone near it goes flying and the roof cracks.
+  - 🛸 The Laser Drone locks on and zaps.
+  - 🦇 Gloom swoops in, grabs a ball and throws it off the roof.
+  - Map power: 🦹 Villain Team-Up.
+- **🗺️ Chaos fits the map:** on maps where the ground never breaks (Royal Rumble, Blast Zone, Plague Town, Battlefield), Edge Collapse and Lightning never happen. Their channel point rewards get paused on Twitch while one of those maps is up, and unpaused when it's not.
+- **🎉 Fun mode for chat battles** (🎲 Chat battle tab):
+  - **Power-ups with channel points:** chat can buy their own ball a 🛡️ Shield (saves them once), 💪 Mega ball (big and heavy) or ⚡ Turbo (faster, harder hits).
+  - The power-up rewards are only on in Twitch while a chat battle with power-ups is playing; the rest of the time they're paused. "✨ Add power-up rewards to Twitch" makes them.
+  - **Wacky effects:** super bouncy, low gravity, random tiny/giant sizes, big balls, chaos rain (a random chaos event every few seconds), disco lights.
+  - With fun mode on, the fight decides the winner (not the odds).
+- **🧪 Test tab:** pretend a ball power-up.
+
 ## 1.14.0 (test build)
 - **🐀 New map: Plague Town.**
   - A walled medieval town, seen straight down from above.

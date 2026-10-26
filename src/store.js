@@ -66,6 +66,9 @@ const defaults = () => ({
       'Royal: Tornado': 'tornado',
       'Royal: Mystery': 'random'
     },
+    // 🎉 chat battle power-ups: viewers power up their own ball (only while a chat battle with power-ups on is playing)
+    powerRewards: { 'Royal: 🛡️ Shield my ball': 'shield', 'Royal: 💪 Mega ball': 'mega', 'Royal: ⚡ Turbo ball': 'turbo' },
+    powerCosts: { shield: 1000, mega: 1500, turbo: 750 },
     // bits: cheer at least this many bits -> event (highest tier reached wins)
     bits: { '100': 'random', '300': 'comet', '500': 'tornado', '1000': 'meteors', '2500': 'shockwave' }
   },

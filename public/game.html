@@ -762,7 +762,7 @@ const MAPS = {
     } }
   },
   rumble: {
-    name: 'Royal Rumble', icon: '🤼', noCrumble: true, aggro: 1.9, wallScale: .45, rScale: .6,
+    name: 'Royal Rumble', icon: '🤼', noCrumble: true, hardGround: true, aggro: 1.9, wallScale: .45, rScale: .6,
     shape: (q, r, p, R) => SHAPES.rect(q, r, p, R, { a: .92, b: .92 }),
     tops: () => Array.from({ length: 3 }, (_, i) => makeTopP({ c1: `hsl(210,12%,${93 - i * 2}%)`, c2: `hsl(210,10%,${84 - i * 2}%)`, specks: ['#0001'], edge: 'rgba(0,0,0,.06)' })),
     wall: { cols: ['#c4142a', '#8a0d1e', '#4a0610', '#200208'], flat: true, lines: false, lit: 'rgba(255,255,255,.06)', lip: '#fff', lipH: 3 },
@@ -1437,7 +1437,7 @@ const MAPS = {
   },
   bombs: {
     // a square arena. Giant bombs drop in, the fuse burns, then BOOM in a big cross: everyone caught in the lines blows up (luck can dodge).
-    name: 'Blast Zone', icon: '💣', noCrumble: true, rScale: .85, wallScale: .6,
+    name: 'Blast Zone', icon: '💣', noCrumble: true, hardGround: true, rScale: .85, wallScale: .6,
     shape: (q, r, p, R) => SHAPES.rect(q, r, p, R, { a: .9, b: .9 }),
     tops: () => [makeTopP({ c1: '#4a8a3a', c2: '#3a7030', specks: ['#0002'], speckN: 6, edge: 'rgba(0,0,0,.25)', edgeW: 2 }), makeTopP({ c1: '#56963f', c2: '#447a34', specks: ['#0002'], speckN: 6, edge: 'rgba(0,0,0,.25)', edgeW: 2 })],
     wall: { cols: ['#8a8a8a', '#666', '#444', '#222'], flat: true, lines: false, lip: '#bbb', lipH: 4 },
@@ -1607,6 +1607,105 @@ const MAPS = {
     snap() { return (this.worms || []).map(w => ({ ...w, victims: [] })); },
     restore(v) { this.worms = (v || []).map(w => ({ ...w, victims: [] })); },
     power: { name: 'WORM FRENZY', icon: '🪱', fn() { const m = MAPS.desert; for (let i = 0; i < 3; i++) setTimeout(() => m.spawn(true), i * 350); shake = 12; } }
+  },
+  hero: {
+    // 🦸 Hero City: a rooftop fight above the city at night. Three villains (all made up for Movie Royal) take turns:
+    // Mecha Brute's giant fist slams down (everyone near it goes flying and the roof cracks), the Laser Drone locks on
+    // and zaps, and Gloom swoops in, grabs a piece and throws it off the roof.
+    name: 'Hero City', icon: '🦸', shape: SHAPES.hex,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(220,8%,${40 - i * 3}%)`, c2: `hsl(220,10%,${32 - i * 2}%)`, specks: ['#fff1', '#0003'], speckN: 10, edge: 'rgba(255,255,255,.12)',
+      deco: g => { if (Math.random() < .2) { g.fillStyle = '#6a7080'; g.fillRect(rnd(10, TOP_W - 30), rnd(6, TOP_H - 16), 18, 10); g.fillStyle = '#4a505c'; g.fillRect(rnd(10, TOP_W - 20), rnd(6, TOP_H - 12), 8, 8); } } })),
+    wall: { cols: ['#3a4050', '#2a2f3c', '#1c2029', '#0f1117'], lip: '#5a6070', lipH: 3, lit: 'rgba(255,220,120,.08)' },
+    sky(g) {
+      skyGrad(g, [[0, '#06081a'], [.5, '#141a3a'], [.8, '#2a2450'], [1, '#3a2a40']]); stars(g, 120, H * .4);
+      glowBall(g, 1560, 170, 140, 'rgba(230,235,255,.5)', 'rgba(200,210,255,0)'); g.fillStyle = '#eef0ff'; g.beginPath(); g.arc(1560, 170, 54, 0, 7); g.fill();
+      for (const [x, a] of [[420, -.35], [1300, .3]]) { g.save(); g.translate(x, H); g.rotate(a); const gr = g.createLinearGradient(0, 0, 0, -H); gr.addColorStop(0, 'rgba(255,250,200,.25)'); gr.addColorStop(1, 'rgba(255,250,200,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-20, 0); g.lineTo(20, 0); g.lineTo(140, -H); g.lineTo(-140, -H); g.fill(); g.restore(); } // searchlights
+      for (let layer = 0; layer < 3; layer++) for (let x = -20; x < W; x += rnd(60, 130)) { const w = rnd(50, 110), h = rnd(160, 420) - layer * 60; g.fillStyle = ['#151a2c', '#10141f', '#0b0d15'][layer]; g.fillRect(x, H - h - layer * 30, w, h + layer * 30);
+        for (let wy = H - h - layer * 30 + 12; wy < H - 20; wy += 18) for (let wx = x + 8; wx < x + w - 8; wx += 14) if (Math.random() < .35) { g.fillStyle = pick(['#ffe08a', '#ffd060', '#bfe0ff']); g.globalAlpha = .7 - layer * .2; g.fillRect(wx, wy, 6, 8); g.globalAlpha = 1; } }
+    },
+    clouds: '#4a4a6a', fog: ['rgba(80,90,140,.12)', 'rgba(10,12,25,.6)'],
+    start() { this.v = []; this.next = 1.4; this.turn = 0; },
+    villain(kind) {
+      const l = alive().filter(f => !f.launch && !f.ret); if (!l.length) return;
+      kind = kind || ['fist', 'drone', 'gloom'][this.turn++ % 3];
+      let tgt = pick(l); if (cfg.fair && tgt === destined && l.length > 1) tgt = pick(l.filter(f => f !== destined));
+      const a = rnd(6.3), R0 = ISLAND_R + 700;
+      if (kind === 'fist') { // aim where the crowd is
+        let best = tgt, bs = -1; for (let j = 0; j < 6; j++) { const c = pick(l), sc = l.filter(o => Math.hypot(o.x - c.x, o.y - c.y) < S * 3).length; if (sc > bs) { bs = sc; best = c; } }
+        this.v.push({ kind, x: best.x, y: best.y, r: S * (2.6 + Math.min(1.6, l.length / 120)), u: 0, warn: 1.1 });
+      } else if (kind === 'drone') this.v.push({ kind, x: Math.cos(a) * R0, y: Math.sin(a) * R0, tgt, u: 0, stage: 'fly', shots: 3 + Math.floor(l.length / 60) });
+      else this.v.push({ kind, x: Math.cos(a) * R0, y: Math.sin(a) * R0, tgt, u: 0, stage: 'swoop', ph: rnd(6.3) });
+      SFX.play(kind === 'fist' ? 'alert' : 'whoosh');
+    },
+    update(dt) {
+      if (!this.v) this.start();
+      const k = clamp(t / cfg.game, 0, 1), n = alive().length;
+      if ((this.next -= dt) <= 0) { this.next = (2.4 - 1.2 * k) / (1 + n / 160); if (this.v.length < 3 + n / 80) this.villain(); }
+      for (let i = this.v.length - 1; i >= 0; i--) {
+        const v = this.v[i]; v.u += dt;
+        if (v.kind === 'fist') { // 🤖 MECHA BRUTE: the fist comes down
+          if (v.u < v.warn) continue;
+          if (!v.hit) { v.hit = true; shake = Math.max(shake, 18); SFX.play('boom'); flash = .2; flashColor = '#ffd27a';
+            for (const f of alive()) { if (f.launch || f.ret) continue; const dx = f.x - v.x, dy = f.y - v.y, d = Math.hypot(dx, dy); if (d < v.r) launch(f, Math.atan2(dy, dx), rnd(1200, 1600)); else if (d < v.r * 1.8) push(f, dx / d * 600, dy / d * 600); }
+            for (const tl of solid) if (Math.hypot(tl.x - v.x, tl.y - v.y) < v.r * .55) crumbleSoon(tl, rnd(.2, .7)); // the roof cracks under it
+            if (n < 60) floaters.push({ text: pick(['SMASH!', 'KA-POW!', 'BRUTE FORCE!']), x: sx(v.x), y: sy(v.y) - 160, life: 1, color: '#ffcf4a' });
+          }
+          if (v.u > v.warn + .9) this.v.splice(i, 1);
+          continue;
+        }
+        if (v.kind === 'drone') { // 🛸 LASER DRONE: flies over, locks on, ZAP
+          const f = v.tgt;
+          if (!f?.alive || f.launch) { const l = alive().filter(o => !o.launch && !(cfg.fair && o === destined && alive().length > 1)); if (!l.length || v.shots <= 0) { v.stage = 'leave'; } else { v.tgt = pick(l); v.u = 0; v.stage = 'aim'; } }
+          if (v.stage === 'fly' || v.stage === 'aim') { const tx = (v.tgt?.x || 0) + 120, ty = (v.tgt?.y || 0) - 60, dx = tx - v.x, dy = ty - v.y, d = Math.hypot(dx, dy); if (d > 10) { v.x += dx / d * Math.min(d, 900 * dt); v.y += dy / d * Math.min(d, 900 * dt); } if (d < 60 && v.stage === 'fly') { v.stage = 'aim'; v.u = 0; } }
+          if (v.stage === 'aim' && v.u > .8 && v.tgt) { v.stage = 'zap'; v.u = 0; v.shots--; SFX.play('lightning'); const f2 = v.tgt; if (f2.alive && !f2.launch && !f2.ret) blastOrDodge(f2, '#ff3a3a', pick(['ZAPPED!', 'LASERED!', 'PEW PEW!'])); }
+          if (v.stage === 'zap' && v.u > .25) { v.stage = 'aim'; v.u = 0; v.tgt = null; }
+          if (v.stage === 'leave') { v.y -= 900 * dt; v.x += 300 * dt; if (v.u > 2.5 || v.y < -ISLAND_R - 900) this.v.splice(i, 1); }
+          continue;
+        }
+        // 🦇 GLOOM: swoops down, grabs one, throws it off the roof
+        if (v.stage === 'swoop') { const f = v.tgt; if (!f?.alive || f.launch || f.ret) { v.stage = 'leave'; continue; } const dx = f.x - v.x, dy = f.y - v.y, d = Math.hypot(dx, dy); v.x += dx / d * Math.min(d, 1300 * dt); v.y += dy / d * Math.min(d, 1300 * dt);
+          if (d < 40) { v.stage = 'carry'; v.u = 0; v.held = f; f.eaten = v; f.vx = f.vy = 0; f.target = null; f.think = 99; f.safeUntil = t + 99; SFX.play('whoosh'); if (n < 60) floaters.push({ text: 'GRABBED!', x: sx(f.x), y: sy(f.y) - 80, life: .9, color: '#c4a5ff' }); } continue; }
+        if (v.stage === 'carry') { const f = v.held, out = Math.atan2(v.y, v.x) || rnd(6.3); v.x += Math.cos(out) * 700 * dt; v.y += Math.sin(out) * 700 * dt; if (f) { f.x = v.x; f.y = v.y + 10; f.hop = Math.min(220, v.u * 300); }
+          if (v.u > .7 && f) { f.eaten = null; f.safeUntil = 0; f.think = 0; launch(f, out, 1500); v.held = null; v.stage = 'leave'; v.u = 0; } continue; }
+        if (v.stage === 'leave') { v.y -= 800 * dt; if (v.u > 2) this.v.splice(i, 1); }
+      }
+    },
+    drawFloor() {
+      for (const v of this.v || []) if (v.kind === 'fist' && v.u < v.warn + .1) { const a = .25 + .25 * Math.sin(clock * 22), k = clamp(v.u / v.warn, 0, 1); ctx.strokeStyle = `rgba(255,60,60,${.6 + a})`; ctx.fillStyle = `rgba(255,60,60,${.12 + .2 * k})`; ctx.lineWidth = 4; ctx.setLineDash([14, 10]); ctx.beginPath(); ctx.ellipse(sx(v.x), sy(v.y), v.r, v.r * K, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
+        else if (v.kind === 'fist') { const a = clamp(1 - (v.u - v.warn) / .9, 0, 1); ctx.strokeStyle = `rgba(255,220,120,${a})`; ctx.lineWidth = 8; ctx.beginPath(); ctx.ellipse(sx(v.x), sy(v.y), v.r * (1 + (v.u - v.warn) * 1.5), v.r * K * (1 + (v.u - v.warn) * 1.5), 0, 0, 7); ctx.stroke(); }
+    },
+    drawOver() {
+      for (const v of this.v || []) {
+        if (v.kind === 'fist') { // a giant metal fist dropping from the sky
+          const k = clamp(v.u / v.warn, 0, 1), drop = v.u < v.warn ? 900 * (1 - k * k) + 120 : 120 - Math.min(120, (v.u - v.warn) * 400), X = sx(v.x), Y = sy(v.y) - drop, s = v.r * .55;
+          if (v.u > v.warn + .6) continue;
+          ctx.save(); ctx.translate(X, Y); ctx.fillStyle = '#8a92a4'; ctx.strokeStyle = '#2a2e38'; ctx.lineWidth = 4;
+          ctx.fillRect(-s * .35, -s * 2.4, s * .7, s * 1.6); ctx.strokeRect(-s * .35, -s * 2.4, s * .7, s * 1.6); // arm
+          ctx.beginPath(); ctx.roundRect(-s, -s, s * 2, s * 1.3, s * .3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#6a7284'; for (let j = 0; j < 4; j++) { ctx.beginPath(); ctx.roundRect(-s + j * s * .5 + 2, -s * 1.2, s * .45, s * .5, 6); ctx.fill(); ctx.stroke(); } // knuckles
+          ctx.fillStyle = '#ff3a3a'; ctx.beginPath(); ctx.arc(0, -s * .3, s * .15, 0, 7); ctx.fill(); ctx.restore();
+          continue;
+        }
+        if (v.kind === 'drone') { // a floating drone with one red eye
+          const X = sx(v.x), Y = sy(v.y) - 230 + Math.sin(clock * 3 + v.x) * 8;
+          if (v.stage === 'aim' && v.tgt) { ctx.strokeStyle = `rgba(255,50,50,${.4 + .4 * Math.sin(clock * 30)})`; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(X, Y + 16); ctx.lineTo(sx(v.tgt.x), sy(v.tgt.y) - v.tgt.r); ctx.stroke(); ctx.setLineDash([]); }
+          if (v.stage === 'zap' && v.tgt) { ctx.save(); ctx.shadowColor = '#ff2a2a'; ctx.shadowBlur = 20; ctx.strokeStyle = '#ffd0d0'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(X, Y + 16); ctx.lineTo(sx(v.tgt.x), sy(v.tgt.y) - v.tgt.r); ctx.stroke(); ctx.strokeStyle = '#ff2a2a'; ctx.lineWidth = 14; ctx.globalAlpha = .4; ctx.stroke(); ctx.restore(); }
+          ctx.fillStyle = '#3a3f4c'; ctx.strokeStyle = '#111'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(X, Y, 46, 20, 0, 0, 7); ctx.fill(); ctx.stroke();
+          ctx.strokeStyle = '#888'; ctx.lineWidth = 3; for (const sx2 of [-48, 48]) { ctx.beginPath(); ctx.ellipse(X + sx2, Y - 18, 22, 4 + Math.abs(Math.sin(clock * 40)) * 2, 0, 0, 7); ctx.stroke(); } // rotors
+          ctx.fillStyle = '#ff2a2a'; ctx.beginPath(); ctx.arc(X, Y + 6, 10, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X + 3, Y + 3, 3, 0, 7); ctx.fill();
+          continue;
+        }
+        // Gloom: a dark caped flyer with glowing eyes
+        const X = sx(v.x), Y = sy(v.y) - (v.stage === 'carry' ? 120 + v.u * 200 : 140), flap = Math.sin(clock * 12 + (v.ph || 0));
+        ctx.fillStyle = '#1a0f2a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(X, Y - 20); ctx.quadraticCurveTo(X - 70, Y - 30 - flap * 20, X - 90, Y + 20); ctx.quadraticCurveTo(X - 40, Y + 10, X, Y + 30); ctx.quadraticCurveTo(X + 40, Y + 10, X + 90, Y + 20); ctx.quadraticCurveTo(X + 70, Y - 30 - flap * 20, X, Y - 20); ctx.fill(); ctx.stroke(); // cape
+        ctx.fillStyle = '#2a1a40'; ctx.beginPath(); ctx.arc(X, Y - 30, 16, 0, 7); ctx.fill(); ctx.fillStyle = '#b8ff4a'; ctx.beginPath(); ctx.arc(X - 6, Y - 32, 3, 0, 7); ctx.arc(X + 6, Y - 32, 3, 0, 7); ctx.fill();
+        if (v.held) drawFighter(v.held);
+      }
+    },
+    snap() { return (this.v || []).map(v => ({ ...v, tgt: null, held: null })); },
+    restore(x) { this.v = (x || []).map(v => ({ ...v })); },
+    power: { name: 'VILLAIN TEAM-UP', icon: '🦹', fn() { const m = MAPS.hero; if (!m.v) return; m.villain('fist'); setTimeout(() => m.villain('drone'), 300); setTimeout(() => m.villain('gloom'), 600); shake = 12; } }
   },
   plague: {
     // 🐀 Plague Town: a walled medieval town seen from above. Nothing crumbles. Rats scurry out of the sewers and bite:
@@ -1965,8 +2064,9 @@ function sizeAll() {
   const totalW = fighters.reduce((s, f) => s + (f.weight || 1), 0), avg = totalW / n, base = (n <= 8 ? 28 : clamp(30 - 2.6 * Math.log2(n / 8), 13, 28)) * (MAP.pieceScale ? 1 + (MAP.pieceScale - 1) * (n > 100 ? .4 : 1) : 1); // the cliff grows with the crowd, pieces shrink only a little
   for (const f of fighters) {
     const lk = 1 + Math.min(f.luck || 0, 100) / 100 * .6, sf = clamp(clamp(Math.sqrt((f.weight || 1) / avg), .75, 2.1) * lk, .75, 2.5), r = base * sf;
-    f.odds = (f.weight || 1) / totalW; f.mass = sf * sf;
-    if (f._dirty || !f.token || Math.abs(r - (f.r || 0)) > .4) { f.r = r; f._dirty = false; makeToken(f); }
+    const boost = (f.mega ? 1.55 : 1) * (f.funSize || 1) * (cfg.fun?.bigheads ? 1.45 : 1), sf2 = sf * (f.mega ? 1.55 : 1) * (f.funSize || 1), r2 = r * boost;
+    f.odds = (f.weight || 1) / totalW; f.mass = sf2 * sf2;
+    if (f._dirty || !f.token || Math.abs(r2 - (f.r || 0)) > .4) { f.r = r2; f._dirty = false; makeToken(f); }
   }
 }
 function spawnSpot(r, others = fighters) {
@@ -2061,7 +2161,7 @@ function pickSafe(f) {
 // "ooh, I got lucky" and almost never happens. (The hops that keep the round going to the end, or keep the drawn
 // winner in with fair odds, are quiet: no LUCKY.)
 const luckChance = f => (f.luck || 0) > 0 ? Math.min(.45, Math.min(f.luck, 60) / 100 * .6) : 0;
-let luckCool = -99;
+let luckCool = -99, funNext = 0;
 function luckSave(f) {
   const n = alive().length;
   if (t < (f.safeUntil || 0)) return true; // just got saved, still landing
@@ -2110,6 +2210,7 @@ function launch(f, ang, sp = 1500, dur = .85) { f.launch = { vx: Math.cos(ang) *
 // blown up: luck gives a chance to dodge, otherwise BOOM (no luck save after that)
 function blastOrDodge(f, col = '#ffb347', what = 'BOOM!') {
   if (!f.alive) return true;
+  if (useShield(f)) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); return false; }
   const n = alive().length, keep = (cfg.fair && f === destined) || n <= 1 || (n <= 2 && t < cfg.game - 2.5);
   if (keep || (t - luckCool >= (n > 200 ? 16 : n > 40 ? 10 : 6) && Math.random() < luckChance(f) && (luckCool = t))) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); if (n < 40 && !keep) floaters.push({ text: (f.luck || 0) >= 5 ? '🍀 DODGED!' : 'DODGED!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: .9, color: '#7dffb0' }); return false; }
   const X = sx(f.x), Y = sy(f.y) - f.r;
@@ -2120,6 +2221,7 @@ function blastOrDodge(f, col = '#ffb347', what = 'BOOM!') {
 }
 function fall(f) {
   if (!f.alive || f.falling) return; // already out: never count (or list) the same piece twice
+  if (!winner && f.shield > 0) { const tl = nearestLand(f); if (tl && useShield(f)) { hopTo(f, tl, false); return; } }
   if (!f.noLuck && MAP.onFall?.(f)) return; // e.g. Final Stage: fly off screen, maybe fly back in
   if (!f.noLuck && luckSave(f)) return;
   if (f.whiffAt != null && t - f.whiffAt < 1.4 && alive().length < 60 && !isSolid(f.x, f.y)) floaters.push({ text: 'WHIFF!', x: sx(f.x), y: sy(f.y) - 50, life: 1, color: '#ff9a7a' });
@@ -2132,7 +2234,7 @@ function fall(f) {
 }
 
 function updateFighters(dt) {
-  const list = alive(), ice = t < mods.iceUntil, grav = t < mods.gravUntil || !!MAP.lowGrav, slip = ice || (MAP.friction ?? -2.8) > -1.6;
+  const list = alive(), ice = t < mods.iceUntil, grav = t < mods.gravUntil || !!MAP.lowGrav || !!cfg.fun?.lowgrav, slip = ice || (MAP.friction ?? -2.8) > -1.6;
   const fr = Math.exp((ice ? -.35 : (MAP.friction ?? -2.8)) * dt);
   buildCrowd(list);
   for (const f of list) {
@@ -2142,7 +2244,7 @@ function updateFighters(dt) {
       if (t > f.fear.until) f.fear = null;
       else { f.vx += (f.fear.dx * 300 - f.vx) * Math.min(1, dt * 4); f.vy += (f.fear.dy * 300 - f.vy) * Math.min(1, dt * 4); f.x += f.vx * dt + rnd(-1.5, 1.5); f.y += f.vy * dt; f.target = null; continue; }
     }
-    f.think -= dt; f.dashCd -= dt; f.dashing -= dt;
+    f.think -= dt; f.dashCd -= dt * (f.turbo ? 2.2 : 1); f.dashing -= dt;
     const under = tileAt(f.x, f.y);
     if (f.think <= 0 || !f.target || (under && under.state === 1)) {
       f.think = rnd(.5, 1.5);
@@ -2160,7 +2262,7 @@ function updateFighters(dt) {
         const dx = foe.x - f.x, dy = foe.y - f.y, d = Math.hypot(dx, dy) || 1, od = Math.hypot(foe.x, foe.y) || 1;
         const lined = (dx / d) * (foe.x / od) + (dy / d) * (foe.y / od); // >0: hitting them pushes them outward
         if (lined > -.1 || d < (f.r + foe.r) * 1.6 || Math.random() < .25) {
-          const pw = 380 + 60 * Math.min(2, f.mass);
+          const pw = (380 + 60 * Math.min(2, f.mass)) * (f.turbo ? 1.4 : 1);
           f.vx += dx / d * pw; f.vy += dy / d * pw; f.dashing = .38; f.dashCd = rnd(1, 2.2); f.target = null; f.think = rnd(.25, .6); f.whiffAt = t; SFX.play('dash');
           if (d > (f.r + foe.r) * 1.3 && Math.random() < .3 + (foe.mass < f.mass ? .1 : 0)) { // they see it coming and sidestep — the attacker may fly right past, off the edge
             const side = Math.random() < .5 ? 1 : -1; foe.vx += -dy / d * side * 340; foe.vy += dx / d * side * 340; foe.target = null; foe.think = rnd(.3, .6);
@@ -2203,7 +2305,7 @@ function updateFighters(dt) {
     a.x -= nx * ov * ia / s; a.y -= ny * ov * ia / s; b.x += nx * ov * ib / s; b.y += ny * ov * ib / s;
     const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
     if (vn < 0) {
-      const jj = -(1.85) * vn / s; // springier bumps
+      const jj = -(cfg.fun?.bouncy ? 3.6 : 1.85) * vn / s; // springier bumps (super bouncy in fun battles)
       a.vx -= jj * ia * nx; a.vy -= jj * ia * ny; b.vx += jj * ib * nx; b.vy += jj * ib * ny;
       if (a.dashing > 0) a.whiffAt = null; if (b.dashing > 0) b.whiffAt = null;
       if (a.dashing > 0) push(b, nx * 180 * Math.sqrt(a.mass), ny * 180 * Math.sqrt(a.mass));
@@ -2269,6 +2371,7 @@ function drawFighter(f, lobby) {
     ctx.fillStyle = lobby ? `rgba(20,10,30,${clamp(.4 - f.h / 2500, .05, .4)})` : 'rgba(20,10,30,.38)'; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill();
     if ((f.glow ?? f.luck) >= 5) drawLuckFx(f, x, cy);
     ctx.drawImage(f.token, x - D / 2, cy - D / 2, D, D);
+    if (f.shield > 0 || f.turbo) drawPowerFx(f, x, cy);
     return cy;
   }
   ctx.save();
@@ -2283,6 +2386,7 @@ function drawFighter(f, lobby) {
   if (cam.follow === f && winner !== f) { ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.arc(0, 0, f.r + 8, clock * 2, clock * 2 + 6.3); ctx.stroke(); ctx.setLineDash([]); }
   if (winner === f) { ctx.strokeStyle = '#ffc94a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, f.r + 9 + Math.sin(clock * 8) * 2, 0, 7); ctx.stroke(); }
   ctx.restore();
+  if (!f.falling && (f.shield > 0 || f.turbo)) drawPowerFx(f, x, cy);
   return cy;
 }
 function drawLabel(f, cy, lobby) {
@@ -2353,9 +2457,11 @@ const EVENTS = {
   lowgrav() { mods.gravUntil = t + 5; },
   mappower() { if (MAP.power) MAP.power.fn(); else EVENTS.comet(); }
 };
+const GROUND_EVENTS = ['collapse', 'lightning']; // these break the ground: never on maps where nothing breaks
+const evPool = () => Object.keys(EVENTS).filter(k => !(MAP.hardGround && GROUND_EVENTS.includes(k)));
 function runEvent(fx) {
   let ev = fx.event;
-  if (ev === 'random' || !EVENTS[ev]) ev = pick(Object.keys(EVENTS));
+  if (ev === 'random' || !EVENTS[ev] || (MAP.hardGround && GROUND_EVENTS.includes(ev))) ev = pick(evPool());
   if (ev === 'mappower' && !MAP.power) ev = 'comet';
   MAP.onPower?.();
   const [icon, name] = ev === 'mappower' ? [MAP.power.icon, MAP.power.name] : EV_INFO[ev];
@@ -2364,6 +2470,31 @@ function runEvent(fx) {
   SFX.play('alert'); setTimeout(() => SFX.play(ev === 'mappower' ? 'boom' : ev), 150);
   if (fx.source !== 'sd') evLog.push({ event: name, by: fx.by?.name || '', t: Math.round(t * 10) / 10 });
   EVENTS[ev]();
+}
+// 🎉 chat battle power-ups: 🛡️ shield (saves them once per shield), 💪 mega (big and heavy), ⚡ turbo (faster, harder dashes)
+function applyPowers(f) { const p = f.powers || {}; f.shield = Number(p.shield) || 0; f.mega = !!p.mega; f.turbo = !!p.turbo; }
+function powerMsg(m) {
+  const f = fighters.find(x => x.id === m.id); if (!f) return;
+  f.powers = { ...(f.powers || {}) }; if (m.power === 'shield') f.powers.shield = Math.min(3, (f.powers.shield || 0) + 1); else f.powers[m.power] = true;
+  applyPowers(f); if (m.power === 'mega') { f._dirty = true; sizeAll(); }
+  const icon = { shield: '🛡️', mega: '💪', turbo: '⚡' }[m.power] || '✨';
+  floaters.push({ text: `${icon} POWERED UP!`, x: sx(f.x), y: sy(f.y) - (f.r || 20) * 2 - 30, life: 1.6, color: '#c4a5ff' }); sparkle(sx(f.x), sy(f.y) - (f.r || 20), '#c4a5ff', 26); SFX.play('lucky');
+}
+function useShield(f) { // a shield takes the hit
+  if (!(f.shield > 0) || !f.alive) return false;
+  f.shield--; if (f.powers) f.powers.shield = f.shield;
+  floaters.push({ text: '🛡️ SHIELD!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: 1.1, color: '#8fd3ff' }); sparkle(sx(f.x), sy(f.y) - f.r, '#8fd3ff', 20); SFX.play('clash');
+  return true;
+}
+function drawPowerFx(f, x, cy) {
+  if (f.shield > 0) { ctx.fillStyle = 'rgba(120,200,255,.16)'; ctx.strokeStyle = `rgba(140,215,255,${.65 + .25 * Math.sin(clock * 6)})`; ctx.lineWidth = 3 + f.shield; ctx.beginPath(); ctx.arc(x, cy, f.r + 7, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (f.turbo) { const sp = Math.hypot(f.vx || 0, f.vy || 0); if (sp > 60) { ctx.strokeStyle = 'rgba(255,230,90,.7)'; ctx.lineWidth = 3; for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.moveTo(x - f.vx / sp * f.r + j * 6, cy - f.vy / sp * f.r * K); ctx.lineTo(x - f.vx / sp * (f.r + 34) + j * 6, cy - f.vy / sp * (f.r + 34) * K); ctx.stroke(); } } }
+}
+// 🪩 disco lights for fun battles
+function drawDisco() {
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) { const a = clock * (.6 + i * .17) + i * 1.7, x = CX + Math.cos(a) * 520, y = CY - 40 + Math.sin(a * 1.3) * 260, gr = ctx.createRadialGradient(x, y, 10, x, y, 300); gr.addColorStop(0, `hsla(${(clock * 90 + i * 90) % 360},100%,60%,.28)`); gr.addColorStop(1, 'hsla(0,0%,0%,0)'); ctx.fillStyle = gr; ctx.fillRect(x - 300, y - 300, 600, 600); }
+  ctx.restore();
 }
 function receiveEffect(fx) { if (phase === 'running') runEvent(fx); else queue.push(fx); }
 
@@ -2616,7 +2747,7 @@ function applyPreview(m) {
   const changed = m.map ? setMap(m.map) : false;
   if (phase === 'idle') { hideWin(); hideClaim(); buildIsland(m.fighters.length); fighters = []; feed = []; banners = []; hazards = []; winner = null; phase = 'waiting'; }
   else if (changed || Math.abs(Rfor(m.fighters.length) - Rfor(builtFor)) >= 2) rebuildKeep(m.fighters.length);
-  syncFighters(m.fighters);
+  syncFighters(m.fighters); fighters.forEach(applyPowers);
 }
 /** New map or a much bigger/smaller crowd while pieces wait: rebuild the cliff and spread everyone over it again. */
 function rebuildKeep(n) {
@@ -2731,7 +2862,7 @@ function startGame(m) {
   gameId = m.gameId; listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length;
   if (m.chaos) chaos = m.chaos;
   movieNo = m.movieNo || null; series = m.series || null;
-  cfg = { lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, fair: m.fairOdds !== false };
+  cfg = { lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5);
   t = 0; lobbyLeft = cfg.lobby; winner = null; winTile = null; destined = null; suddenDeath = false; resultSent = false;
   hazards = []; parts = []; feed = []; banners = []; floaters = []; queue = (m.queued || []).slice();
   Object.assign(mods, { windUntil: 0, iceUntil: 0, gravUntil: 0, quakeUntil: 0 });
@@ -2739,7 +2870,7 @@ function startGame(m) {
   const changed = m.map ? setMap(m.map) : false;
   if (phase !== 'waiting') { buildIsland(m.fighters.length); fighters = []; }
   else if (changed || Math.abs(Rfor(m.fighters.length) - Rfor(builtFor)) >= 2) rebuildKeep(m.fighters.length);
-  syncFighters(m.fighters); fighters.forEach(resetFighter); lastTick = 0; pendingCount = 0; elim = []; elimT = []; evLog = [];
+  syncFighters(m.fighters); fighters.forEach(resetFighter); fighters.forEach(f => { applyPowers(f); f.funSize = cfg.fun?.sizes ? rnd(.55, 2.1) : 1; }); sizeAll(); lastTick = 0; pendingCount = 0; elim = []; elimT = []; evLog = [];
   SFX.music('lobby');
   phase = 'lobby'; send({ type: 'phase', phase, gameId });
   if (cfg.lobby <= 0) beginRound(); // no countdown: fight starts the moment you press Start
@@ -2791,7 +2922,7 @@ function stepSuddenDeath(dt) {
   if ((sdNext -= dt) > 0) return;
   sdCount++;
   sdNext = Math.max(.22, (alive().length > 50 ? 1.3 : 1.9) * Math.pow(.88, sdCount)); // faster and faster
-  const pool = [...Object.keys(EV_INFO).filter(k => k !== 'random' && k !== 'mappower'), ...(MAP.power ? ['mappower', 'mappower'] : [])]; // the map's own power shows up extra often
+  const pool = [...Object.keys(EV_INFO).filter(k => k !== 'random' && k !== 'mappower' && !(MAP.hardGround && GROUND_EVENTS.includes(k))), ...(MAP.power ? ['mappower', 'mappower'] : [])]; // the map's own power shows up extra often
   runEvent({ event: pick(pool), by: { name: 'SUDDEN DEATH' }, source: 'sd' });
   // the ground goes too: the outermost tiles that are still there start to crumble
   const edge = solid.filter(tl => !tl.sdKeep && tl.state === 0 && !tl.lava).sort((a, b) => Math.hypot(b.x, b.y) - Math.hypot(a.x, a.y));
@@ -3133,6 +3264,7 @@ function frame(now) {
   } else if (phase === 'running') {
     t += dt;
     updateTiles(dt); updateHazards(dt); MAP.update?.(dt); updateFighters(dt);
+    if (cfg.fun?.chaos && !winner && (funNext -= dt) <= 0) { funNext = rnd(4, 6.5); runEvent({ event: 'random', by: { name: '🎉 FUN MODE' }, source: 'fun' }); } // 🎉 chaos rain
     SFX.setIntensity(t / cfg.game);
     const rs = Math.ceil(cfg.game - t); if (rs !== lastTick && rs <= 5 && rs > 0) { lastTick = rs; SFX.play('final5'); }
     if (!winner && t >= cfg.game) { if (!suddenDeath) startSuddenDeath(); else stepSuddenDeath(dt); }
@@ -3167,6 +3299,7 @@ function frame(now) {
     for (const f of fighters) if (f.falling && f.y >= 0) drawFighter(f);
     }
     MAP.drawOver?.();
+    if (cfg.fun?.disco && phase !== 'idle') drawDisco();
     stepParts(parts, ctx, replay ? 0 : dt);
     drawHazardsAir();
   }
@@ -3209,6 +3342,7 @@ function handleMsg(m) {
     if (m.type === 'wheelBanner') { wlInit(); if (wlShow) { wlBanner(m.html, 2600); SFX.play('wheelGrow'); } return; }
     if (m.type === 'start') startGame(m);
     else if (m.type === 'preview') applyPreview(m);
+    else if (m.type === 'power') powerMsg(m);
     else if (m.type === 'effect') receiveEffect(m.effect);
     else if (m.type === 'queued') SFX.play('queued'), pendingCount++, floaters.push({ scr: 1, text: `${(EV_INFO[m.effect.event] || ['⚡'])[0]} queued for next round!`, x: CX, y: 260, life: 2.5, color: '#ffd98a' });
     else if (m.type === 'audio') SFX.setVolume({ on: m.on, sfx: m.sfx, music: m.music });

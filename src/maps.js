@@ -7,7 +7,7 @@ export const MAP_LIST = [
   { id: 'hollywood', power: '🫨 Aftershock', name: 'Hollywood Sign', icon: '🎬', desc: 'Fight on top of the letters while earthquakes knock them down one by one.' },
   { id: 'cyber', power: '🔴 Laser Grid', name: 'Neon City', icon: '🌆', desc: 'Lasers sweep the stage — jump or get zapped.' },
   { id: 'smash', power: '💥 Final Smash', name: 'Final Stage', icon: '🥊', desc: 'A floating battle stage with side platforms and SMASH attacks.' },
-  { id: 'rumble', power: '🤼 Tag Team', name: 'Royal Rumble', icon: '🤼', desc: 'Wrestlers fly off the top rope — wherever they land, everyone goes flying out of the ring. Plus: bounce off the ropes or get thrown over the top.' },
+  { id: 'rumble', solid: true, power: '🤼 Tag Team', name: 'Royal Rumble', icon: '🤼', desc: 'Wrestlers fly off the top rope — wherever they land, everyone goes flying out of the ring. Plus: bounce off the ropes or get thrown over the top.' },
   { id: 'pong', power: '⚪ Multiball', name: 'Pong', icon: '🏓', desc: 'A flaming ball rips straight through pieces, faster and faster. The paddles knock pieces around.' },
   { id: 'frost', power: '🌨️ Blizzard', name: 'Frozen Peak', icon: '❄️', desc: 'Slippery ice under the northern lights. Icicles drop from the sky.' },
   { id: 'donut', power: '😋 Mega Bite', name: 'Sweet Donut', icon: '🍩', desc: 'A giant sugar monster takes huge bites out of the donut. Do not be in its mouth!' },
@@ -17,12 +17,15 @@ export const MAP_LIST = [
   { id: 'castle', power: '🐉 Dragon Raid', name: 'Dragon Keep', icon: '🐉', desc: 'A castle courtyard. Dragons swoop down, knocking pieces flying and burning holes in the floor.' },
   { id: 'tiers', power: '🫨 Tremor', name: 'Tumble Tower', icon: '🧱', desc: 'Four floors stacked up: the biggest on top, each one below it smaller. Stand on a tile for 5 seconds and it gives way: drop to the floor below. Fall through the bottom and you are out.' },
   { id: 'gas', power: '🐄 Stampede', name: 'Fart Farm', icon: '💨', desc: 'Big cows stampede across the field, trampling pieces flat and farting on whoever is behind them. UFOs beam pieces up into the saucer.' },
-  { id: 'plague', power: '🐀 Rat Swarm', name: 'Plague Town', icon: '🐀', desc: 'A walled medieval town seen from above. Rats bite and infect you, and the sick pass it on to anyone they bump. Run from the rats! Nothing crumbles.' },
-  { id: 'warfield', power: '🐎 Royal Charge', name: 'Battlefield', icon: '⚔️', desc: 'Every piece on one side, an unstoppable army on the other: archers hit the back rows, knights crush the front, and the cavalry hits both sides. Nothing crumbles.' },
-  { id: 'bombs', power: '💣 Mega Bomb', name: 'Blast Zone', icon: '💣', desc: 'Giant bombs drop in, trap you and blow up in a big cross. Get out of the lines!' },
+  { id: 'hero', power: '🦹 Villain Team-Up', name: 'Hero City', icon: '🦸', desc: 'A rooftop fight above the city at night. Villains attack: a giant robot fist smashes down, a laser drone zaps, and a caped flyer grabs pieces and throws them off the roof.' },
+  { id: 'plague', solid: true, power: '🐀 Rat Swarm', name: 'Plague Town', icon: '🐀', desc: 'A walled medieval town seen from above. Rats bite and infect you, and the sick pass it on to anyone they bump. Run from the rats! Nothing crumbles.' },
+  { id: 'warfield', solid: true, power: '🐎 Royal Charge', name: 'Battlefield', icon: '⚔️', desc: 'Every piece on one side, an unstoppable army on the other: archers hit the back rows, knights crush the front, and the cavalry hits both sides. Nothing crumbles.' },
+  { id: 'bombs', solid: true, power: '💣 Mega Bomb', name: 'Blast Zone', icon: '💣', desc: 'Giant bombs drop in, trap you and blow up in a big cross. Get out of the lines!' },
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
 // map menus until it's been played on stream again. (Maps never played on stream show "NEW".)
 const REV = { gas: 2 };
 for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
+// chaos events that break the ground: never used on maps where nothing breaks (their channel point rewards get paused there)
+export const GROUND_EVENTS = ['collapse', 'lightning'];
 export const mapById = id => MAP_LIST.find(m => m.id === id);

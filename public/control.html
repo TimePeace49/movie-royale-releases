@@ -366,6 +366,11 @@
       <label>How many rounds</label><span id="chatBo"></span>
       <p class="help" style="margin-bottom:0">Change the join command in Settings → Game.</p>
     </div>
+    <div class="card">
+      <h2>🎉 Fun mode</h2>
+      <p class="help" style="margin-top:0">Just-for-fun chat battles. With any of these on, the winner isn't drawn by the odds: the fight decides it.</p>
+      <div id="funBox"></div>
+    </div>
   </div>
   <div class="pane card">
     <div class="row" style="margin-bottom:10px"><h2 class="grow" style="margin:0" id="joinCount">Who's in</h2><input id="joinFilter" placeholder="Find someone…" style="width:200px" oninput="renderChat()"></div>
@@ -478,6 +483,12 @@
     <label>Event</label><select id="tEvent"></select>
     <div class="row" style="margin-top:10px"><button class="primary" onclick="api('/api/test/redeem',{event:$('tEvent').value,name:'test_viewer'}).then(()=>toast('Redeemed!'))">Redeem</button>
       <input id="tBits" type="number" value="500" style="width:90px"><button onclick="api('/api/test/cheer',{bits:$('tBits').value,name:'test_viewer'}).then(()=>toast('Cheered!'))">Cheer bits</button></div>
+  </div>
+  <div class="card">
+    <h3>🎉 Pretend a ball power-up</h3>
+    <p class="help">Chat battle with power-ups on (🎲 Chat battle tab → Fun mode). Use the Twitch name of someone who joined.</p>
+    <label>Twitch name</label><input id="tPowWho" value="test_viewer">
+    <div class="row" style="margin-top:10px;gap:6px"><button onclick="api('/api/test/power',{kind:'shield',name:$('tPowWho').value}).then(()=>toast('🛡️ Shield'))">🛡️ Shield</button><button onclick="api('/api/test/power',{kind:'mega',name:$('tPowWho').value}).then(()=>toast('💪 Mega'))">💪 Mega</button><button onclick="api('/api/test/power',{kind:'turbo',name:$('tPowWho').value}).then(()=>toast('⚡ Turbo'))">⚡ Turbo</button></div>
   </div>
   <div class="card">
     <h3>🎬 Would Discord allow this movie?</h3>
@@ -1014,8 +1025,28 @@ async function gaReroll() {
   if (w && w.listId === 'giveaway') await api('/api/lists/giveaway/entries/' + w.id, { status: 'out' }, 'PATCH');
   await api('/api/claim/close'); goFullscreen(); await api('/api/giveaway', { select: true }); setView('battle'); await api('/api/start');
 }
+function funSet(ch) { api('/api/lists/chat-join', { fun: ch }, 'PATCH').catch(() => {}); }
+function renderFun(l) {
+  const box = $('funBox'); if (!box || box.contains(document.activeElement)) return;
+  const F = l.fun || {}, Wk = F.wacky || {}, ck = (on, js, label) => `<label class="ck"><input type="checkbox" ${on ? 'checked' : ''} onchange="${js}"> <span>${label}</span></label>`;
+  const titles = Object.keys(S.settings.powerRewards || {});
+  box.innerHTML = `<b>💜 Power-ups with channel points</b>
+    ${ck(F.powerups, "funSet({powerups:this.checked})", 'Chat can power up <b>their own ball</b> with channel points (they have to <code>!join</code> first)')}
+    <p class="help" style="margin:2px 0 6px 22px">🛡️ Shield (saves them once) · 💪 Mega ball (big and heavy) · ⚡ Turbo (faster, harder hits). The rewards are only switched on in Twitch while this chat battle is playing with power-ups on; the rest of the time they're paused.</p>
+    <div class="row" style="margin-left:22px"><button ${S.canPoints === false ? 'disabled' : ''} onclick="api('/api/powerups/rewards',{}).then(r=>toast(r.made.length ? '✅ Added: ' + r.made.map(esc).join(', ') : 'They are already on Twitch.'))">✨ Add power-up rewards to Twitch</button></div>
+    <p class="help" style="margin:4px 0 10px 22px">${titles.map(esc).join(' · ')}</p>
+    <b>🤪 Wacky effects</b>
+    <div style="display:grid;gap:2px;margin-top:4px">
+    ${ck(Wk.bouncy, "funSet({wacky:{bouncy:this.checked}})", '🏀 Super bouncy: every bump sends balls flying')}
+    ${ck(Wk.lowgrav, "funSet({wacky:{lowgrav:this.checked}})", '🪐 Low gravity the whole time')}
+    ${ck(Wk.sizes, "funSet({wacky:{sizes:this.checked}})", '🐜🐘 Random sizes: tiny and giant balls')}
+    ${ck(Wk.bigheads, "funSet({wacky:{bigheads:this.checked}})", '🎈 Big balls: everyone extra big (it gets crowded)')}
+    ${ck(Wk.chaos, "funSet({wacky:{chaos:this.checked}})", '🌪️ Chaos rain: a random chaos event every few seconds')}
+    ${ck(Wk.disco, "funSet({wacky:{disco:this.checked}})", '🪩 Disco lights')}</div>`;
+}
 function renderChat() {
   const l = S.lists.find(x => x.id === 'chat-join'); if (!l) return;
+  renderFun(l);
   const playing = S.activeListId === l.id, open = l.joinOpen && playing, cmd = S.settings.joinCommand || '!join';
   $('joinCmd').textContent = cmd;
   $('joinBtn').className = 'bigjoin ' + (open ? 'danger' : 'primary');

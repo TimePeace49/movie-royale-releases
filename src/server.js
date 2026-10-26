@@ -17,7 +17,7 @@ import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePe
 import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
-import { MAP_LIST, mapById } from './maps.js';
+import { MAP_LIST, mapById, GROUND_EVENTS } from './maps.js';
 import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
@@ -59,7 +59,7 @@ function leaveEnded() {
   broadcast({ type: 'reset' }, 'overlay');
 }
 function refreshPreview(now = false) {
-  clearTimeout(previewTimer);
+  clearTimeout(previewTimer); clearTimeout(refreshPreview.rw); refreshPreview.rw = setTimeout(() => syncRewards().catch(() => {}), 1500); // channel point rewards follow the map and battle
   previewTimer = setTimeout(async () => {
     if (live.phase !== 'idle') return;
     const list = getList(db.activeListId);
@@ -204,10 +204,45 @@ async function buildFighters(list, keepIds = null) {
         glow: e.luckPct > 0 ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10)),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
         showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
-        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null
+        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null
       };
     })
   };
+}
+
+// ---------- 🎉 chat battle power-ups: a viewer powers up their own ball ----------
+const POWER_INFO = { shield: { icon: '🛡️', say: 'a shield (it saves them once)' }, mega: { icon: '💪', say: 'a MEGA ball' }, turbo: { icon: '⚡', say: 'turbo speed' } };
+function powerUp(r, kind) {
+  const l = getList(db.activeListId), say = t => { if (twitch.status.canChat) twitch.say(t).catch(() => {}); };
+  if (!(l?.type === 'chat' && l.fun?.powerups)) return say(`@${r.name} power-ups only work during a chat battle with power-ups turned on.`);
+  const e = l.entries.find(x => x.status === 'active' && norm(x.twitch || x.label) === norm(r.login));
+  if (!e) return say(`@${r.name} you're not in the battle yet: type ${db.settings.joinCommand || '!join'} first!`);
+  e.powers ||= {};
+  if (kind === 'shield') e.powers.shield = Math.min(3, (e.powers.shield || 0) + 1); else e.powers[kind] = true;
+  save();
+  if ((live.phase === 'lobby' || live.phase === 'running') && live.game?.listId === l.id) broadcast({ type: 'power', id: e.id, power: kind, name: r.name }, 'overlay');
+  else refreshPreview();
+  say(`${POWER_INFO[kind]?.icon || '✨'} @${r.name} powered up their ball with ${POWER_INFO[kind]?.say || kind}!`);
+  pushState();
+}
+// pause the channel point rewards that can't do anything right now, unpause the ones that can
+// (ground-breaking chaos on maps where nothing breaks; ball power-ups outside a chat battle with power-ups on)
+let rewardKey = '', rewardBusy = false;
+async function syncRewards() {
+  if (!twitch.status.userId || rewardBusy) return;
+  const st = db.settings, on = st.pointsOn !== false, map = mapById(currentMap()), l = getList(db.activeListId);
+  const want = {};
+  for (const [title, ev] of Object.entries(st.rewards || {})) want[title.toLowerCase()] = !on || (!!map?.solid && GROUND_EVENTS.includes(ev));
+  const powersOn = on && l?.type === 'chat' && !!l.fun?.powerups;
+  for (const title of Object.keys(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn;
+  const key = JSON.stringify(want); if (key === rewardKey) return;
+  rewardBusy = true;
+  try {
+    const mine = (await twitch.listRewards()).filter(r => r.title.toLowerCase() in want);
+    await Promise.allSettled(mine.filter(r => r.paused !== want[r.title.toLowerCase()]).map(r => twitch.updateReward(r.id, { paused: want[r.title.toLowerCase()] })));
+    rewardKey = key;
+  } catch (e) { console.error('[rewards]', e.message); }
+  finally { rewardBusy = false; }
 }
 
 // ---------- chaos events from channel points / bits ----------
@@ -296,6 +331,8 @@ const twitchHandlers = {
     if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
     if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
     if (db.settings.pointsOn === false) return; // channel point chaos switched off
+    const pw = Object.entries(db.settings.powerRewards || {}).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
+    if (pw) return powerUp(r, pw[1]); // 🎉 chat battle power-up for their own ball
     const entry = Object.entries(db.settings.rewards).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
     if (!entry) return;
     triggerEvent(entry[1], { name: r.name, avatar: await avatarFor(r.login) }, 'points');
@@ -488,6 +525,7 @@ wss.on('connection', (ws, req) => {
       live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id, gameId: live.game.id };
       if (seriesInfo) { live.lastWinner.series = seriesInfo; rec.series = seriesInfo; f.series = seriesInfo; }
       if (list?.giveaway) { db.giveawayWinners ||= []; db.giveawayWinners.push({ login: f.ownerLogin || norm(f.label), name: f.label, prize: giveawaySettings().prize || giveawaySettings().title, at: Date.now() }); db.giveawayWinners = db.giveawayWinners.slice(-500); if (giveawaySettings().removeWinner) { const we = list.entries.find(x => x.id === f.id); if (we) we.status = 'out'; } }
+      if (list?.type === 'chat') for (const x of list.entries) delete x.powers; // power-ups last one battle
       announceWinner(f, list);
       { const c = resolveCalls(f, list); if (c) { live.lastWinner.calls = { total: c.total, right: c.right.length, names: c.right.slice(0, 8).map(o => o.name) }; rec.calls = live.lastWinner.calls; } }
       if (list?.type === 'movies') { stream().movies = (stream().movies || 0) + 1; } // movie # of the night
@@ -939,6 +977,12 @@ app.patch('/api/lists/:id', (req, res) => {
   if (req.body.joinOpen != null) l.joinOpen = !!req.body.joinOpen;
   if (req.body.bestOf != null && l.type !== 'movies') { l.bestOf = [1, 3, 5, 7, 9].includes(Number(req.body.bestOf)) ? Number(req.body.bestOf) : 1; if (live.series?.listId === l.id) live.series = null; if (l.giveaway) giveawaySettings().bestOf = l.bestOf; }
   if (req.body.screenTitle != null) { l.screenTitle = String(req.body.screenTitle).slice(0, 60); refreshPreview(); }
+  if (req.body.fun && typeof req.body.fun === 'object' && l.type === 'chat') { // 🎉 fun mode for chat battles
+    const f = req.body.fun, cur = l.fun ||= { powerups: false, wacky: {} };
+    if (f.powerups != null) cur.powerups = !!f.powerups;
+    if (f.wacky && typeof f.wacky === 'object') for (const k of ['bouncy', 'lowgrav', 'sizes', 'disco', 'chaos', 'bigheads']) if (k in f.wacky) cur.wacky[k] = !!f.wacky[k];
+    syncRewards(); refreshPreview();
+  }
   save(); pushState(); res.json({ ok: true });
 });
 app.delete('/api/lists/:id', (req, res) => {
@@ -1103,11 +1147,19 @@ app.post('/api/year-allow', async (req, res) => {
 
 // ---------- one-click on/off for channel points and bits ----------
 const chaosState = () => ({ points: db.settings.pointsOn !== false, bits: db.settings.bitsOn !== false });
+app.post('/api/powerups/rewards', async (req, res) => { // add the ball power-up rewards to Twitch (they stay paused unless a chat battle with power-ups is playing)
+  try {
+    const st = db.settings, made = [], prompts = { shield: 'Chat battles: your ball gets a shield that saves it once. Type !join first!', mega: 'Chat battles: your ball becomes a big heavy MEGA ball. Type !join first!', turbo: 'Chat battles: your ball gets turbo speed. Type !join first!' };
+    for (const [title, kind] of Object.entries(st.powerRewards || {})) if (await twitch.createReward({ title, cost: st.powerCosts?.[kind] || 1000, prompt: prompts[kind] || '', color: '#9B4DFF', queue: true })) made.push(title);
+    rewardKey = ''; await syncRewards();
+    res.json({ ok: true, made });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/chaos-toggle', async (req, res) => {
   const b = req.body || {}, msgs = [];
   if (b.points != null) db.settings.pointsOn = !!b.points;
   if (b.bits != null) db.settings.bitsOn = !!b.bits;
-  save(); pushState(); refreshPreview(true);
+  save(); pushState(); refreshPreview(true); rewardKey = '';
   // also pause/unpause the rewards on Twitch so nobody spends points on something that won't happen
   if (b.points != null && twitch.status.userId) {
     try {
@@ -1503,6 +1555,7 @@ app.post('/api/test/chat', (req, res) => { const name = String(req.body?.name ||
 app.post('/api/test/wheel-land', wTry(b => wheel.request(b.kind === 'respin' ? 'respin' : 'spin', {}, { force: String(b.entryId || ''), wheelId: b.wheelId }))); // Test tab: land on a spot you pick
 app.post('/api/test/doom-preview', (req, res) => { broadcast({ type: 'wheelDoom', text: `${streamerName().toUpperCase()} WILL RETURN FOR DOOMSDAY!!!`, preview: true }, 'overlay'); res.json({ ok: true }); }); // just the screen, nothing turns off
 app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));
+app.post('/api/test/power', (req, res) => { const kind = String(req.body?.kind || 'shield'), name = String(req.body?.name || 'test_viewer'); const title = Object.entries(db.settings.powerRewards || {}).find(([, k]) => k === kind)?.[0]; if (!title) return res.status(400).json({ error: 'no such power-up' }); twitchHandlers.redeem({ title, login: name.toLowerCase(), name, input: '' }); res.json({ ok: true }); }); // Test tab: pretend someone redeemed a ball power-up
 app.post('/api/test/live', (req, res) => { twitchHandlers.live(!!req.body?.live); res.json({ ok: true, live: !!db.live }); }); // Test tab: pretend you went live / offline
 app.post('/api/test/wheel-redeem-raw', (req, res) => { const b = req.body || {}; const ok = wheel.wheelRedeem({ title: String(b.title || ''), input: b.input, login: String(b.name || 'test').toLowerCase(), name: String(b.name || 'test'), cost: 100 }); res.json({ ok }); });
 app.post('/api/test/wheel-redeem', (req, res) => { const k = String(req.body?.kind || 'respin'), name = String(req.body?.name || 'test_viewer'); const ok = wheel.wheelRedeem({ title: wheel.W().rewards[k] || '', login: name.toLowerCase(), name }); res.json({ ok }); });
@@ -1570,7 +1623,7 @@ async function startRound() { // returns an error message, or null when the roun
   const queued = db.pendingEffects; db.pendingEffects = []; save();
   broadcast({
     type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, movieNo: list.type === 'movies' ? (stream().movies || 0) + 1 : null,
-    lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: db.settings.fairOdds, chaos: chaosState(), queued,
+    lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: db.settings.fairOdds && !(list.type === 'chat' && (list.fun?.powerups || Object.values(list.fun?.wacky || {}).some(Boolean))), fun: list.type === 'chat' ? { ...(list.fun?.wacky || {}) } : null, chaos: chaosState(), queued,
     series: list.type !== 'movies' && (Number(list.bestOf) || 1) > 1 ? (live.series && !live.series.done && live.series.listId === list.id ? { bestOf: live.series.bestOf, need: live.series.need, round: live.series.round + 1, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: live.series.names[id], n })) } : { bestOf: Number(list.bestOf), need: Math.ceil(Number(list.bestOf) / 2), round: 1, tally: [] }) : null
   }, 'overlay');
   if (list.type !== 'movies' && live.series && (live.series.done || live.series.listId !== list.id)) live.series = null;
