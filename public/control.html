@@ -136,6 +136,9 @@
   #stage:fullscreen { border-radius:0; border:0; }
   #fsBar { display:none; }
   @keyframes updPulse { from { opacity:.6 } to { opacity:1 } }
+  body.helpmode, body.helpmode * { cursor:help !important; }
+  body.helpmode #helpModeBtn { background:var(--gold); color:#1a1030; }
+  #helpModeTip { position:fixed; z-index:70; left:50%; top:62px; transform:translateX(-50%); padding:8px 14px; border-radius:12px; background:#ffc94a; color:#1a1030; font-weight:700; box-shadow:0 10px 30px #000a; }
   #claimBar { position:fixed; z-index:62; left:50%; top:66px; transform:translateX(-50%); width:min(760px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:12px 16px; background:#163a26f2; border:2px solid #7dffb0; border-radius:14px; box-shadow:0 14px 50px #000c; font-size:15px; }
   #claimBar button { white-space:nowrap; }
   #handNag { position:fixed; z-index:59; left:50%; bottom:16px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a1420f2; border:1px solid #ff8a7a; border-radius:12px; font-size:13px; box-shadow:0 10px 40px #000a; }
@@ -311,6 +314,7 @@
   </nav>
   <div class="dots" id="dots"></div>
   <span id="liveTag"></span>
+  <button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
   <div id="me"></div>
 </header>
 
@@ -534,9 +538,7 @@
       <button onclick="api('/api/test/everyone-in').then(r=>toast('🟢 Everyone with a movie is on the cliff ('+r.people+' people + '+r.spots+' wild spots)'))" title="Everyone with a movie, plus all the wild spots">🟢 Put everyone on the cliff</button>
       <button class="primary" onclick="api('/api/test/discord-battle').then(()=>{toast('⚔️ Test Discord battle! It changes nothing: no winner, no luck, no cooldowns.');})">⚔️ Run a test Discord battle</button>
       <button onclick="api('/api/claim/close').then(()=>toast('Next round: watch the balls come back'))">Next round →</button>
-      <button onclick="cliffWhy()">🔍 Why is nobody on the cliff?</button>
     </div>
-    <div id="cliffWhy"></div>
     <h4 style="margin:12px 0 4px">💬 Pretend people type in chat (their movies join)</h4>
     <div id="chatPeople" class="row" style="gap:6px;flex-wrap:wrap"></div>
     <p class="help" style="margin:6px 0 0">Try it: reset cooldowns → put everyone on the cliff → run a test battle → press Next round. If the balls come back, cooldowns were the reason they were missing (movies that won sit out for the week).</p>
@@ -555,11 +557,6 @@
     <h3>🐞 Discord debug channel</h3>
     <p class="help">Posts a pretend problem in the hidden <code>#movie-royal-debug</code> channel (only mods and the server owner can see it).</p>
     <div class="row" style="gap:6px"><button class="primary" onclick="api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent: check #movie-royal-debug in Discord':'⚠️ The bot is offline, or the channel isn\'t made yet (Settings → Discord → Make / fix)'))">🐞 Send a test problem</button><button onclick="api('/api/discord/debug-setup').then(r=>toast(r.warnings?.length ? '⚠️ '+r.warnings.map(esc).join('<br>') : '🐞 #movie-royal-debug is set up and locked', 8000))">Make / fix the channel</button></div>
-  </div>
-  <div class="card">
-    <h3>📌 Pinned messages</h3>
-    <p class="help">Sends a test message in your Twitch chat and pins it at the top (the same way a claimed movie gets pinned). Needs Twitch signed in.</p>
-    <button class="primary" onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button>
   </div>
   <div class="card" style="grid-column:1 / -1"><p class="help" style="margin:0">📺 Every test here pops up a little window showing what's on stream right now, so you can see it (drag it by the top bar, resize it from a corner or edge). <button onclick="peek(true)">📺 Show the stream screen</button></p></div>
   <div class="card" style="grid-column:1 / -1" id="wTestCard"></div>
@@ -653,16 +650,17 @@
 
 <dialog id="newlist"><div class="inner">
   <h3>New battle</h3>
-  <div class="card soft" style="margin:0 0 10px;padding:10px"><b>🔢 Pick a number</b><p class="help" style="margin:4px 0 8px">Every ball is a number. The last one standing is the number.</p><div class="row" style="gap:6px;align-items:center">From <input id="nlFrom" type="number" value="1" style="width:90px"> to <input id="nlTo" type="number" value="10" style="width:90px"><button class="primary" onclick="numbersBattle()">🔢 Make it</button></div></div>
   <label>Name</label><input id="nlName" placeholder="e.g. Horror night, Snack wheel, Giveaway">
   <label>What goes in it?</label>
   <div class="seg" id="nlType">
-    <button data-t="films" class="on">🎬 Movies</button><button data-t="text">📝 Text</button><button data-t="pics">🖼️ Pictures</button><button data-t="chat">💬 Twitch chat</button>
+    <button data-t="films" class="on">🎬 Movies</button><button data-t="text">📝 Text</button><button data-t="pics">🖼️ Pictures</button><button data-t="chat">💬 Twitch chat</button><button data-t="numbers">🔢 Numbers</button>
   </div>
   <p class="help" id="nlHelp"></p>
-  <label>Add stuff now (optional) — separate with commas or new lines</label>
+  <div id="nlNums" class="row" style="gap:6px;align-items:center;margin-top:6px;display:none">From <input id="nlFrom" type="number" value="1" style="width:90px"> to <input id="nlTo" type="number" value="10" style="width:90px"></div>
+  <div id="nlAdd"><label>Add stuff now (optional) — separate with commas or new lines</label>
   <textarea id="nlItems" style="min-height:90px" placeholder="Heat, Jaws, The Thing x2&#10;Alien"></textarea>
   <div class="row" style="margin-top:6px"><input id="nlUrl" class="grow" placeholder="…or a Wheel of Names link"><button onclick="nlImportLink()">Get list</button><button onclick="$('nlFile').click()">📄 File</button><input type="file" id="nlFile" accept=".wheel,.json,.csv,.tsv,.txt,text/*,application/json" hidden multiple onchange="nlImportFile(this.files)"></div>
+  </div>
   <div class="row" style="justify-content:flex-end;margin-top:16px"><button onclick="newlist.close()">Cancel</button><button class="primary" onclick="createList()">Create</button></div>
 </div></dialog>
 
@@ -719,7 +717,7 @@ function toast(msg, ms = 3500) { let box = $('toasts'); if (!box) { box = docume
 addEventListener('scroll', e => { if (e.target === document || e.target === document.body || e.target === document.documentElement) { if (scrollY) scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; } }, true);
 // 🔍 Test tab: everything that decides who's on the cliff, so a missing ball can be explained
 async function cliffWhy() {
-  const r = await fetch('/api/test/cliff-why').then(x => x.json()).catch(e => ({ err: e.message })), box = $('cliffWhy'); if (!box) return; window.lastWhy = r;
+  const r = await fetch('/api/test/cliff-why').then(x => x.json()).catch(e => ({ err: e.message })), box = $('cliffWhy'); /* (the box is gone from the Test tab; this still feeds the tech report and the chat buttons) */ window.lastWhy = r;
   const P = r.people || [], phaseTxt = { idle: '✅ between battles (the cliff can fill)', ended: '⚠️ a battle finished and is waiting for "Next round →"', lobby: '⏳ a battle is starting', running: '⚔️ a battle is going' }[r.phase] || r.phase;
   const lines = [
     `Battle: <b>${esc(r.list || '')}</b> · ${phaseTxt}`,
@@ -731,7 +729,7 @@ async function cliffWhy() {
     r.chatGate ? `🔒 Chat check is on: a person's movies only join after they type in Twitch chat${P.length ? '' : ' (nobody has movies yet)'}` : '',
     (r.gameScreenErrors || []).length ? `<span style="color:var(--bad)">⚠️ Game screen errors: ${r.gameScreenErrors.map(e => esc(e.text)).join(' | ')}</span>` : ''
   ].filter(Boolean);
-  box.innerHTML = `<div class="card soft" style="margin:8px 0;padding:10px">${lines.map(l => `<div class="help" style="margin:3px 0">${l}</div>`).join('')}
+  if (box) box.innerHTML = `<div class="card soft" style="margin:8px 0;padding:10px">${lines.map(l => `<div class="help" style="margin:3px 0">${l}</div>`).join('')}
     ${P.length ? `<table style="margin-top:6px;font-size:13px"><tr><th style="text-align:left">Person</th><th>Chatting</th><th>In</th><th>Won this week</th><th>Out tonight</th><th>Paused</th></tr>${P.map(p => `<tr><td>${esc(p.name)}${p.twitch ? ` <small class="muted">@${esc(p.twitch)}</small>` : ' <small style="color:var(--gold)">(Twitch not linked)</small>'}</td><td style="text-align:center">${p.chatting ? '🟢' : '⚪'}</td><td style="text-align:center">${p.active}</td><td style="text-align:center">${p.benched || ''}</td><td style="text-align:center">${p.away || ''}</td><td style="text-align:center">${p.paused || ''}</td></tr>`).join('')}</table>` : ''}
     <div class="row" style="gap:6px;margin-top:8px"><button class="ghost" onclick="navigator.clipboard.writeText(JSON.stringify(window.lastWhy, null, 1)).then(()=>toast('Copied: paste it to Claude'))">📋 Copy this for Claude</button><button class="ghost" onclick="cliffWhy()">🔄 Check again</button></div></div>`;
   const cp = $('chatPeople'); if (cp) cp.innerHTML = P.length ? P.map(p => `<button class="${p.chatting ? 'ghost' : ''}" onclick="api('/api/test/chat',{name:'${esc(p.twitch || p.name).replace(/'/g, '')}',text:'hi! 👋'}).then(()=>setTimeout(cliffWhy,800))">${p.chatting ? '🟢' : '💬'} ${esc(p.name)}</button>`).join('') : '<span class="help">Nobody has Discord movies yet.</span>';
@@ -750,8 +748,13 @@ async function drawErrors() {
     if ($('errTech')) $('errTech').value = t + (window.lastWhy ? '\n\n--- cliff check ---\n' + JSON.stringify(window.lastWhy, null, 1) : '');
     return;
   }
-  box.innerHTML = tabs + (errList.length ? errList.slice(0, 150).map(e => `<div class="errl"><div class="row" style="gap:8px"><b class="grow">${esc(e.who)}: ${esc(e.what)}${e.count > 1 ? ` <span class="pill">×${e.count}</span>` : ''}</b><small class="muted">${esc(new Date(e.at).toLocaleString())}</small></div>
+  box.innerHTML = tabs + (errList.length ? errList.slice(0, 150).map(e => `<div class="errl"><div class="row" style="gap:8px"><b class="grow">${esc(e.who)}: ${esc(e.what)}${e.count > 1 ? ` <span class="pill">×${e.count}</span>` : ''}</b><small class="muted">${esc(new Date(e.at).toLocaleString())}</small><button class="ghost" style="padding:2px 8px;font-size:12px" title="Copy this one for Claude" onclick="copyErr('${esc(e.id)}')">📋 Copy for Claude</button></div>
     ${e.fix ? `<div class="help" style="margin:2px 0">👉 ${esc(e.fix)}</div>` : ''}<div class="muted" style="font-size:12px">${esc(e.msg)}</div></div>`).join('') : '<div class="empty">🎉 No errors. Everything has been running fine.</div>');
+}
+function copyErr(id) {
+  const e = errList.find(x => x.id === id); if (!e) return;
+  const t = `Movie Royal ${S?.version || ''} error\n${new Date(e.at).toISOString()} [${e.source}]${e.count > 1 ? ` x${e.count}` : ''}\nPlain words: ${e.who}: ${e.what}\n${e.msg}${e.detail ? '\n' + e.detail : ''}`;
+  navigator.clipboard.writeText(t).then(() => toast('📋 Copied: paste it to Claude')).catch(() => toast('Couldn\'t copy'));
 }
 // errors in this control panel itself go in the history too
 addEventListener('error', e => { try { fetch('/api/errors/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: 'control panel', msg: e.message, detail: `${(e.filename || '').split('/').pop()}:${e.lineno}:${e.colno}\n${e.error?.stack || ''}` }) }); } catch {} });
@@ -761,6 +764,32 @@ async function discordSelfTest(btn) {
     const html = r.results.map(x => `<div class="help" style="margin:3px 0">${x.ok === false ? '❌' : x.ok ? '✅' : '🟡'} ${esc(x.label)}${x.detail ? ` <span class="muted">— ${esc(x.detail)}</span>` : ''}</div>`).join('');
     if (box) box.innerHTML = html; const bad = r.results.filter(x => x.ok === false).length; toast(bad ? `🤖 Discord self-test: ${bad} problem${bad === 1 ? '' : 's'} (see the Test tab)` : '🤖 Discord self-test: everything passed ✅', 6000);
   } catch {} finally { if (btn) { btn.disabled = false; btn.textContent = '🤖 Run the Discord self-test'; } }
+}
+// ❓ help mode: click any button, box or heading and the Help tab opens at the part that explains it
+function helpMode(on) {
+  document.body.classList.toggle('helpmode', on);
+  $('helpModeTip')?.remove();
+  if (on) { const t = document.createElement('div'); t.id = 'helpModeTip'; t.textContent = '❓ Click anything to read what it does (Esc to stop)'; document.body.appendChild(t); }
+}
+document.addEventListener('click', e => {
+  if (!document.body.classList.contains('helpmode') || e.target.closest('#helpModeBtn')) return;
+  e.preventDefault(); e.stopPropagation();
+  const el = e.target.closest('button, label, summary, th, a, h2, h3, h4, select, input, .chip, td') || e.target;
+  const card = el.closest('.card, .pane, section');
+  const head = card?.querySelector('h2, h3')?.textContent || '';
+  const own = (el.textContent || el.title || el.placeholder || el.getAttribute?.('aria-label') || '').trim().slice(0, 80);
+  const tab = document.querySelector('#nav button.on')?.textContent || '';
+  helpMode(false); setView('help');
+  $('helpFrame').src = '/help.html#find=' + encodeURIComponent(`${own} ${own} ${head} ${tab}`);
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('helpmode')) helpMode(false); });
+async function wTakeover(btn) {
+  const was = btn.textContent; btn.disabled = true; btn.textContent = 'Working…';
+  try { const r = await api('/api/wheel/rewards/takeover');
+    toast(`💜 Respin / Up / Down: ${r.made.length} made, ${r.remade.length} remade${r.byHand.length ? `, ${r.byHand.length} made by hand on Twitch (delete those yourself)` : ''}`, 7000);
+    if ($('wTakeRes')) $('wTakeRes').innerHTML = `${r.made.length ? `<p class="help">✅ Made: ${r.made.map(esc).join(', ')}</p>` : ''}${r.remade.length ? `<p class="help">🔄 Remade (same price): ${r.remade.map(esc).join(', ')}</p>` : ''}${r.byHand.length ? `<p class="help" style="color:var(--gold)">⚠️ These were made by hand on Twitch, so only Twitch can delete them: <b>${r.byHand.map(x => `${esc(x.title)} (${x.cost} points)`).join(', ')}</b>. Movie Royal remembered their price. Delete them in your <a href="${esc(r.dashboard)}" target="_blank">Twitch channel points page</a>, then press the button again.</p>` : ''}${!r.made.length && !r.byHand.length && !r.remade.length ? '<p class="help">They are already Movie Royal\'s own. ✅</p>' : ''}`;
+    loadWheel();
+  } catch {} finally { btn.disabled = false; btn.textContent = was; }
 }
 // ✅ Test tab → Checklist: what's set up (checked by itself) + things to try once (you tick them, they're remembered on this computer)
 function testTab(t) {
@@ -795,6 +824,9 @@ function drawChecklist() {
     ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', T('Self-test', "discordSelfTest()")],
     ['discordDebug', '🐞 A test problem shows up in the hidden #movie-royal-debug channel (and normal members can\'t see it)', T('Try it', "api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent: check #movie-royal-debug':'⚠️ Bot offline or channel not made yet'))")],
     ['discordClosed', '/suggest and /linktwitch work in Discord with Movie Royal CLOSED (24/7 bot)', T('Check bot', "cloudCheck()")],
+    ['helpMode', '❓ Help mode: click any option and the help explains it', `<button class="ghost" style="padding:3px 9px" onclick="helpMode(true);toast('❓ Now click any button or option')">Try it</button>`],
+    ['numbersEdit', '🔢 A number battle\'s numbers can be changed later in the 🎬 Movie Pool tab', T('Try it', "api('/api/lists/numbers',{from:1,to:5}).then(r=>api('/api/lists/'+(r.id||S.activeListId)+'/numbers',{from:3,to:8})).then(()=>toast('🔢 Made 1 to 5, then changed it to 3 to 8: see the 🎬 Movie Pool tab'))")],
+    ['takeover', '💜 Respin / Up / Down channel point rewards made by Movie Royal (same price as before)', `<button class="ghost" style="padding:3px 9px" onclick="wTakeover(this)">Try it</button>`],
     ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "api('/api/test/obs-mute',{}).then(r=>toast('🎥 OBS mic + camera off for 5 seconds'+(r.cam?'':' (camera not found)'))).catch(()=>{})")],
     ['update', 'Movie Royal updates itself (Settings → Account)', '']
   ];
@@ -1363,7 +1395,7 @@ function renderPool() {
     <details style="margin-top:8px"><summary>Paste a big list of movie titles</summary>
       <textarea id="bulk" placeholder="Halloween 1978, The Shining, Scream x2&#10;(commas or new lines)"></textarea>
       <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add all</button><span class="help">Each line is looked up on TMDB. <code>x2</code> = double odds. The winner gets the full movie winner screen.</span></div></details>`;
-  else if (l.type === 'text') add = `
+  else if (l.type === 'text') add = `${l.numbers ? `<div class="card soft" style="margin:0 0 8px;padding:10px"><div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><b>🔢 Numbers</b> from <input id="numFrom" type="number" value="${l.numbers.from}" style="width:90px"> to <input id="numTo" type="number" value="${l.numbers.to}" style="width:90px"><button class="primary" onclick="api('/api/lists/${l.id}/numbers',{from:$('numFrom').value,to:$('numTo').value}).then(r=>toast('🔢 Now '+r.count+' numbers'))">Update the numbers</button></div><p class="help" style="margin:6px 0 0">Numbers you keep keep their odds. You can also click any number below to change it.</p></div>` : ''}
     <textarea id="bulk" style="min-height:80px" placeholder="Paste as many as you want — commas or new lines:&#10;Pizza, Tacos x3, Sushi"></textarea>
     <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add to list</button><span class="help">Separate with commas or new lines. <code>x3</code> after one = triple odds.</span></div>`;
   else if (l.type === 'pics') add = `
@@ -1378,7 +1410,7 @@ function renderPool() {
     ${/reading/.test(S.status.twitch.chat) ? '' : `<p class="help">⚠️ Not reading chat yet — sign in with Twitch (top right).</p>`}
     <details style="margin-top:8px"><summary>…or paste usernames</summary><textarea id="bulk" placeholder="username1, username2 x2"></textarea><button class="primary" style="margin-top:6px" onclick="bulkAdd()">Add</button></details>`;
 
-  const rows = active.filter(e => !filter || e.label.toLowerCase().includes(filter)).sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label)).slice(0, 500).map(e => {
+  const rows = active.filter(e => !filter || e.label.toLowerCase().includes(filter)).sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label, undefined, { numeric: true })).slice(0, 500).map(e => {
     const spot = e.kind === 'spot';
     const luckM = l.type === 'movies' && S.luckOn ? 1 + (e.luckPct || 0) / 100 : 1;
     const pct = (e.weight || 1) * luckM / total * 100;
@@ -1387,7 +1419,7 @@ function renderPool() {
     const series = e.details?.collection ? ` · 🎞️ ${esc(e.details.collection.name)}` : '';
     const sub = (spot ? `Wildcard · if one wins, all ${esc(S.settings.spotName)} spots leave for the week` : l.type === 'movies' ? `${esc(e.sub)} · ${e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you'}${series}` : esc(e.sub || '')) + (waiting ? ` · <span style="color:var(--gold)">💬 joins once ${esc(e.backers[0].name)} chats</span>` : '');
     const luck = l.type === 'movies' && S.luckOn ? (spot ? `<div class="luck" title="Wildcard spots only get luck you give them">🍀 <input type="number" step="0.01" min="0" value="${e.luckPct || 0}" style="width:64px;padding:2px 4px" onchange="api('/api/luck',{id:'${e.id}',luckPct:this.value})">%</div>` : e.luckPct ? `<div class="luck" title="Built up from battles it lost">🍀 +${(+e.luckPct).toFixed(2)}%</div>` : '') : '';
-    return `<tr style="${waiting ? 'opacity:.5' : ''}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b><br><small class="muted">${sub}</small></td>
+    return `<tr style="${waiting ? 'opacity:.5' : ''}"><td class="thumb">${img}</td><td>${l.type === 'text' || l.type === 'pics' ? `<input value="${esc(e.label)}" style="font-weight:700;max-width:260px" title="Click to change it" onchange="api('/api/lists/${l.id}/entries/${e.id}',{label:this.value},'PATCH')">` : `<b>${esc(e.label)}</b>`}<br><small class="muted">${sub}</small></td>
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)" title="Odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div>${luck}</td>
       <td><div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small></td>
       <td style="white-space:nowrap">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}<button class="ghost" title="Pause — off the cliff until you resume it" onclick="setStatus('${e.id}','paused')">⏸️</button>${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}<button class="ghost danger" title="Remove" onclick="setStatus('${e.id}','removed')">✕</button></td></tr>`;
@@ -2087,6 +2119,8 @@ function drawWGlobal() {
     <h4 style="margin:16px 0 4px">🎟️ Streamer respins</h4>
     <div class="row" style="gap:10px;align-items:center"><label>Respins you get each stream <input type="number" min="0" max="100" style="width:90px" value="${WD.mine?.perStream ?? 3}" onchange="api('/api/wheel/settings',{perStream:this.value}).then(()=>api('/api/wheel/mine',{action:'set',left:this.value})).then(loadWheel)"></label><span class="help">The 🎟️ Streamer respin button under the wheel. It turns gray when they're used up, and fills back up when you go live.</span></div>
     <h4 style="margin:16px 0 4px">💜 Channel point rewards</h4>
+    <div class="card soft" style="margin:0 0 8px;padding:10px"><b>🔁 Respin, ⬆️ Up and ⬇️ Down</b><p class="help" style="margin:4px 0 8px">Makes these three Movie Royal's own rewards, so it can switch them on only while the wheel is on stream (and hide them the rest of the time). If you already have them, they keep the same price.</p>
+      <button class="primary" onclick="wTakeover(this)">🎡 Make Respin / Up / Down rewards</button><div id="wTakeRes"></div></div>
     <label class="ck"><input type="checkbox" ${WD.pointsOn ? 'checked' : ''} onchange="api('/api/wheel/settings',{pointsOn:this.checked}).then(loadWheel)"> <span>Wheel channel point rewards are on (each wheel can turn single ones off in ⚙️ Wheel settings)</span></label>
     <label class="ck"><input type="checkbox" ${WD.chatOn ? 'checked' : ''} onchange="api('/api/wheel/settings',{chatOn:this.checked}).then(loadWheel)"> <span>The wheel can talk in Twitch chat at all</span></label>
     <table class="rw" style="margin-top:8px"><tr><th style="text-align:left">What</th><th style="text-align:left">Reward name on Twitch</th><th>Cost</th></tr>
@@ -2334,9 +2368,9 @@ async function practice() { const n = Math.max(2, Math.min(1000, Number($('pracN
 
 // ---------- new battle dialog ----------
 let nlType = 'films';
-const NL_HELP = { films: 'Search and paste movie titles yourself. The winner gets the full movie winner screen (poster, genre, ratings). Great for theme nights.', text: 'Paste words or names — one per line. Great for games, snacks, challenges, anything.', pics: 'Drag in a bunch of pictures. Each picture becomes a piece on the cliff.', chat: 'Viewers type !join in Twitch chat and their profile picture becomes their piece. Perfect for giveaways.' };
+const NL_HELP = { numbers: 'Every ball is a number (pick a number from 1 to whatever, up to 1,000). The last one standing is the number. You can change the numbers later in the 🎬 Movie Pool tab.', films: 'Search and paste movie titles yourself. The winner gets the full movie winner screen (poster, genre, ratings). Great for theme nights.', text: 'Paste words or names — one per line. Great for games, snacks, challenges, anything.', pics: 'Drag in a bunch of pictures. Each picture becomes a piece on the cliff.', chat: 'Viewers type !join in Twitch chat and their profile picture becomes their piece. Perfect for giveaways.' };
 function newList() { $('nlName').value = ''; $('nlItems').value = ''; selType('films'); newlist.showModal(); $('nlName').focus(); }
-function selType(t) { nlType = t; [...$('nlType').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('nlHelp').textContent = NL_HELP[t]; }
+function selType(t) { nlType = t; [...$('nlType').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('nlHelp').textContent = NL_HELP[t] || ''; $('nlNums').style.display = t === 'numbers' ? 'flex' : 'none'; $('nlAdd').style.display = t === 'numbers' ? 'none' : ''; }
 $('nlType').onclick = e => e.target.dataset.t && selType(e.target.dataset.t);
 async function numbersBattle() { try { const r = await api('/api/lists/numbers', { from: $('nlFrom').value, to: $('nlTo').value }); newlist.close(); toast(`🔢 Made a battle with ${r.count} numbers. Press START ROYAL!`); setView('battle'); } catch {} }
 async function lbWorst(url) { const r = await api('/api/lists/letterboxd', url ? { url, name: '🎞️ Letterboxd battle' } : {}); toast('🎞️ Getting the films from Letterboxd… (about a minute)', 5000); setView('pool'); }
@@ -2349,6 +2383,7 @@ function lbCard(l) { // a battle that comes from Letterboxd: update it, or point
     <details><summary class="help">Use a different Letterboxd page</summary><div class="row" style="gap:6px;margin-top:6px"><input class="grow" id="lbUrl" value="${esc(src.url || '')}" placeholder="https://letterboxd.com/films/by/rating-lowest/"><input id="lbMax" type="number" min="10" max="2000" style="width:90px" value="${src.max || 500}" title="How many films"><button onclick="api('/api/lists/letterboxd',{listId:'${l.id}',url:$('lbUrl').value,max:$('lbMax').value}).then(()=>toast('🔄 Updating from Letterboxd…'))">Use it</button></div><p class="help">Any Letterboxd list link works too (like letterboxd.com/someone/list/worst-movies/).</p></details></div>`;
 }
 async function createList() {
+  if (nlType === 'numbers') { try { const r = await api('/api/lists/numbers', { from: $('nlFrom').value, to: $('nlTo').value, ...($('nlName').value.trim() ? { name: $('nlName').value.trim() } : {}) }); newlist.close(); toast(`🔢 Made a battle with ${r.count} numbers. Press START ROYAL!`); setView('battle'); } catch {} return; }
   const r = await api('/api/lists', { name: $('nlName').value || 'New battle', type: nlType }), items = $('nlItems').value.trim();
   newlist.close(); $('nlItems').value = ''; setView('pool');
   if (items && r.id) { toast('Adding…'); const b = await api(`/api/lists/${r.id}/bulk`, { text: items }); toast(`Added ${b.added}${b.failed.length ? `<br><small>Skipped:<br>${b.failed.slice(0, 8).map(esc).join('<br>')}</small>` : ''}`, b.failed.length ? 8000 : 3000); }

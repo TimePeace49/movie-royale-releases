@@ -44,7 +44,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 
 - **24/7 bot (`src/cloud-worker.js`):** it only changes on Cloudflare when Derek updates it. Whenever you change that file, bump `WORKER_V` at its top: the app then pops up "Update your 24/7 Discord bot" once on open (only while the bot is older; "Don't remind me again" lasts until the next bump).
 
-- **Channel point rewards:** `syncRewards()` in server.js pauses every reward the app made (manageable rewards) unless it's usable right now; the desktop app pauses them all on quit (`/api/rewards/pause-all`). Pausing only — never refunds.
+- **Channel point rewards:** `syncRewards()` in server.js switches OFF (`enabled:false`, so they're hidden from the menu, Derek's wish) every reward the app made unless it's usable right now; the desktop app turns them all off on quit (`/api/rewards/pause-all`). Never refunds. `/api/wheel/rewards/takeover` makes Respin/Up/Down: keeps an old reward's price, deletes + remakes app-made ones, lists hand-made ones (`byHand`, only Twitch can delete those).
 - **Wild (Kirb) spots and a winner's other movies are hidden (`benched`), never deleted.** ▶ on the Battle tab sets `forceIn` (skips cooldown + chat check). "Reset wild spots" = `resetSpots()`.
 - **Never use `prompt()`** in pages: the Windows app blocks it. Use `await ask(question, default)` from `public/ask.js`.
 
@@ -69,6 +69,9 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Pins on top:** `discord.keepPinOnTop` re-pins Movie Royal's message when another pin is newer (on start, `channelPinsUpdate`, every 30 min) and deletes the "pinned a message" notice.
 - **Updates:** the installer runs with `/UPDATE` (no `/S`): welcome/folder/finish pages are skipped, but its progress bar shows. The control panel shows the download bar (`updProgress`).
 - **Discord self-test:** `discord.selfTest()` + `/api/test/discord-selftest`. Real test bots/users can't be made: bots can't use other bots' slash commands and user-account bots break Discord's rules.
+
+- **Help mode:** ❓ in the header → next click opens `help.html#find=<words>` (help.html scores sections, scrolls + highlights). New features: write help text with words that match their buttons.
+- **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).

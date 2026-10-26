@@ -481,9 +481,13 @@
     <p><b>Settings → Account &amp; updates → ⬇️ Download backup</b> saves everything to one file. <b>⬆️ Restore</b> loads it back (on this or another computer).</p>
   </section>
 
+  <section data-k="help mode question click explain what does">
+    <h2>❓ Help mode</h2>
+    <p>Press <b>❓</b> at the top right of Movie Royal, then click any button, box or heading: this Help tab opens right at the part that explains it. Esc stops help mode.</p>
+  </section>
   <section data-k="test testing try fake practice">
     <h2>🔢 Number battles</h2>
-    <p>+ New battle → <b>🔢 Pick a number</b>: type from and to (like 1 to 50) and press Make it. Every ball is a number, and the last one standing is the pick.</p>
+    <p>+ New battle → <b>🔢 Numbers</b> (next to 📝 Text): type from and to (like 1 to 50) and press Create. Every ball is a number, and the last one standing is the pick. Later, in the 🎬 Movie Pool tab, change the range with <b>Update the numbers</b> (numbers you keep keep their odds), or click any number to change it.</p>
     <h2>✅ Test checklist</h2>
     <p>🧪 Test → <b>✅ Checklist</b> shows what's set up and a list of things to try once. ⚔️ Discord battle tests let you reset cooldowns, put everyone on the cliff and run a battle that changes nothing.</p>
     <h2>🤖 Discord self-test</h2>
@@ -508,7 +512,8 @@
     <p>🪟 <b>Pop out</b> on the Wheel tab opens the wheel in its own window.</p>
     <p>↕️ <b>Sorting spots:</b> grab the ⠿ on the left of a spot in ✏️ Spots and drag it where you want it.</p>
     <p>🎟️ <b>Wild spots:</b> when one wins, the others are hidden (not deleted) until the new week. <b>Reset wild spots</b> on the Battle tab brings them all back. Pressing ▶ on any hidden movie puts it straight back in, skipping the cooldown and the chat check.</p>
-    <p>💜 <b>Channel point rewards</b> that Movie Royal made only turn on while they can be used (battle chaos while the battle is on stream, wheel rewards while the wheel is up, power-ups in a fun chat battle). They're all paused while Movie Royal is closed.</p>
+    <p>💜 <b>Channel point rewards</b> that Movie Royal made only turn on while they can be used (battle chaos while the battle is on stream, wheel rewards while the wheel is up, power-ups in a fun chat battle). The rest are switched off, so viewers don't see them in the channel points menu at all, and they're all off while Movie Royal is closed.</p>
+    <p>🎡 <b>Respin, Up and Down rewards:</b> Wheel → 🌐 All wheels → 💜 Channel point rewards → <b>Make Respin / Up / Down rewards</b>. If you already have them, Movie Royal keeps the same price, deletes them and makes them again so it can control them. Ones made by hand on Twitch can only be deleted on Twitch: it lists them with their price and a link.</p>
     <p>📺 Whenever you test something, a little window pops up showing what's on stream right now. Drag it by its top bar, resize it from a corner or edge, or press ✕ to close it.</p>
   </section>
 
@@ -550,6 +555,25 @@ document.getElementById('q').oninput = e => {
   });
   document.getElementById('none').style.display = shown ? 'none' : 'block';
 };
+// ❓ help mode in Movie Royal: "#find=<what you clicked>" jumps to the part that explains it
+const STOP = new Set('the a an and or of to in on for with your you it is are be this that from at by as all any can do it’s its i me my get let set off on up out new show press make'.split(' '));
+function findSection(q) {
+  const words = q.toLowerCase().replace(/[^a-z0-9#!/ ]+/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w));
+  if (!words.length) return null;
+  let best = null, bs = 0;
+  for (const s of secs) {
+    const head = s.querySelector('h2').textContent.toLowerCase(), body = s.dataset.text;
+    let sc = 0; for (const w of words) { if (head.includes(w)) sc += 4; if (body.includes(w)) sc += 1 + Math.min(3, body.split(w).length - 2) * .2; }
+    if (sc > bs) { bs = sc; best = s; }
+  }
+  return best;
+}
+function jump() {
+  const m = location.hash.match(/^#find=(.*)$/); if (!m) return;
+  const s = findSection(decodeURIComponent(m[1])); if (!s) return;
+  s.scrollIntoView({ block: 'start' }); s.style.transition = 'background .6s'; s.style.background = '#ffc94a33'; setTimeout(() => s.style.background = '', 1800);
+}
+addEventListener('hashchange', jump); jump();
 </script>
 </body>
 </html>

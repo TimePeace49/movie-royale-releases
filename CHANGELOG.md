@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.24.0 (latest release)
+- **❓ Help mode:** press ❓ at the top, then click any button or option. The ❓ Help tab opens at the part that explains it. Press Esc to stop.
+- **🔢 Number battles:** "🔢 Numbers" is now a tab next to Text in the ➕ New battle window. In the 🎬 Movie Pool tab you can change the range later ("Update the numbers": numbers you keep keep their odds) or click a number to edit it.
+- **💜 Channel points menu stays clean:** Movie Royal's rewards that can't be used right now (power-ups, chaos, wheel rewards) are switched OFF, so viewers don't see them at all. Before, they showed up as paused.
+- **🎡 Respin, ⬆️ Up and ⬇️ Down rewards** (Wheel → 🌐 All wheels → 💜 Channel point rewards): one button makes them. If they already exist, Movie Royal remembers the price, deletes them and makes them again so it controls them, at the same price. Ones made by hand on Twitch can only be deleted on Twitch: it lists them with their price and a link to do it.
+- **⚠️ Errors (plain words):** each error has a **📋 Copy for Claude** button.
+- 🧪 Test tab: removed the "Why is nobody on the cliff?" button and its box from the Discord tests, and the 📌 Pinned messages box at the top (the pin test is still in the list below).
+- ✅ Checklist: Try-its for help mode, changing a number battle's numbers, and the Respin / Up / Down rewards.
+
 ## 1.23.0 (test build)
 - **🔴 Pretend I'm live** (🧪 Test tab): Movie Royal acts like you just went live (streamer respins refill, voided spots come back, movie count starts over, it shows LIVE (pretend)). It's only inside Movie Royal: Twitch, Discord and your channel point rewards don't change.
 - **📌 Movie Royal's pinned messages stay on top** in Discord: if someone pins something else, the bot moves its message back to the top of the pins by itself (and cleans up the "pinned a message" notice).

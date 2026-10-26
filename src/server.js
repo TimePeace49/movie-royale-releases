@@ -275,7 +275,8 @@ async function syncRewards(all = null) {
   try {
     const mine = await twitch.listRewards(); // only the rewards this app made
     const pause = r => all != null ? all : (r.title.toLowerCase() in want ? want[r.title.toLowerCase()] : true);
-    await Promise.allSettled(mine.filter(r => r.paused !== pause(r)).map(r => twitch.updateReward(r.id, { paused: pause(r) })));
+    // not usable right now = switched OFF (hidden from the channel points menu, so it doesn't clog it up); usable = on
+    await Promise.allSettled(mine.filter(r => r.enabled === pause(r) || r.paused).map(r => twitch.updateReward(r.id, { enabled: !pause(r), paused: false })));
     rewardKey = key;
     try { // look for look-alikes made by hand on Twitch: we can't touch them, so tell you
       const ids = new Set(mine.map(r => r.id)), names = new Set(Object.keys(want || rewardWants()));
@@ -752,6 +753,30 @@ app.post('/api/wheel/settings', (req, res) => { const w = wheel.W(), b = req.bod
   if (b.cmd) for (const k of ['respin', 'spins']) if (b.cmd[k]) w.cmd[k] = String(b.cmd[k]).trim().split(/\s+/)[0].slice(0, 30);
   if (b.growStep != null) w.growStep = Math.max(.1, Math.min(100, Number(b.growStep) || 1));
   if (b.perStream != null) { w.mine.perStream = Math.max(0, Math.min(100, Math.round(Number(b.perStream) || 0))); } if (b.pointsOn != null) w.pointsOn = !!b.pointsOn; if (b.chatOn != null) w.chatOn = !!b.chatOn; for (const k of ['respin', 'move', 'up', 'down', 'grow', 'shrink']) { if (b.rewards?.[k] != null) w.rewards[k] = String(b.rewards[k]).slice(0, 45); if (b.costs?.[k] != null) w.costs[k] = Math.max(1, Number(b.costs[k]) || 1); } wheelChanged(); res.json({ ok: true }); });
+// 🎡 make the wheel's 🔁 Respin, ⬆️ Up and ⬇️ Down rewards Movie Royal's own (so it can switch them on and off).
+// Ones already on Twitch keep their price: Movie Royal's own are remade right away; ones made by hand on Twitch can only be
+// deleted on Twitch (Twitch's rule), so it remembers their price and tells you which to delete, then you press again.
+app.post('/api/wheel/rewards/takeover', async (req, res) => {
+  try {
+    const w = wheel.W(), kinds = ['respin', 'up', 'down'], made = [], byHand = [], remade = [];
+    const all = await twitch.listAllRewards(), mine = new Set((await twitch.listRewards()).map(r => r.id));
+    const looks = { respin: t => /respin/i.test(t), up: t => /\bup\b/i.test(t) && !/down/i.test(t), down: t => /\bdown\b/i.test(t) && !/\bup\b/i.test(t) };
+    for (const k of kinds) {
+      const title = w.rewards[k] || wheel.REWARDS?.[k]; if (!title) continue;
+      const same = all.filter(r => r.title.toLowerCase() === title.toLowerCase() || (!mine.has(r.id) && looks[k](r.title) && /wheel|spin|move|🎡/i.test(r.title)));
+      const priced = same.find(r => r.cost); if (priced) w.costs[k] = priced.cost; // keep the price people already know
+      for (const r of same) {
+        if (mine.has(r.id)) { await twitch.deleteReward(r.id).catch(() => {}); remade.push(r.title); }
+        else byHand.push({ title: r.title, cost: r.cost });
+      }
+      if (byHand.some(x => x.title.toLowerCase() === title.toLowerCase())) continue; // the name is taken until you delete it on Twitch
+      if (await twitch.createReward({ title, cost: w.costs[k], prompt: wheel.REWARD_INFO[k]?.prompt || '', color: wheel.REWARD_INFO[k]?.color || '#4FC3FF', input: false, queue: true })) made.push(`${title} (${w.costs[k]})`);
+      w.opts && (w.opts.points = { ...(w.opts.points || {}), [k]: true });
+    }
+    save(); rewardKey = ''; syncRewards().catch(() => {}); wheelChanged();
+    res.json({ ok: true, made, remade, byHand, dashboard: twitch.status.login ? `https://dashboard.twitch.tv/u/${twitch.status.login}/viewer-rewards/channel-points/rewards` : '' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/wheel/rewards', async (req, res) => { try { const w = wheel.W(), made = []; const want = Array.isArray(req.body?.kinds) && req.body.kinds.length ? req.body.kinds : ['respin', 'move', 'grow', 'shrink']; for (const k of want) if (w.rewards[k] && await twitch.createReward({ title: w.rewards[k], cost: w.costs[k], prompt: wheel.REWARD_INFO[k].prompt, color: wheel.REWARD_INFO[k].color, input: !!wheel.REWARD_INFO[k].input, queue: true })) made.push(w.rewards[k]); await twitch.noInput([w.rewards.grow, w.rewards.shrink]).catch(() => {}); res.json({ ok: true, made }); } catch (e) { res.status(400).json({ error: e.message }); } });
 const wTry = fn => async (req, res) => { try { res.json({ ok: true, ...(await fn(req.body || {}, req)) }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/renames', (req, res) => res.json(db.renames || []));
@@ -1181,7 +1206,7 @@ app.patch('/api/lists/:id/entries/:eid', (req, res) => {
   const l = getList(req.params.id); const e = l?.entries.find(x => x.id === req.params.eid);
   if (!e) return res.sendStatus(404);
   if (req.body.weight != null) e.weight = Math.max(0.1, Math.min(1000, Math.round(Number(req.body.weight) * 10) / 10 || 1));
-  if (req.body.label != null && l.type !== 'movies') e.label = String(req.body.label).slice(0, 80);
+  if (req.body.label != null && l.type !== 'movies') { e.label = String(req.body.label).slice(0, 80); setTimeout(() => refreshPreview(), 0); }
   if (req.body.status) setTimeout(() => refreshPreview(), 0);
   if (req.body.status) {
     if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched' && e.backers?.[0]) e.luckSnap = resetLuckFor(e.backers[0].discordId); // watched: that person's luck starts over
@@ -1315,6 +1340,17 @@ app.post('/api/lists/numbers', (req, res) => { // 🔢 a battle where every ball
   const l = { id: uid(), name: String(req.body?.name || `🔢 ${lo} to ${hi}`).slice(0, 60), type: 'text', entries: [], joinOpen: false, numbers: { from: lo, to: hi } };
   for (let n = lo; n <= hi; n++) l.entries.push({ id: uid(), label: String(n), sub: '', weight: 1, status: 'active', addedAt: Date.now() });
   db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); pushState(); refreshPreview(true); res.json({ ok: true, id: l.id, count: l.entries.length });
+});
+app.post('/api/lists/:id/numbers', (req, res) => { // change a number battle's range later (numbers you keep keep their odds)
+  const l = getList(req.params.id); if (!l || l.type !== 'text') return res.sendStatus(404);
+  const a = Math.round(Number(req.body?.from) || 1), b = Math.round(Number(req.body?.to) || 10), lo = Math.min(a, b), hi = Math.max(a, b);
+  if (hi - lo + 1 > 1000 || hi - lo + 1 < 2) return res.status(400).json({ error: 'Pick between 2 and 1,000 numbers.' });
+  const isNum = e => /^-?\d+$/.test(e.label);
+  for (const e of l.entries) if (isNum(e) && e.status !== 'removed' && (+e.label < lo || +e.label > hi)) e.status = 'removed';
+  const have = new Set(l.entries.filter(e => isNum(e) && e.status !== 'removed').map(e => +e.label));
+  for (let n = lo; n <= hi; n++) if (!have.has(n)) l.entries.push({ id: uid(), label: String(n), sub: '', weight: 1, status: 'active', addedAt: Date.now() });
+  l.numbers = { from: lo, to: hi }; if (/^🔢 -?\d+ to -?\d+$/.test(l.name)) l.name = `🔢 ${lo} to ${hi}`;
+  save(); pushState(); refreshPreview(true); res.json({ ok: true, count: l.entries.filter(e => e.status === 'active').length });
 });
 app.post('/api/lists/letterboxd', (req, res) => { // make a new Letterboxd battle, or update one
   const b = req.body || {}; let l = b.listId ? getList(b.listId) : null;

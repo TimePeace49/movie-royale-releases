@@ -3,6 +3,34 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.24.0: What's new
+Everything since 1.21.2.
+
+**New**
+- **❓ Help mode:** press ❓ at the top, then click any button or option, and the help opens at the part that explains it. Esc stops it.
+- **🎡 Respin, ⬆️ Up and ⬇️ Down channel point rewards:** one button (Wheel → 🌐 All wheels → 💜 Channel point rewards) makes them. If you already had them, Movie Royal keeps the same price, deletes them and makes them again so it can control them. Ones made by hand on Twitch can only be deleted on Twitch: it lists them with their price and a link.
+- **💜 A clean channel points menu:** rewards that can't be used right now are switched off, so viewers don't see them at all (before, they showed as paused).
+- **🔢 Number battles:** a "🔢 Numbers" tab next to Text in ➕ New battle. Change the range later in the 🎬 Movie Pool tab, or click any number to edit it.
+- **🔴 Pretend I'm live** (🧪 Test tab): Movie Royal acts like you just went live, without changing anything on Twitch or Discord.
+- **🐞 Hidden Discord debug channel:** `#movie-royal-debug`, only mods and the owner can see it and only the bot can type in it. Discord problems get posted there in plain words plus the tech details.
+- **🤖 Discord self-test:** checks the bot, the channels, the pins, the slash commands, the debug channel and the 24/7 bot in one go.
+- **📌 Movie Royal's pinned messages stay on top** in Discord, even if someone pins something else.
+- **⬇️ Update progress bar:** updating shows a download bar, then the installer's own progress bar, and Movie Royal opens again by itself.
+- **✋ Accept / Pass** for a movie winner's claim shows up as a green bar on every tab.
+- **↗ Go to the Battle / Wheel tab** button on the test pop-up window.
+
+**🧪 Test tab**
+- ✅ Checklist "Try it" buttons work offline for almost everything (chat joins, claims, `!sitout`, chaos events, number battles, the wheel, channel points, bits pop-ups, OBS) and keep you on the checklist.
+- ⚠️ Errors: a **📋 Copy for Claude** button on each error.
+- The Test tab remembers which tab you were on. The tabs and tool bars stay at the top when you scroll, in every tab.
+- Tidied up: removed "Why is nobody on the cliff?" and the top 📌 Pinned messages box.
+
+**Fixes**
+- An error in the 🎬 Movie Pool tab when it refreshed while you typed in a number box.
+- 📗 Letterboxd: your full watched list is read like a real browser does, so Letterboxd stops turning it away.
+- The ⚠️ Errors list no longer fills up with a harmless Discord warning every time the app opens.
+- Removed the Letterboxd worst-500 battle (Letterboxd wouldn't let Movie Royal read it).
+
 ## v1.21.2: What's new
 Everything since 1.14.1.
 
