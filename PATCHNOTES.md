@@ -3,6 +3,18 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.14.1: What's new
+Everything since 1.13.6.
+
+- **🛠️ Fixed: Movie Royal not working after updating to 1.13.6.** The battle screen was blank and none of the tabs worked. Sorry about that!
+- **🐀 New map: Plague Town:** a walled medieval town seen from above. Rats bite and infect balls, the sick pass it on to anyone they bump into, and infected balls die after a few seconds unless luck saves them. Houses block everyone and the ground never breaks.
+- **⚔️ New map: Battlefield:** all the balls on one side, an unstoppable army on the other. Archers hit the back rows, knights crush the front, and the cavalry hits both sides.
+- **🎡 ⏸ / ▶ on every wheel spot:** pause a spot (off the wheel, still in your list) and put it back any time. Spots the void takes stay in the list too.
+- **🎡 Volume sliders** on the Wheel tab.
+- **🕳️ You can grow or shrink the void yourself** with its + / −. Chat still needs money for that.
+- **☁️ 24/7 bot:** Movie Royal only asks you to update it when it actually needs it.
+- Fart Farm plays its moo, stampede, UFO and beam sounds, and has its right name in the map menus.
+
 ## v1.13.6: What's new
 Everything since 1.13.4.
 

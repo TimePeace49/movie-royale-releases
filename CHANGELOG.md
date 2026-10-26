@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.14.1
+- **Fixed: nothing worked after updating to 1.13.6** (blank battle screen, tabs not responding).
+
 ## 1.14.0 (test build)
 - **🐀 New map: Plague Town.**
   - A walled medieval town, seen straight down from above.
