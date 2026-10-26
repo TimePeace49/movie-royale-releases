@@ -51,6 +51,7 @@ const defaults = () => ({
     betaUpdates: false, lastSeenVersion: '', // also install pre-releases (test builds)
     seJwt: '', slToken: '', // 💵 StreamElements / Streamlabs donations
     obsUrl: 'ws://127.0.0.1:4455', obsPassword: '', obsMic: '', obsCam: '', // 🎥 OBS (the wheel's Doomsday)
+    botUpdatePrompted: false, // the 24/7 bot update pop-up: off for good once you've updated (or said don't remind me)
     updateRepo: '', setupSeen: false, rewardsCreated: false, streamSetup: false,
     fairOdds: true,
     joinCommand: '!join',
@@ -86,6 +87,7 @@ function load() {
 
 export const db = load();
 if (!db.lists.find(l => l.id === 'movies')) db.lists.unshift(defaults().lists[0]);
+if (!db.settings.botUpdatePrompted && db.settings.cloud?.at > Date.parse('2026-10-26T06:00:00Z')) db.settings.botUpdatePrompted = true; // already updated the bot with 1.13.4 / 1.13.5
 if (!db.settings.v6) { db.settings.v6 = true; if (db.settings.streamerName === 'Derek') db.settings.streamerName = ''; } // use your Twitch name
 if (!db.settings.v4) { db.settings.v4 = true; db.settings.weekStart = 0; } // weeks start on Sunday
 if (!db.settings.v3) { db.settings.v3 = db.settings.v2 = true; db.settings.lobbySeconds = 0; } // Start now begins the fight right away

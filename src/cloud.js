@@ -154,7 +154,7 @@ export async function enable(cfToken) {
   for (let i = 0; i < 5 && !linked; i++) { try { await discord('PATCH', '/applications/@me', { interactions_endpoint_url: url + '/' }); linked = true; } catch (e) { lastErr = e; await sleep(4000); } }
   if (!linked) throw new Error(`Couldn't connect Discord to the 24/7 bot: ${lastErr?.message}`);
   steps.push('Discord connected');
-  checkedV = false; status.outdated = false;
+  checkedV = false; status.outdated = false; db.settings.botUpdatePrompted = true; save(); // updated once: no more pop-up reminders
   start();
   return { url, steps };
 }

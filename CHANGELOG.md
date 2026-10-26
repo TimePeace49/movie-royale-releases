@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.6 (test build)
+- **No more 24/7 bot pop-up** when Movie Royal opens. If the bot needs an update, the 🔄 Update button is in Settings → Discord.
+
 ## 1.13.5 (test build)
 - **☁️ 24/7 bot answers faster:** `/linktwitch` replies right away and saves the link right after, and every command does one less lookup before answering. If something still goes wrong, the bot replies with the reason instead of "The application did not respond". (The app asks you to update the bot again.)
 
