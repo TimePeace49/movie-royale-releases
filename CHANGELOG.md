@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.2 (test build)
+- **🎡 Spots list:** the Rule column is now a dropdown (⏱️ Timer, ⚡ Auto, 🔢 Countdown), so you can see and change each spot's rule at a glance. Countdown spots show how many are left next to it. The words that show on stream when it lands moved into ⚙ on the spot.
+- **🧪 Test tab → 🎡 Wheel tests:**
+  - Land on any spot you pick.
+  - Pretend channel point redeems: respin, move, up, down, grow, shrink.
+  - Chat typing up / down / !respin / !myspins, giving saved respins, and two respins at once.
+  - Sub, gift sub, bits and donation pop-ups.
+  - Round timer buttons and undo.
+  - Doomsday screen preview, and an OBS test that turns your mic and camera off for 5 seconds and back on.
+  - Pretend you went live / offline, and a test alert.
+
 ## 1.13.1 (test build)
 - **👥 People tab:**
   - Everyone who linked their Twitch in Discord shows up, even before they pick a movie.

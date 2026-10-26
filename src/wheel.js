@@ -178,7 +178,7 @@ export function request(kind, by = {}, opts = {}) {
   const st = W(); if (!['spin', 'respin', 'up', 'down'].includes(kind)) throw new Error('Unknown wheel action');
   if ((kind === 'up' || kind === 'down') && !st.last) throw new Error('Spin the wheel first: there is no spot to move yet.');
   const why = blocked(kind, by.source); if (why) throw new Error(why);
-  queue.push({ kind, by: { name: by.name || streamerName(), login: by.login || '', source: by.source || 'you', cost: by.cost || 0 }, wheelId: opts.wheelId || st.activeId });
+  queue.push({ kind, by: { name: by.name || streamerName(), login: by.login || '', source: by.source || 'you', cost: by.cost || 0 }, wheelId: opts.wheelId || st.activeId, force: opts.force || null });
   pump();
   return { queued: queue.length, busy: Date.now() < busyUntil };
 }
@@ -206,7 +206,7 @@ function pump() {
   if (queue.length) qTimer = setTimeout(pump, Math.max(200, busyUntil - Date.now() + 50));
 }
 const voidTimers = [];
-function run({ kind, by, wheelId }) {
+function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Test tab only)
   const st = W();
   let w = getWheel(wheelId) || active();
   if ((kind === 'up' || kind === 'down' || kind === 'respin') && st.last) w = getWheel(st.last.wheelId) || w; // respins and moves act on the wheel that was just spun
@@ -230,7 +230,7 @@ function run({ kind, by, wheelId }) {
   const rot0 = w.rot || 0;
   let idx, to, dur, phi;
   if (kind === 'spin' || kind === 'respin') {
-    const r0 = rnd() * TAU; idx = sl.findIndex(s => r0 >= s.a0 && r0 < s.a1); if (idx < 0) idx = sl.length - 1;
+    const r0 = rnd() * TAU; idx = force ? sl.findIndex(s => s.e.id === force) : -1; if (idx < 0) idx = sl.findIndex(s => r0 >= s.a0 && r0 < s.a1); if (idx < 0) idx = sl.length - 1;
     const s = sl[idx]; phi = s.a0 + (s.a1 - s.a0) * (.1 + rnd() * .8); // never right on a line
     dur = Math.max(2, Math.min(60, Number(w.spinSecs) || 10)) * (kind === 'respin' ? .8 : 1);
     const turns = Math.max(2, Math.round(dur * .9 * (Number(w.opts.speed) || 1)));

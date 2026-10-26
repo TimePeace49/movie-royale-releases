@@ -461,6 +461,7 @@
 
 <!-- 🧪 TEST -->
 <section class="view" id="v-test">
+  <div class="card" style="grid-column:1 / -1" id="wTestCard"></div>
   <div class="card">
     <h3>💬 Pretend to be a chatter</h3>
     <p class="help">Sends a fake Twitch chat message. Use someone's Twitch name to check them in, claim a win, answer roll call, or try <code>!mymovies</code> / <code>!mymovies lucy</code>.</p>
@@ -632,6 +633,7 @@ function setView(v) {
   if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
+  if (v === 'test') drawWheelTest();
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
@@ -1273,6 +1275,38 @@ function renderPeople() {
   if (open && box.querySelector('details')) box.querySelector('details').open = true;
   box.insertAdjacentHTML('beforeend', renameBox());
 }
+// 🧪 Test tab: everything the wheel does, without waiting for chat
+async function drawWheelTest() {
+  if (!WD) await loadWheel(); const w = wCur(); if (!w) return;
+  const who = () => ($('wtWho')?.value || 'test_viewer').trim(), keepWho = $('wtWho')?.value;
+  const B = (label, js, cls = '') => `<button class="${cls}" onclick="${js}">${label}</button>`;
+  const T = (url, body, msg) => `api('${url}',${JSON.stringify(body).replace(/"/g, "'")}).then(()=>toast('${msg}')).catch(()=>{})`;
+  const spots = w.entries.filter(e => e.on !== false && e.weight > 0 && !e.voided);
+  $('wTestCard').innerHTML = `<h3>🎡 Wheel tests <span class="muted" style="font-size:13px;font-weight:400">· on “${esc(w.name)}” (pick another wheel in the 🎡 Wheel tab)</span></h3>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b style="width:150px">🎯 Land on a spot</b><select id="wtSpot" style="width:auto;max-width:260px">${spots.map(e => `<option value="${e.id}">${esc(e.text)}${w.opts.rules !== false && e.type !== 'timer' ? ` (${{ auto: 'auto', countdown: 'countdown', void: 'void' }[e.type] || e.type})` : ''}</option>`).join('')}</select>
+      ${B('🎡 Spin onto it', "api('/api/test/wheel-land',{entryId:$('wtSpot').value,kind:'spin'}).catch(()=>{})", 'primary')}${B('🔁 Respin onto it', "api('/api/test/wheel-land',{entryId:$('wtSpot').value,kind:'respin'}).catch(()=>{})")}
+      <span class="help" style="margin:0">Great for trying auto, countdown and void spots on purpose.</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">👤 Pretend viewer</b><input id="wtWho" style="width:170px" value="${esc(keepWho || 'test_viewer')}"><span class="help" style="margin:0">Used by the buttons below.</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">💜 Channel points</b>
+      ${[['respin', '🔁 Respin'], ['move', '↕️ Move a spot'], ['up', '⬆️ Up'], ['down', '⬇️ Down'], ['grow', '📈 Grow'], ['shrink', '📉 Shrink']].map(([k, n]) => B(n, `api('/api/test/wheel-redeem',{kind:'${k}',name:$('wtWho').value}).then(r=>toast(r.ok?'Redeemed ${n}':'Not a wheel reward (check the names in 🌐 All wheels)'))`)).join('')}
+      <span class="help" style="margin:0">After ↕️ Move, press “says up” or “says down”.</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">💬 Chat says</b>
+      ${[['up', 'up'], ['down', 'down'], [WD.cmd.respin, WD.cmd.respin], [WD.cmd.spins, WD.cmd.spins]].map(([t, n]) => B(`“${esc(n)}”`, `api('/api/test/chat',{name:$('wtWho').value,text:'${esc(t)}'}).then(()=>toast('Sent'))`)).join('')}
+      ${B('🎟️ Give them 1 saved respin', "api('/api/wheel/bank',{who:$('wtWho').value,n:1,reason:'test'}).then(r=>toast('They have '+r.spins))")}
+      ${B('🎟️🎟️ Two respins at once', "Promise.all(['test_a','test_b'].map(n=>api('/api/wheel/bank',{who:n,n:1,reason:'test'}))).then(()=>{api('/api/test/chat',{name:'test_a',text:WD.cmd.respin});api('/api/test/chat',{name:'test_b',text:WD.cmd.respin});toast('test_a and test_b both typed '+esc(WD.cmd.respin))})")}</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">💵 Money pop-ups</b>
+      ${B('⭐ Sub', T('/api/test/wheel-boost', { kind: 'sub' }, '⭐ Test sub'))}${B('🎁 Gift sub', T('/api/test/wheel-boost', { kind: 'gift' }, '🎁 Test gift sub'))}${B('💎 500 bits', T('/api/test/wheel-boost', { kind: 'bits', bits: 500 }, '💎 Test bits'))}${B('💵 $10 donation', T('/api/test/donation', { name: 'Test_Donor', amount: 10 }, '💵 Test donation'))}
+      <span class="help" style="margin:0">The pop-up shows in the 🎡 Wheel tab (with the wheel on stream).</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">⏱️ Round timer</b>
+      ${B('▶️ Start', "wRoundCmd('start')")}${B('⏸ Stop', "wRoundCmd('pause')")}${B('➕ 30 sec', "wRoundCmd('add',30)")}${B('⏹ End now', "wRoundCmd('end')")}${B('✕ Cancel the round', "wRoundCmd('cancel')", 'ghost')}${B('⏪ Undo last step', 'wUndo()', 'ghost')}
+      <span class="help" style="margin:0">A round starts when a spin lands.</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">☠️ Doomsday</b>
+      ${B('📺 Preview the screen (8 sec)', T('/api/test/doom-preview', {}, 'Showing it on the game screen'))}${B('🎥 OBS: mic + camera off for 5 sec', "toast('Turning them off for 5 seconds…');api('/api/test/obs-mute',{}).then(r=>toast('✅ Back on'+(r.cam?'':' (camera not found in any scene)'))).catch(()=>{})")}
+      <span class="help" style="margin:0">Neither one ends your stream.</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">🔴 Going live</b>
+      ${B('Pretend I went live', T('/api/test/live', { live: true }, '🔴 Pretending you are live'))}${B('Pretend I went offline', T('/api/test/live', { live: false }, '⚫ Offline'))}
+      ${B('🔔 Test alert in Chat tab', T('/api/test/alert', { kind: 'sub' }, 'Alert sent'), 'ghost')}</div>`;
+}
 async function peopleRefresh(btn) {
   btn.disabled = true; btn.textContent = '🔄 Refreshing…';
   try { const r = await api('/api/people/refresh', {}); toast(`🔄 ${r.people} people (${r.linked} linked their Twitch)${r.pulled ? ` · ${r.pulled} new from Discord` : ''}`); }
@@ -1431,12 +1465,13 @@ function drawSpots() {
       <table class="went" style="width:100%"><thead><tr><th title="On the wheel">👁</th><th>🎨</th><th style="text-align:left">Spot</th><th title="Size: 2 = twice as big">Size</th><th>%</th><th style="text-align:left">Rule</th><th></th></tr></thead><tbody>
       ${w.entries.map((e, i) => `<tr class="${e.on === false || !e.weight ? 'off' : ''}"><td><input type="checkbox" ${e.on !== false ? 'checked' : ''} onchange="wEnt(${i},{on:this.checked})"></td>
         <td><input type="color" value="${e.color || autoCol(e)}" title="${e.color ? 'Custom color (right-click to reset)' : 'Auto color'}" onchange="wEnt(${i},{color:this.value})" oncontextmenu="event.preventDefault();wEnt(${i},{color:null})"></td>
-        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${badge(e) || e.noPointRespin || e.noBankRespin ? `<small class="muted">${badge(e)}${e.noPointRespin || e.noBankRespin ? ' 🚫 respins' : ''}</small>` : ''}</td>
+        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
         <td style="white-space:nowrap">${e.type === 'void' ? `<span class="muted" title="Only money (subs, gift subs, bits, donations) can grow or shrink the void">💵 only</span>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
-        <td style="min-width:160px;width:36%"><textarea placeholder="Rule for this spot…" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></td>
+        <td style="white-space:nowrap">${e.type === 'void' ? '<b>🕳️ Void</b>' : !w.opts.rules ? '<span class="muted" title="Rules are off for this wheel (⚙️ Wheel settings)">plain</span>' : `${typeSel(e.type, `wEnt(${i},{type:this.value${e.type !== 'countdown' ? `,count:${e.countStart ?? 3},countStart:${e.countStart ?? 3}` : ''}})`)}${e.type === 'countdown' ? ` <small class="muted">${e.count}/${e.countStart} left</small>` : ''}`}${e.rule ? `<div class="muted" style="font-size:12px;max-width:220px;white-space:normal" title="${esc(e.rule)}">📜 ${esc(e.rule.length > 60 ? e.rule.slice(0, 60) + '…' : e.rule)}</div>` : ''}</td>
         <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost" title="Move up" onclick="wMove(${i},-1)">▲</button><button class="ghost" title="Move down" onclick="wMove(${i},1)">▼</button><button class="ghost danger" title="Delete" onclick="wDel(${i})">✕</button></td></tr>
         ${wOpen === e.id ? `<tr><td></td><td colspan="6" style="padding:10px 6px 14px"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
           <p class="help" style="margin:4px 0 8px">${TYPE_HELP[e.type || 'timer'] || ''}</p>
+          <label>📜 Words shown on stream when it lands (optional)<textarea placeholder="e.g. Play one round of Mario Kart" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></label>
           <div class="row" style="gap:14px;flex-wrap:wrap"><label class="ck"><input type="checkbox" ${e.noPointRespin ? 'checked' : ''} onchange="wEnt(${i},{noPointRespin:this.checked})"> <span>🚫 No channel point respins</span></label><label class="ck"><input type="checkbox" ${e.noBankRespin ? 'checked' : ''} onchange="wEnt(${i},{noBankRespin:this.checked})"> <span>🚫 No respins from given/saved spins</span></label></div>
           <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.image ? `<img src="${esc(e.image)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : ''}<button onclick="wPic(url=>wEnt(${i},{image:url}))">🖼️ ${e.image ? 'Change' : 'Add a'} picture</button>${e.image ? `<button class="ghost" onclick="wEnt(${i},{image:''})">Remove picture</button>` : ''}</div>
           <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.sound ? `<button class="ghost" onclick="wPlay('${esc(e.sound)}')">▶️</button><span class="muted">🔊 plays when it lands here</span>` : ''}<button onclick="wSnd1(url=>wEnt(${i},{sound:url}))">🔊 ${e.sound ? 'Change' : 'Add a'} sound for this spot</button>${e.sound ? `<button class="ghost" onclick="wEnt(${i},{sound:''})">Remove sound</button>` : ''}</div></td></tr>` : ''}`).join('')}

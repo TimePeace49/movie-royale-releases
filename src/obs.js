@@ -38,6 +38,21 @@ export async function test() {
     return { obs: v.obsVersion, inputs: inputs.map(i => ({ name: i.inputName, kind: i.inputKind })) };
   });
 }
+/** Test tab: mic off + camera hidden for a few seconds, then back on. Never ends the stream. */
+export async function muteTest(ms = 5000) {
+  const s = db.settings; if (!s.obsMic && !s.obsCam) throw new Error('Pick your mic and camera in Settings → 🎥 OBS first.');
+  const items = [];
+  await session(async call => {
+    if (s.obsMic) await call('SetInputMute', { inputName: s.obsMic, inputMuted: true });
+    if (s.obsCam) for (const sc of (await call('GetSceneList')).scenes || []) { try { const { sceneItemId } = await call('GetSceneItemId', { sceneName: sc.sceneName, sourceName: s.obsCam }); const { sceneItemEnabled } = await call('GetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId }); if (sceneItemEnabled) { items.push([sc.sceneName, sceneItemId]); await call('SetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId, sceneItemEnabled: false }); } } catch {} }
+  });
+  await new Promise(r => setTimeout(r, ms));
+  await session(async call => {
+    if (s.obsMic) await call('SetInputMute', { inputName: s.obsMic, inputMuted: false }).catch(() => {});
+    for (const [sceneName, sceneItemId] of items) await call('SetSceneItemEnabled', { sceneName, sceneItemId, sceneItemEnabled: true }).catch(() => {});
+  });
+  return { cam: items.length };
+}
 /** Doomsday: mic off and camera off right away, the stream ends 15 seconds later. */
 export async function doomsday(delay = 15000) {
   const s = db.settings;
