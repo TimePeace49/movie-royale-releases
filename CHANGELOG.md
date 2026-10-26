@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.0 (test build)
+- **⚠️ Errors tab** (🧪 Test tab → ⚠️ Errors): a history of everything that went wrong in Movie Royal, kept even after you close it. Covers Twitch, Discord, the 24/7 bot, Letterboxd, OBS, the game screen and the control panel. A red number shows how many are new.
+  - **🗣️ In plain words:** what went wrong and what to do about it.
+  - **🛠️ For Claude (tech):** a full report with no passwords or tokens. Press 📋 Copy and paste it to Claude.
+
 ## 1.20.4 (test build)
 - **🔍 "Why is nobody on the cliff?"** (Test tab → Discord battle tests) shows everything that decides who's on the cliff:
   - which battle is playing, and whether it's stuck waiting for "Next round"

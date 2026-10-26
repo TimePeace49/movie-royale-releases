@@ -29,6 +29,22 @@ import { getMovie as tmdbMovie } from './tmdb.js';
 import { blockReason, banMovie, unbanMovie, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
 import { suggest, sweepWatched, picksUsed, addSpots, resetSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey } from './movies.js';
 
+import * as errlog from './errlog.js';
+
+// ⚠️ every error anywhere in the app also goes in the error history (Test tab → ⚠️ Errors)
+{
+  const ce = console.error.bind(console);
+  console.error = (...a) => {
+    ce(...a);
+    try {
+      const first = typeof a[0] === 'string' ? a[0] : '', m = first.match(/^\[([^\]]+)\]\s*/);
+      const parts = (m ? [first.slice(m[0].length), ...a.slice(1)] : a).map(x => x instanceof Error ? x.message : typeof x === 'string' ? x : (() => { try { return JSON.stringify(x); } catch { return String(x); } })()).filter(Boolean);
+      errlog.logErr(m ? m[1].toLowerCase() : 'app', parts.join(' '), a.find(x => x instanceof Error)?.stack || '');
+    } catch {}
+  };
+  process.on('unhandledRejection', r => console.error('[app] Unhandled problem:', r instanceof Error ? r : String(r)));
+}
+
 const PORT = Number(process.env.PORT) || 3737;
 const app = express();
 const server = http.createServer(app);
@@ -1760,6 +1776,39 @@ app.get('/api/test/cliff-why', async (req, res) => {
   }
   res.json(out);
 });
+// ⚠️ error history (Test tab → ⚠️ Errors)
+app.get('/api/errors', (req, res) => res.json(errlog.errors().map(e => ({ ...e, ...errlog.plain(e) }))));
+app.post('/api/errors/clear', (req, res) => { errlog.clear(); res.json({ ok: true }); });
+app.post('/api/errors/report', (req, res) => { const b = req.body || {}; errlog.logErr(String(b.source || 'control panel').slice(0, 30), b.msg, b.detail); res.json({ ok: true }); }); // from the control panel itself
+app.get('/api/debug-report', (req, res) => { // everything Claude needs to find a problem, as plain text (no passwords or tokens)
+  const st = db.settings, list = getList(db.activeListId), has = k => (st[k] ? 'set' : 'missing');
+  const lines = [
+    `Movie Royal ${VERSION} · ${process.platform} ${os.release()} · node ${process.version}${process.versions.electron ? ' · electron ' + process.versions.electron : ''} · ${new Date().toString()}`,
+    `phase=${live.phase} activeList=${db.activeListId} (${list?.type || '?'}, ${list?.entries.length ?? 0} entries) map=${currentMap()} live=${!!db.live} overlays=${[...wss.clients].filter(c => c.role === 'overlay').length} wheelShow=${!!wheel.W().show}`,
+    `lastPreview=${lastPreview ? `${lastPreview.fighters.length} pieces ${Math.round((Date.now() - (lastPreview.at || 0)) / 1000)}s ago` : 'none'} previewError=${previewError || '-'}`,
+    `twitch=${twitch.status.state} chat=${twitch.status.chat} login=${twitch.status.login || '-'} canChat=${!!twitch.status.canChat} err=${twitch.status.error || '-'}`,
+    `discord=${discord.status.state} err=${discord.status.error || '-'} guilds=${(discord.status.guilds || []).length}`,
+    `cloud enabled=${cloud.enabled()} linked=${cloud.status.linked} botUp=${cloud.status.botUp} lastSync=${cloud.status.lastSync ? new Date(cloud.status.lastSync).toISOString() : '-'} err=${cloud.status.lastError || cloud.status.linkError || '-'}`,
+    `letterboxd user=${st.letterboxdUser ? 'set' : 'missing'} ${JSON.stringify(lb.stats())}`,
+    `keys: tmdb=${has('tmdbKey')} omdb=${has('omdbKey')} discordToken=${has('discordToken')} twitchClient=${has('twitchClientId')}`,
+    `settings: chatGate=${st.chatGate !== false} fairOdds=${st.fairOdds !== false} claimApprove=${st.claimApprove !== false} pinWinner=${st.pinWinner !== false} maxFighters=${st.maxFighters} map=${st.map} pointsOn=${st.pointsOn !== false}`,
+    list?.type === 'movies' ? `stream active=${JSON.stringify(stream().active)} weekWinners=${(db.week?.winners || []).length} statuses=${JSON.stringify(list.entries.reduce((o, e) => (o[e.status || 'active'] = (o[e.status || 'active'] || 0) + 1, o), {}))}` : '',
+    '', `--- errors (newest first, ${errlog.errors().length}) ---`,
+    ...errlog.errors().slice(0, 60).map(e => `${new Date(e.at).toISOString()} [${e.source}]${e.count > 1 ? ` x${e.count}` : ''} ${e.msg}${e.detail ? '\n    ' + e.detail.split('\n').slice(0, 6).join('\n    ') : ''}`)
+  ].filter(x => x !== '');
+  res.type('text/plain').send(lines.join('\n'));
+});
+// problems that show up as a status (not a crash) go in the history too, once each time they change
+{
+  const seen = {};
+  const watch = (k, src, v) => { v = v ? String(v) : ''; if (v && v !== seen[k]) errlog.logErr(src, v); seen[k] = v; };
+  setInterval(() => {
+    watch('tw', 'twitch', twitch.status.error); watch('dc', 'discord', discord.status.error);
+    const L = lb.stats(); watch('lbp', 'letterboxd', L.profileError); watch('lbr', 'letterboxd', L.rssError);
+    watch('cl', '24/7', cloud.status.lastError); watch('cll', '24/7', cloud.status.linkError); watch('obs', 'obs', obs.status.error);
+  }, 10000);
+}
+errlog.setOnNew(() => broadcast({ type: 'errorLogged' }, 'control'));
 app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyone with a movie typed in chat
   if (live.phase === 'ended') leaveEnded(); // a battle that finished but never got "Next round"
   if (db.activeListId !== 'movies') { db.activeListId = 'movies'; previewIds = null; }
