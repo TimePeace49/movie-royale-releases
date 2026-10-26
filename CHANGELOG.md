@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.22.1 (test build)
+- **Fixed: an error in the 🎬 Movie Pool tab** when it refreshed while you were typing in a number box (like the odds). Found in your ⚠️ Errors report.
+
 ## 1.22.0 (test build)
 - **🐞 Discord debug channel:** the bot makes a hidden `#movie-royal-debug` channel that only mods and the server owner can see. Whenever something goes wrong with Discord (a command failing, the bot losing its connection, the 24/7 bot having a problem), it posts there: what went wrong in plain words, plus the tech details for fixing it.
   - Nobody but the bot can type in it. A pinned message (and the channel description at the top) says not to type or edit anything.

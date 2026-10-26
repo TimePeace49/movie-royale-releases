@@ -797,6 +797,8 @@ function drawChecklist() {
       ${manual.map(([k, l, a]) => man(k, l, a)).join('')}
     </div>`;
 }
+// put the typing cursor at the end (number boxes can't do that: skip them instead of crashing)
+function caretEnd(el) { try { if (el && /^(text|search|url|tel|password|textarea|)$/.test(el.type || '')) el.setSelectionRange(el.value.length, el.value.length); } catch {} }
 async function api(url, body, method = 'POST') {
   if (method === 'POST' && view !== 'battle' && (view === 'test' || url.startsWith('/api/test/'))) peek(true); // testing something? show the stream screen
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -1385,7 +1387,7 @@ function renderPool() {
   if (keepOpen && keepList && document.querySelector('#poolMain details:not(#impBox)')) document.querySelector('#poolMain details:not(#impBox)').open = true;
   if (keepImp && keepList && $('impBox')) { $('impBox').open = true; if (keepUrl) $('impUrl').value = keepUrl; }
   if (keepList) for (const [k, v] of Object.entries(keepVal)) if (v != null && $(k)) $(k).value = v;
-  if (keepFocus && $(keepFocus)) { const el = $(keepFocus); el.focus(); el.setSelectionRange?.(el.value.length, el.value.length); }
+  if (keepFocus && $(keepFocus)) { const el = $(keepFocus); el.focus(); caretEnd(el); }
   if (lastResults && $('mresults')) $('mresults').innerHTML = lastResults;
 }
 function renderPoolSide(l) {
@@ -1624,7 +1626,7 @@ async function loadHistory(force) {
 }
 let histMode = 'rounds', histQ = '';
 const hl = t => { const x = esc(t); if (!histQ) return x; const re = new RegExp('(' + histQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'); return x.replace(re, '<mark>$1</mark>'); };
-function histSearch(v) { histQ = v.trim(); drawHistory(); const el = $('histQ'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+function histSearch(v) { histQ = v.trim(); drawHistory(); const el = $('histQ'); el.focus(); caretEnd(el); }
 function drawHistory() {
   const box = $('histBody'); if (!box || !hist) return;
   if (histMode === 'stats') return drawStats();
@@ -1950,7 +1952,7 @@ async function drawWHist() {
   $('wBody').innerHTML = `<div class="row" style="gap:8px;margin-bottom:8px"><input id="wHq" class="grow" placeholder="🔎 Search a spot or a name…" value="${esc(wHistQ)}" oninput="wHistQ=this.value;drawWHist()"><select style="width:auto" onchange="wHistWheel=this.value;drawWHist()"><option value="this" ${wHistWheel === 'this' ? 'selected' : ''}>This wheel</option><option value="all" ${wHistWheel === 'all' ? 'selected' : ''}>All wheels</option></select><button class="ghost" onclick="wHistCsv()">⬇️ CSV</button></div>
     <div class="row" style="gap:6px;margin-bottom:6px;flex-wrap:wrap">${[['', 'Everything'], ['spins', '🎡 Spins'], ['redeem', '💜 Redeems'], ['grow', '📈 Grows'], ['void', '🕳️ Void']].map(([k, n]) => `<button class="${wHistKind === k ? 'primary' : 'ghost'}" onclick="wHistKind='${k}';drawWHist()">${n}</button>`).join('')}</div>
     ${rows.length ? html : `<div class="empty">${q ? 'Nothing matches.' : 'Nothing here yet.'}</div>`}`;
-  const el = $('wHq'); if (wHistQ) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  const el = $('wHq'); if (wHistQ) { el.focus(); caretEnd(el); }
 }
 function wHistCsv() { const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`; const lines = [['When', 'Wheel', 'What', 'Landed on', 'Size %', 'From', 'Who', 'Channel points', 'Cost', 'Rule'].map(q).join(',')].concat(wHist.map(r => [new Date(r.at).toLocaleString(), r.wheelName, r.kind, r.text, r.pct, r.from?.text || '', r.by?.name || '', r.by?.source === 'points' ? 'yes' : '', r.by?.cost || '', r.rule].map(q).join(','))); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = 'wheel-history.csv'; a.click(); }
 // 📊 wheel stats
@@ -1976,7 +1978,7 @@ async function drawWStats() {
       <input id="wsQ" class="grow" placeholder="🔎 Search…" value="${esc(wsQ)}" oninput="wsQ=this.value;drawWStats()"></div>
     ${rows.length ? `<div class="stwrap"><table class="st"><thead><tr>${cols.map(th).join('')}</tr></thead><tbody>${rows.slice(0, 1000).map(r => `<tr>${cols.map(c => cell(r, c)).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nothing here yet.</div>'}
     <p class="help">"Final landings" is where a spin ended up after any respins and moves. Click a column to sort.</p>`;
-  const el = $('wsQ'); if (wsQ) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  const el = $('wsQ'); if (wsQ) { el.focus(); caretEnd(el); }
 }
 function wsSortBy(k) { wsSort = wsSort.k === k ? { k, dir: -wsSort.dir } : { k, dir: k === 'text' || k === 'name' ? 1 : -1 }; drawWStats(); }
 // ⚙️ wheel settings
@@ -2162,7 +2164,7 @@ function drawResults() {
     ${rows.map(x => `<tr class="${x.place === 1 ? 'gold' : ''}"><td class="l">${medal(x.place)}</td><td class="l">${x.spot ? '🎟️ ' : ''}${esc(x.label)}${x.sub ? ` <span class="muted">(${esc(x.sub)})</span>` : ''}</td><td class="l">${esc(x.owner || '')}</td><td>${x.luck ? '🍀 ' + x.luck + '%' : ''}</td><td>${x.odds && x.odds !== 1 ? 'x' + Math.round(x.odds * 100) / 100 : ''}</td><td>${x.place === 1 ? '🏆 won at ' + mt(x.t) : mt(x.t)}</td><td>${x.t == null ? '—' : esc(clockAt(start + x.t * 1000))}</td></tr>`).join('')}
     </tbody></table></div>
     ${d.events?.length ? `<h4 style="margin:16px 0 6px">⚡ Powers used</h4><div class="help">${d.events.map(e => `<span style="display:inline-block;margin:2px 10px 2px 0">${mt(e.t)} · <b>${esc(e.event)}</b>${e.by ? ` <i>(${esc(e.by)})</i>` : ''}</span>`).join('')}</div>` : ''}`;
-  const el = $('resQ'); if (resQ) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  const el = $('resQ'); if (resQ) { el.focus(); caretEnd(el); }
 }
 function resCsv() {
   const d = resDoc, start = d.endedAt - (d.duration || 0) * 1000, q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -2210,7 +2212,7 @@ async function drawStats(force) {
       ${shown.map(r => `<tr><td class="l">${r.spot ? '' : ''}${hl(r.name)}</td><td>${r.battles}</td><td><b>${r.wins}</b></td><td>${r.winPct}%</td><td>${r.p2}</td><td>${r.p3}</td><td>${r.p4}</td><td>${r.top5}</td><td>${r.top10}</td><td>${r.luck ? r.luck + '%' : '—'}</td>${people ? `<td>${r.movies || '—'}</td>` : ''}</tr>`).join('')}
     </tbody></table></div>${rows.length > shown.length ? `<p class="help">Showing the first 500 of ${rows.length}. Search to find someone.</p>` : ''}` : `<div class="empty">${q ? 'Nothing matches “' + esc(histQ) + '”.' : 'No battles here yet.'}</div>`}
     <p class="help">Click a column to sort. "Luck spent" is the luck a winner had when they won (it gets used up when the movie is watched). "Movies" is how many different movies that person has had in battles.</p>`;
-  const el = $('histQ'); if (histQ && document.activeElement !== el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  const el = $('histQ'); if (histQ && document.activeElement !== el) { el.focus(); caretEnd(el); }
 }
 function stSortBy(k) { stSort = stSort.k === k ? { k, dir: -stSort.dir } : { k, dir: k === 'name' ? 1 : -1 }; drawStats(); }
 
