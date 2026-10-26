@@ -39,6 +39,9 @@ jobs:
           V="${V#v}"
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
+      - name: Check the pages for mistakes
+        run: node scripts/check-pages.mjs
+
       - name: Install
         run: npm ci
 
