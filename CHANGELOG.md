@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.22.2 (test build)
+- **✋ Accept / Pass shows up on every tab:** when a movie winner types in chat, a green bar pops up at the top of whatever tab you're on, with **✅ Accept winner** and **⏭️ Pass**. The claim counts once you press one. Before, the buttons were only on the Battle tab's winner card, so the checklist test looked like it did nothing.
+
 ## 1.22.1 (test build)
 - **Fixed: an error in the 🎬 Movie Pool tab** when it refreshed while you were typing in a number box (like the odds). Found in your ⚠️ Errors report.
 

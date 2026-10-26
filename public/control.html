@@ -135,6 +135,8 @@
   #peekBar span { flex:1; } #peekBar button { padding:3px 10px; font-size:12px; }
   #stage:fullscreen { border-radius:0; border:0; }
   #fsBar { display:none; }
+  #claimBar { position:fixed; z-index:62; left:50%; top:66px; transform:translateX(-50%); width:min(760px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:12px 16px; background:#163a26f2; border:2px solid #7dffb0; border-radius:14px; box-shadow:0 14px 50px #000c; font-size:15px; }
+  #claimBar button { white-space:nowrap; }
   #handNag { position:fixed; z-index:59; left:50%; bottom:16px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a1420f2; border:1px solid #ff8a7a; border-radius:12px; font-size:13px; box-shadow:0 10px 40px #000a; }
   #backupNag { position:fixed; z-index:60; left:50%; top:66px; transform:translateX(-50%); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#1d1238f2; border:1px solid var(--gold); border-radius:14px; box-shadow:0 10px 40px #0008; font-weight:700; }
   #luckDlg .lrow, #wBody .lrow { display:flex; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
@@ -313,6 +315,7 @@
 
 <div id="backupNag" style="display:none"></div>
 <div id="handNag" style="display:none"></div>
+<div id="claimBar" style="display:none"></div>
 
 <div id="stage">
   <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royal game"></iframe>
@@ -763,7 +766,7 @@ function drawChecklist() {
     ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
     ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').then(()=>toast('Test battle! When it ends, press Next round on the winner card and watch the balls come back')).catch(()=>{})")],
     ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', T('Try it', "api('/api/test/chat-join').then(r=>toast(r.ok?'💬 '+esc(r.name)+' typed in chat: their movies join the cliff':'⚠️ '+esc(r.error)))")],
-    ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', T('Try it', "api('/api/test/claim-chat').then(r=>toast(r.ok?'✋ The winner typed in chat: press ✅ Accept or ⏭️ Pass on the Battle tab winner card':'⚠️ '+esc(r.error)+' (Try it on the test Discord battle first)', 7000))")],
+    ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', T('Try it', "api('/api/test/claim-chat').then(r=>toast(r.ok?'✋ The winner typed in chat: press ✅ Accept or ⏭️ Pass in the green bar at the top':'⚠️ '+esc(r.error)+' (Try it on the test Discord battle first)', 7000))")],
     ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message in your Twitch chat'))")],
     ['sitout', '!sitout and !imback work in chat', T('Try it', "api('/api/test/sitout').then(r=>toast(r.ok?'🛌 '+esc(r.name)+' typed !sitout (their movies leave the cliff), then !imback in 5 seconds':'⚠️ '+esc(r.error), 7000))")],
     ['chaos', 'A channel point / bits chaos event hits the battle', T('Try it', "api('/api/test/battle',{count:12}).then(()=>setTimeout(()=>api('/api/test/redeem',{event:'comet',name:'test_viewer'}),7000)).then(()=>toast('Practice battle: a ☄️ comet hits once the fight starts'))")],
@@ -930,7 +933,16 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
+// ✋ a winner typed in chat: Accept / Pass right here, whatever tab you're on
+function renderClaimBar() {
+  const b = $('claimBar'), c = S.claim, w = S.lastWinner;
+  if (!c?.waiting || c.done) { b.style.display = 'none'; b.dataset.k = ''; return; }
+  const k = c.waiting.at + ''; if (b.dataset.k === k) { b.style.display = 'flex'; return; } b.dataset.k = k;
+  b.style.display = 'flex';
+  b.innerHTML = `<span style="font-size:24px">✋</span><span class="grow"><b>${esc(c.waiting.name)}</b> is here for <b>${esc(w?.label || 'the winner')}</b>${w?.test ? ' <small class="muted">(test: nothing changes)</small>' : ''}<br><small class="muted">“${esc(String(c.waiting.text).slice(0, 90))}”</small></span>
+    <button class="primary" onclick="api('/api/claim/accept').then(()=>toast('✅ Claimed!'))">✅ Accept winner</button><button class="danger" onclick="api('/api/claim/pass').then(()=>toast('⏭️ Passed: back in the pool, they keep their luck'))">⏭️ Pass</button>`;
+}
+function render() { renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderClaimBar(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }

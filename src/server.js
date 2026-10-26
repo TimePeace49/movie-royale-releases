@@ -462,7 +462,7 @@ function claimWait(m, instant = false) {
   const c = live.claim; clearTimeout(c.timer);
   c.waiting = { text: m.text, name: m.name, at: Date.now() }; c.instant = instant;
   broadcast({ type: 'claimWaiting', winner: c.winner, name: m.name, text: m.text, streamer: streamerName() }, 'overlay');
-  broadcast({ type: 'toast', text: `✋ ${m.name} is here! ✅ Accept or ⏭️ Pass on the Battle tab.` }, 'control');
+  broadcast({ type: 'toast', text: `✋ ${m.name} is here! ✅ Accept or ⏭️ Pass in the green bar at the top.` }, 'control');
   pushState();
 }
 function autoClaim(text, m) {
