@@ -2005,6 +2005,6 @@ server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
   setInterval(() => { const a = rollWeek(), b = restoreAway(true); if (a || b) { pushState(); refreshPreview(); } }, 5 * 60 * 1000);
   const tick = async () => { await lb.refreshRss(db.settings.letterboxdUser); sweepWatched(); pushState(); };
   tick(); setInterval(tick, 30 * 60 * 1000);
-  const full = async () => { await lb.refreshProfile(db.settings.letterboxdUser); sweepWatched(); pushState(); };
-  full(); setInterval(full, 6 * 60 * 60 * 1000); // whole profile every 6 hours
+  const full = async (first) => { if (!db.settings.letterboxdUser) return; await lb.refreshProfile(db.settings.letterboxdUser); const n = sweepWatched(); pushState(); if (first) { const st = lb.stats(); setTimeout(() => broadcast({ type: 'toast', text: st.profileError ? `📗 Couldn't update Letterboxd: ${st.profileError}` : `📗 Letterboxd updated: ${st.count} watched${n ? `, ${n} taken out of the battles` : ''}` }, 'control'), 1500); } };
+  full(true); setInterval(full, 6 * 60 * 60 * 1000); // whole profile when the app opens, then every 6 hours
 });

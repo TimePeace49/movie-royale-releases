@@ -683,7 +683,12 @@ function toast(msg, ms = 3500) { let box = $('toasts'); if (!box) { box = docume
 // the main tabs always stay on screen: the page itself never scrolls (each tab scrolls inside itself)
 addEventListener('scroll', e => { if (e.target === document || e.target === document.body || e.target === document.documentElement) { if (scrollY) scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; } }, true);
 // ✅ Test tab → Checklist: what's set up (checked by itself) + things to try once (you tick them, they're remembered on this computer)
-function testTab(t) { $('v-test').classList.toggle('checkmode', t === 'check'); $('tTabTests').classList.toggle('on', t !== 'check'); $('tTabCheck').classList.toggle('on', t === 'check'); if (t === 'check') drawChecklist(); try { localStorage.testTab = t; } catch {} }
+function testTab(t) {
+  $('v-test').classList.toggle('checkmode', t === 'check'); $('tTabTests').classList.toggle('on', t !== 'check'); $('tTabCheck').classList.toggle('on', t === 'check');
+  if (t === 'check') { drawChecklist(); if (S?.cloud?.enabled) fetch('/api/cloud/check', { method: 'POST' }).then(() => drawChecklist()).catch(() => {}); } // check the 24/7 bot again quietly
+  try { localStorage.testTab = t; } catch {}
+}
+async function lbRefreshCk(btn) { btn.disabled = true; btn.textContent = 'Updating…'; try { const r = await api('/api/letterboxd/refresh'); toast(`📗 Letterboxd updated: ${r.count || 0} watched`); } catch {} drawChecklist(); }
 let ckDone = {}; try { ckDone = JSON.parse(localStorage.ckDone || '{}'); } catch {}
 function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); }
 function drawChecklist() {
@@ -719,7 +724,9 @@ function drawChecklist() {
       ${auto(dc.state === 'online', `Discord bot online${dc.tag ? ` <small class="muted">(${esc(dc.tag)})</small>` : ''}`, go('settings', 'discord'))}
       ${auto(c.enabled && c.linked !== false, c.enabled ? (c.linked === false ? '24/7 Discord bot is on but NOT connected to Discord' : '24/7 Discord bot on (works with Movie Royal closed)') : '24/7 Discord bot is off (Discord only works while Movie Royal is open)', `<button class="ghost" style="padding:3px 9px" onclick="cloudCheck(this)">Check</button>`, !c.enabled)}
       ${auto(!!set.tmdbKey, 'Movie search (TMDB) set up', go('settings', 'movies'))}
-      ${auto(!!set.letterboxdUser && !st.letterboxd?.profileError, `Letterboxd${set.letterboxdUser ? ` (<b>${esc(set.letterboxdUser)}</b>, ${st.letterboxd?.count || 0} watched)` : ''}`, go('settings', 'movies'), !set.letterboxdUser)}
+      ${(() => { const L = st.letterboxd || {}, ok = !!set.letterboxdUser && (L.count || 0) > 0, when = L.profileAt ? new Date(L.profileAt).toLocaleString() : null;
+        return auto(ok, `Letterboxd${set.letterboxdUser ? ` (<b>${esc(set.letterboxdUser)}</b>, ${L.count || 0} watched${when ? `, updated ${esc(when)}` : ''})` : ' (no username yet)'}${L.profileError && set.letterboxdUser ? ` <small style="color:var(--bad)">last update: ${esc(L.profileError)}</small>` : ''}`,
+          `<span class="row" style="gap:4px">${set.letterboxdUser ? `<button class="ghost" style="padding:3px 9px" onclick="lbRefreshCk(this)">🔄 Update now</button>` : ''}${go('settings', 'movies')}</span>`, !set.letterboxdUser); })()}
       ${auto((st.overlays || 0) > 0, `Game screen open (${st.overlays || 0} — the app counts as one, OBS as another)`, '')}
       ${auto(!(S.rewardsByHand || []).length, (S.rewardsByHand || []).length ? `Channel point rewards made by hand on Twitch: ${S.rewardsByHand.map(esc).join(', ')}` : 'Channel point rewards are Movie Royal\'s own (it can pause them)', go('settings', 'twitch'))}
       ${auto(!S.live || true, S.live ? '🔴 You are live' : '⚫ Not live (fine for testing: everything works offline too)', '', !S.live)}
@@ -857,7 +864,7 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); if (view === 'test' && $('v-test').classList.contains('checkmode') && !document.activeElement?.closest?.('#tCheck')) drawChecklist(); }
+function render() { renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }

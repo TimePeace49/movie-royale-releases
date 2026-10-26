@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.20.2 (test build)
+- **✅ Checklist ticks itself once something is fixed:** it updates the moment anything changes, and checks the 24/7 bot again when you open it. Letterboxd counts as ✅ as soon as your watched movies are read, it shows when it last updated, and it has a 🔄 Update now button.
+- **📗 Letterboxd updates every time Movie Royal opens** (your whole profile), and a message tells you when it's done.
+
 ## 1.20.1 (test build)
 - **💩 Letterboxd's worst 500 is English movies only:** movies in other languages are skipped and the next ones on Letterboxd's list fill in, so you still get 500. You can switch it off with the "English-language movies only" box in the 🎬 Movie Pool tab.
 
