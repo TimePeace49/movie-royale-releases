@@ -715,13 +715,13 @@ async function cliffWhy() {
   const cp = $('chatPeople'); if (cp) cp.innerHTML = P.length ? P.map(p => `<button class="${p.chatting ? 'ghost' : ''}" onclick="api('/api/test/chat',{name:'${esc(p.twitch || p.name).replace(/'/g, '')}',text:'hi! 👋'}).then(()=>setTimeout(cliffWhy,800))">${p.chatting ? '🟢' : '💬'} ${esc(p.name)}</button>`).join('') : '<span class="help">Nobody has Discord movies yet.</span>';
 }
 // ⚠️ Test tab → Errors: the history of everything that went wrong, in plain words, and a tech report to paste to Claude
-let errView = 'plain', errList = [];
+let errView = (() => { try { return localStorage.errView || 'plain'; } catch { return 'plain'; } })(), errList = [];
 function errSeen() { try { localStorage.errSeen = Date.now(); } catch {} errBadge(); }
 function errBadge() { let seen = 0; try { seen = Number(localStorage.errSeen || 0); } catch {} const n = errList.filter(e => e.at > seen).length; if ($('errN')) $('errN').textContent = n ? n : ''; }
 async function loadErrors() { errList = await fetch('/api/errors').then(r => r.json()).catch(() => errList); errBadge(); if ($('v-test')?.classList.contains('errmode')) { errSeen(); drawErrors(); } }
 async function drawErrors() {
   const box = $('tErr'); if (!box) return;
-  const tabs = `<div class="row" style="align-items:center;gap:8px"><h3 class="grow" style="margin:0">⚠️ Errors <span class="pill">${errList.length}</span></h3><div class="seg"><button class="${errView === 'plain' ? 'on' : ''}" onclick="errView='plain';drawErrors()">🗣️ In plain words</button><button class="${errView === 'tech' ? 'on' : ''}" onclick="errView='tech';drawErrors()">🛠️ For Claude (tech)</button></div><button class="ghost danger" onclick="if(confirm('Clear the error history?')) api('/api/errors/clear').then(loadErrors)">Clear</button></div>`;
+  const tabs = `<div class="row" style="align-items:center;gap:8px"><h3 class="grow" style="margin:0">⚠️ Errors <span class="pill">${errList.length}</span></h3><div class="seg"><button class="${errView === 'plain' ? 'on' : ''}" onclick="errView='plain';try{localStorage.errView='plain'}catch{};drawErrors()">🗣️ In plain words</button><button class="${errView === 'tech' ? 'on' : ''}" onclick="errView='tech';try{localStorage.errView='tech'}catch{};drawErrors()">🛠️ For Claude (tech)</button></div><button class="ghost danger" onclick="if(confirm('Clear the error history?')) api('/api/errors/clear').then(loadErrors)">Clear</button></div>`;
   if (errView === 'tech') {
     box.innerHTML = tabs + `<p class="help">Everything Claude needs to find a problem (no passwords or tokens). Press Copy and paste it into the chat with Claude.</p><div class="row" style="gap:6px;margin-bottom:6px"><button class="primary" onclick="navigator.clipboard.writeText($('errTech').value).then(()=>toast('📋 Copied: paste it to Claude'))">📋 Copy</button><button class="ghost" onclick="drawErrors()">🔄 Refresh</button></div><textarea id="errTech" readonly>Loading…</textarea>`;
     const t = await fetch('/api/debug-report').then(r => r.text()).catch(e => 'Could not load the report: ' + e.message);

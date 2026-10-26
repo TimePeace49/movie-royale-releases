@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.6 (test build)
+- **🧪 The Test tab remembers where you were:** Tests, Checklist or Errors, and "plain words" or "for Claude" on the Errors tab, even after you close Movie Royal.
+
 ## 1.21.5 (test build)
 - **✅ Checklist "Try it" buttons stay on the checklist:** they no longer jump to the 🧪 Tests page. The pop-up window shows what happens on stream.
 
