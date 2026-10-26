@@ -1743,7 +1743,9 @@ app.post('/api/test/reset-cooldowns', (req, res) => { // for testing: everyone's
   const r = resetCooldowns(); db.noShowStreak = 0; resetSpots(); save(); pushState(); refreshPreview(true); res.json({ ok: true, ...r });
 });
 app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyone with a movie typed in chat
-  const st = stream(); st.active = [...new Set([...st.active, ...discordPeopleWithMovies().map(p => p.key)])]; save(); pushState(); refreshPreview(true); res.json({ ok: true, people: st.active.length });
+  const st = stream(); st.active = [...new Set([...st.active, ...discordPeopleWithMovies().map(p => p.key)])];
+  const sp = resetSpots(); // the wild spots too
+  save(); pushState(); refreshPreview(true); res.json({ ok: true, people: st.active.length, spots: sp.total });
 });
 app.post('/api/test/claim-chat', (req, res) => { // Test tab: the movie winner "types in chat"
   const w = live.lastWinner; if (!w || w.test || w.spot || live.phase !== 'ended') return res.json({ ok: false, error: 'Finish a real battle first (the winner card has to be up).' });

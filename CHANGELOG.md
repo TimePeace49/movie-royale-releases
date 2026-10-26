@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.20.3 (test build)
+- **🧪 "Put everyone on the cliff"** (Test tab → Discord battle tests) brings in all the wild spots too.
+
 ## 1.20.2 (test build)
 - **✅ Checklist ticks itself once something is fixed:** it updates the moment anything changes, and checks the 24/7 bot again when you open it. Letterboxd counts as ✅ as soon as your watched movies are read, it shows when it last updated, and it has a 🔄 Update now button.
 - **📗 Letterboxd updates every time Movie Royal opens** (your whole profile), and a message tells you when it's done.
