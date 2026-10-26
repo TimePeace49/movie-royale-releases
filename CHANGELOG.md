@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.7 (test build)
+- **Tabs stay put when you scroll:** the main tabs never move. The sub tabs and tool bars stay at the top while the rest scrolls: 🧪 Tests / ✅ Checklist / ⚠️ Errors, the wheel's ✏️ Spots / ⚙️ Wheel settings…, 📜 History's tabs and search, and 👥 People's add and 🔄 Refresh bar.
+
 ## 1.21.6 (test build)
 - **🧪 The Test tab remembers where you were:** Tests, Checklist or Errors, and "plain words" or "for Claude" on the Errors tab, even after you close Movie Royal.
 

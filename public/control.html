@@ -215,6 +215,9 @@
   #wheelRight { height:100%; box-sizing:border-box; display:flex; flex-direction:column; overflow:hidden; } /* the wheel side never scrolls: the wheel shrinks to fit */
   #wheelCv { flex:1 1 0; min-height:140px; height:auto; width:auto; max-width:100%; aspect-ratio:1; align-self:center; display:block; cursor:pointer; }
   #wResult { flex:0 1 auto; min-height:0; overflow:auto; }
+  .stickytop { position:sticky; top:-14px; z-index:6; } /* sub tabs / tool bars stay put while the rest scrolls */
+  .stickybar { position:sticky; top:-14px; z-index:6; background:var(--panel); margin:-14px -14px 10px; padding:14px 14px 8px; border-bottom:1px solid var(--line); }
+  #v-wheel { overflow:hidden; }
   .wsticky { position:sticky; top:0; z-index:5; background:var(--panel); margin:-14px -14px 0; padding:14px 14px 4px; border-bottom:1px solid var(--line); }
   .wbtns { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:8px; margin-top:10px; }
   .wbtns button { padding:14px 8px; font-size:16px; }
@@ -511,7 +514,7 @@
 
 <!-- 🧪 TEST -->
 <section class="view" id="v-test">
-  <div class="card ttabs" style="grid-column:1 / -1;padding:8px"><div class="seg"><button id="tTabTests" class="on" onclick="testTab('tests')">🧪 Tests</button><button id="tTabCheck" onclick="testTab('check')">✅ Checklist</button><button id="tTabErr" onclick="testTab('errors')">⚠️ Errors <span id="errN"></span></button></div></div>
+  <div class="card ttabs stickytop" style="grid-column:1 / -1;padding:8px;box-shadow:0 6px 18px #0008;top:0"><div class="seg"><button id="tTabTests" class="on" onclick="testTab('tests')">🧪 Tests</button><button id="tTabCheck" onclick="testTab('check')">✅ Checklist</button><button id="tTabErr" onclick="testTab('errors')">⚠️ Errors <span id="errN"></span></button></div></div>
   <div class="card" id="tCheck" style="grid-column:1 / -1"></div>
   <div class="card" id="tErr" style="grid-column:1 / -1"></div>
   <div class="card" style="grid-column:1 / -1">
@@ -1513,7 +1516,7 @@ function renderPeople() {
   if (box.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; // don't wipe what you're typing
   const keep = { npName: $('npName')?.value, npTw: $('npTw')?.value, impText: $('impText')?.value }, open = box.querySelector('details')?.open;
   const max = S.settings.maxPerUser;
-  const tools = `<div class="row" style="margin-bottom:10px"><b>➕ Add someone</b><input id="npName" style="width:180px" placeholder="Name (e.g. Lucy)"><input id="npTw" style="width:220px" placeholder="Twitch username"><button class="primary" onclick="addPerson()">Add person</button>
+  const tools = `<div class="row stickybar"><b>➕ Add someone</b><input id="npName" style="width:180px" placeholder="Name (e.g. Lucy)"><input id="npTw" style="width:220px" placeholder="Twitch username"><button class="primary" onclick="addPerson()">Add person</button>
     <button onclick="peopleRefresh(this)" title="Get new Discord picks and Twitch links right now">🔄 Refresh</button>
     <span class="grow"></span><span class="help" style="margin:0">Everyone gets <b>${max}</b> picks · new ones once all ${max} are watched · Discord: <code>/suggest</code> <code>/swap</code> <code>/mymovies</code></span></div>
     <details style="margin-bottom:10px"><summary>📋 Import everyone from your old wheel at once</summary>
@@ -1630,7 +1633,7 @@ function drawHistory() {
   const counts = {}; for (const h of rows) { const k = h.winner.owner; if (k) counts[k] = (counts[k] || 0) + 1; }
   const topOwner = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   box.innerHTML = `
-    <div class="row" style="margin-bottom:12px"><div class="seg"><button class="${histMode === 'rounds' ? 'on' : ''}" onclick="histMode='rounds';drawHistory()">📜 Every round</button><button class="${histMode === 'people' ? 'on' : ''}" onclick="histMode='people';drawHistory()">👑 Who won what</button><button class="${histMode === 'results' ? 'on' : ''}" onclick="histMode='results';drawHistory()">📋 Results</button><button class="${histMode === 'stats' ? 'on' : ''}" onclick="histMode='stats';drawHistory()">📊 Stats</button></div>
+    <div class="row stickybar"><div class="seg"><button class="${histMode === 'rounds' ? 'on' : ''}" onclick="histMode='rounds';drawHistory()">📜 Every round</button><button class="${histMode === 'people' ? 'on' : ''}" onclick="histMode='people';drawHistory()">👑 Who won what</button><button class="${histMode === 'results' ? 'on' : ''}" onclick="histMode='results';drawHistory()">📋 Results</button><button class="${histMode === 'stats' ? 'on' : ''}" onclick="histMode='stats';drawHistory()">📊 Stats</button></div>
       <input id="histQ" style="width:260px" placeholder="🔎 Search a movie or a name…" value="${esc(histQ)}" oninput="histSearch(this.value)">
       <span class="muted">in</span><select style="width:auto" onchange="histList=this.value;loadHistory(true)">${opts}</select>
       <span class="grow"></span>${want !== 'all' && rows.length ? `<button class="ghost danger" onclick="if(confirm('Delete all history for this battle?')) api('/api/history/clear',{listId:'${esc(want)}'}).then(()=>loadHistory(true))">Clear history</button>` : ''}</div>
@@ -2172,7 +2175,7 @@ async function drawResultsList() {
 }
 // the shared top bar of the history tab (tabs + search)
 function histHead() {
-  return `<div class="row" style="margin-bottom:12px"><div class="seg"><button onclick="histMode='rounds';drawHistory()">📜 Every round</button><button onclick="histMode='people';drawHistory()">👑 Who won what</button><button class="${histMode === 'results' ? 'on' : ''}" onclick="histMode='results';drawHistory()">📋 Results</button><button class="${histMode === 'stats' ? 'on' : ''}" onclick="histMode='stats';drawHistory()">📊 Stats</button></div>
+  return `<div class="row stickybar"><div class="seg"><button onclick="histMode='rounds';drawHistory()">📜 Every round</button><button onclick="histMode='people';drawHistory()">👑 Who won what</button><button class="${histMode === 'results' ? 'on' : ''}" onclick="histMode='results';drawHistory()">📋 Results</button><button class="${histMode === 'stats' ? 'on' : ''}" onclick="histMode='stats';drawHistory()">📊 Stats</button></div>
     <input id="histQ" style="width:260px" placeholder="🔎 Search a name…" value="${esc(histQ)}" oninput="histSearch(this.value)"></div>`;
 }
 
