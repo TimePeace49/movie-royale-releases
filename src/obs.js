@@ -38,30 +38,52 @@ export async function test() {
     return { obs: v.obsVersion, inputs: inputs.map(i => ({ name: i.inputName, kind: i.inputKind })) };
   });
 }
-/** Test tab: mic off + camera hidden for a few seconds, then back on. Never ends the stream. */
-export async function muteTest(ms = 5000) {
-  const s = db.settings; if (!s.obsMic && !s.obsCam) throw new Error('Pick your mic and camera in Settings → 🎥 OBS first.');
+// 🎙️ which OBS sources are "your mic" and "your camera": the names in Settings → 🎥 OBS (any upper/lower case),
+// or, if a box is empty, every mic-type / camera-type source OBS has. A name OBS doesn't have = a clear error listing what it does have.
+const MIC_KIND = /input_capture$|^wasapi_input|^coreaudio_input|^pulse_input|^alsa_input|^jack_input/i;
+const CAM_KIND = /^dshow_input|^av_capture_input|^macos_avcapture|^v4l2_input/i;
+async function findSources(call) {
+  const s = db.settings, inputs = (await call('GetInputList')).inputs || [];
+  const pick = (want, kindRe, what, box) => {
+    want = String(want || '').trim();
+    if (!want) return inputs.filter(i => kindRe.test(i.inputKind || '')).map(i => i.inputName);
+    const hit = inputs.find(i => i.inputName === want) || inputs.find(i => i.inputName.trim().toLowerCase() === want.toLowerCase());
+    if (!hit) throw new Error(`OBS has no source called "${want}" (your ${what}). Pick it from the list in ${box}. OBS has: ${inputs.map(i => i.inputName).join(', ') || 'nothing'}`);
+    return [hit.inputName];
+  };
+  // global audio devices (Settings → Audio in OBS) show up as inputs too, so "Mic/Aux" works when that's your mic
+  return { mics: pick(s.obsMic, MIC_KIND, 'mic', 'Settings → 🎥 OBS'), cams: pick(s.obsCam, CAM_KIND, 'camera', 'Settings → 🎥 OBS') };
+}
+async function hideCams(call, cams) { // hide each camera in every scene it's in; remembers which ones were showing
   const items = [];
+  if (!cams.length) return items;
+  for (const sc of (await call('GetSceneList')).scenes || []) for (const cam of cams) {
+    try { const { sceneItemId } = await call('GetSceneItemId', { sceneName: sc.sceneName, sourceName: cam }); const { sceneItemEnabled } = await call('GetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId }); if (sceneItemEnabled) { items.push([sc.sceneName, sceneItemId]); await call('SetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId, sceneItemEnabled: false }); } } catch {}
+  }
+  return items;
+}
+/** Test tab: mic off + camera hidden for a few seconds, then back how they were. Never ends the stream. */
+export async function muteTest(ms = 5000) {
+  let found, muted = [], items = [];
   await session(async call => {
-    if (s.obsMic) await call('SetInputMute', { inputName: s.obsMic, inputMuted: true });
-    if (s.obsCam) for (const sc of (await call('GetSceneList')).scenes || []) { try { const { sceneItemId } = await call('GetSceneItemId', { sceneName: sc.sceneName, sourceName: s.obsCam }); const { sceneItemEnabled } = await call('GetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId }); if (sceneItemEnabled) { items.push([sc.sceneName, sceneItemId]); await call('SetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId, sceneItemEnabled: false }); } } catch {} }
+    found = await findSources(call);
+    if (!found.mics.length && !found.cams.length) throw new Error("Couldn't find a mic or a camera in OBS. Pick them in Settings → 🎥 OBS (press Save & test the connection to fill the list).");
+    for (const m of found.mics) { const { inputMuted } = await call('GetInputMute', { inputName: m }); if (!inputMuted) { await call('SetInputMute', { inputName: m, inputMuted: true }); muted.push(m); } }
+    items = await hideCams(call, found.cams);
   });
   await new Promise(r => setTimeout(r, ms));
   await session(async call => {
-    if (s.obsMic) await call('SetInputMute', { inputName: s.obsMic, inputMuted: false }).catch(() => {});
+    for (const m of muted) await call('SetInputMute', { inputName: m, inputMuted: false }).catch(() => {}); // only the ones that were on before
     for (const [sceneName, sceneItemId] of items) await call('SetSceneItemEnabled', { sceneName, sceneItemId, sceneItemEnabled: true }).catch(() => {});
   });
-  return { cam: items.length };
+  return { cam: items.length, mics: found.mics, muted, cams: found.cams, alreadyMuted: found.mics.filter(m => !muted.includes(m)) };
 }
 /** Doomsday: mic off and camera off right away, the stream ends 15 seconds later. */
 export async function doomsday(delay = 15000) {
-  const s = db.settings;
   await session(async call => {
-    if (s.obsMic) await call('SetInputMute', { inputName: s.obsMic, inputMuted: true }).catch(() => {});
-    if (s.obsCam) { // hide the camera in the scene that's on stream (and in any nested scene that holds it)
-      const scenes = (await call('GetSceneList')).scenes || [];
-      for (const sc of scenes) { try { const { sceneItemId } = await call('GetSceneItemId', { sceneName: sc.sceneName, sourceName: s.obsCam }); await call('SetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId, sceneItemEnabled: false }); } catch {} }
-    }
+    let found = { mics: [], cams: [] }; try { found = await findSources(call); } catch (e) { console.error('[obs]', e.message); }
+    for (const m of found.mics) await call('SetInputMute', { inputName: m, inputMuted: true }).catch(() => {});
+    await hideCams(call, found.cams);
   });
   await new Promise(r => setTimeout(r, delay));
   await session(call => call('StopStream'));

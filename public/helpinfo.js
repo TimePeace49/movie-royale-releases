@@ -408,8 +408,8 @@ H(/omdb key/i, 'OMDb key', 'For Rotten Tomatoes and IMDb ratings on the winner s
 H(/letterboxd username/i, 'Letterboxd username', 'Movie Royal reads your Letterboxd so movies you watched can\'t be picked.');
 H(/obs address/i, 'OBS address', 'Leave it unless you changed the port in OBS.');
 H(/obs websocket password/i, 'OBS password', 'From OBS → Tools → WebSocket Server Settings.');
-H(/your mic in obs/i, 'Mic source', 'The name of your mic in OBS (for Doomsday).');
-H(/your camera in obs/i, 'Camera source', 'The name of your camera in OBS (for Doomsday).');
+H(/your mic in obs/i, 'Mic source', 'Your mic\'s name in OBS, for Doomsday and the OBS test. Press 🔌 Save & test the connection, then pick it from the list so the name matches exactly. Leave it empty and Movie Royal mutes every mic OBS has.');
+H(/your camera in obs/i, 'Camera source', 'Your camera\'s name in OBS, for Doomsday and the OBS test. Pick it from the list after 🔌 Save & test the connection. Leave it empty and Movie Royal hides every camera OBS has.');
 H(/save & test the connection/i, '🔌 Save & test', 'Saves and checks Movie Royal can talk to OBS.');
 H(/sounds for/i, 'Sounds for', 'Which sounds you\'re changing: all maps, one map, or one wheel.');
 H(/⬆️ upload/i, '⬆️ Upload', 'Use your own sound file for this.');

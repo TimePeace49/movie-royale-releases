@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.26.1 (test build)
+- **🎥 OBS test now mutes your mic:** if the mic box in Settings → 🎥 OBS was empty ("Mic/Aux" is only a grey hint, not a saved name), the test skipped the mic and only hid the camera. Now:
+  - An empty mic box mutes **every mic** OBS has (never your desktop or game sound). An empty camera box hides every camera.
+  - The name works in any upper/lower case. If OBS has no source with that name, it tells you, and lists the names OBS does have.
+  - It only turns back on what it turned off (a mic that was already muted stays muted).
+  - When it's done it says exactly which mic and camera it switched, so you know it worked.
+- Doomsday finds your mic and camera the same way.
+
 ## 1.26.0 (latest release)
 - **⚠️ on the 🧪 Test tab** when something goes wrong: a red number shows how many new errors there are. It goes away once you open ⚠️ Errors.
 - **📺 Preview window:** it comes back by itself when you go back to the 🧪 Test tab. The Test tab has 📺 Show / Hide the preview window, and **⧉ Pop out to another monitor**, which opens it in its own window you can drag anywhere (no sound; Movie Royal already plays it). The preview's top bar has ⧉ Pop out too. Close the popped-out window to bring it back.

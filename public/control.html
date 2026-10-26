@@ -1021,6 +1021,15 @@ async function claimTest() { // 🧪 the winner claims: the pretend chat window 
   document.addEventListener('mouseup', () => { d = null; });
   try { if (localStorage.pchat) setTimeout(() => pchat(true), 500); } catch {}
 })();
+// 🎥 OBS test: mic muted + camera hidden for 5 seconds, then back how they were; says exactly what it switched
+async function obsMuteTest() {
+  toast('🎥 Turning your mic and camera off in OBS for 5 seconds…', 5000);
+  const r = await api('/api/test/obs-mute', {}).catch(() => null); if (!r) return;
+  const L = s => s.map(esc).join(', ');
+  const mic = r.muted.length ? `🎙️ Muted and unmuted: <b>${L(r.muted)}</b>` : r.alreadyMuted.length ? `🎙️ <b>${L(r.alreadyMuted)}</b> was already muted, so it was left alone` : '🎙️ No mic found in OBS (pick it in Settings → 🎥 OBS)';
+  const cam = r.cam ? `📷 Hidden and shown again: <b>${L(r.cams)}</b>` : r.cams.length ? `📷 <b>${L(r.cams)}</b> wasn't showing in any scene` : '📷 No camera found in OBS (pick it in Settings → 🎥 OBS)';
+  toast(`✅ Back on. ${mic}. ${cam}.`, 9000);
+}
 async function wTakeover(btn) {
   const was = btn.textContent; btn.disabled = true; btn.textContent = 'Working…';
   try { const r = await api('/api/wheel/rewards/takeover');
@@ -1069,7 +1078,7 @@ function drawChecklist() {
     ['helpMode', '❓ Help mode: click any option and the help explains it', `<button class="ghost" style="padding:3px 9px" onclick="helpMode(true);toast('❓ Now click any button or option')">Try it</button>`],
     ['numbersEdit', '🔢 A number battle\'s numbers can be changed later in the 🎬 Movie Pool tab', T('Try it', "api('/api/lists/numbers',{from:1,to:5}).then(r=>api('/api/lists/'+(r.id||S.activeListId)+'/numbers',{from:3,to:8})).then(()=>toast('🔢 Made 1 to 5, then changed it to 3 to 8: see the 🎬 Movie Pool tab'))")],
     ['takeover', '💜 Respin / Up / Down channel point rewards made by Movie Royal (same price as before)', `<button class="ghost" style="padding:3px 9px" onclick="wTakeover(this)">Try it</button>`],
-    ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "api('/api/test/obs-mute',{}).then(r=>toast('🎥 OBS mic + camera off for 5 seconds'+(r.cam?'':' (camera not found)'))).catch(()=>{})")],
+    ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "obsMuteTest()")],
     ['update', 'Movie Royal updates itself (Settings → Account)', '']
   ];
   const doneN = manual.filter(([k]) => ckDone[k]).length;
@@ -1894,7 +1903,7 @@ async function drawWheelTest() {
       ${B('▶️ Start', "wRoundCmd('start')")}${B('⏸️ Stop', "wRoundCmd('pause')")}${B('➕ 30 sec', "wRoundCmd('add',30)")}${B('⏹ End now', "wRoundCmd('end')")}${B('✕ Cancel the round', "wRoundCmd('cancel')", 'ghost')}${B('⏪ Undo last step', 'wUndo()', 'ghost')}
       <span class="help" style="margin:0">A round starts when a spin lands.</span></div>
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">☠️ Doomsday</b>
-      ${B('📺 Preview the screen (8 sec)', T('/api/test/doom-preview', {}, 'Showing it on the game screen'))}${B('🎥 OBS: mic + camera off for 5 sec', "toast('Turning them off for 5 seconds…');api('/api/test/obs-mute',{}).then(r=>toast('✅ Back on'+(r.cam?'':' (camera not found in any scene)'))).catch(()=>{})")}
+      ${B('📺 Preview the screen (8 sec)', T('/api/test/doom-preview', {}, 'Showing it on the game screen'))}${B('🎥 OBS: mic + camera off for 5 sec', "obsMuteTest()")}
       <span class="help" style="margin:0">Neither one ends your stream.</span></div>
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">🔴 Going live</b>
       ${B('🔴 Pretend I went live', T('/api/test/live', { live: true }, '🔴 Pretending you are live (just inside Movie Royal)'))}${B('⚫ Stop pretending', T('/api/test/live', { live: false }, '⚫ Offline'))}
@@ -2772,7 +2781,7 @@ function openSettings(force) {
       In OBS: <b>Tools → WebSocket Server Settings</b> → tick <b>Enable WebSocket server</b> → <b>Show Connect Info</b> → copy the password here. (OBS 28 or newer has it built in.)</p>
       ${f('obsUrl', 'OBS address (leave this unless you changed the port in OBS)', 'ws://127.0.0.1:4455')}
       ${f('obsPassword', 'OBS WebSocket password', 'paste here', 'password')}
-      <div>${f('obsMic', 'Your mic in OBS (the name of the audio source)', 'Mic/Aux', 'text', 'list="obsIn"')}${f('obsCam', 'Your camera in OBS (the name of the source)', 'Video Capture Device', 'text', 'list="obsIn"')}</div><datalist id="obsIn"></datalist>
+      <div>${f('obsMic', 'Your mic in OBS (pick it from the list; empty = every mic in OBS)', 'Mic/Aux', 'text', 'list="obsIn"')}${f('obsCam', 'Your camera in OBS (pick it from the list; empty = every camera in OBS)', 'Video Capture Device', 'text', 'list="obsIn"')}</div><datalist id="obsIn"></datalist>
       <div class="row" style="gap:8px;margin-top:8px;align-items:center"><button onclick="obsTest()">🔌 Save &amp; test the connection</button><span id="obsRes" class="help" style="margin:0"></span></div>
       <p class="help">The test never changes anything in OBS. It lists your sources so you can pick your mic and camera from the boxes above.</p>`,
     bans: `<div id="bansSlot"></div>`,
