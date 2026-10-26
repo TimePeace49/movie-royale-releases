@@ -2043,6 +2043,9 @@ setMap('classic');
 // ================= fighters =================
 function initials(s) { return String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => [...w][0]).join('').toUpperCase(); }
 function makeToken(f) {
+  // a picture that was already loaded (Twitch avatars after the first battle) calls this before the piece has a size yet:
+  // that used to crash and leave the cliff empty. sizeAll() draws it as soon as the size is known.
+  if (!(f.r > 0) || !Number.isFinite(f.r)) { f._dirty = true; return; }
   const D = Math.ceil((f.r + 6) * 2 * 2); // 2x for crispness
   const c = document.createElement('canvas'); c.width = c.height = D;
   const g = c.getContext('2d'), m = D / 2, rr = f.r * 2;
@@ -2070,9 +2073,9 @@ let colorIdx = 0;
 // and bigger pieces hit harder.
 function sizeAll() {
   const n = fighters.length; if (!n) return;
-  const totalW = fighters.reduce((s, f) => s + (f.weight || 1), 0), avg = totalW / n, base = (n <= 8 ? 28 : clamp(30 - 2.6 * Math.log2(n / 8), 13, 28)) * (MAP.pieceScale ? 1 + (MAP.pieceScale - 1) * (n > 100 ? .4 : 1) : 1); // the cliff grows with the crowd, pieces shrink only a little
+  const totalW = fighters.reduce((s, f) => s + (Number(f.weight) || 1), 0), avg = totalW / n, base = (n <= 8 ? 28 : clamp(30 - 2.6 * Math.log2(n / 8), 13, 28)) * (MAP.pieceScale ? 1 + (MAP.pieceScale - 1) * (n > 100 ? .4 : 1) : 1); // the cliff grows with the crowd, pieces shrink only a little
   for (const f of fighters) {
-    const lk = 1 + Math.min(f.luck || 0, 100) / 100 * .6, sf = clamp(clamp(Math.sqrt((f.weight || 1) / avg), .75, 2.1) * lk, .75, 2.5), r = base * sf;
+    const lk = 1 + Math.min(Number(f.luck) || 0, 100) / 100 * .6, sf0 = clamp(clamp(Math.sqrt((Number(f.weight) || 1) / avg), .75, 2.1) * lk, .75, 2.5), sf = Number.isFinite(sf0) ? sf0 : 1, r = base * sf;
     const boost = (f.mega ? 1.55 : 1) * (f.funSize || 1) * (cfg.fun?.bigheads ? 1.45 : 1), sf2 = sf * (f.mega ? 1.55 : 1) * (f.funSize || 1), r2 = r * boost;
     f.odds = (f.weight || 1) / totalW; f.mass = sf2 * sf2;
     if (f._dirty || !f.token || Math.abs(r2 - (f.r || 0)) > .4) { f.r = r2; f._dirty = false; makeToken(f); }

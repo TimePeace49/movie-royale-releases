@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.2 (test build)
+- **🎯 FIXED: balls not coming back on the cliff after a battle.** Found with the new error report. After the first battle, the Twitch pictures (yours and Kirb's) are already loaded. The game screen tried to draw a ball before it knew how big the ball was, crashed, and left the cliff empty. Battles with no Twitch pictures (like all my tests) never hit it. It's fixed, and balls with odd sizes can't crash it either.
+
 ## 1.21.1 (test build)
 - **💩 Fixed: Letterboxd said 403** when making the worst 500 battle. Letterboxd turns away plain requests for its film pages, so Movie Royal now reads them like a real browser does (hidden in the background), page by page (`/page/2/`, `/page/3/`…).
 - **🔢 Number battles:** + New battle → 🔢 Pick a number, from 1 to whatever you want (up to 1,000). Every ball is a number. There's a 🔢 button in the Test tab too.
