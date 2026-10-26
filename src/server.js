@@ -21,6 +21,7 @@ import { MAP_LIST, mapById } from './maps.js';
 import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
+import * as chatlog from './chat.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
 import { blockReason, banMovie, unbanMovie, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
@@ -62,6 +63,8 @@ function refreshPreview(now = false) {
   }, now ? 0 : 300);
 }
 
+const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const VERSION = process.env.MR_VERSION || PKG.version;
 let historyVersion = 0;
 try { statsReady(); } catch (e) { console.error("[stats]", e.message); }
 function discordPeople() {
@@ -88,7 +91,7 @@ function publicState() {
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
     week: { start: weekStartDate().toISOString(), backOn: backOn(), winners: db.week?.winners?.length || 0, spotWon: !!db.week?.spotWon },
-    historyVersion, wheelVer: wheel.W().ver || 0, wheelShow: !!wheel.W().show, owner: db.owner ? { name: db.owner.name, avatar: db.owner.avatar, login: db.owner.login } : null, people: discordPeople(),
+    version: VERSION, historyVersion, wheelVer: wheel.W().ver || 0, wheelShow: !!wheel.W().show, owner: db.owner ? { name: db.owner.name, avatar: db.owner.avatar, login: db.owner.login } : null, people: discordPeople(),
     pendingEffects: db.pendingEffects, events: EVENTS,
     status: { discord: discord.status, twitch: twitch.status, donations: donations.status, letterboxd: lb.stats(), overlays: [...wss.clients].filter(c => c.role === 'overlay').length },
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
@@ -290,7 +293,10 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } },
+  clear(c) { try { chatlog.onClear(c); } catch {} },
   async chat(m) {
+    try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
     wheel.wheelChat(m); // 🎡 !respin / !spins
@@ -303,7 +309,7 @@ const twitchHandlers = {
     // claim pop-up: show chat, stop when the winner talks
     if (live.claim && !live.claim.done) {
       const isWinner = isWinnerMsg(live.claim.winner, m);
-      broadcast({ type: 'chat', msg: { name: m.name, text: m.text, winner: isWinner } }, 'overlay');
+      broadcast({ type: 'chat', msg: { name: m.name, text: m.text, winner: isWinner, emotes: m.emotes || '', color: m.color || null } }, 'overlay');
       if (isWinner) finishClaim(true, m.text);
     } else if (!live.claim && live.phase === 'ended' && live.lastWinner && !live.lastWinner.spot && isWinnerMsg(live.lastWinner, m)) {
       autoClaim(m.text); // winner spoke up before the claim timer was even started: instant win
@@ -445,7 +451,7 @@ wss.on('connection', (ws, req) => {
         if (!seriesInfo.done) {
           live.lastWinner = { ...f, listId: list.id, listName: list.name, at: Date.now(), series: seriesInfo, interim: true, gameId: live.game.id };
           if (twitch.status.canChat && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
-          if (db.settings.seriesAuto !== false) setTimeout(nextSeriesRound, (db.settings.replayOn !== false ? 19 : 8) * 1000);
+          if (db.settings.seriesAuto === true) setTimeout(nextSeriesRound, (db.settings.replayOn !== false ? 19 : 8) * 1000);
           save(); pushState(); return;
         }
         sr.done = true;
@@ -563,7 +569,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.status.canChat && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve() });
@@ -599,6 +605,65 @@ app.post('/api/wheel/settings', (req, res) => { const w = wheel.W(), b = req.bod
 app.post('/api/wheel/rewards', async (req, res) => { try { const w = wheel.W(), made = []; const want = Array.isArray(req.body?.kinds) && req.body.kinds.length ? req.body.kinds : ['respin', 'up', 'down', 'grow']; for (const k of want) if (w.rewards[k] && await twitch.createReward({ title: w.rewards[k], cost: w.costs[k], prompt: wheel.REWARD_INFO[k].prompt, color: wheel.REWARD_INFO[k].color, input: !!wheel.REWARD_INFO[k].input, queue: true })) made.push(w.rewards[k]); await twitch.noInput([w.rewards.grow, w.rewards.shrink]).catch(() => {}); res.json({ ok: true, made }); } catch (e) { res.status(400).json({ error: e.message }); } });
 const wTry = fn => async (req, res) => { try { res.json({ ok: true, ...(await fn(req.body || {}, req)) }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/renames', (req, res) => res.json(db.renames || []));
+// ---------- 💬 chat tab + 👤 viewer profiles ----------
+chatlog.initChat({ send: m => { broadcast(m, 'control'); broadcast(m, 'chatview'); } });
+setInterval(() => { if (db.live) twitch.chatters().then(chatlog.tickWatch).catch(() => {}); }, 5 * 60000); // watch time while live
+let badgeCache = { at: 0, map: {} };
+app.get('/api/chat/recent', async (req, res) => {
+  if (Date.now() - badgeCache.at > 3600000) { badgeCache = { at: Date.now(), map: await twitch.badges().catch(() => ({})) }; }
+  const emotes = await chatlog.thirdPartyEmotes(twitch.broadcasterId()).catch(() => ({}));
+  const sc = twitch.status.scopes || [];
+  res.json({ messages: chatlog.getRecent(Number(req.query.n) || 400), alerts: chatlog.getAlerts(150), badges: badgeCache.map, emotes, channel: twitch.status.login || db.settings.twitchChannel || '',
+    canChat: !!twitch.status.canChat, canMod: sc.includes('moderator:manage:banned_users'), canDelete: sc.includes('moderator:manage:chat_messages'), canWatch: sc.includes('moderator:read:chatters') });
+});
+app.get('/api/chat/search', (req, res) => res.json(chatlog.search({ q: req.query.q, login: req.query.login, days: Math.min(365, Number(req.query.days) || 30) })));
+app.get('/api/chat/names', (req, res) => res.json(chatlog.names(String(req.query.q || ''))));
+app.post('/api/chat/say', wTry(async b => { await twitch.say(String(b.text || '').slice(0, 490)); return {}; }));
+app.post('/api/chat/mod', wTry(async b => {
+  const login = String(b.login || '').replace(/^@/, '').toLowerCase();
+  if (b.action === 'delete') await twitch.deleteMessage(b.id);
+  else if (b.action === 'timeout') await twitch.timeout(login, Number(b.seconds) || 600, b.reason || '');
+  else if (b.action === 'ban') await twitch.timeout(login, 0, b.reason || '');
+  else if (b.action === 'unban') await twitch.unban(login);
+  else throw new Error('Unknown action');
+  return {};
+}));
+app.get('/api/viewer-lookup', (req, res) => { // double-clicked a word: is it someone we know?
+  const q = String(req.query.name || '').replace(/^@/, '').trim(), k = q.toLowerCase(), n = norm(q); if (!q) return res.status(404).json({});
+  const vs = db.viewers || {}, hit = vs[k] || Object.values(vs).find(v => norm(v.name) === n);
+  if (hit) return res.json({ login: hit.login });
+  const bank = Object.values(db.wheel?.bank || {}).find(b => norm(b.name) === n || b.login === k); if (bank) return res.json({ login: bank.login });
+  const dp = discordPeople().find(p => norm(p.name) === n || norm(p.twitch) === n); if (dp) return res.json({ login: dp.twitch || '', discordId: dp.discordId, name: dp.name });
+  res.status(404).json({});
+});
+app.get('/api/viewer/:login', async (req, res) => {
+  const login = String(req.params.login || '').replace(/^@/, '').toLowerCase().replace(/^_$/, ''), n = norm(login);
+  const v = (db.viewers || {})[login] || null, w = wheel.W(), bank = w.bank[n] || Object.values(w.bank).find(b => b.login === login) || null;
+  const tw = login ? (await twitch.getUsers([login]).catch(() => new Map())).get(login) : null;
+  let follow; try { follow = tw?.id ? await twitch.followedAt(tw.id) : undefined; } catch {}
+  const discordId = req.query.discordId || Object.entries(db.links || {}).find(([, l]) => String(l).toLowerCase() === login)?.[0] || null;
+  const dp = discordId ? discordPeople().find(p => p.discordId === discordId) : null;
+  // 🎡 respins: now, used this stream, and what they had when the stream started
+  const since = db.stream?.startedAt || 0, isMe = r => r.by && (String(r.by.login || '').toLowerCase() === login || norm(r.by.name) === n);
+  const used = w.history.filter(r => r.by?.source === 'bank' && isMe(r)).map(r => ({ at: r.at, text: r.text, wheel: r.wheelName }));
+  const usedNow = used.filter(r => r.at >= since).length, givenNow = w.grants.filter(g => g.at >= since && (g.login === login || norm(g.name) === n)).reduce((a, g) => a + g.amount, 0);
+  const spinsNow = bank?.spins || 0;
+  const st = (db.stats?.people || {})[n] || (dp ? (db.stats?.people || {})[norm(dp.name)] : null);
+  const sum = st ? Object.values(st.k).reduce((a, x) => a.map((y, i) => y + x[i]), [0, 0, 0, 0, 0, 0, 0, 0]) : null;
+  const wins = db.history.filter(h => (h.winner?.owner && (norm(h.winner.owner) === n || (dp && norm(h.winner.owner) === norm(dp.name)))) || (h.kind === 'chat' && norm(h.winner?.label) === n)).slice(-30).reverse().map(h => ({ at: h.at, label: h.winner.label, sub: h.winner.sub, list: h.listName }));
+  const mon = new Date().toLocaleDateString('en-CA').slice(0, 7), yr = mon.slice(0, 4);
+  res.json({
+    login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
+    followedAt: follow === undefined ? (v?.followedAt || undefined) : follow, url: login ? `https://twitch.tv/${login}` : null,
+    sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: v?.streak || 0, color: v?.color || null,
+    watch: v ? { total: v.watchMins || 0, stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamWatch || 0 : 0 } : null,
+    chats: v ? { stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamMsgs || 0 : 0, month: v.byMonth?.[mon] || 0, year: v.byYear?.[yr] || 0, total: v.msgs || 0, first: v.first, last: v.last } : null,
+    discord: dp ? { id: dp.discordId, name: dp.name, avatar: dp.avatar, movies: dp.active, watched: dp.watched, picksUsed: dp.used, max: dp.max } : null,
+    stats: sum ? { battles: sum[0], wins: sum[1], p2: sum[2], p3: sum[3], top5: sum[5], top10: sum[6], luck: Math.round(sum[7] * 10) / 10 } : null, wins,
+    spins: { now: spinsNow, usedStream: usedNow, beforeStream: Math.max(0, spinsNow + usedNow - givenNow), gotTotal: bank?.got || 0, usedTotal: bank?.used || 0, used: used.slice(-50).reverse(), grants: w.grants.filter(g => g.login === login || norm(g.name) === n).slice(-50).reverse() },
+    log: chatlog.search({ login, days: 120, limit: 200 })
+  });
+});
 app.post('/api/rename', wTry(b => { const r = renameUser(b.from, b.to); wheelChanged(); historyVersion++; pushState(); return r; }));
 app.post('/api/wheel/boost', wTry(b => { wheel.onMoney({ name: b.name, amount: b.amount }); return {}; }));
 app.post('/api/wheel/boost/:id', wTry((b, req) => wheel.boostAct(req.params.id, b)));
@@ -714,8 +779,6 @@ app.get('/api/state', (req, res) => res.json(publicState()));
 
 // ---------- desktop app, setup guide, updates ----------
 const DESKTOP = !!process.env.MR_DESKTOP;
-const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-const VERSION = process.env.MR_VERSION || PKG.version;
 // where updates come from: your own setting, or the GitHub repo this copy was built from
 const updateRepo = () => (db.settings.updateRepo || PKG.updateRepo || '').trim();
 function donePage(title, msg) {
@@ -735,19 +798,47 @@ app.post('/api/test/letterboxd', async (req, res) => {
   const st = lb.stats(); res.json({ ok: st.count > 0, ...st, retired: n });
 });
 const newer = (a, b) => { const x = String(a).replace(/^v/, '').split('.').map(Number), y = String(b).replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; } return false; };
+// updates: everyone gets the LATEST release; turn on "test builds" in Settings to also get pre-releases
+const repoName = () => updateRepo().replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '');
+async function ghReleases() {
+  const r = await fetch(`https://api.github.com/repos/${repoName()}/releases?per_page=60`, { headers: { 'User-Agent': 'MovieRoyal' }, signal: AbortSignal.timeout(10000) });
+  if (!r.ok) throw new Error(r.status === 404 ? 'No releases found for ' + repoName() : 'GitHub ' + r.status);
+  return (await r.json()).filter(x => !x.draft).map(x => ({ tag: x.tag_name, version: x.tag_name.replace(/^v/, ''), name: x.name, pre: !!x.prerelease, at: x.published_at, notes: x.body || '', url: (x.assets || []).find(a => /\.exe$/i.test(a.name))?.browser_download_url || null, page: x.html_url }));
+}
 app.get('/api/update/check', async (req, res) => {
-  const repo = updateRepo().replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '');
-  if (!repo) return res.json({ configured: false, version: VERSION });
+  if (!repoName()) return res.json({ configured: false, version: VERSION });
   try {
-    const r = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': 'MovieRoyal' }, signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error(r.status === 404 ? 'No releases found for ' + repo : 'GitHub ' + r.status);
-    const j = await r.json(), asset = (j.assets || []).find(a => /\.exe$/i.test(a.name));
-    res.json({ configured: true, version: VERSION, latest: j.tag_name, available: newer(j.tag_name, VERSION) && !!asset, url: asset?.browser_download_url, notes: (j.body || '').slice(0, 1500) });
+    const beta = !!db.settings.betaUpdates, list = (await ghReleases()).filter(x => x.url && (beta || !x.pre));
+    const best = list.reduce((a, x) => !a || newer(x.version, a.version) ? x : a, null);
+    res.json({ configured: true, version: VERSION, beta, latest: best?.tag, pre: !!best?.pre, available: !!best && newer(best.version, VERSION), url: best?.url, notes: (best?.notes || '').slice(0, 1500) });
   } catch (e) { res.json({ configured: true, version: VERSION, error: e.message }); }
+});
+app.get('/api/update/releases', async (req, res) => { try { res.json({ version: VERSION, releases: (await ghReleases()).filter(x => x.url) }); } catch (e) { res.json({ version: VERSION, error: e.message, releases: [] }); } });
+// 📝 patch notes: the notes of every LATEST release (from GitHub), with the copy that came with this version as a backup
+// 🆕 when an update adds something you have to set up (like an account), say so once after updating
+const NEW_SETUP = [
+  { id: 'donations', since: '1.11.0', title: '💵 Donations', why: 'Connect StreamElements or Streamlabs so tips pop up for the wheel.', done: () => !!(db.settings.seJwt || db.settings.slToken) },
+  { id: 'twitch', since: '1.12.0', title: '💜 Sign in with Twitch again', why: 'Gives Movie Royal the new chat permissions: delete messages, timeouts, bans and watch time in the 💬 Chat tab.', done: () => ['moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters'].every(x => (twitch.status.scopes || []).includes(x)) || !db.owner }
+];
+app.get('/api/whatsnew', (req, res) => {
+  const from = db.settings.lastSeenVersion || '1.10.0';
+  if (!db.settings.setupSeen) { db.settings.lastSeenVersion = VERSION; save(); return res.json({ steps: [] }); }
+  const steps = NEW_SETUP.filter(x => newer(x.since, from) && !newer(x.since, VERSION) && !x.done()).map(({ id, title, why }) => ({ id, title, why }));
+  db.settings.lastSeenVersion = VERSION; save();
+  res.json({ from, to: VERSION, steps });
+});
+app.get('/api/patchnotes', async (req, res) => {
+  let local = ''; try { local = fs.readFileSync(path.join(ROOT, 'PATCHNOTES.md'), 'utf8'); } catch {}
+  let releases = []; try { releases = (await ghReleases()).filter(x => !x.pre).map(x => ({ tag: x.tag, at: x.at, notes: x.notes })); } catch {}
+  res.json({ version: VERSION, local, releases });
 });
 function runInstaller(file, res) {
   if (!DESKTOP || process.platform !== 'win32') return res.status(400).json({ error: 'Updates install from the Windows app.' });
-  spawn(file, ['/S', '/UPDATE'], { detached: true, stdio: 'ignore' }).unref(); // silent update, relaunches when done
+  // run the installer quietly, then open Movie Royal again once it's done (a little helper script waits for it)
+  const exe = process.execPath, bat = path.join(os.tmpdir(), 'MovieRoyal-Update.cmd');
+  fs.writeFileSync(bat, `@echo off\r\nstart "" /wait "${file}" /S /UPDATE\r\ntimeout /t 2 /nobreak >nul\r\nstart "" "${exe}"\r\n`);
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^ELECTRON_/i.test(k)));
+  spawn('cmd.exe', ['/c', bat], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();
   res.json({ ok: true });
   setTimeout(() => globalThis.__desktop?.quit(), 600);
 }
@@ -782,7 +873,7 @@ app.post('/api/settings', (req, res) => {
     if (k === 'seJwt' || k === 'slToken') startDonationFeed();
   }
   if ('weekStart' in body && db.week) db.week.key = weekKey(); // changing the start day never resets anyone mid-week
-  if (['maxPerUser', 'banCurrentYear', 'luckOn', 'twitchMoviesCommand', 'streamerName'].some(k => k in body)) discord.refreshPinned?.();
+  if (['maxPerUser', 'banCurrentYear', 'luckOn', 'twitchMoviesCommand', 'streamerName', 'ideasDoc'].some(k => k in body)) discord.refreshPinned?.();
   if ('discordChannelName' in body && body.discordChannelName !== undefined && rdName !== db.settings.discordChannelName) rd = true; // makes/finds the new channel
   if ('spotName' in body) for (const e of getList('movies')?.entries || []) if (e.kind === 'spot') e.label = `${db.settings.spotName || 'Kirb'}'s Pick`;
   if ('map' in body && db.settings.map !== 'random' && !mapById(db.settings.map)) db.settings.map = 'random';
@@ -1359,7 +1450,8 @@ app.delete('/api/sounds/:name', (req, res) => {
 });
 
 // ---------- Test tab: try every feature without waiting for real viewers ----------
-app.post('/api/test/chat', (req, res) => { const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null }); res.json({ ok: true }); });
+app.post('/api/test/alert', (req, res) => { chatlog.onAlert({ kind: String(req.body?.kind || 'sub'), login: 'test_viewer', name: 'Test_Viewer', amount: 5, text: String(req.body?.text || 'subscribed · 5 months') }); res.json({ ok: true }); });
+app.post('/api/test/chat', (req, res) => { const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null, emotes: req.body?.emotes || '', color: req.body?.color || null, badgeList: req.body?.badgeList || '' }); res.json({ ok: true }); });
 app.post('/api/test/wheel-redeem-raw', (req, res) => { const b = req.body || {}; const ok = wheel.wheelRedeem({ title: String(b.title || ''), input: b.input, login: String(b.name || 'test').toLowerCase(), name: String(b.name || 'test'), cost: 100 }); res.json({ ok }); });
 app.post('/api/test/wheel-redeem', (req, res) => { const k = String(req.body?.kind || 'respin'), name = String(req.body?.name || 'test_viewer'); const ok = wheel.wheelRedeem({ title: wheel.W().rewards[k] || '', login: name.toLowerCase(), name }); res.json({ ok }); });
 app.post('/api/test/redeem', (req, res) => { triggerEvent(req.body?.event || 'random', { name: String(req.body?.name || 'test_viewer'), avatar: null }, req.body?.bits ? 'bits' : 'points'); res.json({ ok: true }); });

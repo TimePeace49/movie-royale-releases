@@ -2,6 +2,37 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.12.0 (test build)
+- **💬 New Chat tab:**
+  - Your Twitch chat with badges and emotes: Twitch, 7TV, BTTV and FFZ.
+  - An alerts list: subs, gift subs, bits, raids, follows, channel point redemptions, watch streaks and donations.
+  - Find someone by name (click to copy) or search old chat. Chat is saved per day.
+  - Point at a message to delete it, time out, ban or open the person's profile, and send messages from the box at the bottom.
+  - ⧉ Pop out opens chat in its own window for another screen.
+  - The battle claim pop-up shows emotes too.
+- **👤 Viewer profiles: double-click anyone's name.** Shows:
+  - Twitch picture and link, account date, follow date, sub months, watch streak, watch time.
+  - Chats this stream, month, year and all time.
+  - Discord name and movies, battle stats and wins.
+  - Respins: had at the start of the stream, used this stream, have now, when they were used, with give / take buttons.
+  - Their chat log, plus timeout and ban buttons.
+- **Sign in with Twitch again once** to turn on deleting messages, timeouts, bans and watch time. Movie Royal reminds you after updating.
+- **Updates:**
+  - Only **latest releases** install by default.
+  - New 🧪 "Also install test builds" option.
+  - 🕰️ Run any older version that's still on GitHub.
+  - 📝 Patch notes tab in Settings.
+  - If an update adds something to set up, Movie Royal asks once.
+  - Movie Royal now reliably opens again after an update.
+- **💡 Ideas doc** linked in the pinned Discord message (Settings → Discord & picks). The pin updates by itself.
+- **Wheel tab:**
+  - The wheel/tab bar on the left stays put when you scroll.
+  - The right side never scrolls: the wheel shrinks to fit.
+  - Pop-ups only show in the Wheel tab, with a 🎁 count on the Wheel button.
+- **Tabs:** **Pool** is now **🎬 Movie Pool**. **Bans** moved into **Settings → 🚫 Banned Movies**. The People tab has a ✏️ Name changes button.
+- **Defaults:** best of 3/5/7/9 no longer starts the next round by itself (turn it on in Settings → Game). Chat map votes last 120 seconds.
+- **Smaller boxes for small things** (numbers, commands) all over.
+
 ## 1.11.4
 - The little battle preview window in the corner of the other tabs is gone. The battle shows only in the Battle tab.
 

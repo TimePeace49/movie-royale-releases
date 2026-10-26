@@ -21,6 +21,7 @@
   input[type=range] { padding:0; accent-color:var(--gold); background:transparent; border:0; }
   input[type=checkbox], input[type=radio] { width:auto; flex:none; accent-color:var(--gold); }
   input, textarea, select { background:#0f0820; border:1px solid var(--line); border-radius:10px; padding:8px 11px; outline:none; width:100%; }
+  input[type=number] { width:120px; max-width:100%; } input.short { width:220px; max-width:100%; } input[type=color] { width:44px; padding:2px; }
   input:focus, textarea:focus { border-color:var(--gold); }
   textarea { min-height:110px; resize:vertical; }
   a { color:var(--gold); }
@@ -162,6 +163,7 @@
   .listhead input:hover { border-color:var(--line); }
   .luck { color:#7dffa0; font-size:12px; font-weight:700; white-space:nowrap; }
   /* single-pane views */
+  #v-tchat { grid-template-columns:1fr; }
   #v-people, #v-history, #v-bans, #v-sounds, #v-test { grid-template-columns:1fr; }
   #v-people .pane, #v-history .pane { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
   .person td { vertical-align:top; }
@@ -174,10 +176,15 @@
   .round .top { margin-top:6px; font-size:12.5px; } .round .top span { margin-right:10px; white-space:nowrap; }
   .round .ev { margin-top:5px; font-size:12px; color:var(--dim); }
   #v-bans { grid-template-columns:1fr 1fr; }
+  #v-bans.inset { height:auto; padding:0; display:grid; }
   #v-chat, #v-giveaway { grid-template-columns:400px 1fr; }
   #v-wheel { grid-template-columns:minmax(560px,1fr) 640px; }
   #v-wheel .pane { min-height:0; overflow:auto; }
-  #wheelCv { width:100%; max-width:600px; aspect-ratio:1; display:block; margin:0 auto; cursor:pointer; }
+  #v-wheel > .pane:last-child { overflow:hidden; }
+  #wheelRight { height:100%; box-sizing:border-box; display:flex; flex-direction:column; overflow:hidden; } /* the wheel side never scrolls: the wheel shrinks to fit */
+  #wheelCv { flex:1 1 0; min-height:140px; height:auto; width:auto; max-width:100%; aspect-ratio:1; align-self:center; display:block; cursor:pointer; }
+  #wResult { flex:0 1 auto; min-height:0; overflow:auto; }
+  .wsticky { position:sticky; top:0; z-index:5; background:var(--panel); margin:-14px -14px 0; padding:14px 14px 4px; border-bottom:1px solid var(--line); }
   .wbtns { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:8px; margin-top:10px; }
   .wbtns button { padding:14px 8px; font-size:16px; }
   .wspin { font-size:22px !important; }
@@ -234,13 +241,13 @@
   <h1>🍿 MOVIE ROYAL</h1>
   <nav id="nav">
     <button data-v="battle" class="on">⚔️ Battle</button>
-    <button data-v="pool">📋 Pool</button>
+    <button data-v="pool">🎬 Movie Pool</button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
+    <button data-v="tchat">💬 Chat</button>
     <button data-v="people">👥 People</button>
     <button data-v="history">📜 History</button>
-    <button data-v="bans">🚫 Bans</button>
     <button data-v="sounds">🔊 Sounds</button>
     <button data-v="test">🧪 Test</button>
     <button data-v="help">❓ Help</button>
@@ -391,6 +398,7 @@
 <section class="view" id="v-people"><div class="pane" id="peopleBody"></div></section>
 
 <!-- 📜 HISTORY -->
+<section class="view" id="v-tchat"><iframe id="chatFrame" title="Chat" style="width:100%;height:100%;border:0;border-radius:16px"></iframe></section>
 <section class="view" id="v-history"><div class="pane"><div id="histBody"><div class="empty">Loading…</div></div></div></section>
 
 <!-- 🚫 BANS -->
@@ -502,6 +510,8 @@
     <button data-s="movies">🎬 Movie info (TMDB, OMDb, Letterboxd)</button>
     <button data-s="app">🖥️ App &amp; background</button>
     <button data-s="names">✏️ Name changes</button>
+    <button data-s="bans">🚫 Banned Movies</button>
+    <button data-s="notes">📝 Patch notes</button>
     <p class="help" style="margin-top:14px">Need a hand connecting things? <a href="/setup.html">🧭 Setup guide</a></p>
   </div>
   <div class="card setpane"><div class="body" id="settingsBody"></div>
@@ -554,6 +564,8 @@
 </div></dialog>
 
 <script src="wheel.js"></script>
+<script src="chat.js"></script>
+<script src="profile.js"></script>
 <script>
 let S = null, sock = null, filter = '', showOut = false, view = 'battle', sub = 'account', hist = null, histFor = null, histVer = -1, histList = null, settingsDirty = false;
 const $ = id => document.getElementById(id);
@@ -605,9 +617,10 @@ function setView(v) {
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
   if (v === 'sounds') loadSounds();
-  placeStage(); renderView();
+  if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
+  placeStage(); renderView(); if (typeof drawBoosts === 'function') drawBoosts();
 }
-function setSub(s) { sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); }
+function setSub(s) { sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -700,7 +713,7 @@ function renderView() {
   else if (view === 'wheel') renderWheel(true);
   else if (view === 'people') renderPeople();
   else if (view === 'history') { if (histVer !== S.historyVersion || !hist) loadHistory(); }
-  else if (view === 'bans') renderBanSide();
+  else if (view === 'settings' && sub === 'bans') renderBanSide();
   else if (view === 'sounds') renderSound();
 }
 function renderHeader() {
@@ -718,7 +731,7 @@ function renderHeader() {
   const o = S.owner;
   $('me').innerHTML = o ? `<span class="me" title="Signed in with Twitch">${o.avatar ? `<img src="${esc(proxy(o.avatar))}">` : ''}${esc(o.name)}</span>` : `<button class="twitch" onclick="location.href='/auth/twitch'">Sign in with Twitch</button>`;
   const peopleTab = document.querySelector('#nav [data-v="people"]'); peopleTab.innerHTML = `👥 People <span class="pill">${S.people.length}</span>`;
-  const banTab = document.querySelector('#nav [data-v="bans"]'); banTab.innerHTML = `🚫 Bans${S.banCount ? ` <span class="pill">${S.banCount}</span>` : ''}`;
+  const banTab = document.querySelector('#subnav [data-s="bans"]'); if (banTab) banTab.innerHTML = `🚫 Banned Movies${S.banCount ? ` <span class="pill">${S.banCount}</span>` : ''}`;
 }
 
 // ---------- ⚔️ battle ----------
@@ -824,7 +837,7 @@ function renderCalls() {
   box.innerHTML = `<h2>🔮 Chat calls the winner</h2>${c.count ? c.top.map(x => `<div class="row" style="margin:3px 0"><span class="grow">${esc(x.label)}</span><b>${x.n}</b></div>`).join('') + `<p class="help" style="margin-top:6px">${c.count} call${c.count === 1 ? '' : 's'}${c.open ? ' · closes when the fight starts' : ''}</p>` : `<p class="help">Chat types <code>${cmd} Heat</code> before the fight. Call the winner and your own movies get +${esc(String(S.settings.callLuck ?? 1))}% luck.</p>`}`;
 }
 const mapName = id => { const m = (S.maps || []).find(x => x.id === id); return m ? `${m.icon} ${m.name}` : id === '?' ? 'Unknown map' : id; };
-async function voteClick() { if (S.vote) await api('/api/vote/end'); else { await api('/api/vote/start', { seconds: S.settings.voteSeconds || 30 }); toast('🗳️ Map vote started — chat types 1, 2, 3 or 4'); } }
+async function voteClick() { if (S.vote) await api('/api/vote/end'); else { await api('/api/vote/start', { seconds: S.settings.voteSeconds || 120 }); toast('🗳️ Map vote started — chat types 1, 2, 3 or 4'); } }
 function renderVote() {
   const v = S.vote, card = $('voteCard');
   $('voteBtn').textContent = v ? '⏹ End vote now' : '🗳️ Chat vote';
@@ -1120,7 +1133,7 @@ function chattersCard() {
     ${on.map(p => `<span class="chip click" style="border-color:var(--good)" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">🟢 ${esc(p.name)}</span>`).join('')}
     ${off.map(p => `<span class="chip click" style="opacity:.6" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">⚪ ${esc(p.name)}</span>`).join('')}
     ${S.recentChatters.length ? `<details style="margin-top:8px" ${S.recentChatters.some(c => !c.person) ? 'open' : ''}><summary>Recent chatters (${S.recentChatters.length})</summary>
-      <table style="margin-top:6px">${S.recentChatters.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${c.person ? `<span class="tag w">✓ ${esc(c.person)}</span>` : `<select style="width:auto;padding:3px 6px" onchange="if(this.value) api('/api/chatters/link',{login:'${esc(c.login)}',discordId:this.value}).then(()=>toast('Linked ${esc(c.name)}'))"><option value="">This is…</option>${S.people.map(p => `<option value="${esc(p.discordId)}">${esc(p.name)}</option>`).join('')}</select>`}</td></tr>`).join('')}</table></details>` : ''}</div>`;
+      <table style="margin-top:6px">${S.recentChatters.map(c => `<tr><td><b data-user="${esc(c.login || c.name)}" style="cursor:pointer">${esc(c.name)}</b></td><td>${c.person ? `<span class="tag w">✓ ${esc(c.person)}</span>` : `<select style="width:auto;padding:3px 6px" onchange="if(this.value) api('/api/chatters/link',{login:'${esc(c.login)}',discordId:this.value}).then(()=>toast('Linked ${esc(c.name)}'))"><option value="">This is…</option>${S.people.map(p => `<option value="${esc(p.discordId)}">${esc(p.name)}</option>`).join('')}</select>`}</td></tr>`).join('')}</table></details>` : ''}</div>`;
 }
 async function newWeekClick() { const r = await api('/api/movies/new-week'); toast(`🗓️ New week! ${plural(r.back, 'benched movie')} back, ${plural(r.spots, esc(S.settings.spotName) + ' spot')} added`); }
 async function addSpotsClick() { const r = await api('/api/movies/spots'); toast(r.added ? `Added ${plural(r.added, esc(S.settings.spotName) + ' spot')}` : r.spotWon ? `A ${esc(S.settings.spotName)} spot already won this week — they come back ${esc(S.week.backOn)} (or press New week).` : `Already at ${S.settings.spotMax} ${esc(S.settings.spotName)} spots`); }
@@ -1229,7 +1242,7 @@ function renderPeople() {
   ${S.people.map(p => {
     const locked = p.used >= max;
     return `<tr class="person"><td class="thumb">${p.avatar ? `<img src="${esc(p.avatar)}">` : `<span>${esc((p.name[0] || '?').toUpperCase())}</span>`}</td>
-      <td>${p.manual ? `<input class="tw" value="${esc(p.name)}" style="font-weight:700" onchange="api('/api/discord/people/${p.discordId}',{name:this.value})">` : `<b>${esc(p.name)}</b>`}<br><small class="muted">${p.manual ? 'added by you' : 'Discord'} · ${p.watched} watched</small></td>
+      <td>${p.manual ? `<input class="tw" value="${esc(p.name)}" style="font-weight:700" onchange="api('/api/discord/people/${p.discordId}',{name:this.value})">` : `<b data-user="${esc(p.twitch || '')}" data-discord="${esc(p.discordId)}" title="Double-click for their profile" style="cursor:pointer">${esc(p.name)}</b>`}<br><small class="muted">${p.manual ? 'added by you' : 'Discord'} · ${p.watched} watched</small></td>
       <td><button class="${p.chatting ? '' : 'ghost'}" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">${p.chatting ? '🟢 In' : '⚪ Not yet'}</button></td>
       <td style="white-space:nowrap"><input type="number" min="0" max="99" value="${p.used}" style="width:56px;padding:4px" onchange="api('/api/discord/people/${p.discordId}',{picksUsed:this.value})"> <small class="muted">/ ${max}</small>${locked ? ' 🔒' : ''}</td>
       <td>${p.active.map(m => `<span class="chip">${m.benched ? '💤 ' : m.paused ? '⏸ ' : ''}${esc(m.label)}${m.sub ? ` (${esc(m.sub)})` : ''}<button title="Take ${esc(p.name)} off this movie" onclick="unback('${m.id}','${p.discordId}')">✕</button></span>`).join('')}
@@ -1355,11 +1368,11 @@ function renderWheel(fromState) {
   wKey = key;
   const w = wCur();
   const tabs = [['spots', '✏️ Spots'], ['wsettings', '⚙️ Wheel settings'], ['spins', '🎟️ Spins & growing'], ['history', '📜 History'], ['stats', '📊 Stats'], ['global', '🌐 All wheels']];
-  $('wheelLeft').innerHTML = `<div class="row" style="gap:8px;flex-wrap:wrap">
+  $('wheelLeft').innerHTML = `<div class="wsticky"><div class="row" style="gap:8px;flex-wrap:wrap">
       <select style="width:auto;max-width:260px" onchange="api('/api/wheel/active',{id:this.value}).then(loadWheel).then(renderWheel)">${WD.wheels.map(x => `<option value="${x.id}" ${x.id === WD.activeId ? 'selected' : ''}>🎡 ${esc(x.name)} (${x.entries.length})</option>`).join('')}</select>
       <button onclick="wNew()">➕ New wheel</button><button onclick="wImport()">📥 Import</button><button class="ghost" onclick="api('/api/wheel/${w.id}/duplicate').then(loadWheel).then(renderWheel)">⧉ Copy</button>
       <button class="ghost danger" onclick="if(confirm('Delete the wheel “${esc(w.name).replace(/'/g, '')}”? Its history stays.')) api('/api/wheel/${w.id}',null,'DELETE').then(loadWheel).then(renderWheel)">🗑</button></div>
-    <div class="seg" style="margin:12px 0">${tabs.map(([k, n]) => `<button class="${wTab === k ? 'on' : ''}" onclick="wTab='${k}';renderWheel()">${n}</button>`).join('')}</div>
+    <div class="seg" style="margin:12px 0 8px">${tabs.map(([k, n]) => `<button class="${wTab === k ? 'on' : ''}" onclick="wTab='${k}';renderWheel()">${n}</button>`).join('')}</div></div>
     <div id="wBody"></div>`;
   if (wTab === 'spots') drawSpots(); else if (wTab === 'spins') drawWSpins(); else if (wTab === 'history') drawWHist(); else if (wTab === 'stats') drawWStats(); else if (wTab === 'global') drawWGlobal(); else drawWSettings();
 }
@@ -1584,7 +1597,7 @@ async function renameGo(prefix) {
   toast(`✏️ Done: ${r.links} link(s), ${r.movies} movie(s), ${r.entries} entr(ies), ${r.history} history spot(s), ${r.wheel} wheel record(s)${r.spins ? `, ${r.spins} saved spin(s)` : ''} moved to ${esc(to)}.`, 6000);
   $(prefix + 'From').value = $(prefix + 'To').value = ''; loadWheel(); if ($('renameLog')) loadRenames();
 }
-const renameBox = () => `<p class="help" style="margin-top:14px">✏️ Someone changed their Twitch name? <a href="#" onclick="setView('settings');setTimeout(()=>setSub('names'),50);return false">Settings → Name changes</a> moves everything over.</p>`;
+const renameBox = () => `<div class="row" style="margin-top:14px;gap:10px;align-items:center"><button onclick="setView('settings');setTimeout(()=>setSub('names'),50)">✏️ Name changes</button><span class="help" style="margin:0">Someone changed their Twitch name? This moves their movies, history, stats and spins to the new name.</span></div>`;
 async function loadRenames() { const l = await fetch('/api/renames').then(r => r.json()); const el = $('renameLog'); if (!el) return; el.innerHTML = l.length ? l.map(r => `<div>${esc(new Date(r.at).toLocaleString())}: <b>${esc(r.from)}</b> → <b>${esc(r.to)}</b> <span class="muted">(${Object.entries(r.moved).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(', ') || 'nothing found'})</span></div>`).join('') : 'None yet.'; }
 // 🎟️ saved spins + growing
 function drawWSpins() {
@@ -1594,7 +1607,7 @@ function drawWSpins() {
     <div class="row" style="gap:8px;flex-wrap:wrap"><input id="gsWho" style="width:180px" placeholder="Twitch name" list="gsList"><datalist id="gsList">${WD.bank.map(b => `<option value="${esc(b.name)}">`).join('')}</datalist>
       <input id="gsN" type="number" style="width:80px" value="1"><input id="gsWhy" class="grow" placeholder="Why? (sub, $5 donation, raid…)"><button class="primary" onclick="wGive()">Give</button></div>
     <p class="help">They type <code>${esc(WD.cmd.respin)}</code> in chat to use one (it respins the wheel), and <code>${esc(WD.cmd.spins)}</code> to see how many they have. Use a minus number to take spins away.</p>
-    ${WD.bank.length ? `<div class="stwrap" style="max-height:300px"><table class="st"><thead><tr><th class="l">Who</th><th>Has now</th><th>Ever given</th><th>Used</th><th></th></tr></thead><tbody>${WD.bank.map(b => `<tr><td class="l">${esc(b.name)}</td><td><b>${b.spins}</b></td><td>${b.got}</td><td>${b.used}</td><td><button class="ghost" onclick="wGiveTo('${esc(b.name).replace(/'/g, '')}',1)">+1</button><button class="ghost" ${b.spins ? '' : 'disabled'} onclick="wGiveTo('${esc(b.name).replace(/'/g, '')}',-1)">−1</button></td></tr>`).join('')}</tbody></table></div>` : ''}
+    ${WD.bank.length ? `<div class="stwrap" style="max-height:300px"><table class="st"><thead><tr><th class="l">Who</th><th>Has now</th><th>Ever given</th><th>Used</th><th></th></tr></thead><tbody>${WD.bank.map(b => `<tr><td class="l"><span data-user="${esc(b.login)}" style="cursor:pointer">${esc(b.name)}</span></td><td><b>${b.spins}</b></td><td>${b.got}</td><td>${b.used}</td><td><button class="ghost" onclick="wGiveTo('${esc(b.name).replace(/'/g, '')}',1)">+1</button><button class="ghost" ${b.spins ? '' : 'disabled'} onclick="wGiveTo('${esc(b.name).replace(/'/g, '')}',-1)">−1</button></td></tr>`).join('')}</tbody></table></div>` : ''}
     <h4 style="margin:16px 0 6px">📈 Grow a spot</h4>
     <div class="row" style="gap:8px;flex-wrap:wrap"><select id="grSpot" class="grow">${w.entries.map(e => `<option value="${e.id}">${esc(e.text)} (size ${e.weight})</option>`).join('')}</select><input id="grN" type="number" style="width:70px" value="1" title="How many grows"><input id="grWho" style="width:160px" placeholder="Who paid for it?"><input id="grWhy" style="width:180px" placeholder="Why? (sub, bits, $)"><button class="primary" onclick="wGrowGo()">📈 Grow</button></div>
     <p class="help">Each grow adds ${WD.growStep} to the spot's size. It's saved in the history with who and why, and pops up on stream.</p>
@@ -1623,6 +1636,8 @@ let boostList = [], boostMin = false;
 function drawBoosts(list) {
   if (list) boostList = list;
   const box = $('boosts'); if (!box || !WD) return;
+  const nb = document.querySelector('#nav [data-v="wheel"]'); if (nb) nb.innerHTML = `🎡 Wheel${boostList.length ? ` <span class="pill">🎁 ${boostList.length}</span>` : ''}`;
+  if (view !== 'wheel') { box.innerHTML = ''; return; } // pop-ups only show in the Wheel tab (the Wheel button shows how many are waiting)
   const w = WD.wheels.find(x => x.id === WD.activeId) || wCur(); if (!w) return;
   const Q = w.opts?.pop || {}, voidOn = w.opts?.void?.on, voided = w.entries.filter(e => e.voided);
   const names = `<datalist id="bxSpots">${w.entries.filter(e => e.text && e.type !== 'void' && !e.voided).map(e => `<option value="${esc(e.text)}">`).join('')}</datalist>`;
@@ -1814,8 +1829,9 @@ async function createList() {
 // ---------- ⚙️ settings (sub-tabs) ----------
 function openSettings(force) {
   if (!force && view !== 'settings') return setView('settings');
+  { const vb = $('v-bans'); if (vb && vb.closest('#settingsBody')) document.body.appendChild(vb); vb?.classList.remove('on'); } // 🚫 Banned Movies lives inside Settings
   const s = S.settings, port = S.port, tw = S.status.twitch, o = S.owner, d = S.status.discord;
-  const f = (k, label, ph = '', type = 'text', extra = '') => `<label>${label}</label><input data-k="${k}" type="${type}" value="${esc(s[k])}" placeholder="${esc(ph)}" ${extra}>`;
+  const f = (k, label, ph = '', type = 'text', extra = '') => `<label>${label}</label><input data-k="${k}" type="${type}" value="${esc(s[k])}" placeholder="${esc(ph)}" ${/Command$|^spotName$|^colorReward$|^streamerName$|^twitchChannel$|^discordChannelName$|^letterboxdUser$/.test(k) ? 'class="short"' : ''} ${extra}>`;
   const ck = (k, text, def = true) => `<label class="ck"><input type="checkbox" data-k="${k}" ${(def ? s[k] !== false : !!s[k]) ? 'checked' : ''}> <span>${text}</span></label>`;
   const evOpts = sel => Object.entries(S.events).map(([k, e]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${e.icon} ${e.name}</option>`).join('');
   const subs = {
@@ -1830,12 +1846,12 @@ function openSettings(force) {
     game: `<h3>⚔️ The battle</h3>
       <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('gameSeconds', 'Fight length (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
       ${ck('fairOdds', '<b>Exact odds</b> — the winner is drawn by the odds like a real wheel, and the fight plays it out. Off = pure chaos physics.', false)}
-      ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)')}
+      ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
       ${f('helpCommand', 'Chat command that lists every chat command', '!moviesroyal')}
       ${ck('autoFullscreen', 'Go fullscreen when a battle starts (press Esc to leave)')}
       <h3 style="margin-top:18px">🗺️ Maps</h3>
-      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${(S.maps || []).map(m => `<option value="${m.id}" ${s.map === m.id ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join('')}</select></div>${f('voteSeconds', 'Chat map vote length (seconds)', '30', 'number', 'min="10" max="180"')}</div>
-      <p class="help">You can also change the map under the battle screen, or press 🗳️ Chat vote: 4 random maps, chat types 1–4.</p>
+      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${(S.maps || []).map(m => `<option value="${m.id}" ${s.map === m.id ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join('')}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
+      <p class="help">You can also change the map under the battle screen, or press 🗳️ Chat vote: 4 random maps, chat types 1–4. The vote lasts the number of seconds above (120 seconds = 2 minutes).</p>
       <h3 style="margin-top:18px">🎥 Camera</h3>
       <div class="grid2">${f('cliffSize', 'Cliff size on screen (%) — 100 = small, 130 = default, 170 = huge', '130', 'number', 'min="60" max="250" step="5"')}</div>
       ${ck('autoCamera', 'Auto camera — zooms in as the cliff crumbles so the action stays big')}
@@ -1861,7 +1877,9 @@ function openSettings(force) {
       ${ck('chatGate', "Only put someone's movies on the cliff once they chat on Twitch this stream")}
       <h3 style="margin-top:18px">🎟️ Wildcard spots</h3>
       <div class="grid2">${f('spotName', 'Spot name (e.g. Kirb)')}${f('spotMax', 'Spots each week', '', 'number')}${f('spotTwitch', 'Their Twitch name (for the picture, optional)')}</div>
-      ${ck('autoSpots', 'Add the spots automatically every new week')}`,
+      ${ck('autoSpots', 'Add the spots automatically every new week')}
+      <h3 style="margin-top:18px">💡 Ideas doc</h3>
+      ${f('ideasDoc', 'Link in the pinned Discord message where people can leave ideas (blank = no link)', 'https://docs.google.com/…')}`,
     luck: `<h3>🍀 Luck</h3>
       ${ck('luckOn', '<b>Turn on luck</b> — every battle a Discord movie loses makes it a little more likely to win next time. It builds week to week. Your luck only starts over when one of your movies actually gets watched (a win counts as watched; “Not watching it — put it back” gives the luck back).', false)}
       ${f('luckPerBattle', 'Extra chance per battle (%)', '1', 'number', 'step="0.01" min="0"')}
@@ -1923,6 +1941,8 @@ function openSettings(force) {
       ${ck('runInBackground', 'Keep running in the tray when I close the window')}
       ${ck('startWithWindows', 'Start Movie Royal when Windows starts (quietly, in the tray)', false)}
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
+    bans: `<div id="bansSlot"></div>`,
+    notes: `<h3>📝 Patch notes</h3><p class="help">What changed in each latest release. You're on v${esc(S.version || '')}.</p><div id="notesBody" class="help">Loading…</div>`,
     names: `<h3>✏️ Name changes</h3>
       <p class="help">Someone changed their Twitch name? Type the old name and the new one and everything moves over by itself: their Discord movie link and picks, ball color, chat battle and giveaway entries, battle history, stats, saved wheel spins and wheel history.</p>
       <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><input id="rnSFrom" style="width:200px" placeholder="Old name"><span style="font-size:20px">→</span><input id="rnSTo" style="width:200px" placeholder="New name" onkeydown="if(event.key==='Enter') renameGo('rnS')"><button class="primary" onclick="renameGo('rnS')">✏️ Move everything over</button></div>
@@ -2023,6 +2043,14 @@ async function saveSettings() {
   await api('/api/settings', body);
   settingsDirty = false; $('saveHint').textContent = 'Saved.';
 }
+const md = t => esc(t).replace(/^### (.*)$/gm, '<h4>$1</h4>').replace(/^## (.*)$/gm, '<h3 style="margin:18px 0 6px;color:var(--gold,#ffc94a)">$1</h3>').replace(/^# (.*)$/gm, '').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>')
+  .replace(/^(\s*)[-*] (.*)$/gm, (m, sp, x) => `<div style="margin:3px 0 3px ${sp.length * 9 + 4}px">• ${x}</div>`).replace(/\n{2,}/g, '<br>');
+async function loadNotes() {
+  const el = $('notesBody'); if (!el) return;
+  const r = await fetch('/api/patchnotes').then(r => r.json());
+  const gh = r.releases.filter(x => x.notes && /patch notes|what's new|##/i.test(x.notes));
+  el.innerHTML = gh.length ? gh.map(x => `<div class="card" style="margin:10px 0"><h3 style="margin:0">${esc(x.tag)} <span class="muted" style="font-size:13px">${esc(new Date(x.at).toLocaleDateString())}</span></h3>${md(x.notes.replace(/## ⬇️ Download[\s\S]*?(?=\n## |$)/, ''))}</div>`).join('') : md(r.local || 'No patch notes yet.');
+}
 async function fillAppBox() {
   const box = $('appBox'); if (!box) return;
   const a = await fetch('/api/app').then(r => r.json());
@@ -2030,7 +2058,15 @@ async function fillAppBox() {
     ${a.desktop ? `<div class="row" style="margin-top:8px"><button class="primary" onclick="checkUpdate(this)">🔄 Check for updates</button>
       <button onclick="$('updFile').click()">📦 Install update from file…</button><input type="file" id="updFile" accept=".exe" hidden onchange="installFile(this.files[0])"></div><div id="updMsg"></div>` : ''}
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
-    <p class="help">When you post a new version there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>`;
+    <p class="help">When a new <b>latest</b> release is posted there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>
+    <label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;toast(this.checked ? '🧪 You will also get test builds (pre-releases).' : 'Only latest releases from now on.')})"> <span>🧪 Also install <b>test builds</b> (pre-releases). Leave this off unless you're testing new stuff.</span></label>
+    ${a.desktop ? `<details style="margin-top:10px" ontoggle="if(this.open) loadPastReleases()"><summary>🕰️ Run an older version</summary><div id="pastRel" class="help">Loading…</div></details>` : ''}`;
+}
+async function loadPastReleases() {
+  const r = await fetch('/api/update/releases').then(r => r.json()), el = $('pastRel'); if (!el) return;
+  if (r.error) return el.innerHTML = '⚠️ ' + esc(r.error);
+  el.innerHTML = `<p style="margin:4px 0 8px">Every version still on GitHub. Installing one replaces the version you have now. Your lists and history stay, but an older version may not know about newer features. Turn off automatic update prompts for it by pressing "Skip this version" when it asks.</p>` +
+    r.releases.map(x => `<div class="row" style="gap:8px;padding:4px 0;border-bottom:1px solid var(--line)"><b style="width:80px">${esc(x.tag)}</b><span class="grow">${x.pre ? '🧪 test build' : '✅ latest release'} · ${esc(new Date(x.at).toLocaleDateString())}${x.tag.replace(/^v/, '') === r.version ? ' · <b>you have this one</b>' : ''}</span><button class="ghost" ${x.tag.replace(/^v/, '') === r.version ? 'disabled' : ''} onclick="if(confirm('Install ${esc(x.tag)}? Movie Royal will close, install it and open again.')) installLatest('${esc(x.url)}', this)">Install</button></div>`).join('');
 }
 async function checkUpdate(btn) {
   btn.disabled = true; btn.textContent = 'Checking…';
@@ -2043,7 +2079,7 @@ async function checkUpdate(btn) {
   else showUpdate(r);
 }
 function showUpdate(r) {
-  $('updBody').innerHTML = `<h3>✨ Update available: ${esc(r.latest)}</h3><p class="help">You have v${esc(r.version)}. Movie Royal will close, update, and open again — your lists, history and settings are kept.</p>
+  $('updBody').innerHTML = `<h3>✨ Update available: ${esc(r.latest)}${r.pre ? ' 🧪 (test build)' : ''}</h3><p class="help">You have v${esc(r.version)}. Movie Royal will close, update, and open again — your lists, history and settings are kept.</p>
     ${r.notes ? `<div class="card soft" style="white-space:pre-wrap;max-height:200px;overflow:auto;font-size:13px">${esc(r.notes)}</div>` : ''}
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="try{localStorage.setItem('skipUpd','${esc(r.latest)}')}catch{};upd.close()">Skip this version</button><button onclick="upd.close()">Later</button><button class="primary" onclick="installLatest('${esc(r.url)}', this)">Install now</button></div>`;
   upd.showModal();
@@ -2062,6 +2098,15 @@ async function restore(file) {
   let data; try { data = JSON.parse(await file.text()); } catch { return toast("⚠️ That file isn't a backup."); }
   await api('/api/restore', data); toast('✅ Backup restored');
 }
+async function whatsNew() { // an update added something to set up? ask once
+  try {
+    const r = await fetch('/api/whatsnew').then(r => r.json()); if (!r.steps?.length) return;
+    $('updBody').innerHTML = `<h3>🆕 New in this update: something to set up</h3><p class="help">Movie Royal ${esc(r.to)} added ${r.steps.length === 1 ? 'something' : 'a few things'} you can connect. You can skip it, and it's always in the 🧭 Setup guide.</p>
+      ${r.steps.map(x => `<div class="card soft" style="margin:8px 0"><b>${esc(x.title)}</b><div class="help" style="margin:4px 0 8px">${esc(x.why)}</div><a href="/setup.html?step=${esc(x.id)}"><button class="primary">Set it up</button></a></div>`).join('')}
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button onclick="upd.close()">Later</button></div>`;
+    upd.showModal();
+  } catch {}
+}
 async function updateOnOpen() { // asks once each time the app opens, if there's a newer version posted
   try {
     const r = await fetch('/api/update/check').then(r => r.json());
@@ -2071,7 +2116,7 @@ async function updateOnOpen() { // asks once each time the app opens, if there's
 }
 
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
-fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 </body>

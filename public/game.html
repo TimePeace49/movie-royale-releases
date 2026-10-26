@@ -27,6 +27,7 @@
   #wlCard .r { font-size:28px; line-height:1.3; white-space:pre-wrap; margin-top:12px; padding:14px 18px; background:#ffffff12; border-radius:16px; }
   #wlCard .r:empty { display:none; }
   #wlCard .m { font-size:22px; font-weight:700; opacity:.85; margin-top:14px; display:flex; gap:18px; flex-wrap:wrap; }
+  #chat .emote { height:34px; vertical-align:middle; margin:-6px 2px; }
   #wlTimer { position:absolute; left:1090px; right:60px; top:600px; background:rgba(18,10,36,.85); border:3px solid #4fc3ff; border-radius:24px; padding:18px 28px; display:flex; align-items:center; gap:22px; transition:opacity .3s; }
   #wlTimer.off { opacity:0; }
   #wlTimer .n { font-size:92px; line-height:1; font-variant-numeric:tabular-nums; }
@@ -197,6 +198,7 @@
 
 <script src="sfx.js"></script>
 <script src="wheel.js"></script>
+<script src="chat.js"></script>
 <script>
 (() => {
 // ================= setup =================
@@ -2420,6 +2422,7 @@ function hideWin() { $('win').classList.add('hidden'); $('win').classList.remove
 
 let claimTimer = null, claimEnds = 0, claimTotal = 30, claimWinner = null;
 function startClaim(w, seconds, recent) {
+  window.ChatUI?.load(); // emote pictures for the chat in this pop-up
   hideWin(); claimWinner = w; claimTotal = seconds; claimEnds = performance.now() + seconds * 1000;
   $('claim').classList.remove('expired');
   $('cTitle').textContent = `${w.label}${w.sub ? ` (${w.sub})` : ''}`;
@@ -2442,7 +2445,7 @@ function addChat(m) {
   const box = $('chat'); box.querySelector('.empty')?.remove();
   if (!m.silent) SFX.play(m.winner ? 'ding' : 'pop');
   const el = document.createElement('div'); el.className = 'm' + (m.winner ? ' w' : '');
-  el.innerHTML = `<b>${esc(m.name)}</b>${esc(m.text)}`;
+  el.innerHTML = `<b${m.color ? ` style="color:${esc(m.color)}"` : ''}>${esc(m.name)}</b>${window.ChatUI ? ChatUI.text(m.text, m.emotes) : esc(m.text)}`; // with Twitch / 7TV / BTTV / FFZ emotes
   box.appendChild(el);
   while (box.children.length > 9) box.firstChild.remove();
 }

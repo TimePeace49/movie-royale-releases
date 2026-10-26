@@ -44,9 +44,11 @@ const defaults = () => ({
     soundOn: true, sfxVolume: 70, musicVolume: 35,
     spotName: 'Kirb', spotTwitch: '', spotMax: 3, weekStart: 0, autoSpots: true,
     runInBackground: false, startWithWindows: false, chatGate: true, autoFullscreen: true,
-    banCurrentYear: true, luckOn: true, luckPerBattle: 1, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, helpCommand: '!moviesroyal', seriesAuto: true, omdbKey: '',
+    banCurrentYear: true, luckOn: true, luckPerBattle: 1, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, helpCommand: '!moviesroyal', seriesAuto: false, omdbKey: '',
     twitchMoviesCommand: '!mymovies', twitchCooldown: 30, discordChannelName: 'movies-royal',
-    pointsOn: true, bitsOn: true, cloud: {}, map: 'random', voteSeconds: 30, colorsOn: true, colorMode: 'free', colorCommand: '!color', colorReward: 'Royal: Ball color',
+    pointsOn: true, bitsOn: true, cloud: {}, map: 'random', voteSeconds: 120, colorsOn: true, colorMode: 'free', colorCommand: '!color', colorReward: 'Royal: Ball color',
+    ideasDoc: 'https://docs.google.com/document/d/1bcgwJP3jX2ixkwlaRS19mUdGvotVIDAppZ6AkFOTRck/edit?usp=sharing', // 💡 linked in the pinned Discord message
+    betaUpdates: false, lastSeenVersion: '', // also install pre-releases (test builds)
     seJwt: '', slToken: '', // 💵 StreamElements / Streamlabs donations
     updateRepo: '', setupSeen: false, rewardsCreated: false, streamSetup: false,
     fairOdds: true,
@@ -87,6 +89,8 @@ if (!db.settings.v6) { db.settings.v6 = true; if (db.settings.streamerName === '
 if (!db.settings.v4) { db.settings.v4 = true; db.settings.weekStart = 0; } // weeks start on Sunday
 if (!db.settings.v3) { db.settings.v3 = db.settings.v2 = true; db.settings.lobbySeconds = 0; } // Start now begins the fight right away
 // v9: new defaults: luck on, picks close while live, closing the window quits (no tray)
+// v12: best-of rounds wait for you; chat map votes last 2 minutes
+if (!db.settings.v12) { db.settings.v12 = true; db.settings.seriesAuto = false; if (!db.settings.voteSeconds || db.settings.voteSeconds === 30) db.settings.voteSeconds = 120; }
 if (!db.settings.v9) { db.settings.v9 = true; db.settings.luckOn = true; db.settings.closePicksWhenLive = true; db.settings.runInBackground = false; }
 if (!db.settings.v8) { db.settings.v8 = true; if (db.settings.twitchMoviesCommand === '!movies') db.settings.twitchMoviesCommand = '!mymovies'; }
 if (!db.settings.v7) { db.settings.v7 = true; if (Number(db.settings.maxFighters) === 40) db.settings.maxFighters = 1000; if (Number(db.settings.luckPerBattle) === 0.01) db.settings.luckPerBattle = 1; } // new defaults: 1000 pieces, 1% luck

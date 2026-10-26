@@ -10,6 +10,10 @@ on:
       version:
         description: "Version number, like 1.2.0 (must be higher than the last release)"
         required: true
+      latest:
+        description: "Make it the latest release (everyone gets it). Leave off for a pre-release (test build)."
+        type: boolean
+        default: false
   push:
     tags: ["v*"]
 
@@ -50,13 +54,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.v.outputs.version }}
-          name: Movie Royal ${{ steps.v.outputs.version }}
+          name: Movie Royal ${{ steps.v.outputs.version }}${{ github.event.inputs.latest == 'true' && '' || ' (test build)' }}
+          prerelease: ${{ github.event.inputs.latest != 'true' }}
+          make_latest: ${{ github.event.inputs.latest == 'true' && 'true' || 'false' }}
           files: dist/MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe
           generate_release_notes: true
           body: |
             ## ⬇️ Download
             Grab **MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe** below and run it.
             Already have Movie Royal? It will offer this update the next time it opens.
+            ${{ github.event.inputs.latest != 'true' && '> 🧪 **This is a test build (pre-release).** Only copies with "Also install test builds" turned on (Settings → Account & updates) will offer it.' || '' }}
 
             If Windows says "Windows protected your PC", click **More info → Run anyway** (the app isn't code-signed).
 

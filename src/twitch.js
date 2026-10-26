@@ -2,10 +2,10 @@
 import WebSocket from 'ws';
 import { db, save } from './store.js';
 
-export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers'];
+export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters'];
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
 
-let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {} };
+let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {} };
 let es = null, esAlive = false, chat = null, appToken = null, stopped = false;
 const userCache = new Map();
 
@@ -85,7 +85,7 @@ export async function getUsers(logins) {
     try {
       const j = await helix('users?' + need.slice(i, i + 100).map(l => 'login=' + encodeURIComponent(l)).join('&'));
       for (const u of j.data || []) {
-        const v = { login: u.login, name: u.display_name, avatar: u.profile_image_url };
+        const v = { login: u.login, name: u.display_name, avatar: u.profile_image_url, id: u.id, createdAt: u.created_at, about: u.description || '' };
         userCache.set(u.login, v); out.set(u.login, v);
       }
     } catch (e) { console.error('[twitch] users', e.message); }
@@ -132,10 +132,10 @@ function connectEventSub(url, subscribe) {
       if (subscribe) {
         const sid = m.payload.session.id;
         const cond = { broadcaster_user_id: status.userId };
-        const subs = [['channel.channel_points_custom_reward_redemption.add', '1'], ['channel.cheer', '1'], ['stream.online', '1'], ['stream.offline', '1']];
+        const subs = [['channel.channel_points_custom_reward_redemption.add', '1'], ['channel.cheer', '1'], ['stream.online', '1'], ['stream.offline', '1'], ['channel.raid', '1', { to_broadcaster_user_id: status.userId }], ['channel.follow', '2', { broadcaster_user_id: status.userId, moderator_user_id: status.userId }]];
         const errs = [];
-        for (const [t, v] of subs) {
-          try { await helix('eventsub/subscriptions', { method: 'POST', body: JSON.stringify({ type: t, version: v, condition: cond, transport: { method: 'websocket', session_id: sid } }) }); }
+        for (const [t, v, c2] of subs) {
+          try { await helix('eventsub/subscriptions', { method: 'POST', body: JSON.stringify({ type: t, version: v, condition: c2 || cond, transport: { method: 'websocket', session_id: sid } }) }); }
           catch (e) { errs.push(`${t}: ${e.message}`); }
         }
         status.error = errs.join(' | ') || null;
@@ -146,6 +146,10 @@ function connectEventSub(url, subscribe) {
     else if (type === 'notification') {
       kick(10);
       const t = m.metadata.subscription_type, e = m.payload.event;
+      if (t === 'channel.channel_points_custom_reward_redemption.add') handlers.alert({ kind: 'redeem', login: e.user_login, name: e.user_name, text: e.reward.title + (e.user_input ? ': ' + e.user_input : ''), amount: e.reward.cost });
+      if (t === 'channel.raid') handlers.alert({ kind: 'raid', login: e.from_broadcaster_user_login, name: e.from_broadcaster_user_name, amount: e.viewers, text: `raided with ${e.viewers} viewers` });
+      if (t === 'channel.follow') handlers.alert({ kind: 'follow', login: e.user_login, name: e.user_name, text: 'followed', at: Date.parse(e.followed_at) || Date.now() });
+      if (t === 'channel.cheer') handlers.alert({ kind: 'bits', login: e.user_login, name: e.is_anonymous ? 'Anonymous' : e.user_name, amount: e.bits, text: `cheered ${e.bits} bits${e.message ? ': ' + e.message : ''}` });
       if (t === 'channel.channel_points_custom_reward_redemption.add')
         handlers.redeem({ title: e.reward.title, login: e.user_login, name: e.user_name, input: e.user_input, id: e.id, rewardId: e.reward.id, cost: e.reward.cost });
       else if (t === 'stream.online') handlers.live(true);
@@ -181,21 +185,30 @@ function startChat() {
     for (const line of String(raw).split('\r\n')) {
       if (!line) continue;
       if (line.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); continue; }
-      const un = line.match(/^@(\S+) :tmi\.twitch\.tv USERNOTICE #\S+/); // subs, resubs, gift subs
+      const un = line.match(/^@(\S+) :tmi\.twitch\.tv USERNOTICE #\S+(?: :(.*))?$/); // subs, resubs, gift subs, raids, watch streaks
       if (un) {
         const tg = Object.fromEntries(un[1].split(';').map(kv => kv.split('='))), id = tg['msg-id'], plan = tg['msg-param-sub-plan'] || '1000';
-        const tier = plan === '3000' ? 3 : plan === '2000' ? 2 : 1, dn = s => String(s || '').replace(/\\s/g, ' ');
-        if (id === 'sub' || id === 'resub') handlers.sub({ kind: id, login: tg.login, name: dn(tg['display-name']) || tg.login, tier });
-        else if (id === 'subgift' || id === 'anonsubgift') handlers.sub({ kind: 'gift', login: id === 'anonsubgift' ? null : tg.login, name: dn(tg['display-name']) || tg.login, tier, recipient: dn(tg['msg-param-recipient-display-name']) });
+        const tier = plan === '3000' ? 3 : plan === '2000' ? 2 : 1, dn = s => String(s || '').replace(/\\s/g, ' '), name = dn(tg['display-name']) || tg.login;
+        const months = Number(tg['msg-param-cumulative-months']) || 0;
+        if (id === 'sub' || id === 'resub') { handlers.sub({ kind: id, login: tg.login, name, tier, months }); handlers.alert({ kind: 'sub', login: tg.login, name, amount: months, text: `${id === 'resub' ? 'resubscribed' : 'subscribed'}${tier > 1 ? ` (tier ${tier})` : plan === 'Prime' ? ' with Prime' : ''}${months > 1 ? ` · ${months} months` : ''}${un[2] ? ': ' + un[2] : ''}`, months }); }
+        else if (id === 'subgift' || id === 'anonsubgift') handlers.sub({ kind: 'gift', login: id === 'anonsubgift' ? null : tg.login, name, tier, recipient: dn(tg['msg-param-recipient-display-name']) });
+        else if (id === 'submysterygift') handlers.alert({ kind: 'gift', login: tg.login, name, amount: Number(tg['msg-param-mass-gift-count']) || 1, text: `gifted ${tg['msg-param-mass-gift-count'] || 1} subs!` });
+        else if (id === 'viewermilestone' && tg['msg-param-category'] === 'watch-streak') handlers.alert({ kind: 'streak', login: tg.login, name, amount: Number(tg['msg-param-value']) || 0, text: `is on a ${tg['msg-param-value']}-stream watch streak!${un[2] ? ' ' + un[2] : ''}` });
+        else if (id === 'announcement') handlers.alert({ kind: 'announce', login: tg.login, name, text: un[2] || '' });
+        if ((id === 'subgift') && !tg['msg-param-origin-id']) handlers.alert({ kind: 'gift', login: tg.login, name, amount: 1, text: `gifted a sub to ${dn(tg['msg-param-recipient-display-name'])}` });
         continue;
       }
+      const cm = line.match(/^@(\S+) :tmi\.twitch\.tv CLEARMSG #\S+/); // a message got deleted
+      if (cm) { const tg = Object.fromEntries(cm[1].split(';').map(kv => kv.split('='))); handlers.clear({ id: tg['target-msg-id'] }); continue; }
+      const cc = line.match(/^@(\S+) :tmi\.twitch\.tv CLEARCHAT #\S+(?: :(\S+))?/); // timeout / ban / chat cleared
+      if (cc) { const tg = Object.fromEntries(cc[1].split(';').map(kv => kv.split('='))); handlers.clear({ login: cc[2] || null, duration: Number(tg['ban-duration']) || 0 }); continue; }
       const m = line.match(/^(?:@(\S+) )?:(\w+)!\S+ PRIVMSG #\S+ :(.*)$/);
       if (!m) continue;
       const tags = Object.fromEntries((m[1] || '').split(';').map(kv => kv.split('=')));
       const badges = Object.fromEntries(String(tags.badges || '').split(',').filter(Boolean).map(b => b.split('/')));
       const info = Object.fromEntries(String(tags['badge-info'] || '').split(',').filter(Boolean).map(b => b.split('/')));
       const subV = Number(badges.subscriber || badges.founder || 0);
-      handlers.chat({ login: m[2], name: tags['display-name'] || m[2], text: m[3].trim(), userId: tags['user-id'] || null,
+      handlers.chat({ login: m[2], name: tags['display-name'] || m[2], text: m[3].trim(), userId: tags['user-id'] || null, id: tags.id || null, color: tags.color || null, emotes: tags.emotes || '', badgeList: tags.badges || '', at: Number(tags['tmi-sent-ts']) || Date.now(),
         badges: { sub: 'subscriber' in badges || 'founder' in badges, tier: subV >= 3000 ? 3 : subV >= 2000 ? 2 : ('subscriber' in badges || 'founder' in badges) ? 1 : 0, months: Number(info.subscriber || info.founder || 0), vip: 'vip' in badges, mod: 'moderator' in badges, broadcaster: 'broadcaster' in badges } });
     }
   });
@@ -343,3 +356,37 @@ export async function noInput(titles) {
   for (const r of rewards) if (want.has(r.title.toLowerCase()) && r.is_user_input_required) { await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}&id=${r.id}`, { method: 'PATCH', body: JSON.stringify({ is_user_input_required: false, prompt: 'The streamer picks which spot.' }) }); n++; }
   return n;
 }
+
+// ---------- moderation (needs the new chat permissions: sign in with Twitch again once) ----------
+const modOk = sc => (status.scopes || []).includes(sc);
+async function userId(login) { const u = (await getUsers([login])).get(String(login).toLowerCase()); if (!u?.id) throw new Error(`No Twitch user called ${login}`); return u.id; }
+export async function timeout(login, seconds, reason = '') {
+  if (!modOk('moderator:manage:banned_users')) throw new Error('Sign in with Twitch again to allow timeouts and bans.');
+  const data = { user_id: await userId(login), reason: String(reason).slice(0, 400) }; if (seconds) data.duration = Math.max(1, Math.min(1209600, Math.round(seconds)));
+  await helix(`moderation/bans?broadcaster_id=${status.userId}&moderator_id=${status.userId}`, { method: 'POST', body: JSON.stringify({ data }) });
+}
+export async function unban(login) {
+  if (!modOk('moderator:manage:banned_users')) throw new Error('Sign in with Twitch again to allow timeouts and bans.');
+  await helix(`moderation/bans?broadcaster_id=${status.userId}&moderator_id=${status.userId}&user_id=${await userId(login)}`, { method: 'DELETE' });
+}
+export async function deleteMessage(id) {
+  if (!modOk('moderator:manage:chat_messages')) throw new Error('Sign in with Twitch again to allow deleting messages.');
+  await helix(`moderation/chat?broadcaster_id=${status.userId}&moderator_id=${status.userId}&message_id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+/** Everyone in chat right now (for watch time). */
+export async function chatters() {
+  if (!status.userId || !modOk('moderator:read:chatters')) return null;
+  const out = []; let cursor = '';
+  for (let i = 0; i < 20; i++) { const j = await helix(`chat/chatters?broadcaster_id=${status.userId}&moderator_id=${status.userId}&first=1000${cursor ? '&after=' + cursor : ''}`); out.push(...(j.data || []).map(x => ({ login: x.user_login, name: x.user_name, id: x.user_id }))); cursor = j.pagination?.cursor; if (!cursor) break; }
+  return out;
+}
+/** Chat badge pictures (moderator, VIP, sub…). */
+export async function badges() {
+  if (!s().twitchClientId) return {};
+  const out = {};
+  for (const q of ['chat/badges/global', status.userId ? `chat/badges?broadcaster_id=${status.userId}` : null].filter(Boolean)) {
+    try { for (const set of (await helix(q)).data || []) for (const v of set.versions || []) out[`${set.set_id}/${v.id}`] = v.image_url_1x; } catch {}
+  }
+  return out;
+}
+export const broadcasterId = () => status.userId || null;

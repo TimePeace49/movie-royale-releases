@@ -43,7 +43,8 @@ export function helpText() {
     `**In the list you'll see:**`,
     `🚫 *banned*, *series taken* or *${new Date().getFullYear()} movie* · ✅ *already watched* · 🔒 *already picked* — somebody has it, so pick something else. Every movie can only be picked once.`,
     ``,
-    `**Rules:** be in Twitch chat during the stream to get your movies on the cliff · if your movie wins, your other movies sit out until the new week (Sunday) · one movie per series${db.settings.banCurrentYear !== false ? ` · no ${new Date().getFullYear()} movies` : ''}${luckOn() ? ' · 🍀 every battle your movies lose, they get a little luckier' : ''}`
+    `**Rules:** be in Twitch chat during the stream to get your movies on the cliff · if your movie wins, your other movies sit out until the new week (Sunday) · one movie per series${db.settings.banCurrentYear !== false ? ` · no ${new Date().getFullYear()} movies` : ''}${luckOn() ? ' · 🍀 every battle your movies lose, they get a little luckier' : ''}`,
+    ...(db.settings.ideasDoc ? [``, `💡 **Got an idea for Movie Royal?** Maps, the wheel, how it looks, anything: [leave a note in the ideas doc](<${db.settings.ideasDoc}>) (anyone with the link can comment).`] : [])
   ].join('\n');
 }
 
