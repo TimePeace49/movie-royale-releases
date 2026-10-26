@@ -16,6 +16,7 @@ What changed in each version of Movie Royal. Newest first.
   - The ground never breaks, but you can be pushed off the edge.
   - Map power: 🐎 Royal Charge.
 - **🔊 Volume sliders on the 🎡 Wheel tab** (sounds and music), next to a sound on/off button.
+- **⏸ / ▶ Pause spots on the wheel:** every spot on the ✏️ Spots list has a ⏸ button that takes it off the wheel but keeps it in the list. ▶ puts it back on. "⏸ Pause this spot" after a landing does the same. Spots the void takes stay in the list too, with ▶ to bring them back. "Take the winner off the wheel" in Wheel settings pauses the winner the same way.
 - **🕳️ You can grow or shrink the void yourself** with its + / −. Chat still can only change it with money (never with channel points).
 - Fart Farm now has real moo, stampede, UFO and beam sounds, and shows its right name in the map menus.
 - Fixed: Dune Sea did extra work while pieces were landing before the fight.
