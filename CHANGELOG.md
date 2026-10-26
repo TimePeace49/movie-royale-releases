@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.7 (test build)
+- **24/7 bot pop-up only when it's needed:** when Movie Royal opens, it only asks you to update the Cloudflare bot if that bot is actually older than the one in this version. Once you've updated it, the pop-up stays away until a future version changes the bot again. "Don't remind me again" also only lasts until the next bot update.
+
 ## 1.13.6 (test build)
 - **No more 24/7 bot pop-up** when Movie Royal opens. If the bot needs an update, the 🔄 Update button is in Settings → Discord.
 

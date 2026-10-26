@@ -2295,7 +2295,7 @@ async function botUpdateOnOpen() { // the 24/7 Discord bot on Cloudflare is olde
     $('updBody').innerHTML = `<h3>☁️ Update your 24/7 Discord bot</h3><p class="help">This version of Movie Royal comes with fixes for the Discord bot that runs on Cloudflare: <code>/linktwitch</code> and other commands always answer now, it stays under Cloudflare's free daily limit, and free replacement picks work. The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token once.</p>
       <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&upd.close())">🔄 Update the bot</button></div>
       <p class="help">No token? Make one at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → <b>Create Token</b> → <b>Edit Cloudflare Workers</b> template → your account + All zones → <b>Create Token</b> → <b>Copy</b>.</p>
-      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="api('/api/settings',{botUpdatePrompted:true}).catch(()=>{});upd.close();toast('OK, no more reminders. You can still update it in Settings → Discord.')">Don't remind me again</button><button onclick="upd.close()">Later</button></div>`;
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="api('/api/settings',{botSkipV:${r.v || 0}}).catch(()=>{});upd.close();toast('OK, no more reminders for this update. You can still update it in Settings → Discord.')">Don't remind me again</button><button onclick="upd.close()">Later</button></div>`;
     upd.showModal();
   } catch {}
 }
@@ -2308,7 +2308,7 @@ async function updateOnOpen() { // asks once each time the app opens, if there's
 }
 
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
-fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); // 24/7 bot update pop-up turned off (Derek's call): the update button is in Settings → Discord if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); // only pops up when the bot on Cloudflare needs an update if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 </body>

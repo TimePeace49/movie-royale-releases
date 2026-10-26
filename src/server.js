@@ -856,7 +856,7 @@ const NEW_SETUP = [
   { id: 'donations', since: '1.11.0', title: '💵 Donations', why: 'Connect StreamElements or Streamlabs so tips pop up for the wheel.', done: () => !!(db.settings.seJwt || db.settings.slToken) },
   { id: 'twitch', since: '1.12.0', title: '💜 Sign in with Twitch again', why: 'Gives Movie Royal the new chat permissions: delete messages, timeouts, bans and watch time in the 💬 Chat tab.', done: () => ['moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters'].every(x => (twitch.status.scopes || []).includes(x)) || !db.owner }
 ];
-app.get('/api/cloud/outdated', async (req, res) => { try { res.json({ outdated: !db.settings.botUpdatePrompted && await cloud.botOutdated() }); } catch { res.json({ outdated: false }); } });
+app.get('/api/cloud/outdated', async (req, res) => { try { res.json({ outdated: await cloud.botOutdated() && Number(db.settings.botSkipV || 0) < cloud.botVersion(), v: cloud.botVersion() }); /* only when the bot on Cloudflare really needs this version's update */ } catch { res.json({ outdated: false }); } });
 app.get('/api/whatsnew', (req, res) => {
   const from = db.settings.lastSeenVersion || '1.10.0';
   if (!db.settings.setupSeen) { db.settings.lastSeenVersion = VERSION; save(); return res.json({ steps: [] }); }
