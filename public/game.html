@@ -3372,6 +3372,10 @@ requestAnimationFrame(frame);
 // ================= connection =================
 let sock = null, connected = false;
 function send(o) { if (sock && sock.readyState === 1) sock.send(JSON.stringify(o)); }
+// any error on the game screen gets reported to the app (shown in the control panel), so problems on stream can be found
+let lastErrAt = 0;
+addEventListener('error', e => { if (Date.now() - lastErrAt < 5000) return; lastErrAt = Date.now(); send({ type: 'overlayError', msg: String(e.message || e.error || 'error').slice(0, 200), where: `${(e.filename || '').split('/').pop()}:${e.lineno || ''}`, phase }); });
+addEventListener('unhandledrejection', e => { if (Date.now() - lastErrAt < 5000) return; lastErrAt = Date.now(); send({ type: 'overlayError', msg: String(e.reason?.message || e.reason || 'error').slice(0, 200), where: '', phase }); });
 if (!WHEEL_ONLY) setInterval(() => send({ type: 'cliff', phase, key: fighters.map(f => f.id).sort().join(',') }), 4000); // check in: the app re-sends the pieces if this screen missed them
 function connect() {
   sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=overlay${WHEEL_ONLY ? '&side=1' : ''}`);

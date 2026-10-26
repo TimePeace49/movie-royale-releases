@@ -518,7 +518,11 @@
       <button onclick="api('/api/test/everyone-in').then(r=>toast('🟢 Everyone with a movie is on the cliff ('+r.people+' people + '+r.spots+' wild spots)'))" title="Everyone with a movie, plus all the wild spots">🟢 Put everyone on the cliff</button>
       <button class="primary" onclick="api('/api/test/discord-battle').then(()=>{toast('⚔️ Test Discord battle! It changes nothing: no winner, no luck, no cooldowns.');})">⚔️ Run a test Discord battle</button>
       <button onclick="api('/api/claim/close').then(()=>toast('Next round: watch the balls come back'))">Next round →</button>
+      <button onclick="cliffWhy()">🔍 Why is nobody on the cliff?</button>
     </div>
+    <div id="cliffWhy"></div>
+    <h4 style="margin:12px 0 4px">💬 Pretend people type in chat (their movies join)</h4>
+    <div id="chatPeople" class="row" style="gap:6px;flex-wrap:wrap"></div>
     <p class="help" style="margin:6px 0 0">Try it: reset cooldowns → put everyone on the cliff → run a test battle → press Next round. If the balls come back, cooldowns were the reason they were missing (movies that won sit out for the week).</p>
   </div>
   <div class="card">
@@ -682,6 +686,25 @@ const isMovieList = l => l && (l.type === 'movies' || l.type === 'films');
 function toast(msg, ms = 3500) { let box = $('toasts'); if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); } const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = msg; box.appendChild(d); setTimeout(() => d.remove(), ms); }
 // the main tabs always stay on screen: the page itself never scrolls (each tab scrolls inside itself)
 addEventListener('scroll', e => { if (e.target === document || e.target === document.body || e.target === document.documentElement) { if (scrollY) scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; } }, true);
+// 🔍 Test tab: everything that decides who's on the cliff, so a missing ball can be explained
+async function cliffWhy() {
+  const r = await fetch('/api/test/cliff-why').then(x => x.json()).catch(e => ({ err: e.message })), box = $('cliffWhy'); if (!box) return; window.lastWhy = r;
+  const P = r.people || [], phaseTxt = { idle: '✅ between battles (the cliff can fill)', ended: '⚠️ a battle finished and is waiting for "Next round →"', lobby: '⏳ a battle is starting', running: '⚔️ a battle is going' }[r.phase] || r.phase;
+  const lines = [
+    `Battle: <b>${esc(r.list || '')}</b> · ${phaseTxt}`,
+    `Game screens open: <b>${r.overlays}</b>${r.overlays ? '' : ' ⚠️ none: open the Battle tab or OBS'}`,
+    `If the cliff was set up now: <b>${r.wouldShow ?? '?'}</b> piece${r.wouldShow === 1 ? '' : 's'}${r.sample?.length ? ` (${r.sample.map(esc).join(', ')}${r.wouldShow > r.sample.length ? '…' : ''})` : ''}${r.buildError ? ` <span style="color:var(--bad)">⚠️ ${esc(r.buildError)}</span>` : ''}`,
+    `Last sent to the game screens: ${r.lastPreview ? `<b>${r.lastPreview.pieces}</b> pieces, ${Math.round((Date.now() - r.lastPreview.at) / 1000)}s ago` : '<b>never</b> since the app opened'}${r.previewError ? ` <span style="color:var(--bad)">⚠️ ${esc(r.previewError)}</span>` : ''}`,
+    r.statuses ? `Movies in this battle: ${Object.entries(r.statuses).map(([k, n]) => `${n} ${esc({ active: 'in', benched: 'sitting out (won this week)', away: 'out tonight', paused: 'paused', watched: 'watched', removed: 'deleted', used: 'used' }[k] || k)}`).join(' · ')}` : '',
+    r.spots ? `Wild spots: ${r.spots.length ? r.spots.map(esc).join(', ') : 'none'}` : '',
+    r.chatGate ? `🔒 Chat check is on: a person's movies only join after they type in Twitch chat${P.length ? '' : ' (nobody has movies yet)'}` : '',
+    (r.gameScreenErrors || []).length ? `<span style="color:var(--bad)">⚠️ Game screen errors: ${r.gameScreenErrors.map(e => esc(e.text)).join(' | ')}</span>` : ''
+  ].filter(Boolean);
+  box.innerHTML = `<div class="card soft" style="margin:8px 0;padding:10px">${lines.map(l => `<div class="help" style="margin:3px 0">${l}</div>`).join('')}
+    ${P.length ? `<table style="margin-top:6px;font-size:13px"><tr><th style="text-align:left">Person</th><th>Chatting</th><th>In</th><th>Won this week</th><th>Out tonight</th><th>Paused</th></tr>${P.map(p => `<tr><td>${esc(p.name)}${p.twitch ? ` <small class="muted">@${esc(p.twitch)}</small>` : ' <small style="color:var(--gold)">(Twitch not linked)</small>'}</td><td style="text-align:center">${p.chatting ? '🟢' : '⚪'}</td><td style="text-align:center">${p.active}</td><td style="text-align:center">${p.benched || ''}</td><td style="text-align:center">${p.away || ''}</td><td style="text-align:center">${p.paused || ''}</td></tr>`).join('')}</table>` : ''}
+    <div class="row" style="gap:6px;margin-top:8px"><button class="ghost" onclick="navigator.clipboard.writeText(JSON.stringify(window.lastWhy, null, 1)).then(()=>toast('Copied: paste it to Claude'))">📋 Copy this for Claude</button><button class="ghost" onclick="cliffWhy()">🔄 Check again</button></div></div>`;
+  const cp = $('chatPeople'); if (cp) cp.innerHTML = P.length ? P.map(p => `<button class="${p.chatting ? 'ghost' : ''}" onclick="api('/api/test/chat',{name:'${esc(p.twitch || p.name).replace(/'/g, '')}',text:'hi! 👋'}).then(()=>setTimeout(cliffWhy,800))">${p.chatting ? '🟢' : '💬'} ${esc(p.name)}</button>`).join('') : '<span class="help">Nobody has Discord movies yet.</span>';
+}
 // ✅ Test tab → Checklist: what's set up (checked by itself) + things to try once (you tick them, they're remembered on this computer)
 function testTab(t) {
   $('v-test').classList.toggle('checkmode', t === 'check'); $('tTabTests').classList.toggle('on', t !== 'check'); $('tTabCheck').classList.toggle('on', t === 'check');
@@ -772,7 +795,7 @@ function setView(v) {
   if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
-  if (v === 'test') { drawWheelTest(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
+  if (v === 'test') { drawWheelTest(); cliffWhy(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }

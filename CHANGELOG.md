@@ -2,6 +2,18 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.20.4 (test build)
+- **🔍 "Why is nobody on the cliff?"** (Test tab → Discord battle tests) shows everything that decides who's on the cliff:
+  - which battle is playing, and whether it's stuck waiting for "Next round"
+  - how many game screens are open
+  - what would be on the cliff right now, and what was last sent to the game screens
+  - every person: chatting or not, how many movies are in, won this week, out tonight or paused
+  - any errors
+  - "📋 Copy this for Claude" copies it all to send over.
+- **💬 Pretend people type in chat:** a button for each person with Discord movies. Press one and their movies join, just like when they really type in Twitch chat.
+- "Put everyone on the cliff" and "Reset cooldowns" also finish a battle that was left waiting for "Next round", and switch to the Discord movies battle.
+- **Errors on the game screen now show up in the app**, so problems that only happen on your computer can be found.
+
 ## 1.20.3 (test build)
 - **🧪 "Put everyone on the cliff"** (Test tab → Discord battle tests) brings in all the wild spots too.
 

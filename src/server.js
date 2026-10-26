@@ -59,7 +59,7 @@ function leaveEnded() {
   live.phase = 'idle'; live.game = null;
   broadcast({ type: 'reset' }, 'overlay');
 }
-var lastPreview = null; // the last cliff sent to the game screens (they check in every few seconds; any that missed it get it again)
+var lastPreview = null, previewError = null; // the last cliff sent to the game screens (they check in every few seconds; any that missed it get it again)
 function refreshPreview(now = false) {
   clearTimeout(previewTimer); clearTimeout(refreshPreview.rw); refreshPreview.rw = setTimeout(() => syncRewards().catch(() => {}), 1500); // channel point rewards follow the map and battle
   previewTimer = setTimeout(async () => { try {
@@ -72,7 +72,8 @@ function refreshPreview(now = false) {
     previewIds = fighters.map(f => f.id);
     lastPreview = { type: 'preview', map: currentMap(), fighters, total, listName: list.screenTitle || list.name, kind: list.type, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
     broadcast(lastPreview, 'overlay');
-  } catch (e) { console.error('[preview]', e); } 
+    lastPreview.at = Date.now(); previewError = null;
+  } catch (e) { console.error('[preview]', e); previewError = e.message; broadcast({ type: 'toast', text: `⚠️ The cliff couldn't be set up: ${e.message}` }, 'control'); } 
   }, now ? 0 : 300);
 }
 
@@ -554,6 +555,7 @@ wss.on('connection', (ws, req) => {
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (ws.role !== 'overlay') return;
+    if (m.type === 'overlayError') { const t = `${m.msg} ${m.where || ''} (${m.phase || ''})`; console.error('[game screen]', t); live.overlayErrors = [{ at: Date.now(), text: t }, ...(live.overlayErrors || [])].slice(0, 10); broadcast({ type: 'toast', text: `⚠️ Game screen problem: ${String(m.msg).slice(0, 120)}` }, 'control'); return; }
     if (m.type === 'cliff') { // a game screen checking in: between battles it must show the same pieces as the app
       const ok = live.phase !== 'idle' || !lastPreview || ((m.phase === 'idle' || m.phase === 'waiting') && m.key === lastPreview.key) || (!lastPreview.fighters.length && !lastPreview.chatGate);
       ws.badCliff = ok ? 0 : (ws.badCliff || 0) + 1;
@@ -1740,9 +1742,27 @@ app.post('/api/test/discord-battle', async (req, res) => { // a Discord movies b
   const err = await startRound({ test: true }); err ? res.status(400).json({ error: err }) : res.json({ ok: true });
 });
 app.post('/api/test/reset-cooldowns', (req, res) => { // for testing: everyone's movies back in, nobody benched or out tonight
+  if (live.phase === 'ended') leaveEnded();
   const r = resetCooldowns(); db.noShowStreak = 0; resetSpots(); save(); pushState(); refreshPreview(true); res.json({ ok: true, ...r });
 });
+// 🔍 Test tab: why is nobody (or only some) on the cliff? Everything that decides it, in plain words.
+app.get('/api/test/cliff-why', async (req, res) => {
+  const list = getList(db.activeListId), out = { gameScreenErrors: live.overlayErrors || [], phase: live.phase, list: list ? `${list.name} (${list.type})` : 'none', overlays: [...wss.clients].filter(c => c.role === 'overlay').length, chatGate: list?.type === 'movies' && db.settings.chatGate !== false, previewError, lastPreview: lastPreview ? { at: lastPreview.at, pieces: lastPreview.fighters.length } : null };
+  if (list) {
+    const by = {}; for (const e of list.entries) by[e.status || 'active'] = (by[e.status || 'active'] || 0) + 1; out.statuses = by;
+    try { const { fighters } = await buildFighters(list, null); out.wouldShow = fighters.length; out.sample = fighters.slice(0, 12).map(f => f.label); } catch (e) { out.buildError = e.message; }
+    if (list.type === 'movies') {
+      const on = activeSet();
+      out.people = discordPeople().map(p => { const mine = list.entries.filter(e => e.backers?.[0]?.discordId === p.discordId); return { name: p.name, twitch: p.twitch || '', chatting: on.has(p.discordId), active: mine.filter(e => e.status === 'active').length, benched: mine.filter(e => e.status === 'benched').length, away: mine.filter(e => e.status === 'away').length, paused: mine.filter(e => e.status === 'paused').length }; });
+      out.spots = list.entries.filter(e => isSpot(e)).map(e => e.status);
+      out.wonThisWeek = (db.week?.winners || []).length;
+    }
+  }
+  res.json(out);
+});
 app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyone with a movie typed in chat
+  if (live.phase === 'ended') leaveEnded(); // a battle that finished but never got "Next round"
+  if (db.activeListId !== 'movies') { db.activeListId = 'movies'; previewIds = null; }
   const st = stream(); st.active = [...new Set([...st.active, ...discordPeopleWithMovies().map(p => p.key)])];
   const sp = resetSpots(); // the wild spots too
   save(); pushState(); refreshPreview(true); res.json({ ok: true, people: st.active.length, spots: sp.total });
