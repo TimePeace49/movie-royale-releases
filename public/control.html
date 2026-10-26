@@ -291,9 +291,17 @@
   #errN:not(:empty) { background:var(--bad); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:4px; }
   .errl { border-bottom:1px solid var(--line); padding:8px 0; } .errl b { color:#ffb4a8; }
   #errTech { width:100%; min-height:420px; font:12px/1.4 Consolas, monospace; white-space:pre; }
-  .ckl { display:grid; grid-template-columns:28px 1fr auto; gap:6px 10px; align-items:center; }
-  .ckl .ok { color:var(--good); } .ckl .no { color:var(--bad); } .ckl .mid { color:var(--gold); }
-  .ckl h4 { grid-column:1 / -1; margin:12px 0 2px; }
+  .ckl { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:10px; align-items:stretch; }
+  .ckl h4 { grid-column:1 / -1; margin:14px 0 0; }
+  .ckItem { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:linear-gradient(180deg, #ffffff10, #ffffff06); border:1px solid #ffffff1f; border-left:5px solid #ffffff40; box-shadow:0 4px 14px #0004; }
+  .ckItem .ckIcon { font-size:18px; flex:none; width:24px; text-align:center; }
+  .ckItem .ckIcon input { width:18px; height:18px; margin:0; cursor:pointer; }
+  .ckItem .ckText { flex:1; line-height:1.35; }
+  .ckItem .ckAct { flex:none; display:flex; gap:4px; }
+  .ckItem .ckAct:empty { display:none; }
+  .ckItem.ok { border-left-color:var(--good); } .ckItem.no { border-left-color:var(--bad); } .ckItem.mid { border-left-color:var(--gold); }
+  .ckItem.done { border-left-color:var(--good); background:linear-gradient(180deg, #7dffb014, #7dffb008); }
+  .ckItem.todo { border-left-color:#9b7bff; }
   #v-help { grid-template-columns:1fr; padding:0; }
   #v-help iframe { width:100%; height:100%; border:0; }
   /* settings: sub-tabs down the left */
@@ -915,9 +923,9 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 function drawChecklist() {
   const box = $('tCheck'); if (!box || !S) return;
   const st = S.status || {}, tw = st.twitch || {}, dc = st.discord || {}, c = S.cloud || {}, set = S.settings || {};
-  const auto = (ok, label, fix, mid) => `<span class="${ok ? 'ok' : mid ? 'mid' : 'no'}">${ok ? '✅' : mid ? '🟡' : '❌'}</span><span>${label}</span><span>${!ok && fix ? fix : ''}</span>`;
+  const auto = (ok, label, fix, mid) => `<div class="ckItem ${ok ? 'ok' : mid ? 'mid' : 'no'}"><span class="ckIcon">${ok ? '✅' : mid ? '🟡' : '❌'}</span><span class="ckText">${label}</span><span class="ckAct">${!ok && fix ? fix : ''}</span></div>`;
   const go = (v, s2) => `<button class="ghost" style="padding:3px 9px" onclick="setView('${v}')${s2 ? `;setSub('${s2}')` : ''}">Fix it</button>`;
-  const man = (k, label, act) => `<span><input type="checkbox" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span>${label}${ckDone[k] ? ` <small class="muted">(${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span>${act || ''}</span>`;
+  const man = (k, label, act) => `<div class="ckItem ${ckDone[k] ? 'done' : 'todo'}"><span class="ckIcon"><input type="checkbox" title="Tick it once it works" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span class="ckText">${label}${ckDone[k] ? ` <small class="muted">(worked ${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span class="ckAct">${act || ''}</span></div>`;
   const T = (txt, js) => `<button class="ghost" style="padding:3px 9px" onclick="peek(true);${js}">${txt}</button>`; // stays on the checklist: the pop-up window shows what happens
   const manual = [ // "Try it" = works offline (not live, nobody else needed); the pop-up window shows what happens
     ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
@@ -956,7 +964,7 @@ function drawChecklist() {
         return auto(ok, `Letterboxd${set.letterboxdUser ? ` (<b>${esc(set.letterboxdUser)}</b>, ${L.count || 0} watched${when ? `, updated ${esc(when)}` : ''})` : ' (no username yet)'}${L.profileError && set.letterboxdUser ? ` <small style="color:var(--bad)">last update: ${esc(L.profileError)}</small>` : ''}`,
           `<span class="row" style="gap:4px">${set.letterboxdUser ? `<button class="ghost" style="padding:3px 9px" onclick="lbRefreshCk(this)">🔄 Update now</button>` : ''}${go('settings', 'movies')}</span>`, !set.letterboxdUser); })()}
       ${auto((st.overlays || 0) > 0, `Game screen open (${st.overlays || 0} — the app counts as one, OBS as another)`, '')}
-      ${auto(!(S.rewardsByHand || []).length, (S.rewardsByHand || []).length ? `Channel point rewards made by hand on Twitch: ${S.rewardsByHand.map(esc).join(', ')}` : 'Channel point rewards are Movie Royal\'s own (it can pause them)', go('settings', 'twitch'))}
+      ${auto(!(S.rewardsByHand || []).length, (S.rewardsByHand || []).length ? `Channel point rewards made by hand on Twitch: ${S.rewardsByHand.map(esc).join(', ')}` : 'Channel point rewards are Movie Royal\'s own (it can switch them off when they can\'t be used)', go('settings', 'twitch'))}
       ${auto(!S.live || true, S.live ? '🔴 You are live' : '⚫ Not live (fine for testing: everything works offline too)', '', !S.live)}
       <h4>Try each one once</h4>
       ${manual.map(([k, l, a]) => man(k, l, a)).join('')}

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.25.2 (test build)
+- **✅ Checklist is easier to read:** every item is its own box with a colored edge (red = needs fixing, yellow = optional, green = working, purple = still to try), and its button sits right next to it, so it's easy to tell which button goes with which line.
+
 ## 1.25.1 (test build)
 - **Tests show the right screen:** every test now puts the right thing on stream, so the 📺 preview window shows it. Battle tests (the winner claiming with "I'm here", !sitout, !imback, !join, !mymovies, chat joining, chaos, practice battles) show the **battle**. Wheel tests (up, down, !respin, !myspins, wheel redeems, money pop-ups) show the **wheel**. Before, "I'm here" could show the wheel if the wheel was the last thing on stream.
 - **No preview window on the 🎡 Wheel tab** while the wheel is on stream (you can already see it there). 💬 Pretend chat stays open. If you test a battle thing from the Wheel tab, the preview pops up to show the battle.
