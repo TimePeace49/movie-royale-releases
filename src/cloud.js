@@ -76,7 +76,7 @@ export async function sync(force = false) {
     for (const op of queue) {
       try {
         const user = { discordId: op.user.discordId, name: op.user.name, avatar: op.user.avatar || null };
-        if (op.type === 'link') { db.links[user.discordId] = op.login; claimManual(user, op.login); }
+        if (op.type === 'link') { db.links[user.discordId] = op.login; (db.linkNames ||= {})[user.discordId] = { name: user.name, avatar: user.avatar }; claimManual(user, op.login); }
         else if (op.type === 'suggest') {
           claimManual(user, db.links[user.discordId] || null);
           const r = await suggest(String(op.movie.id), user, { cloud: true }); // the 24/7 bot already checked picks were open

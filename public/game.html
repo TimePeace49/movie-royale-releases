@@ -2350,6 +2350,7 @@ function beginRound() {
 // the winner must be standing on the cliff (exact odds can pick a piece that was drifting off the edge)
 // (for testing) is the winner standing on land?
 window.__royalCheck = () => { const w = winner; if (!w) return null; const tl = MAP.tileUnder ? MAP.tileUnder(w) : tileAt(w.x, w.y); return { label: w.label, onLand: !!tl && tl.state < 2 && !tl.lava && !(MAP.isOut && MAP.isOut(w)), hopping: !!w.ret, alive: w.alive, map: mapId }; };
+window.__fighters = () => fighters.map(f => f.label);
 let winTile = null; // the winner's tile never goes anywhere, whatever else is still happening
 function landOnCliff(f) {
   f.flying = null; f.dropping = false; f.eaten = null; f.thrown = null;

@@ -51,6 +51,13 @@ function pushState() { clearTimeout(stateTimer); stateTimer = setTimeout(() => b
 
 // While no round is running, the game screen shows the active list's pieces waiting on the cliff (updates live as entries are added).
 let previewTimer, previewIds = null, previewList = null;
+// a finished round is still on screen but you moved on (picked another battle, or the game window reloaded): back to the waiting cliff
+function leaveEnded() {
+  if (live.phase !== 'ended') return;
+  if (live.claim) clearTimeout(live.claim.timer); live.claim = null; nextMap();
+  live.phase = 'idle'; live.game = null;
+  broadcast({ type: 'reset' }, 'overlay');
+}
 function refreshPreview(now = false) {
   clearTimeout(previewTimer);
   previewTimer = setTimeout(async () => {
@@ -77,6 +84,7 @@ function discordPeople() {
     else if (e.status === 'watched') p.watched++;
   }
   for (const [id, mp] of Object.entries(db.manualPeople || {})) if (!m.has(id)) m.set(id, { discordId: id, name: mp.name, avatar: null, active: [], watched: 0 });
+  for (const [id, login] of Object.entries(db.links || {})) if (!m.has(id) && login) { const n = db.linkNames?.[id]; m.set(id, { discordId: id, name: n?.name || login, avatar: n?.avatar || null, active: [], watched: 0 }); } // linked their Twitch in Discord, no movies yet
   for (const p of m.values()) p.manual = String(p.discordId).startsWith('manual-');
   const on = activeSet();
   return [...m.values()].map(p => ({ ...p, twitch: db.links[p.discordId] || '', used: picksUsed(p.discordId), max: db.settings.maxPerUser, chatting: on.has(p.discordId) }))
@@ -389,9 +397,9 @@ function discordPeopleWithMovies() {
 function activateFromChat(m) {
   if (db.settings.chatGate === false) return;
   const st = stream(), on = new Set(st.active);
-  const p = discordPeopleWithMovies().find(x => !on.has(x.key) && chatMatches(x, m));
-  if (!p) return;
-  st.active.push(p.key); save();
+  const ps = discordPeopleWithMovies().filter(x => !on.has(x.key) && chatMatches(x, m));
+  if (!ps.length) return;
+  for (const x of ps) st.active.push(x.key); save(); const p = ps[0];
   if (db.activeListId === 'movies') broadcast({ type: 'joined', name: `${p.name}'s movies` }, 'overlay');
   broadcast({ type: 'toast', text: `💬 ${p.name} is chatting — their movies are on the cliff${live.phase === 'ended' ? ' (shows after Next round)' : ''}` }, 'control');
   pushState(); refreshPreview();
@@ -426,7 +434,7 @@ wss.on('connection', (ws, req) => {
   ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control';
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
-  if (ws.role === 'overlay') { ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
+  if (ws.role === 'overlay') { if (live.phase === 'ended' && !live.claim) leaveEnded(); ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
   ws.on('message', raw => {
@@ -721,6 +729,21 @@ function addManualPerson(name, twitch) {
   return id;
 }
 const personUser = id => { const p = discordPeople().find(x => x.discordId === id); return p ? { discordId: id, name: p.name, avatar: p.avatar || null } : null; };
+// 👥 Refresh: pull new picks + Twitch links from the 24/7 bot, and look up Discord names for people who linked their Twitch
+app.post('/api/people/refresh', async (req, res) => {
+  let named = 0, pulled = 0;
+  if (cloud.enabled()) { const st = await cloud.sync(true).catch(() => null); pulled = st?.pulled || 0; }
+  const tok = db.settings.discordToken, need = Object.keys(db.links || {}).filter(id => !db.linkNames?.[id]?.name && /^\d+$/.test(id));
+  if (tok) for (const id of need.slice(0, 50)) {
+    try {
+      const r = await fetch('https://discord.com/api/v10/users/' + id, { headers: { Authorization: 'Bot ' + tok }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue; const u = await r.json();
+      (db.linkNames ||= {})[id] = { name: u.global_name || u.username, avatar: u.avatar ? `https://cdn.discordapp.com/avatars/${id}/${u.avatar}.png?size=128` : null }; named++;
+    } catch {}
+  }
+  save(); pushState(); refreshPreview(true);
+  res.json({ ok: true, people: discordPeople().length, linked: Object.keys(db.links || {}).length, named, pulled });
+});
 app.post('/api/people', (req, res) => {
   try { const id = addManualPerson(req.body?.name, req.body?.twitch); if (!id) return res.status(400).json({ error: 'Type a name or a Twitch username.' }); save(); pushState(); res.json({ id }); }
   catch (e) { res.status(400).json({ error: e.message }); }
@@ -901,7 +924,7 @@ app.post('/api/lists', (req, res) => {
   const { name, type } = req.body;
   if (!['text', 'pics', 'chat', 'films'].includes(type)) return res.status(400).json({ error: 'bad type' });
   const l = { id: uid(), name: (name || 'New list').slice(0, 60), type, entries: [], joinOpen: false };
-  db.lists.push(l); db.activeListId = l.id; save(); pushState(); res.json(l);
+  db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); pushState(); refreshPreview(true); res.json(l);
 });
 app.patch('/api/lists/:id', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
@@ -917,7 +940,7 @@ app.delete('/api/lists/:id', (req, res) => {
   if (db.activeListId === req.params.id) db.activeListId = 'movies';
   save(); pushState(); res.json({ ok: true });
 });
-app.post('/api/active', (req, res) => { if (getList(req.body.id)) db.activeListId = req.body.id; save(); pushState(); res.json({ ok: true }); });
+app.post('/api/active', (req, res) => { if (getList(req.body.id) && req.body.id !== db.activeListId) { db.activeListId = req.body.id; leaveEnded(); } save(); pushState(); refreshPreview(true); res.json({ ok: true }); });
 
 app.post('/api/lists/:id/bulk', async (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
@@ -1100,6 +1123,7 @@ app.post('/api/chatbattle', (req, res) => {
   if (b.open != null) { l.joinOpen = !!b.open; if (l.joinOpen) db.activeListId = l.id; } // !join only counts while this battle is the one playing
   if (b.select) db.activeListId = l.id;
   if (b.clear) for (const e of l.entries) if (e.status === 'active') e.status = 'removed';
+  if (b.select || b.open) leaveEnded();
   save(); pushState(); refreshPreview(true); res.json({ ok: true, id: l.id });
 });
 
@@ -1181,6 +1205,7 @@ app.post('/api/giveaway', (req, res) => {
   if (b.select) { db.activeListId = l.id; l.screenTitle = `🎁 ${giveawaySettings().title}${giveawaySettings().prize ? ': ' + giveawaySettings().prize : ''}`; l.bestOf = Number(giveawaySettings().bestOf) || 1; }
   if (b.clear) for (const e of l.entries) if (e.status === 'active') e.status = 'removed';
   if (b.clearWinners) db.giveawayWinners = [];
+  if (b.select) leaveEnded();
   save(); pushState(); refreshPreview(true); res.json({ ok: true });
 });
 

@@ -2,6 +2,18 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.13.1 (test build)
+- **👥 People tab:**
+  - Everyone who linked their Twitch in Discord shows up, even before they pick a movie.
+  - New 🔄 Refresh button grabs new Discord picks and Twitch links right away.
+- **🎡 Wheel tab:**
+  - Drag the line between the spot list and the wheel to make either side bigger. Double-click the line to reset it.
+  - The round timer pop-up can be resized: drag its bottom-right corner and the numbers grow with it. It remembers its size.
+- **Fixes:**
+  - ⏸ / ▶ in the Battle tab list now updates right away, so paused movies can be put back in.
+  - Movies could stop showing up on the cliff after a battle had finished (for example after a practice round or a Kirb's Pick win, then picking another battle or reopening the game window). The cliff now resets and shows everyone who's chatting.
+  - Someone listed twice (added by you and from Discord) now gets all their movies on the cliff from their first chat message.
+
 ## 1.13.0 (test build)
 - **🎡 Wheel round timer:**
   - Starts when the first spin lands (2 minutes by default, set minutes or seconds per wheel).

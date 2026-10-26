@@ -202,7 +202,7 @@ async function handle(i) {
   if (i.commandName === 'linktwitch') {
     const name = i.options.getString('username').trim().replace(/^@/, '').toLowerCase();
     if (!/^[a-z0-9_]{3,25}$/.test(name)) return i.reply(eph("That doesn't look like a Twitch username."));
-    db.links[user.discordId] = name; save();
+    db.links[user.discordId] = name; (db.linkNames ||= {})[user.discordId] = { name: user.name, avatar: user.avatar }; save();
     const merged = claimManual(user, name);
     onChange();
     return i.reply(eph(`Linked! Your piece will use **${name}**'s Twitch picture, and chatting as ${name} on Twitch puts your movies on the cliff.${merged ? `\n🎬 Found the movies ${streamerName()} already added for you — they're yours now. Check them with /mymovies.` : ''}`));

@@ -179,7 +179,8 @@
   #v-bans.inset { height:auto; padding:0; display:grid; }
   #v-sounds.inset { height:auto; padding:0; display:grid; }
   #v-chat, #v-giveaway { grid-template-columns:400px 1fr; }
-  #v-wheel { grid-template-columns:minmax(560px,1fr) 640px; }
+  #v-wheel { grid-template-columns:minmax(340px,1fr) 10px var(--wRight,640px); gap:4px; }
+  .wsplit { cursor:col-resize; border-radius:6px; background:linear-gradient(90deg,transparent 3px,var(--line) 3px,var(--line) 7px,transparent 7px); } .wsplit:hover, .wsplit.drag { background:linear-gradient(90deg,transparent 2px,var(--gold,#ffc94a) 2px,var(--gold,#ffc94a) 8px,transparent 8px); }
   #v-wheel .pane { min-height:0; overflow:auto; }
   #v-wheel > .pane:last-child { overflow:hidden; }
   #wheelRight { height:100%; box-sizing:border-box; display:flex; flex-direction:column; overflow:hidden; } /* the wheel side never scrolls: the wheel shrinks to fit */
@@ -200,9 +201,9 @@
   #boosts { position:fixed; left:14px; bottom:14px; z-index:50; display:flex; flex-direction:column-reverse; gap:8px; width:310px; max-height:calc(100vh - 90px); overflow:auto; }
   .boost { background:var(--panel); border:2px solid #9b4dff; border-radius:14px; padding:10px 12px; font-size:14px; box-shadow:0 12px 40px #000a; animation:boostIn .3s ease-out; }
   @keyframes boostIn { from { transform:translateX(-30px); opacity:0; } }
-  #wRound { position:fixed; left:14px; top:250px; z-index:55; width:300px; background:var(--panel); border:3px solid #ffc94a; border-radius:18px; padding:14px 16px; box-shadow:0 16px 50px #000c; animation:boostIn .3s ease-out; }
+  #wRound { position:fixed; left:14px; top:250px; z-index:55; width:300px; min-width:200px; max-width:90vw; min-height:80px; max-height:90vh; resize:both; overflow:auto; container-type:inline-size; background:var(--panel); border:3px solid #ffc94a; border-radius:18px; padding:14px 16px; box-shadow:0 16px 50px #000c; animation:boostIn .3s ease-out; }
   #wRound.paused { border-color:#4fc3ff; } #wRound.low { border-color:#ff4f6d; animation:wrPulse 1s infinite; } #wRound.ended { border-color:#7dffb0; }
-  #wRound .big { font-size:60px; font-weight:800; text-align:center; line-height:1.05; font-variant-numeric:tabular-nums; margin:4px 0; }
+  #wRound .big { font-size:clamp(28px,24cqw,260px); font-weight:800; text-align:center; line-height:1.05; font-variant-numeric:tabular-nums; margin:4px 0; }
   #wRound .drag { cursor:move; user-select:none; }
   #wRound .why { text-align:center; font-size:13px; color:var(--dim,#a99cc9); min-height:18px; }
   #wRound .bar { height:8px; border-radius:6px; background:#ffffff18; overflow:hidden; margin:6px 0 10px; } #wRound .bar i { display:block; height:100%; background:linear-gradient(90deg,#ffc94a,#ff6a3d); }
@@ -376,6 +377,7 @@
 <!-- 🎁 GIVEAWAY -->
 <section class="view" id="v-wheel">
   <div class="pane"><div class="card" id="wheelLeft"><div class="empty">Loading…</div></div></div>
+  <div class="wsplit" title="Drag to make either side bigger (double-click to reset)" onpointerdown="wSplit(event)" ondblclick="wSplitSet(640)"></div>
   <div class="pane"><div class="card" id="wheelRight">
     <canvas id="wheelCv" width="900" height="900" title="Click to spin"></canvas>
     <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
@@ -897,7 +899,7 @@ function renderBattleList() {
       <td style="white-space:nowrap">${on ? `<div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small>` : ''}</td>
       <td style="white-space:nowrap;text-align:right">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}${on ? `<button class="ghost" title="Disable for now (pause)" onclick="setStatus('${e.id}','paused')">⏸</button>` : `<button class="ghost" title="Put back in" onclick="setStatus('${e.id}','active')">▶</button>`}<button class="ghost danger" title="Delete" onclick="if(confirm('Delete ${esc(e.label).replace(/'/g, '')}?')) setStatus('${e.id}','removed')">✕</button></td></tr>`;
   }).join('');
-  if (document.activeElement?.closest?.('#blTable')) return; // don't redraw under your cursor while typing in it
+  if (document.activeElement?.matches?.('#blTable input, #blTable select, #blTable textarea')) return; // don't redraw under your cursor while typing in it
   $('blTable').innerHTML = show.length ? `<table><tr><th></th><th>Entry</th>${l.type === 'movies' ? '<th>Luck</th>' : ''}<th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>` : '<div class="empty">Nothing in this battle yet — add some above.</div>';
 }
 let qaT;
@@ -1248,17 +1250,18 @@ function renderPeople() {
   const keep = { npName: $('npName')?.value, npTw: $('npTw')?.value, impText: $('impText')?.value }, open = box.querySelector('details')?.open;
   const max = S.settings.maxPerUser;
   const tools = `<div class="row" style="margin-bottom:10px"><b>➕ Add someone</b><input id="npName" style="width:180px" placeholder="Name (e.g. Lucy)"><input id="npTw" style="width:220px" placeholder="Twitch username"><button class="primary" onclick="addPerson()">Add person</button>
+    <button onclick="peopleRefresh(this)" title="Get new Discord picks and Twitch links right now">🔄 Refresh</button>
     <span class="grow"></span><span class="help" style="margin:0">Everyone gets <b>${max}</b> picks · new ones once all ${max} are watched · Discord: <code>/suggest</code> <code>/swap</code> <code>/mymovies</code></span></div>
     <details style="margin-bottom:10px"><summary>📋 Import everyone from your old wheel at once</summary>
       <p class="help">One person per line: Twitch name, a colon, then their movies with commas.</p>
       <textarea id="impText" placeholder="lucy_tv: Heat, Coco, Jaws (1975)&#10;bigscreenbob: The Thing 1982, Arrival"></textarea>
       <button class="primary" style="margin-top:6px" onclick="importWheel(this)">Import</button></details>`;
-  box.innerHTML = tools + (!S.people.length ? `<div class="empty">Nobody has movies yet. Add people above, or they can use /suggest in Discord.</div>` : `
+  box.innerHTML = tools + (!S.people.length ? `<div class="empty">Nobody here yet. Everyone who links their Twitch in Discord (<code>/linktwitch</code>) or picks a movie shows up here. Add people above too.</div>` : `
   <table><tr><th></th><th>Person</th><th>Chatting</th><th>Picks used</th><th>Movies</th><th>Twitch</th><th></th></tr>
   ${S.people.map(p => {
     const locked = p.used >= max;
     return `<tr class="person"><td class="thumb">${p.avatar ? `<img src="${esc(p.avatar)}">` : `<span>${esc((p.name[0] || '?').toUpperCase())}</span>`}</td>
-      <td>${p.manual ? `<input class="tw" value="${esc(p.name)}" style="font-weight:700" onchange="api('/api/discord/people/${p.discordId}',{name:this.value})">` : `<b data-user="${esc(p.twitch || '')}" data-discord="${esc(p.discordId)}" title="Double-click for their profile" style="cursor:pointer">${esc(p.name)}</b>`}<br><small class="muted">${p.manual ? 'added by you' : 'Discord'} · ${p.watched} watched</small></td>
+      <td>${p.manual ? `<input class="tw" value="${esc(p.name)}" style="font-weight:700" onchange="api('/api/discord/people/${p.discordId}',{name:this.value})">` : `<b data-user="${esc(p.twitch || '')}" data-discord="${esc(p.discordId)}" title="Double-click for their profile" style="cursor:pointer">${esc(p.name)}</b>`}<br><small class="muted">${p.manual ? 'added by you' : 'Discord'}${p.twitch && !p.manual ? ' · 💜 linked' : ''} · ${p.watched} watched</small></td>
       <td><button class="${p.chatting ? '' : 'ghost'}" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">${p.chatting ? '🟢 In' : '⚪ Not yet'}</button></td>
       <td style="white-space:nowrap"><input type="number" min="0" max="99" value="${p.used}" style="width:56px;padding:4px" onchange="api('/api/discord/people/${p.discordId}',{picksUsed:this.value})"> <small class="muted">/ ${max}</small>${locked ? ' 🔒' : ''}</td>
       <td>${p.active.map(m => `<span class="chip">${m.benched ? '💤 ' : m.paused ? '⏸ ' : ''}${esc(m.label)}${m.sub ? ` (${esc(m.sub)})` : ''}<button title="Take ${esc(p.name)} off this movie" onclick="unback('${m.id}','${p.discordId}')">✕</button></span>`).join('')}
@@ -1269,6 +1272,11 @@ function renderPeople() {
   for (const [k, v] of Object.entries(keep)) if (v && $(k)) $(k).value = v;
   if (open && box.querySelector('details')) box.querySelector('details').open = true;
   box.insertAdjacentHTML('beforeend', renameBox());
+}
+async function peopleRefresh(btn) {
+  btn.disabled = true; btn.textContent = '🔄 Refreshing…';
+  try { const r = await api('/api/people/refresh', {}); toast(`🔄 ${r.people} people (${r.linked} linked their Twitch)${r.pulled ? ` · ${r.pulled} new from Discord` : ''}`); }
+  catch {} finally { btn.disabled = false; btn.textContent = '🔄 Refresh'; }
 }
 async function addPerson() {
   const name = $('npName').value.trim(), twitch = $('npTw').value.trim();
@@ -1527,6 +1535,15 @@ function drawRound() {
       <button class="ghost" onclick="wRoundCmd('add',-30)">➖ 30 sec</button><button class="ghost danger" onclick="if(confirm('End the round now? Whatever the wheel is on wins.')) wRoundCmd('end')">⏹ End now</button></div>`}`;
   wRoundTick();
 }
+function wSplitSet(px) { const v = Math.round(Math.max(320, Math.min(innerWidth - 420, px))); document.documentElement.style.setProperty('--wRight', v + 'px'); try { localStorage.wRight = v; } catch {} }
+function wSplit(ev) {
+  const bar = ev.currentTarget; bar.classList.add('drag'); ev.preventDefault();
+  const mv = e => wSplitSet(innerWidth - e.clientX - 16);
+  const up = () => { bar.classList.remove('drag'); removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+}
+try { if (localStorage.wRight) document.documentElement.style.setProperty('--wRight', Number(localStorage.wRight) + 'px'); } catch {}
+try { const z = JSON.parse(localStorage.wRoundSize || 'null'); addEventListener('DOMContentLoaded', () => { const b = $('wRound'); if (!b) return; if (z) { b.style.width = z[0]; b.style.height = z[1]; } new ResizeObserver(() => { if (b.style.display !== 'none' && b.style.width) try { localStorage.wRoundSize = JSON.stringify([b.style.width, b.style.height]); } catch {} }).observe(b); }); } catch {}
 function wRoundDrag(ev) {
   if (ev.target.closest('button')) return; const box = $('wRound'), r = box.getBoundingClientRect(), dx = ev.clientX - r.left, dy = ev.clientY - r.top;
   const mv = e => { box.style.left = Math.max(0, Math.min(innerWidth - 80, e.clientX - dx)) + 'px'; box.style.top = Math.max(0, Math.min(innerHeight - 60, e.clientY - dy)) + 'px'; };
