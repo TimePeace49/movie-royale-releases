@@ -1753,6 +1753,7 @@ const MAPS = {
     },
     drawWorld(pre) {
       if (!this.img) return;
+      if (pre) for (const f of fighters) if (!f.falling) this.walls(f, f.r || 20); // landing pieces never sit on a roof
       ctx.drawImage(this.img, sx(-this.A - this.P), sy(-this.B - this.P));
       drawHazardsGround();
       for (const gv of this.graves || []) { const a = clamp(gv.life, 0, 1); ctx.globalAlpha = a; ctx.font = '26px serif'; ctx.textAlign = 'center'; ctx.fillText('🪦', sx(gv.x), sy(gv.y) + 8); ctx.globalAlpha = 1; }
@@ -1795,17 +1796,17 @@ const MAPS = {
     },
     clouds: '#9a9aa8', fog: ['rgba(200,190,170,.12)', 'rgba(60,50,40,.5)'],
     flood() {},
-    afterBuild(R) { this.A = R * S * SQ3 * 1.05; this.B = R * S * SQ3 * .62; },
+    afterBuild(R) { this.A = R * S * SQ3 * 1.05; this.B = R * S * SQ3 * .62; this.form(); }, // the army stands ready while pieces land
     spawnAt(tl) { return tl.x < -MAPS.warfield.A * .12; },
     canGo(f, tl) { return phase !== 'running' || tl.x < (MAPS.warfield.front ?? 1e9) - S * 2; },
-    start() {
-      const A = this.A, B = this.B, n = fighters.length, k = clamp(Math.sqrt(n / 40), .8, 2.2);
+    start() { this.form(); SFX.play('horn'); },
+    form() {
+      const A = this.A, B = this.B, n = Math.max(fighters.length, 2), k = clamp(Math.sqrt(n / 40), .8, 3.6);
       this.units = []; this.arrows = []; this.stage = 'march'; this.volley = 1.2; this.front = A;
-      const kRows = 3, kCols = Math.round(7 * k), gap = S * 2.2, kx = A * .55, cols = Math.min(kCols, Math.floor(B * 1.6 / gap));
+      const kRows = clamp(Math.round(2 + k), 3, 6), kCols = Math.round(7 * k), gap = S * 2.2, kx = A * .55, cols = Math.min(kCols, Math.floor(B * 1.6 / gap));
       for (let r = 0; r < kRows; r++) for (let c = 0; c < cols; c++) this.units.push({ kind: 'knight', x: kx + r * gap, y: (c - (cols - 1) / 2) * gap, vx: 0, vy: 0, ph: rnd(6.3), hit: 0 });
       const aCols = Math.min(Math.round(6 * k), Math.floor(B * 1.6 / gap)); for (let r = 0; r < 2; r++) for (let c = 0; c < aCols; c++) this.units.push({ kind: 'archer', x: A * .92 + r * gap * .8, y: (c - (aCols - 1) / 2) * gap * 1.1, vx: 0, vy: 0, ph: rnd(6.3), draw: rnd(1) });
       const cav = Math.round(4 * k); for (const side of [-1, 1]) for (let i = 0; i < cav; i++) this.units.push({ kind: 'cav', side, x: kx + (i % 2) * gap * 1.4, y: side * (B * .62 + Math.floor(i / 2) * gap * 1.2), vx: 0, vy: 0, ph: rnd(6.3), lane: side * (B * .9) });
-      SFX.play('horn');
     },
     // the line of the army's front (where the knights are), for the pieces' AI and the spawn
     update(dt) {
