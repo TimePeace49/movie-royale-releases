@@ -77,7 +77,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.v.outputs.version }}
-          name: Movie Royal ${{ steps.v.outputs.version }}${{ github.event.inputs.latest == 'true' && '' || ' (test build)' }}
+          name: Movie Royal ${{ steps.v.outputs.version }}${{ github.event.inputs.latest != 'true' && ' (test build)' || '' }}
           prerelease: ${{ github.event.inputs.latest != 'true' }}
           make_latest: ${{ github.event.inputs.latest == 'true' && 'true' || 'false' }}
           files: dist/MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe
