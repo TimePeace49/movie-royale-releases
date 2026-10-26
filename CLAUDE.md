@@ -24,7 +24,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 
 ## Rules Derek has set (keep them)
 - **Round timer** (per wheel, default 2 min, minutes or seconds): starts when the first spin lands; respins/moves keep going until it runs out, then the current spot is the final winner (`final`). Auto + countdown landings pause it until Derek spins again; he can pause/start any time from the left-side pop-up. "Money" = subs, gift subs, bits, donations, or ones logged by hand.
-- **Wheel spot types (dropdown):** ⏱️ timer (= normal spot, clock keeps going, respin button), ⚡ auto (pauses clock, wheel shows "(auto)"), 🔢 countdown (each landing knocks one off, pauses clock, wheel shows "(n)"; 0 = leaves next spin). Any spot can block channel point respins and/or saved-spin respins. Each spot can have its own sound. "Rules off" = plain wheel.
+- **Wheel spot types (dropdown):** ⏱️ timer (= normal spot, clock keeps going, respin button), ⚡ auto (pauses clock, wheel shows "(auto)"), 🔢 countdown (each landing knocks one off, pauses clock, wheel shows "(n)"; 0 = leaves next spin), ⏱️🔢 timercount (timer spot; each WIN knocks one off; 0 = invisible next spin), ⏱️🏆 timermax (timer spot; max wins per stream, then invisible until `newStream`). A "win" = the round timer ran out on it (`finalize`), or with no round timer the next fresh spin. Derek calls paused spots "invisible" (👁️/🙈). Any spot can block channel point respins and/or saved-spin respins. Each spot can have its own sound. "Rules off" = plain wheel.
 - **+ / −** = ±10% of the whole wheel (setting `growPct`), others shrink evenly. The void's size is frozen when others change; only money or Derek himself (+ / −) can change it, never channel points.
 - **Respin collisions:** respins within `collide.secs` of each other → first spins, the rest become saved respins.
 - **Void spot** (per wheel, off by default): lands → auto respin → that spot is voided for the rest of the stream; on-stream "voided tonight" list; money can bring spots back. Void landing on void = it grows and respins; after `landings` hits it fills the wheel → optional "[name] will return for Doomsday" (fullscreen, OBS mic mute + camera hide, StopStream after 15 s via `src/obs.js`). Symbols: respin = 🔁, void / bring back = 🕳️. No gauntlet.
@@ -46,6 +46,9 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Channel point rewards:** `syncRewards()` in server.js pauses every reward the app made (manageable rewards) unless it's usable right now; the desktop app pauses them all on quit (`/api/rewards/pause-all`). Pausing only — never refunds.
 - **Wild (Kirb) spots and a winner's other movies are hidden (`benched`), never deleted.** ▶ on the Battle tab sets `forceIn` (skips cooldown + chat check). "Reset wild spots" = `resetSpots()`.
 - **Never use `prompt()`** in pages: the Windows app blocks it. Use `await ask(question, default)` from `public/ask.js`.
+
+- **Closing the app** with the 24/7 bot off asks first (`tryQuit` in main.cjs → `closeAsk()` in control.html; setting `closeAskBot`).
+- **Share files:** `/api/wheel/:id/export`, `/api/lists/:id/export` → JSON with `movieRoyal: 'wheel'|'battle'`, own uploads packed as data URLs; `/api/share/import` makes a NEW wheel/battle.
 
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).

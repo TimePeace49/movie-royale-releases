@@ -24,7 +24,7 @@ export const MAP_LIST = [
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
 // map menus until it's been played on stream again. (Maps never played on stream show "NEW".)
-const REV = { gas: 2 };
+const REV = { gas: 2, plague: 2 };
 for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
 // chaos events that break the ground: never used on maps where nothing breaks (their channel point rewards get paused there)
 export const GROUND_EVENTS = ['collapse', 'lightning'];

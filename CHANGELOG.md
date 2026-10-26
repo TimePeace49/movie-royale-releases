@@ -2,6 +2,20 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.17.0 (test build)
+- **☁️ Closing Movie Royal while the 24/7 bot is off** now asks first, because the Discord bot stops too. Paste your Cloudflare token and press "Turn on 24/7, then close", or close anyway (there's a "don't ask again" box).
+- **💜 Channel points:** Movie Royal's rewards stay paused unless you're live (or a battle is going) and they can be used right now. If a reward with one of Movie Royal's names was made by hand on Twitch, Movie Royal can't pause it, so a warning tells you which one to delete and make again from the app.
+- **🐀 Plague Town:** infected balls are much easier to spot: they turn green with spots, get a bright pulsing ring, a red ring showing the time they have left, and a 🤢.
+- **Fixed: balls not coming back on the battle screen** after a battle sometimes (it could stay stuck on the last battle).
+- **Battle tab:** ↺ Reset sits right after 🪟 Pop out again (all on one line).
+- **🎡 👁️ / 🙈 on every wheel spot** to make it invisible (off the wheel, still in your list) or show it again. "👁️ Show all" brings every one back.
+- **📤 Export / 📥 Import wheels and battles:** send a wheel (spots, rules, looks, settings, your pictures and sounds) or a battle to another streamer as a file. They open it with 📥 Import and it shows up as a new wheel or battle.
+- **🎡 2 new spot rules:**
+  - **⏱️🔢 Timer + countdown:** a timer spot with a countdown. Every time it wins, one comes off; at 0 it goes invisible.
+  - **⏱️🏆 Timer + max wins a night:** a timer spot that can only win so many times a stream, then it's invisible until next stream.
+- **🪟 Pop out** on the Wheel tab opens the wheel in its own window.
+- **⏱️ Round timer pop-up** shows the spot the wheel is on right now, and the 🏆 winner when time runs out.
+
 ## 1.16.0 (test build)
 - **🎟️ Streamer respin** button under the wheel: you get 3 each stream (change it in 🌐 All wheels). It shows how many are left and turns gray when they're used up. They fill back up when you go live (right-click it to refill early).
 - **↕️ Drag spots to sort them:** on the wheel's ✏️ Spots list, grab the ⠿ on the left of a spot and drop it where you want it, like sorting a YouTube playlist. The ▲ ▼ arrows are gone.

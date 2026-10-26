@@ -23,8 +23,8 @@ export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true,
   points: { respin: true, move: true, up: true, down: true, grow: true, shrink: false },
   void: { on: false, label: 'VOID', weight: 1, color: '#0b0b12', landings: 5, doomsday: false, monthly: true },
   pop: { on: true, sub: true, gift: true, bits: true, money: true, grow: true, shrink: false, spins: true, unvoid: true } };
-const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
-export const TYPES = { timer: '⏱️ Timer', auto: '⚡ Auto', countdown: '🔢 Countdown', void: '🕳️ Void' };
+export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
+export const TYPES = { timer: '⏱️ Timer', auto: '⚡ Auto', countdown: '🔢 Countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' };
 const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#ffffff', hub: '🎡', hubImage: '', lines: '#ffffff', font: 'Inter', textScale: 1, textColor: '' };
 
 export function W() {
@@ -55,6 +55,8 @@ export function cleanEntry(e) {
     rule: String(e.rule || '').slice(0, 2000), on: e.on !== false && e.enabled !== false, type, voided: e.voided || null, image: fileOk(e.image === '/gauntlet.svg' ? '' : e.image), sound: fileOk(e.sound),
     noPointRespin: !!e.noPointRespin, noBankRespin: !!e.noBankRespin };
   if (type === 'countdown') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); out.autoKnock = e.autoKnock !== false; }
+  if (type === 'timercount') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); } // a timer spot: each WIN takes one off, at 0 it goes invisible
+  if (type === 'timermax') { out.maxWins = Math.round(num(e.maxWins, 1, 1, 1000)); out.wins = Math.round(num(e.wins, 0, 0, 1000)); out.maxedOff = !!e.maxedOff; } // a timer spot that can only win so many times a night
   return out;
 }
 const active = () => W().wheels.find(x => x.id === W().activeId);
@@ -72,7 +74,21 @@ function layout(w) {
 }
 const rulesOn = w => w?.opts?.rules !== false;
 // the words shown in the slice: countdown spots show how many are left, auto spots say (auto)
-const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'countdown' ? `${e.text} (${e.count})` : e.type === 'auto' ? `${e.text} (auto)` : e.text;
+const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, e.maxWins - (e.wins || 0))} left)` : e.type === 'auto' ? `${e.text} (auto)` : e.text;
+// a spot WON (the round timer ran out on it, or the next fresh spin started with no round timer): timer + countdown / timer + max spots count it
+function countWin(w, entryId) {
+  if (!w || !rulesOn(w)) return;
+  const e = w.entries.find(x => x.id === entryId); if (!e) return;
+  if (e.type === 'timercount' && e.count > 0) e.count--;
+  if (e.type === 'timermax') e.wins = (e.wins || 0) + 1;
+}
+// used up: invisible from the next spin (timer + countdown at 0 for good, timer + max until the next stream)
+function hideUsedUp(w) {
+  for (const e of w.entries) {
+    if (e.type === 'timercount' && e.count <= 0 && e.on) e.on = false;
+    if (e.type === 'timermax' && (e.wins || 0) >= e.maxWins && e.on) { e.on = false; e.maxedOff = true; }
+  }
+}
 // what the screens need to draw it (colors filled in so both screens match)
 export const view = w => w && ({ id: w.id, name: w.name, title: w.title, rot: w.rot || 0, spinSecs: w.spinSecs, look: w.look, rules: rulesOn(w),
   opts: { confetti: w.opts.confetti, ticks: w.opts.ticks, winSound: w.opts.winSound, recent: w.opts.recent, showPct: w.opts.showPct },
@@ -153,7 +169,7 @@ function finalize() {
   r.state = 'ended'; r.left = 0; clearTimeout(roundT);
   if (!rec) { sendRound(); return; }
   st.final = { ...rec, at: Date.now() };
-  const w = getWheel(rec.wheelId);
+  const w = getWheel(rec.wheelId); countWin(w, rec.entryId); bump(); save();
   log({ kind: 'final', wheelId: rec.wheelId, wheelName: rec.wheelName, entryId: rec.entryId, text: rec.text, rule: rec.rule, pct: rec.pct, by: { name: '⏱️ Time ran out', source: 'timer' } });
   sendRound({ final: st.final }); hooks.broadcast(wheelMsg());
   sayW(w, `⏱️ TIME! The wheel has spoken: 🏆 ${rec.text}${rec.rule ? ' — ' + rec.rule.slice(0, 200) : ''}`);
@@ -221,6 +237,8 @@ function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Te
     const sl0 = layout(w);
     if (w.removeWinner && st.last?.wheelId === w.id) { const e = w.entries.find(x => x.id === st.last.entryId); if (e && sl0.length > 1) e.on = false; }
     for (const e of w.entries) if (e.type === 'countdown' && e.count <= 0 && e.on) e.on = false;
+    if (!roundOn(w) && st.last?.wheelId === w.id) countWin(w, st.last.entryId); // no round timer: the last landing was the winner
+    hideUsedUp(w);
     st.final = null; st.last = null;
     st.round = roundOn(w) ? { wheelId: w.id, state: 'armed', total: roundLen(w), left: roundLen(w), why: '' } : null;
   }
@@ -343,7 +361,7 @@ export function useMine() { // the streamer's own respins: a few per stream (3 b
   try { return { ...request('respin', { name: streamerName(), source: 'mine' }), left: st.mine.left }; } catch (e) { st.mine.left++; save(); throw e; }
 }
 const streamKey = () => db.stream?.startedAt || W().streamAt || (W().streamAt = Date.now());
-export function newStream() { const st = W(); st.mine.left = st.mine.perStream; st.streamAt = Date.now(); st.voidHits = {}; for (const w of st.wheels) for (const e of w.entries) e.voided = null; refresh(); }
+export function newStream() { const st = W(); st.mine.left = st.mine.perStream; st.streamAt = Date.now(); st.voidHits = {}; for (const w of st.wheels) for (const e of w.entries) { e.voided = null; if (e.type === 'timermax') { e.wins = 0; if (e.maxedOff) { e.on = true; e.maxedOff = false; } } } refresh(); }
 const monthKey = () => new Date().toISOString().slice(0, 7);
 /** bring a voided spot back. by.source 'you' = you did it yourself (1 per month if that's on); money pop-ups don't count */
 export function unvoid(entryId, by = {}, reason = '', wheelId, force) {

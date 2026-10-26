@@ -112,7 +112,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, live: !!db.live, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, live: !!db.live, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -232,15 +232,17 @@ let rewardKey = '', rewardBusy = false;
 // battle chaos only while the battle is on stream (and never ground-breakers on solid maps), ball power-ups only in a fun chat battle,
 // wheel rewards only while the wheel is on stream, the ball color reward only while the battle is up. Anything else the app made stays paused.
 // (Pausing only. Never refunds, cancels or completes anything.)
+var rewardsByHand = []; // rewards with our names that were made by hand on Twitch: we can't pause them
 function rewardWants() {
-  const st = db.settings, on = st.pointsOn !== false, map = mapById(currentMap()), l = getList(db.activeListId), W = wheel.W(), wheelUp = !!W.show;
+  const inUse = !!db.live || live.phase === 'lobby' || live.phase === 'running'; // not streaming = nothing can be redeemed
+  const st = db.settings, on = st.pointsOn !== false && inUse, map = mapById(currentMap()), l = getList(db.activeListId), W = wheel.W(), wheelUp = !!W.show;
   const want = {}; // title → should it be paused?
   for (const [title, ev] of Object.entries(st.rewards || {})) want[title.toLowerCase()] = !on || wheelUp || (!!map?.solid && GROUND_EVENTS.includes(ev));
   const powersOn = on && !wheelUp && l?.type === 'chat' && !!l.fun?.powerups;
   for (const title of Object.keys(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn;
   const wh = W.wheels.find(w => w.id === W.activeId), P = { respin: true, move: true, up: true, down: true, grow: true, shrink: false, ...(wh?.opts?.points || {}) };
-  for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(wheelUp && W.pointsOn !== false && P[kind] !== false);
-  if (st.colorReward) want[st.colorReward.toLowerCase()] = !(st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
+  for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false);
+  if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
   return want;
 }
 async function syncRewards(all = null) {
@@ -253,6 +255,11 @@ async function syncRewards(all = null) {
     const pause = r => all != null ? all : (r.title.toLowerCase() in want ? want[r.title.toLowerCase()] : true);
     await Promise.allSettled(mine.filter(r => r.paused !== pause(r)).map(r => twitch.updateReward(r.id, { paused: pause(r) })));
     rewardKey = key;
+    try { // look for look-alikes made by hand on Twitch: we can't touch them, so tell you
+      const ids = new Set(mine.map(r => r.id)), names = new Set(Object.keys(want || rewardWants()));
+      const byHand = (await twitch.listAllRewards()).filter(r => !ids.has(r.id) && names.has(r.title.toLowerCase())).map(r => r.title);
+      if (JSON.stringify(byHand) !== JSON.stringify(rewardsByHand)) { rewardsByHand = byHand; pushState(); }
+    } catch {}
   } catch (e) { console.error('[rewards]', e.message); }
   finally { rewardBusy = false; }
 }
@@ -335,7 +342,7 @@ const twitchHandlers = {
   change: pushState,
   live(isLive) {
     if (!!db.live === !!isLive) return;
-    db.live = !!isLive; if (isLive) { stream().movies = 0; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
+    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (db.settings.closePicksWhenLive && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
     save(); pushState();
@@ -492,7 +499,7 @@ wss.on('connection', (ws, req) => {
   ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control';
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
-  if (ws.role === 'overlay') { if (live.phase === 'ended' && !live.claim) leaveEnded(); ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
+  if (ws.role === 'overlay') { if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
   ws.on('message', raw => {
@@ -875,6 +882,8 @@ function donePage(title, msg) {
   <div><div style="font-size:64px">✅</div><h1 style="color:#ffc94a;margin:10px 0">${title.replace(/</g, '&lt;')}</h1><p>${msg}</p></div></body>`;
 }
 app.get('/api/app', (req, res) => res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [] }));
+app.get('/api/close-check', (req, res) => res.json({ ask: DESKTOP && !!db.settings.discordToken && !cloud.enabled() && db.settings.closeAskBot !== false })); // the Discord bot stops when the app closes
+app.post('/api/app/quit', (req, res) => { if (req.body?.dontAsk) { db.settings.closeAskBot = false; save(); } res.json({ ok: true }); setTimeout(() => globalThis.__desktop?.quit(), 300); });
 app.post('/api/refocus', (req, res) => { globalThis.__desktop?.refocus?.(); res.json({ ok: true }); });
 app.post('/api/open-data-folder', (req, res) => { globalThis.__desktop?.openPath?.(DATA); res.json({ ok: !!globalThis.__desktop }); });
 app.post('/api/test/tmdb', async (req, res) => {
@@ -977,6 +986,48 @@ app.post('/api/settings', (req, res) => {
   if (rl) Promise.all([lb.refreshRss(db.settings.letterboxdUser), lb.refreshProfile(db.settings.letterboxdUser)]).then(() => { sweepWatched(); pushState(); });
   pushState();
   res.json({ ok: true });
+});
+
+// ---------- 📤 share files: send a wheel or a battle to another streamer (they open it with 📥 Import) ----------
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4' };
+function packFile(p) { // your own pictures / sounds go inside the file, so they work on someone else's computer too
+  if (!/^\/uploads\/[\w.-]+$/.test(p || '')) return p || '';
+  try { const f = path.join(UPLOADS, path.basename(p)), ext = path.extname(f).slice(1).toLowerCase(); if (!MIME[ext] || fs.statSync(f).size > 8e6) return ''; return `data:${MIME[ext]};base64,` + fs.readFileSync(f).toString('base64'); } catch { return ''; }
+}
+function unpackFile(v) {
+  const m = /^data:([\w/+.-]+);base64,(.+)$/s.exec(v || ''); if (!m) return /^https?:\/\//.test(v || '') ? v : '';
+  const ext = Object.entries(MIME).find(([, t]) => t === m[1])?.[0]; if (!ext) return '';
+  const file = 'shared-' + uid() + '.' + ext; fs.writeFileSync(path.join(UPLOADS, file), Buffer.from(m[2], 'base64')); return '/uploads/' + file;
+}
+const shareName = s => String(s || 'movie-royal').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'movie-royal';
+app.get('/api/wheel/:id/export', (req, res) => {
+  const w = wheel.getWheel(req.params.id); if (!w) return res.sendStatus(404);
+  const entries = w.entries.filter(e => e.type !== 'void').map(e => { const x = { ...e, voided: null, image: packFile(e.image), sound: packFile(e.sound) }; delete x.id; if (x.type === 'timermax') { x.wins = 0; if (x.maxedOff) { x.on = true; x.maxedOff = false; } } if (x.type === 'countdown' || x.type === 'timercount') x.count = x.countStart; return x; });
+  const out = { movieRoyal: 'wheel', v: 1, from: streamerName(), app: VERSION, wheel: { name: w.name, title: w.title, spinSecs: w.spinSecs, removeWinner: w.removeWinner, palette: w.palette, look: w.look, opts: w.opts, entries } };
+  res.attachment(`${shareName(w.name)}.movieroyal-wheel.json`); res.type('application/json'); res.send(JSON.stringify(out, null, 1));
+});
+app.get('/api/lists/:id/export', (req, res) => {
+  const l = getList(req.params.id); if (!l) return res.sendStatus(404);
+  const keep = ['label', 'sub', 'weight', 'tmdbId', 'poster', 'details', 'twitch', 'kind'];
+  const entries = l.entries.filter(e => ['active', 'paused', 'benched', 'away'].includes(e.status || 'active') && e.kind !== 'spot').map(e => { const x = {}; for (const k of keep) if (e[k] != null) x[k] = e[k]; if (e.image) x.image = packFile(e.image); if (l.type === 'movies' && e.backers?.[0]) x.pickedBy = e.backers[0].name; return x; });
+  const out = { movieRoyal: 'battle', v: 1, from: streamerName(), app: VERSION, battle: { name: l.type === 'movies' ? `${streamerName()}'s Discord movies` : l.name, type: l.type === 'movies' ? 'films' : l.type, screenTitle: l.screenTitle || '', bestOf: l.bestOf || 1, entries } };
+  res.attachment(`${shareName(out.battle.name)}.movieroyal-battle.json`); res.type('application/json'); res.send(JSON.stringify(out, null, 1));
+});
+app.post('/api/share/import', (req, res) => { // open a share file: makes a NEW wheel or battle (nothing of yours is changed)
+  let j; try { j = JSON.parse(String(req.body?.text || '').replace(/^\uFEFF/, '')); } catch { return res.status(400).json({ error: "That isn't a Movie Royal share file." }); }
+  if (j?.movieRoyal === 'wheel' && j.wheel) {
+    const s = j.wheel, w = wheel.newWheel(s.name || 'Shared wheel', (s.entries || []).map(e => ({ ...e, image: unpackFile(e.image), sound: unpackFile(e.sound) })), { title: s.title || '', spinSecs: s.spinSecs || 10, removeWinner: !!s.removeWinner, palette: s.palette || null, ...(s.look ? { look: s.look } : {}), opts: wheel.mergeOpts(s.opts) });
+    wheel.syncVoid(w); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged();
+    return res.json({ ok: true, kind: 'wheel', id: w.id, name: w.name, count: w.entries.length, from: j.from || '' });
+  }
+  if (j?.movieRoyal === 'battle' && j.battle) {
+    const b = j.battle, type = ['text', 'pics', 'chat', 'films'].includes(b.type) ? b.type : 'text';
+    const l = { id: uid(), name: String(b.name || 'Shared battle').slice(0, 60), type, entries: [], joinOpen: false, screenTitle: String(b.screenTitle || '').slice(0, 60), bestOf: [1, 3, 5, 7, 9].includes(b.bestOf) ? b.bestOf : 1 };
+    for (const e of (b.entries || []).slice(0, 5000)) { if (!e?.label) continue; const x = { id: uid(), label: String(e.label).slice(0, 120), sub: String(e.sub || '').slice(0, 40), weight: Math.max(0.1, Math.min(1000, Number(e.weight) || 1)), status: 'active', addedAt: Date.now() }; for (const k of ['tmdbId', 'poster', 'details', 'twitch']) if (e[k] != null) x[k] = e[k]; if (e.image) x.image = unpackFile(e.image); l.entries.push(x); }
+    db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); pushState(); refreshPreview(true);
+    return res.json({ ok: true, kind: 'battle', id: l.id, name: l.name, count: l.entries.length, from: j.from || '' });
+  }
+  res.status(400).json({ error: "That isn't a Movie Royal share file." });
 });
 
 // lists

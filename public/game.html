@@ -1864,7 +1864,12 @@ const MAPS = {
       for (const f of live) ys.set(f, drawFighter(f, pre));
       for (const f of live) if (f.sick && f.alive) { // green fever glow and a cloud of flies
         const cy = ys.get(f), k = clamp((t - f.sick) / Math.max(.1, f.sickDie - f.sick), 0, 1);
-        ctx.fillStyle = `rgba(120,200,40,${.25 + .3 * k})`; ctx.beginPath(); ctx.arc(sx(f.x), cy, f.r + 3, 0, 7); ctx.fill();
+        const X = sx(f.x), pulse = .5 + .5 * Math.sin(clock * 8 + (f.wob || 0));
+        ctx.fillStyle = `rgba(110,230,30,${.38 + .3 * k})`; ctx.beginPath(); ctx.arc(X, cy, f.r + 1, 0, 7); ctx.fill(); // sick green all over
+        ctx.fillStyle = 'rgba(60,140,10,.85)'; for (let j = 0; j < 5; j++) { const a = j * 1.26 + (f.wob || 0); ctx.beginPath(); ctx.arc(X + Math.cos(a) * f.r * .55, cy + Math.sin(a) * f.r * .55, Math.max(2, f.r * .13), 0, 7); ctx.fill(); } // spots
+        ctx.lineWidth = Math.max(3, f.r * .16); ctx.strokeStyle = `rgba(170,255,60,${.7 + .3 * pulse})`; ctx.beginPath(); ctx.arc(X, cy, f.r + 4 + pulse * 3, 0, 7); ctx.stroke(); // bright pulsing ring
+        ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = Math.max(2.5, f.r * .1); ctx.beginPath(); ctx.arc(X, cy, f.r + 9 + pulse * 3, -Math.PI / 2, -Math.PI / 2 + (1 - k) * Math.PI * 2); ctx.stroke(); // time left before it drops
+        if (live.length < 160) { ctx.font = `${Math.max(16, f.r * .9) | 0}px serif`; ctx.textAlign = 'center'; ctx.fillText('🤢', X + f.r * .85, cy - f.r * .75); }
         ctx.fillStyle = '#111'; for (let j = 0; j < 4; j++) { const a = clock * 5 + j * 1.6 + (f.wob || 0); ctx.beginPath(); ctx.arc(sx(f.x) + Math.cos(a) * (f.r + 10), cy - f.r * .6 + Math.sin(a * 1.3) * 8, 2, 0, 7); ctx.fill(); }
       }
       const crowd = live.length > 50;
@@ -2744,6 +2749,7 @@ function drawVote() {
 
 // ================= game flow =================
 function applyPreview(m) {
+  if (phase === 'ended' && !replay) { phase = 'idle'; fighters = []; winner = null; } // the app only sends this between battles: never stay stuck on the last battle
   if (phase !== 'idle' && phase !== 'waiting') return;
   listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length; pendingCount = m.queued || 0;
   chatGate = !!m.chatGate; if (m.chaos) chaos = m.chaos;
@@ -2786,7 +2792,8 @@ function wlRound(rd) {
   tick(); if (wlRoundS && wlRoundS.state === 'running') wlRoundT = setInterval(tick, 200);
 }
 let wlId = '', wlOpts = {};
-function wlSet(on) { SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
+const WHEEL_ONLY = new URLSearchParams(location.search).has('wheel'); // the wheel popped out in its own window: always the wheel, no sound (the app already plays it)
+function wlSet(on) { if (WHEEL_ONLY) on = true; SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
 function wlVoided(w) { const el = $('wlVoid'); if (!w || !w.voidOn) { el.style.display = 'none'; return; } const v = w.voided || []; el.style.display = ''; el.innerHTML = `<div class="h">${VX} VOIDED TONIGHT</div>${v.length ? v.slice(0, 8).map(t => `<div class="x">${esc(t)}</div>`).join('') + (v.length > 8 ? `<div>+${v.length - 8} more</div>` : '') : '<div style="opacity:.6">Nothing yet… 👀</div>'}`; }
 function wlUse(w) { if (!w) return; wlVoided(w); wlId = w.id; wlOpts = { ...(w.opts || {}), rules: w.rules !== false }; $('wlRecent').style.display = wlOpts.recent === false ? 'none' : ''; if (wlShow) SFX.setMap?.('wheel-' + wlId); }
 function wlCard(r, k) {
@@ -3331,7 +3338,7 @@ requestAnimationFrame(frame);
 let sock = null, connected = false;
 function send(o) { if (sock && sock.readyState === 1) sock.send(JSON.stringify(o)); }
 function connect() {
-  sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=overlay`);
+  sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=overlay${WHEEL_ONLY ? '&side=1' : ''}`);
   sock.onopen = () => connected = true;
   sock.onclose = () => { connected = false; setTimeout(connect, 2000); };
   sock.onmessage = e => handleMsg(JSON.parse(e.data));
@@ -3350,7 +3357,7 @@ function handleMsg(m) {
     else if (m.type === 'power') powerMsg(m);
     else if (m.type === 'effect') receiveEffect(m.effect);
     else if (m.type === 'queued') SFX.play('queued'), pendingCount++, floaters.push({ scr: 1, text: `${(EV_INFO[m.effect.event] || ['⚡'])[0]} queued for next round!`, x: CX, y: 260, life: 2.5, color: '#ffd98a' });
-    else if (m.type === 'audio') SFX.setVolume({ on: m.on, sfx: m.sfx, music: m.music });
+    else if (m.type === 'audio') SFX.setVolume({ on: m.on && !WHEEL_ONLY, sfx: m.sfx, music: m.music });
     else if (m.type === 'soundTest') { if (m.name === 'music') { SFX.music('fight'); SFX.setIntensity(.7); setTimeout(() => phase !== 'running' && SFX.stopMusic(), 6000); } else if (m.map) SFX.playOn(m.map, m.name); else SFX.play(m.name); }
     else if (m.type === 'reset') { SFX.stopMusic(); phase = 'idle'; fighters = []; hideWin(); hideClaim(); buildIsland(); }
     else if (m.type === 'claimStart') startClaim(m.winner, m.seconds, m.recent);

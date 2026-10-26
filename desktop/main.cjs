@@ -55,7 +55,8 @@ function createWindow() {
   hardenWindow(win);
   win.once('ready-to-show', () => { if (!startHidden) { win.maximize(); win.show(); } });
   win.on('close', e => {
-    if (quitting || !prefs.runInBackground) return;
+    if (quitting || closeOk) return;
+    if (!prefs.runInBackground) { e.preventDefault(); tryQuit(); return; } // closing the window = quitting: check the 24/7 bot first
     e.preventDefault(); win.hide(); // keep the Discord bot + Twitch running in the tray
     if (!prefs.toldAboutTray && tray) { prefs.toldAboutTray = true; tray.displayBalloon?.({ title: 'Movie Royal is still running', content: 'The Discord bot keeps working. Right-click the icon by the clock to quit.', iconType: 'info' }); }
   });
@@ -69,7 +70,7 @@ function makeTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Movie Royal', click: showWindow },
     { type: 'separator' },
-    { label: 'Quit Movie Royal', click: () => { quitting = true; app.quit(); } }
+    { label: 'Quit Movie Royal', click: () => app.quit() }
   ]));
   tray.on('click', showWindow); tray.on('double-click', showWindow);
 }
@@ -79,8 +80,21 @@ function applySettings(p) {
 }
 
 app.on('second-instance', () => showWindow());
+// Quitting: if the Discord bot only runs inside this app (24/7 mode is off), ask first. The control panel shows the question (closeAsk).
+let closeOk = false, asking = false;
+async function tryQuit() {
+  if (closeOk) { quitting = true; return app.quit(); }
+  if (asking) return showWindow(); asking = true;
+  let ask = false;
+  try { const c = new AbortController(); setTimeout(() => c.abort(), 2500); ask = !!(await (await fetch(BASE + '/api/close-check', { signal: c.signal })).json()).ask; } catch {}
+  if (ask) {
+    try { showWindow(); const shown = await win.webContents.executeJavaScript('typeof closeAsk === "function" && closeAsk()'); if (shown === true) { asking = false; return; } } catch {}
+  }
+  asking = false; closeOk = true; quitting = true; app.quit();
+}
 let rewardsPaused = false;
 app.on('before-quit', e => { // pause every Movie Royal channel point reward on Twitch while the app is closed
+  if (!closeOk) { e.preventDefault(); tryQuit(); return; }
   quitting = true;
   if (rewardsPaused) return;
   e.preventDefault(); rewardsPaused = true;
@@ -100,13 +114,13 @@ app.on('browser-window-created', (_e, w) => {
 });
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'Movie Royal', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }, { type: 'separator' }, { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => { quitting = true; app.quit(); } }] }
+    { label: 'Movie Royal', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }, { type: 'separator' }, { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }] }
   ]));
   let started = false;
   globalThis.__desktop = {
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
     refocus: () => { const w = BrowserWindow.getFocusedWindow() || win; if (w && !w.isDestroyed()) { w.blur(); setTimeout(() => !w.isDestroyed() && w.focus(), 30); } },
-    quit: () => { quitting = true; app.quit(); },
+    quit: () => { closeOk = true; quitting = true; app.quit(); }, // no questions (updates, or after you answered)
     applySettings,
     openPath: p => shell.openPath(p),
     fatal: msg => { dialog.showErrorBox('Movie Royal', msg); app.quit(); },
