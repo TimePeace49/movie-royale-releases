@@ -65,6 +65,7 @@ async function getAppToken() {
 async function helix(pathQ, opts = {}, retry = true) {
   const token = db.twitchToken?.access || await getAppToken();
   const res = await fetch('https://api.twitch.tv/helix/' + pathQ, {
+    signal: AbortSignal.timeout(15000), // never wait forever on Twitch
     ...opts,
     headers: { 'Client-Id': s().twitchClientId, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
   });

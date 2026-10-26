@@ -111,10 +111,32 @@ export async function sync(force = false) {
 
 export function start(changed) {
   onChange = changed || onChange;
-  clearInterval(timer);
+  clearInterval(timer); clearInterval(linkTimer);
   if (!enabled()) return;
-  setTimeout(() => sync(true), 3000);
+  setTimeout(() => sync(true).then(() => checkLink()), 3000);
   timer = setInterval(() => sync(false), 60000);
+  linkTimer = setInterval(() => checkLink(), 10 * 60000);
+}
+/** Is Discord really sending /suggest, /linktwitch… to the 24/7 bot? If not, the bot only "works" while the app is open.
+ *  Checks Discord, and re-connects it by itself when it slipped (or never stuck). */
+let linkTimer = null;
+export async function checkLink(fix = true) {
+  if (!enabled()) { status.linked = null; return status; }
+  const url = cloud().url + '/';
+  try {
+    const app = await discord('GET', '/applications/@me');
+    if (app.verify_key && app.verify_key !== cloud().publicKey) { db.settings.cloud = { ...cloud(), publicKey: app.verify_key }; save(); lastHash = ''; await sync(true); }
+    status.linked = app.interactions_endpoint_url === url;
+    if (!status.linked && fix) {
+      await sync(true);
+      await discord('PATCH', '/applications/@me', { interactions_endpoint_url: url });
+      status.linked = true; status.relinked = Date.now(); console.log('[24/7] Discord was not pointed at the 24/7 bot — fixed');
+    }
+    status.linkError = null;
+  } catch (e) { status.linked = false; status.linkError = e.message; console.error('[24/7] link check', e.message); }
+  try { const r = await fetch(cloud().url + '/health', { signal: AbortSignal.timeout(10000) }); status.botUp = r.ok; } catch { status.botUp = false; }
+  status.checkedAt = Date.now(); onChange();
+  return status;
 }
 
 /** One click: put the bot on Cloudflare, connect Discord to it. */
@@ -145,7 +167,7 @@ export async function enable(cfToken) {
   const url = `https://${SCRIPT}.${sub}.workers.dev`;
   steps.push('online at ' + url);
   const app = await discord('GET', '/applications/@me');
-  db.settings.cloud = { enabled: true, url, accountId, kvId: kv.id, syncKey, publicKey: app.verify_key, at: Date.now() }; save();
+  db.settings.cloud = { enabled: true, url, accountId, kvId: kv.id, syncKey, publicKey: app.verify_key, at: Date.now() }; save(); status.linked = false;
   // a brand-new workers.dev address can take a little while to come alive
   let pushed = false, lastErr;
   for (let i = 0; i < 20 && !pushed; i++) { try { await api('POST', { config: buildConfig() }); pushed = true; } catch (e) { lastErr = e; await sleep(3000); } }
@@ -153,7 +175,8 @@ export async function enable(cfToken) {
   lastHash = ''; steps.push('rules uploaded');
   let linked = false;
   for (let i = 0; i < 5 && !linked; i++) { try { await discord('PATCH', '/applications/@me', { interactions_endpoint_url: url + '/' }); linked = true; } catch (e) { lastErr = e; await sleep(4000); } }
-  if (!linked) throw new Error(`Couldn't connect Discord to the 24/7 bot: ${lastErr?.message}`);
+  if (!linked) { status.linked = false; status.linkError = lastErr?.message; throw new Error(`Couldn't connect Discord to the 24/7 bot: ${lastErr?.message}. Movie Royal will keep trying by itself; you can also press Turn on again.`); }
+  status.linked = true;
   steps.push('Discord connected');
   checkedV = false; status.outdated = false;
   start();

@@ -506,7 +506,9 @@
     <h3>🎬 Movie winner: claim, pass, pin, sit out</h3>
     <p class="help">After a Discord movies battle (a real one, not a practice round): pretend the winner typed in chat. The claim timer stops and ✅ Accept / ⏭️ Pass show up on the Battle tab's winner card.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="api('/api/test/claim-chat').then(r=>toast(r.ok?'✋ The winner said hi':'⚠️ '+esc(r.error||'')))">✋ Winner types in chat</button>
-      <button onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button></div>
+      <button onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button>
+      <button onclick="cloudCheck(this)">☁️ Check the 24/7 Discord bot</button>
+      <button onclick="api('/api/test/chat',{name:'test_viewer',text:S.settings.helpCommand||'!moviesroyal'}).then(()=>toast('Asked for the command list (it posts in your Twitch chat; once every 30 seconds)'))">📜 Post the command list in chat</button></div>
     <label style="margin-top:8px">A viewer's Twitch name</label><input id="tSitName" value="test_viewer">
     <div class="row" style="gap:6px;margin-top:6px"><button onclick="api('/api/test/chat',{name:$('tSitName').value,text:S.settings.sitOutCommand||'!sitout'}).then(()=>toast('Sent '+esc(S.settings.sitOutCommand||'!sitout')))">🛌 They type !sitout</button><button onclick="api('/api/test/chat',{name:$('tSitName').value,text:S.settings.backCommand||'!imback'}).then(()=>toast('Sent '+esc(S.settings.backCommand||'!imback')))">🙋 They type !imback</button></div>
   </div>
@@ -2289,12 +2291,12 @@ function openSettings(force) {
 function dirty() { settingsDirty = true; $('saveHint').innerHTML = '<b style="color:var(--gold)">Unsaved changes</b>'; }
 function cloudHTML() {
   const c = S.cloud || {}, ago = t => t ? Math.max(0, Math.round((Date.now() - t) / 60000)) + ' min ago' : 'not yet';
-  if (c.enabled) return `<div class="card soft"><div class="row"><span class="grow">🟢 <b>On.</b> <code>/suggest</code>, <code>/swap</code> and <code>/mymovies</code> answer 24/7, even with this PC off. Picks made while Movie Royal was closed come in when you open it.</span></div>
+  if (c.enabled) return `<div class="card soft">${c.linked === false ? `<div class="card" style="border-color:var(--bad);margin:0 0 8px"><b>⚠️ Discord isn't connected to the 24/7 bot</b><p class="help" style="margin:4px 0">So commands only work while Movie Royal is open. Movie Royal keeps trying to fix it${c.linkError ? ` (${esc(c.linkError)})` : ''}. If it stays like this, paste your Cloudflare token below and press Update.</p><div class="row"><input class="grow" type="password" placeholder="Cloudflare API token"><button class="primary" onclick="cloudOn(this)">🔄 Set it up again</button></div></div>` : ''}<div class="row"><span class="grow">${c.linked === false ? '🟠' : '🟢'} <b>On.</b> <code>/suggest</code>, <code>/swap</code> and <code>/mymovies</code> answer 24/7, even with this PC off. Picks made while Movie Royal was closed come in when you open it.</span></div>
     <p class="help">Last synced: <b>${ago(c.lastSync)}</b>${c.pulled ? ` · ${c.pulled} pick${c.pulled === 1 ? '' : 's'} brought in` : ''}${c.lastError ? ` · <span style="color:var(--bad)">⚠️ ${esc(c.lastError)}</span>` : ''}</p>
     ${(c.rejected || []).length ? `<details><summary>${c.rejected.length} pick${c.rejected.length === 1 ? '' : 's'} that couldn't be added (they got a DM)</summary>${c.rejected.map(r => `<div class="help">${esc(r.name)}: ${esc(r.movie)} — ${esc(r.why)}</div>`).join('')}</details>` : ''}
     ${c.outdated ? `<div class="card" style="border-color:var(--gold);margin:8px 0"><b>🆕 The 24/7 bot needs an update</b><p class="help" style="margin:4px 0">This version of Movie Royal has fixes for the Discord bot (like <code>/linktwitch</code> not answering, and free replacement picks). Paste your Cloudflare API token and press Update. Make a new token the same way as before if you don't have it (My Profile → API Tokens → Edit Cloudflare Workers template).</p>
       <div class="row"><input id="cfToken" class="grow" type="password" placeholder="Cloudflare API token"><button class="primary" onclick="cloudOn(this)">🔄 Update the 24/7 bot</button></div></div>` : ''}
-    <div class="row"><button onclick="cloudSync(this)">🔄 Sync now</button><button class="ghost danger" onclick="if(confirm('Turn off 24/7 mode? Discord commands will only work while Movie Royal is open.')) api('/api/cloud/disable').then(()=>{toast('24/7 mode is off');openSettings(true)})">Turn off</button></div></div>`;
+    <div class="row"><button onclick="cloudSync(this)">🔄 Sync now</button><button onclick="cloudCheck(this)">🔍 Check it works when I'm closed</button><button class="ghost danger" onclick="if(confirm('Turn off 24/7 mode? Discord commands will only work while Movie Royal is open.')) api('/api/cloud/disable').then(()=>{toast('24/7 mode is off');openSettings(true)})">Turn off</button></div></div>`;
   return `<p class="help">A tiny copy of the bot runs on <b>Cloudflare’s free plan</b> so people can pick movies any time. It follows all your rules, and Movie Royal brings the picks in when you open it. One-time setup, about 5 minutes:</p>
     <ol class="help" style="padding-left:18px;line-height:1.7">
       <li>Make a free account at <a href="https://dash.cloudflare.com/sign-up" target="_blank">dash.cloudflare.com/sign-up</a> and confirm your email.</li>
@@ -2312,8 +2314,19 @@ async function cloudOn(btn) {
   catch { btn.disabled = false; btn.textContent = was; return false; }
 }
 // closing Movie Royal while the 24/7 bot is off: the Discord bot stops too, so ask first
-function closeAsk() {
+function closeAsk(info = {}) {
   if ($('closeDlg')) return true;
+  if (info.broken) { // 24/7 is on, but Discord isn't sending anything to it (and fixing it by itself didn't work)
+    const d = document.createElement('div'); d.id = 'closeDlg';
+    d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000a;display:flex;align-items:center;justify-content:center';
+    d.innerHTML = `<div class="card" style="width:min(560px,92vw);margin:0"><h2 style="margin-top:0">⚠️ Your 24/7 bot isn't connected to Discord</h2>
+      <p>If you close Movie Royal now, <code>/suggest</code> and <code>/linktwitch</code> won't answer. Movie Royal tried to reconnect it and couldn't${info.why ? ` (${esc(info.why)})` : ''}.</p>
+      <p class="help">Paste your Cloudflare API token to set the 24/7 bot up again, then it closes.</p>
+      <div class="row"><input class="grow" type="password" placeholder="Cloudflare API token"><button class="primary" onclick="closeTurnOn(this)">☁️ Fix the 24/7 bot, then close</button></div>
+      <label style="display:flex;gap:6px;align-items:center;margin-top:12px"><input type="checkbox" id="closeNoAsk"> Don't ask me again</label>
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="$('closeDlg').remove()">Cancel (keep it open)</button><button class="danger" onclick="api('/api/app/quit',{dontAsk:$('closeNoAsk').checked})">Close anyway</button></div></div>`;
+    document.body.appendChild(d); return true;
+  }
   const d = document.createElement('div'); d.id = 'closeDlg';
   d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000a;display:flex;align-items:center;justify-content:center';
   d.innerHTML = `<div class="card" style="width:min(560px,92vw);margin:0">
@@ -2327,6 +2340,13 @@ function closeAsk() {
   return true;
 }
 async function closeTurnOn(btn) { if (await cloudOn(btn)) { btn.textContent = '✅ 24/7 is on — closing…'; await api('/api/app/quit', { dontAsk: $('closeNoAsk').checked }); } }
+async function cloudCheck(btn) {
+  if (btn) btn.disabled = true;
+  try { const r = await api('/api/cloud/check');
+    toast(!r.enabled ? '☁️ 24/7 mode is off: Discord commands only work while Movie Royal is open.' : r.linked && r.botUp ? `✅ The 24/7 bot is up and Discord is connected to it${r.relinked && Date.now() - r.relinked < 60000 ? ' (it had come unplugged: fixed just now)' : ''}. /suggest and /linktwitch work with Movie Royal closed.` : `⚠️ ${!r.botUp ? "The 24/7 bot isn't answering" : "Discord isn't connected to the 24/7 bot"}${r.error ? ': ' + esc(r.error) : ''}. Settings → Discord → set it up again with your Cloudflare token.`, 9000);
+    if ($('cloudBox')) $('cloudBox').innerHTML = cloudHTML();
+  } catch {} finally { if (btn) btn.disabled = false; }
+}
 async function cloudSync(btn) { btn.disabled = true; const r = await api('/api/cloud/sync'); btn.disabled = false; toast(r.ok ? '✅ Synced' : '⚠️ ' + esc(r.error || 'Sync failed')); if ($('cloudBox')) $('cloudBox').innerHTML = cloudHTML(); }
 async function reinvite() { const a = await fetch('/api/app').then(r => r.json()); if (!a.discordInvite) return toast('Paste the Application ID first.'); window.open(a.discordInvite, '_blank'); }
 

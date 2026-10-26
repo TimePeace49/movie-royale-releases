@@ -39,6 +39,7 @@ export function helpText() {
     `**/mymovies** — see your movies and picks left. Add a name to see someone else's (\`/mymovies person: Lucy\`). On Twitch: **${tw}** or **${tw} name**.`,
     `**/list** — everything in the pool right now.`,
     `**/linktwitch** — connect your Twitch name so your picture is your piece and chatting puts your movies on the cliff.`,
+    `**On Twitch:** type anything in chat to claim your movie when it wins · **${db.settings.sitOutCommand || '!sitout'}** if it's too late for you (your movies skip tonight's battles) · **${db.settings.backCommand || '!imback'}** to jump back in · **${db.settings.helpCommand || '!moviesroyal'}** for all chat commands.`,
     ``,
     `**In the list you'll see:**`,
     `🚫 *banned*, *series taken* or *${new Date().getFullYear()} movie* · ✅ *already watched* · 🔒 *already picked* — somebody has it, so pick something else. Every movie can only be picked once.`,

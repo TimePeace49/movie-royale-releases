@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.19.0 (test build)
+- **☁️ 24/7 bot fix:** Movie Royal now checks that Discord is really sending `/suggest`, `/linktwitch` and the other commands to the 24/7 bot, and plugs it back in by itself if not. Before, if that connection never took (or came loose), the bot only answered while Movie Royal was open. It checks when the app opens, every 10 minutes, and when you close it. Closing asks first if it still can't fix it. New "🔍 Check it works when I'm closed" button in Settings → Discord, and "☁️ Check the 24/7 Discord bot" in the 🧪 Test tab.
+- **Fixed: balls not coming back on the cliff after a battle:** every game screen (OBS and the app) now checks in with Movie Royal every few seconds. If one missed the new pieces or got stuck on the last battle, it gets them again by itself.
+- **❤️ Hidden health:** every ball can only take so many hard hits (bumps from bigger balls, dash hits, comets, explosions…). Run out and it's K.O.! Bigger balls are tougher. Nobody sees a health bar; a ball just flashes red when it gets hurt. Luck can still dodge a K.O., and fair odds still decide the winner.
+- **📌 The pinned movie says which one it is:** "1st movie tonight", "2nd movie tonight"… (a pass doesn't count).
+- **📜 `!moviesroyal` lists the new commands** (`!sitout`, `!imback`, claiming your movie) and gets split into a few messages when it's too long for Twitch. The Discord help message mentions them too. Test tab: "📜 Post the command list in chat".
+
 ## 1.18.0 (test build)
 - **🔗 Links on wheel spots:** give a spot a web page (a game, a site…) in its ⚙. When it wins, a "🔗 Open" button shows on the result and in the round timer pop-up. On stream, the card shows the site name.
 - **✋ You decide on claims:** when the movie winner types in chat, the claim timer stops and you press **✅ Accept winner** or **⏭️ Pass (not tonight)**. A pass puts their movie back in the battle, and they keep their luck and aren't benched for the week. You can switch this off in Settings → Twitch.

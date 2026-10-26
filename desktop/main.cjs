@@ -85,10 +85,10 @@ let closeOk = false, asking = false;
 async function tryQuit() {
   if (closeOk) { quitting = true; return app.quit(); }
   if (asking) return showWindow(); asking = true;
-  let ask = false;
-  try { const c = new AbortController(); setTimeout(() => c.abort(), 2500); ask = !!(await (await fetch(BASE + '/api/close-check', { signal: c.signal })).json()).ask; } catch {}
-  if (ask) {
-    try { showWindow(); const shown = await win.webContents.executeJavaScript('typeof closeAsk === "function" && closeAsk()'); if (shown === true) { asking = false; return; } } catch {}
+  let info = {};
+  try { const c = new AbortController(); setTimeout(() => c.abort(), 9000); info = await (await fetch(BASE + '/api/close-check', { signal: c.signal })).json(); } catch {}
+  if (info.ask) {
+    try { showWindow(); const shown = await win.webContents.executeJavaScript(`typeof closeAsk === "function" && closeAsk(${JSON.stringify(info)})`); if (shown === true) { asking = false; return; } } catch {}
   }
   asking = false; closeOk = true; quitting = true; app.quit();
 }

@@ -2089,7 +2089,7 @@ function spawnSpot(r, others = fighters) {
   return best || { x: rnd(-100, 100), y: rnd(-100, 100) };
 }
 function resetFighter(f) {
-  Object.assign(f, { vx: 0, vy: 0, alive: true, falling: false, fz: 0, vz: 0, saves: 0, safeUntil: 0, lastLucky: -9, think: rnd(.3), dashCd: rnd(1, 3), dashing: 0, target: null, hop: 0, vhop: 0 });
+  Object.assign(f, { hp: null, vx: 0, vy: 0, alive: true, falling: false, fz: 0, vz: 0, saves: 0, safeUntil: 0, lastLucky: -9, think: rnd(.3), dashCd: rnd(1, 3), dashing: 0, target: null, hop: 0, vhop: 0 });
 }
 /** Keep pieces that are already on the cliff where they are, drop new ones in, poof removed ones. */
 function syncFighters(list) {
@@ -2148,6 +2148,20 @@ function push(f, vx, vy) {
   if (cfg.fair && f === destined) k *= .55;
   if (t < mods.gravUntil) k *= 1.5; else if (MAP.lowGrav) k *= 1.2;
   f.vx += vx * k; f.vy += vy * k;
+  const hit = Math.hypot(vx, vy) * k; if (hit > 260) hurt(f, (hit - 220) / 40); // big hits hurt
+}
+// ❤️ hidden health: every piece can take so many hard hits (bigger = tougher). Out of health = knocked out.
+// Nobody sees a health bar; hurt pieces just flash red. Fair odds still win: the drawn winner can't be knocked out this way.
+function hurt(f, dmg) {
+  if (!f.alive || winner || phase !== 'running' || !(dmg > 0) || f.ret || f.launch) return;
+  if (f.hp == null) f.hp = 100 * Math.pow(f.mass || 1, .4);
+  const keep = cfg.fair && f === destined;
+  f.hp -= keep ? dmg * .3 : dmg; f.hurtAt = t;
+  if (f.hp > 0) return;
+  if (keep) { f.hp = 1; return; }
+  f.hp = null; // (back to full if it dodges)
+  window.__koN = (window.__koN || 0) + 1;
+  blastOrDodge(f, '#ff4f6d', 'K.O.!');
 }
 
 const CROWD_CELL = 70; let crowd = new Map();
@@ -2317,6 +2331,7 @@ function updateFighters(dt) {
       const jj = -(cfg.fun?.bouncy ? 3.6 : 1.85) * vn / s; // springier bumps (super bouncy in fun battles)
       a.vx -= jj * ia * nx; a.vy -= jj * ia * ny; b.vx += jj * ib * nx; b.vy += jj * ib * ny;
       if (a.dashing > 0) a.whiffAt = null; if (b.dashing > 0) b.whiffAt = null;
+      if (-vn > 170) { const im = (-vn - 150) / 30; hurt(a, im * Math.pow(b.mass / a.mass, .8)); hurt(b, im * Math.pow(a.mass / b.mass, .8)); } // hard bumps hurt (heavier hitters hurt more)
       if (a.dashing > 0) push(b, nx * 180 * Math.sqrt(a.mass), ny * 180 * Math.sqrt(a.mass));
       if (b.dashing > 0) push(a, -nx * 180 * Math.sqrt(b.mass), -ny * 180 * Math.sqrt(b.mass));
       const kb = clamp(260 * (a.mass - b.mass) / Math.min(a.mass, b.mass), -620, 620); // the bigger piece knocks the smaller one back (much more when it's a lot bigger)
@@ -2380,6 +2395,7 @@ function drawFighter(f, lobby) {
     ctx.fillStyle = lobby ? `rgba(20,10,30,${clamp(.4 - f.h / 2500, .05, .4)})` : 'rgba(20,10,30,.38)'; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill();
     if ((f.glow ?? f.luck) >= 5) drawLuckFx(f, x, cy);
     ctx.drawImage(f.token, x - D / 2, cy - D / 2, D, D);
+    if (f.hurtAt != null && t - f.hurtAt < .25 && phase === 'running') { ctx.fillStyle = `rgba(255,60,80,${.5 * (1 - (t - f.hurtAt) / .25)})`; ctx.beginPath(); ctx.arc(x, cy, f.r, 0, 7); ctx.fill(); } // ouch
     if (f.shield > 0 || f.turbo) drawPowerFx(f, x, cy);
     return cy;
   }
@@ -2392,6 +2408,7 @@ function drawFighter(f, lobby) {
   if (f.squash > t) ctx.scale(1.4, .55); // trampled flat
   if (f.eaten) { const k = clamp(lift / ((f.eaten.h || 260) * .92), 0, 1); ctx.rotate(f.spinA || 0); ctx.scale(1 - k * .55, 1 - k * .55); } // spinning up into the saucer
   ctx.drawImage(f.token, -D / 2, -D / 2, D, D);
+  if (f.hurtAt != null && t - f.hurtAt < .25 && phase === 'running') { ctx.fillStyle = `rgba(255,60,80,${.5 * (1 - (t - f.hurtAt) / .25)})`; ctx.beginPath(); ctx.arc(0, 0, f.r, 0, 7); ctx.fill(); } // ouch
   if (cam.follow === f && winner !== f) { ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.arc(0, 0, f.r + 8, clock * 2, clock * 2 + 6.3); ctx.stroke(); ctx.setLineDash([]); }
   if (winner === f) { ctx.strokeStyle = '#ffc94a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, f.r + 9 + Math.sin(clock * 8) * 2, 0, 7); ctx.stroke(); }
   ctx.restore();
@@ -2750,6 +2767,7 @@ function drawVote() {
 // ================= game flow =================
 function applyPreview(m) {
   if (phase === 'ended' && !replay) { phase = 'idle'; fighters = []; winner = null; } // the app only sends this between battles: never stay stuck on the last battle
+  if (m.heal && phase !== 'idle' && phase !== 'waiting') { if (replay) endReplay(true); SFX.stopMusic(); phase = 'idle'; fighters = []; winner = null; } // the app says no battle is going: catch up
   if (phase !== 'idle' && phase !== 'waiting') return;
   listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length; pendingCount = m.queued || 0;
   chatGate = !!m.chatGate; if (m.chaos) chaos = m.chaos;
@@ -2875,6 +2893,7 @@ function startGame(m) {
   if (m.chaos) chaos = m.chaos;
   movieNo = m.movieNo || null; series = m.series || null;
   cfg = { lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5);
+  for (const f of fighters) { f.hp = null; f.hurtAt = null; } // full health every battle
   t = 0; lobbyLeft = cfg.lobby; winner = null; winTile = null; destined = null; suddenDeath = false; resultSent = false;
   hazards = []; parts = []; feed = []; banners = []; floaters = []; queue = (m.queued || []).slice();
   Object.assign(mods, { windUntil: 0, iceUntil: 0, gravUntil: 0, quakeUntil: 0 });
@@ -2904,6 +2923,7 @@ function beginRound() {
 // (for testing) is the winner standing on land?
 window.__royalCheck = () => { const w = winner; if (!w) return null; const tl = MAP.tileUnder ? MAP.tileUnder(w) : tileAt(w.x, w.y); return { label: w.label, onLand: !!tl && tl.state < 2 && !tl.lava && !(MAP.isOut && MAP.isOut(w)), hopping: !!w.ret, alive: w.alive, map: mapId }; };
 window.__fighters = () => fighters.map(f => f.label);
+window.__stuck = () => { phase = 'lobby'; fighters = []; }; // (tests: pretend this screen got stuck)
 let winTile = null; // the winner's tile never goes anywhere, whatever else is still happening
 function landOnCliff(f) {
   f.flying = null; f.dropping = false; f.eaten = null; f.thrown = null;
@@ -3352,6 +3372,7 @@ requestAnimationFrame(frame);
 // ================= connection =================
 let sock = null, connected = false;
 function send(o) { if (sock && sock.readyState === 1) sock.send(JSON.stringify(o)); }
+if (!WHEEL_ONLY) setInterval(() => send({ type: 'cliff', phase, key: fighters.map(f => f.id).sort().join(',') }), 4000); // check in: the app re-sends the pieces if this screen missed them
 function connect() {
   sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=overlay${WHEEL_ONLY ? '&side=1' : ''}`);
   sock.onopen = () => connected = true;

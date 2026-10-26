@@ -54,6 +54,10 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Claims:** `claimApprove` (default on): winner types in chat → timer stops (`claimWait`), Derek presses ✅ Accept (`/api/claim/accept`) or ⏭️ Pass (`/api/claim/pass` → `undoMovieWin`: back in pool, luck + week cooldown undone). `pinWinner`: claimed movie pinned in Twitch chat (`twitch.sayAndPin`). `!sitout` / `!imback` set a viewer's movies `away` for tonight.
 - **Spot links:** `entry.link` (cleanLink), shown as 🔗 Open on the result / round timer pop-up.
 
+- **24/7 link check:** `cloud.checkLink()` makes sure Discord's interactions URL points at the worker (re-links by itself); runs on open, every 10 min, on close (`/api/close-check`).
+- **Cliff self-heal:** game screens send `{type:'cliff'}` every 4 s; if one doesn't match `lastPreview` twice, the server re-sends it with `heal:true`.
+- **Hidden health:** `hurt(f, dmg)` in game.html (hard bumps + big `push` hits); 0 = `blastOrDodge(..., 'K.O.!')`; the fair-odds winner never dies from it.
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 
