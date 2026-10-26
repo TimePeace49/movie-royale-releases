@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.21.4 (test build)
+- **📗 Letterboxd "HTTP 403":** Letterboxd turns away plain requests for your full watched list. Movie Royal now reads it like a real browser does, in the background. (Your newest watched movies always came in anyway, from your Letterboxd feed.)
+- **⚠️ Errors** no longer fills up with a harmless "DeprecationWarning" from the Discord bot every time the app opens.
+
 ## 1.21.3 (test build)
 - **Removed the 💩 Letterboxd's worst 500 battle** (Letterboxd wouldn't let Movie Royal read that page). A worst-500 battle you already made stays as a normal movie battle; delete it in the 🎬 Movie Pool tab if you don't want it.
 

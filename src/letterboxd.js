@@ -97,18 +97,30 @@ function loadSaved() {
 }
 loadSaved();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Letterboxd sometimes turns away plain requests (HTTP 403): then read the page like a real browser does (Windows app only)
+let useBrowser = false;
+async function getHtml(url, page = 1) {
+  const D = globalThis.__desktop, films = h => /data-(?:film|item)-slug=|data-target-link="\/film\//.test(h);
+  if (!useBrowser) {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', Accept: 'text/html', 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000) });
+    if (res.status === 404 && page === 1) throw new Error('profile not found — check the username');
+    if (res.ok) return res.text();
+    if (res.status !== 403 || !D?.getPage) throw new Error('HTTP ' + res.status);
+    useBrowser = true;
+  }
+  let r = await D.getPage(url);
+  if (r.status === 200 && (films(r.text) || page > 1)) return r.text;
+  r = await D.getPage(url, { render: true, wait: '[data-film-slug],[data-item-slug],[data-target-link^="/film/"],.pagination' });
+  if (r.status !== 200) throw new Error('HTTP ' + r.status);
+  return r.text;
+}
 export async function refreshProfile(user) {
   if (!user) return;
   const found = new Set();
   try {
     for (let page = 1; page <= 400; page++) {
-      const res = await fetch(`https://letterboxd.com/${encodeURIComponent(user)}/films/${page > 1 ? `page/${page}/` : ''}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36', Accept: 'text/html', 'Accept-Language': 'en-US,en;q=0.9' },
-        signal: AbortSignal.timeout(15000)
-      });
-      if (res.status === 404 && page === 1) throw new Error('profile not found — check the username');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const html = await res.text();
+      const url = `https://letterboxd.com/${encodeURIComponent(user)}/films/${page > 1 ? `page/${page}/` : ''}`;
+      const html = await getHtml(url, page);
       let n = 0;
       for (const m of html.matchAll(/data-(?:film|item)-slug="([^"]+)"|data-target-link="\/film\/([^"\/]+)\/"/g)) { const sl = (m[1] || m[2]).replace(/^\/?film\//, '').replace(/\/$/, ''); if (!found.has(sl)) { found.add(sl); n++; } }
       for (const m of html.matchAll(/data-(?:film|item)-name="([^"]+)"/g)) { const t = decodeHtml(m[1]).match(/^(.*?)\s*\((\d{4})\)$/); if (t) add({ title: t[1], year: t[2] }); }

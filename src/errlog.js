@@ -16,7 +16,8 @@ const SOURCES = { twitch: 'Twitch', discord: 'Discord bot', '24/7': '24/7 Discor
 export function plain(e) {
   const m = String(e.msg || ''), who = SOURCES[e.source] || 'Movie Royal';
   let what = 'Something went wrong', fix = 'If it keeps happening: ⚠️ Errors → 🛠️ For Claude → Copy, and send it to Claude.';
-  if (/401|unauthori[sz]ed|invalid.*token|token.*(expired|invalid)/i.test(m)) { what = 'The sign-in stopped working'; fix = e.source === 'twitch' ? 'Sign in with Twitch again (top right).' : 'Check the token / key in ⚙️ Settings.'; }
+  if (/HTTP 403/.test(m) && e.source === 'letterboxd') { what = 'Letterboxd turned away the full profile read'; fix = 'Your newest watched movies still come in (from your Letterboxd feed). Nothing to do.'; }
+  else if (/401|unauthori[sz]ed|invalid.*token|token.*(expired|invalid)/i.test(m)) { what = 'The sign-in stopped working'; fix = e.source === 'twitch' ? 'Sign in with Twitch again (top right).' : 'Check the token / key in ⚙️ Settings.'; }
   else if (/403|forbidden|missing access|permission/i.test(m)) { what = "It wasn't allowed to do that"; fix = 'Check the permissions (sign in again, or re-invite the Discord bot).'; }
   else if (/fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|timeout|aborted|network|socket hang up|EAI_AGAIN/i.test(m)) { what = "Couldn't reach the internet (or that site was down)"; fix = 'Usually fixes itself. If it keeps happening, check your internet.'; }
   else if (/limit|429|too many/i.test(m)) { what = 'Hit a limit (too many requests)'; fix = 'Wait a bit; it works again later.'; }
@@ -25,7 +26,7 @@ export function plain(e) {
   return { who, what, fix };
 }
 export function logErr(source, msg, detail = '') {
-  msg = String(msg || '').slice(0, 600); if (!msg || /ResizeObserver loop/i.test(msg)) return; // (that one is harmless browser noise)
+  msg = String(msg || '').slice(0, 600); if (!msg || /ResizeObserver loop|DeprecationWarning/i.test(msg)) return; // (harmless noise, not real problems)
   const last = list[0];
   if (last && last.source === source && last.msg === msg && Date.now() - last.at < 60000) { last.count = (last.count || 1) + 1; last.at = Date.now(); persist(); return; } // the same thing again: just count it
   const e = { id: Math.random().toString(36).slice(2, 10), at: Date.now(), source, msg, detail: String(detail || '').slice(0, 3000), count: 1 };
