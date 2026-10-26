@@ -2493,7 +2493,7 @@ function drawPowerFx(f, x, cy) {
 // 🪩 disco lights for fun battles
 function drawDisco() {
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < 4; i++) { const a = clock * (.6 + i * .17) + i * 1.7, x = CX + Math.cos(a) * 520, y = CY - 40 + Math.sin(a * 1.3) * 260, gr = ctx.createRadialGradient(x, y, 10, x, y, 300); gr.addColorStop(0, `hsla(${(clock * 90 + i * 90) % 360},100%,60%,.28)`); gr.addColorStop(1, 'hsla(0,0%,0%,0)'); ctx.fillStyle = gr; ctx.fillRect(x - 300, y - 300, 600, 600); }
+  for (let i = 0; i < 4; i++) { const a = clock * (.6 + i * .17) + i * 1.7, x = CX + Math.cos(a) * 520, y = CY - 40 + Math.sin(a * 1.3) * 260, gr = ctx.createRadialGradient(x, y, 10, x, y, 300); gr.addColorStop(0, `hsla(${(clock * 90 + i * 90) % 360},100%,60%,.42)`); gr.addColorStop(1, 'hsla(0,0%,0%,0)'); ctx.fillStyle = gr; ctx.fillRect(x - 300, y - 300, 600, 600); }
   ctx.restore();
 }
 function receiveEffect(fx) { if (phase === 'running') runEvent(fx); else queue.push(fx); }
