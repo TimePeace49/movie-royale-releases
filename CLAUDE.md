@@ -51,7 +51,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Closing the app** with the 24/7 bot off asks first (`tryQuit` in main.cjs → `closeAsk()` in control.html; setting `closeAskBot`).
 - **Share files:** `/api/wheel/:id/export`, `/api/lists/:id/export` → JSON with `movieRoyal: 'wheel'|'battle'`, own uploads packed as data URLs; `/api/share/import` makes a NEW wheel/battle.
 
-- **Claims:** `claimApprove` (default on): winner types in chat → timer stops (`claimWait`), Derek presses ✅ Accept (`/api/claim/accept`) or ⏭️ Pass (`/api/claim/pass` → `undoMovieWin`: back in pool, luck + week cooldown undone). `pinWinner`: claimed movie pinned in Twitch chat (`twitch.sayAndPin`). `!sitout` / `!imback` set a viewer's movies `away` for tonight.
+- **Claims:** `claimApprove` (default on): winner types in chat → timer stops (`claimWait`) and the bot asks them in chat `!accept` / `!pass` (settings `acceptCommand` / `passCommand`; `claimAnswer` also takes yes/no) → `acceptClaim()` / `passClaim()` (`passClaim` → `undoMovieWin`: back in pool, luck + week cooldown undone). The winner card buttons (`/api/claim/accept`, `/api/claim/pass`) are Derek's manual override. No green bar any more. `pinWinner`: claimed movie pinned in Twitch chat (`twitch.sayAndPin`). `!sitout` / `!imback` set a viewer's movies `away` for tonight.
 - **Spot links:** `entry.link` (cleanLink), shown as 🔗 Open on the result / round timer pop-up.
 
 - **24/7 link check:** `cloud.checkLink()` makes sure Discord's interactions URL points at the worker (re-links by itself); runs on open, every 10 min, on close (`/api/close-check`).

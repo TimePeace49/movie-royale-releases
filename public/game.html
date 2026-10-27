@@ -3108,7 +3108,7 @@ function claimWaiting(m) {
   if ($('claim').classList.contains('hidden')) startClaim(m.winner, 30, []);
   clearInterval(claimTimer); SFX.play('fanfare');
   $('cNum').textContent = '✋'; $('ringArc').style.strokeDashoffset = 0;
-  $('cSub').innerHTML = `<b style="color:#7dffb0">${esc(m.name)}</b> is here! Waiting for ${esc(m.streamer || 'the streamer')} to accept…`;
+  $('cSub').innerHTML = `<b style="color:#7dffb0">${esc(m.name)}</b> is here! Type <b style="color:#ffc94a">${esc(m.accept || '!accept')}</b> to watch it now, or <b style="color:#ffc94a">${esc(m.pass || '!pass')}</b> to save it for another night.`;
   $('cWho').innerHTML = `${esc(m.name)}<small>✋ is here!</small>`;
 }
 function claimPassed(m) {

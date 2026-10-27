@@ -353,7 +353,7 @@
   <div class="row" style="gap:4px"><input id="pcName" class="grow" list="pcNames" placeholder="Who's typing? (Twitch name)"><datalist id="pcNames"></datalist><button class="ghost" title="The battle winner" onclick="pcWinner()">🏆 Winner</button></div>
   <div class="pcLog" id="pcLog"><span class="muted">Type as a viewer. Movie Royal reacts like it's real chat, and its replies show here in gold.</span></div>
   <div class="row" style="gap:4px"><input id="pcText" class="grow" placeholder="Message… (Enter sends)" onkeydown="if(event.key==='Enter')pcSend()"><button class="primary" onclick="pcSend()">Send</button></div>
-  <div class="row" style="gap:4px;flex-wrap:wrap"><button onclick="pcSend(&quot;I'm here! 🍿&quot;)">✋ I'm here!</button><button onclick="pcSend('up')">up</button><button onclick="pcSend('down')">down</button><button onclick="pcSend(WD?.cmd?.respin||'!respin')">!respin</button><button onclick="pcSend('!myspins')">!myspins</button><button onclick="pcSend('!mymovies')">!mymovies</button><button onclick="pcSend('!sitout')">!sitout</button><button onclick="pcSend('!imback')">!imback</button><button onclick="pcSend('!join')">!join</button></div>
+  <div class="row" style="gap:4px;flex-wrap:wrap"><button onclick="pcSend(&quot;I'm here! 🍿&quot;)">✋ I'm here!</button><button onclick="pcSend(S?.settings?.acceptCommand||'!accept')">!accept</button><button onclick="pcSend(S?.settings?.passCommand||'!pass')">!pass</button><button onclick="pcSend('up')">up</button><button onclick="pcSend('down')">down</button><button onclick="pcSend(WD?.cmd?.respin||'!respin')">!respin</button><button onclick="pcSend('!myspins')">!myspins</button><button onclick="pcSend('!mymovies')">!mymovies</button><button onclick="pcSend('!sitout')">!sitout</button><button onclick="pcSend('!imback')">!imback</button><button onclick="pcSend('!join')">!join</button></div>
   <div class="row" style="gap:4px;flex-wrap:wrap;align-items:center"><small class="muted">🎡 Redeem:</small><button onclick="pcRedeem('respin')">🔁 Respin</button><button onclick="pcRedeem('move')">↕️ Move</button><button onclick="pcRedeem('up')">⬆️ Up</button><button onclick="pcRedeem('down')">⬇️ Down</button></div>
 </div>
 
@@ -611,7 +611,7 @@
   </div>
   <div class="card">
     <h3>🎬 Movie winner: claim, pass, pin, sit out</h3>
-    <p class="help">Pretend the movie winner is in chat. If no movie has won (or a wild spot won), Movie Royal makes a pretend winner from your Discord movies (it changes nothing). The 💬 Pretend chat window opens as the winner: type anything, then press ✅ Accept or ⏭️ Pass on the winner card on the ⚔️ Battle tab.</p>
+    <p class="help">Pretend the movie winner is in chat. If no movie has won (or a wild spot won), Movie Royal makes a pretend winner from your Discord movies (it changes nothing). The 💬 Pretend chat window opens as the winner: type anything: Movie Royal asks the winner to type !accept or !pass (buttons here do it), and does what they answer. ✅ Accept / ⏭️ Pass on the winner card on the ⚔️ Battle tab are for doing it yourself.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="claimTest()">✋ Winner types in chat</button>
       <button onclick="api('/api/test/pin').then(()=>toast('📌 Sent and pinned a test message in your Twitch chat'))">📌 Test pinning in chat</button>
       <button onclick="cloudCheck(this)">☁️ Check the 24/7 Discord bot</button>
@@ -1014,7 +1014,7 @@ function pcWinner() { const w = S?.lastWinner; if (w?.owner && !w.spot) $('pcNam
 async function claimTest() { // 🧪 the winner claims: the pretend chat window opens as them, you type it (or press ✋ I'm here!)
   const r = await api('/api/test/claim-chat', { say: false }).catch(() => null); if (!r) return;
   if (!r.ok) return toast('⚠️ ' + esc(r.error || ''));
-  pchat(true, r.name); pcLog('bot', 'Movie Royal', `🏆 ${r.label} won! You're ${r.name} now: type anything (or press ✋ I'm here!), then ✅ Accept or ⏭️ Pass on the winner card on the ⚔️ Battle tab.`);
+  pchat(true, r.name); pcLog('bot', 'Movie Royal', `🏆 ${r.label} won! You're ${r.name} now: type anything (or press ✋ I'm here!). Movie Royal asks you to type !accept or !pass, and does what you answer (the winner card on the ⚔️ Battle tab has ✅ Accept / ⏭️ Pass for doing it yourself).`);
   toast(`✋ You're ${esc(r.name)} in 💬 Pretend chat: type anything to claim`, 6000);
 }
 (() => { // drag the pretend chat window by its top bar
@@ -2753,7 +2753,8 @@ function openSettings(force) {
       ${colorHTML(s)}
       ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
       ${ck('pinWinner', '📌 Pin the movie in Twitch chat once the winner claims it (title, year, who picked it)')}
-      ${ck('claimApprove', '✋ When the winner types in chat, stop the claim timer and let me ✅ Accept or ⏭️ Pass (a pass puts the movie back and they keep their luck)')}
+      ${ck('claimApprove', '✋ When the winner types in chat, stop the claim timer and ask them in chat: watch it now (!accept) or pass (!pass). It does whatever they answer (a pass puts the movie back and they keep their luck). The ✅ Accept / ⏭️ Pass buttons on the winner card are for doing it yourself.')}
+      <div class="grid2">${f('acceptCommand', '✅ Winner\'s “watch it now” chat command', '!accept')}${f('passCommand', '⏭️ Winner\'s “not tonight” chat command', '!pass')}</div>
       <div class="grid2">${f('sitOutCommand', '🛌 “Sit out tonight” chat command (their movies skip tonight’s battles)', '!sitout')}${f('backCommand', '🙋 “I’m back” chat command', '!imback')}</div>
       <p class="help">Replies to <code>${esc(s.twitchMoviesCommand)}</code> and winner posts come from <b>your own Twitch account</b> — no separate bot needed.</p>
       <h3 style="margin-top:18px">⚡ Chaos on / off</h3><div class="chaosbar" data-chaos style="max-width:420px">${chaosButtons()}</div>
