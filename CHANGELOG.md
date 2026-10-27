@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.10 (latest release)
+- **🧪 Test tab: the preview window doesn't pop up by itself any more.** It only shows when you run a test that changes the stream screen (an alert, a battle, a wheel landing, pretend chat…). Checks like the Discord self-test, the backup link or Restart the Discord bot leave it closed. **📺 Show the stream screen** still opens it any time.
+
 ## 1.28.9 (latest release)
 - **🔀 Fixed: linked ⚡ auto spots.** With the round timer on, landing on an auto spot that links to another wheel or a battle now does the link right away (before, it just paused and waited for you). The timer pauses like on any auto spot. When the linked wheel or battle is done, it comes back with your timer still paused, so you press start (or respin) like normal.
 

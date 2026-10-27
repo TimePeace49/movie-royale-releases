@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.28.10: What's new
+Everything since 1.28.9.
+
+- 🧪 **Test tab:** the preview window doesn't pop up by itself any more. It only shows when you run a test that changes the stream screen (an alert, a battle, a wheel landing, pretend chat…). Checks like the Discord self-test, the backup link or Restart the Discord bot leave it closed. **📺 Show the stream screen** still opens it any time.
+
 ## v1.28.9: What's new
 Everything since 1.28.8.
 

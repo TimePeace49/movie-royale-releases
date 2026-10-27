@@ -448,7 +448,7 @@ H(/^tip:put this one back/i, '↺ Put it back', 'Puts this key back to how it ca
 H(/put them all back/i, '↺ Put them all back', 'Puts every key bind back to how it came.');
 H(/^⌨️ key binds$/i, '⌨️ Key binds', 'Keyboard shortcuts for each tab: Space spins the wheel, G starts the battle, Ctrl+H turns help mode on and off, Alt+1 to Alt+0 jump between tabs, and lots more. Change any of them here. Keys only work on their own tab and never while you\'re typing in a box.');
 H(/^tip:open the preview in its own window/i, '⧉ Pop out the preview', 'Opens the preview of what\'s on stream in its own window, so you can drag it to another monitor. It has no sound (Movie Royal already plays it). Close that window to bring the preview back here.');
-H(/preview window|bring the preview back here/i, '📺 Preview window', 'Shows or hides the little window with what\'s on stream right now. It comes back by itself when you open the 🧪 Test tab.');
+H(/preview window|bring the preview back here/i, '📺 Preview window', 'Shows or hides the little window with what\'s on stream right now. It pops up by itself only when you run a test that changes the stream screen.');
 H(/^⧉ pop out to another monitor$/i, '⧉ Pop out the preview', 'Opens the preview of what\'s on stream in its own window, so you can drag it to another monitor. No sound. Close it to bring the preview back here.');
 
 H(/check the backup link/i, '🛡️ Check the backup link', 'Leaves Movie Royal\'s notes in the hidden #movie-royal-sync channel right now and reads what the backup bot server said back. It tells you whether a Movie Royal Backup Bots app (yours or a friend\'s) is watching your Discord bot.');
@@ -470,7 +470,7 @@ H(/^🙈 make it invisible$/i, '🙈 Make it invisible', 'Takes the spot the whe
 H(/^➖ 30 sec$/i, '➖ 30 sec', 'Takes 30 seconds off the round timer.');
 H(/^↗ go to the (wheel|battle) tab$/i, '↗ Go to the tab', 'Goes to the tab for what\'s on stream right now (the Battle tab or the Wheel tab).');
 H(/^⤢ bigger \/ smaller$/i, '⤢ Bigger / smaller', 'Makes the preview window bigger or smaller. You can also drag its corners and edges.');
-H(/^✕ close$/i, '✕ Close', 'Closes this window. (The preview window comes back when you open the 🧪 Test tab.)');
+H(/^✕ close$/i, '✕ Close', 'Closes this window. (The preview window only pops up again when you run a test that changes the stream screen.)');
 H(/^tip:tick it once it works/i, 'Tick when it works', 'Tick it once you\'ve tried it and it worked. Ticks are remembered on this computer.');
 H(/^see them$/i, 'See them', 'Opens Settings → ⌨️ Key binds.');
 
