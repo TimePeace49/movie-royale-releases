@@ -65,6 +65,8 @@ jobs:
             echo "## ⬇️ Download"
             echo "Grab **MovieRoyal-Setup-$V.exe** below and run it."
             echo "Already have Movie Royal? It will offer this update the next time it opens."
+            echo
+            echo "🛡️ Want the backup bot server (optional)? Grab **MovieRoyalBackupBots-Setup-$V.exe** and run it on the PC that should run the backup."
             if [ "${{ github.event.inputs.latest }}" != "true" ]; then
               echo
               echo '> 🧪 **This is a test build (pre-release).** Only copies with "Also install test builds" turned on (Settings → Account & updates) will offer it.'
@@ -85,3 +87,9 @@ jobs:
           make_latest: ${{ github.event.inputs.latest == 'true' && 'true' || 'false' }}
           files: dist/MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe
           body_path: release-notes.md
+
+      # after the main installer, so older Movie Royal copies (which take the first .exe) still update to Movie Royal
+      - name: Add the Backup Bots installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v${{ steps.v.outputs.version }}" "dist/MovieRoyalBackupBots-Setup-${{ steps.v.outputs.version }}.exe" --clobber -R "${{ github.repository }}"

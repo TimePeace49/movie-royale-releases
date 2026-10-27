@@ -1067,7 +1067,7 @@ const repoName = () => updateRepo().replace(/^https?:\/\/github\.com\//, '').rep
 async function ghReleases() {
   const r = await fetch(`https://api.github.com/repos/${repoName()}/releases?per_page=60`, { headers: { 'User-Agent': 'MovieRoyal' }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) throw new Error(r.status === 404 ? 'No releases found for ' + repoName() : 'GitHub ' + r.status);
-  return (await r.json()).filter(x => !x.draft).map(x => ({ tag: x.tag_name, version: x.tag_name.replace(/^v/, ''), name: x.name, pre: !!x.prerelease, at: x.published_at, notes: x.body || '', url: (x.assets || []).find(a => /\.exe$/i.test(a.name))?.browser_download_url || null, page: x.html_url }));
+  return (await r.json()).filter(x => !x.draft).map(x => ({ tag: x.tag_name, version: x.tag_name.replace(/^v/, ''), name: x.name, pre: !!x.prerelease, at: x.published_at, notes: x.body || '', url: ((x.assets || []).find(a => /^MovieRoyal-Setup.*\.exe$/i.test(a.name)) || (x.assets || []).find(a => /\.exe$/i.test(a.name) && !/backup/i.test(a.name)))?.browser_download_url || null, page: x.html_url }));
 }
 app.get('/api/update/check', async (req, res) => {
   if (!repoName()) return res.json({ configured: false, version: VERSION });

@@ -44,10 +44,6 @@ Var IsUpdate
 !insertmacro MUI_PAGE_WELCOME
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_DIRECTORY
-; optional parts (the backup bots app is off unless you tick it)
-!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
-!define MUI_COMPONENTSPAGE_TEXT_TOP "Movie Royal is always installed. Tick Movie Royal Backup Bots only if this PC should run Discord bots as a backup (yours or a friend's)."
-!insertmacro MUI_PAGE_COMPONENTS
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Movie Royal is updated"
 !define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "Opening Movie Royal again…"
 !insertmacro MUI_PAGE_INSTFILES
@@ -65,8 +61,7 @@ FunctionEnd
 
 
 Section "Movie Royal" SecMain
-  SectionIn RO
-  SetOutPath "$INSTDIR"
+    SetOutPath "$INSTDIR"
   ; replace the old program files (your data lives in %APPDATA%\Movie Royal and is never touched)
   RMDir /r "$INSTDIR\resources"
   RMDir /r "$INSTDIR\locales"
@@ -98,29 +93,12 @@ Section "Movie Royal" SecMain
 
 SectionEnd
 
-; 🛡️ optional: the backup bots app (same program, started with --backup). Off unless ticked.
-Section /o "Movie Royal Backup Bots (optional)" SecBackup
-  CreateShortCut "$SMPROGRAMS\Movie Royal Backup Bots.lnk" "$INSTDIR\${EXE}" "--backup" "$INSTDIR\icon.ico" 0
-  WriteRegDWORD HKCU "${REGKEY}" "BackupBots" 1
-SectionEnd
-
 Section "-finish"
-  ; not wanted (or unticked): no shortcut, no starting with Windows, not reopened after updates
-  ${IfNot} ${SectionIsSelected} ${SecBackup}
-    Delete "$SMPROGRAMS\Movie Royal Backup Bots.lnk"
-    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Movie Royal Backup Bots"
-    Delete "$APPDATA\Movie Royal Backup\running.json"
-    WriteRegDWORD HKCU "${REGKEY}" "BackupBots" 0
-  ${EndIf}
   ; always reopen the app when the install/update is done (in-app silent updates and the normal installer)
   SetOutPath "$INSTDIR"
   Exec '"$INSTDIR\${EXE}"'
 SectionEnd
 
-!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The Movie Royal app."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecBackup} "Runs Discord bots as a backup (yours and friends') when the 24/7 cloud bot has problems, and keeps chat stats while Movie Royal is closed. Starts with Windows, hidden in the tray."
-!insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Function .onInit
   StrCpy $IsUpdate "0"
@@ -134,18 +112,6 @@ Function .onInit
   nsExec::Exec 'taskkill /F /IM "${EXE}"'
   nsExec::Exec 'taskkill /F /IM "${OLDEXE}"'
   Sleep 700
-  ; the backup bots app: keep what you picked last time (off for new installs)
-  ClearErrors
-  ReadRegDWORD $0 HKCU "${REGKEY}" "BackupBots"
-  ${If} ${Errors} ; never asked before (older versions): keep it if the backup app was already used on this PC
-  ${AndIf} ${FileExists} "$APPDATA\Movie Royal Backup\app-prefs.json"
-    StrCpy $0 1
-  ${EndIf}
-  ${If} $0 == 1
-    !insertmacro SelectSection ${SecBackup}
-  ${Else}
-    !insertmacro UnselectSection ${SecBackup}
-  ${EndIf}
 FunctionEnd
 
 Section "Uninstall"
@@ -153,15 +119,13 @@ Section "Uninstall"
   Sleep 500
   Delete "$DESKTOP\Movie Royal.lnk"
   Delete "$SMPROGRAMS\Movie Royal.lnk"
-  Delete "$SMPROGRAMS\Movie Royal Backup Bots.lnk"
-  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Movie Royal Backup Bots"
+  ; (Movie Royal Backup Bots has its own installer and uninstaller now: left alone)
   Delete "$DESKTOP\${OLDNAME}.lnk"
   Delete "$SMPROGRAMS\${OLDNAME}.lnk"
   RMDir /r "$INSTDIR"
   DeleteRegKey HKCU "${REGKEY}"
   MessageBox MB_YESNO|MB_ICONQUESTION "Also delete your Movie Royal data?$\r$\n$\r$\n(lists, odds, history, Discord picks and settings)$\r$\n$\r$\nChoose No to keep it in case you install Movie Royal again." /SD IDNO IDNO keep
     RMDir /r "$APPDATA\Movie Royal"
-    RMDir /r "$APPDATA\Movie Royal Backup"
     RMDir /r "$APPDATA\${OLDNAME}"
   keep:
 SectionEnd

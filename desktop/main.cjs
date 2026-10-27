@@ -5,7 +5,8 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 
 // 🛡️ "Movie Royal Backup Bots" is the same program started with --backup: its own window, tray icon and settings
-if (process.argv.includes('--backup')) { require('./backup.cjs'); return; }
+// (its own installer copies the program as MovieRoyalBackup.exe, which always starts as the backup)
+if (process.argv.includes('--backup') || /backup/i.test(require('path').basename(process.execPath))) { require('./backup.cjs'); return; }
 
 app.setName('Movie Royal');
 // your data lives in %APPDATA%\Movie Royal (older versions used a misspelled folder: move it over once)
@@ -76,7 +77,8 @@ function reopenBackup() {
     let alive = false; try { process.kill(r.pid, 0); alive = true; } catch {}
     if (alive || Date.now() - r.at > 15 * 60000) return;
     const { spawn } = require('child_process');
-    spawn(process.execPath, app.isPackaged ? ['--backup', '--hidden'] : [app.getAppPath(), '--backup', '--hidden'], { detached: true, stdio: 'ignore' }).unref();
+    const own = r.exe && fs.existsSync(r.exe) ? r.exe : null; // the Backup Bots' own install, if it has one
+    spawn(own || process.execPath, own || app.isPackaged ? ['--backup', '--hidden'] : [app.getAppPath(), '--backup', '--hidden'], { detached: true, stdio: 'ignore' }).unref();
   } catch {}
 }
 function makeTray() {

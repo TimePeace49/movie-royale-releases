@@ -27,7 +27,7 @@ if (prefs.startup === undefined) setStartup(true); // starts with Windows (hidde
 else setStartup(prefs.startup); // (keeps the Windows entry pointing at the current install)
 
 // "I'm running": if a Movie Royal update closes this app, Movie Royal opens it again afterwards
-const beat = () => { try { fs.writeFileSync(RUNNING, JSON.stringify({ pid: process.pid, at: Date.now() })); } catch {} };
+const beat = () => { try { fs.writeFileSync(RUNNING, JSON.stringify({ pid: process.pid, at: Date.now(), exe: process.execPath })); } catch {} };
 beat(); setInterval(beat, 60000);
 
 function show() {

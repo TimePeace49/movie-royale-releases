@@ -1,4 +1,4 @@
-// Builds the Windows installer: dist/MovieRoyal-Setup-<version>.exe
+// Builds the Windows installers: dist/MovieRoyal-Setup-<version>.exe and dist/MovieRoyalBackupBots-Setup-<version>.exe
 //   npm run build:win
 // 1) electron-builder packages the app (no installer)  2) app icon + version are stamped into the exe
 // 3) NSIS turns it into an installer with an uninstaller (works on Windows, macOS and Linux build machines)
@@ -55,5 +55,10 @@ fs.chmodSync(makensis, 0o755);
 fs.rmSync(OUT, { force: true });
 run(makensis, ['-V2', `-DVER=${VER}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT}`, path.join(ROOT, 'build', 'installer.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
 
-const mb = (fs.statSync(OUT).size / 1048576).toFixed(0);
-console.log(`\n✅ Done: ${path.relative(ROOT, OUT)} (${mb} MB)\n`);
+// 🛡️ the Movie Royal Backup Bots installer: same program files, its own install folder, shortcut and uninstaller
+const OUT_B = path.join(ROOT, 'dist', `MovieRoyalBackupBots-Setup-${VER}.exe`);
+fs.rmSync(OUT_B, { force: true });
+run(makensis, ['-V2', `-DVER=${VER}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT_B}`, path.join(ROOT, 'build', 'backup.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
+
+for (const f of [OUT, OUT_B]) console.log(`\n✅ Done: ${path.relative(ROOT, f)} (${(fs.statSync(f).size / 1048576).toFixed(0)} MB)`);
+console.log('');

@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.4 (test build)
+- **🛡️ Movie Royal Backup Bots has its own installer now:** download **MovieRoyalBackupBots-Setup-1.28.4.exe** from the release page and run it. It goes in the Start menu and on your desktop, opens when it's done, and starts with Windows hidden in the tray. Uninstall it on its own in Windows Settings → Apps.
+  - The checkbox in the Movie Royal installer is gone (it didn't work), so Movie Royal's installer only installs Movie Royal.
+  - Movie Royal updates no longer close the backup app.
+
 ## 1.28.3 (latest release)
 - **🛡️ Movie Royal Backup Bots is optional and off by default:** the installer has a **Movie Royal Backup Bots (optional)** box, unticked. Leave it off and there's no shortcut, it never starts with Windows, and nothing runs. Tick it to get it (updates keep whatever you picked). Run the installer again to change your mind.
 
