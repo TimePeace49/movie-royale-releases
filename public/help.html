@@ -207,7 +207,8 @@
     <p><b>💬 Chat for the viewer profiles:</b> the backup also reads each streamer's Twitch chat, live or offline, while their Movie Royal is closed (no Twitch sign-in needed). That chat (and subs and watch streaks) goes into the viewer profiles and chat logs the next time Movie Royal opens, with the real times. Movie Royal skips anything it already counted. While you're live it also keeps track of who's in the viewer list, for watch streaks. Watch time still only counts while Movie Royal is open (that needs your Twitch sign-in).</p>
     <p><b>🔥 Watch streaks:</b> someone watched a stream if they chatted or showed up in the viewer list at some point while you were live. Their streak is how many of your streams in a row they watched. Missing one starts it over. Every stream is kept on its own. Their profile shows the streak and their last 10 streams (✅ watched, ❌ missed). Each streamer's stats stay in their own Movie Royal.</p>
     <p>Movie Royal and the backup talk through a hidden <code>#movie-royal-sync</code> channel that only the bot can see, so no router setup is needed. Picks the backup takes come into Movie Royal the next time it opens.</p>
-    <p><b>Adding a bot:</b> in Movie Royal press <b>📋 Copy my bot token</b> (Settings → Discord & picks), then paste it in the backup app. A friend does the same and sends you theirs privately. A bot token gives full control of that bot, so only share it with someone you trust. To test: press <b>🧪 Test: take over now</b> in the backup app, then try /mymovies in Discord with Movie Royal closed, then switch back in Movie Royal.</p>
+    <p><b>Adding a bot:</b> in Movie Royal press <b>📋 Copy my bot token</b> (Settings → Discord & picks), then paste it in the backup app. A friend does the same and sends you theirs privately. A bot token gives full control of that bot, so only share it with someone you trust. To test: press <b>▶ Run this bot now</b> in the backup app, then try /mymovies in Discord with Movie Royal closed, then press <b>⏹ Hand it back</b> (or switch back in Movie Royal).</p>
+    <p><b>▶ Start / ⏹ Stop the backup server:</b> the big button at the top of the backup app turns the whole backup on or off (every bot on the list). Stopped, it does nothing at all until you press Start, even after a restart of the PC. <b>▶ Run this bot now</b> on a bot makes the backup answer that bot's Discord commands right away, without waiting for the cloud bot to have problems (while that streamer's Movie Royal is closed). <b>⏹ Hand it back</b> gives the commands back to the 24/7 cloud bot (or to Movie Royal if they don't use one).</p>
 </section>
 
   <section data-k="giveaway enter followers subs vip mods odds prize reroll winners">
@@ -514,6 +515,7 @@
   <section>
     <h2>🤖 Discord self-test</h2>
     <p>🧪 Test → <b>🤖 Run the Discord self-test</b> checks everything about Discord that Movie Royal can check by itself (bot, channels, pins, slash commands, who can see the debug channel, the 24/7 bot), and runs the /suggest and /mymovies code with a pretend user.</p>
+    <p><b>🔄 Restart the Discord bot</b> (here, and in Settings → Discord & picks) turns the bot off and on again without closing Movie Royal. It reconnects and fixes its slash commands, channels and pinned messages. Try it when the bot shows offline or commands stop working.</p>
   </section>
   <section>
     <h2>🔴 Pretend I'm live</h2>

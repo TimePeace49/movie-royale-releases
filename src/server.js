@@ -1927,6 +1927,12 @@ errlog.setOnNew(e => {
   broadcast({ type: 'errorLogged' }, 'control');
   if (['discord', '24/7', 'cloud'].includes(e.source) || db.settings.discordDebugAll) discord.postDebug(debugText(e)); // 🐞 Discord problems go to the mods-only #movie-royal-debug channel too
 });
+app.post('/api/discord/restart', async (req, res) => { // 🔄 turn the Discord bot off and on again (reconnects, re-makes slash commands, channels and pins)
+  if (!db.settings.discordToken || !db.settings.discordClientId) return res.status(400).json({ error: 'Put in the Application ID and Bot token first.' });
+  await discord.start(pushState);
+  for (let i = 0; i < 20 && discord.status.state === 'connecting'; i++) await new Promise(r => setTimeout(r, 500)); // (wait up to 10 s to say how it went)
+  pushState(); res.json({ ok: true, state: discord.status.state, error: discord.status.error || null });
+});
 app.post('/api/discord/debug-setup', async (req, res) => { try { const w = await discord.setupDebugAll(); pushState(); res.json({ ok: true, warnings: w }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/discord-selftest', async (req, res) => { // 🤖 everything about Discord the app can check by itself
   try {

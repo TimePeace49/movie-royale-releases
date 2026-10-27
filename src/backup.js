@@ -234,6 +234,15 @@ class Bot {
     if (dch) dch.send({ content: `🛡️ **${conf.name}** is running this Discord bot now, because ${reason}.\nIt keeps doing it until ${this.cfg?.streamer || 'the streamer'} presses **☁️ Switch back to the cloud** in Movie Royal (Settings → Discord & picks).`, allowedMentions: { parse: [] } }).catch(() => {});
     this.saveCache();
   }
+  /** ⏹ Hand it back: the 24/7 cloud bot (or Movie Royal, without one) answers again. Tells Movie Royal the same way its own Switch back does. */
+  async handBack() {
+    const url = this.st.cloud.url || this.cfg?.cloudUrl || '';
+    if (url) await rest(this.token(), 'PATCH', '/applications/@me', { interactions_endpoint_url: url.replace(/\/$/, '') + '/' });
+    this.st.mode = 'standby'; this.st.since = null; this.st.reason = null; this.st.cloud.fails = 0; this.st.back = Date.now();
+    log(this.st.tag, 'handed back', url ? 'to the cloud bot' : '');
+    if (this.ch) { const s = await readSync(this.ch, this.client.user.id).catch(() => null); await putStatus(this.ch, s?.backupMsg, 'MR-BACKUP', { mode: 'cloud', since: null, by: conf.name, reason: null, seen: Date.now(), back: this.st.back }).catch(() => {}); }
+    this.saveCache();
+  }
   async flushOps() {
     if (!this.ch) return;
     for (const op of this.queue) {
@@ -279,7 +288,7 @@ async function addBot(token) {
   if (conf.bots.some(b => b.id === me.id)) throw new Error(`${me.username} is already on the list.`);
   const rec = { id: me.id, token: enc(token), on: true, addedAt: Date.now(), tag: me.username };
   conf.bots.push(rec); saveConf();
-  const b = new Bot(rec); bots.set(rec.id, b); b.started = Date.now(); b.start();
+  const b = new Bot(rec); bots.set(rec.id, b); b.started = Date.now(); if (conf.stopped) b.st.state = 'stopped'; else b.start();
   return { ok: true, tag: me.username };
 }
 
@@ -287,7 +296,7 @@ export async function startBackup(opts = {}) {
   DATA = opts.dataDir || process.env.MR_BACKUP_DATA || path.join(os.homedir(), '.movie-royal-backup');
   hooks = opts.hooks || {};
   loadConf(); saveConf();
-  for (const rec of conf.bots) { const b = new Bot(rec); bots.set(rec.id, b); b.started = Date.now(); if (rec.on !== false) b.start(); else b.st.state = 'paused'; }
+  for (const rec of conf.bots) { const b = new Bot(rec); bots.set(rec.id, b); b.started = Date.now(); if (rec.on !== false && !conf.stopped) b.start(); else b.st.state = conf.stopped ? 'stopped' : 'paused'; }
 
   const web = express();
   web.use(express.json({ limit: '1mb' }));
@@ -295,10 +304,19 @@ export async function startBackup(opts = {}) {
   web.get('/', (req, res) => res.sendFile(path.join(ROOT, 'public', 'backup.html')));
   web.use(express.static(path.join(ROOT, 'public'), { index: false }));
   const wrap = fn => async (req, res) => { try { res.json(await fn(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); } };
-  web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', bots: [...bots.values()].map(b => b.view()) }); });
+  web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', running: !conf.stopped, bots: [...bots.values()].map(b => b.view()) }); });
+  web.post('/api/server', wrap(async b => { // ▶ Start / ⏹ Stop the whole backup server (every bot). Stays that way after a restart.
+    conf.stopped = !b.on; saveConf();
+    for (const bot of bots.values()) {
+      if (conf.stopped) { await bot.stop(); bot.st.state = 'stopped'; }
+      else if (bot.rec.on !== false && !bot.client) { bot.started = Date.now(); bot.start(); }
+    }
+    log(conf.stopped ? 'backup server stopped' : 'backup server started');
+    return { ok: true, running: !conf.stopped };
+  }));
   web.post('/api/add', wrap(b => addBot(b.token)));
   web.post('/api/remove', wrap(async b => { const bot = bots.get(b.id); if (bot) { await bot.stop(); bots.delete(b.id); } conf.bots = conf.bots.filter(x => x.id !== b.id); saveConf(); try { fs.unlinkSync(path.join(DATA, `bot-${b.id}-cache.json`)); fs.unlinkSync(path.join(DATA, `bot-${b.id}-chat.jsonl`)); } catch {} return { ok: true }; }));
-  web.post('/api/toggle', wrap(async b => { const bot = bots.get(b.id); if (!bot) throw new Error('No such bot'); bot.rec.on = !!b.on; saveConf(); if (b.on) { bot.started = Date.now(); await bot.start(); } else await bot.stop(); return { ok: true }; }));
+  web.post('/api/toggle', wrap(async b => { const bot = bots.get(b.id); if (!bot) throw new Error('No such bot'); bot.rec.on = !!b.on; saveConf(); if (b.on && conf.stopped) { bot.st.state = 'stopped'; return { ok: true }; } if (b.on) { bot.started = Date.now(); await bot.start(); } else await bot.stop(); return { ok: true }; }));
   web.post('/api/twitch', wrap(async b => { // 💜 Twitch app keys (dev.twitch.tv → Your Console → Applications): for Twitch's own "is the stream live?"
     const id = String(b.id || '').trim(), secret = String(b.secret || '').trim();
     if (!id && !secret) { delete conf.twitch; saveConf(); appTok.token = ''; return { ok: true, cleared: true }; }
@@ -313,9 +331,13 @@ export async function startBackup(opts = {}) {
   web.post('/api/name', wrap(async b => { const n = String(b.name || '').trim().slice(0, 40); if (!n) throw new Error('Type a name'); conf.name = n; saveConf(); return { ok: true }; }));
   web.post('/api/startup', wrap(async b => { hooks.setStartup?.(!!b.on); return { ok: true, startup: hooks.getStartup ? hooks.getStartup() : !!b.on }; }));
   web.post('/api/check', wrap(async b => { const bot = bots.get(b.id); if (!bot) throw new Error('No such bot'); if (!bot.client && bot.rec.on !== false) { await bot.start(); return bot.view(); } await bot.tick(true); return bot.view(); })); // (not connected: try connecting again)
-  web.post('/api/takeover', wrap(async b => { // 🧪 test: take over now, as if the cloud bot broke (the streamer switches back in Movie Royal)
+  web.post('/api/takeover', wrap(async b => { // ▶ Run this bot now: take over right away, without waiting for the cloud bot to break
     const bot = bots.get(b.id); if (!bot?.client?.user) throw new Error("This bot isn't online.");
-    await bot.takeOver('a test from Movie Royal Backup Bots'); await bot.tick(); return bot.view();
+    await bot.takeOver(`${conf.name} started it by hand`); await bot.tick(); return bot.view();
+  }));
+  web.post('/api/handback', wrap(async b => { // ⏹ Hand it back to the 24/7 cloud bot (or Movie Royal)
+    const bot = bots.get(b.id); if (!bot?.client?.user) throw new Error("This bot isn't online.");
+    await bot.handBack(); return bot.view();
   }));
   const port = await new Promise(ok => { const srv = web.listen(opts.port || 3747, '127.0.0.1', () => ok(srv.address().port)).on('error', () => { const s2 = web.listen(0, '127.0.0.1', () => ok(s2.address().port)); }); });
   log(`running on http://127.0.0.1:${port}`);

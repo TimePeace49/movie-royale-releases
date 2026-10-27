@@ -8,7 +8,7 @@
   :root { --bg:#120a24; --card:#1d1238; --line:#ffffff1f; --text:#f3eefe; --muted:#b7a9d9; --gold:#ffc94a; --good:#7dffb0; --bad:#ff7a7a; --purple:#9b7bff; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 Inter, "Segoe UI", system-ui, sans-serif; }
-  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:#170d2e; position:sticky; top:0; z-index:2; }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:#170d2e; position:sticky; top:0; z-index:2; }
   header h1 { margin:0; font-size:20px; color:var(--gold); flex:1; }
   main { max-width:1100px; margin:0 auto; padding:18px 16px 40px; display:grid; gap:14px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
@@ -35,7 +35,7 @@
 </style>
 </head>
 <body>
-<header><h1>🛡️ Movie Royal Backup Bots</h1><span class="help" id="ver"></span></header>
+<header><h1>🛡️ Movie Royal Backup Bots</h1><span class="help" id="ver"></span><span style="flex:1"></span><span id="srvState" class="help"></span><button id="srvBtn" class="primary" onclick="server(this)">…</button></header>
 <main>
   <div class="card">
     <div class="row"><b>Streamers see this backup as</b><input id="name" type="text" style="width:240px" maxlength="40"><button onclick="saveName()">Save</button>
@@ -68,24 +68,26 @@ function draw() {
   if (!nameTyping) $('name').value = S.name;
   if (document.activeElement !== $('twId') && !$('twId').value) $('twId').value = S.twitch.id || '';
   $('twState').innerHTML = S.twitch.set ? '✅ Saved' + (S.twitch.ok ? ', Twitch accepted it' : '') : S.twitch.using === 'movie royal' ? 'Using Movie Royal\'s keys from this PC' : '⚠️ Not set yet: live checks use a less reliable way'; $('ver').textContent = S.version ? 'v' + S.version : '';
+  $('srvBtn').textContent = S.running ? '⏹ Stop the backup server' : '▶ Start the backup server'; $('srvBtn').className = S.running ? 'danger' : 'primary';
+  $('srvState').innerHTML = S.running ? '🟢 Backup server running' : '<b style="color:var(--bad)">⏹ Stopped: no bots are being watched</b>';
   if (S.startup === null) $('startup').closest('label').style.display = 'none'; else $('startup').checked = !!S.startup;
   $('bots').innerHTML = S.bots.length ? S.bots.map(b => {
-    const live = b.mode === 'backup', cls = !b.on ? '' : b.state === 'error' ? 'bad' : live ? 'live' : b.warning ? 'warn' : 'ok';
+    const live = b.mode === 'backup' && S.running, cls = !b.on || !S.running ? '' : b.state === 'error' ? 'bad' : live ? 'live' : b.warning ? 'warn' : 'ok';
     const cloud = !b.cloud.url ? '☁️ No 24/7 cloud bot: this backup answers whenever their Movie Royal is closed.'
       : live ? '☁️ 24/7 cloud bot: <b>not used right now</b> (this backup has the bot)'
       : b.cloud.ok === false ? `☁️ 24/7 cloud bot: <b style="color:var(--bad)">problem</b> (${esc(b.cloud.error)}), check ${b.cloud.fails} of 3 before taking over`
       : b.cloud.ok ? `☁️ 24/7 cloud bot: <b style="color:var(--good)">working</b> (checked ${ago(b.cloud.checkedAt)})` : '☁️ 24/7 cloud bot: checking…';
     const app = b.appOpen ? '🍿 Their Movie Royal: <b style="color:var(--good)">open</b> (it answers commands itself)' : `🍿 Their Movie Royal: closed${b.appOnline ? '' : ''}`;
-    const mode = live ? `🛡️ <b style="color:var(--purple)">RUNNING THE BOT</b> since ${new Date(b.since).toLocaleString()}<br><small class="help">${esc(b.reason || '')}. Until ${esc(b.streamer || 'the streamer')} presses ☁️ Switch back to the cloud in Movie Royal.</small>` : '🛡️ Standing by';
+    const mode = live ? `🛡️ <b style="color:var(--purple)">RUNNING THE BOT</b> since ${new Date(b.since).toLocaleString()}<br><small class="help">${esc(b.reason || '')}. Until you press ⏹ Hand it back, or ${esc(b.streamer || 'the streamer')} presses ☁️ Switch back to the cloud in Movie Royal.</small>` : '🛡️ Standing by';
     return `<div class="card bot ${cls}">
-      <div class="row"><h3 class="grow">🤖 ${esc(b.tag || 'Bot')}${b.streamer ? ` <span class="help">· ${esc(b.streamer)}</span>` : ''}</h3>${live ? '<span class="pill live">running</span>' : `<span class="pill">${esc(!b.on ? 'paused' : b.state)}</span>`}</div>
+      <div class="row"><h3 class="grow">🤖 ${esc(b.tag || 'Bot')}${b.streamer ? ` <span class="help">· ${esc(b.streamer)}</span>` : ''}</h3>${live ? '<span class="pill live">running</span>' : `<span class="pill">${esc(!S.running ? 'stopped' : !b.on ? 'paused' : b.state)}</span>`}</div>
       <div class="lines"><div>${mode}</div>${b.on && b.state === 'online' ? `<div>${cloud}</div><div>${app}</div>` : ''}
         ${b.on && b.state === 'online' ? `<div>💬 Twitch chat: ${!b.chat.channel ? 'waiting for their Movie Royal to say which channel' : `<b>${b.chat.state === 'reading' ? 'reading' : esc(b.chat.state)}</b> #${esc(b.chat.channel)} · saved ${b.chat.saved} message${b.chat.saved === 1 ? '' : 's'} while their Movie Royal was closed${b.chat.waiting ? ` (${b.chat.waiting} waiting to hand over)` : ''}`}${b.chat.live ? `<br>🔴 <b>Live now</b>: ${b.chat.viewers} in the viewer list · ${b.chat.watched} watched this stream (for watch streaks)` : b.chat.live === false ? ' · ⚫ offline' : ''}</div>` : ''}
         <div class="help">Commands answered: <b>${b.handled}</b>${b.lastCmd ? ` · last /${esc(b.lastCmd.name)} by ${esc(b.lastCmd.by)} ${ago(b.lastCmd.at)}` : ''}${b.waitingPicks ? ` · ${b.waitingPicks} pick${b.waitingPicks === 1 ? '' : 's'} waiting for their Movie Royal` : ''} · checked ${ago(b.checkedAt)}</div>
         ${b.warning ? `<div class="warn-t">⚠️ ${esc(b.warning)}</div>` : ''}</div>
       <div class="row"><button onclick="check('${b.id}', this)">🔄 Check now</button>
         <button onclick="toggle('${b.id}', ${!b.on})">${b.on ? '⏸ Pause' : '▶ Resume'}</button>
-        <button onclick="takeover('${b.id}')" ${live || !b.on || b.state !== 'online' ? 'disabled' : ''} title="Take over now, as if the cloud bot broke">🧪 Test: take over now</button>
+        ${live ? `<button onclick="handBack('${b.id}')" title="Give the commands back to the 24/7 cloud bot (or their Movie Royal)">⏹ Hand it back</button>` : `<button onclick="takeover('${b.id}')" ${!S.running || !b.on || b.state !== 'online' ? 'disabled' : ''} title="Answer this bot's Discord commands right now, without waiting for the cloud bot to have problems">▶ Run this bot now</button>`}
         <span class="grow"></span><button class="danger" onclick="removeBot('${b.id}', '${esc(b.tag || '')}')">🗑 Remove</button></div>
     </div>`; }).join('') : '<div class="card help">No bots yet. Add yours first (Movie Royal → Settings → Discord & picks → 📋 Copy my bot token), then any friend\'s who wants you as their backup.</div>';
 }
@@ -95,7 +97,9 @@ async function saveName() { await api('/api/name', { name: $('name').value }); t
 async function setStartup(on) { await api('/api/startup', { on }); toast(on ? '✅ Starts with Windows, hidden in the tray' : 'Won\'t start with Windows'); }
 async function check(id, btn) { btn.disabled = true; try { await api('/api/check', { id }); toast('✅ Checked'); } catch {} btn.disabled = false; load(); }
 async function toggle(id, on) { await api('/api/toggle', { id, on }); load(); }
-async function takeover(id) { if (!confirm('Take over this bot now, as a test?\n\nDiscord stops sending commands to the 24/7 cloud bot, and this app answers them (while the streamer\'s Movie Royal is closed). It stays that way until the streamer presses ☁️ Switch back to the cloud in Movie Royal.')) return; try { await api('/api/takeover', { id }); toast('🛡️ Took over. Try /mymovies in Discord (with their Movie Royal closed).', 8000); } catch {} load(); }
+async function takeover(id) { if (!confirm('Run this bot from here now?\n\nDiscord stops sending commands to the 24/7 cloud bot, and this app answers them (while the streamer\'s Movie Royal is closed). It stays that way until you press ⏹ Hand it back, or the streamer presses ☁️ Switch back to the cloud in Movie Royal.')) return; try { await api('/api/takeover', { id }); toast('🛡️ Running the bot from here. Try /mymovies in Discord (with their Movie Royal closed).', 8000); } catch {} load(); }
+async function handBack(id) { try { await api('/api/handback', { id }); toast('☁️ Handed back: the 24/7 cloud bot (or their Movie Royal) answers again', 7000); } catch {} load(); }
+async function server(btn) { const on = !S.running; if (!on && !confirm('Stop the backup server?\n\nEvery bot on the list stops: no backup, and no chat saved for the viewer profiles, until you press ▶ Start the backup server.')) return; btn.disabled = true; try { await api('/api/server', { on }); toast(on ? '▶ Backup server started: the bots connect in a few seconds' : '⏹ Backup server stopped'); } catch {} btn.disabled = false; load(); }
 async function removeBot(id, tag) { if (!confirm(`Remove ${tag || 'this bot'} from the backup?`)) return; await api('/api/remove', { id }); load(); }
 load(); setInterval(load, 3000);
 </script>

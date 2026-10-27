@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.5 (test build)
+- **🔄 Restart the Discord bot:** a new button in Settings → Discord & picks (and on the 🧪 Test tab). It turns the bot off and on again without closing Movie Royal: it reconnects and fixes its slash commands, channels and pinned messages.
+- **🛡️ Backup Bots: ▶ Start / ⏹ Stop the backup server** button at the top. Stopped = every bot on the list stops, and it stays stopped (even after a restart) until you press Start.
+  - **▶ Run this bot now** on each bot makes the backup answer that bot's Discord commands right away (it used to be a test button). **⏹ Hand it back** gives them back to the 24/7 cloud bot (or Movie Royal).
+
 ## 1.28.4 (test build)
 - **🛡️ Movie Royal Backup Bots has its own installer now:** download **MovieRoyalBackupBots-Setup-1.28.4.exe** from the release page and run it. It goes in the Start menu and on your desktop, opens when it's done, and starts with Windows hidden in the tray. Uninstall it on its own in Windows Settings → Apps.
   - The checkbox in the Movie Royal installer is gone (it didn't work), so Movie Royal's installer only installs Movie Royal.
