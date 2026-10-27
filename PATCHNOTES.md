@@ -3,6 +3,22 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.28.6: What's new
+Everything since 1.28.3.
+
+**🛡️ Movie Royal Backup Bots has its own installer**
+- Download **MovieRoyalBackupBots-Setup-1.28.6.exe** from this release page and run it on the PC that should run the backup. It goes in the Start menu and on your desktop, opens when it's done, and starts with Windows hidden in the tray. Uninstall it on its own in Windows Settings → Apps. (The checkbox in the Movie Royal installer is gone: it didn't work.)
+- **▶ Start / ⏹ Stop the backup server** at the top of the backup app turns every bot on or off, and stays that way until you change it.
+- **▶ Run this bot now** makes the backup answer that bot's Discord commands right away. **⏹ Hand it back** gives them back to the 24/7 cloud bot.
+- Pasting a bot token is easier: extra spaces or quotes are fine, and it tells you if you pasted the Application ID or Public Key by mistake.
+- Movie Royal updates no longer close the backup app.
+
+**🔄 Restart the Discord bot**
+- New button in Settings → Discord & picks (and on the 🧪 Test tab): turns the bot off and on again without closing Movie Royal, and fixes its slash commands, channels and pinned messages.
+
+**Fixes**
+- When your Discord bot token was reset on the Discord website, Movie Royal now says so plainly (on the Discord bot status and under Backup bot server) instead of "Expected token to be set for this request" every minute.
+
 ## v1.28.3: What's new
 Everything since 1.26.0.
 

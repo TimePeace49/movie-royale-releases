@@ -2,7 +2,7 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.28.6 (test build)
+## 1.28.6 (latest release)
 - **🛡️ Clearer message when your bot token was reset:** instead of "Expected token to be set for this request", Movie Royal now says plainly that Discord doesn't accept your bot token any more and to paste the new one in Settings → Discord & picks → Bot token. The Discord bot status says it too.
 - **Backup Bots: pasting the bot token is easier.** Extra spaces or quotes around it are fine. If you paste the Application ID or Public Key by mistake, it tells you which one it was and where to get the token instead.
 
