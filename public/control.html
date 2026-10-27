@@ -2817,11 +2817,12 @@ function bkStateHTML() {
     : b.active ? `<b style="color:var(--gold)">🛡️ ${esc(k.by || 'The backup')} is running your Discord bot</b> since ${new Date(k.since).toLocaleString()}${k.reason ? `, because ${esc(k.reason)}` : ''}.`
     : b.watching ? `✅ <b>${esc(k.by || 'A backup')}</b> is watching your bot (last check ${ago(k.seen)}). If the 24/7 cloud bot has problems, it takes over.`
     : k?.seen ? `⚪ A backup (${esc(k.by || '?')}) last checked in ${ago(k.seen)}. It isn't running right now.` : '⚪ No backup bot server is watching your bot yet.';
-  return `<div class="card soft" style="margin:6px 0">${state}${b.error ? `<div class="help" style="color:var(--bad)">⚠️ ${esc(b.error)}</div>` : ''}</div>
+  const chatLine = b.chatIn ? `<div class="help" style="margin:6px 0 0">💬 ${b.chatIn} chat message${b.chatIn === 1 ? '' : 's'} from while Movie Royal was closed went into the viewer profiles (last ${ago(b.chatAt)}).</div>` : '';
+  return `<div class="card soft" style="margin:6px 0">${state}${chatLine}${b.error ? `<div class="help" style="color:var(--bad)">⚠️ ${esc(b.error)}</div>` : ''}</div>
     ${b.active ? `<div class="row" style="margin-bottom:8px"><button class="primary" onclick="bkSwitchBack(this)">☁️ Switch back to the cloud</button></div>` : ''}`;
 }
 function bkHTML() {
-  return `<p class="help">The <b>Movie Royal Backup Bots</b> app (in your Start menu, comes with Movie Royal) can run your Discord bot as a backup, on your PC or a friend's. It checks your 24/7 cloud bot every minute. If the cloud bot has errors, the backup answers /suggest, /swap, /mymovies… instead, until you switch back here. If you don't use the 24/7 cloud bot, it answers whenever Movie Royal is closed. Picks it takes come into Movie Royal when you open it.</p>
+  return `<p class="help">The <b>Movie Royal Backup Bots</b> app (in your Start menu, comes with Movie Royal) can run your Discord bot as a backup, on your PC or a friend's. It checks your 24/7 cloud bot every minute. If the cloud bot has errors, the backup answers /suggest, /swap, /mymovies… instead, until you switch back here. If you don't use the 24/7 cloud bot, it answers whenever Movie Royal is closed. Picks it takes come into Movie Royal when you open it. It also reads your Twitch chat (live or offline) while Movie Royal is closed, so viewer profiles keep counting chats.</p>
     <div id="bkState">${bkStateHTML()}</div>
     <label class="ck"><input type="checkbox" data-k="backupRelay" ${S.settings.backupRelay !== false ? 'checked' : ''}> <span>Keep a hidden <code>#movie-royal-sync</code> channel (only the bot can see it) so a backup bot server can work with Movie Royal</span></label>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="bkCheck(this)">🔍 Check the backup link now</button><button class="ghost" onclick="bkCopyToken()">📋 Copy my bot token (for a friend running my backup)</button></div>

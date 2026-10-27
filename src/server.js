@@ -853,7 +853,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   res.json({
     login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
     followedAt: follow === undefined ? (v?.followedAt || undefined) : follow, url: login ? `https://twitch.tv/${login}` : null,
-    sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: v?.streak || 0, color: v?.color || null,
+    sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: chatlog.watchStreak(v), twitchStreak: v?.streak || 0, streams: (v?.watched || []).length, lastStreams: chatlog.lastStreams(v), color: v?.color || null,
     watch: v ? { total: v.watchMins || 0, stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamWatch || 0 : 0 } : null,
     chats: v ? { stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamMsgs || 0 : 0, month: v.byMonth?.[mon] || 0, year: v.byYear?.[yr] || 0, total: v.msgs || 0, first: v.first, last: v.last } : null,
     discord: dp ? { id: dp.discordId, name: dp.name, avatar: dp.avatar, movies: dp.active, watched: dp.watched, picksUsed: dp.used, max: dp.max } : null,

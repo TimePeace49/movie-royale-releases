@@ -23,18 +23,83 @@ export function viewer(login, name) {
 }
 
 let saveT = null; const soon = () => { clearTimeout(saveT); saveT = setTimeout(save, 4000); };
-export function onChat(m) {
-  const v = viewer(m.login, m.name);
-  v.last = Date.now(); v.msgs++; v.byMonth[month()] = (v.byMonth[month()] || 0) + 1; v.byYear[year()] = (v.byYear[year()] || 0) + 1;
-  if (v.streamKey !== streamKey()) { v.streamKey = streamKey(); v.streamMsgs = 0; v.streamWatch = 0; }
-  v.streamMsgs++; if (m.userId) v.id = m.userId; if (m.color) v.color = m.color;
-  if (m.badges?.months) v.subMonths = Math.max(v.subMonths || 0, m.badges.months);
-  v.sub = !!m.badges?.sub; v.mod = !!m.badges?.mod; v.vip = !!m.badges?.vip;
-  const msg = { id: m.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: m.at || Date.now(), login: m.login, name: m.name, text: m.text, color: m.color || null, emotes: m.emotes || '', badges: m.badgeList || '' };
-  recent.push(msg); if (recent.length > MAX) recent.splice(0, recent.length - MAX);
-  try { fs.appendFileSync(path.join(DIR, day() + '.jsonl'), JSON.stringify(msg) + '\n'); } catch {}
-  hooks.send({ type: 'chatmsg', msg });
+
+// 🔥 Movie Royal's own watch streak: someone "watched" a stream if they chatted or were in the viewer list at some point while you were live.
+// streamList = every stream [{ start, end }] (oldest first); a viewer's `watched` = the starts of the streams they watched.
+const SL = () => (db.streamList ||= []);
+const NEAR = 15 * 60000;
+/** The stream that was on between start and end (made if new). Returns its key (its start time).
+ *  Every stream is kept on its own: it's the same stream only if it started at about the same time (within 10 minutes),
+ *  or this sighting is inside a stream we already know. Ending and starting again later = a new stream. */
+export function streamAt(start, end = start) {
+  const L = SL(), SLACK = 2 * 60000;
+  let e = L.find(x => Math.abs(x.start - start) < 10 * 60000) || L.find(x => start >= x.start - SLACK && start <= (x.end || x.start) + SLACK);
+  if (e) { e.end = Math.max(e.end || e.start, end); return e.start; }
+  e = { start, end }; L.push(e); L.sort((a, b) => a.start - b.start); if (L.length > 600) L.splice(0, L.length - 600);
+  return e.start;
+}
+const liveKey = () => db.live && db.stream?.startedAt ? streamAt(db.stream.startedAt, Date.now()) : null; // (pretend-live tests don't count)
+export function markWatched(login, name, key) {
+  if (!key) return; const v = viewer(login, name); if (!v) return;
+  v.watched ||= []; if (v.watched.includes(key)) return;
+  v.watched.push(key); v.watched.sort((a, b) => a - b); if (v.watched.length > 600) v.watched.splice(0, v.watched.length - 600);
   soon();
+}
+/** How many streams in a row they watched, counting back from the newest. The stream that's on right now doesn't break it if they haven't shown up yet. */
+/** The last few streams, newest first: did they watch each one? (for the profile) */
+export function lastStreams(v, n = 10) { const have = new Set(v?.watched || []); return SL().slice(-n).reverse().map(x => ({ start: x.start, end: x.end, watched: have.has(x.start) })); }
+export function watchStreak(v) {
+  if (!v?.watched?.length) return 0;
+  const have = new Set(v.watched), L = SL(); let n = 0;
+  for (let i = L.length - 1; i >= 0; i--) {
+    if (have.has(L[i].start)) n++;
+    else if (i === L.length - 1 && db.live && Date.now() - (L[i].end || 0) < NEAR) continue;
+    else break;
+  }
+  return n;
+}
+export function onChat(m, opts = {}) {
+  const v = viewer(m.login, m.name), t = opts.imported ? (m.at || Date.now()) : Date.now(); // imported = chat the backup bot server saw while Movie Royal was closed
+  v.last = Math.max(v.last || 0, t); v.msgs++; v.byMonth[month(t)] = (v.byMonth[month(t)] || 0) + 1; v.byYear[year(t)] = (v.byYear[year(t)] || 0) + 1;
+  if (!opts.imported || (streamKey() && t >= streamKey())) { // (old chat doesn't count toward this stream)
+    if (v.streamKey !== streamKey()) { v.streamKey = streamKey(); v.streamMsgs = 0; v.streamWatch = 0; }
+    v.streamMsgs++;
+  }
+  if (m.userId) v.id = m.userId; if (m.color) v.color = m.color;
+  if (m.badges?.months) v.subMonths = Math.max(v.subMonths || 0, m.badges.months);
+  if (!opts.imported || t >= (v.badgesAt || 0)) { v.sub = !!m.badges?.sub; v.mod = !!m.badges?.mod; v.vip = !!m.badges?.vip; v.badgesAt = t; }
+  if (!v.first || t < v.first) v.first = t;
+  const msg = { id: m.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: m.at || Date.now(), login: m.login, name: m.name, text: m.text, color: m.color || null, emotes: m.emotes || '', badges: m.badgeList || '', ...(opts.imported ? { offline: 1 } : {}) };
+  if (!opts.imported) { recent.push(msg); if (recent.length > MAX) recent.splice(0, recent.length - MAX); }
+  try { fs.appendFileSync(path.join(DIR, day(msg.at) + '.jsonl'), JSON.stringify(msg) + '\n'); } catch {}
+  if (!opts.imported) { hooks.send({ type: 'chatmsg', msg }); markWatched(m.login, m.name, liveKey()); }
+  else if (m.ls) markWatched(m.login, m.name, streamAt(m.ls, msg.at)); // (the backup saw them chat while you were live)
+  soon();
+}
+/** 🛡️ Chat (and subs / streaks) the backup bot server saw while Movie Royal was closed: add it to the viewer profiles and the chat log.
+ *  Skips any message Movie Royal already has (same message id in that day's chat file). Returns how many were new. */
+export function importChat(list) {
+  if (!Array.isArray(list) || !list.length) return 0;
+  list = [...list].sort((a, b) => (a.at || 0) - (b.at || 0));
+  const have = new Set();
+  for (const d of new Set(list.map(r => day(r.at || Date.now())))) {
+    try { for (const l of fs.readFileSync(path.join(DIR, d + '.jsonl'), 'utf8').split('\n')) { if (!l) continue; try { const id = JSON.parse(l).id; if (id) have.add(id); } catch {} } } catch {}
+  }
+  let n = 0;
+  for (const r of list) {
+    const { t, ...rec } = r;
+    if (t === 'watch') { const key = streamAt(rec.start, rec.end || rec.start); for (const l of rec.logins || []) markWatched(l, null, key); continue; } // the backup's viewer list while you were live
+    if (t === 'alert') {
+      if (db.alerts.some(a => a.kind === rec.kind && a.login === rec.login && Math.abs((a.at || 0) - (rec.at || 0)) < 60000)) continue;
+      onAlert({ ...rec, offline: 1 }); continue;
+    }
+    if (!rec.login || (rec.id && have.has(rec.id))) continue;
+    if (rec.id) have.add(rec.id);
+    onChat(rec, { imported: true }); n++;
+  }
+  db.alerts.sort((a, b) => (b.at || 0) - (a.at || 0));
+  save();
+  return n;
 }
 export function onClear(c) { // a deleted message, a timeout or a ban
   for (const m of recent) if ((c.id && m.id === c.id) || (c.login && m.login === c.login)) m.gone = c.id ? 'deleted' : c.duration ? `timed out ${c.duration}s` : 'banned';
@@ -53,6 +118,7 @@ export function onAlert(a) {
 // ⏱️ watch time: every 5 minutes while live, everyone in chat gets 5 minutes
 export function tickWatch(list) {
   if (!list) return;
+  const key = liveKey(); for (const c of list) markWatched(c.login, c.name, key); // in the viewer list while live = watched this stream
   for (const c of list) { const v = viewer(c.login, c.name); if (!v) continue; if (v.streamKey !== streamKey()) { v.streamKey = streamKey(); v.streamMsgs = 0; v.streamWatch = 0; } v.watchMins += 5; v.streamWatch += 5; v.lastSeen = Date.now(); if (c.id) v.id = c.id; }
   soon();
 }

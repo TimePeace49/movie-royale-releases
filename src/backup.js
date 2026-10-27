@@ -15,6 +15,7 @@ import { fileURLToPath } from 'url';
 import { Client, GatewayIntentBits, ChannelType } from 'discord.js';
 import worker from './cloud-worker.js';
 import { SYNC_NAME, readSync, putStatus, appOpen } from './relay.js';
+import { watchChat, isLive } from './twitchirc.js';
 
 const DISCORD = 'https://discord.com/api/v10';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,17 +40,103 @@ async function rest(token, method, p, body) {
   return j;
 }
 
+// 🔴 is a channel live? Twitch's own answer (with the Twitch app keys from Movie Royal on this PC, if there are any), else the preview-picture check
+let mrKeys = { at: 0, id: '', secret: '' }, appTok = { token: '', until: 0 };
+function twitchKeys() {
+  if (Date.now() - mrKeys.at < 10 * 60000) return mrKeys;
+  mrKeys = { at: Date.now(), id: '', secret: '' };
+  try { const st = JSON.parse(fs.readFileSync(hooks.mrDb || path.join(process.env.MOVIE_ROYAL_DATA || '', 'db.json'), 'utf8')).settings || {}; mrKeys.id = st.twitchClientId || ''; mrKeys.secret = st.twitchClientSecret || ''; } catch {}
+  return mrKeys;
+}
+async function liveNow(channel) {
+  const k = twitchKeys();
+  if (k.id && k.secret) {
+    try {
+      if (!appTok.token || Date.now() > appTok.until) {
+        const r = await fetch('https://id.twitch.tv/oauth2/token', { method: 'POST', body: new URLSearchParams({ client_id: k.id, client_secret: k.secret, grant_type: 'client_credentials' }), signal: AbortSignal.timeout(10000) });
+        const j = await r.json(); if (!j.access_token) throw new Error('no token'); appTok = { token: j.access_token, until: Date.now() + (j.expires_in - 300) * 1000 };
+      }
+      const r = await fetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(channel)}`, { headers: { 'Client-Id': k.id, Authorization: `Bearer ${appTok.token}` }, signal: AbortSignal.timeout(10000) });
+      if (r.status === 401) appTok.token = '';
+      if (r.ok) { const d = (await r.json()).data?.[0]; return { live: !!d && d.type === 'live', startedAt: d?.started_at ? Date.parse(d.started_at) : null, how: 'twitch' }; }
+    } catch {}
+  }
+  return { live: await isLive(channel), startedAt: null, how: 'picture' };
+}
+const SAME_STREAM = 15 * 60000;
+
 class Bot {
   constructor(rec) {
     this.rec = rec; this.client = null; this.timer = null; this.cfg = null; this.cfgAt = null; this.app = null;
     this.queue = []; this.posted = new Set(); this.busy = false; this.ch = null;
     this.st = { state: 'starting', tag: rec.tag || null, guilds: [], streamer: null, warning: null, mode: 'standby', since: null, reason: null, back: null,
-      cloud: { url: '', ok: null, fails: 0, error: null, checkedAt: null }, handled: 0, lastCmd: null, checkedAt: null, appOnline: null };
+      cloud: { url: '', ok: null, fails: 0, error: null, checkedAt: null }, handled: 0, lastCmd: null, checkedAt: null, appOnline: null,
+      chat: { channel: null, state: 'off', saved: 0, waiting: 0, sentAt: null, live: null, viewers: 0, watched: 0 } };
+    this.run = null; // 🔴 the stream that's on now: who watched it (in the viewer list or chatted)
+    this.chatBuf = []; this.chatW = null; this.appClosedAt = 0; this.appOpenAt = 0;
+    this.loadChat();
     try { const c = JSON.parse(fs.readFileSync(this.file('cache'), 'utf8')); this.cfg = c.cfg || null; this.cfgAt = c.cfgAt || null; this.queue = c.queue || []; this.posted = new Set(c.posted || []); this.st.mode = c.mode || 'standby'; this.st.since = c.since || null; this.st.reason = c.reason || null; } catch {}
   }
   file(k) { return path.join(DATA, `bot-${this.rec.id}-${k}.json`); }
   saveCache() { try { fs.writeFileSync(this.file('cache'), JSON.stringify({ cfg: this.cfg, cfgAt: this.cfgAt, queue: this.queue, posted: [...this.posted], mode: this.st.mode, since: this.st.since, reason: this.st.reason })); } catch {} }
   token() { return dec(this.rec.token); }
+  // 💬 Twitch chat while the streamer's Movie Royal is closed (for the viewer profiles in Movie Royal): kept in a file until it's handed over
+  chatFile() { return this.file('chat').replace(/\.json$/, '.jsonl'); }
+  loadChat() { try { this.chatBuf = fs.readFileSync(this.chatFile(), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)); } catch { this.chatBuf = []; } this.st.chat.waiting = this.chatBuf.length; }
+  startChat() {
+    const ch = String(this.cfg?.twitchChannel || '').toLowerCase().replace(/^#/, '');
+    if (this.chatW && this.chatW.status.channel === ch) return;
+    this.chatW?.close(); this.chatW = null; this.st.chat.channel = ch || null;
+    if (!ch || this.rec.on === false) { this.st.chat.state = ch ? 'off' : 'no channel'; return; }
+    this.chatW = watchChat(ch, ev => this.onChat(ev));
+  }
+  onChat(ev) {
+    if (ev.join) { if (this.run) this.run.logins.add(ev.join); return; } // opened chat while live = watched this stream
+    // Movie Royal counts chat itself while it's open; the backup keeps what it would miss (plus a few minutes either side: Movie Royal skips any it already has)
+    const rec = ev.chat ? { t: 'chat', ...ev.chat } : ev.alert ? { t: 'alert', ...ev.alert } : null; if (!rec) return;
+    if (this.run && rec.t === 'chat') { rec.ls = this.run.start; this.run.logins.add(String(rec.login).toLowerCase()); } // chatted while live = watched
+    this.ring = [...(this.ring || []).filter(r => Date.now() - r.at < 5 * 60000), rec]; // the last 5 minutes, in case Movie Royal just closed
+    const open = appOpen(this.app) && Date.now() - this.appOpenAt > 3 * 60000;
+    if (open) return;
+    this.keep(rec);
+  }
+  keep(rec) {
+    this.chatBuf.push(rec); this.st.chat.saved++; this.st.chat.waiting = this.chatBuf.length;
+    try { fs.appendFileSync(this.chatFile(), JSON.stringify(rec) + '\n'); } catch {}
+  }
+  /** 🔴 Every minute: is the stream on? While it is, everyone in the viewer list (or chatting) watched it. Saved for Movie Royal's watch streaks. */
+  async checkLive() {
+    const ch = this.st.chat.channel; if (!ch || !this.chatW) { this.st.chat.live = null; return; }
+    const r = await liveNow(ch); if (r.live === null) return; // couldn't tell: try again next minute
+    const now = Date.now(); this.st.chat.live = r.live; this.st.chat.liveHow = r.how;
+    if (r.live) {
+      const start = r.startedAt || now;
+      if (this.run && r.startedAt && Math.abs(r.startedAt - this.run.start) > SAME_STREAM) this.saveRun(true); // a new stream
+      if (!this.run) this.run = { start, end: now, logins: new Set(), sent: new Set() };
+      if (r.startedAt && r.startedAt < this.run.start) this.run.start = r.startedAt;
+      this.run.end = now;
+      for (const l of this.chatW.status.present) this.run.logins.add(l);
+      this.st.chat.viewers = this.chatW.status.present.size; this.st.chat.watched = this.run.logins.size;
+      this.saveRun();
+    } else if (this.run) this.saveRun(true);
+  }
+  saveRun(done = false) { // only the people not saved yet (Movie Royal adds them to the same stream)
+    const r = this.run; if (!r) return;
+    const fresh = [...r.logins].filter(l => !r.sent.has(l));
+    if (fresh.length || done) { this.keep({ t: 'watch', start: r.start, end: r.end, at: r.end, logins: fresh }); fresh.forEach(l => r.sent.add(l)); }
+    if (done) { this.run = null; this.st.chat.viewers = 0; }
+  }
+  /** Hand saved chat to Movie Royal through the sync channel (one file per batch). */
+  async flushChat(force = false) {
+    if (!this.ch || !this.chatBuf.length) return;
+    if (!force && this.chatBuf.length < 300 && Date.now() - (this.st.chat.sentAt || 0) < 5 * 60000) return;
+    const batch = this.chatBuf.slice(0, 20000);
+    try {
+      await this.ch.send({ content: 'MR-CHAT ' + JSON.stringify({ from: batch[0].at, to: batch[batch.length - 1].at, n: batch.length, channel: this.st.chat.channel }), files: [{ attachment: Buffer.from(JSON.stringify(batch)), name: 'chat.json' }], allowedMentions: { parse: [] } });
+      this.chatBuf = this.chatBuf.slice(batch.length); this.st.chat.sentAt = Date.now(); this.st.chat.waiting = this.chatBuf.length;
+      fs.writeFileSync(this.chatFile(), this.chatBuf.map(r => JSON.stringify(r)).join('\n') + (this.chatBuf.length ? '\n' : ''));
+    } catch (e) { log(this.st.tag, 'could not hand chat over:', e.message); }
+  }
   async start() {
     const token = this.token();
     if (!token) { this.st.state = 'error'; this.st.warning = "Couldn't read this bot's token. Remove it and add it again."; return; }
@@ -71,7 +158,7 @@ class Bot {
       if (!bad && this.rec.on !== false) { clearTimeout(this.retry); this.retry = setTimeout(() => { if (this.rec.on !== false && !this.client) this.start(); }, 120000); }
     }
   }
-  async stop() { clearTimeout(this.retry); clearInterval(this.timer); this.timer = null; try { await this.client?.destroy(); } catch {} this.client = null; this.st.state = 'paused'; }
+  async stop() { this.chatW?.close(); this.chatW = null; this.st.chat.state = 'off'; clearTimeout(this.retry); clearInterval(this.timer); this.timer = null; try { await this.client?.destroy(); } catch {} this.client = null; this.st.state = 'paused'; }
   findChannel(name) {
     for (const g of this.client.guilds.cache.values()) { const c = g.channels.cache.find(x => x.type === ChannelType.GuildText && x.name === name); if (c) return c; }
     return null;
@@ -84,11 +171,14 @@ class Bot {
       const ch = this.ch = this.findChannel(SYNC_NAME);
       if (!ch) { this.st.warning = "Waiting for this streamer's Movie Royal to make the hidden #movie-royal-sync channel. They need Movie Royal 1.27.0 or newer, opened once with the Discord bot on."; return; }
       const s = await readSync(ch, this.client.user.id);
-      this.app = s.app; this.st.appOnline = s.app?.online || 0;
+      const wasOpen = appOpen(this.app); this.app = s.app; this.st.appOnline = s.app?.online || 0;
+      if (appOpen(this.app) && !wasOpen) this.appOpenAt = Date.now();
+      if (wasOpen && !appOpen(this.app)) { const have = new Set(this.chatBuf.map(r => r.id).filter(Boolean)); for (const r of this.ring || []) if (!r.id || !have.has(r.id)) this.keep(r); } // Movie Royal just closed: keep the last few minutes too (it skips any it already has)
       if (s.config?.url && (s.config.at !== this.cfgAt || !this.cfg || force)) { // the newest rules + pool from Movie Royal
         try { const r = await fetch(s.config.url, { signal: AbortSignal.timeout(20000) }); if (r.ok) { this.cfg = await r.json(); this.cfgAt = s.config.at; } } catch (e) { log(this.st.tag, 'config download', e.message); }
       }
       this.st.streamer = this.cfg?.streamer || null;
+      this.startChat(); await this.checkLive().catch(() => {}); await this.flushChat(appOpen(this.app)); // (Movie Royal is open: hand it everything now)
       // picks Movie Royal already took in are gone from the channel: forget them. Post any not posted yet.
       const present = new Set(s.ops.map(o => o.op.id));
       this.queue = this.queue.filter(op => present.has(op.id) || !this.posted.has(op.id));
@@ -178,7 +268,7 @@ class Bot {
     if (i.type === 2) { this.st.handled++; this.st.lastCmd = { name: i.data?.name, at: Date.now(), by: i.member?.user?.username || i.user?.username || '' }; }
     await Promise.all(waits);
   }
-  view() { return { id: this.rec.id, on: this.rec.on !== false, ...this.st, appOpen: appOpen(this.app), configAt: this.cfgAt, waitingPicks: this.queue.length }; }
+  view() { if (this.chatW) this.st.chat.state = this.chatW.status.state; return { id: this.rec.id, on: this.rec.on !== false, ...this.st, appOpen: appOpen(this.app), configAt: this.cfgAt, waitingPicks: this.queue.length }; }
 }
 
 async function addBot(token) {
@@ -206,7 +296,7 @@ export async function startBackup(opts = {}) {
   const wrap = fn => async (req, res) => { try { res.json(await fn(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); } };
   web.get('/api/state', (req, res) => res.json({ name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', bots: [...bots.values()].map(b => b.view()) }));
   web.post('/api/add', wrap(b => addBot(b.token)));
-  web.post('/api/remove', wrap(async b => { const bot = bots.get(b.id); if (bot) { await bot.stop(); bots.delete(b.id); } conf.bots = conf.bots.filter(x => x.id !== b.id); saveConf(); try { fs.unlinkSync(path.join(DATA, `bot-${b.id}-cache.json`)); } catch {} return { ok: true }; }));
+  web.post('/api/remove', wrap(async b => { const bot = bots.get(b.id); if (bot) { await bot.stop(); bots.delete(b.id); } conf.bots = conf.bots.filter(x => x.id !== b.id); saveConf(); try { fs.unlinkSync(path.join(DATA, `bot-${b.id}-cache.json`)); fs.unlinkSync(path.join(DATA, `bot-${b.id}-chat.jsonl`)); } catch {} return { ok: true }; }));
   web.post('/api/toggle', wrap(async b => { const bot = bots.get(b.id); if (!bot) throw new Error('No such bot'); bot.rec.on = !!b.on; saveConf(); if (b.on) { bot.started = Date.now(); await bot.start(); } else await bot.stop(); return { ok: true }; }));
   web.post('/api/name', wrap(async b => { const n = String(b.name || '').trim().slice(0, 40); if (!n) throw new Error('Type a name'); conf.name = n; saveConf(); return { ok: true }; }));
   web.post('/api/startup', wrap(async b => { hooks.setStartup?.(!!b.on); return { ok: true, startup: hooks.getStartup ? hooks.getStartup() : !!b.on }; }));

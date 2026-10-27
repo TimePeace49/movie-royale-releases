@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.27.1 (test build)
+- **🔥 Movie Royal's own watch streaks:** someone watched a stream if they chatted or showed up in the viewer list at some point while you were live. Their streak is how many of your streams in a row they watched, and missing one starts it over. Every stream is kept on its own (ending and starting again later is a new stream).
+  - The viewer profile shows the streak, how many streams they've watched in all, Twitch's own streak number, and their last 10 streams (✅ watched / ❌ missed).
+- **🛡️ Movie Royal Backup Bots now keeps chat stats while Movie Royal is closed:** it reads each streamer's Twitch chat, live or offline (no Twitch sign-in needed), and hands it to their Movie Royal when it opens.
+  - The viewer profiles get the chats (this month, this year, all time), the chat log, sub months and watch streaks, with the real times. Movie Royal skips anything it already counted.
+  - While a streamer is live, it also notes who's in the viewer list, for watch streaks. It checks "is it live?" with Twitch itself, using the Twitch app keys from Movie Royal on the same PC.
+  - It does this for each bot it runs (yours and your friends'), and each streamer's stats only go to their own Movie Royal.
+  - Watch time still only counts while Movie Royal is open (that needs the Twitch sign-in).
+
 ## 1.27.0 (test build)
 - **🛡️ Movie Royal Backup Bots:** a new small app that comes with Movie Royal (Start menu → Movie Royal Backup Bots). It runs Discord bots as a backup: yours, and any friend's who sends you their bot token.
   - It starts with Windows, hidden in the tray by the clock (you can turn that off in its window or the tray menu). Closing its window keeps it running.

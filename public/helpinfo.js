@@ -468,6 +468,8 @@ H(/^✕ close$/i, '✕ Close', 'Closes this window. (The preview window comes ba
 H(/^tip:tick it once it works/i, 'Tick when it works', 'Tick it once you\'ve tried it and it worked. Ticks are remembered on this computer.');
 H(/^see them$/i, 'See them', 'Opens Settings → ⌨️ Key binds.');
 
+H(/^🔥 your last \d+ streams$/i, '🔥 Last streams', 'Your newest streams, newest first: ✅ = they watched it (chatted or were in the viewer list while you were live), ❌ = they missed it. Missing one starts the watch streak over.');
+
 SECTION(null);
 // ───────── more (boxes named
 // ───────── more (boxes named by their hint text, menus, odd ones) ─────────
