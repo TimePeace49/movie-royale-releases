@@ -2,7 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.28.2 (latest release)
+## 1.28.3 (latest release)
+- **🛡️ Movie Royal Backup Bots is optional and off by default:** the installer has a **Movie Royal Backup Bots (optional)** box, unticked. Leave it off and there's no shortcut, it never starts with Windows, and nothing runs. Tick it to get it (updates keep whatever you picked). Run the installer again to change your mind.
+
+## 1.28.2 (test build)
 - **✋ The winner decides in chat:** when the movie winner types in chat, Movie Royal asks them: "Type **!accept** to watch it now, or **!pass** to save it for another night (you keep your luck)." It does whatever they answer (yes / no work too), replies in chat, and the stream pop-up shows the same choice. Only the winner's answer counts.
   - ✅ Accept / ⏭️ Pass on the winner card are for doing it yourself.
   - Change the commands in Settings → Twitch. 💬 Pretend chat has !accept and !pass buttons for testing.

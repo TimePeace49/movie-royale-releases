@@ -3,11 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
-## v1.28.2: What's new
+## v1.28.3: What's new
 Everything since 1.26.0.
 
-**🛡️ New: Movie Royal Backup Bots**
-- A small app that comes with Movie Royal (Start menu → Movie Royal Backup Bots). It runs Discord bots as a backup: yours, and any friend's who sends you their bot token. It starts with Windows, hidden in the tray, and keeps running when its window is closed.
+**🛡️ New (optional): Movie Royal Backup Bots**
+- An optional small app, off by default: tick **Movie Royal Backup Bots (optional)** when you run the installer (run it again to add or remove it later). It runs Discord bots as a backup: yours, and any friend's who sends you their bot token. Once installed it starts with Windows, hidden in the tray, and keeps running when its window is closed.
 - Every minute it checks each streamer's 24/7 cloud bot. If the cloud bot has errors, the backup answers /suggest, /swap, /mymovies, /list and /linktwitch with the same rules, until the streamer presses **☁️ Switch back to the cloud** in Movie Royal. If a streamer doesn't use the cloud bot, it answers whenever their Movie Royal is closed. Picks it takes come into Movie Royal when it opens.
 - It also reads each streamer's Twitch chat (live or offline) while their Movie Royal is closed, and who's in the viewer list while they're live, so the viewer profiles keep counting chats and watch streaks.
 - Fill in its 💜 Twitch box (Client ID + Client Secret) when you set it up. Add bots with **📋 Copy my bot token** (Movie Royal → Settings → Discord & picks). 🧪 Test: take over now tries it on purpose.

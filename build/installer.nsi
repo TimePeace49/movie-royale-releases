@@ -28,6 +28,8 @@ VIAddVersionKey "LegalCopyright" "Movie Royal"
 
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "LogicLib.nsh"
+!include "Sections.nsh"
 !define MUI_ICON "icon.ico"
 !define MUI_UNICON "icon.ico"
 !define MUI_ABORTWARNING
@@ -42,6 +44,10 @@ Var IsUpdate
 !insertmacro MUI_PAGE_WELCOME
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_DIRECTORY
+; optional parts (the backup bots app is off unless you tick it)
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
+!define MUI_COMPONENTSPAGE_TEXT_TOP "Movie Royal is always installed. Tick Movie Royal Backup Bots only if this PC should run Discord bots as a backup (yours or a friend's)."
+!insertmacro MUI_PAGE_COMPONENTS
 !define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Movie Royal is updated"
 !define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "Opening Movie Royal again…"
 !insertmacro MUI_PAGE_INSTFILES
@@ -56,21 +62,10 @@ Function SkipOnUpdate
   Abort
 FunctionEnd
 
-Function .onInit
-  StrCpy $IsUpdate "0"
-  ${GetParameters} $R0
-  ClearErrors
-  ${GetOptions} $R0 "/UPDATE" $R1
-  IfErrors +3 0
-  StrCpy $IsUpdate "1"
-  SetAutoClose true
-  ; close a running copy so its files can be replaced (updates)
-  nsExec::Exec 'taskkill /F /IM "${EXE}"'
-  nsExec::Exec 'taskkill /F /IM "${OLDEXE}"'
-  Sleep 700
-FunctionEnd
+
 
 Section "Movie Royal" SecMain
+  SectionIn RO
   SetOutPath "$INSTDIR"
   ; replace the old program files (your data lives in %APPDATA%\Movie Royal and is never touched)
   RMDir /r "$INSTDIR\resources"
@@ -86,8 +81,6 @@ Section "Movie Royal" SecMain
   DeleteRegKey HKCU "${OLDREGKEY}"
   CreateShortCut "$SMPROGRAMS\Movie Royal.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
   CreateShortCut "$DESKTOP\Movie Royal.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
-  ; 🛡️ the backup bots app (same program, started with --backup)
-  CreateShortCut "$SMPROGRAMS\Movie Royal Backup Bots.lnk" "$INSTDIR\${EXE}" "--backup" "$INSTDIR\icon.ico" 0
 
   ; shows up in Windows Settings > Apps so it can be uninstalled like any program
   WriteRegStr HKCU "${REGKEY}" "DisplayName" "${APP}"
@@ -103,10 +96,57 @@ Section "Movie Royal" SecMain
   IntFmt $0 "0x%08X" $0
   WriteRegDWORD HKCU "${REGKEY}" "EstimatedSize" "$0"
 
+SectionEnd
+
+; 🛡️ optional: the backup bots app (same program, started with --backup). Off unless ticked.
+Section /o "Movie Royal Backup Bots (optional)" SecBackup
+  CreateShortCut "$SMPROGRAMS\Movie Royal Backup Bots.lnk" "$INSTDIR\${EXE}" "--backup" "$INSTDIR\icon.ico" 0
+  WriteRegDWORD HKCU "${REGKEY}" "BackupBots" 1
+SectionEnd
+
+Section "-finish"
+  ; not wanted (or unticked): no shortcut, no starting with Windows, not reopened after updates
+  ${IfNot} ${SectionIsSelected} ${SecBackup}
+    Delete "$SMPROGRAMS\Movie Royal Backup Bots.lnk"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Movie Royal Backup Bots"
+    Delete "$APPDATA\Movie Royal Backup\running.json"
+    WriteRegDWORD HKCU "${REGKEY}" "BackupBots" 0
+  ${EndIf}
   ; always reopen the app when the install/update is done (in-app silent updates and the normal installer)
   SetOutPath "$INSTDIR"
   Exec '"$INSTDIR\${EXE}"'
 SectionEnd
+
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "The Movie Royal app."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecBackup} "Runs Discord bots as a backup (yours and friends') when the 24/7 cloud bot has problems, and keeps chat stats while Movie Royal is closed. Starts with Windows, hidden in the tray."
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+Function .onInit
+  StrCpy $IsUpdate "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/UPDATE" $R1
+  IfErrors +3 0
+  StrCpy $IsUpdate "1"
+  SetAutoClose true
+  ; close a running copy so its files can be replaced (updates)
+  nsExec::Exec 'taskkill /F /IM "${EXE}"'
+  nsExec::Exec 'taskkill /F /IM "${OLDEXE}"'
+  Sleep 700
+  ; the backup bots app: keep what you picked last time (off for new installs)
+  ClearErrors
+  ReadRegDWORD $0 HKCU "${REGKEY}" "BackupBots"
+  ${If} ${Errors} ; never asked before (older versions): keep it if the backup app was already used on this PC
+  ${AndIf} ${FileExists} "$APPDATA\Movie Royal Backup\app-prefs.json"
+    StrCpy $0 1
+  ${EndIf}
+  ${If} $0 == 1
+    !insertmacro SelectSection ${SecBackup}
+  ${Else}
+    !insertmacro UnselectSection ${SecBackup}
+  ${EndIf}
+FunctionEnd
 
 Section "Uninstall"
   nsExec::Exec 'taskkill /F /IM "${EXE}"'
