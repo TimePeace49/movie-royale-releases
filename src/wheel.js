@@ -183,14 +183,16 @@ function finalize() {
 // st.chain = where to come back to: [{ from: wheelId, to: wheelId }] or [{ from: wheelId, battle: listId }] (newest last)
 const LINK_WAIT = 4000, BACK_WAIT = 8000;
 let linkT = null;
-function followLink(w, rec) {
+function followLink(w, rec, mid = false) {
   const st = W(); st.chain ||= [];
+  // mid = an ⚡ auto spot with a link, in the middle of a round: remember this wheel's paused timer for when we come back
+  const keep = mid ? { round: st.round ? { ...st.round } : null, last: st.last ? { ...st.last } : null } : undefined;
   const e = w.entries.find(x => x.id === rec.entryId), go = e?.goTo;
   clearTimeout(linkT);
   if (go && !rec.voided && st.chain.length < 6) {
     if (go.kind === 'wheel') {
       const to = getWheel(go.id); if (!to || to.id === w.id) return note(`“${e.text}” links to a wheel that isn't there any more.`);
-      st.chain.push({ from: w.id, to: to.id }); save();
+      st.chain.push({ from: w.id, to: to.id, keep }); save();
       linkT = setTimeout(() => {
         st.activeId = to.id; st.show = true; refresh(); hooks.goView('wheel');
         banner(`🔀 ${esc(e.text)}<small>Off to ${esc(to.name)}!</small>`);
@@ -200,7 +202,7 @@ function followLink(w, rec) {
       return;
     }
     if (go.kind === 'battle') {
-      st.chain.push({ from: w.id, battle: go.id }); save();
+      st.chain.push({ from: w.id, battle: go.id, keep }); save();
       linkT = setTimeout(() => {
         banner(`🔀 ${esc(e.text)}<small>Battle time!</small>`);
         sayW(w, `🔀 ${e.text} → battle time!`);
@@ -219,6 +221,9 @@ export function linkBack() {
   const st = W(); const top = (st.chain ||= []).pop(); if (!top) return false;
   const from = getWheel(top.from); save();
   if (!from) return false;
+  if (top.keep) { // back in the middle of a round (we left from a linked ⚡ auto spot): the timer waits paused, like on any auto spot
+    clearTimeout(roundT); st.round = top.keep.round; st.last = top.keep.last; st.final = null; save(); sendRound();
+  }
   st.activeId = from.id; st.show = true; refresh(); hooks.goView('wheel');
   banner(`↩️ Back to ${esc(from.name)}`);
   return true;
@@ -233,6 +238,10 @@ function landed(w, rec) {
   if (!roundOn(w)) { if (!queue.length && rec.by?.source !== 'void' && rec.type !== 'void') followLink(w, rec); return; } // no round timer: where it stops is the win
   if (r?.state === 'ending') return finalize();
   if (!r || r.state === 'ended' || r.wheelId !== w.id) return; // no round going
+  if (rec.type === 'auto' && !queue.length && w.entries.find(x => x.id === rec.entryId)?.goTo) { // ⚡ auto spot with a link: the clock pauses and the link happens right away
+    if (r.state === 'running') roundPause('auto');
+    sendRound(); followLink(w, rec, true); return;
+  }
   if (r.state === 'armed') { r.left = r.total; roundRun(); }
   else if (r.state === 'paused' && r.why !== 'you' && rec.type !== 'auto' && rec.type !== 'countdown') roundRun(); // moved / respun off an auto or countdown spot: the clock goes again
   if (rec.type === 'auto') roundPause('auto');

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.9 (latest release)
+- **🔀 Fixed: linked ⚡ auto spots.** With the round timer on, landing on an auto spot that links to another wheel or a battle now does the link right away (before, it just paused and waited for you). The timer pauses like on any auto spot. When the linked wheel or battle is done, it comes back with your timer still paused, so you press start (or respin) like normal.
+
 ## 1.28.8 (latest release)
 - **🛡️ Add your bot to the backup in one click, no copy and paste:**
   - In Movie Royal Backup Bots: **🍿 Add my bot from Movie Royal (this PC)**. It takes the token straight from Movie Royal on the same PC.

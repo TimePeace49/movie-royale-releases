@@ -3,6 +3,12 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.28.9: What's new
+Everything since 1.28.8.
+
+**Fixes**
+- 🔀 **Linked ⚡ auto spots:** with the round timer on, landing on an auto spot that links to another wheel or a battle now does the link right away (before, it just paused and waited for you). When the linked wheel or battle is done, it comes back with your timer still paused, so you press start (or respin) like normal.
+
 ## v1.28.8: What's new
 Everything since 1.28.7.
 
