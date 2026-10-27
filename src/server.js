@@ -1235,7 +1235,9 @@ app.post('/api/lists/:id/bulk', async (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   const items = parseLines(req.body.text);
   const report = { added: 0, failed: [] };
-  if (l.type === 'films') {
+  if (l.type === 'films' && req.body.plain) { // 📝 plain text (not movies) in a custom movie battle
+    for (const it of items) { addEntry(l, it); report.added++; }
+  } else if (l.type === 'films') {
     for (const it of items) {
       try { const e = await addFilm(l, it.label); e.weight = it.weight; report.added++; } catch (err) { report.failed.push(`${it.label}: ${err.message}`); }
     }
@@ -1428,6 +1430,8 @@ app.post('/api/lists/letterboxd', (req, res) => { // make a new Letterboxd battl
 });
 app.post('/api/lists/:id/film', async (req, res) => {
   const l = getList(req.params.id); if (!l || l.type !== 'films') return res.sendStatus(404);
+  const text = String(req.body?.text || '').trim().slice(0, 120);
+  if (text) { const e = addEntry(l, { label: text }); save(); pushState(); refreshPreview(); return res.json({ ok: true, msg: `Added ${e.label} (plain text, not a movie)` }); } // 📝 not a movie
   try { const e = await addFilm(l, req.body?.tmdbId || req.body?.query); save(); pushState(); res.json({ ok: true, msg: `Added ${e.label} (${e.sub})` }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });

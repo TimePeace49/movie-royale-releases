@@ -119,6 +119,16 @@ export function save() {
 
 export const uid = () => crypto.randomBytes(6).toString('hex');
 export const getList = id => db.lists.find(l => l.id === id);
+
+// 🔢 a ready-made number battle (1 to 500) called Worse Movies. Made once: if you delete it, it stays deleted.
+if (!db.settings.madeWorseMovies) {
+  db.settings.madeWorseMovies = true;
+  if (!db.lists.some(l => /^(🔢 )?worse movies$/i.test(l.name))) {
+    const l = { id: uid(), name: '🔢 Worse Movies', type: 'text', entries: [], joinOpen: false, numbers: { from: 1, to: 500 } };
+    for (let n = 1; n <= 500; n++) l.entries.push({ id: uid(), label: String(n), sub: '', weight: 1, status: 'active', addedAt: Date.now() });
+    db.lists.push(l); save();
+  }
+}
 export const norm = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
 
 /** Your name everywhere in the app: the name in Settings if you typed one, otherwise your Twitch name. */

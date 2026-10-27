@@ -1067,6 +1067,8 @@ function drawChecklist() {
     ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message in your Twitch chat'))")],
     ['sitout', '!sitout and !imback work in chat', T('Try it', "api('/api/test/sitout').then(r=>toast(r.ok?'🛌 '+esc(r.name)+' typed !sitout (their movies leave the cliff), then !imback in 5 seconds':'⚠️ '+esc(r.error), 7000))")],
     ['chaos', 'A channel point / bits chaos event hits the battle', T('Try it', "api('/api/test/battle',{count:12}).then(()=>setTimeout(()=>api('/api/test/redeem',{event:'comet',name:'test_viewer'}),7000)).then(()=>toast('Practice battle: a ☄️ comet hits once the fight starts'))")],
+    ['plainText', '📝 A plain text entry (not a movie) goes into a custom movie battle and shows in the pool right away', `<button class="ghost" style="padding:3px 9px" onclick="setView('pool');toast('Pick a 🎬 Movies battle on the left, type in the Add box, then press 📝 Add … as plain text (or click a movie: it should show in the pool right away)',9000)">How</button>`],
+    ['worseMovies', '🔢 The Worse Movies battle (1 to 500) is in your battle list', `<button class="ghost" style="padding:3px 9px" onclick="setView('pool')">See it</button>`],
     ['numbers', 'A 🔢 number battle plays', T('Try it', "api('/api/lists/numbers',{from:1,to:10}).then(()=>toast('🔢 1 to 10 battle made: it is on the cliff now'))")],
     ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/wheel/timer',{cmd:'end'}).catch(()=>{}),13000)).then(()=>toast('🎡 Spinning: the round timer ends 13 seconds from now'))")],
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
@@ -1653,11 +1655,11 @@ function renderPool() {
       <textarea id="bulk" placeholder="The Thing 1982, Paddington 2, Heat x2&#10;(commas or new lines)"></textarea>
       <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add all</button><span class="help">Each line is looked up on TMDB.</span></div></details>`;
   else if (l.type === 'films') add = `
-    <div class="row"><input id="msearch" class="grow" placeholder="Add a movie: start typing a title…" oninput="searchMovie(this.value)"></div>
+    <div class="row"><input id="msearch" class="grow" placeholder="Add a movie (or any text): start typing…" oninput="searchMovie(this.value)" onkeydown="if(event.key==='Enter'&&event.ctrlKey)addPlain()"></div>
     <div class="results" id="mresults"></div>
     <details style="margin-top:8px"><summary>Paste a big list of movie titles</summary>
       <textarea id="bulk" placeholder="Halloween 1978, The Shining, Scream x2&#10;(commas or new lines)"></textarea>
-      <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add all</button><span class="help">Each line is looked up on TMDB. <code>x2</code> = double odds. The winner gets the full movie winner screen.</span></div></details>`;
+      <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add all</button><button onclick="bulkAdd(true)" title="Add every line just as words, not looked up as movies">📝 Add all as plain text</button><span class="help">Each line is looked up on TMDB. <code>x2</code> = double odds. Movie winners get the full movie winner screen. <b>📝 Plain text</b> entries (not movies) work too: pick “Add … as plain text” at the top of the search, or use the plain text button here.</span></div></details>`;
   else if (l.type === 'text') add = `${l.numbers ? `<div class="card soft" style="margin:0 0 8px;padding:10px"><div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><b>🔢 Numbers</b> from <input id="numFrom" type="number" value="${l.numbers.from}" style="width:90px"> to <input id="numTo" type="number" value="${l.numbers.to}" style="width:90px"><button class="primary" onclick="api('/api/lists/${l.id}/numbers',{from:$('numFrom').value,to:$('numTo').value}).then(r=>toast('🔢 Now '+r.count+' numbers'))">Update the numbers</button></div><p class="help" style="margin:6px 0 0">Numbers you keep keep their odds. You can also click any number below to change it.</p></div>` : ''}
     <textarea id="bulk" style="min-height:80px" placeholder="Paste as many as you want — commas or new lines:&#10;Pizza, Tacos x3, Sushi"></textarea>
     <div class="row" style="margin-top:6px"><button class="primary" onclick="bulkAdd()">Add to list</button><span class="help">Separate with commas or new lines. <code>x3</code> after one = triple odds.</span></div>`;
@@ -1680,9 +1682,9 @@ function renderPool() {
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const waiting = l.type === 'movies' && S.settings.chatGate !== false && !spot && e.backers?.length && !S.chatters.includes(e.backers[0].discordId);
     const series = e.details?.collection ? ` · 🎞️ ${esc(e.details.collection.name)}` : '';
-    const sub = (spot ? `Wildcard · if one wins, all ${esc(S.settings.spotName)} spots leave for the week` : l.type === 'movies' ? `${esc(e.sub)} · ${e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you'}${series}` : esc(e.sub || '')) + (waiting ? ` · <span style="color:var(--gold)">💬 joins once ${esc(e.backers[0].name)} chats</span>` : '');
+    const sub = (spot ? `Wildcard · if one wins, all ${esc(S.settings.spotName)} spots leave for the week` : l.type === 'movies' ? `${esc(e.sub)} · ${e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you'}${series}` : l.type === 'films' && !e.tmdbId ? '📝 plain text (not a movie)' : esc(e.sub || '')) + (waiting ? ` · <span style="color:var(--gold)">💬 joins once ${esc(e.backers[0].name)} chats</span>` : '');
     const luck = l.type === 'movies' && S.luckOn ? (spot ? `<div class="luck" title="Wildcard spots only get luck you give them">🍀 <input type="number" step="0.01" min="0" value="${e.luckPct || 0}" style="width:64px;padding:2px 4px" onchange="api('/api/luck',{id:'${e.id}',luckPct:this.value})">%</div>` : e.luckPct ? `<div class="luck" title="Built up from battles it lost">🍀 +${(+e.luckPct).toFixed(2)}%</div>` : '') : '';
-    return `<tr style="${waiting ? 'opacity:.5' : ''}"><td class="thumb">${img}</td><td>${l.type === 'text' || l.type === 'pics' ? `<input value="${esc(e.label)}" style="font-weight:700;max-width:260px" title="Click to change it" onchange="api('/api/lists/${l.id}/entries/${e.id}',{label:this.value},'PATCH')">` : `<b>${esc(e.label)}</b>`}<br><small class="muted">${sub}</small></td>
+    return `<tr style="${waiting ? 'opacity:.5' : ''}"><td class="thumb">${img}</td><td>${l.type === 'text' || l.type === 'pics' || (l.type === 'films' && !e.tmdbId) ? `<input value="${esc(e.label)}" style="font-weight:700;max-width:260px" title="Click to change it" onchange="api('/api/lists/${l.id}/entries/${e.id}',{label:this.value},'PATCH')">` : `<b>${esc(e.label)}</b>`}<br><small class="muted">${sub}</small></td>
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)" title="Odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div>${luck}</td>
       <td><div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small></td>
       <td style="white-space:nowrap">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}<button class="ghost" title="Pause — off the cliff until you resume it" onclick="setStatus('${e.id}','paused')">⏸️</button>${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}<button class="ghost danger" title="Remove" onclick="setStatus('${e.id}','removed')">✕</button></td></tr>`;
@@ -1772,14 +1774,14 @@ async function owPick(p) {
 }
 async function setStatus(id, status) { await api(`/api/lists/${list().id}/entries/${id}`, { status }, 'PATCH'); }
 async function odds(id, v) { await api(`/api/lists/${list().id}/entries/${id}`, { weight: Math.max(0.1, Number(v) || 1) }, 'PATCH'); }
-async function bulkAdd() {
+async function bulkAdd(plain = false) {
   const ta = $('bulk'); if (!ta.value.trim()) return;
-  const btn = event?.target; if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  const btn = event?.target, was = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
   try {
-    const r = await api(`/api/lists/${list().id}/bulk`, { text: ta.value });
+    const r = await api(`/api/lists/${list().id}/bulk`, { text: ta.value, plain: !!plain });
     ta.value = '';
     toast(`Added ${r.added}${r.failed.length ? `<br><small>Skipped:<br>${r.failed.slice(0, 8).map(esc).join('<br>')}${r.failed.length > 8 ? '<br>…' : ''}</small>` : ''}`, r.failed.length ? 8000 : 3000);
-  } finally { if (btn) btn.disabled = false; renderPool(); }
+  } finally { if (btn) { btn.disabled = false; if (was) btn.textContent = was; } renderPool(); }
 }
 function setupDrop() {
   const d = $('drop'); if (!d) return;
@@ -1807,11 +1809,19 @@ function searchMovie(q) {
         return `<button ${block ? 'disabled' : ''} onclick="addMovie(${m.id})"><img src="${m.poster ? esc(proxy(m.poster)) : ''}"><span class="grow"><b>${esc(m.title)}</b> <span class="muted">(${esc(m.year || '????')})</span></span>
         ${m.watched ? `<span class="tag w">✅ watched</span>` : pooled ? '<span class="tag p">in pool</span>' : ''}</button>`;
       }).join('') || '<p class="help">No matches.</p>';
+      if (l.type === 'films') lastResults = `<button onclick="addPlain()" title="Add it just as words, like a number battle or a wheel spot: no poster or movie info"><span style="font-size:22px;width:36px;text-align:center">📝</span><span class="grow"><b>Add “${esc(q.trim())}” as plain text</b> <span class="muted">(not a movie)</span></span></button>` + lastResults;
       if ($('mresults')) $('mresults').innerHTML = lastResults;
     } catch {}
   }, 250);
 }
+async function addPlain() { // 📝 a custom movie battle: add what was typed as plain text, not a movie
+  const q = ($('msearch')?.value || '').trim(); if (!q) return;
+  document.activeElement?.blur?.();
+  const r = await api(`/api/lists/${list().id}/film`, { text: q });
+  toast(esc(r.msg)); lastResults = ''; if ($('msearch')) $('msearch').value = ''; if ($('mresults')) $('mresults').innerHTML = ''; renderPool();
+}
 async function addMovie(id) {
+  document.activeElement?.blur?.(); // (the pool doesn't redraw while a search result has focus)
   const l = list();
   const r = l.type === 'films' ? await api(`/api/lists/${l.id}/film`, { tmdbId: id }) : await api('/api/movies/add', { tmdbId: id });
   toast(esc(r.msg.replace(/\*\*/g, ''))); lastResults = ''; if ($('msearch')) $('msearch').value = ''; renderPool();

@@ -112,9 +112,15 @@ export async function sync(force = false) {
     const config = buildConfig(), hash = JSON.stringify(config);
     const due = force || ack.length || (hash !== lastHash && Date.now() - (status.lastPush || 0) > 120000);
     if (due) { await api('POST', { config, ack }); lastHash = hash; status.lastPush = Date.now(); }
-    status.lastSync = Date.now(); status.lastError = null;
+    status.lastSync = Date.now(); status.lastError = null; status.netFails = 0;
     if (!checkedV) await checkVersion();
-  } catch (e) { status.lastError = e.message; console.error('[24/7]', e.message); }
+  } catch (e) {
+    status.lastError = e.message;
+    // a one-off internet hiccup (timeout, no connection) fixes itself on the next check: only log it if it keeps happening
+    const net = /timeout|aborted|fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|network/i.test(e.message);
+    status.netFails = net ? (status.netFails || 0) + 1 : 0;
+    if (!net || status.netFails === 3) console.error('[24/7]', net ? `couldn't reach the 24/7 bot 3 times in a row: ${e.message}` : e.message);
+  }
   finally { busy = false; onChange(); }
   return status;
 }
@@ -144,7 +150,7 @@ export async function checkLink(fix = true) {
       status.linked = true; status.relinked = Date.now(); console.log('[24/7] Discord was not pointed at the 24/7 bot — fixed');
     }
     status.linkError = null;
-  } catch (e) { status.linked = false; status.linkError = e.message; console.error('[24/7] link check', e.message); }
+  } catch (e) { status.linked = false; status.linkError = e.message; if (!/timeout|aborted|fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network/i.test(e.message)) console.error('[24/7] link check', e.message); } // (internet hiccups: checked again in 10 minutes)
   try { const r = await fetch(cloud().url + '/health', { signal: AbortSignal.timeout(10000) }); status.botUp = r.ok; } catch { status.botUp = false; }
   status.checkedAt = Date.now(); onChange();
   return status;

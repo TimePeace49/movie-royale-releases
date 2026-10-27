@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.7 (test build)
+- **🎬 Fixed:** in a custom movie battle (🎬 Movie Pool tab), a movie you click in the search now shows in the pool right away (before, you had to switch away and back).
+- **📝 Plain text in custom movie battles:** type anything in the Add box and pick **📝 Add "…" as plain text** at the top of the results (or **📝 Add all as plain text** under Paste a big list). It plays like any other piece, without a poster. You can rename it in the pool.
+- **🔢 Worse Movies:** a ready-made number battle, 1 to 500, is now in your battle list. Delete it if you don't want it: it won't come back.
+- **☁️ Fewer false alarms from the 24/7 bot:** one slow internet check no longer posts "Couldn't reach the internet" in #movie-royal-debug. It only says something if it fails 3 times in a row. The backup bot server also only reacts to problems the 24/7 bot posts itself, so an internet hiccup on your PC can't make it take over.
+
 ## 1.28.6 (latest release)
 - **🛡️ Clearer message when your bot token was reset:** instead of "Expected token to be set for this request", Movie Royal now says plainly that Discord doesn't accept your bot token any more and to paste the new one in Settings → Discord & picks → Bot token. The Discord bot status says it too.
 - **Backup Bots: pasting the bot token is easier.** Extra spaces or quotes around it are fine. If you paste the Application ID or Public Key by mistake, it tells you which one it was and where to get the token instead.

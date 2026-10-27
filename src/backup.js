@@ -221,7 +221,7 @@ class Bot {
     try {
       const since = Math.max(Date.now() - WORKER_ERROR_WINDOW, this.st.back || 0, this.started || 0);
       const msgs = await dch.messages.fetch({ limit: 15 });
-      const m = msgs.find(x => x.author?.id === this.client.user.id && x.createdTimestamp > since && /24\/7 Discord bot:/.test(x.content || ''));
+      const m = msgs.find(x => x.author?.id === this.client.user.id && x.createdTimestamp > since && /24\/7 Discord bot:/.test(x.content || '') && /24\/7 bot v\d/.test(x.content || '')); // (only the cloud bot's own posts: Movie Royal's notes about it don't count)
       return m ? 'it posted a problem in #movie-royal-debug: ' + (m.content.match(/24\/7 Discord bot: ([^*\n]+)/) || [])[1] : null;
     } catch { return null; }
   }
