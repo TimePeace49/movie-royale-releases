@@ -184,6 +184,9 @@ export async function start(changed) {
     };
     const prep = async g => { await register(g.id); const w = await setupGuild(g); w.push(...await setupDebug(g).catch(e => [`${g.name}: debug channel: ${e.message}`])); w.push(...await setupSync(g).catch(e => [`${g.name}: sync channel: ${e.message}`])); return w; };
     client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    client.rest.on?.('response', (req, res) => { // Discord turned the token down (it was reset on the Discord website): say so plainly
+      if (res?.status === 401 && status.state !== 'token reset') { status.state = 'token reset'; status.error = "Discord doesn't accept your bot token any more (it was reset on the Discord website). Paste the new one in the Bot token box below and press Save."; onChange(); }
+    });
     client.once('ready', async () => {
       status.state = 'online'; status.tag = client.user.tag;
       status.guilds = client.guilds.cache.map(g => g.name);

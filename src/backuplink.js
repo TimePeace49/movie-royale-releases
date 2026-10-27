@@ -11,6 +11,7 @@ export const status = { backup: db.backupSeen || null, checkedAt: null, error: n
 let timer = null, busy = false, lastHash = '', lastCfgAt = 0, onChange = () => {};
 const VERSION = process.env.MR_VERSION || '';
 const BACKUP_SEEN_MS = 5 * 60000;
+const BAD_TOKEN = "Discord doesn't accept your bot token any more (it was reset on the Discord website). Paste the new one in Settings → Discord & picks → Bot token and press Save.";
 
 // while the backup holds the bot (it took over from a broken 24/7 cloud bot), Movie Royal doesn't point Discord back at the cloud by itself
 cloud.setBackupCheck(() => status.backup?.mode === 'backup');
@@ -58,8 +59,9 @@ export async function tick(opts = {}) {
     if (JSON.stringify(db.backupSeen || null) !== JSON.stringify(status.backup)) { db.backupSeen = status.backup; save(); }
     status.checkedAt = Date.now(); status.error = null;
   } catch (e) {
-    if (/Expected token|token to be set|destroyed/i.test(e.message)) { // the Discord bot restarted (or reconnected) in the middle of the check: not a real problem, try again shortly
-      status.error = null; setTimeout(() => tick({ force: true }), 15000);
+    if (/Expected token|token to be set|401|Unauthorized/i.test(e.message)) { // Discord turned the token down (it was reset on the Discord website)
+      const was = status.error; status.error = BAD_TOKEN;
+      if (was !== BAD_TOKEN) console.error('[backup link]', BAD_TOKEN);
     } else { status.error = e.message; console.error('[backup link]', e.message); }
   }
   finally { busy = false; onChange(); }
