@@ -3,6 +3,19 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.28.7: What's new
+Everything since 1.28.6.
+
+**🎬 Custom movie battles**
+- A movie you click in the search now shows in the pool right away (before, you had to switch away and back).
+- **📝 Plain text entries:** type anything in the Add box and pick **📝 Add "…" as plain text** at the top of the results, or **📝 Add all as plain text** under Paste a big list. They play like any other piece, without a poster, and you can rename them in the pool.
+
+**🔢 Worse Movies**
+- A ready-made number battle, 1 to 500, is now in your battle list. Delete it if you don't want it: it won't come back.
+
+**Fixes**
+- ☁️ One slow internet check no longer posts "Couldn't reach the internet" in #movie-royal-debug. It only says something if it fails 3 times in a row. The backup bot server only reacts to problems the 24/7 bot posts itself, so an internet hiccup on your PC can't make it take over.
+
 ## v1.28.6: What's new
 Everything since 1.28.3.
 

@@ -2,7 +2,7 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.28.7 (test build)
+## 1.28.7 (latest release)
 - **🎬 Fixed:** in a custom movie battle (🎬 Movie Pool tab), a movie you click in the search now shows in the pool right away (before, you had to switch away and back).
 - **📝 Plain text in custom movie battles:** type anything in the Add box and pick **📝 Add "…" as plain text** at the top of the results (or **📝 Add all as plain text** under Paste a big list). It plays like any other piece, without a poster. You can rename it in the pool.
 - **🔢 Worse Movies:** a ready-made number battle, 1 to 500, is now in your battle list. Delete it if you don't want it: it won't come back.
