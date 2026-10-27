@@ -586,7 +586,7 @@ wss.on('connection', (ws, req) => {
       live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
       const f = live.game.fighters.find(x => x.id === m.winnerId);
       if (!f) return;
-      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); return; } // practice rounds never touch real lists or history
+      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history
       const list = getList(live.game.listId);
       try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
       markMapRun(live.game.map); // full results + lifetime stats (every round, series rounds too)
@@ -621,6 +621,7 @@ wss.on('connection', (ws, req) => {
       };
       db.history.push(rec); db.history = db.history.slice(-1000); historyVersion++;
       live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id, gameId: live.game.id };
+      battleDoneForWheel();
       if (seriesInfo) { live.lastWinner.series = seriesInfo; rec.series = seriesInfo; f.series = seriesInfo; }
       if (list?.giveaway) { db.giveawayWinners ||= []; db.giveawayWinners.push({ login: f.ownerLogin || norm(f.label), name: f.label, prize: giveawaySettings().prize || giveawaySettings().title, at: Date.now() }); db.giveawayWinners = db.giveawayWinners.slice(-500); if (giveawaySettings().removeWinner) { const we = list.entries.find(x => x.id === f.id); if (we) we.status = 'out'; } }
       if (list?.type === 'chat') for (const x of list.entries) delete x.powers; // power-ups last one battle
@@ -724,7 +725,27 @@ const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: 
 const startDonationFeed = () => donations.startDonations({ tip: t => { try { chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
-wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday() });
+wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
+// 🔀 a wheel spot sent us to a battle: put it on stream (and start it), then go back to the wheel once it has a winner
+function openBattleFromWheel(listId, auto, why) {
+  const l = getList(listId); if (!l) return "that battle isn't there any more";
+  if (live.phase === 'lobby' || live.phase === 'running') return 'a battle is already going';
+  leaveEnded(); if (db.activeListId !== l.id) { db.activeListId = l.id; previewIds = null; }
+  live.wheelLink = { listId: l.id, at: Date.now() };
+  wheel.setShow(false); save(); pushState(); refreshPreview(true);
+  broadcast({ type: 'goView', view: 'battle' }, 'control');
+  broadcast({ type: 'toast', text: `🔀 “${why}” sent you to the battle “${l.name}”${auto ? ': it starts in a few seconds' : ": press START when you're ready"}. Then it goes back to the wheel.` }, 'control');
+  if (auto) setTimeout(async () => { if (live.phase === 'lobby' || live.phase === 'running' || live.wheelLink?.listId !== l.id) return; const err = await startRound(); if (err) broadcast({ type: 'toast', text: '🔀 ' + err }, 'control'); }, 6000);
+  return null;
+}
+function battleDoneForWheel() { // the battle a wheel spot sent us to has its winner: back to the wheel (after the winner card, and the claim if there is one)
+  if (!live.wheelLink) return;
+  live.wheelLink = null;
+  if (!wheel.linkWaiting()?.battle) return;
+  const started = Date.now();
+  const back = () => { if (live.claim && !live.claim.done && Date.now() - started < 180000) return setTimeout(back, 5000); live.claim && clearTimeout(live.claim.timer); wheel.linkBack(); wheelChanged(); };
+  setTimeout(back, 15000);
+}
 const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
 app.get('/api/wheel', (req, res) => { const w = wheel.W(); res.json({ wheels: w.wheels, activeId: w.activeId, show: w.show, last: w.last || null, rewards: w.rewards, costs: w.costs, pointsOn: w.pointsOn !== false, chatOn: w.chatOn !== false, ver: w.ver || 0, historyCount: w.history.length, palette: wheel.PAL, canPoints: !!twitch.status.userId, types: wheel.TYPES, mine: { ...w.mine, name: `${streamerName()}'s spins` }, bank: Object.values(w.bank).sort((a, b) => b.spins - a.spins || a.name.localeCompare(b.name)), grants: w.grants.slice(-300).reverse(), boosts: w.boosts, auto: w.auto, redeemLog: w.redeemLog, donations: { ...donations.status, se: !!db.settings.seJwt, sl: !!db.settings.slToken, seState: donations.status.se, slState: donations.status.sl }, cmd: w.cmd, streamer: streamerName(), round: wheel.getRound(), undo: wheel.undoList(), folders: w.folders, final: w.final || null, bringBack: w.bringBack, live: !!db.live, obs: { set: !!(db.settings.obsMic || db.settings.obsCam || db.settings.obsPassword), ...obs.status } }); });
 app.post('/api/wheel', (req, res) => { const w = wheel.newWheel(req.body?.name || 'New wheel', Array.isArray(req.body?.entries) ? req.body.entries : []); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });

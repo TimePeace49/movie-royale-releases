@@ -51,11 +51,13 @@ const num = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ?
 const fileOk = v => /^(\/uploads\/[\w.-]+|https?:\/\/\S+)$/.test(v || '') ? v : '';
 // 🔗 an optional web page for a spot (a game, a site…): a button opens it when the spot wins
 export const cleanLink = v => { let u = String(v || '').trim(); if (!u) return ''; if (!/^https?:\/\//i.test(u)) u = 'https://' + u; try { const x = new URL(u); return /^https?:$/.test(x.protocol) && x.hostname.includes('.') ? x.href.slice(0, 500) : ''; } catch { return ''; } };
+// 🔀 a spot can send you to another wheel or a battle when it wins: { kind: 'wheel' | 'battle', id, auto (battle: start it by itself) }
+const cleanGoTo = g => g && (g.kind === 'wheel' || g.kind === 'battle') && g.id ? { kind: g.kind, id: String(g.id).slice(0, 80), auto: g.auto !== false } : null;
 export function cleanEntry(e) {
   const type = TYPES[e.type] ? e.type : 'timer'; // old normal / timer / refund spots are all timer spots now
   const out = { id: e.id || uid(), text: String(e.text ?? e.label ?? '').slice(0, 200), weight: e.weight === 0 || e.weight === '0' ? 0 : num(e.weight, 1, 0, 1e7) || 1, color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : null,
     rule: String(e.rule || '').slice(0, 2000), on: e.on !== false && e.enabled !== false, type, voided: e.voided || null, image: fileOk(e.image === '/gauntlet.svg' ? '' : e.image), sound: fileOk(e.sound),
-    noPointRespin: !!e.noPointRespin, noBankRespin: !!e.noBankRespin, link: cleanLink(e.link) };
+    noPointRespin: !!e.noPointRespin, noBankRespin: !!e.noBankRespin, link: cleanLink(e.link), goTo: cleanGoTo(e.goTo) };
   if (type === 'countdown') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); out.autoKnock = e.autoKnock !== false; }
   if (type === 'timercount') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); } // a timer spot: each WIN takes one off, at 0 it goes invisible
   if (type === 'timermax') { out.maxWins = Math.round(num(e.maxWins, 1, 1, 1000)); out.wins = Math.round(num(e.wins, 0, 0, 1000)); out.maxedOff = !!e.maxedOff; } // a timer spot that can only win so many times a night
@@ -97,7 +99,7 @@ export const view = w => w && ({ id: w.id, name: w.name, title: w.title, rot: w.
   voidOn: !!w.opts.void.on && rulesOn(w), voided: w.entries.filter(e => e.voided).map(e => e.text),
   entries: layout(w).map(s => ({ id: s.e.id, text: s.e.text, label: slotLabel(w, s.e), weight: s.e.weight, color: s.color, rule: rulesOn(w) ? s.e.rule : '', image: s.e.image, sound: s.e.sound, type: rulesOn(w) ? s.e.type : 'timer', count: s.e.count })) });
 
-let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {} };
+let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {}, openBattle: () => 'not ready', goView: () => {} };
 let busyUntil = 0, spinning = null; const queue = []; let qTimer = null;
 export function initWheel(h) { hooks = { ...hooks, ...h }; W(); const st = W(); if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } }
 export function wheelMsg() { const w = W(), a = active(); return { type: 'wheel', show: w.show, wheel: view(a), last: w.last && w.last.wheelId === a?.id ? w.last : null, final: w.final && w.final.wheelId === a?.id ? w.final : null, round: roundView() }; }
@@ -175,12 +177,60 @@ function finalize() {
   log({ kind: 'final', wheelId: rec.wheelId, wheelName: rec.wheelName, entryId: rec.entryId, text: rec.text, rule: rec.rule, pct: rec.pct, by: { name: '⏱️ Time ran out', source: 'timer' } });
   sendRound({ final: st.final }); hooks.broadcast(wheelMsg());
   sayW(w, `⏱️ TIME! The wheel has spoken: 🏆 ${rec.text}${rec.rule ? ' — ' + rec.rule.slice(0, 200) : ''}`);
+  followLink(w, rec);
 }
+// ---------- 🔀 linked spots: win → spin another wheel / play a battle → come back ----------
+// st.chain = where to come back to: [{ from: wheelId, to: wheelId }] or [{ from: wheelId, battle: listId }] (newest last)
+const LINK_WAIT = 4000, BACK_WAIT = 8000;
+let linkT = null;
+function followLink(w, rec) {
+  const st = W(); st.chain ||= [];
+  const e = w.entries.find(x => x.id === rec.entryId), go = e?.goTo;
+  clearTimeout(linkT);
+  if (go && !rec.voided && st.chain.length < 6) {
+    if (go.kind === 'wheel') {
+      const to = getWheel(go.id); if (!to || to.id === w.id) return note(`“${e.text}” links to a wheel that isn't there any more.`);
+      st.chain.push({ from: w.id, to: to.id }); save();
+      linkT = setTimeout(() => {
+        st.activeId = to.id; st.show = true; refresh(); hooks.goView('wheel');
+        banner(`🔀 ${esc(e.text)}<small>Off to ${esc(to.name)}!</small>`);
+        sayW(w, `🔀 ${e.text} → spinning “${to.name}”!`);
+        setTimeout(() => { try { request('spin', { name: `🔀 ${e.text}`, source: 'link' }, { wheelId: to.id }); } catch (err) { note(err.message); } }, 2500);
+      }, LINK_WAIT);
+      return;
+    }
+    if (go.kind === 'battle') {
+      st.chain.push({ from: w.id, battle: go.id }); save();
+      linkT = setTimeout(() => {
+        banner(`🔀 ${esc(e.text)}<small>Battle time!</small>`);
+        sayW(w, `🔀 ${e.text} → battle time!`);
+        const err = hooks.openBattle(go.id, go.auto, e.text);
+        if (err) { note(`Couldn't open the battle: ${err}`); st.chain.pop(); save(); }
+      }, LINK_WAIT);
+      return;
+    }
+  }
+  // a wheel we were sent to has its winner: go back to where we came from
+  const top = st.chain[st.chain.length - 1];
+  if (top?.to === w.id) linkT = setTimeout(() => linkBack(), BACK_WAIT);
+}
+/** Go back to the wheel we came from (after a linked wheel or battle is done). */
+export function linkBack() {
+  const st = W(); const top = (st.chain ||= []).pop(); if (!top) return false;
+  const from = getWheel(top.from); save();
+  if (!from) return false;
+  st.activeId = from.id; st.show = true; refresh(); hooks.goView('wheel');
+  banner(`↩️ Back to ${esc(from.name)}`);
+  return true;
+}
+export const linkWaiting = () => { const c = W().chain || []; return c[c.length - 1] || null; };
+export function linkClear() { W().chain = []; clearTimeout(linkT); save(); }
+
 // after every landing: start / pause the round timer
 function landed(w, rec) {
   spinning = null;
   const st = W(); let r = st.round;
-  if (!roundOn(w)) return;
+  if (!roundOn(w)) { if (!queue.length && rec.by?.source !== 'void' && rec.type !== 'void') followLink(w, rec); return; } // no round timer: where it stops is the win
   if (r?.state === 'ending') return finalize();
   if (!r || r.state === 'ended' || r.wheelId !== w.id) return; // no round going
   if (r.state === 'armed') { r.left = r.total; roundRun(); }

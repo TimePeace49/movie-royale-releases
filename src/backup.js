@@ -43,6 +43,7 @@ async function rest(token, method, p, body) {
 // 🔴 is a channel live? Twitch's own answer (with the Twitch app keys from Movie Royal on this PC, if there are any), else the preview-picture check
 let mrKeys = { at: 0, id: '', secret: '' }, appTok = { token: '', until: 0 };
 function twitchKeys() {
+  if (conf.twitch?.id && conf.twitch?.secret) return { id: conf.twitch.id, secret: dec(conf.twitch.secret), mine: true }; // the Twitch info typed in when the backup was set up
   if (Date.now() - mrKeys.at < 10 * 60000) return mrKeys;
   mrKeys = { at: Date.now(), id: '', secret: '' };
   try { const st = JSON.parse(fs.readFileSync(hooks.mrDb || path.join(process.env.MOVIE_ROYAL_DATA || '', 'db.json'), 'utf8')).settings || {}; mrKeys.id = st.twitchClientId || ''; mrKeys.secret = st.twitchClientSecret || ''; } catch {}
@@ -294,10 +295,21 @@ export async function startBackup(opts = {}) {
   web.get('/', (req, res) => res.sendFile(path.join(ROOT, 'public', 'backup.html')));
   web.use(express.static(path.join(ROOT, 'public'), { index: false }));
   const wrap = fn => async (req, res) => { try { res.json(await fn(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); } };
-  web.get('/api/state', (req, res) => res.json({ name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', bots: [...bots.values()].map(b => b.view()) }));
+  web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', bots: [...bots.values()].map(b => b.view()) }); });
   web.post('/api/add', wrap(b => addBot(b.token)));
   web.post('/api/remove', wrap(async b => { const bot = bots.get(b.id); if (bot) { await bot.stop(); bots.delete(b.id); } conf.bots = conf.bots.filter(x => x.id !== b.id); saveConf(); try { fs.unlinkSync(path.join(DATA, `bot-${b.id}-cache.json`)); fs.unlinkSync(path.join(DATA, `bot-${b.id}-chat.jsonl`)); } catch {} return { ok: true }; }));
   web.post('/api/toggle', wrap(async b => { const bot = bots.get(b.id); if (!bot) throw new Error('No such bot'); bot.rec.on = !!b.on; saveConf(); if (b.on) { bot.started = Date.now(); await bot.start(); } else await bot.stop(); return { ok: true }; }));
+  web.post('/api/twitch', wrap(async b => { // 💜 Twitch app keys (dev.twitch.tv → Your Console → Applications): for Twitch's own "is the stream live?"
+    const id = String(b.id || '').trim(), secret = String(b.secret || '').trim();
+    if (!id && !secret) { delete conf.twitch; saveConf(); appTok.token = ''; return { ok: true, cleared: true }; }
+    if (!id || !secret) throw new Error('Paste both the Client ID and the Client Secret.');
+    const r = await fetch('https://id.twitch.tv/oauth2/token', { method: 'POST', body: new URLSearchParams({ client_id: id, client_secret: secret, grant_type: 'client_credentials' }), signal: AbortSignal.timeout(10000) }).catch(() => null);
+    if (!r) throw new Error("Couldn't reach Twitch (is the internet on?). Try again in a minute.");
+    const j = await r.json().catch(() => ({}));
+    if (!j.access_token) throw new Error("Twitch didn't accept those. Check the Client ID and make a new Client Secret on dev.twitch.tv.");
+    conf.twitch = { id, secret: enc(secret), ok: true }; saveConf(); appTok = { token: j.access_token, until: Date.now() + (j.expires_in - 300) * 1000 };
+    return { ok: true };
+  }));
   web.post('/api/name', wrap(async b => { const n = String(b.name || '').trim().slice(0, 40); if (!n) throw new Error('Type a name'); conf.name = n; saveConf(); return { ok: true }; }));
   web.post('/api/startup', wrap(async b => { hooks.setStartup?.(!!b.on); return { ok: true, startup: hooks.getStartup ? hooks.getStartup() : !!b.on }; }));
   web.post('/api/check', wrap(async b => { const bot = bots.get(b.id); if (!bot) throw new Error('No such bot'); if (!bot.client && bot.rec.on !== false) { await bot.start(); return bot.view(); } await bot.tick(true); return bot.view(); })); // (not connected: try connecting again)

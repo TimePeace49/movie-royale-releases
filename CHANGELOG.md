@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.0 (test build)
+- **🔀 Linked wheel spots:** in a spot's ⚙, pick **When this spot wins** → another wheel or a battle.
+  - **Another wheel:** that wheel comes on stream and spins by itself. Once it has its winner, Movie Royal comes back to the wheel you started on.
+  - **A battle:** it comes on stream and starts by itself (or untick that and press START yourself). Once it has a winner (and a movie winner has claimed it), it comes back to the wheel.
+  - With a round timer it happens when the timer runs out on that spot; with no round timer, as soon as the wheel lands there. Linked spots show 🔀 → in the spot list. Try it with 🧪 Test → 🎯 Land on a spot.
+- **🛡️ Backup Bots: Twitch info:** the backup app has its own 💜 Twitch box (Client ID + Client Secret) to fill in when you set it up. It's used to ask Twitch whether each streamer is live, for watch streaks. One set works for every streamer.
+
 ## 1.27.1 (test build)
 - **🔥 Movie Royal's own watch streaks:** someone watched a stream if they chatted or showed up in the viewer list at some point while you were live. Their streak is how many of your streams in a row they watched, and missing one starts it over. Every stream is kept on its own (ending and starting again later is a new stream).
   - The viewer profile shows the streak, how many streams they've watched in all, Twitch's own streak number, and their last 10 streams (✅ watched / ❌ missed).
