@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Royal Backup Bots</title>
+<style>
+  :root { --bg:#120a24; --card:#1d1238; --line:#ffffff1f; --text:#f3eefe; --muted:#b7a9d9; --gold:#ffc94a; --good:#7dffb0; --bad:#ff7a7a; --purple:#9b7bff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 Inter, "Segoe UI", system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:#170d2e; position:sticky; top:0; z-index:2; }
+  header h1 { margin:0; font-size:20px; color:var(--gold); flex:1; }
+  main { max-width:1100px; margin:0 auto; padding:18px 16px 40px; display:grid; gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .grow { flex:1; }
+  input[type=text], input[type=password] { background:#0d0720; color:var(--text); border:1px solid #ffffff2e; border-radius:9px; padding:8px 10px; font:inherit; min-width:0; }
+  button { background:#2a1d4a; color:var(--text); border:1px solid #ffffff2e; border-radius:9px; padding:7px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--purple); }
+  button.primary { background:var(--gold); color:#1a1030; border-color:var(--gold); font-weight:700; }
+  button.danger { color:var(--bad); }
+  button:disabled { opacity:.5; cursor:default; }
+  .help { color:var(--muted); font-size:13.5px; margin:6px 0; }
+  .bots { display:grid; grid-template-columns:repeat(auto-fill, minmax(460px, 1fr)); gap:12px; }
+  .bot { border-left:5px solid #ffffff40; }
+  .bot.ok { border-left-color:var(--good); } .bot.warn { border-left-color:var(--gold); } .bot.bad { border-left-color:var(--bad); } .bot.live { border-left-color:var(--purple); box-shadow:0 0 0 1px var(--purple), 0 6px 24px #9b7bff33; }
+  .bot h3 { margin:0; font-size:17px; }
+  .lines { display:grid; gap:4px; margin:10px 0; font-size:14px; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:20px; font-size:12px; background:#ffffff14; }
+  .pill.live { background:var(--purple); color:#fff; }
+  .warn-t { color:var(--gold); font-size:13.5px; }
+  .ck { display:flex; gap:8px; align-items:center; cursor:pointer; }
+  #toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#2a1d4a; border:1px solid var(--purple); padding:10px 16px; border-radius:12px; display:none; max-width:min(700px, calc(100vw - 32px)); box-shadow:0 10px 30px #000a; }
+  @media (max-width:560px) { .bots { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header><h1>🛡️ Movie Royal Backup Bots</h1><span class="help" id="ver"></span></header>
+<main>
+  <div class="card">
+    <div class="row"><b>Streamers see this backup as</b><input id="name" type="text" style="width:240px" maxlength="40"><button onclick="saveName()">Save</button>
+      <span class="grow"></span><label class="ck"><input type="checkbox" id="startup" onchange="setStartup(this.checked)"> Start with Windows (hidden in the tray)</label></div>
+    <p class="help">This app runs Discord bots for Movie Royal streamers (yours and your friends') as a backup. Every minute it checks each streamer's 24/7 cloud bot. If the cloud bot has errors, this app answers /suggest, /swap, /mymovies, /list and /linktwitch with the same rules, until the streamer presses <b>☁️ Switch back to the cloud</b> in their Movie Royal. If a streamer doesn't use the cloud bot, it answers whenever their Movie Royal is closed. While their Movie Royal is open, it stays quiet. Closing this window keeps it running in the tray by the clock.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 6px">➕ Add a bot</h3>
+    <div class="row"><input id="tok" type="password" class="grow" placeholder="Paste the bot token (Movie Royal → Settings → Discord & picks → 📋 Copy my bot token)" onkeydown="if(event.key==='Enter')add()"><button class="primary" onclick="add()">Add</button></div>
+    <p class="help">Each streamer needs Movie Royal 1.27.0 or newer, opened once with their Discord bot on, so it makes the hidden <code>#movie-royal-sync</code> channel. A bot token gives full control of that bot: keep it private.</p>
+  </div>
+  <div class="bots" id="bots"></div>
+</main>
+<div id="toast"></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ago = t => { if (!t) return 'never'; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
+let toastT; function toast(t, ms = 5000) { const b = $('toast'); b.innerHTML = t; b.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => b.style.display = 'none', ms); }
+async function api(p, body) { const r = await fetch(p, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); const j = await r.json().catch(() => ({})); if (!r.ok) { toast('⚠️ ' + esc(j.error || 'Something went wrong'), 8000); throw new Error(j.error); } return j; }
+let S = null, nameTyping = false;
+$('name').onfocus = () => nameTyping = true; $('name').onblur = () => nameTyping = false;
+async function load() { try { S = await api('/api/state'); draw(); } catch {} }
+function draw() {
+  if (!nameTyping) $('name').value = S.name; $('ver').textContent = S.version ? 'v' + S.version : '';
+  if (S.startup === null) $('startup').closest('label').style.display = 'none'; else $('startup').checked = !!S.startup;
+  $('bots').innerHTML = S.bots.length ? S.bots.map(b => {
+    const live = b.mode === 'backup', cls = !b.on ? '' : b.state === 'error' ? 'bad' : live ? 'live' : b.warning ? 'warn' : 'ok';
+    const cloud = !b.cloud.url ? '☁️ No 24/7 cloud bot: this backup answers whenever their Movie Royal is closed.'
+      : live ? '☁️ 24/7 cloud bot: <b>not used right now</b> (this backup has the bot)'
+      : b.cloud.ok === false ? `☁️ 24/7 cloud bot: <b style="color:var(--bad)">problem</b> (${esc(b.cloud.error)}), check ${b.cloud.fails} of 3 before taking over`
+      : b.cloud.ok ? `☁️ 24/7 cloud bot: <b style="color:var(--good)">working</b> (checked ${ago(b.cloud.checkedAt)})` : '☁️ 24/7 cloud bot: checking…';
+    const app = b.appOpen ? '🍿 Their Movie Royal: <b style="color:var(--good)">open</b> (it answers commands itself)' : `🍿 Their Movie Royal: closed${b.appOnline ? '' : ''}`;
+    const mode = live ? `🛡️ <b style="color:var(--purple)">RUNNING THE BOT</b> since ${new Date(b.since).toLocaleString()}<br><small class="help">${esc(b.reason || '')}. Until ${esc(b.streamer || 'the streamer')} presses ☁️ Switch back to the cloud in Movie Royal.</small>` : '🛡️ Standing by';
+    return `<div class="card bot ${cls}">
+      <div class="row"><h3 class="grow">🤖 ${esc(b.tag || 'Bot')}${b.streamer ? ` <span class="help">· ${esc(b.streamer)}</span>` : ''}</h3>${live ? '<span class="pill live">running</span>' : `<span class="pill">${esc(!b.on ? 'paused' : b.state)}</span>`}</div>
+      <div class="lines"><div>${mode}</div>${b.on && b.state === 'online' ? `<div>${cloud}</div><div>${app}</div>` : ''}
+        <div class="help">Commands answered: <b>${b.handled}</b>${b.lastCmd ? ` · last /${esc(b.lastCmd.name)} by ${esc(b.lastCmd.by)} ${ago(b.lastCmd.at)}` : ''}${b.waitingPicks ? ` · ${b.waitingPicks} pick${b.waitingPicks === 1 ? '' : 's'} waiting for their Movie Royal` : ''} · checked ${ago(b.checkedAt)}</div>
+        ${b.warning ? `<div class="warn-t">⚠️ ${esc(b.warning)}</div>` : ''}</div>
+      <div class="row"><button onclick="check('${b.id}', this)">🔄 Check now</button>
+        <button onclick="toggle('${b.id}', ${!b.on})">${b.on ? '⏸ Pause' : '▶ Resume'}</button>
+        <button onclick="takeover('${b.id}')" ${live || !b.on || b.state !== 'online' ? 'disabled' : ''} title="Take over now, as if the cloud bot broke">🧪 Test: take over now</button>
+        <span class="grow"></span><button class="danger" onclick="removeBot('${b.id}', '${esc(b.tag || '')}')">🗑 Remove</button></div>
+    </div>`; }).join('') : '<div class="card help">No bots yet. Add yours first (Movie Royal → Settings → Discord & picks → 📋 Copy my bot token), then any friend\'s who wants you as their backup.</div>';
+}
+async function add() { const t = $('tok').value.trim(); if (!t) return toast('Paste a bot token first'); try { const r = await api('/api/add', { token: t }); $('tok').value = ''; toast(`✅ Added ${esc(r.tag)}. It connects in a few seconds.`); load(); } catch {} }
+async function saveName() { await api('/api/name', { name: $('name').value }); toast('✅ Saved'); nameTyping = false; load(); }
+async function setStartup(on) { await api('/api/startup', { on }); toast(on ? '✅ Starts with Windows, hidden in the tray' : 'Won\'t start with Windows'); }
+async function check(id, btn) { btn.disabled = true; try { await api('/api/check', { id }); toast('✅ Checked'); } catch {} btn.disabled = false; load(); }
+async function toggle(id, on) { await api('/api/toggle', { id, on }); load(); }
+async function takeover(id) { if (!confirm('Take over this bot now, as a test?\n\nDiscord stops sending commands to the 24/7 cloud bot, and this app answers them (while the streamer\'s Movie Royal is closed). It stays that way until the streamer presses ☁️ Switch back to the cloud in Movie Royal.')) return; try { await api('/api/takeover', { id }); toast('🛡️ Took over. Try /mymovies in Discord (with their Movie Royal closed).', 8000); } catch {} load(); }
+async function removeBot(id, tag) { if (!confirm(`Remove ${tag || 'this bot'} from the backup?`)) return; await api('/api/remove', { id }); load(); }
+load(); setInterval(load, 3000);
+</script>
+</body>
+</html>

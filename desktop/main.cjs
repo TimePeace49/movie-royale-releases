@@ -4,6 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 
+// 🛡️ "Movie Royal Backup Bots" is the same program started with --backup: its own window, tray icon and settings
+if (process.argv.includes('--backup')) { require('./backup.cjs'); return; }
+
 app.setName('Movie Royal');
 // your data lives in %APPDATA%\Movie Royal (older versions used a misspelled folder: move it over once)
 {
@@ -64,6 +67,18 @@ function createWindow() {
   win.loadURL(readyUrl);
 }
 function showWindow() { if (!win) return createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+// 🛡️ an update closes every Movie Royal window, including the backup bots app: open it again if it was running
+function reopenBackup() {
+  try {
+    const f = path.join(app.getPath('appData'), 'Movie Royal Backup', 'running.json');
+    if (!fs.existsSync(f)) return; // it was quit on purpose (or never used)
+    const r = JSON.parse(fs.readFileSync(f, 'utf8'));
+    let alive = false; try { process.kill(r.pid, 0); alive = true; } catch {}
+    if (alive || Date.now() - r.at > 15 * 60000) return;
+    const { spawn } = require('child_process');
+    spawn(process.execPath, app.isPackaged ? ['--backup', '--hidden'] : [app.getAppPath(), '--backup', '--hidden'], { detached: true, stdio: 'ignore' }).unref();
+  } catch {}
+}
 function makeTray() {
   tray = new Tray(nativeImage.createFromPath(ICON).resize({ width: 16, height: 16 }));
   tray.setToolTip('Movie Royal');
@@ -140,7 +155,7 @@ app.whenReady().then(async () => {
     applySettings,
     openPath: p => shell.openPath(p),
     fatal: msg => { dialog.showErrorBox('Movie Royal', msg); app.quit(); },
-    ready: url => { if (started) return; started = true; readyUrl = url; makeTray(); createWindow(); }
+    ready: url => { if (started) return; started = true; readyUrl = url; makeTray(); createWindow(); reopenBackup(); }
   };
   try {
     await import(pathToFileURL(path.join(__dirname, '..', 'src', 'server.js')).href);

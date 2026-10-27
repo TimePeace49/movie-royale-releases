@@ -18,6 +18,7 @@ import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePe
 import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
+import * as backuplink from './backuplink.js';
 import { MAP_LIST, mapById, GROUND_EVENTS } from './maps.js';
 import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
@@ -125,6 +126,7 @@ function publicState() {
   const st = db.settings;
   return {
     cloud: { enabled: cloud.enabled(), url: st.cloud?.url || '', ...cloud.status },
+    backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
     week: { start: weekStartDate().toISOString(), backOn: backOn(), winners: db.week?.winners?.length || 0, spotWon: !!db.week?.spotWon },
@@ -1003,8 +1005,12 @@ function donePage(title, msg) {
 app.get('/api/app', (req, res) => res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [] }));
 app.get('/api/close-check', async (req, res) => { // the Discord bot stops when the app closes (unless the 24/7 bot really has Discord)
   if (DESKTOP && db.settings.discordToken && cloud.enabled()) { await Promise.race([cloud.checkLink(true), new Promise(r => setTimeout(r, 6000))]); }
-  res.json({ ask: DESKTOP && !!db.settings.discordToken && (!cloud.enabled() || cloud.status.linked === false) && db.settings.closeAskBot !== false, broken: cloud.enabled() && cloud.status.linked === false, why: cloud.status.linkError || '' });
+  res.json({ ask: DESKTOP && !!db.settings.discordToken && (!cloud.enabled() || cloud.status.linked === false) && !backuplink.backupWatching() && db.settings.closeAskBot !== false, /* (a backup bot server is watching: Discord keeps working) */ broken: cloud.enabled() && cloud.status.linked === false, why: cloud.status.linkError || '' });
 });
+// 🛡️ backup bot server
+app.post('/api/backup/switch-back', async (req, res) => { try { const r = await backuplink.switchBack(); pushState(); res.json(r); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/backup/check', async (req, res) => { const st = await backuplink.tick({ force: true }); pushState(); res.json({ ...st, _ref: undefined, discord: discord.status.state, watching: backuplink.backupWatching() }); });
+app.post('/api/backup/token', (req, res) => { if (!db.settings.discordToken) return res.status(400).json({ error: 'Set up the Discord bot first.' }); res.json({ token: db.settings.discordToken }); }); // only for you to give to a friend running a backup
 app.post('/api/cloud/check', async (req, res) => { const st = await cloud.checkLink(true); pushState(); res.json({ enabled: cloud.enabled(), linked: st.linked, botUp: st.botUp, error: st.linkError || st.lastError || null, lastSync: st.lastSync, botV: st.botV || null, relinked: st.relinked || null }); }); // the Discord bot stops when the app closes
 app.post('/api/app/quit', (req, res) => { if (req.body?.dontAsk) { db.settings.closeAskBot = false; save(); } res.json({ ok: true }); setTimeout(() => globalThis.__desktop?.quit(), 300); });
 app.post('/api/refocus', (req, res) => { globalThis.__desktop?.refocus?.(); res.json({ ok: true }); });
@@ -1429,7 +1435,7 @@ app.post('/api/powerups/rewards', async (req, res) => { // add the ball power-up
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/rewards/pause-all', async (req, res) => { // the app is closing: nothing can be redeemed while it's off
-  rewardBusy = false; rewardKey = ''; await syncRewards(true).catch(() => {}); rewardKey = 'closed'; res.json({ ok: true });
+  rewardBusy = false; rewardKey = ''; await Promise.all([syncRewards(true).catch(() => {}), Promise.race([backuplink.tick({ closing: true }).catch(() => {}), new Promise(r => setTimeout(r, 4000))])]); rewardKey = 'closed'; res.json({ ok: true }); // (and tell the backup bot server Movie Royal is closing)
 });
 app.post('/api/chaos-toggle', async (req, res) => {
   const b = req.body || {}, msgs = [];
@@ -2189,6 +2195,7 @@ server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
   if (n) console.log(`  Letterboxd: loaded ${n} rows from your export`);
   discord.start(pushState);
   cloud.start(pushState);
+  backuplink.start(pushState);
   twitch.start(twitchHandlers);
   if (rollWeek()) console.log('  New week: benched movies are back, spots refilled');
   restoreAway(true);

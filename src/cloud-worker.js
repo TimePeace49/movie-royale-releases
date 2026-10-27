@@ -11,13 +11,16 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 4; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 5; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     try {
       if (url.pathname === '/sync') return await sync(req, env);
-      if (url.pathname === '/health') return json({ ok: true, at: Date.now(), v: WORKER_V });
+      if (url.pathname === '/health') { // ?deep=1: also check the storage works (the backup bot server uses this)
+        if (url.searchParams.has('deep')) { try { await env.KV.get('config'); } catch (e) { return json({ ok: false, error: 'storage: ' + (e?.message || e), v: WORKER_V }, 503); } }
+        return json({ ok: true, at: Date.now(), v: WORKER_V });
+      }
       if (req.method === 'POST' && url.pathname === '/') {
         try { return await interaction(req, env, ctx); }
         catch (e) { // never leave Discord hanging ("the application did not respond"): say what went wrong
@@ -191,7 +194,7 @@ function findPerson(s, q) {
 async function interaction(req, env, ctx) {
   const body = await req.text();
   const cfg = await env.KV.get('config', 'json');
-  if (!(await verify(req, body, cfg?.publicKey))) return new Response('bad signature', { status: 401 });
+  if (!env.SKIP_VERIFY && !(await verify(req, body, cfg?.publicKey))) return new Response('bad signature', { status: 401 }); // (SKIP_VERIFY: only the backup bot server, which gets commands straight from Discord's live connection)
   const i = JSON.parse(body);
   if (i.type === 1) return json({ type: 1 }); // Discord checking the URL
   const s = await loadState(env, cfg);

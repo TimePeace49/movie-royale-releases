@@ -155,6 +155,7 @@
   #claimBar { position:fixed; z-index:62; left:50%; top:66px; transform:translateX(-50%); width:min(760px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:12px 16px; background:#163a26f2; border:2px solid #7dffb0; border-radius:14px; box-shadow:0 14px 50px #000c; font-size:15px; }
   #claimBar button { white-space:nowrap; }
   #handNag { position:fixed; z-index:59; left:50%; bottom:16px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a1420f2; border:1px solid #ff8a7a; border-radius:12px; font-size:13px; box-shadow:0 10px 40px #000a; }
+  #bkNag { position:fixed; z-index:59; left:50%; bottom:70px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a2a10f2; border:1px solid var(--gold); border-radius:14px; box-shadow:0 10px 40px #000a; }
   #backupNag { position:fixed; z-index:60; left:50%; top:66px; transform:translateX(-50%); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#1d1238f2; border:1px solid var(--gold); border-radius:14px; box-shadow:0 10px 40px #0008; font-weight:700; }
   #luckDlg .lrow, #wBody .lrow { display:flex; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
   #stage:fullscreen #fsBar { display:flex; flex-direction:column; position:absolute; left:18px; top:150px; width:200px; max-height:calc(100vh - 40px); overflow:auto; gap:6px; padding:8px; background:#0b0618d9; border:1px solid var(--line); border-radius:16px; backdrop-filter:blur(6px); opacity:0; transition:opacity .25s; z-index:2; }
@@ -347,6 +348,7 @@
 
 <div id="backupNag" style="display:none"></div>
 <div id="handNag" style="display:none"></div>
+<div id="bkNag" style="display:none"></div>
 <div id="claimBar" style="display:none"></div>
 <dialog id="hmDlg"><div class="inner" id="hmBody"></div></dialog>
 <div id="pchat"><div class="pcHead" id="pcHead"><span class="grow">💬 Pretend chat <small class="muted" style="font-weight:400">(type as anyone)</small></span><button class="ghost" title="Close" onclick="pchat(false)">✕</button></div>
@@ -591,6 +593,9 @@
     <h3>🤖 Discord self-test</h3>
     <p class="help">Checks everything about Discord that Movie Royal can check by itself: the bot, the channels, the pinned messages, the slash commands, who can see the debug channel, and the 24/7 bot. It runs the same code /suggest and /mymovies use, with a pretend user (nothing gets added). The results go to #movie-royal-debug too.</p>
     <button class="primary" onclick="discordSelfTest(this)">🤖 Run the Discord self-test</button><div id="dSelf" style="margin-top:8px"></div>
+    <h3 style="margin-top:16px">🛡️ Backup bot server</h3>
+    <p class="help">Checks the hidden <code>#movie-royal-sync</code> channel: Movie Royal leaves its notes there, and shows whether a <b>Movie Royal Backup Bots</b> app (yours or a friend's) is watching your bot. To test a takeover, press 🧪 Test: take over now in the backup app, then try /mymovies in Discord with Movie Royal closed.</p>
+    <button onclick="bkCheck(this)">🛡️ Check the backup link</button>
   </div>
   <div class="card">
     <h3>🐞 Discord debug channel</h3>
@@ -1068,6 +1073,7 @@ function drawChecklist() {
     ['wheel', 'The wheel spins on stream, and the round timer runs out with a winner', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/wheel/timer',{cmd:'end'}).catch(()=>{}),13000)).then(()=>toast('🎡 Spinning: the round timer ends 13 seconds from now'))")],
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
     ['wheelMove', '↕️ A viewer redeems Move a spot and types up / down in chat', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>{pchat(true,'test_viewer');pcRedeem('move');toast('↕️ test_viewer redeemed a Move: press up or down in 💬 Pretend chat',7000)},11000)).then(()=>toast('🎡 Spinning first…'))")],
+    ['backupLink', '🛡️ A backup bot server (Movie Royal Backup Bots) is watching your Discord bot', T('Check', "bkCheck()")],
     ['keys', '⌨️ Key binds work (Space spins on the Wheel tab, Ctrl+H help mode…)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('keys')">See them</button>`],
     ['prevPop', '⧉ The preview window pops out to another monitor', `<button class="ghost" style="padding:3px 9px" onclick="previewPop()">Try it</button>`],
     ['pchat', '💬 Pretend chat: type as any viewer and see Movie Royal\'s replies', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true)">Open it</button>`],
@@ -1258,7 +1264,7 @@ function renderClaimBar() {
     <button class="primary" onclick="api('/api/claim/accept').then(()=>toast('✅ Claimed!'))">✅ Accept winner</button><button class="danger" onclick="api('/api/claim/pass').then(()=>toast('⏭️ Passed: back in the pool, they keep their luck'))">⏭️ Pass</button>`;
 }
 function render() { if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
-  renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderClaimBar(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
+  renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderBkNag(); renderClaimBar(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }
@@ -2702,6 +2708,8 @@ function openSettings(force) {
       <div class="row" style="gap:6px"><button onclick="api('/api/discord/debug-setup').then(r=>toast(r.warnings?.length ? '⚠️ '+r.warnings.map(esc).join('<br>') : '🐞 #movie-royal-debug is set up and locked', 8000))">🐞 Make / fix the debug channel</button><button class="ghost" onclick="api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent a test problem to #movie-royal-debug':'⚠️ The bot is offline, or the debug channel isn\'t made yet'))">Send a test</button></div>
       <h3 style="margin-top:18px">☁️ 24/7 mode — Discord works when your PC is off</h3>
       <div id="cloudBox">${cloudHTML()}</div>
+      <h3 style="margin-top:18px">🛡️ Backup bot server</h3>
+      <div id="bkBox">${bkHTML()}</div>
       <h3 style="margin-top:18px">🎬 Pick rules</h3>
       <div class="grid2">${f('maxPerUser', 'Movies each person can pick', '', 'number')}<div><label>A new week starts on</label><select data-k="weekStart">${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((x, i) => `<option value="${i}" ${Number(s.weekStart ?? 0) === i ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
       <p class="help">People can't add more until <b>all</b> their movies have been watched. When someone's movie wins, their other movies sit out until the new week.</p>
@@ -2802,6 +2810,35 @@ function openSettings(force) {
   setSub(sub);
 }
 function dirty() { settingsDirty = true; $('saveHint').innerHTML = '<b style="color:var(--gold)">Unsaved changes</b>'; }
+// 🛡️ the backup bot server (the "Movie Royal Backup Bots" app, on your PC or a friend's)
+function bkStateHTML() {
+  const b = S.backup || {}, k = b.backup || {}, ago = t => t ? Math.max(0, Math.round((Date.now() - t) / 60000)) + ' min ago' : 'never';
+  const state = !S.settings.discordToken ? '<span class="muted">Set up the Discord bot first.</span>'
+    : b.active ? `<b style="color:var(--gold)">🛡️ ${esc(k.by || 'The backup')} is running your Discord bot</b> since ${new Date(k.since).toLocaleString()}${k.reason ? `, because ${esc(k.reason)}` : ''}.`
+    : b.watching ? `✅ <b>${esc(k.by || 'A backup')}</b> is watching your bot (last check ${ago(k.seen)}). If the 24/7 cloud bot has problems, it takes over.`
+    : k?.seen ? `⚪ A backup (${esc(k.by || '?')}) last checked in ${ago(k.seen)}. It isn't running right now.` : '⚪ No backup bot server is watching your bot yet.';
+  return `<div class="card soft" style="margin:6px 0">${state}${b.error ? `<div class="help" style="color:var(--bad)">⚠️ ${esc(b.error)}</div>` : ''}</div>
+    ${b.active ? `<div class="row" style="margin-bottom:8px"><button class="primary" onclick="bkSwitchBack(this)">☁️ Switch back to the cloud</button></div>` : ''}`;
+}
+function bkHTML() {
+  return `<p class="help">The <b>Movie Royal Backup Bots</b> app (in your Start menu, comes with Movie Royal) can run your Discord bot as a backup, on your PC or a friend's. It checks your 24/7 cloud bot every minute. If the cloud bot has errors, the backup answers /suggest, /swap, /mymovies… instead, until you switch back here. If you don't use the 24/7 cloud bot, it answers whenever Movie Royal is closed. Picks it takes come into Movie Royal when you open it.</p>
+    <div id="bkState">${bkStateHTML()}</div>
+    <label class="ck"><input type="checkbox" data-k="backupRelay" ${S.settings.backupRelay !== false ? 'checked' : ''}> <span>Keep a hidden <code>#movie-royal-sync</code> channel (only the bot can see it) so a backup bot server can work with Movie Royal</span></label>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="bkCheck(this)">🔍 Check the backup link now</button><button class="ghost" onclick="bkCopyToken()">📋 Copy my bot token (for a friend running my backup)</button></div>
+    <p class="help">To have a friend run your backup: they open <b>Movie Royal Backup Bots</b> on their PC and paste your bot token there. Your bot token lets them fully control your bot, so only give it to someone you trust. You can reset it any time in the Discord Developer Portal (then set the new one here).</p>`;
+}
+async function bkCheck(btn) { if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; } try { const r = await api('/api/backup/check', {}); toast(!r.channels ? '⚠️ No #movie-royal-sync channel yet: the Discord bot has to be online (and the box above ticked)' : r.watching ? `✅ The backup link works: ${esc(r.backup?.by || 'a backup')} is watching your bot` : '✅ Movie Royal left its notes for a backup. No backup bot server is watching yet: open Movie Royal Backup Bots on the PC that runs it.', 8000); } catch {} if (btn) { btn.disabled = false; btn.textContent = '🔍 Check the backup link now'; } if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); }
+async function bkSwitchBack(btn) { btn.disabled = true; try { const r = await api('/api/backup/switch-back', {}); toast(r.linked === false ? '⚠️ Told the backup to stand by, but Discord isn\'t pointing at the cloud bot yet: ' + esc(r.error || '') : '☁️ Back on the 24/7 cloud bot. The backup is standing by again.', 8000); } catch {} btn.disabled = false; }
+async function bkCopyToken() {
+  if (!confirm('Copy your Discord bot token?\n\nWhoever has it can fully control your bot. Only give it to a friend you trust, privately (never in a chat channel).')) return;
+  try { const r = await api('/api/backup/token', {}); await navigator.clipboard.writeText(r.token); toast('📋 Bot token copied. Send it to your friend privately.'); } catch { toast('⚠️ Couldn\'t copy it'); }
+}
+function renderBkNag() {
+  const b = $('bkNag'); if (!b) return; const k = S.backup?.backup;
+  if (!S.backup?.active || !k) { b.style.display = 'none'; return; }
+  b.style.display = 'flex';
+  b.innerHTML = `<span class="grow">🛡️ <b>${esc(k.by || 'Your backup bot server')}</b> is running your Discord bot${k.reason ? ` because ${esc(k.reason)}` : ''}. It keeps doing it until you switch back.</span><button class="primary" onclick="bkSwitchBack(this)">☁️ Switch back to the cloud</button>`;
+}
 function cloudHTML() {
   const c = S.cloud || {}, ago = t => t ? Math.max(0, Math.round((Date.now() - t) / 60000)) + ' min ago' : 'not yet';
   if (c.enabled) return `<div class="card soft">${c.linked === false ? `<div class="card" style="border-color:var(--bad);margin:0 0 8px"><b>⚠️ Discord isn't connected to the 24/7 bot</b><p class="help" style="margin:4px 0">So commands only work while Movie Royal is open. Movie Royal keeps trying to fix it${c.linkError ? ` (${esc(c.linkError)})` : ''}. If it stays like this, paste your Cloudflare token below and press Update.</p><div class="row"><input class="grow" type="password" placeholder="Cloudflare API token"><button class="primary" onclick="cloudOn(this)">🔄 Set it up again</button></div></div>` : ''}<div class="row"><span class="grow">${c.linked === false ? '🟠' : '🟢'} <b>On.</b> <code>/suggest</code>, <code>/swap</code> and <code>/mymovies</code> answer 24/7, even with this PC off. Picks made while Movie Royal was closed come in when you open it.</span></div>

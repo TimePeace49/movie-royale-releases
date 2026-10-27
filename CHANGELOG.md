@@ -2,6 +2,18 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.27.0 (test build)
+- **🛡️ Movie Royal Backup Bots:** a new small app that comes with Movie Royal (Start menu → Movie Royal Backup Bots). It runs Discord bots as a backup: yours, and any friend's who sends you their bot token.
+  - It starts with Windows, hidden in the tray by the clock (you can turn that off in its window or the tray menu). Closing its window keeps it running.
+  - Every minute it checks each streamer's 24/7 cloud bot. If the cloud bot has errors (3 failed checks in a row, or it posts a problem in #movie-royal-debug), the backup takes over and answers /suggest, /swap, /mymovies, /list and /linktwitch with the same rules. It keeps doing that until the streamer presses **☁️ Switch back to the cloud** in Movie Royal.
+  - If a streamer doesn't use the cloud bot, it answers whenever their Movie Royal is closed. While their Movie Royal is open, Movie Royal answers itself.
+  - Movie Royal and the backup talk through a hidden `#movie-royal-sync` channel only the bot can see, so no router setup is needed. Picks the backup takes come into Movie Royal the next time it opens.
+  - 🧪 **Test: take over now** in the backup app tries it on purpose.
+- Movie Royal → Settings → Discord & picks → **🛡️ Backup bot server**: whether a backup is watching your bot, **☁️ Switch back to the cloud**, and **📋 Copy my bot token** (to give a friend running your backup). A banner at the bottom shows when a backup is running your bot.
+- No "Discord stops when you close" warning when a backup is watching your bot.
+- 🧪 Test tab and ✅ Checklist: 🛡️ Check the backup link.
+- The 24/7 cloud bot has a small update (a deeper health check for the backup). **Update the 24/7 bot once** (the app asks you).
+
 ## 1.26.1 (test build)
 - **🎥 OBS test now mutes your mic:** if the mic box in Settings → 🎥 OBS was empty ("Mic/Aux" is only a grey hint, not a saved name), the test skipped the mic and only hid the camera. Now:
   - An empty mic box mutes **every mic** OBS has (never your desktop or game sound). An empty camera box hides every camera.

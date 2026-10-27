@@ -86,6 +86,8 @@ Section "Movie Royal" SecMain
   DeleteRegKey HKCU "${OLDREGKEY}"
   CreateShortCut "$SMPROGRAMS\Movie Royal.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
   CreateShortCut "$DESKTOP\Movie Royal.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
+  ; 🛡️ the backup bots app (same program, started with --backup)
+  CreateShortCut "$SMPROGRAMS\Movie Royal Backup Bots.lnk" "$INSTDIR\${EXE}" "--backup" "$INSTDIR\icon.ico" 0
 
   ; shows up in Windows Settings > Apps so it can be uninstalled like any program
   WriteRegStr HKCU "${REGKEY}" "DisplayName" "${APP}"
@@ -111,12 +113,15 @@ Section "Uninstall"
   Sleep 500
   Delete "$DESKTOP\Movie Royal.lnk"
   Delete "$SMPROGRAMS\Movie Royal.lnk"
+  Delete "$SMPROGRAMS\Movie Royal Backup Bots.lnk"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Movie Royal Backup Bots"
   Delete "$DESKTOP\${OLDNAME}.lnk"
   Delete "$SMPROGRAMS\${OLDNAME}.lnk"
   RMDir /r "$INSTDIR"
   DeleteRegKey HKCU "${REGKEY}"
   MessageBox MB_YESNO|MB_ICONQUESTION "Also delete your Movie Royal data?$\r$\n$\r$\n(lists, odds, history, Discord picks and settings)$\r$\n$\r$\nChoose No to keep it in case you install Movie Royal again." /SD IDNO IDNO keep
     RMDir /r "$APPDATA\Movie Royal"
+    RMDir /r "$APPDATA\Movie Royal Backup"
     RMDir /r "$APPDATA\${OLDNAME}"
   keep:
 SectionEnd

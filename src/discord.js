@@ -2,6 +2,7 @@
 // /suggest  /swap  /mymovies  /list  /linktwitch  /help — the commands message is pinned in the channel.
 import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, MessageFlags, ChannelType, PermissionFlagsBits } from 'discord.js';
 import { db, save, streamerName } from './store.js';
+import { SYNC_NAME, SYNC_TOPIC } from './relay.js';
 import { searchMovies, getMany, cachedMovie } from './tmdb.js';
 import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, swapMovie, swapsLocked, luckOn, freePicks } from './movies.js';
 
@@ -128,6 +129,28 @@ async function setupDebug(g) {
   save();
   return warn;
 }
+// 🛡️ #movie-royal-sync: a hidden channel only the bot can see. Movie Royal and the backup bot server leave notes for each other here
+// (see relay.js). Made in every server that has the movie channel.
+async function setupSync(g) {
+  const warn = [];
+  if (db.settings.backupRelay === false || !db.discordChannels?.[g.id]) return warn;
+  db.discordSync ||= {};
+  const P = PermissionFlagsBits;
+  const overwrites = [
+    { id: g.id, deny: [P.ViewChannel] }, // nobody but the bot (and server admins, who see everything anyway)
+    { id: client.user.id, allow: [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.ManageMessages, P.AttachFiles] }
+  ];
+  let ch = g.channels.cache.get(db.discordSync[g.id]?.channelId) || g.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === SYNC_NAME);
+  try {
+    if (!ch) ch = await g.channels.create({ name: SYNC_NAME, type: ChannelType.GuildText, topic: SYNC_TOPIC, permissionOverwrites: overwrites, reason: 'Movie Royal: talks to the backup bot server' });
+    else await ch.permissionOverwrites.set(overwrites, 'Movie Royal sync channel: only the bot').catch(() => warn.push(`${g.name}: couldn't hide #${SYNC_NAME} — give the bot "Manage Roles", or hide it yourself.`));
+  } catch (e) { warn.push(`${g.name}: couldn't make the #${SYNC_NAME} channel for the backup bot server (${e.message}).`); return warn; }
+  db.discordSync[g.id] = { channelId: ch.id }; save();
+  return warn;
+}
+/** The sync channels (for the backup bot server link). */
+export const syncChannels = () => client ? Object.values(db.discordSync || {}).map(r => client.channels.cache.get(r.channelId)).filter(Boolean) : [];
+export const botUserId = () => client?.user?.id || null;
 export async function setupDebugAll() { if (!client) throw new Error('The Discord bot isn\'t online.'); const w = []; for (const g of client.guilds.cache.values()) w.push(...await setupDebug(g)); return w; }
 // posting problems: a few at a time, never in a loop (posting errors are only printed, not logged again)
 let debugQ = [], debugT = null;
@@ -159,7 +182,7 @@ export async function start(changed) {
       try { await rest.put(Routes.applicationGuildCommands(s.discordClientId, guildId), { body: commands }); }
       catch (e) { console.error('[discord] commands for', guildId, e.message); }
     };
-    const prep = async g => { await register(g.id); const w = await setupGuild(g); w.push(...await setupDebug(g).catch(e => [`${g.name}: debug channel: ${e.message}`])); return w; };
+    const prep = async g => { await register(g.id); const w = await setupGuild(g); w.push(...await setupDebug(g).catch(e => [`${g.name}: debug channel: ${e.message}`])); w.push(...await setupSync(g).catch(e => [`${g.name}: sync channel: ${e.message}`])); return w; };
     client = new Client({ intents: [GatewayIntentBits.Guilds] });
     client.once('ready', async () => {
       status.state = 'online'; status.tag = client.user.tag;

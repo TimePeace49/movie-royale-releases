@@ -199,7 +199,14 @@
       <li>Paste it in Settings and press <b>Turn on 24/7 mode</b>.</li>
     </ol>
     <p>Picks made while Movie Royal is closed come in the next time you open it (and every minute while it's open). If two people grab the same movie at once, the second one gets a DM explaining why it didn't go in. The game, Twitch chat and channel points still need Movie Royal open — that's where your stream happens anyway. While the app is closed the bot shows as offline in the member list, but its commands still work.</p>
-  </section>
+    </section>
+  <section data-k="backup bot server backup bots app friend token takeover cloud errors tray startup sync channel">
+    <h2>🛡️ Backup bot server</h2>
+    <p><b>Movie Royal Backup Bots</b> is a small app that comes with Movie Royal (Start menu → Movie Royal Backup Bots). It runs Discord bots as a backup: yours, and any friend's who sends you their bot token. It starts with Windows, hidden in the tray by the clock.</p>
+    <p>Every minute it checks each streamer's 24/7 cloud bot. If the cloud bot has errors (3 failed checks in a row, or it posts a problem in #movie-royal-debug), the backup takes over: it answers /suggest, /swap, /mymovies, /list and /linktwitch with the same rules. It keeps doing that until the streamer presses <b>☁️ Switch back to the cloud</b> in Movie Royal (Settings → Discord & picks, or the banner at the bottom). If a streamer doesn't use the cloud bot, it answers whenever their Movie Royal is closed. While their Movie Royal is open, Movie Royal answers itself.</p>
+    <p>Movie Royal and the backup talk through a hidden <code>#movie-royal-sync</code> channel that only the bot can see, so no router setup is needed. Picks the backup takes come into Movie Royal the next time it opens.</p>
+    <p><b>Adding a bot:</b> in Movie Royal press <b>📋 Copy my bot token</b> (Settings → Discord & picks), then paste it in the backup app. A friend does the same and sends you theirs privately. A bot token gives full control of that bot, so only share it with someone you trust. To test: press <b>🧪 Test: take over now</b> in the backup app, then try /mymovies in Discord with Movie Royal closed, then switch back in Movie Royal.</p>
+</section>
 
   <section data-k="giveaway enter followers subs vip mods odds prize reroll winners">
     <h2>🎁 Giveaways</h2>

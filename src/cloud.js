@@ -25,6 +25,8 @@ let onChange = () => {}, timer = null, lastHash = '', busy = false;
 
 const cloud = () => db.settings.cloud || {};
 export const enabled = () => !!cloud().enabled && !!cloud().url;
+let backupHolds = () => false; // 🛡️ the backup bot server took over: don't point Discord back at the cloud by yourself
+export function setBackupCheck(fn) { backupHolds = fn; }
 
 async function cf(token, method, p, body, isForm) {
   const r = await fetch(CF + p, { method, headers: { Authorization: `Bearer ${token}`, ...(isForm || !body ? {} : { 'content-type': 'application/json' }) }, body: isForm ? body : body ? JSON.stringify(body) : undefined });
@@ -76,30 +78,37 @@ async function tellUser(discordId, text) { // DM someone whose pick couldn't be 
   try { const ch = await discord('POST', '/users/@me/channels', { recipient_id: discordId }); await discord('POST', `/channels/${ch.id}/messages`, { content: text, allowed_mentions: { parse: [] } }); } catch {}
 }
 
+/** Add picks / swaps / Twitch links made in Discord while Movie Royal was closed (from the 24/7 bot or the backup bot server).
+ *  Returns the ids that are done (added, or turned away with a DM saying why). */
+export async function applyOps(queue) {
+  const ack = [];
+  for (const op of queue) {
+    try {
+      const user = { discordId: op.user.discordId, name: op.user.name, avatar: op.user.avatar || null };
+      if (op.type === 'link') { db.links[user.discordId] = op.login; (db.linkNames ||= {})[user.discordId] = { name: user.name, avatar: user.avatar }; claimManual(user, op.login); }
+      else if (op.type === 'suggest') {
+        claimManual(user, db.links[user.discordId] || null);
+        const r = await suggest(String(op.movie.id), user, { cloud: true }); // the 24/7 bot already checked picks were open
+        if (!r.ok) { status.rejected.unshift({ at: Date.now(), name: user.name, movie: op.movie.title, why: r.msg.replace(/\*\*/g, '') }); tellUser(user.discordId, `🍿 Sorry — your pick **${op.movie.title}** couldn't be added after all: ${r.msg}`); }
+      } else if (op.type === 'swap') {
+        const r = await swapMovie(user, op.oldId, String(op.movie.id), true);
+        if (!r.ok) { status.rejected.unshift({ at: Date.now(), name: user.name, movie: op.movie.title, why: r.msg.replace(/\*\*/g, '') }); tellUser(user.discordId, `🍿 Sorry — your swap to **${op.movie.title}** couldn't be done: ${r.msg}`); }
+      }
+      ack.push(op.id); status.pulled++;
+    } catch (e) { console.error('[24/7] op failed', e.message); if (Date.now() - op.at > 864e5) ack.push(op.id); }
+  }
+  status.rejected = status.rejected.slice(0, 20);
+  if (queue.length) { save(); onChange(); }
+  return ack;
+}
+
 /** Pull picks made in Discord while we were away, add them for real, then upload the latest rules. */
 export async function sync(force = false) {
   if (!enabled() || busy) return status;
   busy = true;
   try {
     const { queue = [] } = await api('GET');
-    const ack = [];
-    for (const op of queue) {
-      try {
-        const user = { discordId: op.user.discordId, name: op.user.name, avatar: op.user.avatar || null };
-        if (op.type === 'link') { db.links[user.discordId] = op.login; (db.linkNames ||= {})[user.discordId] = { name: user.name, avatar: user.avatar }; claimManual(user, op.login); }
-        else if (op.type === 'suggest') {
-          claimManual(user, db.links[user.discordId] || null);
-          const r = await suggest(String(op.movie.id), user, { cloud: true }); // the 24/7 bot already checked picks were open
-          if (!r.ok) { status.rejected.unshift({ at: Date.now(), name: user.name, movie: op.movie.title, why: r.msg.replace(/\*\*/g, '') }); tellUser(user.discordId, `🍿 Sorry — your pick **${op.movie.title}** couldn't be added after all: ${r.msg}`); }
-        } else if (op.type === 'swap') {
-          const r = await swapMovie(user, op.oldId, String(op.movie.id), true);
-          if (!r.ok) { status.rejected.unshift({ at: Date.now(), name: user.name, movie: op.movie.title, why: r.msg.replace(/\*\*/g, '') }); tellUser(user.discordId, `🍿 Sorry — your swap to **${op.movie.title}** couldn't be done: ${r.msg}`); }
-        }
-        ack.push(op.id); status.pulled++;
-      } catch (e) { console.error('[24/7] op failed', e.message); if (Date.now() - op.at > 864e5) ack.push(op.id); }
-    }
-    status.rejected = status.rejected.slice(0, 20);
-    if (queue.length) { save(); onChange(); }
+    const ack = await applyOps(queue);
     const config = buildConfig(), hash = JSON.stringify(config);
     const due = force || ack.length || (hash !== lastHash && Date.now() - (status.lastPush || 0) > 120000);
     if (due) { await api('POST', { config, ack }); lastHash = hash; status.lastPush = Date.now(); }
@@ -128,7 +137,8 @@ export async function checkLink(fix = true) {
     const app = await discord('GET', '/applications/@me');
     if (app.verify_key && app.verify_key !== cloud().publicKey) { db.settings.cloud = { ...cloud(), publicKey: app.verify_key }; save(); lastHash = ''; await sync(true); }
     status.linked = app.interactions_endpoint_url === url;
-    if (!status.linked && fix) {
+    if (!status.linked && fix && backupHolds()) { status.backupHolds = true; }
+    else if (!status.linked && fix) {
       await sync(true);
       await discord('PATCH', '/applications/@me', { interactions_endpoint_url: url });
       status.linked = true; status.relinked = Date.now(); console.log('[24/7] Discord was not pointed at the 24/7 bot — fixed');
