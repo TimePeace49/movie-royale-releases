@@ -2,7 +2,7 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.28.2 (test build)
+## 1.28.2 (latest release)
 - **✋ The winner decides in chat:** when the movie winner types in chat, Movie Royal asks them: "Type **!accept** to watch it now, or **!pass** to save it for another night (you keep your luck)." It does whatever they answer (yes / no work too), replies in chat, and the stream pop-up shows the same choice. Only the winner's answer counts.
   - ✅ Accept / ⏭️ Pass on the winner card are for doing it yourself.
   - Change the commands in Settings → Twitch. 💬 Pretend chat has !accept and !pass buttons for testing.

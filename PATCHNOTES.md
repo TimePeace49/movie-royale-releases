@@ -3,6 +3,29 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.28.2: What's new
+Everything since 1.26.0.
+
+**🛡️ New: Movie Royal Backup Bots**
+- A small app that comes with Movie Royal (Start menu → Movie Royal Backup Bots). It runs Discord bots as a backup: yours, and any friend's who sends you their bot token. It starts with Windows, hidden in the tray, and keeps running when its window is closed.
+- Every minute it checks each streamer's 24/7 cloud bot. If the cloud bot has errors, the backup answers /suggest, /swap, /mymovies, /list and /linktwitch with the same rules, until the streamer presses **☁️ Switch back to the cloud** in Movie Royal. If a streamer doesn't use the cloud bot, it answers whenever their Movie Royal is closed. Picks it takes come into Movie Royal when it opens.
+- It also reads each streamer's Twitch chat (live or offline) while their Movie Royal is closed, and who's in the viewer list while they're live, so the viewer profiles keep counting chats and watch streaks.
+- Fill in its 💜 Twitch box (Client ID + Client Secret) when you set it up. Add bots with **📋 Copy my bot token** (Movie Royal → Settings → Discord & picks). 🧪 Test: take over now tries it on purpose.
+- Movie Royal → Settings → Discord & picks → **🛡️ Backup bot server** shows whether a backup is watching your bot. **Update the 24/7 bot once** when Movie Royal asks.
+
+**🔥 Watch streaks**
+- Someone watched a stream if they chatted or were in the viewer list while you were live. Their streak is how many of your streams in a row they watched; missing one starts it over. Every stream counts on its own.
+- The viewer profile shows the streak and their last 10 streams (✅ watched / ❌ missed).
+
+**🔀 Linked wheel spots**
+- In a spot's ⚙: **When this spot wins** → another wheel or a battle. That wheel spins by itself (or that battle comes on stream and starts), then Movie Royal comes back to your wheel.
+
+**✋ The winner decides in chat**
+- When the movie winner types in chat, Movie Royal asks them: **!accept** to watch it now, or **!pass** to save it for another night (they keep their luck). It does whatever they answer. ✅ Accept / ⏭️ Pass on the winner card are for doing it yourself (the green bar at the top is gone).
+
+**Fixes**
+- 🎥 The OBS test mutes your mic now: an empty mic box mutes every mic OBS has (never desktop sound), names work in any upper/lower case, and it says exactly which mic and camera it switched.
+
 ## v1.26.0: What's new
 Everything since 1.25.0.
 
