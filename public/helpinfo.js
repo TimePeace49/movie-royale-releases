@@ -313,7 +313,7 @@ H(/obs: mic \+ camera off/i, '🎥 OBS test', 'Turns your mic and camera off in 
 H(/test alert/i, '🔔 Test alert', 'Adds a pretend alert in the Chat tab.');
 H(/send fake chat/i, 'Send fake chat', 'Sends a pretend Twitch chat message as the name you typed. Movie Royal reacts like it was real.');
 H(/^message$/i, 'Message', 'What the pretend viewer types.');
-H(/winner types in chat/i, '✋ Winner types in chat', 'Pretends the battle winner typed in chat to claim it. The green ✅ Accept / ⏭️ Pass bar shows at the top. If no movie has won yet, Movie Royal makes a pretend winner for the test.');
+H(/winner types in chat/i, '✋ Winner types in chat', 'Pretends the battle winner typed in chat to claim it. ✅ Accept / ⏭️ Pass show up on the winner card on the ⚔️ Battle tab. If no movie has won yet, Movie Royal makes a pretend winner for the test.');
 H(/test pinning|^test pin$/i, '📌 Test pinning', 'Posts and pins a test message in your Twitch chat (needs Twitch signed in).');
 H(/check the 24\/7|^check bot$/i, '☁️ Check the 24/7 bot', 'Checks your 24/7 Discord bot is on and connected, so Discord works when Movie Royal is closed.');
 H(/post the command list/i, '📜 Post the command list', 'Posts every chat command in Twitch chat, like !moviesroyal does.');

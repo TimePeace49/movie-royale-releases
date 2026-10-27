@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.1 (test build)
+- **✋ Accept / Pass is back on the winner card only:** the green bar at the top of every tab is gone. When the winner types in chat, a glowing box with **✅ Accept winner** and **⏭️ Pass** shows on the winner card (⚔️ Battle tab), and a short note pops up telling you. Y / P still work on the Battle tab.
+
 ## 1.28.0 (test build)
 - **🔀 Linked wheel spots:** in a spot's ⚙, pick **When this spot wins** → another wheel or a battle.
   - **Another wheel:** that wheel comes on stream and spins by itself. Once it has its winner, Movie Royal comes back to the wheel you started on.
