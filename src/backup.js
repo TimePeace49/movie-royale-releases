@@ -16,6 +16,7 @@ import { Client, GatewayIntentBits, ChannelType } from 'discord.js';
 import worker from './cloud-worker.js';
 import { SYNC_NAME, readSync, putStatus, appOpen } from './relay.js';
 import { watchChat, isLive } from './twitchirc.js';
+import { spawn } from 'child_process';
 
 const DISCORD = 'https://discord.com/api/v10';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -49,6 +50,52 @@ function twitchKeys() {
   try { const st = JSON.parse(fs.readFileSync(hooks.mrDb || path.join(process.env.MOVIE_ROYAL_DATA || '', 'db.json'), 'utf8')).settings || {}; mrKeys.id = st.twitchClientId || ''; mrKeys.secret = st.twitchClientSecret || ''; } catch {}
   return mrKeys;
 }
+// 🍿 Movie Royal on this same PC: its bot token, so "Add my bot" needs no copy and paste
+const mrDbFile = () => hooks.mrDb || path.join(process.env.MOVIE_ROYAL_DATA || '', 'db.json');
+function mrBotToken() { try { return String(JSON.parse(fs.readFileSync(mrDbFile(), 'utf8')).settings?.discordToken || '').trim(); } catch { return ''; } }
+function mrBot() {
+  const t = mrBotToken(); if (!t) return { has: false };
+  return { has: true, added: conf.bots.some(b => dec(b.token) === t.replace(/^Bot\s+/i, '')) };
+}
+
+// 🔄 updates: the newest MovieRoyalBackupBots-Setup on the same GitHub page as Movie Royal
+const upd = { checking: false, at: 0, error: null, latest: null, available: false, url: null, notes: '', pre: false, stage: null, got: 0, total: 0 };
+const pkg = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')); } catch { return {}; } })();
+const newer = (a, b) => { const x = String(a).replace(/^v/, '').split('.').map(Number), y = String(b).replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; } return false; };
+let VERSION = '';
+async function checkUpdate() {
+  const repo = String(pkg.updateRepo || 'TimePeace49/movie-royale-releases').replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '');
+  upd.checking = true; upd.error = null;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=30`, { headers: { 'User-Agent': 'MovieRoyalBackupBots' }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('GitHub said ' + r.status);
+    const list = (await r.json()).filter(x => !x.draft && (conf.betaUpdates || !x.prerelease)).map(x => ({ v: x.tag_name.replace(/^v/, ''), pre: !!x.prerelease, notes: x.body || '', url: (x.assets || []).find(a => /^MovieRoyalBackupBots-Setup.*\.exe$/i.test(a.name))?.browser_download_url })).filter(x => x.url);
+    const best = list.reduce((a, x) => !a || newer(x.v, a.v) ? x : a, null);
+    upd.latest = best?.v || null; upd.url = best?.url || null; upd.pre = !!best?.pre; upd.notes = (best?.notes || '').slice(0, 1500);
+    upd.available = !!best && !!VERSION && newer(best.v, VERSION);
+  } catch (e) { upd.error = /abort|timeout|fetch failed|ENOTFOUND/i.test(e.message) ? "Couldn't reach GitHub (is the internet on?)" : e.message; }
+  upd.checking = false; upd.at = Date.now();
+  return upd;
+}
+async function installUpdate() {
+  if (process.platform !== 'win32') throw new Error('Updates install from the Windows app.');
+  if (!upd.url) await checkUpdate();
+  if (!upd.available || !upd.url) throw new Error('You already have the newest version.');
+  upd.stage = 'download'; upd.got = 0; upd.total = 0;
+  try {
+    const r = await fetch(upd.url); if (!r.ok) throw new Error('Download failed (' + r.status + ')');
+    upd.total = Number(r.headers.get('content-length')) || 0; const chunks = [];
+    for await (const ch of r.body) { chunks.push(ch); upd.got += ch.length; }
+    const file = path.join(os.tmpdir(), 'MovieRoyalBackupBots-Update.exe');
+    fs.writeFileSync(file, Buffer.concat(chunks));
+    upd.stage = 'install';
+    // the installer closes this app, updates it quietly, then opens it again by itself
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^ELECTRON_/i.test(k)));
+    spawn(file, ['/S'], { detached: true, stdio: 'ignore', env }).unref();
+    setTimeout(() => hooks.quit?.(), 1500);
+  } catch (e) { upd.stage = null; throw e; }
+}
+
 async function liveNow(channel) {
   const k = twitchKeys();
   if (k.id && k.secret) {
@@ -298,7 +345,8 @@ async function addBot(token) {
 export async function startBackup(opts = {}) {
   DATA = opts.dataDir || process.env.MR_BACKUP_DATA || path.join(os.homedir(), '.movie-royal-backup');
   hooks = opts.hooks || {};
-  loadConf(); saveConf();
+  loadConf(); saveConf(); VERSION = opts.version || pkg.version || '';
+  setTimeout(() => checkUpdate().catch(() => {}), 30000); setInterval(() => checkUpdate().catch(() => {}), 6 * 3600000); // looks for updates on open and every 6 hours
   for (const rec of conf.bots) { const b = new Bot(rec); bots.set(rec.id, b); b.started = Date.now(); if (rec.on !== false && !conf.stopped) b.start(); else b.st.state = conf.stopped ? 'stopped' : 'paused'; }
 
   const web = express();
@@ -307,7 +355,14 @@ export async function startBackup(opts = {}) {
   web.get('/', (req, res) => res.sendFile(path.join(ROOT, 'public', 'backup.html')));
   web.use(express.static(path.join(ROOT, 'public'), { index: false }));
   const wrap = fn => async (req, res) => { try { res.json(await fn(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); } };
-  web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', running: !conf.stopped, bots: [...bots.values()].map(b => b.view()) }); });
+  web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', running: !conf.stopped, mrBot: mrBot(), update: { ...upd, beta: !!conf.betaUpdates }, bots: [...bots.values()].map(b => b.view()) }); });
+  web.post('/api/add-mine', wrap(async () => { // 🍿 add the bot Movie Royal on this PC uses (no copy and paste)
+    const t = mrBotToken();
+    if (!t) throw new Error("Couldn't find a bot token in Movie Royal on this PC. Set up the Discord bot in Movie Royal first (Settings → Discord & picks).");
+    try { return await addBot(t); } catch (e) { throw new Error(/look like a bot token/.test(e.message) ? "The bot token saved in Movie Royal doesn't look right. Paste it again in Movie Royal (Settings → Discord & picks → Bot token) and press Save." : e.message); }
+  }));
+  web.post('/api/update/check', wrap(async b => { if (b.beta != null) { conf.betaUpdates = !!b.beta; saveConf(); } return checkUpdate(); }));
+  web.post('/api/update/install', wrap(async () => { installUpdate().catch(e => { upd.error = e.message; }); return { ok: true }; }));
   web.post('/api/server', wrap(async b => { // ▶ Start / ⏹ Stop the whole backup server (every bot). Stays that way after a restart.
     conf.stopped = !b.on; saveConf();
     for (const bot of bots.values()) {

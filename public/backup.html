@@ -37,6 +37,7 @@
 <body>
 <header><h1>🛡️ Movie Royal Backup Bots</h1><span class="help" id="ver"></span><span style="flex:1"></span><span id="srvState" class="help"></span><button id="srvBtn" class="primary" onclick="server(this)">…</button></header>
 <main>
+  <div class="card" id="updBox" style="display:none"></div>
   <div class="card">
     <div class="row"><b>Streamers see this backup as</b><input id="name" type="text" style="width:240px" maxlength="40"><button onclick="saveName()">Save</button>
       <span class="grow"></span><label class="ck"><input type="checkbox" id="startup" onchange="setStartup(this.checked)"> Start with Windows (hidden in the tray)</label></div>
@@ -49,8 +50,9 @@
   </div>
   <div class="card">
     <h3 style="margin:0 0 6px">➕ Add a bot</h3>
-    <div class="row"><input id="tok" type="password" class="grow" placeholder="Paste the bot token (Movie Royal → Settings → Discord & picks → 📋 Copy my bot token)" onkeydown="if(event.key==='Enter')add()"><button class="primary" onclick="add()">Add</button></div>
-    <p class="help">Each streamer needs Movie Royal 1.27.0 or newer, opened once with their Discord bot on, so it makes the hidden <code>#movie-royal-sync</code> channel. A bot token gives full control of that bot: keep it private.</p>
+    <div id="mineBox"></div>
+    <div class="row"><input id="tok" type="password" class="grow" placeholder="A friend's bot: paste the bot token they sent you" onkeydown="if(event.key==='Enter')add()"><button class="primary" onclick="add()">Add</button></div>
+    <p class="help">Your own bot: use the 🍿 button above (when Movie Royal is on this PC). A friend's bot: they press 📋 Copy my bot token in their Movie Royal (Settings → Discord & picks → 🛡️ Backup bot server) and send it to you privately. Each streamer needs Movie Royal 1.27.0 or newer, opened once with their Discord bot on, so it makes the hidden <code>#movie-royal-sync</code> channel. A bot token gives full control of that bot: keep it private.</p>
   </div>
   <div class="bots" id="bots"></div>
 </main>
@@ -70,6 +72,11 @@ function draw() {
   $('twState').innerHTML = S.twitch.set ? '✅ Saved' + (S.twitch.ok ? ', Twitch accepted it' : '') : S.twitch.using === 'movie royal' ? 'Using Movie Royal\'s keys from this PC' : '⚠️ Not set yet: live checks use a less reliable way'; $('ver').textContent = S.version ? 'v' + S.version : '';
   $('srvBtn').textContent = S.running ? '⏹ Stop the backup server' : '▶ Start the backup server'; $('srvBtn').className = S.running ? 'danger' : 'primary';
   $('srvState').innerHTML = S.running ? '🟢 Backup server running' : '<b style="color:var(--bad)">⏹ Stopped: no bots are being watched</b>';
+  const m = S.mrBot || {};
+  $('mineBox').innerHTML = m.has ? (m.added ? '<p class="help" style="margin:0 0 8px">✅ Your bot (from Movie Royal on this PC) is on the list.</p>'
+      : '<div class="row" style="margin-bottom:8px"><button class="primary" onclick="addMine(this)">🍿 Add my bot from Movie Royal (this PC)</button><span class="help">One click: it takes the bot token straight from Movie Royal on this PC. No copy and paste.</span></div>')
+    : '<p class="help" style="margin:0 0 8px">🍿 Movie Royal on this PC has no Discord bot set up yet (Settings → Discord & picks). Once it does, a one-click <b>Add my bot</b> button shows here.</p>';
+  drawUpd();
   if (S.startup === null) $('startup').closest('label').style.display = 'none'; else $('startup').checked = !!S.startup;
   $('bots').innerHTML = S.bots.length ? S.bots.map(b => {
     const live = b.mode === 'backup' && S.running, cls = !b.on || !S.running ? '' : b.state === 'error' ? 'bad' : live ? 'live' : b.warning ? 'warn' : 'ok';
@@ -91,6 +98,21 @@ function draw() {
         <span class="grow"></span><button class="danger" onclick="removeBot('${b.id}', '${esc(b.tag || '')}')">🗑 Remove</button></div>
     </div>`; }).join('') : '<div class="card help">No bots yet. Add yours first (Movie Royal → Settings → Discord & picks → 📋 Copy my bot token), then any friend\'s who wants you as their backup.</div>';
 }
+async function addMine(btn) { btn.disabled = true; btn.textContent = 'Adding…'; try { const r = await api('/api/add-mine', {}); toast(`✅ Added ${esc(r.tag)}. It connects in a few seconds.`); } catch {} load(); }
+let updOpen = false;
+function drawUpd() {
+  const u = S.update || {}, box = $('updBox'); box.style.display = '';
+  const pct = u.total ? Math.round(u.got / u.total * 100) : 0;
+  box.innerHTML = `<div class="row"><b>🔄 Updates</b><span class="help">You have v${esc(S.version || '?')}${u.at ? ` · checked ${ago(u.at)}` : ''}</span><span class="grow"></span>
+    ${u.stage === 'download' ? `<span class="help">⬇️ Downloading… ${u.total ? pct + '%' : Math.round(u.got / 1048576) + ' MB'}</span>`
+      : u.stage === 'install' ? '<span class="help">📦 Installing: this app closes and opens again by itself in a moment…</span>'
+      : u.available ? `<button class="primary" onclick="updInstall(this)">⬇️ Update to v${esc(u.latest)}${u.pre ? ' (test build)' : ''}</button>`
+      : `<button onclick="updCheck(this)" ${u.checking ? 'disabled' : ''}>${u.checking ? 'Looking…' : '🔍 Look for updates'}</button>`}
+    <label class="ck"><input type="checkbox" ${u.beta ? 'checked' : ''} onchange="updCheck(null, this.checked)"> Also test builds</label></div>
+    ${u.error ? `<div class="warn-t">⚠️ ${esc(u.error)}</div>` : u.available ? `<p class="help" style="margin:6px 0 0">🆕 <b>v${esc(u.latest)}</b> is out. Your bots and settings stay when you update.</p>` : u.at && !u.checking ? '<p class="help" style="margin:6px 0 0">✅ You have the newest version.</p>' : ''}`;
+}
+async function updCheck(btn, beta) { if (btn) { btn.disabled = true; btn.textContent = 'Looking…'; } try { const u = await api('/api/update/check', beta == null ? {} : { beta }); toast(u.error ? '⚠️ ' + esc(u.error) : u.available ? `🆕 v${esc(u.latest)} is out: press ⬇️ Update` : '✅ You have the newest version'); } catch {} load(); }
+async function updInstall(btn) { if (!confirm('Update Movie Royal Backup Bots now?\n\nIt downloads the update, closes, installs it and opens again by itself (about a minute). Your bots and settings stay.')) return; btn.disabled = true; try { await api('/api/update/install', {}); toast('⬇️ Downloading the update…', 8000); } catch {} load(); }
 async function add() { const t = $('tok').value.trim(); if (!t) return toast('Paste a bot token first'); try { const r = await api('/api/add', { token: t }); $('tok').value = ''; toast(`✅ Added ${esc(r.tag)}. It connects in a few seconds.`); load(); } catch {} }
 async function saveTwitch() { try { await api('/api/twitch', { id: $('twId').value, secret: $('twSecret').value }); $('twSecret').value = ''; toast('✅ Twitch keys saved'); load(); } catch {} }
 async function saveName() { await api('/api/name', { name: $('name').value }); toast('✅ Saved'); nameTyping = false; load(); }

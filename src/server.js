@@ -1047,7 +1047,21 @@ app.get('/api/close-check', async (req, res) => { // the Discord bot stops when 
 // 🛡️ backup bot server
 app.post('/api/backup/switch-back', async (req, res) => { try { const r = await backuplink.switchBack(); pushState(); res.json(r); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/backup/check', async (req, res) => { const st = await backuplink.tick({ force: true }); pushState(); res.json({ ...st, _ref: undefined, discord: discord.status.state, watching: backuplink.backupWatching() }); });
-app.post('/api/backup/token', (req, res) => { if (!db.settings.discordToken) return res.status(400).json({ error: 'Set up the Discord bot first.' }); res.json({ token: db.settings.discordToken }); }); // only for you to give to a friend running a backup
+app.post('/api/backup/token', (req, res) => { // only for you to give to a friend running a backup
+  if (!db.settings.discordToken) return res.status(400).json({ error: 'Set up the Discord bot first.' });
+  let copied = false; try { copied = !!globalThis.__desktop?.copy?.(db.settings.discordToken); } catch {}
+  res.json({ token: db.settings.discordToken, copied });
+});
+app.post('/api/backup/add-here', async (req, res) => { // 🛡️ one click: put my bot in Movie Royal Backup Bots on this PC (it reads the token from Movie Royal itself)
+  if (!db.settings.discordToken) return res.status(400).json({ error: 'Set up the Discord bot first.' });
+  try {
+    const r = await fetch('http://127.0.0.1:3747/api/add-mine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(20000) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return res.status(400).json({ error: /already on the list/.test(j.error || '') ? 'Your bot is already in Movie Royal Backup Bots on this PC.' : j.error || 'The backup app said no.' });
+    setTimeout(() => backuplink.tick({ force: true }).then(pushState).catch(() => {}), 15000);
+    res.json({ ok: true, tag: j.tag });
+  } catch { res.status(400).json({ error: "Movie Royal Backup Bots isn't open on this PC. Install it (its own installer on the release page), open it, then press this again." }); }
+});
 app.post('/api/cloud/check', async (req, res) => { const st = await cloud.checkLink(true); pushState(); res.json({ enabled: cloud.enabled(), linked: st.linked, botUp: st.botUp, error: st.linkError || st.lastError || null, lastSync: st.lastSync, botV: st.botV || null, relinked: st.relinked || null }); }); // the Discord bot stops when the app closes
 app.post('/api/app/quit', (req, res) => { if (req.body?.dontAsk) { db.settings.closeAskBot = false; save(); } res.json({ ok: true }); setTimeout(() => globalThis.__desktop?.quit(), 300); });
 app.post('/api/refocus', (req, res) => { globalThis.__desktop?.refocus?.(); res.json({ ok: true }); });

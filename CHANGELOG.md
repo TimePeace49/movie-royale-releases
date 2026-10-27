@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.8 (test build)
+- **🛡️ Add your bot to the backup in one click, no copy and paste:**
+  - In Movie Royal Backup Bots: **🍿 Add my bot from Movie Royal (this PC)**. It takes the token straight from Movie Royal on the same PC.
+  - Or in Movie Royal: **🛡️ Add my bot to the backup on this PC** (Settings → Discord & picks, and the 🧪 Test tab).
+- **📋 Copy my bot token works now:** it uses Windows' own copy. If that ever fails, it shows the token in a box so you can copy it by hand.
+- **🔄 Movie Royal Backup Bots updates itself:** it looks for updates when it opens and every 6 hours. The bar at the top of its window has **🔍 Look for updates** and **⬇️ Update** (it downloads, closes, installs and opens again by itself, keeping your bots). Tick **Also test builds** to get those too.
+
 ## 1.28.7 (latest release)
 - **🎬 Fixed:** in a custom movie battle (🎬 Movie Pool tab), a movie you click in the search now shows in the pool right away (before, you had to switch away and back).
 - **📝 Plain text in custom movie battles:** type anything in the Add box and pick **📝 Add "…" as plain text** at the top of the results (or **📝 Add all as plain text** under Paste a big list). It plays like any other piece, without a poster. You can rename it in the pool.

@@ -1,5 +1,5 @@
 // Movie Royal desktop app: runs the local server and shows it in its own window.
-const { app, BrowserWindow, shell, dialog, Menu, Tray, nativeImage, net } = require('electron');
+const { app, BrowserWindow, shell, dialog, Menu, Tray, nativeImage, net, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
@@ -138,6 +138,7 @@ app.whenReady().then(async () => {
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
     refocus: () => { const w = BrowserWindow.getFocusedWindow() || win; if (w && !w.isDestroyed()) { w.blur(); setTimeout(() => !w.isDestroyed() && w.focus(), 30); } },
     quit: () => { closeOk = true; quitting = true; app.quit(); }, // no questions (updates, or after you answered)
+    copy: t => { clipboard.writeText(String(t)); return true; }, // copying from the page can fail after a pop-up: Windows' own clipboard always works
     // read a web page like a real browser does (some sites, like Letterboxd's film pages, turn away plain requests)
     getPage: async (url, { render = false, wait = 'body', timeout = 25000 } = {}) => {
       const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';

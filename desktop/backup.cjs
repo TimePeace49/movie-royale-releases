@@ -60,7 +60,7 @@ app.whenReady().then(async () => {
   const enc = t => safeStorage.isEncryptionAvailable() ? 'ss:' + safeStorage.encryptString(t).toString('base64') : 'b64:' + Buffer.from(t).toString('base64');
   const dec = t => t.startsWith('ss:') ? safeStorage.decryptString(Buffer.from(t.slice(3), 'base64')) : '';
   const { startBackup } = await import(pathToFileURL(path.join(__dirname, '..', 'src', 'backup.js')).href);
-  const r = await startBackup({ dataDir: path.join(DATA, 'data'), version: app.getVersion(), hooks: { encrypt: enc, decrypt: dec, setStartup, getStartup: () => prefs.startup !== false, mrDb: path.join(app.getPath('appData'), 'Movie Royal', 'data', 'db.json') } }); // (Movie Royal's Twitch app keys on this PC: for Twitch's own "is it live?")
+  const r = await startBackup({ dataDir: path.join(DATA, 'data'), version: app.getVersion(), hooks: { encrypt: enc, decrypt: dec, quit: () => { quitting = true; app.quit(); }, setStartup, getStartup: () => prefs.startup !== false, mrDb: path.join(app.getPath('appData'), 'Movie Royal', 'data', 'db.json') } }); // (Movie Royal's Twitch app keys on this PC: for Twitch's own "is it live?")
   url = r.url;
   makeTray();
   if (!startHidden) show();
