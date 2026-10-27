@@ -3,6 +3,16 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.28.8: What's new
+Everything since 1.28.7.
+
+**🛡️ Movie Royal Backup Bots**
+- **Add your bot in one click, no copy and paste:** press **🍿 Add my bot from Movie Royal (this PC)** in the backup app, or **🛡️ Add my bot to the backup on this PC** in Movie Royal (Settings → Discord & picks).
+- **It updates itself:** it looks for updates when it opens and every 6 hours. The bar at the top of its window has **🔍 Look for updates** and **⬇️ Update** (it closes, installs and opens again by itself, keeping your bots). Tick **Also test builds** to get those too. Install this version by hand once; after that it updates itself.
+
+**Fixes**
+- 📋 **Copy my bot token** works now (it uses Windows' own copy). If it ever fails, it shows the token in a box to copy by hand.
+
 ## v1.28.7: What's new
 Everything since 1.28.6.
 

@@ -2,7 +2,7 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.28.8 (test build)
+## 1.28.8 (latest release)
 - **🛡️ Add your bot to the backup in one click, no copy and paste:**
   - In Movie Royal Backup Bots: **🍿 Add my bot from Movie Royal (this PC)**. It takes the token straight from Movie Royal on the same PC.
   - Or in Movie Royal: **🛡️ Add my bot to the backup on this PC** (Settings → Discord & picks, and the 🧪 Test tab).
