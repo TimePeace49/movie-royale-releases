@@ -57,7 +57,11 @@ export async function tick(opts = {}) {
     status.backup = best ? { ...best, msg: undefined, ch: undefined } : null; status._ref = best;
     if (JSON.stringify(db.backupSeen || null) !== JSON.stringify(status.backup)) { db.backupSeen = status.backup; save(); }
     status.checkedAt = Date.now(); status.error = null;
-  } catch (e) { status.error = e.message; console.error('[backup link]', e.message); }
+  } catch (e) {
+    if (/Expected token|token to be set|destroyed/i.test(e.message)) { // the Discord bot restarted (or reconnected) in the middle of the check: not a real problem, try again shortly
+      status.error = null; setTimeout(() => tick({ force: true }), 15000);
+    } else { status.error = e.message; console.error('[backup link]', e.message); }
+  }
   finally { busy = false; onChange(); }
   return status;
 }

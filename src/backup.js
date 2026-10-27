@@ -283,7 +283,10 @@ class Bot {
 
 async function addBot(token) {
   token = String(token || '').trim().replace(/^Bot\s+/i, '');
-  if (!/^[\w-]{20,}\.[\w-]{4,}\.[\w-]{20,}$/.test(token)) throw new Error("That doesn't look like a bot token. In the Discord Developer Portal: your app → Bot → Reset Token → Copy.");
+  const found = token.match(/[\w-]{20,}\.[\w-]{4,}\.[\w-]{20,}/); if (found) token = found[0]; // (quotes, spaces or extra words pasted around it are fine)
+  if (/^\d{15,22}$/.test(token)) throw new Error("That's the Application ID (only numbers), not the bot token. In Movie Royal: Settings → Discord & picks → 🛡️ Backup bot server → 📋 Copy my bot token.");
+  if (/^[0-9a-f]{64}$/i.test(token)) throw new Error("That's the Public Key, not the bot token. In Movie Royal: Settings → Discord & picks → 🛡️ Backup bot server → 📋 Copy my bot token.");
+  if (!/^[\w-]{20,}\.[\w-]{4,}\.[\w-]{20,}$/.test(token)) throw new Error("That doesn't look like a bot token (it's long, with two dots in it). In Movie Royal: Settings → Discord & picks → 🛡️ Backup bot server → 📋 Copy my bot token, then paste here.");
   const me = await rest(token, 'GET', '/users/@me').catch(e => { throw new Error(/^Discord:/.test(e.message) ? "Discord didn't accept that token. Check it's the newest one (resetting it makes the old one stop working)." : "Couldn't reach Discord (is the internet on?). Try again in a minute."); });
   if (conf.bots.some(b => b.id === me.id)) throw new Error(`${me.username} is already on the list.`);
   const rec = { id: me.id, token: enc(token), on: true, addedAt: Date.now(), tag: me.username };

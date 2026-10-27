@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.6 (test build)
+- **🛡️ Fixed:** "Expected token to be set for this request" under Backup bot server. It showed when the Discord bot reconnected in the middle of the backup check. Now it just checks again 15 seconds later.
+- **Backup Bots: pasting the bot token is easier.** Extra spaces or quotes around it are fine. If you paste the Application ID or Public Key by mistake, it tells you which one it was and where to get the token instead.
+
 ## 1.28.5 (test build)
 - **🔄 Restart the Discord bot:** a new button in Settings → Discord & picks (and on the 🧪 Test tab). It turns the bot off and on again without closing Movie Royal: it reconnects and fixes its slash commands, channels and pinned messages.
 - **🛡️ Backup Bots: ▶ Start / ⏹ Stop the backup server** button at the top. Stopped = every bot on the list stops, and it stays stopped (even after a restart) until you press Start.
