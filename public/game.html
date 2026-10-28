@@ -2216,7 +2216,7 @@ let luckCool = -99, funNext = 0;
 function luckSave(f) {
   const n = alive().length;
   if (t < (f.safeUntil || 0)) return true; // just got saved, still landing
-  const forced = n <= 1 || (cfg.fair && f === destined) || (n <= 2 && t < cfg.game - 2.5) || (n <= 4 && t < cfg.game * .55 && Math.random() < .6);
+  const forced = n <= 1 || (cfg.fair && f === destined) || (n <= 2 && !suddenDeath && t < cfg.game - 2.5) || (showdown && t - sdStart < 3.5) || Math.random() < paceHold(n); // (a showdown gets a few seconds of fighting first)
   if (!forced) {
     if (t - luckCool < (n > 200 ? 16 : n > 40 ? 10 : 6)) return false;
     if (Math.random() >= luckChance(f)) return false;
@@ -2262,7 +2262,7 @@ function launch(f, ang, sp = 1500, dur = .85) { f.launch = { vx: Math.cos(ang) *
 function blastOrDodge(f, col = '#ffb347', what = 'BOOM!') {
   if (!f.alive) return true;
   if (useShield(f)) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); return false; }
-  const n = alive().length, keep = (cfg.fair && f === destined) || n <= 1 || (n <= 2 && t < cfg.game - 2.5);
+  const n = alive().length, keep = (cfg.fair && f === destined) || n <= 1 || (n <= 2 && !suddenDeath && t < cfg.game - 2.5) || (showdown && t - sdStart < 3.5) || Math.random() < paceHold(n);
   if (keep || (t - luckCool >= (n > 200 ? 16 : n > 40 ? 10 : 6) && Math.random() < luckChance(f) && (luckCool = t))) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); if (n < 40 && !keep) floaters.push({ text: (f.luck || 0) >= 5 ? '🍀 DODGED!' : 'DODGED!', x: sx(f.x), y: sy(f.y) - f.r * 2 - 24, life: .9, color: '#7dffb0' }); return false; }
   const X = sx(f.x), Y = sy(f.y) - f.r;
   for (let j = 0; j < 34; j++) { const a = rnd(6.3), v = rnd(120, 480); parts.push({ x: X, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, g: 500, life: rnd(.4, .9), max: .9, size: rnd(3, 7), color: pick([f.color || '#fff', col, '#fff3c4', '#ff7a3d']) }); }
@@ -2523,7 +2523,7 @@ function runEvent(fx) {
   const bl = fx.source === 'sd' ? 1.8 : 4.2; banners.unshift({ icon, name, by: fx.by?.name || '', img: loadImg(fx.by?.avatar), source: fx.source, bits: fx.by?.bits, life: bl, max: bl });
   banners = banners.slice(0, 4);
   SFX.play('alert'); setTimeout(() => SFX.play(ev === 'mappower' ? 'boom' : ev), 150);
-  if (fx.source !== 'sd') evLog.push({ event: name, by: fx.by?.name || '', t: Math.round(t * 10) / 10 });
+  if (fx.source !== 'sd' && fx.source !== 'pace') evLog.push({ event: name, by: fx.by?.name || '', t: Math.round(t * 10) / 10 });
   EVENTS[ev]();
 }
 // 🎉 chat battle power-ups: 🛡️ shield (saves them once per shield), 💪 mega (big and heavy), ⚡ turbo (faster, harder dashes)
@@ -2724,7 +2724,7 @@ function drawHUD() {
     ctx.fillText(phase === 'ended' ? 'DONE' : suddenDeath ? `${alive().length} LEFT` : left.toFixed(1), CX, 131);
     if (series) { const lead = series.tally.slice(0, 2).map(x => `${x.label.length > 14 ? x.label.slice(0, 13) + '…' : x.label} ${x.n}`).join(' · '), mt = `BEST OF ${series.bestOf} · ROUND ${series.round}${lead ? ' · ' + lead : ''}`; ctx.font = "800 20px Inter, sans-serif"; const mw = ctx.measureText(mt).width + 40; pill(CX - mw / 2, 168, mw, 34, 'rgba(125,90,255,.9)'); ctx.fillStyle = '#fff'; ctx.fillText(mt, CX, 191); }
     if (movieNo && kind !== 'chat') { const mt = `MOVIE #${movieNo} TONIGHT`; ctx.font = "800 20px Inter, sans-serif"; const mw = ctx.measureText(mt).width + 40; pill(CX - mw / 2, 168, mw, 34, 'rgba(255,201,74,.92)'); ctx.fillStyle = '#2a1500'; ctx.fillText(mt, CX, 186); } // Discord movie battles only
-    if (suddenDeath && phase === 'running') { ctx.font = "64px 'Lilita One', Impact, sans-serif"; ctx.globalAlpha = .75 + .25 * Math.sin(clock * 8); ctx.lineWidth = 8; ctx.strokeStyle = '#1a0610'; ctx.strokeText('SUDDEN DEATH!', CX, 262); ctx.fillStyle = '#ff5a4a'; ctx.fillText('SUDDEN DEATH!', CX, 262); ctx.globalAlpha = 1; }
+    if (suddenDeath && phase === 'running') { ctx.font = "64px 'Lilita One', Impact, sans-serif"; ctx.globalAlpha = .75 + .25 * Math.sin(clock * 8); ctx.lineWidth = 8; ctx.strokeStyle = '#1a0610'; ctx.strokeText(showdown ? 'FINAL SHOWDOWN!' : 'SUDDEN DEATH!', CX, 262); ctx.fillStyle = '#ff5a4a'; ctx.fillText(showdown ? 'FINAL SHOWDOWN!' : 'SUDDEN DEATH!', CX, 262); ctx.globalAlpha = 1; }
   }
   // kill feed
   let y = 120;
@@ -2926,7 +2926,7 @@ function startGame(m) {
   movieNo = m.movieNo || null; series = m.series || null;
   cfg = { lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5);
   for (const f of fighters) { f.hp = null; f.hurtAt = null; } // full health every battle
-  t = 0; lobbyLeft = cfg.lobby; winner = null; winTile = null; destined = null; suddenDeath = false; resultSent = false;
+  t = 0; lobbyLeft = cfg.lobby; winner = null; winTile = null; destined = null; suddenDeath = false; showdown = false; paceNext = 6; resultSent = false;
   hazards = []; parts = []; feed = []; banners = []; floaters = []; queue = (m.queued || []).slice();
   Object.assign(mods, { windUntil: 0, iceUntil: 0, gravUntil: 0, quakeUntil: 0 });
   gatherEnd = 0;
@@ -2975,14 +2975,28 @@ function declareWinner(f) {
   setTimeout(() => { if (winner === f) startReplay(() => { if (winner === f) { SFX.play('fanfare'); showWin(f); confetti(260); burst(W / 2, H / 2 - 100); } }); }, 1300);
 }
 // ---- time's up: SUDDEN DEATH. Every power keeps going off at random, faster and faster, and the cliff shrinks, until one is left. ----
-let sdNext = 0, sdCount = 0, sdStart = 0;
-function startSuddenDeath() {
-  suddenDeath = true; sdStart = t; sdNext = .5; sdCount = 0;
+let sdNext = 0, sdCount = 0, sdStart = 0, showdown = false, sdCharge = 0, paceNext = 6;
+// ⏳ pacing (so battles don't end with 2 balls hopping around for ages): the field should thin out steadily and reach the
+// last 2 near the end. Ahead of pace = more dodges and saves; behind pace = the arena throws extra chaos; 2 left early = FINAL SHOWDOWN.
+const paceTarget = () => { const n0 = fighters.length || 2, u = clamp(t / (cfg.game * .95), 0, 1); return Math.max(2, Math.round(n0 * Math.pow(1 - u, 1.15))); };
+const paceHold = n => { // how strongly to slow the knockouts down right now (0 = not at all, 1 = this one survives)
+  if (suddenDeath || n <= 2 || fighters.length < 4 || t >= cfg.game - 3) return 0;
+  const tg = paceTarget(), last = elimT.length ? elimT[elimT.length - 1] : 0;
+  const gap = clamp((cfg.game * .95 - t) / Math.max(1, n - 2) * .75, .35, 4); // knockouts spaced out over the time that's left
+  if (n <= tg && t - last < gap) return 1; // ahead of pace and someone just went out: not yet
+  return n >= tg ? 0 : clamp((tg - n) / Math.max(2, tg * .5), 0, .85);
+};
+function startSuddenDeath(early = false) {
+  suddenDeath = true; showdown = early; sdStart = t; sdNext = .5; sdCount = early ? 4 : 0; sdCharge = .8;
   SFX.play('suddendeath'); flash = .7; flashColor = '#ff5a4a'; shake = 16;
   tiles.slice().sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)).forEach((tl, i) => { tl.sdKeep = i < 4; if (tl.sdKeep && tl.state === 1) tl.state = 0; if (tl.sdKeep) tl.crumble = 1e9; }); // a tiny last patch of ground always stays
 }
 function stepSuddenDeath(dt) {
-  if (t - sdStart > 40) return suddenDeathNow(); // safety net: never goes on forever
+  if (t - sdStart > (showdown ? 15 : 40)) return suddenDeathNow(); // safety net: never goes on forever
+  if (showdown && (sdCharge -= dt) <= 0) { // 🥊 the last two charge at each other
+    const l = alive(); sdCharge = rnd(1.1, 1.8);
+    if (l.length === 2) { const [a, b] = l, dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1; push(a, dx / d * 650, dy / d * 650); push(b, -dx / d * 650, -dy / d * 650); a.vhop = b.vhop = 420; if (Math.random() < .6) floaters.push({ text: pick(['CLASH!', 'CHARGE!', 'HEAD-ON!']), x: sx((a.x + b.x) / 2), y: sy((a.y + b.y) / 2) - 80, life: .9, color: '#ffd27a' }); SFX.play('whoosh'); }
+  }
   if ((sdNext -= dt) > 0) return;
   sdCount++;
   sdNext = Math.max(.22, (alive().length > 50 ? 1.3 : 1.9) * Math.pow(.88, sdCount)); // faster and faster
@@ -3350,7 +3364,9 @@ function frame(now) {
     if (cfg.fun?.chaos && !winner && (funNext -= dt) <= 0) { funNext = rnd(4, 6.5); runEvent({ event: 'random', by: { name: '🎉 FUN MODE' }, source: 'fun' }); } // 🎉 chaos rain
     SFX.setIntensity(t / cfg.game);
     const rs = Math.ceil(cfg.game - t); if (rs !== lastTick && rs <= 5 && rs > 0) { lastTick = rs; SFX.play('final5'); }
-    if (!winner && t >= cfg.game) { if (!suddenDeath) startSuddenDeath(); else stepSuddenDeath(dt); }
+    if (!winner && !suddenDeath && !cfg.fun?.noShowdown && alive().length === 2 && fighters.length > 2 && t < cfg.game - 5) startSuddenDeath(true); // 2 left early: FINAL SHOWDOWN (no long hop-around)
+    if (!winner && !suddenDeath && t > cfg.game * .35 && t < cfg.game - 3 && alive().length > paceTarget() * 1.5 + 1 && (paceNext -= dt) <= 0) { paceNext = rnd(3.5, 5.5); runEvent({ event: 'random', by: { name: '⚡ ARENA' }, source: 'pace' }); } // behind pace: the arena livens it up
+    if (!winner && (t >= cfg.game || suddenDeath)) { if (!suddenDeath) startSuddenDeath(); else stepSuddenDeath(dt); }
   } else if (phase === 'ended') {
     t += dt * .6; updateTiles(dt); updateHazards(dt);
     for (const f of fighters) if (f === winner) { f.vx *= .9; f.vy *= .9; if (f.ret) stepHop(f, dt); }

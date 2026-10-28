@@ -553,6 +553,7 @@ H(/^📺 capture window: /i, '📺 Capture window', 'Shows a window from your PC
 H(/pick the window, the size/i, '⚙ Capture window settings', 'Pick which window shows (ask OBS for the list with 🔄), how big it is, and whether it hides by itself when the battle starts.');
 H(/^📺 capture window$|^which window$|^\(press 🔄 to list your windows\)|^\(pick a window\)/i, '📺 Which window', 'The window OBS captures for the capture window. Open your browser (with the YouTube video) first, then press 🔄 and pick it.');
 H(/ask obs for your open windows/i, '🔄 List my windows', 'Asks OBS for the windows open on your PC right now.');
+H(/make the capture window (smaller|bigger)|how big the capture window is on stream|^📏 size$/i, '📏 Capture window size', 'Makes the capture window bigger or smaller on stream (10% to 60% of the picture). While it is showing, OBS changes it right away. − and + change it in steps of 5%.');
 H(/^size: .*% of the stream/i, '📏 Capture window size', 'How big the capture window is, as a part of the stream picture (30% is a small corner window).');
 H(/hide it when the battle starts/i, '🙈 Hide when the battle starts', 'When ▶ START ROYAL starts the fight, the capture window hides by itself so it doesn\'t cover the battle.');
 H(/^📺 capture window \(obs\)|show it for 5 seconds/i, '📺 Capture window test', 'Shows the capture window in OBS for 5 seconds, then hides it. Checks that OBS and the window you picked work.');

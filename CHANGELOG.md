@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.31.1 (test build)
+- **⏳ Battles are paced better:** pieces don't all go out in the first few seconds any more. Knockouts are spread over the whole battle, and if the battle is moving too slowly the arena throws in extra chaos (⚡ ARENA).
+- **🥊 FINAL SHOWDOWN:** when only 2 are left with time still on the clock, they no longer hop around for 10+ seconds. The showdown starts: they charge at each other, powers go off faster and the ground breaks away until one is left. In tests the last two used to be left alone for about 16 seconds; now it's a few seconds of fighting.
+- **📏 Capture window size on the Battle tab:** − / + and a slider under 📺 Capture window make it bigger or smaller on stream right away.
+
 ## 1.31.0 (test build)
 - **🃏 Card battles (new tab) + 📦 Card pool (new tab):** your card packs fight each other on stream.
   - **📦 Card pool:** search for a pack, say how many you have, and press ➕ Add: its picture downloads by itself. Can't find one? ➕ Add my own pack with a picture. Each pack you own is one fighter (5 packs = 5 fighters). Packs are never deleted: 🙈 hides one.

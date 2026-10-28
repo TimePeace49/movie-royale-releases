@@ -409,7 +409,7 @@
   <label>Which window</label>
   <div class="row" style="gap:6px"><select id="capWin" class="grow"><option value="">(press 🔄 to list your windows)</option></select><button class="ghost" onclick="capList()" title="Ask OBS for your open windows">🔄</button></div>
   <label style="margin-top:10px">Size: <b id="capSizeV">30</b>% of the stream</label>
-  <input id="capSize" type="range" min="10" max="60" step="1" value="30" oninput="$('capSizeV').textContent=this.value">
+  <input id="capSize" type="range" min="10" max="60" step="1" value="30" oninput="$('capSizeV').textContent=this.value" onchange="capSize(this.value)">
   <label class="ck" style="margin-top:10px"><input type="checkbox" id="capAuto"> Hide it when the battle starts</label>
   <p class="help" id="capMsg"></p>
   <div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="$('capDlg').close()">Cancel</button><button class="primary" onclick="capSave()">💾 Save</button></div>
@@ -1230,7 +1230,7 @@ const CK_META = { // key: [category, version it came in]
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
   discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
-  announce: ['chat', '1.30.7'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], capture: ['screen', '1.30.7'], cardPool: ['battles', '1.31.0'], cardFight: ['battles', '1.31.0'], cardWacky: ['battles', '1.31.0'], cardLink: ['wheel', '1.31.0'], winModes: ['screen', '1.31.0'], gfxAdv: ['screen', '1.31.0'], spell: ['screen', '1.30.7'], armyHurt: ['battles', '1.30.7'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  announce: ['chat', '1.30.7'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], capture: ['screen', '1.30.7'], cardPool: ['battles', '1.31.0'], pacing: ['battles', '1.31.1'], capSize: ['screen', '1.31.1'], cardFight: ['battles', '1.31.0'], cardWacky: ['battles', '1.31.0'], cardLink: ['wheel', '1.31.0'], winModes: ['screen', '1.31.0'], gfxAdv: ['screen', '1.31.0'], spell: ['screen', '1.30.7'], armyHurt: ['battles', '1.30.7'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1290,6 +1290,8 @@ function drawChecklist() {
     ['prices', '💰 Every reward, bits and donation amount in one place (Settings → 💰 Rewards & prices): change a price, pause one, make it always on or off after one use', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">See it</button>`],
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
+    ['pacing', '⏳ Battles thin out steadily instead of most pieces going out at once, and when only 2 are left early it turns into a FINAL SHOWDOWN (they charge each other) instead of hopping around', T('Try it', "api('/api/test/battle',{count:16}).catch(()=>{})")],
+    ['capSize', '📏 The capture window on stream gets bigger or smaller right away with − / + or the slider under 📺 on the Battle tab', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">Try it</button>`],
     ['cardPool', '📦 Card pool: search a card pack, add how many you have (its picture downloads by itself), or ➕ Add my own pack', `<button class="ghost" style="padding:3px 9px" onclick="setView('cardpool')">Try it</button>`],
     ['cardFight', '🃏 Card battles: packs with arms, legs and faces fight in Kung Fu Town with health bars and blood; the winner comes off its count (try a pretend fight first)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(8)">Try it</button>`],
     ['cardWacky', '🤪 Card battle wacky settings: turn on low gravity, extreme gore, teleport switches… before or during a fight (keys 1–9 in fullscreen)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Try it</button>`],
@@ -1616,12 +1618,15 @@ async function cpPic(id) { const v = await ask('Link to a picture of this pack (
 // 📺 capture window (Battle tab): a small OBS window capture in the top-left of the stream
 function capHTML() {
   const c = S.capture || {};
-  return `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="${c.on ? 'primary' : ''} grow" onclick="capToggle(${!c.on})" title="Shows a window from your PC (your browser, a YouTube video…) small in the top-left corner of the stream, through OBS. Press again to hide it.">📺 Capture window: <b>${c.on ? 'ON' : 'OFF'}</b></button><button class="ghost" title="Pick the window, the size, and whether it hides when the battle starts" onclick="capOpen()">⚙</button></div>${c.error ? `<p class="help" style="color:var(--bad);margin:4px 0 0">⚠️ ${esc(c.error)}</p>` : ''}`;
+  const sz = c.size || 30;
+  return `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="${c.on ? 'primary' : ''} grow" onclick="capToggle(${!c.on})" title="Shows a window from your PC (your browser, a YouTube video…) small in the top-left corner of the stream, through OBS. Press again to hide it.">📺 Capture window: <b>${c.on ? 'ON' : 'OFF'}</b></button><button class="ghost" title="Pick the window, the size, and whether it hides when the battle starts" onclick="capOpen()">⚙</button></div>
+    <div class="row" style="gap:4px;flex-wrap:nowrap;align-items:center;margin-top:4px"><span class="muted" style="font-size:12px;white-space:nowrap">📏 Size</span><button class="ghost" style="padding:3px 10px" title="Make the capture window smaller" onclick="capSize(${sz - 5})">−</button><input type="range" min="10" max="60" step="1" value="${sz}" class="grow" title="How big the capture window is on stream (changes right away while it's showing)" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="capSize(this.value)"><b style="min-width:38px;text-align:right;font-size:13px">${sz}%</b><button class="ghost" style="padding:3px 10px" title="Make the capture window bigger" onclick="capSize(${sz + 5})">+</button></div>${c.error ? `<p class="help" style="color:var(--bad);margin:4px 0 0">⚠️ ${esc(c.error)}</p>` : ''}`;
 }
 async function capToggle(on) {
   if (on && !(S.capture || {}).window && !S.settings?.capWindow) { toast('📺 Pick which window to show first (⚙).'); return capOpen(); }
   try { await api('/api/capture', { on }); toast(on ? '📺 Capture window is on stream (top-left).' : '📺 Capture window hidden.'); } catch {}
 }
+async function capSize(v) { v = Math.max(10, Math.min(60, Math.round(Number(v) || 30))); try { await api('/api/capture/settings', { size: v }); } catch {} }
 async function capOpen() {
   const c = S.capture || {};
   $('capSize').value = c.size || 30; $('capSizeV').textContent = c.size || 30; $('capAuto').checked = !!c.autoHide; $('capMsg').textContent = '';
