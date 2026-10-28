@@ -51,22 +51,43 @@ function hardenWindow(w) {
   w.webContents.on('did-create-window', child => hardenWindow(child));
 }
 
-function createWindow() {
-  win = new BrowserWindow({
-    width: 1560, height: 980, minWidth: 1000, minHeight: 700,
+// 🖥️ window mode (Settings → Graphics): 'window' (normal), 'borderless' (fills the whole screen, no frame, like a game's
+// "fullscreen windowed"), 'fullscreen'. Borderless needs a window made without a frame, so switching to / from it makes a new window.
+let swapping = false;
+function createWindow(mode = prefs.windowMode || 'window') {
+  const frameless = mode === 'borderless', old = win;
+  const w = new BrowserWindow({
+    width: 1560, height: 980, minWidth: 1000, minHeight: 700, frame: !frameless,
     title: 'Movie Royal', icon: ICON, backgroundColor: '#120a24', autoHideMenuBar: true, show: false,
     webPreferences: { backgroundThrottling: false, spellcheck: true } // keeps the game smooth even when the window isn't focused (+ ✍️ spell check in text boxes)
   });
-  hardenWindow(win);
-  win.once('ready-to-show', () => { if (!startHidden) { win.maximize(); win.show(); } });
-  win.on('close', e => {
-    if (quitting || closeOk) return;
+  w.__mode = mode; win = w;
+  hardenWindow(w);
+  w.once('ready-to-show', () => {
+    if (!startHidden || old) { placeWindow(w, mode); w.show(); }
+    if (old && !old.isDestroyed()) { swapping = true; old.destroy(); swapping = false; }
+  });
+  w.on('close', e => {
+    if (swapping || quitting || closeOk) return;
     if (!prefs.runInBackground) { e.preventDefault(); tryQuit(); return; } // closing the window = quitting: check the 24/7 bot first
-    e.preventDefault(); win.hide(); // keep the Discord bot + Twitch running in the tray
+    e.preventDefault(); w.hide(); // keep the Discord bot + Twitch running in the tray
     if (!prefs.toldAboutTray && tray) { prefs.toldAboutTray = true; tray.displayBalloon?.({ title: 'Movie Royal is still running', content: 'The Discord bot keeps working. Right-click the icon by the clock to quit.', iconType: 'info' }); }
   });
-  win.on('closed', () => { win = null; if (!prefs.runInBackground || quitting) app.quit(); });
-  win.loadURL(readyUrl);
+  w.on('closed', () => { if (swapping) return; if (win === w) win = null; if (!prefs.runInBackground || quitting) app.quit(); });
+  w.loadURL(readyUrl);
+}
+function placeWindow(w, mode) {
+  const { screen } = require('electron'), d = screen.getDisplayMatching(w.getBounds());
+  if (mode === 'fullscreen') { w.setFullScreen(true); return; }
+  if (w.isFullScreen()) w.setFullScreen(false);
+  if (mode === 'borderless') { w.setBounds(d.bounds); return; } // the whole screen, like a game's borderless fullscreen
+  w.maximize();
+}
+function setWindowMode(mode) {
+  mode = ['window', 'borderless', 'fullscreen'].includes(mode) ? mode : 'window'; prefs.windowMode = mode;
+  if (!win || win.isDestroyed()) return;
+  if ((mode === 'borderless') !== (win.__mode === 'borderless')) return createWindow(mode); // the frame can only change on a new window
+  win.__mode = mode; setTimeout(() => !win.isDestroyed() && placeWindow(win, mode), 50);
 }
 function showWindow() { if (!win) return createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
 // 🛡️ an update closes every Movie Royal window, including the backup bots app: open it again if it was running
@@ -93,7 +114,8 @@ function makeTray() {
   tray.on('click', showWindow); tray.on('double-click', showWindow);
 }
 function applySettings(p) {
-  Object.assign(prefs, p);
+  const was = prefs.windowMode; Object.assign(prefs, p);
+  if (p.windowMode && was && p.windowMode !== was) setWindowMode(p.windowMode);
   try { app.setLoginItemSettings({ openAtLogin: !!prefs.startWithWindows, args: ['--hidden'] }); } catch {}
   muteCheck();
 }
@@ -139,7 +161,7 @@ app.on('browser-window-created', (_e, w) => {
   w.webContents.on('before-input-event', (ev, input) => {
     if (input.type !== 'keyDown' || input.key !== 'Escape') return;
     w.webContents.executeJavaScript('document.fullscreenElement && document.exitFullscreen().catch(() => {})').catch(() => {});
-    if (w.isFullScreen()) setTimeout(() => !w.isDestroyed() && w.isFullScreen() && w.setFullScreen(false), 150);
+    if (w.isFullScreen() && w.__mode !== 'fullscreen') setTimeout(() => !w.isDestroyed() && w.isFullScreen() && w.setFullScreen(false), 150); // (not when you picked Fullscreen as the window mode)
   });
 });
 app.whenReady().then(async () => {
@@ -170,6 +192,7 @@ app.whenReady().then(async () => {
       } finally { w.destroy(); }
     },
     applySettings,
+    windowAction: a => { const w = win; if (!w || w.isDestroyed()) return; if (a === 'min') w.minimize(); else if (a === 'close') w.close(); else if (['window', 'borderless', 'fullscreen'].includes(a)) setWindowMode(a); },
     openPath: p => shell.openPath(p),
     fatal: msg => { dialog.showErrorBox('Movie Royal', msg); app.quit(); },
     ready: url => { if (started) return; started = true; readyUrl = url; makeTray(); createWindow(); reopenBackup(); }

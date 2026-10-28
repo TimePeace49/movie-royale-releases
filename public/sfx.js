@@ -156,6 +156,13 @@ window.SFX = (() => {
     clash: (o = {}) => { tone({ type: 'square', f0: 1900, f1: 1700, dur: .1, v: .1 * (o.v ?? 1) }); tone({ type: 'sine', f0: 2700, dur: .45, v: .1 * (o.v ?? 1) }); tone({ type: 'sine', f0: 3900, dur: .3, v: .05 * (o.v ?? 1) }); noise({ dur: .12, v: .2 * (o.v ?? 1), type: 'highpass', f0: 3000 }); },
     horn: (o = {}) => { const p = o.p || 1; tone({ type: 'sawtooth', f0: 98 * p, f1: 104 * p, dur: 1.5, v: .2, a: .18 }); tone({ type: 'sawtooth', f0: 147 * p, f1: 156 * p, dur: 1.5, v: .1, a: .22 }); tone({ type: 'sine', f0: 49 * p, dur: 1.5, v: .2, a: .2 }); },
     gallop: () => { for (let i = 0; i < 10; i++) { tone({ type: 'sine', f0: 95, f1: 50, dur: .07, v: .28, at: i * .14 }); tone({ type: 'sine', f0: 85, f1: 45, dur: .07, v: .2, at: i * .14 + .05 }); } },
+    // 🃏 card battles (kung fu)
+    punch: () => { noise({ dur: .09, v: .45, f0: 2200, f1: 400, q: .8 }); tone({ type: 'sine', f0: 160, f1: 60, dur: .12, v: .45 }); },
+    kick: () => { noise({ dur: .14, v: .5, f0: 1600, f1: 250, q: .7 }); tone({ type: 'sine', f0: 120, f1: 45, dur: .18, v: .55 }); noise({ dur: .08, v: .2, type: 'highpass', f0: 5000 }); },
+    gong: () => { for (const [f, v, d] of [[98, .4, 3.5], [147, .2, 3], [196, .14, 2.6], [261, .08, 2], [415, .05, 1.6]]) tone({ type: 'sine', f0: f, f1: f * .985, dur: d, v, a: .005 }); noise({ dur: .4, v: .2, type: 'bandpass', f0: 900, q: .6 }); },
+    splat: () => { noise({ dur: .3, v: .35, type: 'lowpass', f0: 900, f1: 200, q: 2 }); tone({ type: 'sine', f0: 90, f1: 40, dur: .2, v: .3 }); },
+    chop: () => { noise({ dur: .18, v: .4, type: 'highpass', f0: 3000, f1: 800 }); tone({ type: 'square', f0: 900, f1: 300, dur: .08, v: .08 }); noise({ dur: .35, v: .3, type: 'lowpass', f0: 700, f1: 150, q: 3, at: .06 }); },
+    hyah: () => { const p = .85 + Math.random() * .4; tone({ type: 'sawtooth', f0: 330 * p, f1: 520 * p, dur: .09, v: .12 }); tone({ type: 'sawtooth', f0: 520 * p, f1: 260 * p, dur: .22, v: .14, at: .08 }); noise({ dur: .25, v: .08, type: 'bandpass', f0: 1800 * p, q: 1.5 }); },
     whoosh: () => { noise({ dur: .55, v: .32, type: 'bandpass', f0: 300, f1: 4200, q: 1.2, a: .2 }); tone({ type: 'sine', f0: 140, f1: 60, dur: .5, v: .15, a: .15 }); },
     heartbeat: () => { tone({ type: 'sine', f0: 62, f1: 42, dur: .16, v: .45 }); tone({ type: 'sine', f0: 58, f1: 40, dur: .2, v: .32, at: .22 }); },
     slowhit: () => { noise({ dur: 1.4, v: .35, f0: 700, f1: 50, a: .02 }); tone({ type: 'sine', f0: 70, f1: 28, dur: 1.4, v: .5 }); tone({ type: 'sawtooth', f0: 110, f1: 40, dur: .9, v: .08 }); }
@@ -184,6 +191,14 @@ window.SFX = (() => {
   function sched() {
     while (nextT < ac.currentTime + .12) {
       const at = nextT - ac.currentTime, i = step % 16, bar = Math.floor(step / 16) % 4;
+      if (String(curMap).startsWith('card-') && mode === 'fight') { // 🥋 kung fu: drums, woodblock, a pentatonic tune and a gong every 4 bars
+        const pent = [62, 65, 67, 69, 72, 74, 77, 79], mel = [4, 0, 3, 2, 4, 5, 4, 2, 1, 0, 1, 2, 4, 2, 1, 0];
+        if (i % 4 === 0) tone({ type: 'sine', f0: 130, f1: 50, dur: .18, v: .5, at, bus: musicBus });
+        if (i % 4 === 2 || i === 15) tone({ type: 'sine', f0: 95, f1: 60, dur: .12, v: .3, at, bus: musicBus });
+        if (i % 2 === 1) noise({ dur: .03, v: .14, type: 'bandpass', f0: 2600, q: 6, at, bus: musicBus });
+        if (i % 2 === 0) { const n = pent[mel[(step / 2) % 16]] + (bar === 3 ? 5 : 0); tone({ type: 'sawtooth', f0: hz(n), dur: STEP * 1.8, v: .045 + intensity * .03, at, bus: musicBus }); tone({ type: 'triangle', f0: hz(n + 12), dur: STEP * 1.2, v: .03, at, bus: musicBus }); }
+        if (i === 0 && bar === 0) for (const [f, v] of [[98, .12], [147, .06]]) tone({ type: 'sine', f0: f, dur: 2.5, v, at, bus: musicBus });
+      } else
       if (curMap === 'gas' && mode) { // 💨 oom-pah polka on the tuba, a kazoo tune, and a toot to end each bar
         const fight = mode === 'fight', roots = [43, 38, 43, 38, 36, 38, 43, 43], root = roots[bar * 2 + (i >= 8 ? 1 : 0)];
         if (i % 4 === 0) fart({ f0: hz(root), f1: hz(root) * .98, dur: STEP * 1.6, rate: 14, v: fight ? .16 : .1, at, cut: 420, q: 1, bus: musicBus }); // tuba "oom"

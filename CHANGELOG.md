@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.31.0 (test build)
+- **🃏 Card battles (new tab) + 📦 Card pool (new tab):** your card packs fight each other on stream.
+  - **📦 Card pool:** search for a pack, say how many you have, and press ➕ Add: its picture downloads by itself. Can't find one? ➕ Add my own pack with a picture. Each pack you own is one fighter (5 packs = 5 fighters). Packs are never deleted: 🙈 hides one.
+  - **🃏 Card battles:** packs with stick arms and legs, a red headband and angry faces have a martial arts brawl in **🏯 Kung Fu Town**, an old Chinese town like an old kung fu movie (lanterns, tiled roofs, a pagoda, cherry blossoms, kung fu music and a gong). Punches, kicks, flying kicks, blocks, health bars on top, and they get bloody as they get hurt. No luck (every pack has the same chance) and no chat power-ups. When a pack wins, one comes off its count: you open it.
+  - **⚙ Edit / + New card battle:** every pack or just 1 of each, and which games fight (for example only Pokémon).
+  - **🤪 Wacky settings**, on or off before or during a fight: 🪶 low gravity, 🩸 extreme gore (more blood, packs lose arms and legs, faces get chopped off), 🔀 teleport switches, ⚡ turbo, 🐌 slow motion, 🦍 giant / 🐜 tiny packs, 🧊 slippery street, 💣 exploding K.O.s, ☠️ one-hit K.O., 😡 rage mode, 🗡️ weapons. In fullscreen they're in the panel on the left that fades when you're not using it (keys 1–9, 0).
+  - 🧪 Test → 🃏 Card battle tests: pretend fights (8 or 30 packs, gore, wacky). Nothing in your pool changes.
+- **⚡🔀 New wheel spot type: Auto + Link.** An auto spot that always links somewhere: it lands, the round timer pauses, and it goes straight to another wheel, a battle or a card battle (pick it in ⚙ spot settings → 🔀). Then it comes back. Any spot can link to a card battle now.
+- **🖥️ Window mode** (Settings → Graphics): Window, Fullscreen window (no border, like a game's borderless mode) or Fullscreen. Without a title bar, 🗕 and ✕ are at the top right.
+- **🔬 Advanced graphics** (Settings → Graphics): render scale, particles, screen shake, glows, screen flashes and smooth pictures.
+
 ## 1.30.7 (test build)
 - **⚔️ Battlefield map: running into the army hurts.** Every time a piece bumps into a knight or a horse it takes damage, and a few bumps knock it out (bigger pieces last a little longer). The map shows 🔵 UPDATED.
 - **✍️ Spell check** in the text boxes you type words in (spot names, messages, titles…): misspelled words get a red squiggle, right-click for fixes. Boxes for links, passwords, keys and Twitch names are left alone.

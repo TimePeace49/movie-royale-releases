@@ -169,6 +169,24 @@
   #fsPowers button::before { display:inline-block; min-width:16px; margin-right:5px; padding:0 4px; border-radius:5px; background:#ffffff1f; color:var(--gold); font-size:11px; font-weight:800; }
   #fsPowers button, #fsBar .fsx { padding:6px 10px; font-size:13px; }
   #fsPowers button.mp { border-color:var(--gold); }
+  /* 🃏 card battles + card pool */
+  #v-cards.on { display:block; overflow:auto; }
+  #v-cardpool.on { display:block; }
+  .wackyGrid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .wackyGrid button { font-size:12.5px; padding:6px 7px; text-align:left; }
+  .wackyGrid button.on, #fsWacky button.on { border-color:#ff5a7a; background:#ff5a7a33; color:#fff; }
+  .cfList { display:flex; flex-wrap:wrap; gap:5px; max-height:220px; overflow:auto; }
+  .cfList .cf { width:44px; text-align:center; font-size:10px; color:var(--dim); }
+  .cfList .cf img, .cfList .cf .ph { width:40px; height:56px; object-fit:cover; border-radius:5px; display:block; margin:0 auto 2px; background:#2a1a4a; }
+  .packGrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
+  .packCard { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .packCard img, .packCard .ph { width:100%; aspect-ratio:1; object-fit:contain; background:#0d0820; border-radius:8px; }
+  .packCard .nm { font-weight:700; font-size:13px; line-height:1.25; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+  .packCard .gm { font-size:11.5px; color:var(--dim); }
+  .packCard.used { opacity:.55; } .packCard.hidden { opacity:.35; filter:grayscale(1); }
+  .packCard .cnt { display:flex; align-items:center; gap:4px; } .packCard .cnt input { width:58px; text-align:center; padding:4px; } .packCard .cnt button { padding:4px 9px; }
+  #fsWacky { display:none; flex-direction:column; gap:5px; } #fsWacky button { text-align:left; padding:6px 10px; font-size:13px; }
+  #stage.cardsMode #fsPowers { display:none; } #stage.cardsMode #fsWacky { display:flex; }
   /* battle */
   #v-battle.on { display:block; overflow:auto; }
   .battleTop { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:14px; height:calc(100vh - var(--hdr) - 28px); }
@@ -362,6 +380,8 @@
   <nav id="nav">
     <button data-v="battle" class="on">⚔️ Battle</button>
     <button data-v="pool">🎬 Movie Pool</button>
+    <button data-v="cards">🃏 Card battles</button>
+    <button data-v="cardpool">📦 Card pool</button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
@@ -377,6 +397,7 @@
   <span id="liveTag"></span>
   <button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does (Ctrl+H)" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
   <div id="me"></div>
+  <div id="winBtns" style="display:none;gap:4px;margin-left:6px"><button class="ghost" style="padding:6px 10px" onclick="api('/api/window',{action:'min'})" title="Minimize Movie Royal (Fullscreen window has no title bar)">🗕</button><button class="ghost" style="padding:6px 10px" onclick="api('/api/window',{action:'close'})" title="Close Movie Royal (Fullscreen window has no title bar)">✕</button></div>
 </header>
 
 <div id="backupNag" style="display:none"></div>
@@ -405,7 +426,7 @@
 
 <div id="stage">
   <iframe id="game" src="/game.html" allow="autoplay; fullscreen" title="Movie Royal game"></iframe>
-  <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
+  <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><div id="fsWacky"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
   <div class="pgrip" data-d="se" title="Drag to resize"></div><div class="pgrip" data-d="sw" title="Drag to resize"></div><div class="pgrip" data-d="e"></div><div class="pgrip" data-d="w"></div><div class="pgrip" data-d="s"></div>
   <div id="peekBar" title="Drag to move. Drag a corner or edge to resize."><span>📺 What's on stream right now</span><button onclick="event.stopPropagation();previewPop()" title="Open the preview in its own window (put it on another monitor)">⧉ Pop out</button><button id="peekGo" onclick="event.stopPropagation();peek(false);setView(S?.wheelShow ? 'wheel' : 'battle')">↗ Battle tab</button><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
   <div class="away"><div style="font-size:36px">🪟</div><div>The game is open in its own window.</div><button onclick="event.stopPropagation();bringBack()">Bring it back here</button></div>
@@ -471,6 +492,69 @@
 </section>
 
 <!-- 📋 POOL -->
+<!-- 🃏 CARD BATTLES -->
+<section class="view" id="v-cards">
+ <div class="battleTop">
+  <div id="cStageSlot" style="min-height:0;min-width:0;display:flex;flex-direction:column;gap:10px">
+    <div style="flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center"><div id="cStageSize" style="width:100%;aspect-ratio:16/9;max-height:100%"></div></div>
+    <div class="under" style="row-gap:6px">
+      <span class="muted">Playing</span>
+      <select id="cBattleSel" style="width:auto;max-width:260px" onchange="cardsApi('/api/cards/active',{id:this.value})"></select>
+      <button class="ghost" onclick="cbEdit()" title="Change this card battle: its name, which games' packs fight, every pack or 1 of each">⚙ Edit</button>
+      <button class="ghost" onclick="cbEdit(true)" title="Make another card battle (for example only Pokémon packs)">+ New card battle</button>
+      <span class="muted">🗺️ Map</span>
+      <select id="cMapSel" style="width:auto" onchange="cardsApi('/api/cards/battle',{id:S.cards.activeId,map:this.value})"></select>
+      <span class="grow"></span>
+      <button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
+      <button onclick="popOut()" title="Open the game in its own window (for OBS window capture)">🪟 Pop out</button>
+      <button onclick="cardsApi('/api/cards/reset')" title="Clear the street: back to the packs lined up and waiting">↺ Reset street</button>
+    </div>
+    <div class="under">
+      <span class="muted" title="Wacky settings: turn them on before the fight or in the middle of it. Click again to turn one off.">🤪 Wacky</span>
+      <div class="powers" id="cWackyBar"></div>
+      <button class="ghost" onclick="cardsApi('/api/cards/wacky',{allOff:true})" title="Turn every wacky setting off">✕ All off</button>
+    </div>
+  </div>
+  <div class="side">
+    <button class="primary big" id="cStartBtn" onclick="cardsStart()">🥋 FIGHT!</button>
+    <div class="muted" id="cCount" style="text-align:center"></div>
+    <div class="card" id="cWinCard" style="display:none"></div>
+    <div class="card"><h2 style="margin:0 0 6px">🃏 In this fight</h2><div class="cfList" id="cIn"></div></div>
+    <div class="card"><h2 style="margin:0 0 6px">🏆 Latest card battle winners</h2><div id="cHist" style="font-size:12.5px"></div></div>
+  </div>
+ </div>
+</section>
+
+<!-- 📦 CARD POOL -->
+<section class="view" id="v-cardpool"><div class="pane" style="overflow:visible">
+  <h2 style="margin-top:0">📦 Card pool <small class="muted" id="cpTotal" style="font-weight:400"></small></h2>
+  <p class="help">Every card pack you own. Each pack you have is one fighter in 🃏 Card battles (5 packs of one kind = 5 fighters), unless a card battle is set to 1 of each. When a pack wins, one comes off its count (you open it). Nothing here is ever deleted: 🙈 only hides a pack.</p>
+  <div class="row" style="gap:8px;flex-wrap:wrap"><input id="cpSearch" class="grow" style="min-width:240px" placeholder="Search card packs (e.g. Surging Sparks booster pack, One Piece OP-09 booster)…" onkeydown="if(event.key==='Enter')cpFind()"><button class="primary" onclick="cpFind()">🔍 Search</button><button onclick="cpOwn()" title="Add a pack that isn't in the search: type its name and pick a picture">➕ Add my own pack</button></div>
+  <div id="cpResults" style="margin-top:10px"></div>
+  <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center"><h3 style="margin:0" class="grow">🃏 My packs</h3><select id="cpGame" style="width:auto" onchange="renderCardPool()"></select><label class="ck"><input type="checkbox" id="cpShowAll" onchange="renderCardPool()"> <span>Show opened + hidden packs</span></label></div>
+  <div class="packGrid" id="cpMine" style="margin-top:8px"></div>
+</div></section>
+
+<dialog id="cbDlg"><div class="inner">
+  <h3 style="margin-top:0" id="cbTitle">🃏 Card battle</h3>
+  <label>Name</label><input id="cbName" placeholder="e.g. Pokémon night">
+  <label style="margin-top:10px">Which packs fight</label>
+  <select id="cbMode"><option value="all">Every pack I own (5 of one pack = 5 fighters)</option><option value="one">Just 1 of each pack</option></select>
+  <label style="margin-top:10px">Which games (none ticked = every game)</label>
+  <div id="cbGames" class="row" style="gap:6px;flex-wrap:wrap"></div>
+  <div class="row" style="gap:8px;justify-content:flex-end;margin-top:14px"><button class="ghost" id="cbDel" onclick="cbRemove()">🗑 Remove this card battle</button><span class="grow"></span><button class="ghost" onclick="$('cbDlg').close()">Cancel</button><button class="primary" onclick="cbSave()">💾 Save</button></div>
+</div></dialog>
+
+<dialog id="cpOwnDlg"><div class="inner">
+  <h3 style="margin-top:0">➕ Add my own pack</h3>
+  <label>Pack name</label><input id="cpoName" placeholder="e.g. Mystery Booster">
+  <label style="margin-top:8px">Game</label><input id="cpoGame" list="cpGames" placeholder="e.g. Pokémon"><datalist id="cpGames"></datalist>
+  <label style="margin-top:8px">How many I have</label><input id="cpoCount" type="number" min="1" value="1" style="width:100px">
+  <label style="margin-top:8px">Picture (a link to a picture, or choose a file)</label>
+  <div class="row" style="gap:6px"><input id="cpoImg" class="grow" placeholder="https://… picture link"><button onclick="$('cpoFile').click()">📂 Choose a file…</button><input type="file" id="cpoFile" accept="image/*" style="display:none" onchange="cpoUpload(this.files[0])"></div>
+  <div class="row" style="gap:8px;justify-content:flex-end;margin-top:14px"><button class="ghost" onclick="$('cpOwnDlg').close()">Cancel</button><button class="primary" onclick="cpoSave()">➕ Add</button></div>
+</div></dialog>
+
 <section class="view" id="v-pool">
   <div class="pane card">
     <h2>Battles</h2>
@@ -684,6 +768,11 @@
     <h3>📺 Capture window (OBS)</h3>
     <p class="help">Shows your capture window in the top-left corner of the live OBS scene for 5 seconds, then hides it again. OBS must be open and set up in Settings → 🎥 OBS. Pick the window with ⚙ next to 📺 on the Battle tab.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="capTest()">📺 Show it for 5 seconds</button><button onclick="capOpen()">⚙ Pick the window</button></div>
+  </div>
+  <div class="card">
+    <h3>🃏 Card battle tests</h3>
+    <p class="help">Pretend card packs fight in Kung Fu Town (on stream). Nothing in your 📦 Card pool changes. Turn wacky settings on or off on the 🃏 Card battles tab, or with the buttons here.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cardTest(8)">🥋 Pretend fight (8 packs)</button><button onclick="cardTest(30)">🥋 Big pretend fight (30 packs)</button><button onclick="cardTest(8,['gore'])">🩸 Gore fight</button><button onclick="cardTest(12,['lowgrav','teleport','weapons','boom'])">🤪 Wacky fight</button><button class="ghost" onclick="cardsApi('/api/cards/stop')">⏹ Stop it</button></div>
   </div>
   <div class="card">
     <h3>⚡ Pretend channel points / bits</h3>
@@ -923,6 +1012,9 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['b-new', 'battle', '➕ New battle', '', () => newList()],
   ['b-resetE', 'battle', '↺ Reset entries', '', () => kbClick('#v-battle', /Reset entries/, 'Reset entries')],
   ['b-resetB', 'battle', '↺ Reset battlefield', '', () => kbClick('#v-battle', /Reset battlefield/, 'Reset battlefield')],
+  ['c-fight', 'cards', '🥋 Card battle: FIGHT! / stop', 'G', () => kbClick('#v-cards', /FIGHT/, 'FIGHT')],
+  ['c-full', 'cards', '⛶ Card battle fullscreen', 'F', () => kbClick('#v-cards', /Fullscreen/, 'Fullscreen')],
+  ['c-wackyoff', 'cards', '🤪 Every wacky setting off', '', () => kbClick('#v-cards', /All off/, 'All off')],
   ['b-capture', 'battle', '📺 Capture window on / off', '', () => kbClick('#v-battle', /Capture window:/, 'Capture window')],
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((k, i) => [`b-pow${i + 1}`, 'battle', `⚡ Power #${i + 1} in the Powers row`, String(k), () => kbPower(i)]),
   ['p-new', 'pool', '➕ New battle', 'N', () => newList()],
@@ -1138,7 +1230,7 @@ const CK_META = { // key: [category, version it came in]
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
   discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
-  announce: ['chat', '1.30.7'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], capture: ['screen', '1.30.7'], spell: ['screen', '1.30.7'], armyHurt: ['battles', '1.30.7'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  announce: ['chat', '1.30.7'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], capture: ['screen', '1.30.7'], cardPool: ['battles', '1.31.0'], cardFight: ['battles', '1.31.0'], cardWacky: ['battles', '1.31.0'], cardLink: ['wheel', '1.31.0'], winModes: ['screen', '1.31.0'], gfxAdv: ['screen', '1.31.0'], spell: ['screen', '1.30.7'], armyHurt: ['battles', '1.30.7'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1154,7 +1246,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen']];
+  const map = [[/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1198,6 +1290,12 @@ function drawChecklist() {
     ['prices', '💰 Every reward, bits and donation amount in one place (Settings → 💰 Rewards & prices): change a price, pause one, make it always on or off after one use', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">See it</button>`],
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
+    ['cardPool', '📦 Card pool: search a card pack, add how many you have (its picture downloads by itself), or ➕ Add my own pack', `<button class="ghost" style="padding:3px 9px" onclick="setView('cardpool')">Try it</button>`],
+    ['cardFight', '🃏 Card battles: packs with arms, legs and faces fight in Kung Fu Town with health bars and blood; the winner comes off its count (try a pretend fight first)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(8)">Try it</button>`],
+    ['cardWacky', '🤪 Card battle wacky settings: turn on low gravity, extreme gore, teleport switches… before or during a fight (keys 1–9 in fullscreen)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Try it</button>`],
+    ['cardLink', '⚡🔀 Wheel spot type Auto + Link: lands, pauses the timer and goes straight to another wheel, a battle or a card battle (⚙ spot settings → 🔀)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel')">Try it</button>`],
+    ['winModes', '🖥️ Window mode: Window, Fullscreen window or Fullscreen (Settings → Graphics)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setTimeout(()=>setSub('gfx'),100)">Try it</button>`],
+    ['gfxAdv', '🔬 Advanced graphics: render scale, particles, screen shake, glows, flashes, smooth pictures (Settings → Graphics)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setTimeout(()=>setSub('gfx'),100)">Try it</button>`],
     ['capture', '📺 Capture window: ⚙ next to 📺 on the Battle tab, pick your browser window, then 📺 shows it small in the top-left of your OBS scene (press again to hide)', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle');setTimeout(capOpen,300)">Try it</button>`],
     ['spell', '✍️ Spell check: type a misspelled word in a text box (like a wheel spot name): it gets a red squiggle; right-click it for fixes', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel')">Try it</button>`],
     ['armyHurt', '⚔️ Battlefield map: pieces that run into the army take damage (a few bumps and they\'re knocked out)', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">See it</button>`],
@@ -1253,7 +1351,7 @@ function drawChecklist() {
 }
 // put the typing cursor at the end (number boxes can't do that: skip them instead of crashing)
 function caretEnd(el) { try { if (el && /^(text|search|url|tel|password|textarea|)$/.test(el.type || '')) el.setSelectionRange(el.value.length, el.value.length); } catch {} }
-const SCREEN_TESTS = /^\/api\/(lists\/numbers|test\/(wheel-boost|donation|alert|discord-battle|chat-join|sitout|everyone-in|claim-chat|chat|wheel-land|doom-preview|power|wheel-redeem|wheel-redeem-raw|redeem|cheer|battle))(\?|$)/;
+const SCREEN_TESTS = /^\/api\/(cards\/start|lists\/numbers|test\/(wheel-boost|donation|alert|discord-battle|chat-join|sitout|everyone-in|claim-chat|chat|wheel-land|doom-preview|power|wheel-redeem|wheel-redeem-raw|redeem|cheer|battle))(\?|$)/;
 async function api(url, body, method = 'POST') {
   if (method === 'POST' && view !== 'battle' && SCREEN_TESTS.test(url) && (url.startsWith('/api/test/') || view === 'test')) peek(true); // a test that changes the stream screen? show it (other tests and checks don't pop it up)
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -1270,7 +1368,7 @@ function connect() {
     if (m.type === 'toast') toast(esc(m.text));
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
-    if (m.type === 'goView' && (view === 'wheel' || view === 'battle') && view !== m.view) setView(m.view); // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
+    if (m.type === 'goView' && (view === 'wheel' || view === 'battle' || view === 'cards') && view !== m.view) setView(m.view); // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
     if (m.type === 'botSay') pcLog('bot', 'Movie Royal', m.text);
     if (m.type === 'raidPicked') raidPop({ ...m.raid, by: m.raid.name || m.raid.by });
     if (m.type === 'errorLogged') { clearTimeout(window.errT); window.errT = setTimeout(loadErrors, 800); }
@@ -1314,8 +1412,8 @@ function gfxTell(state, force) { if (state === gfxState && !force) return; gfxSt
 function placeStage() {
   const st = $('stage');
   if (document.fullscreenElement === st) return gfxTell('full');
-  if (view === 'battle') {
-    const r = $('stageSize').getBoundingClientRect();
+  if (view === 'battle' || view === 'cards') {
+    const r = $(view === 'cards' ? 'cStageSize' : 'stageSize').getBoundingClientRect();
     st.classList.remove('mini', 'hide');
     Object.assign(st.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', right: '', bottom: '' });
   } else if (peekOn && !(view === 'wheel' && S?.wheelShow)) { // the pop-up window that shows the stream screen while you test things (not on the Wheel tab while the wheel is on stream: you can see it there)
@@ -1328,8 +1426,8 @@ function placeStage() {
     st.classList.add('mini', 'hide'); // no little preview window on other tabs
     Object.assign(st.style, { left: '', top: '', width: '', height: '' });
   }
-  if (view === 'battle' || !peekOn) st.classList.remove('peek');
-  gfxTell(view === 'battle' ? 'full' : st.classList.contains('hide') ? 'hidden' : 'small');
+  if (view === 'battle' || view === 'cards' || !peekOn) st.classList.remove('peek');
+  gfxTell(view === 'battle' || view === 'cards' ? 'full' : st.classList.contains('hide') ? 'hidden' : 'small');
 }
 $('game').addEventListener('load', () => gfxTell(gfxState || 'full', true));
 let peekOn = false;
@@ -1383,7 +1481,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.f
 // the power bar in fullscreen shows up when you move the mouse (or press a number key), then fades away so it's not on stream
 let fsT;
 window.__stageActivity = () => { const st = $('stage'); if (document.fullscreenElement !== st) return; st.classList.add('bar'); clearTimeout(fsT); fsT = setTimeout(() => st.classList.remove('bar'), 2500); };
-window.__power = i => { const b = [...document.querySelectorAll('#fsPowers button')][i]; if (!b) return; b.click(); window.__stageActivity(); toast('⚡ ' + esc(b.textContent.trim())); };
+window.__power = i => { const b = [...document.querySelectorAll(view === 'cards' ? '#fsWacky button' : '#fsPowers button')][i]; if (!b) return; b.click(); window.__stageActivity(); toast('⚡ ' + esc(b.textContent.trim())); };
 $('stage').addEventListener('mousemove', () => window.__stageActivity());
 // drag the power bar anywhere (remembered for next time)
 (() => {
@@ -1452,6 +1550,69 @@ async function annToggle(on) {
   try { const r = await api('/api/announce', { on }); toast(on ? (r.error ? '⚠️ ' + esc(r.error) : `📣 Posted in chat (${esc(ANN_NAMES[r.kind] || '')}). Every ${S.announceMins || 60} minutes it posts the message for the tab you're on, until you turn it off or end the stream.`) : '📣 Stopped.', 7000); } catch {}
 }
 async function annEdit(kind) { const r = await api('/api/announce', { kind, preview: true }); if (confirm(`This goes in chat:\n\n${r.text}\n\nChange the words, how often, or your Discord link in Settings → Twitch → 📣 Chat messages. Go there now?`)) { setView('settings'); setTimeout(() => { setSub('twitch'); setTimeout(() => document.getElementById('annSet')?.scrollIntoView({ block: 'start' }), 150); }, 60); } }
+// ---------- 🃏 card battles + 📦 card pool ----------
+const cardsApi = (url, body = {}) => api(url, body).catch(() => null);
+const packImg = (src, cls = '') => src ? `<img class="${cls}" src="${esc(src)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'">` : `<div class="ph ${cls}" style="display:flex;align-items:center;justify-content:center;font-size:28px">🃏</div>`;
+function wackyButtons() { const c = S.cards; if (!c) return ''; return Object.entries(c.wackyList).map(([k, w]) => `<button class="${c.wacky[k] ? 'on' : ''}" title="${esc(w.desc)}. Click to turn it ${c.wacky[k] ? 'off' : 'on'} (works before or during the fight)." onclick="cardsApi('/api/cards/wacky',{key:'${k}',on:${!c.wacky[k]}})">${esc(w.name)}${c.wacky[k] ? ' ✓' : ''}</button>`).join(''); }
+function renderCards() {
+  const c = S.cards; if (!c) return;
+  const sel = $('cBattleSel'), opts = c.battles.map(b => `<option value="${b.id}" ${b.id === c.activeId ? 'selected' : ''}>${esc(b.name)}</option>`).join('');
+  if (sel.dataset.k !== opts) { sel.dataset.k = opts; sel.innerHTML = opts; }
+  const b = c.battles.find(x => x.id === c.activeId) || c.battles[0];
+  const mo = c.maps.map(m => `<option value="${m.id}" ${m.id === b.map ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join(''); if ($('cMapSel').dataset.k !== mo) { $('cMapSel').dataset.k = mo; $('cMapSel').innerHTML = mo; }
+  const wb = wackyButtons(); if ($('cWackyBar').innerHTML !== wb) $('cWackyBar').innerHTML = wb;
+  const L = c.live, fighting = L.phase === 'fight';
+  $('cStartBtn').textContent = fighting ? '⏹ STOP FIGHT' : '🥋 FIGHT!'; $('cStartBtn').className = fighting ? 'big' : 'primary big';
+  $('cCount').textContent = fighting ? `${L.n} packs fighting${L.test ? ' (pretend)' : ''}` : `${c.inBattle} pack${c.inBattle === 1 ? '' : 's'} ready · ${b.mode === 'one' ? '1 of each' : 'every pack'}${b.games?.length ? ' · ' + b.games.join(', ') : ''}${c.cut ? ` · only ${c.inBattle} fit (${c.cut} sit out at random)` : ''}`;
+  const packs = c.pool.filter(p => p.status === 'active' && p.count > 0 && (!b.games?.length || b.games.includes(p.game || 'Other')));
+  const inH = packs.length ? packs.map(p => `<div class="cf" title="${esc(p.name)} · ${esc(p.game)}">${packImg(p.image)}${b.mode === 'one' ? '' : '×' + p.count}</div>`).join('') : '<span class="muted">No packs yet: add them in 📦 Card pool.</span>';
+  if ($('cIn').innerHTML !== inH) $('cIn').innerHTML = inH;
+  const last = L.last, wc = $('cWinCard');
+  wc.style.display = last && L.phase === 'ended' ? '' : 'none';
+  if (last && L.phase === 'ended') { const h = `<div class="winner">${packImg(last.image)}<div class="t">🏆 ${esc(last.name)}</div><div class="muted">${last.test ? 'Pretend fight: nothing changed' : `Open it! ${last.leftAfter != null ? `${last.leftAfter} left in your pool` : ''}`}</div></div>`; if (wc.innerHTML !== h) wc.innerHTML = h; }
+  const hh = c.history.length ? c.history.slice(0, 10).map(r => `<div class="row" style="gap:6px;margin:3px 0"><span>🏆</span><span class="grow">${esc(r.name)} <small class="muted">${esc(r.game || '')}</small></span><small class="muted">${new Date(r.at).toLocaleDateString()}</small></div>`).join('') : '<span class="muted">No card battles yet.</span>';
+  if ($('cHist').innerHTML !== hh) $('cHist').innerHTML = hh;
+}
+async function cardsStart() {
+  const L = S.cards?.live; if (L?.phase === 'fight') return cardsApi('/api/cards/stop');
+  const r = await cardsApi('/api/cards/start'); if (r?.cut) toast(`🃏 Only ${r.n} packs fit in one fight: ${r.cut} sit this one out (picked at random).`);
+}
+function cbEdit(isNew) {
+  const c = S.cards, b = isNew ? { id: '', name: '', games: [], mode: 'all' } : c.battles.find(x => x.id === c.activeId);
+  $('cbTitle').textContent = isNew ? '🃏 New card battle' : '⚙ Edit card battle'; $('cbDlg').dataset.id = b.id;
+  $('cbName').value = b.name; $('cbMode').value = b.mode || 'all'; $('cbDel').style.display = isNew || c.battles.length < 2 ? 'none' : '';
+  $('cbGames').innerHTML = c.games.length ? c.games.map(g => `<label class="ck"><input type="checkbox" value="${esc(g)}" ${b.games?.includes(g) ? 'checked' : ''}> <span>${esc(g)}</span></label>`).join('') : '<span class="muted">Add packs in 📦 Card pool first.</span>';
+  $('cbDlg').showModal();
+}
+async function cbSave() { const id = $('cbDlg').dataset.id; await cardsApi('/api/cards/battle', { ...(id ? { id } : {}), name: $('cbName').value || '🃏 Card battle', mode: $('cbMode').value, games: [...$('cbGames').querySelectorAll('input:checked')].map(i => i.value) }); $('cbDlg').close(); }
+async function cbRemove() { if (!confirm('Remove this card battle? (Your packs stay in the Card pool.)')) return; await cardsApi('/api/cards/battle/remove', { id: $('cbDlg').dataset.id }); $('cbDlg').close(); }
+let cpLast = [];
+async function cpFind() {
+  const q = $('cpSearch').value.trim(); if (q.length < 2) return;
+  $('cpResults').innerHTML = '<p class="help">🔍 Searching…</p>';
+  try { const r = await api('/api/cards/search', { q }); cpLast = r.results;
+    $('cpResults').innerHTML = cpLast.length ? `<div class="packGrid">${cpLast.map((x, i) => `<div class="packCard">${packImg(x.image)}<div class="nm" title="${esc(x.name)}">${esc(x.name)}</div><div class="gm">${esc(x.game)}${x.set ? ' · ' + esc(x.set) : ''}${x.price ? ` · ~$${x.price.toFixed(2)}` : ''}</div><div class="cnt"><input type="number" min="1" value="1" id="cpN${i}" title="How many of this pack you have"><button class="primary" onclick="cpAdd(${i})">➕ Add</button></div></div>`).join('')}</div><div class="row" style="margin-top:6px"><button class="ghost" onclick="$('cpResults').innerHTML=''">✕ Close the results</button></div>` : '<p class="help">Nothing found. Try other words (the set name + "booster pack"), or ➕ Add my own pack.</p>';
+  } catch (e) { $('cpResults').innerHTML = `<p class="help" style="color:var(--bad)">⚠️ The pack search didn't work (${esc(e.message || '')}). You can still ➕ Add my own pack with a picture.</p>`; }
+}
+async function cpAdd(i) { const x = cpLast[i], n = Math.max(1, Number($('cpN' + i)?.value) || 1); const r = await cardsApi('/api/cards/add', { ...x, count: n }); if (r) toast(`📦 ${r.more ? 'Added' : 'New pack:'} ${n} × ${esc(x.name)}${r.more ? ` (you have ${r.pack.count} now)` : ''}`); }
+function cpOwn() { $('cpoName').value = ''; $('cpoGame').value = ''; $('cpoCount').value = 1; $('cpoImg').value = ''; $('cpGames').innerHTML = (S.cards?.games || []).map(g => `<option value="${esc(g)}">`).join(''); $('cpOwnDlg').showModal(); }
+async function cpoUpload(f) { if (!f) return; const r = await fetch('/api/cards/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()).catch(() => null); if (r?.url) { $('cpoImg').value = r.url; toast('🖼️ Picture added'); } }
+async function cpoSave() { const r = await cardsApi('/api/cards/add', { name: $('cpoName').value, game: $('cpoGame').value, count: $('cpoCount').value, image: $('cpoImg').value }); if (r) { $('cpOwnDlg').close(); toast('📦 Added ' + esc(r.pack.name)); } }
+const cpSet = (id, ch) => cardsApi('/api/cards/pack', { id, ...ch });
+function renderCardPool() {
+  const c = S.cards; if (!c) return;
+  const gs = `<option value="">All games</option>` + c.games.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join(''), gsel = $('cpGame'), keep = gsel.value;
+  if (gsel.dataset.k !== gs) { gsel.dataset.k = gs; gsel.innerHTML = gs; gsel.value = keep; }
+  const all = $('cpShowAll').checked, g = gsel.value;
+  const list = c.pool.filter(p => (all || p.status === 'active') && (!g || p.game === g)).sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || a.game.localeCompare(b.game) || a.name.localeCompare(b.name));
+  const live = c.pool.filter(p => p.status === 'active'), total = live.reduce((n, p) => n + p.count, 0);
+  $('cpTotal').textContent = `· ${total} pack${total === 1 ? '' : 's'} (${live.length} kind${live.length === 1 ? '' : 's'})`;
+  const h = list.length ? list.map(p => `<div class="packCard ${p.status !== 'active' ? p.status : ''}">${packImg(p.image)}<div class="nm" title="${esc(p.name)}">${esc(p.name)}</div><div class="gm">${esc(p.game)}${p.set ? ' · ' + esc(p.set) : ''}${p.opened ? ` · 📦 ${p.opened} opened` : ''}${p.status === 'used' ? ' · none left' : p.status === 'hidden' ? ' · 🙈 hidden' : ''}</div>
+    <div class="cnt"><button class="ghost" title="One less" onclick="cpSet('${p.id}',{count:${Math.max(0, p.count - 1)}})">−</button><input type="number" min="0" value="${p.count}" title="How many of this pack you have" onchange="cpSet('${p.id}',{count:this.value})"><button class="ghost" title="One more" onclick="cpSet('${p.id}',{count:${p.count + 1}})">+</button></div>
+    <div class="row" style="gap:4px">${p.status === 'hidden' ? `<button class="ghost grow" onclick="cpSet('${p.id}',{hide:false})" title="Bring this pack back">▶ Bring back</button>` : `<button class="ghost grow" onclick="cpSet('${p.id}',{hide:true})" title="Hide this pack (it is never deleted)">🙈 Hide</button>`}<button class="ghost" title="Change the picture" onclick="cpPic('${p.id}')">🖼️</button></div></div>`).join('') : `<p class="help">${c.pool.length ? 'No packs to show here.' : 'No packs yet: search for one above, or ➕ Add my own pack.'}</p>`;
+  if ($('cpMine').innerHTML !== h) $('cpMine').innerHTML = h;
+}
+async function cpPic(id) { const v = await ask('Link to a picture of this pack (or leave it empty for no picture):', S.cards.pool.find(p => p.id === id)?.image || ''); if (v !== null && v !== undefined) cpSet(id, { image: String(v).trim() }); }
 // 📺 capture window (Battle tab): a small OBS window capture in the top-left of the stream
 function capHTML() {
   const c = S.capture || {};
@@ -1477,7 +1638,9 @@ async function capList() {
     $('capMsg').textContent = r.windows.length ? `${r.windows.length} windows open. Pick your browser (open the YouTube video in it first).` : 'OBS listed no windows.';
   } catch (e) { $('capMsg').textContent = '⚠️ ' + (e.message || 'Could not reach OBS') + ' (Settings → 🎥 OBS)'; }
 }
+async function cardTest(n, wacky = []) { await cardsApi('/api/cards/stop'); if (wacky.length) { await cardsApi('/api/cards/wacky', { allOff: true }); for (const k of wacky) await cardsApi('/api/cards/wacky', { key: k, on: true }); } const r = await cardsApi('/api/cards/start', { test: true, n }); if (r) toast(`🃏 Pretend card battle: ${n} packs${wacky.length ? ' + wacky settings' : ''}. Nothing in your pool changes.`); }
 async function capTest() { try { await api('/api/capture', { on: true }); toast('📺 Showing in OBS for 5 seconds…'); setTimeout(() => api('/api/capture', { on: false }).catch(() => {}), 5000); } catch {} }
+async function winMode(v) { try { await api('/api/window', { action: v }); } catch {} }
 async function capSave() {
   try { await api('/api/capture/settings', { window: $('capWin').value, size: Number($('capSize').value), autoHide: $('capAuto').checked }); $('capDlg').close(); toast('📺 Saved.'); } catch {}
 }
@@ -1486,8 +1649,12 @@ function renderView() {
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
   { const el = $('capRow'), h = capHTML(); if (el && el.innerHTML !== h) el.innerHTML = h; }
+  { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { const h = wackyButtons(); if ($('fsWacky').innerHTML !== h) $('fsWacky').innerHTML = h; $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
+  { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
   if (view === 'pool') renderPool();
+  else if (view === 'cards') renderCards();
+  else if (view === 'cardpool') renderCardPool();
   else if (view === 'chat') renderChat();
   else if (view === 'giveaway') renderGiveaway();
   else if (view === 'wheel') renderWheel(true);
@@ -2251,7 +2418,7 @@ function renderWheel(fromState) {
   wSpotDlgSync();
 }
 function wPct(w) { const on = w.entries.filter(e => e.on !== false && e.weight > 0), tot = on.reduce((a, e) => a + Number(e.weight), 0) || 1; return e => e.on !== false && e.weight > 0 ? Math.round(e.weight / tot * 1000) / 10 : 0; }
-const TYPE_HELP = { timer: 'A normal spot. The round timer keeps going and you get a 🔁 respin button.', auto: 'The round timer pauses. Do the thing, then spin again and the timer carries on. Shows (auto) on the wheel.', countdown: 'Has to be landed on more than once: each landing takes one off and the round timer pauses until you spin again. At 0 it leaves the wheel on the next spin. Shows how many are left in ( ) on the wheel.', timercount: 'A timer spot (the clock keeps going) with a countdown: every time it WINS (the round timer runs out on it), one comes off. At 0 it goes invisible on the next spin. Shows how many are left in ( ) on the wheel.', timermax: 'A timer spot (the clock keeps going) that can only win so many times a night. Once it has won that many times it goes invisible on the next spin, and comes back next stream. Shows how many wins are left in ( ) on the wheel.' };
+const TYPE_HELP = { autolink: 'An ⚡ auto spot that always links somewhere: when it lands, the round timer pauses and Movie Royal goes straight to the wheel, battle or card battle you pick under 🔀 (⚙ spot settings). When that one has its winner, it comes back here and the timer waits until you spin again. Shows (auto) on the wheel.', timer: 'A normal spot. The round timer keeps going and you get a 🔁 respin button.', auto: 'The round timer pauses. Do the thing, then spin again and the timer carries on. Shows (auto) on the wheel.', countdown: 'Has to be landed on more than once: each landing takes one off and the round timer pauses until you spin again. At 0 it leaves the wheel on the next spin. Shows how many are left in ( ) on the wheel.', timercount: 'A timer spot (the clock keeps going) with a countdown: every time it WINS (the round timer runs out on it), one comes off. At 0 it goes invisible on the next spin. Shows how many are left in ( ) on the wheel.', timermax: 'A timer spot (the clock keeps going) that can only win so many times a night. Once it has won that many times it goes invisible on the next spin, and comes back next stream. Shows how many wins are left in ( ) on the wheel.' };
 let wOpen = null, wAddType = 'timer', wAddOpt = {};
 function typeFields(e, i) { // the settings that go with each kind of spot (i = row index, or 'new' for the add row)
   const on = (k, v) => i === 'new' ? `wAddOpt.${k}=${v}` : `wEnt(${i},{${k}:${v}})`;
@@ -2261,12 +2428,12 @@ function typeFields(e, i) { // the settings that go with each kind of spot (i = 
   if (t === 'timermax') return `<label>Max wins a night <input type="number" min="1" style="width:70px" value="${e.maxWins ?? 1}" onchange="${on('maxWins', 'Number(this.value)')}"></label>${i === 'new' ? '' : ` <label>Won tonight <input type="number" min="0" style="width:70px" value="${e.wins ?? 0}" onchange="wEnt(${i},{wins:Number(this.value)})"></label>`}`;
   return '';
 }
-const spotLabel = e => e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, (e.maxWins ?? 1) - (e.wins || 0))} left)` : e.type === 'auto' ? `${e.text} (auto)` : '';
+const spotLabel = e => e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, (e.maxWins ?? 1) - (e.wins || 0))} left)` : /^auto/.test(e.type) ? `${e.text} (auto)` : '';
 const typeSel = (val, onch) => `<select style="width:auto" onchange="${onch}">${Object.entries(WD.types).filter(([v]) => v !== 'void').map(([v, n]) => `<option value="${v}" ${v === (val || 'timer') ? 'selected' : ''}>${n}</option>`).join('')}</select>`; // (also used by the spot settings window)
 function drawSpots() {
   const w = wCur(), pct = wPct(w), pal = w.palette || WD.palette; let k = 0;
   const autoCol = e => e.on !== false && e.weight > 0 ? pal[(k++) % pal.length] : '#777777';
-  const badge = e => !w.opts.rules ? '' : e.type === 'countdown' || e.type === 'timercount' ? `🔢 ${e.count}/${e.countStart}` : e.type === 'timermax' ? `🏆 ${e.wins || 0}/${e.maxWins ?? 1} tonight` : e.type === 'auto' ? '⚡ auto' : '';
+  const badge = e => !w.opts.rules ? '' : e.type === 'countdown' || e.type === 'timercount' ? `🔢 ${e.count}/${e.countStart}` : e.type === 'timermax' ? `🏆 ${e.wins || 0}/${e.maxWins ?? 1} tonight` : /^auto/.test(e.type) ? '⚡ auto' : '';
   $('wBody').innerHTML = `<div class="row" style="gap:8px;flex-wrap:wrap"><label class="grow">Wheel name<input value="${esc(w.name)}" onchange="wPut({name:this.value})"></label><label class="grow">Title on stream (optional)<input value="${esc(w.title || '')}" placeholder="${esc(w.name)}" onchange="wPut({title:this.value})"></label>
       <label>📁 Folder<select style="width:auto" onchange="if(this.value==='+new'){wNewFolder(true)}else{wPut({folder:this.value},true);wFolder=this.value;wKey='';setTimeout(renderWheel,50)}"><option value="">No folder</option>${(WD.folders || []).map(f => `<option ${f === (w.folder || '') ? 'selected' : ''}>${esc(f)}</option>`).join('')}<option value="+new">➕ New folder…</option></select></label></div>
     ${w.opts.rules ? '' : `<p class="help" style="color:#ffd98a">🎡 Plain wheel: rules are off (no timer, auto or countdown spots, no void). Turn them back on in ⚙️ Wheel settings.</p>`}
@@ -2279,7 +2446,7 @@ function drawSpots() {
       <table class="went" id="wEntTable" style="width:100%"><thead><tr><th title="Drag ⠿ to move a spot up or down the list"></th><th title="👁️ showing on the wheel / 🙈 invisible (off the wheel, still in this list). Click to switch.">👁️</th><th>🎨</th><th style="text-align:left">Spot</th><th title="Size: 2 = twice as big">Size</th><th>%</th><th style="text-align:left">Rule</th><th></th></tr></thead><tbody>
       ${w.entries.map((e, i) => `<tr data-i="${i}" class="${e.on === false || !e.weight || e.voided ? 'off' : ''}"><td class="wgrip" title="Drag to move this spot">⠿</td><td>${e.voided ? `<button class="ghost" title="Taken off by the void tonight. Press to bring it back." onclick="wUnvoid('${e.id}','${w.id}')">🙈</button>` : e.on !== false ? `<button class="ghost wEye" title="Showing on the wheel. Press to make it invisible (it stays in this list)." onclick="wEnt(${i},{on:false})">👁️</button>` : `<button class="ghost wEye hid" title="Invisible: not on the wheel. Press to show it again." onclick="wEnt(${i},{on:true})">🙈</button>`}</td>
         <td><input type="color" value="${e.color || autoCol(e)}" title="${e.color ? 'Custom color (right-click to reset)' : 'Auto color'}" onchange="wEnt(${i},{color:this.value})" oncontextmenu="event.preventDefault();wEnt(${i},{color:null})"></td>
-        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.goTo ? `<small class="muted" title="When this spot wins it goes there, then comes back">🔀 → ${e.goTo.kind === 'wheel' ? '🎡 ' + esc(WD.wheels.find(x => x.id === e.goTo.id)?.name || '?') : '⚔️ ' + esc((S.lists || []).find(l => l.id === e.goTo.id)?.name || '?')}</small>` : ''}${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
+        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.goTo ? `<small class="muted" title="When this spot wins it goes there, then comes back">🔀 → ${goToName(e.goTo)}</small>` : e.type === 'autolink' ? '<small style="color:#ff8a7a">⚠️ pick where it links (⚙)</small>' : ''}${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
         <td style="white-space:nowrap">${e.type === 'void' ? `<button class="ghost" title="Shrink the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><span class="muted" title="Chat can only change the void with money (subs, gift subs, bits, donations). You can always change it." style="padding:0 6px">💵 / you</span><button class="ghost" title="Grow the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
         <td style="min-width:140px">${e.type === 'void' ? '<b>🕳️ Void</b>' : !w.opts.rules ? '<span class="muted" title="Rules are off for this wheel (⚙️ Wheel settings)">plain</span>' : `${typeSel(e.type, `wEnt(${i},{type:this.value${e.type !== 'countdown' && e.type !== 'timercount' ? `,count:${e.countStart ?? 3},countStart:${e.countStart ?? 3}` : ''}})`)}${e.type === 'countdown' || e.type === 'timercount' ? `<div><small class="muted">${e.count}/${e.countStart} left</small></div>` : e.type === 'timermax' ? `<div><small class="muted">won ${e.wins || 0}/${e.maxWins ?? 1} tonight</small></div>` : ''}`}${e.rule ? `<div class="muted" style="font-size:12px;max-width:220px;white-space:normal" title="${esc(e.rule)}">📜 ${esc(e.rule.length > 60 ? e.rule.slice(0, 60) + '…' : e.rule)}</div>` : ''}</td>
         <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost danger" title="Take it off the wheel (it goes invisible and stays in this list)" onclick="wDel(${i})">✕</button></td></tr>
@@ -2288,17 +2455,19 @@ function drawSpots() {
       <p class="help">${w.entries.filter(e => e.on !== false).length} spots on the wheel${w.entries.some(e => e.on === false) ? ` · ${w.entries.filter(e => e.on === false).length} invisible` : ''}${w.entries.some(e => e.voided) ? ` · ${w.entries.filter(e => e.voided).length} voided tonight` : ''}. + / − makes a spot ${w.opts.growPct || 10}% of the wheel bigger or smaller (the other spots make room). ⚙ has the spot's type, respin rules, picture and sound. Changes save by themselves.</p>`}`;
 }
 // 🔀 when this spot wins: spin another wheel, or play a battle, then come back to this wheel
+const goToName = g => g.kind === 'wheel' ? '🎡 ' + esc(WD.wheels.find(x => x.id === g.id)?.name || '?') : g.kind === 'cards' ? '🃏 ' + esc((S.cards?.battles || []).find(c => c.id === g.id)?.name || '?') : '⚔️ ' + esc((S.lists || []).find(l => l.id === g.id)?.name || '?');
 function goToHTML(w, e, i) {
   const g = e.goTo, val = g ? g.kind + ':' + g.id : '';
   const wheels = WD.wheels.filter(x => x.id !== w.id), lists = (S.lists || []);
-  const missing = g && !(g.kind === 'wheel' ? WD.wheels.some(x => x.id === g.id) : lists.some(l => l.id === g.id));
+  const missing = g && !(g.kind === 'wheel' ? WD.wheels.some(x => x.id === g.id) : g.kind === 'cards' ? (S.cards?.battles || []).some(c => c.id === g.id) : lists.some(l => l.id === g.id));
   return `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0"><b>🔀 When this spot wins</b>
     <select style="width:auto;max-width:320px" onchange="wGoTo(${i}, this.value)"><option value="">nothing else</option>
       <optgroup label="🎡 Spin another wheel, then come back">${wheels.map(x => `<option value="wheel:${x.id}" ${val === 'wheel:' + x.id ? 'selected' : ''}>🎡 ${esc(x.name)}</option>`).join('')}</optgroup>
       <optgroup label="⚔️ Play a battle, then come back">${lists.map(l => `<option value="battle:${l.id}" ${val === 'battle:' + l.id ? 'selected' : ''}>⚔️ ${esc(l.name)}</option>`).join('')}</optgroup>
+      <optgroup label="🃏 Play a card battle, then come back">${(S.cards?.battles || []).map(c => `<option value="cards:${c.id}" ${val === 'cards:' + c.id ? 'selected' : ''}>🃏 ${esc(c.name)}</option>`).join('')}</optgroup>
       ${missing ? `<option value="${esc(val)}" selected>⚠️ (deleted)</option>` : ''}</select>
-    ${g?.kind === 'battle' ? `<label class="ck"><input type="checkbox" ${g.auto !== false ? 'checked' : ''} onchange="wEnt(${i},{goTo:{...wCur().entries[${i}].goTo, auto:this.checked}})"> <span>Start the battle by itself</span></label>` : ''}</div>
-    <p class="help" style="margin:0 0 8px">${g?.kind === 'wheel' ? 'When this spot wins, that wheel comes on stream and spins by itself. Once it has its winner, it comes back to this wheel.' : g?.kind === 'battle' ? 'When this spot wins, that battle comes on stream' + (g.auto !== false ? ' and starts by itself' : ' (press START)') + '. Once it has a winner (and the winner claims it, for movie battles), it comes back to this wheel.' : 'Link this spot to another wheel or a battle: it plays that, then comes back here. (With a round timer it happens when the timer runs out on this spot; with no round timer, as soon as it lands here.)'}</p>`;
+    ${g?.kind === 'battle' || g?.kind === 'cards' ? `<label class="ck"><input type="checkbox" ${g.auto !== false ? 'checked' : ''} onchange="wEnt(${i},{goTo:{...wCur().entries[${i}].goTo, auto:this.checked}})"> <span>Start the battle by itself</span></label>` : ''}</div>
+    <p class="help" style="margin:0 0 8px">${g?.kind === 'cards' ? 'When this spot wins, that card battle comes on stream' + (g.auto !== false ? ' and starts by itself' : ' (press FIGHT)') + '. Once it has a winner, it comes back to this wheel.' : g?.kind === 'wheel' ? 'When this spot wins, that wheel comes on stream and spins by itself. Once it has its winner, it comes back to this wheel.' : g?.kind === 'battle' ? 'When this spot wins, that battle comes on stream' + (g.auto !== false ? ' and starts by itself' : ' (press START)') + '. Once it has a winner (and the winner claims it, for movie battles), it comes back to this wheel.' : 'Link this spot to another wheel or a battle: it plays that, then comes back here. (With a round timer it happens when the timer runs out on this spot; with no round timer, as soon as it lands here.)'}</p>`;
 }
 function wGoTo(i, v) { const [kind, id] = String(v).split(':'); wEnt(i, { goTo: v ? { kind, id, auto: true } : null }); }
 function wGrow(i, d) { const w = wCur(), e = w.entries[i]; api('/api/wheel/grow', { entryId: e.id, amount: d, wheelId: w.id }).then(r => { toast(`${d > 0 ? '📈' : '📉'} “${esc(e.text)}” is now ${r.pct}% of the wheel.`); loadWheel().then(() => renderWheel()); }).catch(() => {}); }
@@ -2319,7 +2488,7 @@ async function wUndoMenu() {
 async function wUndoTo(id, n) { if (n > 1 && !confirm(`Go back ${n} steps?`)) return; try { await api('/api/wheel/undo', { id }); toast(`⏪ Went back ${n} step${n === 1 ? '' : 's'}.`); $('wUndoList').innerHTML = ''; await loadWheel(); renderWheel(); drawWheelResult(); } catch {} }
 function wPic(cb) { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,video/mp4,video/webm'; inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const r = await fetch('/api/wheel/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()); if (r.url) cb(r.url); }; inp.click(); }
 function wPut(body, now) { const w = wCur(); Object.assign(w, body); drawWheelPreview(); clearTimeout(wSaveT); wSaveT = setTimeout(async () => { wSaveT = null; await api('/api/wheel/' + w.id, { name: w.name, title: w.title, entries: w.entries, spinSecs: w.spinSecs, removeWinner: w.removeWinner, palette: w.palette, look: w.look, folder: w.folder || '' }, 'PUT'); wVer = -1; }, now ? 0 : 400); }
-function wEnt(i, ch) { const w = wCur(); Object.assign(w.entries[i], ch); wPut({}); if (!('text' in ch || 'rule' in ch)) { document.activeElement?.blur(); renderWheel(); } }
+function wEnt(i, ch) { const w = wCur(); Object.assign(w.entries[i], ch); if (ch.type === 'autolink' && !w.entries[i].goTo) { wOpen = w.entries[i].id; setTimeout(() => toast('🔀 Pick where this spot links to (another wheel, a battle or a card battle).'), 300); } /* ⚡🔀 auto + link: pick the link right away */ wPut({}); if (!('text' in ch || 'rule' in ch)) { document.activeElement?.blur(); renderWheel(); } }
 function wMoveTo(i, j) { const w = wCur(); if (i === j || j < 0 || j > w.entries.length) return; const [e] = w.entries.splice(i, 1); w.entries.splice(j > i ? j - 1 : j, 0, e); wPut({}); renderWheel(); }
 (() => { // drag ⠿ to move a spot, like sorting a YouTube playlist
   let drag = null;
@@ -2427,14 +2596,14 @@ function drawWheelResult() {
   }
   const type = rules ? (r.type || e.type || 'timer') : 'timer';
   let acts = '';
-  if (type === 'auto') acts += `<p class="help" style="margin:0">⚡ <b>Auto spot</b>: ${R ? 'the round timer is paused. ' : ''}Do it, then spin again${R ? ' and the timer carries on' : ''}.</p><div class="row" style="gap:6px">${respin}</div>`;
+  if (/^auto/.test(type)) acts += `<p class="help" style="margin:0">⚡ <b>Auto spot</b>: ${R ? 'the round timer is paused. ' : ''}Do it, then spin again${R ? ' and the timer carries on' : ''}.</p><div class="row" style="gap:6px">${respin}</div>`;
   else if (type === 'countdown') acts += `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><b>🔢 ${e.count} of ${e.countStart} left${e.count === 0 ? ' — leaves on the next spin' : ''}</b><button class="ghost" ${e.count <= 0 ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:-1}).then(loadWheel).then(drawWheelResult)">➖ Knock one off</button><button class="ghost" ${e.count >= e.countStart ? 'disabled' : ''} onclick="api('/api/wheel/knock',{delta:1}).then(loadWheel).then(drawWheelResult)">➕ Put one back</button></div>
     ${R ? '<p class="help" style="margin:0">⏸️ The round timer waits until you spin again.</p>' : ''}<div class="row" style="gap:6px">${respin}</div>`;
   else if (type !== 'void') acts += `<div class="row" style="gap:6px">${respin}</div>`;
   acts += linkBtn(r);
   const src = r.by?.source === 'points' ? ' 💜 points' : r.by?.source === 'bank' ? ' 🎟️ saved spin' : r.by?.source === 'mine' ? ' 🎟️ your spin' : r.by?.source === 'void' ? ' 🕳️ the void' : '';
   $('wResult').innerHTML = `<div class="wres" style="border-color:${esc(r.color)}"><div class="muted">${{ spin: '🎡 Landed on', respin: '🔁 Respin landed on', up: '⬆️ Moved up to', down: '⬇️ Moved down to' }[r.kind]} · ${esc(new Date(r.at).toLocaleTimeString())} · ${esc(r.by?.name || '')}${src}</div>
-    <div class="t">${esc(r.text)}${rules && type === 'auto' ? ' <span class="muted" style="font-size:16px">(auto)</span>' : ''}</div><div class="muted">🍀 ${r.pct}% of the wheel${r.from ? ` · was ${esc(r.from.text)}` : ''}${r.voided ? ' · 🕳️ voided for tonight' : ''}</div>${r.rule ? `<div class="r">📜 ${esc(r.rule)}</div>` : ''}
+    <div class="t">${esc(r.text)}${rules && /^auto/.test(type) ? ' <span class="muted" style="font-size:16px">(auto)</span>' : ''}</div><div class="muted">🍀 ${r.pct}% of the wheel${r.from ? ` · was ${esc(r.from.text)}` : ''}${r.voided ? ' · 🕳️ voided for tonight' : ''}</div>${r.rule ? `<div class="r">📜 ${esc(r.rule)}</div>` : ''}
     ${acts ? `<div style="margin-top:10px;display:grid;gap:8px">${acts}</div>` : ''}
     <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">${e.type !== 'void' ? `<button class="ghost" onclick="wGrowLast(1)">📈 Grow this spot</button><button class="ghost" onclick="wGrowLast(-1)">📉 Shrink it</button>` : ''}<button class="ghost" onclick="wHideLast()" title="Takes it off the wheel but keeps it in the list (press 🙈 there to show it again)">🙈 Make it invisible</button></div></div>`;
 }
@@ -3070,6 +3239,18 @@ function openSettings(force) {
         <div><label>⏱️ Frame rate (FPS cap / lock)</label><select data-k="gfxFps">${[[0, 'Match my monitor (V-Sync): smoothest'], [30, '30 FPS lock: lightest'], [60, '60 FPS lock: best for OBS at 60'], [120, '120 FPS cap'], [144, '144 FPS cap'], [165, '165 FPS cap'], [240, '240 FPS cap']].map(([v, t]) => `<option value="${v}" ${Number(s.gfxFps || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         <div><label>✨ Quality (glows, particles, smoothing)</label><select data-k="gfxQuality">${[['low', 'Low: no glows, few particles'], ['medium', 'Medium: fewer particles'], ['high', 'High: everything on (normal)']].map(([v, t]) => `<option value="${v}" ${(s.gfxQuality || 'high') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
       </div>
+      <h3 style="margin-top:16px">🖥️ Window</h3>
+      <div class="grid2"><div><label>🖥️ Movie Royal window mode (changes right away)</label><select data-k="windowMode" onchange="winMode(this.value)">${[['window', '🪟 Window: a normal window'], ['borderless', '🔲 Fullscreen window: fills the screen, no border (like a game\'s borderless mode)'], ['fullscreen', '⛶ Fullscreen: covers everything']].map(([v, t]) => `<option value="${v}" ${String(s.windowMode ?? 'window') === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+      <p class="help">Fullscreen window has no title bar: use the 🗕 and ✕ buttons at the top right of Movie Royal (or Alt+Tab) to leave it.</p>
+      <h3 style="margin-top:16px">🔬 Advanced graphics</h3>
+      <div class="grid2">
+        <div><label>🔍 Render scale (on top of the resolution)</label><select data-k="gfxScale">${[[50, '50%: much lighter, blurrier'], [75, '75%: lighter'], [100, '100%: normal'], [125, '125%: sharper'], [150, '150%: much sharper'], [200, '200%: sharpest, heaviest']].map(([v, t]) => `<option value="${v}" ${String(s.gfxScale ?? '100') === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div><label>🎆 Particles (sparks, dust, blood)</label><select data-k="gfxParticles">${[['few', 'Few: lightest'], ['auto', 'Normal: follows Quality'], ['lots', 'Lots: no limit (heavy)']].map(([v, t]) => `<option value="${v}" ${String(s.gfxParticles ?? 'auto') === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div><label>📳 Screen shake</label><select data-k="gfxShake">${[[0, 'Off'], [50, 'Half'], [100, 'Normal'], [150, 'Strong']].map(([v, t]) => `<option value="${v}" ${String(s.gfxShake ?? '100') === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      </div>
+      ${ck('gfxGlow', '✨ Glows (the soft light around pieces, sparks and titles). Off = lighter.')}
+      ${ck('gfxFlash', '💥 Screen flashes (big hits flash the whole screen). Off = easier on the eyes.')}
+      ${ck('gfxSmooth', '🧈 Smooth pictures (posters, card packs, avatars). Off = crisp, pixel-style.')}
       ${ck('gfxShowFps', '📈 Show an FPS counter in the corner of the game screen (also on stream: turn it off before going live)', false)}
       ${ck('gfxAppSaver', '🔋 Power saver for the game inside Movie Royal: it draws lighter while it is hidden (other tabs) or small (the preview window). The stream is not affected.')}
       <p class="help">Tip: OBS records at its own resolution and frame rate (OBS → Settings → Video). Match them here (for example 1080p + 60 FPS lock) so nothing is drawn that OBS throws away. In the OBS browser source, set Width 1920, Height 1080, and tick "Use custom frame rate" with the same FPS.</p>

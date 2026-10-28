@@ -25,6 +25,7 @@ import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
+import * as cards from './cards.js';
 import * as chatlog from './chat.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
@@ -137,7 +138,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(annState()).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null, kind: a?.kind || null }])), annKind: annKind(), capture: { on: !!live.capture, error: live.captureError || null, size: Number(db.settings.capSize) || 30, autoHide: !!db.settings.capAutoHide, window: db.settings.capWindow || '' }, announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(annState()).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null, kind: a?.kind || null }])), annKind: annKind(), cards: cards.stateFor(), capture: { on: !!live.capture, error: live.captureError || null, size: Number(db.settings.capSize) || 30, autoHide: !!db.settings.capAutoHide, window: db.settings.capWindow || '' }, announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -615,7 +616,7 @@ wss.on('connection', (ws, req) => {
   ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control';
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
-  if (ws.role === 'overlay') { if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
+  if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
   ws.on('message', raw => {
@@ -628,6 +629,7 @@ wss.on('connection', (ws, req) => {
       if (ws.badCliff >= 2) { ws.badCliff = 0; console.log('[cliff] a game screen was out of step, sending the pieces again'); ws.send(JSON.stringify({ ...lastPreview, heal: true })); }
       return;
     }
+    if (m.type === 'cardResult') { cards.result(m); return; } // 🃏 a card battle has its winner
     if (m.type === 'phase' && live.game && m.gameId === live.game.id) { live.phase = m.phase; live.phaseAt = Date.now(); pushState(); }
     if (m.type === 'result' && live.game && m.gameId === live.game.id && !live.game.done) {
       live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
@@ -696,7 +698,7 @@ wss.on('connection', (ws, req) => {
 const camMsg = () => ({ type: 'camera', base: clampN(db.settings.cliffSize, 60, 250, 130) / 100, auto: db.settings.autoCamera !== false, replay: db.settings.replayOn !== false });
 const clampN = (v, a, b, d) => { const n = Number(v); return Number.isFinite(n) ? Math.max(a, Math.min(b, n)) : d; };
 // 🖥️ graphics (Settings → Graphics): resolution, frame rate cap, quality, FPS counter — for every game screen (OBS, the app, pop-outs)
-const gfxMsg = () => ({ type: 'gfx', res: String(db.settings.gfxRes || '1080'), fps: Number(db.settings.gfxFps) || 0, quality: ['low', 'medium', 'high'].includes(db.settings.gfxQuality) ? db.settings.gfxQuality : 'high', showFps: !!db.settings.gfxShowFps, appSaver: db.settings.gfxAppSaver !== false });
+const gfxMsg = () => ({ type: 'gfx', res: String(db.settings.gfxRes || '1080'), fps: Number(db.settings.gfxFps) || 0, quality: ['low', 'medium', 'high'].includes(db.settings.gfxQuality) ? db.settings.gfxQuality : 'high', showFps: !!db.settings.gfxShowFps, appSaver: db.settings.gfxAppSaver !== false, scale: clampN(db.settings.gfxScale, 50, 200, 100), glow: db.settings.gfxGlow !== false, particles: ['few', 'lots'].includes(db.settings.gfxParticles) ? db.settings.gfxParticles : 'auto', shake: clampN(db.settings.gfxShake, 0, 200, 100), flash: db.settings.gfxFlash !== false, smooth: db.settings.gfxSmooth !== false });
 const audioMsg = () => ({ type: 'audio', on: db.settings.soundOn !== false, sfx: Number(db.settings.sfxVolume ?? 70) / 100, music: Number(db.settings.musicVolume ?? 35) / 100 });
 
 // ---------- http ----------
@@ -801,9 +803,12 @@ const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: 
 const startDonationFeed = () => donations.startDonations({ tip: t => { try { chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
-wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
+wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
+// 🃏 card battles (Card pool + Card battles tabs)
+cards.initCards({ broadcast, pushState, say: t => twitch.canSay() ? twitch.say(t) : Promise.resolve(), goView: v => broadcast({ type: 'goView', view: v }, 'control'), linkDone: () => { if (wheel.linkWaiting()?.cards) { cards.setShow(false); wheel.linkBack(); wheelChanged(); } } });
 // 🔀 a wheel spot sent us to a battle: put it on stream (and start it), then go back to the wheel once it has a winner
 function openBattleFromWheel(listId, auto, why) {
+  cards.setShow(false); // (a battle goes on stream: no card battle on top of it)
   const l = getList(listId); if (!l) return "that battle isn't there any more";
   if (live.phase === 'lobby' || live.phase === 'running') return 'a battle is already going';
   leaveEnded(); if (db.activeListId !== l.id) { db.activeListId = l.id; previewIds = null; }
@@ -864,7 +869,8 @@ async function announceNow() {
   pushState();
 }
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
-  const v = String(req.body?.view || ''); live.view = v; if (['battle', 'chat', 'giveaway', 'wheel'].includes(v)) live.lastGameView = v; res.json({ ok: true, kind: annKind() });
+  const v = String(req.body?.view || ''); live.view = v;
+  if (v === 'cards') { if (wheel.W().show) wheel.setShow(false); cards.setShow(true); } else if (v === 'battle' || v === 'wheel') cards.setShow(false); // 🃏 Card battles tab = the card battle on stream if (['battle', 'chat', 'giveaway', 'wheel'].includes(v)) live.lastGameView = v; res.json({ ok: true, kind: annKind() });
 });
 app.post('/api/announce', async (req, res) => { // { on } — or { now: true } to post right away — or { preview, kind } to see a message
   const a = annState().all;
@@ -1022,7 +1028,7 @@ app.use('/api/test', (req, res, next) => {
   } catch (e) { console.error('[test scene]', e.message); }
   next();
 });
-app.post('/api/wheel/show', (req, res) => { wheel.setShow(!!req.body?.show); wheelChanged(); res.json({ ok: true }); });
+app.post('/api/wheel/show', (req, res) => { if (req.body?.show) cards.setShow(false); wheel.setShow(!!req.body?.show); wheelChanged(); res.json({ ok: true }); });
 app.post('/api/wheel/spin', (req, res) => { try { const b = req.body || {}; const by = b.by && String(b.by).trim() ? { name: String(b.by).trim().slice(0, 40), login: String(b.by).trim().replace(/^@/, '').toLowerCase(), source: 'mod' } : {}; res.json({ ok: true, ...wheel.request(String(b.kind || 'spin'), by, { wheelId: b.wheelId }) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/wheel/import', async (req, res) => { try { const w = await wheel.importWheel(req.body || {}); wheelChanged(); res.json({ ok: true, id: w.id, name: w.name, count: w.entries.length }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/wheel/settings', (req, res) => { const w = wheel.W(), b = req.body || {};
@@ -1138,6 +1144,22 @@ async function setCapture(on) {
   pushState(); return { on: live.capture };
 }
 app.post('/api/capture', wTry(b => setCapture(b.on)));
+// 🃏 card pool + card battles
+app.post('/api/cards/search', wTry(async b => ({ results: await cards.searchPacks(b.q) })));
+app.post('/api/cards/add', wTry(b => cards.addPack(b)));
+app.post('/api/cards/pack', wTry(b => cards.editPack(b)));
+app.post('/api/cards/upload', express.raw({ type: '*/*', limit: '15mb' }), (req, res) => {
+  const name = String(req.query.name || 'pack.png'), ext = (name.match(/\.(png|jpe?g|gif|webp)$/i) || [, 'png'])[1].toLowerCase();
+  const file = 'pack-' + uid() + '.' + ext; fs.writeFileSync(path.join(UPLOADS, file), req.body); res.json({ ok: true, url: '/uploads/' + file });
+});
+app.post('/api/cards/battle', wTry(b => cards.saveBattle(b)));
+app.post('/api/cards/battle/remove', wTry(b => cards.removeBattle(b.id)));
+app.post('/api/cards/active', wTry(b => cards.setActive(b.id)));
+app.post('/api/cards/start', wTry(b => { if (wheel.W().show) wheel.setShow(false); return cards.start({ test: !!b.test, n: b.n }); }));
+app.post('/api/cards/stop', wTry(() => cards.stop()));
+app.post('/api/cards/reset', wTry(() => cards.reset()));
+app.post('/api/cards/wacky', wTry(b => b.allOff ? cards.wackyOff() : cards.setWacky(b.key, b.on)));
+app.post('/api/cards/show', wTry(b => { if (b.show && wheel.W().show) wheel.setShow(false); cards.setShow(!!b.show); return {}; }));
 app.post('/api/capture/windows', wTry(async () => obs.captureWindows()));
 app.post('/api/capture/settings', wTry(async b => {
   if ('window' in b) db.settings.capWindow = String(b.window || '');
@@ -1300,6 +1322,7 @@ app.post('/api/backup/add-here', async (req, res) => { // 🛡️ one click: put
 });
 app.post('/api/cloud/check', async (req, res) => { const st = await cloud.checkLink(true); pushState(); res.json({ enabled: cloud.enabled(), linked: st.linked, botUp: st.botUp, error: st.linkError || st.lastError || null, lastSync: st.lastSync, botV: st.botV || null, relinked: st.relinked || null }); }); // the Discord bot stops when the app closes
 app.post('/api/app/quit', (req, res) => { if (req.body?.dontAsk) { db.settings.closeAskBot = false; save(); } res.json({ ok: true }); setTimeout(() => globalThis.__desktop?.quit(), 300); });
+app.post('/api/window', (req, res) => { const a = String(req.body?.action || ''); if (['window', 'borderless', 'fullscreen'].includes(a)) { db.settings.windowMode = a; save(); } globalThis.__desktop?.windowAction?.(a); res.json({ ok: !!globalThis.__desktop }); }); // 🖥️ window mode / minimize / close (borderless has no title bar)
 app.post('/api/refocus', (req, res) => { globalThis.__desktop?.refocus?.(); res.json({ ok: true }); });
 app.post('/api/open-data-folder', (req, res) => { globalThis.__desktop?.openPath?.(DATA); res.json({ ok: !!globalThis.__desktop }); });
 app.post('/api/test/tmdb', async (req, res) => {
@@ -1407,7 +1430,7 @@ app.post('/api/settings', (req, res) => {
   if (mapWas !== db.settings.map) { live.map = null; live.mapUsed = false; if (live.phase === 'idle') refreshPreview(true); }
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   save();
-  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false });
+  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   broadcast(audioMsg(), 'overlay'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
   if (rd) discord.start(pushState);
   if (rt) twitch.start(twitchHandlers);
@@ -2340,7 +2363,8 @@ function nextSeriesRound() { // best-of: the next round starts by itself
   broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true);
   setTimeout(() => startRound().then(err => { if (err) broadcast({ type: 'toast', text: '⚠️ ' + err }, 'control'); }), 2500);
 }
-async function startRound(opts = {}) { // returns an error message, or null when the round started (opts.test: a test battle with the real pieces that changes nothing)
+async function startRound(opts = {}) {
+  cards.setShow(false); // returns an error message, or null when the round started (opts.test: a test battle with the real pieces that changes nothing)
   if (wheel.W().show) wheel.setShow(false); // a battle is starting: the battle goes on stream
   rollWeek();
   const list = getList(db.activeListId);
@@ -2538,7 +2562,7 @@ server.on('error', e => {
   if (globalThis.__desktop) globalThis.__desktop.fatal(msg); else process.exit(1);
 });
 server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
-  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false });
+  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   globalThis.__desktop?.ready(`http://localhost:${PORT}/`);
   console.log(`\n  🍿 Movie Royal is running!\n  Open http://localhost:${PORT} in your browser (keep this window open while you stream)\n`);
   const n = lb.loadCsvs();

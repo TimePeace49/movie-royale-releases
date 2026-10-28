@@ -24,7 +24,7 @@ export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true,
   void: { on: false, label: 'VOID', weight: 1, color: '#0b0b12', landings: 5, doomsday: false, monthly: true },
   pop: { on: true, sub: true, gift: true, bits: true, money: true, grow: true, shrink: false, spins: true, unvoid: true } };
 export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
-export const TYPES = { timer: '⏱️ Timer', auto: '⚡ Auto', countdown: '🔢 Countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' };
+export const TYPES = { timer: '⏱️ Timer', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' };
 const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#ffffff', hub: '🎡', hubImage: '', lines: '#ffffff', font: 'Inter', textScale: 1, textColor: '' };
 
 export function W() {
@@ -52,7 +52,7 @@ const fileOk = v => /^(\/uploads\/[\w.-]+|https?:\/\/\S+)$/.test(v || '') ? v : 
 // 🔗 an optional web page for a spot (a game, a site…): a button opens it when the spot wins
 export const cleanLink = v => { let u = String(v || '').trim(); if (!u) return ''; if (!/^https?:\/\//i.test(u)) u = 'https://' + u; try { const x = new URL(u); return /^https?:$/.test(x.protocol) && x.hostname.includes('.') ? x.href.slice(0, 500) : ''; } catch { return ''; } };
 // 🔀 a spot can send you to another wheel or a battle when it wins: { kind: 'wheel' | 'battle', id, auto (battle: start it by itself) }
-const cleanGoTo = g => g && (g.kind === 'wheel' || g.kind === 'battle') && g.id ? { kind: g.kind, id: String(g.id).slice(0, 80), auto: g.auto !== false } : null;
+const cleanGoTo = g => g && (g.kind === 'wheel' || g.kind === 'battle' || g.kind === 'cards') && g.id ? { kind: g.kind, id: String(g.id).slice(0, 80), auto: g.auto !== false } : null;
 export function cleanEntry(e) {
   const type = TYPES[e.type] ? e.type : 'timer'; // old normal / timer / refund spots are all timer spots now
   const out = { id: e.id || uid(), text: String(e.text ?? e.label ?? '').slice(0, 200), weight: e.weight === 0 || e.weight === '0' ? 0 : num(e.weight, 1, 0, 1e7) || 1, color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : null,
@@ -78,7 +78,7 @@ function layout(w) {
 }
 const rulesOn = w => w?.opts?.rules !== false;
 // the words shown in the slice: countdown spots show how many are left, auto spots say (auto)
-const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, e.maxWins - (e.wins || 0))} left)` : e.type === 'auto' ? `${e.text} (auto)` : e.text;
+const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, e.maxWins - (e.wins || 0))} left)` : /^auto/.test(e.type) ? `${e.text} (auto)` : e.text;
 // a spot WON (the round timer ran out on it, or the next fresh spin started with no round timer): timer + countdown / timer + max spots count it
 function countWin(w, entryId) {
   if (!w || !rulesOn(w)) return;
@@ -99,7 +99,7 @@ export const view = w => w && ({ id: w.id, name: w.name, title: w.title, rot: w.
   voidOn: !!w.opts.void.on && rulesOn(w), voided: w.entries.filter(e => e.voided).map(e => e.text),
   entries: layout(w).map(s => ({ id: s.e.id, text: s.e.text, label: slotLabel(w, s.e), weight: s.e.weight, color: s.color, rule: rulesOn(w) ? s.e.rule : '', image: s.e.image, sound: s.e.sound, type: rulesOn(w) ? s.e.type : 'timer', count: s.e.count })) });
 
-let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {}, openBattle: () => 'not ready', goView: () => {} };
+let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {}, openBattle: () => 'not ready', openCards: () => 'not ready', goView: () => {} };
 let busyUntil = 0, spinning = null; const queue = []; let qTimer = null;
 export function initWheel(h) { hooks = { ...hooks, ...h }; W(); const st = W(); if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } }
 export function wheelMsg() { const w = W(), a = active(); return { type: 'wheel', show: w.show, wheel: view(a), last: w.last && w.last.wheelId === a?.id ? w.last : null, final: w.final && w.final.wheelId === a?.id ? w.final : null, round: roundView() }; }
@@ -201,6 +201,16 @@ function followLink(w, rec, mid = false) {
       }, LINK_WAIT);
       return;
     }
+    if (go.kind === 'cards') { // 🃏 a card battle, then back
+      st.chain.push({ from: w.id, cards: go.id, keep }); save();
+      linkT = setTimeout(() => {
+        banner(`🔀 ${esc(e.text)}<small>Card battle time!</small>`);
+        sayW(w, `🔀 ${e.text} → card battle time!`);
+        const err = hooks.openCards(go.id, go.auto, e.text);
+        if (err) { note(`Couldn't open the card battle: ${err}`); st.chain.pop(); save(); }
+      }, LINK_WAIT);
+      return;
+    }
     if (go.kind === 'battle') {
       st.chain.push({ from: w.id, battle: go.id, keep }); save();
       linkT = setTimeout(() => {
@@ -238,13 +248,13 @@ function landed(w, rec) {
   if (!roundOn(w)) { if (!queue.length && rec.by?.source !== 'void' && rec.type !== 'void') followLink(w, rec); return; } // no round timer: where it stops is the win
   if (r?.state === 'ending') return finalize();
   if (!r || r.state === 'ended' || r.wheelId !== w.id) return; // no round going
-  if (rec.type === 'auto' && !queue.length && w.entries.find(x => x.id === rec.entryId)?.goTo) { // ⚡ auto spot with a link: the clock pauses and the link happens right away
+  if (/^auto/.test(rec.type) && !queue.length && w.entries.find(x => x.id === rec.entryId)?.goTo) { // ⚡ auto spot with a link: the clock pauses and the link happens right away
     if (r.state === 'running') roundPause('auto');
     sendRound(); followLink(w, rec, true); return;
   }
   if (r.state === 'armed') { r.left = r.total; roundRun(); }
-  else if (r.state === 'paused' && r.why !== 'you' && rec.type !== 'auto' && rec.type !== 'countdown') roundRun(); // moved / respun off an auto or countdown spot: the clock goes again
-  if (rec.type === 'auto') roundPause('auto');
+  else if (r.state === 'paused' && r.why !== 'you' && !/^auto/.test(rec.type) && rec.type !== 'countdown') roundRun(); // moved / respun off an auto or countdown spot: the clock goes again
+  if (/^auto/.test(rec.type)) roundPause('auto');
   else if (rec.type === 'countdown') roundPause('countdown');
   sendRound();
 }

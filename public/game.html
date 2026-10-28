@@ -15,6 +15,7 @@
   .display { font-family:'Lilita One', Impact, 'Arial Black', sans-serif; letter-spacing:.5px; }
   .hidden { opacity:0; pointer-events:none; transform:scale(.92) translateY(20px); }
   /* 🎡 the wheel scene */
+  #cardLayer { position:absolute; inset:0; z-index:35; background:#1a0a08; } #cardLayer.hidden { display:none; } #cardLayer canvas { position:absolute; left:0; top:0; width:1920px; height:1080px; }
   #wheelLayer { position:absolute; inset:0; z-index:30; background:radial-gradient(circle at 34% 50%, #3a1f6e 0%, #1b0d36 55%, #0b0518 100%); transition:opacity .4s, transform .4s; }
   #wheelLayer canvas { position:absolute; inset:auto; width:1000px; height:1000px; left:40px; top:40px; }
   #wheelLayer #wlFx { left:0; top:0; width:1920px; height:1080px; pointer-events:none; }
@@ -143,6 +144,7 @@
 <body>
 <div id="stage">
   <canvas id="c" width="1920" height="1080"></canvas>
+  <div id="cardLayer" class="hidden"><canvas id="cardCv" width="1920" height="1080"></canvas></div>
   <div id="wheelLayer" class="hidden">
     <div id="wlBg"></div>
     <canvas id="wlCanvas" width="1000" height="1000"></canvas>
@@ -203,6 +205,7 @@
 <script src="wheel.js"></script>
 <script src="ask.js"></script>
 <script src="chat.js"></script>
+<script src="cardfight.js"></script>
 <script>
 (() => {
 // ================= setup =================
@@ -220,20 +223,22 @@ SFX.init();
 const W = 1920, H = 1080, CX = 960, CY = 615, S = 30, SQ3 = Math.sqrt(3);
 // 🎨 graphics (Settings → Graphics): resolution, frame rate cap, quality, FPS counter. The game inside Movie Royal also
 // draws lighter while it's hidden or small (power saver); the stream (OBS) always uses the settings as they are.
-const GFX = { res: '1080', fps: 0, quality: 'high', showFps: false, appSaver: true, hidden: false, small: false, fpsUntil: 0 };
+const GFX = { res: '1080', fps: 0, quality: 'high', showFps: false, appSaver: true, hidden: false, small: false, fpsUntil: 0, scale: 100, glow: true, particles: 'auto', shake: 100, flash: true, smooth: true };
 const IN_APP = window.parent !== window;
 const RES_SCALE = { '720': 1280 / 1920, '900': 1600 / 1920, '1080': 1, '1440': 2560 / 1920, '2160': 2 };
 let gScale = 1;
 const saving = () => IN_APP && GFX.appSaver && (GFX.hidden || GFX.small);
 const lowGfx = () => GFX.quality === 'low' || saving();
+const noGlow = () => lowGfx() || GFX.glow === false; // (advanced: glows off on their own)
 function gfxApply() {
-  let sc = saving() ? (GFX.hidden ? .25 : .5) : (RES_SCALE[GFX.res] || 1);
+  let sc = saving() ? (GFX.hidden ? .25 : .5) : (RES_SCALE[GFX.res] || 1) * clamp((Number(GFX.scale) || 100) / 100, .5, 2); // (advanced: render scale)
   if (IN_APP && GFX.appSaver && !saving()) sc = Math.min(sc, Math.max(.5, Math.ceil(innerWidth * (devicePixelRatio || 1) / 1920 * 8) / 8)); // (inside the app: no sharper than the window it's shown in)
   if (sc !== gScale || cv.width !== Math.round(W * sc)) { gScale = sc; for (const c of [cv, fxc]) { c.width = Math.round(W * sc); c.height = Math.round(H * sc); } }
   ctx.imageSmoothingQuality = fx.imageSmoothingQuality = GFX.quality === 'high' && !saving() ? 'high' : 'low';
+  ctx.imageSmoothingEnabled = fx.imageSmoothingEnabled = GFX.smooth !== false; // (advanced: off = crisp / pixelated pictures)
 }
 { const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur'); // ✨ low quality: no glows (they're the heaviest thing to draw)
-  if (d?.set) for (const g of [ctx, fx]) Object.defineProperty(g, 'shadowBlur', { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, lowGfx() ? 0 : v); } }); }
+  if (d?.set) for (const g of [ctx, fx]) Object.defineProperty(g, 'shadowBlur', { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, noGlow() ? 0 : v); } }); }
 addEventListener('resize', () => gfxApply());
 addEventListener('message', e => { const g = e.data?.royalGfx; if (!g) return; if ('hidden' in g) GFX.hidden = !!g.hidden; if ('small' in g) GFX.small = !!g.small; if (g.showFps) GFX.fpsUntil = g.until || Date.now() + 15000; gfxApply(); });
 let fpsN = 0, fpsAt = 0, fpsShow = 0;
@@ -2463,7 +2468,7 @@ function sparkle(x, y, color, n = 12, target = parts) { for (let i = 0; i < n; i
 function confetti(n = 220) { for (let i = 0; i < n; i++) fxParts.push({ x: rnd(W), y: rnd(-400, -10), vx: rnd(-80, 80), vy: rnd(120, 360), g: 60, life: rnd(3, 6), max: 6, size: rnd(6, 12), color: pick(PALETTE), rot: rnd(6.3), vr: rnd(-8, 8), conf: true }); }
 function burst(x, y) { for (let i = 0; i < 160; i++) { const a = rnd(6.3), v = rnd(200, 900); fxParts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 200, g: 700, life: rnd(1.5, 3), max: 3, size: rnd(6, 11), color: pick(PALETTE), rot: rnd(6.3), vr: rnd(-10, 10), conf: true }); } }
 function stepParts(arr, g, dt) {
-  const capP = lowGfx() ? 120 : GFX.quality === 'medium' ? 400 : 0; if (capP && arr.length > capP) arr.splice(0, arr.length - capP); // ✨ fewer particles on lower quality
+  const capP = GFX.particles === 'few' ? 120 : GFX.particles === 'lots' ? 0 : lowGfx() ? 120 : GFX.quality === 'medium' ? 400 : 0; if (capP && arr.length > capP) arr.splice(0, arr.length - capP); // ✨ fewer particles on lower quality
   for (let i = arr.length - 1; i >= 0; i--) {
     const p = arr[i]; p.life -= dt; if (p.life <= 0) { arr.splice(i, 1); continue; }
     p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.conf) { p.vx *= .99; p.rot += p.vr * dt; }
@@ -2835,6 +2840,7 @@ function wlRound(rd) {
 }
 let wlId = '', wlOpts = {};
 const PREVIEW_WIN = new URLSearchParams(location.search).has('preview'); // 📺 the test preview popped out (another monitor): shows what's on stream, no sound
+window.__royal = { GFX, scale: () => gScale, send: o => send(o) }; // 🃏 for cardfight.js (this page's code lives inside its own function)
 if (PREVIEW_WIN) { document.title = 'Movie Royal — Preview (what\'s on stream)'; setTimeout(() => window.SFX?.setVolume({ on: false }), 0); }
 const WHEEL_ONLY = new URLSearchParams(location.search).has('wheel'); // the wheel popped out in its own window: always the wheel, no sound (the app already plays it)
 function wlSet(on) { if (WHEEL_ONLY) on = true; SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
@@ -2845,7 +2851,7 @@ function wlCard(r, k) {
   $('wlK').innerHTML = k || (r.voided ? `${VX} The void ate` : r.type === 'void' ? `${VX} The void! Respinning…` : r.kind === 'respin' ? `${RX} Respin landed on` : r.kind === 'up' ? '⬆️ Moved up to' : r.kind === 'down' ? '⬇️ Moved down to' : '🎡 The wheel says');
   $('wlT').textContent = r.text; $('wlT').style.fontSize = r.text.length > 40 ? '40px' : r.text.length > 22 ? '52px' : '64px';
   $('wlR').textContent = wlOpts.rules === false ? '' : r.rule || '';
-  const tp = r.voided ? `<span>${VX} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${VX} respinning…</span>` : r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : r.type === 'auto' ? '<span>⚡ auto</span>' : '';
+  const tp = r.voided ? `<span>${VX} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${VX} respinning…</span>` : r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : /^auto/.test(r.type) ? '<span>⚡ auto</span>' : '';
   $('wlM').innerHTML = tp + `${wlOpts.showPct === false ? '' : `<span>🍀 ${r.pct}% of the wheel</span>`}<span>${r.by?.source === 'points' ? '💜' : '👤'} ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ' (channel points)' : ''}</span>${r.from ? `<span>was: ${esc(r.from.text)}</span>` : ''}`;
   if (r.link) { let h = r.link; try { h = new URL(r.link).hostname.replace(/^www\./, ''); } catch {} $('wlM').innerHTML += `<span>🔗 ${esc(h)}</span>`; } // the spot's web page
   $('wlCard').style.borderColor = r.color || '#ffc94a';
@@ -3355,7 +3361,7 @@ function frame(now) {
   ctx.clearRect(0, 0, W, H);
   drawSky();
   ctx.save();
-  if (shake > .2) { ctx.translate(rnd(-shake, shake), rnd(-shake, shake)); shake *= Math.pow(.02, dt); }
+  if (shake > .2) { const sk = shake * clamp((GFX.shake ?? 100) / 100, 0, 2); if (sk > .2) ctx.translate(rnd(-sk, sk), rnd(-sk, sk)); shake *= Math.pow(.02, dt); } // (advanced: screen shake strength)
   if (!replay) updateCam(dtReal); applyCam();
   if (phase !== 'idle' || !TRANSPARENT) {
     if (!tiles.length) buildIsland();
@@ -3383,6 +3389,7 @@ function frame(now) {
   ctx.restore();
   if (replay) { ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = 'rgba(128,128,128,.35)'; ctx.fillRect(0, 0, W, H); ctx.restore(); } // washed-out replay look
   if (!TRANSPARENT || phase !== 'idle') drawFog();
+  if (flash > 0 && GFX.flash === false) flash = 0; // (advanced: no screen flashes)
   if (flash > 0) { ctx.globalAlpha = clamp(flash, 0, .6); ctx.fillStyle = flashColor; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; flash -= dt * 2; }
   if (replay) drawReplayLook();
   else if (phase !== 'idle') drawHUD();
@@ -3422,6 +3429,7 @@ function handleMsg(m) {
     if (replay && ['claimStart', 'claimedDirect', 'claimed', 'claimExpired', 'chat', 'claimWaiting', 'claimPassed'].includes(m.type)) { replay.pending.push(m); return; } // after the replay
     if (replay && (m.type === 'start' || m.type === 'reset' || m.type === 'claimClose')) endReplay(true);
     if ((m.type === 'wheelSpin' && m.kind === 'spin') || m.type === 'wheelUndo') document.getElementById('wlDoom')?.remove(); // a fresh spin (or ⏪ undo) clears Doomsday
+    if (m.type === 'cardScene' || m.type === 'cardWacky') { window.CARDS?.msg(m); return; } // 🃏 card battles (cardfight.js)
     if (m.type === 'wheel' || m.type === 'wheelSpin') { wheelMsg(m); return; }
     if (m.type === 'wheelRound') { wheelMsg(m); return; }
     if (m.type === 'wheelDoom') { const el = wlDoom(m.text); if (m.preview) setTimeout(() => el.remove(), 8000); return; }
@@ -3432,7 +3440,7 @@ function handleMsg(m) {
     else if (m.type === 'power') powerMsg(m);
     else if (m.type === 'effect') receiveEffect(m.effect);
     else if (m.type === 'queued') SFX.play('queued'), pendingCount++, floaters.push({ scr: 1, text: `${(EV_INFO[m.effect.event] || ['⚡'])[0]} queued for next round!`, x: CX, y: 260, life: 2.5, color: '#ffd98a' });
-    else if (m.type === 'gfx') { Object.assign(GFX, { res: m.res, fps: m.fps, quality: m.quality, showFps: m.showFps, appSaver: m.appSaver }); gfxApply(); }
+    else if (m.type === 'gfx') { Object.assign(GFX, { res: m.res, fps: m.fps, quality: m.quality, showFps: m.showFps, appSaver: m.appSaver, scale: m.scale, glow: m.glow, particles: m.particles, shake: m.shake, flash: m.flash, smooth: m.smooth }); gfxApply(); }
     else if (m.type === 'audio') SFX.setVolume({ on: m.on && !WHEEL_ONLY && !PREVIEW_WIN, sfx: m.sfx, music: m.music });
     else if (m.type === 'soundTest') { if (m.name === 'music') { SFX.music('fight'); SFX.setIntensity(.7); setTimeout(() => phase !== 'running' && SFX.stopMusic(), 6000); } else if (m.map) SFX.playOn(m.map, m.name); else SFX.play(m.name); }
     else if (m.type === 'reset') { SFX.stopMusic(); phase = 'idle'; fighters = []; hideWin(); hideClaim(); buildIsland(); }
