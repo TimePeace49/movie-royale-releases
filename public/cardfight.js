@@ -87,9 +87,10 @@
   }
   const paceBoost = () => { if (!PACE) return 1; const n = alive().length, tg = paceTarget(); return n > tg ? 1 + clamp((n - tg) / Math.max(2, tg), 0, 1.5) * PACE / 100 : 1; }; // behind pace: hits land harder
   const holders = () => F.filter(o => o.alive && o.weapon);
+  const inCombat = f => f.hurtT > 0 || F.some(o => o !== f && o.alive && Math.abs(o.x - f.x) < 115 * S(f) && Math.abs(o.z - f.z) < .08); // someone is right next to it (or it just got hit)
   function pickTarget(f) {
     const others = F.filter(o => o.alive && o !== f); if (!others.length) return null;
-    if (!f.weapon) { const h = holders().filter(o => o !== f); if (h.length && R() < .7) return h.reduce((a, b) => Math.abs(a.x - f.x) < Math.abs(b.x - f.x) ? a : b); } // 🗡️ everyone goes after whoever has a weapon
+    // (going after weapons is decided in step: only when not already fighting someone)
     if (R() < .25) return others[Math.floor(R() * others.length)];
     let best = null, bd = 1e9; for (const o of others) { const d = Math.abs(o.x - f.x) + Math.abs(o.z - f.z) * 900; if (d < bd) { bd = d; best = o; } } return best;
   }
@@ -112,6 +113,22 @@
       if (T > D * 1.8 && f.id !== destined) damage(null, f, 1.5 * dt * 10, 'bleed'); // (very long fights: the end comes)
       f.cd -= dt * speedK(); f.stun -= dt; f.retarget -= dt; f.block = Math.max(0, f.block - dt);
       if (!f.target?.alive || f.retarget <= 0) { f.target = pickTarget(f); f.retarget = rr(1.5, 3.5); }
+      // 🗡️ not fighting anyone right now and empty-handed: go grab a weapon lying in the street, or go after whoever has one
+      if (!f.weapon && !f.atk && f.stun <= 0 && !inCombat(f)) {
+        const far = o => Math.abs(o.x - f.x) + Math.abs(o.z - f.z) * 900; // whichever is closer: a dropped weapon, or someone holding one
+        const opts = [...weapons.filter(w => w.h === 0).map(w => ({ w, d: far(w) })), ...holders().filter(o => o !== f).map(o => ({ o, d: far(o) }))];
+        const best = opts.length ? opts.reduce((a, b) => a.d < b.d ? a : b) : null;
+        f.seek = best?.w || null; if (best?.o) { f.target = best.o; f.retarget = 1; }
+      } else f.seek = null;
+      if (f.seek && !weapons.includes(f.seek)) f.seek = null;
+      if (f.seek && f.stun <= 0) { // walk to the weapon (no swinging on the way)
+        const s = S(f), w = f.seek, dx = w.x - f.x, dz = w.z - f.z, legs = f.limbs.ll + f.limbs.rl, sp = 170 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32);
+        f.face = dx >= 0 ? 1 : -1;
+        if (Math.abs(dz) > .02) f.vz += Math.sign(dz) * .9 * dt * speedK();
+        if (Math.abs(dx) > 10 * s) f.vx += Math.sign(dx) * sp * 6 * dt;
+        if (Math.abs(dx) < 34 * s && Math.abs(dz) < .06) { f.weapon = w.kind; weapons.splice(weapons.indexOf(w), 1); f.seek = null; word('GOT IT!', f.x, zY(f.z) - 190 * s, '#ffe08a', 30); snd('clash'); }
+        physics(f, dt); continue;
+      }
       const t = f.target;
       if (f.stun > 0 || !t) { physics(f, dt); continue; }
       const s = S(f), reach = (52 + (f.weapon ? 30 : 0)) * s, dx = t.x - f.x, dz = t.z - f.z;

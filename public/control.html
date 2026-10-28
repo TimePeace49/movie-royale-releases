@@ -351,17 +351,16 @@
   #errN:not(:empty) { background:var(--bad); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:4px; }
   .errl { border-bottom:1px solid var(--line); padding:8px 0; } .errl b { color:#ffb4a8; }
   #errTech { width:100%; min-height:420px; font:12px/1.4 Consolas, monospace; white-space:pre; }
-  .ckl { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:10px; align-items:stretch; }
-  .ckl h4 { grid-column:1 / -1; margin:14px 0 0; }
-  .ckItem { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:linear-gradient(180deg, #ffffff10, #ffffff06); border:1px solid #ffffff1f; border-left:5px solid #ffffff40; box-shadow:0 4px 14px #0004; }
-  .ckItem .ckIcon { font-size:18px; flex:none; width:24px; text-align:center; }
-  .ckItem .ckIcon input { width:18px; height:18px; margin:0; cursor:pointer; }
+  .ckl { display:block; } /* ✅ a plain list (Derek: list rows, not big boxes) */
+  .ckl h4 { margin:16px 0 4px; }
+  .ckItem { display:flex; align-items:center; gap:10px; padding:6px 4px; border-bottom:1px solid var(--line); }
+  .ckItem:hover { background:#ffffff08; }
+  .ckItem .ckIcon { font-size:16px; flex:none; width:22px; text-align:center; }
+  .ckItem .ckIcon input { width:17px; height:17px; margin:0; cursor:pointer; }
   .ckItem .ckText { flex:1; line-height:1.35; }
   .ckItem .ckAct { flex:none; display:flex; gap:4px; }
   .ckItem .ckAct:empty { display:none; }
-  .ckItem.ok { border-left-color:var(--good); } .ckItem.no { border-left-color:var(--bad); } .ckItem.mid { border-left-color:var(--gold); }
-  .ckItem.done { border-left-color:var(--good); background:linear-gradient(180deg, #7dffb014, #7dffb008); }
-  .ckItem.todo { border-left-color:#9b7bff; }
+  .ckItem.done .ckText { color:var(--dim); }
   #v-help { grid-template-columns:1fr; padding:0; }
   #v-help iframe { width:100%; height:100%; border:0; }
   /* settings: sub-tabs down the left */

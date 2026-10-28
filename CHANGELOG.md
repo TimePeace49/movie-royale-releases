@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.33.1 (test build)
+- **🗡️ Card battles: packs go for the weapons.** A pack that isn't fighting anyone right now and has no weapon goes for whichever is closer: a weapon lying in the street, or the pack holding one. Packs already in a fight keep fighting.
+- **✅ The checklist is a plain list again** (rows with the button on the right) instead of big boxes.
+
 ## 1.33.0 (test build)
 - **⚪🃏 Card battles can use every ball map.** Pick any map on the Card battles tab (or 🎲 Random): the packs fight there as card fighters with arms, legs, faces, health bars and blood. No chat power-ups in card battles; ones redeemed meanwhile wait for the next ball battle. Kung Fu Town stays card-only (it's not in the ball map list).
 - **Map menus show who a map is for:** ⚪ = ball battles, 🃏 = card battles, ⚪🃏 = both.
