@@ -91,6 +91,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Test tab / checklist:** `TEST_CATS`, `CK_META {key:[cat, version]}` (new items: version > `localStorage.ckSeenVer`, badge `#newNav`), `arrangeTests()` groups the Tests cards. Give every new checklist item a CK_META line with the version.
 - **Linked-only stats:** `chat.tracked(login)` (setting `trackLinkedOnly`), `db.linkDates` (negative = linked before dates were kept). Pretend chat movies: `/api/test/pc-movie` (links `pretend-<login>`), `/api/test/pc-movie-clear`.
 - **Backup app:** `desktop/icon-backup.png`, `build/icon-backup.ico`; Console/Errors tabs (`/api/log`, `/api/errors`, `/api/debug-report`, `log`/`logErr` in backup.js).
+- **🔇 Mute when unfocused:** setting `muteUnfocused` (default on) → `applySettings` → main.cjs `muteCheck()` mutes every window's webContents when no Movie Royal window is focused.
 - **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
 ## Things we said no to

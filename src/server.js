@@ -1258,7 +1258,7 @@ app.post('/api/settings', (req, res) => {
   if (mapWas !== db.settings.map) { live.map = null; live.mapUsed = false; if (live.phase === 'idle') refreshPreview(true); }
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   save();
-  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows });
+  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false });
   broadcast(audioMsg(), 'overlay'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
   if (rd) discord.start(pushState);
   if (rt) twitch.start(twitchHandlers);
@@ -2372,7 +2372,7 @@ server.on('error', e => {
   if (globalThis.__desktop) globalThis.__desktop.fatal(msg); else process.exit(1);
 });
 server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
-  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows });
+  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false });
   globalThis.__desktop?.ready(`http://localhost:${PORT}/`);
   console.log(`\n  🍿 Movie Royal is running!\n  Open http://localhost:${PORT} in your browser (keep this window open while you stream)\n`);
   const n = lb.loadCsvs();

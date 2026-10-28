@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.1 (test build)
+- **🔇 Movie Royal goes quiet when you're in another program** (on by default): click into a game, OBS or your browser and every Movie Royal window mutes; click back and the sound comes back. The stream isn't affected (the game screen in OBS plays its own sound). Turn it off in Settings → App & background → 🔇 Sound if you capture Movie Royal's window or desktop sound in OBS.
+
 ## 1.30.0 (test build)
 - **📣 Hourly chat messages:** a **📣 Chat message** button on the Battle, Chat battle, Giveaway and Wheel tabs. It posts that tab's message in Twitch chat right away, then every hour, until you press it again or your stream ends.
   - Battle tab: how to add movies (your Discord link, the movie channel, /suggest) and the commands command.

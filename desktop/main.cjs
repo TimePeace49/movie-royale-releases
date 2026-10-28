@@ -95,7 +95,19 @@ function makeTray() {
 function applySettings(p) {
   Object.assign(prefs, p);
   try { app.setLoginItemSettings({ openAtLogin: !!prefs.startWithWindows, args: ['--hidden'] }); } catch {}
+  muteCheck();
 }
+// 🔇 sounds only while you're in Movie Royal (Settings → App & background, on by default): clicking into another
+// program mutes every Movie Royal window (the stream in OBS keeps its own sound); coming back turns it on again
+function muteCheck() {
+  setTimeout(() => { // (wait a moment: going from one Movie Royal window to another isn't leaving the app)
+    const mute = prefs.muteUnfocused !== false && !BrowserWindow.getFocusedWindow();
+    for (const w of BrowserWindow.getAllWindows()) { try { if (!w.isDestroyed() && w.webContents.isAudioMuted() !== mute) w.webContents.setAudioMuted(mute); } catch {} }
+  }, 150);
+}
+app.on('browser-window-focus', muteCheck);
+app.on('browser-window-blur', muteCheck);
+app.on('browser-window-created', (e, w) => w.once('ready-to-show', muteCheck));
 
 app.on('second-instance', () => showWindow());
 // Quitting: if the Discord bot only runs inside this app (24/7 mode is off), ask first. The control panel shows the question (closeAsk).

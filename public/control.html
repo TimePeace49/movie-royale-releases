@@ -1077,7 +1077,7 @@ const CK_META = { // key: [category, version it came in]
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
   discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
-  announce: ['chat', '1.30.0'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  announce: ['chat', '1.30.0'], muteUnfocused: ['screen', '1.30.1'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1127,6 +1127,7 @@ function drawChecklist() {
     ['pickLockBattle', '🔒 Discord picks + swaps lock while a movie battle is going and open again once it has its winner (try the 🤖 test Discord battle: watch the 🎬 Movie picks button)', T('Try it', "api('/api/test/discord-battle').then(()=>toast('Test Discord battle: the 🎬 Movie picks button on the Battle tab shows CLOSED until it has its winner',8000))")],
     ['gfx', '🎨 Graphics settings change the game screen (resolution, FPS lock, quality): the 📈 FPS counter shows what you get', T('FPS counter', "gfxTest()")],
     ['botUpdPop', '☁️ The “Update your 24/7 Discord bot” pop-up shows (it only shows by itself when the bot really needs it)', T('Show it', "botUpdateOnOpen.test=true;botUpdateOnOpen()", false)],
+    ['muteUnfocused', '🔇 Movie Royal goes quiet when you click into another program, and the sound comes back when you click back (Settings → App & background)', T('Try it', "api('/api/test/battle',{count:12}).then(()=>toast('A practice battle is playing: click into another program and its sound stops, click back and it comes back',9000)).catch(()=>{})")],
     ['backupAdd', '🛡️ One click adds your bot to Movie Royal Backup Bots on this PC (no copy and paste)', T('Try it', "bkAddHere(this)", false)],
     ['backupUpd', '🔄 Movie Royal Backup Bots finds its own updates (🔍 Look for updates at the top of its window)', ''],
     ['backupLink', '🛡️ A backup bot server (Movie Royal Backup Bots) is watching your Discord bot', T('Check', "bkCheck()", false)],
@@ -2928,6 +2929,9 @@ function openSettings(force) {
       <p class="help">The Discord bot and <code>!mymovies</code> only answer while Movie Royal is running. Keep it in the tray (by the clock).</p>
       ${ck('runInBackground', 'Keep running in the tray when I close the window')}
       ${ck('startWithWindows', 'Start Movie Royal when Windows starts (quietly, in the tray)', false)}
+      <h3 style="margin-top:18px">🔇 Sound</h3>
+      ${ck('muteUnfocused', '🔇 Mute Movie Royal while I\'m in another program (the sound comes back when I click back into Movie Royal)')}
+      <p class="help">On by default. The stream isn't affected: the game screen in OBS plays its own sound. Turn this off if you capture Movie Royal's own window or desktop sound in OBS, or want to hear it while you're in other programs.</p>
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
     obs: `<h3>🎥 OBS (optional)</h3>
       <p class="help">Only needed for the wheel's <b>☠️ Doomsday</b>: when the void swallows the wheel, Movie Royal turns your mic and camera off right away and ends the stream 15 seconds later.<br>
