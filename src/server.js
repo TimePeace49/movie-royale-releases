@@ -14,6 +14,7 @@ import * as discord from './discord.js';
 import * as twitch from './twitch.js';
 import { searchMovies } from './tmdb.js';
 import { undoMovieWin, resetCooldowns } from './movies.js';
+import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
@@ -136,7 +137,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -392,11 +393,11 @@ const twitchHandlers = {
   change: pushState,
   live(isLive) {
     if (!!db.live === !!isLive) return;
-    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
+    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
-    if (db.settings.closePicksWhenLive && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
+    if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
     save(); pushState();
-    broadcast({ type: 'toast', text: isLive ? '🔴 You went live — Discord swaps are now locked.' : '⚫ Stream ended — Discord swaps are open again.' }, 'control');
+    if (lockMode() === 'live') broadcast({ type: 'toast', text: isLive ? '🔴 You went live — Discord picks and swaps are now locked.' : '⚫ Stream ended — Discord picks and swaps are open again.' }, 'control');
     discord.refreshPinned?.();
   },
   async redeem(r) {
@@ -457,8 +458,11 @@ const isWinnerMsg = (w, m) => !!w && ((w.ownerLogin && m.login === w.ownerLogin.
 function pinWinner(w) {
   if (!w || w.test || db.settings.pinWinner === false || !twitch.status.canChat) return; // (test battles never pin)
   if (!(w.kind === 'movies' || w.tmdbId) || w.spot) return;
-  const n = stream().movies || 1, nth = n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
-  const text = `📌🍿 ${nth} movie tonight: ${w.label}${w.sub ? ` (${w.sub})` : ''}${w.owner ? ` · picked by ${w.owner}` : ''}`;
+  const n = stream().movies || 1;
+  let text = `📌🍿 Movie #${n} tonight: ${w.label}${w.sub ? ` (${w.sub})` : ''}${w.owner ? ` · picked by ${w.owner}` : ''}`;
+  const earlier = (stream().tonight || []).filter(x => x.id !== w.id || x.n !== n).filter(x => x.n < n); // the movies watched before this one tonight
+  if (earlier.length) { const add = ` ⏪ Earlier tonight: ${earlier.map(x => `#${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}`).join(' · ')}`; text = (text + add).length > 480 ? (text + add).slice(0, 477) + '…' : text + add; }
+  discord.refreshPinned?.(); // (the pinned Discord message lists tonight's movies too)
   twitch.sayAndPin(text).catch(e => broadcast({ type: 'toast', text: `📌 Couldn't pin the movie in chat: ${e.message}` }, 'control'));
 }
 // the winner typed in chat: the timer stops and you decide (✅ accept or ⏭️ pass)
@@ -584,7 +588,7 @@ wss.on('connection', (ws, req) => {
   ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control';
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
-  if (ws.role === 'overlay') { if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
+  if (ws.role === 'overlay') { if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
   ws.on('message', raw => {
@@ -643,7 +647,7 @@ wss.on('connection', (ws, req) => {
       if (list?.type === 'chat') for (const x of list.entries) delete x.powers; // power-ups last one battle
       announceWinner(f, list);
       { const c = resolveCalls(f, list); if (c) { live.lastWinner.calls = { total: c.total, right: c.right.length, names: c.right.slice(0, 8).map(o => o.name) }; rec.calls = live.lastWinner.calls; } }
-      if (list?.type === 'movies') { stream().movies = (stream().movies || 0) + 1; } // movie # of the night
+      if (list?.type === 'movies') { stream().movies = (stream().movies || 0) + 1; if (!live.game.test && !f.spot) stream().tonight = [...(stream().tonight || []), { id: f.id, label: f.label, sub: f.sub || '', owner: f.owner || '', n: stream().movies }]; } // movie # of the night (+ tonight's list for the pinned messages)
       if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`); // everyone who lost gets a little luckier
       if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) fetchWinnerRatings(f, rec, live.game.id);
       if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
@@ -654,6 +658,8 @@ wss.on('connection', (ws, req) => {
 
 const camMsg = () => ({ type: 'camera', base: clampN(db.settings.cliffSize, 60, 250, 130) / 100, auto: db.settings.autoCamera !== false, replay: db.settings.replayOn !== false });
 const clampN = (v, a, b, d) => { const n = Number(v); return Number.isFinite(n) ? Math.max(a, Math.min(b, n)) : d; };
+// 🖥️ graphics (Settings → Graphics): resolution, frame rate cap, quality, FPS counter — for every game screen (OBS, the app, pop-outs)
+const gfxMsg = () => ({ type: 'gfx', res: String(db.settings.gfxRes || '1080'), fps: Number(db.settings.gfxFps) || 0, quality: ['low', 'medium', 'high'].includes(db.settings.gfxQuality) ? db.settings.gfxQuality : 'high', showFps: !!db.settings.gfxShowFps, appSaver: db.settings.gfxAppSaver !== false });
 const audioMsg = () => ({ type: 'audio', on: db.settings.soundOn !== false, sfx: Number(db.settings.sfxVolume ?? 70) / 100, music: Number(db.settings.musicVolume ?? 35) / 100 });
 
 // ---------- http ----------
@@ -762,6 +768,13 @@ function battleDoneForWheel() { // the battle a wheel spot sent us to has its wi
   const back = () => { if (live.claim && !live.claim.done && Date.now() - started < 180000) return setTimeout(back, 5000); live.claim && clearTimeout(live.claim.timer); wheel.linkBack(); wheelChanged(); };
   setTimeout(back, 15000);
 }
+// 🔒 picks + swaps lock while a Discord movie battle is going (from Start until it has its winner), when that's the rule (the default)
+setBattleCheck(() => !!live.game && live.game.listId === 'movies' && ['lobby', 'running', 'waiting'].includes(live.phase));
+let lockWas = autoLocked();
+setInterval(() => { // tell the 24/7 bot and the pinned Discord message right away when the lock changes
+  const now = autoLocked(); if (now === lockWas) return; lockWas = now;
+  pushState(); discord.refreshPinned?.(); if (db.settings.cloud?.enabled) cloud.sync(true)?.catch?.(() => {});
+}, 1500);
 const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
 // 🎡 ready-made wheels that come with the app (src/defaults/*.json, Movie Royal share files). Each is added once: delete it and it stays deleted.
 for (const [key, file] of [['madeKirbportions', 'wheel-of-kirbportions.json']]) {
@@ -1184,7 +1197,7 @@ app.post('/api/settings', (req, res) => {
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows });
-  broadcast(audioMsg(), 'overlay'); broadcast(camMsg(), 'overlay');
+  broadcast(audioMsg(), 'overlay'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
   if (rd) discord.start(pushState);
   if (rt) twitch.start(twitchHandlers);
   if (rl) Promise.all([lb.refreshRss(db.settings.letterboxdUser), lb.refreshProfile(db.settings.letterboxdUser)]).then(() => { sweepWatched(); pushState(); });
@@ -1800,7 +1813,6 @@ app.post('/api/picks-toggle', (req, res) => {
   const b = req.body || {};
   const was = picksClosed();
   if ('open' in b) db.picksClosed = !b.open;
-  if ('whenLive' in b) db.settings.closePicksWhenLive = !!b.whenLive;
   save(); pushState(); discord.refreshPinned?.();
   const now = picksClosed();
   if (was !== now && db.settings.announcePicks !== false) discord.notify(now ? '🔒 **Movie picks are closed** for now. Your movies are still in, and you can still check `/mymovies` and `/list`.' : '🍿 **Movie picks are open!** Use `/suggest` to add yours.').catch(() => {});
@@ -2028,7 +2040,7 @@ app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));
 app.post('/api/test/power', (req, res) => { const kind = String(req.body?.kind || 'shield'), name = String(req.body?.name || 'test_viewer'); const title = Object.entries(db.settings.powerRewards || {}).find(([, k]) => k === kind)?.[0]; if (!title) return res.status(400).json({ error: 'no such power-up' }); twitchHandlers.redeem({ title, login: name.toLowerCase(), name, input: '' }); res.json({ ok: true }); }); // Test tab: pretend someone redeemed a ball power-up
 app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / offline. Only inside Movie Royal: Twitch, Discord and your rewards don't change.
   const on = !!req.body?.live, was = !!live.fakeLive; live.fakeLive = on;
-  if (on && !was && !db.live) { stream().movies = 0; stream().startedAt = Date.now(); wheel.newStream(); } // what a new stream does inside the app
+  if (on && !was && !db.live) { stream().movies = 0; stream().tonight = []; stream().startedAt = Date.now(); wheel.newStream(); } // what a new stream does inside the app
   broadcast({ type: 'toast', text: on ? '🔴 Pretending you\'re live (only inside Movie Royal: Twitch and Discord don\'t know)' : '⚫ Stopped pretending to be live' }, 'control');
   save(); pushState(); res.json({ ok: true, live: on });
 }); // Test tab: pretend you went live / offline
@@ -2200,7 +2212,7 @@ function acceptClaim(by = 'you') {
 function passClaim(by = 'you') {
   const c = live.claim, w = c?.winner || live.lastWinner; if (!w) return 'No winner to pass on.';
   if (c) { clearTimeout(c.timer); c.done = true; c.claimed = false; c.passed = true; delete c.waiting; } else live.claim = { winner: w, done: true, claimed: false, passed: true };
-  if (!w.test && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); if (!w.passed && stream().movies > 0) stream().movies--; } // not watched: it doesn't count as tonight's movie
+  if (!w.test && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); if (!w.passed && stream().movies > 0) stream().movies--; const t = stream().tonight || [], i = t.map(x => x.id).lastIndexOf(w.id); if (i >= 0) t.splice(i, 1); discord.refreshPinned?.(); } // not watched: it doesn't count as tonight's movie
   const h = findHistory(w.historyId); if (h) { h.claimed = 'passed'; h.outcome = 'passed'; historyVersion++; }
   live.lastWinner.passed = true; save();
   broadcast({ type: 'claimPassed', winner: w }, 'overlay'); pushState(); refreshPreview();

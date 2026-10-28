@@ -20,6 +20,7 @@ app.setName('Movie Royal');
 if (process.platform === 'win32') app.setAppUserModelId('com.movieroyal.app');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
+require('./contextmenu.cjs').attachContextMenu(); // 🖱️ normal right-click menu (copy, paste, …)
 
 process.env.MOVIE_ROYAL_DATA = path.join(app.getPath('userData'), 'data');
 process.env.MR_DESKTOP = '1';

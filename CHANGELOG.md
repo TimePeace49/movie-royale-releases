@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.29.0 (test build)
+- **🧪 Test tab:** the preview window no longer follows you around. It only pops up when you run a test that changes the stream screen, and it closes when you switch tabs.
+- **🖱️ Right-click works:** cut, copy, paste, select all, spelling fixes, copy/open links and copy pictures, in Movie Royal and Backup Bots.
+- **🔒 New default: Discord picks and swaps only lock during movie battles.** People can `/suggest` and `/swap` right up until you press Start on a Discord movie battle. They lock while it plays and open again once it has its winner. Other choices in Settings → Luck & swaps: lock the whole time you're live, or never. **Update your 24/7 bot when Movie Royal asks**, so it follows the new rule too.
+- **📌 Pinned messages:** the claimed movie pinned in Twitch chat says "Movie #2 tonight: …" and lists the movies watched earlier tonight. The pinned Discord message lists tonight's movies too.
+- **📥 Importing a wheel** opens its own window with **📂 Choose a file…** (Windows Explorer), drag and drop, or a Wheel of Names link.
+- **⚙ Spot settings open in their own window** with ⬆ Previous / ⬇ Next, so nothing is squeezed or cut off. The spot list also fits without scrolling sideways.
+- **🎨 Graphics settings** (Settings → Graphics): resolution (720p to 4K), frame rate (match monitor, or lock at 30 / 60, caps up to 240), quality (low / medium / high), an FPS counter, and a power saver.
+- **⚡ Less lag when switching tabs:** the game inside Movie Royal used to keep drawing full size on every tab. Now it draws much lighter while it's hidden or small (power saver, on by default), and never sharper than the window it's in. The stream (OBS) isn't affected.
+
 ## 1.28.12 (latest release)
 - **🎡 Wheel of Kirbportions comes with the app:** all 71 spots with their rules (auto, countdown, max wins), sizes, colors and settings. It's added to your wheel list once; delete it if you don't want it and it won't come back. If you already have a wheel with that name, yours is left alone.
 

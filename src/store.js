@@ -44,7 +44,7 @@ const defaults = () => ({
     soundOn: true, sfxVolume: 70, musicVolume: 35,
     spotName: 'Kirb', spotTwitch: '', spotMax: 3, weekStart: 0, autoSpots: true,
     runInBackground: false, startWithWindows: false, chatGate: true, autoFullscreen: true,
-    banCurrentYear: true, luckOn: true, luckPerBattle: 1, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, helpCommand: '!moviesroyal', seriesAuto: false, omdbKey: '',
+    banCurrentYear: true, luckOn: true, luckPerBattle: 1, pickLock: 'battle', gfxRes: '1080', gfxFps: 0, gfxQuality: 'high', gfxShowFps: false, gfxAppSaver: true, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, helpCommand: '!moviesroyal', seriesAuto: false, omdbKey: '',
     twitchMoviesCommand: '!mymovies', twitchCooldown: 30, discordChannelName: 'movies-royal',
     pointsOn: true, bitsOn: true, cloud: {}, map: 'random', voteSeconds: 120, colorsOn: true, colorMode: 'free', colorCommand: '!color', colorReward: 'Royal: Ball color',
     ideasDoc: 'https://docs.google.com/document/d/1bcgwJP3jX2ixkwlaRS19mUdGvotVIDAppZ6AkFOTRck/edit?usp=sharing', // 💡 linked in the pinned Discord message
@@ -106,6 +106,7 @@ if (!db.settings.v12) { db.settings.v12 = true; db.settings.seriesAuto = false; 
 if (!db.settings.v9) { db.settings.v9 = true; db.settings.luckOn = true; db.settings.closePicksWhenLive = true; db.settings.runInBackground = false; }
 if (!db.settings.v8) { db.settings.v8 = true; if (db.settings.twitchMoviesCommand === '!movies') db.settings.twitchMoviesCommand = '!mymovies'; }
 if (!db.settings.v7) { db.settings.v7 = true; if (Number(db.settings.maxFighters) === 40) db.settings.maxFighters = 1000; if (Number(db.settings.luckPerBattle) === 0.01) db.settings.luckPerBattle = 1; } // new defaults: 1000 pieces, 1% luck
+if (!db.settings.v14) { db.settings.v14 = true; db.settings.pickLock = 'battle'; } // new default: adding + swapping movies only lock while a movie battle is going (Start → winner)
 if (!db.settings.v13) { db.settings.v13 = true; delete db.settings.botSkipV; db.settings.botRemind = true; } // the 24/7 bot update pop-up is back on (it has its own on/off box now)
 if (!db.settings.v5) { db.settings.v5 = true; if (!db.settings.lobbySeconds) db.settings.lobbySeconds = 5; } // 5-second countdown when you press Start
 

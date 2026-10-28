@@ -5,7 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { db, save, ROOT, streamerName } from './store.js';
 import * as lb from './letterboxd.js';
-import { picksClosed, closedMsg, moviesList, picksUsed, wonThisWeek, backOn, swapsLocked, luckOn, suggest, swapMovie, claimManual } from './movies.js';
+import { picksClosed, closedMsg, moviesList, picksUsed, wonThisWeek, backOn, swapsLocked, luckOn, suggest, swapMovie, claimManual, swapMsg, swapHint } from './movies.js';
 import { helpText, peopleIndex } from './discord.js';
 
 const CF = 'https://api.cloudflare.com/client/v4';
@@ -61,7 +61,7 @@ export function buildConfig() {
     watched: { tmdb: w.tmdb.map(String), keys: w.keys, slugs: w.slugs },
     wonIds: list.entries.filter(e => e.status === 'watched' && e.tmdbId).map(e => String(e.tmdbId)),
     pool, users, people: peopleIndex().map(p => ({ discordId: p.discordId, name: p.name })), links: db.links || {},
-    backOn: backOn(), swapsLocked: swapsLocked(), picksClosed: picksClosed(), closedMsg: closedMsg(), luckOn: luckOn(),
+    backOn: backOn(), swapsLocked: swapsLocked(), swapMsg: swapMsg(), swapHint: swapHint(), picksClosed: picksClosed(), closedMsg: closedMsg(), luckOn: luckOn(),
     channels: Object.fromEntries(Object.entries(db.discordChannels || {}).map(([g, c]) => [g, c.channelId])),
     debugChannels: db.settings.discordDebug === false ? [] : Object.values(db.discordDebug || {}).map(r => r.channelId).filter(Boolean),
     helpText: helpText(), tmdbKey: db.settings.tmdbKey || '', botToken: db.settings.discordToken || '', publicKey: cloud().publicKey || ''

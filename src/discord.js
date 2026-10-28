@@ -4,7 +4,7 @@ import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuil
 import { db, save, streamerName } from './store.js';
 import { SYNC_NAME, SYNC_TOPIC } from './relay.js';
 import { searchMovies, getMany, cachedMovie } from './tmdb.js';
-import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, swapMovie, swapsLocked, luckOn, freePicks } from './movies.js';
+import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, swapMovie, swapsLocked, luckOn, freePicks, swapHint, lockMode } from './movies.js';
 
 let client = null;
 export const status = { state: 'off', error: null, tag: null, guilds: [], warnings: [] };
@@ -36,7 +36,7 @@ export function helpText() {
     `Your movies fight it out on a crumbling cliff on ${streamerName()}'s stream. Last one standing gets watched!`,
     ``,
     `**/suggest** — add a movie. Start typing and pick from the list. You get **${max} picks**, and ${max} new ones once all of yours have been picked.`,
-    `**/swap** — trade one of your movies for a different one (1 for 1). Works until the stream goes live.`,
+    `**/swap** — trade one of your movies for a different one (1 for 1). ${lockMode() === 'battle' ? 'Works any time except while a movie battle is going.' : lockMode() === 'live' ? 'Works until the stream goes live.' : 'Works any time.'}`,
     `**/mymovies** — see your movies and picks left. Add a name to see someone else's (\`/mymovies person: Lucy\`). On Twitch: **${tw}** or **${tw} name**.`,
     `**/list** — everything in the pool right now.`,
     `**/linktwitch** — connect your Twitch name so your picture is your piece and chatting puts your movies on the cliff.`,
@@ -46,6 +46,7 @@ export function helpText() {
     `🚫 *banned*, *series taken* or *${new Date().getFullYear()} movie* · ✅ *already watched* · 🔒 *already picked* — somebody has it, so pick something else. Every movie can only be picked once.`,
     ``,
     `**Rules:** be in Twitch chat during the stream to get your movies on the cliff · if your movie wins, your other movies sit out until the new week (Sunday) · one movie per series${db.settings.banCurrentYear !== false ? ` · no ${new Date().getFullYear()} movies` : ''}${luckOn() ? ' · 🍀 every battle your movies lose, they get a little luckier' : ''}`,
+    ...(() => { const t = db.stream?.day === new Date().toDateString() ? db.stream.tonight || [] : []; return t.length ? [``, `**🎬 Tonight's movies:** ${t.map(x => `#${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}${x.owner ? ` — ${x.owner}` : ''}`).join(' · ')}`] : []; })(),
     ...(db.settings.ideasDoc ? [``, `💡 **Got an idea for Movie Royal?** Maps, the wheel, how it looks, anything: [leave a note in the ideas doc](<${db.settings.ideasDoc}>) (anyone with the link can comment).`] : [])
   ].join('\n');
 }
@@ -344,7 +345,7 @@ export function myMoviesText(discordId, plain = false) {
   let head = used >= max ? `🔒 All ${max} picks used — you get ${max} new ones once these have all been picked.` : `🎟️ You have ${b(max - used)} of ${max} picks left.`;
   if (freePicks(discordId)) head += ` 🎟️ Plus ${b(freePicks(discordId))} free replacement pick${freePicks(discordId) === 1 ? '' : 's'} (use it any time).`;
   if (wonThisWeek(discordId)) head = `🏆 Your movie won this week — your movies sit out until ${b(backOn())}. ` + head;
-  if (!plain && !swapsLocked() && mine.length) head += ' (You can /swap any of them until the stream starts.)';
+  if (!plain && !swapsLocked() && mine.length) head += swapHint();
   const tag = e => e.status === 'benched' ? ` 💤 back ${backOn()}` : e.status === 'paused' ? ' ⏸ paused' : e.status === 'away' ? ' 💤 out tonight' : '';
   const luck = e => luckOn() && e.luckPct ? ` 🍀+${(+e.luckPct).toFixed(2)}%` : '';
   if (plain) return `${head} ${mine.length ? 'Your movies: ' + mine.map(e => `${e.label}${e.sub ? ` (${e.sub})` : ''}${tag(e)}${luck(e)}`).join(', ') : 'No movies in yet — /suggest one in Discord!'}`;

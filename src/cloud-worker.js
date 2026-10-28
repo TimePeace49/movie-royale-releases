@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 5; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 6; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -173,7 +173,7 @@ function myMoviesText(s, id) {
   const max = s.cfg.maxPerUser || 3, used = picksUsed(s, id), mine = mineOf(s, id), u = userOf(s, id);
   let head = used >= max ? `🔒 All ${max} picks used — you get ${max} new ones once these have all been picked.` : `🎟️ You have **${max - used}** of ${max} picks left.`;
   if (u.wonThisWeek) head = `🏆 Your movie won this week — your movies sit out until **${backOn(s.cfg)}**. ` + head;
-  if (!s.cfg.swapsLocked && mine.length) head += ' (You can /swap any of them until the stream starts.)';
+  if (!s.cfg.swapsLocked && mine.length) head += s.cfg.swapHint || ' (You can /swap any of them until the stream starts.)';
   const tag = e => e.status === 'benched' ? ` 💤 back ${backOn(s.cfg)}` : e.status === 'paused' ? ' ⏸ paused' : e.status === 'away' ? ' 💤 out tonight' : '';
   const luck = e => s.cfg.luckOn && e.luckPct ? ` 🍀+${(+e.luckPct).toFixed(2)}%` : '';
   return head + (mine.length ? '\n' + mine.map(e => `• ${e.label}${e.sub ? ` (${e.sub})` : ''}${tag(e)}${luck(e)}${e.pending ? ' ⏳' : ''}`).join('\n') : '');
@@ -283,7 +283,7 @@ async function doSuggest(env, s, user, value, ch) {
     : `Done! 🎬 **${label}** joined the battle royal!\n🎟️ Picks left: ${left} of ${max}`;
 }
 async function doSwap(env, s, user, oldId, value, ch) {
-  if (s.cfg.swapsLocked) return `🔒 Swaps are closed — ${s.cfg.streamer || 'the streamer'} is live. You can swap again after the stream.`;
+  if (s.cfg.swapsLocked) return s.cfg.swapMsg || `🔒 Swaps are closed — ${s.cfg.streamer || 'the streamer'} is live. You can swap again after the stream.`;
   const old = mineOf(s, user.discordId).find(e => e.id === oldId);
   if (!old) return "That isn't one of your movies — pick one from the list.";
   const { m, err, block } = await pickMovie(s, value);

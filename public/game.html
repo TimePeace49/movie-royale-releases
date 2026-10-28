@@ -218,6 +218,25 @@ addEventListener('pointerdown', () => SFX.init());
 SFX.init();
 
 const W = 1920, H = 1080, CX = 960, CY = 615, S = 30, SQ3 = Math.sqrt(3);
+// 🎨 graphics (Settings → Graphics): resolution, frame rate cap, quality, FPS counter. The game inside Movie Royal also
+// draws lighter while it's hidden or small (power saver); the stream (OBS) always uses the settings as they are.
+const GFX = { res: '1080', fps: 0, quality: 'high', showFps: false, appSaver: true, hidden: false, small: false, fpsUntil: 0 };
+const IN_APP = window.parent !== window;
+const RES_SCALE = { '720': 1280 / 1920, '900': 1600 / 1920, '1080': 1, '1440': 2560 / 1920, '2160': 2 };
+let gScale = 1;
+const saving = () => IN_APP && GFX.appSaver && (GFX.hidden || GFX.small);
+const lowGfx = () => GFX.quality === 'low' || saving();
+function gfxApply() {
+  let sc = saving() ? (GFX.hidden ? .25 : .5) : (RES_SCALE[GFX.res] || 1);
+  if (IN_APP && GFX.appSaver && !saving()) sc = Math.min(sc, Math.max(.5, Math.ceil(innerWidth * (devicePixelRatio || 1) / 1920 * 8) / 8)); // (inside the app: no sharper than the window it's shown in)
+  if (sc !== gScale || cv.width !== Math.round(W * sc)) { gScale = sc; for (const c of [cv, fxc]) { c.width = Math.round(W * sc); c.height = Math.round(H * sc); } }
+  ctx.imageSmoothingQuality = fx.imageSmoothingQuality = GFX.quality === 'high' && !saving() ? 'high' : 'low';
+}
+{ const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur'); // ✨ low quality: no glows (they're the heaviest thing to draw)
+  if (d?.set) for (const g of [ctx, fx]) Object.defineProperty(g, 'shadowBlur', { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, lowGfx() ? 0 : v); } }); }
+addEventListener('resize', () => gfxApply());
+addEventListener('message', e => { const g = e.data?.royalGfx; if (!g) return; if ('hidden' in g) GFX.hidden = !!g.hidden; if ('small' in g) GFX.small = !!g.small; if (g.showFps) GFX.fpsUntil = g.until || Date.now() + 15000; gfxApply(); });
+let fpsN = 0, fpsAt = 0, fpsShow = 0;
 let K = 0.55; // how flat the view is: 0.55 = the usual tilted view, 1 = straight down (Plague Town)
 let R = 10; // cliff size in tiles: grows with the number of pieces
 const HW = S * SQ3 / 2; // half hex width
@@ -2443,6 +2462,7 @@ function sparkle(x, y, color, n = 12, target = parts) { for (let i = 0; i < n; i
 function confetti(n = 220) { for (let i = 0; i < n; i++) fxParts.push({ x: rnd(W), y: rnd(-400, -10), vx: rnd(-80, 80), vy: rnd(120, 360), g: 60, life: rnd(3, 6), max: 6, size: rnd(6, 12), color: pick(PALETTE), rot: rnd(6.3), vr: rnd(-8, 8), conf: true }); }
 function burst(x, y) { for (let i = 0; i < 160; i++) { const a = rnd(6.3), v = rnd(200, 900); fxParts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 200, g: 700, life: rnd(1.5, 3), max: 3, size: rnd(6, 11), color: pick(PALETTE), rot: rnd(6.3), vr: rnd(-10, 10), conf: true }); } }
 function stepParts(arr, g, dt) {
+  const capP = lowGfx() ? 120 : GFX.quality === 'medium' ? 400 : 0; if (capP && arr.length > capP) arr.splice(0, arr.length - capP); // ✨ fewer particles on lower quality
   for (let i = arr.length - 1; i >= 0; i--) {
     const p = arr[i]; p.life -= dt; if (p.life <= 0) { arr.splice(i, 1); continue; }
     p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.conf) { p.vx *= .99; p.rot += p.vr * dt; }
@@ -3303,7 +3323,11 @@ addEventListener('mousemove', () => { try { parent !== window && parent.__stageA
 
 let last = performance.now(), dtReal = 0;
 function frame(now) {
+  const cap = saving() && GFX.hidden ? 30 : GFX.fps; // (the hidden game inside the app only needs 30 frames a second)
+  if (cap && last && now - last < 1000 / cap - 1.5) { requestAnimationFrame(frame); return; } // 🎨 frame rate cap / lock
   dtReal = Math.min(.05, (now - last) / 1000); last = now; clock += dtReal;
+  fpsN++; if (now - fpsAt >= 1000) { fpsShow = Math.round(fpsN * 1000 / (now - fpsAt || 1000)); fpsN = 0; fpsAt = now; }
+  ctx.setTransform(gScale, 0, 0, gScale, 0, 0); fx.setTransform(gScale, 0, 0, gScale, 0, 0); // (everything is drawn in 1920×1080 steps, at the chosen resolution)
   const dt = dtReal;
   if (replay) stepReplay(dt);
   else if (phase === 'lobby' || phase === 'waiting') {
@@ -3369,6 +3393,7 @@ function frame(now) {
     ctx.fillStyle = '#ffc94a'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, 60, H - 66);
   }
   fx.clearRect(0, 0, W, H); stepParts(fxParts, fx, dt);
+  if (GFX.showFps || Date.now() < GFX.fpsUntil) { const t = `${fpsShow} FPS · ${Math.round(W * gScale)}×${Math.round(H * gScale)} · ${saving() ? 'power saver' : GFX.quality}`; fx.save(); fx.globalAlpha = 1; fx.font = "800 22px Inter, sans-serif"; const tw = fx.measureText(t).width; fx.fillStyle = 'rgba(0,0,0,.65)'; roundRect(fx, 14, 14, tw + 28, 40, 12); fx.fill(); fx.fillStyle = fpsShow >= 55 ? '#7dff9b' : fpsShow >= 29 ? '#ffd24a' : '#ff6b6b'; fx.textAlign = 'left'; fx.textBaseline = 'middle'; fx.fillText(t, 28, 34); fx.restore(); }
   if (SFX.blocked()) { fx.font = "700 20px Inter, sans-serif"; fx.textAlign = 'right'; fx.fillStyle = 'rgba(18,10,36,.8)'; roundRect(fx, W - 400, H - 66, 370, 44, 22); fx.fill(); fx.fillStyle = '#fff'; fx.fillText('🔇 Click anywhere to turn on sound', W - 52, H - 37); }
   requestAnimationFrame(frame);
 }
@@ -3402,6 +3427,7 @@ function handleMsg(m) {
     else if (m.type === 'power') powerMsg(m);
     else if (m.type === 'effect') receiveEffect(m.effect);
     else if (m.type === 'queued') SFX.play('queued'), pendingCount++, floaters.push({ scr: 1, text: `${(EV_INFO[m.effect.event] || ['⚡'])[0]} queued for next round!`, x: CX, y: 260, life: 2.5, color: '#ffd98a' });
+    else if (m.type === 'gfx') { Object.assign(GFX, { res: m.res, fps: m.fps, quality: m.quality, showFps: m.showFps, appSaver: m.appSaver }); gfxApply(); }
     else if (m.type === 'audio') SFX.setVolume({ on: m.on && !WHEEL_ONLY && !PREVIEW_WIN, sfx: m.sfx, music: m.music });
     else if (m.type === 'soundTest') { if (m.name === 'music') { SFX.music('fight'); SFX.setIntensity(.7); setTimeout(() => phase !== 'running' && SFX.stopMusic(), 6000); } else if (m.map) SFX.playOn(m.map, m.name); else SFX.play(m.name); }
     else if (m.type === 'reset') { SFX.stopMusic(); phase = 'idle'; fighters = []; hideWin(); hideClaim(); buildIsland(); }

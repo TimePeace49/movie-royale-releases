@@ -9,6 +9,7 @@ app.setName('Movie Royal Backup Bots');
 app.setPath('userData', path.join(app.getPath('appData'), 'Movie Royal Backup'));
 if (process.platform === 'win32') app.setAppUserModelId('com.movieroyal.backup');
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
+require('./contextmenu.cjs').attachContextMenu(); // 🖱️ normal right-click menu (copy, paste, …)
 
 const ICON = path.join(__dirname, 'icon.png');
 const DATA = app.getPath('userData');

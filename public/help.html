@@ -166,7 +166,7 @@
 
   <section data-k="discord bot commands suggest swap mymovies mine list help linktwitch channel pinned">
     <h2>🤖 Discord commands</h2>
-    <p>The bot makes a channel called <b>#movies-royal</b> and pins a message listing every command. <code>/suggest</code> and <code>/swap</code> only work in that channel.</p>
+    <p>The bot makes a channel called <b>#movies-royal</b> and pins a message listing every command (it also lists tonight's movies: #1, #2… as they get watched). When a winner claims their movie, Movie Royal also pins it in Twitch chat: “Movie #2 tonight: …”, with the movies watched earlier tonight. <code>/suggest</code> and <code>/swap</code> only work in that channel.</p>
     <ul>
       <li><code>/suggest</code> — pick a movie. As you type, matching movies pop up with their year.</li>
       <li><code>/swap</code> — trade one of your movies for a different one (1 for 1, doesn't use a pick). Only until the stream starts.</li>
@@ -259,7 +259,7 @@
   <section data-k="close picks open stop adding movies during stream suggest off toggle">
     <h2>🎬 Opening and closing movie picks</h2>
     <p>Press <b>🎬 Movie picks OPEN</b> on the Battle tab to close picks, for example during the stream. While picks are closed, <code>/suggest</code> in Discord (and the 24/7 bot) tells people picks are closed. Their movies stay in, <code>/mymovies</code> and <code>/list</code> still work, and you can still add movies yourself. Press it again to open picks.</p>
-    <p>In <b>Settings → Discord & picks</b> you can have picks close by themselves while you're live, and turn off the bot's "picks are open/closed" posts.</p>
+    <p>By default, picks lock by themselves only while a Discord movie battle is going: from when you press Start until it has its winner. In <b>Settings → Luck & swaps</b> you can make them lock the whole time you're live, or never, and turn off the bot's "picks are open/closed" posts.</p>
   </section>
 
   <section data-k="call predict guess winner !call chat luck bet">
@@ -301,7 +301,7 @@
 
   <section data-k="swap change switch movie lock live">
     <h2>🔁 Swapping movies</h2>
-    <p>People use <code>/swap</code> in Discord to trade one movie for another, 1 for 1. Swaps lock automatically when you go live on Twitch, and open again when your stream ends. You can also lock or unlock them yourself in <b>Settings → Luck &amp; swaps</b> or on the Pool tab.</p>
+    <p>People use <code>/swap</code> in Discord to trade one movie for another, 1 for 1. By default, swaps (and new picks) lock only while a Discord movie battle is going: people can swap right up until you press Start, and again once it has its winner. You can change that to the whole time you're live, or never (Settings → Luck & swaps → 🔒 When adding and swapping movies lock). You can also lock or unlock them yourself in <b>Settings → Luck &amp; swaps</b> or on the Pool tab.</p>
   </section>
 
   <section data-k="mymovies command twitch chat !mymovies left cooldown someone else name lookup">
@@ -506,6 +506,18 @@
     <p>Settings → <b>⌨️ Key binds</b> lists every keyboard shortcut, sorted by tab. Click a key, then press the new one (Esc keeps it, Backspace turns it off). It saves right away. <b>↺ Put them all back</b> undoes your changes.</p>
     <p>Each key only works on its own tab (Space spins the wheel only on the 🎡 Wheel tab, G starts the battle only on the ⚔️ Battle tab), and never while you're typing in a box, so typing in chat, names or titles is always safe. Only the Ctrl / Alt ones work everywhere: <b>Ctrl+H</b> turns help mode on and off, <b>Alt+1</b> to <b>Alt+0</b> jump between tabs. If you clicked inside the game screen, click outside it first.</p>
 </section>
+  <section data-k="graphics resolution fps frame rate lock vsync quality lag stutter performance power">
+    <h2>🎨 Graphics</h2>
+    <p>Settings → <b>🎨 Graphics</b> changes how the game screen is drawn, on stream (OBS), in the app and in pop-out windows:</p>
+    <ul>
+      <li><b>🖼️ Resolution:</b> 720p and 900p are lighter for your PC, 1080p is normal, 1440p and 4K are sharper but heavier.</li>
+      <li><b>⏱️ Frame rate:</b> match your monitor (smoothest), or lock it at 30 / 60 FPS (or cap it at 120–240). 60 matches most OBS setups.</li>
+      <li><b>✨ Quality:</b> Low turns off glows and draws few particles, Medium draws fewer particles, High is everything on.</li>
+      <li><b>📈 FPS counter:</b> shows the frame rate, resolution and quality in the top-left corner (on stream too, so turn it off before going live). <b>📈 Show the FPS counter for 15 seconds</b> shows it in the app only.</li>
+      <li><b>🔋 Power saver</b> (on by default): the game inside Movie Royal draws much lighter while it's hidden on other tabs or in the small preview window, so switching tabs stays smooth. What OBS shows isn't affected.</li>
+    </ul>
+    <p class="tip">Match OBS: if OBS records 1080p at 60 FPS (OBS → Settings → Video), pick 1080p + 60 FPS lock here, and in the OBS browser source set Width 1920, Height 1080 and tick "Use custom frame rate" with 60.</p>
+  </section>
   <section data-k="test testing try fake practice">
     <h2>🔢 Number battles</h2>
     <p>+ New battle → <b>🔢 Numbers</b> (next to 📝 Text): type from and to (like 1 to 50) and press Create. Every ball is a number, and the last one standing is the pick. Later, in the 🎬 Movie Pool tab, change the range with <b>Update the numbers</b> (numbers you keep keep their odds), or click any number to change it.</p>

@@ -54,8 +54,21 @@ export function blockReason(movie, user = null, opts = {}) {
 
 /** value can be a TMDB id (from autocomplete) or free text. user = {discordId,name,avatar} or null for streamer */
 // picks can be closed (a toggle in the app, or automatically while you're live)
-export const picksClosed = () => !!db.picksClosed || (!!db.settings.closePicksWhenLive && !!db.live);
-export const closedMsg = () => `🔒 Movie picks are closed right now — ${streamerName()} will open them again soon. You can still use /mymovies and /list.`;
+// 🔒 when adding and swapping lock by themselves (Settings → Discord & picks): 'battle' (default) = only while a movie battle is going,
+// from Start until it has its winner · 'live' = the whole time you're live · 'off' = never (only when you lock them by hand)
+let battleOn = () => false;
+export const setBattleCheck = f => { battleOn = f; };
+export const lockMode = () => ['battle', 'live', 'off'].includes(db.settings.pickLock) ? db.settings.pickLock : 'battle';
+export const autoLocked = () => { const m = lockMode(); return m === 'live' ? !!db.live : m === 'battle' ? !!battleOn() : false; };
+export const picksClosed = () => !!db.picksClosed || autoLocked();
+export const closedMsg = () => !db.picksClosed && lockMode() === 'battle' && autoLocked()
+  ? `🔒 A movie battle is going on ${streamerName()}'s stream, so picks are locked until it has its winner. Try again in a few minutes! You can still use /mymovies and /list.`
+  : `🔒 Movie picks are closed right now — ${streamerName()} will open them again soon. You can still use /mymovies and /list.`;
+export const swapMsg = () => !db.swapLock && lockMode() === 'battle' && autoLocked()
+  ? `🔒 Swaps are locked while the movie battle is going. You can swap again once it has its winner.`
+  : !db.swapLock && lockMode() === 'live' ? `🔒 Swaps are closed — ${streamerName()} is live. You can swap again after the stream.`
+  : `🔒 Swaps are locked right now — ${streamerName()} will open them again soon.`;
+export const swapHint = () => lockMode() === 'battle' ? ' (You can /swap any of them until the next battle starts.)' : lockMode() === 'live' ? ' (You can /swap any of them until the stream starts.)' : ' (You can /swap any of them.)';
 // 🎟️ a free replacement pick: their movie got watched some other way (marked ✅ by hand, or Letterboxd) instead of winning a battle.
 // It skips the pick limit and closed picks, just for that one movie, and they can use it any time.
 export const freePicks = id => (db.freePicks || {})[id] || 0;
@@ -120,9 +133,9 @@ export function setOwner(entry, user) {
 }
 
 // ---------- swaps: trade one of your movies for another, 1 for 1, until the stream starts ----------
-export const swapsLocked = () => !!db.swapLock || (db.settings.lockSwapsWhenLive !== false && !!db.live);
+export const swapsLocked = () => !!db.swapLock || autoLocked();
 export async function swapMovie(user, oldEntryId, newValue, force = false) {
-  if (!force && swapsLocked()) return { ok: false, msg: `🔒 Swaps are closed — ${streamerName()} is live. You can swap again after the stream.` };
+  if (!force && swapsLocked()) return { ok: false, msg: swapMsg() };
   const l = moviesList(), old = l.entries.find(e => e.id === oldEntryId || String(e.tmdbId) === String(oldEntryId));
   if (!old || !IN_POOL.includes(old.status) || !old.backers?.some(b => b.discordId === user.discordId)) return { ok: false, msg: "That isn't one of your movies — pick one from the list." };
   let movie;

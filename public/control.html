@@ -61,6 +61,7 @@
   .grid3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
   #toasts { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center; }
   .toast { background:var(--panel2); border:1px solid var(--gold); padding:12px 20px; border-radius:12px; z-index:200; box-shadow:0 10px 40px #0008; max-width:80vw; }
+  #wEntTable select { max-width:170px; } /* (the spot list fits without scrolling sideways) */
   dialog { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:18px; width:min(560px, 94vw); padding:0; }
   dialog::backdrop { background:#000a; }
   dialog .inner { padding:22px; max-height:80vh; overflow:auto; }
@@ -679,6 +680,7 @@
     <button data-s="twitch">💜 Twitch &amp; channel points</button>
     <button data-s="movies">🎬 Movie info (TMDB, OMDb, Letterboxd)</button>
     <button data-s="app">🖥️ App &amp; background</button>
+    <button data-s="gfx">🎨 Graphics</button>
     <button data-s="obs">🎥 OBS</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
@@ -1074,6 +1076,8 @@ function drawChecklist() {
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
     ['wheelMove', '↕️ A viewer redeems Move a spot and types up / down in chat', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>{pchat(true,'test_viewer');pcRedeem('move');toast('↕️ test_viewer redeemed a Move: press up or down in 💬 Pretend chat',7000)},11000)).then(()=>toast('🎡 Spinning first…'))")],
     ['discordRestart', '🔄 Restart the Discord bot: it comes back online (Settings → Discord & picks)', T('Try it', "discordRestart()", false)],
+    ['pickLockBattle', '🔒 Discord picks + swaps lock while a movie battle is going and open again once it has its winner (try the 🤖 test Discord battle: watch the 🎬 Movie picks button)', T('Try it', "api('/api/test/discord-battle').then(()=>toast('Test Discord battle: the 🎬 Movie picks button on the Battle tab shows CLOSED until it has its winner',8000))")],
+    ['gfx', '🎨 Graphics settings change the game screen (resolution, FPS lock, quality): the 📈 FPS counter shows what you get', T('FPS counter', "gfxTest()")],
     ['botUpdPop', '☁️ The “Update your 24/7 Discord bot” pop-up shows (it only shows by itself when the bot really needs it)', T('Show it', "botUpdateOnOpen.test=true;botUpdateOnOpen()", false)],
     ['backupAdd', '🛡️ One click adds your bot to Movie Royal Backup Bots on this PC (no copy and paste)', T('Try it', "bkAddHere(this)", false)],
     ['backupUpd', '🔄 Movie Royal Backup Bots finds its own updates (🔍 Look for updates at the top of its window)', ''],
@@ -1149,6 +1153,7 @@ $('subnav').onclick = e => { const b = e.target.closest('button[data-s]'); if (b
 function setView(v) {
   if (view === 'settings' && v !== 'settings' && settingsDirty && !confirm('You changed some settings without saving. Leave anyway?')) return;
   if (v !== 'settings') settingsDirty = false;
+  if (v !== view) peekOn = false; // a new tab: the preview window closes (it only pops up when you run a test that changes the stream screen)
   view = v;
   if (S && v === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); // Battle tab = the battle on stream
   if (S && v === 'wheel' && !S.wheelShow) api('/api/wheel/show', { show: true }).catch(() => {}); // Wheel tab = the wheel on stream
@@ -1167,9 +1172,12 @@ function setSub(s) { if (s === 'keys') setTimeout(drawKeybinds, 0); sub = s; doc
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
+// 🔋 tell the game inside the app whether it's showing big, small (preview) or hidden, so it can draw lighter (Settings → Graphics)
+let gfxState = '';
+function gfxTell(state, force) { if (state === gfxState && !force) return; gfxState = state; try { $('game').contentWindow.postMessage({ royalGfx: { hidden: state === 'hidden', small: state === 'small' } }, '*'); } catch {} }
 function placeStage() {
   const st = $('stage');
-  if (document.fullscreenElement === st) return;
+  if (document.fullscreenElement === st) return gfxTell('full');
   if (view === 'battle') {
     const r = $('stageSize').getBoundingClientRect();
     st.classList.remove('mini', 'hide');
@@ -1185,7 +1193,9 @@ function placeStage() {
     Object.assign(st.style, { left: '', top: '', width: '', height: '' });
   }
   if (view === 'battle' || !peekOn) st.classList.remove('peek');
+  gfxTell(view === 'battle' ? 'full' : st.classList.contains('hide') ? 'hidden' : 'small');
 }
+$('game').addEventListener('load', () => gfxTell(gfxState || 'full', true));
 let peekOn = false;
 function peek(on = true) { if (on && prevWin && !prevWin.closed) return; peekOn = on; placeStage(); drawPrevBtns(); } // (popped out on another monitor: that window shows it)
 let prevWin = null;
@@ -1512,12 +1522,12 @@ async function setActive(id) { histList = null; await api('/api/active', { id })
 // ---------- channel points / bits on-off ----------
 function chaosButtons() {
   const c = S?.chaos || { points: true, bits: true }, pc = !!S?.picksClosed;
-  return `<button class="${pc ? 'off' : 'on'} picksBtn" title="${pc ? (S.picksClosedManual ? 'Click to let people add movies again' : 'Closed because you’re live (Settings → Discord & picks)') : 'Click to stop people adding movies (e.g. during stream)'}" onclick="picksToggle(${pc})">🎬 Movie picks ${pc ? 'CLOSED' : 'OPEN'}</button>
+  return `<button class="${pc ? 'off' : 'on'} picksBtn" title="${pc ? (S.picksClosedManual ? 'Click to let people add movies again' : (S.pickLock === 'battle' ? 'Locked while the movie battle is going: opens again once it has its winner (Settings → Discord & picks)' : 'Closed because you’re live (Settings → Discord & picks)')) : 'Click to stop people adding movies (e.g. during stream)'}" onclick="picksToggle(${pc})">🎬 Movie picks ${pc ? 'CLOSED' : 'OPEN'}</button>
     <button class="${c.points ? 'on' : 'off'}" title="Click to turn ${c.points ? 'off' : 'on'}" onclick="chaosToggle('points', ${!c.points})">⭐ Points ${c.points ? 'ON' : 'OFF'}</button>
     <button class="${c.bits ? 'on' : 'off'}" title="Click to turn ${c.bits ? 'off' : 'on'}" onclick="chaosToggle('bits', ${!c.bits})">💎 Bits ${c.bits ? 'ON' : 'OFF'}</button>`;
 }
 async function picksToggle(open) {
-  if (open && !S.picksClosedManual && S.picksClosed) return toast('Picks are closed because you’re live. Change that in Settings → Discord & picks.', 6000);
+  if (open && !S.picksClosedManual && S.picksClosed) return toast(S.pickLock === 'battle' ? 'Picks are locked while the movie battle is going. They open again once it has its winner (change that in Settings → Discord & picks).' : 'Picks are closed because you’re live. Change that in Settings → Discord & picks.', 7000);
   const r = await api('/api/picks-toggle', { open });
   toast(r.closed ? '🔒 Movie picks are <b>closed</b>. Discord /suggest is paused.' : '🍿 Movie picks are <b>open</b> again.');
 }
@@ -1730,7 +1740,7 @@ function renderPoolSide(l) {
   let h = `<div class="card"><h2>Channel points &amp; bits</h2><div class="chaosbar" data-chaos>${chaosButtons()}</div></div>`;
   if (l.type === 'movies') {
     h += `<div class="card"><h2>📅 This week</h2><p class="help" style="margin:0">Week of <b>${new Date(S.week.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</b>. New week starts <b>${esc(S.week.backOn)}</b>.</p>
-      <div class="row" style="margin-top:8px"><span class="grow">🔁 Discord swaps: <b style="color:${S.swapsLocked ? 'var(--bad)' : 'var(--good)'}">${S.swapsLocked ? 'locked' : 'open'}</b>${S.live && !S.swapLock ? ' <span class="muted">(you\'re live)</span>' : ''}</span>
+      <div class="row" style="margin-top:8px"><span class="grow">🔁 Discord swaps: <b style="color:${S.swapsLocked ? 'var(--bad)' : 'var(--good)'}">${S.swapsLocked ? 'locked' : 'open'}</b>${S.autoLocked && !S.swapLock ? ` <span class="muted">(${S.pickLock === 'live' ? 'you\'re live' : 'battle going'})</span>` : ''}</span>
       <button onclick="api('/api/swaps/lock',{locked:${!S.swapLock}})">${S.swapLock ? 'Unlock' : 'Lock now'}</button></div></div>`;
     if (S.settings.chatGate !== false) h += chattersCard();
   }
@@ -2032,7 +2042,7 @@ function drawMine() { const b = $('wMineBtn'); if (!b || !WD?.mine) return; cons
 async function wMine() { if ((WD?.mine?.left || 0) <= 0) return toast('No streamer respins left this stream. They come back when you go live.'); try { const r = await api('/api/wheel/mine', {}); WD.mine.left = r.left ?? WD.mine.left; drawMine(); } catch {} }
 document.addEventListener('contextmenu', e => { if (e.target.closest?.('#wMineBtn')) { e.preventDefault(); if (confirm('Refill your streamer respins now? (They also refill by themselves when you go live.)')) api('/api/wheel/mine', { action: 'set', left: WD?.mine?.perStream ?? 3 }).then(loadWheel); } });
 let wKey = '';
-const wTyping = () => document.activeElement?.matches?.('#wBody input[type=text], #wBody textarea, #wBody input[type=number]');
+const wTyping = () => document.activeElement?.matches?.('#wBody input[type=text], #wBody textarea, #wBody input[type=number], #wSpotDlg input[type=text], #wSpotDlg input[type=url], #wSpotDlg textarea, #wSpotDlg input[type=number]');
 function renderWheel(fromState) {
   if (!WD || (S.wheelVer !== wVer && !wSaveT && !wTyping())) return loadWheel().then(() => renderWheel());
   $('wShowBtn').textContent = S.wheelShow ? '🙈 Hide the wheel on stream' : '📺 Show on stream';
@@ -2056,6 +2066,7 @@ function renderWheel(fromState) {
     <div class="seg" style="margin:12px 0 8px">${tabs.map(([k, n]) => `<button class="${wTab === k ? 'on' : ''}" onclick="wTab='${k}';renderWheel()">${n}</button>`).join('')}</div></div>
     <div id="wBody"></div>`;
   if (wTab === 'spots') drawSpots(); else if (wTab === 'spins') drawWSpins(); else if (wTab === 'history') drawWHist(); else if (wTab === 'stats') drawWStats(); else if (wTab === 'global') drawWGlobal(); else drawWSettings();
+  wSpotDlgSync();
 }
 function wPct(w) { const on = w.entries.filter(e => e.on !== false && e.weight > 0), tot = on.reduce((a, e) => a + Number(e.weight), 0) || 1; return e => e.on !== false && e.weight > 0 ? Math.round(e.weight / tot * 1000) / 10 : 0; }
 const TYPE_HELP = { timer: 'A normal spot. The round timer keeps going and you get a 🔁 respin button.', auto: 'The round timer pauses. Do the thing, then spin again and the timer carries on. Shows (auto) on the wheel.', countdown: 'Has to be landed on more than once: each landing takes one off and the round timer pauses until you spin again. At 0 it leaves the wheel on the next spin. Shows how many are left in ( ) on the wheel.', timercount: 'A timer spot (the clock keeps going) with a countdown: every time it WINS (the round timer runs out on it), one comes off. At 0 it goes invisible on the next spin. Shows how many are left in ( ) on the wheel.', timermax: 'A timer spot (the clock keeps going) that can only win so many times a night. Once it has won that many times it goes invisible on the next spin, and comes back next stream. Shows how many wins are left in ( ) on the wheel.' };
@@ -2069,10 +2080,10 @@ function typeFields(e, i) { // the settings that go with each kind of spot (i = 
   return '';
 }
 const spotLabel = e => e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, (e.maxWins ?? 1) - (e.wins || 0))} left)` : e.type === 'auto' ? `${e.text} (auto)` : '';
+const typeSel = (val, onch) => `<select style="width:auto" onchange="${onch}">${Object.entries(WD.types).filter(([v]) => v !== 'void').map(([v, n]) => `<option value="${v}" ${v === (val || 'timer') ? 'selected' : ''}>${n}</option>`).join('')}</select>`; // (also used by the spot settings window)
 function drawSpots() {
   const w = wCur(), pct = wPct(w), pal = w.palette || WD.palette; let k = 0;
   const autoCol = e => e.on !== false && e.weight > 0 ? pal[(k++) % pal.length] : '#777777';
-  const typeSel = (val, onch) => `<select style="width:auto" onchange="${onch}">${Object.entries(WD.types).filter(([v]) => v !== 'void').map(([v, n]) => `<option value="${v}" ${v === (val || 'timer') ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   const badge = e => !w.opts.rules ? '' : e.type === 'countdown' || e.type === 'timercount' ? `🔢 ${e.count}/${e.countStart}` : e.type === 'timermax' ? `🏆 ${e.wins || 0}/${e.maxWins ?? 1} tonight` : e.type === 'auto' ? '⚡ auto' : '';
   $('wBody').innerHTML = `<div class="row" style="gap:8px;flex-wrap:wrap"><label class="grow">Wheel name<input value="${esc(w.name)}" onchange="wPut({name:this.value})"></label><label class="grow">Title on stream (optional)<input value="${esc(w.title || '')}" placeholder="${esc(w.name)}" onchange="wPut({title:this.value})"></label>
       <label>📁 Folder<select style="width:auto" onchange="if(this.value==='+new'){wNewFolder(true)}else{wPut({folder:this.value},true);wFolder=this.value;wKey='';setTimeout(renderWheel,50)}"><option value="">No folder</option>${(WD.folders || []).map(f => `<option ${f === (w.folder || '') ? 'selected' : ''}>${esc(f)}</option>`).join('')}<option value="+new">➕ New folder…</option></select></label></div>
@@ -2088,16 +2099,9 @@ function drawSpots() {
         <td><input type="color" value="${e.color || autoCol(e)}" title="${e.color ? 'Custom color (right-click to reset)' : 'Auto color'}" onchange="wEnt(${i},{color:this.value})" oncontextmenu="event.preventDefault();wEnt(${i},{color:null})"></td>
         <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.goTo ? `<small class="muted" title="When this spot wins it goes there, then comes back">🔀 → ${e.goTo.kind === 'wheel' ? '🎡 ' + esc(WD.wheels.find(x => x.id === e.goTo.id)?.name || '?') : '⚔️ ' + esc((S.lists || []).find(l => l.id === e.goTo.id)?.name || '?')}</small>` : ''}${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
         <td style="white-space:nowrap">${e.type === 'void' ? `<button class="ghost" title="Shrink the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><span class="muted" title="Chat can only change the void with money (subs, gift subs, bits, donations). You can always change it." style="padding:0 6px">💵 / you</span><button class="ghost" title="Grow the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
-        <td style="white-space:nowrap">${e.type === 'void' ? '<b>🕳️ Void</b>' : !w.opts.rules ? '<span class="muted" title="Rules are off for this wheel (⚙️ Wheel settings)">plain</span>' : `${typeSel(e.type, `wEnt(${i},{type:this.value${e.type !== 'countdown' && e.type !== 'timercount' ? `,count:${e.countStart ?? 3},countStart:${e.countStart ?? 3}` : ''}})`)}${e.type === 'countdown' || e.type === 'timercount' ? ` <small class="muted">${e.count}/${e.countStart} left</small>` : e.type === 'timermax' ? ` <small class="muted">won ${e.wins || 0}/${e.maxWins ?? 1} tonight</small>` : ''}`}${e.rule ? `<div class="muted" style="font-size:12px;max-width:220px;white-space:normal" title="${esc(e.rule)}">📜 ${esc(e.rule.length > 60 ? e.rule.slice(0, 60) + '…' : e.rule)}</div>` : ''}</td>
+        <td style="min-width:140px">${e.type === 'void' ? '<b>🕳️ Void</b>' : !w.opts.rules ? '<span class="muted" title="Rules are off for this wheel (⚙️ Wheel settings)">plain</span>' : `${typeSel(e.type, `wEnt(${i},{type:this.value${e.type !== 'countdown' && e.type !== 'timercount' ? `,count:${e.countStart ?? 3},countStart:${e.countStart ?? 3}` : ''}})`)}${e.type === 'countdown' || e.type === 'timercount' ? `<div><small class="muted">${e.count}/${e.countStart} left</small></div>` : e.type === 'timermax' ? `<div><small class="muted">won ${e.wins || 0}/${e.maxWins ?? 1} tonight</small></div>` : ''}`}${e.rule ? `<div class="muted" style="font-size:12px;max-width:220px;white-space:normal" title="${esc(e.rule)}">📜 ${esc(e.rule.length > 60 ? e.rule.slice(0, 60) + '…' : e.rule)}</div>` : ''}</td>
         <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost danger" title="Delete" onclick="wDel(${i})">✕</button></td></tr>
-        ${wOpen === e.id ? `<tr><td></td><td></td><td colspan="6" style="padding:10px 6px 14px"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
-          <p class="help" style="margin:4px 0 8px">${TYPE_HELP[e.type || 'timer'] || ''}</p>
-          <label>🔗 Link to a web page (optional): a button opens it when this spot wins<input type="url" placeholder="e.g. https://www.geoguessr.com" value="${esc(e.link || '')}" onchange="wEnt(${i},{link:this.value.trim()})"></label>${e.link ? `<p class="help" style="margin:2px 0 8px"><a href="#" onclick="wLink('${esc(e.link)}');return false">🔗 Try it</a></p>` : ''}
-          ${goToHTML(w, e, i)}
-          <label>📜 Words shown on stream when it lands (optional)<textarea placeholder="e.g. Play one round of Mario Kart" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></label>
-          <div class="row" style="gap:14px;flex-wrap:wrap"><label class="ck"><input type="checkbox" ${e.noPointRespin ? 'checked' : ''} onchange="wEnt(${i},{noPointRespin:this.checked})"> <span>🚫 No channel point respins</span></label><label class="ck"><input type="checkbox" ${e.noBankRespin ? 'checked' : ''} onchange="wEnt(${i},{noBankRespin:this.checked})"> <span>🚫 No respins from given/saved spins</span></label></div>
-          <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.image ? `<img src="${esc(e.image)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : ''}<button onclick="wPic(url=>wEnt(${i},{image:url}))">🖼️ ${e.image ? 'Change' : 'Add a'} picture</button>${e.image ? `<button class="ghost" onclick="wEnt(${i},{image:''})">Remove picture</button>` : ''}</div>
-          <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.sound ? `<button class="ghost" onclick="wPlay('${esc(e.sound)}')">▶️</button><span class="muted">🔊 plays when it lands here</span>` : ''}<button onclick="wSnd1(url=>wEnt(${i},{sound:url}))">🔊 ${e.sound ? 'Change' : 'Add a'} sound for this spot</button>${e.sound ? `<button class="ghost" onclick="wEnt(${i},{sound:''})">Remove sound</button>` : ''}</div></td></tr>` : ''}`).join('')}
+`).join('')}
       </tbody></table>
       <p class="help">${w.entries.filter(e => e.on !== false).length} spots on the wheel${w.entries.some(e => e.on === false) ? ` · ${w.entries.filter(e => e.on === false).length} invisible` : ''}${w.entries.some(e => e.voided) ? ` · ${w.entries.filter(e => e.voided).length} voided tonight` : ''}. + / − makes a spot ${w.opts.growPct || 10}% of the wheel bigger or smaller (the other spots make room). ⚙ has the spot's type, respin rules, picture and sound. Changes save by themselves.</p>`}`;
 }
@@ -2182,13 +2186,46 @@ async function wNewGo() {
   else await api('/api/wheel', { name });
   wNewDlg.close(); await loadWheel(); wTab = 'spots'; wBulk = !from; renderWheel(); toast(from ? '⧉ Copied! Change whatever fits the theme.' : '✨ New wheel made. Type your spots, one per line.');
 }
-async function wImport() {
-  const how = await ask('Paste a Wheel of Names share link (wheelofnames.com/abc-xyz)\n\n…or leave it empty and press OK to open a file from your computer (.wheel / .json / .txt, or a Movie Royal wheel someone sent you).', '');
-  if (how === null) return;
-  if (how.trim()) { try { const r = await api('/api/wheel/import', { url: how.trim() }); toast(`📥 Imported “${esc(r.name)}” with ${r.count} spots.`); await loadWheel(); renderWheel(); } catch {} return; }
-  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.wheel,.json,.txt,.csv';
-  inp.onchange = async () => { const f = inp.files[0]; if (!f) return; if (await shareOpen(f)) return; const text = await f.text(); try { const r = await api('/api/wheel/import', { text, name: f.name.replace(/\.(wheel|json|txt|csv)$/i, '') === 'wheel' ? '' : '' }); toast(`📥 Imported “${esc(r.name)}” with ${r.count} spots.`); await loadWheel(); renderWheel(); } catch {} };
-  inp.click();
+// ⚙ a spot's settings open in their own window (roomy, nothing cut off or squeezed into the table)
+function spotOptsHTML(w, e, i) {
+  return `<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><b>Type</b>${typeSel(e.type, `wEnt(${i},{type:this.value})`)} ${typeFields(e, i)}</div>
+          <p class="help" style="margin:4px 0 8px">${TYPE_HELP[e.type || 'timer'] || ''}</p>
+          <label>🔗 Link to a web page (optional): a button opens it when this spot wins<input type="url" placeholder="e.g. https://www.geoguessr.com" value="${esc(e.link || '')}" onchange="wEnt(${i},{link:this.value.trim()})"></label>${e.link ? `<p class="help" style="margin:2px 0 8px"><a href="#" onclick="wLink('${esc(e.link)}');return false">🔗 Try it</a></p>` : ''}
+          ${goToHTML(w, e, i)}
+          <label>📜 Words shown on stream when it lands (optional)<textarea placeholder="e.g. Play one round of Mario Kart" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></label>
+          <div class="row" style="gap:14px;flex-wrap:wrap"><label class="ck"><input type="checkbox" ${e.noPointRespin ? 'checked' : ''} onchange="wEnt(${i},{noPointRespin:this.checked})"> <span>🚫 No channel point respins</span></label><label class="ck"><input type="checkbox" ${e.noBankRespin ? 'checked' : ''} onchange="wEnt(${i},{noBankRespin:this.checked})"> <span>🚫 No respins from given/saved spins</span></label></div>
+          <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.image ? `<img src="${esc(e.image)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : ''}<button onclick="wPic(url=>wEnt(${i},{image:url}))">🖼️ ${e.image ? 'Change' : 'Add a'} picture</button>${e.image ? `<button class="ghost" onclick="wEnt(${i},{image:''})">Remove picture</button>` : ''}</div>
+          <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.sound ? `<button class="ghost" onclick="wPlay('${esc(e.sound)}')">▶️</button><span class="muted">🔊 plays when it lands here</span>` : ''}<button onclick="wSnd1(url=>wEnt(${i},{sound:url}))">🔊 ${e.sound ? 'Change' : 'Add a'} sound for this spot</button>${e.sound ? `<button class="ghost" onclick="wEnt(${i},{sound:''})">Remove sound</button>` : ''}</div>`;
+}
+function wSpotDlgSync() {
+  let d = $('wSpotDlg'); const w = wCur(), i = w ? w.entries.findIndex(x => x.id === wOpen) : -1;
+  if (!wOpen || i < 0) { if (d?.open) d.close(); return; }
+  if (!d) { d = document.createElement('dialog'); d.id = 'wSpotDlg'; d.className = 'wide'; d.addEventListener('close', () => { if (wOpen) { wOpen = null; renderWheel(); } }); document.body.appendChild(d); }
+  if (d.open && d.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return; // (typing in it: don't redraw under the cursor)
+  const e = w.entries[i], n = w.entries.length;
+  d.innerHTML = `<div class="inner"><div class="row" style="align-items:center;gap:8px;margin-bottom:6px"><h3 class="grow" style="margin:0">⚙ ${esc(e.text || 'Spot')}</h3>
+      <button class="ghost" title="The spot above" ${i <= 0 ? 'disabled' : ''} onclick="wOpen='${w.entries[i - 1]?.id || ''}';renderWheel()">⬆ Previous</button><button class="ghost" title="The spot below" ${i >= n - 1 ? 'disabled' : ''} onclick="wOpen='${w.entries[i + 1]?.id || ''}';renderWheel()">⬇ Next</button><button onclick="$('wSpotDlg').close()">✕ Close</button></div>
+    ${spotOptsHTML(w, e, i)}</div>`;
+  if (!d.open) d.showModal();
+}
+async function wImport() { // 📥 import a wheel: 📂 choose a file (Windows Explorer opens), drop one, or paste a Wheel of Names link
+  let d = $('wImpDlg');
+  if (!d) { d = document.createElement('dialog'); d.id = 'wImpDlg'; document.body.appendChild(d); }
+  d.innerHTML = `<div class="inner"><h3 style="margin-top:0">📥 Import a wheel</h3>
+    <div class="drop" id="wImpDrop" style="padding:18px;text-align:center"><button class="primary" id="wImpPick">📂 Choose a file…</button>
+      <p class="help" style="margin:8px 0 0">Opens Windows Explorer. A Movie Royal wheel someone sent you (<code>.movieroyal-wheel.json</code>), a Wheel of Names <code>.wheel</code>, or a <code>.json</code> / <code>.txt</code> / <code>.csv</code> list. You can also drag the file here.</p>
+      <input type="file" id="wImpFile" accept=".wheel,.json,.txt,.csv" hidden></div>
+    <p class="help" style="margin:12px 0 4px">…or paste a Wheel of Names share link:</p>
+    <div class="row"><input id="wImpUrl" class="grow" placeholder="wheelofnames.com/abc-xyz"><button id="wImpGo">Import link</button></div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="ghost" onclick="$('wImpDlg').close()">Cancel</button></div></div>`;
+  const done = async () => { d.close(); await loadWheel(); renderWheel(); };
+  const useFile = async f => { if (!f) return; if (await shareOpen(f)) { await done(); return; } const text = await f.text(); try { const r = await api('/api/wheel/import', { text, name: '' }); toast(`📥 Imported “${esc(r.name)}” with ${r.count} spots.`); await done(); } catch {} };
+  $('wImpPick').onclick = () => $('wImpFile').click();
+  $('wImpFile').onchange = () => useFile($('wImpFile').files[0]);
+  const dr = $('wImpDrop'); dr.ondragover = e => { e.preventDefault(); dr.classList.add('over'); }; dr.ondragleave = () => dr.classList.remove('over'); dr.ondrop = e => { e.preventDefault(); dr.classList.remove('over'); useFile(e.dataTransfer.files[0]); };
+  $('wImpGo').onclick = async () => { const u = $('wImpUrl').value.trim(); if (!u) return toast('Paste a Wheel of Names link first'); try { const r = await api('/api/wheel/import', { url: u }); toast(`📥 Imported “${esc(r.name)}” with ${r.count} spots.`); await done(); } catch {} };
+  $('wImpUrl').onkeydown = e => { if (e.key === 'Enter') $('wImpGo').click(); };
+  d.showModal();
 }
 function drawWheelPreview() { if (!WD) return; if (!WVc) { WVc = WheelView.create($('wheelCv'), { pointerRoom: 26 }); $('wheelCv').onclick = () => wSpin('spin'); } if (wSpinning) return; const w = wCur(); if (!w) return; const pal = w.palette || WD.palette; let k = 0; const rules = w.opts?.rules !== false; WVc.set({ ...w, entries: w.entries.filter(e => e.on !== false && e.weight > 0 && !e.voided).map(e => ({ ...e, label: rules ? spotLabel(e) : '', color: e.color || pal[(k++) % pal.length] })) }, w.rot || 0); }
 const wFmt = ms => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -2751,9 +2788,9 @@ function openSettings(force) {
       <p class="help">Default is <b>1%</b> per battle, so a movie that lost 10 battles is 10% more likely to win. ${esc(s.spotName)} spots don't get luck on their own unless you turn it on below. You can also set theirs by hand.</p>
       ${ck('spotLuck', `${esc(s.spotName)} wildcard spots get luck when they lose too — at most +1% per stream (they don't need anyone chatting)`, false)}
       <h3 style="margin-top:18px">🔁 Swaps (<code>/swap</code> in Discord)</h3>
-      <p class="help">People can trade one of their movies for a new one (1 for 1) without using a pick. Swaps lock when you go live on Twitch, and open again when your stream ends.</p>
-      ${ck('lockSwapsWhenLive', 'Lock swaps automatically when I go live')}
-      ${ck('closePicksWhenLive', 'Close movie picks automatically when I go live (open again when the stream ends)', false)}
+      <p class="help">People can trade one of their movies for a new one (1 for 1) without using a pick.</p>
+      <div><label>🔒 When adding and swapping movies lock by themselves</label><select data-k="pickLock">${[['battle', 'Only during movie battles: from Start until it has its winner (default)'], ['live', 'The whole time I\'m live on Twitch'], ['off', 'Never: only when I lock them myself']].map(([v, t]) => `<option value="${v}" ${(s.pickLock || 'battle') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <p class="help">The default: people can <code>/suggest</code> and <code>/swap</code> right up until you press Start on a Discord movie battle. They lock while it plays and open again once it has its winner. You can still lock them yourself any time (🎬 Movie picks button on the Battle tab, Lock now below).</p>
       ${ck('announcePicks', 'Post in the Discord movies channel when picks open or close')}
       <h3 style="margin-top:18px">🔮 Chat calls the winner</h3>
       ${ck('callsOn', 'Let Twitch chat call the winner before the fight (Discord movie battles)')}
@@ -2768,7 +2805,7 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🎨 Ball colors</h3>
       ${colorHTML(s)}
       ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
-      ${ck('pinWinner', '📌 Pin the movie in Twitch chat once the winner claims it (title, year, who picked it)')}
+      ${ck('pinWinner', '📌 Pin the movie in Twitch chat once the winner claims it (movie # tonight, title, year, who picked it, and the movies watched earlier tonight)')}
       ${ck('claimApprove', '✋ When the winner types in chat, stop the claim timer and ask them in chat: watch it now (!accept) or pass (!pass). It does whatever they answer (a pass puts the movie back and they keep their luck). The ✅ Accept / ⏭️ Pass buttons on the winner card are for doing it yourself.')}
       <div class="grid2">${f('acceptCommand', '✅ Winner\'s “watch it now” chat command', '!accept')}${f('passCommand', '⏭️ Winner\'s “not tonight” chat command', '!pass')}</div>
       <div class="grid2">${f('sitOutCommand', '🛌 “Sit out tonight” chat command (their movies skip tonight’s battles)', '!sitout')}${f('backCommand', '🙋 “I’m back” chat command', '!imback')}</div>
@@ -2818,6 +2855,17 @@ function openSettings(force) {
       <p class="help">The test never changes anything in OBS. It lists your sources so you can pick your mic and camera from the boxes above.</p>`,
     bans: `<div id="bansSlot"></div>`,
     sounds: `<div id="soundsSlot"></div>`,
+    gfx: `<h3>🎨 Graphics</h3>
+      <p class="help">How the game screen is drawn: on stream (the OBS browser source), in the app, and in pop-out windows. Lower settings help if the battle stutters or your PC gets hot while streaming.</p>
+      <div class="grid2">
+        <div><label>🖼️ Resolution (how sharp the game is drawn)</label><select data-k="gfxRes">${[['720', '720p (1280×720): lightest'], ['900', '900p (1600×900)'], ['1080', '1080p (1920×1080): normal'], ['1440', '1440p (2560×1440): sharper'], ['2160', '4K (3840×2160): sharpest, heaviest']].map(([v, t]) => `<option value="${v}" ${String(s.gfxRes || '1080') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div><label>⏱️ Frame rate (FPS cap / lock)</label><select data-k="gfxFps">${[[0, 'Match my monitor (V-Sync): smoothest'], [30, '30 FPS lock: lightest'], [60, '60 FPS lock: best for OBS at 60'], [120, '120 FPS cap'], [144, '144 FPS cap'], [165, '165 FPS cap'], [240, '240 FPS cap']].map(([v, t]) => `<option value="${v}" ${Number(s.gfxFps || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div><label>✨ Quality (glows, particles, smoothing)</label><select data-k="gfxQuality">${[['low', 'Low: no glows, few particles'], ['medium', 'Medium: fewer particles'], ['high', 'High: everything on (normal)']].map(([v, t]) => `<option value="${v}" ${(s.gfxQuality || 'high') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      </div>
+      ${ck('gfxShowFps', '📈 Show an FPS counter in the corner of the game screen (also on stream: turn it off before going live)', false)}
+      ${ck('gfxAppSaver', '🔋 Power saver for the game inside Movie Royal: it draws lighter while it is hidden (other tabs) or small (the preview window). The stream is not affected.')}
+      <p class="help">Tip: OBS records at its own resolution and frame rate (OBS → Settings → Video). Match them here (for example 1080p + 60 FPS lock) so nothing is drawn that OBS throws away. In the OBS browser source, set Width 1920, Height 1080, and tick "Use custom frame rate" with the same FPS.</p>
+      <div class="row" style="gap:6px"><button onclick="gfxTest()">📈 Show the FPS counter for 15 seconds</button></div>`,
     keys: `<h3>⌨️ Key binds</h3><div id="kbBody"></div>`,
     notes: `<h3>📝 Patch notes</h3><p class="help">What changed in each latest release. You're on v${esc(S.version || '')}.</p><div id="notesBody" class="help">Loading…</div>`,
     names: `<h3>✏️ Name changes</h3>
@@ -2853,6 +2901,7 @@ function bkHTML() {
     <p class="help"><b>🛡️ Add my bot to the backup on this PC</b> = one click, no copy and paste (Movie Royal Backup Bots has to be open on this PC). It also has its own <b>🍿 Add my bot</b> button.</p>
     <p class="help">To have a friend run your backup: they open <b>Movie Royal Backup Bots</b> on their PC and paste your bot token there. Your bot token lets them fully control your bot, so only give it to someone you trust. You can reset it any time in the Discord Developer Portal (then set the new one here).</p>`;
 }
+function gfxTest() { try { $('game').contentWindow.postMessage({ royalGfx: { showFps: true, until: Date.now() + 15000 } }, '*'); } catch {} peek(true); toast('📈 The FPS counter shows in the game screen (top left) for 15 seconds', 6000); }
 async function discordRestart(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '🔄 Restarting…'; }
   try { const r = await api('/api/discord/restart', {}); toast(r.state === 'online' ? '✅ The Discord bot restarted and is online' : r.state === 'connecting' ? '🔄 The Discord bot is still connecting: give it a few seconds' : '⚠️ The Discord bot didn\'t come back: ' + esc(r.error || r.state), 8000); } catch {}
