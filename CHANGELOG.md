@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.6 (test build)
+- **🎟️ Wild spots pin nothing when they win.** Movie Royal waits for the wild spot battle: its winner is pinned as the movie. If that winner is a text entry (not a movie), nothing is pinned and it is left out of the movie lists, so you can pin it yourself (the movie numbers still count it). 🧪 Test → 📌 Movie winner pin has a new 📝 button to try that.
+- **↔️ No more scrolling sideways on any tab.** Everything fits the window: the row under the battle screen wraps onto a second line, the wheel side gets narrower on small windows, and on a narrow window each wheel spot takes a couple of lines instead of a long row. Scrolling up and down still works.
+
 ## 1.30.5 (latest release)
 - **📌 The movie pin in Twitch chat is clearer:** "Movie #2 of tonight's stream: Heat (1995) — Lucy's movie", then every movie watched earlier tonight and whose it was ("⏪ Earlier tonight: #1 Alien (1979) — Bob's movie"). The pinned Discord message lists them the same way.
 - **🎟️ Wild spots:** when a wild (Kirb) spot wins the Discord battle, the pin says so and that the wild spot battle picks the movie. The next battle you run (any battle that isn't a chat battle or giveaway) is the wild spot battle: it shows "MOVIE #2 TONIGHT" on stream, and its winner becomes that movie, pinned as Kirb's pick. Pass on it and the next battle picks again.

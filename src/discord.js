@@ -46,9 +46,8 @@ export function helpText() {
     `🚫 *banned*, *series taken* or *${new Date().getFullYear()} movie* · ✅ *already watched* · 🔒 *already picked* — somebody has it, so pick something else. Every movie can only be picked once.`,
     ``,
     `**Rules:** be in Twitch chat during the stream to get your movies on the cliff · if your movie wins, your other movies sit out until the new week (Sunday) · one movie per series${db.settings.banCurrentYear !== false ? ` · no ${new Date().getFullYear()} movies` : ''}${luckOn() ? ' · 🍀 every battle your movies lose, they get a little luckier' : ''}`,
-    ...(() => { const today = db.stream?.day === new Date().toDateString(), t = today ? db.stream.tonight || [] : [], sp = today && db.stream.spotPending, who = db.settings.spotName || 'Kirb';
+    ...(() => { const today = db.stream?.day === new Date().toDateString(), t = today ? (db.stream.tonight || []).filter(x => !x.text) : [], who = db.settings.spotName || 'Kirb';
       const lines = t.map(x => `#${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}${x.viaSpot ? ` — 🎟️ ${x.owner || who}'s pick (wild spot)` : x.owner ? ` — ${x.owner}'s movie` : ''}`);
-      if (sp) lines.push(`#${(db.stream.movies || 0) + 1} 🎟️ ${sp.label} won — the ${who} spot battle picks the movie`);
       return lines.length ? [``, `**🎬 Tonight's movies:**`, ...lines.map(l => `• ${l}`)] : []; })(),
     ...(db.settings.ideasDoc ? [``, `💡 **Got an idea for Movie Royal?** Maps, the wheel, how it looks, anything: [leave a note in the ideas doc](<${db.settings.ideasDoc}>) (anyone with the link can comment).`] : [])
   ].join('\n');

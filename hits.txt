@@ -32,7 +32,7 @@ battle | ⚡ Lightning -> ⚡ Lightning (chaos power)
 battle | 🪨 Boulder -> 🪨 Boulder (chaos power)
 battle | 🌀 Teleport Swap -> 🌀 Teleport Swap (chaos power)
 battle | 🪐 Low Gravity -> 🪐 Low Gravity
-battle | 🐉 Dragon Raid -> 🗺️ Map power
+battle | 🫨 Tremor -> 🗺️ Map power
 battle | 🎲 Mystery -> 🎲 Mystery (chaos power)
 battle | Screen title -> Screen title
 battle | ◀ -> ◀ Follow the previous piece
@@ -53,10 +53,6 @@ battle | ⏱️ 2-min chat timer, then start -> ⏱️ 2-min chat timer, then st
 battle | 🎬 Movie picks OPEN -> 🎬 Movie picks OPEN / CLOSED
 battle | ⭐ Points ON -> ⭐ Points ON / OFF
 battle | 💎 Bits ON -> 💎 Bits ON / OFF
-battle | 🚪 Take winner out of the pool -> 🚪 Take winner out of the pool
-battle | 📋 Full results -> 📋 Results
-battle | ✕ Hide the pop-up on stream -> ✕ Hide the pop-up on stream
-battle | Next round → -> Next round →
 battle | 🔊 On -> 🔊 Sound on / off
 battle | Sound effects 70% -> Sound effects volume
 battle | Music 35% -> Music volume
@@ -66,23 +62,25 @@ battle | 📂 Saved odds -> 📂 Saved luck / odds
 battle | Rounds -> Rounds (best of)
 battle | Filter… -> Filter
 battle | ➕ Add -> ➕ Add
+battle | Add -> Add
 battle | − -> + / − odds
 battle | text -> Name
 battle | + -> + / − odds
 battle | ⏸️ -> ⏸ Pause
 battle | ✕ -> ✕ Remove / close
 pool | 🧪 Test⚠️ 3🆕13 -> 🧪 Test tab
-pool | Discord Movies🎬 Discord movies3 -> Discord movies battle
+pool | Discord Movies🎬 Discord movies7 -> Discord movies battle
 pool | Chat battle💬 Twitch chat14 -> Chat battle (pool)
 pool | Giveaway💬 Twitch chat0 -> Chat battle (pool)
 pool | Derek's Discord movies🎬 Movies9 -> Discord movies battle
 pool | 💩 Letterboxd’s worst 500🎬 Movies0 -> A custom battle
 pool | 🔢 1 to 25📝 Text25 -> A custom battle
 pool | 🔢 Worse Movies📝 Text500 -> A custom battle
-pool | Add a movie (or any text): start typing… -> Add a movie (or any text)
-pool | Paste a big list of movie titles -> Add a list
-pool | Add all -> Add all
-pool | 📝 Add all as plain text -> 📝 Add as plain text
+pool | 🔢 Numbers -> From / To
+pool | number -> Odds
+pool | Update the numbers -> 🔢 Update the numbers
+pool | Paste as many as you want — commas or new lin -> Add a list
+pool | Add to list -> Add to list
 pool | 📤 Export this battle -> 📤 Export
 pool | 📥 Import from Wheel of Names, Marbles on Stre -> 📥 Import
 pool | Paste a Wheel of Names share link (wheelofnam -> Import a link
@@ -91,6 +89,7 @@ pool | Pool & odds -> Pool & odds
 pool | Reset odds -> Reset odds
 pool | Clear -> Clear
 pool | Delete -> 🗑 Delete
+pool | Click to change it -> ✏️ Entry name
 pool | Odds -> Odds
 chat | ▶ Open joining -> ▶ Open joining
 chat | ▶ START CHAT BATTLE (14) -> ▶ START CHAT BATTLE
@@ -146,12 +145,10 @@ people | 🔄 Refresh -> 🔄 Refresh
 people | 📋 Import everyone from your old wheel at once -> Import everyone
 people | One person per line: Twitch name, a colon, th -> Import everyone
 people | Import -> Import everyone
-people | 🟢 In -> Here tonight
-people | number -> Odds
+people | ⚪ Not yet -> Here tonight
 people | ＋ movie -> ＋ movie
 people | not linked -> Twitch name
 people | 🔓 -> 🔓 Fresh picks
-people | ⚪ Not yet -> Here tonight
 people | ✏️ Name changes -> ✏️ Name changes
 history | 📜 Every round -> 📜 Every round
 history | 👑 Who won what -> 👑 Who won what
@@ -159,6 +156,7 @@ history | 📋 Results -> 📋 Results
 history | 📊 Stats -> 📊 Battle stats
 history | 📜 Every round👑 Who won what📋 Results📊 Stats -> 👑 Who won what
 history | in -> Search in
+history | 📋 Full results -> 📋 Results
 wheel/spots | Folder -> Folder
 wheel/spots | 🎡 My wheel (6) -> Which wheel
 wheel/spots | 📁➕ -> 📁➕ New folder
@@ -181,7 +179,6 @@ wheel/spots | ↺ Reset all sizes -> ↺ Reset all sizes
 wheel/spots | 📝 Edit as text -> 📝 Edit as text
 wheel/spots | Spot name (press Enter)… -> Add a spot
 wheel/spots | ⏱️ Timer -> Spot type
-wheel/spots | Add -> Add
 wheel/spots | 👁️ -> 👁️ Make invisible
 wheel/spots | Auto color -> Auto color
 wheel/spots | − -> + / − size
@@ -312,6 +309,7 @@ test/tests | 💬 Pretend chat -> 💬 Pretend chat
 test/tests | ↺ Reset everyone's cooldowns -> ↺ Reset everyone's cooldowns
 test/tests | 🟢 Put everyone on the cliff -> 🟢 Put everyone on the cliff
 test/tests | ⚔️ Run a test Discord battle -> ⚔️ Test Discord battle
+test/tests | Next round → -> Next round →
 test/tests | 🔢 Make a 1–10 battle -> 🔢 Make a 1–10 battle
 test/tests | Twitch name -> Pretend viewer
 test/tests | 🛡️ Shield -> 🛡️ Shield (test)
@@ -334,6 +332,7 @@ test/tests | 🙋 They type !imback -> 🛌 !sitout / 🙋 !imback
 test/tests | 🍿 A movie wins -> 🍿 A movie wins
 test/tests | 🎟️ A wild spot wins -> 🎟️ A wild spot wins
 test/tests | 🏆 The wild spot battle's winner -> 🏆 The wild spot battle's winner
+test/tests | 📝 Its winner is a text entry -> 📝 Its winner is a text entry
 test/tests | ↺ Start over -> ↺ Start over
 test/tests | e.g. The Two Towers -> Can this movie be picked?
 test/tests | Check -> Can this movie be picked?

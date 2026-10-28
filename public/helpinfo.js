@@ -496,10 +496,12 @@ H(/raid reward: a viewer redeems it|raid reward name on twitch/i, '🚀 Raid rew
 H(/make \/ fix the raid reward now/i, '🚀 Make the raid reward', 'Makes the raid reward on Twitch now (it happens by itself too). An old raid reward Movie Royal made is replaced with the same price; one made by hand has to be deleted on Twitch.');
 H(/take winner out of the pool/i, '🚪 Take winner out of the pool', 'The winner of a custom battle leaves the pool (hidden, not deleted) so it can\'t win again (hidden, not deleted).');
 H(/^add a movie \(or any text\)/i, 'Add a movie (or any text)', 'Type a movie name and click it in the list to add it to this battle. In a custom battle you can also add any text that isn\'t a movie: click 📝 Add as plain text (or press Ctrl+Enter).');
+H(/^click to change it$/i, '✏️ Entry name', 'The name of this entry (text, numbers or pictures). Click it and type to change it; it saves when you click away.');
 H(/^📌 movie winner pin/i, '📌 Movie winner pin test', 'Shows what Movie Royal pins in Twitch chat and lists in the pinned Discord message as the night goes on: the movie number of tonight\'s stream, the earlier movies and whose they were, and what happens when a wild spot wins. Pretend only: nothing is pinned or counted.');
 H(/^🍿 a movie wins$/i, '🍿 A movie wins', 'Pretends a Discord movie won the next battle tonight and shows the pin it would get.');
-H(/^🎟️ a wild spot wins$/i, '🎟️ A wild spot wins', 'Pretends a wild (Kirb) spot won. The pin says the wild spot battle picks the movie. Then press 🏆 to pretend that battle\'s winner.');
+H(/^🎟️ a wild spot wins$/i, '🎟️ A wild spot wins', 'Pretends a wild (Kirb) spot won. Nothing is pinned yet. Then press 🏆 (or 📝) to pretend the wild spot battle\'s winner.');
 H(/^🏆 the wild spot battle's winner$/i, '🏆 The wild spot battle\'s winner', 'After a wild spot wins, the next battle you run (any battle that is not a chat battle or giveaway) is the wild spot battle: its winner is the movie you watch. It gets the movie number and is pinned as the wild spot\'s pick.');
+H(/^📝 its winner is a text entry$/i, '📝 Its winner is a text entry', 'Pretends the wild spot battle was won by a text entry (not a movie). Movie Royal counts it as tonight\'s movie but pins nothing: you pin it yourself.');
 H(/^↺ start over$/i, '↺ Start over', 'Clears the pretend night in the pin test.');
 H(/^🚀 raid/i, '🚀 Raid box', 'Who chat picked to raid. Click it to start the raid (Twitch asks you to confirm). ✕ forgets the pick.');
 H(/^▶ bring back$|^▶ bring them all back$/i, '▶ Bring back', 'Puts paused or taken-out entries back in the battle. Nothing is ever deleted: they stay in the list, darker, until you bring them back.');
