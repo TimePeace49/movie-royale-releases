@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.4 (test build)
+- **⏸ Paused entries stay in the pool list:** ↺ Reset entries, Clear and ✕ now pause entries instead of moving them to a separate list. They stay in the 🎬 Movie Pool list, darker but readable, with **▶ Bring back** on each and **▶ Bring them all back** at the top. Nothing is deleted.
+- **💰 Settings → Rewards & prices:** every channel point reward, bits amount and donation amount in one place, sorted by tab. Change prices (saved on Twitch right away), and set when each reward is on: 📏 follow the rules, ✅ always on, ⏸ off (hidden on Twitch), or 1️⃣ on, then off after one use (these beat the rules). ⏸ Pause any bits amount, or subs / bits / donations on the wheel.
+- **🚀 Raid reward** (on by default, Settings → 💰 Rewards & prices): a viewer redeems it and Movie Royal asks them in chat who to raid. They type a Twitch name, a pop-up with a celebration sound shows it, and a **🚀 Raid → name** box appears at the top of the app. Click it to start the raid. The reward hides for the rest of the stream once used. Movie Royal makes the reward: an old raid reward keeps its price (1500 if none). **Sign in with Twitch again once** so it can start raids.
+- **🧭 The top tabs never scroll:** they shrink step by step to fit (down to just the icons on a small window) and stay on top.
+- 💬 Pretend chat has a 🚀 Raid button to try the raid.
+
 ## 1.30.3 (test build)
 - **🙈 Fixed: taken-out entries looked deleted.** ↺ Reset entries, Clear and ✕ only hide entries, but the 🎬 Movie Pool didn't show them anywhere. Now they're listed under **🙈 Invisible** in the pool (greyed out), with **👁️ Show** on each one and **👁️ Put them all back**. Nothing you reset before was deleted: open the battle in the Movie Pool and press Put them all back.
 - **🎡 Two new wheel channel point rewards:** **✌️ Double trouble** (after redeeming, they type any spot in chat and it doubles in size; the void can't be picked) and **🛑 Force stop** (the round ends right away: the spot it's on has to be done). Add them with ✨ Add missing rewards (Wheel → 🌐 All wheels); each wheel can turn them off in ⚙️ Wheel settings. 💬 Pretend chat has ✌️ Double and 🛑 Stop buttons to try them.

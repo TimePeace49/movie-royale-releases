@@ -294,6 +294,25 @@
   .kbKey { min-width:92px; font-family:ui-monospace, Consolas, monospace; font-weight:800; padding:4px 10px; border-radius:8px; background:#2a1d4a; border:1px solid #9b7bff; border-bottom-width:3px; }
   .kbKey.off { opacity:.55; font-weight:400; } .kbKey.wait { background:var(--gold); color:#1a1030; border-color:var(--gold); }
   .claimNow { margin:10px 0; padding:12px; border-radius:14px; background:#163a26; border:2px solid #7dffb0; box-shadow:0 0 22px #7dffb055; animation:updPulse .9s ease-in-out infinite alternate; }
+  tr.pausedRow { opacity:.5; } tr.pausedRow:hover { opacity:.8; }
+  #raidBox { display:inline-flex; align-items:center; gap:2px; margin-left:auto; flex:0 1 auto; min-width:0; }
+  #raidBox + .dots { margin-left:8px; }
+  #raidGo { background:#2a1650; border:1px solid #9146ff; color:#fff; border-radius:10px; padding:5px 10px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
+  #raidBox.ready #raidGo { background:#9146ff; box-shadow:0 0 18px #9146ffaa; animation:updPulse .9s ease-in-out infinite alternate; }
+  #raidBox .raidX { padding:4px 7px; font-size:12px; background:transparent; border:0; color:var(--muted); }
+  #raidPopup { position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#0008; }
+  #raidPopup .rpIn { background:var(--panel); border:2px solid #9146ff; border-radius:22px; padding:26px 34px; text-align:center; box-shadow:0 0 60px #9146ff88; max-width:min(460px, 92vw); }
+  #raidPopup .rpBurst { font-size:54px; animation:updPulse .5s ease-in-out infinite alternate; } #raidPopup h2 { color:var(--gold); font-size:34px; margin:6px 0; }
+  #raidPopup img { width:96px; height:96px; border-radius:50%; border:3px solid #9146ff; } #raidPopup .rpName { font-size:30px; font-weight:900; margin:8px 0; }
+  /* the top tabs never scroll sideways: fitNav() shrinks them step by step until they fit, and they stay on top */
+  header { overflow:hidden; } header > *:not(nav) { flex-shrink:0; } nav#nav { flex:0 1 auto; min-width:0; overflow:hidden; }
+  body.navMeasure header, body.navMeasure header * { transition:none !important; }
+  body.fit1 nav#nav button { padding:0 8px; font-size:13.5px; } body.fit1 header { gap:10px; }
+  body.fit2 nav#nav button { padding:0 5px; font-size:12.5px; } body.fit2 header { gap:8px; } body.fit2 header h1 { font-size:17px; }
+  body.fit3 nav#nav button { padding:0 3px; font-size:11.5px; } body.fit3 header { gap:6px; padding:0 8px; } body.fit3 header h1 { font-size:15px; }
+  body.fit4 nav#nav button { padding:0 2px; font-size:10.5px; } body.fit4 header { gap:4px; padding:0 6px; } body.fit4 header h1 { font-size:0; } body.fit4 header h1::first-letter { font-size:20px; }
+  body.fit5 nav#nav button { padding:0 6px; font-size:16px; } body.fit5 nav#nav .nt { display:none; } body.fit5 header { gap:4px; padding:0 6px; } body.fit5 header h1 { font-size:0; } body.fit5 header h1::first-letter { font-size:20px; } body.fit5 #raidGo { max-width:110px; }
+  body.fit4 #raidGo { max-width:120px; } body.fit3 #raidGo { max-width:170px; }
   #newNav:not(:empty) { display:inline-block; background:#2f9e5b; color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:5px; line-height:17px; box-shadow:0 0 0 2px #0006; }
   .ckl h4.cknew { color:#7dff9b; } .newTag { font-size:12px; }
   .tcat { background:transparent !important; border:0 !important; box-shadow:none !important; padding:14px 4px 0 !important; } .tcat h2 { font-size:18px; color:var(--gold); }
@@ -343,6 +362,7 @@
     <button data-v="help">❓ Help</button>
     <button data-v="settings">⚙️ Settings</button>
   </nav>
+  <span id="raidBox" style="display:none"><button id="raidGo" onclick="raidClick()"></button><button class="raidX" title="Hide this (the raid pick is forgotten)" onclick="if(confirm('Forget this raid pick?')) api('/api/raid/clear',{})">✕</button></span>
   <div class="dots" id="dots"></div>
   <span id="liveTag"></span>
   <button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does (Ctrl+H)" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
@@ -689,6 +709,7 @@
     <button data-s="movies">🎬 Movie info (TMDB, OMDb, Letterboxd)</button>
     <button data-s="app">🖥️ App &amp; background</button>
     <button data-s="gfx">🎨 Graphics</button>
+    <button data-s="prices">💰 Rewards &amp; prices</button>
     <button data-s="obs">🎥 OBS</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
@@ -750,6 +771,7 @@
 </div></dialog>
 
 <script src="wheel.js"></script>
+<script src="sfx.js"></script>
 <script src="ask.js"></script>
 <script src="helpinfo.js"></script>
 <script src="chat.js"></script>
@@ -1078,7 +1100,7 @@ const CK_META = { // key: [category, version it came in]
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
   discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
-  announce: ['chat', '1.30.0'], muteUnfocused: ['screen', '1.30.1'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  announce: ['chat', '1.30.0'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1129,6 +1151,11 @@ function drawChecklist() {
     ['gfx', '🎨 Graphics settings change the game screen (resolution, FPS lock, quality): the 📈 FPS counter shows what you get', T('FPS counter', "gfxTest()")],
     ['botUpdPop', '☁️ The “Update your 24/7 Discord bot” pop-up shows (it only shows by itself when the bot really needs it)', T('Show it', "botUpdateOnOpen.test=true;botUpdateOnOpen()", false)],
     ['muteUnfocused', '🔇 Movie Royal goes quiet when you click into another program, and the sound comes back when you click back (Settings → App & background)', T('Try it', "api('/api/test/battle',{count:12}).then(()=>toast('A practice battle is playing: click into another program and its sound stops, click back and it comes back',9000)).catch(()=>{})")],
+    ['prices', '💰 Every reward, bits and donation amount in one place (Settings → 💰 Rewards & prices): change a price, pause one, make it always on or off after one use', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">See it</button>`],
+    ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
+    ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
+    ['pausedRows', '⏸ Paused / taken-out entries stay in the 🎬 Movie Pool list, darker, with ▶ Bring back', `<button class="ghost" style="padding:3px 9px" onclick="setView('pool')">See it</button>`],
+    ['topTabs', '🧭 The tabs at the top shrink to fit a small window and never scroll', ''],
     ['backupAdd', '🛡️ One click adds your bot to Movie Royal Backup Bots on this PC (no copy and paste)', T('Try it', "bkAddHere(this)", false)],
     ['backupUpd', '🔄 Movie Royal Backup Bots finds its own updates (🔍 Look for updates at the top of its window)', ''],
     ['backupLink', '🛡️ A backup bot server (Movie Royal Backup Bots) is watching your Discord bot', T('Check', "bkCheck()", false)],
@@ -1197,6 +1224,7 @@ function connect() {
     if (m.type === 'updProgress') updBar(m);
     if (m.type === 'goView' && (view === 'wheel' || view === 'battle') && view !== m.view) setView(m.view); // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
     if (m.type === 'botSay') pcLog('bot', 'Movie Royal', m.text);
+    if (m.type === 'raidPicked') raidPop({ ...m.raid, by: m.raid.name || m.raid.by });
     if (m.type === 'errorLogged') { clearTimeout(window.errT); window.errT = setTimeout(loadErrors, 800); }
     if (m.type === 'wheelRound' && WD) { WD.round = m.round; if (m.final) { WD.final = m.final; toast('⏱️ TIME! The wheel has spoken: 🏆 ' + esc(m.final.text), 6000); } drawRound(); if (view === 'wheel') drawWheelResult(); }
     if (m.type === 'wheelBoosts') drawBoosts(m.boosts);
@@ -1228,7 +1256,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'keys') setTimeout(drawKeybinds, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(drawPrices, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -1378,6 +1406,7 @@ function renderView() {
   if (!S) return;
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
+  drawRaidBox();
   if (view === 'pool') renderPool();
   else if (view === 'chat') renderChat();
   else if (view === 'giveaway') renderGiveaway();
@@ -1402,7 +1431,7 @@ function renderHeader() {
   if ($('fakeLiveBtn')) { $('fakeLiveBtn').textContent = S.fakeLive ? '⚫ Stop pretending' : '🔴 Pretend I\'m live'; $('fakeLiveBtn').className = S.fakeLive ? 'danger' : 'primary'; }
   const o = S.owner;
   $('me').innerHTML = o ? `<span class="me" title="Signed in with Twitch">${o.avatar ? `<img src="${esc(proxy(o.avatar))}">` : ''}${esc(o.name)}</span>` : `<button class="twitch" onclick="location.href='/auth/twitch'">Sign in with Twitch</button>`;
-  const peopleTab = document.querySelector('#nav [data-v="people"]'); peopleTab.innerHTML = `👥 People <span class="pill">${S.people.length}</span>`;
+  const peopleTab = document.querySelector('#nav [data-v="people"]'); { const h = `👥 <span class="nt">People</span> <span class="pill">${S.people.length}</span>`; if (peopleTab.innerHTML !== h) peopleTab.innerHTML = h; }
   const banTab = document.querySelector('#subnav [data-s="bans"]'); if (banTab) banTab.innerHTML = `🚫 Banned Movies${S.banCount ? ` <span class="pill">${S.banCount}</span>` : ''}`;
 }
 
@@ -1759,7 +1788,7 @@ function renderPool() {
     ${/reading/.test(S.status.twitch.chat) ? '' : `<p class="help">⚠️ Not reading chat yet — sign in with Twitch (top right).</p>`}
     <details style="margin-top:8px"><summary>…or paste usernames</summary><textarea id="bulk" placeholder="username1, username2 x2"></textarea><button class="primary" style="margin-top:6px" onclick="bulkAdd()">Add</button></details>`;
 
-  const hidden = l.entries.filter(e => e.status === 'removed' && e.kind !== 'spot' && (!filter || e.label.toLowerCase().includes(filter))); // 🙈 taken out (✕, Clear, Reset entries): only hidden, never deleted
+  const hidden = l.entries.filter(e => (e.status === 'paused' || e.status === 'removed') && e.kind !== 'spot' && (!filter || e.label.toLowerCase().includes(filter))); // ⏸ paused / taken out (✕, Clear, Reset entries): never deleted, they stay in the list below, darker
   const rows = active.filter(e => !filter || e.label.toLowerCase().includes(filter)).sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label, undefined, { numeric: true })).slice(0, 500).map(e => {
     const spot = e.kind === 'spot';
     const luckM = l.type === 'movies' && S.luckOn ? 1 + (e.luckPct || 0) / 100 : 1;
@@ -1773,7 +1802,7 @@ function renderPool() {
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)" title="Odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div>${luck}</td>
       <td><div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small></td>
       <td style="white-space:nowrap">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}<button class="ghost" title="Pause — off the cliff until you resume it" onclick="setStatus('${e.id}','paused')">⏸️</button>${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}<button class="ghost danger" title="Remove" onclick="setStatus('${e.id}','removed')">✕</button></td></tr>`;
-  }).join('');
+  }).join('') + hidden.slice(0, 500).map(e => `<tr class="pausedRow" title="${e.status === 'paused' ? 'Paused' : 'Taken out'}: not on the cliff. ▶ puts it back in."><td class="thumb">${e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`}</td><td><b>${esc(e.label)}</b>${e.sub ? ` <small class="muted">(${esc(e.sub)})</small>` : ''}<br><small class="muted">⏸ paused: not on the cliff</small></td><td><span class="muted">${e.weight || 1}</span></td><td><small class="muted">—</small></td><td style="white-space:nowrap"><button class="ghost" title="Put it back in" onclick="setStatus('${e.id}','active')">▶ Bring back</button></td></tr>`).join('');
 
   add += `
     <div class="row" style="margin-top:8px;gap:8px;align-items:center"><button class="ghost" onclick="shareSave('/api/lists/${l.id}/export')" title="Save this battle as a file you can send to another streamer">📤 Export this battle</button><span class="help" style="margin:0">Got a battle file from someone? Drop it in 📥 Import below: it opens as a new battle.</span></div>
@@ -1791,12 +1820,11 @@ function renderPool() {
         <h2 class="grow" style="margin:0">Pool &amp; odds ${l.type === 'movies' && S.luckOn ? '<span class="luck">🍀 luck is on</span>' : ''}</h2>
         <input id="filter" placeholder="Filter…" style="width:160px" value="${esc(filter)}" oninput="filter=this.value.toLowerCase();renderPool()">
         <button onclick="if(confirm('Set everyone back to default odds?')) api('/api/lists/${l.id}/reset-odds')">Reset odds</button>
-        <button class="danger" onclick="if(confirm('Take everything out of this list? Nothing is deleted: it all goes to 🙈 Invisible below, and 👁️ puts it back.')) api('/api/lists/${l.id}/clear')">Clear</button>
+        <button class="danger" onclick="if(confirm('Pause everything in this list? Nothing is deleted: it all stays in the list, darker, and ▶ Bring back puts it back in.')) api('/api/lists/${l.id}/clear')">Clear</button>
         ${l.id !== 'movies' ? `<button class="danger" onclick="if(confirm('Delete this battle? Its history stays in History.')) api('/api/lists/${l.id}', null, 'DELETE')">Delete</button>` : ''}
       </div>
-      <div class="tablewrap">${active.length ? `<table><tr><th></th><th>Entry</th><th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>${active.length > 500 ? `<p class="help">Showing 500 of ${active.length}. Use the filter.</p>` : ''}` : hidden.length ? '' : `<div class="empty">Nothing here yet — add some above.</div>`}
-      ${hidden.length ? `<div class="row" style="margin:12px 0 4px;align-items:center"><h3 class="grow" style="margin:0">🙈 Invisible (${hidden.length}) <small class="muted" style="font-weight:400">taken out, not deleted: 👁️ puts one back in</small></h3><button onclick="api('/api/lists/${l.id}/restore').then(()=>toast('👁️ All ${hidden.length} back in'))">👁️ Put them all back</button></div>
-        <table class="hiddenRows">${hidden.slice(0, 300).map(e => `<tr style="opacity:.55"><td class="thumb">${e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : `<span>🙈</span>`}</td><td><b>${esc(e.label)}</b>${e.sub ? ` <small class="muted">(${esc(e.sub)})</small>` : ''}</td><td style="text-align:right"><button class="ghost" title="Put it back in the pool" onclick="setStatus('${e.id}','active')">👁️ Show</button></td></tr>`).join('')}</table>${hidden.length > 300 ? `<p class="help">Showing 300 of ${hidden.length}. Use the filter.</p>` : ''}` : ''}</div>
+      <div class="tablewrap">${active.length || hidden.length ? `${hidden.length ? `<div class="row" style="margin-bottom:6px;align-items:center"><span class="help grow" style="margin:0">⏸ ${hidden.length} paused (darker, at the bottom): not on the cliff, nothing deleted.</span><button onclick="api('/api/lists/${l.id}/restore').then(()=>toast('▶ All back in'))">▶ Bring them all back</button></div>` : ''}<table><tr><th></th><th>Entry</th><th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>${active.length > 500 ? `<p class="help">Showing 500 of ${active.length}. Use the filter.</p>` : ''}` : `<div class="empty">Nothing here yet — add some above.</div>`}
+      </div>
     </div>`;
   renderPoolSide(l);
   if (l.type === 'pics') setupDrop();
@@ -1819,7 +1847,7 @@ function renderPoolSide(l) {
     if (S.settings.chatGate !== false) h += chattersCard();
   }
   if (benched.length) h += `<div class="card"><h2>💤 Sitting out this week (${benched.length})</h2><p class="help" style="margin-top:0">Their person already won. Back ${esc(S.week.backOn)}.</p>${benched.map(e => line(e, 'Bring back')).join('')}</div>`;
-  if (paused.length) h += `<div class="card"><div class="row"><h2 class="grow" style="margin:0">⏸️ Paused (${paused.length})</h2><button style="padding:2px 8px" onclick="api('/api/lists/${l.id}/resume-all').then(r=>toast('Resumed ' + r.back))">Resume all</button></div>${paused.map(e => line(e, '▶ Resume')).join('')}</div>`;
+  // (paused entries stay in the main pool list, darker: no separate list)
   if (away.length) h += `<div class="card"><h2>📣 Out tonight (${away.length})</h2><p class="help" style="margin-top:0">Missed the roll call. Back tomorrow.</p>${away.map(e => line(e, 'Bring back')).join('')}</div>`;
   if (out.length) h += `<div class="card"><h2><a href="#" onclick="showOut=!showOut;renderPool();return false">${showOut ? '▾' : '▸'} ${l.type === 'movies' ? 'Watched' : 'Taken out'} (${out.length})</a></h2>
     ${l.type !== 'movies' ? `<a href="#" onclick="api('/api/lists/${l.id}/restore');return false">put them all back</a>` : ''}
@@ -2586,7 +2614,7 @@ let boostList = [], boostMin = false;
 function drawBoosts(list) {
   if (list) boostList = list;
   const box = $('boosts'); if (!box || !WD) return;
-  const nb = document.querySelector('#nav [data-v="wheel"]'); if (nb) nb.innerHTML = `🎡 Wheel${boostList.length ? ` <span class="pill">🎁 ${boostList.length}</span>` : ''}`;
+  const nb = document.querySelector('#nav [data-v="wheel"]'); if (nb) nb.innerHTML = `🎡 <span class="nt">Wheel</span>${boostList.length ? ` <span class="pill">🎁 ${boostList.length}</span>` : ''}`;
   if (view !== 'wheel') { box.innerHTML = ''; return; } // pop-ups only show in the Wheel tab (the Wheel button shows how many are waiting)
   const w = WD.wheels.find(x => x.id === WD.activeId) || wCur(); if (!w) return;
   const Q = w.opts?.pop || {}, voidOn = w.opts?.void?.on, voided = w.entries.filter(e => e.voided);
@@ -2949,6 +2977,12 @@ function openSettings(force) {
       <p class="help">The test never changes anything in OBS. It lists your sources so you can pick your mic and camera from the boxes above.</p>`,
     bans: `<div id="bansSlot"></div>`,
     sounds: `<div id="soundsSlot"></div>`,
+    prices: `<h3>💰 Rewards &amp; prices</h3>
+      <p class="help">Every channel point reward, bits amount and donation amount in one place, sorted by tab. They're still in their usual places too: changing them here changes them there. Changes save right away.</p>
+      <h3 style="margin-top:14px">🚀 Raid reward</h3>
+      ${ck('raidOn', '🚀 Raid reward: a viewer redeems it, types who we raid in chat, and a box at the top of the app starts the raid when you click it (press Save). Movie Royal makes the reward (a raid reward you already have keeps its price, 1500 if there is none) and hides it for the rest of the stream once it is used.', false)}
+      <div class="grid2">${f('raidTitle', 'Raid reward name on Twitch', '🚀 Pick who we raid!')}<div style="display:flex;align-items:flex-end"><button onclick="raidSetupClick(this)">🚀 Make / fix the raid reward now</button></div></div>
+      <div id="pricesBody" style="margin-top:10px"><p class="help">Loading…</p></div>`,
     gfx: `<h3>🎨 Graphics</h3>
       <p class="help">How the game screen is drawn: on stream (the OBS browser source), in the app, and in pop-out windows. Lower settings help if the battle stutters or your PC gets hot while streaming.</p>
       <div class="grid2">
@@ -2999,11 +3033,60 @@ async function resetEntries() { // ↺ empty the battle on the Battle tab
   const l = S.lists.find(x => x.id === S.activeListId); if (!l) return;
   if (l.type === 'movies') return toast("The Discord movie battle is everyone's picks, so it can't be emptied here. Take movies out in the 🎬 Movie Pool tab.", 7000);
   const n = l.entries.filter(e => e.status !== 'removed').length;
-  if (!confirm(l.type === 'chat' ? `Empty “${l.name}”? Everyone who joined (${n}) is cleared.` : `Empty “${l.name}”? All ${n} entries come out, so you can start its list over.\n\n(Made a mistake? 🎬 Movie Pool → Taken out → put them all back.)`)) return;
+  if (!confirm(l.type === 'chat' ? `Empty “${l.name}”? Everyone who joined (${n}) is paused (they stay in the list, darker).` : `Pause everything in “${l.name}”? All ${n} entries come off the cliff.\n\n(They stay in the 🎬 Movie Pool list, darker: ▶ Bring them all back puts them back in.)`)) return;
   try { const r = await api(`/api/lists/${l.id}/reset-entries`, {}); toast(`↺ Emptied: ${r.n} entr${r.n === 1 ? 'y' : 'ies'} out`); } catch {}
 }
 async function botTest(btn) { btn.disabled = true; try { const r = await api('/api/twitch-bot/test', {}); toast(r.error ? `⚠️ The bot couldn't talk (${esc(r.error)}), so you did.` : `💬 ${esc(r.as)} said hi in your chat`, 8000); } catch {} btn.disabled = false; }
 function gfxTest() { try { $('game').contentWindow.postMessage({ royalGfx: { showFps: true, until: Date.now() + 15000 } }, '*'); } catch {} peek(true); toast('📈 The FPS counter shows in the game screen (top left) for 15 seconds', 6000); }
+// 💰 Settings → Rewards & prices
+const MODE_OPTS = [['rules', '📏 Follow the rules'], ['on', '✅ Always on'], ['off', '⏸ Off (hidden on Twitch)'], ['once', '1️⃣ On, then off after one use']];
+async function drawPrices() {
+  const box = $('pricesBody'); if (!box) return;
+  let P; try { P = await fetch('/api/prices').then(r => r.json()); } catch { box.innerHTML = '<p class="help">⚠️ Couldn\'t load them.</p>'; return; }
+  const groups = [['battle', '⚔️ Battle tab'], ['chat', '🎲 Chat battle tab'], ['wheel', '🎡 Wheel tab'], ['raid', '🚀 Raid']];
+  const rwRow = r => `<tr><td>${esc(r.what)}<br><small class="muted">${esc(r.title)}${r.onTwitch ? (r.mine ? '' : ' · made by hand on Twitch') : ' · not on Twitch yet'}${r.enabled === false ? ' · hidden right now' : r.enabled ? ' · showing on Twitch now' : ''}</small></td>
+      <td><input type="number" min="1" style="width:100px" value="${r.cost ?? ''}" placeholder="price" onchange="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {cost:this.value})"></td>
+      <td><select onchange="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {mode:this.value})">${MODE_OPTS.map(([v, n]) => `<option value="${v}" ${r.mode === v ? 'selected' : ''}>${n}</option>`).join('')}</select></td></tr>`;
+  const pz = (k, on, label) => `<label class="ck"><input type="checkbox" ${on ? 'checked' : ''} onchange="moneySet({pause:'${k}',paused:this.checked})"> <span>⏸ ${label}</span></label>`;
+  const num = (k, v, label) => `<label style="display:inline-flex;gap:6px;align-items:center;margin:4px 12px 4px 0">${label} <input type="number" min="0" style="width:90px" value="${v ?? 0}" onchange="moneySet({wheel:{${k}:this.value}})"></label>`;
+  box.innerHTML = (P.twErr ? `<p class="help" style="color:var(--gold)">⚠️ ${esc(P.twErr)}</p>` : '') +
+    `<p class="help"><b>When it's on:</b> 📏 Follow the rules = Movie Royal shows it only while it can be used (for example wheel rewards while the wheel is on stream). ✅ Always on and ⏸ Off beat the rules until you change it back. ⏸ Off hides it from the channel points menu. 1️⃣ = on until someone uses it once, then off.</p>` +
+    groups.map(([g, name]) => { const rs = P.rewards.filter(r => r.group === g); let h = `<h3 style="margin-top:18px">${name}</h3>`;
+      if (rs.length) h += `<table class="rw"><tr><th style="text-align:left">💜 Channel points</th><th>Price</th><th>When it's on</th></tr>${rs.map(rwRow).join('')}</table>`;
+      if (g === 'battle') h += `<h4 style="margin:12px 0 4px">💎 Bits (chaos)</h4>${P.bits.length ? `<table class="rw"><tr><th style="text-align:left">What</th><th>Bits</th><th></th></tr>${P.bits.map(x => `<tr><td>${esc(x.what)}</td><td><input type="number" min="1" style="width:100px" value="${x.amount}" onchange="moneySet({bitsFrom:${x.amount},bitsTo:this.value})"></td><td>${pz('bits:' + x.amount, x.paused, 'Pause')}</td></tr>`).join('')}</table>` : '<p class="help">No bits amounts set (Settings → Game).</p>'}`;
+      if (g === 'wheel') h += `<h4 style="margin:12px 0 4px">💵 Subs, bits and donations on the wheel</h4><div>${num('subSpins', P.wheel.subSpins, '🎟️ Respins per sub')}${num('giftSpins', P.wheel.giftSpins, '🎁 Respins per gift sub')}${num('bitsPer', P.wheel.bitsPer, '💎 Every')} ${num('bitsSpins', P.wheel.bitsSpins, 'bits gives respins:')}${num('dollarsPer', P.wheel.dollarsPer, '💵 Pop-up for donations of $')}${num('popBits', P.wheel.popBits, '💎 Pop-up for bits from')}</div>
+        <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:6px">${pz('wheelSubs', P.paused.wheelSubs, 'Pause subs / gift subs on the wheel')}${pz('wheelBits', P.paused.wheelBits, 'Pause bits on the wheel')}${pz('donations', P.paused.donations, 'Pause donations on the wheel')}</div>`;
+      return h; }).join('');
+}
+async function priceSet(r, ch) { try { const x = await api('/api/prices/reward', { ...r, ...ch }); toast(x.note ? '💡 ' + esc(x.note) : ch.mode ? '✅ Saved' : '✅ Price saved', x.note ? 8000 : 2500); } catch {} drawPrices(); }
+async function moneySet(b) { try { await api('/api/prices/money', b); toast('✅ Saved', 2000); } catch {} drawPrices(); }
+async function raidSetupClick(btn) { btn.disabled = true; try { const r = await api('/api/raid/setup', {}); toast(r.made ? `🚀 Made the raid reward (${r.cost} points)${r.removed.length ? ' · replaced ' + r.removed.map(esc).join(', ') : ''}${r.byHand.length ? `<br>⚠️ Delete the old one${r.byHand.length > 1 ? 's' : ''} you made by hand on Twitch: ${r.byHand.map(x => esc(x.title)).join(', ')}` : ''}` : r.byHand.length ? `⚠️ A raid reward made by hand on Twitch has the same name: delete it on Twitch (or change the name here), then press again.` : '🚀 The raid reward is already on Twitch.', 10000); } catch {} btn.disabled = false; drawPrices(); }
+// 🚀 raid: the box at the top (left of the connection lights) + the celebration pop-up
+let raidPending = null;
+function fitNav() { // 🧭 the top tabs: as big as they fit, never scrolling
+  const n = $('nav'), b = document.body; if (!n) return;
+  b.classList.add('navMeasure'); // (no size animations while measuring, or it measures the old size)
+  { for (const btn of n.querySelectorAll('button')) { if (btn.querySelector('.nt')) continue; const t = [...btn.childNodes].find(x => x.nodeType === 3 && x.textContent.trim()); const m = t?.nodeType === 3 && t.textContent.match(/^(\S+)\s+([\s\S]+)$/); if (m) { t.textContent = m[1] + ' '; const sp = document.createElement('span'); sp.className = 'nt'; sp.textContent = m[2]; btn.insertBefore(sp, t.nextSibling); if (!btn.title) btn.title = m[2].trim(); } } } // (the words can hide, the icons stay)
+  for (let k = 0; k <= 5; k++) { b.classList.remove('fit1', 'fit2', 'fit3', 'fit4', 'fit5'); if (k) b.classList.add('fit' + k); if (n.scrollWidth <= n.clientWidth + 1 && document.querySelector('header').scrollWidth <= innerWidth + 1) break; }
+  void n.offsetWidth; b.classList.remove('navMeasure');
+}
+addEventListener('resize', () => { clearTimeout(fitNav.t); fitNav.t = setTimeout(fitNav, 80); });
+function drawRaidBox() {
+  const b = $('raidBox'); if (!b) return; const r = S?.raid;
+  if (!r) { if (b.style.display !== 'none') { b.style.display = 'none'; setTimeout(fitNav, 0); } return; }
+  const was = b.style.display; b.style.display = ''; b.classList.toggle('ready', !!r.target && !r.started); if (was === 'none') setTimeout(fitNav, 0);
+  $('raidGo').innerHTML = r.started ? `🚀 Raided <b>${esc(r.target?.name || '')}</b> ✓` : r.target ? `🚀 Raid → <b>${esc(r.target.name)}</b>` : `🚀 Raid: waiting for ${esc(r.by)}…`;
+  $('raidGo').title = r.target && !r.started ? `Click to start the raid to ${r.target.name} (picked by ${r.by})` : r.target ? '' : `${r.by} redeemed the raid reward and is typing a channel in chat`;
+}
+async function raidClick() { const r = S?.raid; if (!r?.target) return toast(`🚀 Still waiting for ${esc(r?.by || 'them')} to type a channel in chat`); if (r.started) return; if (!confirm(`Start the raid to ${r.target.name} now?${r.test ? '\n\n(This is a test pick: Twitch will say no.)' : ''}`)) return; try { await api('/api/raid/start', {}); toast(`🚀 Raiding ${esc(r.target.name)}!`, 8000); } catch {} }
+function raidPop(r) {
+  if (!document.hasFocus()) { raidPending = r; return; } raidPending = null;
+  let d = $('raidPopup'); if (!d) { d = document.createElement('div'); d.id = 'raidPopup'; document.body.appendChild(d); }
+  d.innerHTML = `<div class="rpIn"><div class="rpBurst">🎉🚀🎉</div><h2>RAID PICKED!</h2>${r.target?.avatar ? `<img src="${esc(r.target.avatar)}">` : ''}<div class="rpName">${esc(r.target?.name || '')}</div><p class="help">${esc(r.name || r.by || 'A viewer')} picked who we raid. The 🚀 box at the top starts the raid when you click it.</p><button class="primary" onclick="$('raidPopup').remove()">Nice!</button></div>`;
+  try { if (window.SFX) { SFX.init(); SFX.setVolume({ on: S?.settings?.soundOn !== false, sfx: Number(S?.settings?.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('celebrate'); setTimeout(() => SFX.play('fanfare'), 400); } } catch {}
+  clearTimeout(raidPop.t); raidPop.t = setTimeout(() => $('raidPopup')?.remove(), 15000);
+}
+window.addEventListener('focus', () => { if (raidPending) setTimeout(() => raidPending && raidPop(raidPending), 300); });
 async function discordRestart(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '🔄 Restarting…'; }
   try { const r = await api('/api/discord/restart', {}); toast(r.state === 'online' ? '✅ The Discord bot restarted and is online' : r.state === 'connecting' ? '🔄 The Discord bot is still connecting: give it a few seconds' : '⚠️ The Discord bot didn\'t come back: ' + esc(r.error || r.state), 8000); } catch {}
@@ -3252,7 +3335,7 @@ async function updateOnOpen() { // asks once each time the app opens, if there's
 }
 
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
-fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); /* only pops up when the bot on Cloudflare needs an update */ if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 </body>

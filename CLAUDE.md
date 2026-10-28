@@ -93,6 +93,11 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Backup app:** `desktop/icon-backup.png`, `build/icon-backup.ico`; Console/Errors tabs (`/api/log`, `/api/errors`, `/api/debug-report`, `log`/`logErr` in backup.js).
 - **🔇 Mute when unfocused:** setting `muteUnfocused` (default on) → `applySettings` → main.cjs `muteCheck()` mutes every window's webContents when no Movie Royal window is focused.
 - **Removing = hiding (Derek's rule):** battle entries are never deleted (status `removed`; `addEntry` brings a removed one back on re-join). Wheel ✕ = `on:false`; only ⚙ → 🗑 Delete for good (`wDelForGood`) deletes a spot.
+- **💰 Rewards & prices:** Settings sub-tab `prices` → `drawPrices()` (`/api/prices`, `/api/prices/reward {title,key,cost?,mode?}`, `/api/prices/money`). `db.rewardModes[titleLower]` = 'on'|'off'|'once' (absent = rules) applied last in `rewardWants`; `redeem()` ignores 'off', flips 'once' to 'off' then calls `redeemNow`. `db.moneyPaused {bits:{amount}, wheelBits, wheelSubs, donations}`.
+- **🚀 Raid:** settings `raidOn` (v16 on), `raidTitle`, `raidCost`; `raidSetup()` (auto once when signed in: replaces app-made /raid/i rewards keeping the price, lists hand-made ones), `raidRedeem` → `live.raid` → `raidChat` (redeemer types a name, `getUsers`) → `raidPicked` ws → control `raidPop()` (only when focused, else on focus) + `#raidBox` (`/api/raid/start` = helix raids, scope `channel:manage:raids`). Hidden for the stream via `stream().raidUsed`.
+- **Wheel Double trouble / Force stop:** kinds `double`/`stop` in REWARDS/REWARD_INFO/costs/points; `doublers` map in wheel.js (redeemer types a spot, `doubleSpot` → `setShare` ×2, max 90%, never the void); stop → `roundCmd('end')`.
+- **Paused rows:** Reset entries / Clear set `paused`; pool shows paused + removed entries in the main table (`tr.pausedRow`) with ▶ Bring back; `/restore` brings them back.
+- **Top tabs:** `fitNav()` steps body classes `fit1`..`fit5` (fit5 = icons only, words in `.nt` spans); measure with `body.navMeasure` (transitions off, or it measures the old size).
 - **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
 ## Things we said no to

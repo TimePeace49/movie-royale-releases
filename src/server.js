@@ -271,6 +271,7 @@ function rewardWants() {
   for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false);
   if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
   if (st.raidOn !== false && st.raidTitle) want[st.raidTitle.toLowerCase()] = !(db.live && !stream().raidUsed); // 🚀 while you're live, until someone redeems it
+  for (const [t, m] of Object.entries(db.rewardModes || {})) { if (m === 'off') want[t] = true; else if (m === 'on' || m === 'once') want[t] = false; } // 💰 your override (Settings → Rewards & prices) beats the rules
   return want;
 }
 async function syncRewards(all = null) {
@@ -405,6 +406,12 @@ const twitchHandlers = {
     discord.refreshPinned?.();
   },
   async redeem(r) {
+    const mode = (db.rewardModes || {})[String(r.title || '').toLowerCase()];
+    if (mode === 'off') return; // ⏸ paused by you (it's hidden on Twitch too)
+    if (mode === 'once') { db.rewardModes[r.title.toLowerCase()] = 'off'; save(); rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); pushState(); } // used once: off until you turn it on again
+    return this.redeemNow(r);
+  },
+  async redeemNow(r) {
     if (db.settings.raidOn !== false && db.settings.raidTitle && r.title.toLowerCase() === db.settings.raidTitle.toLowerCase()) return raidRedeem(r); // 🚀
     if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
     if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
@@ -415,11 +422,11 @@ const twitchHandlers = {
     if (!entry) return;
     triggerEvent(entry[1], { name: r.name, avatar: await avatarFor(r.login) }, 'points');
   },
-  sub(sb) { try { wheel.onSub(sb); } catch (e) { console.error('[wheel sub]', e.message); } },
+  sub(sb) { if (db.moneyPaused?.wheelSubs) return; try { wheel.onSub(sb); } catch (e) { console.error('[wheel sub]', e.message); } },
   async cheer(c) {
-    try { wheel.onBits(c); } catch (e) { console.error('[wheel bits]', e.message); }
+    if (!db.moneyPaused?.wheelBits) { try { wheel.onBits(c); } catch (e) { console.error('[wheel bits]', e.message); } }
     if (db.settings.bitsOn === false) return; // bits chaos switched off
-    const tiers = Object.entries(db.settings.bits).map(([b, e]) => [Number(b), e]).filter(([b]) => c.bits >= b).sort((a, b) => b[0] - a[0]);
+    const tiers = Object.entries(db.settings.bits).map(([b, e]) => [Number(b), e]).filter(([b]) => c.bits >= b && !db.moneyPaused?.bits?.[b]).sort((a, b) => b[0] - a[0]); // (⏸ paused amounts skipped)
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
@@ -768,7 +775,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
@@ -870,7 +877,7 @@ function raidChat(m) {
     const u = us.get(name.toLowerCase());
     if (!u && !rd.test) { twitch.say(`🚀 @${m.name} I couldn't find a Twitch channel called “${name}”. Check the spelling and type it again!`).catch(() => {}); return; }
     rd.target = u ? { login: u.login, name: u.name, id: u.id, avatar: proxied(u.avatar) } : { login: name.toLowerCase(), name, id: null, avatar: null }; // (🧪 pretend raids take any name) rd.pickedAt = Date.now();
-    twitch.say(`🚀 @${m.name} picked our raid: ${u.name}! twitch.tv/${u.login} — we'll head over there at the end of the stream 💜`).catch(() => {});
+    const t = rd.target; twitch.say(`🚀 @${m.name} picked our raid: ${t.name}! twitch.tv/${t.login} — we'll head over there at the end of the stream 💜`).catch(() => {});
     broadcast({ type: 'raidPicked', raid: rd }, 'control'); pushState();
   }).catch(e => console.error('[twitch] raid pick:', e.message)).finally(() => { rd.busy = false; });
   return true;
@@ -884,6 +891,50 @@ app.post('/api/raid/clear', (req, res) => { live.raid = null; pushState(); res.j
 app.post('/api/raid/setup', async (req, res) => { try { res.json({ ok: true, ...(await raidSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/raid-redeem', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'test_viewer'); raidRedeem({ login: name.toLowerCase().replace(/\s+/g, '_'), name, title: db.settings.raidTitle, test: true }); res.json({ ok: true }); });
 app.post('/api/test/raid-pick', (req, res) => { const login = String(req.body?.login || 'movieroyal_test').toLowerCase(); live.raid = { by: 'test_viewer', name: 'test_viewer', at: Date.now(), target: { login, name: req.body?.name || login, id: null, avatar: null }, pickedAt: Date.now(), test: true }; broadcast({ type: 'raidPicked', raid: live.raid }, 'control'); pushState(); res.json({ ok: true }); }); // 🧪 shows the pop-up + box without Twitch
+// 💰 Settings → Rewards & prices: every channel point reward, bits amount and donation amount in one place, sorted by tab.
+// Each reward: follow the rules (default) · always on · off (hidden on Twitch) · on, then off after one use. Bits / subs / donations can be paused.
+async function pricesInfo() {
+  const st = db.settings, W = wheel.W(), modes = db.rewardModes || {}, P = db.moneyPaused || {};
+  let tw = []; const mine = new Set(); let twErr = null;
+  try { tw = await twitch.listAllRewards(); for (const r of await twitch.listRewards()) mine.add(r.id); } catch (e) { twErr = twitch.status.userId ? e.message : 'Sign in with Twitch to see and change the prices on Twitch.'; }
+  const R = (group, key, title, what, cost) => { const t = tw.find(x => x.title.toLowerCase() === String(title).toLowerCase()); return { group, key, title, what, cost: t?.cost ?? cost ?? null, onTwitch: !!t, mine: !!t && mine.has(t.id), enabled: t ? t.enabled : null, mode: modes[String(title).toLowerCase()] || 'rules' }; };
+  const rewards = [];
+  for (const [title, ev] of Object.entries(st.rewards || {})) rewards.push(R('battle', 'chaos:' + title, title, `${EVENTS[ev]?.icon || ''} ${EVENTS[ev]?.name || ev} (chaos)`, null));
+  if (st.colorReward) rewards.push(R('battle', 'color', st.colorReward, '🎨 Pick your ball color' + (st.colorMode === 'points' ? '' : ' (only used when ball colors are set to channel points)'), null));
+  for (const [title, kind] of Object.entries(st.powerRewards || {})) rewards.push(R('chat', 'power:' + kind, title, ({ shield: '🛡️ Shield', mega: '💪 Mega ball', turbo: '⚡ Turbo' })[kind] || kind, st.powerCosts?.[kind]));
+  const WN = { respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down', grow: '📈 Grow a spot', shrink: '📉 Shrink a spot', double: '✌️ Double trouble', stop: '🛑 Force stop' };
+  for (const [k, title] of Object.entries(W.rewards || {})) if (title) rewards.push(R('wheel', 'wheel:' + k, title, WN[k] || k, W.costs?.[k]));
+  if (st.raidTitle) rewards.push(R('raid', 'raid', st.raidTitle, '🚀 Pick who we raid' + (st.raidOn === false ? ' (raid reward is off)' : ''), st.raidCost));
+  const bits = Object.entries(st.bits || {}).map(([b, ev]) => ({ amount: Number(b), what: `${EVENTS[ev]?.icon || ''} ${EVENTS[ev]?.name || ev}`, event: ev, paused: !!P.bits?.[b] })).sort((a, b) => a.amount - b.amount);
+  return { rewards, bits, wheel: { ...W.auto }, paused: { wheelBits: !!P.wheelBits, wheelSubs: !!P.wheelSubs, donations: !!P.donations }, twErr, bitsOn: st.bitsOn !== false, pointsOn: st.pointsOn !== false, wheelPointsOn: W.pointsOn !== false };
+}
+app.get('/api/prices', async (req, res) => res.json(await pricesInfo()));
+app.post('/api/prices/reward', async (req, res) => {
+  const b = req.body || {}, title = String(b.title || ''), key = String(b.key || ''); if (!title) return res.status(400).json({ error: 'Which reward?' });
+  try {
+    if (b.mode) { db.rewardModes ||= {}; if (b.mode === 'rules') delete db.rewardModes[title.toLowerCase()]; else if (['on', 'off', 'once'].includes(b.mode)) db.rewardModes[title.toLowerCase()] = b.mode; }
+    let note = null;
+    if (b.cost != null) {
+      const cost = Math.max(1, Math.round(Number(b.cost) || 0)); if (!cost) throw new Error('Type a price.');
+      const W = wheel.W();
+      if (key.startsWith('wheel:')) { W.costs[key.slice(6)] = cost; wheelChanged(); }
+      else if (key.startsWith('power:')) { (db.settings.powerCosts ||= {})[key.slice(6)] = cost; }
+      else if (key === 'raid') db.settings.raidCost = cost;
+      const t = (await twitch.listRewards().catch(() => [])).find(x => x.title.toLowerCase() === title.toLowerCase());
+      if (t) await twitch.updateReward(t.id, { cost });
+      else if ((await twitch.listAllRewards().catch(() => [])).some(x => x.title.toLowerCase() === title.toLowerCase())) note = 'That reward was made by hand on Twitch, so only Twitch can change its price (Twitch → Creator Dashboard → Channel Points).';
+      else note = "It isn't on Twitch yet: the new price is used when Movie Royal makes it.";
+    }
+    save(); rewardKey = ''; syncRewards().catch(() => {}); pushState(); res.json({ ok: true, note });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/prices/money', (req, res) => { // bits amounts, the wheel's sub / bits / donation amounts, and pausing them
+  const b = req.body || {}, W = wheel.W(); db.moneyPaused ||= { bits: {} }; db.moneyPaused.bits ||= {};
+  if (b.pause) { const [k, v] = [String(b.pause), !!b.paused]; if (k.startsWith('bits:')) db.moneyPaused.bits[k.slice(5)] = v; else if (['wheelBits', 'wheelSubs', 'donations'].includes(k)) db.moneyPaused[k] = v; }
+  if (b.bitsFrom != null && b.bitsTo != null) { const from = String(Math.round(Number(b.bitsFrom))), to = Math.round(Number(b.bitsTo)); if (!(to >= 1)) return res.status(400).json({ error: 'Type an amount of bits.' }); const ev = db.settings.bits?.[from]; if (ev) { const nb = { ...db.settings.bits }; delete nb[from]; nb[String(to)] = ev; db.settings.bits = nb; if (db.moneyPaused.bits[from] != null) { db.moneyPaused.bits[String(to)] = db.moneyPaused.bits[from]; delete db.moneyPaused.bits[from]; } } }
+  if (b.wheel && typeof b.wheel === 'object') for (const k of ['subSpins', 'giftSpins', 'bitsPer', 'bitsSpins', 'dollarsPer', 'popBits']) if (b.wheel[k] != null) W.auto[k] = Math.max(0, Number(b.wheel[k]) || 0);
+  save(); wheelChanged(); pushState(); res.json({ ok: true });
+});
 const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
 // 🎡 ready-made wheels that come with the app (src/defaults/*.json, Movie Royal share files). Each is added once: delete it and it stays deleted.
 for (const [key, file] of [['madeKirbportions', 'wheel-of-kirbportions.json']]) {
@@ -1452,7 +1503,7 @@ app.post('/api/lists/:id/reset-entries', (req, res) => { // ↺ Reset entries (B
   if (l.type === 'movies') return res.status(400).json({ error: "The Discord movie battle is everyone's picks, so it can't be emptied from here. Take movies out in the 🎬 Movie Pool tab." });
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is going. Reset entries once it ends.' });
   let n = 0;
-  for (const e of l.entries) if (e.status !== 'removed') { e.status = 'removed'; n++; } // everything comes out but nothing is deleted: it's only hidden (🎬 Movie Pool → Taken out → put them all back)
+  for (const e of l.entries) if (e.status === 'active') { e.status = 'paused'; n++; } // everything is paused, nothing deleted: it stays in the pool list, darker (▶ brings one back)
   save(); pushState(); refreshPreview(true); res.json({ ok: true, n, type: l.type });
 });
 app.post('/api/lists/:id/reset-odds', (req, res) => {
@@ -1462,13 +1513,13 @@ app.post('/api/lists/:id/reset-odds', (req, res) => {
 });
 app.post('/api/lists/:id/clear', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
-  l.entries.forEach(e => { if (e.status === 'active' || e.status === 'paused') e.status = 'removed'; }); // hidden, never deleted (Taken out → put them all back)
+  l.entries.forEach(e => { if (e.status === 'active') e.status = 'paused'; }); // paused, never deleted: they stay in the pool list, darker
   save(); pushState(); res.json({ ok: true });
 });
 app.post('/api/lists/:id/restore', (req, res) => { // bring back everything taken out
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (l.type !== 'movies') l.entries.forEach(e => { e.status = 'active'; });
-  else l.entries.forEach(e => { if (e.status === 'removed') e.status = 'active'; }); // Discord movies: only the ones you took out (watched ones stay watched)
+  else l.entries.forEach(e => { if (e.status === 'removed' || e.status === 'paused') e.status = 'active'; }); // Discord movies: only the ones you paused or took out (watched ones stay watched)
   save(); pushState(); refreshPreview(true); res.json({ ok: true });
 });
 
