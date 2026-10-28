@@ -137,7 +137,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(db.announce || {}).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null }])), announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(db.announce || {}).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null }])), announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -270,6 +270,7 @@ function rewardWants() {
   const wh = W.wheels.find(w => w.id === W.activeId), P = { respin: true, move: true, up: true, down: true, grow: true, shrink: false, ...(wh?.opts?.points || {}) };
   for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false);
   if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
+  if (st.raidOn !== false && st.raidTitle) want[st.raidTitle.toLowerCase()] = !(db.live && !stream().raidUsed); // 🚀 while you're live, until someone redeems it
   return want;
 }
 async function syncRewards(all = null) {
@@ -396,7 +397,7 @@ const twitchHandlers = {
   live(isLive) {
     if (!!db.live === !!isLive) return;
     if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
-    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
+    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
     save(); pushState();
@@ -404,6 +405,7 @@ const twitchHandlers = {
     discord.refreshPinned?.();
   },
   async redeem(r) {
+    if (db.settings.raidOn !== false && db.settings.raidTitle && r.title.toLowerCase() === db.settings.raidTitle.toLowerCase()) return raidRedeem(r); // 🚀
     if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
     if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
     if (db.settings.pointsOn === false) return; // channel point chaos switched off
@@ -428,6 +430,7 @@ const twitchHandlers = {
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
+    if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
     wheel.wheelChat(m); // 🎡 !respin / !spins
     moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); chatCall(m); helpChatCommand(m); giveawayChat(m);
     if (newFace) pushState(); // keeps "Recent chatters" in the control panel up to date
@@ -837,6 +840,50 @@ setInterval(() => { // every minute: anything due?
 const announceOff = () => { let n = 0; for (const a of Object.values(annState())) if (a?.on) { a.on = false; n++; } if (n) { save(); pushState(); } };
 // 🔗 the day each viewer linked their Twitch in Discord (/linktwitch, the 24/7 bot, the backup, or you in the People tab)
 setInterval(() => { let n = 0; db.linkDates ||= {}; for (const id of Object.keys(db.links || {})) if (!db.linkDates[id]) { db.linkDates[id] = Date.now(); n++; } if (n) save(); }, 20000);
+// 🚀 the raid reward (Settings → Rewards & prices, on by default): someone redeems it while you're live, Movie Royal asks them in chat
+// who to raid, they type a Twitch name, a pop-up celebrates it and a box at the top of the app shows it: click it to start the raid.
+// The reward then hides for the rest of the stream. Movie Royal makes the reward itself (an old "raid" reward's price is kept).
+async function raidSetup() {
+  const st = db.settings, title = st.raidTitle || '🚀 Pick who we raid!';
+  const all = await twitch.listAllRewards(), mine = new Set((await twitch.listRewards()).map(r => r.id));
+  const old = all.filter(r => /raid/i.test(r.title)), out = { made: false, removed: [], byHand: [], cost: 0 };
+  const priced = old.find(r => r.cost); st.raidCost = priced ? priced.cost : (Number(st.raidCost) || 1500); out.cost = st.raidCost;
+  for (const r of old) { if (mine.has(r.id)) { await twitch.deleteReward(r.id).catch(() => {}); out.removed.push(`${r.title} (${r.cost})`); } else out.byHand.push({ title: r.title, cost: r.cost }); }
+  if (!out.byHand.some(x => x.title.toLowerCase() === title.toLowerCase()))
+    out.made = await twitch.createReward({ title, cost: st.raidCost, prompt: 'Pick the channel we raid at the end of the stream! After you redeem, type their Twitch name in chat.', color: '#9146FF', input: false, queue: true }).catch(e => { out.error = e.message; return false; });
+  db.raidSetup = { at: Date.now(), ...out }; save(); rewardKey = ''; syncRewards().catch(() => {}); pushState();
+  return out;
+}
+setInterval(() => { if (twitch.status.userId && db.settings.raidOn !== false && !db.raidSetup && !raidSetup.busy) { raidSetup.busy = true; raidSetup().catch(e => console.error('[twitch] raid reward:', e.message)).finally(() => { raidSetup.busy = false; }); } }, 30000);
+function raidRedeem(r) {
+  if (!r.test) { stream().raidUsed = true; save(); rewardKey = ''; syncRewards().catch(() => {}); } // gone from the menu for the rest of the stream
+  live.raid = { by: r.login, name: r.name, at: Date.now(), target: null, test: !!r.test };
+  twitch.say(`🚀 @${r.name} you get to pick who we raid! Type their Twitch name in chat.`).catch(() => {});
+  setTimeout(() => { if (live.raid && !live.raid.target && live.raid.by === r.login) twitch.say(`🚀 @${r.name} still waiting: who should we raid? Type their Twitch name in chat.`).catch(() => {}); }, 120000);
+  broadcast({ type: 'toast', text: `🚀 ${r.name} redeemed the raid reward: waiting for them to type a channel in chat` }, 'control'); pushState();
+}
+function raidChat(m) {
+  const rd = live.raid; if (!rd || rd.target || rd.busy || m.login !== rd.by) return false;
+  const name = String(m.text || '').trim().split(/\s+/)[0].replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, ''); if (!name || name.startsWith('!')) return false;
+  rd.busy = true;
+  twitch.getUsers([name]).then(us => {
+    const u = us.get(name.toLowerCase());
+    if (!u && !rd.test) { twitch.say(`🚀 @${m.name} I couldn't find a Twitch channel called “${name}”. Check the spelling and type it again!`).catch(() => {}); return; }
+    rd.target = u ? { login: u.login, name: u.name, id: u.id, avatar: proxied(u.avatar) } : { login: name.toLowerCase(), name, id: null, avatar: null }; // (🧪 pretend raids take any name) rd.pickedAt = Date.now();
+    twitch.say(`🚀 @${m.name} picked our raid: ${u.name}! twitch.tv/${u.login} — we'll head over there at the end of the stream 💜`).catch(() => {});
+    broadcast({ type: 'raidPicked', raid: rd }, 'control'); pushState();
+  }).catch(e => console.error('[twitch] raid pick:', e.message)).finally(() => { rd.busy = false; });
+  return true;
+}
+app.post('/api/raid/start', async (req, res) => {
+  const t = live.raid?.target; if (!t) return res.status(400).json({ error: 'Nobody has been picked to raid yet.' });
+  try { await twitch.startRaid(t.id); live.raid.started = Date.now(); twitch.say(`🚀 RAID! We're heading to ${t.name}: twitch.tv/${t.login} 💜`).catch(() => {}); pushState(); res.json({ ok: true, target: t }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/raid/clear', (req, res) => { live.raid = null; pushState(); res.json({ ok: true }); });
+app.post('/api/raid/setup', async (req, res) => { try { res.json({ ok: true, ...(await raidSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/test/raid-redeem', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'test_viewer'); raidRedeem({ login: name.toLowerCase().replace(/\s+/g, '_'), name, title: db.settings.raidTitle, test: true }); res.json({ ok: true }); });
+app.post('/api/test/raid-pick', (req, res) => { const login = String(req.body?.login || 'movieroyal_test').toLowerCase(); live.raid = { by: 'test_viewer', name: 'test_viewer', at: Date.now(), target: { login, name: req.body?.name || login, id: null, avatar: null }, pickedAt: Date.now(), test: true }; broadcast({ type: 'raidPicked', raid: live.raid }, 'control'); pushState(); res.json({ ok: true }); }); // 🧪 shows the pop-up + box without Twitch
 const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
 // 🎡 ready-made wheels that come with the app (src/defaults/*.json, Movie Royal share files). Each is added once: delete it and it stays deleted.
 for (const [key, file] of [['madeKirbportions', 'wheel-of-kirbportions.json']]) {
@@ -924,7 +971,7 @@ app.post('/api/wheel/rewards/takeover', async (req, res) => {
     res.json({ ok: true, made, remade, byHand, dashboard: twitch.status.login ? `https://dashboard.twitch.tv/u/${twitch.status.login}/viewer-rewards/channel-points/rewards` : '' });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.post('/api/wheel/rewards', async (req, res) => { try { const w = wheel.W(), made = []; const want = Array.isArray(req.body?.kinds) && req.body.kinds.length ? req.body.kinds : ['respin', 'move', 'grow', 'shrink']; for (const k of want) if (w.rewards[k] && await twitch.createReward({ title: w.rewards[k], cost: w.costs[k], prompt: wheel.REWARD_INFO[k].prompt, color: wheel.REWARD_INFO[k].color, input: !!wheel.REWARD_INFO[k].input, queue: true })) made.push(w.rewards[k]); await twitch.noInput([w.rewards.grow, w.rewards.shrink]).catch(() => {}); res.json({ ok: true, made }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/wheel/rewards', async (req, res) => { try { const w = wheel.W(), made = []; const want = Array.isArray(req.body?.kinds) && req.body.kinds.length ? req.body.kinds : ['respin', 'move', 'grow', 'shrink', 'double', 'stop']; for (const k of want) if (w.rewards[k] && await twitch.createReward({ title: w.rewards[k], cost: w.costs[k], prompt: wheel.REWARD_INFO[k].prompt, color: wheel.REWARD_INFO[k].color, input: !!wheel.REWARD_INFO[k].input, queue: true })) made.push(w.rewards[k]); await twitch.noInput([w.rewards.grow, w.rewards.shrink]).catch(() => {}); res.json({ ok: true, made }); } catch (e) { res.status(400).json({ error: e.message }); } });
 const wTry = fn => async (req, res) => { try { res.json({ ok: true, ...(await fn(req.body || {}, req)) }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/renames', (req, res) => res.json(db.renames || []));
 // ---------- 💬 chat tab + 👤 viewer profiles ----------
@@ -1421,7 +1468,8 @@ app.post('/api/lists/:id/clear', (req, res) => {
 app.post('/api/lists/:id/restore', (req, res) => { // bring back everything taken out
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (l.type !== 'movies') l.entries.forEach(e => { e.status = 'active'; });
-  save(); pushState(); res.json({ ok: true });
+  else l.entries.forEach(e => { if (e.status === 'removed') e.status = 'active'; }); // Discord movies: only the ones you took out (watched ones stay watched)
+  save(); pushState(); refreshPreview(true); res.json({ ok: true });
 });
 
 app.post('/api/chatters/link', (req, res) => { // "this chatter is that person"
@@ -2126,7 +2174,7 @@ app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));
 app.post('/api/test/power', (req, res) => { const kind = String(req.body?.kind || 'shield'), name = String(req.body?.name || 'test_viewer'); const title = Object.entries(db.settings.powerRewards || {}).find(([, k]) => k === kind)?.[0]; if (!title) return res.status(400).json({ error: 'no such power-up' }); twitchHandlers.redeem({ title, login: name.toLowerCase(), name, input: '' }); res.json({ ok: true }); }); // Test tab: pretend someone redeemed a ball power-up
 app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / offline. Only inside Movie Royal: Twitch, Discord and your rewards don't change.
   const on = !!req.body?.live, was = !!live.fakeLive; live.fakeLive = on;
-  if (on && !was && !db.live) { stream().movies = 0; stream().tonight = []; stream().startedAt = Date.now(); wheel.newStream(); } // what a new stream does inside the app
+  if (on && !was && !db.live) { stream().movies = 0; stream().tonight = []; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // what a new stream does inside the app
   broadcast({ type: 'toast', text: on ? '🔴 Pretending you\'re live (only inside Movie Royal: Twitch and Discord don\'t know)' : '⚫ Stopped pretending to be live' }, 'control');
   save(); pushState(); res.json({ ok: true, live: on });
 }); // Test tab: pretend you went live / offline

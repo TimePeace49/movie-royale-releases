@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.3 (test build)
+- **🙈 Fixed: taken-out entries looked deleted.** ↺ Reset entries, Clear and ✕ only hide entries, but the 🎬 Movie Pool didn't show them anywhere. Now they're listed under **🙈 Invisible** in the pool (greyed out), with **👁️ Show** on each one and **👁️ Put them all back**. Nothing you reset before was deleted: open the battle in the Movie Pool and press Put them all back.
+- **🎡 Two new wheel channel point rewards:** **✌️ Double trouble** (after redeeming, they type any spot in chat and it doubles in size; the void can't be picked) and **🛑 Force stop** (the round ends right away: the spot it's on has to be done). Add them with ✨ Add missing rewards (Wheel → 🌐 All wheels); each wheel can turn them off in ⚙️ Wheel settings. 💬 Pretend chat has ✌️ Double and 🛑 Stop buttons to try them.
+
 ## 1.30.2 (test build)
 - **Removing entries never deletes them now, it only hides them:**
   - ↺ Reset entries, 🧹 Clear entries (chat battles, giveaways) and Clear in the 🎬 Movie Pool take entries out but keep them (🎬 Movie Pool → Taken out → put them all back). Someone who joins again comes straight back.

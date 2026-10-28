@@ -14,13 +14,13 @@ const RX = '🔁'; // a respin
 const mod = (a, n) => ((a % n) + n) % n;
 const rnd = () => crypto.randomInt(0, 1e9) / 1e9;
 export const PAL = ['#ff4f6d', '#ffb547', '#ffe066', '#5ce1a7', '#4fc3ff', '#7c6cff', '#ff7ad9', '#46d6c7', '#ff8a4c', '#a4e05a', '#5d8bff', '#e05ad0'];
-const REWARDS = { respin: 'Wheel: Respin', move: 'Wheel: Move a spot', up: 'Wheel: Move up a spot', down: 'Wheel: Move down a spot', grow: 'Wheel: Grow a spot', shrink: 'Wheel: Shrink a spot' };
+const REWARDS = { respin: 'Wheel: Respin', move: 'Wheel: Move a spot', up: 'Wheel: Move up a spot', down: 'Wheel: Move down a spot', grow: 'Wheel: Grow a spot', shrink: 'Wheel: Shrink a spot', double: 'Wheel: Double trouble', stop: 'Wheel: Force stop' };
 // every wheel has its own settings (shrink, void and doomsday are off until you turn them on)
 export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true, recent: true, showPct: true, chat: true, bankRespin: true, growPct: 10,
   rules: true, // off = a plain wheel: no spot types, no rules, no round timer, no void
   round: { on: true, len: 2, unit: 'min' }, // the round timer: starts when the first spin lands, runs out = that's the winner
   collide: { on: true, secs: 5 }, // respins that come in at almost the same time: the first spins, the rest are saved for later
-  points: { respin: true, move: true, up: true, down: true, grow: true, shrink: false },
+  points: { respin: true, move: true, up: true, down: true, grow: true, shrink: false, double: true, stop: true },
   void: { on: false, label: 'VOID', weight: 1, color: '#0b0b12', landings: 5, doomsday: false, monthly: true },
   pop: { on: true, sub: true, gift: true, bits: true, money: true, grow: true, shrink: false, spins: true, unvoid: true } };
 export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
@@ -29,7 +29,7 @@ const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#
 
 export function W() {
   const w = db.wheel ||= {};
-  w.wheels ||= []; w.history ||= []; w.rewards = { ...REWARDS, ...(w.rewards || {}) }; w.costs = { respin: 1000, move: 500, up: 500, down: 500, grow: 2000, shrink: 2000, ...(w.costs || {}) };
+  w.wheels ||= []; w.history ||= []; w.rewards = { ...REWARDS, ...(w.rewards || {}) }; w.costs = { respin: 1000, move: 500, up: 500, down: 500, grow: 2000, shrink: 2000, double: 3000, stop: 5000, ...(w.costs || {}) };
   w.pointsOn ??= true; w.show ??= false; w.bank ||= {}; w.grants ||= []; w.folders ||= [];
   w.mine ||= { perStream: 3, left: 3 }; w.cmd = { respin: '!respin', spins: '!myspins', ...(w.cmd || {}) }; if (w.cmd.spins === '!spins') w.cmd.spins = '!myspins';
   w.redeemLog ||= []; w.voidHits ||= {}; w.bringBack ||= { month: '', used: 0 };
@@ -445,8 +445,32 @@ export function unvoid(entryId, by = {}, reason = '', wheelId, force) {
 }
 // chat: !respin uses one of your saved spins, !myspins tells you how many you have, and "up" / "down" after a move redemption
 const movers = new Map(); // login -> who redeemed "Move a spot" and is choosing up or down
+const doublers = new Map(); // login -> who redeemed "Double trouble" and is typing which spot
+/** ✌️ Double trouble: that spot doubles its share of the wheel (others shrink evenly; the void's size stays the same; at most 90%) */
+function doubleSpot(w, e, by) {
+  if (e.type === 'void') throw new Error("channel points can't change the void.");
+  if (e.voided) throw new Error(`“${e.text}” is voided tonight.`);
+  if (e.on === false || !(e.weight > 0)) throw new Error(`“${e.text}” isn't on the wheel right now.`);
+  snap(`doubled ${e.text}`);
+  const before = pctOf(w, e), voidE = w.entries.find(x => x.type === 'void' && x.on !== false && !x.voided);
+  setShare(w, e, Math.min(.9, before / 100 * 2), voidE && voidE !== e ? [voidE] : []);
+  const after = pctOf(w, e);
+  log({ kind: 'grow', wheelId: w.id, wheelName: w.name, entryId: e.id, text: e.text, amount: Math.round((after - before) * 10) / 10, before, after, reason: 'double trouble', by: { name: by.name, login: by.login || '', source: 'points', cost: by.cost || 0 } });
+  refresh();
+  banner(`✌️ DOUBLE TROUBLE!<small>${esc(by.name || '')} doubled ${esc(e.text)}: ${before}% → ${after}% of the wheel</small>`);
+  return { before, after };
+}
 export function wheelChat(m) {
   const st = W(), t = String(m.text || '').trim().toLowerCase(), cmd = t.split(/\s+/)[0];
+  const dt = doublers.get(m.login);
+  if (dt && t && !t.startsWith('!')) { // ✌️ they're telling us which spot to double
+    const w = getWheel(dt.wheelId) || lastWheel() || active(), e = findSpot(w, m.text);
+    if (!e) { sayW(w, `✌️ @${m.name} I couldn't find a spot called “${String(m.text).slice(0, 40)}”. Type part of its name (you have ${Math.max(1, Math.ceil((dt.at + 120000 - Date.now()) / 60000))} min).`); return true; }
+    doublers.delete(m.login);
+    try { const r = doubleSpot(w, e, { name: m.name, login: m.login, cost: dt.cost }); logRedeem(dt.r, `doubled “${e.text}” (${r.before}% → ${r.after}%)`); sayW(w, `✌️ DOUBLE TROUBLE! @${m.name} doubled “${e.text}”: now ${r.after}% of the wheel!`); }
+    catch (err) { note(`${m.name}: ${err.message}`); logRedeem(dt.r, err.message); sayW(w, `✌️ Sorry @${m.name}, ${err.message} Pick another spot!`); doublers.set(m.login, dt); }
+    return true;
+  }
   const mv = movers.get(m.login);
   if (mv && /^(up|down)\b/.test(t)) {
     movers.delete(m.login);
@@ -584,6 +608,19 @@ export function wheelRedeem(r) {
     addBoost({ kind: 'points', only: kind, login: r.login, name: r.name, icon: kind === 'grow' ? '📈' : '📉', title: `${r.name} redeemed “${r.title}” — pick a spot to ${kind}`, suggest: 1, reason: 'channel points', cost });
     logIt(`waiting for you to pick the spot to ${kind}`); return true;
   }
+  if (kind === 'double') { // ✌️ they type which spot in chat
+    doublers.set(r.login, { r, cost, at: Date.now(), wheelId: wh.id });
+    setTimeout(() => { if (doublers.get(r.login)?.r === r) { doublers.delete(r.login); logIt('never typed a spot'); note(`${r.name} redeemed Double trouble but never typed a spot.`); } }, 120000);
+    logIt('waiting for them to type a spot'); sayW(wh, `✌️ @${r.name} DOUBLE TROUBLE! Type the spot you want to double in chat (part of its name is fine). You have 2 minutes!`); return true;
+  }
+  if (kind === 'stop') { // 🛑 the round ends now: the spot it's on has to be done
+    const rd = st.round;
+    if (!st.last || !rd || rd.state === 'ended' || rd.wheelId !== wh.id) { giveBack(`${r.name} redeemed Force stop but no round is going.`); sayW(wh, `🛑 @${r.name} there's no round going right now to stop! 💜`); return true; }
+    const what = st.last.text; logIt(`force stopped the round on “${what}”`);
+    banner(`🛑 FORCE STOP!<small>${esc(r.name)} stopped the round: ${esc(what)} has to be done!</small>`);
+    sayW(wh, `🛑 FORCE STOP! @${r.name} ended the round: “${what}” has to be done!`);
+    roundCmd('end'); return true;
+  }
   if ((kind === 'up' || kind === 'down' || kind === 'move') && !st.last) { giveBack(`${r.name} redeemed "${r.title}" but nothing has been spun yet.`); return true; }
   if (kind === 'move') { // they type "up" or "down" in chat
     movers.set(r.login, { r, cost, at: Date.now() });
@@ -712,5 +749,7 @@ export const REWARD_INFO = {
   down: { prompt: 'Move the wheel down one spot from where it landed.', color: '#4FC3FF' },
   move: { prompt: 'Move the wheel one spot! After you redeem, type UP or DOWN in chat.', color: '#46D6C7' },
   grow: { prompt: 'Make a spot on the wheel bigger! (the streamer picks which)', color: '#FFB547' },
-  shrink: { prompt: 'Make a spot on the wheel smaller! (the streamer picks which)', color: '#7C6CFF' }
+  shrink: { prompt: 'Make a spot on the wheel smaller! (the streamer picks which)', color: '#7C6CFF' },
+  double: { prompt: 'Double trouble! Pick any spot on the wheel and it doubles in size. After you redeem, type the spot in chat.', color: '#FF7A1A' },
+  stop: { prompt: 'Force stop! The round ends right now: whatever spot the wheel is on has to be done.', color: '#E0245E' }
 };

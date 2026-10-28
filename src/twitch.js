@@ -2,7 +2,7 @@
 import WebSocket from 'ws';
 import { db, save } from './store.js';
 
-export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters'];
+export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids'];
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
 
 let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {} };
@@ -336,6 +336,12 @@ export async function updateReward(id, { title, cost, enabled, cooldown, paused 
   if (cooldown != null) { const c = Math.max(0, Math.round(Number(cooldown))); body.is_global_cooldown_enabled = c > 0; if (c > 0) body.global_cooldown_seconds = c; }
   const j = await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}&id=${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
   return j.data?.[0];
+}
+/** 🚀 start a raid to another channel (needs the "manage raids" permission from signing in) */
+export async function startRaid(toId) {
+  if (!status.userId) throw new Error('Sign in with Twitch first');
+  if (!(status.scopes || []).includes('channel:manage:raids')) throw new Error('Sign in with Twitch again so Movie Royal can start raids (new permission)');
+  await helix(`raids?from_broadcaster_id=${status.userId}&to_broadcaster_id=${encodeURIComponent(toId)}`, { method: 'POST', body: '{}' });
 }
 export async function deleteReward(id) {
   await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });
