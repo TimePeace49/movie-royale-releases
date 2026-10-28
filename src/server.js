@@ -763,6 +763,18 @@ function battleDoneForWheel() { // the battle a wheel spot sent us to has its wi
   setTimeout(back, 15000);
 }
 const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
+// 🎡 ready-made wheels that come with the app (src/defaults/*.json, Movie Royal share files). Each is added once: delete it and it stays deleted.
+for (const [key, file] of [['madeKirbportions', 'wheel-of-kirbportions.json']]) {
+  if (db.settings[key]) continue;
+  try {
+    const s = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'defaults', file), 'utf8')).wheel;
+    if (!wheel.W().wheels.some(w => w.name.trim().toLowerCase() === String(s.name).trim().toLowerCase())) {
+      const w = wheel.newWheel(s.name, s.entries || [], { title: s.title || '', spinSecs: s.spinSecs || 10, removeWinner: !!s.removeWinner, palette: s.palette || null, ...(s.look ? { look: s.look } : {}), opts: wheel.mergeOpts(s.opts) });
+      wheel.syncVoid(w); wheel.W().wheels.push(w); wheel.W().ver = (wheel.W().ver || 0) + 1;
+    }
+    db.settings[key] = true; save();
+  } catch (e) { console.error('[wheel] ready-made wheel', file, e.message); }
+}
 app.get('/api/wheel', (req, res) => { const w = wheel.W(); res.json({ wheels: w.wheels, activeId: w.activeId, show: w.show, last: w.last || null, rewards: w.rewards, costs: w.costs, pointsOn: w.pointsOn !== false, chatOn: w.chatOn !== false, ver: w.ver || 0, historyCount: w.history.length, palette: wheel.PAL, canPoints: !!twitch.status.userId, types: wheel.TYPES, mine: { ...w.mine, name: `${streamerName()}'s spins` }, bank: Object.values(w.bank).sort((a, b) => b.spins - a.spins || a.name.localeCompare(b.name)), grants: w.grants.slice(-300).reverse(), boosts: w.boosts, auto: w.auto, redeemLog: w.redeemLog, donations: { ...donations.status, se: !!db.settings.seJwt, sl: !!db.settings.slToken, seState: donations.status.se, slState: donations.status.sl }, cmd: w.cmd, streamer: streamerName(), round: wheel.getRound(), undo: wheel.undoList(), folders: w.folders, final: w.final || null, bringBack: w.bringBack, live: !!db.live, obs: { set: !!(db.settings.obsMic || db.settings.obsCam || db.settings.obsPassword), ...obs.status } }); });
 app.post('/api/wheel', (req, res) => { const w = wheel.newWheel(req.body?.name || 'New wheel', Array.isArray(req.body?.entries) ? req.body.entries : []); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
 app.put('/api/wheel/:id', (req, res) => {

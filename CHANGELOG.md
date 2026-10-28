@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.12 (latest release)
+- **🎡 Wheel of Kirbportions comes with the app:** all 71 spots with their rules (auto, countdown, max wins), sizes, colors and settings. It's added to your wheel list once; delete it if you don't want it and it won't come back. If you already have a wheel with that name, yours is left alone.
+
 ## 1.28.11 (test build)
 - **☁️ The "Update your 24/7 Discord bot" pop-up is back on.** It shows when Movie Royal opens, but only when the bot on Cloudflare really is older than this version. If the internet was slow when Movie Royal opened, it checks again a couple of minutes later.
   - New box in Settings → Discord & picks: **🔔 Pop up when the 24/7 bot needs an update**. "Don't remind me again" on the pop-up unticks it, so you can turn it back on there.

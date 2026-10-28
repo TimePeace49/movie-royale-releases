@@ -3,6 +3,16 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.28.12: What's new
+Everything since 1.28.10.
+
+**🎡 Wheel of Kirbportions**
+- Comes with the app now: all 71 spots with their rules (auto, countdown, max wins), sizes, colors and settings. It's added to your wheel list once. Delete it if you don't want it: it won't come back. If you already have a wheel with that name, yours is left alone.
+
+**☁️ 24/7 bot update pop-up is back**
+- "Update your 24/7 Discord bot" pops up again when Movie Royal opens, only when the bot on Cloudflare really needs it. If the internet is slow right then, it checks again a couple of minutes later.
+- New box in Settings → Discord & picks: **🔔 Pop up when the 24/7 bot needs an update** ("Don't remind me again" unticks it). 🧪 Test tab: **☁️ Show the 24/7 bot update pop-up**.
+
 ## v1.28.10: What's new
 Everything since 1.28.9.
 

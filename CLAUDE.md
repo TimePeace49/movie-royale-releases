@@ -80,6 +80,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Backup controls:** `conf.stopped` (▶ Start / ⏹ Stop the backup server, `/api/server`, stops every bot, survives restarts); `/api/takeover` = ▶ Run this bot now (real takeover); `/api/handback` = `Bot.handBack()` (PATCH the endpoint back to `cloudUrl/`, MR-BACKUP mode 'cloud'). Movie Royal: 🔄 Restart the Discord bot = `/api/discord/restart` (`discord.start`).
 - **Backup add + updates:** backup `/api/add-mine` reads `settings.discordToken` from Movie Royal's db.json on the same PC (`mrBotToken`); Movie Royal `/api/backup/add-here` → POST 127.0.0.1:3747/api/add-mine. Copy token uses Electron `clipboard` (`__desktop.copy`), else navigator.clipboard, else shows it in `ask()`. Backup updates: `checkUpdate()` (GitHub releases, asset `MovieRoyalBackupBots-Setup*.exe`, `conf.betaUpdates`), on open + every 6 h; `installUpdate()` downloads, runs it with `/S` (backup.nsi kills + reopens the app), `hooks.quit`.
 - **Backup Twitch keys:** `conf.twitch {id, secret(enc)}` in the backup app (`/api/twitch`), else Movie Royal's on the same PC.
+- **Ready-made wheels:** `src/defaults/*.json` (share-file format) added once on start in server.js (flag per wheel, e.g. `settings.madeKirbportions`; skipped if a wheel with that name exists). Wheel of Kirbportions came from Derek.
 - **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
 ## Things we said no to
