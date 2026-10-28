@@ -14,10 +14,11 @@
   const vr = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a); // visual-only randomness
   function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   let R = Math.random; const rr = (a, b) => a + R() * (b - a);
+  const snd = (n, o) => { if (scene.show && !replayOn) SFX.play(n, o); }; // (a fight still finishing behind another tab stays quiet)
 
   let scene = { show: false, phase: 'idle', fighters: [], wacky: {}, map: 'kungfu' };
   let F = [], parts = [], texts = [], flyers = [], weapons = [], petals = [];
-  let T = 0, acc = 0, running = false, mode = 'lobby', modeT = 0, fightId = null, destined = null, order = [], winner = null, sent = false, teleT = 5, weapT = 7, slowUntil = 0;
+  let T = 0, acc = 0, running = false, replayOn = false, rbuf = [], replay = null, weapDrops = 0, lastKO = 0, D = 60, PACE = 50, showdownSaid = false, mode = 'lobby', modeT = 0, fightId = null, destined = null, order = [], winner = null, sent = false, teleT = 5, weapT = 7, slowUntil = 0;
   const floor = document.createElement('canvas'), fg = floor.getContext('2d'); floor.width = W; floor.height = H;
   let bg = null, bgScale = 0;
 
@@ -45,24 +46,30 @@
 
   // ---------- 🎬 scene messages from the server ----------
   function msg(m) {
-    if (m.type === 'cardWacky') { scene.wacky = m.wacky || {}; if (m.key && m.on && scene.show) { toast(`${(WN[m.key] || m.key)}!`); SFX.play('gong'); } return; }
+    if (m.type === 'cardWacky') { scene.wacky = m.wacky || {}; if (m.key && m.on && scene.show) { toast(`${(WN[m.key] || m.key)}!`); snd('gong'); } return; }
     if (m.type !== 'cardScene') return;
     const was = scene; scene = { ...m, wacky: m.wacky || {} };
     layer.classList.toggle('hidden', !m.show);
-    if (m.show && !running) { running = true; SFX.setMap?.('card-' + (m.map || 'kungfu')); requestAnimationFrame(frame); }
-    if (!m.show) { running = false; if (was.show) SFX.stopMusic?.(); return; }
+    if (m.show) SFX.setMap?.('card-' + (m.map || 'kungfu'));
+    if (!running) { running = true; requestAnimationFrame(frame); } // (keeps going behind another tab until a fight is finished, without drawing or sound)
+    if (!m.show && was.show) SFX.stopMusic?.();
+    if (!m.show && m.phase !== 'fight') return;
     if (m.phase === 'fight' && m.fightId && m.fightId !== fightId) { // a new fight
       fightId = m.fightId; destined = m.destined; R = mulberry(m.seed || 1); order = []; winner = null; sent = false;
       F = makeFighters(m.fighters); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H);
-      mode = 'intro'; modeT = 0; T = 0; acc = 0; teleT = 5; weapT = 7; slowUntil = 0;
+      mode = 'intro'; modeT = 0; T = 0; acc = 0; teleT = 5; weapT = 7; slowUntil = 0; weapDrops = 0; lastKO = 0; rbuf = []; replay = null; replayOn = false; showdownSaid = false;
+      PACE = clamp(Number(m.pace ?? 50), 0, 100); D = clamp(Number(m.length) || (25 + F.length * 1.6), 15, 240); // ⏳ how long the fight should take, and how hard the pacer works
       const late = (Date.now() - (m.startedAt || Date.now())) / 1000 - 2.4; // a screen that opened in the middle of the fight catches up (same seed = same fight)
-      if (late > 1) { mode = 'fight'; modeT = 0; const quiet = SFX.play; SFX.play = () => {}; try { for (let i = 0; i < Math.min(late, 300) * 60 && !winner; i++) step(DT); } finally { SFX.play = quiet; } parts = []; texts = []; }
-      else SFX.play('gong');
-      SFX.music?.('fight');
+      if (late > 1) { mode = 'fight'; modeT = 0; const quiet = SFX.play; SFX.play = () => {};
+        try { if (late > D * 2.5) { const w = F.find(f => f.id === destined) || F[0]; for (const f of F) if (f !== w) { f.alive = false; f.koT = 9; order.push(f.id); } finish(w, true); } // (long over: just show who won)
+          else for (let i = 0; i < late * 60 && !winner; i++) step(DT); } finally { SFX.play = quiet; }
+        parts = []; texts = []; rbuf = []; }
+      else snd('gong');
+      if (m.show) SFX.music?.('fight');
     } else if (m.phase !== 'fight' && m.phase !== 'ended') { // lobby: the packs lined up and waiting
       if (mode !== 'lobby' || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; }
-      mode = 'lobby'; fightId = null; winner = null; SFX.music?.('lobby');
-    } else if (m.phase === 'ended' && m.last && mode !== 'won') { // (a screen that joined late: show the winner)
+      mode = 'lobby'; fightId = null; winner = null; replay = null; if (m.show) SFX.music?.('lobby');
+    } else if (m.phase === 'ended' && m.last && mode !== 'won' && mode !== 'replay' && mode !== 'over' && !winner) { // (a screen that joined late: show the winner)
       if (!F.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fightId = m.fightId; }
       if (!winner) { winner = F.find(f => f.packId === m.last.packId) || null; if (winner) { for (const f of F) if (f !== winner) { f.alive = false; f.koT = 6; } mode = 'won'; modeT = 1; } }
     }
@@ -71,34 +78,44 @@
   let toastText = '', toastT = 0; const toast = t => { toastText = t; toastT = 2.4; };
 
   // ---------- 🥋 the fight ----------
+  // ⏳ pacer: knockouts spread over the fight's length D (the slider in the card battle settings; 0 = off)
+  const paceTarget = () => Math.max(1, Math.round(F.length * Math.pow(1 - clamp(T / (D * .95), 0, 1), 1.15)));
+  function paceHold(n) {
+    if (!PACE || n <= 2) return 0; const k = PACE / 50, tg = paceTarget(), gap = clamp((D * .95 - T) / Math.max(1, n - 2) * .75, .35, 6);
+    if (n <= tg && T - lastKO < gap) return Math.min(1, k);
+    return n >= tg ? 0 : clamp((tg - n) / Math.max(2, tg * .5) * k, 0, .95);
+  }
+  const paceBoost = () => { if (!PACE) return 1; const n = alive().length, tg = paceTarget(); return n > tg ? 1 + clamp((n - tg) / Math.max(2, tg), 0, 1.5) * PACE / 100 : 1; }; // behind pace: hits land harder
+  const holders = () => F.filter(o => o.alive && o.weapon);
   function pickTarget(f) {
     const others = F.filter(o => o.alive && o !== f); if (!others.length) return null;
+    if (!f.weapon) { const h = holders().filter(o => o !== f); if (h.length && R() < .7) return h.reduce((a, b) => Math.abs(a.x - f.x) < Math.abs(b.x - f.x) ? a : b); } // 🗡️ everyone goes after whoever has a weapon
     if (R() < .25) return others[Math.floor(R() * others.length)];
     let best = null, bd = 1e9; for (const o of others) { const d = Math.abs(o.x - f.x) + Math.abs(o.z - f.z) * 900; if (d < bd) { bd = d; best = o; } } return best;
   }
   function step(dt) {
     T += dt;
-    const live = alive(), sd = T > 100 ? 4 : T > 70 ? 2 : 1;
+    const live = alive();
     if (mode !== 'fight') { for (const f of F) { f.ph += dt * 3; physics(f, dt); } return; }
     if (scene.wacky.teleport && (teleT -= dt) <= 0 && live.length > 2) { // 🔀 two packs swap places
       teleT = rr(3.5, 6); const a = live[Math.floor(R() * live.length)]; let b = live[Math.floor(R() * live.length)]; if (b === a) b = live[(live.indexOf(a) + 1) % live.length];
       for (const f of [a, b]) puff(f, '#c88cff'); [a.x, b.x] = [b.x, a.x]; [a.z, b.z] = [b.z, a.z]; for (const f of [a, b]) puff(f, '#c88cff');
-      word('SWITCH!', (a.x + b.x) / 2, zY((a.z + b.z) / 2) - 200, '#d6a8ff', 54); SFX.play('swap');
+      word('SWITCH!', (a.x + b.x) / 2, zY((a.z + b.z) / 2) - 200, '#d6a8ff', 54); snd('swap');
     }
-    if (scene.wacky.weapons && (weapT -= dt) <= 0 && weapons.length < 4) { weapT = rr(5, 8); weapons.push({ kind: ['sword', 'staff', 'nunchaku'][Math.floor(R() * 3)], x: rr(200, 1720), z: rr(.1, .9), h: 700, vh: 0 }); }
-    for (const w of weapons) if (w.h > 0) { w.vh -= grav() * dt; w.h = Math.max(0, w.h + w.vh * dt); if (w.h === 0) { w.vh = 0; dust(w.x, w.z, 6); SFX.play('land', { p: 1.4 }); } }
+    if (scene.wacky.weapons && weapDrops < 2 && (weapT -= dt) <= 0) { weapT = rr(5, 8); weapDrops++; weapons.push({ kind: ['sword', 'staff', 'nunchaku'][Math.floor(R() * 3)], x: rr(200, 1720), z: rr(.1, .9), h: 700, vh: 0 }); }
+    for (const w of weapons) if (w.h > 0) { w.vh -= grav() * dt; w.h = Math.max(0, w.h + w.vh * dt); if (w.h === 0) { w.vh = 0; dust(w.x, w.z, 6); snd('land', { p: 1.4 }); } }
     for (const f of F) {
       f.ph += dt * (f.atk ? 6 : Math.abs(f.vx) > 20 || Math.abs(f.vz) > .02 ? 9 : 3);
       f.hurtT = Math.max(0, f.hurtT - dt); f.yell = Math.max(0, f.yell - dt);
       if (!f.alive) { physics(f, dt); continue; }
-      if (T > 130 && f.id !== destined) damage(null, f, 1.5 * dt * 10, 'bleed'); // (very long fights: the end comes)
+      if (T > D * 1.8 && f.id !== destined) damage(null, f, 1.5 * dt * 10, 'bleed'); // (very long fights: the end comes)
       f.cd -= dt * speedK(); f.stun -= dt; f.retarget -= dt; f.block = Math.max(0, f.block - dt);
       if (!f.target?.alive || f.retarget <= 0) { f.target = pickTarget(f); f.retarget = rr(1.5, 3.5); }
       const t = f.target;
       if (f.stun > 0 || !t) { physics(f, dt); continue; }
       const s = S(f), reach = (52 + (f.weapon ? 30 : 0)) * s, dx = t.x - f.x, dz = t.z - f.z;
       if (!f.atk) f.face = dx >= 0 ? 1 : -1;
-      if (!f.weapon && weapons.length) { const w = weapons.find(w => w.h === 0 && Math.abs(w.x - f.x) < 34 * s && Math.abs(w.z - f.z) < .06); if (w) { f.weapon = w.kind; weapons.splice(weapons.indexOf(w), 1); word('GOT IT!', f.x, zY(f.z) - 190 * s, '#ffe08a', 30); SFX.play('clash'); } }
+      if (!f.weapon && weapons.length) { const w = weapons.find(w => w.h === 0 && Math.abs(w.x - f.x) < 34 * s && Math.abs(w.z - f.z) < .06); if (w) { f.weapon = w.kind; weapons.splice(weapons.indexOf(w), 1); word('GOT IT!', f.x, zY(f.z) - 190 * s, '#ffe08a', 30); snd('clash'); } }
       if (f.atk) { attack(f, dt); }
       else {
         const legs = f.limbs.ll + f.limbs.rl, sp = 170 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32);
@@ -123,7 +140,7 @@
     const dur = { punch: .32, kick: .42, jump: .7, head: .4 }[kind];
     f.atk = { kind, t: 0, dur, hitAt: dur * .45, done: false };
     f.cd = rr(.55, 1.15) / (scene.wacky.rage ? 1 + (1 - f.hp / 100) * .8 : 1);
-    if (kind === 'jump') { f.vh = scene.wacky.lowgrav ? 520 : 620; f.vx = f.face * 380 * speedK(); f.yell = .5; SFX.play('whoosh'); }
+    if (kind === 'jump') { f.vh = scene.wacky.lowgrav ? 520 : 620; f.vx = f.face * 380 * speedK(); f.yell = .5; snd('whoosh'); }
     else if (R() < .25) f.yell = .4;
   }
   function attack(f, dt) {
@@ -137,18 +154,19 @@
   }
   function hit(f, o, kind) {
     let dmg = { punch: rr(7, 11), kick: rr(10, 15), jump: rr(14, 21), head: rr(6, 9) }[kind];
-    if (f.weapon) dmg *= f.weapon === 'sword' ? 1.75 : f.weapon === 'staff' ? 1.5 : 1.6;
+    if (f.weapon) dmg *= f.weapon === 'sword' ? 2.6 : f.weapon === 'staff' ? 2.2 : 2.4; // 🗡️ weapons hit much harder
     if (scene.wacky.rage) dmg *= 1 + (1 - f.hp / 100) * 1.2;
-    dmg *= T > 100 ? 4 : T > 70 ? 2 : 1;
+    dmg *= (T > D * 1.35 ? 4 : T > D ? 2 : 1) * paceBoost();
     const blocked = o.block > 0 && o.face === -f.face;
-    if (blocked) { dmg *= .2; word('BLOCK!', o.x, zY(o.z) - 160 * S(o), '#9fd6ff', 30); SFX.play('clash'); o.vx += f.face * 120; return damage(f, o, dmg, kind, true); }
+    if (blocked) { dmg *= .2; word('BLOCK!', o.x, zY(o.z) - 160 * S(o), '#9fd6ff', 30); snd('clash'); o.vx += f.face * 120; return damage(f, o, dmg, kind, true); }
     if (scene.wacky.onehit) dmg = 999;
     o.vx += f.face * (160 + dmg * 14) * (scene.wacky.lowgrav ? 1.6 : 1); if (scene.wacky.lowgrav || kind === 'jump') o.vh = Math.max(o.vh, scene.wacky.lowgrav ? 260 + dmg * 12 : 160);
     o.stun = .22 + Math.min(.5, dmg / 60); o.atk = null; o.hurtT = .3;
     const sx = o.x - f.face * 18 * S(o), sy = zY(o.z) - o.h - (60 + R() * 70) * S(o);
     word(f.weapon ? (f.weapon === 'sword' ? 'SLASH!' : 'THWACK!') : pickW(kind), sx, sy - 40, kind === 'jump' ? '#ffd23a' : '#fff', kind === 'jump' ? 46 : 36);
-    sparks(sx, sy); SFX.play(kind === 'kick' || kind === 'jump' ? 'kick' : 'punch');
-    if (kind === 'jump') SFX.play('hyah');
+    sparks(sx, sy); snd(kind === 'kick' || kind === 'jump' ? 'kick' : 'punch');
+    if (o.weapon && !f.weapon && R() < .3) { f.weapon = o.weapon; o.weapon = null; word('STOLEN!', f.x, zY(f.z) - 200 * S(f), '#ffe08a', 40); snd('clash'); } // knocked loose and grabbed
+    if (kind === 'jump') snd('hyah');
     damage(f, o, dmg, kind);
   }
   const W_P = ['POW!', 'BAM!', 'WHAM!', 'HYAH!', 'SMACK!'], W_K = ['KAPOW!', 'WHACK!', 'CRACK!', 'HI-YAH!'];
@@ -163,6 +181,7 @@
       if (o.stains.length < 14) o.stains.push({ x: Math.random(), y: Math.random() * .9 + .05, r: .06 + Math.random() * .1 * (gore ? 1.6 : 1) });
       if (gore && !keep && dmg >= 10 && R() < .16) loseLimb(o, f);
     }
+    if (o.hp <= 0 && !keep && kind !== 'bleed' && R() < paceHold(alive().length)) { o.hp = rr(4, 10); if (R() < .5) word(pick(['STILL STANDING!', 'NOT YET!', 'HANGING ON!']), o.x, zY(o.z) - 210 * s, '#9fffb0', 34); } // ⏳ too many out too fast: hangs on
     if (o.hp <= 0) ko(o, f, gore && !keep && R() < .55);
     else if (gore && !keep && o.hp < 25 && !soft && R() < .07) ko(o, f, true);
   }
@@ -172,20 +191,22 @@
     const s = S(o), arm = k[1] === 'a', side = k[0] === 'l' ? -1 : 1;
     flyers.push({ kind: arm ? 'arm' : 'leg', x: o.x + side * 34 * s, y: zY(o.z) - o.h - (arm ? 70 : 20) * s, gz: o.z, vx: (f ? f.face : side) * vr(150, 380), vy: -vr(300, 560), rot: 0, vrot: vr(-14, 14), s, rest: false, blood: 1.2 });
     blood(o.x + side * 30 * s, zY(o.z) - o.h - (arm ? 70 : 20) * s, o.z, 26, f ? f.face : side, 1.7);
-    word(arm ? 'ARM OFF!' : 'LEG OFF!', o.x, zY(o.z) - 210 * s, '#ff4a4a', 40); SFX.play('chop');
+    word(arm ? 'ARM OFF!' : 'LEG OFF!', o.x, zY(o.z) - 210 * s, '#ff4a4a', 40); snd('chop');
   }
   function ko(o, f, decap) {
     o.alive = false; o.hp = 0; o.koT = 0; o.atk = null; o.vx += (f ? f.face : vr(-1, 1)) * 260; order.push(o.id);
+    lastKO = T; if (o.weapon) { weapons.push({ kind: o.weapon, x: o.x, z: o.z, h: 60, vh: 200 }); o.weapon = null; } // the weapon drops for someone else
+    if (alive().length === 2 && !showdownSaid) { showdownSaid = true; toast('🥊 FINAL SHOWDOWN!'); snd('gong'); }
     const s = S(o);
     if (decap) { // 🩸 the face comes off (the top of the pack)
       o.head = false;
       flyers.push({ kind: 'head', f: o, x: o.x, y: zY(o.z) - o.h - 150 * s, gz: o.z, vx: (f ? f.face : 1) * vr(220, 480), vy: -vr(500, 800), rot: 0, vrot: vr(-10, 10), s, rest: false, blood: 2 });
-      blood(o.x, zY(o.z) - o.h - 120 * s, o.z, 60, f ? f.face : 0, 2.2); word('HEADLESS!', o.x, zY(o.z) - 240 * s, '#ff3030', 58); SFX.play('chop'); SFX.play('splat');
-    } else { word(pick(['K.O.!', 'DOWN!', 'FINISHED!']), o.x, zY(o.z) - 200 * s, '#ff5a5a', 52); SFX.play('splat'); }
-    SFX.play('fall');
+      blood(o.x, zY(o.z) - o.h - 120 * s, o.z, 60, f ? f.face : 0, 2.2); word('HEADLESS!', o.x, zY(o.z) - 240 * s, '#ff3030', 58); snd('chop'); snd('splat');
+    } else { word(pick(['K.O.!', 'DOWN!', 'FINISHED!']), o.x, zY(o.z) - 200 * s, '#ff5a5a', 52); snd('splat'); }
+    snd('fall');
     if (scene.wacky.boom) { // 💣 it explodes
       for (let i = 0; i < 40; i++) parts.push({ x: o.x, y: zY(o.z) - 60 * s, vx: vr(-600, 600), vy: vr(-700, -100), g: 900, life: vr(.4, 1), max: 1, size: vr(5, 12), color: ['#ffcf4a', '#ff7a2a', '#fff2a0', '#5a3a2a'][Math.floor(Math.random() * 4)], gz: null });
-      SFX.play('boom'); word('BOOM!', o.x, zY(o.z) - 140 * s, '#ffb02a', 64);
+      snd('boom'); word('BOOM!', o.x, zY(o.z) - 140 * s, '#ffb02a', 64);
       for (const n of F) if (n.alive && n !== o && Math.abs(n.x - o.x) < 170 * s && Math.abs(n.z - o.z) < .15) { n.vx += Math.sign(n.x - o.x || 1) * 520; n.vh = 300; damage(null, n, 16, 'boom'); }
     }
     if (alive().length === 1) slowUntil = T + 1.4;
@@ -195,13 +216,15 @@
     f.x += f.vx * dt; f.z = clamp(f.z + f.vz * dt, 0, 1);
     const fr = f.h > 0 ? .995 : slip ? .985 : .86; f.vx *= Math.pow(fr, dt * 60); f.vz *= Math.pow(slip ? .97 : .8, dt * 60);
     if (f.h > 0 || f.vh > 0) { f.h += f.vh * dt; f.vh -= grav() * dt; if (f.h <= 0) { f.h = 0; f.vh = 0; if (f.atk?.kind === 'jump') f.atk = null; dust(f.x, f.z, 5); } }
-    if (slip && f.alive && f.h === 0 && Math.abs(f.vx) > 160 && R() < .004) { f.stun = .9; word('SLIP!', f.x, zY(f.z) - 150 * S(f), '#bfefff', 30); SFX.play('bonk'); }
+    if (slip && f.alive && f.h === 0 && Math.abs(f.vx) > 160 && R() < .004) { f.stun = .9; word('SLIP!', f.x, zY(f.z) - 150 * S(f), '#bfefff', 30); snd('bonk'); }
     if (f.x < 90) { f.x = 90; f.vx = Math.abs(f.vx) * .4; } if (f.x > W - 90) { f.x = W - 90; f.vx = -Math.abs(f.vx) * .4; }
     if (!f.alive) f.koT += dt;
   }
-  function finish(w) {
+  function finish(w, quick) {
     winner = w; mode = 'won'; modeT = 0; slowUntil = T + 1.2;
-    SFX.play('gong'); setTimeout(() => SFX.play('fanfare'), 600); SFX.music?.(null);
+    if (!quick && rbuf.length > 60) { mode = 'over'; setTimeout(() => { if (winner !== w || mode !== 'over') return; replay = { frames: rbuf.slice(-180), i: 0 }; mode = 'replay'; modeT = 0; }, 1800); } // ⏪ then the replay of the last moments
+    else setTimeout(() => snd('fanfare'), 600);
+    snd('gong'); if (scene.show) SFX.music?.(null);
     if (!sent && !PREVIEW_WIN) { sent = true; setTimeout(() => send({ type: 'cardResult', fightId, winnerId: w.id, order: [w.id, ...order.slice().reverse()] }), 1800); }
   }
 
@@ -382,14 +405,18 @@
   let lastFrame = 0;
   function frame(now) {
     if (!running) return;
+    if (!scene.show && mode !== 'fight' && mode !== 'intro') { running = false; lastFrame = 0; return; } // nothing to finish behind another tab: rest
     requestAnimationFrame(frame);
-    const cap = GFX.fps || 0; if (cap && lastFrame && now - lastFrame < 1000 / cap - 1.5) return;
+    const cap = scene.show ? GFX.fps || 0 : 30; if (cap && lastFrame && now - lastFrame < 1000 / cap - 1.5) return;
     const real = Math.min(.1, (now - (lastFrame || now)) / 1000); lastFrame = now;
+    if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
     const k = RY().scale?.() || 1; if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
     if (!bg || bgScale !== Math.min(2, k)) { bgScale = Math.min(2, k); bg = drawBg(bgScale); }
     modeT += real; toastT -= real;
-    if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; SFX.play('gong'); }
-    acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0;
+    if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; snd('gong'); }
+    if (mode === 'replay') { replayOn = true; replay.t = (replay.t ?? replay.frames[0].T) + real * .45; while (replay.i < replay.frames.length - 1 && replay.frames[replay.i + 1].T <= replay.t) replay.i++; if (replay.t >= replay.frames[replay.frames.length - 1].T + .4) { mode = 'won'; modeT = 0; replayOn = false; replay = null; snd('fanfare'); } }
+    else { acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; }
+    if (mode === 'fight' || (mode === 'over' && modeT < 1.6)) { rbuf.push({ T, f: F.map(f => ({ x: f.x, z: f.z, h: f.h, face: f.face, ph: f.ph, atk: f.atk && { ...f.atk }, alive: f.alive, koT: f.koT, limbs: { ...f.limbs }, head: f.head, hp: f.hp, hurtT: f.hurtT, block: f.block, weapon: f.weapon, yell: f.yell, sn: f.stains.length, look: f.target ? Math.sign(f.target.x - f.x) : f.face })) }); if (rbuf.length > 260) rbuf.shift(); } // ⏪ the last few seconds, for the replay
     // effects move in real (slowed) time
     const vt = real * timeK();
     for (const p of parts) { p.vy += p.g * vt; p.x += p.vx * vt; p.y += p.vy * vt; p.life -= vt; if (p.blood && p.gz != null && p.y >= zY(p.gz) && p.vy > 0) { stamp(p.x, zY(p.gz) - vr(0, 6), p.size * vr(.8, 1.5), Math.random() < .5 ? 'rgba(130,0,12,.75)' : 'rgba(170,10,24,.65)'); p.life = 0; } }
@@ -404,7 +431,8 @@
     lanterns(now / 1000);
     g.drawImage(floor, 0, 0);
     for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - 6, 1, s, w.h > 0 ? T * 8 : 0); }
-    const order2 = F.slice().sort((a, b) => (a.alive - b.alive) || a.z - b.z);
+    const shown = mode === 'replay' && replay ? replay.frames[replay.i].f.map((sn, i) => ({ ...F[i], ...sn, stains: F[i].stains.slice(0, sn.sn), target: { x: F[i].x * 0 + sn.x + sn.look * 50, alive: true } })) : F;
+    const order2 = shown.slice().sort((a, b) => (a.alive - b.alive) || a.z - b.z);
     for (const f of order2) drawFighter(f);
     for (const o of flyers) drawFlyer(o);
     for (const p of parts) { g.globalAlpha = p.dust ? Math.max(0, p.life / p.max) : 1; g.fillStyle = p.color; g.beginPath(); g.arc(p.x, p.y, p.size, 0, 7); g.fill(); } g.globalAlpha = 1;
@@ -424,6 +452,7 @@
     if (toastT > 0) { g.globalAlpha = Math.min(1, toastT); banner(toastText, 200, 64, '#ff8ab0'); g.globalAlpha = 1; }
     if (mode === 'lobby') { banner('🃏 CARD BATTLE', 330, 110); g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(F.length >= 2 ? 'Waiting for the fight…' : 'Add packs in the 📦 Card pool tab', W / 2, 410); }
     if (mode === 'intro') { const u = modeT; if (u < 1.4) banner('KUNG FU TOWN', 360, 120 + u * 20, '#ffd23a'); else banner('FIGHT!', 360, 170 + (u - 1.4) * 60, '#ff3a2a'); }
+    if (mode === 'replay') { g.fillStyle = '#000'; g.fillRect(0, 0, W, 70); g.fillRect(0, H - 70, W, 70); g.font = `44px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = Math.sin(now / 250) > 0 ? '#ff4a4a' : '#ffffff'; g.fillText('⏪ REPLAY', 40, H - 35); }
     if (mode === 'won' && winner) {
       const u = Math.min(1, modeT / .8); g.fillStyle = `rgba(0,0,0,${.55 * u})`; g.fillRect(0, 0, W, H);
       if (u > .1) { // the winning pack, big, arms up

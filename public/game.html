@@ -2924,7 +2924,7 @@ function startGame(m) {
   gameId = m.gameId; listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length;
   if (m.chaos) chaos = m.chaos;
   movieNo = m.movieNo || null; series = m.series || null;
-  cfg = { lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5);
+  cfg = { lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, pacer: m.pacer ?? 50, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5);
   for (const f of fighters) { f.hp = null; f.hurtAt = null; } // full health every battle
   t = 0; lobbyLeft = cfg.lobby; winner = null; winTile = null; destined = null; suddenDeath = false; showdown = false; paceNext = 6; resultSent = false;
   hazards = []; parts = []; feed = []; banners = []; floaters = []; queue = (m.queued || []).slice();
@@ -2980,11 +2980,12 @@ let sdNext = 0, sdCount = 0, sdStart = 0, showdown = false, sdCharge = 0, paceNe
 // last 2 near the end. Ahead of pace = more dodges and saves; behind pace = the arena throws extra chaos; 2 left early = FINAL SHOWDOWN.
 const paceTarget = () => { const n0 = fighters.length || 2, u = clamp(t / (cfg.game * .95), 0, 1); return Math.max(2, Math.round(n0 * Math.pow(1 - u, 1.15))); };
 const paceHold = n => { // how strongly to slow the knockouts down right now (0 = not at all, 1 = this one survives)
-  if (suddenDeath || n <= 2 || fighters.length < 4 || t >= cfg.game - 3) return 0;
+  const k = (cfg.pacer ?? 50) / 50; // ⏳ Settings → Game → elimination pacer (0 = off, 50 = normal, 100 = strong)
+  if (!k || suddenDeath || n <= 2 || fighters.length < 4 || t >= cfg.game - 3) return 0;
   const tg = paceTarget(), last = elimT.length ? elimT[elimT.length - 1] : 0;
-  const gap = clamp((cfg.game * .95 - t) / Math.max(1, n - 2) * .75, .35, 4); // knockouts spaced out over the time that's left
-  if (n <= tg && t - last < gap) return 1; // ahead of pace and someone just went out: not yet
-  return n >= tg ? 0 : clamp((tg - n) / Math.max(2, tg * .5), 0, .85);
+  const gap = clamp((cfg.game * .95 - t) / Math.max(1, n - 2) * .75 * Math.max(.6, k), .35, 6); // knockouts spaced out over the time that's left
+  if (n <= tg && t - last < gap) return Math.min(1, k); // ahead of pace and someone just went out: not yet
+  return n >= tg ? 0 : clamp((tg - n) / Math.max(2, tg * .5) * k, 0, .95);
 };
 function startSuddenDeath(early = false) {
   suddenDeath = true; showdown = early; sdStart = t; sdNext = .5; sdCount = early ? 4 : 0; sdCharge = .8;
@@ -3365,7 +3366,7 @@ function frame(now) {
     SFX.setIntensity(t / cfg.game);
     const rs = Math.ceil(cfg.game - t); if (rs !== lastTick && rs <= 5 && rs > 0) { lastTick = rs; SFX.play('final5'); }
     if (!winner && !suddenDeath && !cfg.fun?.noShowdown && alive().length === 2 && fighters.length > 2 && t < cfg.game - 5) startSuddenDeath(true); // 2 left early: FINAL SHOWDOWN (no long hop-around)
-    if (!winner && !suddenDeath && t > cfg.game * .35 && t < cfg.game - 3 && alive().length > paceTarget() * 1.5 + 1 && (paceNext -= dt) <= 0) { paceNext = rnd(3.5, 5.5); runEvent({ event: 'random', by: { name: '⚡ ARENA' }, source: 'pace' }); } // behind pace: the arena livens it up
+    if (!winner && !suddenDeath && cfg.pacer > 0 && t > cfg.game * .35 && t < cfg.game - 3 && alive().length > paceTarget() * (2.2 - cfg.pacer / 100) + 1 && (paceNext -= dt) <= 0) { paceNext = rnd(3.5, 5.5) * (1.5 - cfg.pacer / 200); runEvent({ event: 'random', by: { name: '⚡ ARENA' }, source: 'pace' }); } // behind pace: the arena livens it up
     if (!winner && (t >= cfg.game || suddenDeath)) { if (!suddenDeath) startSuddenDeath(); else stepSuddenDeath(dt); }
   } else if (phase === 'ended') {
     t += dt * .6; updateTiles(dt); updateHazards(dt);

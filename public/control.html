@@ -171,7 +171,9 @@
   #fsPowers button.mp { border-color:var(--gold); }
   /* 🃏 card battles + card pool */
   #v-cards.on { display:block; overflow:auto; }
-  #v-cardpool.on { display:block; }
+  #v-cardpool { grid-template-columns:210px minmax(0,1fr) 300px; }
+  @media (max-width:1200px) { #v-cardpool { grid-template-columns:190px minmax(0,1fr); } #v-cardpool .poolside { display:none; } }
+  .modeSeg { display:flex; gap:4px; } .modeSeg button { flex:1; } .modeSeg button.on { border-color:var(--gold); background:#ffc94a22; color:#fff; }
   .wackyGrid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
   .wackyGrid button { font-size:12.5px; padding:6px 7px; text-align:left; }
   .wackyGrid button.on, #fsWacky button.on { border-color:#ff5a7a; background:#ff5a7a33; color:#fff; }
@@ -189,7 +191,8 @@
   #stage.cardsMode #fsPowers { display:none; } #stage.cardsMode #fsWacky { display:flex; }
   /* battle */
   #v-battle.on { display:block; overflow:auto; }
-  .battleTop { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:14px; height:calc(100vh - var(--hdr) - 28px); }
+  .battleTop { display:grid; grid-template-columns:minmax(0,1fr) 10px min(var(--bSide,330px), calc(100vw - 460px)); gap:4px; height:calc(100vh - var(--hdr) - 28px); }
+  .battleTop > .wsplit { margin:0 3px; }
   .powers { display:flex; flex-wrap:wrap; gap:5px; flex:1; }
   .powers button { font-size:12.5px; padding:5px 9px; }
   .powers button.mp { border-color:var(--gold); color:var(--gold); }
@@ -463,6 +466,7 @@
       <span class="seg" title="Camera — click a piece on the battle to follow it, scroll to zoom, drag to move"><button onclick="cam('prev')" title="Follow the previous piece">◀</button><button onclick="cam('next')" title="Follow the next piece (Tab)">🎯 Follow</button><button onclick="cam('next')" title="Follow the next piece">▶</button><button onclick="cam('overview')" title="See the whole cliff (O)">🗺️</button><button onclick="cam('auto')" title="Back to the automatic camera (R)">🎥 Auto</button><button onclick="cam('left')" title="Move left (A)">⬅</button><button onclick="cam('right')" title="Move right (D)">➡</button><button onclick="cam('up')" title="Move up (W)">⬆</button><button onclick="cam('down')" title="Move down (S)">⬇</button><button onclick="cam('out')" title="Zoom out (Q)">➖</button><button onclick="cam('in')" title="Zoom in (E)">➕</button></span>
     </div>
   </div>
+  <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
   <div class="side">
     <button class="primary big" id="startBtn" onclick="start()">▶ START ROYAL</button>
     <div data-ann="battle" style="margin-top:6px"></div>
@@ -500,8 +504,8 @@
     <div class="under" style="row-gap:6px">
       <span class="muted">Playing</span>
       <select id="cBattleSel" style="width:auto;max-width:260px" onchange="cardsApi('/api/cards/active',{id:this.value})"></select>
-      <button class="ghost" onclick="cbEdit()" title="Change this card battle: its name, which games' packs fight, every pack or 1 of each">⚙ Edit</button>
-      <button class="ghost" onclick="cbEdit(true)" title="Make another card battle (for example only Pokémon packs)">+ New card battle</button>
+      <button class="ghost" onclick="cbEdit()" title="Change this card battle in the 📦 Card pool tab: its name, which packs fight, the pacer">⚙ Edit</button>
+      <button class="ghost" onclick="cbNew()" title="Make another card battle (for example only Pokémon packs)">+ New card battle</button>
       <span class="muted">🗺️ Map</span>
       <select id="cMapSel" style="width:auto" onchange="cardsApi('/api/cards/battle',{id:S.cards.activeId,map:this.value})"></select>
       <span class="grow"></span>
@@ -515,8 +519,10 @@
       <button class="ghost" onclick="cardsApi('/api/cards/wacky',{allOff:true})" title="Turn every wacky setting off">✕ All off</button>
     </div>
   </div>
+  <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
   <div class="side">
     <button class="primary big" id="cStartBtn" onclick="cardsStart()">🥋 FIGHT!</button>
+    <div class="modeSeg" id="cMode"></div>
     <div class="muted" id="cCount" style="text-align:center"></div>
     <div class="card" id="cWinCard" style="display:none"></div>
     <div class="card"><h2 style="margin:0 0 6px">🃏 In this fight</h2><div class="cfList" id="cIn"></div></div>
@@ -525,25 +531,16 @@
  </div>
 </section>
 
-<!-- 📦 CARD POOL -->
-<section class="view" id="v-cardpool"><div class="pane" style="overflow:visible">
-  <h2 style="margin-top:0">📦 Card pool <small class="muted" id="cpTotal" style="font-weight:400"></small></h2>
-  <p class="help">Every card pack you own. Each pack you have is one fighter in 🃏 Card battles (5 packs of one kind = 5 fighters), unless a card battle is set to 1 of each. When a pack wins, one comes off its count (you open it). Nothing here is ever deleted: 🙈 only hides a pack.</p>
-  <div class="row" style="gap:8px;flex-wrap:wrap"><input id="cpSearch" class="grow" style="min-width:240px" placeholder="Search card packs (e.g. Surging Sparks booster pack, One Piece OP-09 booster)…" onkeydown="if(event.key==='Enter')cpFind()"><button class="primary" onclick="cpFind()">🔍 Search</button><button onclick="cpOwn()" title="Add a pack that isn't in the search: type its name and pick a picture">➕ Add my own pack</button></div>
-  <div id="cpResults" style="margin-top:10px"></div>
-  <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center"><h3 style="margin:0" class="grow">🃏 My packs</h3><select id="cpGame" style="width:auto" onchange="renderCardPool()"></select><label class="ck"><input type="checkbox" id="cpShowAll" onchange="renderCardPool()"> <span>Show opened + hidden packs</span></label></div>
-  <div class="packGrid" id="cpMine" style="margin-top:8px"></div>
-</div></section>
-
-<dialog id="cbDlg"><div class="inner">
-  <h3 style="margin-top:0" id="cbTitle">🃏 Card battle</h3>
-  <label>Name</label><input id="cbName" placeholder="e.g. Pokémon night">
-  <label style="margin-top:10px">Which packs fight</label>
-  <select id="cbMode"><option value="all">Every pack I own (5 of one pack = 5 fighters)</option><option value="one">Just 1 of each pack</option></select>
-  <label style="margin-top:10px">Which games (none ticked = every game)</label>
-  <div id="cbGames" class="row" style="gap:6px;flex-wrap:wrap"></div>
-  <div class="row" style="gap:8px;justify-content:flex-end;margin-top:14px"><button class="ghost" id="cbDel" onclick="cbRemove()">🗑 Remove this card battle</button><span class="grow"></span><button class="ghost" onclick="$('cbDlg').close()">Cancel</button><button class="primary" onclick="cbSave()">💾 Save</button></div>
-</div></dialog>
+<!-- 📦 CARD POOL (laid out like the 🎬 Movie Pool) -->
+<section class="view" id="v-cardpool">
+  <div class="pane card">
+    <h2>Card battles</h2>
+    <div class="lists" id="cpLists"></div>
+    <button class="primary" style="width:100%;margin-top:6px" onclick="cbNew()">+ New card battle</button>
+  </div>
+  <div class="poolmain" id="cpMain"></div>
+  <div class="pane poolside" id="cpSide"></div>
+</section>
 
 <dialog id="cpOwnDlg"><div class="inner">
   <h3 style="margin-top:0">➕ Add my own pack</h3>
@@ -1230,7 +1227,7 @@ const CK_META = { // key: [category, version it came in]
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
   discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
-  announce: ['chat', '1.30.7'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], capture: ['screen', '1.30.7'], cardPool: ['battles', '1.31.0'], pacing: ['battles', '1.31.1'], capSize: ['screen', '1.31.1'], cardFight: ['battles', '1.31.0'], cardWacky: ['battles', '1.31.0'], cardLink: ['wheel', '1.31.0'], winModes: ['screen', '1.31.0'], gfxAdv: ['screen', '1.31.0'], spell: ['screen', '1.30.7'], armyHurt: ['battles', '1.30.7'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  announce: ['chat', '1.30.7'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], capture: ['screen', '1.30.7'], cardPool: ['battles', '1.31.0'], pacing: ['battles', '1.31.1'], pacerSlider: ['battles', '1.32.0'], cardReplay: ['battles', '1.32.0'], cardPoolNew: ['battles', '1.32.0'], resizeBoxes: ['screen', '1.32.0'], packSearch2: ['battles', '1.32.0'], capSize: ['screen', '1.31.1'], cardFight: ['battles', '1.31.0'], cardWacky: ['battles', '1.31.0'], cardLink: ['wheel', '1.31.0'], winModes: ['screen', '1.31.0'], gfxAdv: ['screen', '1.31.0'], spell: ['screen', '1.30.7'], armyHurt: ['battles', '1.30.7'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1290,6 +1287,11 @@ function drawChecklist() {
     ['prices', '💰 Every reward, bits and donation amount in one place (Settings → 💰 Rewards & prices): change a price, pause one, make it always on or off after one use', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">See it</button>`],
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
+    ['pacerSlider', '⏳ The elimination pacer slider (Settings → Game, and each card battle in 📦 Card pool) changes how spread out the knockouts are; 0 = off', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setTimeout(()=>setSub('game'),100)">Try it</button>`],
+    ['cardReplay', '⏪ A card battle shows a replay of the last moments before the winner screen; weapons: only 2, they hit hard and everyone goes after them', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,['weapons'])">Try it</button>`],
+    ['cardPoolNew', '📦 Card pool: − / + and typing a number change how many packs you have; card battle settings are at the top (like the Movie Pool)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cardpool')">Try it</button>`],
+    ['resizeBoxes', '↔️ Drag the bar between the battle screen and the side boxes (Battle and Card battles tabs) to resize them', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">Try it</button>`],
+    ['packSearch2', '🔍 Pack search shows card shop results and 🌐 pictures from the web; pick one and ➕ Add', `<button class="ghost" style="padding:3px 9px" onclick="setView('cardpool')">Try it</button>`],
     ['pacing', '⏳ Battles thin out steadily instead of most pieces going out at once, and when only 2 are left early it turns into a FINAL SHOWDOWN (they charge each other) instead of hopping around', T('Try it', "api('/api/test/battle',{count:16}).catch(()=>{})")],
     ['capSize', '📏 The capture window on stream gets bigger or smaller right away with − / + or the slider under 📺 on the Battle tab', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">Try it</button>`],
     ['cardPool', '📦 Card pool: search a card pack, add how many you have (its picture downloads by itself), or ➕ Add my own pack', `<button class="ghost" style="padding:3px 9px" onclick="setView('cardpool')">Try it</button>`],
@@ -1562,57 +1564,97 @@ function renderCards() {
   if (sel.dataset.k !== opts) { sel.dataset.k = opts; sel.innerHTML = opts; }
   const b = c.battles.find(x => x.id === c.activeId) || c.battles[0];
   const mo = c.maps.map(m => `<option value="${m.id}" ${m.id === b.map ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join(''); if ($('cMapSel').dataset.k !== mo) { $('cMapSel').dataset.k = mo; $('cMapSel').innerHTML = mo; }
-  const wb = wackyButtons(); if ($('cWackyBar').innerHTML !== wb) $('cWackyBar').innerHTML = wb;
+  const wb = wackyButtons(); cpPut('cWackyBar', wb);
+  cpPut('cMode', `<button class="${b.mode !== 'one' ? 'on' : ''}" onclick="cbSet({mode:'all'})" title="Every pack you own is a fighter: 5 of one pack = 5 fighters">📦 Every pack counts</button><button class="${b.mode === 'one' ? 'on' : ''}" onclick="cbSet({mode:'one'})" title="Each kind of pack fights once, however many you have">1️⃣ 1 of each</button>`);
   const L = c.live, fighting = L.phase === 'fight';
   $('cStartBtn').textContent = fighting ? '⏹ STOP FIGHT' : '🥋 FIGHT!'; $('cStartBtn').className = fighting ? 'big' : 'primary big';
   $('cCount').textContent = fighting ? `${L.n} packs fighting${L.test ? ' (pretend)' : ''}` : `${c.inBattle} pack${c.inBattle === 1 ? '' : 's'} ready · ${b.mode === 'one' ? '1 of each' : 'every pack'}${b.games?.length ? ' · ' + b.games.join(', ') : ''}${c.cut ? ` · only ${c.inBattle} fit (${c.cut} sit out at random)` : ''}`;
   const packs = c.pool.filter(p => p.status === 'active' && p.count > 0 && (!b.games?.length || b.games.includes(p.game || 'Other')));
   const inH = packs.length ? packs.map(p => `<div class="cf" title="${esc(p.name)} · ${esc(p.game)}">${packImg(p.image)}${b.mode === 'one' ? '' : '×' + p.count}</div>`).join('') : '<span class="muted">No packs yet: add them in 📦 Card pool.</span>';
-  if ($('cIn').innerHTML !== inH) $('cIn').innerHTML = inH;
+  cpPut('cIn', inH);
   const last = L.last, wc = $('cWinCard');
   wc.style.display = last && L.phase === 'ended' ? '' : 'none';
-  if (last && L.phase === 'ended') { const h = `<div class="winner">${packImg(last.image)}<div class="t">🏆 ${esc(last.name)}</div><div class="muted">${last.test ? 'Pretend fight: nothing changed' : `Open it! ${last.leftAfter != null ? `${last.leftAfter} left in your pool` : ''}`}</div></div>`; if (wc.innerHTML !== h) wc.innerHTML = h; }
+  if (last && L.phase === 'ended') { const h = `<div class="winner">${packImg(last.image)}<div class="t">🏆 ${esc(last.name)}</div><div class="muted">${last.test ? 'Pretend fight: nothing changed' : `Open it! ${last.leftAfter != null ? `${last.leftAfter} left in your pool` : ''}`}</div></div>`; cpPut('cWinCard', h); }
   const hh = c.history.length ? c.history.slice(0, 10).map(r => `<div class="row" style="gap:6px;margin:3px 0"><span>🏆</span><span class="grow">${esc(r.name)} <small class="muted">${esc(r.game || '')}</small></span><small class="muted">${new Date(r.at).toLocaleDateString()}</small></div>`).join('') : '<span class="muted">No card battles yet.</span>';
-  if ($('cHist').innerHTML !== hh) $('cHist').innerHTML = hh;
+  cpPut('cHist', hh);
 }
 async function cardsStart() {
   const L = S.cards?.live; if (L?.phase === 'fight') return cardsApi('/api/cards/stop');
   const r = await cardsApi('/api/cards/start'); if (r?.cut) toast(`🃏 Only ${r.n} packs fit in one fight: ${r.cut} sit this one out (picked at random).`);
 }
-function cbEdit(isNew) {
-  const c = S.cards, b = isNew ? { id: '', name: '', games: [], mode: 'all' } : c.battles.find(x => x.id === c.activeId);
-  $('cbTitle').textContent = isNew ? '🃏 New card battle' : '⚙ Edit card battle'; $('cbDlg').dataset.id = b.id;
-  $('cbName').value = b.name; $('cbMode').value = b.mode || 'all'; $('cbDel').style.display = isNew || c.battles.length < 2 ? 'none' : '';
-  $('cbGames').innerHTML = c.games.length ? c.games.map(g => `<label class="ck"><input type="checkbox" value="${esc(g)}" ${b.games?.includes(g) ? 'checked' : ''}> <span>${esc(g)}</span></label>`).join('') : '<span class="muted">Add packs in 📦 Card pool first.</span>';
-  $('cbDlg').showModal();
-}
-async function cbSave() { const id = $('cbDlg').dataset.id; await cardsApi('/api/cards/battle', { ...(id ? { id } : {}), name: $('cbName').value || '🃏 Card battle', mode: $('cbMode').value, games: [...$('cbGames').querySelectorAll('input:checked')].map(i => i.value) }); $('cbDlg').close(); }
-async function cbRemove() { if (!confirm('Remove this card battle? (Your packs stay in the Card pool.)')) return; await cardsApi('/api/cards/battle/remove', { id: $('cbDlg').dataset.id }); $('cbDlg').close(); }
+function cbEdit() { setView('cardpool'); } // ⚙ the card battle's settings live in the 📦 Card pool tab (like battles in the 🎬 Movie Pool)
+async function cbNew() { const r = await cardsApi('/api/cards/battle', { name: '🃏 New card battle' }); if (r) toast('🃏 New card battle: name it and pick its packs.'); if (view !== 'cardpool') setView('cardpool'); }
+async function cbRemove() { if (!confirm('Remove this card battle? (Your packs stay in the Card pool.)')) return; await cardsApi('/api/cards/battle/remove', { id: S.cards.activeId }); }
+const cbSet = ch => cardsApi('/api/cards/battle', { id: S.cards.activeId, ...ch });
+const cbGame = (g, on) => { const b = S.cards.battles.find(x => x.id === S.cards.activeId), gs = new Set(b.games || []); on ? gs.add(g) : gs.delete(g); cbSet({ games: [...gs] }); };
 let cpLast = [];
 async function cpFind() {
   const q = $('cpSearch').value.trim(); if (q.length < 2) return;
   $('cpResults').innerHTML = '<p class="help">🔍 Searching…</p>';
-  try { const r = await api('/api/cards/search', { q }); cpLast = r.results;
-    $('cpResults').innerHTML = cpLast.length ? `<div class="packGrid">${cpLast.map((x, i) => `<div class="packCard">${packImg(x.image)}<div class="nm" title="${esc(x.name)}">${esc(x.name)}</div><div class="gm">${esc(x.game)}${x.set ? ' · ' + esc(x.set) : ''}${x.price ? ` · ~$${x.price.toFixed(2)}` : ''}</div><div class="cnt"><input type="number" min="1" value="1" id="cpN${i}" title="How many of this pack you have"><button class="primary" onclick="cpAdd(${i})">➕ Add</button></div></div>`).join('')}</div><div class="row" style="margin-top:6px"><button class="ghost" onclick="$('cpResults').innerHTML=''">✕ Close the results</button></div>` : '<p class="help">Nothing found. Try other words (the set name + "booster pack"), or ➕ Add my own pack.</p>';
-  } catch (e) { $('cpResults').innerHTML = `<p class="help" style="color:var(--bad)">⚠️ The pack search didn't work (${esc(e.message || '')}). You can still ➕ Add my own pack with a picture.</p>`; }
+  try { const r = await api('/api/cards/search', { q }); cpLast = r.results; cpErr = r.errors || []; cpQ = q; cpShowResults(); }
+  catch (e) { $('cpResults').innerHTML = `<p class="help" style="color:var(--bad)">⚠️ The pack search didn't work (${esc(e.message || '')}). You can still ➕ Add my own pack with a picture.</p>`; }
 }
-async function cpAdd(i) { const x = cpLast[i], n = Math.max(1, Number($('cpN' + i)?.value) || 1); const r = await cardsApi('/api/cards/add', { ...x, count: n }); if (r) toast(`📦 ${r.more ? 'Added' : 'New pack:'} ${n} × ${esc(x.name)}${r.more ? ` (you have ${r.pack.count} now)` : ''}`); }
+let cpErr = [], cpQ = '';
+function cpShowResults() {
+  const shop = cpLast.filter(x => x.source !== 'web'), web = cpLast.filter(x => x.source === 'web');
+  const card = (x, i) => `<div class="packCard">${packImg(x.image)}<div class="nm" title="${esc(x.name)}">${esc(x.name)}</div><div class="gm">${x.source === 'web' ? '🌐 ' + esc(x.from || 'web picture') : esc(x.game) + (x.set ? ' · ' + esc(x.set) : '') + (x.price ? ` · ~$${x.price.toFixed(2)}` : '')}</div><div class="cnt"><button class="ghost" onclick="cpN(${i},-1)" title="One less">−</button><input value="1" inputmode="numeric" id="cpN${i}" title="How many of this pack you have"><button class="ghost" onclick="cpN(${i},1)" title="One more">+</button><button class="primary" onclick="cpAdd(${i})">➕ Add</button></div></div>`;
+  $('cpResults').innerHTML = `${shop.length ? `<h3 style="margin:10px 0 6px">🛒 Card shops</h3><div class="packGrid">${shop.map(x => card(x, cpLast.indexOf(x))).join('')}</div>` : ''}
+    ${web.length ? `<h3 style="margin:10px 0 6px">🌐 Pictures from the web <small class="muted" style="font-weight:400">(pick the right picture; the pack is named “${esc(cpQ)}”, change it after)</small></h3><div class="packGrid">${web.map(x => card(x, cpLast.indexOf(x))).join('')}</div>` : ''}
+    ${!cpLast.length ? '<p class="help">Nothing found. Try other words (the set name + "booster pack"), or ➕ Add my own pack.</p>' : ''}
+    ${cpErr.length ? `<p class="help">ℹ️ ${cpErr.map(esc).join(' · ')}</p>` : ''}
+    <div class="row" style="margin-top:6px"><button class="ghost" onclick="cpLast=[];$('cpResults').innerHTML=''">✕ Close the results</button></div>`;
+}
+const cpN = (i, d) => { const el = $('cpN' + i); if (el) el.value = Math.max(1, (Number(el.value) || 1) + d); };
+async function cpAdd(i) { const x = cpLast[i], n = Math.max(1, Number($('cpN' + i)?.value) || 1); if (x.source === 'web') x.name = x.name || cpQ; const r = await cardsApi('/api/cards/add', { ...x, count: n }); if (r) toast(`📦 ${r.more ? 'Added' : 'New pack:'} ${n} × ${esc(x.name)}${r.more ? ` (you have ${r.pack.count} now)` : ''}`); }
 function cpOwn() { $('cpoName').value = ''; $('cpoGame').value = ''; $('cpoCount').value = 1; $('cpoImg').value = ''; $('cpGames').innerHTML = (S.cards?.games || []).map(g => `<option value="${esc(g)}">`).join(''); $('cpOwnDlg').showModal(); }
 async function cpoUpload(f) { if (!f) return; const r = await fetch('/api/cards/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()).catch(() => null); if (r?.url) { $('cpoImg').value = r.url; toast('🖼️ Picture added'); } }
 async function cpoSave() { const r = await cardsApi('/api/cards/add', { name: $('cpoName').value, game: $('cpoGame').value, count: $('cpoCount').value, image: $('cpoImg').value }); if (r) { $('cpOwnDlg').close(); toast('📦 Added ' + esc(r.pack.name)); } }
 const cpSet = (id, ch) => cardsApi('/api/cards/pack', { id, ...ch });
+let cpFilter = '', cpHtml = {};
+const cpPut = (id, h) => { const el = $(id); if (!el || (cpHtml[id] === h && el.dataset.cp === '1')) return false; cpHtml[id] = h; el.innerHTML = h; el.dataset.cp = '1'; return true; }; // (an element that was just made again has no data-cp, so it always gets filled) // (only redraw what changed, so clicks and typing aren't lost)
 function renderCardPool() {
   const c = S.cards; if (!c) return;
-  const gs = `<option value="">All games</option>` + c.games.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join(''), gsel = $('cpGame'), keep = gsel.value;
-  if (gsel.dataset.k !== gs) { gsel.dataset.k = gs; gsel.innerHTML = gs; gsel.value = keep; }
-  const all = $('cpShowAll').checked, g = gsel.value;
-  const list = c.pool.filter(p => (all || p.status === 'active') && (!g || p.game === g)).sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || a.game.localeCompare(b.game) || a.name.localeCompare(b.name));
-  const live = c.pool.filter(p => p.status === 'active'), total = live.reduce((n, p) => n + p.count, 0);
-  $('cpTotal').textContent = `· ${total} pack${total === 1 ? '' : 's'} (${live.length} kind${live.length === 1 ? '' : 's'})`;
-  const h = list.length ? list.map(p => `<div class="packCard ${p.status !== 'active' ? p.status : ''}">${packImg(p.image)}<div class="nm" title="${esc(p.name)}">${esc(p.name)}</div><div class="gm">${esc(p.game)}${p.set ? ' · ' + esc(p.set) : ''}${p.opened ? ` · 📦 ${p.opened} opened` : ''}${p.status === 'used' ? ' · none left' : p.status === 'hidden' ? ' · 🙈 hidden' : ''}</div>
-    <div class="cnt"><button class="ghost" title="One less" onclick="cpSet('${p.id}',{count:${Math.max(0, p.count - 1)}})">−</button><input type="number" min="0" value="${p.count}" title="How many of this pack you have" onchange="cpSet('${p.id}',{count:this.value})"><button class="ghost" title="One more" onclick="cpSet('${p.id}',{count:${p.count + 1}})">+</button></div>
-    <div class="row" style="gap:4px">${p.status === 'hidden' ? `<button class="ghost grow" onclick="cpSet('${p.id}',{hide:false})" title="Bring this pack back">▶ Bring back</button>` : `<button class="ghost grow" onclick="cpSet('${p.id}',{hide:true})" title="Hide this pack (it is never deleted)">🙈 Hide</button>`}<button class="ghost" title="Change the picture" onclick="cpPic('${p.id}')">🖼️</button></div></div>`).join('') : `<p class="help">${c.pool.length ? 'No packs to show here.' : 'No packs yet: search for one above, or ➕ Add my own pack.'}</p>`;
-  if ($('cpMine').innerHTML !== h) $('cpMine').innerHTML = h;
+  const focus = document.activeElement; if (focus?.closest?.('#v-cardpool') && /INPUT|SELECT|TEXTAREA/.test(focus.tagName) && focus.type !== 'range' && focus.id !== 'cpFilterIn') return; // (typing: don't redraw under your fingers)
+  const b = c.battles.find(x => x.id === c.activeId) || c.battles[0];
+  const inB = p => p.status === 'active' && p.count > 0 && (!b.games?.length || b.games.includes(p.game || 'Other'));
+  const fighters = p => b.mode === 'one' ? 1 : p.count;
+  cpPut('cpLists', c.battles.map(x => { const n = c.pool.filter(p => p.status === 'active' && p.count > 0 && (!x.games?.length || x.games.includes(p.game || 'Other'))).reduce((s, p) => s + (x.mode === 'one' ? 1 : p.count), 0); return `<button class="${x.id === c.activeId ? 'active' : ''}" onclick="cardsApi('/api/cards/active',{id:'${x.id}'})"><span>${esc(x.name)}<br><small>${x.mode === 'one' ? '1 of each' : 'every pack'}${x.games?.length ? ' · ' + esc(x.games.join(', ')) : ''}</small></span><span class="pill">${n}</span></button>`; }).join(''));
+  const total = c.pool.filter(inB).reduce((s, p) => s + fighters(p), 0) || 1;
+  const pace = b.pace ?? 50;
+  cpPut('cpMain', `<div class="card">
+      <div class="listhead"><input class="grow" value="${esc(b.name)}" title="This card battle's name" onchange="cbSet({name:this.value})"><span class="pill">🃏 Card battle</span><span class="pill">${total === 1 && !c.pool.some(inB) ? 0 : total} fighters</span></div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Which packs fight</label><div class="modeSeg"><button class="${b.mode !== 'one' ? 'on' : ''}" onclick="cbSet({mode:'all'})" title="Every pack you own is a fighter: 5 of one pack = 5 fighters">📦 Every pack counts</button><button class="${b.mode === 'one' ? 'on' : ''}" onclick="cbSet({mode:'one'})" title="Each kind of pack fights once, however many you have">1️⃣ 1 of each</button></div></div>
+        <div><label>🗺️ Map</label><select onchange="cbSet({map:this.value})">${c.maps.map(m => `<option value="${m.id}" ${m.id === b.map ? 'selected' : ''}>${m.icon} ${esc(m.name)}</option>`).join('')}</select></div>
+        <div><label>⏳ Elimination pacer: <b id="cpPaceV">${pacerWord(pace)}</b></label><input type="range" min="0" max="100" step="5" value="${pace}" title="How hard the knockouts are spread over the fight (0 = off)" oninput="$('cpPaceV').textContent=pacerWord(this.value)" onchange="cbSet({pace:this.value})"></div>
+        <div><label>⏱️ Fight length: <b id="cpLenV">${b.length ? b.length + ' s' : 'by how many packs'}</b></label><input type="range" min="0" max="180" step="5" value="${b.length || 0}" title="How long a fight should last; the pacer spreads the knockouts over it (0 = by how many packs fight)" oninput="$('cpLenV').textContent=Number(this.value)?this.value+' s':'by how many packs'" onchange="cbSet({length:this.value})"></div>
+      </div>
+      <label style="margin-top:8px">Which games (none ticked = every game)</label>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${c.games.length ? c.games.map(g => `<label class="ck"><input type="checkbox" ${b.games?.includes(g) ? 'checked' : ''} onchange="cbGame('${esc(g).replace(/'/g, '&#39;')}',this.checked)"> <span>${esc(g)}</span></label>`).join('') : '<span class="muted">Add packs below first.</span>'}</div>
+      <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><input id="cpSearch" class="grow" style="min-width:220px" placeholder="Add packs: search a pack (e.g. Surging Sparks booster pack)…" onkeydown="if(event.key==='Enter')cpFind()"><button class="primary" onclick="cpFind()">🔍 Search</button><button onclick="cpOwn()" title="Add a pack that isn't in the search: type its name and pick a picture">➕ Add my own pack</button></div>
+      <div id="cpResults"></div>
+    </div>
+    <div class="card tablecard">
+      <div class="row" style="margin-bottom:6px"><h2 class="grow" style="margin:0">📦 My packs</h2><input id="cpFilterIn" placeholder="Filter…" style="width:160px" oninput="cpFilter=this.value.toLowerCase();renderCardPool()">
+        ${c.battles.length > 1 ? '<button class="danger" onclick="cbRemove()" title="Remove this card battle (your packs stay)">Remove this card battle</button>' : ''}</div>
+      <div class="tablewrap" id="cpTable"></div>
+    </div>`);
+  if (cpLast.length && !$('cpResults').innerHTML) cpShowResults();
+  { const fi = $('cpFilterIn'); if (fi && fi.value !== cpFilter && document.activeElement !== fi) fi.value = cpFilter; }
+  const flt = p => !cpFilter || `${p.name} ${p.game} ${p.set}`.toLowerCase().includes(cpFilter);
+  const live = c.pool.filter(p => p.status === 'active' && p.count > 0 && flt(p)).sort((a, b2) => a.game.localeCompare(b2.game) || a.name.localeCompare(b2.name));
+  const rest = c.pool.filter(p => !(p.status === 'active' && p.count > 0) && flt(p));
+  const row = (p, dim) => { const on = inB(p), pct = on ? fighters(p) / total * 100 : 0;
+    return `<tr class="${dim ? 'pausedRow' : ''}" title="${dim ? (p.status === 'hidden' ? 'Hidden: not in card battles' : 'None left (all opened)') : on ? '' : 'Not in this card battle (its games are not ticked)'}" style="${!dim && !on ? 'opacity:.55' : ''}">
+      <td class="thumb">${p.image ? `<img class="poster" src="${esc(p.image)}" onerror="this.style.visibility='hidden'">` : '<span>🃏</span>'}</td>
+      <td><b>${esc(p.name)}</b><br><small class="muted">${esc(p.game)}${p.set ? ' · ' + esc(p.set) : ''}${p.opened ? ` · 📦 ${p.opened} opened` : ''}</small></td>
+      <td><div class="odds"><button title="One less" onclick="cpSet('${p.id}',{count:${Math.max(0, p.count - 1)}})">−</button><input value="${p.count}" inputmode="numeric" title="How many of this pack you have" onchange="cpSet('${p.id}',{count:this.value})" onkeydown="if(event.key==='Enter')this.blur()"><button title="One more" onclick="cpSet('${p.id}',{count:${p.count + 1}})">+</button></div></td>
+      <td><div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${on ? pct.toFixed(pct < 10 ? 1 : 0) + '%' : '—'}</small></td>
+      <td style="white-space:nowrap"><button class="ghost" title="Change the picture" onclick="cpPic('${p.id}')">🖼️</button>${p.status === 'hidden' ? `<button class="ghost" title="Bring this pack back" onclick="cpSet('${p.id}',{hide:false})">▶</button>` : `<button class="ghost" title="Hide this pack (it is never deleted)" onclick="cpSet('${p.id}',{hide:true})">🙈</button>`}</td></tr>`; };
+  cpPut('cpTable', live.length || rest.length ? `<table><tr><th></th><th>Pack</th><th>How many</th><th>Chance</th><th></th></tr>${live.map(p => row(p)).join('')}${rest.map(p => row(p, true)).join('')}</table>` : '<div class="empty">No packs yet: search for one above, or ➕ Add my own pack.</div>');
+  const last = c.history.slice(0, 8);
+  cpPut('cpSide', `<div class="card"><h2>🃏 This card battle</h2><p class="help" style="margin:0">${c.pool.some(inB) ? `<b>${total}</b> fighters from <b>${c.pool.filter(inB).length}</b> kinds of packs.` : 'No packs in it yet.'} ${b.mode === 'one' ? 'Each kind of pack fights once.' : 'Every pack you own fights.'}</p><button class="primary" style="width:100%;margin-top:8px" onclick="setView('cards')">🥋 Go to Card battles</button></div>
+    <div class="card"><h2>🏆 Latest winners</h2>${last.length ? last.map(r => `<div class="row" style="gap:6px;margin:3px 0"><span class="grow">${esc(r.name)} <small class="muted">${esc(r.game || '')}</small></span><small class="muted">${new Date(r.at).toLocaleDateString()}</small></div>`).join('') : '<p class="help" style="margin:0">No card battles yet.</p>'}</div>`);
 }
 async function cpPic(id) { const v = await ask('Link to a picture of this pack (or leave it empty for no picture):', S.cards.pool.find(p => p.id === id)?.image || ''); if (v !== null && v !== undefined) cpSet(id, { image: String(v).trim() }); }
 // 📺 capture window (Battle tab): a small OBS window capture in the top-left of the stream
@@ -1645,6 +1687,7 @@ async function capList() {
 }
 async function cardTest(n, wacky = []) { await cardsApi('/api/cards/stop'); if (wacky.length) { await cardsApi('/api/cards/wacky', { allOff: true }); for (const k of wacky) await cardsApi('/api/cards/wacky', { key: k, on: true }); } const r = await cardsApi('/api/cards/start', { test: true, n }); if (r) toast(`🃏 Pretend card battle: ${n} packs${wacky.length ? ' + wacky settings' : ''}. Nothing in your pool changes.`); }
 async function capTest() { try { await api('/api/capture', { on: true }); toast('📺 Showing in OBS for 5 seconds…'); setTimeout(() => api('/api/capture', { on: false }).catch(() => {}), 5000); } catch {} }
+const pacerWord = v => { v = Number(v); return v <= 0 ? 'Off' : v < 35 ? `Light (${v})` : v < 65 ? `Normal (${v})` : v < 90 ? `Strong (${v})` : `Very strong (${v})`; };
 async function winMode(v) { try { await api('/api/window', { action: v }); } catch {} }
 async function capSave() {
   try { await api('/api/capture/settings', { window: $('capWin').value, size: Number($('capSize').value), autoHide: $('capAuto').checked }); $('capDlg').close(); toast('📺 Saved.'); } catch {}
@@ -1654,7 +1697,7 @@ function renderView() {
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
   { const el = $('capRow'), h = capHTML(); if (el && el.innerHTML !== h) el.innerHTML = h; }
-  { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { const h = wackyButtons(); if ($('fsWacky').innerHTML !== h) $('fsWacky').innerHTML = h; $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
+  { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
   if (view === 'pool') renderPool();
@@ -2630,6 +2673,14 @@ function drawRound() {
       <button class="ghost" onclick="wRoundCmd('add',-30)">➖ 30 sec</button><button class="ghost danger" onclick="if(confirm('End the round now? Whatever the wheel is on wins.')) wRoundCmd('end')">⏹ End now</button></div>`}`;
   wRoundTick();
 }
+function bSplitSet(px) { const v = Math.round(Math.max(240, Math.min(innerWidth - 480, px))); document.documentElement.style.setProperty('--bSide', v + 'px'); try { localStorage.bSide = v; } catch {} placeStage(); } // ↔️ Battle / Card battles tabs: the side boxes' width
+function bSplit(ev) {
+  const bar = ev.currentTarget; bar.classList.add('drag'); ev.preventDefault();
+  const mv = e => bSplitSet(innerWidth - e.clientX - 20);
+  const up = () => { bar.classList.remove('drag'); removeEventListener('pointermove', mv); removeEventListener('pointerup', up); setTimeout(placeStage, 50); };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+}
+try { if (localStorage.bSide) document.documentElement.style.setProperty('--bSide', Number(localStorage.bSide) + 'px'); } catch {}
 function wSplitSet(px) { const v = Math.round(Math.max(320, Math.min(innerWidth - 420, px))); document.documentElement.style.setProperty('--wRight', v + 'px'); try { localStorage.wRight = v; } catch {} }
 function wSplit(ev) {
   const bar = ev.currentTarget; bar.classList.add('drag'); ev.preventDefault();
@@ -3095,6 +3146,8 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
     game: `<h3>⚔️ The battle</h3>
       <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('gameSeconds', 'Fight length (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
+      <div style="margin-top:10px"><label>⏳ Elimination pacer: <b id="pacerV">${pacerWord(s.pacer ?? 50)}</b></label><input type="range" data-k="pacer" min="0" max="100" step="5" value="${s.pacer ?? 50}" oninput="$('pacerV').textContent=pacerWord(this.value)" title="How hard Movie Royal spreads the knockouts over the fight">
+      <p class="help" style="margin:2px 0 0">Spreads the knockouts over the whole fight so it doesn't empty out in the first seconds, and makes it busier when it drags. It follows the fight length above: a 60-second fight gets paced over 60 seconds. 0 = off (pieces go out whenever they go out). When 2 are left early, the 🥊 FINAL SHOWDOWN still starts.</p></div>
       ${ck('fairOdds', '<b>Exact odds</b> — the winner is drawn by the odds like a real wheel, and the fight plays it out. Off = pure chaos physics.', false)}
       ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
       ${f('helpCommand', 'Chat command that lists every chat command', '!moviesroyal')}

@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.32.0 (test build)
+- **Fixed: Movie Royal locked up after leaving Card battles in the middle of a fight.** A card fight you leave now finishes quietly behind the other tab (it still counts), and coming back never makes the app catch up on a long fight all at once.
+- **Fixed: 📦 Card pool − / + and typing how many packs you have didn't stick.** They save right away now, and the number boxes have no little arrows.
+- **📦 Card pool looks like the 🎬 Movie Pool:** your card battles on the left (click one to change it), its settings at the top (every pack counts or 1 of each, map, games, ⏳ pacer, ⏱️ fight length), and your packs in a list with − / + and each one's chance.
+- **🃏 Card battles tab:** 📦 Every pack counts / 1️⃣ 1 of each buttons right under FIGHT!.
+- **🔍 Pack search looks in more places:** TCGplayer's search page (opened in a hidden window inside Movie Royal, like you'd see it), TCGplayer's search, and 🌐 pictures from the web for what you typed, so you can always pick a picture. If nothing is found, it says where it looked.
+- **⏳ Elimination pacer slider:** Settings → Game for ball battles, and in each card battle's settings. It follows the fight length, so a longer fight is paced over more time. 0 = off.
+- **🥊 Card battles get the pacer + FINAL SHOWDOWN**, and a **⏪ REPLAY** of the last moments before the winner screen.
+- **🗡️ Weapons:** only 2 per fight, they hit much harder, everyone without one goes after whoever has one, a hit can knock it loose (STOLEN!), and it drops when its holder is knocked out.
+- **↔️ Resize the boxes** on the Battle and Card battles tabs: drag the bar between the battle screen and the side boxes (double-click to reset).
+
 ## 1.31.1 (test build)
 - **⏳ Battles are paced better:** pieces don't all go out in the first few seconds any more. Knockouts are spread over the whole battle, and if the battle is moving too slowly the arena throws in extra chaos (⚡ ARENA).
 - **🥊 FINAL SHOWDOWN:** when only 2 are left with time still on the clock, they no longer hop around for 10+ seconds. The showdown starts: they charge at each other, powers go off faster and the ground breaks away until one is left. In tests the last two used to be left alone for about 16 seconds; now it's a few seconds of fighting.

@@ -42,8 +42,31 @@ export const games = () => [...new Set(C().pool.filter(p => p.status !== 'hidden
 // ---------- 🔍 searching packs (TCGplayer's own site search: every card game, with pictures) ----------
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IMG = id => `https://tcgplayer-cdn.tcgplayer.com/product/${id}_in_400x400.jpg`;
-export async function searchPacks(q) {
-  q = String(q || '').trim().slice(0, 120); if (q.length < 2) return [];
+// More than one place to look, because one alone often finds nothing:
+//  1. TCGplayer's search page, opened in a hidden browser window inside Movie Royal (like you'd see it), read for products
+//  2. TCGplayer's own search service (what their page asks behind the scenes)
+//  3. 🌐 pictures from the web (DuckDuckGo images) for the words you typed: pick the right picture
+const decode = t => String(t || '').replace(/&amp;/g, '&').replace(/&#39;|&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+async function getText(url, headers = {}) {
+  if (globalThis.__desktop?.getPage && !Object.keys(headers).length) { const r = await globalThis.__desktop.getPage(url); if (r.status >= 400) throw new Error(`answered ${r.status}`); return r.text; }
+  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,application/json,*/*', 'Accept-Language': 'en-US,en;q=0.9', ...headers }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`answered ${r.status}`); return r.text();
+}
+async function tcgPage(q) { // 1
+  if (!globalThis.__desktop?.getPage) return [];
+  const url = `https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(q)}&view=grid&productTypeName=Sealed+Products`;
+  const { text } = await globalThis.__desktop.getPage(url, { render: true, wait: 'a[href*="/product/"] img', timeout: 22000 });
+  const out = new Map();
+  for (const m of text.matchAll(/<a[^>]+href="(?:https:\/\/www\.tcgplayer\.com)?\/product\/(\d+)\/([^"?#]*)[^"]*"[^>]*>([\s\S]*?)<\/a>/g)) {
+    const id = Number(m[1]), inner = m[3]; if (!id || out.has(id)) continue;
+    const pick = re => decode((inner.match(re) || [])[1]);
+    const name = pick(/product-card__title[^"]*"[^>]*>([^<]+)</) || pick(/<img[^>]+alt="([^"]+)"/) || decode(m[2].replace(/-/g, ' '));
+    if (!name) continue;
+    out.set(id, { productId: id, name, game: pick(/product-card__category-name[^"]*"[^>]*>([^<]+)</) || (m[2].split('-')[0] || 'Other').replace(/^./, c => c.toUpperCase()), set: pick(/product-card__set-name[^"]*"[^>]*>([^<]+)</), image: IMG(id), price: Number(pick(/\$([\d,.]+)/).replace(/,/g, '')) || null, source: 'tcgplayer' });
+  }
+  return [...out.values()].slice(0, 24);
+}
+async function tcgApi(q) { // 2
   const body = sealed => ({
     algorithm: 'sales_synonym_v2', from: 0, size: 24,
     filters: { term: sealed ? { productTypeName: ['Sealed Products'] } : {}, range: {}, match: {} },
@@ -55,16 +78,32 @@ export async function searchPacks(q) {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Origin: 'https://www.tcgplayer.com', Referer: 'https://www.tcgplayer.com/', 'User-Agent': UA },
       body: JSON.stringify(body(sealed)), signal: AbortSignal.timeout(15000)
     });
-    if (!r.ok) throw new Error(`the pack search answered ${r.status}`);
+    if (!r.ok) throw new Error(`answered ${r.status}`);
     const j = await r.json();
     return (j?.results?.[0]?.results || []).map(x => {
       const id = Math.round(Number(x.productId)); if (!id) return null;
-      return { productId: id, name: String(x.productName || '').trim(), game: String(x.productLineName || '').trim() || 'Other', set: String(x.setName || '').trim(), type: x.productTypeName || '', image: IMG(id), price: Number(x.marketPrice) || null };
+      return { productId: id, name: String(x.productName || '').trim(), game: String(x.productLineName || '').trim() || 'Other', set: String(x.setName || '').trim(), image: IMG(id), price: Number(x.marketPrice) || null, source: 'tcgplayer' };
     }).filter(Boolean);
   };
-  let out = await ask(true);
-  if (!out.length) out = await ask(false); // nothing sealed: show everything it found
-  return out;
+  let out = await ask(true); if (!out.length) out = await ask(false); return out;
+}
+async function webPictures(q) { // 3
+  const qq = /pack|booster|box/i.test(q) ? q : q + ' booster pack';
+  const html = await getText(`https://duckduckgo.com/?q=${encodeURIComponent(qq)}&iax=images&ia=images`);
+  const vqd = (html.match(/vqd=["']?([\d-]+)["']?/) || [])[1]; if (!vqd) throw new Error('no picture search key');
+  const j = JSON.parse(await getText(`https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(qq)}&vqd=${vqd}&f=,,,,,&p=1`, { Referer: 'https://duckduckgo.com/', Accept: 'application/json' }));
+  return (j.results || []).filter(x => x.image || x.thumbnail).slice(0, 12).map(x => ({ productId: null, name: q, game: '', set: '', image: x.thumbnail || x.image, full: x.image || x.thumbnail, from: (() => { try { return new URL(x.url || x.image).hostname.replace(/^www\./, ''); } catch { return 'web'; } })(), title: decode(x.title).slice(0, 120), source: 'web' }));
+}
+export async function searchPacks(q) {
+  q = String(q || '').trim().slice(0, 120); if (q.length < 2) return { results: [], errors: [] };
+  const errors = [], seen = new Set(), results = [];
+  const add = list => { for (const x of list) { const k = x.productId ? 'p' + x.productId : 'w' + x.image; if (!seen.has(k)) { seen.add(k); results.push(x); } } };
+  const [page, api, web] = await Promise.allSettled([tcgPage(q), tcgApi(q), webPictures(q)]);
+  if (page.status === 'fulfilled') add(page.value); else errors.push(`TCGplayer page: ${page.reason?.message || 'failed'}`);
+  if (api.status === 'fulfilled') add(api.value); else errors.push(`TCGplayer search: ${api.reason?.message || 'failed'}`);
+  if (web.status === 'fulfilled') add(web.value); else errors.push(`web pictures: ${web.reason?.message || 'failed'}`);
+  if (errors.length === 3) console.error('[cards] pack search found nothing anywhere:', errors.join(' · '));
+  return { results, errors: results.length ? [] : errors };
 }
 async function download(url, name) { // the pack's picture, saved on this PC (so it works offline and on stream)
   try {
@@ -84,6 +123,8 @@ export async function addPack(b) {
   if (p) { p.count = left(p) + count; if (p.status !== 'active') p.status = 'active'; save(); hooks.pushState(); return { pack: p, added: count, more: true }; }
   const name = String(b.name || '').trim().slice(0, 120); if (!name) throw new Error('Give the pack a name.');
   let image = fileOk(b.image);
+  const full = fileOk(b.full);
+  if (/^https?:/i.test(full)) { const d = await download(full, 'pack-' + (pid || uid())); if (d) image = d; } // (a 🌐 web picture: the big one if it downloads)
   if (/^https?:/i.test(image)) image = (await download(image, 'pack-' + (pid || uid()))) || image; // keep the web link if the download didn't work
   p = { id: uid(), productId: pid, name, game: String(b.game || '').trim().slice(0, 60) || 'Other', set: String(b.set || '').trim().slice(0, 120), image, count, opened: 0, status: 'active', addedAt: Date.now() };
   c.pool.push(p); save(); hooks.pushState();
@@ -109,6 +150,8 @@ export function saveBattle(b) {
   if ('games' in b) x.games = (Array.isArray(b.games) ? b.games : []).map(g => String(g).slice(0, 60)).slice(0, 50);
   if ('mode' in b) x.mode = b.mode === 'one' ? 'one' : 'all';
   if ('map' in b) x.map = CARD_MAPS.some(m => m.id === b.map) ? b.map : 'kungfu';
+  if ('pace' in b) x.pace = Math.max(0, Math.min(100, Math.round(Number(b.pace) || 0))); // ⏳ elimination pacer strength (0 = off)
+  if ('length' in b) x.length = Math.max(0, Math.min(240, Math.round(Number(b.length) || 0))); // how long a fight should last (0 = by how many packs)
   if (b.activate !== false) c.activeId = x.id;
   save(); hooks.pushState(); sendScene(); return { battle: x };
 }
@@ -132,7 +175,7 @@ export const live = { show: false, phase: 'idle', fight: null, last: null, wheel
 const wackyOn = () => Object.fromEntries(Object.keys(WACKY).map(k => [k, !!C().wacky[k]]));
 export function sceneMsg() {
   const b = activeBattle(), f = live.fight;
-  return { type: 'cardScene', show: live.show, phase: live.phase, map: f?.map || b.map || 'kungfu', battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test };
+  return { type: 'cardScene', show: live.show, phase: live.phase, map: f?.map || b.map || 'kungfu', battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test };
 }
 export function sendScene() { hooks.broadcast(sceneMsg(), 'overlay'); }
 export function setShow(on) { if (live.show === !!on) return; live.show = !!on; sendScene(); hooks.pushState(); }
