@@ -137,7 +137,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(db.announce || {}).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null }])), announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(annState()).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null, kind: a?.kind || null }])), annKind: annKind(), capture: { on: !!live.capture, error: live.captureError || null, size: Number(db.settings.capSize) || 30, autoHide: !!db.settings.capAutoHide, window: db.settings.capWindow || '' }, announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -847,27 +847,37 @@ function announceText(kind) {
     .replace(/\{prize\}/g, ga.prize ? `: ${ga.prize}` : '').replace(/\{respin\}/g, wc.respin || '!respin').replace(/\{myspins\}/g, wc.spins || '!myspins')
     .replace(/\{streamer\}/g, streamerName()).slice(0, 490);
 }
-const annState = () => (db.announce ||= {});
-async function announceNow(kind) {
-  const a = annState()[kind]; if (!a?.on) return;
+// ONE on/off for every tab (Derek): each time it posts, it posts the message for the tab you're on right now
+const annState = () => { const a = (db.announce ||= {}); if (!a.all) { a.all = { on: Object.values(a).some(x => x?.on), last: Math.max(0, ...Object.values(a).map(x => x?.last || 0)) }; for (const k of Object.keys(ANNOUNCE_DEFAULTS)) delete a[k]; } return a; };
+function annKind() { // which tab's message: the tab you're on (Battle / Chat battle / Giveaway / Wheel), else what's on stream
+  const v = live.view, l = getList(db.activeListId), fromList = l?.giveaway ? 'giveaway' : l?.type === 'chat' ? 'chat' : 'battle';
+  if (v === 'wheel' || v === 'chat' || v === 'giveaway') return v;
+  if (v === 'battle') return fromList;
+  return wheel.W().show ? 'wheel' : (live.lastGameView && live.lastGameView !== 'battle' ? live.lastGameView : fromList);
+}
+async function announceNow() {
+  const a = annState().all; if (!a?.on) return;
+  const kind = annKind();
   if (kind === 'battle' && !String(db.settings.discordServerLink || '').trim()) await discord.inviteLink?.().catch(() => null); // no link pasted: the bot makes one
-  a.last = Date.now(); save();
+  a.last = Date.now(); a.kind = kind; save();
   try { await twitch.say(announceText(kind)); a.error = null; } catch (e) { a.error = e.message; console.error('[twitch] hourly chat message:', e.message); }
   pushState();
 }
-app.post('/api/announce', async (req, res) => { // { kind, on } — or { kind, now: true } to post it right away
-  const kind = String(req.body?.kind || ''); if (!ANNOUNCE_DEFAULTS[kind]) return res.status(400).json({ error: 'bad kind' });
-  const a = annState()[kind] ||= { on: false, last: 0 };
-  if (req.body?.preview) return res.json({ text: announceText(kind) });
-  if ('on' in (req.body || {})) { a.on = !!req.body.on; a.since = a.on ? Date.now() : null; save(); }
-  if (a.on && (req.body?.on || req.body?.now)) await announceNow(kind); // turning it on posts it right away
-  pushState(); res.json({ ok: true, on: a.on, error: a.error || null, text: announceText(kind) });
+app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
+  const v = String(req.body?.view || ''); live.view = v; if (['battle', 'chat', 'giveaway', 'wheel'].includes(v)) live.lastGameView = v; res.json({ ok: true, kind: annKind() });
 });
-setInterval(() => { // every minute: anything due?
-  const every = Math.max(5, Number(db.settings.announceMins) || 60) * 60000;
-  for (const kind of Object.keys(ANNOUNCE_DEFAULTS)) { const a = annState()[kind]; if (a?.on && Date.now() - (a.last || 0) >= every) announceNow(kind); }
+app.post('/api/announce', async (req, res) => { // { on } — or { now: true } to post right away — or { preview, kind } to see a message
+  const a = annState().all;
+  if (req.body?.preview) { const kind = ANNOUNCE_DEFAULTS[req.body.kind] ? req.body.kind : annKind(); return res.json({ text: announceText(kind), kind }); }
+  if ('on' in (req.body || {})) { a.on = !!req.body.on; a.since = a.on ? Date.now() : null; save(); }
+  if (a.on && (req.body?.on || req.body?.now)) await announceNow(); // turning it on posts it right away (off + on again = post now)
+  pushState(); res.json({ ok: true, on: a.on, error: a.error || null, kind: a.kind || annKind(), text: announceText(a.kind || annKind()) });
+});
+setInterval(() => { // every minute: due?
+  const every = Math.max(5, Number(db.settings.announceMins) || 60) * 60000, a = annState().all;
+  if (a?.on && Date.now() - (a.last || 0) >= every) announceNow();
 }, 60000);
-const announceOff = () => { let n = 0; for (const a of Object.values(annState())) if (a?.on) { a.on = false; n++; } if (n) { save(); pushState(); } };
+const announceOff = () => { const a = annState().all; if (a?.on) { a.on = false; save(); pushState(); } };
 // 🔗 the day each viewer linked their Twitch in Discord (/linktwitch, the 24/7 bot, the backup, or you in the People tab)
 setInterval(() => { let n = 0; db.linkDates ||= {}; for (const id of Object.keys(db.links || {})) if (!db.linkDates[id]) { db.linkDates[id] = Date.now(); n++; } if (n) save(); }, 20000);
 // 🚀 the raid reward (Settings → Rewards & prices, on by default): someone redeems it while you're live, Movie Royal asks them in chat
@@ -1121,6 +1131,22 @@ app.get('/api/wheel/undo', (req, res) => res.json(wheel.undoList()));
 app.post('/api/wheel/undo', wTry(b => wheel.undoTo(b.id)));
 app.post('/api/wheel/folders', wTry(b => { const W0 = wheel.W(), n = String(b.name || '').trim().slice(0, 60); if (b.remove) { W0.folders = W0.folders.filter(f => f !== n); for (const x of W0.wheels) if (x.folder === n) x.folder = ''; } else if (n && !W0.folders.includes(n)) W0.folders.push(n); wheelChanged(); return { folders: W0.folders }; }));
 app.post('/api/obs/test', wTry(async () => obs.test()));
+// 📺 capture window on stream (Battle tab): shows a window (your browser, a YouTube video…) small in the top-left corner, through OBS
+async function setCapture(on) {
+  try { await obs.capture(!!on); live.capture = !!on; live.captureError = null; }
+  catch (e) { live.captureError = `Couldn't ${on ? 'show' : 'hide'} the capture window: ${e.message}`; console.error('[obs] capture window:', e.message); pushState(); throw new Error(live.captureError); }
+  pushState(); return { on: live.capture };
+}
+app.post('/api/capture', wTry(b => setCapture(b.on)));
+app.post('/api/capture/windows', wTry(async () => obs.captureWindows()));
+app.post('/api/capture/settings', wTry(async b => {
+  if ('window' in b) db.settings.capWindow = String(b.window || '');
+  if ('size' in b) db.settings.capSize = Math.max(10, Math.min(60, Math.round(Number(b.size) || 30)));
+  if ('autoHide' in b) db.settings.capAutoHide = !!b.autoHide;
+  save(); pushState();
+  if (live.capture && ('window' in b || 'size' in b)) await setCapture(true).catch(() => {}); // showing: update it now
+  return { window: db.settings.capWindow, size: db.settings.capSize, autoHide: !!db.settings.capAutoHide };
+}));
 app.post('/api/wheel/mine', wTry(b => { if (b.action === 'reset') { wheel.newStream(); return {}; } if (b.action === 'set') { wheel.W().mine.left = Math.max(0, Math.round(Number(b.left) || 0)); wheelChanged(); return {}; } return wheel.useMine(); }));
 app.post('/api/wheel/bank', wTry(b => ({ spins: wheel.giveSpins(b.who, b.n, b.reason) })));
 app.post('/api/wheel/grow', wTry(b => ({ pct: wheel.grow(b.entryId, Number(b.amount) || 1, b.who ? { name: String(b.who).slice(0, 40), login: String(b.who).replace(/^@/, '').toLowerCase(), source: b.money ? 'auto' : 'mod' } : {}, b.reason, b.wheelId, !!b.money) })));
@@ -2338,6 +2364,7 @@ async function startRound(opts = {}) { // returns an error message, or null when
   }, 'overlay');
   if (list.type !== 'movies' && live.series && (live.series.done || live.series.listId !== list.id)) live.series = null;
   pushState();
+  if (live.capture && db.settings.capAutoHide) setCapture(false).catch(() => {}); // 📺 the battle starts: hide the capture window (if you chose that)
   return null;
 }
 function stopGather(silent) { if (!live.gather) return; clearTimeout(live.gather.timer); live.gather = null; if (!silent) broadcast({ type: 'gather', endsAt: null }, 'overlay'); }

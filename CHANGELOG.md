@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.7 (test build)
+- **⚔️ Battlefield map: running into the army hurts.** Every time a piece bumps into a knight or a horse it takes damage, and a few bumps knock it out (bigger pieces last a little longer). The map shows 🔵 UPDATED.
+- **✍️ Spell check** in the text boxes you type words in (spot names, messages, titles…): misspelled words get a red squiggle, right-click for fixes. Boxes for links, passwords, keys and Twitch names are left alone.
+- **📺 Capture window** on the Battle tab (under the 2-min chat timer): shows a window from your PC, like your browser playing a YouTube video, small in the top-left corner of your live OBS scene. Press it again to hide it. ⚙ picks the window, the size, and whether it hides by itself when the battle starts. Needs OBS set up in Settings → 🎥 OBS. Try it in 🧪 Test → 📺 Capture window.
+- **📣 Chat message follows your tab:** it's now one switch for every tab, and each time it posts, it posts the message for the tab you're on (Battle = how to add movies, Chat battle / Giveaway = how to join, Wheel = how respins work). Turning it on posts right away, so turn it off and on again to post now.
+
 ## 1.30.6 (test build)
 - **🎟️ Wild spots pin nothing when they win.** Movie Royal waits for the wild spot battle: its winner is pinned as the movie. If that winner is a text entry (not a movie), nothing is pinned and it is left out of the movie lists, so you can pin it yourself (the movie numbers still count it). 🧪 Test → 📌 Movie winner pin has a new 📝 button to try that.
 - **↔️ No more scrolling sideways on any tab.** Everything fits the window: the row under the battle screen wraps onto a second line, the wheel side gets narrower on small windows, and on a narrow window each wheel spot takes a couple of lines instead of a long row. Scrolling up and down still works.

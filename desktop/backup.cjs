@@ -58,6 +58,7 @@ app.on('window-all-closed', e => { /* keep running in the tray */ });
 app.on('before-quit', () => { quitting = true; try { fs.unlinkSync(RUNNING); } catch {} }); // a clean quit: Movie Royal won't reopen it
 
 app.whenReady().then(async () => {
+  try { const ses = require('electron').session.defaultSession; ses.setSpellCheckerEnabled(true); if (process.platform !== 'darwin') { const have = ses.availableSpellCheckerLanguages || []; const want = [app.getLocale(), 'en-US'].filter(l => have.includes(l)); if (want.length) ses.setSpellCheckerLanguages([...new Set(want)]); } } catch {} // ✍️ spell check
   const enc = t => safeStorage.isEncryptionAvailable() ? 'ss:' + safeStorage.encryptString(t).toString('base64') : 'b64:' + Buffer.from(t).toString('base64');
   const dec = t => t.startsWith('ss:') ? safeStorage.decryptString(Buffer.from(t.slice(3), 'base64')) : '';
   const { startBackup } = await import(pathToFileURL(path.join(__dirname, '..', 'src', 'backup.js')).href);

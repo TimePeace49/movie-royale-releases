@@ -88,3 +88,54 @@ export async function doomsday(delay = 15000) {
   await new Promise(r => setTimeout(r, delay));
   await session(call => call('StopStream'));
 }
+
+// 📺 Capture window (Battle tab): a small window capture (e.g. your browser playing a YouTube video) in the top-left corner
+// of whatever scene is live. Movie Royal makes the OBS source the first time ("Movie Royal capture window"), puts it on top,
+// sizes it, and shows / hides it. You pick which window it captures from Movie Royal (or in OBS, the source's properties).
+export const CAP_NAME = 'Movie Royal capture window';
+const capName = () => String(db.settings.capName || '').trim() || CAP_NAME;
+async function capInput(call) { // the source: make it if it isn't there (window capture, with sound)
+  const name = capName(), inputs = (await call('GetInputList')).inputs || [];
+  const have = inputs.find(i => i.inputName === name);
+  if (have) return { name, made: false };
+  const kinds = (await call('GetInputKindList', { unversioned: true })).inputKinds || [];
+  const kind = ['window_capture', 'xcomposite_input', 'screen_capture', 'macos_screen_capture'].find(k => kinds.includes(k));
+  if (!kind) throw new Error("this OBS can't capture a window.");
+  const { currentProgramSceneName } = await call('GetCurrentProgramScene');
+  await call('CreateInput', { sceneName: currentProgramSceneName, inputName: name, inputKind: kind, inputSettings: { capture_audio: true, ...(db.settings.capWindow ? { window: db.settings.capWindow } : {}) }, sceneItemEnabled: false });
+  return { name, made: true };
+}
+/** The open windows OBS can capture (for the drop-down in Movie Royal). */
+export async function captureWindows() {
+  return session(async call => {
+    const { name } = await capInput(call);
+    const items = (await call('GetInputPropertiesListPropertyItems', { inputName: name, propertyName: 'window' }).catch(() => ({}))).propertyItems || [];
+    const cur = (await call('GetInputSettings', { inputName: name })).inputSettings?.window || '';
+    return { windows: items.filter(i => i.itemValue).map(i => ({ name: i.itemName, value: i.itemValue })), current: cur };
+  });
+}
+/** Show (on) or hide (off) the capture window in the live scene. */
+export async function capture(on) {
+  return session(async call => {
+    const { name } = await capInput(call);
+    const s = db.settings;
+    if (s.capWindow) await call('SetInputSettings', { inputName: name, inputSettings: { window: s.capWindow, capture_audio: true }, overlay: true });
+    const { currentProgramSceneName: scene } = await call('GetCurrentProgramScene');
+    if (!on) { // hide it in every scene it's in
+      for (const sc of (await call('GetSceneList')).scenes || []) {
+        const id = await call('GetSceneItemId', { sceneName: sc.sceneName, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
+        if (id != null) await call('SetSceneItemEnabled', { sceneName: sc.sceneName, sceneItemId: id, sceneItemEnabled: false });
+      }
+      return { on: false, scene };
+    }
+    let id = await call('GetSceneItemId', { sceneName: scene, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
+    if (id == null) id = (await call('CreateSceneItem', { sceneName: scene, sourceName: name, sceneItemEnabled: false })).sceneItemId;
+    const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080;
+    const pct = Math.max(10, Math.min(60, Number(s.capSize) || 30)) / 100, m = Math.round(W * .012);
+    await call('SetSceneItemTransform', { sceneName: scene, sceneItemId: id, sceneItemTransform: { positionX: m, positionY: m, alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 5, boundsWidth: Math.round(W * pct), boundsHeight: Math.round(H * pct), rotation: 0 } });
+    const n = ((await call('GetSceneItemList', { sceneName: scene })).sceneItems || []).length;
+    await call('SetSceneItemIndex', { sceneName: scene, sceneItemId: id, sceneItemIndex: Math.max(0, n - 1) }).catch(() => {}); // on top of everything
+    await call('SetSceneItemEnabled', { sceneName: scene, sceneItemId: id, sceneItemEnabled: true });
+    return { on: true, scene };
+  });
+}

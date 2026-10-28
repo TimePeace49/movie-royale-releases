@@ -55,7 +55,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1560, height: 980, minWidth: 1000, minHeight: 700,
     title: 'Movie Royal', icon: ICON, backgroundColor: '#120a24', autoHideMenuBar: true, show: false,
-    webPreferences: { backgroundThrottling: false } // keeps the game smooth even when the window isn't focused
+    webPreferences: { backgroundThrottling: false, spellcheck: true } // keeps the game smooth even when the window isn't focused (+ ✍️ spell check in text boxes)
   });
   hardenWindow(win);
   win.once('ready-to-show', () => { if (!startHidden) { win.maximize(); win.show(); } });
@@ -143,6 +143,7 @@ app.on('browser-window-created', (_e, w) => {
   });
 });
 app.whenReady().then(async () => {
+  try { const ses = require('electron').session.defaultSession; ses.setSpellCheckerEnabled(true); if (process.platform !== 'darwin') { const have = ses.availableSpellCheckerLanguages || []; const want = [app.getLocale(), 'en-US'].filter(l => have.includes(l)); if (want.length) ses.setSpellCheckerLanguages([...new Set(want)]); } } catch {} // ✍️ spell check
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'Movie Royal', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }, { type: 'separator' }, { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }] }
   ]));

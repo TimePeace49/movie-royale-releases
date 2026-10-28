@@ -6,7 +6,7 @@ battle | 🎡 Wheel -> 🎡 Wheel tab
 battle | 💬 Chat -> 💬 Chat tab
 battle | 👥 People 4 -> 👥 People tab
 battle | 📜 History -> 📜 History tab
-battle | 🧪 Test🆕13 -> 🧪 Test tab
+battle | 🧪 Test🆕16 -> 🧪 Test tab
 battle | ❓ Help -> ❓ Help tab
 battle | ⚙️ Settings -> ⚙️ Settings tab
 battle | ❓ -> ❓ Help mode
@@ -32,7 +32,7 @@ battle | ⚡ Lightning -> ⚡ Lightning (chaos power)
 battle | 🪨 Boulder -> 🪨 Boulder (chaos power)
 battle | 🌀 Teleport Swap -> 🌀 Teleport Swap (chaos power)
 battle | 🪐 Low Gravity -> 🪐 Low Gravity
-battle | 🫨 Tremor -> 🗺️ Map power
+battle | 🐎 Royal Charge -> 🗺️ Map power
 battle | 🎲 Mystery -> 🎲 Mystery (chaos power)
 battle | Screen title -> Screen title
 battle | ◀ -> ◀ Follow the previous piece
@@ -46,29 +46,33 @@ battle | ⬆ -> Move the camera
 battle | ⬇ -> Move the camera
 battle | ➖ -> Zoom the camera
 battle | ➕ -> Zoom the camera
-battle | ▶ START ROYAL -> ▶ START ROYAL
-battle | 📣 Chat message every hour: OFF -> 📣 Chat message
+battle | 📣 Chat message every hour: ONnext in 57 min · -> 📣 Chat message
 battle | ✏️ -> ✏️ The chat message
 battle | ⏱️ 2-min chat timer, then start -> ⏱️ 2-min chat timer, then start
+battle | 📺 Capture window: OFF -> 📺 Capture window
+battle | ⚙ -> ⚙ Capture window settings
 battle | 🎬 Movie picks OPEN -> 🎬 Movie picks OPEN / CLOSED
 battle | ⭐ Points ON -> ⭐ Points ON / OFF
 battle | 💎 Bits ON -> 💎 Bits ON / OFF
+battle | 📣 2-minute roll call -> 📣 2-minute roll call
 battle | 🔊 On -> 🔊 Sound on / off
 battle | Sound effects 70% -> Sound effects volume
 battle | Music 35% -> Music volume
-battle | 💾 Save odds -> 💾 Save luck / odds
-battle | ↺ Everyone to 1 -> ↺ Reset luck / Everyone to 1
-battle | 📂 Saved odds -> 📂 Saved luck / odds
-battle | Rounds -> Rounds (best of)
-battle | Filter… -> Filter
+battle | 💾 Save luck -> 💾 Save luck / odds
+battle | ↺ Reset luck -> ↺ Reset luck / Everyone to 1
+battle | 📂 Saved luck -> 📂 Saved luck / odds
+battle | 💾 Save luck↺ Reset luck📂 Saved luck -> 💾 Save luck / odds
+battle | 🎟️ Reset wild spots -> 🎟️ Reset wild spots
 battle | ➕ Add -> ➕ Add
-battle | Add -> Add
+battle | bobalicecaradave_tw -> Recent chatters
+battle | number -> Odds
 battle | − -> + / − odds
 battle | text -> Name
 battle | + -> + / − odds
 battle | ⏸️ -> ⏸ Pause
 battle | ✕ -> ✕ Remove / close
-pool | 🧪 Test⚠️ 3🆕13 -> 🧪 Test tab
+battle | 👤 -> 👤 Change who picked it
+battle | ✅ -> ✅ Mark as watched
 pool | Discord Movies🎬 Discord movies7 -> Discord movies battle
 pool | Chat battle💬 Twitch chat14 -> Chat battle (pool)
 pool | Giveaway💬 Twitch chat0 -> Chat battle (pool)
@@ -76,23 +80,25 @@ pool | Derek's Discord movies🎬 Movies9 -> Discord movies battle
 pool | 💩 Letterboxd’s worst 500🎬 Movies0 -> A custom battle
 pool | 🔢 1 to 25📝 Text25 -> A custom battle
 pool | 🔢 Worse Movies📝 Text500 -> A custom battle
-pool | 🔢 Numbers -> From / To
-pool | number -> Odds
-pool | Update the numbers -> 🔢 Update the numbers
-pool | Paste as many as you want — commas or new lin -> Add a list
-pool | Add to list -> Add to list
+pool | Add a movie yourself: start typing a title… -> Add a movie yourself
+pool | 🗓️ New week -> 🗓️ New week
+pool | 🎟️ Kirb spots (3/3) -> 🎟️ Wild (Kirb) spots
+pool | Paste a big list of movie titles -> Add a list
+pool | Add all -> Add all
 pool | 📤 Export this battle -> 📤 Export
 pool | 📥 Import from Wheel of Names, Marbles on Stre -> 📥 Import
 pool | Paste a Wheel of Names share link (wheelofnam -> Import a link
 pool | Import link -> Import link
-pool | Pool & odds -> Pool & odds
+pool | Pool & odds 🍀 luck is on -> Pool & odds
 pool | Reset odds -> Reset odds
 pool | Clear -> Clear
-pool | Delete -> 🗑 Delete
-pool | Click to change it -> ✏️ Entry name
 pool | Odds -> Odds
+pool | Lock now -> 🔒 Lock / unlock swaps
+pool | Recent chatters (1) -> Recent chatters
+pool | This is… -> This is…
+chat | 🧪 Test⚠️ 5🆕16 -> 🧪 Test tab
 chat | ▶ Open joining -> ▶ Open joining
-chat | ▶ START CHAT BATTLE (14) -> ▶ START CHAT BATTLE
+chat | 📣 Chat message every hour: ONnext in 57 min · -> 📣 Chat message
 chat | 🧹 Clear entries -> 🧹 Clear entries
 chat | ⚔️ Open on Battle tab -> ⚔️ Open on Battle tab
 chat | How many rounds -> Rounds (best of)
@@ -107,7 +113,7 @@ chat | 🌪️ Chaos rain: a random chaos event every few -> 🌪️ Chaos rain
 chat | 🪩 Disco lights -> 🪩 Disco lights
 chat | Who's in (14) -> Who's in
 giveaway | ▶ Open entries -> ▶ Open entries
-giveaway | Need at least 2 people -> ▶ START GIVEAWAY
+giveaway | 📣 Chat message every hour: ONnext in 57 min · -> 📣 Chat message
 giveaway | 🔁 Reroll -> 🔁 Reroll
 giveaway | Title on screen -> Title on screen
 giveaway | Prize -> Prize
@@ -179,6 +185,7 @@ wheel/spots | ↺ Reset all sizes -> ↺ Reset all sizes
 wheel/spots | 📝 Edit as text -> 📝 Edit as text
 wheel/spots | Spot name (press Enter)… -> Add a spot
 wheel/spots | ⏱️ Timer -> Spot type
+wheel/spots | Add -> Add
 wheel/spots | 👁️ -> 👁️ Make invisible
 wheel/spots | Auto color -> Auto color
 wheel/spots | − -> + / − size
@@ -190,6 +197,7 @@ wheel/spots | 🔁 Respin -> 🔁 Respin
 wheel/spots | 🎟️ Streamer respin 3/3 -> 🎟️ Streamer respin
 wheel/spots | ⬆️ Up -> ⬆️ Up
 wheel/spots | ⬇️ Down -> ⬇️ Down
+wheel/spots | 📣 Chat message every hour: ONnext in 57 min · -> 📣 Chat message
 wheel/spots | Who's spinning? (blank = you) -> Who's spinning?
 wheel/spots | ⏪ Undo -> ⏪ Undo
 wheel/spots | ⏪ Go back… -> ⏪ Go back…
@@ -295,7 +303,7 @@ wheel/global | 🧪 Test donation -> 🧪 Test donation
 wheel/global | 💵 Log one by hand -> 💵 Log one by hand
 test/tests | 🧪 Tests -> 🧪 Tests
 test/tests | ✅ Checklist -> ✅ Checklist
-test/tests | ⚠️ Errors 3 -> ⚠️ Errors
+test/tests | ⚠️ Errors 5 -> ⚠️ Errors
 test/tests | 🧰 Test tools -> 🧪 Test categories
 test/tests | ⚔️ Battles -> 🧪 Test categories
 test/tests | 🎬 Movie nights & Discord picks -> 🧪 Test categories
@@ -310,6 +318,10 @@ test/tests | ↺ Reset everyone's cooldowns -> ↺ Reset everyone's cooldowns
 test/tests | 🟢 Put everyone on the cliff -> 🟢 Put everyone on the cliff
 test/tests | ⚔️ Run a test Discord battle -> ⚔️ Test Discord battle
 test/tests | Next round → -> Next round →
+test/tests | 💬 Bob -> Pretend chatter
+test/tests | 💬 Alice -> Pretend chatter
+test/tests | 💬 Cara -> Pretend chatter
+test/tests | 💬 dave_tw -> Pretend chatter
 test/tests | 🔢 Make a 1–10 battle -> 🔢 Make a 1–10 battle
 test/tests | Twitch name -> Pretend viewer
 test/tests | 🛡️ Shield -> 🛡️ Shield (test)
@@ -376,6 +388,8 @@ test/tests | 🛡️ Check the backup link -> 🛡️ Check the backup link
 test/tests | 🛡️ Add my bot to the backup on this PC -> 🛡️ Add my bot to the backup on this PC
 test/tests | 🐞 Send a test problem -> 🐞 Send a test problem
 test/tests | Make / fix the channel -> 🐞 Make / fix the debug channel
+test/tests | 📺 Show it for 5 seconds -> 📺 Capture window test
+test/tests | ⚙ Pick the window -> ⚙ Pick the window
 test/tests | 🎬 Test TMDB (movie search) -> 🎬 Test TMDB
 test/tests | 🍅 Test OMDb (RT + IMDb ratings) -> 🍅 Test OMDb
 test/tests | 📗 Sync Letterboxd now -> 📗 Sync Letterboxd
@@ -473,16 +487,12 @@ settings/game | Wheel of Names API key (optional — only if a  -> Wheel of Name
 settings/game | 🎬 Instant replay — show the final seconds aga -> 🎬 Instant replay
 settings/luck | Turn on luck — every battle a Discord movie l -> 🍀 Luck
 settings/luck | Extra chance per battle (%) -> Luck per battle
-settings/luck | 💾 Save luck -> 💾 Save luck / odds
-settings/luck | ↺ Reset luck -> ↺ Reset luck / Everyone to 1
-settings/luck | 📂 Saved luck -> 📂 Saved luck / odds
 settings/luck | Kirb wildcard spots get luck when they lose t -> Wild spot luck
 settings/luck | 🔒 When adding and swapping movies lock by the -> 🔒 When picks and swaps lock
 settings/luck | Post in the Discord movies channel when picks -> Post when picks open / close
 settings/luck | Let Twitch chat call the winner before the fi -> 🔮 Chat calls the winner
 settings/luck | Chat command -> !call command
 settings/luck | Luck for calling it right (% on their own mov -> Luck for calling it
-settings/luck | Lock now -> 🔒 Lock / unlock swaps
 settings/movies | TMDB token -> TMDB token
 settings/movies | OMDb key -> OMDb key
 settings/movies | Letterboxd username -> Letterboxd username

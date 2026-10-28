@@ -382,6 +382,17 @@
 <div id="backupNag" style="display:none"></div>
 <div id="handNag" style="display:none"></div>
 <div id="bkNag" style="display:none"></div>
+<dialog id="capDlg"><div class="inner">
+  <h3 style="margin-top:0">📺 Capture window</h3>
+  <p class="help">A small window in the top-left corner of your stream, through OBS: your browser with a YouTube video, a game, anything. Good while the ⏱️ 2-min chat timer lets people join. Movie Royal makes the OBS source ("Movie Royal capture window") the first time and puts it on top of your live scene.</p>
+  <label>Which window</label>
+  <div class="row" style="gap:6px"><select id="capWin" class="grow"><option value="">(press 🔄 to list your windows)</option></select><button class="ghost" onclick="capList()" title="Ask OBS for your open windows">🔄</button></div>
+  <label style="margin-top:10px">Size: <b id="capSizeV">30</b>% of the stream</label>
+  <input id="capSize" type="range" min="10" max="60" step="1" value="30" oninput="$('capSizeV').textContent=this.value">
+  <label class="ck" style="margin-top:10px"><input type="checkbox" id="capAuto"> Hide it when the battle starts</label>
+  <p class="help" id="capMsg"></p>
+  <div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="$('capDlg').close()">Cancel</button><button class="primary" onclick="capSave()">💾 Save</button></div>
+</div></dialog>
 <dialog id="hmDlg"><div class="inner" id="hmBody"></div></dialog>
 <div id="pchat"><div class="pcHead" id="pcHead"><span class="grow">💬 Pretend chat <small class="muted" style="font-weight:400">(type as anyone)</small></span><button class="ghost" title="Close" onclick="pchat(false)">✕</button></div>
   <div class="row" style="gap:4px"><input id="pcName" class="grow" list="pcNames" placeholder="Who's typing? (Twitch name)"><datalist id="pcNames"></datalist><button class="ghost" title="The battle winner" onclick="pcWinner()">🏆 Winner</button></div>
@@ -436,6 +447,7 @@
     <div data-ann="battle" style="margin-top:6px"></div>
     <div class="bigtimer" id="bigTimer" style="display:none"><div id="bigTimerLbl"></div><div id="bigTimerNum"></div></div>
     <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
+    <div id="capRow"></div>
     <div class="chaosbar" data-chaos></div>
     <div class="muted" id="poolCount" style="text-align:center"></div>
     <div class="card" id="voteCard" style="display:none"></div>
@@ -667,6 +679,11 @@
       <button onclick="pinSim('kirbText')">📝 Its winner is a text entry</button>
       <button class="ghost" onclick="pinSim('clear')">↺ Start over</button></div>
     <div id="pinSimOut" class="help" style="margin-top:8px;white-space:pre-wrap"></div>
+  </div>
+  <div class="card">
+    <h3>📺 Capture window (OBS)</h3>
+    <p class="help">Shows your capture window in the top-left corner of the live OBS scene for 5 seconds, then hides it again. OBS must be open and set up in Settings → 🎥 OBS. Pick the window with ⚙ next to 📺 on the Battle tab.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="capTest()">📺 Show it for 5 seconds</button><button onclick="capOpen()">⚙ Pick the window</button></div>
   </div>
   <div class="card">
     <h3>⚡ Pretend channel points / bits</h3>
@@ -906,6 +923,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['b-new', 'battle', '➕ New battle', '', () => newList()],
   ['b-resetE', 'battle', '↺ Reset entries', '', () => kbClick('#v-battle', /Reset entries/, 'Reset entries')],
   ['b-resetB', 'battle', '↺ Reset battlefield', '', () => kbClick('#v-battle', /Reset battlefield/, 'Reset battlefield')],
+  ['b-capture', 'battle', '📺 Capture window on / off', '', () => kbClick('#v-battle', /Capture window:/, 'Capture window')],
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((k, i) => [`b-pow${i + 1}`, 'battle', `⚡ Power #${i + 1} in the Powers row`, String(k), () => kbPower(i)]),
   ['p-new', 'pool', '➕ New battle', 'N', () => newList()],
   ['p-find', 'pool', '🔎 Jump to the filter box', '/', () => kbFocus('#v-pool', /filter|search/i)],
@@ -1120,7 +1138,7 @@ const CK_META = { // key: [category, version it came in]
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
   discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
-  announce: ['chat', '1.30.0'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  announce: ['chat', '1.30.7'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.6'], capture: ['screen', '1.30.7'], spell: ['screen', '1.30.7'], armyHurt: ['battles', '1.30.7'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1136,7 +1154,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen']];
+  const map = [[/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1180,6 +1198,9 @@ function drawChecklist() {
     ['prices', '💰 Every reward, bits and donation amount in one place (Settings → 💰 Rewards & prices): change a price, pause one, make it always on or off after one use', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">See it</button>`],
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
+    ['capture', '📺 Capture window: ⚙ next to 📺 on the Battle tab, pick your browser window, then 📺 shows it small in the top-left of your OBS scene (press again to hide)', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle');setTimeout(capOpen,300)">Try it</button>`],
+    ['spell', '✍️ Spell check: type a misspelled word in a text box (like a wheel spot name): it gets a red squiggle; right-click it for fixes', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel')">Try it</button>`],
+    ['armyHurt', '⚔️ Battlefield map: pieces that run into the army take damage (a few bumps and they\'re knocked out)', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">See it</button>`],
     ['pinSpots', '📌 The movie pin in Twitch chat says which movie of the night it is, lists the earlier ones and whose they were; a wild spot win pins nothing; the wild spot battle\'s winner gets pinned as the movie (a text entry isn\'t pinned: you pin it yourself)', `<button class="ghost" style="padding:3px 9px" onclick="setView('test');setTimeout(()=>$('pinSimOut')?.scrollIntoView({behavior:'smooth',block:'center'}),200)">Try it</button>`],
     ['pausedRows', '⏸ Paused / taken-out entries stay in the 🎬 Movie Pool list, darker, with ▶ Bring back', `<button class="ghost" style="padding:3px 9px" onclick="setView('pool')">See it</button>`],
     ['topTabs', '🧭 The tabs at the top shrink to fit a small window and never scroll', ''],
@@ -1199,7 +1220,7 @@ function drawChecklist() {
     ['takeover', '💜 Respin / Up / Down channel point rewards made by Movie Royal (same price as before)', `<button class="ghost" style="padding:3px 9px" onclick="wTakeover(this)">Try it</button>`],
     ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "obsMuteTest()")],
     ['update', 'Movie Royal updates itself (Settings → Account)', ''],
-    ['announce', '📣 The hourly chat message button (Battle, Chat battle, Giveaway and Wheel tabs) posts in chat: open 💬 Pretend chat to see it', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);api('/api/test/chat',{name:'test_viewer',text:'hi'}).catch(()=>{}).then(()=>annToggle('battle',true))">Try it</button>`],
+    ['announce', '📣 The hourly chat message: one switch for every tab; each time it posts the message for the tab you\'re on (turn it off and on to post now). Open 💬 Pretend chat to see it', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);api('/api/test/chat',{name:'test_viewer',text:'hi'}).catch(()=>{}).then(()=>annToggle('battle',true))">Try it</button>`],
     ['chatBot', '🤖 Movie Royal talks in chat as your bot account (Settings → Twitch → 🤖 Chat bot account)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('twitch')">Set it up</button>`],
     ['resetEntries', '↺ Reset entries (empties the battle) / ↺ Reset battlefield (clears the cliff) on the Battle tab, next to Fullscreen', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">See it</button>`],
     ['pcMovie', '🎬 A pretend chatter adds a movie (💬 Pretend chat → 🎬 Add a movie)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>$('pcMovieIn')?.focus(),200)">Try it</button>`],
@@ -1269,7 +1290,7 @@ function setView(v) {
   if (view === 'settings' && v !== 'settings' && settingsDirty && !confirm('You changed some settings without saving. Leave anyway?')) return;
   if (v !== 'settings') settingsDirty = false;
   if (v !== view) peekOn = false; // a new tab: the preview window closes (it only pops up when you run a test that changes the stream screen)
-  view = v;
+  view = v; fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ view: v }) }).catch(() => {}); // (the chat message posts for the tab you're on)
   if (S && v === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); // Battle tab = the battle on stream
   if (S && v === 'wheel' && !S.wheelShow) api('/api/wheel/show', { show: true }).catch(() => {}); // Wheel tab = the wheel on stream
   if (v === 'wheel') peekOn = false; // the Wheel tab shows the wheel itself: no preview window (💬 Pretend chat stays open)
@@ -1421,18 +1442,50 @@ function renderLuckDlg() {
 async function luckRestore(id) { const r = await api('/api/luck/restore', { id }); toast(`✅ Back from “${esc(r.name)}”. What you had just before is saved too.`); }
 // 📣 hourly chat message button (Battle / Chat battle / Giveaway / Wheel tab)
 const ANN_NAMES = { battle: 'how to add movies in Discord', chat: 'how to join the chat battle', giveaway: 'how to enter the giveaway', wheel: 'how the wheel works' };
+{ const tell = () => fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ view }) }).catch(() => {}); setTimeout(tell, 1500); setInterval(tell, 60000); } // (again now and then, e.g. after Movie Royal restarts)
+const annHere = kind => { if (kind !== 'battle') return kind; const l = S.lists?.find(x => x.id === S.activeListId); return l?.giveaway || l?.id === 'giveaway' ? 'giveaway' : l?.type === 'chat' ? 'chat' : 'battle'; }; // the Battle tab posts for whatever it's playing
 function annHTML(kind) {
-  const a = S.announce?.[kind] || {}, mins = S.announceMins || 60, next = a.on ? Math.max(0, Math.ceil(((a.last || 0) + mins * 60000 - Date.now()) / 60000)) : 0;
-  return `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="${a.on ? 'primary' : ''} grow" style="white-space:normal" onclick="annToggle('${kind}', ${!a.on})" title="Posts a message in Twitch chat about ${ANN_NAMES[kind]}: right away, then every ${mins} minutes. Press again (or end the stream) to stop.">📣 Chat message every ${mins >= 60 && mins % 60 === 0 ? (mins / 60 === 1 ? 'hour' : mins / 60 + ' hours') : mins + ' min'}: <b>${a.on ? 'ON' : 'OFF'}</b>${a.on ? `<small style="display:block;font-weight:400">next in ${next} min</small>` : ''}</button><button class="ghost" title="See / change the message" onclick="annEdit('${kind}')">✏️</button></div>${a.error ? `<p class="help" style="color:var(--bad);margin:4px 0 0">⚠️ ${esc(a.error)}</p>` : ''}`;
+  const a = S.announce?.all || {}, mins = S.announceMins || 60, next = a.on ? Math.max(0, Math.ceil(((a.last || 0) + mins * 60000 - Date.now()) / 60000)) : 0, here = annHere(kind);
+  return `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="${a.on ? 'primary' : ''} grow" style="white-space:normal" onclick="annToggle(${!a.on})" title="One switch for every tab: it posts in Twitch chat right away, then every ${mins} minutes, and each time it posts the message for the tab you're on (here: ${ANN_NAMES[here]}). Turn it off and on again to post right now. It stops when the stream ends.">📣 Chat message every ${mins >= 60 && mins % 60 === 0 ? (mins / 60 === 1 ? 'hour' : mins / 60 + ' hours') : mins + ' min'}: <b>${a.on ? 'ON' : 'OFF'}</b><small style="display:block;font-weight:400">${a.on ? `next in ${next} min · ` : ''}this tab: ${ANN_NAMES[here]}</small></button><button class="ghost" title="See / change the message" onclick="annEdit('${here}')">✏️</button></div>${a.error ? `<p class="help" style="color:var(--bad);margin:4px 0 0">⚠️ ${esc(a.error)}</p>` : ''}`;
 }
-async function annToggle(kind, on) {
-  try { const r = await api('/api/announce', { kind, on }); toast(on ? (r.error ? '⚠️ ' + esc(r.error) : '📣 Posted in chat. It posts again every ' + (S.announceMins || 60) + ' minutes until you press it again or end the stream.') : '📣 Stopped.', 7000); } catch {}
+async function annToggle(on) {
+  try { const r = await api('/api/announce', { on }); toast(on ? (r.error ? '⚠️ ' + esc(r.error) : `📣 Posted in chat (${esc(ANN_NAMES[r.kind] || '')}). Every ${S.announceMins || 60} minutes it posts the message for the tab you're on, until you turn it off or end the stream.`) : '📣 Stopped.', 7000); } catch {}
 }
 async function annEdit(kind) { const r = await api('/api/announce', { kind, preview: true }); if (confirm(`This goes in chat:\n\n${r.text}\n\nChange the words, how often, or your Discord link in Settings → Twitch → 📣 Chat messages. Go there now?`)) { setView('settings'); setTimeout(() => { setSub('twitch'); setTimeout(() => document.getElementById('annSet')?.scrollIntoView({ block: 'start' }), 150); }, 60); } }
+// 📺 capture window (Battle tab): a small OBS window capture in the top-left of the stream
+function capHTML() {
+  const c = S.capture || {};
+  return `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="${c.on ? 'primary' : ''} grow" onclick="capToggle(${!c.on})" title="Shows a window from your PC (your browser, a YouTube video…) small in the top-left corner of the stream, through OBS. Press again to hide it.">📺 Capture window: <b>${c.on ? 'ON' : 'OFF'}</b></button><button class="ghost" title="Pick the window, the size, and whether it hides when the battle starts" onclick="capOpen()">⚙</button></div>${c.error ? `<p class="help" style="color:var(--bad);margin:4px 0 0">⚠️ ${esc(c.error)}</p>` : ''}`;
+}
+async function capToggle(on) {
+  if (on && !(S.capture || {}).window && !S.settings?.capWindow) { toast('📺 Pick which window to show first (⚙).'); return capOpen(); }
+  try { await api('/api/capture', { on }); toast(on ? '📺 Capture window is on stream (top-left).' : '📺 Capture window hidden.'); } catch {}
+}
+async function capOpen() {
+  const c = S.capture || {};
+  $('capSize').value = c.size || 30; $('capSizeV').textContent = c.size || 30; $('capAuto').checked = !!c.autoHide; $('capMsg').textContent = '';
+  if (c.window && ![...$('capWin').options].some(o => o.value === c.window)) $('capWin').insertAdjacentHTML('beforeend', `<option value="${esc(c.window)}">${esc(c.window.split(':')[0] || c.window)}</option>`);
+  $('capWin').value = c.window || '';
+  $('capDlg').showModal(); capList();
+}
+async function capList() {
+  $('capMsg').textContent = '🔄 Asking OBS for your windows…';
+  try {
+    const r = await api('/api/capture/windows', {}), cur = $('capWin').value || r.current;
+    $('capWin').innerHTML = `<option value="">(pick a window)</option>` + r.windows.map(w => `<option value="${esc(w.value)}">${esc(w.name)}</option>`).join('');
+    $('capWin').value = r.windows.some(w => w.value === cur) ? cur : '';
+    $('capMsg').textContent = r.windows.length ? `${r.windows.length} windows open. Pick your browser (open the YouTube video in it first).` : 'OBS listed no windows.';
+  } catch (e) { $('capMsg').textContent = '⚠️ ' + (e.message || 'Could not reach OBS') + ' (Settings → 🎥 OBS)'; }
+}
+async function capTest() { try { await api('/api/capture', { on: true }); toast('📺 Showing in OBS for 5 seconds…'); setTimeout(() => api('/api/capture', { on: false }).catch(() => {}), 5000); } catch {} }
+async function capSave() {
+  try { await api('/api/capture/settings', { window: $('capWin').value, size: Number($('capSize').value), autoHide: $('capAuto').checked }); $('capDlg').close(); toast('📺 Saved.'); } catch {}
+}
 function renderView() {
   if (!S) return;
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
+  { const el = $('capRow'), h = capHTML(); if (el && el.innerHTML !== h) el.innerHTML = h; }
   drawRaidBox();
   if (view === 'pool') renderPool();
   else if (view === 'chat') renderChat();
@@ -2970,7 +3023,7 @@ function openSettings(force) {
       ${f('slToken', 'Streamlabs Socket API token (streamlabs.com → Settings → API Settings → API Tokens → Your Socket API Token)', 'paste here', 'password')}
       <p class="help">Press Save after pasting. Test it from Wheel → 🌐 All wheels → 🧪 Test donation, or send a test tip from StreamElements.</p>
       <h3 style="margin-top:18px" id="annSet">📣 Chat messages (every hour)</h3>
-      <p class="help">The <b>📣 Chat message</b> button on the Battle, Chat battle, Giveaway and Wheel tabs posts that tab's message in Twitch chat right away, then again every so often, until you press it again or your stream ends. Leave a box empty to use the default (shown in grey). Words in {curly brackets} fill in by themselves: <code>{discord}</code> your Discord link, <code>{channel}</code> the movie channel, <code>{commands}</code> the commands command, <code>{join}</code> / <code>{enter}</code> the join / giveaway command, <code>{prize}</code>, <code>{respin}</code>, <code>{myspins}</code>, <code>{streamer}</code>.</p>
+      <p class="help">The <b>📣 Chat message</b> button (on the Battle, Chat battle, Giveaway and Wheel tabs) is one switch for every tab: it posts in Twitch chat right away, then again every so often, and each time it posts the message for the tab you're on. Turn it off and on again to post right now. It stops when your stream ends. Leave a box empty to use the default (shown in grey). Words in {curly brackets} fill in by themselves: <code>{discord}</code> your Discord link, <code>{channel}</code> the movie channel, <code>{commands}</code> the commands command, <code>{join}</code> / <code>{enter}</code> the join / giveaway command, <code>{prize}</code>, <code>{respin}</code>, <code>{myspins}</code>, <code>{streamer}</code>.</p>
       <div class="grid2">${f('discordServerLink', '🔗 Your Discord server invite link (for {discord}; empty = the bot makes one)', 'https://discord.gg/…')}${f('announceMins', 'How often (minutes)', '60', 'number', 'min="5" max="600"')}</div>
       ${[['announceBattle', '⚔️ Battle tab (Discord movie battle)', 'battle'], ['announceChat', '🎲 Chat battle tab', 'chat'], ['announceGiveaway', '🎁 Giveaway tab', 'giveaway'], ['announceWheel', '🎡 Wheel tab', 'wheel']].map(([k, t, d]) => `<div><label>${t}</label><textarea data-k="${k}" rows="2" maxlength="490" placeholder="${esc(S.announceDefaults?.[d] || '')}">${esc(s[k] || '')}</textarea></div>`).join('')}`,
     movies: `<h3>🎬 TMDB — movie search (free)</h3>
@@ -2995,7 +3048,7 @@ function openSettings(force) {
       <p class="help">On by default. The stream isn't affected: the game screen in OBS plays its own sound. Turn this off if you capture Movie Royal's own window or desktop sound in OBS, or want to hear it while you're in other programs.</p>
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
     obs: `<h3>🎥 OBS (optional)</h3>
-      <p class="help">Only needed for the wheel's <b>☠️ Doomsday</b>: when the void swallows the wheel, Movie Royal turns your mic and camera off right away and ends the stream 15 seconds later.<br>
+      <p class="help">Needed for the Battle tab's <b>📺 Capture window</b> (a window from your PC, small in the top-left of your stream) and the wheel's <b>☠️ Doomsday</b> (when the void swallows the wheel, Movie Royal turns your mic and camera off right away and ends the stream 15 seconds later).<br>
       In OBS: <b>Tools → WebSocket Server Settings</b> → tick <b>Enable WebSocket server</b> → <b>Show Connect Info</b> → copy the password here. (OBS 28 or newer has it built in.)</p>
       ${f('obsUrl', 'OBS address (leave this unless you changed the port in OBS)', 'ws://127.0.0.1:4455')}
       ${f('obsPassword', 'OBS WebSocket password', 'paste here', 'password')}
@@ -3365,5 +3418,6 @@ if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.repla
 fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
+<script src="spell.js"></script>
 </body>
 </html>

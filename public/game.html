@@ -1977,6 +1977,7 @@ const MAPS = {
           const ex = f.x - u.x, ey = f.y - u.y, ed = Math.hypot(ex, ey), m = R + f.r;
           if (ed >= m || winner) continue;
           if (ed > 0) { f.x = u.x + ex / ed * m; f.y = u.y + ey / ed * m; }
+          if (t - (f.armyAt ?? -9) > .35) { f.armyAt = t; hurt(f, u.kind === 'cav' ? 24 : 17); if (!f.alive) continue; } // running into the army always hurts (hidden health: a few bumps = K.O.)
           if (this.stage === 'march') { push(f, ex / (ed || 1) * 500, ey / (ed || 1) * 500); continue; }
           if (cfg.fair && f === destined) { push(f, ex / (ed || 1) * 400, ey / (ed || 1) * 400); continue; } // the drawn winner gets shoved, never hit
           if (u.kind === 'cav') { if ((u.hit -= dt) <= 0) { u.hit = .25; if (blastOrDodge(f, '#ffffff', pick(['TRAMPLED!', 'CHARGE!', '🐎 RUN DOWN!']))) SFX.play('smack', { v: .5 }); } }
