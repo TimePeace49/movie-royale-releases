@@ -398,7 +398,7 @@ const twitchHandlers = {
   live(isLive) {
     if (!!db.live === !!isLive) return;
     if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
-    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
+    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
     save(); pushState();
@@ -469,15 +469,33 @@ const twitchHandlers = {
 
 const isWinnerMsg = (w, m) => !!w && ((w.ownerLogin && m.login === w.ownerLogin.toLowerCase()) || (w.owner && norm(w.owner) === norm(m.name)));
 // 📌 a claimed movie gets pinned at the top of Twitch chat
+// 📌 tonight's movies, written out for the Twitch pin: "#1 Heat (1995) — Lucy's movie"
+const movieLine = x => `#${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}${x.viaSpot ? ` — 🎟️ ${x.owner || db.settings.spotName || 'Kirb'}'s pick (wild spot)` : x.owner ? ` — ${x.owner}'s movie` : ''}`;
+function pinText(head, n, tonight = stream().tonight) {
+  const earlier = (tonight || []).filter(x => x.n < n); // the movies watched before this one tonight
+  const add = earlier.length ? ` ⏪ Earlier tonight: ${earlier.map(movieLine).join(' · ')}` : '';
+  return (head + add).length > 480 ? (head + add).slice(0, 477) + '…' : head + add;
+}
+function pinSay(text) {
+  live.lastPin = { text, at: Date.now() }; discord.refreshPinned?.(); // (the pinned Discord message lists tonight's movies too)
+  twitch.sayAndPin(text).catch(e => broadcast({ type: 'toast', text: `📌 Couldn't pin the movie in chat: ${e.message}` }, 'control'));
+}
 function pinWinner(w) {
   if (!w || w.test || db.settings.pinWinner === false || !twitch.status.canChat) return; // (test battles never pin)
-  if (!(w.kind === 'movies' || w.tmdbId) || w.spot) return;
+  if (!(w.kind === 'movies' || w.tmdbId) || w.spot || w.viaSpot) return; // (wild spots + the Kirb spot battle's winner are pinned right at the win)
   const n = stream().movies || 1;
-  let text = `📌🍿 Movie #${n} tonight: ${w.label}${w.sub ? ` (${w.sub})` : ''}${w.owner ? ` · picked by ${w.owner}` : ''}`;
-  const earlier = (stream().tonight || []).filter(x => x.id !== w.id || x.n !== n).filter(x => x.n < n); // the movies watched before this one tonight
-  if (earlier.length) { const add = ` ⏪ Earlier tonight: ${earlier.map(x => `#${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}`).join(' · ')}`; text = (text + add).length > 480 ? (text + add).slice(0, 477) + '…' : text + add; }
-  discord.refreshPinned?.(); // (the pinned Discord message lists tonight's movies too)
-  twitch.sayAndPin(text).catch(e => broadcast({ type: 'toast', text: `📌 Couldn't pin the movie in chat: ${e.message}` }, 'control'));
+  pinSay(pinText(`📌🍿 Movie #${n} of tonight's stream: ${w.label}${w.sub ? ` (${w.sub})` : ''}${w.owner ? ` — ${w.owner}'s movie` : ''}`, n));
+}
+// 🎟️ a wild (Kirb) spot won the Discord battle: the next battle you run (the Kirb spot battle) picks the movie
+function pinSpot(f) {
+  if (db.settings.pinWinner === false || !twitch.status.canChat) return;
+  const n = (stream().movies || 0) + 1, who = db.settings.spotName || 'Kirb';
+  pinSay(pinText(`📌🎟️ Movie #${n} of tonight's stream: ${f.label} won! The ${who} spot battle picks the movie we watch — stay tuned.`, n));
+}
+function pinSpotMovie(t) {
+  if (db.settings.pinWinner === false || !twitch.status.canChat) return;
+  const who = t.owner || db.settings.spotName || 'Kirb';
+  pinSay(pinText(`📌🍿 Movie #${t.n} of tonight's stream: ${t.label}${t.sub ? ` (${t.sub})` : ''} — 🎟️ ${who}'s pick (a wild spot won, then this won the ${who} spot battle)`, t.n));
 }
 // the winner typed in chat: the timer stops and you decide (✅ accept or ⏭️ pass)
 function claimWait(m, instant = false) {
@@ -661,7 +679,17 @@ wss.on('connection', (ws, req) => {
       if (list?.type === 'chat') for (const x of list.entries) delete x.powers; // power-ups last one battle
       announceWinner(f, list);
       { const c = resolveCalls(f, list); if (c) { live.lastWinner.calls = { total: c.total, right: c.right.length, names: c.right.slice(0, 8).map(o => o.name) }; rec.calls = live.lastWinner.calls; } }
-      if (list?.type === 'movies') { stream().movies = (stream().movies || 0) + 1; if (!live.game.test && !f.spot) stream().tonight = [...(stream().tonight || []), { id: f.id, label: f.label, sub: f.sub || '', owner: f.owner || '', n: stream().movies }]; } // movie # of the night (+ tonight's list for the pinned messages)
+      if (list?.type === 'movies' && !live.game.test) { // movie # of the night (+ tonight's list for the pinned messages)
+        if (f.spot) { stream().spotPending = { at: Date.now(), label: f.label, gameId: live.game.id }; pinSpot(f); } // a wild spot won: no movie yet, the Kirb spot battle picks it
+        else { delete stream().spotPending; stream().movies = (stream().movies || 0) + 1; stream().tonight = [...(stream().tonight || []), { id: f.id, label: f.label, sub: f.sub || '', owner: f.owner || '', n: stream().movies }]; }
+        discord.refreshPinned?.();
+      } else if (stream().spotPending && !live.game.test && list && !['chat'].includes(list.type) && !list.giveaway) { // 🎟️ the Kirb spot battle: its winner is the movie we watch
+        delete stream().spotPending; stream().movies = (stream().movies || 0) + 1;
+        const t = { id: f.id, listId: list.id, label: f.label, sub: f.sub || '', owner: db.settings.spotName || 'Kirb', viaSpot: true, n: stream().movies };
+        stream().tonight = [...(stream().tonight || []), t];
+        f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
+        pinSpotMovie(t);
+      }
       if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`); // everyone who lost gets a little luckier
       if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) fetchWinnerRatings(f, rec, live.game.id);
       if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
@@ -2185,6 +2213,21 @@ app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyo
   save(); pushState(); refreshPreview(true); res.json({ ok: true, people: st.active.length, spots: sp.total });
 });
 twitch.sayListeners.add(t => broadcast({ type: 'botSay', text: t }, 'control'));
+// 🧪 Test tab: walk through tonight's pinned messages with pretend movies (nothing is pinned or counted)
+app.post('/api/test/pin-sim', (req, res) => {
+  const step = String(req.body?.step || ''), who = db.settings.spotName || 'Kirb';
+  const S = live.pinSim ||= { movies: 0, tonight: [], spotPending: null };
+  const pool = (getList('movies')?.entries || []).filter(e => e.kind !== 'spot'), films = db.lists.filter(l => l.type === 'films').flatMap(l => l.entries || []);
+  const pick = (arr, fb) => { const e = arr[Math.floor(Math.random() * arr.length)]; return e ? { id: e.id, label: e.label, sub: e.sub || '', owner: e.backers?.[0]?.name || '' } : fb; };
+  let text = '';
+  if (step === 'clear') { live.pinSim = null; return res.json({ ok: true, text: '', discord: '' }); }
+  if (step === 'movie') { const m = pick(pool, { id: 'p' + S.movies, label: 'Heat', sub: '1995', owner: 'Lucy' }); S.spotPending = null; S.movies++; const t = { ...m, n: S.movies }; S.tonight.push(t); text = pinText(`📌🍿 Movie #${t.n} of tonight's stream: ${t.label}${t.sub ? ` (${t.sub})` : ''}${t.owner ? ` — ${t.owner}'s movie` : ''}`, t.n, S.tonight); }
+  else if (step === 'spot') { S.spotPending = { label: `${who}'s Pick` }; const n = S.movies + 1; text = pinText(`📌🎟️ Movie #${n} of tonight's stream: ${who}'s Pick won! The ${who} spot battle picks the movie we watch — stay tuned.`, n, S.tonight); }
+  else if (step === 'kirb') { if (!S.spotPending) return res.json({ ok: false, error: `Press "🎟️ A wild spot wins" first.` }); const m = pick(films, { id: 'k' + S.movies, label: 'Paddington 2', sub: '2017' }); S.spotPending = null; S.movies++; const t = { ...m, owner: who, viaSpot: true, n: S.movies }; S.tonight.push(t); text = pinText(`📌🍿 Movie #${t.n} of tonight's stream: ${t.label}${t.sub ? ` (${t.sub})` : ''} — 🎟️ ${who}'s pick (a wild spot won, then this won the ${who} spot battle)`, t.n, S.tonight); }
+  else return res.json({ ok: false, error: 'Unknown step.' });
+  const lines = S.tonight.map(movieLine); if (S.spotPending) lines.push(`#${S.movies + 1} 🎟️ ${S.spotPending.label} won — the ${who} spot battle picks the movie`);
+  res.json({ ok: true, text, discord: lines.length ? `🎬 Tonight's movies:\n${lines.map(l => '• ' + l).join('\n')}` : '' });
+});
 app.post('/api/test/claim-chat', (req, res) => { // Test tab: the movie winner "types in chat"
   let w = live.lastWinner;
   if (!w || w.spot || live.phase !== 'ended' || !(w.ownerLogin || w.owner)) { // no movie winner up: make a pretend one (a test winner changes nothing)
@@ -2225,7 +2268,7 @@ app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));
 app.post('/api/test/power', (req, res) => { const kind = String(req.body?.kind || 'shield'), name = String(req.body?.name || 'test_viewer'); const title = Object.entries(db.settings.powerRewards || {}).find(([, k]) => k === kind)?.[0]; if (!title) return res.status(400).json({ error: 'no such power-up' }); twitchHandlers.redeem({ title, login: name.toLowerCase(), name, input: '' }); res.json({ ok: true }); }); // Test tab: pretend someone redeemed a ball power-up
 app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / offline. Only inside Movie Royal: Twitch, Discord and your rewards don't change.
   const on = !!req.body?.live, was = !!live.fakeLive; live.fakeLive = on;
-  if (on && !was && !db.live) { stream().movies = 0; stream().tonight = []; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // what a new stream does inside the app
+  if (on && !was && !db.live) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // what a new stream does inside the app
   broadcast({ type: 'toast', text: on ? '🔴 Pretending you\'re live (only inside Movie Royal: Twitch and Discord don\'t know)' : '⚫ Stopped pretending to be live' }, 'control');
   save(); pushState(); res.json({ ok: true, live: on });
 }); // Test tab: pretend you went live / offline
@@ -2294,7 +2337,7 @@ async function startRound(opts = {}) { // returns an error message, or null when
   live.phase = 'lobby'; live.claim = null;
   const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
-    type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, movieNo: list.type === 'movies' ? (stream().movies || 0) + 1 : null,
+    type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
     lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, fairOdds: db.settings.fairOdds && !(list.type === 'chat' && (list.fun?.powerups || Object.values(list.fun?.wacky || {}).some(Boolean))), fun: list.type === 'chat' ? { ...(list.fun?.wacky || {}) } : null, chaos: chaosState(), queued,
     series: list.type !== 'movies' && (Number(list.bestOf) || 1) > 1 ? (live.series && !live.series.done && live.series.listId === list.id ? { bestOf: live.series.bestOf, need: live.series.need, round: live.series.round + 1, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: live.series.names[id], n })) } : { bestOf: Number(list.bestOf), need: Math.ceil(Number(list.bestOf) / 2), round: 1, tally: [] }) : null
   }, 'overlay');
@@ -2397,7 +2440,9 @@ function acceptClaim(by = 'you') {
 function passClaim(by = 'you') {
   const c = live.claim, w = c?.winner || live.lastWinner; if (!w) return 'No winner to pass on.';
   if (c) { clearTimeout(c.timer); c.done = true; c.claimed = false; c.passed = true; delete c.waiting; } else live.claim = { winner: w, done: true, claimed: false, passed: true };
-  if (!w.test && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); if (!w.passed && stream().movies > 0) stream().movies--; const t = stream().tonight || [], i = t.map(x => x.id).lastIndexOf(w.id); if (i >= 0) t.splice(i, 1); discord.refreshPinned?.(); } // not watched: it doesn't count as tonight's movie
+  if (!w.test && w.viaSpot) { const t = stream().tonight || [], i = t.map(x => x.id).lastIndexOf(w.id); if (i >= 0) { t.splice(i, 1); if (stream().movies > 0) stream().movies--; stream().spotPending = { at: Date.now(), label: `${db.settings.spotName || 'Kirb'}'s Pick` }; } discord.refreshPinned?.(); } // passed in the Kirb spot battle: run it again
+  else if (!w.test && w.spot && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); delete stream().spotPending; discord.refreshPinned?.(); }
+  else if (!w.test && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); if (!w.passed && stream().movies > 0) stream().movies--; const t = stream().tonight || [], i = t.map(x => x.id).lastIndexOf(w.id); if (i >= 0) t.splice(i, 1); discord.refreshPinned?.(); } // not watched: it doesn't count as tonight's movie
   const h = findHistory(w.historyId); if (h) { h.claimed = 'passed'; h.outcome = 'passed'; historyVersion++; }
   live.lastWinner.passed = true; save();
   broadcast({ type: 'claimPassed', winner: w }, 'overlay'); pushState(); refreshPreview();

@@ -3,6 +3,55 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.30.5: What's new
+Everything since 1.28.12.
+
+**📌 Movie pins**
+- The claimed movie is pinned in Twitch chat as "Movie #2 of tonight's stream: Heat (1995) — Lucy's movie", followed by every movie watched earlier tonight and whose it was. The pinned Discord message lists tonight's movies the same way.
+- **🎟️ Wild spots:** when a wild (Kirb) spot wins, the pin says the wild spot battle picks the movie. The next battle you run (not a chat battle or giveaway) is that battle: it shows "MOVIE #2 TONIGHT" on stream and its winner is pinned as the movie (Kirb's pick). Pass on it and the next battle picks again.
+
+**💰 Rewards & prices** (new Settings tab)
+- Every channel point reward, bits amount and donation amount in one place, sorted by tab. Change prices (saved on Twitch right away).
+- Choose when each reward is on: 📏 follow the rules, ✅ always on, ⏸ off (hidden on Twitch), or 1️⃣ on, then off after one use. Pause any bits amount, or subs / bits / donations on the wheel.
+
+**🚀 Raid reward** (on by default)
+- A viewer redeems it and types who to raid in chat. A pop-up with a celebration sound shows the pick, and a **🚀 Raid → name** box appears at the top of the app: click it to start the raid. The reward hides for the rest of the stream once used. An old raid reward keeps its price (1500 if none).
+- **Sign in with Twitch again once** so Movie Royal is allowed to start raids.
+
+**🎡 Wheel**
+- Two new channel point rewards: **✌️ Double trouble** (the viewer types any spot in chat and it doubles in size; never the void) and **🛑 Force stop** (the round ends right away: the spot it's on has to be done). Add them with ✨ Add missing rewards.
+- **✕ makes a spot invisible** instead of deleting it (🙈, all its settings kept; 👁️ shows it again). To really delete one: ⚙ → 🗑 Delete for good.
+- **⚙ Spot settings open in their own window** with ⬆ Previous / ⬇ Next, and the spot list fits without scrolling sideways.
+- **📥 Importing a wheel** opens its own window with **📂 Choose a file…**, drag and drop, or a Wheel of Names link.
+
+**⚔️ Battles**
+- **Removing never deletes:** ↺ Reset entries, Clear and ✕ pause entries. They stay in the 🎬 Movie Pool list, darker but readable, with **▶ Bring back** (or **▶ Bring them all back**). Someone who joins again comes straight back.
+- **↺ Reset entries** next to Fullscreen empties the battle (the Discord movie battle can't be emptied from there). The old button is now **↺ Reset battlefield** (clears the cliff).
+- **🔒 Discord picks and swaps only lock during movie battles** (new default): people can /suggest and /swap right up until you press Start. Other choices in Settings → Luck & swaps. **Update your 24/7 bot when Movie Royal asks.**
+
+**💬 Twitch chat**
+- **📣 Hourly chat messages:** a 📣 Chat message button on the Battle, Chat battle, Giveaway and Wheel tabs posts that tab's message now and every hour, until you press it again or the stream ends. Change the words and your Discord link in Settings → Twitch.
+- **🤖 Movies Royal Bot:** Movie Royal's chat messages start with "🤖 Movies Royal Bot:" (change or remove it in Settings → Twitch), or sign in a separate bot account.
+- **🔗 Only linked viewers get stats** (chats, watch streaks, watch time). Chat is still saved for everyone. Profiles show the day they linked. Turn it off in Settings → Twitch.
+
+**🖥️ The app**
+- **🎨 Graphics settings:** resolution (720p to 4K), frame rate, quality, an FPS counter and a power saver.
+- **⚡ Less lag when switching tabs:** the game inside the app draws much lighter while hidden or small. The stream (OBS) isn't affected.
+- **🔇 Quiet when you're in another program** (on by default): every Movie Royal window mutes until you click back. The stream isn't affected.
+- **🧭 The top tabs never scroll:** they shrink to fit (down to just icons) and stay on top.
+- **🖱️ Right-click works:** cut, copy, paste, spelling fixes, links and pictures.
+
+**🧪 Test tab**
+- Sorted into groups with jump buttons. New things to try get a 🆕 and a green number until you tick them.
+- The preview window only pops up for tests that change the stream screen.
+- 💬 Pretend chat can 🎬 add a movie, 🚀 raid, ✌️ double and 🛑 stop. New 📌 Movie winner pin test.
+
+**🛡️ Backup Bots**
+- Its own icon, plus new **🖥️ Console** and **⚠️ Errors** tabs.
+
+**Fixes**
+- Pop-ups (subs, bits, joins…) no longer show up late on the battle screen after the wheel was on stream.
+
 ## v1.28.12: What's new
 Everything since 1.28.10.
 

@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.5 (latest release)
+- **📌 The movie pin in Twitch chat is clearer:** "Movie #2 of tonight's stream: Heat (1995) — Lucy's movie", then every movie watched earlier tonight and whose it was ("⏪ Earlier tonight: #1 Alien (1979) — Bob's movie"). The pinned Discord message lists them the same way.
+- **🎟️ Wild spots:** when a wild (Kirb) spot wins the Discord battle, the pin says so and that the wild spot battle picks the movie. The next battle you run (any battle that isn't a chat battle or giveaway) is the wild spot battle: it shows "MOVIE #2 TONIGHT" on stream, and its winner becomes that movie, pinned as Kirb's pick. Pass on it and the next battle picks again.
+- 🧪 Test tab → **📌 Movie winner pin** shows what gets pinned as a pretend night goes on (nothing is really pinned or counted).
+
 ## 1.30.4 (test build)
 - **⏸ Paused entries stay in the pool list:** ↺ Reset entries, Clear and ✕ now pause entries instead of moving them to a separate list. They stay in the 🎬 Movie Pool list, darker but readable, with **▶ Bring back** on each and **▶ Bring them all back** at the top. Nothing is deleted.
 - **💰 Settings → Rewards & prices:** every channel point reward, bits amount and donation amount in one place, sorted by tab. Change prices (saved on Twitch right away), and set when each reward is on: 📏 follow the rules, ✅ always on, ⏸ off (hidden on Twitch), or 1️⃣ on, then off after one use (these beat the rules). ⏸ Pause any bits amount, or subs / bits / donations on the wheel.

@@ -649,6 +649,15 @@
     <div class="row" style="gap:6px;margin-top:6px"><button onclick="api('/api/test/chat',{name:$('tSitName').value,text:S.settings.sitOutCommand||'!sitout'}).then(()=>toast('Sent '+esc(S.settings.sitOutCommand||'!sitout')))">🛌 They type !sitout</button><button onclick="api('/api/test/chat',{name:$('tSitName').value,text:S.settings.backCommand||'!imback'}).then(()=>toast('Sent '+esc(S.settings.backCommand||'!imback')))">🙋 They type !imback</button></div>
   </div>
   <div class="card">
+    <h3>📌 Movie winner pin: tonight's movies + wild spots</h3>
+    <p class="help">See what Movie Royal pins in Twitch chat (and lists in the pinned Discord message) as the night goes on. Pretend only: nothing is pinned, posted or counted.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="pinSim('movie')">🍿 A movie wins</button>
+      <button onclick="pinSim('spot')">🎟️ A wild spot wins</button>
+      <button onclick="pinSim('kirb')">🏆 The wild spot battle's winner</button>
+      <button class="ghost" onclick="pinSim('clear')">↺ Start over</button></div>
+    <div id="pinSimOut" class="help" style="margin-top:8px;white-space:pre-wrap"></div>
+  </div>
+  <div class="card">
     <h3>⚡ Pretend channel points / bits</h3>
     <p class="help">Fires a chaos event as if a viewer redeemed it. If no battle is running it gets queued for the next one, just like the real thing.</p>
     <label>Event</label><select id="tEvent"></select>
@@ -1100,7 +1109,7 @@ const CK_META = { // key: [category, version it came in]
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
   discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
-  announce: ['chat', '1.30.0'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  announce: ['chat', '1.30.0'], muteUnfocused: ['screen', '1.30.1'], prices: ['chat', '1.30.4'], raid: ['chat', '1.30.4'], doubleStop: ['wheel', '1.30.4'], pausedRows: ['battles', '1.30.4'], pinSpots: ['movies', '1.30.5'], topTabs: ['screen', '1.30.4'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
@@ -1108,6 +1117,12 @@ const ckSeenVer = () => { try { return localStorage.ckSeenVer || '1.29.0'; } cat
 const ckIsNew = k => !!CK_META[k]?.[1] && verNewer(CK_META[k][1], ckSeenVer()) && !ckDone[k];
 function ckSeenAll() { try { localStorage.ckSeenVer = S?.version || '9.9.9'; } catch {} drawChecklist(); newBadge(); }
 function newBadge() { const n = Object.keys(CK_META).filter(ckIsNew).length, b = $('newNav'); if (b) { b.textContent = n ? '🆕' + n : ''; b.title = n ? `${n} new thing${n === 1 ? '' : 's'} to try: 🧪 Test → ✅ Checklist` : ''; } }
+// 🧪 pretend the night's pinned messages (Test tab)
+async function pinSim(step) {
+  const r = await api('/api/test/pin-sim', { step }).catch(() => null); if (!r) return;
+  if (!r.ok) return toast(esc(r.error || 'Could not do that.'));
+  $('pinSimOut').innerHTML = step === 'clear' ? '' : `<b>Twitch pin:</b>\n${esc(r.text)}${r.discord ? `\n\n<b>Pinned Discord message:</b>\n${esc(r.discord)}` : ''}`;
+}
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
   const map = [[/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen']];
@@ -1154,6 +1169,7 @@ function drawChecklist() {
     ['prices', '💰 Every reward, bits and donation amount in one place (Settings → 💰 Rewards & prices): change a price, pause one, make it always on or off after one use', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">See it</button>`],
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
+    ['pinSpots', '📌 The movie pin in Twitch chat says which movie of the night it is, lists the earlier ones and whose they were; a wild spot win says the wild spot battle picks the movie, and that battle\'s winner gets pinned as the movie', `<button class="ghost" style="padding:3px 9px" onclick="setView('test');setTimeout(()=>$('pinSimOut')?.scrollIntoView({behavior:'smooth',block:'center'}),200)">Try it</button>`],
     ['pausedRows', '⏸ Paused / taken-out entries stay in the 🎬 Movie Pool list, darker, with ▶ Bring back', `<button class="ghost" style="padding:3px 9px" onclick="setView('pool')">See it</button>`],
     ['topTabs', '🧭 The tabs at the top shrink to fit a small window and never scroll', ''],
     ['backupAdd', '🛡️ One click adds your bot to Movie Royal Backup Bots on this PC (no copy and paste)', T('Try it', "bkAddHere(this)", false)],
