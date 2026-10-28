@@ -170,6 +170,8 @@ function addEntry(list, { label, weight = 1, image = null, twitch: tw = null, su
   const key = norm(tw || label);
   const ex = list.entries.find(e => e.status === 'active' && norm(e.twitch || e.label) === key);
   if (ex) { ex.weight = Math.round(((ex.weight || 1) + weight) * 10) / 10; if (image && !ex.image) ex.image = image; return ex; }
+  const old = list.entries.find(e => e.status === 'removed' && norm(e.twitch || e.label) === key); // taken out earlier (entries are only hidden, never deleted): bring that one back
+  if (old) { old.status = 'active'; old.weight = weight; if (image) old.image = image; if (sub) old.sub = sub; old.addedAt = Date.now(); return old; }
   const e = { id: uid(), label, sub, weight, image, twitch: tw, status: 'active', addedAt: Date.now() };
   list.entries.push(e);
   return e;
@@ -1403,8 +1405,7 @@ app.post('/api/lists/:id/reset-entries', (req, res) => { // ↺ Reset entries (B
   if (l.type === 'movies') return res.status(400).json({ error: "The Discord movie battle is everyone's picks, so it can't be emptied from here. Take movies out in the 🎬 Movie Pool tab." });
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is going. Reset entries once it ends.' });
   let n = 0;
-  if (l.type === 'chat') { n = l.entries.length; l.entries = []; } // chat battles + giveaways: everyone who joined is cleared
-  else for (const e of l.entries) if (e.status !== 'removed') { e.status = 'removed'; n++; } // your own battles: everything comes out (🎬 Movie Pool → bring back everything taken out, if it was a mistake)
+  for (const e of l.entries) if (e.status !== 'removed') { e.status = 'removed'; n++; } // everything comes out but nothing is deleted: it's only hidden (🎬 Movie Pool → Taken out → put them all back)
   save(); pushState(); refreshPreview(true); res.json({ ok: true, n, type: l.type });
 });
 app.post('/api/lists/:id/reset-odds', (req, res) => {
@@ -1414,8 +1415,7 @@ app.post('/api/lists/:id/reset-odds', (req, res) => {
 });
 app.post('/api/lists/:id/clear', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
-  if (l.type === 'movies') l.entries.forEach(e => { if (e.status === 'active') e.status = 'removed'; });
-  else l.entries = [];
+  l.entries.forEach(e => { if (e.status === 'active' || e.status === 'paused') e.status = 'removed'; }); // hidden, never deleted (Taken out → put them all back)
   save(); pushState(); res.json({ ok: true });
 });
 app.post('/api/lists/:id/restore', (req, res) => { // bring back everything taken out

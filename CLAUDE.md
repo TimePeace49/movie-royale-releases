@@ -92,6 +92,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Linked-only stats:** `chat.tracked(login)` (setting `trackLinkedOnly`), `db.linkDates` (negative = linked before dates were kept). Pretend chat movies: `/api/test/pc-movie` (links `pretend-<login>`), `/api/test/pc-movie-clear`.
 - **Backup app:** `desktop/icon-backup.png`, `build/icon-backup.ico`; Console/Errors tabs (`/api/log`, `/api/errors`, `/api/debug-report`, `log`/`logErr` in backup.js).
 - **🔇 Mute when unfocused:** setting `muteUnfocused` (default on) → `applySettings` → main.cjs `muteCheck()` mutes every window's webContents when no Movie Royal window is focused.
+- **Removing = hiding (Derek's rule):** battle entries are never deleted (status `removed`; `addEntry` brings a removed one back on re-join). Wheel ✕ = `on:false`; only ⚙ → 🗑 Delete for good (`wDelForGood`) deletes a spot.
 - **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
 ## Things we said no to

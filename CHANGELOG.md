@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.2 (test build)
+- **Removing entries never deletes them now, it only hides them:**
+  - ↺ Reset entries, 🧹 Clear entries (chat battles, giveaways) and Clear in the 🎬 Movie Pool take entries out but keep them (🎬 Movie Pool → Taken out → put them all back). Someone who joins again comes straight back.
+  - On the wheel, ✕ makes a spot invisible (🙈, it stays in the list with all its settings; 👁️ shows it again). To really delete a spot: ⚙ → 🗑 Delete for good.
+
 ## 1.30.1 (test build)
 - **🔇 Movie Royal goes quiet when you're in another program** (on by default): click into a game, OBS or your browser and every Movie Royal window mutes; click back and the sound comes back. The stream isn't affected (the game screen in OBS plays its own sound). Turn it off in Settings → App & background → 🔇 Sound if you capture Movie Royal's window or desktop sound in OBS.
 
