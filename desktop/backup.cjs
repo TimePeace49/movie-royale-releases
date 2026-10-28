@@ -11,7 +11,7 @@ if (process.platform === 'win32') app.setAppUserModelId('com.movieroyal.backup')
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 require('./contextmenu.cjs').attachContextMenu(); // 🖱️ normal right-click menu (copy, paste, …)
 
-const ICON = path.join(__dirname, 'icon.png');
+const ICON = path.join(__dirname, 'icon-backup.png'); // its own blue-green icon with a shield, so it doesn't look like Movie Royal in the tray
 const DATA = app.getPath('userData');
 const PREFS = path.join(DATA, 'app-prefs.json'), RUNNING = path.join(DATA, 'running.json');
 const startHidden = process.argv.includes('--hidden');

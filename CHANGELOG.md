@@ -2,6 +2,19 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.30.0 (test build)
+- **📣 Hourly chat messages:** a **📣 Chat message** button on the Battle, Chat battle, Giveaway and Wheel tabs. It posts that tab's message in Twitch chat right away, then every hour, until you press it again or your stream ends.
+  - Battle tab: how to add movies (your Discord link, the movie channel, /suggest) and the commands command.
+  - Chat battle / Giveaway: how to join. Wheel: how respins work.
+  - ✏️ shows the message. Change the words, how often, or your Discord link in Settings → Twitch → 📣 Chat messages. No link pasted? The Discord bot makes a never-expiring invite by itself.
+- **🤖 Movies Royal Bot:** Movie Royal's chat messages start with "🤖 Movies Royal Bot:" (change or remove it in Settings → Twitch). You can also sign in a separate bot account there so messages come from it.
+- **↺ Reset entries** next to Fullscreen on the Battle tab empties the battle (chat battles: everyone who joined; your own battles: every entry, which you can put back from the Movie Pool). The old button is now **↺ Reset battlefield** (clears the cliff). The Discord movie battle can't be emptied from there.
+- **🧪 Test tab and checklist sorted into groups** (battles, movie nights, chat, wheel, Discord, screen…), with jump buttons. New things to try get a **🆕** and a green number on the Test tab, like errors do: they sit at the top of ✅ Checklist until you tick them or press ✓ Seen them all.
+- **Fixed:** pop-ups (subs, bits, joins…) no longer show up late on the battle screen after the wheel was on stream.
+- **💬 Pretend chat → 🎬 Add a movie:** the viewer you're typing as adds a movie, like /suggest in Discord. 🧹 takes the pretend movies out again.
+- **🛡️ Backup Bots:** its own icon (blue-green with a shield), and new **🖥️ Console** (what it's doing right now, live) and **⚠️ Errors** tabs (plain words, plus a debug report to paste to Claude).
+- **🔗 Only linked viewers get stats:** chats, watch streaks and watch time are only counted for people who linked their Twitch in Discord with /linktwitch (and you). Chat is still saved for everyone. Profiles show the day they linked. Turn it off in Settings → Twitch.
+
 ## 1.29.0 (test build)
 - **🧪 Test tab:** the preview window no longer follows you around. It only pops up when you run a test that changes the stream screen, and it closes when you switch tabs.
 - **🖱️ Right-click works:** cut, copy, paste, select all, spelling fixes, copy/open links and copy pictures, in Movie Royal and Backup Bots.

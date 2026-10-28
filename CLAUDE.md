@@ -85,6 +85,12 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Tonight's movies:** `stream().tonight` [{id,label,sub,owner,n}] (added at a movies win, removed on pass); Twitch pin "Movie #n tonight … ⏪ Earlier tonight"; Discord pinned helpText lists them.
 - **Graphics:** settings `gfxRes/gfxFps/gfxQuality/gfxShowFps/gfxAppSaver` → `gfxMsg` ('gfx' ws msg) → game.html `GFX` (canvas backing size + `setTransform(gScale)`, rAF frame cap, low = shadowBlur off + particle cap). In-app iframe gets `postMessage({royalGfx:{hidden,small}})` from `placeStage` (power saver: 0.25 scale + 30 fps hidden, 0.5 small, ≤ its own window size). Measured: hidden full-size game cost ~2.8 s of every 3 s on the main thread; with the saver ~0.2 s.
 - **Right-click menu:** `desktop/contextmenu.cjs` (both apps). **Spot settings window:** `wSpotDlgSync()` / `spotOptsHTML()`; `typeSel` is global. **Wheel import window:** `wImport()` (`#wImpDlg`).
+- **📣 Announcer:** `db.announce[kind]` (battle/chat/giveaway/wheel), `/api/announce`, every `announceMins`; off at stream end (`announceOff`). `announceText` placeholders; `discordServerLink` or `discord.inviteLink()` (auto invite saved in `db.discordInviteAuto`). Buttons: `[data-ann]` + `annHTML`.
+- **Chat tag / bot account:** `settings.chatTag` prefixed in `twitch.say` when not using the bot account (`db.twitchBot`, `/auth/twitch-bot`, `useChatBot`; Derek chose the name tag).
+- **Reset entries:** `/api/lists/:id/reset-entries` empties a battle (chat: entries=[]; others: status removed; refuses the Discord movies list). Old reset = "↺ Reset battlefield".
+- **Test tab / checklist:** `TEST_CATS`, `CK_META {key:[cat, version]}` (new items: version > `localStorage.ckSeenVer`, badge `#newNav`), `arrangeTests()` groups the Tests cards. Give every new checklist item a CK_META line with the version.
+- **Linked-only stats:** `chat.tracked(login)` (setting `trackLinkedOnly`), `db.linkDates` (negative = linked before dates were kept). Pretend chat movies: `/api/test/pc-movie` (links `pretend-<login>`), `/api/test/pc-movie-clear`.
+- **Backup app:** `desktop/icon-backup.png`, `build/icon-backup.ico`; Console/Errors tabs (`/api/log`, `/api/errors`, `/api/debug-report`, `log`/`logErr` in backup.js).
 - **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
 ## Things we said no to

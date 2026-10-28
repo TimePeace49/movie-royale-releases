@@ -10,6 +10,12 @@
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 Inter, "Segoe UI", system-ui, sans-serif; }
   header { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:#170d2e; position:sticky; top:0; z-index:2; }
   header h1 { margin:0; font-size:20px; color:var(--gold); flex:1; }
+  main.hidden { display:none; }
+  nav.tabs { display:flex; gap:6px; padding:10px 20px 0; max-width:1100px; margin:0 auto; } nav.tabs button.on { background:var(--purple); border-color:var(--purple); color:#fff; }
+  #errN:not(:empty) { background:var(--bad); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:4px; }
+  .log { font:12.5px/1.5 ui-monospace, Consolas, monospace; background:#0b0618; border:1px solid var(--line); border-radius:10px; padding:8px 10px; height:min(60vh, 560px); overflow:auto; white-space:pre-wrap; word-break:break-word; }
+  .log .e { color:#ff8a7a; } .log .t { color:#8a7fb0; }
+  .err { border-left:3px solid var(--bad); padding:6px 10px; margin:6px 0; background:#ff5a5a10; border-radius:8px; } .err small { color:#9a8fc0; }
   main { max-width:1100px; margin:0 auto; padding:18px 16px 40px; display:grid; gap:14px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
   .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -36,7 +42,18 @@
 </head>
 <body>
 <header><h1>🛡️ Movie Royal Backup Bots</h1><span class="help" id="ver"></span><span style="flex:1"></span><span id="srvState" class="help"></span><button id="srvBtn" class="primary" onclick="server(this)">…</button></header>
-<main>
+<nav class="tabs"><button data-t="bots" class="on" onclick="tab('bots')">🤖 Bots</button><button data-t="console" onclick="tab('console')">🖥️ Console</button><button data-t="errors" onclick="tab('errors')">⚠️ Errors <span id="errN"></span></button></nav>
+<main id="tab-console" class="hidden">
+  <div class="card"><h3 style="margin:0 0 8px">👀 Right now</h3><div id="now" class="lines"></div></div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">🖥️ What it's doing</h3><input id="logQ" placeholder="Filter…" style="width:180px" oninput="drawLog(true)"><label class="ck"><input type="checkbox" id="logErrOnly" onchange="drawLog(true)"> Only problems</label><button id="logPause" onclick="logPaused=!logPaused;this.textContent=logPaused?'▶ Resume':'⏸ Pause'">⏸ Pause</button><button onclick="copyLog()">📋 Copy</button></div>
+    <div id="log" class="log"></div></div>
+</main>
+<main id="tab-errors" class="hidden">
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">⚠️ Problems</h3><button onclick="copyReport(this)">🛠️ Copy the debug report (for Claude)</button><button class="danger" onclick="clearErrs()">🧹 Clear</button></div>
+    <p class="help" style="margin-top:0">Every problem the backup ran into, newest first, with what it means in plain words. The debug report has what the backup has and is doing (no bot tokens): paste it to Claude if something's wrong.</p>
+    <div id="errs"></div></div>
+</main>
+<main id="tab-bots">
   <div class="card" id="updBox" style="display:none"></div>
   <div class="card">
     <div class="row"><b>Streamers see this backup as</b><input id="name" type="text" style="width:240px" maxlength="40"><button onclick="saveName()">Save</button>
@@ -73,6 +90,7 @@ function draw() {
   $('srvBtn').textContent = S.running ? '⏹ Stop the backup server' : '▶ Start the backup server'; $('srvBtn').className = S.running ? 'danger' : 'primary';
   $('srvState').innerHTML = S.running ? '🟢 Backup server running' : '<b style="color:var(--bad)">⏹ Stopped: no bots are being watched</b>';
   const m = S.mrBot || {};
+  if (curTab === 'console') drawNow();
   $('mineBox').innerHTML = m.has ? (m.added ? '<p class="help" style="margin:0 0 8px">✅ Your bot (from Movie Royal on this PC) is on the list.</p>'
       : '<div class="row" style="margin-bottom:8px"><button class="primary" onclick="addMine(this)">🍿 Add my bot from Movie Royal (this PC)</button><span class="help">One click: it takes the bot token straight from Movie Royal on this PC. No copy and paste.</span></div>')
     : '<p class="help" style="margin:0 0 8px">🍿 Movie Royal on this PC has no Discord bot set up yet (Settings → Discord & picks). Once it does, a one-click <b>Add my bot</b> button shows here.</p>';
@@ -113,6 +131,33 @@ function drawUpd() {
 }
 async function updCheck(btn, beta) { if (btn) { btn.disabled = true; btn.textContent = 'Looking…'; } try { const u = await api('/api/update/check', beta == null ? {} : { beta }); toast(u.error ? '⚠️ ' + esc(u.error) : u.available ? `🆕 v${esc(u.latest)} is out: press ⬇️ Update` : '✅ You have the newest version'); } catch {} load(); }
 async function updInstall(btn) { if (!confirm('Update Movie Royal Backup Bots now?\n\nIt downloads the update, closes, installs it and opens again by itself (about a minute). Your bots and settings stay.')) return; btn.disabled = true; try { await api('/api/update/install', {}); toast('⬇️ Downloading the update…', 8000); } catch {} load(); }
+// 🖥️ Console + ⚠️ Errors tabs
+let curTab = 'bots', logLast = 0, logRows = [], logPaused = false, errSeen = 0;
+try { errSeen = Number(localStorage.bkErrSeen || 0); } catch {}
+function tab(t) { curTab = t; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); ['bots', 'console', 'errors'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== t)); if (t === 'errors') { loadErrs(true); } if (t === 'console') { drawNow(); drawLog(true); } try { localStorage.bkTab = t; } catch {} }
+const tm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+async function pollLog() { try { const r = await fetch('/api/log?after=' + logLast).then(r => r.json()); if (r.logs.length) { logRows.push(...r.logs); if (logRows.length > 1500) logRows.splice(0, logRows.length - 1500); logLast = r.last; if (curTab === 'console' && !logPaused) drawLog(); } if (r.logs.some(l => l.level === 'error')) loadErrs(); } catch {} }
+function drawLog(all) {
+  const box = $('log'), q = $('logQ').value.trim().toLowerCase(), only = $('logErrOnly').checked, atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+  const rows = logRows.filter(l => (!only || l.level === 'error') && (!q || l.text.toLowerCase().includes(q))).slice(-800);
+  box.innerHTML = rows.map(l => `<div class="${l.level === 'error' ? 'e' : ''}"><span class="t">${tm(l.at)}</span> ${l.level === 'error' ? '⚠️ ' : ''}${esc(l.text)}</div>`).join('') || '<span class="help">Nothing yet.</span>';
+  if (atEnd || all) box.scrollTop = box.scrollHeight;
+}
+function copyLog() { navigator.clipboard.writeText(logRows.map(l => `${new Date(l.at).toLocaleString()} ${l.level === 'error' ? 'ERR ' : ''}${l.text}`).join('\n')).then(() => toast('📋 Copied'), () => toast('⚠️ Couldn\'t copy')); }
+function drawNow() { // what each bot has and is doing right now
+  if (!S) return;
+  $('now').innerHTML = `<div>${S.running ? '🟢 The backup server is running' : '⏹ The backup server is stopped'} · ${S.bots.length} bot${S.bots.length === 1 ? '' : 's'} · Twitch keys: ${S.twitch.using === 'none' ? 'none' : S.twitch.using === 'yours' ? 'yours' : 'Movie Royal\'s'} · v${esc(S.version || '?')}</div>` + S.bots.map(b => `<div>🤖 <b>${esc(b.tag || 'Bot')}</b>${b.streamer ? ` (${esc(b.streamer)})` : ''}: ${!S.running ? 'stopped' : !b.on ? 'paused' : esc(b.state)} · ${b.mode === 'backup' ? '<b style="color:var(--purple)">RUNNING THE BOT</b>' : 'standing by'} · their Movie Royal ${b.appOpen ? 'open' : 'closed'} · 24/7 bot ${!b.cloud.url ? 'not used' : b.cloud.ok === false ? `problem (${b.cloud.fails}/3)` : b.cloud.ok ? 'working' : 'checking'} · rules ${b.configAt ? 'from ' + new Date(b.configAt).toLocaleString() : 'not yet'} · chat ${b.chat.channel ? `#${esc(b.chat.channel)} ${esc(b.chat.state)}${b.chat.live ? ' (🔴 live, ' + b.chat.viewers + ' watching)' : ''}, ${b.chat.waiting} waiting for Movie Royal` : 'no channel yet'} · ${b.handled} command${b.handled === 1 ? '' : 's'} answered · ${b.waitingPicks} pick${b.waitingPicks === 1 ? '' : 's'} waiting · checked ${ago(b.checkedAt)}${b.warning ? `<br><span class="warn-t">⚠️ ${esc(b.warning)}</span>` : ''}</div>`).join('');
+}
+async function loadErrs(seen) {
+  try {
+    const r = await fetch('/api/errors').then(r => r.json()), list = r.errors || [];
+    if (seen && list[0]) { errSeen = list[0].at; try { localStorage.bkErrSeen = errSeen; } catch {} }
+    const n = list.filter(e => e.at > errSeen).length; $('errN').textContent = n || '';
+    if (curTab === 'errors') $('errs').innerHTML = list.map(e => `<div class="err">${e.plain ? `<b>${esc(e.plain)}</b><br>` : ''}<small>${new Date(e.at).toLocaleString()} · ${esc(e.text)}</small></div>`).join('') || '<p class="help">✅ No problems so far.</p>';
+  } catch {}
+}
+async function clearErrs() { if (!confirm('Clear the list of problems?')) return; await api('/api/errors/clear', {}); loadErrs(true); }
+async function copyReport(btn) { try { const t = await fetch('/api/debug-report').then(r => r.text()); await navigator.clipboard.writeText(t); toast('🛠️ Debug report copied: paste it to Claude'); } catch { toast('⚠️ Couldn\'t copy'); } }
 async function add() { const t = $('tok').value.trim(); if (!t) return toast('Paste a bot token first'); try { const r = await api('/api/add', { token: t }); $('tok').value = ''; toast(`✅ Added ${esc(r.tag)}. It connects in a few seconds.`); load(); } catch {} }
 async function saveTwitch() { try { await api('/api/twitch', { id: $('twId').value, secret: $('twSecret').value }); $('twSecret').value = ''; toast('✅ Twitch keys saved'); load(); } catch {} }
 async function saveName() { await api('/api/name', { name: $('name').value }); toast('✅ Saved'); nameTyping = false; load(); }
@@ -124,6 +169,7 @@ async function handBack(id) { try { await api('/api/handback', { id }); toast('�
 async function server(btn) { const on = !S.running; if (!on && !confirm('Stop the backup server?\n\nEvery bot on the list stops: no backup, and no chat saved for the viewer profiles, until you press ▶ Start the backup server.')) return; btn.disabled = true; try { await api('/api/server', { on }); toast(on ? '▶ Backup server started: the bots connect in a few seconds' : '⏹ Backup server stopped'); } catch {} btn.disabled = false; load(); }
 async function removeBot(id, tag) { if (!confirm(`Remove ${tag || 'this bot'} from the backup?`)) return; await api('/api/remove', { id }); load(); }
 load(); setInterval(load, 3000);
+pollLog(); setInterval(pollLog, 2000); loadErrs(); try { if (localStorage.bkTab) tab(localStorage.bkTab); } catch {}
 </script>
 </body>
 </html>

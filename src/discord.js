@@ -362,6 +362,17 @@ export async function searchMembers(q) {
   }
   return out.slice(0, 10);
 }
+/** 🔗 an invite link to your Discord (for the hourly Twitch chat message): made once by the bot on the movie channel, never expires */
+export async function inviteLink() {
+  if (db.discordInviteAuto) return db.discordInviteAuto;
+  if (!client?.user) return null;
+  for (const r of Object.values(db.discordChannels || {})) {
+    const ch = client.channels.cache.get(r.channelId); if (!ch?.createInvite) continue;
+    try { const inv = await ch.createInvite({ maxAge: 0, maxUses: 0, unique: false, reason: 'Movie Royal: the link in the hourly Twitch chat message' }); db.discordInviteAuto = inv.url; save(); return inv.url; }
+    catch (e) { console.error('[discord] could not make an invite link (the bot needs "Create Invite"):', e.message); }
+  }
+  return null;
+}
 export async function notify(text) {
   if (!client) return;
   for (const g of client.guilds.cache.values()) {

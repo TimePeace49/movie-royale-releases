@@ -294,6 +294,9 @@
   .kbKey { min-width:92px; font-family:ui-monospace, Consolas, monospace; font-weight:800; padding:4px 10px; border-radius:8px; background:#2a1d4a; border:1px solid #9b7bff; border-bottom-width:3px; }
   .kbKey.off { opacity:.55; font-weight:400; } .kbKey.wait { background:var(--gold); color:#1a1030; border-color:var(--gold); }
   .claimNow { margin:10px 0; padding:12px; border-radius:14px; background:#163a26; border:2px solid #7dffb0; box-shadow:0 0 22px #7dffb055; animation:updPulse .9s ease-in-out infinite alternate; }
+  #newNav:not(:empty) { display:inline-block; background:#2f9e5b; color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:5px; line-height:17px; box-shadow:0 0 0 2px #0006; }
+  .ckl h4.cknew { color:#7dff9b; } .newTag { font-size:12px; }
+  .tcat { background:transparent !important; border:0 !important; box-shadow:none !important; padding:14px 4px 0 !important; } .tcat h2 { font-size:18px; color:var(--gold); }
   #errNav:not(:empty) { display:inline-block; background:var(--bad); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:5px; line-height:17px; box-shadow:0 0 0 2px #0006; animation:updPulse 1s ease-in-out infinite alternate; }
   #errN:not(:empty) { background:var(--bad); color:#fff; border-radius:9px; padding:0 6px; font-size:11px; margin-left:4px; }
   .errl { border-bottom:1px solid var(--line); padding:8px 0; } .errl b { color:#ffb4a8; }
@@ -336,7 +339,7 @@
     <button data-v="tchat">💬 Chat</button>
     <button data-v="people">👥 People</button>
     <button data-v="history">📜 History</button>
-    <button data-v="test">🧪 Test<span id="errNav" title="Something went wrong: see 🧪 Test → ⚠️ Errors"></span></button>
+    <button data-v="test">🧪 Test<span id="errNav" title="Something went wrong: see 🧪 Test → ⚠️ Errors"></span><span id="newNav"></span></button>
     <button data-v="help">❓ Help</button>
     <button data-v="settings">⚙️ Settings</button>
   </nav>
@@ -356,6 +359,7 @@
   <div class="row" style="gap:4px"><input id="pcText" class="grow" placeholder="Message… (Enter sends)" onkeydown="if(event.key==='Enter')pcSend()"><button class="primary" onclick="pcSend()">Send</button></div>
   <div class="row" style="gap:4px;flex-wrap:wrap"><button onclick="pcSend(&quot;I'm here! 🍿&quot;)">✋ I'm here!</button><button onclick="pcSend(S?.settings?.acceptCommand||'!accept')">!accept</button><button onclick="pcSend(S?.settings?.passCommand||'!pass')">!pass</button><button onclick="pcSend('up')">up</button><button onclick="pcSend('down')">down</button><button onclick="pcSend(WD?.cmd?.respin||'!respin')">!respin</button><button onclick="pcSend('!myspins')">!myspins</button><button onclick="pcSend('!mymovies')">!mymovies</button><button onclick="pcSend('!sitout')">!sitout</button><button onclick="pcSend('!imback')">!imback</button><button onclick="pcSend('!join')">!join</button></div>
   <div class="row" style="gap:4px;flex-wrap:wrap;align-items:center"><small class="muted">🎡 Redeem:</small><button onclick="pcRedeem('respin')">🔁 Respin</button><button onclick="pcRedeem('move')">↕️ Move</button><button onclick="pcRedeem('up')">⬆️ Up</button><button onclick="pcRedeem('down')">⬇️ Down</button></div>
+  <div class="row" style="gap:4px;flex-wrap:nowrap;align-items:center"><small class="muted" style="white-space:nowrap">🎬 Add a movie:</small><input id="pcMovieIn" class="grow" placeholder="Movie title (like Jaws 1975)" onkeydown="if(event.key==='Enter')pcMovie()"><button onclick="pcMovie()" title="This viewer adds the movie, as if they used /suggest in Discord and linked their Twitch">Add</button><button class="ghost" title="Take every pretend viewer's movies out again" onclick="pcMovieClear()">🧹</button></div>
 </div>
 
 <div id="stage">
@@ -383,7 +387,8 @@
       <button id="skipBtn" onclick="cam('skip')" title="Skip the slow-motion replay" style="display:none">⏭ Skip replay</button>
       <button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
       <button onclick="popOut()" title="Open the game in its own window (for OBS window capture)">🪟 Pop out</button>
-      <button onclick="api('/api/reset')" title="Clear the cliff and start over">↺ Reset</button>
+      <button onclick="resetEntries()" title="Empty this battle: every entry comes out so you can start its list over (not for the Discord movie battle)">↺ Reset entries</button>
+      <button onclick="api('/api/reset')" title="Clear the cliff and start over (your entries stay as they are)">↺ Reset battlefield</button>
     </div>
     <div class="under">
       <span class="muted">⚡ Powers</span>
@@ -398,6 +403,7 @@
   </div>
   <div class="side">
     <button class="primary big" id="startBtn" onclick="start()">▶ START ROYAL</button>
+    <div data-ann="battle" style="margin-top:6px"></div>
     <div class="bigtimer" id="bigTimer" style="display:none"><div id="bigTimerLbl"></div><div id="bigTimerNum"></div></div>
     <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
     <div class="chaosbar" data-chaos></div>
@@ -442,6 +448,7 @@
       <button class="bigjoin" id="joinBtn" onclick="toggleJoin()"></button>
       <p class="help" id="joinHint"></p>
       <button class="primary big" style="width:100%;margin-top:6px" id="chatStart" onclick="chatStart()">▶ START CHAT BATTLE</button>
+      <div data-ann="chat" style="margin-top:6px"></div>
       <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who joined?')) api('/api/chatbattle',{clear:true})">🧹 Clear entries</button><button class="grow" onclick="api('/api/chatbattle',{select:true}).then(()=>setView('battle'))">⚔️ Open on Battle tab</button></div>
     </div>
     <div class="card">
@@ -476,6 +483,7 @@
     <canvas id="wheelCv" width="900" height="900" title="Click to spin"></canvas>
     <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button id="wMineBtn" onclick="wMine()" title="Your own respins: you get a few each stream. They come back when you go live again.">🎟️ Streamer respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
     <div id="wUndoList"></div>
+    <div data-ann="wheel" style="margin-top:6px"></div>
     <div class="row" style="margin-top:10px;gap:8px"><input id="wBy" class="grow" placeholder="Who's spinning? (blank = you)"><button class="ghost" onclick="wUndo()" title="Take back the last thing that happened on the wheel">⏪ Undo</button><button class="ghost" onclick="wUndoMenu()" title="Go back several steps">⏪ Go back…</button><button id="wShowBtn" onclick="wShow()">📺 Show on stream</button><button class="ghost" onclick="wPopOut()" title="Open the wheel in its own window (for OBS window capture or a second screen)">🪟 Pop out</button></div>
     <div class="row" style="margin-top:8px;gap:10px;align-items:center;flex-wrap:nowrap"><button id="wSnd" style="padding:4px 10px;white-space:nowrap" onclick="setSound({soundOn: !S.settings.soundOn})"></button>
       <label style="margin:0;white-space:nowrap" title="Wheel sounds, ticks, pop-ups">🔊 Sounds <span id="wSfxVal"></span></label><input type="range" min="0" max="100" id="wSfx" class="grow" style="min-width:60px" oninput="volChange('sfxVolume', this.value)">
@@ -492,6 +500,7 @@
       <button class="bigjoin" id="gaJoin" onclick="gaToggle()"></button>
       <p class="help" id="gaHint"></p>
       <button class="primary big" style="width:100%;margin-top:6px" id="gaStart" onclick="gaStartClick()">▶ START GIVEAWAY</button>
+      <div data-ann="giveaway" style="margin-top:6px"></div>
       <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who entered?')) api('/api/giveaway',{clear:true})">🧹 Clear entries</button><button class="grow" title="The winner didn't show up? Their entry is taken out, then the battle runs again" onclick="gaReroll()">🔁 Reroll</button></div>
     </div>
     <div class="card" id="gaSettings"><h2>Settings</h2><p class="help">Loading…</p></div>
@@ -563,7 +572,7 @@
   <div class="card" id="tErr" style="grid-column:1 / -1"></div>
   <div class="card" style="grid-column:1 / -1">
     <div class="row" style="align-items:center;gap:10px;margin-bottom:10px"><h3 class="grow" style="margin:0">📺 Preview window</h3><button class="primary" id="prevBtn" onclick="previewToggle()">📺 Hide the preview window</button><button onclick="previewPop()" title="Open the preview in its own window (put it on another monitor)">⧉ Pop out to another monitor</button></div>
-    <p class="help" style="margin:0 0 12px">A little window that shows what's on stream while you test. It comes back by itself when you open the 🧪 Test tab. ⧉ Pop out puts it in its own window you can drag to another monitor (no sound; Movie Royal already plays it). Close that window to bring it back here.</p>
+    <p class="help" style="margin:0 0 12px">A little window that shows what's on stream while you test. It pops up by itself when you run a test that changes the stream screen, and closes when you switch tabs. ⧉ Pop out puts it in its own window you can drag to another monitor (no sound; Movie Royal already plays it). Close that window to bring it back here.</p>
     <div class="row" style="align-items:center;gap:10px"><h3 class="grow" style="margin:0">🔴 Pretend I'm live</h3><span id="fakeLiveTag"></span>
       <button class="primary" onclick="api('/api/test/live',{live:!S.fakeLive})" id="fakeLiveBtn">🔴 Pretend I'm live</button></div>
     <p class="help" style="margin:6px 0 0">Movie Royal acts like you just went live: streamer respins refill, voided spots come back, the movie count starts over, and it shows LIVE. It's fake: Twitch, Discord and your channel point rewards don't change. Press again to stop.</p>
@@ -601,7 +610,6 @@
     <p class="help">Posts a pretend problem in the hidden <code>#movie-royal-debug</code> channel (only mods and the server owner can see it).</p>
     <div class="row" style="gap:6px"><button class="primary" onclick="api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent: check #movie-royal-debug in Discord':'⚠️ The bot is offline, or the channel isn\'t made yet (Settings → Discord → Make / fix)'))">🐞 Send a test problem</button><button onclick="api('/api/discord/debug-setup').then(r=>toast(r.warnings?.length ? '⚠️ '+r.warnings.map(esc).join('<br>') : '🐞 #movie-royal-debug is set up and locked', 8000))">Make / fix the channel</button></div>
   </div>
-  <div class="card" style="grid-column:1 / -1"><p class="help" style="margin:0">📺 Tests that change the stream screen pop up a little window showing what's on stream right now, so you can see it (drag it by the top bar, resize it from a corner or edge). <button onclick="peek(true)">📺 Show the stream screen</button></p></div>
   <div class="card" style="grid-column:1 / -1" id="wTestCard"></div>
   <div class="card">
     <h3>💬 Pretend to be a chatter</h3>
@@ -854,6 +862,8 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['b-picks', 'battle', '🎬 Movie picks open / closed', '', () => kbClick('#v-battle', /Movie picks (OPEN|CLOSED)/, 'Movie picks')],
   ['b-roll', 'battle', '📣 2-minute roll call', '', () => kbClick('#v-battle', /roll call/i, 'Roll call')],
   ['b-new', 'battle', '➕ New battle', '', () => newList()],
+  ['b-resetE', 'battle', '↺ Reset entries', '', () => kbClick('#v-battle', /Reset entries/, 'Reset entries')],
+  ['b-resetB', 'battle', '↺ Reset battlefield', '', () => kbClick('#v-battle', /Reset battlefield/, 'Reset battlefield')],
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((k, i) => [`b-pow${i + 1}`, 'battle', `⚡ Power #${i + 1} in the Powers row`, String(k), () => kbPower(i)]),
   ['p-new', 'pool', '➕ New battle', 'N', () => newList()],
   ['p-find', 'pool', '🔎 Jump to the filter box', '/', () => kbFocus('#v-pool', /filter|search/i)],
@@ -1007,6 +1017,12 @@ async function pcSend(text) {
   pcLog('me', name, text); if (text === $('pcText').value.trim()) $('pcText').value = '';
   try { await api('/api/test/chat', { name, text }); } catch {}
 }
+async function pcMovie() { // 🎬 the pretend viewer adds a movie (like /suggest in Discord, already linked to this Twitch name)
+  const title = $('pcMovieIn').value.trim(); if (!title) return; const name = $('pcName').value.trim().replace(/^@/, '') || 'test_viewer';
+  pcLog('me', name, `🎬 /suggest ${title} (in Discord)`); $('pcMovieIn').value = '';
+  try { const r = await api('/api/test/pc-movie', { name, title }); pcLog('bot', '🤖 Discord bot', (r.msg || (r.ok ? 'Added!' : 'Not added')) + (r.ok ? ' (now type in chat as them to put it on the cliff)' : '')); } catch (e) { pcLog('bot', '🤖 Discord bot', '⚠️ ' + (e.message || 'Not added')); }
+}
+async function pcMovieClear() { if (!confirm('Take every pretend viewer\'s movies out of the Discord movie pool?')) return; try { const r = await api('/api/test/pc-movie-clear', {}); toast(`🧹 Took out ${r.n} pretend movie${r.n === 1 ? '' : 's'}`); } catch {} }
 async function pcRedeem(kind) {
   const name = $('pcName').value.trim().replace(/^@/, '') || 'test_viewer';
   pcLog('me', name, `🎡 redeemed ${({ respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down' })[kind]}${kind === 'move' ? ' (now type up or down)' : ''}`);
@@ -1053,13 +1069,45 @@ function testTab(t) {
 }
 async function lbRefreshCk(btn) { btn.disabled = true; btn.textContent = 'Updating…'; try { const r = await api('/api/letterboxd/refresh'); toast(`📗 Letterboxd updated: ${r.count || 0} watched`); } catch {} drawChecklist(); }
 let ckDone = {}; try { ckDone = JSON.parse(localStorage.ckDone || '{}'); } catch {}
-function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); }
+function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); newBadge(); }
+// 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
+const TEST_CATS = [['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
+const CK_META = { // key: [category, version it came in]
+  practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
+  wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
+  backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
+  discordDebug: ['discord'], discordClosed: ['discord'], helpMode: ['screen', '1.25.0'], numbersEdit: ['battles'], takeover: ['wheel'], obs: ['screen'], update: ['screen'],
+  announce: ['chat', '1.30.0'], chatBot: ['chat', '1.30.0'], resetEntries: ['battles', '1.30.0'], pcMovie: ['movies', '1.30.0'], linkedOnly: ['chat', '1.30.0'], backupConsole: ['discord', '1.30.0'],
+  rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
+};
+const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+const ckSeenVer = () => { try { return localStorage.ckSeenVer || '1.29.0'; } catch { return '1.29.0'; } }; // (first time: everything after 1.29.0 counts as new)
+const ckIsNew = k => !!CK_META[k]?.[1] && verNewer(CK_META[k][1], ckSeenVer()) && !ckDone[k];
+function ckSeenAll() { try { localStorage.ckSeenVer = S?.version || '9.9.9'; } catch {} drawChecklist(); newBadge(); }
+function newBadge() { const n = Object.keys(CK_META).filter(ckIsNew).length, b = $('newNav'); if (b) { b.textContent = n ? '🆕' + n : ''; b.title = n ? `${n} new thing${n === 1 ? '' : 's'} to try: 🧪 Test → ✅ Checklist` : ''; } }
+function arrangeTests() { // put the Test tab's cards under category headers (once)
+  const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
+  const map = [[/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen']];
+  const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
+  const groups = {};
+  for (const c of cards) {
+    const h = c.querySelector('h3')?.textContent || '';
+    let cat = c.id === 'wTestCard' ? 'wheel' : (map.find(([re]) => re.test(h)) || [])[1];
+    if (!h && c.id !== 'wTestCard') cat = 'tools';
+    if (cat === 'connect') cat = 'screen';
+    (groups[cat || 'other'] ||= []).push(c);
+  }
+  const jump = document.createElement('div'); jump.className = 'card tjump'; jump.style.cssText = 'grid-column:1 / -1;padding:8px 12px';
+  jump.innerHTML = '<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><span class="muted">Jump to:</span>' + TEST_CATS.filter(([c]) => groups[c]).map(([c, n]) => `<button class="ghost" style="padding:3px 10px" onclick="document.getElementById('tcat-${c}').scrollIntoView({behavior:'smooth',block:'start'})">${n}</button>`).join('') + '</div>';
+  box.appendChild(jump);
+  for (const [c, n] of TEST_CATS) { if (!groups[c]) continue; const hd = document.createElement('div'); hd.className = 'card tcat'; hd.id = 'tcat-' + c; hd.style.cssText = 'grid-column:1 / -1'; hd.innerHTML = `<h2 style="margin:0">${n}</h2>`; box.appendChild(hd); for (const card of groups[c]) box.appendChild(card); }
+}
 function drawChecklist() {
   const box = $('tCheck'); if (!box || !S) return;
   const st = S.status || {}, tw = st.twitch || {}, dc = st.discord || {}, c = S.cloud || {}, set = S.settings || {};
   const auto = (ok, label, fix, mid) => `<div class="ckItem ${ok ? 'ok' : mid ? 'mid' : 'no'}"><span class="ckIcon">${ok ? '✅' : mid ? '🟡' : '❌'}</span><span class="ckText">${label}</span><span class="ckAct">${!ok && fix ? fix : ''}</span></div>`;
   const go = (v, s2) => `<button class="ghost" style="padding:3px 9px" onclick="setView('${v}')${s2 ? `;setSub('${s2}')` : ''}">Fix it</button>`;
-  const man = (k, label, act) => `<div class="ckItem ${ckDone[k] ? 'done' : 'todo'}"><span class="ckIcon"><input type="checkbox" title="Tick it once it works" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span class="ckText">${label}${ckDone[k] ? ` <small class="muted">(worked ${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span class="ckAct">${act || ''}</span></div>`;
+  const man = (k, label, act) => `<div class="ckItem ${ckDone[k] ? 'done' : 'todo'}"><span class="ckIcon"><input type="checkbox" title="Tick it once it works" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span class="ckText">${ckIsNew(k) ? '<span class="newTag">🆕</span> ' : ''}${label}${ckDone[k] ? ` <small class="muted">(worked ${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span class="ckAct">${act || ''}</span></div>`;
   const T = (txt, js, screen = true) => `<button class="ghost" style="padding:3px 9px" onclick="${screen ? 'peek(true);' : ''}${js}">${txt}</button>`; // stays on the checklist: the pop-up window shows what happens
   const manual = [ // "Try it" = works offline (not live, nobody else needed); the pop-up window shows what happens
     ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
@@ -1094,7 +1142,17 @@ function drawChecklist() {
     ['numbersEdit', '🔢 A number battle\'s numbers can be changed later in the 🎬 Movie Pool tab', T('Try it', "api('/api/lists/numbers',{from:1,to:5}).then(r=>api('/api/lists/'+(r.id||S.activeListId)+'/numbers',{from:3,to:8})).then(()=>toast('🔢 Made 1 to 5, then changed it to 3 to 8: see the 🎬 Movie Pool tab'))")],
     ['takeover', '💜 Respin / Up / Down channel point rewards made by Movie Royal (same price as before)', `<button class="ghost" style="padding:3px 9px" onclick="wTakeover(this)">Try it</button>`],
     ['obs', 'OBS: the game screen shows in your scene with sound', T('Test OBS', "obsMuteTest()")],
-    ['update', 'Movie Royal updates itself (Settings → Account)', '']
+    ['update', 'Movie Royal updates itself (Settings → Account)', ''],
+    ['announce', '📣 The hourly chat message button (Battle, Chat battle, Giveaway and Wheel tabs) posts in chat: open 💬 Pretend chat to see it', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);api('/api/test/chat',{name:'test_viewer',text:'hi'}).catch(()=>{}).then(()=>annToggle('battle',true))">Try it</button>`],
+    ['chatBot', '🤖 Movie Royal talks in chat as your bot account (Settings → Twitch → 🤖 Chat bot account)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('twitch')">Set it up</button>`],
+    ['resetEntries', '↺ Reset entries (empties the battle) / ↺ Reset battlefield (clears the cliff) on the Battle tab, next to Fullscreen', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">See it</button>`],
+    ['pcMovie', '🎬 A pretend chatter adds a movie (💬 Pretend chat → 🎬 Add a movie)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>$('pcMovieIn')?.focus(),200)">Try it</button>`],
+    ['linkedOnly', '🔗 Viewer profiles only count linked viewers, and show the day they linked (👥 People)', `<button class="ghost" style="padding:3px 9px" onclick="setView('people')">See it</button>`],
+    ['backupConsole', '🛡️ Movie Royal Backup Bots has its own icon, and 🖥️ Console + ⚠️ Errors tabs', ''],
+    ['rightClick', '🖱️ Right-click works (copy, paste, open links…)', ''],
+    ['spotWindow', '⚙ A wheel spot\'s settings open in their own window (⬆ Previous / ⬇ Next)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel')">See it</button>`],
+    ['wheelImport', '📥 Import a wheel with 📂 Choose a file (Windows Explorer)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');setTimeout(wImport,300)">Try it</button>`],
+    ['tonightPin', '📌 The pinned movie says Movie #2 tonight and lists the earlier ones', '']
   ];
   const doneN = manual.filter(([k]) => ckDone[k]).length;
   box.innerHTML = `<div class="row" style="align-items:center"><h3 class="grow" style="margin:0">✅ Is everything working?</h3><span class="pill">${doneN}/${manual.length} tried</span><button class="ghost" onclick="if(confirm('Untick everything on the checklist?')){ckDone={};try{localStorage.ckDone='{}'}catch{};drawChecklist()}">Untick all</button></div>
@@ -1112,8 +1170,8 @@ function drawChecklist() {
       ${auto((st.overlays || 0) > 0, `Game screen open (${st.overlays || 0} — the app counts as one, OBS as another)`, '')}
       ${auto(!(S.rewardsByHand || []).length, (S.rewardsByHand || []).length ? `Channel point rewards made by hand on Twitch: ${S.rewardsByHand.map(esc).join(', ')}` : 'Channel point rewards are Movie Royal\'s own (it can switch them off when they can\'t be used)', go('settings', 'twitch'))}
       ${auto(!S.live || true, S.live ? '🔴 You are live' : '⚫ Not live (fine for testing: everything works offline too)', '', !S.live)}
-      <h4>Try each one once</h4>
-      ${manual.map(([k, l, a]) => man(k, l, a)).join('')}
+      ${(() => { const fresh = manual.filter(([k]) => ckIsNew(k)); return fresh.length ? `<h4 class="cknew">🆕 New in this version: try these <button class="ghost" style="padding:2px 8px;margin-left:8px" onclick="ckSeenAll()">✓ Seen them all</button></h4>${fresh.map(([k, l, a]) => man(k, l, a)).join('')}` : ''; })()}
+      ${TEST_CATS.map(([c, name]) => { const items = manual.filter(([k]) => (CK_META[k]?.[0] || 'other') === c && !ckIsNew(k)); return items.length ? `<h4>${name}</h4>${items.map(([k, l, a]) => man(k, l, a)).join('')}` : ''; }).join('')}
     </div>`;
 }
 // put the typing cursor at the end (number boxes can't do that: skip them instead of crashing)
@@ -1163,7 +1221,7 @@ function setView(v) {
   if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
-  if (v === 'test') { drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
+  if (v === 'test') { arrangeTests(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
@@ -1304,9 +1362,20 @@ function renderLuckDlg() {
   $('luckList').innerHTML = l.length ? l.map(x => `<div class="lrow"><span class="grow"><b>${esc(x.name)}</b><br><small class="muted">${new Date(x.at).toLocaleString()} · ${w === 'luck' ? `${x.count} movie${x.count === 1 ? '' : 's'} with luck · ${x.total}% total` : `${x.count} entr${x.count === 1 ? 'y' : 'ies'}`}</small></span><button class="primary" onclick="luckRestore('${x.id}')">Bring back</button><button class="ghost danger" title="Delete this save" onclick="if(confirm('Delete this save?')) api('/api/luck/saves/${x.id}', null, 'DELETE')">✕</button></div>`).join('') : `<p class="help">Nothing saved yet. Press 💾 Save ${w}, or ${w === 'luck' ? 'reset luck' : 'set everyone to 1'} (it saves first).</p>`;
 }
 async function luckRestore(id) { const r = await api('/api/luck/restore', { id }); toast(`✅ Back from “${esc(r.name)}”. What you had just before is saved too.`); }
+// 📣 hourly chat message button (Battle / Chat battle / Giveaway / Wheel tab)
+const ANN_NAMES = { battle: 'how to add movies in Discord', chat: 'how to join the chat battle', giveaway: 'how to enter the giveaway', wheel: 'how the wheel works' };
+function annHTML(kind) {
+  const a = S.announce?.[kind] || {}, mins = S.announceMins || 60, next = a.on ? Math.max(0, Math.ceil(((a.last || 0) + mins * 60000 - Date.now()) / 60000)) : 0;
+  return `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="${a.on ? 'primary' : ''} grow" style="white-space:normal" onclick="annToggle('${kind}', ${!a.on})" title="Posts a message in Twitch chat about ${ANN_NAMES[kind]}: right away, then every ${mins} minutes. Press again (or end the stream) to stop.">📣 Chat message every ${mins >= 60 && mins % 60 === 0 ? (mins / 60 === 1 ? 'hour' : mins / 60 + ' hours') : mins + ' min'}: <b>${a.on ? 'ON' : 'OFF'}</b>${a.on ? `<small style="display:block;font-weight:400">next in ${next} min</small>` : ''}</button><button class="ghost" title="See / change the message" onclick="annEdit('${kind}')">✏️</button></div>${a.error ? `<p class="help" style="color:var(--bad);margin:4px 0 0">⚠️ ${esc(a.error)}</p>` : ''}`;
+}
+async function annToggle(kind, on) {
+  try { const r = await api('/api/announce', { kind, on }); toast(on ? (r.error ? '⚠️ ' + esc(r.error) : '📣 Posted in chat. It posts again every ' + (S.announceMins || 60) + ' minutes until you press it again or end the stream.') : '📣 Stopped.', 7000); } catch {}
+}
+async function annEdit(kind) { const r = await api('/api/announce', { kind, preview: true }); if (confirm(`This goes in chat:\n\n${r.text}\n\nChange the words, how often, or your Discord link in Settings → Twitch → 📣 Chat messages. Go there now?`)) { setView('settings'); setTimeout(() => { setSub('twitch'); setTimeout(() => document.getElementById('annSet')?.scrollIntoView({ block: 'start' }), 150); }, 60); } }
 function renderView() {
   if (!S) return;
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
+  document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
   if (view === 'pool') renderPool();
   else if (view === 'chat') renderChat();
   else if (view === 'giveaway') renderGiveaway();
@@ -2802,9 +2871,20 @@ function openSettings(force) {
       <p class="help">Status: <b>${esc(tw.state)}</b>${tw.login ? ' as ' + esc(tw.login) : ''} · chat: ${esc(tw.chat)}</p>
       ${tw.login && !tw.canChat ? `<p class="help" style="color:var(--gold)">⚠️ To reply to <code>${esc(s.twitchMoviesCommand)}</code> in chat, Movie Royal needs one more permission. <a href="/auth/twitch">Sign in with Twitch again</a>.</p>` : ''}
       <div class="grid2">${f('twitchMoviesCommand', '“What movies do I have?” chat command (add a name to see someone else’s)', '!mymovies')}${f('twitchCooldown', 'Cooldown per person (seconds)', '30', 'number')}</div>
+      <h3 style="margin-top:18px">🤖 Chat bot account (Movies Royal Bot)</h3>
+      ${f('chatTag', 'Name tag at the start of Movie Royal\'s chat messages while it talks as you (empty = no tag)', '🤖 Movies Royal Bot:')}
+      ${S.chatBot ? `<div class="card soft" style="margin:6px 0"><div class="row" style="align-items:center;gap:10px">${S.chatBot.avatar ? `<img src="${esc(proxy(S.chatBot.avatar))}" style="width:36px;height:36px;border-radius:50%">` : '🤖'}<span class="grow">Movie Royal talks in chat as <b>${esc(S.chatBot.name)}</b>${S.chatBot.on ? '' : ' <span class="muted">(turned off below: it talks as you)</span>'}${S.chatBot.error ? `<br><small style="color:var(--bad)">⚠️ Last time it couldn't talk, so you did: ${esc(S.chatBot.error)}</small>` : ''}</span>
+          <button onclick="botTest(this)">💬 Say hi in chat</button><button class="ghost" onclick="location.href='/auth/twitch-bot'">🔁 Sign in again</button><button class="ghost danger" onclick="if(confirm('Stop using the chat bot? Movie Royal talks as you again.')) api('/api/twitch-bot/off',{})">✕ Remove</button></div></div>
+        ${ck('useChatBot', 'Talk in chat as the bot (untick to talk as yourself)')}`
+      : `<p class="help">Right now Movie Royal talks in chat as <b>you</b>. To have a bot do it:</p>
+        <ol class="help" style="padding-left:18px;line-height:1.7"><li>Make a second Twitch account for the bot, named <b>MoviesRoyalBot</b> (Twitch names can't have spaces). Use a private window so you stay logged in as yourself.</li>
+        <li>Press <b>🔑 Sign in as the bot</b>. On the Twitch page, if it shows your own account, press <b>Not you?</b> and log in as the bot.</li>
+        <li>In your Twitch chat type <code>/mod MoviesRoyalBot</code> so it never gets slowed down.</li></ol>
+        <button class="primary" onclick="location.href='/auth/twitch-bot'">🔑 Sign in as the bot</button>`}
       <h3 style="margin-top:18px">🎨 Ball colors</h3>
       ${colorHTML(s)}
       ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
+      ${ck('trackLinkedOnly', '🔗 Only keep viewer stats (chats, watch streaks, watch time) for people who linked their Twitch in Discord with /linktwitch. Chat is still saved for everyone.')}
       ${ck('pinWinner', '📌 Pin the movie in Twitch chat once the winner claims it (movie # tonight, title, year, who picked it, and the movies watched earlier tonight)')}
       ${ck('claimApprove', '✋ When the winner types in chat, stop the claim timer and ask them in chat: watch it now (!accept) or pass (!pass). It does whatever they answer (a pass puts the movie back and they keep their luck). The ✅ Accept / ⏭️ Pass buttons on the winner card are for doing it yourself.')}
       <div class="grid2">${f('acceptCommand', '✅ Winner\'s “watch it now” chat command', '!accept')}${f('passCommand', '⏭️ Winner\'s “not tonight” chat command', '!pass')}</div>
@@ -2826,7 +2906,11 @@ function openSettings(force) {
       StreamElements: ${esc(S.status.donations?.se || 'off')} · Streamlabs: ${esc(S.status.donations?.sl || 'off')}</p>
       ${f('seJwt', 'StreamElements JWT token (streamelements.com → your avatar → Account → Channels → Show secrets → JWT Token)', 'paste here', 'password')}
       ${f('slToken', 'Streamlabs Socket API token (streamlabs.com → Settings → API Settings → API Tokens → Your Socket API Token)', 'paste here', 'password')}
-      <p class="help">Press Save after pasting. Test it from Wheel → 🌐 All wheels → 🧪 Test donation, or send a test tip from StreamElements.</p>`,
+      <p class="help">Press Save after pasting. Test it from Wheel → 🌐 All wheels → 🧪 Test donation, or send a test tip from StreamElements.</p>
+      <h3 style="margin-top:18px" id="annSet">📣 Chat messages (every hour)</h3>
+      <p class="help">The <b>📣 Chat message</b> button on the Battle, Chat battle, Giveaway and Wheel tabs posts that tab's message in Twitch chat right away, then again every so often, until you press it again or your stream ends. Leave a box empty to use the default (shown in grey). Words in {curly brackets} fill in by themselves: <code>{discord}</code> your Discord link, <code>{channel}</code> the movie channel, <code>{commands}</code> the commands command, <code>{join}</code> / <code>{enter}</code> the join / giveaway command, <code>{prize}</code>, <code>{respin}</code>, <code>{myspins}</code>, <code>{streamer}</code>.</p>
+      <div class="grid2">${f('discordServerLink', '🔗 Your Discord server invite link (for {discord}; empty = the bot makes one)', 'https://discord.gg/…')}${f('announceMins', 'How often (minutes)', '60', 'number', 'min="5" max="600"')}</div>
+      ${[['announceBattle', '⚔️ Battle tab (Discord movie battle)', 'battle'], ['announceChat', '🎲 Chat battle tab', 'chat'], ['announceGiveaway', '🎁 Giveaway tab', 'giveaway'], ['announceWheel', '🎡 Wheel tab', 'wheel']].map(([k, t, d]) => `<div><label>${t}</label><textarea data-k="${k}" rows="2" maxlength="490" placeholder="${esc(S.announceDefaults?.[d] || '')}">${esc(s[k] || '')}</textarea></div>`).join('')}`,
     movies: `<h3>🎬 TMDB — movie search (free)</h3>
       <p class="help"><a href="https://www.themoviedb.org/settings/api" target="_blank">themoviedb.org → Settings → API</a> → copy the <b>API Read Access Token</b>.</p>
       ${f('tmdbKey', 'TMDB token', 'paste here')}
@@ -2901,6 +2985,14 @@ function bkHTML() {
     <p class="help"><b>🛡️ Add my bot to the backup on this PC</b> = one click, no copy and paste (Movie Royal Backup Bots has to be open on this PC). It also has its own <b>🍿 Add my bot</b> button.</p>
     <p class="help">To have a friend run your backup: they open <b>Movie Royal Backup Bots</b> on their PC and paste your bot token there. Your bot token lets them fully control your bot, so only give it to someone you trust. You can reset it any time in the Discord Developer Portal (then set the new one here).</p>`;
 }
+async function resetEntries() { // ↺ empty the battle on the Battle tab
+  const l = S.lists.find(x => x.id === S.activeListId); if (!l) return;
+  if (l.type === 'movies') return toast("The Discord movie battle is everyone's picks, so it can't be emptied here. Take movies out in the 🎬 Movie Pool tab.", 7000);
+  const n = l.entries.filter(e => e.status !== 'removed').length;
+  if (!confirm(l.type === 'chat' ? `Empty “${l.name}”? Everyone who joined (${n}) is cleared.` : `Empty “${l.name}”? All ${n} entries come out, so you can start its list over.\n\n(Made a mistake? 🎬 Movie Pool → Taken out → put them all back.)`)) return;
+  try { const r = await api(`/api/lists/${l.id}/reset-entries`, {}); toast(`↺ Emptied: ${r.n} entr${r.n === 1 ? 'y' : 'ies'} out`); } catch {}
+}
+async function botTest(btn) { btn.disabled = true; try { const r = await api('/api/twitch-bot/test', {}); toast(r.error ? `⚠️ The bot couldn't talk (${esc(r.error)}), so you did.` : `💬 ${esc(r.as)} said hi in your chat`, 8000); } catch {} btn.disabled = false; }
 function gfxTest() { try { $('game').contentWindow.postMessage({ royalGfx: { showFps: true, until: Date.now() + 15000 } }, '*'); } catch {} peek(true); toast('📈 The FPS counter shows in the game screen (top left) for 15 seconds', 6000); }
 async function discordRestart(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '🔄 Restarting…'; }
@@ -3150,7 +3242,7 @@ async function updateOnOpen() { // asks once each time the app opens, if there's
 }
 
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
-fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); /* only pops up when the bot on Cloudflare needs an update */ if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); /* only pops up when the bot on Cloudflare needs an update */ if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 </body>

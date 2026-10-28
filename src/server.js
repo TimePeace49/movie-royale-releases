@@ -137,7 +137,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(db.announce || {}).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null }])), announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -393,6 +393,7 @@ const twitchHandlers = {
   change: pushState,
   live(isLive) {
     if (!!db.live === !!isLive) return;
+    if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
     db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
@@ -421,6 +422,7 @@ const twitchHandlers = {
   alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} },
   async chat(m) {
+    if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
@@ -690,10 +692,27 @@ app.get('/auth/twitch', (req, res) => {
   for (const [k, t] of pendingStates) if (Date.now() - t > 600000) pendingStates.delete(k);
   res.redirect(twitch.authUrl(PORT, state));
 });
+const botStates = new Map(); // 🤖 sign-ins for the chat bot account
+app.get('/auth/twitch-bot', (req, res) => {
+  if (!db.settings.twitchClientId || !db.settings.twitchClientSecret) return res.redirect('/login.html');
+  const state = 'bot' + crypto.randomBytes(16).toString('hex'); botStates.set(state, Date.now());
+  res.redirect(twitch.botAuthUrl(PORT, state));
+});
+app.post('/api/twitch-bot/off', (req, res) => { db.twitchBot = null; save(); pushState(); res.json({ ok: true }); });
+app.post('/api/twitch-bot/test', async (req, res) => { try { await twitch.say(`🤖 ${db.twitchBot?.user?.name || 'Movie Royal'} here! Movie Royal's chat messages come from me now. Type ${db.settings.helpCommand || '!moviesroyal'} to see the commands.`); res.json({ ok: true, as: twitch.botOn() && !twitch.botStatus.error ? db.twitchBot.user.name : (db.owner?.name || 'you'), error: twitch.botStatus.error }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.get('/twitch/callback', async (req, res) => {
   const fail = msg => res.redirect('/login.html?error=' + encodeURIComponent(msg));
   if (req.query.error) return fail('Twitch sign-in was cancelled.');
   const state = String(req.query.state || '');
+  if (botStates.has(state)) { // 🤖 the chat bot account signed in
+    botStates.delete(state);
+    try {
+      const { user, tokens } = await twitch.signIn(String(req.query.code || ''), PORT);
+      if (db.owner && db.owner.id === user.id) return res.send(donePage('That was your own account', 'To use a chat bot, sign in with the bot account (for example MoviesRoyalBot), not your streaming account. On the Twitch page, press “Not you?” and log in as the bot. Then try again from Movie Royal.'));
+      db.twitchBot = { user, tokens, at: Date.now() }; twitch.botStatus.error = null; save(); pushState();
+      return res.send(donePage(`🤖 ${user.name} is your chat bot!`, `Movie Royal's chat messages now come from ${user.name}. Tip: type /mod ${user.login} in your Twitch chat so it never gets slowed down. You can close this tab.`));
+    } catch (e) { return fail('Bot sign-in failed: ' + e.message); }
+  }
   if (!pendingStates.has(state)) return fail('That sign-in link expired. Try again.');
   pendingStates.delete(state);
   try {
@@ -775,6 +794,47 @@ setInterval(() => { // tell the 24/7 bot and the pinned Discord message right aw
   const now = autoLocked(); if (now === lockWas) return; lockWas = now;
   pushState(); discord.refreshPinned?.(); if (db.settings.cloud?.enabled) cloud.sync(true)?.catch?.(() => {});
 }, 1500);
+// 📣 hourly chat messages: a button on the Battle / Chat battle / Giveaway / Wheel tab posts that mode's message in Twitch chat
+// right away and then every hour (Settings → Twitch: the words, how often, your Discord link). Off: press it again, or the stream ends.
+const ANNOUNCE_DEFAULTS = {
+  battle: '🍿 Want YOUR movie in the battle royale? Join the Discord: {discord} → go to #{channel} and type /suggest to add a movie. Every movie fights on the cliff, the last one standing gets watched! Type {commands} to see all the chat commands.',
+  chat: '⚔️ Chat battle time! Type {join} in chat to jump in: your Twitch picture becomes your piece, last one standing wins. Type {commands} to see all the chat commands.',
+  giveaway: '🎁 Giveaway{prize}! Type {enter} in chat to enter. Type {commands} to see all the chat commands.',
+  wheel: '🎡 The wheel is spinning! Use channel points to 🔁 respin it or ↕️ move it. Got a saved respin? Type {respin} ({myspins} shows how many you have). Type {commands} to see all the chat commands.'
+};
+const ANNOUNCE_KEYS = { battle: 'announceBattle', chat: 'announceChat', giveaway: 'announceGiveaway', wheel: 'announceWheel' };
+function announceText(kind) {
+  const st = db.settings, ga = giveawaySettings(), wc = wheel.W().cmd || {};
+  const link = String(st.discordServerLink || '').trim() || db.discordInviteAuto || ''; // (your own link, or one the bot made)
+  const t = String(st[ANNOUNCE_KEYS[kind]] || '').trim() || ANNOUNCE_DEFAULTS[kind];
+  return t.replace(/\{discord\}/g, link || '(ask a mod for the Discord link)').replace(/\{channel\}/g, (st.discordChannelName || 'movies-royal').replace(/^#/, ''))
+    .replace(/\{commands\}/g, st.helpCommand || '!moviesroyal').replace(/\{join\}/g, st.joinCommand || '!join').replace(/\{enter\}/g, ga.command || '!enter')
+    .replace(/\{prize\}/g, ga.prize ? `: ${ga.prize}` : '').replace(/\{respin\}/g, wc.respin || '!respin').replace(/\{myspins\}/g, wc.spins || '!myspins')
+    .replace(/\{streamer\}/g, streamerName()).slice(0, 490);
+}
+const annState = () => (db.announce ||= {});
+async function announceNow(kind) {
+  const a = annState()[kind]; if (!a?.on) return;
+  if (kind === 'battle' && !String(db.settings.discordServerLink || '').trim()) await discord.inviteLink?.().catch(() => null); // no link pasted: the bot makes one
+  a.last = Date.now(); save();
+  try { await twitch.say(announceText(kind)); a.error = null; } catch (e) { a.error = e.message; console.error('[twitch] hourly chat message:', e.message); }
+  pushState();
+}
+app.post('/api/announce', async (req, res) => { // { kind, on } — or { kind, now: true } to post it right away
+  const kind = String(req.body?.kind || ''); if (!ANNOUNCE_DEFAULTS[kind]) return res.status(400).json({ error: 'bad kind' });
+  const a = annState()[kind] ||= { on: false, last: 0 };
+  if (req.body?.preview) return res.json({ text: announceText(kind) });
+  if ('on' in (req.body || {})) { a.on = !!req.body.on; a.since = a.on ? Date.now() : null; save(); }
+  if (a.on && (req.body?.on || req.body?.now)) await announceNow(kind); // turning it on posts it right away
+  pushState(); res.json({ ok: true, on: a.on, error: a.error || null, text: announceText(kind) });
+});
+setInterval(() => { // every minute: anything due?
+  const every = Math.max(5, Number(db.settings.announceMins) || 60) * 60000;
+  for (const kind of Object.keys(ANNOUNCE_DEFAULTS)) { const a = annState()[kind]; if (a?.on && Date.now() - (a.last || 0) >= every) announceNow(kind); }
+}, 60000);
+const announceOff = () => { let n = 0; for (const a of Object.values(annState())) if (a?.on) { a.on = false; n++; } if (n) { save(); pushState(); } };
+// 🔗 the day each viewer linked their Twitch in Discord (/linktwitch, the 24/7 bot, the backup, or you in the People tab)
+setInterval(() => { let n = 0; db.linkDates ||= {}; for (const id of Object.keys(db.links || {})) if (!db.linkDates[id]) { db.linkDates[id] = Date.now(); n++; } if (n) save(); }, 20000);
 const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save(); broadcast(wheel.wheelMsg(), 'overlay'); pushState(); };
 // 🎡 ready-made wheels that come with the app (src/defaults/*.json, Movie Royal share files). Each is added once: delete it and it stays deleted.
 for (const [key, file] of [['madeKirbportions', 'wheel-of-kirbportions.json']]) {
@@ -903,6 +963,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   let follow; try { follow = tw?.id ? await twitch.followedAt(tw.id) : undefined; } catch {}
   const discordId = req.query.discordId || Object.entries(db.links || {}).find(([, l]) => String(l).toLowerCase() === login)?.[0] || null;
   const dp = discordId ? discordPeople().find(p => p.discordId === discordId) : null;
+  const linkedAt = discordId && db.links?.[discordId] ? (db.linkDates?.[discordId] || null) : null; // (negative = linked before Movie Royal kept dates)
   // 🎡 respins: now, used this stream, and what they had when the stream started
   const since = db.stream?.startedAt || 0, isMe = r => r.by && (String(r.by.login || '').toLowerCase() === login || norm(r.by.name) === n);
   const used = w.history.filter(r => r.by?.source === 'bank' && isMe(r)).map(r => ({ at: r.at, text: r.text, wheel: r.wheelName }));
@@ -913,6 +974,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   const wins = db.history.filter(h => (h.winner?.owner && (norm(h.winner.owner) === n || (dp && norm(h.winner.owner) === norm(dp.name)))) || (h.kind === 'chat' && norm(h.winner?.label) === n)).slice(-30).reverse().map(h => ({ at: h.at, label: h.winner.label, sub: h.winner.sub, list: h.listName }));
   const mon = new Date().toLocaleDateString('en-CA').slice(0, 7), yr = mon.slice(0, 4);
   res.json({
+    linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
     login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
     followedAt: follow === undefined ? (v?.followedAt || undefined) : follow, url: login ? `https://twitch.tv/${login}` : null,
     sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: chatlog.watchStreak(v), twitchStreak: v?.streak || 0, streams: (v?.watched || []).length, lastStreams: chatlog.lastStreams(v), color: v?.color || null,
@@ -1335,6 +1397,15 @@ app.post('/api/lists/:id/resume-all', (req, res) => { // bring every paused item
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   let n = 0; for (const e of l.entries) if (e.status === 'paused') { e.status = 'active'; n++; }
   save(); pushState(); refreshPreview(); res.json({ back: n });
+});
+app.post('/api/lists/:id/reset-entries', (req, res) => { // ↺ Reset entries (Battle tab): empty the battle so its list starts over
+  const l = getList(req.params.id); if (!l) return res.sendStatus(404);
+  if (l.type === 'movies') return res.status(400).json({ error: "The Discord movie battle is everyone's picks, so it can't be emptied from here. Take movies out in the 🎬 Movie Pool tab." });
+  if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is going. Reset entries once it ends.' });
+  let n = 0;
+  if (l.type === 'chat') { n = l.entries.length; l.entries = []; } // chat battles + giveaways: everyone who joined is cleared
+  else for (const e of l.entries) if (e.status !== 'removed') { e.status = 'removed'; n++; } // your own battles: everything comes out (🎬 Movie Pool → bring back everything taken out, if it was a mistake)
+  save(); pushState(); refreshPreview(true); res.json({ ok: true, n, type: l.type });
 });
 app.post('/api/lists/:id/reset-odds', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
@@ -2034,6 +2105,21 @@ app.post('/api/test/claim-chat', (req, res) => { // Test tab: the movie winner "
 });
 app.post('/api/test/pin', async (req, res) => { try { await twitch.sayAndPin('📌 Movie Royal test: pinned messages work! (unpin it any time)'); res.json({ ok: true }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/chat', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null, emotes: req.body?.emotes || '', color: req.body?.color || null, badgeList: req.body?.badgeList || '' }); res.json({ ok: true }); });
+app.post('/api/test/pc-movie', async (req, res) => { // 💬 pretend chat: this pretend viewer adds a movie, as if they used /suggest in Discord (and linked their Twitch)
+  twitch.pretend.until = Date.now() + 10 * 60000;
+  const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, '') || 'test_viewer', login = name.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 25) || 'test_viewer';
+  const title = String(req.body?.title || '').trim(); if (!title) return res.status(400).json({ error: 'Type a movie title first' });
+  const user = { discordId: 'pretend-' + login, name, avatar: null };
+  db.links ||= {}; if (!db.links[user.discordId]) { db.links[user.discordId] = login; (db.linkDates ||= {})[user.discordId] = Date.now(); (db.linkNames ||= {})[user.discordId] = { name, avatar: null }; }
+  try { const r = await suggest(title, user); save(); pushState(); refreshPreview(); res.json({ ok: !!r.ok, msg: String(r.msg || '').replace(/\*\*/g, ''), pretend: true }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/test/pc-movie-clear', (req, res) => { // 🧹 take the pretend viewers' movies (and links) out again
+  let n = 0; const l = getList('movies');
+  for (const e of l?.entries || []) if (e.backers?.length && e.backers.every(b => String(b.discordId).startsWith('pretend-')) && e.status !== 'removed') { e.status = 'removed'; n++; }
+  for (const k of Object.keys(db.links || {})) if (k.startsWith('pretend-')) { delete db.links[k]; delete db.linkDates?.[k]; delete db.linkNames?.[k]; }
+  save(); pushState(); refreshPreview(true); res.json({ ok: true, n });
+});
 app.post('/api/test/wheel-land', wTry(b => wheel.request(b.kind === 'respin' ? 'respin' : 'spin', {}, { force: String(b.entryId || ''), wheelId: b.wheelId }))); // Test tab: land on a spot you pick
 app.post('/api/test/doom-preview', (req, res) => { broadcast({ type: 'wheelDoom', text: `${streamerName().toUpperCase()} WILL RETURN FOR DOOMSDAY!!!`, preview: true }, 'overlay'); res.json({ ok: true }); }); // just the screen, nothing turns off
 app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));

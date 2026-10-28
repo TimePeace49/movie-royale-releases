@@ -26,7 +26,28 @@ const WORKER_ERROR_WINDOW = 10 * 60000; // a "24/7 Discord bot: …" problem pos
 let DATA = '', hooks = {};
 const conf = { name: '', bots: [] }; // bots: [{ id, token (encrypted), on, addedAt, tag }]
 const bots = new Map();
-const log = (...a) => console.log('[backup]', ...a);
+// 🖥️ Console + ⚠️ Errors tabs: what the backup is doing, and what went wrong (kept in errors.json)
+const LOGS = []; let logId = 0, ERRS = null;
+const fmt = a => a.map(x => typeof x === 'string' ? x : x instanceof Error ? x.message : JSON.stringify(x)).join(' ');
+function addLog(level, a) {
+  const e = { id: ++logId, at: Date.now(), level, text: fmt(a).slice(0, 600) }; LOGS.push(e); if (LOGS.length > 1500) LOGS.splice(0, LOGS.length - 1500);
+  if (level === 'error') { errs().unshift({ at: e.at, text: e.text, plain: plainErr(e.text) }); if (ERRS.length > 300) ERRS.length = 300; saveErrs(); }
+  return e;
+}
+const log = (...a) => { console.log('[backup]', ...a); addLog('info', a); };
+const logErr = (...a) => { console.error('[backup]', ...a); addLog('error', a); };
+function errs() { if (!ERRS) { try { ERRS = JSON.parse(fs.readFileSync(path.join(DATA, 'errors.json'), 'utf8')); } catch { ERRS = []; } } return ERRS; }
+let errT = null; const saveErrs = () => { clearTimeout(errT); errT = setTimeout(() => { try { fs.writeFileSync(path.join(DATA, 'errors.json'), JSON.stringify(ERRS || [])); } catch {} }, 2000); };
+function plainErr(t) { // what it means, in plain words
+  if (/TOKEN_INVALID|invalid token|401|Unauthorized/i.test(t)) return "Discord didn't accept a bot token (it was probably reset). Remove that bot and add it again with the new token.";
+  if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|fetch failed|network|timeout|aborted/i.test(t)) return "Couldn't reach the internet (or that site was down). Usually fixes itself.";
+  if (/Missing Access|Missing Permissions|50013|50001/i.test(t)) return "The bot isn't allowed to do that in the Discord server. Re-invite it from Movie Royal (Settings → Discord & picks → Re-invite it).";
+  if (/refused the answer|Unknown interaction|10062/i.test(t)) return 'Discord gave up waiting for an answer to a command (it must answer within 3 seconds). If it keeps happening, the PC or internet is slow.';
+  if (/command (failed|not answered)/i.test(t)) return 'A Discord command could not be answered. The person who used it got an error.';
+  if (/hand chat over|leave a pick/i.test(t)) return "Couldn't leave something for Movie Royal in the hidden sync channel. It tries again next minute.";
+  if (/config/i.test(t)) return "Couldn't download the streamer's rules from the sync channel. It tries again next minute.";
+  return '';
+}
 
 const confFile = () => path.join(DATA, 'backup.json');
 function saveConf() { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(confFile(), JSON.stringify(conf, null, 2)); }
@@ -181,17 +202,18 @@ class Bot {
     const batch = this.chatBuf.slice(0, 20000);
     try {
       await this.ch.send({ content: 'MR-CHAT ' + JSON.stringify({ from: batch[0].at, to: batch[batch.length - 1].at, n: batch.length, channel: this.st.chat.channel }), files: [{ attachment: Buffer.from(JSON.stringify(batch)), name: 'chat.json' }], allowedMentions: { parse: [] } });
-      this.chatBuf = this.chatBuf.slice(batch.length); this.st.chat.sentAt = Date.now(); this.st.chat.waiting = this.chatBuf.length;
+      this.chatBuf = this.chatBuf.slice(batch.length); this.st.chat.sentAt = Date.now(); this.st.chat.waiting = this.chatBuf.length; log(this.st.tag, `handed ${batch.length} chat record${batch.length === 1 ? '' : 's'} over to Movie Royal`);
       fs.writeFileSync(this.chatFile(), this.chatBuf.map(r => JSON.stringify(r)).join('\n') + (this.chatBuf.length ? '\n' : ''));
-    } catch (e) { log(this.st.tag, 'could not hand chat over:', e.message); }
+    } catch (e) { logErr(this.st.tag, 'could not hand chat over:', e.message); }
   }
   async start() {
     const token = this.token();
     if (!token) { this.st.state = 'error'; this.st.warning = "Couldn't read this bot's token. Remove it and add it again."; return; }
     this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
-    this.client.on('raw', p => { if (p.t === 'INTERACTION_CREATE') this.onInteraction(p.d).catch(e => log(this.st.tag, 'command failed:', e.message)); });
+    this.client.on('raw', p => { if (p.t === 'INTERACTION_CREATE') this.onInteraction(p.d).catch(e => logErr(this.st.tag, 'command failed:', e.message)); });
     this.client.once('ready', () => {
       this.st.state = 'online'; this.st.tag = this.client.user.tag; this.rec.tag = this.st.tag; saveConf();
+      log(this.st.tag, `connected to Discord (in ${this.client.guilds.cache.size} server${this.client.guilds.cache.size === 1 ? '' : 's'}: ${this.client.guilds.cache.map(g => g.name).join(', ') || 'none'})`);
       this.st.guilds = this.client.guilds.cache.map(g => g.name);
       this.tick(); this.timer = setInterval(() => this.tick(), 60000);
     });
@@ -199,7 +221,7 @@ class Bot {
     try { await this.client.login(token); }
     catch (e) {
       const bad = /TOKEN_INVALID|invalid token/i.test(e.message + e.code);
-      this.st.state = 'error';
+      this.st.state = 'error'; logErr(this.st.tag || 'a bot', 'could not connect to Discord:', e.message);
       this.st.warning = bad ? "Discord didn't accept this bot token (it was probably reset). Ask for the new one, remove this bot and add it again."
         : /ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|fetch failed|network/i.test(e.message) ? "Couldn't reach Discord (is the internet on?). Trying again every 2 minutes." : e.message + ' (trying again every 2 minutes)';
       try { await this.client.destroy(); } catch {} this.client = null;
@@ -223,7 +245,7 @@ class Bot {
       if (appOpen(this.app) && !wasOpen) this.appOpenAt = Date.now();
       if (wasOpen && !appOpen(this.app)) { const have = new Set(this.chatBuf.map(r => r.id).filter(Boolean)); for (const r of this.ring || []) if (!r.id || !have.has(r.id)) this.keep(r); } // Movie Royal just closed: keep the last few minutes too (it skips any it already has)
       if (s.config?.url && (s.config.at !== this.cfgAt || !this.cfg || force)) { // the newest rules + pool from Movie Royal
-        try { const r = await fetch(s.config.url, { signal: AbortSignal.timeout(20000) }); if (r.ok) { this.cfg = await r.json(); this.cfgAt = s.config.at; } } catch (e) { log(this.st.tag, 'config download', e.message); }
+        try { const r = await fetch(s.config.url, { signal: AbortSignal.timeout(20000) }); if (r.ok) { this.cfg = await r.json(); this.cfgAt = s.config.at; log(this.st.tag, `got ${this.cfg?.streamer || 'the streamer'}'s rules from Movie Royal (${(this.cfg?.pool || this.cfg?.movies || []).length} movies in the pool)`); } } catch (e) { logErr(this.st.tag, 'config download', e.message); }
       }
       this.st.streamer = this.cfg?.streamer || null;
       this.startChat(); await this.checkLive().catch(() => {}); await this.flushChat(appOpen(this.app)); // (Movie Royal is open: hand it everything now)
@@ -249,7 +271,7 @@ class Bot {
         catch (e) { why = "it didn't answer"; }
         if (!why) why = await this.workerErrors();
         this.st.cloud.checkedAt = Date.now();
-        if (why) { this.st.cloud.fails++; this.st.cloud.ok = false; this.st.cloud.error = why; } else { this.st.cloud.fails = 0; this.st.cloud.ok = true; this.st.cloud.error = null; }
+        if (why) { this.st.cloud.fails++; this.st.cloud.ok = false; this.st.cloud.error = why; log(this.st.tag, `24/7 cloud bot check ${this.st.cloud.fails} of ${FAILS_TO_TAKE_OVER} failed: ${why}`); } else { if (this.st.cloud.ok === false) log(this.st.tag, '24/7 cloud bot is working again'); this.st.cloud.fails = 0; this.st.cloud.ok = true; this.st.cloud.error = null; }
         if (this.st.cloud.fails >= FAILS_TO_TAKE_OVER || /posted a problem/.test(why || '')) await this.takeOver(`the 24/7 cloud bot had problems: ${why}`);
       } else if (!url) { this.st.cloud.ok = null; this.st.cloud.error = null; }
       this.st.warning = !this.cfg ? "Waiting for this streamer's Movie Royal to upload its rules (it does when it's open)." : null;
@@ -259,7 +281,7 @@ class Bot {
         if (fb.mode === 'cloud' && this.st.mode === 'backup' && (fb.back || 0) > (this.st.since || 0)) { this.st.mode = 'standby'; this.st.since = null; this.st.reason = null; this.st.back = fb.back; }
       }
       await putStatus(ch, s.backupMsg, 'MR-BACKUP', { mode: this.st.mode, since: this.st.since, by: conf.name, reason: this.st.reason, seen: Date.now(), back: this.st.back || null });
-    } catch (e) { this.st.warning = e.message; log(this.st.tag, e.message); }
+    } catch (e) { this.st.warning = e.message; logErr(this.st.tag, e.message); }
     finally { this.busy = false; this.saveCache(); }
   }
   /** Did the cloud bot post a problem in #movie-royal-debug lately (after the streamer last switched back)? */
@@ -294,7 +316,7 @@ class Bot {
     if (!this.ch) return;
     for (const op of this.queue) {
       if (this.posted.has(op.id)) continue;
-      try { await this.ch.send({ content: 'MR-OP ' + JSON.stringify(op).slice(0, 1990), allowedMentions: { parse: [] } }); this.posted.add(op.id); } catch (e) { log(this.st.tag, 'could not leave a pick for Movie Royal:', e.message); break; }
+      try { await this.ch.send({ content: 'MR-OP ' + JSON.stringify(op).slice(0, 1990), allowedMentions: { parse: [] } }); this.posted.add(op.id); } catch (e) { logErr(this.st.tag, 'could not leave a pick for Movie Royal:', e.message); break; }
     }
     this.saveCache();
   }
@@ -318,11 +340,11 @@ class Bot {
     if (!this.cfg || this.st.otherBackup || this.rec.on === false) return;
     if (appOpen(this.app)) return; // Movie Royal is open: it answers
     const waits = [];
-    const res = await worker.fetch(new Request('http://backup/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(i) }), this.env(), { waitUntil: p => waits.push(Promise.resolve(p).catch(e => log(this.st.tag, e.message))) });
-    if (!res.ok) return log(this.st.tag, 'command not answered:', res.status);
+    const res = await worker.fetch(new Request('http://backup/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(i) }), this.env(), { waitUntil: p => waits.push(Promise.resolve(p).catch(e => logErr(this.st.tag, e.message))) });
+    if (!res.ok) return logErr(this.st.tag, 'command not answered:', res.status);
     const r = await fetch(`${DISCORD}/interactions/${i.id}/${i.token}/callback`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: await res.text() });
-    if (!r.ok) log(this.st.tag, 'Discord refused the answer:', r.status, await r.text().catch(() => ''));
-    if (i.type === 2) { this.st.handled++; this.st.lastCmd = { name: i.data?.name, at: Date.now(), by: i.member?.user?.username || i.user?.username || '' }; }
+    if (!r.ok) logErr(this.st.tag, 'Discord refused the answer:', r.status, await r.text().catch(() => ''));
+    if (i.type === 2) { this.st.handled++; this.st.lastCmd = { name: i.data?.name, at: Date.now(), by: i.member?.user?.username || i.user?.username || '' }; log(this.st.tag, `answered /${i.data?.name} for ${this.st.lastCmd.by}`); }
     await Promise.all(waits);
   }
   view() { if (this.chatW) this.st.chat.state = this.chatW.status.state; return { id: this.rec.id, on: this.rec.on !== false, ...this.st, appOpen: appOpen(this.app), configAt: this.cfgAt, waitingPicks: this.queue.length }; }
@@ -355,12 +377,21 @@ export async function startBackup(opts = {}) {
   web.get('/', (req, res) => res.sendFile(path.join(ROOT, 'public', 'backup.html')));
   web.use(express.static(path.join(ROOT, 'public'), { index: false }));
   const wrap = fn => async (req, res) => { try { res.json(await fn(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); } };
-  web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || '', running: !conf.stopped, mrBot: mrBot(), update: { ...upd, beta: !!conf.betaUpdates }, bots: [...bots.values()].map(b => b.view()) }); });
+  web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || pkg.version || '', running: !conf.stopped, mrBot: mrBot(), update: { ...upd, beta: !!conf.betaUpdates }, bots: [...bots.values()].map(b => b.view()) }); });
   web.post('/api/add-mine', wrap(async () => { // 🍿 add the bot Movie Royal on this PC uses (no copy and paste)
     const t = mrBotToken();
     if (!t) throw new Error("Couldn't find a bot token in Movie Royal on this PC. Set up the Discord bot in Movie Royal first (Settings → Discord & picks).");
     try { return await addBot(t); } catch (e) { throw new Error(/look like a bot token/.test(e.message) ? "The bot token saved in Movie Royal doesn't look right. Paste it again in Movie Royal (Settings → Discord & picks → Bot token) and press Save." : e.message); }
   }));
+  web.get('/api/log', (req, res) => { const after = Number(req.query.after) || 0; res.json({ logs: LOGS.filter(l => l.id > after).slice(-500), last: logId }); });
+  web.get('/api/errors', (req, res) => res.json({ errors: errs().slice(0, 200) }));
+  web.post('/api/errors/clear', wrap(async () => { ERRS = []; saveErrs(); return { ok: true }; }));
+  web.get('/api/debug-report', (req, res) => { // for Claude: what the backup has and is doing (no tokens)
+    const lines = [`Movie Royal Backup Bots ${opts.version || pkg.version || ''} · ${process.platform} ${os.release()} · node ${process.version} · ${new Date().toString()}`, `name=${conf.name} running=${!conf.stopped} twitchKeys=${twitchKeys().id ? (conf.twitch?.id ? 'own' : 'movie royal') : 'none'} update=${upd.latest || '-'}${upd.error ? ' err=' + upd.error : ''}`];
+    for (const b of bots.values()) { const v = b.view(); lines.push(`- bot ${v.tag || v.id} state=${v.state} on=${v.on} mode=${v.mode}${v.since ? ' since=' + new Date(v.since).toISOString() : ''} streamer=${v.streamer || '-'} appOpen=${v.appOpen} cloud=${v.cloud.url ? (v.cloud.ok === false ? 'FAIL(' + v.cloud.fails + ') ' + v.cloud.error : v.cloud.ok ? 'ok' : '?') : 'none'} config=${v.configAt ? new Date(v.configAt).toISOString() : 'none'} chat=${v.chat.state} #${v.chat.channel || '-'} saved=${v.chat.saved} waiting=${v.chat.waiting} live=${v.chat.live} handled=${v.handled} picksWaiting=${v.waitingPicks}${v.warning ? ' warning=' + v.warning : ''}`); }
+    lines.push('--- errors (newest first) ---', ...errs().slice(0, 25).map(e => `${new Date(e.at).toISOString()} ${e.text}`), '--- console (last 60) ---', ...LOGS.slice(-60).map(l => `${new Date(l.at).toISOString()} ${l.level === 'error' ? 'ERR ' : ''}${l.text}`));
+    res.type('text/plain').send(lines.join('\n'));
+  });
   web.post('/api/update/check', wrap(async b => { if (b.beta != null) { conf.betaUpdates = !!b.beta; saveConf(); } return checkUpdate(); }));
   web.post('/api/update/install', wrap(async () => { installUpdate().catch(e => { upd.error = e.message; }); return { ok: true }; }));
   web.post('/api/server', wrap(async b => { // ▶ Start / ⏹ Stop the whole backup server (every bot). Stays that way after a restart.
@@ -398,7 +429,8 @@ export async function startBackup(opts = {}) {
     await bot.handBack(); return bot.view();
   }));
   const port = await new Promise(ok => { const srv = web.listen(opts.port || 3747, '127.0.0.1', () => ok(srv.address().port)).on('error', () => { const s2 = web.listen(0, '127.0.0.1', () => ok(s2.address().port)); }); });
-  log(`running on http://127.0.0.1:${port}`);
+  log(`Movie Royal Backup Bots ${opts.version || pkg.version || ''} is running (window at http://127.0.0.1:${port})`);
+  process.on('unhandledRejection', e => logErr('app:', e?.message || String(e)));
   return { port, url: `http://127.0.0.1:${port}/` };
 }
 

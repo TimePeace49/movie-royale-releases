@@ -4,9 +4,9 @@ battle | 🎲 Chat battle -> 🎲 Chat battle tab
 battle | 🎁 Giveaway -> 🎁 Giveaway tab
 battle | 🎡 Wheel -> 🎡 Wheel tab
 battle | 💬 Chat -> 💬 Chat tab
-battle | 👥 People 4 -> 👥 People tab
+battle | 👥 People 5 -> 👥 People tab
 battle | 📜 History -> 📜 History tab
-battle | 🧪 Test -> 🧪 Test tab
+battle | 🧪 Test🆕6 -> 🧪 Test tab
 battle | ❓ Help -> ❓ Help tab
 battle | ⚙️ Settings -> ⚙️ Settings tab
 battle | ❓ -> ❓ Help mode
@@ -18,7 +18,8 @@ battle | 🗳️ Chat vote -> 🗳️ Chat vote
 battle | 🔀 Shuffle -> 🔀 Shuffle
 battle | ⛶ Fullscreen -> ⛶ Fullscreen
 battle | 🪟 Pop out -> 🪟 Pop out
-battle | ↺ Reset -> ↺ Reset
+battle | ↺ Reset entries -> ↺ Reset entries
+battle | ↺ Reset battlefield -> ↺ Reset battlefield
 battle | ☄️ Comet -> ☄️ Comet (chaos power)
 battle | 🪨 Edge Collapse -> 🪨 Edge Collapse (chaos power)
 battle | 🌋 Earthquake -> 🌋 Earthquake (chaos power)
@@ -31,7 +32,7 @@ battle | ⚡ Lightning -> ⚡ Lightning (chaos power)
 battle | 🪨 Boulder -> 🪨 Boulder (chaos power)
 battle | 🌀 Teleport Swap -> 🌀 Teleport Swap (chaos power)
 battle | 🪐 Low Gravity -> 🪐 Low Gravity
-battle | ⚪ Multiball -> Pretend this person chats
+battle | 🕳️ Black Hole -> 🗺️ Map power
 battle | 🎲 Mystery -> 🎲 Mystery (chaos power)
 battle | Screen title -> Screen title
 battle | ◀ -> ◀ Follow the previous piece
@@ -46,29 +47,22 @@ battle | ⬇ -> Move the camera
 battle | ➖ -> Zoom the camera
 battle | ➕ -> Zoom the camera
 battle | ▶ START ROYAL -> ▶ START ROYAL
+battle | 📣 Chat message every hour: OFF -> 📣 Chat message
+battle | ✏️ -> ✏️ The chat message
 battle | ⏱️ 2-min chat timer, then start -> ⏱️ 2-min chat timer, then start
 battle | 🎬 Movie picks OPEN -> 🎬 Movie picks OPEN / CLOSED
 battle | ⭐ Points ON -> ⭐ Points ON / OFF
 battle | 💎 Bits ON -> 💎 Bits ON / OFF
-battle | 📣 2-minute roll call -> 📣 2-minute roll call
 battle | 🔊 On -> 🔊 Sound on / off
 battle | Sound effects 70% -> Sound effects volume
 battle | Music 35% -> Music volume
-battle | 💾 Save luck -> 💾 Save luck / odds
-battle | ↺ Reset luck -> ↺ Reset luck / Everyone to 1
-battle | 📂 Saved luck -> 📂 Saved luck / odds
-battle | 💾 Save luck↺ Reset luck📂 Saved luck -> 💾 Save luck / odds
-battle | 🎟️ Reset wild spots -> 🎟️ Reset wild spots
+battle | 💾 Save odds -> 💾 Save luck / odds
+battle | ↺ Everyone to 1 -> ↺ Reset luck / Everyone to 1
+battle | 📂 Saved odds -> 📂 Saved luck / odds
+battle | Rounds -> Rounds (best of)
+battle | Filter… -> Filter
 battle | ➕ Add -> ➕ Add
-battle | bobalicecaradave_tw -> Recent chatters
-battle | number -> Odds
-battle | − -> + / − odds
-battle | text -> Name
-battle | + -> + / − odds
-battle | ⏸️ -> ⏸ Pause
-battle | ✕ -> ✕ Remove / close
-battle | 👤 -> 👤 Change who picked it
-battle | ✅ -> ✅ Mark as watched
+battle | Add -> Add
 pool | Discord Movies🎬 Discord movies7 -> Discord movies battle
 pool | Chat battle💬 Twitch chat14 -> Chat battle (pool)
 pool | Giveaway💬 Twitch chat0 -> Chat battle (pool)
@@ -76,21 +70,22 @@ pool | Derek's Discord movies🎬 Movies9 -> Discord movies battle
 pool | 💩 Letterboxd’s worst 500🎬 Movies0 -> A custom battle
 pool | 🔢 1 to 25📝 Text25 -> A custom battle
 pool | 🔢 Worse Movies📝 Text500 -> A custom battle
-pool | Add a movie yourself: start typing a title… -> Add a movie yourself
-pool | 🗓️ New week -> 🗓️ New week
-pool | 🎟️ Kirb spots (3/3) -> 🎟️ Wild (Kirb) spots
-pool | Paste a big list of movie titles -> Add a list
-pool | Add all -> Add all
+pool | 🔢 1 to 5📝 Text0 -> A custom battle
+pool | text -> Name
+pool | 🔢 Numbers -> From / To
+pool | number -> Odds
+pool | Update the numbers -> 🔢 Update the numbers
+pool | Paste as many as you want — commas or new lin -> Add a list
+pool | Add to list -> Add to list
 pool | 📤 Export this battle -> 📤 Export
 pool | 📥 Import from Wheel of Names, Marbles on Stre -> 📥 Import
 pool | Paste a Wheel of Names share link (wheelofnam -> Import a link
 pool | Import link -> Import link
-pool | Pool & odds 🍀 luck is on -> Pool & odds
+pool | Pool & odds -> Pool & odds
 pool | Reset odds -> Reset odds
 pool | Clear -> Clear
-pool | Odds -> Odds
-pool | Lock now -> 🔒 Lock / unlock swaps
-chat | 🧪 Test⚠️ 4 -> 🧪 Test tab
+pool | Delete -> 🗑 Delete
+chat | 🧪 Test⚠️ 3🆕6 -> 🧪 Test tab
 chat | ▶ Open joining -> ▶ Open joining
 chat | ▶ START CHAT BATTLE (14) -> ▶ START CHAT BATTLE
 chat | 🧹 Clear entries -> 🧹 Clear entries
@@ -106,6 +101,7 @@ chat | 🎈 Big balls: everyone extra big (it gets crow -> 🎈 Big balls
 chat | 🌪️ Chaos rain: a random chaos event every few -> 🌪️ Chaos rain
 chat | 🪩 Disco lights -> 🪩 Disco lights
 chat | Who's in (14) -> Who's in
+chat | ✕ -> ✕ Remove / close
 giveaway | ▶ Open entries -> ▶ Open entries
 giveaway | Need at least 2 people -> ▶ START GIVEAWAY
 giveaway | 🔁 Reroll -> 🔁 Reroll
@@ -159,7 +155,7 @@ history | 📜 Every round👑 Who won what📋 Results📊 Stats -> 👑 Who wo
 history | in -> Search in
 history | 📋 Full results -> 📋 Results
 wheel/spots | Folder -> Folder
-wheel/spots | 🎡 Wheel of Kirbportions (71) -> Which wheel
+wheel/spots | 🎡 My wheel (6) -> Which wheel
 wheel/spots | 📁➕ -> 📁➕ New folder
 wheel/spots | ➕ New wheel -> ➕ New wheel
 wheel/spots | 📥 Import -> Import a link
@@ -180,15 +176,11 @@ wheel/spots | ↺ Reset all sizes -> ↺ Reset all sizes
 wheel/spots | 📝 Edit as text -> 📝 Edit as text
 wheel/spots | Spot name (press Enter)… -> Add a spot
 wheel/spots | ⏱️ Timer -> Spot type
-wheel/spots | Add -> Add
 wheel/spots | 👁️ -> 👁️ Make invisible
 wheel/spots | Auto color -> Auto color
 wheel/spots | − -> + / − size
 wheel/spots | + -> + / − size
-wheel/spots | 🔢 Countdown -> Spot type
 wheel/spots | ⚙ -> ⚙ Spot settings
-wheel/spots | ⏱️🏆 Timer + max wins a night -> Spot type
-wheel/spots | ⚡ Auto -> Spot type
 wheel/spots | 🎡 SPIN -> 🎡 SPIN
 wheel/spots | 🔁 Respin -> 🔁 Respin
 wheel/spots | 🎟️ Streamer respin 3/3 -> 🎟️ Streamer respin
@@ -202,7 +194,7 @@ wheel/spots | 🔊 Sounds 70% -> Sound effects volume
 wheel/spots | 🎵 Music 35% -> Music volume
 wheel/spots | ▾ -> ▾ More
 wheel/wsettings | 📜 Rules on (timer, auto and countdown spots,  -> 📜 Rules
-wheel/wsettings | Spin time: 5 seconds -> Spin time
+wheel/wsettings | Spin time: 10 seconds -> Spin time
 wheel/wsettings | Spin speed: 1× -> Spin speed
 wheel/wsettings | 🔘 Tick sound as spots pass the pointer -> 🔘 Tick sound
 wheel/wsettings | 🎉 Sound when it lands (a spot with its own so -> 🎉 Landing sound
@@ -251,7 +243,6 @@ wheel/wsettings | Middle -> Middle text
 wheel/wsettings | 🖼️ Picture in the middle -> 🖼️ Middle picture
 wheel/wsettings | Background on stream -> 🖼️ Background
 wheel/wsettings | 🖼️ Picture or video -> 🖼️ Background
-wheel/wsettings | Default background -> Default background
 wheel/wsettings | ▶️ -> ▶️ Play / preview
 wheel/wsettings | ⬆️ Use my own -> ⬆️ Use my own
 wheel/spins | Twitch name -> Give saved respins
@@ -259,7 +250,7 @@ wheel/spins | Why? (sub, $5 donation, raid…) -> Why?
 wheel/spins | Give -> Give
 wheel/spins | +1 -> +1 / −1
 wheel/spins | −1 -> +1 / −1
-wheel/spins | just dance (2 times speed) (3) (1.3%) -> Grow a spot for money
+wheel/spins | Spot 1 (16.7%) -> Grow a spot for money
 wheel/spins | How many grows -> Grow a spot for money
 wheel/spins | Who paid for it? -> Who paid for it?
 wheel/spins | Why? (sub, bits, $) -> Why?
@@ -298,7 +289,13 @@ wheel/global | 🧪 Test donation -> 🧪 Test donation
 wheel/global | 💵 Log one by hand -> 💵 Log one by hand
 test/tests | 🧪 Tests -> 🧪 Tests
 test/tests | ✅ Checklist -> ✅ Checklist
-test/tests | ⚠️ Errors 4 -> ⚠️ Errors
+test/tests | ⚠️ Errors 3 -> ⚠️ Errors
+test/tests | 🧰 Test tools -> 🧪 Test categories
+test/tests | ⚔️ Battles -> 🧪 Test categories
+test/tests | 🎬 Movie nights & Discord picks -> 🧪 Test categories
+test/tests | 💬 Twitch chat, channel points & bits -> 🧪 Test categories
+test/tests | 🤖 Discord, 24/7 & backup bots -> 🧪 Test categories
+test/tests | 🖥️ Screen, sounds & the app -> 🧪 Test categories
 test/tests | 📺 Show the preview window -> 📺 Preview window
 test/tests | ⧉ Pop out to another monitor -> ⧉ Pop out the preview
 test/tests | 🔴 Pretend I'm live -> 🔴 Pretend I'm live
@@ -307,19 +304,32 @@ test/tests | ↺ Reset everyone's cooldowns -> ↺ Reset everyone's cooldowns
 test/tests | 🟢 Put everyone on the cliff -> 🟢 Put everyone on the cliff
 test/tests | ⚔️ Run a test Discord battle -> ⚔️ Test Discord battle
 test/tests | Next round → -> Next round →
-test/tests | 🟢 Bob -> Pretend this person chats
-test/tests | 🟢 Alice -> Pretend this person chats
-test/tests | 💬 Cara -> Pretend chatter
-test/tests | 💬 dave_tw -> Pretend chatter
 test/tests | 🔢 Make a 1–10 battle -> 🔢 Make a 1–10 battle
-test/tests | 🤖 Run the Discord self-test -> 🤖 Discord self-test
-test/tests | 🔄 Restart the Discord bot -> 🔄 Restart the Discord bot
-test/tests | ☁️ Show the 24/7 bot update pop-up -> 🔔 24/7 bot update pop-up
-test/tests | 🛡️ Check the backup link -> 🛡️ Check the backup link
-test/tests | 🛡️ Add my bot to the backup on this PC -> 🛡️ Add my bot to the backup on this PC
-test/tests | 🐞 Send a test problem -> 🐞 Send a test problem
-test/tests | Make / fix the channel -> 🐞 Make / fix the debug channel
-test/tests | 📺 Show the stream screen -> 📺 Show the stream screen
+test/tests | Twitch name -> Pretend viewer
+test/tests | 🛡️ Shield -> 🛡️ Shield (test)
+test/tests | 💪 Mega -> 💪 Mega (test)
+test/tests | ⚡ Turbo -> ⚡ Turbo (test)
+test/tests | Players -> Practice players
+test/tests | 10 -> Practice players
+test/tests | 50 -> Practice players
+test/tests | 200 -> Practice players
+test/tests | 1000 -> Practice players
+test/tests | Map -> 🗺️ Map
+test/tests | Run practice round -> Run practice round
+test/tests | ✋ Winner types in chat -> ✋ Winner types in chat
+test/tests | 📌 Test pinning in chat -> 📌 Test pinning
+test/tests | ☁️ Check the 24/7 Discord bot -> ☁️ Check the 24/7 bot
+test/tests | 📜 Post the command list in chat -> 📜 Post the command list
+test/tests | A viewer's Twitch name -> Pretend viewer
+test/tests | 🛌 They type !sitout -> 🛌 !sitout / 🙋 !imback
+test/tests | 🙋 They type !imback -> 🛌 !sitout / 🙋 !imback
+test/tests | e.g. The Two Towers -> Can this movie be picked?
+test/tests | Check -> Can this movie be picked?
+test/tests | Message -> Message
+test/tests | Send fake chat -> Send fake chat
+test/tests | Event -> Pretend redeem
+test/tests | Redeem -> Pretend redeem
+test/tests | Cheer bits -> Cheer bits
 test/tests | 🎯 Land on a spot -> 🎯 Land on a spot
 test/tests | 🎡 Spin onto it -> Spin / Respin onto it
 test/tests | 🔁 Respin onto it -> Spin / Respin onto it
@@ -348,31 +358,13 @@ test/tests | 🎥 OBS: mic + camera off for 5 sec -> 🎥 OBS test
 test/tests | 🔴 Pretend I went live -> 🔴 Pretend I'm live
 test/tests | ⚫ Stop pretending -> 🔴 Pretend I'm live
 test/tests | 🔔 Test alert in Chat tab -> 🔔 Test alert
-test/tests | Twitch name -> Pretend viewer
-test/tests | Message -> Message
-test/tests | Send fake chat -> Send fake chat
-test/tests | ✋ Winner types in chat -> ✋ Winner types in chat
-test/tests | 📌 Test pinning in chat -> 📌 Test pinning
-test/tests | ☁️ Check the 24/7 Discord bot -> ☁️ Check the 24/7 bot
-test/tests | 📜 Post the command list in chat -> 📜 Post the command list
-test/tests | A viewer's Twitch name -> Pretend viewer
-test/tests | 🛌 They type !sitout -> 🛌 !sitout / 🙋 !imback
-test/tests | 🙋 They type !imback -> 🛌 !sitout / 🙋 !imback
-test/tests | Event -> Pretend redeem
-test/tests | Redeem -> Pretend redeem
-test/tests | Cheer bits -> Cheer bits
-test/tests | 🛡️ Shield -> 🛡️ Shield (test)
-test/tests | 💪 Mega -> 💪 Mega (test)
-test/tests | ⚡ Turbo -> ⚡ Turbo (test)
-test/tests | e.g. The Two Towers -> Can this movie be picked?
-test/tests | Check -> Can this movie be picked?
-test/tests | Players -> Practice players
-test/tests | 10 -> Practice players
-test/tests | 50 -> Practice players
-test/tests | 200 -> Practice players
-test/tests | 1000 -> Practice players
-test/tests | Map -> 🗺️ Map
-test/tests | Run practice round -> Run practice round
+test/tests | 🤖 Run the Discord self-test -> 🤖 Discord self-test
+test/tests | 🔄 Restart the Discord bot -> 🔄 Restart the Discord bot
+test/tests | ☁️ Show the 24/7 bot update pop-up -> 🔔 24/7 bot update pop-up
+test/tests | 🛡️ Check the backup link -> 🛡️ Check the backup link
+test/tests | 🛡️ Add my bot to the backup on this PC -> 🛡️ Add my bot to the backup on this PC
+test/tests | 🐞 Send a test problem -> 🐞 Send a test problem
+test/tests | Make / fix the channel -> 🐞 Make / fix the debug channel
 test/tests | 🎬 Test TMDB (movie search) -> 🎬 Test TMDB
 test/tests | 🍅 Test OMDb (RT + IMDb ratings) -> 🍅 Test OMDb
 test/tests | 📗 Sync Letterboxd now -> 📗 Sync Letterboxd
@@ -385,17 +377,19 @@ test/check | Untick all -> Untick all
 test/check | Sign in -> Sign in with Twitch
 test/check | Fix it -> Fix it
 test/check | Sign in again -> Sign in with Twitch
+test/check | ✓ Seen them all -> ✓ Seen them all
 test/check | Tick it once it works -> Tick when it works
 test/check | Try it -> Try it
-test/check | Test pin -> 📌 Test pinning
-test/check | How -> How
+test/check | Set it up -> Set it up
 test/check | See it -> See it
-test/check | FPS counter -> 📈 FPS counter
-test/check | Show it -> Show it
-test/check | See them -> See them
+test/check | How -> How
+test/check | Test pin -> 📌 Test pinning
 test/check | Open it -> Open it
+test/check | Show it -> Show it
 test/check | Self-test -> 🤖 Discord self-test
 test/check | Check bot -> ☁️ Check the 24/7 bot
+test/check | FPS counter -> 📈 FPS counter
+test/check | See them -> See them
 test/check | Test OBS -> Test OBS
 test/errors | ⚠️ Errors -> ⚠️ Errors
 test/errors | 🗣️ In plain words -> 🗣️ In plain words
@@ -466,12 +460,16 @@ settings/game | Wheel of Names API key (optional — only if a  -> Wheel of Name
 settings/game | 🎬 Instant replay — show the final seconds aga -> 🎬 Instant replay
 settings/luck | Turn on luck — every battle a Discord movie l -> 🍀 Luck
 settings/luck | Extra chance per battle (%) -> Luck per battle
+settings/luck | 💾 Save luck -> 💾 Save luck / odds
+settings/luck | ↺ Reset luck -> ↺ Reset luck / Everyone to 1
+settings/luck | 📂 Saved luck -> 📂 Saved luck / odds
 settings/luck | Kirb wildcard spots get luck when they lose t -> Wild spot luck
 settings/luck | 🔒 When adding and swapping movies lock by the -> 🔒 When picks and swaps lock
 settings/luck | Post in the Discord movies channel when picks -> Post when picks open / close
 settings/luck | Let Twitch chat call the winner before the fi -> 🔮 Chat calls the winner
 settings/luck | Chat command -> !call command
 settings/luck | Luck for calling it right (% on their own mov -> Luck for calling it
+settings/luck | Lock now -> 🔒 Lock / unlock swaps
 settings/movies | TMDB token -> TMDB token
 settings/movies | OMDb key -> OMDb key
 settings/movies | Letterboxd username -> Letterboxd username
@@ -490,10 +488,14 @@ settings/sounds | ▶ -> ▶ Play
 settings/sounds | ⬆️ Upload -> ⬆️ Upload
 settings/twitch | “What movies do I have?” chat command (add a  -> !mymovies command
 settings/twitch | Cooldown per person (seconds) -> Cooldown
+settings/twitch | Name tag at the start of Movie Royal's chat m -> 🤖 Chat name tag
+settings/twitch | 🤖 Movies Royal Bot: -> 🤖 Chat name tag
+settings/twitch | 🔑 Sign in as the bot -> 🤖 Chat bot account
 settings/twitch | Free — viewers type !color pink in chat. Sile -> Ball colors: free
 settings/twitch | Channel points — adds one reward, “Royal: Bal -> Ball colors: channel points
 settings/twitch | Off — everyone keeps the normal colors. -> Ball colors: off
 settings/twitch | 🏆 Post the winner in Twitch chat (a few secon -> 🏆 Post the winner
+settings/twitch | 🔗 Only keep viewer stats (chats, watch streak -> 🔗 Only track linked viewers
 settings/twitch | 📌 Pin the movie in Twitch chat once the winne -> 📌 Pin the movie
 settings/twitch | ✋ When the winner types in chat, stop the cla -> ✋ Winner types in chat
 settings/twitch | ✅ Winner's “watch it now” chat command -> ✅ !accept command
@@ -509,6 +511,12 @@ settings/twitch | Channel to read chat from -> Chat channel
 settings/twitch | StreamElements JWT token (streamelements.com  -> Donation token
 settings/twitch | paste here -> Wheel of Names API key
 settings/twitch | Streamlabs Socket API token (streamlabs.com → -> Donation token
+settings/twitch | 🔗 Your Discord server invite link (for {disco -> 🔗 Discord invite link
+settings/twitch | How often (minutes) -> How often
+settings/twitch | ⚔️ Battle tab (Discord movie battle) -> 📣 Chat message words
+settings/twitch | 🎲 Chat battle tab -> 📣 Chat message words
+settings/twitch | 🎁 Giveaway tab -> 📣 Chat message words
+settings/twitch | 🎡 Wheel tab -> 📣 Chat message words
 newlist | Name -> Name
 newlist | What goes in it? -> What goes in it?
 newlist | 🎬 Movies -> A custom battle

@@ -15,6 +15,14 @@ const V = () => { db.viewers ||= {}; db.alerts ||= []; return db.viewers; };
 const day = (t = Date.now()) => new Date(t).toLocaleDateString('en-CA'); // YYYY-MM-DD in your time zone
 const month = (t = Date.now()) => day(t).slice(0, 7), year = (t = Date.now()) => day(t).slice(0, 4);
 const streamKey = () => db.stream?.startedAt || 0;
+// 🔗 only viewers who linked their Twitch in Discord (/linktwitch) get stats (setting trackLinkedOnly, on by default). Chat is still logged for everyone.
+let linkedCache = { at: 0, set: new Set() };
+export function tracked(login) {
+  if (db.settings.trackLinkedOnly === false) return true;
+  const k = String(login || '').toLowerCase(); if (!k) return false;
+  if (Date.now() - linkedCache.at > 5000) linkedCache = { at: Date.now(), set: new Set([...Object.values(db.links || {}).map(x => String(x).toLowerCase()), String(db.owner?.login || '').toLowerCase()]) };
+  return linkedCache.set.has(k);
+}
 export function viewer(login, name) {
   const k = String(login || '').toLowerCase(); if (!k) return null;
   const v = V()[k] ||= { login: k, name: name || k, first: Date.now(), last: 0, msgs: 0, byMonth: {}, byYear: {}, streamMsgs: 0, streamKey: 0, watchMins: 0, streamWatch: 0, subMonths: 0, streak: 0 };
@@ -40,7 +48,7 @@ export function streamAt(start, end = start) {
 }
 const liveKey = () => db.live && db.stream?.startedAt ? streamAt(db.stream.startedAt, Date.now()) : null; // (pretend-live tests don't count)
 export function markWatched(login, name, key) {
-  if (!key) return; const v = viewer(login, name); if (!v) return;
+  if (!key || !tracked(login)) return; const v = viewer(login, name); if (!v) return;
   v.watched ||= []; if (v.watched.includes(key)) return;
   v.watched.push(key); v.watched.sort((a, b) => a - b); if (v.watched.length > 600) v.watched.splice(0, v.watched.length - 600);
   soon();
@@ -59,7 +67,9 @@ export function watchStreak(v) {
   return n;
 }
 export function onChat(m, opts = {}) {
-  const v = viewer(m.login, m.name), t = opts.imported ? (m.at || Date.now()) : Date.now(); // imported = chat the backup bot server saw while Movie Royal was closed
+  const t = opts.imported ? (m.at || Date.now()) : Date.now(); // imported = chat the backup bot server saw while Movie Royal was closed
+  const v = tracked(m.login) ? viewer(m.login, m.name) : null;
+  if (v) {
   v.last = Math.max(v.last || 0, t); v.msgs++; v.byMonth[month(t)] = (v.byMonth[month(t)] || 0) + 1; v.byYear[year(t)] = (v.byYear[year(t)] || 0) + 1;
   if (!opts.imported || (streamKey() && t >= streamKey())) { // (old chat doesn't count toward this stream)
     if (v.streamKey !== streamKey()) { v.streamKey = streamKey(); v.streamMsgs = 0; v.streamWatch = 0; }
@@ -69,6 +79,7 @@ export function onChat(m, opts = {}) {
   if (m.badges?.months) v.subMonths = Math.max(v.subMonths || 0, m.badges.months);
   if (!opts.imported || t >= (v.badgesAt || 0)) { v.sub = !!m.badges?.sub; v.mod = !!m.badges?.mod; v.vip = !!m.badges?.vip; v.badgesAt = t; }
   if (!v.first || t < v.first) v.first = t;
+  }
   const msg = { id: m.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: m.at || Date.now(), login: m.login, name: m.name, text: m.text, color: m.color || null, emotes: m.emotes || '', badges: m.badgeList || '', ...(opts.imported ? { offline: 1 } : {}) };
   if (!opts.imported) { recent.push(msg); if (recent.length > MAX) recent.splice(0, recent.length - MAX); }
   try { fs.appendFileSync(path.join(DIR, day(msg.at) + '.jsonl'), JSON.stringify(msg) + '\n'); } catch {}
@@ -108,9 +119,10 @@ export function onClear(c) { // a deleted message, a timeout or a ban
 export function onAlert(a) {
   const al = db.alerts, now = Date.now();
   if (a.kind === 'gift' && a.amount === 1 && al.some(x => x.kind === 'gift' && x.login === a.login && x.amount > 1 && now - x.at < 20000)) return; // one alert per gift bomb
-  if (a.kind === 'sub' && a.months) { const v = viewer(a.login, a.name); if (v) v.subMonths = Math.max(v.subMonths || 0, a.months); }
-  if (a.kind === 'streak') { const v = viewer(a.login, a.name); if (v) { v.streak = a.amount; v.streakAt = now; } }
-  if (a.kind === 'follow') { const v = viewer(a.login, a.name); if (v) v.followedAt = a.at || now; }
+  const tv = () => tracked(a.login) ? viewer(a.login, a.name) : null;
+  if (a.kind === 'sub' && a.months) { const v = tv(); if (v) v.subMonths = Math.max(v.subMonths || 0, a.months); }
+  if (a.kind === 'streak') { const v = tv(); if (v) { v.streak = a.amount; v.streakAt = now; } }
+  if (a.kind === 'follow') { const v = tv(); if (v) v.followedAt = a.at || now; }
   const x = { id: now.toString(36) + Math.random().toString(36).slice(2, 5), at: now, ...a };
   al.unshift(x); if (al.length > 500) al.length = 500;
   hooks.send({ type: 'chatalert', alert: x }); soon();
@@ -119,7 +131,7 @@ export function onAlert(a) {
 export function tickWatch(list) {
   if (!list) return;
   const key = liveKey(); for (const c of list) markWatched(c.login, c.name, key); // in the viewer list while live = watched this stream
-  for (const c of list) { const v = viewer(c.login, c.name); if (!v) continue; if (v.streamKey !== streamKey()) { v.streamKey = streamKey(); v.streamMsgs = 0; v.streamWatch = 0; } v.watchMins += 5; v.streamWatch += 5; v.lastSeen = Date.now(); if (c.id) v.id = c.id; }
+  for (const c of list) { if (!tracked(c.login)) continue; const v = viewer(c.login, c.name); if (!v) continue; if (v.streamKey !== streamKey()) { v.streamKey = streamKey(); v.streamMsgs = 0; v.streamWatch = 0; } v.watchMins += 5; v.streamWatch += 5; v.lastSeen = Date.now(); if (c.id) v.id = c.id; }
   soon();
 }
 

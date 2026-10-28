@@ -12,6 +12,26 @@ const userCache = new Map();
 const s = () => db.settings;
 export const redirectUri = port => `http://localhost:${port}/twitch/callback`;
 
+// 🤖 the chat bot account ("MoviesRoyalBot"): a second Twitch account that says Movie Royal's chat messages instead of you
+export const BOT_SCOPES = ['user:write:chat', 'user:read:chat', 'user:bot'];
+export function botAuthUrl(port, state) {
+  return `https://id.twitch.tv/oauth2/authorize?client_id=${encodeURIComponent(s().twitchClientId)}&redirect_uri=${encodeURIComponent(redirectUri(port))}&response_type=code&force_verify=true&scope=${encodeURIComponent(BOT_SCOPES.join(' '))}&state=${encodeURIComponent(state)}`;
+}
+export const botOn = () => !!db.twitchBot?.tokens?.access && s().useChatBot !== false;
+export const botLogin = () => db.twitchBot?.user?.login || null;
+async function botHelix(pathQ, opts = {}, retry = true) { // like helix(), with the bot account's sign-in
+  const res = await fetch('https://api.twitch.tv/helix/' + pathQ, { signal: AbortSignal.timeout(15000), ...opts, headers: { 'Client-Id': s().twitchClientId, Authorization: `Bearer ${db.twitchBot.tokens.access}`, 'Content-Type': 'application/json' } });
+  if (res.status === 401 && retry && db.twitchBot.tokens.refresh) {
+    const j = await tokenRequest({ grant_type: 'refresh_token', refresh_token: db.twitchBot.tokens.refresh });
+    db.twitchBot.tokens = { access: j.access_token, refresh: j.refresh_token || db.twitchBot.tokens.refresh }; save();
+    return botHelix(pathQ, opts, false);
+  }
+  const j = res.status === 204 ? {} : await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.message || `Twitch API ${res.status}`);
+  return j;
+}
+export const botStatus = { error: null, at: 0 };
+
 export function authUrl(port, state) {
   return `https://id.twitch.tv/oauth2/authorize?client_id=${encodeURIComponent(s().twitchClientId)}&redirect_uri=${encodeURIComponent(redirectUri(port))}&response_type=code&scope=${encodeURIComponent(SCOPES.join(' '))}&state=${encodeURIComponent(state)}`;
 }
@@ -209,7 +229,7 @@ function startChat() {
       const badges = Object.fromEntries(String(tags.badges || '').split(',').filter(Boolean).map(b => b.split('/')));
       const info = Object.fromEntries(String(tags['badge-info'] || '').split(',').filter(Boolean).map(b => b.split('/')));
       const subV = Number(badges.subscriber || badges.founder || 0);
-      handlers.chat({ login: m[2], name: tags['display-name'] || m[2], text: m[3].trim(), userId: tags['user-id'] || null, id: tags.id || null, color: tags.color || null, emotes: tags.emotes || '', badgeList: tags.badges || '', at: Number(tags['tmi-sent-ts']) || Date.now(),
+      handlers.chat({ self: m[2] === botLogin(), login: m[2], name: tags['display-name'] || m[2], text: m[3].trim(), userId: tags['user-id'] || null, id: tags.id || null, color: tags.color || null, emotes: tags.emotes || '', badgeList: tags.badges || '', at: Number(tags['tmi-sent-ts']) || Date.now(),
         badges: { sub: 'subscriber' in badges || 'founder' in badges, tier: subV >= 3000 ? 3 : subV >= 2000 ? 2 : ('subscriber' in badges || 'founder' in badges) ? 1 : 0, months: Number(info.subscriber || info.founder || 0), vip: 'vip' in badges, mod: 'moderator' in badges, broadcaster: 'broadcaster' in badges } });
     }
   });
@@ -264,10 +284,22 @@ export async function followedAt(userId) {
 export const sayListeners = new Set(); // 💬 the pretend chat window shows what Movie Royal says in chat
 export const pretend = { until: 0 }; // 🧪 someone is using pretend chat: replies show in the window even when you're not signed in
 export const canSay = () => !!status.canChat || Date.now() < pretend.until;
+// 🤖 talking as yourself: every message starts with a name tag (Settings → Twitch, default "🤖 Movies Royal Bot:") so chat can tell it's the app
+const tagged = m => { const t = String(s().chatTag ?? '🤖 Movies Royal Bot:').trim(); return botOn() || !t || String(m).startsWith(t) ? String(m) : `${t} ${m}`; };
 export async function say(message) {
+  message = tagged(message);
   for (const f of sayListeners) { try { f(String(message)); } catch {} }
   if (!status.canChat && Date.now() < pretend.until) return true; // testing while signed out: shown in the pretend chat window only
   if (!status.userId) throw new Error('Sign in with Twitch first');
+  if (botOn()) { // 🤖 say it as the chat bot account; if that fails, say it as you so nothing gets lost
+    try {
+      const j = await botHelix('chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: status.userId, sender_id: db.twitchBot.user.id, message: String(message).slice(0, 490) }) });
+      const r = j.data?.[0];
+      if (r && r.is_sent === false) throw new Error(r.drop_reason?.message || 'Twitch dropped the message');
+      botStatus.error = null; botStatus.at = Date.now();
+      return r?.message_id || true;
+    } catch (e) { if (botStatus.error !== e.message) console.error('[twitch] the chat bot account could not talk, so you did instead:', e.message); botStatus.error = e.message; }
+  }
   if (!status.canChat) throw new Error('Sign in with Twitch again so Movie Royal can reply in chat (new permission)');
   const j = await helix('chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: status.userId, sender_id: status.userId, message: String(message).slice(0, 490) }) });
   const r = j.data?.[0];

@@ -25,8 +25,8 @@ VIAddVersionKey "LegalCopyright" "Movie Royal"
 
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
-!define MUI_ICON "icon.ico"
-!define MUI_UNICON "icon.ico"
+!define MUI_ICON "icon-backup.ico"
+!define MUI_UNICON "icon-backup.ico"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Welcome to Movie Royal Backup Bots"
 !define MUI_WELCOMEPAGE_TEXT "This installs Movie Royal Backup Bots ${VER}.$\r$\n$\r$\nIt runs Discord bots as a backup (yours and friends') when the 24/7 cloud bot has problems, and keeps Twitch chat stats while Movie Royal is closed. It starts with Windows, hidden in the tray by the clock.$\r$\n$\r$\nIt doesn't change Movie Royal. If you already have the backup app, this updates it and keeps your bots.$\r$\n$\r$\nClick Next to continue."
@@ -54,7 +54,7 @@ Section "Movie Royal Backup Bots"
   ; the program is renamed so it always opens as the backup (and Movie Royal's updates don't close it)
   Delete "$INSTDIR\${EXE}"
   Rename "$INSTDIR\MovieRoyal.exe" "$INSTDIR\${EXE}"
-  File "/oname=icon.ico" "icon.ico"
+  File "/oname=icon.ico" "icon-backup.ico"
   WriteUninstaller "$INSTDIR\${UNINST}"
   CreateShortCut "$SMPROGRAMS\Movie Royal Backup Bots.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
   CreateShortCut "$DESKTOP\Movie Royal Backup Bots.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0

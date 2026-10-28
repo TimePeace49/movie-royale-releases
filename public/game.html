@@ -3385,6 +3385,10 @@ function frame(now) {
   if (flash > 0) { ctx.globalAlpha = clamp(flash, 0, .6); ctx.fillStyle = flashColor; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; flash -= dt * 2; }
   if (replay) drawReplayLook();
   else if (phase !== 'idle') drawHUD();
+  if (replay || phase === 'idle') { // (the HUD isn't drawn: pop-ups still run out of time, so they don't show up late when the battle comes back on screen)
+    for (const b of banners) b.life -= dtReal; banners = banners.filter(b => b.life > 0);
+    for (const f of floaters) f.life -= dtReal; floaters = floaters.filter(f => f.life > 0);
+  }
   if (voteState && !replay && phase !== 'running') drawVote();
   else if (phase === 'idle' && !TRANSPARENT) { ctx.textAlign = 'center'; ctx.font = "64px 'Lilita One', Impact, sans-serif"; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillText('MOVIE ROYAL', CX, 140); ctx.font = "700 24px Inter, sans-serif"; ctx.fillText(connected || DEMO ? 'Waiting for the next round…' : 'Connecting to Movie Royal…', CX, 190); }
   if (!replay && cam.follow && phase !== 'idle') {
