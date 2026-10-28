@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.33.0 (test build)
+- **⚪🃏 Card battles can use every ball map.** Pick any map on the Card battles tab (or 🎲 Random): the packs fight there as card fighters with arms, legs, faces, health bars and blood. No chat power-ups in card battles; ones redeemed meanwhile wait for the next ball battle. Kung Fu Town stays card-only (it's not in the ball map list).
+- **Map menus show who a map is for:** ⚪ = ball battles, 🃏 = card battles, ⚪🃏 = both.
+- **🥊 FINAL FIGHT in Kung Fu Town:** when 2 packs are left, they're moved across the street from each other and each gets a weapon. The fight clock stops while "FINAL FIGHT! (A vs B)" shows, a bell rings, then they fight on a 20-second clock. Other maps get a final fight when you say so.
+- 🧪 Test → 🃏 Card battle tests: **⚪🃏 On a ball map** and **🥊 Final fight**.
+
 ## 1.32.0 (test build)
 - **Fixed: Movie Royal locked up after leaving Card battles in the middle of a fight.** A card fight you leave now finishes quietly behind the other tab (it still counts), and coming back never makes the app catch up on a long fight all at once.
 - **Fixed: 📦 Card pool − / + and typing how many packs you have didn't stick.** They save right away now, and the number boxes have no little arrows.

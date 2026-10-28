@@ -2066,6 +2066,9 @@ function setMap(id) {
 setMap('classic');
 
 // ================= fighters =================
+// 🃏 card battles on a ball map: the pieces are card packs with stick arms + legs and a face (SKIN 'cards')
+let SKIN = 'balls';
+function setSkin(k) { k = k === 'cards' ? 'cards' : 'balls'; if (k === SKIN) return; SKIN = k; for (const f of fighters) f._dirty = true; if (fighters.length) sizeAll(); }
 function initials(s) { return String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => [...w][0]).join('').toUpperCase(); }
 function makeToken(f) {
   // a picture that was already loaded (Twitch avatars after the first battle) calls this before the piece has a size yet:
@@ -2074,6 +2077,7 @@ function makeToken(f) {
   const D = Math.ceil((f.r + 6) * 2 * 2); // 2x for crispness
   const c = document.createElement('canvas'); c.width = c.height = D;
   const g = c.getContext('2d'), m = D / 2, rr = f.r * 2;
+  if (SKIN === 'cards') { cardToken(f, c, g, m, rr); f.token = c; return; }
   const ring = g.createLinearGradient(0, 0, D, D); ring.addColorStop(0, '#fff'); ring.addColorStop(.25, f.color); ring.addColorStop(1, shade(f.color, -40));
   g.fillStyle = ring; g.beginPath(); g.arc(m, m, rr + 8, 0, 7); g.fill();
   g.save(); g.beginPath(); g.arc(m, m, rr, 0, 7); g.clip();
@@ -2090,6 +2094,19 @@ function makeToken(f) {
   const shine = g.createLinearGradient(0, m - rr, 0, m); shine.addColorStop(0, 'rgba(255,255,255,.35)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = shine; g.beginPath(); g.ellipse(m, m - rr * .45, rr * .7, rr * .4, 0, 0, 7); g.fill();
   f.token = c;
+}
+function cardToken(f, c, g, m, rr) { // a card pack (portrait, crimped top + bottom) with a red headband and an angry face
+  const w = rr * 1.25, h = rr * 1.75, x = m - w / 2, y = m - rr * 1.05, tz = rr * .07;
+  const path = () => { g.beginPath(); g.moveTo(x, y); for (let i = 0; i <= 8; i++) g.lineTo(x + w * i / 8, y + (i % 2 ? tz : 0)); g.lineTo(x + w, y + h); for (let i = 8; i >= 0; i--) g.lineTo(x + w * i / 8, y + h - (i % 2 ? tz : 0)); g.closePath(); };
+  g.save(); path(); g.clip();
+  if (ok(f.img)) { const im = f.img, k = Math.max(w / im.naturalWidth, h / im.naturalHeight); g.drawImage(im, m - im.naturalWidth * k / 2, y + h / 2 - im.naturalHeight * k / 2, im.naturalWidth * k, im.naturalHeight * k); }
+  else { const gr = g.createLinearGradient(x, y, x + w, y + h); gr.addColorStop(0, shade(f.color, 30)); gr.addColorStop(1, shade(f.color, -50)); g.fillStyle = gr; g.fillRect(x, y, w, h); }
+  const gl = g.createLinearGradient(x, y, x + w, y + h * .6); gl.addColorStop(0, 'rgba(255,255,255,.35)'); gl.addColorStop(.4, 'rgba(255,255,255,0)'); g.fillStyle = gl; g.fillRect(x, y, w, h);
+  g.restore(); g.strokeStyle = 'rgba(20,10,20,.9)'; g.lineWidth = rr * .05; path(); g.stroke();
+  g.fillStyle = '#d82020'; g.fillRect(x, y + h * .12, w, h * .07); // headband
+  const ey = y + h * .3, s = rr / 40; g.lineWidth = 2.4 * s; g.strokeStyle = '#111';
+  for (const side of [-1, 1]) { const ex = m + side * w * .2; g.fillStyle = '#fff'; g.beginPath(); g.ellipse(ex, ey, 9 * s, 10 * s, 0, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#111'; g.beginPath(); g.arc(ex + 2 * s, ey + 2 * s, 4 * s, 0, 7); g.fill(); g.lineWidth = 3.4 * s; g.beginPath(); g.moveTo(ex - side * 11 * s, ey - 17 * s); g.lineTo(ex + side * 7 * s, ey - 10 * s); g.stroke(); g.lineWidth = 2.4 * s; }
+  const my = y + h * .47; g.fillStyle = '#fff'; g.fillRect(m - 9 * s, my - 4 * s, 18 * s, 8 * s); g.strokeRect(m - 9 * s, my - 4 * s, 18 * s, 8 * s);
 }
 function shade(hex, amt) { const n = parseInt(hex.slice(1), 16); const c = v => clamp(v + amt, 0, 255); return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`; }
 
@@ -2185,6 +2202,7 @@ function hurt(f, dmg) {
   if (f.hp == null) f.hp = 100 * Math.pow(f.mass || 1, .4);
   const keep = cfg.fair && f === destined;
   f.hp -= keep ? dmg * .3 : dmg; f.hurtAt = t;
+  if (SKIN === 'cards') sparkle(sx(f.x), sy(f.y) - f.r * 1.4, Math.random() < .5 ? '#c8102a' : '#8a0010', Math.min(18, 4 + Math.round(dmg / 3))); // 🃏 card fighters bleed
   if (f.hp > 0) return;
   if (keep) { f.hp = 1; return; }
   f.hp = null; // (back to full if it dodges)
@@ -2422,6 +2440,7 @@ function drawFighter(f, lobby) {
   if (!f.falling && !(f.dashing > 0) && cam.follow !== f && winner !== f && !(f.squash > t) && !f.eaten) { // fast path: no save/restore
     ctx.fillStyle = lobby ? `rgba(20,10,30,${clamp(.4 - f.h / 2500, .05, .4)})` : 'rgba(20,10,30,.38)'; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill();
     if ((f.glow ?? f.luck) >= 5) drawLuckFx(f, x, cy);
+    if (SKIN === 'cards') cardLimbs(f, x, cy, gy - lift);
     ctx.drawImage(f.token, x - D / 2, cy - D / 2, D, D);
     if (f.hurtAt != null && t - f.hurtAt < .25 && phase === 'running') { ctx.fillStyle = `rgba(255,60,80,${.5 * (1 - (t - f.hurtAt) / .25)})`; ctx.beginPath(); ctx.arc(x, cy, f.r, 0, 7); ctx.fill(); } // ouch
     if (f.shield > 0 || f.turbo) drawPowerFx(f, x, cy);
@@ -2432,6 +2451,7 @@ function drawFighter(f, lobby) {
   if (!f.falling) { ctx.fillStyle = `rgba(20,10,30,${lobby ? clamp(.4 - f.h / 2500, .05, .4) : .38})`; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill(); }
   if ((f.glow ?? f.luck) >= 5 && !f.falling) drawLuckFx(f, x, cy);
   if (f.dashing > 0) { ctx.globalAlpha *= .4; ctx.drawImage(f.token, x - D / 2 - f.vx * .04, cy - D / 2 - f.vy * .04 * K, D, D); ctx.globalAlpha = f.falling ? clamp(1 - f.fz / 900, 0, 1) : 1; }
+  if (SKIN === 'cards' && !f.falling) cardLimbs(f, x, cy, gy - lift);
   ctx.translate(x, cy); if (f.falling) ctx.rotate(f.fz * .006 * (f.vx > 0 ? 1 : -1));
   if (f.squash > t) ctx.scale(1.4, .55); // trampled flat
   if (f.eaten) { const k = clamp(lift / ((f.eaten.h || 260) * .92), 0, 1); ctx.rotate(f.spinA || 0); ctx.scale(1 - k * .55, 1 - k * .55); } // spinning up into the saucer
@@ -2443,6 +2463,18 @@ function drawFighter(f, lobby) {
   if (!f.falling && (f.shield > 0 || f.turbo)) drawPowerFx(f, x, cy);
   return cy;
 }
+function cardLimbs(f, x, cy, foot) { // 🃏 stick legs (walking with how fast it moves) + arms with fists
+  const r = f.r, sp = Math.min(1, Math.hypot(f.vx || 0, f.vy || 0) / 120), ph = clock * 12 + (f.wob || 0), hip = cy + r * .78, lw = Math.max(2, r * .13);
+  ctx.strokeStyle = '#151515'; ctx.lineCap = 'round'; ctx.lineWidth = lw;
+  for (const side of [-1, 1]) {
+    const sw = Math.sin(ph + (side > 0 ? Math.PI : 0)) * r * .35 * (sp + .1), fx = x + side * r * .28 + sw, fy = Math.max(hip + r * .2, foot - Math.max(0, Math.cos(ph + (side > 0 ? Math.PI : 0))) * r * .15 * sp);
+    ctx.beginPath(); ctx.moveTo(x + side * r * .28, hip); ctx.lineTo(fx, fy); ctx.stroke();
+    ctx.fillStyle = '#151515'; ctx.beginPath(); ctx.ellipse(fx + side * r * .08, fy, r * .2, r * .1, 0, 0, 7); ctx.fill();
+    const shx = x + side * r * .62, shy = cy + r * .05, hx = shx + side * r * (.35 + .15 * Math.sin(ph * .7 + side)), hy = shy + r * (.15 - .35 * sp * Math.max(0, Math.sin(ph + side)));
+    ctx.beginPath(); ctx.moveTo(shx, shy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = '#f2e0c4'; ctx.beginPath(); ctx.arc(hx, hy, r * .14, 0, 7); ctx.fill(); ctx.lineWidth = Math.max(1, r * .05); ctx.stroke(); ctx.lineWidth = lw;
+  }
+}
 function drawLabel(f, cy, lobby) {
   if (!f.alive || f.falling) return;
   const x = sx(f.x);
@@ -2453,6 +2485,7 @@ function drawLabel(f, cy, lobby) {
   const tw = ctx.measureText(text).width, y = cy - f.r / ls - 14;
   ctx.fillStyle = 'rgba(15,8,30,.72)'; roundRect(ctx, x - tw / 2 - 7, y - 10, tw + 14, 20, 10); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y + 1);
+  if (SKIN === 'cards' && !lobby) { const mx = 100 * Math.pow(f.mass || 1, .4), hp = clamp((f.hp ?? mx) / mx, 0, 1), bw = Math.max(40, tw + 6); ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(x - bw / 2 - 1, y + 11, bw + 2, 7); ctx.fillStyle = hp > .5 ? '#46e05a' : hp > .25 ? '#ffd23a' : '#ff3a3a'; ctx.fillRect(x - bw / 2, y + 12, bw * hp, 5); } // 🃏 health bar
   if (lobby) {
     const o = (f.odds * 100).toFixed(f.odds < .1 ? 1 : 0) + '%';
     ctx.font = "800 12px Inter, sans-serif"; const ow = ctx.measureText(o).width;
@@ -2706,8 +2739,8 @@ function drawHUD() {
     ctx.fillText(chatGate ? '💬 Got a movie in Discord? Type in chat NOW to put it on the cliff!' : 'Get ready — chaos redeemed now hits as soon as the fight starts!', CX, 258);
     ctx.font = "700 20px Inter, sans-serif"; ctx.fillStyle = '#ffd98a'; ctx.fillText(`${fighters.length} on the cliff · Bigger piece = better odds`, CX, 290);
   } else if (phase === 'waiting') {
-    const l1 = `${fighters.length} on the cliff${totalEntries > fighters.length ? ` (out of ${totalEntries})` : ''}  ·  bigger piece = better odds`;
-    const l2 = `${MAP.icon} ${MAP.name}  ·  ` + (chatGate ? '💬 Got a movie in Discord? Type in Twitch chat to put it on the cliff!' : 'chaos redeemed now hits as soon as the fight starts!');
+    const l1 = SKIN === 'cards' ? `🃏 ${fighters.length} packs on the cliff  ·  every pack has the same chance` : `${fighters.length} on the cliff${totalEntries > fighters.length ? ` (out of ${totalEntries})` : ''}  ·  bigger piece = better odds`;
+    const l2 = `${MAP.icon} ${MAP.name}  ·  ` + (SKIN === 'cards' ? 'last pack standing gets opened!' : chatGate ? '💬 Got a movie in Discord? Type in Twitch chat to put it on the cliff!' : 'chaos redeemed now hits as soon as the fight starts!');
     ctx.font = "700 24px Inter, sans-serif"; const pw = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width, 420) + 80;
     ctx.fillStyle = 'rgba(18,10,36,.72)'; roundRect(ctx, CX - pw / 2, 104, pw, 186, 24); ctx.fill();
     ctx.strokeStyle = 'rgba(255,201,74,.35)'; ctx.lineWidth = 2; roundRect(ctx, CX - pw / 2, 104, pw, 186, 24); ctx.stroke();
@@ -2798,7 +2831,7 @@ function applyPreview(m) {
   if (phase === 'ended' && !replay) { phase = 'idle'; fighters = []; winner = null; } // the app only sends this between battles: never stay stuck on the last battle
   if (m.heal && phase !== 'idle' && phase !== 'waiting') { if (replay) endReplay(true); SFX.stopMusic(); phase = 'idle'; fighters = []; winner = null; } // the app says no battle is going: catch up
   if (phase !== 'idle' && phase !== 'waiting') return;
-  listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length; pendingCount = m.queued || 0;
+  setSkin(m.skin); listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length; pendingCount = m.queued || 0;
   chatGate = !!m.chatGate; if (m.chaos) chaos = m.chaos;
   if (!m.fighters.length && !chatGate) { phase = 'idle'; fighters = []; return; }
   const changed = m.map ? setMap(m.map) : false;
@@ -2920,6 +2953,7 @@ function wheelMsg(m) {
   });
 }
 function startGame(m) {
+  setSkin(m.skin);
   hideWin(); hideClaim(); camReset(); REC.length = 0;
   gameId = m.gameId; listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length;
   if (m.chaos) chaos = m.chaos;

@@ -5,8 +5,9 @@
 import fs from 'fs';
 import path from 'path';
 import { db, save, uid, UPLOADS } from './store.js';
+import { MAP_LIST } from './maps.js';
 
-let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, linkDone: () => {}, goView: () => {} };
+let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, linkDone: () => {}, goView: () => {}, startBall: () => 'not ready', stopBall: () => {}, preview: () => {} };
 export function initCards(h) { hooks = { ...hooks, ...h }; C(); }
 
 export const WACKY = {
@@ -23,9 +24,12 @@ export const WACKY = {
   rage: { name: '😡 Rage mode', desc: 'The more hurt a pack is, the harder it hits' },
   weapons: { name: '🗡️ Weapons', desc: 'Swords, staffs and nunchucks drop into the street: whoever grabs one hits harder' }
 };
-export const CARD_MAPS = [
-  { id: 'kungfu', name: 'Kung Fu Town', icon: '🏯', desc: 'A martial arts showdown in an old Chinese town, like an old kung fu movie: lanterns, tiled roofs and a dusty street.' }
+export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). finalFight = the last two get a weapon each and a FINAL FIGHT with its own timer.
+  { id: 'kungfu', name: 'Kung Fu Town', icon: '🏯', desc: 'A martial arts showdown in an old Chinese town, like an old kung fu movie: lanterns, tiled roofs and a dusty street.', modes: ['card'], finalFight: true }
 ];
+// every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
+export const cardMaps = () => [...CARD_MAPS, ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true }))];
+export const isBallMap = id => !CARD_MAPS.some(m => m.id === id) && MAP_LIST.some(m => m.id === id);
 const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu' });
 export function C() {
   const c = (db.cards ||= {});
@@ -149,7 +153,7 @@ export function saveBattle(b) {
   if ('name' in b && String(b.name).trim()) x.name = String(b.name).trim().slice(0, 60);
   if ('games' in b) x.games = (Array.isArray(b.games) ? b.games : []).map(g => String(g).slice(0, 60)).slice(0, 50);
   if ('mode' in b) x.mode = b.mode === 'one' ? 'one' : 'all';
-  if ('map' in b) x.map = CARD_MAPS.some(m => m.id === b.map) ? b.map : 'kungfu';
+  if ('map' in b) x.map = b.map === 'random' || cardMaps().some(m => m.id === b.map) ? b.map : 'kungfu';
   if ('pace' in b) x.pace = Math.max(0, Math.min(100, Math.round(Number(b.pace) || 0))); // ⏳ elimination pacer strength (0 = off)
   if ('length' in b) x.length = Math.max(0, Math.min(240, Math.round(Number(b.length) || 0))); // how long a fight should last (0 = by how many packs)
   if (b.activate !== false) c.activeId = x.id;
@@ -175,10 +179,13 @@ export const live = { show: false, phase: 'idle', fight: null, last: null, wheel
 const wackyOn = () => Object.fromEntries(Object.keys(WACKY).map(k => [k, !!C().wacky[k]]));
 export function sceneMsg() {
   const b = activeBattle(), f = live.fight;
-  return { type: 'cardScene', show: live.show, phase: live.phase, map: f?.map || b.map || 'kungfu', battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test };
+  const map = f?.map || b.map || 'kungfu', ball = f ? !!f.ball : (b.map === 'random' ? false : isBallMap(map));
+  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test };
 }
 export function sendScene() { hooks.broadcast(sceneMsg(), 'overlay'); }
-export function setShow(on) { if (live.show === !!on) return; live.show = !!on; sendScene(); hooks.pushState(); }
+export function setShow(on) { if (live.show === !!on) return; live.show = !!on; sendScene(); hooks.pushState(); hooks.preview(); }
+/** On the Card battles tab with a ball map: the ball game shows the card fighters waiting on that map. */
+export function ballPreview() { if (!live.show || live.phase === 'fight') return null; const b = activeBattle(); if (!isBallMap(b.map)) return null; const { fighters } = fightersFor(b); return { map: b.map, name: b.name, fighters, pace: b.pace ?? 50, length: b.length || 0 }; }
 export function setWacky(key, on) {
   if (!WACKY[key]) throw new Error('Unknown wacky setting.');
   C().wacky[key] = !!on;
@@ -193,14 +200,16 @@ export function start(opts = {}) {
   const b = activeBattle();
   let { fighters, cut } = opts.test ? { fighters: testFighters(Math.max(2, Math.min(40, Number(opts.n) || 8))), cut: 0 } : fightersFor(b);
   if (fighters.length < 2) throw new Error(C().pool.some(p => p.status === 'active' && left(p) > 0) ? 'Need at least 2 packs in this card battle (check which games it uses, or "1 of each").' : 'Add at least 2 packs in the 🃏 Card pool tab first.');
-  live.fight = { id: uid(), battleId: b.id, name: opts.test ? '🧪 Pretend card battle' : b.name, map: b.map || 'kungfu', fighters, startedAt: Date.now(), test: !!opts.test,
+  const pickMap = opts.map && cardMaps().some(m => m.id === opts.map) ? opts.map : b.map === 'random' ? (() => { const all = cardMaps(); return all[Math.floor(Math.random() * all.length)].id; })() : (b.map || 'kungfu');
+  live.fight = { id: uid(), battleId: b.id, name: opts.test ? '🧪 Pretend card battle' : b.name, map: pickMap, ball: isBallMap(pickMap), fighters, startedAt: Date.now(), test: !!opts.test,
     seed: Math.floor(Math.random() * 2 ** 31), destined: fighters[Math.floor(Math.random() * fighters.length)].id }; // every pack has the same chance (no luck); every game screen plays the same fight from the same seed
+  if (live.fight.ball) { const err = hooks.startBall(live.fight, b); if (err) { live.fight = null; throw new Error(err); } } // ⚪ a ball map: the ball game plays it, with card fighters
   live.phase = 'fight'; live.show = true; live.last = null;
   hooks.goView('cards');
   sendScene(); hooks.pushState();
   return { n: fighters.length, cut };
 }
-export function stop() { if (live.phase !== 'fight') return {}; live.phase = 'idle'; live.fight = null; sendScene(); hooks.pushState(); if (live.wheelLink) { live.wheelLink = null; } return {}; }
+export function stop() { if (live.phase !== 'fight') return {}; if (live.fight?.ball) hooks.stopBall(); live.phase = 'idle'; live.fight = null; sendScene(); hooks.pushState(); if (live.wheelLink) { live.wheelLink = null; } return {}; }
 export function reset() { live.phase = 'idle'; live.fight = null; live.last = null; sendScene(); hooks.pushState(); return {}; }
 /** The game screen says who won (first screen to answer counts). */
 export function result(m) {
@@ -231,6 +240,6 @@ export function openFromWheel(id, auto, why) {
 }
 export function stateFor() {
   const c = C(), b = activeBattle(), { fighters, cut } = fightersFor(b);
-  return { pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: CARD_MAPS, history: c.history.slice(-30).reverse(),
+  return { pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
     live: { show: live.show, phase: live.phase, fightId: live.fight?.id || null, n: live.fight?.fighters.length || 0, startedAt: live.fight?.startedAt || 0, test: !!live.fight?.test, last: live.last, link: !!live.wheelLink }, inBattle: fighters.length, cut };
 }

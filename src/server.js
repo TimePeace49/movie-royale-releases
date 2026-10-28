@@ -72,9 +72,9 @@ function pushState() { clearTimeout(stateTimer); stateTimer = setTimeout(() => b
 // While no round is running, the game screen shows the active list's pieces waiting on the cliff (updates live as entries are added).
 let previewTimer, previewIds = null, previewList = null;
 // a finished round is still on screen but you moved on (picked another battle, or the game window reloaded): back to the waiting cliff
-function leaveEnded() {
+function leaveEnded(keepMap) {
   if (live.phase !== 'ended') return;
-  if (live.claim) clearTimeout(live.claim.timer); live.claim = null; nextMap();
+  if (live.claim) clearTimeout(live.claim.timer); live.claim = null; if (!keepMap && !live.game?.cards) nextMap(); // (a card battle on a ball map doesn't move the ball map rotation on)
   live.phase = 'idle'; live.game = null;
   broadcast({ type: 'reset' }, 'overlay');
 }
@@ -83,6 +83,10 @@ function refreshPreview(now = false) {
   clearTimeout(previewTimer); clearTimeout(refreshPreview.rw); refreshPreview.rw = setTimeout(() => syncRewards().catch(() => {}), 1500); // channel point rewards follow the map and battle
   previewTimer = setTimeout(async () => { try {
     if (live.phase !== 'idle') return;
+    const cp = cards.ballPreview(); // 🃏 Card battles tab with a ball map: the card fighters wait on that map
+    if (cp) { const fighters = cp.fighters.map(f => ({ id: f.id, label: f.name + (f.tag ? ' ' + f.tag : ''), sub: f.game || '', image: f.image || null, weight: 1, kind: 'cards' }));
+      lastPreview = { type: 'preview', map: cp.map, fighters, total: fighters.length, listName: cp.name, kind: 'cards', skin: 'cards', queued: 0, chaos: chaosState(), chatGate: false }; lastPreview.key = fighters.map(f => f.id).join(',');
+      broadcast(lastPreview, 'overlay'); lastPreview.at = Date.now(); return; }
     const list = getList(db.activeListId);
     if (!list) return;
     if (previewList !== list.id) { previewIds = null; previewList = list.id; }
@@ -302,7 +306,7 @@ setTimeout(() => { rewardKey = ''; syncRewards().catch(() => {}); }, 8000);
 function triggerEvent(event, by, source) {
   if (!EVENTS[event]) return;
   const fx = { id: uid(), event, by, source, at: Date.now() };
-  if (live.phase === 'lobby' || live.phase === 'running') broadcast({ type: 'effect', effect: fx }, 'overlay');
+  if ((live.phase === 'lobby' || live.phase === 'running') && !live.game?.cards) broadcast({ type: 'effect', effect: fx }, 'overlay');
   else { db.pendingEffects.push(fx); db.pendingEffects = db.pendingEffects.slice(-25); save(); broadcast({ type: 'queued', effect: fx }, 'overlay'); }
   pushState();
 }
@@ -635,6 +639,7 @@ wss.on('connection', (ws, req) => {
       live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
       const f = live.game.fighters.find(x => x.id === m.winnerId);
       if (!f) return;
+      if (live.game.cards) { live.lastWinner = { ...f, at: Date.now(), cards: true, gameId: live.game.id, listName: live.game.testName || '🃏 Card battle' }; try { markMapRun(live.game.map); } catch {} cards.result({ fightId: live.game.cards, winnerId: f.id, order: m.order }); save(); pushState(); return; } // 🃏 a card battle on a ball map
       if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history
       const list = getList(live.game.listId);
       try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
@@ -805,7 +810,19 @@ setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
 // 🃏 card battles (Card pool + Card battles tabs)
-cards.initCards({ broadcast, pushState, say: t => twitch.canSay() ? twitch.say(t) : Promise.resolve(), goView: v => broadcast({ type: 'goView', view: v }, 'control'), linkDone: () => { if (wheel.linkWaiting()?.cards) { cards.setShow(false); wheel.linkBack(); wheelChanged(); } } });
+cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true),
+  startBall: (fight, b) => { // ⚪🃏 a card battle on a ball map: the ball game plays it with card fighters (no luck: every pack the same odds)
+    if (live.phase === 'lobby' || live.phase === 'running') return 'A ball battle is going right now. Stop it first.';
+    if (![...wss.clients].some(c => c.role === 'overlay')) return "The game screen isn't open. Reload the control panel (or bring back the pop-out game window).";
+    leaveEnded(true); if (wheel.W().show) wheel.setShow(false);
+    const fighters = fight.fighters.map(f => ({ id: f.id, label: f.name + (f.tag ? ' ' + f.tag : ''), sub: f.game || '', image: f.image || null, weight: 1, kind: 'cards', color: f.color }));
+    live.game = { id: uid(), cards: fight.id, listId: null, fighters, total: fighters.length, map: fight.map, startedAt: Date.now(), ...(fight.test ? { test: true, testName: fight.name } : {}) };
+    live.phase = 'lobby'; live.claim = null;
+    broadcast({ type: 'start', map: fight.map, gameId: live.game.id, fighters, total: fighters.length, listName: fight.name, kind: 'cards', skin: 'cards', lobbySeconds: 3, gameSeconds: b.length || db.settings.gameSeconds, pacer: b.pace ?? 50, fairOdds: true, queued: [] }, 'overlay');
+    pushState(); return null;
+  },
+  stopBall: () => { if (live.game?.cards) { live.phase = 'idle'; live.game = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); } },
+ say: t => twitch.canSay() ? twitch.say(t) : Promise.resolve(), goView: v => broadcast({ type: 'goView', view: v }, 'control'), linkDone: () => { if (wheel.linkWaiting()?.cards) { cards.setShow(false); wheel.linkBack(); wheelChanged(); } } });
 // 🔀 a wheel spot sent us to a battle: put it on stream (and start it), then go back to the wheel once it has a winner
 function openBattleFromWheel(listId, auto, why) {
   cards.setShow(false); // (a battle goes on stream: no card battle on top of it)
@@ -870,7 +887,10 @@ async function announceNow() {
 }
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
   const v = String(req.body?.view || ''); live.view = v;
-  if (v === 'cards') { if (wheel.W().show) wheel.setShow(false); cards.setShow(true); } else if (v === 'battle' || v === 'wheel') cards.setShow(false); // 🃏 Card battles tab = the card battle on stream if (['battle', 'chat', 'giveaway', 'wheel'].includes(v)) live.lastGameView = v; res.json({ ok: true, kind: annKind() });
+  if (v === 'cards' || v === 'battle') { if (live.phase === 'ended' && (v === 'cards') !== !!live.game?.cards) { leaveEnded(true); } } // (each tab shows its own battle)
+  if (v === 'cards') { if (wheel.W().show) wheel.setShow(false); cards.setShow(true); } else if (v === 'battle' || v === 'wheel') cards.setShow(false);
+  if (v === 'cards' || v === 'battle') refreshPreview(true); // 🃏 Card battles tab = the card battle on stream
+  if (['battle', 'chat', 'giveaway', 'wheel'].includes(v)) live.lastGameView = v; res.json({ ok: true, kind: annKind() });
 });
 app.post('/api/announce', async (req, res) => { // { on } — or { now: true } to post right away — or { preview, kind } to see a message
   const a = annState().all;
@@ -1155,7 +1175,7 @@ app.post('/api/cards/upload', express.raw({ type: '*/*', limit: '15mb' }), (req,
 app.post('/api/cards/battle', wTry(b => cards.saveBattle(b)));
 app.post('/api/cards/battle/remove', wTry(b => cards.removeBattle(b.id)));
 app.post('/api/cards/active', wTry(b => cards.setActive(b.id)));
-app.post('/api/cards/start', wTry(b => { if (wheel.W().show) wheel.setShow(false); return cards.start({ test: !!b.test, n: b.n }); }));
+app.post('/api/cards/start', wTry(b => { if (wheel.W().show) wheel.setShow(false); return cards.start({ test: !!b.test, n: b.n, map: b.test ? b.map : null }); }));
 app.post('/api/cards/stop', wTry(() => cards.stop()));
 app.post('/api/cards/reset', wTry(() => cards.reset()));
 app.post('/api/cards/wacky', wTry(b => b.allOff ? cards.wackyOff() : cards.setWacky(b.key, b.on)));

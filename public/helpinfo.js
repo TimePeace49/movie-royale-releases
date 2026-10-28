@@ -505,6 +505,9 @@ H(/^⏹ stop it$/i, '⏹ Stop the pretend fight', 'Stops the card battle that is
 H(/^who's in$/i, '👥 Who\'s in', 'Everyone who entered the giveaway so far.');
 H(/(every pack|1 of each)\d*$/i, '🃏 Your card battles', 'One of your saved card battles: click it to change its settings and see its packs. The number is how many fighters it has.');
 H(/auto \+ link/i, '⚡🔀 Auto + Link', 'An ⚡ auto spot that always links somewhere: when it lands, the round timer pauses and Movie Royal goes straight to the wheel, battle or card battle you pick under 🔀 (⚙ spot settings). Then it comes back.');
+H(/⚪ ball · 🃏 card/i, '🗺️ Card battle map', 'Where the card battle is fought. ⚪ = a ball battle map, 🃏 = a card battle map, ⚪🃏 = both. Card fighters can use every map marked 🃏. 🎲 Random picks any of them each fight.');
+H(/^⚪🃏 on a ball map$|card fighters on a ball map/i, '⚪🃏 Card fight on a ball map', 'Pretend packs fight on Lava Lake (a ball map) as card fighters. Nothing in your pool changes.');
+H(/^🥊 final fight$|watch the final fight/i, '🥊 Final fight test', '6 pretend packs in Kung Fu Town: when 2 are left you see the FINAL FIGHT (weapons, the clock stops, a bell, then a timed fight).');
 H(/drag to make the battle screen or the side boxes bigger/i, '↔️ Resize the boxes', 'Drag this bar left or right to make the battle screen or the boxes beside it bigger. Double-click it to go back to normal. Movie Royal remembers it.');
 H(/^📦 every pack counts$|every pack you own is a fighter/i, '📦 Every pack counts', 'Every pack you own fights: 5 of one pack = 5 fighters.');
 H(/^1️⃣ 1 of each$|each kind of pack fights once/i, '1️⃣ 1 of each', 'Each kind of pack fights once, however many of it you have.');
