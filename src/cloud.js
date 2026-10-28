@@ -17,6 +17,7 @@ const BOT_V = (() => { try { return Number((fs.readFileSync(path.join(ROOT, 'src
 let checkedV = false;
 /** Is the bot on Cloudflare older than the one that comes with this version? (checks once) */
 export const botVersion = () => BOT_V;
+export const versionKnown = () => checkedV; // (false = couldn't ask the bot on Cloudflare yet, e.g. no internet)
 export async function botOutdated() { if (!enabled()) return false; if (!checkedV) await checkVersion(); return !!status.outdated; }
 async function checkVersion() {
   try { const r = await fetch(cloud().url + '/health', { signal: AbortSignal.timeout(10000) }); const j = await r.json(); status.botV = Number(j.v) || 1; status.outdated = status.botV < BOT_V; checkedV = true; } catch {}

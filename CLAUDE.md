@@ -42,7 +42,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - Each wheel has its own settings tab (spin time/speed, sounds, looks, pop-ups, channel point actions…). Shared stuff is in "🌐 All wheels".
 - Name changes: Settings → ✏️ Name changes moves everything (movies, history, stats, spins) to the new name.
 
-- **24/7 bot (`src/cloud-worker.js`):** it only changes on Cloudflare when Derek updates it. Whenever you change that file, bump `WORKER_V` at its top: the app then pops up "Update your 24/7 Discord bot" once on open (only while the bot is older; "Don't remind me again" lasts until the next bump).
+- **24/7 bot (`src/cloud-worker.js`):** it only changes on Cloudflare when Derek updates it. Whenever you change that file, bump `WORKER_V` at its top: the app then pops up "Update your 24/7 Discord bot" on open (only while the bot is older; retries every 2 min if it couldn't reach the bot; setting `botRemind`, "Don't remind me again" turns it off, Settings → Discord & picks turns it back on; Test tab `?test=1` shows it).
 
 - **Channel point rewards:** `syncRewards()` in server.js switches OFF (`enabled:false`, so they're hidden from the menu, Derek's wish) every reward the app made unless it's usable right now; the desktop app turns them all off on quit (`/api/rewards/pause-all`). Never refunds. `/api/wheel/rewards/takeover` makes Respin/Up/Down: keeps an old reward's price, deletes + remakes app-made ones, lists hand-made ones (`byHand`, only Twitch can delete those).
 - **Wild (Kirb) spots and a winner's other movies are hidden (`benched`), never deleted.** ▶ on the Battle tab sets `forceIn` (skips cooldown + chat check). "Reset wild spots" = `resetSpots()`.

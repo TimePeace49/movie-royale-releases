@@ -590,7 +590,7 @@
   <div class="card" style="grid-column:1 / -1">
     <h3>🤖 Discord self-test</h3>
     <p class="help">Checks everything about Discord that Movie Royal can check by itself: the bot, the channels, the pinned messages, the slash commands, who can see the debug channel, and the 24/7 bot. It runs the same code /suggest and /mymovies use, with a pretend user (nothing gets added). The results go to #movie-royal-debug too.</p>
-    <div class="row" style="gap:6px"><button class="primary" onclick="discordSelfTest(this)">🤖 Run the Discord self-test</button><button onclick="discordRestart(this)">🔄 Restart the Discord bot</button></div><div id="dSelf" style="margin-top:8px"></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="discordSelfTest(this)">🤖 Run the Discord self-test</button><button onclick="discordRestart(this)">🔄 Restart the Discord bot</button><button onclick="botUpdateOnOpen.test=true;botUpdateOnOpen()">☁️ Show the 24/7 bot update pop-up</button></div><div id="dSelf" style="margin-top:8px"></div>
     <h3 style="margin-top:16px">🛡️ Backup bot server</h3>
     <p class="help">Checks the hidden <code>#movie-royal-sync</code> channel: Movie Royal leaves its notes there, and shows whether a <b>Movie Royal Backup Bots</b> app (yours or a friend's) is watching your bot. Add your bot with one click (the button below, or 🍿 Add my bot in the backup app). To test a takeover, press ▶ Run this bot now in the backup app, then try /mymovies in Discord with Movie Royal closed.</p>
     <div class="row" style="gap:6px"><button onclick="bkCheck(this)">🛡️ Check the backup link</button><button onclick="bkAddHere(this)">🛡️ Add my bot to the backup on this PC</button></div>
@@ -1074,6 +1074,7 @@ function drawChecklist() {
     ['wheelPoints', 'A wheel channel point reward (respin / move) works', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/test/wheel-redeem',{kind:'respin',name:'test_viewer'}),12000)).then(()=>toast('🎡 Spinning, then test_viewer redeems a 🔁 respin'))")],
     ['wheelMove', '↕️ A viewer redeems Move a spot and types up / down in chat', T('Try it', "api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>{pchat(true,'test_viewer');pcRedeem('move');toast('↕️ test_viewer redeemed a Move: press up or down in 💬 Pretend chat',7000)},11000)).then(()=>toast('🎡 Spinning first…'))")],
     ['discordRestart', '🔄 Restart the Discord bot: it comes back online (Settings → Discord & picks)', T('Try it', "discordRestart()", false)],
+    ['botUpdPop', '☁️ The “Update your 24/7 Discord bot” pop-up shows (it only shows by itself when the bot really needs it)', T('Show it', "botUpdateOnOpen.test=true;botUpdateOnOpen()", false)],
     ['backupAdd', '🛡️ One click adds your bot to Movie Royal Backup Bots on this PC (no copy and paste)', T('Try it', "bkAddHere(this)", false)],
     ['backupUpd', '🔄 Movie Royal Backup Bots finds its own updates (🔍 Look for updates at the top of its window)', ''],
     ['backupLink', '🛡️ A backup bot server (Movie Royal Backup Bots) is watching your Discord bot', T('Check', "bkCheck()", false)],
@@ -2729,6 +2730,7 @@ function openSettings(force) {
       <div class="row" style="gap:6px"><button onclick="api('/api/discord/debug-setup').then(r=>toast(r.warnings?.length ? '⚠️ '+r.warnings.map(esc).join('<br>') : '🐞 #movie-royal-debug is set up and locked', 8000))">🐞 Make / fix the debug channel</button><button class="ghost" onclick="api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent a test problem to #movie-royal-debug':'⚠️ The bot is offline, or the debug channel isn\'t made yet'))">Send a test</button></div>
       <h3 style="margin-top:18px">☁️ 24/7 mode — Discord works when your PC is off</h3>
       <div id="cloudBox">${cloudHTML()}</div>
+      ${ck('botRemind', '🔔 Pop up when the 24/7 bot needs an update (when Movie Royal opens)')}
       <h3 style="margin-top:18px">🛡️ Backup bot server</h3>
       <div id="bkBox">${bkHTML()}</div>
       <h3 style="margin-top:18px">🎬 Pick rules</h3>
@@ -2881,7 +2883,7 @@ function cloudHTML() {
   if (c.enabled) return `<div class="card soft">${c.linked === false ? `<div class="card" style="border-color:var(--bad);margin:0 0 8px"><b>⚠️ Discord isn't connected to the 24/7 bot</b><p class="help" style="margin:4px 0">So commands only work while Movie Royal is open. Movie Royal keeps trying to fix it${c.linkError ? ` (${esc(c.linkError)})` : ''}. If it stays like this, paste your Cloudflare token below and press Update.</p><div class="row"><input class="grow" type="password" placeholder="Cloudflare API token"><button class="primary" onclick="cloudOn(this)">🔄 Set it up again</button></div></div>` : ''}<div class="row"><span class="grow">${c.linked === false ? '🟠' : '🟢'} <b>On.</b> <code>/suggest</code>, <code>/swap</code> and <code>/mymovies</code> answer 24/7, even with this PC off. Picks made while Movie Royal was closed come in when you open it.</span></div>
     <p class="help">Last synced: <b>${ago(c.lastSync)}</b>${c.pulled ? ` · ${c.pulled} pick${c.pulled === 1 ? '' : 's'} brought in` : ''}${c.lastError ? ` · <span style="color:var(--bad)">⚠️ ${esc(c.lastError)}</span>` : ''}</p>
     ${(c.rejected || []).length ? `<details><summary>${c.rejected.length} pick${c.rejected.length === 1 ? '' : 's'} that couldn't be added (they got a DM)</summary>${c.rejected.map(r => `<div class="help">${esc(r.name)}: ${esc(r.movie)} — ${esc(r.why)}</div>`).join('')}</details>` : ''}
-    ${c.outdated ? `<div class="card" style="border-color:var(--gold);margin:8px 0"><b>🆕 The 24/7 bot needs an update</b><p class="help" style="margin:4px 0">This version of Movie Royal has fixes for the Discord bot (like <code>/linktwitch</code> not answering, and free replacement picks). Paste your Cloudflare API token and press Update. Make a new token the same way as before if you don't have it (My Profile → API Tokens → Edit Cloudflare Workers template).</p>
+    ${c.outdated ? `<div class="card" style="border-color:var(--gold);margin:8px 0"><b>🆕 The 24/7 bot needs an update</b><p class="help" style="margin:4px 0">This version of Movie Royal has changes for the Discord bot on Cloudflare (it doesn't update by itself). Paste your Cloudflare API token and press Update. Make a new token the same way as before if you don't have it (My Profile → API Tokens → Edit Cloudflare Workers template).</p>
       <div class="row"><input id="cfToken" class="grow" type="password" placeholder="Cloudflare API token"><button class="primary" onclick="cloudOn(this)">🔄 Update the 24/7 bot</button></div></div>` : ''}
     <div class="row"><button onclick="cloudSync(this)">🔄 Sync now</button><button onclick="cloudCheck(this)">🔍 Check it works when I'm closed</button><button class="ghost danger" onclick="if(confirm('Turn off 24/7 mode? Discord commands will only work while Movie Royal is open.')) api('/api/cloud/disable').then(()=>{toast('24/7 mode is off');openSettings(true)})">Turn off</button></div></div>`;
   return `<p class="help">A tiny copy of the bot runs on <b>Cloudflare’s free plan</b> so people can pick movies any time. It follows all your rules, and Movie Royal brings the picks in when you open it. One-time setup, about 5 minutes:</p>
@@ -3080,11 +3082,13 @@ async function whatsNew() { // an update added something to set up? ask once
 async function botUpdateOnOpen() { // the 24/7 Discord bot on Cloudflare is older than this version: ask every time the app opens until it's updated
   try {
     if (upd.open) return setTimeout(botUpdateOnOpen, 3000);
-    const r = await fetch('/api/cloud/outdated').then(r => r.json()); if (!r.outdated) return;
-    $('updBody').innerHTML = `<h3>☁️ Update your 24/7 Discord bot</h3><p class="help">This version of Movie Royal comes with fixes for the Discord bot that runs on Cloudflare: <code>/linktwitch</code> and other commands always answer now, it stays under Cloudflare's free daily limit, and free replacement picks work. The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token once.</p>
+    const r = await fetch('/api/cloud/outdated' + (botUpdateOnOpen.test ? '?test=1' : '')).then(r => r.json()); botUpdateOnOpen.test = false;
+    if (r.unknown && (botUpdateOnOpen.tries = (botUpdateOnOpen.tries || 0) + 1) < 6) return setTimeout(botUpdateOnOpen, 120000); // couldn't reach the bot yet: ask again in 2 minutes
+    if (!r.outdated) return;
+    $('updBody').innerHTML = `<h3>☁️ Update your 24/7 Discord bot</h3><p class="help">This version of Movie Royal comes with changes for the Discord bot that runs on Cloudflare (your 24/7 bot), like working with the backup bot server. The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token once.</p>
       <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&upd.close())">🔄 Update the bot</button></div>
       <p class="help">No token? Make one at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → <b>Create Token</b> → <b>Edit Cloudflare Workers</b> template → your account + All zones → <b>Create Token</b> → <b>Copy</b>.</p>
-      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="api('/api/settings',{botSkipV:${r.v || 0}}).catch(()=>{});upd.close();toast('OK, no more reminders for this update. You can still update it in Settings → Discord.')">Don't remind me again</button><button onclick="upd.close()">Later</button></div>`;
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="api('/api/settings',{botRemind:false}).catch(()=>{});upd.close();toast('OK, no more reminders. Turn them back on in Settings → Discord & picks → 24/7 mode. You can still update the bot there.', 8000)">Don't remind me again</button><button onclick="upd.close()">Later</button></div>`;
     upd.showModal();
   } catch {}
 }

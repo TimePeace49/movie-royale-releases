@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.28.11 (test build)
+- **☁️ The "Update your 24/7 Discord bot" pop-up is back on.** It shows when Movie Royal opens, but only when the bot on Cloudflare really is older than this version. If the internet was slow when Movie Royal opened, it checks again a couple of minutes later.
+  - New box in Settings → Discord & picks: **🔔 Pop up when the 24/7 bot needs an update**. "Don't remind me again" on the pop-up unticks it, so you can turn it back on there.
+  - 🧪 Test tab: **☁️ Show the 24/7 bot update pop-up** shows it any time.
+
 ## 1.28.10 (latest release)
 - **🧪 Test tab: the preview window doesn't pop up by itself any more.** It only shows when you run a test that changes the stream screen (an alert, a battle, a wheel landing, pretend chat…). Checks like the Discord self-test, the backup link or Restart the Discord bot leave it closed. **📺 Show the stream screen** still opens it any time.
 
