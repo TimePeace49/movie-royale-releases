@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.35.1 (test build)
+- 👥 Movie Royal now opens on the **People** tab instead of the Battle tab. (Like before, the battle is what's on stream when it opens, not the wheel.)
+
 ## 1.35.0 (test build)
 - 🧙 **New card map: Wizard Battle** (card battles only). The packs are wizards with pointy hats and wands on a giant floating platform in the night sky. They cast magic bolts, fireballs and lightning, and meteors smash parts of the platform. Cracked stone falls away: a pack that falls through a hole or off the edge is out. No weapons. When 2 are left the platform rebuilds itself for a FINAL FIGHT.
 - 🏛️ **New card map: Colosseum** (card battles only). A gladiator battle: every pack starts with its own weapon and keeps it (no stealing). 8 kinds: sword, spear, trident, axe, mace, flail, hammer, scimitar; spears reach further, axes and hammers hit harder but slower. FINAL FIGHT when 2 are left. Gladiator helmets, war drum music.

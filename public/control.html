@@ -380,7 +380,7 @@
 <header>
   <h1>🍿 MOVIE ROYAL</h1>
   <nav id="nav">
-    <button data-v="battle" class="on">⚔️ Battle</button>
+    <button data-v="battle">⚔️ Battle</button>
     <button data-v="pool">🎬 Movie Pool</button>
     <button data-v="cards">🃏 Card battles</button>
     <button data-v="cardpool">📦 Card pool</button>
@@ -388,7 +388,7 @@
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
     <button data-v="tchat">💬 Chat</button>
-    <button data-v="people">👥 People</button>
+    <button data-v="people" class="on">👥 People</button>
     <button data-v="history">📜 History</button>
     <button data-v="test">🧪 Test<span id="errNav" title="Something went wrong: see 🧪 Test → ⚠️ Errors"></span><span id="newNav"></span></button>
     <button data-v="help">❓ Help</button>
@@ -435,7 +435,7 @@
 </div>
 
 <!-- ⚔️ BATTLE -->
-<section class="view on" id="v-battle">
+<section class="view" id="v-battle">
  <div class="battleTop">
   <div id="stageSlot">
     <div id="stageBox"><div id="stageSize"></div></div>
@@ -640,7 +640,7 @@
   </div>
 </section>
 
-<section class="view" id="v-people"><div class="pane" id="peopleBody"></div></section>
+<section class="view on" id="v-people"><div class="pane" id="peopleBody"></div></section>
 
 <!-- 📜 HISTORY -->
 <section class="view" id="v-tchat"><iframe id="chatFrame" title="Chat" style="width:100%;height:100%;border:0;border-radius:16px"></iframe></section>
@@ -903,7 +903,7 @@
 <script src="chat.js"></script>
 <script src="profile.js"></script>
 <script>
-let S = null, sock = null, filter = '', showOut = false, view = 'battle', sub = 'account', hist = null, histFor = null, histVer = -1, histList = null, settingsDirty = false;
+let S = null, sock = null, filter = '', showOut = false, view = 'people', sub = 'account', hist = null, histFor = null, histVer = -1, histList = null, settingsDirty = false;
 const $ = id => document.getElementById(id);
 // Windows desktop app: typing can stop working after a yes/no pop-up until the window is re-focused, so re-focus it right after
 { const nc = window.confirm.bind(window); window.confirm = m => { const r = nc(m); fetch('/api/refocus', { method: 'POST' }).catch(() => {}); return r; }; }
@@ -1226,7 +1226,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
-  wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
+  startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1292,6 +1292,7 @@ function drawChecklist() {
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
     ['cardBallMaps', '⚪🃏 Card battles can use every ball map: the packs fight there as card fighters (pick the map on the Card battles tab)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'lava')">Try it</button>`],
+    ['startPeople', '👥 Movie Royal opens on the People tab (not the Battle tab)', `<button class="ghost" style="padding:3px 9px" onclick="location.reload()">Reload to see</button>`],
     ['wizardMap', '🧙 Wizard Battle (card map): wizards cast bolts, fireballs and lightning on a floating platform; tiles crack and fall, packs fall through holes or off the edge; FINAL FIGHT on a rebuilt platform', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(12,[],'wizard')">Try it</button>`],
     ['colosseumMap', '🏛️ Colosseum (card map): every pack has its own weapon (8 kinds) and keeps it, no stealing; FINAL FIGHT', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(12,[],'colosseum')">Try it</button>`],
     ['lions', '🦁 Lions (Colosseum): turn on in the 🤪 Wacky bar and lions come out of the tunnels and hunt; turn off and they stop and go back in', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,['lions'],'colosseum')">Try it</button>`],
@@ -3678,7 +3679,7 @@ async function updateOnOpen() { // asks once each time the app opens, if there's
 }
 
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
-fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if (view === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 <script src="spell.js"></script>
