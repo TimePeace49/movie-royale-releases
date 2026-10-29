@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.36.0 (latest release)
+- ▶️ **Test tab: “Try each kind of battle” at the top.** Its own box for each kind, each with ▶ Run it: ⚔️ ball battle, 🎬 Discord movie battle, 🔢 number battle, 🎡 wheel, 🏯 Kung Fu Town, 🔔 Rumble Ring, 🧙 Wizard Battle, 🏛️ Colosseum, and ⚪🃏 a card battle on a ball map. The preview window pops up so you can watch.
+- **Fixed: number balls 10 and up showed only their first digit** (10 showed as 1). The whole number shows now, smaller when it's long.
+
 ## 1.35.5 (test build)
 - 📌 **Keep the winner in my pool** (right side of the 🃏 Card battles tab, off by default): when it's on, the winning pack stays in your Card pool instead of one coming off its count. It still shows in the latest winners, and the winner screen says “Stays in the pool”.
 

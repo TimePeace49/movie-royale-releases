@@ -3,6 +3,16 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.36.0: What's new
+Everything since 1.35.3.
+
+- ▶️ **Test tab: “Try each kind of battle”** at the top: one box for each kind of battle (ball, Discord movie, number, wheel, and every card map), each with ▶ Run it. The preview window pops up so you can watch.
+- 📌 **Keep the winner in my pool** (right side of the 🃏 Card battles tab, off by default): the winning pack stays in your Card pool instead of one coming off its count.
+- 🔴 **NEW / 🔵 UPDATED on card maps** too, like the ball maps.
+- **Fixed:** the card battle screen loading too big when you open the app and go to Card battles.
+- **Fixed:** switching card maps before a fight (e.g. Colosseum → Wizard Battle) made packs fall off and weapons fly. They now line up fresh on the new map.
+- **Fixed:** number balls 10 and up showed only their first digit.
+
 ## v1.35.3: What's new
 Everything since 1.30.5.
 

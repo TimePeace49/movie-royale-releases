@@ -2069,7 +2069,7 @@ setMap('classic');
 // 🃏 card battles on a ball map: the pieces are card packs with stick arms + legs and a face (SKIN 'cards')
 let SKIN = 'balls';
 function setSkin(k) { k = k === 'cards' ? 'cards' : 'balls'; if (k === SKIN) return; SKIN = k; for (const f of fighters) f._dirty = true; if (fighters.length) sizeAll(); }
-function initials(s) { return String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => [...w][0]).join('').toUpperCase(); }
+function initials(s) { if (/^-?\d{1,4}$/.test(String(s).trim())) return String(s).trim(); /* 🔢 a number shows whole (10, not 1) */ return String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => [...w][0]).join('').toUpperCase(); }
 function makeToken(f) {
   // a picture that was already loaded (Twitch avatars after the first battle) calls this before the piece has a size yet:
   // that used to crash and leave the cliff empty. sizeAll() draws it as soon as the size is known.
@@ -2087,8 +2087,8 @@ function makeToken(f) {
   } else {
     const bgG = g.createRadialGradient(m - rr * .4, m - rr * .4, 2, m, m, rr); bgG.addColorStop(0, shade(f.color, 40)); bgG.addColorStop(1, shade(f.color, -30));
     g.fillStyle = bgG; g.fillRect(0, 0, D, D);
-    g.fillStyle = '#fff'; g.font = `${Math.round(rr * .8)}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowOffsetY = 3; g.fillText(initials(f.label) || '?', m, m + 2);
+    g.fillStyle = '#fff'; const ini = initials(f.label) || '?', il = [...ini].length; g.font = `${Math.round(rr * (il <= 2 ? .8 : il === 3 ? .62 : .5))}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowOffsetY = 3; g.fillText(ini, m, m + 2);
   }
   g.restore();
   const shine = g.createLinearGradient(0, m - rr, 0, m); shine.addColorStop(0, 'rgba(255,255,255,.35)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
