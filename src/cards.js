@@ -5,7 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import { db, save, uid, UPLOADS } from './store.js';
-import { MAP_LIST } from './maps.js';
+import { MAP_LIST, inSeason } from './maps.js';
 
 let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, linkDone: () => {}, goView: () => {}, startBall: () => 'not ready', stopBall: () => {}, preview: () => {} };
 export function initCards(h) { hooks = { ...hooks, ...h }; C(); }
@@ -37,7 +37,7 @@ const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev 
 export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
-export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
+export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, season: m.season, seasonLabel: m.seasonLabel, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
 export const isBallMap = id => !CARD_MAPS.some(m => m.id === id) && MAP_LIST.some(m => m.id === id);
 const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu' });
 export function C() {
@@ -226,7 +226,7 @@ export function start(opts = {}) {
   const b = activeBattle();
   let { fighters, cut } = opts.test ? { fighters: testFighters(Math.max(2, Math.min(40, Number(opts.n) || 8))), cut: 0 } : fightersFor(b);
   if (fighters.length < 2) throw new Error(C().pool.some(p => p.status === 'active' && left(p) > 0) ? 'Need at least 2 packs in this card battle (check which games it uses, or "1 of each").' : 'Add at least 2 packs in the 🃏 Card pool tab first.');
-  const pickMap = opts.map && cardMaps().some(m => m.id === opts.map) ? opts.map : b.map === 'random' ? (() => { const all = cardMaps(); return all[Math.floor(Math.random() * all.length)].id; })() : (b.map || 'kungfu');
+  const pickMap = opts.map && cardMaps().some(m => m.id === opts.map) ? opts.map : b.map === 'random' ? (() => { const all = cardMaps().filter(m => inSeason(m)); return all[Math.floor(Math.random() * all.length)].id; })() : (b.map || 'kungfu');
   live.fight = { id: uid(), battleId: b.id, name: opts.test ? '🧪 Pretend card battle' : b.name, map: pickMap, ball: isBallMap(pickMap), fighters, startedAt: Date.now(), test: !!opts.test,
     seed: Math.floor(Math.random() * 2 ** 31), destined: fighters[Math.floor(Math.random() * fighters.length)].id }; // every pack has the same chance (no luck); every game screen plays the same fight from the same seed
   if (live.fight.ball) { const err = hooks.startBall(live.fight, b); if (err) { live.fight = null; throw new Error(err); } } // ⚪ a ball map: the ball game plays it, with card fighters

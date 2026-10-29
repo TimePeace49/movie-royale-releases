@@ -165,6 +165,7 @@ window.SFX = (() => {
     crash: (o = {}) => { const now = ac.currentTime; if (now - (S._crashAt || 0) < .06) return; S._crashAt = now; const v = o.v ?? 1, pan = o.pan || 0; noise({ dur: .35, v: .42 * v, type: 'lowpass', f0: 2600, f1: 300, q: .7 }); tone({ type: 'sine', f0: 110, f1: 40, dur: .25, v: .5 * v, pan }); noise({ dur: .5, v: .12 * v, type: 'highpass', f0: 4000, f1: 2500, at: .03 }); for (let i = 0; i < 3; i++) tone({ type: 'square', f0: 1800 + Math.random() * 1500, dur: .05, v: .03 * v, at: .05 + i * .06 + Math.random() * .04, pan }); }, // metal crunch + glass bits
     skid: (o = {}) => { noise({ dur: .7, v: .14 * (o.v ?? 1), type: 'bandpass', f0: 2100, f1: 1500, q: 9 }); tone({ type: 'sawtooth', f0: 900, f1: 700, dur: .6, v: .025 }); },
     rev: () => { for (const [d, at] of [[1, 0], [1.25, .55]]) { tone({ type: 'sawtooth', f0: 55 * d, f1: 150 * d, dur: .5, v: .16, a: .05, at }); tone({ type: 'square', f0: 27 * d, f1: 75 * d, dur: .5, v: .1, a: .05, at }); } tone({ type: 'sawtooth', f0: 150, f1: 70, dur: .8, v: .1, at: 1.05 }); },
+    gobble: (o) => { for (let i = 0; i < 5; i++) tone({ type: 'sawtooth', f0: 520 - i * 30, f1: 360 - i * 30, dur: .07, v: .14 * (o.v ?? 1), at: i * .075 }); }, // 🦃 an evil turkey gobble
     gallop: () => { for (let i = 0; i < 10; i++) { tone({ type: 'sine', f0: 95, f1: 50, dur: .07, v: .28, at: i * .14 }); tone({ type: 'sine', f0: 85, f1: 45, dur: .07, v: .2, at: i * .14 + .05 }); } },
     // 🃏 card battles (kung fu)
     punch: () => { noise({ dur: .09, v: .45, f0: 2200, f1: 400, q: .8 }); tone({ type: 'sine', f0: 160, f1: 60, dur: .12, v: .45 }); },
@@ -214,6 +215,20 @@ window.SFX = (() => {
   function sched() {
     while (nextT < ac.currentTime + .12) {
       const at = nextT - ac.currentTime, i = step % 16, bar = Math.floor(step / 16) % 4;
+      if (curMap === 'xmas' && mode === 'fight') { // 🎅 evil holiday: sleigh bells, a stomping minor bass and a creepy music-box tune (original)
+        const mel = [69, 0, 72, 71, 69, 0, 64, 0, 65, 0, 69, 68, 64, 0, 0, 0][i] - (bar === 2 ? 2 : 0);
+        if (i % 4 === 0) tone({ type: 'sine', f0: 120, f1: 50, dur: .15, v: .5, at, bus: musicBus });
+        if (i % 2 === 0) noise({ dur: .05, v: .07 + intensity * .03, type: 'highpass', f0: 7000, at, bus: musicBus }); // bells
+        if (i % 4 === 0) tone({ type: 'triangle', f0: hz([45, 45, 41, 40][bar]), dur: STEP * 3, v: .1, at, bus: musicBus });
+        if (mel > 10) tone({ type: 'sine', f0: hz(mel + 12), dur: STEP * 1.6, v: .05 + intensity * .02, at, bus: musicBus }), tone({ type: 'triangle', f0: hz(mel + 24), dur: STEP * .8, v: .015, at, bus: musicBus });
+      } else
+      if (curMap === 'turkey' && mode === 'fight') { // 🦃 a fast barn hoedown: thumping bass, clap and a fiddle-ish lead (original)
+        const mel = [67, 69, 71, 74, 71, 69, 67, 64, 62, 64, 67, 69, 67, 64, 62, 59][i] + [0, 0, 5, 2][bar];
+        if (i % 4 === 0) tone({ type: 'sine', f0: 110, f1: 50, dur: .14, v: .5, at, bus: musicBus });
+        if (i % 4 === 2) tone({ type: 'triangle', f0: hz([43, 43, 48, 50][bar]), dur: STEP * 1.5, v: .1, at, bus: musicBus });
+        if (i % 8 === 4) noise({ dur: .08, v: .18, type: 'bandpass', f0: 1500, q: .8, at, bus: musicBus });
+        tone({ type: 'sawtooth', f0: hz(mel), dur: STEP * .85, v: .035 + intensity * .02, at, bus: musicBus, detune: 8 });
+      } else
       if (curMap === 'zombies' && mode === 'fight') { // 🧟 creepy: a heartbeat, a low drone and a few eerie notes
         if (i === 0 || i === 3) tone({ type: 'sine', f0: 70, f1: 40, dur: .18, v: .5 + intensity * .2, at, bus: musicBus });
         if (i === 0 && bar % 2 === 0) [38, 45].forEach(n => tone({ type: 'sawtooth', f0: hz(n), dur: STEP * 32, v: .025, a: 1, at, bus: musicBus }));

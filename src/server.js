@@ -20,7 +20,7 @@ import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
 import * as backuplink from './backuplink.js';
-import { MAP_LIST, mapById, GROUND_EVENTS } from './maps.js';
+import { MAP_LIST, mapById, GROUND_EVENTS, inSeason, setHolidayAllYear } from './maps.js';
 import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
@@ -230,10 +230,11 @@ async function buildFighters(list, keepIds = null) {
         image = u?.avatar || b?.avatar || null;
         owner = b ? (u?.name || b.name) : streamerName();
       } else if (e.twitch) { ownerLogin = e.twitch; owner = e.label; image = users.get(e.twitch)?.avatar || e.image; }
+      const wl = watchLuck(list, ownerLogin); // 👀 watch luck (this battle's setting)
       return {
-        id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : 1) * 10000) / 10000, luck: list.type === 'movies' && luckOn() ? (e.luckPct || 0) : 0,
+        id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : 1) * (1 + wl / 100) * 10000) / 10000, luck: Math.min(100, (list.type === 'movies' && luckOn() ? (e.luckPct || 0) : 0) + wl), watchLuck: wl || undefined,
         // the glow + flames show on every battle type and every map: movies use their luck, custom/chat/giveaway lists use their extra odds (x2 = 10%, x6 = 50% flames)
-        glow: e.luckPct > 0 ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10)),
+        glow: Math.min(100, (e.luckPct > 0 ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
         showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
         backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null
@@ -242,6 +243,15 @@ async function buildFighters(list, keepIds = null) {
   };
 }
 
+// 👀 watch luck: in a battle with it on, every `every` streams someone watched since it was turned on = +`amount` luck (max 100)
+function watchHours(list, login) { const k = String(login || '').toLowerCase(), v = k && db.viewers?.[k]; if (!v) return 0; return Math.max(0, (v.watchMins || 0) - (list.watchLuck?.base?.[k] || 0)) / 60; } // hours watched since watch luck was turned on
+function watchLuck(list, login) { const w = list?.watchLuck; if (!w?.on || !login) return 0; return Math.min(100, Math.floor(watchHours(list, login) / Math.max(1, w.hours || 10)) * (w.amount || 1)); }
+app.get('/api/lists/:id/watch-luck', (req, res) => { // who has watch luck right now (for the settings window)
+  const l = getList(req.params.id); if (!l) return res.status(404).json({ error: 'No such battle' });
+  const w = l.watchLuck || { on: false, hours: 10, amount: 1, since: 0 }, rows = [];
+  for (const e of l.entries.filter(x => x.status === 'active')) { const login = l.type === 'movies' ? (e.backers?.[0] ? db.links[e.backers[0].discordId] : null) : e.twitch; if (!login) continue; const h = Math.round(watchHours(l, login) * 10) / 10; rows.push({ label: e.label, login, hours: h, luck: watchLuck(l, login) }); }
+  rows.sort((a, b) => b.luck - a.luck || b.hours - a.hours); res.json({ on: !!w.on, hours: w.hours || 10, amount: w.amount || 1, since: w.since, rows: rows.slice(0, 50), linked: rows.length });
+});
 // ---------- 🎉 chat battle power-ups: a viewer powers up their own ball ----------
 const POWER_INFO = { shield: { icon: '🛡️', say: 'a shield (it saves them once)' }, mega: { icon: '💪', say: 'a MEGA ball' }, turbo: { icon: '⚡', say: 'turbo speed' }, ghost: { icon: '👻', say: 'GHOST mode (nobody can bump them for the first 10 seconds)' }, spiky: { icon: '🦔', say: 'SPIKES (bumping them hurts)' }, magnet: { icon: '🧲', say: 'a MAGNET (it pulls everyone in)' } };
 function powerUp(r, kind) {
@@ -1630,6 +1640,15 @@ app.patch('/api/lists/:id', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (req.body.name != null) l.name = String(req.body.name).slice(0, 60);
   if (req.body.joinOpen != null) l.joinOpen = !!req.body.joinOpen;
+  if (req.body.watchLuck && typeof req.body.watchLuck === 'object') { // 👀 watch luck: every N hours watched (counted from when it's turned on) = +X% luck in this battle
+    const w = req.body.watchLuck, cur = l.watchLuck ||= { on: false, hours: 10, amount: 1, since: 0, base: {} };
+    const snap = () => { cur.since = Date.now(); cur.base = Object.fromEntries(Object.entries(db.viewers || {}).filter(([, v]) => v.watchMins > 0).map(([k, v]) => [k, v.watchMins])); }; // (watch time before today doesn't count)
+    if (w.on != null) { if (w.on && !cur.on) snap(); cur.on = !!w.on; }
+    if (w.hours != null) cur.hours = Math.max(1, Math.min(500, Math.round(Number(w.hours) || 10)));
+    if (w.amount != null) cur.amount = Math.max(1, Math.min(100, Math.round(Number(w.amount) || 1)));
+    if (w.restart) snap();
+    refreshPreview();
+  }
   if (req.body.bestOf != null && l.type !== 'movies') { l.bestOf = [1, 3, 5, 7, 9].includes(Number(req.body.bestOf)) ? Number(req.body.bestOf) : 1; if (live.series?.listId === l.id) live.series = null; if (l.giveaway) giveawaySettings().bestOf = l.bestOf; }
   if (req.body.screenTitle != null) { l.screenTitle = String(req.body.screenTitle).slice(0, 60); refreshPreview(); }
   if (req.body.fun && typeof req.body.fun === 'object' && l.type === 'chat') { // 🎉 fun mode for chat battles
@@ -2037,11 +2056,12 @@ app.post('/api/maps/reset-tags', (req, res) => { // ↺ the 🔴 NEW / 🔵 UPDA
   save(); pushState(); cards.sendScene?.(); res.json({ ok: true });
 });
 function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; mapRuns()[id] = { rev: m.rev || 1, at: Date.now() }; } // only battles while you're live count
+setHolidayAllYear(() => db.settings.holidayAllYear); // 🎄 holiday maps on Random all year?
 function currentMap() {
   if (!live.map) {
     const want = db.settings.map || 'random';
     if (mapById(want)) live.map = want;
-    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
+    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap && inSeason(m)); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
   }
   return live.map;
 }
@@ -2069,7 +2089,7 @@ app.post('/api/vote/start', (req, res) => {
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'Start the vote before the battle.' });
   if (live.vote) endVote(true);
   const seconds = clampN(req.body?.seconds ?? db.settings.voteSeconds, 10, 180, 30);
-  const pool = MAP_LIST.slice().sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 }));
+  const pool = MAP_LIST.filter(m => inSeason(m)).sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 }));
   live.vote = { options: pool, voters: new Map(), endsAt: Date.now() + seconds * 1000 };
   live.vote.timer = setTimeout(() => endVote(false), seconds * 1000);
   broadcast(voteMsg(false), 'overlay'); pushState();
@@ -2498,7 +2518,7 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: req.body?.luck === false ? 0 : lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
   if (req.body?.fun) { const F = getList('chat-join')?.fun || {}, kinds = Object.keys(POWER_INFO).filter(k => !F.powersOff?.[k]); fighters.forEach((f, i) => { if (kinds.length && i % 2 === 0) { const k = kinds[(i / 2) % kinds.length]; f.powers = { [k]: k === 'shield' ? 1 : true }; f.label += ' ' + POWER_INFO[k].icon; } }); } // 🎉 Chat battle tab → 🧪 Try it: half of them powered up
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
-  const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
+  const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? (l => l[Math.floor(Math.random() * l.length)].id)(MAP_LIST.filter(m => inSeason(m))) : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
   broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');

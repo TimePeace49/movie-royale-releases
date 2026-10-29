@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.42.0 (test build)
+- 👀 **Watch luck** (per battle, off by default): the more someone watches your stream, the more luck their pieces get in that battle. Default: every **10 hours watched = +1% luck** (both numbers can be changed). Hours count from when you turn it on (↺ Start counting again resets it). Find it on the Battle tab under the luck buttons: 👀 Watch luck, which also shows who has how many hours and how much luck they've earned. Only works for people linked to their Twitch name.
+- 🎅 **New holiday map: Santa's Workshop** (ball and card battles). A snowy North Pole island under the northern lights. Herds of evil red-eyed reindeer stampede across the island (a red STAMPEDE stripe shows their path first) and trample anyone in the way, and a giant evil Santa looms behind the island, locks on and fires lasers out of his eyes. Its own spooky sleigh-bell music.
+- 🦃 **New holiday map: Turkey Trouble** (ball and card battles). A harvest farm at sunset. Evil turkeys strut out, chase everyone and peck and kick them toward the edge, and every so often a whole flock gobbles across in a TURKEY TROT (orange stripe first) that knocks everyone in its way off the island. Its own barn hoedown music.
+- 🎄 **Holiday maps** only come up on 🎲 Random and chat map votes in their month: Turkey Trouble in November, Santa's Workshop in December. You can always pick them by hand. Settings → Game → **🎄 Holiday maps all year** lets them come up any time. The map menus show 🍂 / 🎄 next to them.
+- 🧪 Test tab: boxes for 🎅 Santa's Workshop and 🦃 Turkey Trouble (balls or cards), plus checklist items for watch luck and the holiday maps.
+
 ## 1.41.0 (test build)
 - 🧟 **New map: Zombie Horde** (ball and card battles). City streets at night, closed off with barricades. Zombies shamble out of the manholes and the street ends and chase everyone, and everyone runs. Buildings block the way. Balls that get bitten take damage (too many bites and they're eaten). A card that gets bitten is INFECTED: it's out, but it stays on the map as a zombie and chases the others. Nothing crumbles, nobody falls off, no weapons, no final fight. Map power: 🧟 Zombie Horde.
 - 🦖 **New map: Monster Mash.** The fight is on the rooftops of a few tall buildings (walls all the way down to the street, long drops into the alleys). Two giant monsters made up for Movie Royal, MAGMAW (a lava-rock lizard) and BRUTOX (a four-armed horned beast), fight in the streets. Their punches, fire breath and tail swipes smash the rooftops, and the part they hit collapses into the building. Every so often they hit each other and one stumbles into a building and knocks a corner off. Map power: 🦖 Monster Stomp.

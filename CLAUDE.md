@@ -128,6 +128,9 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **🦸 Hero City villains (REV 2):** + `wreck` (wrecking ball sweeps a row, `launch`) + `bomber` (jet drops bombs → `blastOrDodge`).
 - **🎯 Fair winner always on:** start msgs send `fairOdds: true` (Derek: winner chosen before the battle by odds + luck).
 
+- **👀 Watch luck (1.42.0):** per battle `l.watchLuck {on, hours (10), amount (1), since, base{login: watchMins}}` (PATCH `/api/lists/:id {watchLuck}`; turning on / `restart` snapshots `base`); `watchLuck(list, login)` = floor(hours watched since / hours)·amount (max 100) → weight ×(1+wl/100) + luck in buildFighters. GET `/api/lists/:id/watch-luck`. Control `wlOpen` / `#wlDlg`. Derek: "1% every 10 hrs as a base".
+- **🎄 Holiday maps (1.42.0):** `MAP_LIST[].season` ('thanksgiving' = Nov, 'christmas' = Dec, `SEASONS` in maps.js); `inSeason(m)` filters Random / chat votes / random test map / random card map; setting `holidayAllYear`. Maps `xmas` (🎅 Santa's Workshop: `stampede()` herds + giant Santa `santaZap()` eye lasers, Santa drawn in `drawUnder` up-left so the timer doesn't hide his face) and `turkey` (🦃 Turkey Trouble: `birds` chase + peck (`hurt` + push outward), `trot()` flocks `launch` pieces). Music `xmas` / `turkey` in sfx.js, sound `gobble`. `__royal.map()` = the current map object (tests).
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 

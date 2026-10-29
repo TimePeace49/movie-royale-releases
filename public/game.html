@@ -2281,6 +2281,149 @@ const MAPS = {
     restore(v) { if (!v) return; this.mons = v.m.map(m => ({ ...m })); this.atk = v.a.map(a => ({ ...a, m: this.mons[a.m] })); },
     power: { name: 'MONSTER STOMP', icon: '🦖', fn() { const m = MAPS.kaiju; if (!m.mons) return; m.attack('smash'); m.next = .6; m.atk[m.atk.length - 1] && (m.atk[m.atk.length - 1].warn = .7); } }
   },
+  xmas: {
+    // 🎅 Santa's Workshop (a holiday map: on 🎲 Random only in December): a snowy floating island at the North Pole that
+    // crumbles from the edges. Evil reindeer stampede across in herds (anyone they hit is trampled), and a GIANT EVIL SANTA
+    // looms behind the island, locking on and blasting lasers out of his eyes.
+    name: "Santa's Workshop", icon: '🎅', shape: SHAPES.hex, wallScale: .8,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(205,40%,${94 - i * 3}%)`, c2: `hsl(210,35%,${86 - i * 3}%)`, specks: ['#fff', '#cfe6ff'], speckN: 16, edge: 'rgba(120,160,200,.25)',
+      deco: g => { const r = Math.random(); if (r < .08) { const x = rnd(14, TOP_W - 30), y = rnd(8, TOP_H - 20), c = pick(['#d8202a', '#2a8a3a', '#2a5ad8', '#e8b020']); g.fillStyle = c; g.fillRect(x, y, 16, 12); g.fillStyle = '#fff6c0'; g.fillRect(x + 6, y, 4, 12); g.fillRect(x, y + 4, 16, 3); } else if (r < .12) { const x = rnd(14, TOP_W - 14), y = rnd(8, TOP_H - 8); g.strokeStyle = '#d8202a'; g.lineWidth = 4; g.beginPath(); g.moveTo(x, y + 10); g.lineTo(x, y - 6); g.arc(x + 5, y - 6, 5, Math.PI, 0); g.stroke(); } } })), // presents + candy canes in the snow
+    wall: { cols: ['#cfe6ff', '#8ab4d8', '#4a6a90', '#1e2c44'], lip: '#ffffff', lipH: 6, lit: 'rgba(200,230,255,.15)' },
+    sky(g) {
+      skyGrad(g, [[0, '#050a1e'], [.55, '#12204a'], [1, '#2a3a6a']]); stars(g, 160, H * .55);
+      for (let i = 0; i < 3; i++) { g.save(); g.globalAlpha = .22; const gr = g.createLinearGradient(0, 80 + i * 60, W, 200 + i * 60); gr.addColorStop(0, 'rgba(80,255,170,0)'); gr.addColorStop(.5, ['#5affb0', '#7ad0ff', '#c07aff'][i]); gr.addColorStop(1, 'rgba(80,255,170,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(0, 120 + i * 50); for (let x = 0; x <= W; x += 40) g.lineTo(x, 120 + i * 50 + Math.sin(x * .006 + i) * 40); g.lineTo(W, 260 + i * 50); g.lineTo(0, 260 + i * 50); g.fill(); g.restore(); } // northern lights
+      hills(g, [['#c8dcf0', 760, 200, .004], ['#9ab8d8', 840, 140, .006]]);
+      for (const x of [140, 1700]) { g.fillStyle = '#5a2a1a'; g.fillRect(x, 640, 160, 120); g.fillStyle = '#e8f0ff'; g.beginPath(); g.moveTo(x - 20, 644); g.lineTo(x + 80, 580); g.lineTo(x + 180, 644); g.fill(); for (let i = 0; i < 3; i++) { g.fillStyle = '#ffd060'; g.fillRect(x + 18 + i * 46, 670, 22, 26); } } // the workshops
+    },
+    clouds: '#dfe9ff', fog: ['rgba(220,235,255,.35)', 'rgba(20,30,60,.6)'],
+    animBack() { ctx.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < 80; i++) { const x = (i * 137 + clock * (25 + i % 5 * 8) + Math.sin(clock + i) * 20) % W, y = (i * 71 + clock * (50 + i % 7 * 9)) % H; ctx.beginPath(); ctx.arc(x, y, 1.5 + (i % 3), 0, 7); ctx.fill(); } },
+    start() { this.herds = []; this.zaps = []; this.next = 3; this.santaNext = 5; this.eye = 0; },
+    aim(avoid = .75) { const l = alive().filter(f => !f.launch && !f.ret && !f.falling); if (!l.length) return null; let c = pick(l); if (cfg.fair && c === destined && l.length > 1 && Math.random() < avoid) c = pick(l.filter(f => f !== destined)); return c; },
+    stampede(n) { const tg = this.aim(); if (!tg) return; const dir = Math.random() < .5 ? 1 : -1; this.herds.push({ y: tg.y, dir, u: 0, warn: 1.1, deer: Array.from({ length: n || (2 + Math.floor(rnd(0, 3))) }, (_, i) => ({ off: i * S * 2.2 + rnd(0, S), dy: rnd(-S * .6, S * .6), ph: rnd(6.3) })), hits: new Set() }); SFX.play('gallop'); },
+    santaZap() { const tg = this.aim(); if (!tg) return; this.zaps.push({ f: tg, x: tg.x, y: tg.y, u: 0, warn: 1, r: S * 1.25 }); SFX.play('alert'); },
+    update(dt) {
+      if (!this.herds) this.start();
+      this.eye = Math.max(0, this.eye - dt * 1.5);
+      if (winner) return;
+      const n = alive().length, k = clamp(t / cfg.game, 0, 1), behind = n > paceTarget() * 1.1 + 1;
+      if ((this.next -= dt) <= 0) { this.next = (behind ? rnd(2, 3) : rnd(3.2, 4.8)) * (1 - .3 * k); this.stampede(); }
+      if ((this.santaNext -= dt) <= 0) { this.santaNext = (behind ? rnd(1.8, 2.8) : rnd(2.8, 4.2)) * (1 - .3 * k); this.santaZap(); }
+      const edge = ISLAND_R + 300;
+      for (const h of this.herds) { h.u += dt; if (h.u < h.warn) continue;
+        const e = h.u - h.warn, x0 = -h.dir * edge + h.dir * e * 1250;
+        for (const d of h.deer) { d.x = x0 - h.dir * d.off; d.y = h.y + d.dy; d.ph += dt * 18;
+          for (const f of alive()) { if (f.launch || f.ret || h.hits.has(f)) continue; if (Math.abs(f.x - d.x) < f.r + S * .9 && Math.abs(f.y - d.y) < f.r + S * .7) { h.hits.add(f); if (cfg.fair && f === destined) { push(f, h.dir * 260, rnd(-150, 150)); continue; } blastOrDodge(f, '#c8202a', pick(['TRAMPLED!', 'SLEIGHED!', 'HOOFED!', 'RUN OVER!'])); } } }
+        h.done = Math.abs(x0) > edge + S * 10 && e > .5; }
+      this.herds = this.herds.filter(h => !h.done);
+      for (const z of this.zaps) { z.u += dt; if (z.f?.alive && z.u < z.warn * .8) { z.x = z.f.x; z.y = z.f.y; } // the eyes track you, then lock on
+        if (z.u >= z.warn && !z.hit) { z.hit = true; this.eye = 1; shake = Math.max(shake, 10); SFX.play('lightning'); flash = Math.max(flash, .15); flashColor = '#ff3a3a';
+          for (const f of alive()) { if (Math.hypot(f.x - z.x, f.y - z.y) < z.r + f.r * .5 && !f.launch && !f.ret) blastOrDodge(f, '#ff3a3a', pick(['LASERED!', 'NAUGHTY LIST!', 'HO HO NO!', 'ZAPPED!'])); }
+          for (const tl of solid) if (Math.hypot(tl.x - z.x, tl.y - z.y) < z.r * .7 && !(cfg.fair && destined && Math.hypot(tl.x - destined.x, tl.y - destined.y) < S * 1.3)) crumbleSoon(tl, rnd(.3, .8)); } }
+      this.zaps = this.zaps.filter(z => z.u < z.warn + .45);
+    },
+    santaAt() { return { X: sx(-ISLAND_R * .55), Y: sy(-ISLAND_R) + 10 + Math.sin(clock * 1.3) * 4, k: .62 }; }, // up and to the left, so the timer doesn't cover his face
+    eyes() { const { X, Y, k } = this.santaAt(); return [[X - 34 * k, Y - 150 * k], [X + 34 * k, Y - 150 * k]]; },
+    drawUnder() { // 🎅 the giant evil Santa looming behind the island (made up: angry brows, glowing red eyes)
+      const { X, Y, k } = this.santaAt();
+      ctx.save(); ctx.translate(X, Y); ctx.scale(k, k);
+      ctx.fillStyle = '#9a1018'; ctx.beginPath(); ctx.ellipse(0, 120, 230, 190, 0, 0, 7); ctx.fill(); // body
+      ctx.fillStyle = '#fff'; ctx.fillRect(-18, -60, 36, 300); ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-230, 90, 460, 40); ctx.fillStyle = '#e8b020'; ctx.fillRect(-34, 84, 68, 52); ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-20, 96, 40, 28); // belt + buckle
+      for (const s of [-1, 1]) { ctx.fillStyle = '#9a1018'; ctx.beginPath(); ctx.ellipse(s * 230, 40, 60, 120, s * -.5, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(s * 280, 140, 44, 22, s * -.5, 0, 7); ctx.fill(); ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(s * 300, 170, 36, 0, 7); ctx.fill(); } // arms + mittens
+      ctx.fillStyle = '#f2c8a8'; ctx.beginPath(); ctx.arc(0, -150, 80, 0, 7); ctx.fill(); // face
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-90, -150); ctx.quadraticCurveTo(-100, 10, 0, 40); ctx.quadraticCurveTo(100, 10, 90, -150); ctx.quadraticCurveTo(0, -80, -90, -150); ctx.fill(); // beard
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, -110, 50, 18, 0, 0, 7); ctx.fill(); // moustache
+      ctx.fillStyle = '#5a0a10'; ctx.beginPath(); ctx.ellipse(0, -88, 24, 8 + this.eye * 8, 0, 0, 7); ctx.fill(); // snarling mouth
+      ctx.fillStyle = '#9a1018'; ctx.beginPath(); ctx.moveTo(-90, -200); ctx.quadraticCurveTo(0, -330, 110, -260); ctx.lineTo(90, -196); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(-96, -214, 192, 28); ctx.beginPath(); ctx.arc(120, -258, 22, 0, 7); ctx.fill(); // hat
+      ctx.strokeStyle = '#3a2a2a'; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-62, -186); ctx.lineTo(-14, -168); ctx.moveTo(62, -186); ctx.lineTo(14, -168); ctx.stroke(); // angry brows
+      const glow = .6 + .4 * Math.sin(clock * 6) + this.eye; ctx.fillStyle = '#ff2020'; ctx.shadowColor = '#ff2020'; ctx.shadowBlur = GFX.quality === 'low' ? 0 : 20 * glow; ctx.beginPath(); ctx.arc(-34, -150, 11, 0, 7); ctx.arc(34, -150, 11, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.restore();
+    },
+    drawOver() {
+      const [e1, e2] = this.eyes();
+      for (const z of this.zaps || []) { const X = sx(z.x), Y = sy(z.y);
+        if (z.u < z.warn) { ctx.strokeStyle = `rgba(255,40,40,${.35 + .3 * Math.sin(clock * 20)})`; ctx.lineWidth = 2; ctx.setLineDash([8, 8]); for (const [ex, ey] of [e1, e2]) { ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(X, Y); ctx.stroke(); } ctx.setLineDash([]); ctx.strokeStyle = 'rgba(255,60,60,.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(X, Y, z.r, z.r * K, 0, 0, 7); ctx.stroke(); continue; }
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (const [ex, ey] of [e1, e2]) { ctx.strokeStyle = 'rgba(255,40,40,.75)'; ctx.lineWidth = 18; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(X, Y); ctx.stroke(); ctx.strokeStyle = '#fff0f0'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(X, Y); ctx.stroke(); } const gr = ctx.createRadialGradient(X, Y, 4, X, Y, z.r * 1.4); gr.addColorStop(0, 'rgba(255,240,220,.9)'); gr.addColorStop(1, 'rgba(255,40,40,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(X, Y, z.r * 1.4, 0, 7); ctx.fill(); ctx.restore(); }
+      for (const h of this.herds || []) {
+        if (h.u < h.warn) { const Y = sy(h.y); ctx.fillStyle = `rgba(200,30,40,${.12 + .1 * Math.sin(clock * 18)})`; ctx.strokeStyle = 'rgba(255,90,90,.8)'; ctx.lineWidth = 3; ctx.setLineDash([12, 10]); ctx.beginPath(); ctx.rect(sx(-ISLAND_R), Y - S * 1.3 * K, sx(ISLAND_R) - sx(-ISLAND_R), S * 2.6 * K); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); ctx.font = '700 26px Inter, sans-serif'; ctx.fillStyle = '#ffd0d0'; ctx.textAlign = 'center'; ctx.fillText('🦌 STAMPEDE!', sx(0), Y - S * 1.3 * K - 10); continue; }
+        for (const d of h.deer) if (d.x != null) this.drawDeer(sx(d.x), sy(d.y), h.dir, d.ph);
+      }
+    },
+    drawDeer(X, Y, dir, ph) { // 🦌 an evil reindeer at full gallop (glowing red eyes, big antlers)
+      const s = 1.35, leg = Math.sin(ph) * 14; ctx.save(); ctx.translate(X, Y); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 40, 10, 0, 0, 7); ctx.fill(); ctx.scale(dir * s, s);
+      ctx.strokeStyle = '#4a2e1a'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-18, -20); ctx.lineTo(-22 - leg, 0); ctx.moveTo(-10, -20); ctx.lineTo(-8 + leg, 0); ctx.moveTo(14, -20); ctx.lineTo(10 + leg, 0); ctx.moveTo(22, -20); ctx.lineTo(26 - leg, 0); ctx.stroke(); // legs
+      ctx.fillStyle = '#6a4228'; ctx.beginPath(); ctx.ellipse(0, -30, 30, 14, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#f0e8d8'; ctx.beginPath(); ctx.ellipse(-28, -34, 6, 5, 0, 0, 7); ctx.fill(); // body + tail
+      ctx.fillStyle = '#6a4228'; ctx.beginPath(); ctx.moveTo(20, -38); ctx.lineTo(34, -58); ctx.lineTo(44, -52); ctx.lineTo(30, -30); ctx.fill(); ctx.beginPath(); ctx.ellipse(46, -58, 13, 8, .3, 0, 7); ctx.fill(); // neck + head
+      ctx.fillStyle = '#1a1010'; ctx.beginPath(); ctx.arc(57, -54, 3.5, 0, 7); ctx.fill(); ctx.fillStyle = '#ff2020'; ctx.beginPath(); ctx.arc(46, -61, 3, 0, 7); ctx.fill(); // nose, red eye
+      ctx.strokeStyle = '#c8a878'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(42, -64); ctx.lineTo(36, -84); ctx.lineTo(28, -90); ctx.moveTo(36, -84); ctx.lineTo(44, -94); ctx.moveTo(40, -74); ctx.lineTo(30, -76); ctx.stroke(); // antlers
+      ctx.restore();
+    },
+    snap() { return { h: (this.herds || []).map(h => ({ ...h, hits: null, deer: h.deer.map(d => ({ ...d })) })), z: (this.zaps || []).map(z => ({ ...z, f: null })), e: this.eye }; },
+    restore(v) { if (!v) return; this.herds = v.h.map(h => ({ ...h, hits: new Set(), deer: h.deer.map(d => ({ ...d })) })); this.zaps = v.z.map(z => ({ ...z })); this.eye = v.e; },
+    power: { name: 'REINDEER STAMPEDE', icon: '🦌', fn() { const m = MAPS.xmas; if (!m.herds) return; m.stampede(5); setTimeout(() => m.stampede(4), 500); } }
+  },
+  turkey: {
+    // 🦃 Turkey Trouble (a holiday map: on 🎲 Random only in November): a harvest farm island that crumbles from the
+    // edges. Evil turkeys strut out of the corn and go after the pieces, pecking and kicking them toward the edge, and every
+    // so often a whole flock comes gobbling across in a TURKEY TROT that knocks everyone in its way off the island.
+    name: 'Turkey Trouble', icon: '🦃', shape: SHAPES.hex, wallScale: .9,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(${38 + i * 4},${48 - i * 4}%,${46 - i * 3}%)`, c2: `hsl(${32 + i * 3},44%,${38 - i * 2}%)`, specks: ['#e8c06a55', '#6a4a2a55', '#c86a2a55'], speckN: 22, edge: 'rgba(0,0,0,.08)',
+      deco: g => { const r = Math.random(); if (r < .07) { const x = rnd(14, TOP_W - 14), y = rnd(8, TOP_H - 8); g.fillStyle = '#e87a20'; g.beginPath(); g.ellipse(x, y, 10, 8, 0, 0, 7); g.fill(); g.strokeStyle = '#a84a10'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y - 8); g.lineTo(x, y + 8); g.stroke(); g.fillStyle = '#3a6a2a'; g.fillRect(x - 1.5, y - 12, 3, 5); } else if (r < .13) { g.fillStyle = pick(['#c84a1a', '#e8a020', '#a83a1a']); g.beginPath(); g.ellipse(rnd(10, TOP_W - 10), rnd(6, TOP_H - 6), 5, 3, rnd(3), 0, 7); g.fill(); } } })), // pumpkins + leaves
+    wall: { cols: ['#7a5a3a', '#5a3e28', '#3a2818', '#1e140c'], lip: '#c8a04a', lipH: 4, lit: 'rgba(255,170,80,.12)' },
+    sky(g) {
+      skyGrad(g, [[0, '#3a1a3a'], [.45, '#a84a2a'], [.75, '#e8902a'], [1, '#f0c060']]); glowBall(g, 1500, 520, 220, 'rgba(255,200,120,.6)', 'rgba(255,160,60,0)'); g.fillStyle = '#ffd88a'; g.beginPath(); g.arc(1500, 520, 70, 0, 7); g.fill();
+      hills(g, [['#8a4a2a', 720, 180, .004], ['#5a3a1e', 820, 130, .006]]);
+      for (let i = 0; i < 14; i++) { const x = rnd(W), y = rnd(700, 860), r = rnd(30, 60); g.fillStyle = pick(['#c84a1a', '#e8902a', '#a8301a', '#d8a020']); g.beginPath(); g.arc(x, y - r, r, 0, 7); g.fill(); g.fillStyle = '#3a2214'; g.fillRect(x - 5, y - r, 10, r + 30); } // autumn trees
+      g.fillStyle = '#8a1a1a'; g.fillRect(180, 620, 200, 150); g.beginPath(); g.moveTo(160, 625); g.lineTo(280, 540); g.lineTo(400, 625); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 5; g.strokeRect(250, 690, 60, 80); g.beginPath(); g.moveTo(250, 690); g.lineTo(310, 770); g.moveTo(310, 690); g.lineTo(250, 770); g.stroke(); // the barn
+    },
+    clouds: '#e8b07a', fog: ['rgba(255,190,120,.12)', 'rgba(60,30,20,.5)'],
+    animBack() { for (let i = 0; i < 18; i++) { const x = (i * 211 + clock * (40 + i % 4 * 12)) % (W + 100) - 50, y = (i * 97 + clock * (35 + i % 5 * 8)) % H; ctx.save(); ctx.translate(x, y); ctx.rotate(clock * (1 + i % 3) + i); ctx.fillStyle = ['#c84a1a', '#e8a020', '#a83a1a', '#d86a20'][i % 4]; ctx.beginPath(); ctx.ellipse(0, 0, 7, 3.5, 0, 0, 7); ctx.fill(); ctx.restore(); } }, // falling leaves
+    start() { this.birds = []; this.trots = []; this.next = 1; this.trotNext = 6; this.gob = 1.5; },
+    spawn() { const l = solid.filter(tl => Math.hypot(tl.x, tl.y) > ISLAND_R * .55); const tl = pick(l.length ? l : solid); if (!tl) return; this.birds.push({ x: tl.x, y: tl.y, vx: 0, vy: 0, face: 1, ph: rnd(6.3), tgt: null, think: 0, peck: 0, cool: rnd(.5, 1.2), sp: rnd(150, 210), pop: 1 }); },
+    trot() { const l = alive().filter(f => !f.launch); if (!l.length) return; let tg = pick(l); if (cfg.fair && tg === destined && l.length > 1) tg = pick(l.filter(f => f !== destined)); const dir = Math.random() < .5 ? 1 : -1; this.trots.push({ y: tg.y, dir, u: 0, warn: 1.1, birds: Array.from({ length: 5 }, (_, i) => ({ off: i * S * 1.6 + rnd(0, S * .6), dy: rnd(-S * .7, S * .7), ph: rnd(6.3) })), hits: new Set() }); SFX.play('gobble', { v: 1 }); },
+    update(dt) {
+      if (!this.birds) this.start();
+      const n = alive().length, k = clamp(t / cfg.game, 0, 1), behind = n > paceTarget() * 1.1 + 1;
+      if (!winner) {
+        if ((this.next -= dt) <= 0) { this.next = (behind ? 1.2 : 2.2) * (1 - .4 * k); if (this.birds.length < Math.min(30, 4 + n / 4 + k * 4)) this.spawn(); }
+        if ((this.trotNext -= dt) <= 0) { this.trotNext = (behind ? rnd(4, 6) : rnd(6, 9)) * (1 - .3 * k); this.trot(); }
+        if ((this.gob -= dt) <= 0) { this.gob = rnd(1.8, 3.5); SFX.play('gobble', { v: .35 }); }
+      }
+      const prey = alive().filter(f => !f.launch && !f.ret && !f.falling);
+      for (const b of this.birds) { b.ph += dt * 10; b.think -= dt; b.cool -= dt; b.pop = Math.max(0, b.pop - dt * 3);
+        if (b.think <= 0 || !b.tgt?.alive) { b.think = rnd(.4, .9); let best = null, bd = 1e9; for (const f of prey.length > 40 ? Array.from({ length: 30 }, () => pick(prey)) : prey) { if (cfg.fair && f === destined && prey.length > 1 && Math.random() < .75) continue; const d = Math.hypot(f.x - b.x, f.y - b.y); if (d < bd) { bd = d; best = f; } } b.tgt = best; }
+        const f = b.tgt; if (f && !winner) { const dx = f.x - b.x, dy = f.y - b.y, d = Math.hypot(dx, dy) || 1, sp = b.sp * (1 + .5 * k);
+          b.vx += (dx / d * sp - b.vx) * Math.min(1, dt * 5); b.vy += (dy / d * sp - b.vy) * Math.min(1, dt * 5);
+          if (d < f.r + S * .7 && b.cool <= 0) { b.cool = rnd(.9, 1.4); b.peck = .25; SFX.play('bonk', { p: 1.4, v: .6 }); hurt(f, 8 + 6 * k); const out = Math.atan2(f.y, f.x), toward = Math.atan2(dy, dx), a = (out + toward) / 2; push(f, Math.cos(a) * 520, Math.sin(a) * 520); if (n < 16 && Math.random() < .3) floaters.push({ text: pick(['PECK!', 'GOBBLE!', 'KICKED!', 'BOK!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 16, life: .8, color: '#ffb060' }); } }
+        else { b.vx *= .9; b.vy *= .9; }
+        b.peck = Math.max(0, b.peck - dt); b.x += b.vx * dt; b.y += b.vy * dt; if (Math.abs(b.vx) > 10) b.face = b.vx > 0 ? 1 : -1;
+        if (!isSolid(b.x, b.y)) { const tl = nearestLand(b); if (tl && Math.hypot(tl.x - b.x, tl.y - b.y) < S * 1.5) { b.x += (tl.x - b.x) * .3; b.y += (tl.y - b.y) * .3; } else b.gone = true; } // a turkey with no ground under it drops away
+      }
+      this.birds = this.birds.filter(b => !b.gone);
+      const edge = ISLAND_R + 300;
+      for (const tr of this.trots) { tr.u += dt; if (tr.u < tr.warn) continue; const e = tr.u - tr.warn, x0 = -tr.dir * edge + tr.dir * e * 1050;
+        for (const b of tr.birds) { b.x = x0 - tr.dir * b.off; b.y = tr.y + b.dy; b.ph += dt * 20;
+          for (const f of alive()) { if (f.launch || f.ret || tr.hits.has(f)) continue; if (Math.abs(f.x - b.x) < f.r + S * .7 && Math.abs(f.y - b.y) < f.r + S * .6) { tr.hits.add(f); SFX.play('gobble', { v: .6 }); if (cfg.fair && f === destined) { push(f, tr.dir * 260, rnd(-150, 150)); continue; } launch(f, Math.atan2(rnd(-.5, .5), tr.dir), rnd(1100, 1500)); if (n < 50) floaters.push({ text: pick(['TURKEY TROT!', 'STAMPEDE!', 'GOBBLED!']), x: sx(f.x), y: sy(f.y) - 80, life: .9, color: '#ffb060' }); } } }
+        tr.done = Math.abs(x0) > edge + S * 10 && e > .5; }
+      this.trots = this.trots.filter(tr => !tr.done);
+    },
+    drawTurkey(X, Y, face, ph, peck, big = 1) { // 🦃 an evil turkey: fanned tail, red wattle, angry brows, glowing red eyes
+      const s = 1.9 * big, step = Math.sin(ph) * 6; ctx.save(); ctx.translate(X, Y); ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(0, 0, 22 * s, 7 * s, 0, 0, 7); ctx.fill(); ctx.scale(face * s, s);
+      for (let i = 0; i < 7; i++) { const a = -Math.PI * .95 + i * .2; ctx.fillStyle = ['#7a3a1a', '#c86a20', '#5a2a10', '#e8a030', '#7a3a1a', '#c86a20', '#5a2a10'][i]; ctx.beginPath(); ctx.ellipse(-10 + Math.cos(a) * 18, -26 + Math.sin(a) * 18, 7, 16, a + Math.PI / 2, 0, 7); ctx.fill(); } // tail fan
+      ctx.strokeStyle = '#e8a030'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-3, -10); ctx.lineTo(-5 + step, 0); ctx.moveTo(5, -10); ctx.lineTo(7 - step, 0); ctx.stroke(); // legs
+      ctx.fillStyle = '#4a2a14'; ctx.beginPath(); ctx.ellipse(0, -18, 16, 12, 0, 0, 7); ctx.fill(); // body
+      ctx.save(); ctx.translate(12, -32 + peck * 30); ctx.rotate(peck * 1.6); ctx.fillStyle = '#9ab0c8'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill(); // head
+      ctx.fillStyle = '#e8b020'; ctx.beginPath(); ctx.moveTo(7, -1); ctx.lineTo(15, 2); ctx.lineTo(7, 4); ctx.fill(); ctx.fillStyle = '#d8202a'; ctx.beginPath(); ctx.ellipse(8, 9, 3, 7, 0, 0, 7); ctx.fill(); // beak + wattle
+      ctx.fillStyle = '#ff2020'; ctx.beginPath(); ctx.arc(3, -2, 2.4, 0, 7); ctx.fill(); ctx.strokeStyle = '#1a1010'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-1, -7); ctx.lineTo(6, -4); ctx.stroke(); ctx.restore(); // red eye + angry brow
+      ctx.restore();
+    },
+    drawOver() { for (const b of (this.birds || []).slice().sort((a, c) => a.y - c.y)) this.drawTurkey(sx(b.x), sy(b.y), b.face, b.ph, b.peck);
+      for (const tr of this.trots || []) {
+      if (tr.u < tr.warn) { const Y = sy(tr.y); ctx.fillStyle = `rgba(230,120,30,${.12 + .1 * Math.sin(clock * 18)})`; ctx.strokeStyle = 'rgba(255,160,80,.85)'; ctx.lineWidth = 3; ctx.setLineDash([12, 10]); ctx.beginPath(); ctx.rect(sx(-ISLAND_R), Y - S * 1.3 * K, sx(ISLAND_R) - sx(-ISLAND_R), S * 2.6 * K); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); ctx.font = '700 26px Inter, sans-serif'; ctx.fillStyle = '#ffe0b0'; ctx.textAlign = 'center'; ctx.fillText('🦃 TURKEY TROT!', sx(0), Y - S * 1.3 * K - 10); continue; }
+      for (const b of tr.birds) if (b.x != null) this.drawTurkey(sx(b.x), sy(b.y), tr.dir, b.ph, 0, 1.2); } },
+    snap() { return { b: (this.birds || []).map(b => ({ ...b, tgt: null })), t: (this.trots || []).map(x => ({ ...x, hits: null, birds: x.birds.map(b => ({ ...b })) })) }; },
+    restore(v) { if (!v) return; this.birds = v.b.map(b => ({ ...b })); this.trots = v.t.map(x => ({ ...x, hits: new Set(), birds: x.birds.map(b => ({ ...b })) })); },
+    power: { name: 'TURKEY TROT', icon: '🦃', fn() { const m = MAPS.turkey; if (!m.birds) return; m.trot(); setTimeout(() => m.trot(), 600); for (let i = 0; i < 6; i++) m.spawn(); } }
+  },
   warfield: {
     // ⚔️ Battlefield: every piece starts on the left. An army of knights, cavalry and archers comes from the right.
     // They can't be hurt and they can't be stopped. Archers rain arrows on the back rows, the knights march in a
@@ -3700,7 +3843,7 @@ function wlRound(rd) {
 }
 let wlId = '', wlOpts = {};
 const PREVIEW_WIN = new URLSearchParams(location.search).has('preview'); // 📺 the test preview popped out (another monitor): shows what's on stream, no sound
-window.__royal = { GFX, scale: () => gScale, send: o => send(o) }; // 🃏 for cardfight.js (this page's code lives inside its own function)
+window.__royal = { GFX, scale: () => gScale, send: o => send(o), map: () => MAP }; // 🃏 for cardfight.js (this page's code lives inside its own function)
 if (PREVIEW_WIN) { document.title = 'Movie Royal — Preview (what\'s on stream)'; setTimeout(() => window.SFX?.setVolume({ on: false }), 0); }
 const WHEEL_ONLY = new URLSearchParams(location.search).has('wheel'); // the wheel popped out in its own window: always the wheel, no sound (the app already plays it)
 function wlSet(on) { if (WHEEL_ONLY) on = true; SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
