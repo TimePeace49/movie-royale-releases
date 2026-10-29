@@ -1,5 +1,5 @@
 // 🃏 Card battles on the game screen (OBS + the app): card packs with stick arms and legs and angry faces have a
-// martial arts brawl. Health bars on top, blood, and wacky settings (low gravity, extreme gore, teleport switches…).
+// martial arts brawl (Kung Fu Town) or a wrestling rumble (Rumble Ring: out only over the top rope). Health bars on top, blood, and wacky settings (low gravity, extreme gore, teleport switches…).
 // The server picks the winner fairly (no luck) and gives every screen the same seed, so they all play the same fight.
 // Gets the graphics settings and the connection to the server from game.html (window.__royal).
 (() => {
@@ -20,7 +20,7 @@
   let F = [], parts = [], texts = [], flyers = [], weapons = [], petals = [];
   let T = 0, acc = 0, running = false, replayOn = false, rbuf = [], replay = null, weapDrops = 0, lastKO = 0, D = 60, PACE = 50, showdownSaid = false, finalLeft = 0, finalPair = null, mode = 'lobby', modeT = 0, fightId = null, destined = null, order = [], winner = null, sent = false, teleT = 5, weapT = 7, slowUntil = 0;
   const floor = document.createElement('canvas'), fg = floor.getContext('2d'); floor.width = W; floor.height = H;
-  let bg = null, bgScale = 0;
+  let bg = null, bgScale = 0, bgMap = null;
 
   // ---------- helpers ----------
   const zY = z => GY0 + z * (GY1 - GY0);
@@ -31,16 +31,27 @@
   const grav = () => scene.wacky.lowgrav ? 520 : 1900;
   const alive = () => F.filter(f => f.alive);
   const S = f => (.72 + f.z * .4) * f.size * sizeK(); // on-screen scale (closer = bigger)
+  // 🗺️ the maps (Kung Fu Town = a street, Rumble Ring = a wrestling ring you can only leave over the top rope)
+  const MAPINFO = { kungfu: { title: '🏯 KUNG FU TOWN', intro: 'KUNG FU TOWN', weapons: ['sword', 'staff', 'nunchaku'] }, ring: { title: '🔔 RUMBLE RING', intro: 'RUMBLE RING', weapons: ['chair'] } };
+  const MI = () => MAPINFO[scene.map] || MAPINFO.kungfu, RUMBLE = () => scene.map === 'ring';
+  const crazy = () => Object.values(scene.wacky || {}).some(Boolean); // a map condition is on: big cartoon physics are allowed
+  const ringL = z => 430 - z * 140, ringR = z => 1490 + z * 140, OUT_Y = 58; // the ring's sides (wider toward the front); the arena floor is OUT_Y below the mat
+  const gnd = f => RUMBLE() && f.out && (f.x < ringL(f.z) - 8 || f.x > ringR(f.z) + 8) ? -OUT_Y : 0;
+  const edgeD = f => Math.min(f.x - ringL(f.z), ringR(f.z) - f.x), sideOf = f => f.x - ringL(f.z) < ringR(f.z) - f.x ? -1 : 1;
+  const bounds = z => RUMBLE() ? [ringL(z) + 34, ringR(z) - 34] : [90, W - 90];
+  const GRAB = { slam: 1, suplex: 1, toss: 1, whip: 1 };
+  const grabbable = o => o.alive && !o.heldBy && !o.whip && !(o.rebound > 0) && o.h === 0 && !o.atk?.o;
 
   function makeFighters(list) {
     const n = list.length, size = baseSize(n);
     const cols = Math.ceil(Math.sqrt(n * 2.4)), rows = Math.ceil(n / cols);
     return list.map((p, i) => {
       const c = i % cols, r = Math.floor(i / cols);
-      const x = 150 + (c + .5) * (1620 / cols) + rr(-20, 20), z = rows === 1 ? .55 : .12 + r / Math.max(1, rows - 1) * .8 + rr(-.03, .03);
+      const z = rows === 1 ? .55 : .12 + r / Math.max(1, rows - 1) * .8 + rr(-.03, .03), [lo, hi] = RUMBLE() ? [ringL(clamp(z, 0, 1)) + 70, ringR(clamp(z, 0, 1)) - 70] : [150, 1770];
+      const x = lo + (c + .5) * ((hi - lo) / cols) + rr(-20, 20);
       return { ...p, x, z: clamp(z, 0, 1), h: 0, vx: 0, vz: 0, vh: 0, face: x < W / 2 ? 1 : -1, hp: 100, alive: true, size: size * rr(.94, 1.06),
         cd: rr(.3, 1.4), stun: 0, atk: null, block: 0, target: null, retarget: 0, ph: rr(0, 6), limbs: { la: 1, ra: 1, ll: 1, rl: 1 }, head: true,
-        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, color: p.color || `hsl(${Math.floor(R() * 360)},65%,48%)` };
+        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, down: 0, heldBy: null, lie: 0, whip: 0, whipBy: null, rebound: 0, out: false, color: p.color || `hsl(${Math.floor(R() * 360)},65%,48%)` };
     });
   }
 
@@ -64,7 +75,7 @@
         try { if (late > D * 2.5) { const w = F.find(f => f.id === destined) || F[0]; for (const f of F) if (f !== w) { f.alive = false; f.koT = 9; order.push(f.id); } finish(w, true); } // (long over: just show who won)
           else for (let i = 0; i < late * 60 && !winner; i++) step(DT); } finally { SFX.play = quiet; }
         parts = []; texts = []; rbuf = []; }
-      else snd('gong');
+      else bell();
       if (m.show) SFX.music?.('fight');
     } else if (m.phase !== 'fight' && m.phase !== 'ended') { // lobby: the packs lined up and waiting
       if (mode !== 'lobby' || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; }
@@ -75,6 +86,7 @@
     }
   }
   const WN = { lowgrav: '🪶 LOW GRAVITY', gore: '🩸 EXTREME GORE', teleport: '🔀 TELEPORT SWITCHES', turbo: '⚡ TURBO', slowmo: '🐌 SLOW MOTION', giant: '🦍 GIANT PACKS', tiny: '🐜 TINY PACKS', slippery: '🧊 SLIPPERY STREET', boom: '💣 EXPLODING K.O.s', onehit: '☠️ ONE-HIT K.O.', rage: '😡 RAGE MODE', weapons: '🗡️ WEAPONS' };
+  const bell = () => snd(RUMBLE() ? 'bell' : 'gong');
   let toastText = '', toastT = 0; const toast = t => { toastText = t; toastT = 2.4; };
 
   // ---------- 🥋 the fight ----------
@@ -95,7 +107,7 @@
     let best = null, bd = 1e9; for (const o of others) { const d = Math.abs(o.x - f.x) + Math.abs(o.z - f.z) * 900; if (d < bd) { bd = d; best = o; } } return best;
   }
   function step(dt) {
-    if (mode === 'final') { for (const f of F) f.ph += dt * 3; return; } // (the clock stops while FINAL FIGHT shows)
+    if (mode === 'final') { for (const f of F) { f.ph += dt * 3; if (!f.alive) physics(f, dt); } return; } // (the clock stops while FINAL FIGHT shows; the last one out still lands)
     T += dt;
     const live = alive();
     if (mode !== 'fight') { for (const f of F) { f.ph += dt * 3; physics(f, dt); } return; }
@@ -104,7 +116,8 @@
       for (const f of [a, b]) puff(f, '#c88cff'); [a.x, b.x] = [b.x, a.x]; [a.z, b.z] = [b.z, a.z]; for (const f of [a, b]) puff(f, '#c88cff');
       word('SWITCH!', (a.x + b.x) / 2, zY((a.z + b.z) / 2) - 200, '#d6a8ff', 54); snd('swap');
     }
-    if (scene.wacky.weapons && weapDrops < 2 && (weapT -= dt) <= 0) { weapT = rr(5, 8); weapDrops++; weapons.push({ kind: ['sword', 'staff', 'nunchaku'][Math.floor(R() * 3)], x: rr(200, 1720), z: rr(.1, .9), h: 700, vh: 0 }); }
+    if ((scene.wacky.weapons || RUMBLE()) && weapDrops < 2 && (weapT -= dt) <= 0) { weapT = rr(5, 8); weapDrops++; const ks = MI().weapons, kind = ks[Math.floor(R() * ks.length)], z = rr(.1, .9), [lo, hi] = bounds(z);
+      weapons.push({ kind, x: RUMBLE() ? rr(lo + 40, hi - 40) : rr(200, 1720), z, h: RUMBLE() ? 260 : 700, vh: 0 }); if (RUMBLE()) { word('A CHAIR!', weapons[weapons.length - 1].x, zY(z) - 320, '#d6e2ee', 40); snd('crowd', { v: .6 }); } }
     for (const w of weapons) if (w.h > 0) { w.vh -= grav() * dt; w.h = Math.max(0, w.h + w.vh * dt); if (w.h === 0) { w.vh = 0; dust(w.x, w.z, 6); snd('land', { p: 1.4 }); } }
     for (const f of F) {
       f.ph += dt * (f.atk ? 6 : Math.abs(f.vx) > 20 || Math.abs(f.vz) > .02 ? 9 : 3);
@@ -112,6 +125,7 @@
       if (!f.alive) { physics(f, dt); continue; }
       if (T > D * 1.8 && f.id !== destined) damage(null, f, 1.5 * dt * 10, 'bleed'); // (very long fights: the end comes)
       f.cd -= dt * speedK(); f.stun -= dt; f.retarget -= dt; f.block = Math.max(0, f.block - dt);
+      if ((f.down > 0 || f.heldBy || f.whip || f.rebound > 0) && rumbleState(f, dt)) continue;
       if (!f.target?.alive || f.retarget <= 0) { f.target = pickTarget(f); f.retarget = rr(1.5, 3.5); }
       // 🗡️ not fighting anyone right now and empty-handed: go grab a weapon lying in the street, or go after whoever has one
       if (!f.weapon && !f.atk && f.stun <= 0 && !inCombat(f)) {
@@ -140,19 +154,33 @@
         if (Math.abs(dz) > .03) f.vz += Math.sign(dz) * .9 * dt * speedK() * (legs ? 1 : .4);
         if (Math.abs(dx) > reach * .9) f.vx += Math.sign(dx) * sp * 6 * dt;
         else if (Math.abs(dx) < reach * .45) f.vx -= Math.sign(dx) * sp * 3 * dt; // a little room to swing
-        if (f.cd <= 0 && Math.abs(dz) < .06 && Math.abs(dx) < reach * 1.15 && f.h === 0) startAtk(f, Math.abs(dx) > reach * .8 && R() < .3 ? 'jump' : R() < .62 ? 'punch' : 'kick');
+        if (RUMBLE() && f.cd <= 0 && Math.abs(dz) < .06 && Math.abs(dx) < reach * 1.15 && f.h === 0 && grabbable(t) && f.limbs.la + f.limbs.ra && (t.down > 0 || R() < .45)) { // 🤼 grab them
+          const near = edgeD(t) < 150; let k = null;
+          if (t.down > 0) k = near ? 'toss' : R() < .4 ? 'whip' : R() < .5 ? 'slam' : null;
+          else k = near && R() < .6 ? 'toss' : R() < .45 ? 'whip' : R() < .5 ? 'slam' : R() < .6 ? 'suplex' : null;
+          if (k) startAtk(f, k, t); else if (t.down > 0) startAtk(f, 'elbow', t); else startAtk(f, R() < .62 ? 'punch' : 'kick');
+        }
+        else if (f.cd <= 0 && Math.abs(dz) < .06 && Math.abs(dx) < reach * 1.15 && f.h === 0) startAtk(f, Math.abs(dx) > reach * .8 && R() < .3 ? 'jump' : R() < .62 ? 'punch' : 'kick');
         else if (f.cd <= 0 && Math.abs(dz) < .06 && Math.abs(dx) < reach * 3.2 && f.h === 0 && R() < .02) startAtk(f, 'jump');
         if (t.atk && Math.abs(dx) < reach * 1.3 && R() < .01) f.block = .5;
       }
       physics(f, dt);
     }
-    for (let i = 0; i < F.length; i++) { const a = F[i]; if (!a.alive) continue; for (let j = i + 1; j < F.length; j++) { const b = F[j]; if (!b.alive) continue; // they don't stand inside each other
+    for (let i = 0; i < F.length; i++) { const a = F[i]; if (!a.alive) continue; for (let j = i + 1; j < F.length; j++) { const b = F[j]; if (!b.alive || b.down > 0 || b.heldBy || b.whip || b.rebound > 0 || a.down > 0 || a.heldBy || a.whip || a.rebound > 0) continue; // they don't stand inside each other
       const dz = b.z - a.z, dx = b.x - a.x, m = 40 * (S(a) + S(b)) / 2; if (Math.abs(dz) < .035 && Math.abs(dx) < m) { const k = (m - Math.abs(dx)) / 2 * (dx >= 0 ? 1 : -1); a.x -= k; b.x += k; } } }
-    if (finalLeft > 0 && finalPair && live.length === 2) { finalLeft -= dt; if (finalLeft <= 0) { const loser = finalPair.find(f => f.id !== destined && f.alive) || finalPair[1]; const w = finalPair.find(f => f !== loser); ko(loser, w, !!scene.wacky.gore); } } // ⏱️ time's up: the finishing blow
+    if (finalLeft > 0 && finalPair && live.length === 2) { finalLeft -= dt; if (finalLeft <= 0) { const loser = finalPair.find(f => f.id !== destined && f.alive) || finalPair[1]; const w = finalPair.find(f => f !== loser); if (RUMBLE()) { loser.heldBy = null; ko(loser, w, false, sideOf(loser)); } else ko(loser, w, !!scene.wacky.gore); } } // ⏱️ time's up: the finishing blow
     if (live.length <= 1 && !winner) finish(live[0] || F.find(f => f.id === destined) || F[0]);
   }
-  function startAtk(f, kind) {
+  function startAtk(f, kind, o) {
     const arms = f.limbs.la + f.limbs.ra, legs = f.limbs.ll + f.limbs.rl;
+    if ((GRAB[kind] || kind === 'elbow') && !arms) kind = legs ? 'kick' : 'head';
+    if (GRAB[kind]) { // 🤼 a hold: the other pack is grabbed and moved by this one until the move lands
+      const dur = { slam: .9, suplex: 1, toss: .85, whip: .35 }[kind];
+      f.atk = { kind, t: 0, dur, hitAt: dur * (kind === 'whip' ? .6 : .65), done: false, o }; f.cd = rr(.9, 1.5); f.vx = 0; f.yell = .5;
+      if (o.atk?.o) o.atk.o.heldBy = null; Object.assign(o, { heldBy: f, atk: null, block: 0, down: 0, vx: 0, vz: 0, vh: 0, lie: 0 });
+      if (kind !== 'whip') snd('whoosh'); return;
+    }
+    if (kind === 'elbow') { f.atk = { kind, t: 0, dur: 1.1, hitAt: 9, done: false }; f.cd = rr(.8, 1.3); f.vh = scene.wacky.lowgrav ? 520 : 560; f.vx = Math.sign((o?.x ?? f.x) - f.x || f.face) * 150; f.yell = .6; snd('whoosh'); return; }
     if (kind === 'punch' && !arms) kind = legs ? 'kick' : 'head';
     if (kind === 'kick' && !legs) kind = arms ? 'punch' : 'head';
     if (kind === 'jump' && !legs) kind = arms ? 'punch' : 'head';
@@ -164,6 +192,11 @@
   }
   function attack(f, dt) {
     const a = f.atk; a.t += dt * speedK();
+    if (GRAB[a.kind]) return grapple(f, a);
+    if (a.kind === 'elbow') { // 💪 jump and drop an elbow on someone lying down
+      if (!a.done && a.t > .25 && f.vh < 0) { const s = S(f); for (const o of F) { if (o === f || !o.alive || !(o.down > 0)) continue; if (Math.abs(o.x - f.x) < 70 * s && Math.abs(o.z - f.z) < .07) { a.done = true; hit(f, o, 'elbow'); break; } } }
+      if (a.t >= a.dur) f.atk = null; return;
+    }
     const hitting = a.kind === 'jump' ? a.t > .12 && f.h > 0 : a.t >= a.hitAt && a.t < a.hitAt + .1;
     if (hitting && !a.done) {
       const s = S(f), reach = ({ punch: 70, kick: 84, jump: 70, head: 50 }[a.kind] + (f.weapon ? 30 : 0)) * s;
@@ -171,22 +204,82 @@
     }
     if (a.t >= a.dur) f.atk = null;
   }
+  function grapple(f, a) {
+    const o = a.o, s = S(f);
+    if (!o?.alive || o.heldBy !== f) { f.atk = null; return; }
+    const u = Math.min(1, a.t / a.hitAt);
+    f.vx *= .5;
+    if (a.kind === 'whip') { o.x = f.x + f.face * 40 * s; o.z = f.z; o.h = 0; }
+    else if (a.kind === 'suplex') { const th = u * Math.PI; o.x = f.x + f.face * Math.cos(th) * 46 * s; o.z = f.z + .002; o.h = Math.sin(th) * 150 * s; o.lie = u; }
+    else { o.x = f.x + f.face * 14 * s; o.z = f.z + .002; o.h = Math.sin(u * Math.PI / 2) * 150 * s; o.lie = u; } // lifted up over the head
+    if (a.t < a.hitAt || a.done) { if (a.t >= a.dur) f.atk = null; return; }
+    a.done = true; o.heldBy = null; o.lie = 0;
+    if (a.kind === 'whip') { // 🔁 Irish whip: sent running into the ropes
+      o.whip = f.face; o.whipBy = f; o.stun = 0; word('IRISH WHIP!', o.x, zY(o.z) - 190 * S(o), '#9fd6ff', 34); snd('whoosh'); return;
+    }
+    if (a.kind === 'toss') { // ⬆️ over the top rope?
+      const d = sideOf(o); o.x = clamp(o.x, ...bounds(o.z));
+      if (tryOver(o, f, d)) return;
+      o.h = 0; o.stun = .5; o.x += -d * 30 * S(o); word(pick(['HANGS ON!', 'GRABS THE ROPE!', 'NOT OVER!']), o.x, zY(o.z) - 210 * S(o), '#9fffb0', 34); snd('crowd', { v: .7 }); return;
+    }
+    o.h = 0; if (a.kind === 'suplex') { o.x = f.x - f.face * 50 * s; f.down = .45; }
+    o.x = clamp(o.x, ...bounds(o.z));
+    dust(o.x, o.z, 12); snd('slam'); word(a.kind === 'slam' ? 'BODY SLAM!' : 'SUPLEX!', o.x, zY(o.z) - 160 * S(o), '#ffd23a', 46);
+    damage(f, o, (a.kind === 'slam' ? rr(11, 16) : rr(13, 19)) * paceBoost() * (T > D * 1.35 ? 2 : 1), a.kind);
+    if (o.alive) o.down = Math.max(o.down, a.kind === 'slam' ? 1.2 : 1.4);
+  }
+  // 🤼 can this pack be thrown over the top rope? (the more hurt it is, the easier; the fair winner always fights it off)
+  function tryOver(o, f, d) {
+    if (!o.alive) return false;
+    if (o.id === destined) {
+      word('REVERSAL!', o.x, zY(o.z) - 220 * S(o), '#ffe08a', 44); snd('crowd', { v: .8 });
+      if (f && f.alive && f !== o && !f.heldBy) { if (f.atk?.o) f.atk.o.heldBy = null; f.atk = null; f.down = 0; f.whip = d; f.whipBy = o; } // …and sends the thrower into the ropes instead
+      return false;
+    }
+    let ch = (.05 + (1 - clamp(o.hp, 0, 100) / 100) * .75) * paceBoost(); if (o.hp <= 0) ch = .95; if (T > D * 1.6) ch = Math.max(ch, .6);
+    if (R() < ch && !(R() < paceHold(alive().length))) { ko(o, f, false, d); return true; }
+    return false;
+  }
+  function rumbleState(f, dt) {
+    if (f.heldBy) { if (!f.heldBy.alive || f.heldBy.atk?.o !== f) { f.heldBy = null; f.lie = 0; return false; } return true; } // (the one holding it moves it)
+    if (f.down > 0) { f.down -= dt; f.atk = null; if (f.down <= 0) { f.down = 0; f.stun = .3; } physics(f, dt); return true; }
+    if (f.whip) {
+      const d = f.whip; f.vx = d * 560 * speedK() * (crazy() ? 1.4 : 1); f.vz = 0; f.atk = null; f.whipT = (f.whipT || 0) + dt;
+      if ((d < 0 ? f.x <= ringL(f.z) + 42 : f.x >= ringR(f.z) - 42) || f.whipT > 2.5) { f.whipT = 0; f.whip = 0; snd('punch');
+        if (!tryOver(f, f.whipBy, d)) { f.vx = -d * 520 * speedK(); f.rebound = .8; word('OFF THE ROPES!', f.x, zY(f.z) - 200 * S(f), '#fff', 30); } }
+      physics(f, dt); return true;
+    }
+    if (f.rebound > 0) {
+      f.rebound -= dt; f.vx = Math.sign(f.vx || 1) * 520 * speedK(); f.vz = 0; f.atk = null;
+      const by = f.whipBy;
+      if (by?.alive && !by.atk && !by.heldBy && !(by.down > 0) && !by.whip && by.stun <= 0 && Math.abs(by.z - f.z) < .08 && Math.abs(by.x - f.x) < 95 * S(by)) { // 💥 CLOTHESLINE on the way back
+        by.face = Math.sign(f.x - by.x) || 1; by.atk = { kind: 'clothes', t: 0, dur: .45, hitAt: 0, done: true }; f.rebound = 0; f.vx = 0; hit(by, f, 'clothes');
+      }
+      if (f.rebound <= 0) f.stun = Math.max(f.stun, .2);
+      physics(f, dt); return true;
+    }
+    return false;
+  }
   function hit(f, o, kind) {
-    let dmg = { punch: rr(7, 11), kick: rr(10, 15), jump: rr(14, 21), head: rr(6, 9) }[kind];
-    if (f.weapon) dmg *= f.weapon === 'sword' ? 2.6 : f.weapon === 'staff' ? 2.2 : 2.4; // 🗡️ weapons hit much harder
+    let dmg = { punch: rr(7, 11), kick: rr(10, 15), jump: rr(14, 21), head: rr(6, 9), clothes: rr(13, 18), elbow: rr(12, 18) }[kind];
+    if (f.weapon && kind !== 'clothes' && kind !== 'elbow') dmg *= f.weapon === 'sword' ? 2.6 : f.weapon === 'staff' ? 2.2 : 2.4; // 🗡️ weapons (and steel chairs) hit much harder
     if (scene.wacky.rage) dmg *= 1 + (1 - f.hp / 100) * 1.2;
     dmg *= (T > D * 1.35 ? 4 : T > D ? 2 : 1) * paceBoost();
     const blocked = o.block > 0 && o.face === -f.face;
     if (blocked) { dmg *= .2; word('BLOCK!', o.x, zY(o.z) - 160 * S(o), '#9fd6ff', 30); snd('clash'); o.vx += f.face * 120; return damage(f, o, dmg, kind, true); }
     if (scene.wacky.onehit) dmg = 999;
-    o.vx += f.face * (160 + dmg * 14) * (scene.wacky.lowgrav ? 1.6 : 1); if (scene.wacky.lowgrav || kind === 'jump') o.vh = Math.max(o.vh, scene.wacky.lowgrav ? 260 + dmg * 12 : 160);
+    if (o.atk?.o) o.atk.o.heldBy = null; // (a hit breaks the hold)
+    o.vx += f.face * (160 + dmg * 14) * (scene.wacky.lowgrav ? 1.6 : 1) * (RUMBLE() && !crazy() ? .45 : 1); // (the ring keeps it real unless a wacky setting is on) if (scene.wacky.lowgrav || kind === 'jump') o.vh = Math.max(o.vh, scene.wacky.lowgrav ? 260 + dmg * 12 : 160);
     o.stun = .22 + Math.min(.5, dmg / 60); o.atk = null; o.hurtT = .3;
     const sx = o.x - f.face * 18 * S(o), sy = zY(o.z) - o.h - (60 + R() * 70) * S(o);
-    word(f.weapon ? (f.weapon === 'sword' ? 'SLASH!' : 'THWACK!') : pickW(kind), sx, sy - 40, kind === 'jump' ? '#ffd23a' : '#fff', kind === 'jump' ? 46 : 36);
-    sparks(sx, sy); snd(kind === 'kick' || kind === 'jump' ? 'kick' : 'punch');
+    const WR = { jump: 'DROPKICK!', clothes: 'CLOTHESLINE!', elbow: 'ELBOW DROP!' }, big = kind === 'jump' || kind === 'clothes' || kind === 'elbow';
+    word(f.weapon && !WR[kind] ? (f.weapon === 'sword' ? 'SLASH!' : f.weapon === 'chair' ? 'CLANG!' : 'THWACK!') : RUMBLE() && WR[kind] ? WR[kind] : pickW(kind), sx, sy - 40, big ? '#ffd23a' : '#fff', big ? 46 : 36);
+    sparks(sx, sy); snd(f.weapon === 'chair' && !WR[kind] ? 'chair' : kind === 'clothes' || kind === 'elbow' ? 'slam' : kind === 'kick' || kind === 'jump' ? 'kick' : 'punch');
+    if (RUMBLE() && big) snd('crowd', { v: .6 });
     if (o.weapon && !f.weapon && R() < .3) { f.weapon = o.weapon; o.weapon = null; word('STOLEN!', f.x, zY(f.z) - 200 * S(f), '#ffe08a', 40); snd('clash'); } // knocked loose and grabbed
-    if (kind === 'jump') snd('hyah');
+    if (kind === 'jump' && !RUMBLE()) snd('hyah');
     damage(f, o, dmg, kind);
+    if ((kind === 'clothes' || kind === 'elbow') && o.alive) { o.down = Math.max(o.down, kind === 'clothes' ? 1.5 : 1.1); o.vx *= .3; }
   }
   const W_P = ['POW!', 'BAM!', 'WHAM!', 'HYAH!', 'SMACK!'], W_K = ['KAPOW!', 'WHACK!', 'CRACK!', 'HI-YAH!'];
   const pickW = k => (k === 'punch' || k === 'head' ? W_P : W_K)[Math.floor(Math.random() * (k === 'punch' ? 5 : 4))];
@@ -200,6 +293,11 @@
       if (o.stains.length < 14) o.stains.push({ x: Math.random(), y: Math.random() * .9 + .05, r: .06 + Math.random() * .1 * (gore ? 1.6 : 1) });
       if (gore && !keep && dmg >= 10 && R() < .16) loseLimb(o, f);
     }
+    if (RUMBLE()) { // 🤼 nobody is knocked out in the ring: at 0 health they go down (and go over the top rope easily)
+      if (o.hp <= 0) { o.hp = 0; if (!(o.down > 0) && !o.heldBy && !o.whip) { o.down = 1.8; o.atk = null; if (kind !== 'bleed') word(pick(['DOWN!', 'HE\'S HURT!', 'STAY DOWN!']), o.x, zY(o.z) - 200 * s, '#ff8a5a', 40); } }
+      if (gore && !keep && o.hp < 25 && !soft && kind !== 'bleed' && R() < .07) ko(o, f, true);
+      return;
+    }
     if (o.hp <= 0 && !keep && kind !== 'bleed' && R() < paceHold(alive().length)) { o.hp = rr(4, 10); if (R() < .5) word(pick(['STILL STANDING!', 'NOT YET!', 'HANGING ON!']), o.x, zY(o.z) - 210 * s, '#9fffb0', 34); } // ⏳ too many out too fast: hangs on
     if (o.hp <= 0) ko(o, f, gore && !keep && R() < .55);
     else if (gore && !keep && o.hp < 25 && !soft && R() < .07) ko(o, f, true);
@@ -212,23 +310,27 @@
     blood(o.x + side * 30 * s, zY(o.z) - o.h - (arm ? 70 : 20) * s, o.z, 26, f ? f.face : side, 1.7);
     word(arm ? 'ARM OFF!' : 'LEG OFF!', o.x, zY(o.z) - 210 * s, '#ff4a4a', 40); snd('chop');
   }
-  function ko(o, f, decap) {
-    o.alive = false; o.hp = 0; o.koT = 0; o.atk = null; o.vx += (f ? f.face : vr(-1, 1)) * 260; order.push(o.id);
+  function ko(o, f, decap, over) {
+    if (o.atk?.o) o.atk.o.heldBy = null; if (o.heldBy) { o.heldBy.atk = null; o.heldBy = null; }
+    o.alive = false; o.hp = 0; o.koT = 0; o.atk = null; o.down = 0; o.whip = 0; o.rebound = 0; o.lie = 0; order.push(o.id);
+    if (over) { o.out = true; const k = crazy() ? 2 : 1; o.vx = over * rr(260, 340) * k * (scene.wacky.lowgrav ? 1.4 : 1); o.vh = rr(440, 520) * (crazy() ? 1.25 : 1); o.h = Math.max(o.h, 30); } // ⬆️ up and over the top rope, down to the floor
+    else o.vx += (f ? f.face : vr(-1, 1)) * 260;
     lastKO = T; if (o.weapon) { weapons.push({ kind: o.weapon, x: o.x, z: o.z, h: 60, vh: 200 }); o.weapon = null; } // the weapon drops for someone else
     if (alive().length === 2 && !showdownSaid) { showdownSaid = true;
       if (scene.finalFight) { // 🥊 FINAL FIGHT (maps that have one): the clock stops, the last two face off across the street with a weapon each, a bell, then a timed fight
         const [a, b] = alive(); finalPair = [a, b]; mode = 'final'; modeT = 0;
-        const kinds = ['sword', 'staff', 'nunchaku'], k1 = Math.floor(R() * 3);
-        for (const [f, x, face, k] of [[a, W * .3, 1, kinds[k1]], [b, W * .7, -1, kinds[(k1 + 1 + Math.floor(R() * 2)) % 3]]]) { puff(f, '#ffd23a'); Object.assign(f, { x, z: .55, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, weapon: k, target: f === a ? b : a }); puff(f, '#ffd23a'); }
-        weapons = []; snd('gong');
-      } else { toast('🥊 FINAL SHOWDOWN!'); snd('gong'); } }
+        const kinds = MI().weapons, k1 = Math.floor(R() * kinds.length);
+        for (const [f, x, face, k] of [[a, W * .3, 1, kinds[k1]], [b, W * .7, -1, kinds[(k1 + 1 + Math.floor(R() * 2)) % kinds.length]]]) { puff(f, '#ffd23a'); Object.assign(f, { x, z: .55, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, weapon: k, target: f === a ? b : a, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0 }); puff(f, '#ffd23a'); }
+        weapons = []; bell();
+      } else { toast('🥊 FINAL SHOWDOWN!'); bell(); } }
     const s = S(o);
     if (decap) { // 🩸 the face comes off (the top of the pack)
       o.head = false;
       flyers.push({ kind: 'head', f: o, x: o.x, y: zY(o.z) - o.h - 150 * s, gz: o.z, vx: (f ? f.face : 1) * vr(220, 480), vy: -vr(500, 800), rot: 0, vrot: vr(-10, 10), s, rest: false, blood: 2 });
       blood(o.x, zY(o.z) - o.h - 120 * s, o.z, 60, f ? f.face : 0, 2.2); word('HEADLESS!', o.x, zY(o.z) - 240 * s, '#ff3030', 58); snd('chop'); snd('splat');
-    } else { word(pick(['K.O.!', 'DOWN!', 'FINISHED!']), o.x, zY(o.z) - 200 * s, '#ff5a5a', 52); snd('splat'); }
-    snd('fall');
+    } else if (over) { word(pick(['ELIMINATED!', 'OVER THE TOP!', 'GONE!']), o.x, zY(o.z) - 220 * s, '#ff5a5a', 56); snd('crowd'); snd('whoosh'); }
+    else { word(pick(['K.O.!', 'DOWN!', 'FINISHED!']), o.x, zY(o.z) - 200 * s, '#ff5a5a', 52); snd('splat'); }
+    if (!over) snd('fall');
     if (scene.wacky.boom) { // 💣 it explodes
       for (let i = 0; i < 40; i++) parts.push({ x: o.x, y: zY(o.z) - 60 * s, vx: vr(-600, 600), vy: vr(-700, -100), g: 900, life: vr(.4, 1), max: 1, size: vr(5, 12), color: ['#ffcf4a', '#ff7a2a', '#fff2a0', '#5a3a2a'][Math.floor(Math.random() * 4)], gz: null });
       snd('boom'); word('BOOM!', o.x, zY(o.z) - 140 * s, '#ffb02a', 64);
@@ -240,16 +342,20 @@
     const slip = scene.wacky.slippery;
     f.x += f.vx * dt; f.z = clamp(f.z + f.vz * dt, 0, 1);
     const fr = f.h > 0 ? .995 : slip ? .985 : .86; f.vx *= Math.pow(fr, dt * 60); f.vz *= Math.pow(slip ? .97 : .8, dt * 60);
-    if (f.h > 0 || f.vh > 0) { f.h += f.vh * dt; f.vh -= grav() * dt; if (f.h <= 0) { f.h = 0; f.vh = 0; if (f.atk?.kind === 'jump') f.atk = null; dust(f.x, f.z, 5); } }
+    const gl = gnd(f);
+    if (f.h > gl || f.vh > 0) { f.h += f.vh * dt; f.vh -= grav() * dt; if (f.h <= gl) { const hard = f.vh < -450; f.h = gl; f.vh = 0; if (f.atk?.kind === 'jump' || f.atk?.kind === 'elbow') f.atk = null; dust(f.x, f.z, 5); if (hard && f.out) { snd('slam'); dust(f.x, f.z, 10); } } }
+    if (f.out && f.h === 0 && !gl) f.vx = Math.sign(f.vx || 1) * Math.max(Math.abs(f.vx), 220); // (still on the edge of the mat: keeps going over)
     if (slip && f.alive && f.h === 0 && Math.abs(f.vx) > 160 && R() < .004) { f.stun = .9; word('SLIP!', f.x, zY(f.z) - 150 * S(f), '#bfefff', 30); snd('bonk'); }
-    if (f.x < 90) { f.x = 90; f.vx = Math.abs(f.vx) * .4; } if (f.x > W - 90) { f.x = W - 90; f.vx = -Math.abs(f.vx) * .4; }
+    if (f.out) f.x = clamp(f.x, 30, W - 30);
+    else { const [lo, hi] = bounds(f.z), bk = RUMBLE() ? .6 : .4; if (RUMBLE()) f.z = clamp(f.z, .04, .96); // (the ring ropes bounce you back in)
+      if (f.x < lo) { f.x = lo; f.vx = Math.abs(f.vx) * bk; } if (f.x > hi) { f.x = hi; f.vx = -Math.abs(f.vx) * bk; } }
     if (!f.alive) f.koT += dt;
   }
   function finish(w, quick) {
     winner = w; mode = 'won'; modeT = 0; slowUntil = T + 1.2;
     if (!quick && rbuf.length > 60) { mode = 'over'; setTimeout(() => { if (winner !== w || mode !== 'over') return; replay = { frames: rbuf.slice(-180), i: 0 }; mode = 'replay'; modeT = 0; }, 1800); } // ⏪ then the replay of the last moments
     else setTimeout(() => snd('fanfare'), 600);
-    snd('gong'); if (scene.show) SFX.music?.(null);
+    bell(); if (RUMBLE()) snd('crowd'); if (scene.show) SFX.music?.(null);
     if (!sent && !PREVIEW_WIN) { sent = true; setTimeout(() => send({ type: 'cardResult', fightId, winnerId: w.id, order: [w.id, ...order.slice().reverse()] }), 1800); }
   }
 
@@ -308,6 +414,70 @@
     barrel(60, GY0 + 30, 1); barrel(1860, GY0 + 40, 1.05); b.fillStyle = '#7a5530'; b.fillRect(1760, GY0 - 30, 80, 70); b.strokeStyle = '#3a2410'; b.lineWidth = 4; b.strokeRect(1760, GY0 - 30, 80, 70);
     return c;
   }
+  // ---------- 🔔 Rumble Ring (arena + ring drawn once; logo, lights and front ropes every frame) ----------
+  const ROPES = [38, 76, 114], postH = 150;
+  function ropeY(x0, y0, x1, y1, k0, k1, h) { return [y0 - h * k0, y1 - h * k1]; }
+  function drawRing(b, front) { // back + side ropes (front = false) or the front ropes and posts (front = true)
+    const BL = [ringL(0), GY0], BR = [ringR(0), GY0], FL = [ringL(1), GY1], FR = [ringR(1), GY1], kB = .72, kF = 1.12;
+    const post = ([x, y], k) => { const w = 16 * k; b.fillStyle = '#2a2d33'; b.fillRect(x - w / 2, y - postH * k, w, postH * k); b.fillStyle = 'rgba(255,255,255,.18)'; b.fillRect(x - w / 2, y - postH * k, w * .3, postH * k);
+      for (const [i, h] of ROPES.entries()) { b.fillStyle = ['#d8202a', '#f2f2f2', '#2050d8'][i]; b.beginPath(); b.roundRect?.(x - w * .9, y - h * k - 8 * k, w * 1.8, 16 * k, 4 * k); b.fill(); } };
+    const rope = (A, B, kA, kB2, i) => { const h = ROPES[i]; b.strokeStyle = ['#d8202a', '#f2f2f2', '#2050d8'][i]; b.lineWidth = 4.5 * (kA + kB2) / 2; b.beginPath(); b.moveTo(A[0], A[1] - h * kA); b.quadraticCurveTo((A[0] + B[0]) / 2, (A[1] - h * kA + B[1] - h * kB2) / 2 + 6, B[0], B[1] - h * kB2); b.stroke(); };
+    if (!front) { post(BL, kB); post(BR, kB); for (let i = 0; i < 3; i++) { rope(BL, BR, kB, kB, i); rope(BL, FL, kB, kF, i); rope(BR, FR, kB, kF, i); } }
+    else { for (let i = 0; i < 3; i++) rope(FL, FR, kF, kF, i); post(FL, kF); post(FR, kF); }
+  }
+  function drawBgRumble(k) {
+    const c = document.createElement('canvas'); c.width = W * k; c.height = H * k; const b = c.getContext('2d'); b.scale(k, k);
+    const sky = b.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#06060e'); sky.addColorStop(.5, '#141022'); sky.addColorStop(1, '#0a0a12'); b.fillStyle = sky; b.fillRect(0, 0, W, H);
+    // the lighting rig at the top
+    b.fillStyle = '#1c1c26'; b.fillRect(0, 70, W, 26); for (let x = 60; x < W; x += 140) { b.fillStyle = '#2a2a36'; b.fillRect(x - 18, 96, 36, 30); b.fillStyle = 'rgba(255,240,200,.85)'; b.beginPath(); b.arc(x, 126, 10, 0, 7); b.fill(); }
+    // the big screen
+    b.fillStyle = '#111'; b.fillRect(760, 150, 400, 150); const sc = b.createLinearGradient(0, 160, 0, 290); sc.addColorStop(0, '#3a2a7a'); sc.addColorStop(1, '#a0204a'); b.fillStyle = sc; b.fillRect(772, 162, 376, 126);
+    b.fillStyle = '#ffd23a'; b.font = `64px ${FONT}`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText('RUMBLE!', 960, 226);
+    // the crowd: rows of fans going up into the dark
+    for (let row = 0; row < 11; row++) {
+      const y = 600 - row * 34, sz = 15 - row * .7, dark = .25 + row * .06;
+      for (let x = -10 + (row % 2) * 14; x < W + 20; x += sz * 1.9 + vr(0, 6)) {
+        if (row > 6 && x > 740 && x < 1180) continue; // (under the big screen)
+        const col = `hsl(${Math.floor(vr(0, 360))},${Math.floor(vr(10, 50))}%,${Math.floor(vr(18, 42) * (1 - dark * .6))}%)`;
+        b.fillStyle = col; b.beginPath(); b.ellipse(x, y + 16, sz * .95, sz * 1.1, 0, 0, 7); b.fill(); // shoulders
+        b.fillStyle = `rgba(${Math.floor(vr(150, 230))},${Math.floor(vr(110, 180))},${Math.floor(vr(90, 150))},${1 - dark * .7})`; b.beginPath(); b.arc(x, y, sz * .55, 0, 7); b.fill();
+        if (Math.random() < .07) { b.fillStyle = ['#ffd23a', '#ff4a6a', '#4ad0ff', '#fff'][Math.floor(Math.random() * 4)]; b.fillRect(x - 12, y - 32, 24, 16); } // signs
+      }
+      b.fillStyle = `rgba(6,6,14,${dark * .5})`; b.fillRect(0, y - 20, W, 34);
+    }
+    // barricade + arena floor
+    b.fillStyle = '#1a1a22'; b.fillRect(0, 610, W, 40); b.fillStyle = '#2a2a3a'; b.fillRect(0, 610, W, 5);
+    const fl = b.createLinearGradient(0, 650, 0, H); fl.addColorStop(0, '#24242e'); fl.addColorStop(1, '#14141a'); b.fillStyle = fl; b.fillRect(0, 650, W, H - 650);
+    b.strokeStyle = 'rgba(255,255,255,.05)'; b.lineWidth = 2; for (let i = 0; i < 9; i++) { const y = 650 + Math.pow(i / 9, 1.5) * 430; b.beginPath(); b.moveTo(0, y); b.lineTo(W, y); b.stroke(); }
+    // ring apron (front skirt) + the mat
+    b.fillStyle = '#121216'; b.beginPath(); b.moveTo(ringL(1) - 10, GY1); b.lineTo(ringR(1) + 10, GY1); b.lineTo(ringR(1) + 10, GY1 + OUT_Y + 6); b.lineTo(ringL(1) - 10, GY1 + OUT_Y + 6); b.fill();
+    b.fillStyle = 'rgba(255,210,60,.85)'; b.font = `40px ${FONT}`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText('🔔  RUMBLE RING  🔔', 960, GY1 + 32);
+    b.fillStyle = '#1a1a22'; b.beginPath(); b.moveTo(ringL(0) - 16, GY0 - 4); b.lineTo(ringR(0) + 16, GY0 - 4); b.lineTo(ringR(1) + 18, GY1 + 4); b.lineTo(ringL(1) - 18, GY1 + 4); b.fill(); // the apron edge
+    const mat = b.createLinearGradient(0, GY0, 0, GY1); mat.addColorStop(0, '#c8ccd6'); mat.addColorStop(1, '#eef0f4'); b.fillStyle = mat;
+    b.beginPath(); b.moveTo(ringL(0), GY0); b.lineTo(ringR(0), GY0); b.lineTo(ringR(1), GY1); b.lineTo(ringL(1), GY1); b.fill();
+    b.strokeStyle = 'rgba(0,0,0,.06)'; b.lineWidth = 2; for (let i = 1; i < 8; i++) { const z = i / 8; b.beginPath(); b.moveTo(ringL(z), zY(z)); b.lineTo(ringR(z), zY(z)); b.stroke(); }
+    for (let i = 0; i < 260; i++) { const z = Math.random(); b.fillStyle = `rgba(0,0,0,${vr(.02, .05)})`; b.fillRect(vr(ringL(z), ringR(z)), zY(z), vr(2, 6), vr(1, 3)); }
+    drawRing(b, false);
+    return c;
+  }
+  function ringLogo() { // the picture in the middle of the mat (your own, or your Twitch picture)
+    const img = imgFor(scene.logo), cx = 960, cy = zY(.5), r = 175;
+    g.save(); g.translate(cx, cy); g.scale(1, .4);
+    g.fillStyle = 'rgba(20,20,30,.12)'; g.beginPath(); g.arc(0, 0, r + 18, 0, 7); g.fill();
+    g.beginPath(); g.arc(0, 0, r, 0, 7); g.save(); g.clip();
+    if (img) { const q = Math.max(2 * r / img.naturalWidth, 2 * r / img.naturalHeight); g.globalAlpha = .92; g.drawImage(img, -img.naturalWidth * q / 2, -img.naturalHeight * q / 2, img.naturalWidth * q, img.naturalHeight * q); g.globalAlpha = 1; }
+    else { g.fillStyle = '#7a2ad8'; g.fillRect(-r, -r, 2 * r, 2 * r); g.fillStyle = '#ffd23a'; g.font = `120px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🤼', 0, 0); }
+    g.restore(); g.lineWidth = 10; g.strokeStyle = 'rgba(255,210,60,.9)'; g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke(); g.restore();
+  }
+  function arenaLights(t) { // spotlights sweeping and camera flashes in the crowd
+    if (GFX.quality === 'low') return;
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (const [x0, sp, ph, col] of [[300, .5, 0, 'rgba(120,160,255,.06)'], [1620, .45, 2, 'rgba(255,120,200,.06)'], [960, .3, 4, 'rgba(255,240,200,.05)']]) {
+      const tx = 960 + Math.sin(t * sp + ph) * 520; g.fillStyle = col; g.beginPath(); g.moveTo(x0 - 20, 110); g.lineTo(x0 + 20, 110); g.lineTo(tx + 170, 960); g.lineTo(tx - 170, 960); g.fill();
+    }
+    g.restore();
+    for (let i = 0; i < 3; i++) if (Math.random() < .12) { const x = vr(0, W), y = vr(270, 590); g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(x, y, vr(2, 5), 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.15)'; g.beginPath(); g.arc(x, y, 22, 0, 7); g.fill(); }
+  }
   function lanterns(t) { // strings of red lanterns swaying across the street
     for (const [y0, sag, n, off] of [[140, 90, 9, 0], [250, 70, 7, 1]]) {
       g.strokeStyle = 'rgba(30,10,10,.8)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, y0); g.quadraticCurveTo(W / 2, y0 + sag * 2, W, y0); g.stroke();
@@ -334,8 +504,8 @@
   function drawFace(f, cx, top, PW, PH, s, look) {
     const ey = top + PH * .3, ex = PW * .18, ko = !f.alive, hurt = f.hurtT > 0;
     // headband
-    g.fillStyle = '#d82020'; g.fillRect(cx - PW / 2, top + PH * .12, PW, PH * .07);
-    const tx = cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
+    if (!RUMBLE()) { g.fillStyle = '#d82020'; g.fillRect(cx - PW / 2, top + PH * .12, PW, PH * .07); }
+    const tx = RUMBLE() ? -9999 : cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
     for (const side of [-1, 1]) {
       const x = cx + side * ex + f.face * 3 * s;
       g.lineWidth = 2.4 * s; g.strokeStyle = '#111';
@@ -368,14 +538,22 @@
     g.save(); g.translate(x, y); g.rotate(ang); g.scale(face, 1);
     if (kind === 'sword') { g.fillStyle = '#dfe6ee'; g.fillRect(0, -3 * s, 64 * s, 6 * s); g.fillStyle = '#c8a040'; g.fillRect(-4 * s, -9 * s, 5 * s, 18 * s); g.fillStyle = '#5a2a10'; g.fillRect(-16 * s, -3 * s, 12 * s, 6 * s); }
     else if (kind === 'staff') { g.fillStyle = '#8a5a2a'; g.fillRect(-40 * s, -3 * s, 110 * s, 6 * s); }
+    else if (kind === 'chair') { // 🪑 a folding steel chair
+      g.strokeStyle = '#3a3f46'; g.lineWidth = 3 * s; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(8 * s, -4 * s); g.lineTo(2 * s, 26 * s); g.moveTo(40 * s, -4 * s); g.lineTo(46 * s, 26 * s); g.moveTo(10 * s, -2 * s); g.lineTo(44 * s, 24 * s); g.stroke();
+      const cg = g.createLinearGradient(0, -34 * s, 0, 0); cg.addColorStop(0, '#c8d0da'); cg.addColorStop(1, '#7a838e'); g.fillStyle = cg;
+      g.fillRect(6 * s, -34 * s, 36 * s, 22 * s); g.strokeRect(6 * s, -34 * s, 36 * s, 22 * s); g.fillRect(2 * s, -6 * s, 44 * s, 6 * s); g.strokeRect(2 * s, -6 * s, 44 * s, 6 * s);
+    }
     else { g.strokeStyle = '#999'; g.lineWidth = 2 * s; g.beginPath(); g.moveTo(10 * s, 0); g.lineTo(24 * s, 10 * s); g.stroke(); g.fillStyle = '#3a2a1a'; g.fillRect(-14 * s, -3 * s, 26 * s, 6 * s); g.save(); g.translate(24 * s, 10 * s); g.rotate(Math.sin(T * 20) * .8); g.fillRect(0, -3 * s, 26 * s, 6 * s); g.restore(); }
     g.restore();
   }
   function drawFighter(f) {
-    const s = S(f), X = f.x, Y = zY(f.z), PW = 74 * s, PH = 112 * s, LL = 44 * s, AL = 40 * s;
-    g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(X, Y, PW * .62 * (1 - Math.min(.5, f.h / 400)), 11 * s, 0, 0, 7); g.fill(); // shadow
+    const s = S(f), X = f.x, Y = zY(f.z), PW = 74 * s, PH = 112 * s, LL = 44 * s, AL = 40 * s, gl = gnd(f);
+    g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(X, Y - gl, PW * .62 * (1 - Math.min(.5, (f.h - gl) / 400)), 11 * s, 0, 0, 7); g.fill(); // shadow
     g.save();
-    if (!f.alive) { const k = Math.min(1, f.koT * 3); g.translate(X, Y); g.rotate(-f.face * k * Math.PI / 2 * .95); g.translate(-X, -Y); if (f.koT > 5) g.globalAlpha = Math.max(.35, 1 - (f.koT - 5) * .2); }
+    const lieK = !f.alive ? Math.min(1, f.koT * 3) : f.heldBy ? f.lie : f.down > 0 ? 1 : 0; // knocked out, lying down, or lifted up flat
+    if (lieK) { const py = Y - f.h; g.translate(X, py); g.rotate(-f.face * lieK * Math.PI / 2 * .95); g.translate(-X, -py); }
+    if (!f.alive && f.koT > 5 && !f.out) g.globalAlpha = Math.max(.35, 1 - (f.koT - 5) * .2);
     const fy = Y - f.h, hip = fy - LL, top = hip - PH, a = f.atk, walk = Math.sin(f.ph), lean = a ? f.face * .1 : 0;
     g.translate(X, hip); g.rotate(lean); g.translate(-X, -hip);
     g.strokeStyle = '#151515'; g.lineCap = 'round'; g.lineJoin = 'round';
@@ -400,6 +578,9 @@
       if (f.alive && a?.kind === 'punch' && front) { const u = Math.sin(Math.min(1, a.t / a.dur) * Math.PI); hx = shx + f.face * AL * (.4 + 1.25 * u); hy = sy - 6 * s; }
       if (f.alive && a?.kind === 'jump') { hx = shx - f.face * AL * .5; hy = sy - AL * .7; }
       if (f.block > 0) { hx = shx + f.face * 14 * s; hy = sy - 30 * s; }
+      if (f.alive && a?.o) { hx = shx + f.face * 16 * s; hy = sy - 44 * s; } // 🤼 holding someone up
+      if (f.alive && a?.kind === 'clothes' && front) { hx = shx + f.face * AL * 1.6; hy = sy - 4 * s; }
+      if (f.alive && a?.kind === 'elbow' && front) { hx = shx + f.face * 6 * s; hy = sy + AL * .6; }
       if (!f.alive) { hx = shx + side * AL * .9; hy = sy + AL * .2; }
       limb(shx, sy, hx, hy, side * 6 * s, 5 * s);
       if (front && f.weapon) drawWeapon(f.weapon, hx, hy, f.face, s, a?.kind === 'punch' ? 0 : -.9);
@@ -436,30 +617,32 @@
     const real = Math.min(.1, (now - (lastFrame || now)) / 1000); lastFrame = now;
     if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
     const k = RY().scale?.() || 1; if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
-    if (!bg || bgScale !== Math.min(2, k)) { bgScale = Math.min(2, k); bg = drawBg(bgScale); }
+    if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : drawBg(bgScale); }
     modeT += real; toastT -= real;
-    if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; snd('gong'); }
-    if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd('hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
+    if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; bell(); if (RUMBLE()) snd('crowd'); }
+    if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
     if (mode === 'replay') { replayOn = true; replay.t = (replay.t ?? replay.frames[0].T) + real * .45; while (replay.i < replay.frames.length - 1 && replay.frames[replay.i + 1].T <= replay.t) replay.i++; if (replay.t >= replay.frames[replay.frames.length - 1].T + .4) { mode = 'won'; modeT = 0; replayOn = false; replay = null; snd('fanfare'); } }
     else { acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; }
-    if (mode === 'fight' || (mode === 'over' && modeT < 1.6)) { rbuf.push({ T, f: F.map(f => ({ x: f.x, z: f.z, h: f.h, face: f.face, ph: f.ph, atk: f.atk && { ...f.atk }, alive: f.alive, koT: f.koT, limbs: { ...f.limbs }, head: f.head, hp: f.hp, hurtT: f.hurtT, block: f.block, weapon: f.weapon, yell: f.yell, sn: f.stains.length, look: f.target ? Math.sign(f.target.x - f.x) : f.face })) }); if (rbuf.length > 260) rbuf.shift(); } // ⏪ the last few seconds, for the replay
+    if (mode === 'fight' || (mode === 'over' && modeT < 1.6)) { rbuf.push({ T, f: F.map(f => ({ x: f.x, z: f.z, h: f.h, face: f.face, ph: f.ph, atk: f.atk && { ...f.atk }, alive: f.alive, koT: f.koT, limbs: { ...f.limbs }, head: f.head, hp: f.hp, hurtT: f.hurtT, block: f.block, weapon: f.weapon, yell: f.yell, down: f.down, lie: f.lie, heldBy: !!f.heldBy, out: f.out, sn: f.stains.length, look: f.target ? Math.sign(f.target.x - f.x) : f.face })) }); if (rbuf.length > 260) rbuf.shift(); } // ⏪ the last few seconds, for the replay
     // effects move in real (slowed) time
     const vt = real * timeK();
     for (const p of parts) { p.vy += p.g * vt; p.x += p.vx * vt; p.y += p.vy * vt; p.life -= vt; if (p.blood && p.gz != null && p.y >= zY(p.gz) && p.vy > 0) { stamp(p.x, zY(p.gz) - vr(0, 6), p.size * vr(.8, 1.5), Math.random() < .5 ? 'rgba(130,0,12,.75)' : 'rgba(170,10,24,.65)'); p.life = 0; } }
     parts = parts.filter(p => p.life > 0);
     for (const o of flyers) { if (o.rest) continue; o.vy += 1500 * vt; o.x += o.vx * vt; o.y += o.vy * vt; o.rot += o.vrot * vt; if (o.blood > 0) { o.blood -= vt; if (Math.random() < .6) parts.push({ x: o.x, y: o.y, vx: vr(-60, 60), vy: vr(-60, 40), g: 1500, life: 2, max: 2, size: vr(2, 4), color: '#b0101c', gz: o.gz, blood: true }); } const gy = zY(o.gz) - 6; if (o.y > gy && o.vy > 0) { o.y = gy; o.vy *= -.35; o.vx *= .6; o.vrot *= .5; if (Math.abs(o.vy) < 60) { o.rest = true; o.vy = 0; } } }
     for (const t of texts) { t.life -= real; t.y -= 40 * real; } texts = texts.filter(t => t.life > 0);
-    if (petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
+    if (!RUMBLE() && petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
     for (const p of petals) { p.x += (p.vx + Math.sin(now / 700 + p.r) * 30) * real; p.y += p.vy * real; p.r += real * 2; } petals = petals.filter(p => p.y < H + 20 && p.x < W + 40);
 
     g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = GFX.smooth !== false;
     g.drawImage(bg, 0, 0, W, H);
-    lanterns(now / 1000);
+    if (RUMBLE()) ringLogo(); else lanterns(now / 1000);
     g.drawImage(floor, 0, 0);
-    for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - 6, 1, s, w.h > 0 ? T * 8 : 0); }
+    if (RUMBLE()) arenaLights(now / 1000);
+    for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - (w.kind === 'chair' ? 28 * s : 6), 1, s, w.h > 0 ? T * 8 : 0); }
     const shown = mode === 'replay' && replay ? replay.frames[replay.i].f.map((sn, i) => ({ ...F[i], ...sn, stains: F[i].stains.slice(0, sn.sn), target: { x: F[i].x * 0 + sn.x + sn.look * 50, alive: true } })) : F;
     const order2 = shown.slice().sort((a, b) => (a.alive - b.alive) || a.z - b.z);
     for (const f of order2) drawFighter(f);
+    if (RUMBLE()) drawRing(g, true); // (the front ropes are in front of everyone)
     for (const o of flyers) drawFlyer(o);
     for (const p of parts) { g.globalAlpha = p.dust ? Math.max(0, p.life / p.max) : 1; g.fillStyle = p.color; g.beginPath(); g.arc(p.x, p.y, p.size, 0, 7); g.fill(); } g.globalAlpha = 1;
     for (const t of texts) { const a = Math.min(1, t.life / t.max * 2), sc = 1 + (1 - t.life / t.max) * .25; g.save(); g.translate(t.x, t.y); g.rotate(t.rot); g.scale(sc, sc); g.globalAlpha = a; g.font = `${t.size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = '#1a0a08'; g.strokeText(t.t, 0, 0); g.fillStyle = t.color; g.fillText(t.t, 0, 0); g.restore(); }
@@ -472,7 +655,7 @@
   function hud(now) {
     const live = alive().length, on = Object.keys(scene.wacky).filter(k => scene.wacky[k]);
     g.fillStyle = 'rgba(20,6,6,.72)'; g.fillRect(0, 0, W, 62);
-    g.font = `34px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#ffd23a'; g.fillText(`🏯 KUNG FU TOWN · ${scene.battleName || 'Card battle'}`, 24, 32);
+    g.font = `34px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#ffd23a'; g.fillText(`${MI().title} · ${scene.battleName || 'Card battle'}`, 24, 32);
     g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText(mode === 'lobby' ? `${F.length} pack${F.length === 1 ? '' : 's'} ready` : `${live} of ${F.length} standing`, W - 24, 32);
     if (on.length) { g.font = '800 20px Inter, sans-serif'; g.textAlign = 'center'; const t = on.map(k => WN[k] || k).join('   '); const w = g.measureText(t).width + 30; g.fillStyle = 'rgba(160,20,40,.8)'; g.fillRect(W / 2 - w / 2, 66, w, 32); g.fillStyle = '#fff'; g.fillText(t, W / 2, 83); }
     if (mode === 'fight' || mode === 'final' || mode === 'intro') { // ⏱️ the fight clock (stops while FINAL FIGHT shows)
@@ -483,7 +666,7 @@
       if (modeT > 2.4) banner('🔔 FIGHT!', 520, 90, '#ffd23a'); }
     if (toastT > 0) { g.globalAlpha = Math.min(1, toastT); banner(toastText, 200, 64, '#ff8ab0'); g.globalAlpha = 1; }
     if (mode === 'lobby') { banner('🃏 CARD BATTLE', 330, 110); g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(F.length >= 2 ? 'Waiting for the fight…' : 'Add packs in the 📦 Card pool tab', W / 2, 410); }
-    if (mode === 'intro') { const u = modeT; if (u < 1.4) banner('KUNG FU TOWN', 360, 120 + u * 20, '#ffd23a'); else banner('FIGHT!', 360, 170 + (u - 1.4) * 60, '#ff3a2a'); }
+    if (mode === 'intro') { const u = modeT; if (u < 1.4) banner(MI().intro, 360, 120 + u * 20, '#ffd23a'); else banner(RUMBLE() ? 'BELL!' : 'FIGHT!', 360, 170 + (u - 1.4) * 60, '#ff3a2a'); }
     if (mode === 'replay') { g.fillStyle = '#000'; g.fillRect(0, 0, W, 70); g.fillRect(0, H - 70, W, 70); g.font = `44px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = Math.sin(now / 250) > 0 ? '#ff4a4a' : '#ffffff'; g.fillText('⏪ REPLAY', 40, H - 35); }
     if (mode === 'won' && winner) {
       const u = Math.min(1, modeT / .8); g.fillStyle = `rgba(0,0,0,${.55 * u})`; g.fillRect(0, 0, W, H);
@@ -501,5 +684,7 @@
       if (Math.random() < .5) petals.push({ x: vr(0, W), y: -10, vx: vr(-40, 40), vy: vr(80, 160), r: 0, c: ['#ffd23a', '#ff5a7a', '#5ad6ff', '#ffffff'][Math.floor(Math.random() * 4)] });
     }
   }
-  window.CARDS = { msg, state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }) };
+  window.CARDS = { msg, state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }),
+    sim: secs => { const out = []; let last = alive().length; if (mode === 'intro') mode = 'fight'; for (let i = 0; i < secs * 60 && !winner; i++) { if (mode === 'final') { mode = 'fight'; finalLeft = 20; } step(DT); const n = alive().length; if (n !== last) { out.push([+T.toFixed(1), n]); last = n; } } return { out, T, winner: winner?.id || null, destined }; },
+    dbg: () => alive().map(f => ({ id: f.id, d: f.id === destined, x: Math.round(f.x), z: +f.z.toFixed(2), h: Math.round(f.h), hp: Math.round(f.hp), down: +f.down.toFixed(2), held: !!f.heldBy, whip: f.whip, reb: +f.rebound.toFixed(2), atk: f.atk?.kind, stun: +f.stun.toFixed(2), tgt: f.target?.id, seek: !!f.seek, w: f.weapon, cd: +f.cd.toFixed(2) })) }; // (for testing: plays the fight fast, without drawing)
 })();

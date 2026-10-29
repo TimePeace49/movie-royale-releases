@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.34.0 (test build)
+- 🤼 **New card map: Rumble Ring** (card battles only). All the packs start in a wrestling ring and the only way out is over the top rope. They do wrestling moves: body slams, suplexes, Irish whips into the ropes (and a clothesline when they bounce back), elbow drops, dropkicks. At 0 health a pack goes down instead of being knocked out, and the more hurt a pack is, the easier it goes over the top rope. Steel chairs get thrown into the ring (2 per fight). The moves stay fairly realistic unless a 🤪 wacky setting is on. When 2 are left there's a 🥊 FINAL FIGHT with a chair each. It has its own rock music, a crowd that cheers, and a bell.
+- 🤼 The middle of the ring shows **your Twitch picture**. To use your own logo: 📦 Card pool tab → set the map to Rumble Ring → 🖼️ Pick a ring logo (↺ Use my Twitch picture goes back).
+- 🗺️ **Map menus:** maps only that battle can use are on top (A to Z), then a line, then the maps both battles can use.
+- 🧪 Test tab: 🔔 Rumble Ring pretend fight, plus 3 new checklist items.
+
 ## 1.33.1 (test build)
 - **🗡️ Card battles: packs go for the weapons.** A pack that isn't fighting anyone right now and has no weapon goes for whichever is closer: a weapon lying in the street, or the pack holding one. Packs already in a fight keep fighting.
 - **✅ The checklist is a plain list again** (rows with the button on the right) instead of big boxes.

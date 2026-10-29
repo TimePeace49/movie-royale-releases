@@ -8,7 +8,7 @@ window.SFX = (() => {
   const mapCustom = {};   // map id -> { name -> AudioBuffer } (that map's own sounds)
   let curMap = null;
   const lastPlay = {};    // name -> time, for rate limiting
-  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05 };
+  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05, crowd: .7, chair: .08, slam: .06 };
 
   function init() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; }
@@ -163,6 +163,10 @@ window.SFX = (() => {
     splat: () => { noise({ dur: .3, v: .35, type: 'lowpass', f0: 900, f1: 200, q: 2 }); tone({ type: 'sine', f0: 90, f1: 40, dur: .2, v: .3 }); },
     chop: () => { noise({ dur: .18, v: .4, type: 'highpass', f0: 3000, f1: 800 }); tone({ type: 'square', f0: 900, f1: 300, dur: .08, v: .08 }); noise({ dur: .35, v: .3, type: 'lowpass', f0: 700, f1: 150, q: 3, at: .06 }); },
     hyah: () => { const p = .85 + Math.random() * .4; tone({ type: 'sawtooth', f0: 330 * p, f1: 520 * p, dur: .09, v: .12 }); tone({ type: 'sawtooth', f0: 520 * p, f1: 260 * p, dur: .22, v: .14, at: .08 }); noise({ dur: .25, v: .08, type: 'bandpass', f0: 1800 * p, q: 1.5 }); },
+    // 🔔 Rumble Ring
+    crowd: (o = {}) => { noise({ dur: 2.2, v: .16 * (o.v ?? 1), type: 'bandpass', f0: 900, f1: 1300, q: .4, a: .25 }); noise({ dur: 1.8, v: .08 * (o.v ?? 1), type: 'bandpass', f0: 2400, q: .7, a: .2 }); for (let i = 0; i < 6; i++) tone({ type: 'sawtooth', f0: 300 + Math.random() * 300, f1: 420 + Math.random() * 300, dur: .5, v: .012, at: Math.random() * .6, a: .1 }); },
+    slam: () => { tone({ type: 'sine', f0: 90, f1: 35, dur: .35, v: .7 }); noise({ dur: .25, v: .45, type: 'lowpass', f0: 1400, f1: 200, q: .7 }); noise({ dur: .5, v: .12, type: 'bandpass', f0: 300, q: 2, at: .03 }); },
+    chair: () => { tone({ type: 'square', f0: 620, f1: 540, dur: .12, v: .12 }); tone({ type: 'sine', f0: 1240, dur: .5, v: .12 }); tone({ type: 'sine', f0: 1870, dur: .35, v: .07 }); noise({ dur: .15, v: .3, type: 'highpass', f0: 2000 }); tone({ type: 'sine', f0: 140, f1: 60, dur: .12, v: .35 }); },
     whoosh: () => { noise({ dur: .55, v: .32, type: 'bandpass', f0: 300, f1: 4200, q: 1.2, a: .2 }); tone({ type: 'sine', f0: 140, f1: 60, dur: .5, v: .15, a: .15 }); },
     heartbeat: () => { tone({ type: 'sine', f0: 62, f1: 42, dur: .16, v: .45 }); tone({ type: 'sine', f0: 58, f1: 40, dur: .2, v: .32, at: .22 }); },
     slowhit: () => { noise({ dur: 1.4, v: .35, f0: 700, f1: 50, a: .02 }); tone({ type: 'sine', f0: 70, f1: 28, dur: 1.4, v: .5 }); tone({ type: 'sawtooth', f0: 110, f1: 40, dur: .9, v: .08 }); }
@@ -191,7 +195,15 @@ window.SFX = (() => {
   function sched() {
     while (nextT < ac.currentTime + .12) {
       const at = nextT - ac.currentTime, i = step % 16, bar = Math.floor(step / 16) % 4;
-      if (String(curMap).startsWith('card-') && mode === 'fight') { // 🥋 kung fu: drums, woodblock, a pentatonic tune and a gong every 4 bars
+      if (curMap === 'card-ring' && mode === 'fight') { // 🔔 Rumble Ring: driving rock: kick, big snare, palm-muted power chords
+        const riff = [40, 40, 40, 43, 40, 40, 45, 43, 40, 40, 40, 43, 47, 45, 43, 38][i] + (bar === 3 ? 5 : 0);
+        if (i % 4 === 0 || i === 10) tone({ type: 'sine', f0: 150, f1: 45, dur: .16, v: .55, at, bus: musicBus });
+        if (i % 8 === 4) { noise({ dur: .2, v: .32, type: 'bandpass', f0: 1500, q: .6, at, bus: musicBus }); tone({ type: 'triangle', f0: 200, f1: 150, dur: .08, v: .15, at, bus: musicBus }); }
+        if (i % 2 === 0) noise({ dur: .03, v: .07, type: 'highpass', f0: 8000, at, bus: musicBus });
+        for (const d of [0, 7, 12]) tone({ type: 'sawtooth', f0: hz(riff + d), dur: STEP * .8, v: .045 + intensity * .02, at, bus: musicBus, detune: d ? 6 : 0 });
+        if (i === 0 && bar % 2 === 0) noise({ dur: 1.2, v: .1, type: 'highpass', f0: 5000, at, bus: musicBus }); // crash
+      } else
+      if (curMap === 'card-kungfu' && mode === 'fight') { // 🥋 kung fu: drums, woodblock, a pentatonic tune and a gong every 4 bars
         const pent = [62, 65, 67, 69, 72, 74, 77, 79], mel = [4, 0, 3, 2, 4, 5, 4, 2, 1, 0, 1, 2, 4, 2, 1, 0];
         if (i % 4 === 0) tone({ type: 'sine', f0: 130, f1: 50, dur: .18, v: .5, at, bus: musicBus });
         if (i % 4 === 2 || i === 15) tone({ type: 'sine', f0: 95, f1: 60, dur: .12, v: .3, at, bus: musicBus });

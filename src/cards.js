@@ -25,7 +25,8 @@ export const WACKY = {
   weapons: { name: '🗡️ Weapons', desc: 'Swords, staffs and nunchucks drop into the street: whoever grabs one hits harder' }
 };
 export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). finalFight = the last two get a weapon each and a FINAL FIGHT with its own timer.
-  { id: 'kungfu', name: 'Kung Fu Town', icon: '🏯', desc: 'A martial arts showdown in an old Chinese town, like an old kung fu movie: lanterns, tiled roofs and a dusty street.', modes: ['card'], finalFight: true }
+  { id: 'kungfu', name: 'Kung Fu Town', icon: '🏯', desc: 'A martial arts showdown in an old Chinese town, like an old kung fu movie: lanterns, tiled roofs and a dusty street.', modes: ['card'], finalFight: true },
+  { id: 'ring', name: 'Rumble Ring', icon: '🔔', desc: 'Every pack starts in a wrestling ring. Slams, suplexes, clotheslines and steel chairs: the only way out is over the top rope (the more hurt a pack is, the easier it goes over). Last pack in the ring wins.', modes: ['card'], finalFight: true }
 ];
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
 export const cardMaps = () => [...CARD_MAPS, ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true }))];
@@ -180,8 +181,11 @@ const wackyOn = () => Object.fromEntries(Object.keys(WACKY).map(k => [k, !!C().w
 export function sceneMsg() {
   const b = activeBattle(), f = live.fight;
   const map = f?.map || b.map || 'kungfu', ball = f ? !!f.ball : (b.map === 'random' ? false : isBallMap(map));
-  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test };
+  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo() };
 }
+// 🤼 the picture in the middle of the Rumble Ring: your own, or your Twitch picture
+export const ringLogo = () => C().ringLogo || db.owner?.avatar || '';
+export function setRingLogo(url) { const c = C(); c.ringLogo = url ? fileOk(url) : ''; if (url && !c.ringLogo) throw new Error('That picture didn\'t work.'); save(); sendScene(); hooks.pushState(); return { logo: ringLogo(), own: !!c.ringLogo }; }
 export function sendScene() { hooks.broadcast(sceneMsg(), 'overlay'); }
 export function setShow(on) { if (live.show === !!on) return; live.show = !!on; sendScene(); hooks.pushState(); hooks.preview(); }
 /** On the Card battles tab with a ball map: the ball game shows the card fighters waiting on that map. */
@@ -240,6 +244,6 @@ export function openFromWheel(id, auto, why) {
 }
 export function stateFor() {
   const c = C(), b = activeBattle(), { fighters, cut } = fightersFor(b);
-  return { pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
+  return { ringLogo: ringLogo(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
     live: { show: live.show, phase: live.phase, fightId: live.fight?.id || null, n: live.fight?.fighters.length || 0, startedAt: live.fight?.startedAt || 0, test: !!live.fight?.test, last: live.last, link: !!live.wheelLink }, inBattle: fighters.length, cut };
 }

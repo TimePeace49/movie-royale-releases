@@ -767,8 +767,8 @@
   </div>
   <div class="card">
     <h3>🃏 Card battle tests</h3>
-    <p class="help">Pretend card packs fight in Kung Fu Town (on stream). Nothing in your 📦 Card pool changes. Turn wacky settings on or off on the 🃏 Card battles tab, or with the buttons here.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cardTest(8)">🥋 Pretend fight (8 packs)</button><button onclick="cardTest(30)">🥋 Big pretend fight (30 packs)</button><button onclick="cardTest(8,['gore'])">🩸 Gore fight</button><button onclick="cardTest(12,['lowgrav','teleport','weapons','boom'])">🤪 Wacky fight</button><button onclick="cardTest(10,[],'lava')" title="Card fighters on a ball map (Lava Lake)">⚪🃏 On a ball map</button><button onclick="cardTest(6,[],'kungfu')" title="6 packs in Kung Fu Town: watch the FINAL FIGHT when 2 are left">🥊 Final fight</button><button class="ghost" onclick="cardsApi('/api/cards/stop')">⏹ Stop it</button></div>
+    <p class="help">Pretend card packs fight on stream (Kung Fu Town, the 🔔 Rumble Ring or a ball map). Nothing in your 📦 Card pool changes. Turn wacky settings on or off on the 🃏 Card battles tab, or with the buttons here.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cardTest(8)">🥋 Pretend fight (8 packs)</button><button onclick="cardTest(30)">🥋 Big pretend fight (30 packs)</button><button onclick="cardTest(8,['gore'])">🩸 Gore fight</button><button onclick="cardTest(12,['lowgrav','teleport','weapons','boom'])">🤪 Wacky fight</button><button onclick="cardTest(10,[],'lava')" title="Card fighters on a ball map (Lava Lake)">⚪🃏 On a ball map</button><button onclick="cardTest(6,[],'kungfu')" title="6 packs in Kung Fu Town: watch the FINAL FIGHT when 2 are left">🥊 Final fight</button><button onclick="cardTest(10,[],'ring')" title="10 packs in the Rumble Ring: wrestling moves, chairs, and out only over the top rope">🔔 Rumble Ring</button><button class="ghost" onclick="cardsApi('/api/cards/stop')">⏹ Stop it</button></div>
   </div>
   <div class="card">
     <h3>⚡ Pretend channel points / bits</h3>
@@ -1222,6 +1222,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
+  rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1287,6 +1288,9 @@ function drawChecklist() {
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
     ['cardBallMaps', '⚪🃏 Card battles can use every ball map: the packs fight there as card fighters (pick the map on the Card battles tab)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'lava')">Try it</button>`],
+    ['rumbleRing', '🔔 Rumble Ring (card map): wrestling moves (slams, suplexes, clotheslines, Irish whips), steel chairs, packs only go out over the top rope (easier when hurt), and a FINAL FIGHT', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'ring')">Try it</button>`],
+    ['ringLogo', '🤼 The Rumble Ring has your Twitch picture in the middle of the ring; pick your own on the 📦 Card pool tab (map set to Rumble Ring)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cardpool')">Open</button>`],
+    ['mapMenus', '🗺️ Map menus: maps only that battle has are on top (A–Z), then a line, then the maps for both battles', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Open</button>`],
     ['finalFight', '🥊 Kung Fu Town FINAL FIGHT: the last two face off with a weapon each, the clock stops, a bell rings, then a timed fight', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(6,[],'kungfu')">Try it</button>`],
     ['mapModes', '⚪ ball · 🃏 card · ⚪🃏 both: the map menus show which battles each map is for', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">See it</button>`],
     ['pacerSlider', '⏳ The elimination pacer slider (Settings → Game, and each card battle in 📦 Card pool) changes how spread out the knockouts are; 0 = off', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setTimeout(()=>setSub('game'),100)">Try it</button>`],
@@ -1609,6 +1613,7 @@ function cpShowResults() {
 const cpN = (i, d) => { const el = $('cpN' + i); if (el) el.value = Math.max(1, (Number(el.value) || 1) + d); };
 async function cpAdd(i) { const x = cpLast[i], n = Math.max(1, Number($('cpN' + i)?.value) || 1); if (x.source === 'web') x.name = x.name || cpQ; const r = await cardsApi('/api/cards/add', { ...x, count: n }); if (r) toast(`📦 ${r.more ? 'Added' : 'New pack:'} ${n} × ${esc(x.name)}${r.more ? ` (you have ${r.pack.count} now)` : ''}`); }
 function cpOwn() { $('cpoName').value = ''; $('cpoGame').value = ''; $('cpoCount').value = 1; $('cpoImg').value = ''; $('cpGames').innerHTML = (S.cards?.games || []).map(g => `<option value="${esc(g)}">`).join(''); $('cpOwnDlg').showModal(); }
+async function ringLogoUp(f) { if (!f) return; const r = await fetch('/api/cards/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()).catch(() => null); if (r?.url) { await cardsApi('/api/cards/ring-logo', { url: r.url }); toast('🔔 Ring logo changed'); } }
 async function cpoUpload(f) { if (!f) return; const r = await fetch('/api/cards/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()).catch(() => null); if (r?.url) { $('cpoImg').value = r.url; toast('🖼️ Picture added'); } }
 async function cpoSave() { const r = await cardsApi('/api/cards/add', { name: $('cpoName').value, game: $('cpoGame').value, count: $('cpoCount').value, image: $('cpoImg').value }); if (r) { $('cpOwnDlg').close(); toast('📦 Added ' + esc(r.pack.name)); } }
 const cpSet = (id, ch) => cardsApi('/api/cards/pack', { id, ...ch });
@@ -1631,6 +1636,8 @@ function renderCardPool() {
         <div><label>⏳ Elimination pacer: <b id="cpPaceV">${pacerWord(pace)}</b></label><input type="range" min="0" max="100" step="5" value="${pace}" title="How hard the knockouts are spread over the fight (0 = off)" oninput="$('cpPaceV').textContent=pacerWord(this.value)" onchange="cbSet({pace:this.value})"></div>
         <div><label>⏱️ Fight length: <b id="cpLenV">${b.length ? b.length + ' s' : 'by how many packs'}</b></label><input type="range" min="0" max="180" step="5" value="${b.length || 0}" title="How long a fight should last; the pacer spreads the knockouts over it (0 = by how many packs fight)" oninput="$('cpLenV').textContent=Number(this.value)?this.value+' s':'by how many packs'" onchange="cbSet({length:this.value})"></div>
       </div>
+      ${b.map === 'ring' || b.map === 'random' ? `<div class="row ringLogoRow" style="margin-top:10px;gap:10px;flex-wrap:wrap;align-items:center"><span title="The picture in the middle of the Rumble Ring">🔔 Ring logo:</span>${c.ringLogo ? `<img src="${esc(c.ringLogo)}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #ffd23a">` : '<span class="muted">none yet</span>'}<span class="muted">${c.ringLogoOwn ? 'your own picture' : 'your Twitch picture'}</span>
+        <button onclick="this.nextElementSibling.click()" title="Pick a picture for the middle of the Rumble Ring">🖼️ Pick a ring logo</button><input type="file" accept="image/*" hidden onchange="ringLogoUp(this.files[0])">${c.ringLogoOwn ? '<button onclick="cardsApi(\'/api/cards/ring-logo\',{url:\'\'})" title="Go back to your Twitch picture in the middle of the ring">↺ Use my Twitch picture</button>' : ''}</div>` : ''}
       <label style="margin-top:8px">Which games (none ticked = every game)</label>
       <div class="row" style="gap:6px;flex-wrap:wrap">${c.games.length ? c.games.map(g => `<label class="ck"><input type="checkbox" ${b.games?.includes(g) ? 'checked' : ''} onchange="cbGame('${esc(g).replace(/'/g, '&#39;')}',this.checked)"> <span>${esc(g)}</span></label>`).join('') : '<span class="muted">Add packs below first.</span>'}</div>
       <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><input id="cpSearch" class="grow" style="min-width:220px" placeholder="Add packs: search a pack (e.g. Surging Sparks booster pack)…" onkeydown="if(event.key==='Enter')cpFind()"><button class="primary" onclick="cpFind()">🔍 Search</button><button onclick="cpOwn()" title="Add a pack that isn't in the search: type its name and pick a picture">➕ Add my own pack</button></div>
@@ -1687,7 +1694,7 @@ async function capList() {
     $('capMsg').textContent = r.windows.length ? `${r.windows.length} windows open. Pick your browser (open the YouTube video in it first).` : 'OBS listed no windows.';
   } catch (e) { $('capMsg').textContent = '⚠️ ' + (e.message || 'Could not reach OBS') + ' (Settings → 🎥 OBS)'; }
 }
-async function cardTest(n, wacky = [], map) { await cardsApi('/api/cards/stop'); if (wacky.length) { await cardsApi('/api/cards/wacky', { allOff: true }); for (const k of wacky) await cardsApi('/api/cards/wacky', { key: k, on: true }); } const r = await cardsApi('/api/cards/start', { test: true, n, map }); if (r) toast(`🃏 Pretend card battle: ${n} packs${wacky.length ? ' + wacky settings' : ''}${map ? ' on a ball map' : ''}. Nothing in your pool changes.`); }
+async function cardTest(n, wacky = [], map) { await cardsApi('/api/cards/stop'); if (wacky.length) { await cardsApi('/api/cards/wacky', { allOff: true }); for (const k of wacky) await cardsApi('/api/cards/wacky', { key: k, on: true }); } const r = await cardsApi('/api/cards/start', { test: true, n, map }); if (r) toast(`🃏 Pretend card battle: ${n} packs${wacky.length ? ' + wacky settings' : ''}${map ? ' in ' + ((S.cards?.maps || []).find(m => m.id === map)?.name || map) : ''}. Nothing in your pool changes.`); }
 async function capTest() { try { await api('/api/capture', { on: true }); toast('📺 Showing in OBS for 5 seconds…'); setTimeout(() => api('/api/capture', { on: false }).catch(() => {}), 5000); } catch {} }
 const pacerWord = v => { v = Number(v); return v <= 0 ? 'Off' : v < 35 ? `Light (${v})` : v < 65 ? `Normal (${v})` : v < 90 ? `Strong (${v})` : `Very strong (${v})`; };
 async function winMode(v) { try { await api('/api/window', { action: v }); } catch {} }
@@ -1748,9 +1755,9 @@ function renderBattle() {
   else gb.textContent = '⏱️ 2-min chat timer, then start';
   const mp = (S.maps || []).find(m => m.id === S.mapNow), pkey = (mp?.id || '') + Object.keys(S.events).join();
   if ($('events').dataset.k !== pkey) { $('events').dataset.k = pkey; $('fsPowers').innerHTML = $('events').innerHTML = Object.entries(S.events).map(([k, e]) => k === 'mappower' ? (mp?.power ? `<button class="mp" title="${esc(mp.name)}'s special power" onclick="api('/api/effect',{event:'mappower'})">${esc(mp.power)}</button>` : '') : `<button title="${esc(e.desc)}" onclick="api('/api/effect',{event:'${k}'})">${e.icon} ${esc(e.name)}</button>`).join(''); }
-  if (document.activeElement !== $('mapSel')) $('mapSel').innerHTML = `<option value="random" ${S.settings.map === 'random' ? 'selected' : ''}>🎲 Random${S.settings.map === 'random' && mp ? ` (next: ${esc(mp.name)})` : ''}</option>` + (S.maps || []).map(m => mapOpt(m, S.settings.map === m.id)).join('');
+  if (document.activeElement !== $('mapSel')) $('mapSel').innerHTML = `<option value="random" ${S.settings.map === 'random' ? 'selected' : ''}>🎲 Random${S.settings.map === 'random' && mp ? ` (next: ${esc(mp.name)})` : ''}</option>` + ballMapOpts(S.settings.map);
   renderVote(); renderBattleList(); renderCalls();
-  if ($('pracMap') && !$('pracMap').options.length) $('pracMap').innerHTML = `<option value="">Same as the battle</option><option value="random">🎲 Random</option>` + (S.maps || []).map(m => mapOpt(m, false)).join('');
+  if ($('pracMap') && !$('pracMap').options.length) $('pracMap').innerHTML = `<option value="">Same as the battle</option><option value="random">🎲 Random</option>` + ballMapOpts(null);
   renderSeries();
   if (!$('tEvent').options.length) $('tEvent').innerHTML = Object.entries(S.events).map(([k, e]) => `<option value="${k}">${e.icon} ${esc(e.name)}</option>`).join('');
   if (!$('sndTest').options.length) $('sndTest').innerHTML = Object.entries(SOUND_INFO).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
@@ -1840,7 +1847,12 @@ function renderCalls() {
 // map menu entries with the 🔴 NEW / 🔵 UPDATED tags
 const modeTag = m => { const md = m.modes || ['ball', 'card']; return md.includes('ball') && md.includes('card') ? '⚪🃏' : md.includes('card') ? '🃏' : '⚪'; }; // ⚪ ball battles · 🃏 card battles · ⚪🃏 both
 const mapOpt = (m, sel) => `<option value="${m.id}" ${sel ? 'selected' : ''} ${m.tag === 'new' ? 'style="color:#ff5c5c"' : m.tag === 'updated' ? 'style="color:#5cb8ff"' : ''}>${m.icon} ${esc(m.name)}  ${modeTag(m)}${m.tag === 'new' ? '  🔴 NEW' : m.tag === 'updated' ? '  🔵 UPDATED' : ''}</option>`;
-const cardMapOpts = sel => `<option value="random" ${sel === 'random' ? 'selected' : ''}>🎲 Random (any card map)</option>` + (S.cards?.maps || []).map(m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${m.icon} ${esc(m.name)}  ${modeTag(m)}</option>`).join('');
+// map menus: the maps only this battle type has (A–Z) on top, a line, then the maps for both battles
+const mapGroups = (list, only, opt) => { const ex = list.filter(m => (m.modes || ['ball', 'card']).length === 1 && (m.modes || [])[0] === only).sort((a, b) => a.name.localeCompare(b.name)), both = list.filter(m => !ex.includes(m));
+  const lbl = only === 'card' ? '🃏 Card battles only' : '⚪ Ball battles only';
+  return (ex.length ? `<optgroup label="${lbl}">${ex.map(opt).join('')}</optgroup>` + (both.length ? '<option disabled>──────────────</option>' : '') : '') + (both.length ? `<optgroup label="⚪🃏 Both battles">${both.map(opt).join('')}</optgroup>` : ''); };
+const cardMapOpts = sel => `<option value="random" ${sel === 'random' ? 'selected' : ''}>🎲 Random (any card map)</option>` + mapGroups(S.cards?.maps || [], 'card', m => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${m.icon} ${esc(m.name)}  ${modeTag(m)}</option>`);
+const ballMapOpts = sel => mapGroups(S.maps || [], 'ball', m => mapOpt(m, sel === m.id));
 const mapName = id => { const m = (S.maps || []).find(x => x.id === id); return m ? `${m.icon} ${m.name}` : id === '?' ? 'Unknown map' : id; };
 async function voteClick() { if (S.vote) await api('/api/vote/end'); else { await api('/api/vote/start', { seconds: S.settings.voteSeconds || 120 }); toast('🗳️ Map vote started — chat types 1, 2, 3 or 4'); } }
 function renderVote() {
@@ -3157,7 +3169,7 @@ function openSettings(force) {
       ${f('helpCommand', 'Chat command that lists every chat command', '!moviesroyal')}
       ${ck('autoFullscreen', 'Go fullscreen when a battle starts (press Esc to leave)')}
       <h3 style="margin-top:18px">🗺️ Maps</h3>
-      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${(S.maps || []).map(m => mapOpt(m, s.map === m.id)).join('')}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
+      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${ballMapOpts(s.map)}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
       <p class="help">You can also change the map under the battle screen, or press 🗳️ Chat vote: 4 random maps, chat types 1–4. The vote lasts the number of seconds above (120 seconds = 2 minutes).</p>
       <h3 style="margin-top:18px">🎥 Camera</h3>
       <div class="grid2">${f('cliffSize', 'Cliff size on screen (%) — 100 = small, 130 = default, 170 = huge', '130', 'number', 'min="60" max="250" step="5"')}</div>
