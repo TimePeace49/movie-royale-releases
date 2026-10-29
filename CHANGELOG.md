@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.38.1 (latest release)
+- 🆕 **New Setup guide steps pop up when Movie Royal starts.** When an update adds a step to the 🧭 Setup guide (like 🎉 Viewer's Choice in OBS), a pop-up shows it each time the app starts until you open the guide, set it up, or press Don't show again.
+
 ## 1.38.0 (test build)
 - 📺 **Viewer's choice in OBS works with just OBS open.** “Put it on my stream” (Settings → 💰 Rewards & prices, or the new last step of the Setup guide) now adds a source that reads your Twitch chat by itself, so the celebration plays on stream even when Movie Royal is closed. The reward has to ask viewers to type something (Movie Royal's does).
 - 🎁 **For a friend:** the same thing as one file anyone can download: https://github.com/TimePeace49/movie-royale-releases/releases/latest/download/viewers-choice.html. They open it in their browser, type their channel, redeem their Viewer's Choice once, and it gives them what to paste into OBS. No Movie Royal needed.

@@ -3,6 +3,28 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.38.1: What's new
+Everything since 1.36.0.
+
+**🎁 Viewer rewards (always on in your channel points menu)**
+- **💧 Hydrate** and **🙆 Stretch**: a pop-up with a chugging or stretching sound for 5 seconds, only while Movie Royal is the window you're on.
+- **🎩 Pick a hat**: the bot lists your hats in chat with numbers; the viewer types a number or name, and a pop-up shows the hat. Your hat list: Settings → 💰 Rewards & prices.
+- **🎉 Viewer's choice**: the pop of confetti, a crowd going wild, confetti and balloons over the whole screen and a big pop-up for 10 seconds, on your screen and on stream.
+- **📺 On stream with just OBS open:** press 📺 Put it on my stream (Settings → 💰 Rewards & prices, or the new last step of the Setup guide). It adds "Movie Royal celebration" on top of every OBS scene, and it works even with Movie Royal closed.
+- **For a friend:** https://github.com/TimePeace49/movie-royale-releases/releases/latest/download/viewers-choice.html. They open it in their browser and it walks them through adding it to OBS (no Movie Royal needed).
+- Rewards you already had keep their name and price (Movie Royal remakes them; ones made by hand on Twitch can only be deleted on Twitch).
+
+**💰 Channel point rules**
+- **🔢 Countdown:** a reward can be used X times per stream, then it's off until the next stream. Shows how many are left; ↺ starts it over.
+
+**🗺️ Maps**
+- Renamed: the card wrestling map is **🔔 Royal Rumble**; the ball wrestling map is **🤼 Rumble Royal**.
+
+**🧪 Test tab & app**
+- Checklist: 📺 Preview and 💬 Test chat buttons at the top right. The 💬 Pretend chat now pops out into its own window, like the preview.
+- 🎁 Viewer reward tests: pretend Hydrate, Stretch, Pick a hat and Viewer's choice.
+- New Setup guide steps pop up when Movie Royal starts, until you open the guide.
+
 ## v1.36.0: What's new
 Everything since 1.35.3.
 

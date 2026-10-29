@@ -91,6 +91,7 @@ const STEPS = [
 async function load() {
   [S, A] = await Promise.all([fetch('/api/state').then(r => r.json()), fetch('/api/app').then(r => r.json())]);
   if (!S.settings.setupSeen) api('/api/settings', { setupSeen: true }).catch(() => {});
+  if (!load.seenSent) { load.seenSent = true; api('/api/setup/seen', { ids: STEPS.map(x => x.id) }).catch(() => {}); } // (you've seen every step in the guide now: no more 🆕 pop-up for them)
   if (!step) step = (STEPS.find(s => !s.done()) || STEPS[0]).id;
   render();
 }

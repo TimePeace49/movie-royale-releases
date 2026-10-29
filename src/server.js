@@ -1484,10 +1484,25 @@ app.get('/api/cloud/outdated', async (req, res) => { // ☁️ the "Update your 
     res.json({ outdated: out && db.settings.botRemind !== false, v: cloud.botVersion(), unknown: cloud.enabled() && !cloud.versionKnown() });
   } catch { res.json({ outdated: false, unknown: true }); }
 });
+// 🧭 the Setup guide's steps (setup.html has the pages). A step added since you last opened the guide pops up when the app starts,
+// every time, until you open the guide, set it up, or press "Don't show again". (since = the version that added it)
+const GUIDE_STEPS = [
+  { id: 'twitch', title: '💜 Sign in with Twitch' }, { id: 'rewards', title: '💎 Channel points & bits' }, { id: 'tmdb', title: '🎬 Movie search' }, { id: 'omdb', title: '🍅 Ratings' },
+  { id: 'letterboxd', title: '📗 Letterboxd' }, { id: 'discord', title: '🤖 Discord bot' }, { id: 'cloud', title: '☁️ 24/7 Discord bot' }, { id: 'donations', title: '💵 Donations' },
+  { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
+  { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", done: () => !!db.settings.choiceObs }
+];
+function guideSeen() {
+  if (!Array.isArray(db.settings.setupStepsSeen)) { const was = db.settings.lastSeenVersion || '1.10.0'; db.settings.setupStepsSeen = GUIDE_STEPS.filter(x => !x.since || !newer(x.since, was)).map(x => x.id); save(); } // (first time: the steps you already had count as seen)
+  return new Set(db.settings.setupStepsSeen);
+}
+app.post('/api/setup/seen', (req, res) => { const seen = guideSeen(); for (const id of Array.isArray(req.body?.ids) ? req.body.ids : GUIDE_STEPS.map(x => x.id)) seen.add(String(id)); db.settings.setupStepsSeen = [...seen]; save(); res.json({ ok: true }); });
 app.get('/api/whatsnew', (req, res) => {
   const from = db.settings.lastSeenVersion || '1.10.0';
-  if (!db.settings.setupSeen) { db.settings.lastSeenVersion = VERSION; save(); return res.json({ steps: [] }); }
+  if (!db.settings.setupSeen) { db.settings.lastSeenVersion = VERSION; db.settings.setupStepsSeen = GUIDE_STEPS.map(x => x.id); save(); return res.json({ steps: [] }); }
+  const seen = guideSeen();
   const steps = NEW_SETUP.filter(x => newer(x.since, from) && !newer(x.since, VERSION) && !x.done()).map(({ id, title, why }) => ({ id, title, why }));
+  for (const x of GUIDE_STEPS) if (!seen.has(x.id) && !x.done?.() && !steps.some(y => y.id === x.id)) steps.push({ id: x.id, title: x.title, why: x.why || '', guide: true }); // 🆕 new in the Setup guide
   db.settings.lastSeenVersion = VERSION; save();
   res.json({ from, to: VERSION, steps });
 });
