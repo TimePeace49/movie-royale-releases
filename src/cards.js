@@ -31,8 +31,12 @@ export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). final
   { id: 'wizard', name: 'Wizard Battle', icon: '🧙', desc: 'Wizards on a giant floating platform in the night sky. Magic bolts, fireballs, lightning and meteors crack the platform and knock parts away: fall through a hole or off the edge and you\'re out. No weapons.', modes: ['card'], finalFight: true },
   { id: 'colosseum', name: 'Colosseum', icon: '🏛️', desc: 'A gladiator battle in the arena: every pack starts with its own weapon (swords, spears, tridents, axes, maces, flails, hammers, scimitars) and keeps it. Turn on 🦁 Lions and lions come out of the tunnels.', modes: ['card'], finalFight: true }
 ];
+// 🔴 NEW / 🔵 UPDATED for card-only maps, like the ball maps: bump a map's number here when you change it
+const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1 };
+const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev || 1) < (CARD_REV[id] || 1) ? 'updated' : null; };
+function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
-export const cardMaps = () => [...CARD_MAPS, ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true }))];
+export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
 export const isBallMap = id => !CARD_MAPS.some(m => m.id === id) && MAP_LIST.some(m => m.id === id);
 const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu' });
 export function C() {
@@ -225,7 +229,7 @@ export function reset() { live.phase = 'idle'; live.fight = null; live.last = nu
 export function result(m) {
   const f = live.fight; if (!f || live.phase !== 'fight' || m.fightId !== f.id) return;
   const w = f.fighters.find(x => x.id === m.winnerId); if (!w) return;
-  live.phase = 'ended';
+  live.phase = 'ended'; if (!f.ball) markCardRun(f.map);
   const rec = { id: uid(), at: Date.now(), packId: w.packId, name: w.name, game: w.game, image: w.image, fighters: f.fighters.length, battle: f.name, map: f.map, wacky: Object.keys(WACKY).filter(k => C().wacky[k]), kos: Array.isArray(m.order) ? m.order.length : 0 };
   if (!f.test) {
     const p = C().pool.find(x => x.id === w.packId);

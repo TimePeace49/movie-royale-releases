@@ -111,7 +111,7 @@
       else bell();
       if (m.show) SFX.music?.('fight');
     } else if (m.phase !== 'fight' && m.phase !== 'ended') { // lobby: the packs lined up and waiting
-      if (mode !== 'lobby' || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; petals = []; }
+      if (mode !== 'lobby' || was.map !== m.map || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { /* (a new map: line them up again for it) */ R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; petals = []; }
       mode = 'lobby'; fightId = null; winner = null; replay = null; if (m.show) SFX.music?.('lobby');
     } else if (m.phase === 'ended' && m.last && mode !== 'won' && mode !== 'replay' && mode !== 'over' && !winner) { // (a screen that joined late: show the winner)
       if (!F.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fightId = m.fightId; }
@@ -453,7 +453,7 @@
     if (f.out) f.x = clamp(f.x, 30, W - 30);
     else { const [lo, hi] = bounds(f.z), bk = RUMBLE() ? .6 : .4; if (RUMBLE()) f.z = clamp(f.z, .04, .96); // (the ring ropes bounce you back in)
       if (f.x < lo) { f.x = lo; f.vx = Math.abs(f.vx) * bk; } if (f.x > hi) { f.x = hi; f.vx = -Math.abs(f.vx) * bk; } }
-    if (WIZ() && f.h <= 0 && !solid(f.x, f.z)) { // 🧙 a hole or the edge: walking stops there; knocked into it (or the floor goes) = falls
+    if (WIZ() && (mode === 'fight' || mode === 'final') && f.h <= 0 && !solid(f.x, f.z)) { // 🧙 a hole or the edge: walking stops there; knocked into it (or the floor goes) = falls
       if (f.alive && !(f.stun > 0) && solid(px, pz)) { f.x = px; f.z = pz; f.vx = 0; f.vz = 0; }
       else if (f.alive) fallCheck(f); else { f.falling = true; f.vh = 0; }
     }
@@ -900,7 +900,7 @@
   }
   function banner(text, y, size, col = '#ffd23a') { g.font = `${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = size * .16; g.strokeStyle = '#2a0808'; g.strokeText(text, W / 2, y); g.fillStyle = col; g.fillText(text, W / 2, y); }
   function hud(now) {
-    const live = alive().length, on = Object.keys(scene.wacky).filter(k => scene.wacky[k]);
+    const live = alive().length, on = Object.keys(scene.wacky).filter(k => scene.wacky[k] && !(k === 'weapons' && !MI().drops()) && !(k === 'lions' && !COLO())); // (only the ones this map uses)
     g.fillStyle = 'rgba(20,6,6,.72)'; g.fillRect(0, 0, W, 62);
     g.font = `34px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#ffd23a'; g.fillText(`${MI().title} · ${scene.battleName || 'Card battle'}`, 24, 32);
     g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText(mode === 'lobby' ? `${F.length} pack${F.length === 1 ? '' : 's'} ready` : `${live} of ${F.length} standing`, W - 24, 32);

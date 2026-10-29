@@ -810,7 +810,7 @@ setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
 // 🃏 card battles (Card pool + Card battles tabs)
-cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true),
+cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true), mapTag: id => mapsWithTags().find(m => m.id === id)?.tag || null,
   startBall: (fight, b) => { // ⚪🃏 a card battle on a ball map: the ball game plays it with card fighters (no luck: every pack the same odds)
     if (live.phase === 'lobby' || live.phase === 'running') return 'A ball battle is going right now. Stop it first.';
     if (![...wss.clients].some(c => c.role === 'overlay')) return "The game screen isn't open. Reload the control panel (or bring back the pop-out game window).";

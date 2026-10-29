@@ -4,6 +4,8 @@ What changed in each version of Movie Royal. Newest first.
 
 ## 1.35.4 (test build)
 - **Fixed: the card battle screen loaded too big** when you opened Movie Royal and went to the 🃏 Card battles tab: it hung over the Playing / Wacky rows below it. It now fits its box, and keeps fitting when the boxes around it change size.
+- **Fixed: switching card maps while the packs were waiting** (for example Colosseum → Wizard Battle) kept the old map's spots and weapons: packs fell off the platform right away and weapons went flying. They now line up fresh for the new map. The banner at the top only lists wacky settings the map uses.
+- **🔴 NEW / 🔵 UPDATED on card maps**, like the ball maps: a card map shows 🔴 NEW until it's been played on stream (while you're live), and 🔵 UPDATED after it changes.
 
 ## 1.35.3 (latest release)
 - 🗺️ Card battles: picking another map (or another card battle with a different map) resets the screen by itself: the old winner screen goes away and the new map starts fresh. A fight that's already going isn't stopped.

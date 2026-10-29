@@ -10,6 +10,7 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Pages** (`public/`): `control.html` (control panel, all tabs), `game.html` (the stream overlay: battle canvas + wheel scene, 1920×1080, added in OBS), `setup.html` (setup guide), `help.html`.
 - `public/wheel.js` draws the wheel (shared by control + overlay). `public/sfx.js` makes every sound with Web Audio (custom sound files override them; per-map and per-wheel scopes like `wheel-<id>`).
 - Server modules: `wheel.js` (wheel engine: spots, spins, void, grows, saved spins, pop-ups, stats), `stats.js` (battle results + lifetime stats), `rename.js` (Twitch name changes), `donations.js`, `twitch.js` (OAuth, EventSub, IRC chat incl. sub USERNOTICEs, helix), `discord.js`, `movies.js`, `maps.js` (map list), `cloud.js` (24/7 Cloudflare bot).
+- When you change a CARD-only map, bump its number in `CARD_REV` in `src/cards.js` (runs in `db.cards.mapRuns`, live only).
 - When you change a map, bump its number in `REV` in `src/maps.js` so it shows 🔵 UPDATED (🔴 NEW = never played on stream).
 - Battle maps live in the `MAPS` object in `game.html` (hooks: build/shape/afterBuild/update/beforeFall/isOut/drawWorld/power…) + `src/maps.js` MAP_LIST.
 - The tab picks what's on stream: Battle tab = battle, Wheel tab = wheel, Card battles tab = card battle (`/api/view` → `cards.setShow`).
