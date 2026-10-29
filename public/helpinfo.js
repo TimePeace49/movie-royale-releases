@@ -8,6 +8,16 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx, sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
 // ───────── top bar ─────────
+H(/^tip:change how test battles go/i, '⚙ Test battle settings', 'Opens the settings for the Test tab\'s practice battles: how many pieces, which map, the countdown, the fight length, the pacer, Figure 8 laps, and whether the pieces get luck. Only test battles use them; blank boxes use your normal settings. Saved on this computer.');
+H(/^tip:how many made-up pieces fight/i, 'How many pieces', 'How many made-up pieces the practice battle has (2 to 1000).');
+H(/^tip:which map the practice battle uses/i, 'Test battle map', 'The map the ⚔️ Ball battle and 🔢 Number battle tests use (the Derby and Figure 8 boxes always use their own map).');
+H(/^tip:seconds of countdown before the test battle/i, 'Test countdown', 'Seconds of countdown before the practice battle starts. Blank = your normal countdown (Settings → Game).');
+H(/^tip:how long the test fight lasts/i, 'Test fight length', 'How long the practice fight lasts. Blank = your normal fight length.');
+H(/^tip:how hard the knockouts are spread over the test fight/i, 'Test pacer', 'The elimination pacer for practice battles (0 = off). Blank = your normal pacer.');
+H(/^tip:how many laps the test figure 8/i, 'Test laps', 'How many laps the practice Figure 8 Race goes. Blank = your normal lap count.');
+H(/give the pieces some luck/i, '🍀 Test luck', 'On = the practice pieces get different amounts of luck, so you see the glow and flames (and buses get luck health, speed and cow catchers). Off = no luck at all.');
+H(/^tip:put the test battle settings back/i, '↺ Start over', 'Puts the test battle settings back to how they came (12 pieces, random map, your normal settings, luck on).');
+H(/^tip:save and run a test ball battle/i, '▶ Save + run', 'Saves the test battle settings and runs a practice ball battle with them right away.');
 H(/^❓$|#helpModeBtn/, '❓ Help mode', 'Turns help mode on. While it is on, clicking anything shows what it does instead of doing it. Press ❓ again or Esc to stop.');
 H(/sign in with twitch|^sign in( again)?$/i, 'Sign in with Twitch', 'Connects Movie Royal to your Twitch account so it can read chat, see channel points, bits and subs, reply in chat, pin messages and make channel point rewards. If something in chat stops working after an update, signing in again usually fixes it (new features sometimes need one more permission).');
 H(/#liveTag|^(🔴 )?live|not live/i, 'Live status', 'Shows if you are live on Twitch right now. Some things only happen when you are live: channel point rewards turn on, picks and swaps can lock (if you picked that rule), streamer respins refill, and the NEW tag on maps goes away after you play them.');

@@ -2475,12 +2475,12 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   const count = clampN(req.body?.count, 2, Math.max(2, Number(db.settings.maxFighters) || 1000), 10);
   const many = Array.from({ length: count }, (_, i) => i < movies.length ? movies[i] : [`${movies[i % movies.length][0]} ${Math.floor(i / movies.length) + 1}`, movies[i % movies.length][1]]);
   const lucks = [0, 0, 5, 10, 20, 35, 50, 65, 80, 100]; // practice rounds show off the luck glow and flames
-  const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
+  const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: req.body?.luck === false ? 0 : lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
   const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
-  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: '🧪 Practice round', kind: 'films', lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, pacer: clampN(db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
+  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: '🧪 Practice round', kind: 'films', lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
   pushState(); res.json({ ok: true });
 });
 

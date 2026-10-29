@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.39.3 (test build)
+- 🧪 **Test tab:** the 📺 Preview and 💬 Test chat buttons are now at the top right of every part of the Test tab (🧪 Tests, ✅ Checklist and ⚠️ Errors).
+- ➡️ **Tests take you to the right tab.** Running a test battle takes you to the ⚔️ Battle tab, a wheel spin to the 🎡 Wheel tab, and a card battle test to the 🃏 Card battles tab, so you're right where the action is.
+- ⚙ **Test battle settings.** The ⚔️ Ball, 🔢 Number, 🚗 Derby and 🏁 Figure 8 test boxes have a ⚙ Settings button: how many pieces, which map, the countdown, the fight length, the pacer, the laps, and luck on or off. Only practice battles use them (blank = your normal settings). Saved on this computer; ↺ Start over puts them back.
+- 🃏 **Card pool:** the game check boxes (Other, Pokemon, Pokemon Japan…) are gone. Every pack fights, whatever game it's from.
+
 ## 1.39.2 (test build)
 - 🚌 **Figure 8 Race: buses steer around wrecks.** They look ahead for totaled buses, pick a line that clears all of them, and brake if there's no room, instead of plowing straight in. (In tests, hard hits on wrecks went from about 27 a race to under 2, and most of those are buses getting shoved by another bus.) There's still plenty of banging between buses that are running.
 - 🛑 **Wrecks stay put.** A totaled bus slides to a stop and stays where it is, instead of getting shoved across the track.

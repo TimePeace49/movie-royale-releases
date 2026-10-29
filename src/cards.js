@@ -185,7 +185,7 @@ export function setActive(id) { if (getBattle(id)) { const was = activeBattle().
 
 const MAX_FIGHTERS = 80;
 export function fightersFor(b = activeBattle()) {
-  const packs = C().pool.filter(p => p.status === 'active' && left(p) > 0 && (!b.games?.length || b.games.includes(p.game || 'Other')));
+  const packs = C().pool.filter(p => p.status === 'active' && left(p) > 0); // (every game fights: Derek took the game check boxes out in 1.39.3)
   let out = [];
   for (const p of packs) { const n = b.mode === 'one' ? 1 : left(p); for (let k = 0; k < n; k++) out.push({ id: `${p.id}#${k + 1}`, packId: p.id, name: p.name, tag: n > 1 ? `#${k + 1}` : '', game: p.game, image: p.image }); }
   let cut = 0; if (out.length > MAX_FIGHTERS) { cut = out.length - MAX_FIGHTERS; out = out.sort(() => Math.random() - .5).slice(0, MAX_FIGHTERS); }
