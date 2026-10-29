@@ -178,7 +178,7 @@ app.whenReady().then(async () => {
     copy: t => { clipboard.writeText(String(t)); return true; }, // copying from the page can fail after a pop-up: Windows' own clipboard always works
     // read a web page like a real browser does (some sites, like Letterboxd's film pages, turn away plain requests)
     // (every step has a time limit, so a page that never finishes loading can't make it hang; stopPages() ends them all right away)
-    getPage: async (url, { render = false, wait = 'body', timeout = 25000 } = {}) => {
+    getPage: async (url, { render = false, wait = 'body', timeout = 25000, more = null } = {}) => {
       const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
       const limit = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('took too long')), ms))]);
       if (!render) { const r = await net.fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000) }); return { status: r.status, text: await limit(r.text(), 15000) }; }
@@ -192,6 +192,15 @@ app.whenReady().then(async () => {
           const n = await limit(w.webContents.executeJavaScript(`window.scrollTo(0, document.body.scrollHeight); document.querySelectorAll(${JSON.stringify(wait)}).length`), 3000).catch(() => 0);
           if (n > 0) { await new Promise(r => setTimeout(r, 800)); break; }
           await new Promise(r => setTimeout(r, 700));
+        }
+        if (more && !w.isDestroyed()) { // keep pressing a "50 more" / "Load more" button until there are enough (or it stops growing)
+          let last = -1, same = 0;
+          while (Date.now() < end && !w.isDestroyed()) {
+            const n = await limit(w.webContents.executeJavaScript(`(() => { const n = document.querySelectorAll(${JSON.stringify(more.count)}).length; if (n >= ${Number(more.want) || 500}) return -n; const b = [...document.querySelectorAll(${JSON.stringify(more.click)})].find(x => x.offsetParent) || [...document.querySelectorAll('button')].find(x => x.offsetParent && /^\\s*(\\d+\\s+more|load more|show more)\\s*$/i.test(x.textContent)); if (!b) return -n; b.scrollIntoView(); b.click(); return n; })()`), 4000).catch(() => -1);
+            if (n < 0) break;
+            if (n === last) { if (++same >= 4) break; } else same = 0; last = n;
+            await new Promise(r => setTimeout(r, 1500));
+          }
         }
         if (w.isDestroyed()) throw new Error('stopped');
         return { status: 200, text: await limit(w.webContents.executeJavaScript('document.documentElement.outerHTML'), 5000) };

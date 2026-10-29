@@ -27,6 +27,12 @@ export async function searchMovies(q) {
   return v;
 }
 
+/** 🎬 an IMDb id (tt0123456) → the TMDB movie (exact, no guessing by title). */
+export async function findImdb(tt) {
+  const data = await req(`/find/${encodeURIComponent(tt)}?external_source=imdb_id`);
+  const m = (data.movie_results || [])[0]; return m ? shape(m) : null;
+}
+
 const firstSentence = t => {
   t = (t || '').trim();
   const m = t.match(/^.{25,}?[.!?](?=\s+[A-Z"'“]|$)/s);

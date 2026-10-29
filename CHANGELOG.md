@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.46.0 (test build)
+- 🌐 **IMDb / Rotten Tomatoes battles** ("the 500 worst movies"): **+ New battle → 🌐 IMDb / Rotten Tomatoes**.
+  - Tick the ready-made lists (🍅 Rotten Tomatoes' 100 worst movies of all time, 🎬 IMDb's lowest rated movies with 10,000+ votes, 🎬 IMDb Bottom 100) and/or paste your own IMDb or Rotten Tomatoes links. They're read in order.
+  - Pick how many movies (500 by default).
+  - It skips movies that aren't in English, movies already on the Discord movie list, and movies you've watched or rated on Letterboxd. Skipped ones don't count: it keeps going down the lists until it has the full 500.
+  - The Movie Pool shows how far along it is, what got skipped, and a 🔄 Update button to read the lists again later. Each skip can be turned off there.
+  - The app reads IMDb and Rotten Tomatoes with a hidden browser window (and presses IMDb's "50 more" button for you). I couldn't reach either site from here to try it for real, so tell me if a list comes back empty.
+- 🧪 Test tab: **🌐 IMDb / Rotten Tomatoes battle** makes a pretend list of 40 made-up movies (no internet) so you can see the skipping work, plus checklist items.
+
 ## 1.45.0 (test build)
 - 🪖 **New card map: WW2 Battlefield** (card battles only). A muddy battlefield with bombed-out buildings and smoke. Every pack has a rifle and shoots it out (up close they use the rifle butt and kicks). Two tanks shell the field (a red crosshair shows where the shell lands), and bombers fly over dropping bombs (shadows show where). Shells and bombs leave craters. The last two get the FINAL FIGHT: a one-on-one shootout. Its own march music.
 - 🧪 **Quick test lab** at the top of the Test tab, in place of a box for every map:

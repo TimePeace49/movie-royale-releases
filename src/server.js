@@ -12,7 +12,8 @@ import { db, save, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS } f
 import * as lb from './letterboxd.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
-import { searchMovies } from './tmdb.js';
+import { searchMovies, findImdb } from './tmdb.js';
+import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
@@ -1844,6 +1845,95 @@ async function syncLetterboxdList(l) {
     broadcast({ type: 'toast', text: `⚠️ Letterboxd: ${e.message}` }, 'control');
   }
 }
+
+// 🌐 a battle made from IMDb and/or Rotten Tomatoes pages (like "the 500 worst movies"). It reads the links in order and
+// keeps going (more pages, then the next link) until it has `max` movies, skipping movies that aren't in English, that
+// are already on the Discord movie list, or that you've watched / rated on Letterboxd (each skip can be turned off).
+// "🔄 Update" reads them again: new ones come in, ones that dropped off (or that you've watched since) leave.
+async function syncWebList(l) {
+  const src = l.source || {}, max = src.max || 500, urls = (src.urls || []).filter(Boolean), fake = src.fake;
+  l.job = { running: true, step: 'Reading the lists…', done: 0, total: 0, at: Date.now() }; pushState();
+  try {
+    const onDiscord = new Set((getList('movies')?.entries || []).filter(e => e.tmdbId && e.status !== 'removed').map(e => String(e.tmdbId)));
+    const cache = (db.webTmdb ||= {}), kept = [], seenTm = new Set(), stats = { foreign: 0, discord: 0, watched: 0, missed: [], read: 0, sources: [] };
+    const look = async it => { // the TMDB movie for a list item (IMDb ids match exactly; Rotten Tomatoes goes by title + year)
+      if (fake) return it.tmdbId ? { id: String(it.tmdbId), lang: it.lang || 'en', title: it.title, year: it.year } : null;
+      let c = cache[it.key]; if (c?.id && c.lang != null) return c;
+      let hit = it.imdbId ? await findImdb(it.imdbId).catch(() => null) : null;
+      if (!hit) { const r = await searchMovies(it.title).catch(() => []); hit = r.find(m => it.year && Math.abs(Number(m.year) - Number(it.year)) <= 1 && m.title.toLowerCase() === it.title.toLowerCase()) || r.find(m => it.year && String(m.year) === String(it.year)) || r.find(m => m.title.toLowerCase() === it.title.toLowerCase()) || (!it.year ? r[0] : null); }
+      if (!hit) return null; c = { id: String(hit.id), lang: hit.lang || '', title: hit.title, year: hit.year }; cache[it.key] = c; return c;
+    };
+    const take = async items => { // check items in order until there are enough
+      for (let i = 0; i < items.length && kept.length < max; i += 8) {
+        const batch = items.slice(i, i + 8); const tms = await Promise.all(batch.map(it => look(it).catch(() => null)));
+        batch.forEach((it, j) => { if (kept.length >= max) return; const tm = tms[j]; stats.read++;
+          if (!tm) { stats.missed.push(`${it.title}${it.year ? ` (${it.year})` : ''}`); return; }
+          if (seenTm.has(tm.id)) return; seenTm.add(tm.id);
+          if (src.english !== false && tm.lang && tm.lang !== 'en') { stats.foreign++; return; }
+          if (src.skipDiscord !== false && onDiscord.has(tm.id)) { stats.discord++; return; }
+          if (src.skipWatched !== false && lb.lookup({ title: tm.title || it.title, year: tm.year || it.year, tmdbId: tm.id })) { stats.watched++; return; }
+          kept.push({ ...it, tm, rank: kept.length + 1 }); });
+        l.job = { running: true, step: `Checking the movies… ${kept.length} of ${max} so far`, done: stats.read, total: 0, at: Date.now() }; pushState();
+      }
+    };
+    if (fake) await take(fake);
+    else for (const url of urls) { // each link in order, reading deeper (more pages) while it still needs movies
+      if (kept.length >= max) break;
+      let want = (max - kept.length) * 2 + 20, items = [], err = null;
+      try { items = await listsrc.readList(url, Math.min(2500, want), (page, n) => { l.job = { running: true, step: `Reading ${listsrc.siteOf(url) === 'imdb' ? 'IMDb' : 'Rotten Tomatoes'}… page ${page} (${n} movies)`, done: 0, total: 0, at: Date.now() }; pushState(); }); } catch (e) { err = e.message; }
+      stats.sources.push({ url, found: items.length, error: err });
+      const before = kept.length; await take(items);
+      if (kept.length < max && items.length >= Math.min(2500, want) && !err) { const more = await listsrc.readList(url, Math.min(2500, want * 3), () => {}).catch(() => []); await take(more.slice(items.length)); } // (still short: read further down that list)
+      stats.sources[stats.sources.length - 1].used = kept.length - before;
+    }
+    if (!kept.length) throw new Error(stats.sources.find(x => x.error)?.error || 'no movies left after skipping (try turning a skip off)');
+    // add the new ones, keep the ones still on it, and hide the ones that dropped off (never deleted)
+    const want = new Set(kept.map(k => k.tm.id)), have = new Map(l.entries.filter(e => e.tmdbId && e.status !== 'removed').map(e => [String(e.tmdbId), e]));
+    const todo = kept.filter(k => !have.has(k.tm.id)); let added = 0, gone = 0;
+    kept.forEach(k => { const e = have.get(k.tm.id); if (e) e.webRank = k.rank; });
+    l.job = { running: true, step: 'Adding the movies…', done: 0, total: todo.length, at: Date.now() }; pushState();
+    let k = 0;
+    await Promise.all(Array.from({ length: fake ? 1 : 5 }, async () => { while (k < todo.length) { const it = todo[k++];
+      try { const removed = l.entries.find(e => String(e.tmdbId) === it.tm.id && e.status === 'removed');
+        if (removed) { removed.status = 'active'; removed.webRank = it.rank; }
+        else if (fake) l.entries.push({ id: 'film-' + it.tm.id + '-' + uid().slice(0, 4), tmdbId: it.tm.id, label: it.title, sub: String(it.year || ''), weight: 1, status: 'active', addedAt: Date.now(), webRank: it.rank });
+        else { const e = await addFilm(l, it.tm.id); e.webRank = it.rank; }
+        added++; } catch { stats.missed.push(it.title); }
+      l.job.done++; if (l.job.done % 10 === 0) pushState(); } }));
+    for (const e of l.entries) if (e.tmdbId && !want.has(String(e.tmdbId)) && ['active', 'paused'].includes(e.status)) { e.status = 'removed'; gone++; }
+    l.source = { ...src, at: Date.now(), count: kept.length, added, gone, foreign: stats.foreign, discord: stats.discord, watched: stats.watched, missed: stats.missed.slice(0, 50), sources: stats.sources, error: null };
+    l.job = null; save(); pushState(); refreshPreview();
+    const skip = [stats.foreign && `${stats.foreign} not in English`, stats.discord && `${stats.discord} on the Discord list`, stats.watched && `${stats.watched} you've watched`].filter(Boolean).join(', ');
+    broadcast({ type: 'toast', text: `🌐 “${l.name}” is ready: ${kept.length} movies (${added} new${gone ? `, ${gone} left` : ''})${skip ? ` · skipped ${skip}` : ''}${kept.length < max ? ` · only found ${kept.length} of ${max}: add another link to fill it up` : ''}` }, 'control');
+  } catch (e) {
+    console.error('[web list] ' + e.message);
+    l.source = { ...src, error: e.message, at: src.at || null }; l.job = null; save(); pushState();
+    broadcast({ type: 'toast', text: `⚠️ ${l.name}: ${e.message}` }, 'control');
+  }
+}
+app.get('/api/lists/web/presets', (req, res) => res.json(listsrc.PRESETS));
+app.post('/api/lists/web', (req, res) => { // make a new IMDb / Rotten Tomatoes battle, or change + update one
+  const b = req.body || {}; let l = b.listId ? getList(b.listId) : null;
+  if (l?.job?.running) return res.status(400).json({ error: 'Already updating, give it a minute.' });
+  const urls = Array.isArray(b.urls) ? b.urls.map(u => String(u).trim()).filter(u => /^https?:\/\//i.test(u)).slice(0, 10) : null;
+  if (urls) { const bad = urls.find(u => !listsrc.siteOf(u)); if (bad) return res.status(400).json({ error: `That link isn't IMDb or Rotten Tomatoes: ${bad}` }); }
+  const opts = { ...(urls ? { urls } : {}), ...(b.max != null ? { max: Math.max(10, Math.min(1000, Number(b.max) || 500)) } : {}), ...['english', 'skipDiscord', 'skipWatched'].reduce((o, k) => (b[k] != null ? { ...o, [k]: !!b[k] } : o), {}) };
+  if (!l) {
+    if (!b.fake && !(urls || []).length) return res.status(400).json({ error: 'Add at least one IMDb or Rotten Tomatoes link.' });
+    l = { id: uid(), name: String(b.name || '💩 The 500 worst movies').slice(0, 60), type: 'films', entries: [], joinOpen: false, source: { kind: 'web', max: 500, english: true, skipDiscord: true, skipWatched: true, urls: [], ...opts, ...(b.fake ? { fake: b.fake } : {}) } };
+    db.lists.push(l); db.activeListId = l.id; leaveEnded(); save();
+  } else l.source = { ...(l.source || {}), kind: 'web', ...opts };
+  syncWebList(l);
+  pushState(); res.json({ ok: true, id: l.id });
+});
+app.post('/api/test/web-list', (req, res) => { // 🧪 a pretend IMDb battle (made-up movies, no internet): shows the skipping + "keep going until full"
+  const fake = Array.from({ length: 40 }, (_, i) => ({ key: 'tt-test-' + i, title: `Bad Movie ${i + 1}`, year: 1990 + (i % 30), tmdbId: 990000 + i, lang: i % 7 === 3 ? 'fr' : 'en' }));
+  const movies = getList('movies'); if (movies && !movies.entries.some(e => String(e.tmdbId) === '990005')) movies.entries.push({ id: 'film-990005-test', tmdbId: 990005, label: 'Bad Movie 6', sub: '1995', weight: 1, status: 'active', addedAt: Date.now(), test: true });
+  req.body = { name: '🧪 Pretend worst movies (IMDb test)', fake, max: Number(req.body?.max) || 20, english: true, skipDiscord: true, skipWatched: true };
+  const b = req.body, l = { id: uid(), name: b.name, type: 'films', entries: [], joinOpen: false, source: { kind: 'web', max: b.max, english: true, skipDiscord: true, skipWatched: true, urls: [], fake } };
+  db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); syncWebList(l).then(() => { const mv = getList('movies'); if (mv) mv.entries = mv.entries.filter(e => e.id !== 'film-990005-test'); save(); });
+  pushState(); res.json({ ok: true, id: l.id });
+});
 app.post('/api/lists/numbers', (req, res) => { // 🔢 a battle where every ball is a number (pick a number from 1 to N)
   const a = Math.round(Number(req.body?.from) || 1), b = Math.round(Number(req.body?.to) || 10), lo = Math.min(a, b), hi = Math.max(a, b);
   if (hi - lo + 1 > 1000) return res.status(400).json({ error: 'That is more than 1,000 numbers. Pick a smaller range.' });
