@@ -346,7 +346,7 @@ H(/pretend chat window|^💬 pretend chat$|#pcBtn/i, '💬 Pretend chat', 'Opens
 // ───────── ⚙️ Settings ─────────
 SECTION(null);
 H(/account & updates/i, '👤 Account & updates', 'Your name in the app, backups, where updates come from, and test builds.');
-H(/^⚔️ game$/i, '⚔️ Game settings', 'Countdown, fight length, max pieces, exact odds, best-of, fullscreen, map vote time, cliff size, camera, replay.');
+H(/^⚔️ game$/i, '⚔️ Game settings', 'Countdown, fight length, max pieces, best-of, fullscreen, map vote time, cliff size, camera, replay.');
 H(/discord & picks/i, '🤖 Discord & picks', 'The Discord bot, 24/7 mode, the debug channel, picks per person, the new week, wild spots and the ideas doc.');
 H(/luck & swaps/i, '🍀 Luck & swaps', 'Luck, when picks and swaps lock, and chat calling the winner.');
 H(/twitch & channel points/i, '💜 Twitch & channel points', 'Twitch sign-in, chat commands, ball colors, winner posts and pins, claims, sit out, channel point rewards, bits tiers and donations.');
@@ -387,9 +387,12 @@ H(/add the spots automatically/i, 'Add spots every week', 'Wild spots are added 
 H(/ideas doc|leave ideas|docs\.google/i, '💡 Ideas doc link', 'A link in the pinned Discord message where people can leave ideas. Blank = no link.');
 H(/countdown when you press start/i, 'Countdown', 'Seconds of countdown before the fight.');
 H(/fight length/i, 'Fight length', 'How long the fight lasts before sudden death.');
+H(/figure 8 race: how many laps/i, '🏁 Figure 8 Race laps', 'How many laps the Figure 8 Race map goes (1 to 50). More laps = a longer race. The white flag comes out on the last lap.');
+H(/^🚗 demolition derby$|^tip:run a demolition derby/i, '🚗 Demolition Derby test', 'A practice battle on the Demolition Derby map with 12 made-up school buses. Your lists and history don\'t change.');
+H(/^🏁 figure 8 race$|^tip:run a (1-lap )?figure 8 race|^tip:run a figure 8 last bus/i, '🏁 Figure 8 Race test', 'A practice race with 12 made-up school buses. ▶ Run it uses your lap count, 1 lap is a quick one, and 💥 Last bus standing shows the rare race with no finish line.');
 H(/max pieces on the cliff/i, 'Max pieces', 'The most pieces that fit on the cliff.');
 H(/chat join command/i, 'Join command', 'What chat types to join a chat battle (!join).');
-H(/exact odds/i, 'Exact odds', 'The winner is drawn by the odds like a real wheel, and the fight plays it out. Off = the fight decides.');
+H(/fair winner|exact odds/i, '🎯 Fair winner', 'Every battle\'s winner is drawn by the odds before it starts (like a wheel, with luck counted in). The battle then plays out around that winner. Chaos, power-ups and wacky settings change the show, never who wins.');
 H(/start the next round by itself/i, 'Next round by itself', 'In a best-of series, the next round starts a few seconds after each winner.');
 H(/lists every chat command|^!moviesroyal$/i, '!moviesroyal command', 'The command that lists every chat command.');
 H(/go fullscreen when a battle starts/i, 'Fullscreen on start', 'The game goes fullscreen when a battle starts (Esc to leave).');

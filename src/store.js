@@ -38,7 +38,7 @@ const defaults = () => ({
     letterboxdUser: '',
     twitchClientId: '', twitchClientSecret: '', twitchChannel: '',
     maxPerUser: 3,
-    maxFighters: 1000, cliffSize: 130, announceWinner: true, wheelOfNamesKey: '', autoCamera: true, replayOn: true,
+    maxFighters: 1000, f8Laps: 5, cliffSize: 130, announceWinner: true, wheelOfNamesKey: '', autoCamera: true, replayOn: true,
     lobbySeconds: 5,
     gameSeconds: 30,
     soundOn: true, sfxVolume: 70, musicVolume: 35,

@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.39.0 (test build)
+- 🚌 **New ball battle map: 🚗 Demolition Derby.** The pieces aren't balls, they're school buses (25 different paint jobs, then they repeat). Everyone rams everyone in a mud arena; side hits (T-bones) hurt the most. Every bus has hidden health and you can see it getting beat up: dents and scraped paint, cracked then smashed windows, a loose bumper, a popped hood, smoke. A wrecked bus stops right where it is and keeps smoking. Last bus running wins. Map power: 🚚 Monster Truck.
+- 🏁 **New ball battle map: Figure 8 Race.** School buses race laps around a figure 8, with lots of banging (especially at the crossing in the middle). The flagman waves 🟩 green to go, 🏳️ white for the last lap and 🏁 checkered at the finish. Pick the number of laps in Settings → Game (5 to start). First across the line wins; the others are placed by how far along they were. About 1 race in 25 turns into last bus standing instead. Map power: 🛢️ Oil Slick.
+- 🍀 **Luck on the bus maps:** more luck = more health and a faster bus (the more luck, the faster). 50 luck or more gets a 🐄 cow catcher on the front: head-on hits hurt it less and it hits harder. No glow or flames on buses.
+- Both bus maps are for ball battles only (not card battles).
+- 🎯 **Fair winner, always:** every battle's winner is drawn by the odds before it starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins. (The old on/off box is gone.)
+- 🧪 Test tab: ▶ boxes for 🚗 Demolition Derby and 🏁 Figure 8 Race (with 1 lap and 💥 Last bus standing buttons), plus checklist items.
+
 ## 1.38.1 (latest release)
 - 🆕 **New Setup guide steps pop up when Movie Royal starts.** When an update adds a step to the 🧭 Setup guide (like 🎉 Viewer's Choice in OBS), a pop-up shows it each time the app starts until you open the guide, set it up, or press Don't show again.
 

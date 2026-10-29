@@ -20,6 +20,8 @@ export const MAP_LIST = [
   { id: 'hero', power: '🦹 Villain Team-Up', name: 'Hero City', icon: '🦸', desc: 'A rooftop fight above the city at night. Villains attack: a giant robot fist smashes down, a laser drone zaps, and a caped flyer grabs pieces and throws them off the roof.' },
   { id: 'plague', solid: true, power: '🐀 Rat Swarm', name: 'Plague Town', icon: '🐀', desc: 'A walled medieval town seen from above. Rats bite and infect you, and the sick pass it on to anyone they bump. Run from the rats! Nothing crumbles.' },
   { id: 'warfield', solid: true, power: '🐎 Royal Charge', name: 'Battlefield', icon: '⚔️', desc: 'Every piece on one side, an unstoppable army on the other: archers hit the back rows, knights crush the front, and the cavalry hits both sides. Nothing crumbles.' },
+  { id: 'derby', solid: true, power: '🚚 Monster Truck', name: 'Demolition Derby', icon: '🚗', desc: 'Not balls: school buses! Everyone rams everyone in a mud arena; side hits hurt the most. Buses get beat up as they take hits, and a wrecked one stops where it is and smokes. More luck = a tougher, faster bus (50+ luck gets a cow catcher). Last bus running wins.' },
+  { id: 'figure8', solid: true, power: '🛢️ Oil Slick', name: 'Figure 8 Race', icon: '🏁', desc: 'School buses race laps around a figure 8 with a crossing in the middle (choose the laps in Settings). Lots of banging. More luck = a tougher, faster bus. First across the line wins; once in a while it turns into last bus standing.' },
   { id: 'bombs', solid: true, power: '💣 Mega Bomb', name: 'Blast Zone', icon: '💣', desc: 'Giant bombs drop in, trap you and blow up in a big cross. Get out of the lines!' },
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
@@ -28,7 +30,7 @@ const REV = { gas: 2, plague: 2, warfield: 2 };
 for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
 // ⚪🃏 which battles a map is for: ball battles, card battles, or both (Derek says when a map is only for one).
 // Ball maps are for both unless listed here as ball-only. Card-only maps live in cards.js (CARD_MAPS).
-const BALL_ONLY = [];
+const BALL_ONLY = ['derby', 'figure8']; // 🚗 car maps: ball battles only
 for (const m of MAP_LIST) m.modes = BALL_ONLY.includes(m.id) ? ['ball'] : ['ball', 'card'];
 // chaos events that break the ground: never used on maps where nothing breaks (their channel point rewards get paused there)
 export const GROUND_EVENTS = ['collapse', 'lightning'];

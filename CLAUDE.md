@@ -118,6 +118,9 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **Pop-out pretend chat:** `pchatPop()` opens `/control.html?pchat=1` (`PC_ONLY`: body.pcOnly shows only #pchat, no game iframe, skips start-up stuff). Checklist tab: `#tTabTools` (Preview + Test chat).
 - **Number battles:** `l.numbers {from,to}`; `/api/lists/:id/numbers` changes the range (kept numbers keep odds); labels editable in the pool.
 
+- **🚌 Bus maps (ball only, `BALL_ONLY` in maps.js):** `derby` (Demolition Derby arena) + `figure8` (Figure 8 Race). game.html: `BUS` (3D box bus drawing, 25 paint jobs `f.paint = index % 25`, damage look from `1 − CARS.hpK`, `plow` = cow catcher), `CARS` (drive/collide as 2 circles per bus/wall/smoke/draw), `MAP.cars/ownEnd/drive/drawCar/arrange`; `wreckCar` (out = stops + smokes). Luck (`CARS.luck`) = more hp (`hpMax`) + speed; ≥50 = cow catcher (nose hits ×.4 taken, ×1.35 dealt), no glow. Figure 8: lemniscate track (`buildTrack`, `locate` → `f.s` laps), laps from `settings.f8Laps` (start msg `laps`), `cfg.game` = race time, destined rubber-band, others slow/spin in the last lap; `survival` 1/25 (test body `survival:true`); flags green/white/checkered; `finish()` places the rest by progress. Tests: `window.__royalSim(secs)` (fast sim) + `__royalEvent(name)`. Derek: "make them school buses, not all the same paint".
+- **🎯 Fair winner always on:** start msgs send `fairOdds: true` (Derek: winner chosen before the battle by odds + luck).
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 

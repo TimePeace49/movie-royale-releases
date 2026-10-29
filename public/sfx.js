@@ -155,6 +155,10 @@ window.SFX = (() => {
     arrows: () => { for (let i = 0; i < 7; i++) noise({ dur: .4, v: .09, type: 'bandpass', f0: 3200, f1: 900, q: 7, at: i * .05 + Math.random() * .05 }); },
     clash: (o = {}) => { tone({ type: 'square', f0: 1900, f1: 1700, dur: .1, v: .1 * (o.v ?? 1) }); tone({ type: 'sine', f0: 2700, dur: .45, v: .1 * (o.v ?? 1) }); tone({ type: 'sine', f0: 3900, dur: .3, v: .05 * (o.v ?? 1) }); noise({ dur: .12, v: .2 * (o.v ?? 1), type: 'highpass', f0: 3000 }); },
     horn: (o = {}) => { const p = o.p || 1; tone({ type: 'sawtooth', f0: 98 * p, f1: 104 * p, dur: 1.5, v: .2, a: .18 }); tone({ type: 'sawtooth', f0: 147 * p, f1: 156 * p, dur: 1.5, v: .1, a: .22 }); tone({ type: 'sine', f0: 49 * p, dur: 1.5, v: .2, a: .2 }); },
+    // 🚗 car maps
+    crash: (o = {}) => { const now = ac.currentTime; if (now - (S._crashAt || 0) < .06) return; S._crashAt = now; const v = o.v ?? 1, pan = o.pan || 0; noise({ dur: .35, v: .42 * v, type: 'lowpass', f0: 2600, f1: 300, q: .7 }); tone({ type: 'sine', f0: 110, f1: 40, dur: .25, v: .5 * v, pan }); noise({ dur: .5, v: .12 * v, type: 'highpass', f0: 4000, f1: 2500, at: .03 }); for (let i = 0; i < 3; i++) tone({ type: 'square', f0: 1800 + Math.random() * 1500, dur: .05, v: .03 * v, at: .05 + i * .06 + Math.random() * .04, pan }); }, // metal crunch + glass bits
+    skid: (o = {}) => { noise({ dur: .7, v: .14 * (o.v ?? 1), type: 'bandpass', f0: 2100, f1: 1500, q: 9 }); tone({ type: 'sawtooth', f0: 900, f1: 700, dur: .6, v: .025 }); },
+    rev: () => { for (const [d, at] of [[1, 0], [1.25, .55]]) { tone({ type: 'sawtooth', f0: 55 * d, f1: 150 * d, dur: .5, v: .16, a: .05, at }); tone({ type: 'square', f0: 27 * d, f1: 75 * d, dur: .5, v: .1, a: .05, at }); } tone({ type: 'sawtooth', f0: 150, f1: 70, dur: .8, v: .1, at: 1.05 }); },
     gallop: () => { for (let i = 0; i < 10; i++) { tone({ type: 'sine', f0: 95, f1: 50, dur: .07, v: .28, at: i * .14 }); tone({ type: 'sine', f0: 85, f1: 45, dur: .07, v: .2, at: i * .14 + .05 }); } },
     // 🃏 card battles (kung fu)
     punch: () => { noise({ dur: .09, v: .45, f0: 2200, f1: 400, q: .8 }); tone({ type: 'sine', f0: 160, f1: 60, dur: .12, v: .45 }); },
@@ -204,6 +208,14 @@ window.SFX = (() => {
   function sched() {
     while (nextT < ac.currentTime + .12) {
       const at = nextT - ac.currentTime, i = step % 16, bar = Math.floor(step / 16) % 4;
+      if ((curMap === 'derby' || curMap === 'figure8') && mode === 'fight') { // 🚗 cars: a pounding rock beat, a chugging guitar and an engine drone
+        const riff = [40, 40, 52, 40, 40, 50, 40, 47, 40, 40, 52, 40, 43, 45, 47, 38][i] + (bar === 3 ? 3 : 0);
+        if (i % 4 === 0 || i === 6) tone({ type: 'sine', f0: 140, f1: 45, dur: .16, v: .55, at, bus: musicBus });
+        if (i % 8 === 4) noise({ dur: .2, v: .3, type: 'bandpass', f0: 1700, q: .6, at, bus: musicBus });
+        noise({ dur: .03, v: .05, type: 'highpass', f0: 8000, at, bus: musicBus });
+        tone({ type: 'sawtooth', f0: hz(riff), dur: STEP * .7, v: .05 + intensity * .025, at, bus: musicBus }); tone({ type: 'sawtooth', f0: hz(riff + 7), dur: STEP * .7, v: .03, at, bus: musicBus, detune: 5 });
+        if (i === 0) tone({ type: 'sawtooth', f0: 41 + intensity * 20, dur: STEP * 16, v: .025, a: .2, at, bus: musicBus });
+      } else
       if (curMap === 'card-ring' && mode === 'fight') { // 🔔 Royal Rumble: driving rock: kick, big snare, palm-muted power chords
         const riff = [40, 40, 40, 43, 40, 40, 45, 43, 40, 40, 40, 43, 47, 45, 43, 38][i] + (bar === 3 ? 5 : 0);
         if (i % 4 === 0 || i === 10) tone({ type: 'sine', f0: 150, f1: 45, dur: .16, v: .55, at, bus: musicBus });
