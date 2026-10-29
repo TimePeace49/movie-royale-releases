@@ -24,8 +24,10 @@ export const MAP_LIST = [
   { id: 'zombies', solid: true, power: '🧟 Zombie Horde', name: 'Zombie Horde', icon: '🧟', desc: 'City streets at night, closed off. Zombies shamble out of the manholes and go after everyone, and everyone runs. Balls get bitten and take damage. Cards that get bitten are INFECTED: out, but they stay and chase the others. Nothing crumbles, nobody falls.' },
   { id: 'derby', solid: true, power: '🚚 Monster Truck', name: 'Demolition Derby', icon: '🚗', desc: 'Not balls: school buses! Everyone rams everyone in a mud arena; side hits hurt the most. Buses get beat up as they take hits, and a wrecked one stops where it is and smokes. More luck = a tougher, faster bus (50+ luck gets a cow catcher). Last bus running wins.' },
   { id: 'figure8', solid: true, power: '🛢️ Oil Slick', name: 'Figure 8 Race', icon: '🏁', desc: 'School buses race laps around a figure 8 with a crossing in the middle (choose the laps in Settings). Lots of banging. More luck = a tougher, faster bus. First across the line wins; once in a while it turns into last bus standing.' },
-  { id: 'xmas', season: 'christmas', power: '🦌 Reindeer Stampede', name: "Santa's Workshop", icon: '🎅', desc: 'A snowy North Pole island under the northern lights. Herds of evil red-eyed reindeer stampede across (a warning stripe shows where), and a GIANT EVIL SANTA looms behind the island, locking on and firing lasers out of his eyes. The edges crumble. 🎄 Holiday map: on Random only in December.' },
-  { id: 'turkey', season: 'thanksgiving', power: '🦃 Turkey Trot', name: 'Turkey Trouble', icon: '🦃', desc: 'A harvest farm at sunset. Evil turkeys strut out and chase everyone, pecking and kicking them toward the edge, and every so often a whole flock gobbles across in a TURKEY TROT that knocks everyone in its way off. The edges crumble. 🍂 Holiday map: on Random only in November.' },
+  { id: 'xmas', power: '🦌 Reindeer Stampede', name: "Santa's Workshop", icon: '🎅', desc: 'A snowy North Pole island under the northern lights. Herds of evil red-eyed reindeer stampede across (a warning stripe shows where), and a GIANT EVIL SANTA looms behind the island, locking on and firing lasers out of his eyes. The edges crumble.' },
+  { id: 'turkey', power: '🦃 Turkey Trot', name: 'Turkey Trouble', icon: '🦃', desc: 'A harvest farm at sunset. Evil turkeys strut out and chase everyone, pecking and kicking them toward the edge, and every so often a whole flock gobbles across in a TURKEY TROT that knocks everyone in its way off. The edges crumble.' },
+  { id: 'elements', power: '🔮 Elemental Storm', name: 'Elemental Wizards', icon: '🔮', desc: 'A floating island in a magical sky. Four wizards on giant pillars at the corners take turns casting: 🔥 fireballs blow pieces up, 🪨 boulders smash the ground away, 🌊 a tidal wave washes pieces off, ❄️ ice freezes pieces solid (still frozen when it ends = shattered). Every spell shows where it lands first. The edges crumble.' },
+  { id: 'pompeii', power: '🌋 Eruption', name: 'Pompeii', icon: '🌋', desc: 'An old Roman town with the volcano erupting behind it. Lava pours in at the top of town and flows down the roads first, then spills into the houses. Everyone runs from it; touch lava = burned. The volcano also lobs burning rocks (a circle shows where) that blow pieces up and start little lava pools. Town walls all round: nobody gets knocked off.' },
   { id: 'bombs', solid: true, power: '💣 Mega Bomb', name: 'Blast Zone', icon: '💣', desc: 'Giant bombs drop in, trap you and blow up in a big cross. Get out of the lines!' },
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
@@ -38,11 +40,4 @@ const BALL_ONLY = ['derby', 'figure8']; // 🚗 car maps: ball battles only
 for (const m of MAP_LIST) m.modes = BALL_ONLY.includes(m.id) ? ['ball'] : ['ball', 'card'];
 // chaos events that break the ground: never used on maps where nothing breaks (their channel point rewards get paused there)
 export const GROUND_EVENTS = ['collapse', 'lightning'];
-// 🎄 holiday maps: come up on 🎲 Random / chat votes only in their month (Settings → Game → "Holiday maps all year" = always).
-// You can always pick them by hand.
-export const SEASONS = { thanksgiving: { month: 10, label: '🍂 November' }, christmas: { month: 11, label: '🎄 December' } }; // month: 0 = January
-for (const m of MAP_LIST) if (m.season) m.seasonLabel = SEASONS[m.season].label;
-let allYear = () => false;
-export const setHolidayAllYear = fn => { allYear = fn; };
-export const inSeason = (m, date = new Date()) => !m?.season || !!allYear() || SEASONS[m.season]?.month === date.getMonth();
 export const mapById = id => MAP_LIST.find(m => m.id === id);

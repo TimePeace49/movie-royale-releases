@@ -2,12 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.43.0 (test build)
+- 🔮 **New map: Elemental Wizards** (ball and card battles). A floating island in a magical sky. Four wizards stand on giant pillars at the corners and take turns casting at the island: 🔥 fireballs blow pieces up, 🌊 a tidal wave washes pieces toward the edge, 🪨 boulders smash the ground away, and ❄️ ice freezes pieces solid (if they're still frozen when it wears off, they shatter). Every spell shows where it'll land first.
+- 🌋 **New map: Pompeii** (ball and card battles). An old Roman town with the volcano erupting behind it. Lava pours in at the top of town and flows down the roads first, then spills into the houses, and everyone runs from it. Touching lava = burned. The volcano also throws burning rocks (a circle shows where) that blow pieces up and leave little lava pools. Town walls all round, so nobody gets knocked off the edge.
+- 🎅🦃 Santa's Workshop and Turkey Trouble now come up on 🎲 Random any time of year (the month limit and the "Holiday maps all year" setting are gone).
+- 🧪 Test tab: boxes for 🔮 Elemental Wizards and 🌋 Pompeii (balls or cards), plus checklist items.
+
 ## 1.42.0 (test build)
 - 👀 **Watch luck** (per battle, off by default): the more someone watches your stream, the more luck their pieces get in that battle. Default: every **10 hours watched = +1% luck** (both numbers can be changed). Hours count from when you turn it on (↺ Start counting again resets it). Find it on the Battle tab under the luck buttons: 👀 Watch luck, which also shows who has how many hours and how much luck they've earned. Only works for people linked to their Twitch name.
-- 🎅 **New holiday map: Santa's Workshop** (ball and card battles). A snowy North Pole island under the northern lights. Herds of evil red-eyed reindeer stampede across the island (a red STAMPEDE stripe shows their path first) and trample anyone in the way, and a giant evil Santa looms behind the island, locks on and fires lasers out of his eyes. Its own spooky sleigh-bell music.
-- 🦃 **New holiday map: Turkey Trouble** (ball and card battles). A harvest farm at sunset. Evil turkeys strut out, chase everyone and peck and kick them toward the edge, and every so often a whole flock gobbles across in a TURKEY TROT (orange stripe first) that knocks everyone in its way off the island. Its own barn hoedown music.
-- 🎄 **Holiday maps** only come up on 🎲 Random and chat map votes in their month: Turkey Trouble in November, Santa's Workshop in December. You can always pick them by hand. Settings → Game → **🎄 Holiday maps all year** lets them come up any time. The map menus show 🍂 / 🎄 next to them.
-- 🧪 Test tab: boxes for 🎅 Santa's Workshop and 🦃 Turkey Trouble (balls or cards), plus checklist items for watch luck and the holiday maps.
+- 🎅 **New map: Santa's Workshop** (ball and card battles). A snowy North Pole island under the northern lights. Herds of evil red-eyed reindeer stampede across the island (a red STAMPEDE stripe shows their path first) and trample anyone in the way, and a giant evil Santa looms behind the island, locks on and fires lasers out of his eyes. Its own spooky sleigh-bell music.
+- 🦃 **New map: Turkey Trouble** (ball and card battles). A harvest farm at sunset. Evil turkeys strut out, chase everyone and peck and kick them toward the edge, and every so often a whole flock gobbles across in a TURKEY TROT (orange stripe first) that knocks everyone in its way off the island. Its own barn hoedown music.
+- 🧪 Test tab: boxes for 🎅 Santa's Workshop and 🦃 Turkey Trouble (balls or cards), plus checklist items for both maps and watch luck.
 
 ## 1.41.0 (test build)
 - 🧟 **New map: Zombie Horde** (ball and card battles). City streets at night, closed off with barricades. Zombies shamble out of the manholes and the street ends and chase everyone, and everyone runs. Buildings block the way. Balls that get bitten take damage (too many bites and they're eaten). A card that gets bitten is INFECTED: it's out, but it stays on the map as a zombie and chases the others. Nothing crumbles, nobody falls off, no weapons, no final fight. Map power: 🧟 Zombie Horde.

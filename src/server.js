@@ -20,7 +20,7 @@ import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
 import * as backuplink from './backuplink.js';
-import { MAP_LIST, mapById, GROUND_EVENTS, inSeason, setHolidayAllYear } from './maps.js';
+import { MAP_LIST, mapById, GROUND_EVENTS } from './maps.js';
 import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
@@ -2056,12 +2056,11 @@ app.post('/api/maps/reset-tags', (req, res) => { // ↺ the 🔴 NEW / 🔵 UPDA
   save(); pushState(); cards.sendScene?.(); res.json({ ok: true });
 });
 function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; mapRuns()[id] = { rev: m.rev || 1, at: Date.now() }; } // only battles while you're live count
-setHolidayAllYear(() => db.settings.holidayAllYear); // 🎄 holiday maps on Random all year?
 function currentMap() {
   if (!live.map) {
     const want = db.settings.map || 'random';
     if (mapById(want)) live.map = want;
-    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap && inSeason(m)); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
+    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
   }
   return live.map;
 }
@@ -2089,7 +2088,7 @@ app.post('/api/vote/start', (req, res) => {
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'Start the vote before the battle.' });
   if (live.vote) endVote(true);
   const seconds = clampN(req.body?.seconds ?? db.settings.voteSeconds, 10, 180, 30);
-  const pool = MAP_LIST.filter(m => inSeason(m)).sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 }));
+  const pool = MAP_LIST.slice().sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 }));
   live.vote = { options: pool, voters: new Map(), endsAt: Date.now() + seconds * 1000 };
   live.vote.timer = setTimeout(() => endVote(false), seconds * 1000);
   broadcast(voteMsg(false), 'overlay'); pushState();
@@ -2518,7 +2517,7 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: req.body?.luck === false ? 0 : lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
   if (req.body?.fun) { const F = getList('chat-join')?.fun || {}, kinds = Object.keys(POWER_INFO).filter(k => !F.powersOff?.[k]); fighters.forEach((f, i) => { if (kinds.length && i % 2 === 0) { const k = kinds[(i / 2) % kinds.length]; f.powers = { [k]: k === 'shield' ? 1 : true }; f.label += ' ' + POWER_INFO[k].icon; } }); } // 🎉 Chat battle tab → 🧪 Try it: half of them powered up
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
-  const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? (l => l[Math.floor(Math.random() * l.length)].id)(MAP_LIST.filter(m => inSeason(m))) : currentMap();
+  const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
   broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
