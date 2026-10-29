@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.35.0 (test build)
+- 🧙 **New card map: Wizard Battle** (card battles only). The packs are wizards with pointy hats and wands on a giant floating platform in the night sky. They cast magic bolts, fireballs and lightning, and meteors smash parts of the platform. Cracked stone falls away: a pack that falls through a hole or off the edge is out. No weapons. When 2 are left the platform rebuilds itself for a FINAL FIGHT.
+- 🏛️ **New card map: Colosseum** (card battles only). A gladiator battle: every pack starts with its own weapon and keeps it (no stealing). 8 kinds: sword, spear, trident, axe, mace, flail, hammer, scimitar; spears reach further, axes and hammers hit harder but slower. FINAL FIGHT when 2 are left. Gladiator helmets, war drum music.
+- 🦁 **Lions** (Colosseum): a new on/off switch in the 🤪 Wacky bar (only shows when the Colosseum is the map). On = lions come out of the tunnels and hunt the gladiators. Off, even mid-fight = they stop attacking and walk back into the tunnels.
+- The 🗡️ Weapons wacky setting now only shows for Kung Fu Town (the other card maps have their own weapons, or none).
+- 🧪 Test tab: 🧙 Wizard Battle, 🏛️ Colosseum and 🦁 Lions pretend fights + checklist items.
+
 ## 1.34.1 (test build)
 - 🎥 **Card battles have camera controls now**, like the ball battles. The camera zooms in on the fight by itself (closer as fewer packs are left; whole view for the intro, replay and winner). Under the fight on the 🃏 Card battles tab: 🎯 Follow a pack (◀ ▶ to switch), 🗺️ whole map, 🎥 Auto, move and zoom. On the fight itself: scroll to zoom, drag to move, click a pack to follow it, double-click for auto. Works in Kung Fu Town, the Rumble Ring and the ball maps. Settings → Game → Auto camera turns the auto zoom off.
 - 🧪 Test tab: 🎥 Card camera test + checklist item.

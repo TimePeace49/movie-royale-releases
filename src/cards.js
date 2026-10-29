@@ -22,11 +22,14 @@ export const WACKY = {
   boom: { name: '💣 Exploding K.O.s', desc: 'A knocked-out pack explodes and hurts everyone next to it' },
   onehit: { name: '☠️ One-hit K.O.', desc: 'Every clean hit knocks a pack out' },
   rage: { name: '😡 Rage mode', desc: 'The more hurt a pack is, the harder it hits' },
-  weapons: { name: '🗡️ Weapons', desc: 'Swords, staffs and nunchucks drop into the street: whoever grabs one hits harder' }
+  weapons: { name: '🗡️ Weapons', desc: 'Swords, staffs and nunchucks drop into the street: whoever grabs one hits harder', maps: ['kungfu'] },
+  lions: { name: '🦁 Lions', desc: 'Colosseum only: lions come out of the tunnels and hunt the gladiators. Turn it off and they stop attacking and go back to the tunnels', maps: ['colosseum'] }
 };
 export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). finalFight = the last two get a weapon each and a FINAL FIGHT with its own timer.
   { id: 'kungfu', name: 'Kung Fu Town', icon: '🏯', desc: 'A martial arts showdown in an old Chinese town, like an old kung fu movie: lanterns, tiled roofs and a dusty street.', modes: ['card'], finalFight: true },
-  { id: 'ring', name: 'Rumble Ring', icon: '🔔', desc: 'Every pack starts in a wrestling ring. Slams, suplexes, clotheslines and steel chairs: the only way out is over the top rope (the more hurt a pack is, the easier it goes over). Last pack in the ring wins.', modes: ['card'], finalFight: true }
+  { id: 'ring', name: 'Rumble Ring', icon: '🔔', desc: 'Every pack starts in a wrestling ring. Slams, suplexes, clotheslines and steel chairs: the only way out is over the top rope (the more hurt a pack is, the easier it goes over). Last pack in the ring wins.', modes: ['card'], finalFight: true },
+  { id: 'wizard', name: 'Wizard Battle', icon: '🧙', desc: 'Wizards on a giant floating platform in the night sky. Magic bolts, fireballs, lightning and meteors crack the platform and knock parts away: fall through a hole or off the edge and you\'re out. No weapons.', modes: ['card'], finalFight: true },
+  { id: 'colosseum', name: 'Colosseum', icon: '🏛️', desc: 'A gladiator battle in the arena: every pack starts with its own weapon (swords, spears, tridents, axes, maces, flails, hammers, scimitars) and keeps it. Turn on 🦁 Lions and lions come out of the tunnels.', modes: ['card'], finalFight: true }
 ];
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
 export const cardMaps = () => [...CARD_MAPS, ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true }))];
@@ -244,6 +247,6 @@ export function openFromWheel(id, auto, why) {
 }
 export function stateFor() {
   const c = C(), b = activeBattle(), { fighters, cut } = fightersFor(b);
-  return { ringLogo: ringLogo(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
+  return { mapNow: live.fight?.map || b.map, ringLogo: ringLogo(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
     live: { show: live.show, phase: live.phase, fightId: live.fight?.id || null, n: live.fight?.fighters.length || 0, startedAt: live.fight?.startedAt || 0, test: !!live.fight?.test, last: live.last, link: !!live.wheelLink }, inBattle: fighters.length, cut };
 }
