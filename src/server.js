@@ -243,10 +243,11 @@ async function buildFighters(list, keepIds = null) {
 }
 
 // ---------- 🎉 chat battle power-ups: a viewer powers up their own ball ----------
-const POWER_INFO = { shield: { icon: '🛡️', say: 'a shield (it saves them once)' }, mega: { icon: '💪', say: 'a MEGA ball' }, turbo: { icon: '⚡', say: 'turbo speed' } };
+const POWER_INFO = { shield: { icon: '🛡️', say: 'a shield (it saves them once)' }, mega: { icon: '💪', say: 'a MEGA ball' }, turbo: { icon: '⚡', say: 'turbo speed' }, ghost: { icon: '👻', say: 'GHOST mode (nobody can bump them for the first 10 seconds)' }, spiky: { icon: '🦔', say: 'SPIKES (bumping them hurts)' }, magnet: { icon: '🧲', say: 'a MAGNET (it pulls everyone in)' } };
 function powerUp(r, kind) {
   const l = getList(db.activeListId), say = t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); };
   if (!(l?.type === 'chat' && l.fun?.powerups)) return say(`@${r.name} power-ups only work during a chat battle with power-ups turned on.`);
+  if (l.fun.powersOff?.[kind]) return say(`@${r.name} ${POWER_INFO[kind]?.icon || ''} that power-up is turned off right now.`);
   const e = l.entries.find(x => x.status === 'active' && norm(x.twitch || x.label) === norm(r.login));
   if (!e) return say(`@${r.name} you're not in the battle yet: type ${db.settings.joinCommand || '!join'} first!`);
   e.powers ||= {};
@@ -271,7 +272,7 @@ function rewardWants() {
   const want = {}; // title → should it be paused?
   for (const [title, ev] of Object.entries(st.rewards || {})) want[title.toLowerCase()] = !on || wheelUp || (!!map?.solid && GROUND_EVENTS.includes(ev));
   const powersOn = on && !wheelUp && l?.type === 'chat' && !!l.fun?.powerups;
-  for (const title of Object.keys(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn;
+  for (const [title, kind] of Object.entries(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn || !!l?.fun?.powersOff?.[kind]; // (each power-up can be switched off on the Chat battle tab)
   const wh = W.wheels.find(w => w.id === W.activeId), P = { respin: true, move: true, up: true, down: true, grow: true, shrink: false, ...(wh?.opts?.points || {}) };
   for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false);
   if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
@@ -1055,7 +1056,7 @@ async function pricesInfo() {
   const rewards = [];
   for (const [title, ev] of Object.entries(st.rewards || {})) rewards.push(R('battle', 'chaos:' + title, title, `${EVENTS[ev]?.icon || ''} ${EVENTS[ev]?.name || ev} (chaos)`, null));
   if (st.colorReward) rewards.push(R('battle', 'color', st.colorReward, '🎨 Pick your ball color' + (st.colorMode === 'points' ? '' : ' (only used when ball colors are set to channel points)'), null));
-  for (const [title, kind] of Object.entries(st.powerRewards || {})) rewards.push(R('chat', 'power:' + kind, title, ({ shield: '🛡️ Shield', mega: '💪 Mega ball', turbo: '⚡ Turbo' })[kind] || kind, st.powerCosts?.[kind]));
+  for (const [title, kind] of Object.entries(st.powerRewards || {})) rewards.push(R('chat', 'power:' + kind, title, ({ shield: '🛡️ Shield', mega: '💪 Mega ball', turbo: '⚡ Turbo', ghost: '👻 Ghost ball', spiky: '🦔 Spiky ball', magnet: '🧲 Magnet ball' })[kind] || kind, st.powerCosts?.[kind]));
   const WN = { respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down', grow: '📈 Grow a spot', shrink: '📉 Shrink a spot', double: '✌️ Double trouble', stop: '🛑 Force stop' };
   for (const [k, title] of Object.entries(W.rewards || {})) if (title) rewards.push(R('wheel', 'wheel:' + k, title, WN[k] || k, W.costs?.[k]));
   for (const [k, d] of Object.entries(VR)) rewards.push(R('viewer', 'vr:' + k, vrTitle(k), ({ hydrate: '💧 Hydrate (pop-up + chugging sound)', stretch: '🙆 Stretch (pop-up + stretching sound)', hat: '🎩 Pick a hat (they pick from your hat list in chat)', choice: "🎉 Viewer's choice (confetti, balloons, big pop-up)" })[k], db.settings.vrCosts?.[k] ?? d.cost));
@@ -1634,7 +1635,8 @@ app.patch('/api/lists/:id', (req, res) => {
   if (req.body.fun && typeof req.body.fun === 'object' && l.type === 'chat') { // 🎉 fun mode for chat battles
     const f = req.body.fun, cur = l.fun ||= { powerups: false, wacky: {} };
     if (f.powerups != null) cur.powerups = !!f.powerups;
-    if (f.wacky && typeof f.wacky === 'object') for (const k of ['bouncy', 'lowgrav', 'sizes', 'disco', 'chaos', 'bigheads']) if (k in f.wacky) cur.wacky[k] = !!f.wacky[k];
+    if (f.wacky && typeof f.wacky === 'object') for (const k of ['bouncy', 'lowgrav', 'sizes', 'disco', 'chaos', 'bigheads', 'slippery', 'swappy', 'speedy', 'googly']) if (k in f.wacky) cur.wacky[k] = !!f.wacky[k];
+    if (f.powersOff && typeof f.powersOff === 'object') { cur.powersOff ||= {}; for (const k of Object.keys(POWER_INFO)) if (k in f.powersOff) cur.powersOff[k] = !!f.powersOff[k]; } // each power-up on/off
     syncRewards(); refreshPreview();
   }
   save(); pushState(); res.json({ ok: true });
@@ -1893,7 +1895,7 @@ app.post('/api/year-allow', async (req, res) => {
 const chaosState = () => ({ points: db.settings.pointsOn !== false, bits: db.settings.bitsOn !== false });
 app.post('/api/powerups/rewards', async (req, res) => { // add the ball power-up rewards to Twitch (they stay paused unless a chat battle with power-ups is playing)
   try {
-    const st = db.settings, made = [], prompts = { shield: 'Chat battles: your ball gets a shield that saves it once. Type !join first!', mega: 'Chat battles: your ball becomes a big heavy MEGA ball. Type !join first!', turbo: 'Chat battles: your ball gets turbo speed. Type !join first!' };
+    const st = db.settings, made = [], prompts = { shield: 'Chat battles: your ball gets a shield that saves it once. Type !join first!', mega: 'Chat battles: your ball becomes a big heavy MEGA ball. Type !join first!', turbo: 'Chat battles: your ball gets turbo speed. Type !join first!', ghost: 'Chat battles: nobody can bump your ball for the first 10 seconds. Type !join first!', spiky: 'Chat battles: your ball grows spikes, bumping it hurts. Type !join first!', magnet: 'Chat battles: your ball pulls everyone close to it. Type !join first!' };
     for (const [title, kind] of Object.entries(st.powerRewards || {})) if (await twitch.createReward({ title, cost: st.powerCosts?.[kind] || 1000, prompt: prompts[kind] || '', color: '#9B4DFF', queue: true })) made.push(title);
     rewardKey = ''; await syncRewards();
     res.json({ ok: true, made });
@@ -2028,6 +2030,12 @@ function mapRuns() {
   return db.mapRuns;
 }
 function mapsWithTags() { const r = mapRuns(); return MAP_LIST.map(m => ({ ...m, tag: !r[m.id] ? 'new' : (r[m.id].rev || 1) < (m.rev || 1) ? 'updated' : null })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })); } /* A to Z in every map menu */
+app.post('/api/maps/reset-tags', (req, res) => { // ↺ the 🔴 NEW / 🔵 UPDATED tags back on: one map ({id, kind:'ball'|'card'}) or every ball + card map
+  const id = req.body?.id ? String(req.body.id) : null;
+  if (!id) { db.mapRuns = {}; cards.resetTags(); }
+  else if (req.body.kind === 'card') cards.resetTags(id); else delete mapRuns()[id];
+  save(); pushState(); cards.sendScene?.(); res.json({ ok: true });
+});
 function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; mapRuns()[id] = { rev: m.rev || 1, at: Date.now() }; } // only battles while you're live count
 function currentMap() {
   if (!live.map) {
@@ -2488,11 +2496,12 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   const many = Array.from({ length: count }, (_, i) => i < movies.length ? movies[i] : [`${movies[i % movies.length][0]} ${Math.floor(i / movies.length) + 1}`, movies[i % movies.length][1]]);
   const lucks = [0, 0, 5, 10, 20, 35, 50, 65, 80, 100]; // practice rounds show off the luck glow and flames
   const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: req.body?.luck === false ? 0 : lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
+  if (req.body?.fun) { const F = getList('chat-join')?.fun || {}, kinds = Object.keys(POWER_INFO).filter(k => !F.powersOff?.[k]); fighters.forEach((f, i) => { if (kinds.length && i % 2 === 0) { const k = kinds[(i / 2) % kinds.length]; f.powers = { [k]: k === 'shield' ? 1 : true }; f.label += ' ' + POWER_INFO[k].icon; } }); } // 🎉 Chat battle tab → 🧪 Try it: half of them powered up
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
   const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
-  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: '🧪 Practice round', kind: 'films', lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
+  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
   pushState(); res.json({ ok: true });
 });
 

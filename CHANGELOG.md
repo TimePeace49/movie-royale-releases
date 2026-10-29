@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.40.0 (test build)
+- ↺ **Reset the 🔴 NEW / 🔵 UPDATED map tags** (works while you're live too): Settings → Game → 🔴 NEW / 🔵 UPDATED tags. ↺ Reset all map tags, or ↺ next to one map. Ball maps and card maps.
+- 🎉 **Chat battle fun mode, easier to find:** the power-ups + wacky effects box is now right under the Chat battle box on the 💬 Chat battle tab.
+- 💜 **Chat buys power-ups with channel points only (never bits), and each one has its own on/off box.** New power-ups: 👻 Ghost (nobody can bump them for the first 10 seconds), 🦔 Spiky (bumping them hurts), 🧲 Magnet (pulls everyone close). An unticked power-up stays paused on Twitch. Press ✨ Add power-up rewards to Twitch once to add the new ones.
+- 🤪 **New wacky effects:** 🧊 Slippery (ice the whole battle), 🔀 Swap-o-rama (everyone swaps places every 10 seconds or so), 💨 Speedy (everyone has turbo), 👀 Googly eyes. Plus ✕ All wacky off, and 🧪 Try it (a pretend fun battle with what you ticked and half the balls powered up).
+
 ## 1.39.4 (test build)
 - ☠️ **Doomsday turns your mic and camera back on once the stream is over.** Your mic and camera stay off until OBS says the stream has really ended, then Movie Royal turns them back on (only the ones Doomsday turned off). If Movie Royal gets closed in the middle, it does it the next time it opens.
 - ☠️ **Test the whole Doomsday for real:** 🧪 Test → 🎡 Wheel tests → ☠️ The real thing → **Run the whole Doomsday**. The Doomsday screen, mic + camera off, and if you're live your stream really ends 15 seconds later. While you're live, a big red warning pops up first and its “Yes, end my stream” button only works after 5 seconds. (That warning is only for the test: the real Doomsday never asks.) Not live = a rehearsal: no stream to end, and your mic + camera come back on after 15 seconds.

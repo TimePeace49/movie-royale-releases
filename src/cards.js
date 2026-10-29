@@ -34,6 +34,7 @@ export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). final
 // 🔴 NEW / 🔵 UPDATED for card-only maps, like the ball maps: bump a map's number here when you change it
 const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1 };
 const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev || 1) < (CARD_REV[id] || 1) ? 'updated' : null; };
+export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
 export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true, tag: hooks.mapTag?.(m.id) || null }))];

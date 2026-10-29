@@ -74,8 +74,8 @@ const defaults = () => ({
       'Royal: Mystery': 'random'
     },
     // 🎉 chat battle power-ups: viewers power up their own ball (only while a chat battle with power-ups on is playing)
-    powerRewards: { 'Royal: 🛡️ Shield my ball': 'shield', 'Royal: 💪 Mega ball': 'mega', 'Royal: ⚡ Turbo ball': 'turbo' },
-    powerCosts: { shield: 1000, mega: 1500, turbo: 750 },
+    powerRewards: { 'Royal: 🛡️ Shield my ball': 'shield', 'Royal: 💪 Mega ball': 'mega', 'Royal: ⚡ Turbo ball': 'turbo', 'Royal: 👻 Ghost ball': 'ghost', 'Royal: 🦔 Spiky ball': 'spiky', 'Royal: 🧲 Magnet ball': 'magnet' },
+    powerCosts: { shield: 1000, mega: 1500, turbo: 750, ghost: 1000, spiky: 1000, magnet: 1200 },
     // bits: cheer at least this many bits -> event (highest tier reached wins)
     bits: { '100': 'random', '300': 'comet', '500': 'tornado', '1000': 'meteors', '2500': 'shockwave' }
   },
@@ -107,6 +107,7 @@ if (!db.settings.v9) { db.settings.v9 = true; db.settings.luckOn = true; db.sett
 if (!db.settings.v8) { db.settings.v8 = true; if (db.settings.twitchMoviesCommand === '!movies') db.settings.twitchMoviesCommand = '!mymovies'; }
 if (!db.settings.v7) { db.settings.v7 = true; if (Number(db.settings.maxFighters) === 40) db.settings.maxFighters = 1000; if (Number(db.settings.luckPerBattle) === 0.01) db.settings.luckPerBattle = 1; } // new defaults: 1000 pieces, 1% luck
 if (!db.settings.v16) { db.settings.v16 = true; db.settings.raidOn = true; } // 🚀 the raid reward is on by default (Settings → Rewards & prices)
+if (!db.settings.v17) { db.settings.v17 = true; const pr = db.settings.powerRewards ||= {}, have = new Set(Object.values(pr)); for (const [t, k] of [['Royal: 👻 Ghost ball', 'ghost'], ['Royal: 🦔 Spiky ball', 'spiky'], ['Royal: 🧲 Magnet ball', 'magnet']]) if (!have.has(k)) pr[t] = k; db.settings.powerCosts = { ghost: 1000, spiky: 1000, magnet: 1200, ...(db.settings.powerCosts || {}) }; } // 🎉 3 more chat battle power-ups (1.40.0)
 if (!db.settings.v15) { db.settings.v15 = true; db.linkDates ||= {}; for (const id of Object.keys(db.links || {})) if (!db.linkDates[id]) db.linkDates[id] = -Date.now(); } // 🔗 links made before Movie Royal kept dates: "before" this day
 if (!db.settings.v14) { db.settings.v14 = true; db.settings.pickLock = 'battle'; } // new default: adding + swapping movies only lock while a movie battle is going (Start → winner)
 if (!db.settings.v13) { db.settings.v13 = true; delete db.settings.botSkipV; db.settings.botRemind = true; } // the 24/7 bot update pop-up is back on (it has its own on/off box now)

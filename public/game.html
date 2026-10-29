@@ -266,7 +266,7 @@ let customBg = null; { const im = new Image(); im.onload = () => customBg = im; 
 
 // ================= state =================
 let chaos = { points: true, bits: true }, movieNo = null, voteState = null;
-let phase = 'idle', gameId = null, cfg = { lobby: 10, game: 30, fair: true }, kind = 'text', listName = '', totalEntries = 0;
+let funSwap = null, phase = 'idle', gameId = null, cfg = { lobby: 10, game: 30, fair: true }, kind = 'text', listName = '', totalEntries = 0;
 let t = 0, lobbyLeft = 0, endAt = 0, clock = 0;
 let tiles = [], tileMap = new Map(), solid = [], fighters = [], parts = [], fxParts = [], banners = [], feed = [], hazards = [], floaters = [], queue = [];
 let series = null, seriesMsg = null;
@@ -2750,7 +2750,7 @@ function wreckCar(f) {
 }
 function updateFighters(dt) {
   if (MAP.drive) return MAP.drive(dt); // 🚗 car maps drive themselves (steering, crashes, walls, wrecks)
-  const list = alive(), ice = t < mods.iceUntil, grav = t < mods.gravUntil || !!MAP.lowGrav || !!cfg.fun?.lowgrav, slip = ice || (MAP.friction ?? -2.8) > -1.6;
+  const list = alive(), ice = t < mods.iceUntil || !!cfg.fun?.slippery, grav = t < mods.gravUntil || !!MAP.lowGrav || !!cfg.fun?.lowgrav, slip = ice || (MAP.friction ?? -2.8) > -1.6;
   const fr = Math.exp((ice ? -.35 : (MAP.friction ?? -2.8)) * dt);
   buildCrowd(list);
   for (const f of list) {
@@ -2806,10 +2806,12 @@ function updateFighters(dt) {
     if (grav && f.hop <= 0 && Math.random() < dt * (MAP.lowGrav ? 1 : 2)) f.vhop = rnd(220, 380);
     f.vhop -= (grav ? 380 : 1400) * dt; f.hop = Math.max(0, f.hop + f.vhop * dt); if (f.hop === 0) f.vhop = Math.max(0, f.vhop);
   }
+  for (const m of list) if (m.magnet) for (const o of list) { if (o === m || o.flying || o.ret) continue; const dx = m.x - o.x, dy = m.y - o.y, d = Math.hypot(dx, dy); if (d > 0 && d < m.r * 9) { const k = 170 * (1 - d / (m.r * 9)) * dt; o.vx += dx / d * k; o.vy += dy / d * k; } } // 🧲 magnets pull everyone close
   // collisions
   const spread = list.length > 40;
   eachPair(list, (a, b) => {
     if (a.flying || b.flying || a.dropping || b.dropping || a.eaten || b.eaten || a.ret || b.ret) return;
+    if ((a.ghost || b.ghost) && t < 10) return; // 👻 ghost balls can't be bumped for the first 10 seconds
     let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy); const min = (a.r + b.r) * .92;
     if (spread && d > 0 && d < (a.r + b.r) * 2.2) { // crowded rounds: pieces gently keep their distance and use the whole cliff
       const k = 260 * (1 - d / ((a.r + b.r) * 2.2)) * dt, ux = dx / d, uy = dy / d;
@@ -2825,6 +2827,7 @@ function updateFighters(dt) {
       a.vx -= jj * ia * nx; a.vy -= jj * ia * ny; b.vx += jj * ib * nx; b.vy += jj * ib * ny;
       if (a.dashing > 0) a.whiffAt = null; if (b.dashing > 0) b.whiffAt = null;
       if (-vn > 170) { const im = (-vn - 150) / 30; hurt(a, im * Math.pow(b.mass / a.mass, .8)); hurt(b, im * Math.pow(a.mass / b.mass, .8)); } // hard bumps hurt (heavier hitters hurt more)
+      if (-vn > 50 && (a.spiky || b.spiky)) { if (a.spiky && !(b.spikeAt > t)) { b.spikeAt = t + .4; hurt(b, 9); push(b, nx * 220, ny * 220); } if (b.spiky && !(a.spikeAt > t)) { a.spikeAt = t + .4; hurt(a, 9); push(a, -nx * 220, -ny * 220); } } // 🦔 bumping a spiky ball hurts
       if (a.dashing > 0) push(b, nx * 180 * Math.sqrt(a.mass), ny * 180 * Math.sqrt(a.mass));
       if (b.dashing > 0) push(a, -nx * 180 * Math.sqrt(b.mass), -ny * 180 * Math.sqrt(b.mass));
       const kb = clamp(260 * (a.mass - b.mass) / Math.min(a.mass, b.mass), -620, 620); // the bigger piece knocks the smaller one back (much more when it's a lot bigger)
@@ -2891,7 +2894,7 @@ function drawFighter(f, lobby) {
     if (SKIN === 'cards') cardLimbs(f, x, cy, gy - lift);
     ctx.drawImage(f.token, x - D / 2, cy - D / 2, D, D);
     if (f.hurtAt != null && t - f.hurtAt < .25 && phase === 'running') { ctx.fillStyle = `rgba(255,60,80,${.5 * (1 - (t - f.hurtAt) / .25)})`; ctx.beginPath(); ctx.arc(x, cy, f.r, 0, 7); ctx.fill(); } // ouch
-    if (f.shield > 0 || f.turbo) drawPowerFx(f, x, cy);
+    if (hasFx(f)) drawPowerFx(f, x, cy);
     return cy;
   }
   ctx.save();
@@ -2908,7 +2911,7 @@ function drawFighter(f, lobby) {
   if (cam.follow === f && winner !== f) { ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.arc(0, 0, f.r + 8, clock * 2, clock * 2 + 6.3); ctx.stroke(); ctx.setLineDash([]); }
   if (winner === f) { ctx.strokeStyle = '#ffc94a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, f.r + 9 + Math.sin(clock * 8) * 2, 0, 7); ctx.stroke(); }
   ctx.restore();
-  if (!f.falling && (f.shield > 0 || f.turbo)) drawPowerFx(f, x, cy);
+  if (!f.falling && hasFx(f)) drawPowerFx(f, x, cy);
   return cy;
 }
 function cardLimbs(f, x, cy, foot) { // 🃏 stick legs (walking with how fast it moves) + arms with fists
@@ -3008,12 +3011,13 @@ function runEvent(fx) {
   EVENTS[ev]();
 }
 // 🎉 chat battle power-ups: 🛡️ shield (saves them once per shield), 💪 mega (big and heavy), ⚡ turbo (faster, harder dashes)
-function applyPowers(f) { const p = f.powers || {}; f.shield = Number(p.shield) || 0; f.mega = !!p.mega; f.turbo = !!p.turbo; }
+function applyPowers(f) { const p = f.powers || {}; f.shield = Number(p.shield) || 0; f.mega = !!p.mega; f.turbo = !!p.turbo || !!cfg.fun?.speedy; f.ghost = !!p.ghost; f.spiky = !!p.spiky; f.magnet = !!p.magnet; }
+const hasFx = f => f.shield > 0 || f.turbo || f.ghost || f.spiky || f.magnet || !!cfg.fun?.googly; // (power-up looks + 👀 googly eyes)
 function powerMsg(m) {
   const f = fighters.find(x => x.id === m.id); if (!f) return;
   f.powers = { ...(f.powers || {}) }; if (m.power === 'shield') f.powers.shield = Math.min(3, (f.powers.shield || 0) + 1); else f.powers[m.power] = true;
   applyPowers(f); if (m.power === 'mega') { f._dirty = true; sizeAll(); }
-  const icon = { shield: '🛡️', mega: '💪', turbo: '⚡' }[m.power] || '✨';
+  const icon = { shield: '🛡️', mega: '💪', turbo: '⚡', ghost: '👻', spiky: '🦔', magnet: '🧲' }[m.power] || '✨';
   floaters.push({ text: `${icon} POWERED UP!`, x: sx(f.x), y: sy(f.y) - (f.r || 20) * 2 - 30, life: 1.6, color: '#c4a5ff' }); sparkle(sx(f.x), sy(f.y) - (f.r || 20), '#c4a5ff', 26); SFX.play('lucky');
 }
 function useShield(f) { // a shield takes the hit
@@ -3023,6 +3027,10 @@ function useShield(f) { // a shield takes the hit
   return true;
 }
 function drawPowerFx(f, x, cy) {
+  if (f.spiky) { ctx.fillStyle = '#d8dde6'; ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5; const n = 12, R = f.r; for (let i = 0; i < n; i++) { const a = i / n * 6.283 + clock * .5, c = Math.cos(a), s2 = Math.sin(a); ctx.beginPath(); ctx.moveTo(x + c * R * .92 - s2 * R * .16, cy + s2 * R * .92 + c * R * .16); ctx.lineTo(x + c * R * 1.38, cy + s2 * R * 1.38); ctx.lineTo(x + c * R * .92 + s2 * R * .16, cy + s2 * R * .92 - c * R * .16); ctx.fill(); ctx.stroke(); } } // 🦔 spikes
+  if (f.magnet) { ctx.lineWidth = 3; for (let i = 0; i < 2; i++) { const a = clock * 2 + i * Math.PI, rr = f.r + 12 + 6 * Math.sin(clock * 5 + i); ctx.strokeStyle = i ? 'rgba(80,140,255,.85)' : 'rgba(255,70,70,.85)'; ctx.beginPath(); ctx.arc(x, cy, rr, a, a + 2.2); ctx.stroke(); } } // 🧲 magnet field
+  if (f.ghost && (phase !== 'running' || t < 10)) { ctx.strokeStyle = 'rgba(235,240,255,.7)'; ctx.setLineDash([5, 6]); ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, cy, f.r + 6, clock, clock + 6.3); ctx.stroke(); ctx.setLineDash([]); ctx.font = `${Math.round(Math.max(14, f.r * .7))}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('👻', x + f.r * .9, cy - f.r * .8); } // 👻 ghost (first 10 seconds)
+  if (cfg.fun?.googly && f.alive) { const sp = Math.hypot(f.vx || 0, f.vy || 0) || 1, lx = (f.vx || 0) / sp, ly = (f.vy || 0) / sp, er = f.r * .3; for (const side of [-1, 1]) { const ex = x + side * f.r * .36, ey = cy - f.r * .32; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ex, ey, er, 0, 7); ctx.fill(); ctx.stroke(); const wob = Math.sin(clock * 9 + side + (f.wob || 0)) * er * .25; ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(ex + lx * er * .45 + wob, ey + ly * er * .45 + Math.cos(clock * 7 + side) * er * .2, er * .48, 0, 7); ctx.fill(); } } // 👀 googly eyes
   if (f.shield > 0) { ctx.fillStyle = 'rgba(120,200,255,.16)'; ctx.strokeStyle = `rgba(140,215,255,${.65 + .25 * Math.sin(clock * 6)})`; ctx.lineWidth = 3 + f.shield; ctx.beginPath(); ctx.arc(x, cy, f.r + 7, 0, 7); ctx.fill(); ctx.stroke(); }
   if (f.turbo) { const sp = Math.hypot(f.vx || 0, f.vy || 0); if (sp > 60) { ctx.strokeStyle = 'rgba(255,230,90,.7)'; ctx.lineWidth = 3; for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.moveTo(x - f.vx / sp * f.r + j * 6, cy - f.vy / sp * f.r * K); ctx.lineTo(x - f.vx / sp * (f.r + 34) + j * 6, cy - f.vy / sp * (f.r + 34) * K); ctx.stroke(); } } }
 }
@@ -3406,7 +3414,7 @@ function startGame(m) {
   gameId = m.gameId; listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length;
   if (m.chaos) chaos = m.chaos;
   movieNo = m.movieNo || null; series = m.series || null;
-  cfg = { laps: clamp(Number(m.laps) || 5, 1, 50), survival: m.survival ?? null, lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, pacer: m.pacer ?? 50, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5);
+  cfg = { laps: clamp(Number(m.laps) || 5, 1, 50), survival: m.survival ?? null, lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, pacer: m.pacer ?? 50, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5); funSwap = null;
   for (const f of fighters) { f.hp = null; f.hurtAt = null; } // full health every battle
   t = 0; lobbyLeft = cfg.lobby; winner = null; winTile = null; destined = null; suddenDeath = false; showdown = false; paceNext = 6; resultSent = false;
   hazards = []; parts = []; feed = []; banners = []; floaters = []; queue = (m.queued || []).slice();
@@ -3832,6 +3840,7 @@ function runStep(dt) { // one step of a running battle
     t += dt;
     updateTiles(dt); updateHazards(dt); MAP.update?.(dt); updateFighters(dt);
     if (cfg.fun?.chaos && !winner && (funNext -= dt) <= 0) { funNext = rnd(4, 6.5); runEvent({ event: 'random', by: { name: '🎉 FUN MODE' }, source: 'fun' }); } // 🎉 chaos rain
+    if (cfg.fun?.swappy && !winner && (funSwap = (funSwap ?? rnd(6, 9)) - dt) <= 0) { funSwap = rnd(8, 12); runEvent({ event: 'swap', by: { name: '🎉 FUN MODE' }, source: 'fun' }); } // 🔀 everyone swaps places every so often
     SFX.setIntensity(t / cfg.game);
     const rs = Math.ceil(cfg.game - t); if (rs !== lastTick && rs <= 5 && rs > 0) { lastTick = rs; SFX.play('final5'); }
     if (!winner && !suddenDeath && !cfg.fun?.noShowdown && !MAP.ownEnd && alive().length === 2 && fighters.length > 2 && t < cfg.game - 5) startSuddenDeath(true); // 2 left early: FINAL SHOWDOWN (no long hop-around)

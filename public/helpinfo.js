@@ -8,6 +8,15 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx, sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
 // ───────── top bar ─────────
+H(/^tip:turn this one power-up on or off/i, '💜 One power-up on/off', 'Ticked = chat can buy this power-up with channel points during a fun chat battle. Unticked = its reward stays paused on Twitch and redeeming it does nothing. 🛡️ Shield saves them once · 💪 Mega ball is big and heavy · ⚡ Turbo is faster · 👻 Ghost can\'t be bumped for the first 10 seconds · 🦔 Spiky hurts whoever bumps it · 🧲 Magnet pulls everyone close.');
+H(/^tip:turn every wacky effect off/i, '✕ All wacky off', 'Turns every wacky effect off for chat battles.');
+H(/^tip:try a pretend chat battle with what/i, '🧪 Try it', 'Runs a pretend chat battle with 10 made-up players: the wacky effects you ticked are on, and half of them have a power-up (only the ones ticked). Your real chat battle isn\'t touched.');
+H(/slippery: the ground is ice/i, '🧊 Slippery', 'Fun chat battles: the ground is slippery ice the whole battle.');
+H(/swap-o-rama/i, '🔀 Swap-o-rama', 'Fun chat battles: every 10 seconds or so, everyone swaps places at random.');
+H(/speedy: every ball has turbo/i, '💨 Speedy', 'Fun chat battles: every ball gets turbo (faster, harder hits).');
+H(/googly eyes on every ball/i, '👀 Googly eyes', 'Fun chat battles: every ball gets a pair of wobbly googly eyes that look where it\'s going.');
+H(/^tip:put the new \/ updated tags back on every/i, '↺ Reset all map tags', 'Puts 🔴 NEW (or 🔵 UPDATED, for a map changed in an update) back on every ball and card map, like they were never played on stream. Works while you\'re live too.');
+H(/^tip:put the new \/ updated tag back on this map/i, '↺ Reset this map\'s tag', 'Puts 🔴 NEW (or 🔵 UPDATED) back on just this map, e.g. if it got played on stream by mistake.');
 H(/^tip:run the whole doomsday for real/i, '☠️ Run the whole Doomsday', 'The full Doomsday for real: the Doomsday screen on stream, your mic and camera off in OBS, and if you\'re LIVE your stream ends 15 seconds later. Live = a big warning pops up first and its button only works after 5 seconds (the real Doomsday never asks). Not live = a rehearsal: the screen, mic + camera off for 15 seconds, then back on. Either way your mic and camera come back on once it\'s over.');
 H(/^tip:end my stream with the doomsday/i, '☠️ Yes, end my stream', 'Runs the Doomsday test while you\'re live: your stream really ends 15 seconds later. It can only be pressed after 5 seconds.');
 H(/no, keep streaming/i, '✋ No, keep streaming', 'Closes the warning. Nothing happens.');
