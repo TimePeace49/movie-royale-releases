@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.34.1 (test build)
+- 🎥 **Card battles have camera controls now**, like the ball battles. The camera zooms in on the fight by itself (closer as fewer packs are left; whole view for the intro, replay and winner). Under the fight on the 🃏 Card battles tab: 🎯 Follow a pack (◀ ▶ to switch), 🗺️ whole map, 🎥 Auto, move and zoom. On the fight itself: scroll to zoom, drag to move, click a pack to follow it, double-click for auto. Works in Kung Fu Town, the Rumble Ring and the ball maps. Settings → Game → Auto camera turns the auto zoom off.
+- 🧪 Test tab: 🎥 Card camera test + checklist item.
+
 ## 1.34.0 (test build)
 - 🤼 **New card map: Rumble Ring** (card battles only). All the packs start in a wrestling ring and the only way out is over the top rope. They do wrestling moves: body slams, suplexes, Irish whips into the ropes (and a clothesline when they bounce back), elbow drops, dropkicks. At 0 health a pack goes down instead of being knocked out, and the more hurt a pack is, the easier it goes over the top rope. Steel chairs get thrown into the ring (2 per fight). The moves stay fairly realistic unless a 🤪 wacky setting is on. When 2 are left there's a 🥊 FINAL FIGHT with a chair each. It has its own rock music, a crowd that cheers, and a bell.
 - 🤼 The middle of the ring shows **your Twitch picture**. To use your own logo: 📦 Card pool tab → set the map to Rumble Ring → 🖼️ Pick a ring logo (↺ Use my Twitch picture goes back).

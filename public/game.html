@@ -3260,6 +3260,7 @@ addEventListener('dblclick', camReset);
 let followTag = '';
 addEventListener('click', () => { if (replay) skipReplay(); });
 addEventListener('keydown', e => {
+  if (window.CARDS?.on?.() && !e.ctrlKey && !e.altKey && !e.metaKey) { const ck = { '+': 'in', '=': 'in', '-': 'out', '_': 'out', e: 'in', q: 'out', r: 'auto', ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', a: 'left', d: 'right', w: 'up', s: 'down', Tab: e.shiftKey ? 'prev' : 'next', ']': 'next', '[': 'prev', n: 'next', o: 'overview', f: 'next' }[e.key.length === 1 ? e.key.toLowerCase() : e.key]; if (ck) { e.preventDefault(); CARDS.cam(ck); } return; } // 🃏 the card fight is showing: its own camera
   const k = { '+': 'in', '=': 'in', '-': 'out', '_': 'out', e: 'in', q: 'out', r: 'auto', ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', a: 'left', d: 'right', w: 'up', s: 'down', Tab: e.shiftKey ? 'prev' : 'next', ']': 'next', '[': 'prev', n: 'next', o: 'overview', f: 'next' }[e.key.length === 1 ? e.key.toLowerCase() : e.key];
   if (k) { e.preventDefault(); camCmd(k); }
 });
@@ -3515,7 +3516,7 @@ function handleMsg(m) {
     else if (m.type === 'series') seriesMsg = m;
     else if (m.type === 'recolor') { for (const f of fighters) if (f.ownerLogin && f.ownerLogin.toLowerCase() === m.login) { f.color = m.color || f.baseColor; makeToken(f); } }
     else if (m.type === 'voteEnd') { voteState = null; SFX.play('fanfare'); floaters.push({ scr: 1, text: `🗺️ CHAT PICKED: ${String(m.name || '').toUpperCase()}`, x: CX, y: 470, life: 4, color: '#ffd34d' }); }
-    else if (m.type === 'camera') { if (m.action === 'skip') skipReplay(); else if (m.action) camCmd(m.action); if (m.base) { camOpt.scale = m.base / 1.3; camOpt.base = camOpt.fit * camOpt.scale; } if (m.auto != null) camOpt.auto = m.auto; if (m.replay != null) replayOn = m.replay; }
+    else if (m.type === 'camera') { if (m.auto != null) window.CARDS?.camAuto?.(m.auto); if (m.action && m.action !== 'skip' && window.CARDS?.on?.()) CARDS.cam(m.action); else if (m.action === 'skip') skipReplay(); else if (m.action) camCmd(m.action); if (m.base) { camOpt.scale = m.base / 1.3; camOpt.base = camOpt.fit * camOpt.scale; } if (m.auto != null) camOpt.auto = m.auto; if (m.replay != null) replayOn = m.replay; }
     else if (m.type === 'claimClose') { hideClaim(); hideWin(); }
     else if (m.type === 'winHide') hideWin();
     else if (m.type === 'joined') SFX.play('joined'), floaters.push({ scr: 1, text: `+ ${m.name} joined!`, x: rnd(500, 1400), y: rnd(300, 700), life: 2, color: '#9dffb8' });

@@ -517,6 +517,10 @@
       <div class="powers" id="cWackyBar"></div>
       <button class="ghost" onclick="cardsApi('/api/cards/wacky',{allOff:true})" title="Turn every wacky setting off">✕ All off</button>
     </div>
+    <div class="under cCamRow">
+      <span class="muted" title="Camera: click a pack on the fight to follow it, scroll to zoom, drag to move, double-click for the auto camera">🎥 Camera</span>
+      <span class="seg" title="Camera — click a pack on the fight to follow it, scroll to zoom, drag to move"><button onclick="cam('prev')" title="Follow the previous pack">◀</button><button onclick="cam('next')" title="Follow a pack (Tab)">🎯 Follow</button><button onclick="cam('next')" title="Follow the next pack">▶</button><button onclick="cam('overview')" title="See the whole map (O)">🗺️</button><button onclick="cam('auto')" title="Back to the automatic camera (R)">🎥 Auto</button><button onclick="cam('left')" title="Move left (A)">⬅</button><button onclick="cam('right')" title="Move right (D)">➡</button><button onclick="cam('up')" title="Move up (W)">⬆</button><button onclick="cam('down')" title="Move down (S)">⬇</button><button onclick="cam('out')" title="Zoom out (Q)">➖</button><button onclick="cam('in')" title="Zoom in (E)">➕</button></span>
+    </div>
   </div>
   <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
   <div class="side">
@@ -768,7 +772,7 @@
   <div class="card">
     <h3>🃏 Card battle tests</h3>
     <p class="help">Pretend card packs fight on stream (Kung Fu Town, the 🔔 Rumble Ring or a ball map). Nothing in your 📦 Card pool changes. Turn wacky settings on or off on the 🃏 Card battles tab, or with the buttons here.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cardTest(8)">🥋 Pretend fight (8 packs)</button><button onclick="cardTest(30)">🥋 Big pretend fight (30 packs)</button><button onclick="cardTest(8,['gore'])">🩸 Gore fight</button><button onclick="cardTest(12,['lowgrav','teleport','weapons','boom'])">🤪 Wacky fight</button><button onclick="cardTest(10,[],'lava')" title="Card fighters on a ball map (Lava Lake)">⚪🃏 On a ball map</button><button onclick="cardTest(6,[],'kungfu')" title="6 packs in Kung Fu Town: watch the FINAL FIGHT when 2 are left">🥊 Final fight</button><button onclick="cardTest(10,[],'ring')" title="10 packs in the Rumble Ring: wrestling moves, chairs, and out only over the top rope">🔔 Rumble Ring</button><button class="ghost" onclick="cardsApi('/api/cards/stop')">⏹ Stop it</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cardTest(8)">🥋 Pretend fight (8 packs)</button><button onclick="cardTest(30)">🥋 Big pretend fight (30 packs)</button><button onclick="cardTest(8,['gore'])">🩸 Gore fight</button><button onclick="cardTest(12,['lowgrav','teleport','weapons','boom'])">🤪 Wacky fight</button><button onclick="cardTest(10,[],'lava')" title="Card fighters on a ball map (Lava Lake)">⚪🃏 On a ball map</button><button onclick="cardTest(6,[],'kungfu')" title="6 packs in Kung Fu Town: watch the FINAL FIGHT when 2 are left">🥊 Final fight</button><button onclick="cardTest(10,[],'ring')" title="10 packs in the Rumble Ring: wrestling moves, chairs, and out only over the top rope">🔔 Rumble Ring</button><button onclick="cardTest(8,[],'ring').then(()=>setTimeout(()=>cam('next'),4500))" title="A pretend card fight where the camera follows a pack after a few seconds (then try the 🎥 Camera buttons on the Card battles tab)">🎥 Card camera</button><button class="ghost" onclick="cardsApi('/api/cards/stop')">⏹ Stop it</button></div>
   </div>
   <div class="card">
     <h3>⚡ Pretend channel points / bits</h3>
@@ -1222,7 +1226,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
-  rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
+  cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1288,6 +1292,7 @@ function drawChecklist() {
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
     ['cardBallMaps', '⚪🃏 Card battles can use every ball map: the packs fight there as card fighters (pick the map on the Card battles tab)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'lava')">Try it</button>`],
+    ['cardCam', '🎥 Card battles have a camera: it zooms in on the fight by itself; 🎥 Camera buttons under the fight (follow a pack, whole map, move, zoom), or scroll / drag / click a pack on the fight', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(8,[],'ring').then(()=>setTimeout(()=>cam('next'),4500))">Try it</button>`],
     ['rumbleRing', '🔔 Rumble Ring (card map): wrestling moves (slams, suplexes, clotheslines, Irish whips), steel chairs, packs only go out over the top rope (easier when hurt), and a FINAL FIGHT', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'ring')">Try it</button>`],
     ['ringLogo', '🤼 The Rumble Ring has your Twitch picture in the middle of the ring; pick your own on the 📦 Card pool tab (map set to Rumble Ring)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cardpool')">Open</button>`],
     ['mapMenus', '🗺️ Map menus: maps only that battle has are on top (A–Z), then a line, then the maps for both battles', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Open</button>`],
@@ -3173,7 +3178,7 @@ function openSettings(force) {
       <p class="help">You can also change the map under the battle screen, or press 🗳️ Chat vote: 4 random maps, chat types 1–4. The vote lasts the number of seconds above (120 seconds = 2 minutes).</p>
       <h3 style="margin-top:18px">🎥 Camera</h3>
       <div class="grid2">${f('cliffSize', 'Cliff size on screen (%) — 100 = small, 130 = default, 170 = huge', '130', 'number', 'min="60" max="250" step="5"')}</div>
-      ${ck('autoCamera', 'Auto camera — zooms in as the cliff crumbles so the action stays big')}
+      ${ck('autoCamera', 'Auto camera — zooms in as the cliff crumbles (and on the packs in card battles) so the action stays big')}
       <h3 style="margin-top:18px">📥 Imports</h3>
       ${f('wheelOfNamesKey', 'Wheel of Names API key (optional — only if a share link will not import)', 'paste here', 'password')}
       <p class="help">Get one from your Wheel of Names account page if a share link says it needs a key. Copy-paste and files never need one.</p>

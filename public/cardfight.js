@@ -67,6 +67,7 @@
     if (!m.show && m.phase !== 'fight') return;
     if (m.phase === 'fight' && m.fightId && m.fightId !== fightId) { // a new fight
       fightId = m.fightId; destined = m.destined; R = mulberry(m.seed || 1); order = []; winner = null; sent = false;
+      cam.follow = null; cam.manual = false; cam.overview = false;
       F = makeFighters(m.fighters); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H);
       mode = 'intro'; modeT = 0; T = 0; acc = 0; teleT = 5; weapT = 7; slowUntil = 0; weapDrops = 0; lastKO = 0; rbuf = []; replay = null; replayOn = false; showdownSaid = false; finalLeft = 0; finalPair = null;
       PACE = clamp(Number(m.pace ?? 50), 0, 100); D = clamp(Number(m.length) || (25 + F.length * 1.6), 15, 240); // ⏳ how long the fight should take, and how hard the pacer works
@@ -607,6 +608,49 @@
     g.restore();
   }
 
+  // ---------- 🎥 the camera (like the ball battles: auto, follow a pack, zoom, move) ----------
+  // auto = gently zooms in on where the packs are (closer as fewer are left); scroll / drag / click on the game, the buttons
+  // under it, or keys (Q/E zoom, WASD move, Tab follow, O whole map, R auto) take over until you go back to 🎥 Auto
+  const cam = { x: W / 2, y: H / 2, z: 1, manual: false, overview: false, follow: null, lost: 0, auto: true };
+  const camClamp = () => { cam.z = clamp(cam.z, 1, 3.2); const hw = W / 2 / cam.z, hh = H / 2 / cam.z; cam.x = clamp(cam.x, hw, W - hw); cam.y = clamp(cam.y, hh, H - hh); };
+  const fpos = f => [f.x, zY(f.z) - f.h - 70 * S(f)];
+  function camGoal() {
+    if (mode === 'replay' || mode === 'over') return { x: W / 2, y: H / 2, z: 1 }; // (the replay shows everyone)
+    if (cam.follow) { const f = cam.follow; if (!F.includes(f)) cam.follow = null; else { const [x, y] = fpos(f); return { x, y, z: 2.1 }; } }
+    if (cam.overview || mode === 'lobby' || mode === 'intro' || mode === 'won' || !cam.auto || !F.length) return { x: W / 2, y: H / 2, z: 1 };
+    const live = mode === 'final' && finalPair ? finalPair : alive(); if (!live.length) return { x: W / 2, y: H / 2, z: 1 };
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const f of live) { const [x, y] = fpos(f); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y - 90); y1 = Math.max(y1, y + 110); }
+    const z = clamp(Math.min(W / (x1 - x0 + 520), H / (y1 - y0 + 420)), 1, live.length <= 2 ? 1.75 : 1.45);
+    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z };
+  }
+  function camStep(dt) {
+    if (cam.follow && !cam.follow.alive) { cam.lost += dt; if (cam.lost > 1.4) { cam.follow = null; cam.lost = 0; } } else cam.lost = 0;
+    if (!cam.manual) { const g2 = camGoal(), k = Math.min(1, dt * (cam.follow ? 4 : 1.6)); cam.z += (g2.z - cam.z) * k; cam.x += (g2.x - cam.x) * k; cam.y += (g2.y - cam.y) * k; }
+    camClamp();
+  }
+  const camApply = () => { g.translate(W / 2, H / 2); g.scale(cam.z, cam.z); g.translate(-cam.x, -cam.y); };
+  const toWorld = (px, py) => [cam.x + (px - W / 2) / cam.z, cam.y + (py - H / 2) / cam.z];
+  function camZoomAt(px, py, f) { const [wx, wy] = toWorld(px, py); cam.follow = null; cam.overview = false; cam.manual = true; cam.z = clamp(cam.z * f, 1, 3.2); cam.x = wx - (px - W / 2) / cam.z; cam.y = wy - (py - H / 2) / cam.z; camClamp(); }
+  const followable = () => F.filter(f => f.alive).sort((a, b) => a.x - b.x);
+  function camCmd(a) {
+    if (a === 'next' || a === 'prev') { const l = followable(); if (!l.length) return; const i = cam.follow ? l.indexOf(cam.follow) : -1; cam.follow = l[(i + (a === 'next' ? 1 : -1) + l.length) % l.length]; cam.manual = false; cam.overview = false; return; }
+    if (a === 'overview') { cam.follow = null; cam.manual = false; cam.overview = true; return; }
+    if (a === 'auto' || a === 'reset') { cam.follow = null; cam.manual = false; cam.overview = false; return; }
+    if (a === 'in') return camZoomAt(W / 2, H / 2, 1.25); if (a === 'out') return camZoomAt(W / 2, H / 2, 1 / 1.25);
+    if (a === 'left' || a === 'right' || a === 'up' || a === 'down') { cam.manual = true; cam.follow = null; cam.overview = false; const d = 140 / cam.z; if (a === 'left') cam.x -= d; if (a === 'right') cam.x += d; if (a === 'up') cam.y -= d; if (a === 'down') cam.y += d; camClamp(); }
+  }
+  // the mouse on the card fight (it sits on top of the ball game, so the ball camera doesn't get these)
+  const toCv = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+  let cdrag = null;
+  layer.addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); const [x, y] = toCv(e); camZoomAt(x, y, Math.pow(1.0015, -e.deltaY)); }, { passive: false });
+  layer.addEventListener('pointerdown', e => { e.stopPropagation(); if (e.button === 0) cdrag = { x: e.clientX, y: e.clientY, moved: false }; });
+  layer.addEventListener('pointermove', e => { if (!cdrag) return; const r = cv.getBoundingClientRect(), dx = (e.clientX - cdrag.x) * W / r.width, dy = (e.clientY - cdrag.y) * H / r.height;
+    if (!cdrag.moved && Math.hypot(dx, dy) < 4) return; cdrag.moved = true; cam.manual = true; cam.follow = null; cam.overview = false; cam.x -= dx / cam.z; cam.y -= dy / cam.z; camClamp(); cdrag.x = e.clientX; cdrag.y = e.clientY; });
+  layer.addEventListener('pointerup', e => { e.stopPropagation(); const d = cdrag; cdrag = null; if (!d || d.moved) return;
+    const [wx, wy] = toWorld(...toCv(e)); let best = null, bd = 1e9; for (const f of F) if (f.alive) { const [x, y] = fpos(f), dd = Math.hypot(x - wx, y - wy); if (dd < bd) { bd = dd; best = f; } }
+    if (best && bd < 110 * S(best)) { cam.follow = best; cam.manual = false; cam.overview = false; } else if (cam.follow) cam.follow = null; });
+  for (const ev of ['click', 'dblclick']) layer.addEventListener(ev, e => { e.stopPropagation(); if (ev === 'dblclick') camCmd('auto'); });
+
   // ---------- 🎞️ the frame ----------
   let lastFrame = 0;
   function frame(now) {
@@ -618,7 +662,7 @@
     if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
     const k = RY().scale?.() || 1; if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
     if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : drawBg(bgScale); }
-    modeT += real; toastT -= real;
+    modeT += real; toastT -= real; camStep(real);
     if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; bell(); if (RUMBLE()) snd('crowd'); }
     if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
     if (mode === 'replay') { replayOn = true; replay.t = (replay.t ?? replay.frames[0].T) + real * .45; while (replay.i < replay.frames.length - 1 && replay.frames[replay.i + 1].T <= replay.t) replay.i++; if (replay.t >= replay.frames[replay.frames.length - 1].T + .4) { mode = 'won'; modeT = 0; replayOn = false; replay = null; snd('fanfare'); } }
@@ -634,6 +678,7 @@
     for (const p of petals) { p.x += (p.vx + Math.sin(now / 700 + p.r) * 30) * real; p.y += p.vy * real; p.r += real * 2; } petals = petals.filter(p => p.y < H + 20 && p.x < W + 40);
 
     g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = GFX.smooth !== false;
+    g.save(); camApply(); // 🎥 the world (the top bar, banners and the winner screen stay put)
     g.drawImage(bg, 0, 0, W, H);
     if (RUMBLE()) ringLogo(); else lanterns(now / 1000);
     g.drawImage(floor, 0, 0);
@@ -646,8 +691,11 @@
     for (const o of flyers) drawFlyer(o);
     for (const p of parts) { g.globalAlpha = p.dust ? Math.max(0, p.life / p.max) : 1; g.fillStyle = p.color; g.beginPath(); g.arc(p.x, p.y, p.size, 0, 7); g.fill(); } g.globalAlpha = 1;
     for (const t of texts) { const a = Math.min(1, t.life / t.max * 2), sc = 1 + (1 - t.life / t.max) * .25; g.save(); g.translate(t.x, t.y); g.rotate(t.rot); g.scale(sc, sc); g.globalAlpha = a; g.font = `${t.size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = '#1a0a08'; g.strokeText(t.t, 0, 0); g.fillStyle = t.color; g.fillText(t.t, 0, 0); g.restore(); }
+    if (cam.follow?.alive && mode !== 'replay') { const f = cam.follow, s = S(f), [x, y] = fpos(f); g.strokeStyle = '#7dd3fc'; g.lineWidth = 3; g.setLineDash([8, 6]); g.beginPath(); g.ellipse(x, zY(f.z) - f.h, 60 * s, 16 * s, 0, now / 400, now / 400 + 6.3); g.stroke(); g.setLineDash([]); }
+    g.restore();
     for (const p of petals) { g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.beginPath(); g.ellipse(0, 0, 6, 3.5, 0, 0, 7); g.fill(); g.restore(); }
     hud(now);
+    if (cam.follow && mode !== 'replay' && mode !== 'won') { const txt = `🎥 Following ${cam.follow.name || ''}`; g.font = '800 24px Inter, sans-serif'; const tw = g.measureText(txt).width; g.fillStyle = 'rgba(10,20,40,.75)'; g.fillRect(W / 2 - tw / 2 - 16, H - 64, tw + 32, 40); g.fillStyle = '#7dd3fc'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, W / 2, H - 44); }
     const vg = g.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * .95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,6,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H); // old film look
     if (GFX.quality === 'high') { g.fillStyle = 'rgba(255,230,190,.05)'; for (let i = 0; i < 3; i++) g.fillRect(vr(0, W), 0, 1.5, H); }
   }
@@ -684,7 +732,7 @@
       if (Math.random() < .5) petals.push({ x: vr(0, W), y: -10, vx: vr(-40, 40), vy: vr(80, 160), r: 0, c: ['#ffd23a', '#ff5a7a', '#5ad6ff', '#ffffff'][Math.floor(Math.random() * 4)] });
     }
   }
-  window.CARDS = { msg, state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }),
+  window.CARDS = { msg, on: () => !layer.classList.contains('hidden'), cam: a => camCmd(a), camAuto: on => { cam.auto = !!on; }, camState: () => ({ ...cam, follow: cam.follow?.name || null }), state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }),
     sim: secs => { const out = []; let last = alive().length; if (mode === 'intro') mode = 'fight'; for (let i = 0; i < secs * 60 && !winner; i++) { if (mode === 'final') { mode = 'fight'; finalLeft = 20; } step(DT); const n = alive().length; if (n !== last) { out.push([+T.toFixed(1), n]); last = n; } } return { out, T, winner: winner?.id || null, destined }; },
     dbg: () => alive().map(f => ({ id: f.id, d: f.id === destined, x: Math.round(f.x), z: +f.z.toFixed(2), h: Math.round(f.h), hp: Math.round(f.hp), down: +f.down.toFixed(2), held: !!f.heldBy, whip: f.whip, reb: +f.rebound.toFixed(2), atk: f.atk?.kind, stun: +f.stun.toFixed(2), tgt: f.target?.id, seek: !!f.seek, w: f.weapon, cd: +f.cd.toFixed(2) })) }; // (for testing: plays the fight fast, without drawing)
 })();
