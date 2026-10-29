@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.39.2 (test build)
+- 🚌 **Figure 8 Race: buses steer around wrecks.** They look ahead for totaled buses, pick a line that clears all of them, and brake if there's no room, instead of plowing straight in. (In tests, hard hits on wrecks went from about 27 a race to under 2, and most of those are buses getting shoved by another bus.) There's still plenty of banging between buses that are running.
+- 🛑 **Wrecks stay put.** A totaled bus slides to a stop and stays where it is, instead of getting shoved across the track.
+- ⚡ **Faster bus maps.** Each bus keeps a ready-made picture of itself and only redraws it when it turns or takes more damage (a wreck is drawn once), and the Figure 8 track is drawn once instead of every frame. Wrecks also smoke hard at first, then settle to a lighter smoke, so the race doesn't slow down as more buses wreck.
+
 ## 1.39.1 (latest release)
 - 🃏 **Card pack search can't get stuck any more.** The shop page it reads could keep loading forever (and the web picture search had no time limit), so the search never came back. Now every place it looks gets about 30 seconds at most.
 - ⏹ **Stop** and 🔄 **Search again** buttons next to 🔍 Search in the 📦 Card pool, plus a seconds counter while it searches. A new search also ends an old one.
