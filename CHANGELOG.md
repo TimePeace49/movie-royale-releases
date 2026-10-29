@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.35.4 (test build)
+- **Fixed: the card battle screen loaded too big** when you opened Movie Royal and went to the 🃏 Card battles tab: it hung over the Playing / Wacky rows below it. It now fits its box, and keeps fitting when the boxes around it change size.
+
 ## 1.35.3 (latest release)
 - 🗺️ Card battles: picking another map (or another card battle with a different map) resets the screen by itself: the old winner screen goes away and the new map starts fresh. A fight that's already going isn't stopped.
 
