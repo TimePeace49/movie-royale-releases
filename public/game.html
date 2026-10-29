@@ -361,7 +361,7 @@ function buildIsland(n = fighters.length || 12) {
   R = Math.max(5, Math.round(Rfor(n) * (MAP.rScale || 1)));
   MAP._safe = undefined; MAP.build?.(R);
   tiles = []; tileMap.clear();
-  const span = Math.ceil(R * 2.4) + 4;
+  const span = MAP.span ? MAP.span(R) : Math.ceil(R * 2.4) + 4;
   for (let q = -span; q <= span; q++) for (let r = -span; r <= span; r++) {
     const p = toWorld(q, r), o = MAP.shape(q, r, p, R);
     if (!o) continue;
@@ -2531,93 +2531,127 @@ const MAPS = {
     power: { name: 'ELEMENTAL STORM', icon: '🔮', fn() { const m = MAPS.elements; if (!m.spells) return; for (let i = 0; i < 4; i++) setTimeout(() => m.castSpell(i), i * 250); } }
   },
   pompeii: {
-    // 🌋 Pompeii: an old Roman town with the volcano erupting behind it. Lava pours in at the top of the town and flows
-    // DOWN THE ROADS first (fast), then spills into the houses (slowly). Everyone runs from it; touch lava = burned.
-    // The volcano also lobs burning rocks (a circle shows where) that blow pieces up and start new little lava pools.
-    // The town walls keep everyone in: nothing crumbles, nobody gets knocked off the edge.
-    name: 'Pompeii', icon: '🌋', noCrumble: true, hardGround: true, K: .7, rScale: 1, wallScale: .5,
+    // 🌋 Pompeii: a long Roman town running downhill from the volcano to the sea, seen from above. The lava pours in at the
+    // top and chases everyone DOWN through the streets (it runs a bit ahead down the main roads), a little faster than
+    // anyone can run, and the camera scrolls down with the chase. Buildings block everyone, so they have to get round them
+    // through the streets. It's hopeless: the lava catches everyone, and the last one left wins.
+    name: 'Pompeii', icon: '🌋', K: 1, noCrumble: true, hardGround: true, ownEnd: true, noShowdown: true, pieceScale: .8, wallScale: .25,
+    span(R) { return Math.ceil((this.L?.B || R * S * 3) / (S * 1.4)) + 8; },
     build(R) {
-      const Rw = R * S * SQ3, A = Rw * 1.15, B = Rw * .62, cols = R >= 9 ? 4 : 3, rows = R >= 9 ? 3 : 2, st = S * 1.25;
-      const xs = Array.from({ length: cols - 1 }, (_, i) => -A + 2 * A * (i + 1) / cols + rnd(-S, S) * .6), ys = Array.from({ length: rows - 1 }, (_, i) => -B + 2 * B * (i + 1) / rows + rnd(-S, S) * .4);
-      this.L = { A, B, cols, rows, st, xs, ys };
+      const A = clamp(R * S * SQ3 * 1.2, 360, 720), vRun = 135, B = Math.max(A * 2.2, (vRun * (cfg.game + 6) + S * 14) / 2), st = S * 1.5;
+      const xs = [-A * .58, 0, A * .58].map(x => x + rnd(-S, S) * .5), ys = []; for (let y = -B + S * 11; y < B - S * 6; y += rnd(S * 9, S * 13)) ys.push(y); // main roads down the hill + cross streets
+      this.L = { A, B, st, xs, ys, vRun };
     },
-    shape(q, r, p, R) {
-      const L = MAPS.pompeii.L, o = SHAPES.rect(q, r, p, R, { a: 1.15, b: .62 }); if (!o || !L) return o;
-      const road = L.xs.some(x => Math.abs(p.x - x) < L.st) || L.ys.some(y => Math.abs(p.y - y) < L.st) || p.y < -L.B + L.st * 1.2; // + the street along the top, where the lava comes in
-      const col = L.xs.filter(x => p.x > x).length, row = L.ys.filter(y => p.y > y).length;
-      o.top = road ? (q + r) & 1 : 2 + (col * 3 + row * 2) % 4; o.road = road; return o;
-    },
-    tops: () => [
-      makeTopP({ c1: '#8a8478', c2: '#77716a', specks: ['#0002', '#fff1'], speckN: 14, edge: 'rgba(40,30,20,.45)', edgeW: 2 }), // paving stones
-      makeTopP({ c1: '#837d72', c2: '#706a62', specks: ['#0002', '#fff1'], speckN: 14, edge: 'rgba(40,30,20,.45)', edgeW: 2 }),
-      ...[['#b8784a', '#a86a40'], ['#c89a6a', '#b88a5a'], ['#a85a3a', '#984e32'], ['#d8b888', '#c8a878']].map(([c1, c2]) => makeTopP({ c1, c2, specks: ['#0001', '#fff2'], speckN: 10, edge: 'rgba(0,0,0,.06)',
-        deco: g => { if (Math.random() < .2) { g.fillStyle = pick(['#3a6a8a', '#8a2a2a', '#e8d8a8', '#2a4a2a']); const x = rnd(14, TOP_W - 26), y = rnd(8, TOP_H - 18); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2 === 0) g.fillRect(x + i * 5, y + j * 5, 5, 5); } } })) // house floors with little mosaics
-    ],
-    wall: { cols: ['#a89a80', '#8a7c64', '#6a5e4a', '#4a4032'], lip: '#d8ccb0', lipH: 4, lit: 'rgba(255,140,60,.1)' },
-    sky(g) {
-      skyGrad(g, [[0, '#1a0806'], [.35, '#4a140a'], [.7, '#8a2a10'], [1, '#c8541a']]);
-      const vx = 1160, vy = 360; g.fillStyle = '#2a1410'; g.beginPath(); g.moveTo(560, H); g.lineTo(vx - 90, vy); g.lineTo(vx + 90, vy); g.lineTo(1800, H); g.fill(); // the volcano
-      g.strokeStyle = '#ff6a1a'; g.lineWidth = 6; for (const [a, b] of [[-60, 640], [30, 760], [70, 600]]) { g.beginPath(); g.moveTo(vx + a * .3, vy + 4); g.quadraticCurveTo(vx + a, vy + 200, vx + a * 2.5, b); g.stroke(); } // lava running down it
-      glowBall(g, vx, vy, 260, 'rgba(255,150,40,.75)', 'rgba(255,60,0,0)');
-      for (let i = 0; i < 18; i++) { g.fillStyle = `rgba(${pick(['40,30,30', '60,50,48', '30,22,22'])},${rnd(.5, .85)})`; g.beginPath(); g.arc(vx + rnd(-140, 140) + i * rnd(-12, 12), vy - 40 - i * 18, 50 + i * 6, 0, 7); g.fill(); } // ash plume
-      hills(g, [['#3a1a10', 800, 90, .005]]);
-      for (let i = 0; i < 12; i++) { const x = rnd(W), y = rnd(780, 900); g.fillStyle = '#d8c8a8'; g.fillRect(x, y - 60, 10, 60); g.fillRect(x - 6, y - 64, 22, 6); } // columns on the hills
-    },
-    clouds: '#4a2a22', fog: ['rgba(255,110,40,.14)', 'rgba(30,10,6,.55)'],
-    animBack() { ctx.fillStyle = 'rgba(70,60,60,.6)'; for (let i = 0; i < 60; i++) { const x = (i * 157 + clock * (12 + i % 4 * 6)) % W, y = (i * 83 + clock * (40 + i % 6 * 10)) % H; ctx.fillRect(x, y, 3, 3); } }, // falling ash
-    crater() { return [sx(0) + 200, sy(-this.L.B) - 330]; },
-    start() {
-      const L = this.L; this.bombs = []; this.next = 4;
-      // how long the lava takes to reach each tile: fast down the roads, slow into the houses (shortest path from the top street)
-      const key = tl => tl.q + ',' + tl.r, dist = new Map(), q = [];
-      for (const tl of tiles) { tl.lava = false; tl.lavaAt = null; tl.floodAt = null; if (tl.y < -L.B + S * 1.6 && L.xs.some(x => Math.abs(tl.x - x) < L.st * 1.5)) { dist.set(key(tl), 0); q.push(tl); } }
-      if (!q.length) { const tl = tiles.reduce((a, b) => a.y < b.y ? a : b); dist.set(key(tl), 0); q.push(tl); }
-      const N = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, -1], [-1, 1]];
-      while (q.length) { q.sort((a, b) => dist.get(key(b)) - dist.get(key(a))); const c = q.pop(), dc = dist.get(key(c));
-        for (const [dq, dr] of N) { const n = tileMap.get((c.q + dq) + ',' + (c.r + dr)); if (!n) continue; const nd = dc + (n.road ? 1 : 6) * rnd(.85, 1.15); if (nd < (dist.get(key(n)) ?? 1e9)) { dist.set(key(n), nd); q.push(n); } } }
-      const order = tiles.slice().sort((a, b) => (dist.get(key(a)) ?? 1e9) - (dist.get(key(b)) ?? 1e9));
-      const span = Math.max(4, cfg.game - 4);
-      order.forEach((tl, i) => { tl.elev = i / order.length; tl.safeAt = 2 + Math.pow(tl.elev, 1.1) * span; }); // even pace: about the same amount of town is lost every second
-      order.slice(-4).forEach(tl => { tl.elev = 9; tl.safeAt = 1e9; }); // the last bit of high ground never floods
-    },
-    flood(tl, delay = 0) { if (tl.elev >= 9 || tl.lava) return; tl.safeAt = Math.min(tl.safeAt ?? 1e9, t + delay); },
-    aim() { const l = alive().filter(f => !f.launch && !f.ret); if (!l.length) return null; let best = null, bs = -1; for (let j = 0; j < 6; j++) { let c = pick(l); if (cfg.fair && c === destined && l.length > 1 && Math.random() < .8) c = pick(l.filter(f => f !== destined)); const sc = l.filter(o => Math.hypot(o.x - c.x, o.y - c.y) < S * 2.5).length; if (sc > bs) { bs = sc; best = c; } } return best; },
-    lob(tg) { tg ||= this.aim(); if (!tg) return; this.bombs.push({ x: tg.x + rnd(-S, S) * .5, y: tg.y + rnd(-S, S) * .5, u: 0, warn: 1.2, fly: .7, r: S * 1.3 }); SFX.play('whoosh', { v: .5 }); },
-    update(dt) {
-      if (!this.bombs || tiles[0]?.elev == null) this.start();
-      const L = this.L; for (const f of alive()) if (!f.launch && !f.ret) { const A = L.A - f.r, B = L.B - f.r; if (f.x < -A) { f.x = -A; f.vx = Math.abs(f.vx) * .3; } if (f.x > A) { f.x = A; f.vx = -Math.abs(f.vx) * .3; } if (f.y < -B) { f.y = -B; f.vy = Math.abs(f.vy) * .3; } if (f.y > B) { f.y = B; f.vy = -Math.abs(f.vy) * .3; } } // the town walls
-      for (const tl of tiles) if (!tl.lava && t >= tl.safeAt) { tl.lava = true; tl.lavaAt = t; if (Math.random() < .25) for (let j = 0; j < 3; j++) parts.push({ x: sx(tl.x) + rnd(-HW, HW), y: sy(tl.y), vx: rnd(-30, 30), vy: rnd(-140, -50), g: 400, life: rnd(.4, .8), max: .8, size: rnd(2, 4), color: pick(['#ffb347', '#ff6a1a', '#ffe08a']) }); }
-      if (winner) return;
-      const n = alive().length, k = clamp(t / cfg.game, 0, 1), behind = n > paceTarget() * 1.1 + 1;
-      if ((this.next -= dt) <= 0) { this.next = (behind ? rnd(1.6, 2.4) : rnd(2.6, 4)) * (1 - .3 * k); this.lob(); }
-      for (const b of this.bombs) { b.u += dt;
-        if (b.u >= b.warn + b.fly && !b.hit) { b.hit = true; SFX.play('boom'); SFX.play('fire', { v: .6 }); shake = Math.max(shake, 12); flash = Math.max(flash, .12); flashColor = '#ff8a3a';
-          const X = sx(b.x), Y = sy(b.y); for (let j = 0; j < 28; j++) { const a = rnd(6.3), v = rnd(120, 420); parts.push({ x: X, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * .6 - 100, g: 500, life: rnd(.4, .9), max: .9, size: rnd(3, 7), color: pick(['#ff6a1a', '#ffb347', '#3a2a2a', '#fff3c4']) }); }
-          for (const f of alive()) if (!f.launch && !f.ret && Math.hypot(f.x - b.x, f.y - b.y) < b.r + f.r * .5) blastOrDodge(f, '#ff6a1a', pick(['SCORCHED!', 'ROCKED!', 'VOLCANO BOMB!', 'ERUPTED!']));
-          const safe = cfg.fair && destined; for (const tl of tiles) if (Math.hypot(tl.x - b.x, tl.y - b.y) < S * .9 && !(safe && Math.hypot(tl.x - destined.x, tl.y - destined.y) < S * 2.2)) this.flood(tl, .3); } } // a little lava pool where it lands
-      this.bombs = this.bombs.filter(b => b.u < b.warn + b.fly + .1);
-    },
-    isOut(f) { const tl = tileAt(f.x, f.y); return !tl || tl.lava; },
-    onFall(f) { const tl = tileAt(f.x, f.y); if (tl?.lava) { for (let j = 0; j < 14; j++) parts.push({ x: sx(f.x) + rnd(-f.r, f.r), y: sy(f.y) - rnd(f.r), vx: rnd(-40, 40), vy: rnd(-200, -80), g: -60, life: rnd(.6, 1.2), max: 1.2, size: rnd(4, 9), color: pick(['#5a4a4a', '#2a2020', '#ff8a3d']) }); if (alive().length < 40 && Math.random() < .5) floaters.push({ text: pick(['BURNED!', 'MELTED!', 'LAVA!']), x: sx(f.x), y: sy(f.y) - 60, life: 1, color: '#ff8a3d' }); SFX.play('fire', { v: .5 }); } return false; },
-    drawFloor() {
-      const pulse = .5 + .5 * Math.sin(clock * 3);
-      for (const tl of tiles) { const X = sx(tl.x), Y = sy(tl.y);
-        if (tl.lava) { const k = clamp((t - tl.lavaAt) / .6, 0, 1), w = Math.sin(clock * 2 + tl.x * .02 + tl.y * .03); hexPath(ctx, X, Y, S + .8); ctx.fillStyle = `rgb(${235 + 20 * w},${70 + 60 * (1 - k) + 25 * w},20)`; ctx.fill();
-          if (((tl.q * 7 + tl.r * 13) & 3) === 0) { ctx.fillStyle = `rgba(60,10,0,${.35 * k})`; ctx.beginPath(); ctx.ellipse(X + w * 6, Y, S * .5, S * .18, 0, 0, 7); ctx.fill(); } }
-        else if (tl.safeAt - t < 1.5) { hexPath(ctx, X, Y, S); ctx.fillStyle = `rgba(255,${90 + 40 * pulse},30,${.2 + .25 * pulse})`; ctx.fill(); } // about to be hit: glows hot
+    shape(q, r, p, R) { const L = MAPS.pompeii.L; if (!L || Math.abs(p.x) > L.A || Math.abs(p.y) > L.B) return null; return { nd: 1, top: 0 }; },
+    tops: () => [makeTopP({ c1: '#8a8478', c2: '#7a746a', specks: ['#0002'], speckN: 6, edge: 'rgba(0,0,0,.1)' })],
+    wall: { cols: ['#a89a80', '#8a7c64', '#6a5e4a', '#4a4032'], flat: true, lines: false },
+    sky(g) { skyGrad(g, [[0, '#1a0806'], [.5, '#4a140a'], [1, '#2a0c06']]); for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(${pick(['70,40,30', '50,30,24', '90,50,30'])},${rnd(.3, .6)})`; g.fillRect(rnd(W), rnd(H), rnd(20, 80), rnd(20, 80)); } }, // smoky countryside around the town
+    clouds: '#4a2a22', fog: ['rgba(255,110,40,.08)', 'rgba(30,10,6,.5)'],
+    canGo: (f, tl) => !tl.bld,
+    spawnAt: tl => !tl.bld && tl.y < -MAPS.pompeii.L.B + S * 9,
+    koText: () => pick(['BURNED!', 'MELTED!', 'LAVA!', 'TOO SLOW!']),
+    afterBuild() {
+      const { A, B, st, xs, ys } = this.L, cxs = [-A, ...xs, A], cys = [-B + S * 9, ...ys, B]; this.blds = []; this.plazas = [];
+      for (let i = 0; i < cxs.length - 1; i++) for (let j = 0; j < cys.length - 1; j++) {
+        const x0 = cxs[i] + (i ? st : S * .9), x1 = cxs[i + 1] - (i < cxs.length - 2 ? st : S * .9), y0 = cys[j] + st, y1 = cys[j + 1] - (j < cys.length - 2 ? st : S * 4); if (x1 - x0 < S * 2 || y1 - y0 < S * 2) continue;
+        if (Math.random() < .14) { this.plazas.push({ x0, y0, x1, y1 }); continue; } // an open forum / market square
+        if (y1 - y0 > S * 7 && Math.random() < .5) { const m = y0 + (y1 - y0) * rnd(.4, .6); this.blds.push(this.bld(x0, y0, x1, m - S * 1.1), this.bld(x0, m + S * 1.1, x1, y1)); } // two houses with a lane between
+        else this.blds.push(this.bld(x0, y0, x1, y1));
       }
-      const L = this.L; ctx.lineCap = 'round'; // ruined house walls along the blocks (drawn twice: a dark side, then the light top)
-      const xs = [-L.A, ...L.xs, L.A], ys = [-L.B + L.st * 1.2, ...L.ys, L.B];
-      for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < ys.length - 1; j++) { const x0 = xs[i] + (i ? L.st : 0) + 6, x1 = xs[i + 1] - (i < xs.length - 2 ? L.st : 0) - 6, y0 = ys[j] + (j ? L.st : 0) + 6, y1 = ys[j + 1] - (j < ys.length - 2 ? L.st : 0) - 6; if (x1 - x0 < S || y1 - y0 < S) continue; ctx.beginPath(); ctx.moveTo(sx(x0) + 30, sy(y0)); ctx.lineTo(sx(x0), sy(y0)); ctx.lineTo(sx(x0), sy(y1)); ctx.lineTo(sx(x1) - 40, sy(y1)); ctx.moveTo(sx(x1), sy(y1) - 20); ctx.lineTo(sx(x1), sy(y0)); ctx.lineTo(sx((x0 + x1) / 2), sy(y0)); ctx.strokeStyle = '#5a4a38'; ctx.lineWidth = 9; ctx.stroke(); ctx.translate(0, -4); ctx.strokeStyle = '#e8dcc0'; ctx.lineWidth = 6; ctx.stroke(); ctx.translate(0, 4); }
-      for (const b of this.bombs || []) if (b.u < b.warn + b.fly) { const bl = .4 + .3 * Math.sin(clock * 18); ctx.strokeStyle = `rgba(255,120,40,${bl + .3})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(sx(b.x), sy(b.y), b.r, b.r * K, 0, 0, 7); ctx.stroke(); ctx.fillStyle = `rgba(255,90,20,${bl * .3})`; ctx.fill(); }
+      this.go = false; this.Y = null; this.bombs = [];
+      const pad = S * .2; for (const tl of tiles) tl.bld = this.blds.some(b => tl.x > b.x0 - pad && tl.x < b.x1 + pad && tl.y > b.y0 - pad && tl.y < b.y1 + pad);
+      this.paint();
     },
-    drawOver() { const [cx, cy] = this.crater();
-      for (const b of this.bombs || []) { if (b.u < b.warn * .6) continue; const e = clamp((b.u - b.warn * .6) / (b.warn * .4 + b.fly), 0, 1), X = sx(b.x), Y = sy(b.y), px = cx + (X - cx) * e, py = cy + (Y - cy) * e - Math.sin(e * Math.PI) * 280, r = 16 + 10 * e;
-        ctx.fillStyle = 'rgba(80,70,70,.35)'; for (let j = 1; j < 5; j++) { const e2 = Math.max(0, e - j * .05); ctx.beginPath(); ctx.arc(cx + (X - cx) * e2, cy + (Y - cy) * e2 - Math.sin(e2 * Math.PI) * 280, r * (1 - j * .12), 0, 7); ctx.fill(); } // smoke trail
-        const gr = ctx.createRadialGradient(px, py, 2, px, py, r * 1.6); gr.addColorStop(0, '#fff0a0'); gr.addColorStop(.35, '#ff7a1a'); gr.addColorStop(1, 'rgba(255,60,0,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(px, py, r * 1.6, 0, 7); ctx.fill(); ctx.fillStyle = '#3a2420'; ctx.beginPath(); ctx.arc(px, py, r * .7, 0, 7); ctx.fill(); } },
-    snap() { return { l: tiles.map(tl => tl.lava ? 1 : 0), b: (this.bombs || []).map(b => ({ ...b })) }; },
-    restore(v) { if (!v) return; tiles.forEach((tl, i) => { tl.lava = !!v.l[i]; tl.lavaAt ??= t; }); this.bombs = v.b.map(b => ({ ...b })); },
-    power: { name: 'ERUPTION', icon: '🌋', fn() { const m = MAPS.pompeii; if (!m.bombs) return; for (let i = 0; i < 5; i++) setTimeout(() => m.lob(), i * 220); shake = 16; SFX.play('earthquake'); } }
+    bld(x0, y0, x1, y1) { return { x0, y0, x1, y1, roof: pick(['#b8603a', '#a85434', '#c8704a', '#9a4a2e', '#b86a48']), atrium: x1 - x0 > S * 4 && y1 - y0 > S * 4 && Math.random() < .7 }; },
+    paint() { // the town, painted once: paving-stone streets, sidewalks, terracotta roofs with open courtyards, forums with columns, the town walls
+      const { A, B, st } = this.L, P = S * 2, c = document.createElement('canvas'); c.width = Math.ceil(A * 2 + P * 2); c.height = Math.ceil(B * 2 + P * 2);
+      const g = c.getContext('2d'), X = x => x + A + P, Y = y => y + B + P;
+      g.fillStyle = '#857f74'; g.fillRect(X(-A), Y(-B), A * 2, B * 2);
+      for (let y = -B; y < B; y += 18) for (let x = -A + ((y / 18) % 2 ? 0 : 12); x < A; x += 24) { g.fillStyle = `rgba(${pick(['0,0,0', '255,255,255'])},${rnd(.03, .09)})`; g.fillRect(X(x), Y(y), 22, 16); } // paving stones
+      g.fillStyle = 'rgba(0,0,0,.12)'; for (const x of this.L.xs) for (let y = -B; y < B; y += 60) g.fillRect(X(x) - 3, Y(y), 6, 26); // ruts down the main roads
+      for (const p of this.plazas) { g.fillStyle = '#d8ccb0'; g.fillRect(X(p.x0), Y(p.y0), p.x1 - p.x0, p.y1 - p.y0); g.strokeStyle = 'rgba(0,0,0,.08)'; for (let x = p.x0; x < p.x1; x += 30) { g.beginPath(); g.moveTo(X(x), Y(p.y0)); g.lineTo(X(x), Y(p.y1)); g.stroke(); } }
+      for (const b of this.blds) { const w = b.x1 - b.x0, h = b.y1 - b.y0; g.fillStyle = '#c8bca0'; g.fillRect(X(b.x0) - 5, Y(b.y0) - 5, w + 10, h + 10); // sidewalk
+        g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(X(b.x0) + 6, Y(b.y0) + 8, w, h); g.fillStyle = b.roof; g.fillRect(X(b.x0), Y(b.y0), w, h);
+        g.strokeStyle = 'rgba(80,30,10,.35)'; g.lineWidth = 2; for (let y = b.y0 + 8; y < b.y1; y += 9) { g.beginPath(); g.moveTo(X(b.x0), Y(y)); g.lineTo(X(b.x1), Y(y)); g.stroke(); } // roof tiles
+        g.strokeStyle = 'rgba(255,220,180,.35)'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(b.x0), Y((b.y0 + b.y1) / 2)); g.lineTo(X(b.x1), Y((b.y0 + b.y1) / 2)); g.stroke(); // ridge
+        if (b.atrium) { const ax = (b.x0 + b.x1) / 2, ay = (b.y0 + b.y1) / 2, aw = Math.min(w * .35, S * 2.4), ah = Math.min(h * .35, S * 2.4); g.fillStyle = '#e8dcc0'; g.fillRect(X(ax - aw / 2), Y(ay - ah / 2), aw, ah); g.fillStyle = '#4a8ab8'; g.fillRect(X(ax - aw / 4), Y(ay - ah / 4), aw / 2, ah / 2); } } // courtyard with a little pool
+      for (const p of this.plazas) for (let x = p.x0 + 14; x < p.x1 - 6; x += 34) for (const y of [p.y0 + 12, p.y1 - 12]) { g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.arc(X(x) + 4, Y(y) + 5, 9, 0, 7); g.fill(); g.fillStyle = '#f0e8d4'; g.beginPath(); g.arc(X(x), Y(y), 9, 0, 7); g.fill(); g.strokeStyle = '#b8ac90'; g.lineWidth = 2; g.stroke(); } // columns round the forum
+      const T = S * .7; g.fillStyle = '#b8a888'; g.fillRect(X(-A) - T, Y(-B), T, B * 2); g.fillRect(X(A), Y(-B), T, B * 2); g.fillStyle = 'rgba(0,0,0,.2)'; for (let y = -B; y < B; y += 26) { g.fillRect(X(-A) - T, Y(y), T, 3); g.fillRect(X(A), Y(y), T, 3); } // town walls
+      g.fillStyle = '#2a6a9a'; g.fillRect(X(-A) - T, Y(B) - S * 1.2, A * 2 + T * 2, P + S * 1.2); g.fillStyle = 'rgba(255,255,255,.25)'; for (let x = -A; x < A; x += 40) g.fillRect(X(x), Y(B) - S * .6 + rnd(-6, 6), 22, 3); // the sea at the bottom
+      this.img = c; this.P = P;
+    },
+    walls(o, r) { // the town walls + the buildings: nobody goes through them
+      const A = this.L.A - r, B = this.L.B - r - S * 1.2;
+      if (o.x < -A) { o.x = -A; o.vx = Math.abs(o.vx) * .3; } if (o.x > A) { o.x = A; o.vx = -Math.abs(o.vx) * .3; } if (o.y > B) { o.y = B; o.vy = -Math.abs(o.vy) * .3; } if (o.y < -this.L.B + r) { o.y = -this.L.B + r; o.vy = Math.abs(o.vy) * .3; }
+      for (const b of this.blds) {
+        if (o.x < b.x0 - r || o.x > b.x1 + r || o.y < b.y0 - r || o.y > b.y1 + r) continue;
+        const nx = clamp(o.x, b.x0, b.x1), ny = clamp(o.y, b.y0, b.y1), dx = o.x - nx, dy = o.y - ny, d = Math.hypot(dx, dy);
+        if (d > 0 && d < r) { o.x = nx + dx / d * r; o.y = ny + dy / d * r; const vn = o.vx * dx / d + o.vy * dy / d; if (vn < 0) { o.vx -= vn * dx / d * 1.3; o.vy -= vn * dy / d * 1.3; } }
+        else if (d === 0) { const l = o.x - b.x0, rt = b.x1 - o.x, tp = o.y - b.y0, bt = b.y1 - o.y, m = Math.min(l, rt, tp, bt); if (m === l) o.x = b.x0 - r; else if (m === rt) o.x = b.x1 + r; else if (m === tp) o.y = b.y0 - r; else o.y = b.y1 + r; }
+      }
+    },
+    blockedBelow(f) { for (const b of this.blds) if (f.x > b.x0 - f.r * .6 && f.x < b.x1 + f.r * .6 && b.y0 > f.y && b.y0 - f.y < S * 2.6) return b; return null; },
+    // where the lava is at this x (it runs a bit ahead down the three main roads, and never quite reaches the drawn winner while others are left)
+    front(x) { const L = this.L; let y = this.Y ?? -L.B - S * 3; for (const rx of L.xs) y += S * 2.6 * Math.max(0, 1 - Math.abs(x - rx) / (L.st * 1.7)); if (this.cap != null) { const w = Math.max(0, 1 - Math.abs(x - this.capX) / (S * 4)); if (w > 0) y = Math.min(y, this.cap * w + y * (1 - w)); } return y; },
+    start() {
+      this.Y = -this.L.B - S * 3; this.cap = null; this.lobN = 3; this.tSafe = 0;
+      for (const f of fighters) f.runK = cfg.fair && f === destined ? 1.2 : rnd(.84, 1); // the drawn winner is just a bit quicker on their feet
+    },
+    lob(tg) { tg ||= hAim(); if (!tg) return; (this.bombs ||= []).push({ x: tg.x + rnd(-S, S) * .4, y: tg.y + rnd(-S, S) * .4, u: 0, warn: 1, after: .2, r: S * 1.1 }); SFX.play('whoosh', { v: .5 }); },
+    update(dt) {
+      if (this.Y == null) this.start();
+      if (phase === 'running' && !this.go) { this.go = true; this.start(); } // (once the drawn winner is known)
+      const L = this.L, l = alive(), n = l.length;
+      for (const f of l) if (!f.launch && !f.ret) this.walls(f, f.r);
+      if (phase !== 'running' || winner) return;
+      const target = paceTarget(), over = t > cfg.game, vR = L.vRun;
+      const ratio = over ? 1.5 : t < 1.5 ? 0 : n > target + 1 ? 1.25 : n > target ? 1.1 : .9; // a little faster than they can run (faster when the battle's behind pace)
+      const slow = l.reduce((m, f) => Math.min(m, f.y), 1e9);
+      this.Y += vR * ratio * dt * (slow - this.Y > S * 14 ? 2.2 : 1); // (if everyone's got way ahead, it surges to catch up so the chase stays on screen)
+      if (cfg.fair && destined?.alive && n > 1) { this.cap = destined.y - S * 2.4; this.capX = destined.x; } else this.cap = null;
+      // everyone runs downhill when the lava is close, going round the buildings through the streets
+      for (const f of l) { if (f.launch || f.ret || f.falling) continue; const gap = f.y - this.front(f.x);
+        if (gap < S * 16) { const want = vR * (f.runK || 1) * (gap < S * 5 ? 1.08 : 1); f.vy += (want - f.vy) * Math.min(1, dt * 3.5);
+          const b = this.blockedBelow(f); if (b) { const exits = [...L.xs, b.x0 - L.st * .9, b.x1 + L.st * .9].filter(x => Math.abs(x) < L.A - f.r); const ex = exits.reduce((a, c) => Math.abs(c - f.x) < Math.abs(a - f.x) ? c : a, exits[0] ?? 0); f.vx += (clamp((ex - f.x) * 4, -vR * 1.4, vR * 1.4) - f.vx) * Math.min(1, dt * 5); } }
+        f.target = gap < S * 10 ? null : f.target; }
+      if (this.tSafe <= t) { this.tSafe = t + .3; const v = Math.max(20, vR * ratio); for (const tl of tiles) tl.safeAt = t + (tl.y - this.front(tl.x)) / v; } // so the pieces' own "where's safe" picks ground further down
+      // the volcano lobs rocks at whoever's out in front when the battle's behind pace (and in overtime: never at the drawn winner)
+      if ((this.lobN -= dt) <= 0) { this.lobN = over ? 1.2 : rnd(2.5, 4); if (over || n > target * 1.15 + 1) { const others = l.filter(f => !(cfg.fair && f === destined)); if (others.length) this.lob(others.reduce((a, c) => c.y > a.y ? c : a)); } }
+      hStep(this.bombs ||= [], dt, h => { SFX.play('boom'); hBlast(h.x, h.y, h.r, '#ff6a1a', ['ROCKED!', 'VOLCANO BOMB!', 'SCORCHED!'], ['#ff6a1a', '#ffb347', '#3a2a2a']); });
+      if (Math.random() < dt * 2) SFX.play('fire', { v: .25 });
+    },
+    isOut(f) { if (cfg.fair && f === destined && alive().length > 1) return false; return f.y - f.r * .2 < this.front(f.x); },
+    onFall(f) { for (let j = 0; j < 14; j++) parts.push({ x: sx(f.x) + rnd(-f.r, f.r), y: sy(f.y) - rnd(f.r), vx: rnd(-40, 40), vy: rnd(-200, -80), g: -60, life: rnd(.6, 1.2), max: 1.2, size: rnd(4, 9), color: pick(['#5a4a4a', '#2a2020', '#ff8a3d']) }); SFX.play('fire', { v: .5 }); return false; },
+    camFit() { // 📜 the camera scrolls down with the chase: the lava near the top of the screen, the runners below
+      const L = this.L, zW = W * .94 / (L.A * 2 + S * 3), pre = phase === 'idle' || phase === 'waiting' || phase === 'lobby';
+      const l = alive(), fr = this.Y ?? -L.B, top = pre ? -L.B : Math.max(-L.B, fr - S * 2), bot = pre ? -L.B + S * 12 : Math.max(top + S * 10, l.reduce((m, f) => Math.max(m, f.y), -1e9) + S * 3);
+      const z = clamp(Math.min(zW, (H - 260) / (bot - top)), .35, 2.2); return { z, fx: sx(0), fy: sy((top + bot) / 2) - 40 / z };
+    },
+    drawWorld(pre) {
+      if (!this.img) return;
+      if (pre) for (const f of fighters) if (!f.falling) this.walls(f, f.r || 20);
+      ctx.drawImage(this.img, sx(-this.L.A - this.P), sy(-this.L.B - this.P));
+      drawHazardsGround();
+      for (const h of this.bombs || []) if (h.u < h.warn) hRing(h.x, h.y, h.r, '#ff6a1a');
+      const live = fighters.filter(f => !f.falling).sort((a, b) => a.y - b.y), ys = new Map();
+      for (const f of live) ys.set(f, drawFighter(f, pre));
+      const crowd = fighters.length > 50; for (const f of live) if (f.alive && (!crowd || f === winner)) drawLabel(f, ys.get(f), pre);
+      for (const f of fighters) if (f.falling && f.fz < 1000) drawFighter(f);
+      this.drawLava();
+    },
+    drawLava() { // 🌋 the lava: everything above the front is molten, with a bright glowing edge and drifting dark crust
+      const L = this.L, P = this.P, x0 = -L.A - S, x1 = L.A + S, step = 24, top = -L.B - P;
+      if ((this.Y ?? -1e9) < -L.B - S * 2.5 && phase !== 'running') return;
+      ctx.save(); ctx.beginPath(); ctx.moveTo(sx(x0), sy(top)); for (let x = x0; x <= x1 + 1; x += step) ctx.lineTo(sx(x), sy(this.front(x) + Math.sin(x * .05 + clock * 3) * 5)); ctx.lineTo(sx(x1), sy(top)); ctx.closePath();
+      const fy = sy(this.front(0)), gr = ctx.createLinearGradient(0, fy - 600, 0, fy); gr.addColorStop(0, '#5a1404'); gr.addColorStop(.6, '#c8300a'); gr.addColorStop(.92, '#ff6a1a'); gr.addColorStop(1, '#ffd060'); ctx.fillStyle = gr; ctx.fill();
+      ctx.clip(); ctx.fillStyle = 'rgba(40,8,0,.4)'; for (let i = 0; i < 26; i++) { const x = x0 + ((i * 137) % (x1 - x0)), y = this.front(x) - 40 - ((i * 211 + clock * 40) % 900); ctx.beginPath(); ctx.ellipse(sx(x + Math.sin(clock + i) * 10), sy(y), 30 + i % 4 * 10, 10, 0, 0, 7); ctx.fill(); } ctx.restore();
+      ctx.save(); ctx.strokeStyle = '#fff2a0'; ctx.lineWidth = 6; ctx.shadowColor = '#ff8a1a'; ctx.shadowBlur = GFX.quality === 'low' ? 0 : 24; ctx.beginPath(); for (let x = x0; x <= x1 + 1; x += step) ctx.lineTo(sx(x), sy(this.front(x) + Math.sin(x * .05 + clock * 3) * 5)); ctx.stroke(); ctx.restore();
+      if (Math.random() < .5) { const x = rnd(x0, x1); parts.push({ x: sx(x), y: sy(this.front(x)), vx: rnd(-30, 30), vy: rnd(-160, -60), g: 400, life: rnd(.4, .8), max: .8, size: rnd(2, 4), color: pick(['#ffb347', '#ff6a1a', '#ffe08a']) }); }
+    },
+    drawOver() { for (const h of this.bombs || []) if (h.u < h.warn) { const e = h.u / h.warn, X = sx(h.x), Y = sy(h.y) - (1 - e) * 600; ctx.fillStyle = '#3a2420'; ctx.beginPath(); ctx.arc(X, Y, 14, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,120,30,.8)'; ctx.beginPath(); ctx.arc(X, Y - 10, 10, 0, 7); ctx.fill(); } },
+    snap() { return { Y: this.Y, cap: this.cap, capX: this.capX }; },
+    restore(v) { if (!v) return; this.Y = v.Y; this.cap = v.cap; this.capX = v.capX; },
+    power: { name: 'ERUPTION', icon: '🌋', fn() { const m = MAPS.pompeii; if (m.Y == null) return; m.Y += S * 3; shake = 16; SFX.play('earthquake'); for (let i = 0; i < 3; i++) setTimeout(() => m.lob(), i * 300); } }
   },
   halloween: {
     // 🎃 Haunted Graveyard: a graveyard island under a full moon that crumbles from the edges. Ghosts drift after the pieces:
@@ -4644,6 +4678,7 @@ function updateCam(dt) {
       return;
     }
   }
+  if (MAP.camFit && !cam.manual && !cam.overview) { const g = MAP.camFit(), k = Math.min(1, dt * 2.5); cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k; return; } // maps with their own camera (Pompeii scrolls down with the chase)
   if (cam.overview) { const k = Math.min(1, dt * 3); cam.z += (Math.min(camOpt.base, camOpt.fit) * .95 - cam.z) * k; cam.fx += (camOpt.cx - cam.fx) * k; cam.fy += (camOpt.cy - cam.fy) * k; return; }
   if (cam.manual || !camOpt.auto) { if (!cam.manual) { const pre = phase === 'idle' || phase === 'waiting' || phase === 'lobby', g = pre ? camFit() : { z: camOpt.base, fx: camOpt.cx, fy: camOpt.cy }, k = Math.min(1, dt * 3); cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k; } return; }
   const g = camFit(), k = Math.min(1, dt * 1.2);

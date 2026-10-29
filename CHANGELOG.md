@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.44.1 (test build)
+- 🌋 **Pompeii, made the way you described:** a much bigger, long town running downhill from the volcano to the sea, and the screen **scrolls down** as the battle goes on. The lava pours in at the top and chases everyone down through the streets (a bit ahead down the main roads), just a little faster than anyone can run. **Buildings block everyone** (balls and cards), so they have to get round them through the streets. Nobody outruns it: the lava gets everyone, and the last one left wins.
+
 ## 1.44.0 (test build)
 - 🎉 **Six new holiday maps** (ball and card battles, on Random any time of year):
   - 🎃 **Haunted Graveyard** (Halloween): ghosts drift after the pieces, and one touch SCARES a piece into running for the edge. Jack-o'-lanterns drop out of the sky (a circle shows where) and blow up.
