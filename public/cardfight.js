@@ -136,7 +136,7 @@
   function pickTarget(f) {
     const others = F.filter(o => o.alive && o !== f); if (!others.length) return null;
     // (going after weapons is decided in step: only when not already fighting someone)
-    if (R() < .25) return others[Math.floor(R() * others.length)];
+    if (R() < (WIZ() ? .6 : .25)) return others[Math.floor(R() * others.length)]; // (wizards can hit anyone, from anywhere)
     let best = null, bd = 1e9; for (const o of others) { const d = Math.abs(o.x - f.x) + Math.abs(o.z - f.z) * 900; if (d < bd) { bd = d; best = o; } } return best;
   }
   function step(dt) {
@@ -207,12 +207,13 @@
     if (live.length <= 1 && !winner) finish(live[0] || F.find(f => f.id === destined) || F[0]);
   }
   // ---------- 🧙 wizards: spells ----------
-  function wizAI(f, t, dx, dz, reach, dt) {
-    const adx = Math.abs(dx), legs = f.limbs.ll + f.limbs.rl, sp = 150 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32);
+  function wizAI(f, t, dx, dz, reach, dt) { // 🧙 casts at anyone, from anywhere on the platform (no need to get close or line up)
+    const adx = Math.abs(dx), legs = f.limbs.ll + f.limbs.rl, sp = 120 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32);
     if (adx < reach * 1.2 && Math.abs(dz) < .06 && R() < .5) return false; // up close: a wand whack or a kick (normal fighting)
-    if (Math.abs(dz) > .03) f.vz += Math.sign(dz) * .9 * dt * speedK();
-    if (adx > 640) f.vx += Math.sign(dx) * sp * 6 * dt; else if (adx < 240) f.vx -= Math.sign(dx) * sp * 4 * dt; // spell distance
-    if (f.cd <= 0 && f.h === 0 && Math.abs(dz) < .14 && adx < 820) { const r = R(); startAtk(f, 'cast'); f.atk.spell = r < .5 ? 'bolt' : r < .82 ? 'fire' : 'zap'; f.atk.foe = t; f.cd = rr(.9, 1.6); }
+    if (!f.wander || (f.wanderT -= dt) <= 0 || Math.abs(f.wander[0] - f.x) + Math.abs(f.wander[1] - f.z) * 900 < 30) { f.wanderT = rr(1.5, 3.5); const i = Math.floor(R() * tiles.length); f.wander = tiles[i]?.hp > 0 ? tileXZ(i) : [f.x, f.z]; } // strolls around the platform
+    if (adx < 200 && Math.abs(dz) < .08) f.vx -= Math.sign(dx || 1) * sp * 5 * dt; // a little room
+    else { const [wx, wz] = f.wander; if (Math.abs(wx - f.x) > 20) f.vx += Math.sign(wx - f.x) * sp * 4 * dt; if (Math.abs(wz - f.z) > .03) f.vz += Math.sign(wz - f.z) * .6 * dt * speedK(); }
+    if (f.cd <= 0 && f.h === 0 && t?.alive) { const r = R(); startAtk(f, 'cast'); f.face = dx >= 0 ? 1 : -1; f.atk.spell = r < .5 ? 'bolt' : r < .82 ? 'fire' : 'zap'; f.atk.foe = t; f.cd = rr(1.1, 1.9); }
     return true;
   }
   function castSpell(f, kind, t) {

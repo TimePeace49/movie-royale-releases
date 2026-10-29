@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.35.2 (test build)
+- 🧙 Wizard Battle: wizards now cast spells at anyone from anywhere on the platform (no walking up or lining up first). They stroll around between spells, and pick all kinds of targets, not just the closest.
+
 ## 1.35.1 (test build)
 - 👥 Movie Royal now opens on the **People** tab instead of the Battle tab. (Like before, the battle is what's on stream when it opens, not the wheel.)
 
