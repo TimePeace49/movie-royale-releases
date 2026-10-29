@@ -3,6 +3,25 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.39.1: What's new
+Everything since 1.38.1.
+
+**🚌 Two new ball battle maps: the pieces are school buses**
+- **🚗 Demolition Derby:** everyone rams everyone in a mud arena; side hits (T-bones) hurt the most. 25 different paint jobs. Every bus has hidden health and you can see it getting beat up: dents and scraped paint, cracked then smashed windows, a loose bumper, a popped hood, smoke. A wrecked bus stops where it is and keeps smoking. Last bus running wins. Map power: 🚚 Monster Truck.
+- **🏁 Figure 8 Race:** buses race laps around a figure 8 with lots of crashes at the crossing. The flagman waves green to go, white for the last lap and checkered at the finish. Pick the laps in Settings → Game (5 to start). First across the line wins; about 1 race in 25 turns into last bus standing. Map power: 🛢️ Oil Slick.
+- **🍀 Luck on these maps:** more luck = more health and a faster bus. 50 luck or more gets a 🐄 cow catcher on the front (head-on hits hurt it less and it hits harder).
+- Both are for ball battles only.
+
+**🎯 Fair winner, always**
+- Every battle's winner is picked by the odds (luck counted in) before it starts, and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins.
+
+**🃏 Card pack search**
+- It can't get stuck any more: every place it looks gets about 30 seconds at most, so it always comes back.
+- New **⏹ Stop** and **🔄 Search again** buttons next to 🔍 Search, plus a seconds counter while it searches.
+
+**🧪 Test tab**
+- Boxes for 🚗 Demolition Derby and 🏁 Figure 8 Race (with 1 lap and 💥 Last bus standing), and checklist items for everything above (including a pretend stuck search to try ⏹ Stop).
+
 ## v1.38.1: What's new
 Everything since 1.36.0.
 

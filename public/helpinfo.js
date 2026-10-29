@@ -387,6 +387,8 @@ H(/add the spots automatically/i, 'Add spots every week', 'Wild spots are added 
 H(/ideas doc|leave ideas|docs\.google/i, '💡 Ideas doc link', 'A link in the pinned Discord message where people can leave ideas. Blank = no link.');
 H(/countdown when you press start/i, 'Countdown', 'Seconds of countdown before the fight.');
 H(/fight length/i, 'Fight length', 'How long the fight lasts before sudden death.');
+H(/^tip:stop the pack search and search again/i, '🔄 Search again', 'Stops the pack search and runs it again with the same words.');
+H(/^tip:stop the pack search \(/i, '⏹ Stop the search', 'Ends the pack search right away (handy if it seems stuck). Searching never takes more than about 30 seconds now; if it does, press this.');
 H(/figure 8 race: how many laps/i, '🏁 Figure 8 Race laps', 'How many laps the Figure 8 Race map goes (1 to 50). More laps = a longer race. The white flag comes out on the last lap.');
 H(/^🚗 demolition derby$|^tip:run a demolition derby/i, '🚗 Demolition Derby test', 'A practice battle on the Demolition Derby map with 12 made-up school buses. Your lists and history don\'t change.');
 H(/^🏁 figure 8 race$|^tip:run a (1-lap )?figure 8 race|^tip:run a figure 8 last bus/i, '🏁 Figure 8 Race test', 'A practice race with 12 made-up school buses. ▶ Run it uses your lap count, 1 lap is a quick one, and 💥 Last bus standing shows the rare race with no finish line.');

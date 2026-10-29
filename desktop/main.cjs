@@ -170,27 +170,35 @@ app.whenReady().then(async () => {
     { label: 'Movie Royal', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }, { type: 'separator' }, { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }] }
   ]));
   let started = false;
+  const hiddenPages = new Set(); // hidden windows reading shop pages (card pack search)
   globalThis.__desktop = {
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
     refocus: () => { const w = BrowserWindow.getFocusedWindow() || win; if (w && !w.isDestroyed()) { w.blur(); setTimeout(() => !w.isDestroyed() && w.focus(), 30); } },
     quit: () => { closeOk = true; quitting = true; app.quit(); }, // no questions (updates, or after you answered)
     copy: t => { clipboard.writeText(String(t)); return true; }, // copying from the page can fail after a pop-up: Windows' own clipboard always works
     // read a web page like a real browser does (some sites, like Letterboxd's film pages, turn away plain requests)
+    // (every step has a time limit, so a page that never finishes loading can't make it hang; stopPages() ends them all right away)
     getPage: async (url, { render = false, wait = 'body', timeout = 25000 } = {}) => {
       const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
-      if (!render) { const r = await net.fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' } }); return { status: r.status, text: await r.text() }; }
+      const limit = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('took too long')), ms))]);
+      if (!render) { const r = await net.fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000) }); return { status: r.status, text: await limit(r.text(), 15000) }; }
       const w = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { backgroundThrottling: false } });
+      hiddenPages.add(w);
       try {
-        await w.loadURL(url, { userAgent: UA }).catch(() => {});
         const end = Date.now() + timeout;
+        await limit(w.loadURL(url, { userAgent: UA }), timeout).catch(() => {}); // (some shop pages never say they're done loading)
         while (Date.now() < end) { // wait until the page has drawn what we need (scrolling makes lazy pictures load)
-          const n = await w.webContents.executeJavaScript(`window.scrollTo(0, document.body.scrollHeight); document.querySelectorAll(${JSON.stringify(wait)}).length`).catch(() => 0);
+          if (w.isDestroyed()) throw new Error('stopped');
+          const n = await limit(w.webContents.executeJavaScript(`window.scrollTo(0, document.body.scrollHeight); document.querySelectorAll(${JSON.stringify(wait)}).length`), 3000).catch(() => 0);
           if (n > 0) { await new Promise(r => setTimeout(r, 800)); break; }
           await new Promise(r => setTimeout(r, 700));
         }
-        return { status: 200, text: await w.webContents.executeJavaScript('document.documentElement.outerHTML') };
-      } finally { w.destroy(); }
+        if (w.isDestroyed()) throw new Error('stopped');
+        return { status: 200, text: await limit(w.webContents.executeJavaScript('document.documentElement.outerHTML'), 5000) };
+      } finally { hiddenPages.delete(w); if (!w.isDestroyed()) w.destroy(); }
     },
+    stopPages: () => { for (const w of hiddenPages) if (!w.isDestroyed()) w.destroy(); hiddenPages.clear(); }, // ⏹ Stop on the card pack search
+
     applySettings,
     windowAction: a => { const w = win; if (!w || w.isDestroyed()) return; if (a === 'min') w.minimize(); else if (a === 'close') w.close(); else if (['window', 'borderless', 'fullscreen'].includes(a)) setWindowMode(a); },
     openPath: p => shell.openPath(p),

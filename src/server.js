@@ -1264,6 +1264,7 @@ async function setCapture(on) {
 app.post('/api/capture', wTry(b => setCapture(b.on)));
 // 🃏 card pool + card battles
 app.post('/api/cards/search', wTry(async b => cards.searchPacks(b.q)));
+app.post('/api/cards/search/stop', wTry(() => cards.stopSearch()));
 app.post('/api/cards/add', wTry(b => cards.addPack(b)));
 app.post('/api/cards/pack', wTry(b => cards.editPack(b)));
 app.post('/api/cards/upload', express.raw({ type: '*/*', limit: '15mb' }), (req, res) => {

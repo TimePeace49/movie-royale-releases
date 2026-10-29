@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.39.1 (latest release)
+- 🃏 **Card pack search can't get stuck any more.** The shop page it reads could keep loading forever (and the web picture search had no time limit), so the search never came back. Now every place it looks gets about 30 seconds at most.
+- ⏹ **Stop** and 🔄 **Search again** buttons next to 🔍 Search in the 📦 Card pool, plus a seconds counter while it searches. A new search also ends an old one.
+- 🧪 Checklist: “Try it” runs a pretend search that never finishes, so you can try ⏹ Stop.
+
 ## 1.39.0 (test build)
 - 🚌 **New ball battle map: 🚗 Demolition Derby.** The pieces aren't balls, they're school buses (25 different paint jobs, then they repeat). Everyone rams everyone in a mud arena; side hits (T-bones) hurt the most. Every bus has hidden health and you can see it getting beat up: dents and scraped paint, cracked then smashed windows, a loose bumper, a popped hood, smoke. A wrecked bus stops right where it is and keeps smoking. Last bus running wins. Map power: 🚚 Monster Truck.
 - 🏁 **New ball battle map: Figure 8 Race.** School buses race laps around a figure 8, with lots of banging (especially at the crossing in the middle). The flagman waves 🟩 green to go, 🏳️ white for the last lap and 🏁 checkered at the finish. Pick the number of laps in Settings → Game (5 to start). First across the line wins; the others are placed by how far along they were. About 1 race in 25 turns into last bus standing instead. Map power: 🛢️ Oil Slick.

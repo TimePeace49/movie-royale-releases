@@ -59,9 +59,11 @@ const IMG = id => `https://tcgplayer-cdn.tcgplayer.com/product/${id}_in_400x400.
 //  2. TCGplayer's own search service (what their page asks behind the scenes)
 //  3. 🌐 pictures from the web (DuckDuckGo images) for the words you typed: pick the right picture
 const decode = t => String(t || '').replace(/&amp;/g, '&').replace(/&#39;|&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+let searchCtl = null; // the pack search going on now (⏹ Stop / a new search ends it)
+const sig = () => searchCtl ? AbortSignal.any([searchCtl.signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000);
 async function getText(url, headers = {}) {
   if (globalThis.__desktop?.getPage && !Object.keys(headers).length) { const r = await globalThis.__desktop.getPage(url); if (r.status >= 400) throw new Error(`answered ${r.status}`); return r.text; }
-  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,application/json,*/*', 'Accept-Language': 'en-US,en;q=0.9', ...headers }, signal: AbortSignal.timeout(15000) });
+  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,application/json,*/*', 'Accept-Language': 'en-US,en;q=0.9', ...headers }, signal: sig() });
   if (!r.ok) throw new Error(`answered ${r.status}`); return r.text();
 }
 async function tcgPage(q) { // 1
@@ -88,7 +90,7 @@ async function tcgApi(q) { // 2
   const ask = async sealed => {
     const r = await fetch(`https://mp-search-api.tcgplayer.com/v1/search/request?q=${encodeURIComponent(q)}&isList=false`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Origin: 'https://www.tcgplayer.com', Referer: 'https://www.tcgplayer.com/', 'User-Agent': UA },
-      body: JSON.stringify(body(sealed)), signal: AbortSignal.timeout(15000)
+      body: JSON.stringify(body(sealed)), signal: sig()
     });
     if (!r.ok) throw new Error(`answered ${r.status}`);
     const j = await r.json();
@@ -106,11 +108,19 @@ async function webPictures(q) { // 3
   const j = JSON.parse(await getText(`https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(qq)}&vqd=${vqd}&f=,,,,,&p=1`, { Referer: 'https://duckduckgo.com/', Accept: 'application/json' }));
   return (j.results || []).filter(x => x.image || x.thumbnail).slice(0, 12).map(x => ({ productId: null, name: q, game: '', set: '', image: x.thumbnail || x.image, full: x.image || x.thumbnail, from: (() => { try { return new URL(x.url || x.image).hostname.replace(/^www\./, ''); } catch { return 'web'; } })(), title: decode(x.title).slice(0, 120), source: 'web' }));
 }
+/** ⏹ Stop the pack search (the 🔄 button stops it and searches again). */
+export function stopSearch() { searchCtl?.abort(); searchCtl = null; globalThis.__desktop?.stopPages?.(); return { ok: true }; }
+// each place gets 30 seconds at most (or until ⏹ Stop), so the search always comes back
+const within = (p, ms, ctl) => Promise.race([p, new Promise((_, no) => { const t = setTimeout(() => no(new Error('took too long')), ms); ctl.signal.addEventListener('abort', () => { clearTimeout(t); no(new Error('stopped')); }, { once: true }); })]);
 export async function searchPacks(q) {
   q = String(q || '').trim().slice(0, 120); if (q.length < 2) return { results: [], errors: [] };
+  stopSearch(); const ctl = searchCtl = new AbortController(); // (a new search ends the old one)
   const errors = [], seen = new Set(), results = [];
   const add = list => { for (const x of list) { const k = x.productId ? 'p' + x.productId : 'w' + x.image; if (!seen.has(k)) { seen.add(k); results.push(x); } } };
-  const [page, api, web] = await Promise.allSettled([tcgPage(q), tcgApi(q), webPictures(q)]);
+  if (q.toLowerCase() === 'test slow search') { await within(new Promise(() => {}), 60000, ctl).catch(() => {}); if (searchCtl === ctl) searchCtl = null; return { results: [], errors: ctl.signal.aborted ? [] : ['🧪 the pretend slow search ran out of time'], stopped: ctl.signal.aborted }; } // 🧪 Test tab: a search that hangs, to try ⏹ Stop
+  const [page, api, web] = await Promise.allSettled([within(tcgPage(q), 30000, ctl), within(tcgApi(q), 30000, ctl), within(webPictures(q), 30000, ctl)]);
+  if (searchCtl === ctl) searchCtl = null;
+  if (ctl.signal.aborted) return { results: [], errors: [], stopped: true };
   if (page.status === 'fulfilled') add(page.value); else errors.push(`TCGplayer page: ${page.reason?.message || 'failed'}`);
   if (api.status === 'fulfilled') add(api.value); else errors.push(`TCGplayer search: ${api.reason?.message || 'failed'}`);
   if (web.status === 'fulfilled') add(web.value); else errors.push(`web pictures: ${web.reason?.message || 'failed'}`);
