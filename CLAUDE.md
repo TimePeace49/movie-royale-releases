@@ -136,6 +136,9 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 
 - **🎉 Holiday maps (1.44.0):** `halloween` (ghosts set `f.fear` → run for the edge; falling pumpkins), `newyear` (rockets + giant ball drop), `valentine` (heart `shape`, cupids `cupid(i)`, the heart breaks at 45% of the fight), `stpat` (leprechauns like turkeys + rainbow beam band), `easter` (giant bunny `bun` sit/crouch/air hops, eggs), `july4` (bottle rockets along lines, firecracker strings). Shared helpers in game.html: `hPace/hAim/hBlast/hCrumble/hRing/hStep` (just above `blastOrDodge`). Derek wants maps for lots of holidays (not limited to their month).
 
+- **🪖 WW2 Battlefield (card-only `ww2`, 1.45.0, finalFight):** cardfight.js `WAR()`, MAPINFO `armed` (everyone has `rifle`), `warAI` (keeps distance, shoots: `startAtk 'cast'` spell `shot` → `bolts` kind `shot` → `hit(..., 'shot')`), `warStep` (bullets, `tanks` shells with crosshair warning, `planes` + `bombs` with shadows, `boom()` leaves craters on `fg`; never targets the destined; hold fire in the final fight), `drawBgWar` / `drawTanks` / `drawWar`. No flags/insignia on tanks or planes. Sounds `gun`/`tank`/`plane`, music `card-ww2`.
+- **🧪 Quick test lab (1.45.0, Derek: test on one page, not for stream):** Test tab `#labCard` (`labInit/labRun/labStop/labSim/labFx/labPow/labCWacky/labTry`, settings in localStorage `labSet`) → iframe `/game.html?lab=1` (`LAB` in game.html: no WebSocket, `send` is a no-op, takes `postMessage({royalLab: msg})` = normal start / cardScene / cardWacky / effect / power / audio msgs, plus `sim` and `stop`). The control builds the start messages itself; the server never knows. Per-map quick boxes were removed (Derek); checklist map "Try it" → `labTry(map[, 'card'])`.
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 

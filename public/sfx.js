@@ -165,6 +165,9 @@ window.SFX = (() => {
     crash: (o = {}) => { const now = ac.currentTime; if (now - (S._crashAt || 0) < .06) return; S._crashAt = now; const v = o.v ?? 1, pan = o.pan || 0; noise({ dur: .35, v: .42 * v, type: 'lowpass', f0: 2600, f1: 300, q: .7 }); tone({ type: 'sine', f0: 110, f1: 40, dur: .25, v: .5 * v, pan }); noise({ dur: .5, v: .12 * v, type: 'highpass', f0: 4000, f1: 2500, at: .03 }); for (let i = 0; i < 3; i++) tone({ type: 'square', f0: 1800 + Math.random() * 1500, dur: .05, v: .03 * v, at: .05 + i * .06 + Math.random() * .04, pan }); }, // metal crunch + glass bits
     skid: (o = {}) => { noise({ dur: .7, v: .14 * (o.v ?? 1), type: 'bandpass', f0: 2100, f1: 1500, q: 9 }); tone({ type: 'sawtooth', f0: 900, f1: 700, dur: .6, v: .025 }); },
     rev: () => { for (const [d, at] of [[1, 0], [1.25, .55]]) { tone({ type: 'sawtooth', f0: 55 * d, f1: 150 * d, dur: .5, v: .16, a: .05, at }); tone({ type: 'square', f0: 27 * d, f1: 75 * d, dur: .5, v: .1, a: .05, at }); } tone({ type: 'sawtooth', f0: 150, f1: 70, dur: .8, v: .1, at: 1.05 }); },
+    gun: (o) => { noise({ dur: .12, v: .55 * (o.v ?? 1), type: 'highpass', f0: 900 }); tone({ type: 'square', f0: 180, f1: 60, dur: .06, v: .12 * (o.v ?? 1) }); }, // 🔫 a rifle shot
+    tank: () => { noise({ dur: .6, v: .7, type: 'lowpass', f0: 500 }); tone({ type: 'sine', f0: 90, f1: 30, dur: .5, v: .5 }); }, // 🛞 a tank gun
+    plane: () => { for (let i = 0; i < 6; i++) tone({ type: 'sawtooth', f0: 70 + i * 3, f1: 60, dur: .5, v: .05, at: i * .45 }); noise({ dur: 2.6, v: .12, type: 'lowpass', f0: 300, a: .8 }); }, // ✈️ a bomber going over
     splash: () => { noise({ dur: .9, v: .5, type: 'lowpass', f0: 1400, a: .05 }); noise({ dur: .5, v: .25, type: 'highpass', f0: 3000, at: .1 }); }, // 🌊 a big wave
     gobble: (o) => { for (let i = 0; i < 5; i++) tone({ type: 'sawtooth', f0: 520 - i * 30, f1: 360 - i * 30, dur: .07, v: .14 * (o.v ?? 1), at: i * .075 }); }, // 🦃 an evil turkey gobble
     gallop: () => { for (let i = 0; i < 10; i++) { tone({ type: 'sine', f0: 95, f1: 50, dur: .07, v: .28, at: i * .14 }); tone({ type: 'sine', f0: 85, f1: 45, dur: .07, v: .2, at: i * .14 + .05 }); } },
@@ -258,6 +261,11 @@ window.SFX = (() => {
         if (i === 0) [45, 52, 57].forEach(n => tone({ type: 'sine', f0: hz(n + (bar === 2 ? -2 : bar === 3 ? 3 : 0)), dur: STEP * 16, v: .05, a: .4, at, bus: musicBus }));
         if (i % 8 === 0) tone({ type: 'sine', f0: 110, f1: 50, dur: .25, v: .35, at, bus: musicBus });
         if (i === 6 || i === 14) tone({ type: 'sine', f0: hz(88 + (step % 3) * 2), dur: .8, v: .03, at, bus: musicBus });
+      } else
+      if (curMap === 'card-ww2' && mode === 'fight') { // 🪖 a military march: snare rolls, a bass drum and a low brass line (original)
+        if (i % 4 === 0) tone({ type: 'sine', f0: 110, f1: 45, dur: .16, v: .55, at, bus: musicBus });
+        if (i % 2 === 1 || (bar === 3 && i > 11)) noise({ dur: .06, v: .14 + intensity * .05, type: 'bandpass', f0: 2200, q: .7, at, bus: musicBus });
+        const mel = [50, 0, 50, 53, 55, 0, 53, 0, 50, 0, 48, 50, 45, 0, 0, 0][i] + [0, 0, 3, -2][bar]; if (mel > 10) tone({ type: 'sawtooth', f0: hz(mel), dur: STEP * 1.4, v: .045 + intensity * .02, at, bus: musicBus });
       } else
       if (curMap === 'card-colosseum' && mode === 'fight') { // 🏛️ war drums and brass fanfares
         if (i % 4 === 0 || i === 3 || i === 11) tone({ type: 'sine', f0: 95, f1: 45, dur: .22, v: .6, at, bus: musicBus });

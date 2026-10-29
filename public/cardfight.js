@@ -33,11 +33,12 @@
   const S = f => (.72 + f.z * .4) * f.size * sizeK(); // on-screen scale (closer = bigger)
   // 🗺️ the maps (Kung Fu Town = a street, Royal Rumble = a wrestling ring you can only leave over the top rope)
   const MAPINFO = { kungfu: { title: '🏯 KUNG FU TOWN', intro: 'KUNG FU TOWN', weapons: ['sword', 'staff', 'nunchaku'], drops: () => scene.wacky.weapons }, ring: { title: '🔔 ROYAL RUMBLE', intro: 'ROYAL RUMBLE', weapons: ['chair'], drops: () => true },
-    wizard: { title: '🧙 WIZARD BATTLE', intro: 'WIZARD BATTLE', weapons: [], drops: () => false }, colosseum: { title: '🏛️ COLOSSEUM', intro: 'THE COLOSSEUM', weapons: [], drops: () => false, armed: true } };
+    wizard: { title: '🧙 WIZARD BATTLE', intro: 'WIZARD BATTLE', weapons: [], drops: () => false }, colosseum: { title: '🏛️ COLOSSEUM', intro: 'THE COLOSSEUM', weapons: [], drops: () => false, armed: true },
+    ww2: { title: '🪖 WW2 BATTLEFIELD', intro: 'WW2 BATTLEFIELD', weapons: [], drops: () => false, armed: true } };
   // 🗡️ weapons: how much harder they hit (d), how much further they reach (r), slower swings (cd), the hit word (w)
   const WSTAT = { sword: { d: 2.6, r: 30, w: 'SLASH!' }, staff: { d: 2.2, r: 40 }, nunchaku: { d: 2.4, r: 30 }, chair: { d: 2.4, r: 30, w: 'CLANG!' },
     gladius: { d: 1.6, r: 26, w: 'SLASH!', sharp: 1 }, spear: { d: 1.45, r: 62, w: 'STAB!', sharp: 1 }, trident: { d: 1.5, r: 56, w: 'STAB!', sharp: 1 }, axe: { d: 1.9, r: 30, cd: 1.25, w: 'CHOP!', sharp: 1 },
-    mace: { d: 1.8, r: 28, cd: 1.15, w: 'BONK!' }, flail: { d: 1.75, r: 38, w: 'WHAM!' }, hammer: { d: 2, r: 32, cd: 1.3, w: 'SMASH!' }, scimitar: { d: 1.65, r: 32, w: 'SLASH!', sharp: 1 } };
+    rifle: { d: 1.5, r: 34, w: 'BUTT STROKE!' }, mace: { d: 1.8, r: 28, cd: 1.15, w: 'BONK!' }, flail: { d: 1.75, r: 38, w: 'WHAM!' }, hammer: { d: 2, r: 32, cd: 1.3, w: 'SMASH!' }, scimitar: { d: 1.65, r: 32, w: 'SLASH!', sharp: 1 } };
   const GLAD = ['gladius', 'spear', 'trident', 'axe', 'mace', 'flail', 'hammer', 'scimitar'];
   const wReach = f => f.weapon ? (WSTAT[f.weapon]?.r ?? 30) : 0;
   const MI = () => MAPINFO[scene.map] || MAPINFO.kungfu, RUMBLE = () => scene.map === 'ring';
@@ -45,11 +46,11 @@
   const ringL = z => 430 - z * 140, ringR = z => 1490 + z * 140, OUT_Y = 58; // the ring's sides (wider toward the front); the arena floor is OUT_Y below the mat
   const gnd = f => RUMBLE() && f.out && (f.x < ringL(f.z) - 8 || f.x > ringR(f.z) + 8) ? -OUT_Y : 0;
   const edgeD = f => Math.min(f.x - ringL(f.z), ringR(f.z) - f.x), sideOf = f => f.x - ringL(f.z) < ringR(f.z) - f.x ? -1 : 1;
-  const WIZ = () => scene.map === 'wizard', COLO = () => scene.map === 'colosseum';
-  const bounds = z => RUMBLE() ? [ringL(z) + 34, ringR(z) - 34] : WIZ() ? [platL(z) - 300, platR(z) + 300] : COLO() ? [120, W - 120] : [90, W - 90];
+  const WIZ = () => scene.map === 'wizard', COLO = () => scene.map === 'colosseum', WAR = () => scene.map === 'ww2';
+  const bounds = z => RUMBLE() ? [ringL(z) + 34, ringR(z) - 34] : WIZ() ? [platL(z) - 300, platR(z) + 300] : COLO() || WAR() ? [120, W - 120] : [90, W - 90];
   // 🧙 Wizard Battle: a floating platform of stone tiles; spells crack them and they fall away (fall through = out)
   const PC = 12, PR = 5, platL = z => 400 - z * 130, platR = z => 1520 + z * 130;
-  let tiles = [], bolts = [], zaps = [], lions = [], meteorT = 8, crumbleT = 1, lionT = 0;
+  let tiles = [], bolts = [], zaps = [], lions = [], meteorT = 8, crumbleT = 1, lionT = 0, tanks = [], shells = [], planes = [], bombs = [], planeT = 7;
   const newTiles = () => Array.from({ length: PC * PR }, (_, i) => ({ hp: 2, fallT: 0, c: 34 + ((i * 7919) % 13), rune: (i * 37) % 5 === 0 }));
   const tileAt = (x, z) => { const u = (x - platL(z)) / (platR(z) - platL(z)); if (u < 0 || u >= 1 || z < 0 || z > 1) return null; return tiles[Math.min(PR - 1, Math.floor(z * PR)) * PC + Math.floor(u * PC)] || null; };
   const solid = (x, z) => { const t = tileAt(x, z); return !!t && t.hp > 0; };
@@ -74,16 +75,16 @@
   const grabbable = o => o.alive && !o.heldBy && !o.whip && !(o.rebound > 0) && o.h === 0 && !o.atk?.o;
 
   function makeFighters(list) {
-    tiles = newTiles(); bolts = []; zaps = []; lions = []; meteorT = 8; crumbleT = 1; lionT = 1.5;
+    tiles = newTiles(); bolts = []; zaps = []; lions = []; meteorT = 8; crumbleT = 1; lionT = 1.5; tanks = [{ x: 260, side: -1, aim: 0, cd: 3, recoil: 0 }, { x: 1660, side: 1, aim: 0, cd: 5, recoil: 0 }]; shells = []; planes = []; bombs = []; planeT = 7;
     const n = list.length, size = baseSize(n);
     const cols = Math.ceil(Math.sqrt(n * 2.4)), rows = Math.ceil(n / cols);
     return list.map((p, i) => {
       const c = i % cols, r = Math.floor(i / cols);
-      const z = rows === 1 ? .55 : .12 + r / Math.max(1, rows - 1) * .8 + rr(-.03, .03), [lo, hi] = RUMBLE() ? [ringL(clamp(z, 0, 1)) + 70, ringR(clamp(z, 0, 1)) - 70] : WIZ() ? [platL(clamp(z, 0, 1)) + 90, platR(clamp(z, 0, 1)) - 90] : COLO() ? [230, 1690] : [150, 1770];
+      const z = rows === 1 ? .55 : .12 + r / Math.max(1, rows - 1) * .8 + rr(-.03, .03), [lo, hi] = RUMBLE() ? [ringL(clamp(z, 0, 1)) + 70, ringR(clamp(z, 0, 1)) - 70] : WIZ() ? [platL(clamp(z, 0, 1)) + 90, platR(clamp(z, 0, 1)) - 90] : COLO() || WAR() ? [230, 1690] : [150, 1770];
       const x = lo + (c + .5) * ((hi - lo) / cols) + rr(-20, 20);
       return { ...p, x, z: clamp(z, 0, 1), h: 0, vx: 0, vz: 0, vh: 0, face: x < W / 2 ? 1 : -1, hp: 100, alive: true, size: size * rr(.94, 1.06),
         cd: rr(.3, 1.4), stun: 0, atk: null, block: 0, target: null, retarget: 0, ph: rr(0, 6), limbs: { la: 1, ra: 1, ll: 1, rl: 1 }, head: true,
-        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, down: 0, heldBy: null, lie: 0, whip: 0, whipBy: null, rebound: 0, out: false, falling: false, color: p.color || `hsl(${Math.floor(R() * 360)},65%,48%)`, weapon: COLO() ? GLAD[Math.floor(R() * GLAD.length)] : null };
+        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, down: 0, heldBy: null, lie: 0, whip: 0, whipBy: null, rebound: 0, out: false, falling: false, color: p.color || `hsl(${Math.floor(R() * 360)},65%,48%)`, weapon: COLO() ? GLAD[Math.floor(R() * GLAD.length)] : WAR() ? 'rifle' : null };
     });
   }
 
@@ -151,7 +152,7 @@
     }
     if (MI().drops() && weapDrops < 2 && (weapT -= dt) <= 0) { weapT = rr(5, 8); weapDrops++; const ks = MI().weapons, kind = ks[Math.floor(R() * ks.length)], z = rr(.1, .9), [lo, hi] = bounds(z);
       weapons.push({ kind, x: RUMBLE() ? rr(lo + 40, hi - 40) : rr(200, 1720), z, h: RUMBLE() ? 260 : 700, vh: 0 }); if (RUMBLE()) { word('A CHAIR!', weapons[weapons.length - 1].x, zY(z) - 320, '#d6e2ee', 40); snd('crowd', { v: .6 }); } }
-    if (WIZ()) wizStep(dt, live); if (COLO()) lionStep(dt);
+    if (WIZ()) wizStep(dt, live); if (COLO()) lionStep(dt); if (WAR()) warStep(dt, live);
     for (const w of weapons) if (w.h > 0) { w.vh -= grav() * dt; w.h = Math.max(0, w.h + w.vh * dt); if (w.h === 0) { w.vh = 0; dust(w.x, w.z, 6); snd('land', { p: 1.4 }); } }
     for (const f of F) {
       f.ph += dt * (f.atk ? 6 : Math.abs(f.vx) > 20 || Math.abs(f.vz) > .02 ? 9 : 3);
@@ -182,7 +183,8 @@
       const s = S(f), reach = (52 + wReach(f)) * s, dx = t.x - f.x, dz = t.z - f.z;
       if (!f.atk) f.face = dx >= 0 ? 1 : -1;
       if (!f.weapon && weapons.length) { const w = weapons.find(w => w.h === 0 && Math.abs(w.x - f.x) < 34 * s && Math.abs(w.z - f.z) < .06); if (w) { f.weapon = w.kind; weapons.splice(weapons.indexOf(w), 1); word('GOT IT!', f.x, zY(f.z) - 190 * s, '#ffe08a', 30); snd('clash'); } }
-      if (WIZ() && !f.atk && wizAI(f, t, dx, dz, reach, dt)) { physics(f, dt); continue; } // 🧙 keeps its distance and casts spells
+      if (WIZ() && !f.atk && wizAI(f, t, dx, dz, reach, dt)) { physics(f, dt); continue; }
+      if (WAR() && !f.atk && warAI(f, t, dx, dz, reach, dt)) { physics(f, dt); continue; } // 🪖 keeps some distance and shoots // 🧙 keeps its distance and casts spells
       if (f.atk) { attack(f, dt); }
       else {
         const legs = f.limbs.ll + f.limbs.rl, sp = 170 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32);
@@ -218,6 +220,7 @@
   }
   function castSpell(f, kind, t) {
     const s = S(f), hx = f.x + f.face * 50 * s, hh = 95 * s;
+    if (kind === 'shot') { const tx = t?.alive ? t.x : f.x + f.face * 900, tz = (t?.alive ? t.z : f.z) + rr(-.03, .03), sp = 2300, dist = Math.max(60, Math.abs(tx - hx)), x0 = f.x + f.face * 78 * s; bolts.push({ kind, x: x0, z: f.z, h: 92 * s, vx: Math.sign(tx - x0 || f.face) * sp, vz: (tz - f.z) / (dist / sp), life: dist / sp + .25, owner: f }); f.flash = .08; snd('gun', { v: .6 }); return; } // 🔫 a rifle shot (it can hit whoever's in the way)
     if (kind === 'zap') { if (!t?.alive) return; zaps.push({ x: t.x, z: t.z, t: .7, owner: f }); word('⚡', t.x, zY(t.z) - 260 * S(t), '#ffe27a', 50); snd('alert'); return; } // ⚡ lightning from the sky (after a warning)
     const tx = t?.alive ? t.x : f.x + f.face * 600, tz = t?.alive ? t.z : f.z, dist = Math.max(60, Math.abs(tx - hx)), sp = kind === 'fire' ? 760 : 1000;
     bolts.push({ kind, x: hx, z: f.z, h: hh, vx: Math.sign(tx - hx || f.face) * sp, vz: (tz - f.z) / (dist / sp), life: dist / sp + .35, owner: f });
@@ -246,6 +249,39 @@
       const pool = live.filter(f => f.id !== destined && !f.falling);
       if (pool.length && n > 2 && R() >= paceHold(n)) { const f = pool[Math.floor(R() * pool.length)]; zaps.push({ x: f.x, z: f.z, t: 1.4, meteor: true }); snd('alert'); } }
     if (T > D * 1.2 && (crumbleT -= dt) <= 0) { crumbleT = 1.2; const edge = tiles.map((t, i) => [t, i]).filter(([t, i]) => t.hp > 0 && (i % PC === 0 || i % PC === PC - 1 || !tiles[i - 1]?.hp || !tiles[i + 1]?.hp)); if (edge.length) hurtTile(edge[Math.floor(R() * edge.length)][0], 9); } // (long fight: the edges crumble)
+  }
+  // ---------- 🪖 WW2 Battlefield: rifles, two tanks shelling the field, bombers flying over ----------
+  function warAI(f, t, dx, dz, reach, dt) { // keeps some distance, strafes up and down the field, and shoots
+    const adx = Math.abs(dx), legs = f.limbs.ll + f.limbs.rl, sp = 140 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32), arms = f.limbs.la + f.limbs.ra;
+    if (adx < reach * 1.1 && Math.abs(dz) < .06 && R() < .6) return false; // up close: rifle butt or a kick (normal fighting)
+    const want = finalLeft > 0 ? 420 : 520; if (adx < want * .7) f.vx -= Math.sign(dx || 1) * sp * 4 * dt; else if (adx > want * 1.5) f.vx += Math.sign(dx) * sp * 4 * dt;
+    if (!f.wz || (f.wzT -= dt) <= 0) { f.wzT = rr(1.2, 2.6); f.wz = clamp(t.z + rr(-.25, .25), .05, .95); } if (Math.abs(f.wz - f.z) > .03) f.vz += Math.sign(f.wz - f.z) * .7 * dt * speedK(); // (lines up a shot, then moves again)
+    if (f.cd <= 0 && f.h === 0 && t?.alive && arms && Math.abs(dz) < .22) { startAtk(f, 'cast'); f.face = dx >= 0 ? 1 : -1; f.atk.spell = 'shot'; f.atk.foe = t; f.atk.dur = .4; f.atk.hitAt = .22; f.cd = rr(.9, 1.7) * (finalLeft > 0 ? .7 : 1); }
+    return true;
+  }
+  function boom(x, z, r, dmg, word1) { // 💥 a shell or a bomb goes off: a crater, flying dirt, and everyone close gets hurt and thrown
+    for (const o of F) if (o.alive && !o.falling && Math.abs(o.x - x) < r && Math.abs(o.z - z) < r / 1100) { const k = 1 - Math.abs(o.x - x) / r; o.vx += Math.sign(o.x - x || 1) * 420 * (k + .3); o.vh = Math.max(o.vh, 240 * k); o.stun = .55; o.hurtT = .3; o.atk = null; damage(null, o, dmg * (.5 + .5 * k) * paceBoost() * (T > D * 1.35 ? 2 : 1), 'boom'); }
+    for (let i = 0; i < 30; i++) parts.push({ x, y: zY(z) - 20, vx: vr(-420, 420), vy: vr(-620, -80), g: 1100, life: vr(.5, 1), max: 1, size: vr(4, 11), color: ['#5a4632', '#3a2e22', '#ffb02a', '#ff6a1a', '#7a6a5a'][Math.floor(Math.random() * 5)], gz: null });
+    for (let i = 0; i < 12; i++) parts.push({ x: x + vr(-40, 40), y: zY(z) - vr(20, 90), vx: vr(-60, 60), vy: vr(-90, -20), g: -20, life: vr(.8, 1.6), max: 1.6, size: vr(14, 30), color: 'rgba(60,56,50,.55)', gz: null, dust: true });
+    const s = .7 + z * .4; fg.fillStyle = 'rgba(30,22,14,.55)'; fg.beginPath(); fg.ellipse(x, zY(z), 58 * s, 16 * s, 0, 0, 7); fg.fill(); fg.fillStyle = 'rgba(20,14,8,.5)'; fg.beginPath(); fg.ellipse(x, zY(z) + 2, 36 * s, 9 * s, 0, 0, 7); fg.fill(); // the crater stays
+    word(word1 || 'BOOM!', x, zY(z) - 150, '#ffb02a', 58); snd('boom');
+  }
+  function warTarget() { const n = alive().length, pool = F.filter(f => f.alive && !f.falling && f.id !== destined); if (!pool.length || n <= 2 || R() < paceHold(n)) return null; return pool[Math.floor(R() * pool.length)]; } // (never the fair winner; the pacer can hold fire)
+  function warStep(dt, live) {
+    for (const b of bolts) { b.life -= dt; b.x += b.vx * dt; b.z += b.vz * dt; let hitF = null;
+      for (const o of F) if (o.alive && !o.falling && o !== b.owner && Math.abs(o.x - b.x) < 30 * S(o) && Math.abs(o.z - b.z) < .05) { hitF = o; break; }
+      if (hitF || b.life <= 0 || b.x < 0 || b.x > W) { b.dead = true; if (hitF && b.owner.alive) hit(b.owner, hitF, 'shot'); else if (hitF) damage(null, hitF, rr(8, 12), 'shot'); else dust(b.x, b.z, 3); } }
+    bolts = bolts.filter(b => !b.dead);
+    for (const s of shells) { s.t -= dt; if (s.t <= 0 && !s.done) { s.done = true; boom(s.x, s.z, 170, rr(22, 32), pick(['KABOOM!', 'DIRECT HIT!', 'BOOM!'])); } } shells = shells.filter(s => !s.done || (s.t > -.3));
+    for (const b of bombs) { b.t -= dt; if (b.t <= 0 && !b.done) { b.done = true; boom(b.x, b.z, 150, rr(20, 30), pick(['BOMBED!', 'KABOOM!', 'INCOMING!'])); } } bombs = bombs.filter(b => !b.done);
+    for (const p of planes) { p.x += p.vx * dt; } planes = planes.filter(p => p.x > -500 && p.x < W + 500);
+    for (const tk of tanks) { tk.recoil = Math.max(0, tk.recoil - dt * 3); tk.x += Math.sin(T * .35 + tk.side) * 18 * dt; }
+    if (mode !== 'fight' || finalLeft > 0) return; // (they hold fire for the final fight)
+    const n = live.length, behind = n > paceTarget();
+    for (const tk of tanks) { if ((tk.cd -= dt * (behind ? 1.6 : 1)) > 0) continue; tk.cd = rr(4.5, 7.5); const o = warTarget(); if (!o) continue; const x = o.x + rr(-40, 40), z = clamp(o.z + rr(-.04, .04), 0, 1); shells.push({ x, z, t: 1.5, tank: tk, from: tk.x }); tk.aim = Math.atan2(zY(z) - 560, x - tk.x); tk.fireAt = T + 1.1; snd('alert', { v: .5 }); }
+    for (const tk of tanks) if (tk.fireAt && T >= tk.fireAt) { tk.fireAt = 0; tk.recoil = 1; snd('tank'); }
+    if ((planeT -= dt * (behind ? 1.5 : 1)) <= 0) { planeT = rr(9, 14); const dir = R() < .5 ? 1 : -1, z0 = rr(.15, .85), y = rr(120, 220); planes.push({ x: dir > 0 ? -300 : W + 300, y, vx: dir * 620, dir }); snd('plane');
+      for (let i = 0; i < 5; i++) { const x = 260 + i * 350 + rr(-60, 60), bx = dir > 0 ? x : W - x, o = warTarget(); bombs.push({ x: o && Math.abs(o.x - bx) < 300 ? o.x : bx, z: o ? clamp(o.z + rr(-.05, .05), 0, 1) : clamp(z0 + rr(-.2, .2), 0, 1), t: ((dir > 0 ? bx + 300 : W + 300 - bx) / 620) + .9 }); } }
   }
   // ---------- 🦁 Colosseum lions (an on/off setting; turned off = back to the tunnels) ----------
   const GATES = [330, 1590];
@@ -359,21 +395,21 @@
     return false;
   }
   function hit(f, o, kind) {
-    let dmg = { punch: rr(7, 11), kick: rr(10, 15), jump: rr(14, 21), head: rr(6, 9), clothes: rr(13, 18), elbow: rr(12, 18), bolt: rr(8, 12) }[kind];
-    if (f.weapon && kind !== 'clothes' && kind !== 'elbow' && kind !== 'bolt') dmg *= WSTAT[f.weapon]?.d || 2.4; // 🗡️ weapons (and steel chairs) hit much harder
+    let dmg = { punch: rr(7, 11), kick: rr(10, 15), jump: rr(14, 21), head: rr(6, 9), clothes: rr(13, 18), elbow: rr(12, 18), bolt: rr(8, 12), shot: rr(9, 14) }[kind];
+    if (f.weapon && kind !== 'clothes' && kind !== 'elbow' && kind !== 'bolt' && kind !== 'shot') dmg *= WSTAT[f.weapon]?.d || 2.4; // 🗡️ weapons (and steel chairs) hit much harder
     if (scene.wacky.rage) dmg *= 1 + (1 - f.hp / 100) * 1.2;
     dmg *= (T > D * 1.35 ? 4 : T > D ? 2 : 1) * paceBoost();
     const blocked = o.block > 0 && o.face === -f.face;
     if (blocked) { dmg *= .2; word('BLOCK!', o.x, zY(o.z) - 160 * S(o), '#9fd6ff', 30); snd('clash'); o.vx += f.face * 120; return damage(f, o, dmg, kind, true); }
     if (scene.wacky.onehit) dmg = 999;
     if (o.atk?.o) o.atk.o.heldBy = null; // (a hit breaks the hold)
-    o.vx += (kind === 'bolt' ? Math.sign(o.x - f.x) || f.face : f.face) * (160 + dmg * 14) * (scene.wacky.lowgrav ? 1.6 : 1) * (RUMBLE() && !crazy() ? .45 : 1); // (the ring keeps it real unless a wacky setting is on) if (scene.wacky.lowgrav || kind === 'jump') o.vh = Math.max(o.vh, scene.wacky.lowgrav ? 260 + dmg * 12 : 160);
+    o.vx += (kind === 'bolt' || kind === 'shot' ? Math.sign(o.x - f.x) || f.face : f.face) * (160 + dmg * 14) * (scene.wacky.lowgrav ? 1.6 : 1) * (RUMBLE() && !crazy() ? .45 : 1); // (the ring keeps it real unless a wacky setting is on) if (scene.wacky.lowgrav || kind === 'jump') o.vh = Math.max(o.vh, scene.wacky.lowgrav ? 260 + dmg * 12 : 160);
     o.stun = .22 + Math.min(.5, dmg / 60); o.atk = null; o.hurtT = .3;
     const sx = o.x - f.face * 18 * S(o), sy = zY(o.z) - o.h - (60 + R() * 70) * S(o);
     o.lastBy = f;
     const WR = { jump: 'DROPKICK!', clothes: 'CLOTHESLINE!', elbow: 'ELBOW DROP!' }, big = kind === 'jump' || kind === 'clothes' || kind === 'elbow';
-    word(kind === 'bolt' ? pick(['ZAP!', 'FWOOSH!', 'ZING!']) : f.weapon && !WR[kind] ? (WSTAT[f.weapon]?.w || 'THWACK!') : RUMBLE() && WR[kind] ? WR[kind] : pickW(kind), sx, sy - 40, big ? '#ffd23a' : '#fff', big ? 46 : 36);
-    sparks(sx, sy); snd(kind === 'bolt' ? 'zap' : f.weapon && WSTAT[f.weapon]?.sharp && !WR[kind] ? 'chop' : f.weapon === 'chair' && !WR[kind] ? 'chair' : kind === 'clothes' || kind === 'elbow' ? 'slam' : kind === 'kick' || kind === 'jump' ? 'kick' : 'punch');
+    word(kind === 'shot' ? pick(['BANG!', 'HIT!', 'BLAM!', 'POW!']) : kind === 'bolt' ? pick(['ZAP!', 'FWOOSH!', 'ZING!']) : f.weapon && !WR[kind] ? (WSTAT[f.weapon]?.w || 'THWACK!') : RUMBLE() && WR[kind] ? WR[kind] : pickW(kind), sx, sy - 40, big ? '#ffd23a' : '#fff', big ? 46 : 36);
+    sparks(sx, sy); snd(kind === 'shot' ? 'bonk' : kind === 'bolt' ? 'zap' : f.weapon && WSTAT[f.weapon]?.sharp && !WR[kind] ? 'chop' : f.weapon === 'chair' && !WR[kind] ? 'chair' : kind === 'clothes' || kind === 'elbow' ? 'slam' : kind === 'kick' || kind === 'jump' ? 'kick' : 'punch');
     if (RUMBLE() && big) snd('crowd', { v: .6 });
     if (!MI().armed && o.weapon && !f.weapon && R() < .3) { f.weapon = o.weapon; o.weapon = null; word('STOLEN!', f.x, zY(f.z) - 200 * S(f), '#ffe08a', 40); snd('clash'); } // knocked loose and grabbed
     if (kind === 'jump' && !RUMBLE()) snd('hyah');
@@ -690,11 +726,13 @@
       g.beginPath(); g.ellipse(cx, hb, PW * .62, 7 * s, 0, 0, 7); g.fill(); g.stroke();
       g.beginPath(); g.moveTo(cx - PW * .38, hb); g.quadraticCurveTo(cx - PW * .1, hb - 40 * s, cx - f.face * 22 * s, hb - 70 * s + Math.sin(T * 3 + f.ph) * 3 * s); g.quadraticCurveTo(cx + PW * .12, hb - 36 * s, cx + PW * .38, hb); g.closePath(); g.fill(); g.stroke();
       g.fillStyle = '#ffe27a'; g.font = `${Math.round(14 * s)}px serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('★', cx, hb - 22 * s);
+    } else if (WAR()) { // 🪖 an army helmet
+      const hb = top + PH * .14; g.fillStyle = '#4a5a32'; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 2 * s; g.beginPath(); g.arc(cx, hb, PW * .44, Math.PI, 0); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#3a4826'; g.beginPath(); g.ellipse(cx, hb, PW * .6, 6 * s, 0, 0, 7); g.fill(); g.stroke(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1.5 * s; for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(cx + i * PW * .12, hb - PW * .38); g.lineTo(cx + i * PW * .16, hb); g.stroke(); } // (netting)
     } else if (COLO()) { // 🏛️ a gladiator helmet with a red crest
       const hb = top + PH * .16; g.fillStyle = '#9aa2aa'; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 2 * s; g.beginPath(); g.arc(cx, hb, PW * .46, Math.PI, 0); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#c8ced4'; g.fillRect(cx - PW * .5, hb - 3 * s, PW, 6 * s);
       g.fillStyle = '#c81e2a'; g.beginPath(); for (let i = 0; i <= 8; i++) { const a = Math.PI + i / 8 * Math.PI, r = PW * .46 + 16 * s + (i % 2) * 4 * s; g.lineTo(cx + Math.cos(a) * r * .9, hb + Math.sin(a) * r); } for (let i = 8; i >= 0; i--) { const a = Math.PI + i / 8 * Math.PI; g.lineTo(cx + Math.cos(a) * PW * .42, hb + Math.sin(a) * PW * .44); } g.fill();
     } else if (!RUMBLE()) { g.fillStyle = '#d82020'; g.fillRect(cx - PW / 2, top + PH * .12, PW, PH * .07); }
-    const tx = RUMBLE() || WIZ() || COLO() ? -9999 : cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
+    const tx = RUMBLE() || WIZ() || COLO() || WAR() ? -9999 : cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
     for (const side of [-1, 1]) {
       const x = cx + side * ex + f.face * 3 * s;
       g.lineWidth = 2.4 * s; g.strokeStyle = '#111';
@@ -735,6 +773,10 @@
     else if (kind === 'mace') { g.fillStyle = '#6a4a2a'; g.fillRect(-10 * s, -3 * s, 46 * s, 6 * s); g.fillStyle = '#8a929a'; g.beginPath(); g.arc(44 * s, 0, 12 * s, 0, 7); g.fill(); g.fillStyle = '#c8d0d8'; for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; g.beginPath(); g.moveTo(44 * s + Math.cos(a) * 10 * s, Math.sin(a) * 10 * s); g.lineTo(44 * s + Math.cos(a) * 19 * s, Math.sin(a) * 19 * s); g.lineTo(44 * s + Math.cos(a + .3) * 10 * s, Math.sin(a + .3) * 10 * s); g.fill(); } }
     else if (kind === 'flail') { g.fillStyle = '#6a4a2a'; g.fillRect(-10 * s, -3 * s, 34 * s, 6 * s); const a = Math.sin(T * 9) * .9 + .6, bx = 24 * s + Math.cos(a) * 30 * s, by = Math.sin(a) * 30 * s; g.strokeStyle = '#999'; g.lineWidth = 2.5 * s; g.setLineDash([4 * s, 3 * s]); g.beginPath(); g.moveTo(24 * s, 0); g.lineTo(bx, by); g.stroke(); g.setLineDash([]); g.fillStyle = '#5a6068'; g.beginPath(); g.arc(bx, by, 10 * s, 0, 7); g.fill(); g.fillStyle = '#c8d0d8'; for (let i = 0; i < 6; i++) { const q = i / 6 * 6.28; g.beginPath(); g.arc(bx + Math.cos(q) * 11 * s, by + Math.sin(q) * 11 * s, 2.5 * s, 0, 7); g.fill(); } }
     else if (kind === 'hammer') { g.fillStyle = '#7a4a22'; g.fillRect(-10 * s, -3 * s, 64 * s, 6 * s); g.fillStyle = '#7a828a'; g.fillRect(48 * s, -16 * s, 20 * s, 32 * s); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(48 * s, -16 * s, 5 * s, 32 * s); }
+    else if (kind === 'rifle') { // 🔫 a bolt-action rifle
+      g.fillStyle = '#6a4222'; g.beginPath(); g.moveTo(-22 * s, -2 * s); g.lineTo(30 * s, -3 * s); g.lineTo(30 * s, 4 * s); g.lineTo(-8 * s, 5 * s); g.lineTo(-24 * s, 11 * s); g.closePath(); g.fill(); // stock
+      g.fillStyle = '#2a2a2e'; g.fillRect(10 * s, -5 * s, 72 * s, 4 * s); g.fillRect(14 * s, -8 * s, 4 * s, 4 * s); g.fillRect(26 * s, -2 * s, 6 * s, 6 * s); // barrel, sight, bolt
+    }
     else if (kind === 'chair') { // 🪑 a folding steel chair
       g.strokeStyle = '#3a3f46'; g.lineWidth = 3 * s; g.lineCap = 'round';
       g.beginPath(); g.moveTo(8 * s, -4 * s); g.lineTo(2 * s, 26 * s); g.moveTo(40 * s, -4 * s); g.lineTo(46 * s, 26 * s); g.moveTo(10 * s, -2 * s); g.lineTo(44 * s, 24 * s); g.stroke();
@@ -781,7 +823,8 @@
       if (!f.alive) { hx = shx + side * AL * .9; hy = sy + AL * .2; }
       limb(shx, sy, hx, hy, side * 6 * s, 5 * s);
       if (f.alive && a?.kind === 'cast' && front) { const u = Math.sin(Math.min(1, a.t / a.dur) * Math.PI); hx = shx + f.face * AL * (.5 + 1.1 * u); hy = sy - 14 * s - u * 10 * s; }
-      if (front && f.weapon) drawWeapon(f.weapon, hx, hy, f.face, s, a?.kind === 'punch' ? 0 : -.9);
+      if (front && f.weapon) drawWeapon(f.weapon, hx, hy, f.face, s, a?.kind === 'punch' || (WAR() && a?.kind === 'cast') ? 0 : WAR() ? -.35 : -.9);
+      if (front && WAR() && f.flash > 0) { f.flash -= 1 / 60; g.fillStyle = '#ffe27a'; g.beginPath(); g.arc(hx + f.face * 86 * s, hy - 3 * s, 10 * s, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(hx + f.face * 86 * s, hy - 3 * s, 4 * s, 0, 7); g.fill(); } // muzzle flash
       if (front && WIZ() && f.head !== undefined) { const ang = a?.kind === 'cast' ? -.15 : -1; g.save(); g.translate(hx, hy); g.rotate(ang * f.face); g.strokeStyle = '#4a2a14'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(0, 0); g.lineTo(f.face * 34 * s, 0); g.stroke(); g.fillStyle = a?.kind === 'cast' ? '#fff' : '#c8a0ff'; g.beginPath(); g.arc(f.face * 36 * s, 0, (a?.kind === 'cast' ? 6 : 3.5) * s, 0, 7); g.fill(); g.restore(); g.strokeStyle = '#151515'; } // 🪄 the wand
       g.fillStyle = '#f2e0c4'; g.strokeStyle = '#151515'; g.lineWidth = 2 * s; g.beginPath(); g.arc(hx, hy, 6.5 * s, 0, 7); g.fill(); g.stroke(); g.strokeStyle = '#151515';
     }
@@ -851,6 +894,49 @@
 
   // ---------- 🎞️ the frame ----------
   let lastFrame = 0;
+  // ---------- 🪖 WW2 Battlefield (drawn once) + tanks, planes, shells, bullets ----------
+  function drawBgWar(k) {
+    const c = document.createElement('canvas'); c.width = W * k; c.height = H * k; const b = c.getContext('2d'); b.scale(k, k);
+    const sky = b.createLinearGradient(0, 0, 0, GY0); sky.addColorStop(0, '#3a3a40'); sky.addColorStop(.5, '#6a6458'); sky.addColorStop(1, '#a08a68'); b.fillStyle = sky; b.fillRect(0, 0, W, GY0 + 5); // a gray, smoky sky
+    for (let i = 0; i < 40; i++) { b.fillStyle = `rgba(${Math.floor(vr(40, 80))},${Math.floor(vr(38, 70))},${Math.floor(vr(34, 60))},${vr(.15, .35)})`; b.beginPath(); b.ellipse(vr(0, W), vr(40, 380), vr(80, 220), vr(30, 70), 0, 0, 7); b.fill(); }
+    for (const x of [380, 1150, 1700]) { const gl = b.createRadialGradient(x, GY0 - 40, 10, x, GY0 - 40, 260); gl.addColorStop(0, 'rgba(255,140,40,.45)'); gl.addColorStop(1, 'rgba(255,90,20,0)'); b.fillStyle = gl; b.fillRect(x - 260, GY0 - 300, 520, 300); for (let i = 0; i < 9; i++) { b.fillStyle = `rgba(40,36,34,${.5 - i * .04})`; b.beginPath(); b.arc(x + i * 18 + vr(-10, 10), GY0 - 120 - i * 52, 40 + i * 12, 0, 7); b.fill(); } } // fires far away with smoke going up
+    b.fillStyle = '#3a3630'; b.beginPath(); b.moveTo(0, GY0); for (let x = 0; x <= W; x += 30) b.lineTo(x, GY0 - 70 - Math.abs(Math.sin(x / 140)) * 40 - Math.sin(x / 37) * 8); b.lineTo(W, GY0); b.fill(); // hills
+    const ruin = (x, w, h) => { b.fillStyle = '#2e2a26'; b.beginPath(); b.moveTo(x, GY0 - 20); b.lineTo(x, GY0 - h); b.lineTo(x + w * .3, GY0 - h + 20); b.lineTo(x + w * .45, GY0 - h * .7); b.lineTo(x + w * .7, GY0 - h * .85); b.lineTo(x + w, GY0 - h * .4); b.lineTo(x + w, GY0 - 20); b.fill(); b.fillStyle = 'rgba(255,170,90,.35)'; for (let i = 0; i < 4; i++) b.fillRect(x + 14 + i * w * .2, GY0 - h * .55, 12, 16); }; // bombed-out buildings
+    ruin(80, 200, 230); ruin(620, 160, 180); ruin(1320, 240, 250); ruin(1760, 160, 170);
+    b.strokeStyle = '#2a2622'; b.lineWidth = 3; for (let x = 40; x < W; x += 120) { b.beginPath(); b.moveTo(x, GY0 + 6); b.lineTo(x, GY0 - 40); b.stroke(); } b.lineWidth = 1.5; for (let i = 0; i < 3; i++) { b.beginPath(); for (let x = 40; x < W; x += 12) b.lineTo(x, GY0 - 34 + i * 12 + Math.sin(x / 9) * 3); b.stroke(); } // barbed wire along the back
+    const gd = b.createLinearGradient(0, GY0, 0, H); gd.addColorStop(0, '#6a5a42'); gd.addColorStop(1, '#4a3c2a'); b.fillStyle = gd; b.fillRect(0, GY0, W, H - GY0); // mud
+    for (let i = 0; i < 400; i++) { b.fillStyle = `rgba(${Math.random() < .5 ? '30,22,14' : '140,120,90'},${vr(.05, .15)})`; b.beginPath(); b.ellipse(vr(0, W), vr(GY0, H), vr(4, 22), vr(2, 6), 0, 0, 7); b.fill(); }
+    for (let i = 0; i < 9; i++) { const x = vr(100, W - 100), y = vr(GY0 + 30, H - 40), s = .7 + (y - GY0) / (H - GY0) * .5; b.fillStyle = 'rgba(30,22,14,.4)'; b.beginPath(); b.ellipse(x, y, 60 * s, 16 * s, 0, 0, 7); b.fill(); } // old craters
+    const bags = (x0, y0, n, s) => { for (let r = 0; r < 3; r++) for (let i = 0; i < n - r; i++) { const x = x0 + (i + r * .5) * 46 * s, y = y0 - r * 18 * s; b.fillStyle = r % 2 ? '#8a7a56' : '#9a8a62'; b.beginPath(); b.ellipse(x, y, 24 * s, 11 * s, 0, 0, 7); b.fill(); b.strokeStyle = 'rgba(0,0,0,.25)'; b.lineWidth = 1.5; b.stroke(); } }; // sandbag walls at the sides
+    bags(20, GY0 + 60, 4, 1); bags(1730, GY0 + 70, 4, 1); bags(10, H - 30, 5, 1.2); bags(1640, H - 30, 5, 1.2);
+    return c;
+  }
+  function drawTank(tk, t) { // 🛞 a tank (no flags or markings: just a number)
+    const x = tk.x, y = GY0 - 4, d = -tk.side, rc = tk.recoil * 10;
+    g.save(); g.translate(x, y);
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(0, 6, 150, 18, 0, 0, 7); g.fill();
+    g.fillStyle = '#2a2a24'; g.beginPath(); g.roundRect?.(-140, -40, 280, 44, 22); g.fill(); g.fillStyle = '#4a4a40'; for (let i = 0; i < 7; i++) { g.beginPath(); g.arc(-108 + i * 36, -18, 14, 0, 7); g.fill(); } // tracks + wheels
+    g.fillStyle = '#5a6a3a'; g.beginPath(); g.moveTo(-150, -40); g.lineTo(150, -40); g.lineTo(126, -84); g.lineTo(-126, -84); g.fill(); // hull
+    g.save(); g.translate(0, -84); const a = clamp(tk.aim || 0, -.5, .5) * (d > 0 ? 1 : -1); g.fillStyle = '#4e5c32'; g.beginPath(); g.ellipse(0, 0, 70, 30, 0, Math.PI, 0); g.fill(); g.fillRect(-70, -2, 140, 8);
+    g.save(); g.scale(d, 1); g.rotate(Math.abs(a) * .3); g.fillStyle = '#3a4426'; g.fillRect(40 - rc, -16, 130, 12); g.fillRect(160 - rc, -19, 18, 18); g.restore(); // the gun
+    g.fillStyle = '#e8e0c0'; g.font = `700 22px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(tk.side < 0 ? '07' : '12', -24 * d, -12); g.restore();
+    if (tk.recoil > .7) { g.fillStyle = 'rgba(255,220,120,.9)'; g.beginPath(); g.arc(d * 190, -98, 26 * tk.recoil, 0, 7); g.fill(); g.fillStyle = 'rgba(90,86,80,.5)'; g.beginPath(); g.arc(d * 210, -110, 40, 0, 7); g.fill(); }
+    g.restore();
+  }
+  function drawTanks(t, front) { // the tanks behind the fight, and the warnings on the ground (crosshairs for shells, shadows for bombs)
+    for (const tk of tanks) drawTank(tk, t);
+    for (const s of shells) if (!s.done) { const y = zY(s.z), r = (40 + 30 * s.z) * (1 + Math.sin(t * 20) * .08); g.strokeStyle = 'rgba(255,60,40,.9)'; g.lineWidth = 3; g.beginPath(); g.ellipse(s.x, y, r * 1.6, r * .45, 0, 0, 7); g.stroke(); g.beginPath(); g.moveTo(s.x - r * 2, y); g.lineTo(s.x + r * 2, y); g.moveTo(s.x, y - r * .7); g.lineTo(s.x, y + r * .7); g.stroke(); }
+    for (const b of bombs) if (!b.done && b.t < 1.6) { const y = zY(b.z), k = 1 - b.t / 1.6; g.fillStyle = `rgba(0,0,0,${.15 + .35 * k})`; g.beginPath(); g.ellipse(b.x, y, 30 + 40 * k, 8 + 10 * k, 0, 0, 7); g.fill(); }
+  }
+  function drawWar(t) { // bullets, falling shells and bombs, and the planes overhead
+    for (const b of bolts) { const y = zY(b.z) - b.h; g.strokeStyle = 'rgba(255,230,140,.9)'; g.lineWidth = 3; g.beginPath(); g.moveTo(b.x, y); g.lineTo(b.x - Math.sign(b.vx) * 46, y); g.stroke(); }
+    for (const s of shells) if (!s.done && s.t < .45) { const k = 1 - s.t / .45, y = zY(s.z) - 600 * (1 - k); g.fillStyle = '#2a2a2a'; g.beginPath(); g.ellipse(s.x, y, 8, 16, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,200,120,.6)'; g.lineWidth = 4; g.beginPath(); g.moveTo(s.x, y - 16); g.lineTo(s.x, y - 80); g.stroke(); }
+    for (const b of bombs) if (!b.done && b.t < .9) { const k = 1 - b.t / .9, y = 200 + (zY(b.z) - 200) * k; g.save(); g.translate(b.x, y); g.fillStyle = '#3a3a34'; g.beginPath(); g.ellipse(0, 0, 9, 20, 0, 0, 7); g.fill(); g.fillRect(-10, -26, 20, 6); g.restore(); }
+    for (const p of planes) { g.save(); g.translate(p.x, p.y); g.scale(p.dir, 1); // ✈️ a propeller bomber (no markings)
+      g.fillStyle = '#5a6248'; g.beginPath(); g.ellipse(0, 0, 130, 22, 0, 0, 7); g.fill(); g.fillStyle = '#4a5238'; g.beginPath(); g.moveTo(-30, -4); g.lineTo(40, -4); g.lineTo(10, -110); g.lineTo(-20, -110); g.fill(); g.beginPath(); g.moveTo(-30, 4); g.lineTo(40, 4); g.lineTo(10, 60); g.lineTo(-20, 60); g.fill(); // body + wings
+      g.beginPath(); g.moveTo(-110, -2); g.lineTo(-140, -50); g.lineTo(-120, -50); g.lineTo(-90, -4); g.fill(); g.fillStyle = 'rgba(180,220,255,.7)'; g.beginPath(); g.ellipse(90, -8, 22, 10, 0, 0, 7); g.fill();
+      g.fillStyle = 'rgba(40,40,40,.5)'; for (const yy of [-70, 30]) { g.beginPath(); g.ellipse(30, yy, 4, 20 * Math.abs(Math.sin(t * 40)), 0, 0, 7); g.fill(); } g.restore(); }
+  }
   function frame(now) {
     if (!running) return;
     if (!scene.show && mode !== 'fight' && mode !== 'intro' && mode !== 'final') { running = false; lastFrame = 0; return; } // nothing to finish behind another tab: rest
@@ -859,7 +945,7 @@
     const real = Math.min(.1, (now - (lastFrame || now)) / 1000); lastFrame = now;
     if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
     const k = RY().scale?.() || 1; if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
-    if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : WIZ() ? drawBgWizard(bgScale) : COLO() ? drawBgColosseum(bgScale) : drawBg(bgScale); }
+    if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : WIZ() ? drawBgWizard(bgScale) : COLO() ? drawBgColosseum(bgScale) : WAR() ? drawBgWar(bgScale) : drawBg(bgScale); }
     modeT += real; toastT -= real; camStep(real);
     if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; bell(); if (RUMBLE()) snd('crowd'); }
     if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
@@ -872,20 +958,20 @@
     parts = parts.filter(p => p.life > 0);
     for (const o of flyers) { if (o.rest) continue; o.vy += 1500 * vt; o.x += o.vx * vt; o.y += o.vy * vt; o.rot += o.vrot * vt; if (o.blood > 0) { o.blood -= vt; if (Math.random() < .6) parts.push({ x: o.x, y: o.y, vx: vr(-60, 60), vy: vr(-60, 40), g: 1500, life: 2, max: 2, size: vr(2, 4), color: '#b0101c', gz: o.gz, blood: true }); } const gy = zY(o.gz) - 6; if (o.y > gy && o.vy > 0) { o.y = gy; o.vy *= -.35; o.vx *= .6; o.vrot *= .5; if (Math.abs(o.vy) < 60) { o.rest = true; o.vy = 0; } } }
     for (const t of texts) { t.life -= real; t.y -= 40 * real; } texts = texts.filter(t => t.life > 0);
-    if (!RUMBLE() && petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
+    if (!RUMBLE() && !WAR() && petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
     for (const p of petals) { p.x += (p.vx + Math.sin(now / 700 + p.r) * 30) * real; p.y += p.vy * real; p.r += real * 2; } petals = petals.filter(p => p.y < H + 20 && p.x < W + 40);
 
     g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = GFX.smooth !== false;
     g.save(); camApply(); // 🎥 the world (the top bar, banners and the winner screen stay put)
     g.drawImage(bg, 0, 0, W, H);
-    if (RUMBLE()) ringLogo(); else if (WIZ()) { for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (!COLO()) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
+    if (RUMBLE()) ringLogo(); else if (WIZ()) { for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (!COLO()) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
     g.drawImage(floor, 0, 0);
     if (RUMBLE()) arenaLights(now / 1000);
     for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - (w.kind === 'chair' ? 28 * s : 6), 1, s, w.h > 0 ? T * 8 : 0); }
     const shown = mode === 'replay' && replay ? replay.frames[replay.i].f.map((sn, i) => ({ ...F[i], ...sn, stains: F[i].stains.slice(0, sn.sn), target: { x: F[i].x * 0 + sn.x + sn.look * 50, alive: true } })) : F;
     const order2 = [...shown.filter(f => !f.falling), ...lions.map(L => ({ lion: L, alive: true, z: L.z }))].sort((a, b) => (a.alive - b.alive) || a.z - b.z);
     for (const f of order2) f.lion ? drawLion(f.lion) : drawFighter(f);
-    if (WIZ()) drawSpells(now / 1000);
+    if (WIZ()) drawSpells(now / 1000); if (WAR()) drawWar(now / 1000);
     if (RUMBLE()) drawRing(g, true); // (the front ropes are in front of everyone)
     for (const o of flyers) drawFlyer(o);
     for (const p of parts) { g.globalAlpha = p.dust ? Math.max(0, p.life / p.max) : 1; g.fillStyle = p.color; g.beginPath(); g.arc(p.x, p.y, p.size, 0, 7); g.fill(); } g.globalAlpha = 1;

@@ -29,10 +29,11 @@ export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). final
   { id: 'kungfu', name: 'Kung Fu Town', icon: '🏯', desc: 'A martial arts showdown in an old Chinese town, like an old kung fu movie: lanterns, tiled roofs and a dusty street.', modes: ['card'], finalFight: true },
   { id: 'ring', name: 'Royal Rumble', icon: '🔔', desc: 'Every pack starts in a wrestling ring. Slams, suplexes, clotheslines and steel chairs: the only way out is over the top rope (the more hurt a pack is, the easier it goes over). Last pack in the ring wins.', modes: ['card'], finalFight: true },
   { id: 'wizard', name: 'Wizard Battle', icon: '🧙', desc: 'Wizards on a giant floating platform in the night sky. Magic bolts, fireballs, lightning and meteors crack the platform and knock parts away: fall through a hole or off the edge and you\'re out. No weapons.', modes: ['card'], finalFight: true },
-  { id: 'colosseum', name: 'Colosseum', icon: '🏛️', desc: 'A gladiator battle in the arena: every pack starts with its own weapon (swords, spears, tridents, axes, maces, flails, hammers, scimitars) and keeps it. Turn on 🦁 Lions and lions come out of the tunnels.', modes: ['card'], finalFight: true }
+  { id: 'colosseum', name: 'Colosseum', icon: '🏛️', desc: 'A gladiator battle in the arena: every pack starts with its own weapon (swords, spears, tridents, axes, maces, flails, hammers, scimitars) and keeps it. Turn on 🦁 Lions and lions come out of the tunnels.', modes: ['card'], finalFight: true },
+  { id: 'ww2', name: 'WW2 Battlefield', icon: '🪖', desc: 'A muddy WW2 battlefield. Every pack has a rifle and shoots it out (up close: rifle butts and kicks). Two tanks shell the field (a red crosshair shows where) and bombers fly over dropping bombs (shadows show where). The last two get a FINAL FIGHT: a one-on-one shootout.', modes: ['card'], finalFight: true }
 ];
 // 🔴 NEW / 🔵 UPDATED for card-only maps, like the ball maps: bump a map's number here when you change it
-const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1 };
+const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1, ww2: 1 };
 const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev || 1) < (CARD_REV[id] || 1) ? 'updated' : null; };
 export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)

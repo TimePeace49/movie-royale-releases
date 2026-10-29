@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.45.0 (test build)
+- 🪖 **New card map: WW2 Battlefield** (card battles only). A muddy battlefield with bombed-out buildings and smoke. Every pack has a rifle and shoots it out (up close they use the rifle butt and kicks). Two tanks shell the field (a red crosshair shows where the shell lands), and bombers fly over dropping bombs (shadows show where). Shells and bombs leave craters. The last two get the FINAL FIGHT: a one-on-one shootout. Its own march music.
+- 🧪 **Quick test lab** at the top of the Test tab, in place of a box for every map:
+  - Pick ball or card battle and the map.
+  - Set how many pieces, fight length, countdown, pacer, luck, what's on the pieces (movies, numbers, chat names), Figure 8 laps, power-ups and wacky settings.
+  - Press ▶ Run test. The battle plays right there on that page, and it never goes on stream. Nothing is saved, and nothing goes to chat or Discord.
+  - ⏩ +5 s and ⏭ To the end fast-forward it. Buttons under the screen set off chaos events or the map's power during the fight.
+  - The checklist's "Try it" buttons for maps open the lab.
+
 ## 1.44.1 (test build)
 - 🌋 **Pompeii, made the way you described:** a much bigger, long town running downhill from the volcano to the sea, and the screen **scrolls down** as the battle goes on. The lava pours in at the top and chases everyone down through the streets (a bit ahead down the main roads), just a little faster than anyone can run. **Buildings block everyone** (balls and cards), so they have to get round them through the streets. Nobody outruns it: the lava gets everyone, and the last one left wins.
 
