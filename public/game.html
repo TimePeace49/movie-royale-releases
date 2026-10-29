@@ -4165,6 +4165,33 @@ function drawHazardsAir() {
 }
 
 // ================= HUD =================
+// 🔮 Discord battles, while people join: every movie numbered on the right, with who picked it and their luck. Chat types
+// the number (or the movie name) to call the winner. Movies whose person hasn't chatted yet are dimmed.
+let gBoard = null, gatherDiscord = false;
+function drawBoard() {
+  const rows = gBoard.rows, n = rows.length, x0 = W - 500, y0 = 104, w = 480, availH = H - y0 - 36, head = 92;
+  const cols = n * 26 > availH - head ? 2 : 1, perCol = Math.ceil(n / cols), rh = clamp((availH - head) / perCol, 17, 36), cw = (w - 24) / cols, h = head + perCol * rh + 16;
+  ctx.save(); ctx.fillStyle = 'rgba(14,8,30,.84)'; roundRect(ctx, x0, y0, w, h, 18); ctx.fill(); ctx.strokeStyle = 'rgba(255,201,74,.55)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.font = "30px 'Lilita One', Impact, sans-serif"; ctx.fillStyle = '#ffc94a'; ctx.fillText('🔮 WHO WINS?', x0 + 18, y0 + 28);
+  ctx.font = '700 17px Inter, sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('Type the number or movie name in chat', x0 + 18, y0 + 58);
+  ctx.fillStyle = '#9affb0'; ctx.fillText(gBoard.bonus ? `Right = +${gBoard.bonus}% luck on your movies next time 🍀` : 'Call the winner!', x0 + 18, y0 + 80);
+  const fs = Math.round(clamp(rh * .52, 11, 18));
+  rows.forEach((r, i) => {
+    const c = Math.floor(i / perCol), x = x0 + 12 + c * cw, y = y0 + head + (i % perCol) * rh + rh / 2;
+    ctx.globalAlpha = r.on ? 1 : .42;
+    ctx.fillStyle = r.on ? '#ffc94a' : '#8a8aa0'; roundRect(ctx, x, y - rh * .42, fs * 2.3, rh * .84, 6); ctx.fill();
+    ctx.fillStyle = '#1a0c30'; ctx.textAlign = 'center'; ctx.font = `800 ${fs}px Inter, sans-serif`; ctx.fillText(r.n, x + fs * 1.15, y + 1); ctx.textAlign = 'left';
+    const tx = x + fs * 2.3 + 8, right = x + cw - 10;
+    const tail = `${r.luck > 0 ? `🍀${r.luck}%` : ''}${r.votes ? `  🗳️${r.votes}` : ''}`; ctx.font = `700 ${fs - 2}px Inter, sans-serif`; const tw = ctx.measureText(tail).width;
+    if (tail) { ctx.fillStyle = '#9affb0'; ctx.textAlign = 'right'; ctx.fillText(tail, right, y); ctx.textAlign = 'left'; }
+    let name = r.label + (r.owner ? '' : ''), who = r.owner ? ` · ${r.owner}` : r.spot ? ' · wild spot' : '';
+    ctx.font = `700 ${fs}px Inter, sans-serif`; const room = right - tx - tw - 10;
+    while (name.length > 3 && ctx.measureText(name + who).width > room) { if (who.length > 6) who = who.slice(0, -2) + '…'; else name = name.slice(0, -2) + '…'; }
+    ctx.fillStyle = '#fff'; ctx.fillText(name, tx, y); const nw = ctx.measureText(name).width; ctx.font = `600 ${fs - 2}px Inter, sans-serif`; ctx.fillStyle = '#c8b8ff'; ctx.fillText(who, tx + nw, y);
+  });
+  ctx.restore();
+}
 function pill(x, y, w, h, fill) { ctx.fillStyle = fill; roundRect(ctx, x, y, w, h, h / 2); ctx.fill(); }
 function drawHUD() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -4186,7 +4213,7 @@ function drawHUD() {
   } else if (phase === 'waiting' && gatherEnd) {
     const left = Math.max(0, (gatherEnd - Date.now()) / 1000), sec = Math.ceil(left);
     if (sec !== gatherLast) { gatherLast = sec; if (sec <= 10 && sec > 0) SFX.play('tick', { high: sec <= 3 }); }
-    ctx.font = "34px 'Lilita One', Impact, sans-serif"; ctx.fillStyle = '#ffd98a'; ctx.fillText('BATTLE STARTS IN', CX, 112);
+    ctx.font = "34px 'Lilita One', Impact, sans-serif"; ctx.fillStyle = '#ffd98a'; ctx.fillText(gatherDiscord ? 'TIME TO JOIN' : 'BATTLE STARTS IN', CX, 112);
     ctx.font = "110px 'Lilita One', Impact, sans-serif"; ctx.lineWidth = 12; ctx.strokeStyle = 'rgba(20,8,40,.75)';
     const txt = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`, pulse = sec <= 10 ? 1 + (left % 1) * .1 : 1;
     ctx.save(); ctx.translate(CX, 180); ctx.scale(pulse, pulse); ctx.strokeText(txt, 0, 0); ctx.fillStyle = sec <= 10 ? '#ff8a7a' : '#fff'; ctx.fillText(txt, 0, 0); ctx.restore();
@@ -4913,6 +4940,7 @@ function frame(now) {
     for (const f of floaters) f.life -= dtReal; floaters = floaters.filter(f => f.life > 0);
   }
   if (voteState && !replay && phase !== 'running') drawVote();
+  if (gBoard && !replay && phase !== 'running' && phase !== 'ended') drawBoard();
   else if (phase === 'idle' && !TRANSPARENT) { ctx.textAlign = 'center'; ctx.font = "64px 'Lilita One', Impact, sans-serif"; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillText('MOVIE ROYAL', CX, 140); ctx.font = "700 24px Inter, sans-serif"; ctx.fillText(connected || DEMO ? 'Waiting for the next round…' : 'Connecting to Movie Royal…', CX, 190); }
   if (!replay && cam.follow && phase !== 'idle') {
     const txt = `🎥 Following ${cam.follow.label}`; ctx.font = "800 24px Inter, sans-serif"; const tw = ctx.measureText(txt).width;
@@ -4964,7 +4992,8 @@ function handleMsg(m) {
     else if (m.type === 'claimStart') startClaim(m.winner, m.seconds, m.recent);
     else if (m.type === 'chat') addChat(m.msg);
     else if (m.type === 'claimed') claimed(m.text);
-    else if (m.type === 'gather') { gatherEnd = m.endsAt || 0; gatherLast = -1; if (gatherEnd) { SFX.play('claimStart'); SFX.music('lobby'); } else if (phase === 'waiting') SFX.stopMusic(); }
+    else if (m.type === 'gatherBoard') gBoard = m.board && m.board.rows?.length ? m.board : null;
+    else if (m.type === 'gather') { gatherDiscord = !!m.discord; gatherEnd = m.endsAt || 0; gatherLast = -1; if (gatherEnd) { SFX.play('claimStart'); SFX.music('lobby'); } else if (phase === 'waiting') SFX.stopMusic(); }
     else if (m.type === 'gatherFailed') { SFX.play('buzzer'); floaters.push({ scr: 1, text: 'Not enough movies on the cliff yet!', x: CX, y: 330, life: 4, color: '#ff8a7a' }); }
     else if (m.type === 'rollcallStart') startRoll(m);
     else if (m.type === 'rollcallUpdate') rollHere(m.key, m.count);

@@ -460,7 +460,7 @@ const twitchHandlers = {
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
     if (hatChat(m)) return; // 🎩 picking a hat
     wheel.wheelChat(m); // 🎡 !respin / !spins
-    moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); chatCall(m); helpChatCommand(m); giveawayChat(m);
+    moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); if (!boardVote(m)) chatCall(m); helpChatCommand(m); giveawayChat(m);
     if (newFace) pushState(); // keeps "Recent chatters" in the control panel up to date
     if (live.rollcall && !live.rollcall.done) {
       const p = live.rollcall.people.find(x => !x.here && chatMatches(x, m));
@@ -606,7 +606,7 @@ function activateFromChat(m) {
   for (const x of ps) st.active.push(x.key); save(); const p = ps[0];
   if (db.activeListId === 'movies') broadcast({ type: 'joined', name: `${p.name}'s movies` }, 'overlay');
   broadcast({ type: 'toast', text: `💬 ${p.name} is chatting — their movies are on the cliff${live.phase === 'ended' ? ' (shows after Next round)' : ''}` }, 'control');
-  pushState(); refreshPreview();
+  pushState(); refreshPreview(); if (live.board) sendBoard();
 }
 function recentChatters() {
   const cutoff = Date.now() - 30 * 60000, seen = new Map();
@@ -640,7 +640,7 @@ wss.on('connection', (ws, req) => {
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
-  if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
+  if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
   ws.on('message', raw => {
@@ -654,7 +654,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
     if (m.type === 'cardResult') { cards.result(m); return; } // 🃏 a card battle has its winner
-    if (m.type === 'phase' && live.game && m.gameId === live.game.id) { live.phase = m.phase; live.phaseAt = Date.now(); pushState(); }
+    if (m.type === 'phase' && live.game && m.gameId === live.game.id) { live.phase = m.phase; live.phaseAt = Date.now(); if (m.phase === 'running' && live.board) closeBoard(); pushState(); } // (the vote list goes away when the fight starts)
     if (m.type === 'result' && live.game && m.gameId === live.game.id && !live.game.done) {
       live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
       const f = live.game.fighters.find(x => x.id === m.winnerId);
@@ -2662,7 +2662,7 @@ async function startRound(opts = {}) {
 function stopGather(silent) { if (!live.gather) return; clearTimeout(live.gather.timer); live.gather = null; if (!silent) broadcast({ type: 'gather', endsAt: null }, 'overlay'); }
 app.post('/api/stop', (req, res) => { // stop a battle mid-fight: no winner, nothing saved
   if (live.phase !== 'lobby' && live.phase !== 'running') return res.json({ ok: true });
-  live.phase = 'idle'; live.game = null; live.claim = null; live.series = null; live.mapUsed = false;
+  live.phase = 'idle'; live.game = null; live.claim = null; live.series = null; live.mapUsed = false; closeBoard();
   broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true });
 });
 app.post('/api/start', async (req, res) => {
@@ -2670,7 +2670,35 @@ app.post('/api/start', async (req, res) => {
   const err = await startRound();
   err ? res.status(400).json({ error: err }) : res.json({ ok: true });
 });
-// "give people time to chat": countdown on the cliff, pieces drop in as people chat, then the battle starts by itself
+// "give people time to chat": countdown on the cliff, pieces drop in as people chat. Other battles start by themselves
+// when it runs out. 🎬 Discord battles (Derek's way): the board is reset (only people who chat during it get on), a
+// numbered list of every movie shows on the right of the battle screen, chat votes who'll win by typing the number or
+// the movie name (right = +luck on their own movies next time), and the battle does NOT start by itself: Derek starts it.
+live.board = null;
+function boardRows() {
+  const l = getList('movies'); if (!l || !live.board) return [];
+  const on = activeSet(), gate = db.settings.chatGate !== false, votes = new Map(); for (const v of live.calls.values()) { const k = v.spot ? 'spot' : v.id; votes.set(k, (votes.get(k) || 0) + 1); }
+  return live.board.rows.map(r => { const e = l.entries.find(x => x.id === r.id); const login = r.ownerId ? db.links[r.ownerId] : null, wl = e ? watchLuck(l, login) : 0;
+    return { ...r, luck: e ? Math.round(((luckOn() ? (e.luckPct || 0) : 0) + wl) * 10) / 10 : 0, on: !!e && e.status === 'active' && (r.spot || !gate || !r.ownerId || on.has(r.ownerId) || !!e.forceIn), votes: votes.get(r.spot ? 'spot' : r.id) || 0 }; });
+}
+let boardT = null;
+function sendBoard(now) { clearTimeout(boardT); const go = () => broadcast({ type: 'gatherBoard', board: live.board ? { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: live.phase !== 'running' && live.phase !== 'ended' } : null }, 'overlay'); if (now) go(); else boardT = setTimeout(go, 500); }
+function closeBoard() { if (!live.board) return; live.board = null; sendBoard(true); }
+function makeBoard() { // every movie in the Discord battle, numbered (by who picked it, then title), so chat can vote by number
+  const l = getList('movies'); if (!l) return null;
+  const pool = l.entries.filter(e => e.status === 'active').sort((a, b) => (a.kind === 'spot') - (b.kind === 'spot') || String(a.backers?.[0]?.name || '').localeCompare(String(b.backers?.[0]?.name || '')) || a.label.localeCompare(b.label));
+  return { rows: pool.map((e, i) => ({ n: i + 1, id: e.id, label: e.label, sub: e.sub || '', owner: e.kind === 'spot' ? '' : (e.backers?.[0]?.name || ''), ownerId: e.backers?.[0]?.discordId || null, spot: e.kind === 'spot' || undefined })) };
+}
+function boardVote(m) { // 🔮 a plain number or movie name in chat while the board is up = a call on that movie
+  if (!live.board || !m.login || live.phase === 'running' || live.phase === 'ended' || db.settings.callsOn === false) return false;
+  const text = String(m.text || '').trim(); if (!text || text.length > 80) return false;
+  const rows = live.board.rows; let hit = null;
+  const num = text.match(/^#?(\d{1,3})$/); if (num) hit = rows.find(r => r.n === Number(num[1]));
+  else { const q = norm(text); if (q.length < 2) return false; hit = rows.find(r => norm(r.label) === q); if (!hit && q.length >= 4) { const sw = rows.filter(r => norm(r.label).startsWith(q)); if (sw.length === 1) hit = sw[0]; } }
+  if (!hit) return false;
+  live.calls.set(m.login.toLowerCase(), hit.spot ? { spot: true, label: hit.label, name: m.name } : { id: hit.id, label: hit.label, name: m.name });
+  sendBoard(); clearTimeout(callsBcast); callsBcast = setTimeout(pushState, 400); return true;
+}
 app.post('/api/gather/start', (req, res) => {
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
   if (live.phase === 'ended' || live.claim) { // coming from a finished round: put the next round's pieces back first
@@ -2678,18 +2706,29 @@ app.post('/api/gather/start', (req, res) => {
     live.claim = null; live.phase = 'idle'; live.game = null; broadcast({ type: 'reset' }, 'overlay'); refreshPreview(true);
   }
   stopGather(true);
-  const seconds = Math.max(10, Number(req.body?.seconds) || 120);
-  live.gather = { endsAt: Date.now() + seconds * 1000 };
+  const seconds = Math.max(10, Number(req.body?.seconds) || 120), discordBattle = db.activeListId === 'movies';
+  live.gather = { endsAt: Date.now() + seconds * 1000, discord: discordBattle };
+  if (discordBattle) { // 🎬 reset the board: only people who chat now get their movies on (plus anything you put in with ▶)
+    if (db.settings.chatGate !== false) { stream().active = []; save(); }
+    live.calls.clear(); live.board = makeBoard(); refreshPreview(true); sendBoard(true);
+    const n = live.board?.rows.length || 0, luck = Number(db.settings.callLuck ?? 1);
+    if (twitch.canSay()) twitch.say(`⏱️ ${Math.round(seconds / 60 * 10) / 10} minutes to join the battle! Got a movie in Discord? Type anything in chat to put it on the battlefield. 🔮 Who's gonna win? Type the NUMBER or the MOVIE NAME from the list on screen (1–${n})${db.settings.callsOn !== false && luck ? `: if it wins, +${luck}% luck on your own movies next time 🍀` : ''}`).catch(() => {});
+  }
   live.gather.timer = setTimeout(async () => {
-    live.gather = null; broadcast({ type: 'gather', endsAt: null }, 'overlay');
+    const g = live.gather; live.gather = null; broadcast({ type: 'gather', endsAt: null }, 'overlay');
+    if (g?.discord) { // 🎬 Discord battles: time's up, but YOU start the battle
+      sendBoard(true); broadcast({ type: 'toast', text: '⏱️ Join time is up. Press START ROYAL when you\'re ready (people can still vote until the fight starts).' }, 'control');
+      if (twitch.canSay() && live.board) twitch.say('⏱️ Time\'s up! The battle starts soon: last chance to vote who wins (type the number or the movie name) 🔮').catch(() => {});
+      pushState(); return;
+    }
     const err = await startRound();
     if (err) { broadcast({ type: 'gatherFailed', error: err }, 'overlay'); pushState(); }
   }, seconds * 1000);
-  setTimeout(() => broadcast({ type: 'gather', endsAt: live.gather?.endsAt || null, seconds }, 'overlay'), 400);
+  setTimeout(() => broadcast({ type: 'gather', endsAt: live.gather?.endsAt || null, seconds, discord: discordBattle }, 'overlay'), 400);
   pushState(); res.json({ ok: true });
 });
-app.post('/api/gather/cancel', (req, res) => { stopGather(); pushState(); res.json({ ok: true }); });
-app.post('/api/reset', (req, res) => { nextMap(); live.phase = 'idle'; live.game = null; if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
+app.post('/api/gather/cancel', (req, res) => { stopGather(); closeBoard(); pushState(); res.json({ ok: true }); });
+app.post('/api/reset', (req, res) => { closeBoard(); nextMap(); live.phase = 'idle'; live.game = null; if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
 // sounds: any file in public/assets/sounds named after a sound (e.g. fanfare.mp3, music.mp3) replaces the built-in one
 const SOUND_DIRS = [path.join(DATA, 'sounds'), path.join(ROOT, 'public', 'assets', 'sounds')];
 app.get('/api/sounds', (req, res) => {

@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.47.0 (test build)
+- 🎬 **Discord battle: ⏱️ 2-min join timer + chat vote** (the timer button on the Battle tab when the Discord movie battle is picked):
+  - **The board resets:** only people who type in Twitch chat during the 2 minutes get their movies on (plus anything you put in yourself with ▶).
+  - **A numbered list of every movie** shows on the right of the battle screen, with who picked it and their luck. Movies whose person hasn't chatted yet are dimmed until they do.
+  - **The bot tells chat to vote who'll win** by typing the number or the movie name. Votes show on the list (🗳️), and people can change their vote until the fight starts. If their pick wins, they get +1% luck on their own movies next time (same setting as "call the winner").
+  - **It doesn't start the battle by itself** when the 2 minutes are up: you press START ROYAL. The bot gives chat a last-chance-to-vote message, and the list goes away when the fight starts.
+  - Other battles (chat battles, giveaways, your own lists) still start by themselves after the 2 minutes, like before.
+- 🧪 Checklist item to try it (vote with 💬 Test chat).
+
 ## 1.46.0 (latest release)
 - 🌐 **IMDb / Rotten Tomatoes battles** ("the 500 worst movies"): **+ New battle → 🌐 IMDb / Rotten Tomatoes**.
   - Tick the ready-made lists (🍅 Rotten Tomatoes' 100 worst movies of all time, 🎬 IMDb's lowest rated movies with 10,000+ votes, 🎬 IMDb Bottom 100) and/or paste your own IMDb or Rotten Tomatoes links. They're read in order.
