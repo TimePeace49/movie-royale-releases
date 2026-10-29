@@ -3,6 +3,41 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.35.3: What's new
+Everything since 1.30.5.
+
+**🃏 Card battles (new!)**
+- **Two new tabs:** 🃏 Card battles and 📦 Card pool. Your sealed card packs fight each other on stream: each pack gets stick arms and legs, an angry face and a health bar, and they bleed as they get hurt. Every pack has the same chance (no luck, no chat power-ups). When a pack wins, one comes off its count: time to open it.
+- **📦 Card pool** works like the Movie Pool: your card battles on the left (+ New card battle, for example Pokémon only), their settings on top (every pack counts or 1 of each, which games, map, ⏳ pacer, ⏱️ fight length), and your packs below with − / +. Search for a pack (TCGplayer + pictures from the web) or ➕ Add my own pack. Packs are never deleted (🙈 hides one).
+- **🤪 Wacky settings**, on or off any time: low gravity, extreme gore, teleport switches, turbo, slow motion, giant / tiny packs, slippery floor, exploding K.O.s, one-hit K.O., rage mode, weapons. In fullscreen they're in a side panel (keys 1–9, 0).
+- **⏪ Replay** of the last moments before the winner screen. The **⏳ pacer** spreads the knockouts over the whole fight.
+- **🎥 Camera:** it zooms in on the fight by itself. The 🎥 Camera buttons under the fight let you follow a pack, see the whole map, move and zoom. On the fight itself: scroll, drag, click a pack to follow it, double-click for auto.
+- **Card-only maps** (each with a 🥊 FINAL FIGHT when 2 are left: the clock stops, a bell rings, then a 20-second fight):
+  - 🏯 **Kung Fu Town:** a martial arts brawl in an old kung fu movie town. Weapons (with the wacky switch) are only 2 per fight and hit hard; packs that aren't fighting go after them.
+  - 🔔 **Rumble Ring:** a wrestling rumble. Body slams, suplexes, Irish whips, clotheslines, elbow drops and steel chairs. The only way out is over the top rope, and the more hurt a pack is, the easier it goes over. Your Twitch picture is in the middle of the ring (or pick your own logo on the 📦 Card pool tab).
+  - 🧙 **Wizard Battle:** wizards on a floating platform cast bolts, fireballs, lightning and meteors at anyone, from anywhere. Cracked stone falls away: fall through a hole or off the edge and you're out. No weapons.
+  - 🏛️ **Colosseum:** gladiators, each with their own weapon (sword, spear, trident, axe, mace, flail, hammer, scimitar), no stealing. Turn on 🦁 **Lions** and lions come out of the tunnels and hunt; turn it off and they go back in.
+- **Card battles can use every ball map too** (the packs fight there as card fighters). Map menus show ⚪ ball / 🃏 card / ⚪🃏 both, with the maps only that battle can use on top (A to Z), then a line, then the maps for both.
+- Picking another map after a fight resets the screen by itself.
+- **⚡🔀 New wheel spot type: Auto + Link.** It lands, the timer pauses, and it goes straight to another wheel, a battle or a card battle, then comes back.
+
+**⚔️ Battles**
+- **⏳ Better pacing:** pieces don't all go out in the first few seconds. Knockouts are spread over the whole battle (⏳ pacer slider in Settings → Game, 0 = off), and when 2 are left the 🥊 FINAL SHOWDOWN finishes it fast.
+- **⚔️ Battlefield map:** running into the army hurts; a few bumps knock a piece out.
+- **📺 Capture window** on the Battle tab: shows a window from your PC (like a YouTube video) small in the top-left of your OBS scene. − / + changes its size. Needs OBS set up.
+- **↔️ Resize the boxes** on the Battle and Card battles tabs by dragging the bar between them.
+
+**🎟️ Wild spots & pins**
+- A wild (Kirb) spot win pins nothing. Its battle's winner is pinned as the movie; a text entry isn't pinned, so you can pin it yourself.
+
+**💬 Chat & app**
+- **📣 Chat message follows your tab:** one switch; each post is the message for the tab you're on. Turning it on posts right away.
+- **👥 Movie Royal opens on the People tab.**
+- **✍️ Spell check** in text boxes (right-click for fixes).
+- **↔️ No sideways scrolling** on any tab.
+- **🖥️ Window mode** (Settings → Graphics): window, fullscreen window or fullscreen, plus 🔬 advanced graphics settings.
+- ✅ The Test tab checklist is a plain list again, with every new feature to try.
+
 ## v1.30.5: What's new
 Everything since 1.28.12.
 

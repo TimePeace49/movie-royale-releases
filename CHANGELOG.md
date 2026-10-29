@@ -2,7 +2,7 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.35.3 (test build)
+## 1.35.3 (latest release)
 - 🗺️ Card battles: picking another map (or another card battle with a different map) resets the screen by itself: the old winner screen goes away and the new map starts fresh. A fight that's already going isn't stopped.
 
 ## 1.35.2 (test build)
