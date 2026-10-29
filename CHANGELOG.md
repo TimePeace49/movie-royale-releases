@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.35.5 (test build)
+- 📌 **Keep the winner in my pool** (right side of the 🃏 Card battles tab, off by default): when it's on, the winning pack stays in your Card pool instead of one coming off its count. It still shows in the latest winners, and the winner screen says “Stays in the pool”.
+
 ## 1.35.4 (test build)
 - **Fixed: the card battle screen loaded too big** when you opened Movie Royal and went to the 🃏 Card battles tab: it hung over the Playing / Wacky rows below it. It now fits its box, and keeps fitting when the boxes around it change size.
 - **Fixed: switching card maps while the packs were waiting** (for example Colosseum → Wizard Battle) kept the old map's spots and weapons: packs fell off the platform right away and weapons went flying. They now line up fresh for the new map. The banner at the top only lists wacky settings the map uses.

@@ -191,10 +191,11 @@ const wackyOn = () => Object.fromEntries(Object.keys(WACKY).map(k => [k, !!C().w
 export function sceneMsg() {
   const b = activeBattle(), f = live.fight;
   const map = f?.map || b.map || 'kungfu', ball = f ? !!f.ball : (b.map === 'random' ? false : isBallMap(map));
-  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo() };
+  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner };
 }
 // 🤼 the picture in the middle of the Rumble Ring: your own, or your Twitch picture
 export const ringLogo = () => C().ringLogo || db.owner?.avatar || '';
+export function setKeep(on) { C().keepWinner = !!on; save(); hooks.pushState(); return { keepWinner: !!on }; }
 export function setRingLogo(url) { const c = C(); c.ringLogo = url ? fileOk(url) : ''; if (url && !c.ringLogo) throw new Error('That picture didn\'t work.'); save(); sendScene(); hooks.pushState(); return { logo: ringLogo(), own: !!c.ringLogo }; }
 export function sendScene() { hooks.broadcast(sceneMsg(), 'overlay'); }
 export function setShow(on) { if (live.show === !!on) return; live.show = !!on; sendScene(); hooks.pushState(); hooks.preview(); }
@@ -233,13 +234,14 @@ export function result(m) {
   const rec = { id: uid(), at: Date.now(), packId: w.packId, name: w.name, game: w.game, image: w.image, fighters: f.fighters.length, battle: f.name, map: f.map, wacky: Object.keys(WACKY).filter(k => C().wacky[k]), kos: Array.isArray(m.order) ? m.order.length : 0 };
   if (!f.test) {
     const p = C().pool.find(x => x.id === w.packId);
-    if (p) { p.count = Math.max(0, left(p) - 1); p.opened = (p.opened || 0) + 1; p.lastWon = Date.now(); if (p.count === 0) p.status = 'used'; rec.leftAfter = p.count; } // 📦 the winner gets opened: one comes off its count
+    if (p && C().keepWinner) rec.kept = true; // 📌 "keep the winner in my pool" is on: nothing comes off
+    else if (p) { p.count = Math.max(0, left(p) - 1); p.opened = (p.opened || 0) + 1; p.lastWon = Date.now(); if (p.count === 0) p.status = 'used'; rec.leftAfter = p.count; } // 📦 the winner gets opened: one comes off its count
     C().history.push(rec); if (C().history.length > 2000) C().history = C().history.slice(-2000);
-    if (db.settings.announceWinner !== false) hooks.say(`🃏 Card battle winner: ${w.name}! Time to open it 🎉`).catch(() => {});
+    if (db.settings.announceWinner !== false) hooks.say(`🃏 Card battle winner: ${w.name}!${rec.kept ? ' 🎉' : ' Time to open it 🎉'}`).catch(() => {});
   }
   live.last = { ...rec, test: f.test };
   save(); sendScene(); hooks.pushState();
-  hooks.broadcast({ type: 'toast', text: `🃏 ${w.name} won the card battle!${f.test ? ' (pretend: nothing changed)' : ' One comes off its count in the Card pool.'}` }, 'control');
+  hooks.broadcast({ type: 'toast', text: `🃏 ${w.name} won the card battle!${f.test ? ' (pretend: nothing changed)' : rec.kept ? ' (kept in your Card pool)' : ' One comes off its count in the Card pool.'}` }, 'control');
   if (live.wheelLink) { live.wheelLink = null; setTimeout(() => hooks.linkDone(), 12000); } // 🔀 a wheel spot sent us here: back to the wheel
 }
 /** 🔀 a wheel spot links to a card battle: put it on stream (and start it by itself if the spot says so). */
@@ -254,6 +256,6 @@ export function openFromWheel(id, auto, why) {
 }
 export function stateFor() {
   const c = C(), b = activeBattle(), { fighters, cut } = fightersFor(b);
-  return { mapNow: live.fight?.map || b.map, ringLogo: ringLogo(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
+  return { keepWinner: !!c.keepWinner, mapNow: live.fight?.map || b.map, ringLogo: ringLogo(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
     live: { show: live.show, phase: live.phase, fightId: live.fight?.id || null, n: live.fight?.fighters.length || 0, startedAt: live.fight?.startedAt || 0, test: !!live.fight?.test, last: live.last, link: !!live.wheelLink }, inBattle: fighters.length, cut };
 }

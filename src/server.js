@@ -1173,6 +1173,7 @@ app.post('/api/cards/upload', express.raw({ type: '*/*', limit: '15mb' }), (req,
   const file = 'pack-' + uid() + '.' + ext; fs.writeFileSync(path.join(UPLOADS, file), req.body); res.json({ ok: true, url: '/uploads/' + file });
 });
 app.post('/api/cards/battle', wTry(b => cards.saveBattle(b)));
+app.post('/api/cards/keep', wTry(b => cards.setKeep(!!b.on)));
 app.post('/api/cards/ring-logo', wTry(b => cards.setRingLogo(b.url || '')));
 app.post('/api/cards/battle/remove', wTry(b => cards.removeBattle(b.id)));
 app.post('/api/cards/active', wTry(b => cards.setActive(b.id)));

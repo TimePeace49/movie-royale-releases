@@ -527,6 +527,7 @@
     <button class="primary big" id="cStartBtn" onclick="cardsStart()">🥋 FIGHT!</button>
     <div class="modeSeg" id="cMode"></div>
     <div class="muted" id="cCount" style="text-align:center"></div>
+    <label class="ck" id="cKeepRow" title="On: the winning pack stays in your Card pool (nothing comes off its count). Off: one comes off its count so you open it."><input type="checkbox" id="cKeep" onchange="cardsApi('/api/cards/keep',{on:this.checked})"> <span>📌 Keep the winner in my pool</span></label>
     <div class="card" id="cWinCard" style="display:none"></div>
     <div class="card"><h2 style="margin:0 0 6px">🃏 In this fight</h2><div class="cfList" id="cIn"></div></div>
     <div class="card"><h2 style="margin:0 0 6px">🏆 Latest card battle winners</h2><div id="cHist" style="font-size:12.5px"></div></div>
@@ -1226,7 +1227,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
-  cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
+  keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1292,6 +1293,7 @@ function drawChecklist() {
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
     ['cardBallMaps', '⚪🃏 Card battles can use every ball map: the packs fight there as card fighters (pick the map on the Card battles tab)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'lava')">Try it</button>`],
+    ['keepWinner', '📌 Card battles: “Keep the winner in my pool” on the right side (off by default). On = the winning pack doesn’t come off its count', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">See it</button>`],
     ['cardTags', '🔴 NEW / 🔵 UPDATED show on card maps in the map menus too (NEW until played on stream while live)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">See it</button>`],
     ['cardSwitch', '🗺️ Pick Colosseum, then Wizard Battle on the Card battles tab (no fight going): the packs line up on the platform, nobody falls, no weapons', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Try it</button>`],
     ['cardStage', '🖥️ Open Movie Royal, then go to 🃏 Card battles: the fight screen fits its box (it does not cover the Playing / Wacky rows under it)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Try it</button>`],
@@ -1584,6 +1586,7 @@ function renderCards() {
   const b = c.battles.find(x => x.id === c.activeId) || c.battles[0];
   const mo = cardMapOpts(b.map); if ($('cMapSel').dataset.k !== mo && document.activeElement !== $('cMapSel')) { $('cMapSel').dataset.k = mo; $('cMapSel').innerHTML = mo; }
   const wb = wackyButtons(); cpPut('cWackyBar', wb);
+  $('cKeep').checked = !!S.cards.keepWinner;
   cpPut('cMode', `<button class="${b.mode !== 'one' ? 'on' : ''}" onclick="cbSet({mode:'all'})" title="Every pack you own is a fighter: 5 of one pack = 5 fighters">📦 Every pack counts</button><button class="${b.mode === 'one' ? 'on' : ''}" onclick="cbSet({mode:'one'})" title="Each kind of pack fights once, however many you have">1️⃣ 1 of each</button>`);
   const L = c.live, fighting = L.phase === 'fight';
   $('cStartBtn').textContent = fighting ? '⏹ STOP FIGHT' : '🥋 FIGHT!'; $('cStartBtn').className = fighting ? 'big' : 'primary big';
