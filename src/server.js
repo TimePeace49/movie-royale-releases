@@ -817,6 +817,7 @@ const startDonationFeed = () => donations.startDonations({ tip: t => { try { cha
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
+if (db.doomRestore) setTimeout(() => obs.restoreDoom().catch(() => {}), 20000); // ☠️ Doomsday turned your mic / camera off and Movie Royal closed before it could turn them back on: do it now (once the stream is over)
 // 🃏 card battles (Card pool + Card battles tabs)
 cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true), mapTag: id => mapsWithTags().find(m => m.id === id)?.tag || null,
   startBall: (fight, b) => { // ⚪🃏 a card battle on a ball map: the ball game plays it with card fighters (no luck: every pack the same odds)
@@ -1126,7 +1127,7 @@ app.delete('/api/wheel/:id', (req, res) => { const w = wheel.W(); if (w.wheels.l
 app.post('/api/wheel/:id/duplicate', (req, res) => { const o = wheel.getWheel(req.params.id), b = req.body || {}; if (!o) return res.status(404).json({ error: 'No such wheel' }); const w = wheel.newWheel(String(b.name || '').trim() || o.name + ' (copy)', o.entries.filter(e => e.type !== 'void').map(e => { const c = { ...e, id: null, voided: null }; if (b.resetSizes) c.weight = 1; if (b.resetCounts !== false && c.type === 'countdown') { c.count = c.countStart; c.on = true; } if (b.keepLook === false) { c.color = null; c.image = ''; } return c; }), { title: '', folder: o.folder || '', spinSecs: o.spinSecs, removeWinner: o.removeWinner, opts: JSON.parse(JSON.stringify(o.opts)), palette: b.keepLook === false ? null : o.palette, look: b.keepLook === false ? undefined : { ...o.look } }); wheel.syncVoid(w); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
 app.post('/api/wheel/active', (req, res) => { if (!wheel.getWheel(req.body?.id)) return res.status(404).json({ error: 'No such wheel' }); wheel.W().activeId = req.body.id; wheelChanged(); res.json({ ok: true }); });
 // 🧪 every test puts the right thing on stream: battle tests show the battle, wheel tests show the wheel (so the preview window shows it)
-const WHEEL_TESTS = /^\/(wheel-boost|donation|wheel-land|doom-preview|wheel-redeem|wheel-redeem-raw)$/, BATTLE_TESTS = /^\/(discord-battle|chat-join|sitout|everyone-in|claim-chat|power|redeem|cheer|battle)$/;
+const WHEEL_TESTS = /^\/(wheel-boost|donation|wheel-land|doom-preview|doomsday|wheel-redeem|wheel-redeem-raw)$/, BATTLE_TESTS = /^\/(discord-battle|chat-join|sitout|everyone-in|claim-chat|power|redeem|cheer|battle)$/;
 function testScene(path, body) {
   if (WHEEL_TESTS.test(path)) return 'wheel';
   if (BATTLE_TESTS.test(path)) return 'battle';
@@ -2445,6 +2446,17 @@ app.post('/api/test/pc-movie-clear', (req, res) => { // 🧹 take the pretend vi
 app.post('/api/test/wheel-land', wTry(b => wheel.request(b.kind === 'respin' ? 'respin' : 'spin', {}, { force: String(b.entryId || ''), wheelId: b.wheelId }))); // Test tab: land on a spot you pick
 app.post('/api/test/doom-preview', (req, res) => { broadcast({ type: 'wheelDoom', text: `${streamerName().toUpperCase()} WILL RETURN FOR DOOMSDAY!!!`, preview: true }, 'overlay'); res.json({ ok: true }); }); // just the screen, nothing turns off
 app.post('/api/test/obs-mute', wTry(async () => obs.muteTest(5000)));
+// ☠️ Test tab: the WHOLE Doomsday for real (the screen + mic and camera off + the stream ends 15 s later if you're live, then mic + camera back on).
+// While you're live it first asks (the pop-up with the 5-second wait is in the control panel); the real Doomsday never asks.
+app.post('/api/test/doomsday', wTry(async b => {
+  const obsLive = await obs.streaming().catch(() => null), isLive = !!db.live || obsLive === true;
+  if (isLive && !b.confirm) return { needConfirm: true };
+  broadcast({ type: 'wheelDoom', text: `${streamerName().toUpperCase()} WILL RETURN FOR DOOMSDAY!!!`, ...(isLive ? {} : { test: true }) }, 'overlay');
+  broadcast({ type: 'toast', text: isLive ? '☠️ DOOMSDAY TEST: your stream ends in 15 seconds.' : '☠️ Doomsday test (not live): mic + camera off for 15 seconds, then back on.' }, 'control');
+  obs.doomsday(15000).then(r => broadcast({ type: 'toast', text: `☠️ Doomsday test done: ${r.ended ? 'the stream ended, ' : ''}${r.mics.length} mic(s) + ${r.cams} camera spot(s) back on.` }, 'control'))
+    .catch(e => { console.error('[obs] Doomsday test:', e.message); broadcast({ type: 'toast', text: '⚠️ Doomsday test: ' + e.message }, 'control'); });
+  return { ok: true, live: isLive, obs: obsLive !== null };
+}));
 app.post('/api/test/power', (req, res) => { const kind = String(req.body?.kind || 'shield'), name = String(req.body?.name || 'test_viewer'); const title = Object.entries(db.settings.powerRewards || {}).find(([, k]) => k === kind)?.[0]; if (!title) return res.status(400).json({ error: 'no such power-up' }); twitchHandlers.redeem({ title, login: name.toLowerCase(), name, input: '' }); res.json({ ok: true }); }); // Test tab: pretend someone redeemed a ball power-up
 app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / offline. Only inside Movie Royal: Twitch, Discord and your rewards don't change.
   const on = !!req.body?.live, was = !!live.fakeLive; live.fakeLive = on;

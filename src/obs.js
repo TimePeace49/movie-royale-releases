@@ -2,7 +2,7 @@
 // Used by the wheel's Doomsday: mute your mic, hide your camera, and end the stream.
 import crypto from 'crypto';
 import WebSocket from 'ws';
-import { db } from './store.js';
+import { db, save } from './store.js';
 
 const sha = s => crypto.createHash('sha256').update(s).digest('base64');
 export const status = { state: 'off', error: null };
@@ -78,15 +78,38 @@ export async function muteTest(ms = 5000) {
   });
   return { cam: items.length, mics: found.mics, muted, cams: found.cams, alreadyMuted: found.mics.filter(m => !muted.includes(m)) };
 }
-/** Doomsday: mic off and camera off right away, the stream ends 15 seconds later. */
+/** Doomsday: mic off and camera off right away, the stream ends 15 seconds later. Once OBS says the stream is
+ *  really over, your mic and camera come back on (only the ones Doomsday turned off). Not live = a full rehearsal:
+ *  mic + camera off for 15 seconds, no stream to stop, then back on. */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+export async function streaming() { return session(async call => !!(await call('GetStreamStatus')).outputActive); }
 export async function doomsday(delay = 15000) {
+  let muted = [], items = [];
   await session(async call => {
     let found = { mics: [], cams: [] }; try { found = await findSources(call); } catch (e) { console.error('[obs]', e.message); }
-    for (const m of found.mics) await call('SetInputMute', { inputName: m, inputMuted: true }).catch(() => {});
-    await hideCams(call, found.cams);
+    for (const m of found.mics) { const { inputMuted } = await call('GetInputMute', { inputName: m }).catch(() => ({ inputMuted: false })); if (!inputMuted) { await call('SetInputMute', { inputName: m, inputMuted: true }).catch(() => {}); muted.push(m); } }
+    items = await hideCams(call, found.cams);
   });
-  await new Promise(r => setTimeout(r, delay));
-  await session(call => call('StopStream'));
+  db.doomRestore = { mics: muted, items, at: Date.now() }; save(); // (remembered, so they still come back if Movie Royal is closed in the middle)
+  await sleep(delay);
+  let wasLive = false;
+  await session(async call => { wasLive = !!(await call('GetStreamStatus')).outputActive; if (wasLive) await call('StopStream'); });
+  for (let i = 0; wasLive && i < 45; i++) { // wait until the stream is really over (OBS takes a few seconds), then turn things back on
+    await sleep(2000);
+    if (!(await streaming().catch(() => false))) break;
+  }
+  await restoreDoom();
+  return { ended: wasLive, mics: muted, cams: items.length };
+}
+/** After Doomsday: the mic(s) Doomsday muted and the camera(s) it hid come back on (never while you're still streaming). */
+export async function restoreDoom() {
+  const r = db.doomRestore; if (!r) return { restored: false };
+  await session(async call => {
+    if ((await call('GetStreamStatus')).outputActive && Date.now() - r.at < 120000) throw new Error('still streaming');
+    for (const m of r.mics || []) await call('SetInputMute', { inputName: m, inputMuted: false }).catch(() => {});
+    for (const [sceneName, sceneItemId] of r.items || []) await call('SetSceneItemEnabled', { sceneName, sceneItemId, sceneItemEnabled: true }).catch(() => {});
+  });
+  delete db.doomRestore; save(); return { restored: true };
 }
 
 // 📺 Capture window (Battle tab): a small window capture (e.g. your browser playing a YouTube video) in the top-left corner

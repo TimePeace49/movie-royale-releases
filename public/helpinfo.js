@@ -8,6 +8,9 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx, sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
 // ───────── top bar ─────────
+H(/^tip:run the whole doomsday for real/i, '☠️ Run the whole Doomsday', 'The full Doomsday for real: the Doomsday screen on stream, your mic and camera off in OBS, and if you\'re LIVE your stream ends 15 seconds later. Live = a big warning pops up first and its button only works after 5 seconds (the real Doomsday never asks). Not live = a rehearsal: the screen, mic + camera off for 15 seconds, then back on. Either way your mic and camera come back on once it\'s over.');
+H(/^tip:end my stream with the doomsday/i, '☠️ Yes, end my stream', 'Runs the Doomsday test while you\'re live: your stream really ends 15 seconds later. It can only be pressed after 5 seconds.');
+H(/no, keep streaming/i, '✋ No, keep streaming', 'Closes the warning. Nothing happens.');
 H(/^tip:change how test battles go/i, '⚙ Test battle settings', 'Opens the settings for the Test tab\'s practice battles: how many pieces, which map, the countdown, the fight length, the pacer, Figure 8 laps, and whether the pieces get luck. Only test battles use them; blank boxes use your normal settings. Saved on this computer.');
 H(/^tip:how many made-up pieces fight/i, 'How many pieces', 'How many made-up pieces the practice battle has (2 to 1000).');
 H(/^tip:which map the practice battle uses/i, 'Test battle map', 'The map the ⚔️ Ball battle and 🔢 Number battle tests use (the Derby and Figure 8 boxes always use their own map).');

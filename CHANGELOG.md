@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.39.4 (test build)
+- ☠️ **Doomsday turns your mic and camera back on once the stream is over.** Your mic and camera stay off until OBS says the stream has really ended, then Movie Royal turns them back on (only the ones Doomsday turned off). If Movie Royal gets closed in the middle, it does it the next time it opens.
+- ☠️ **Test the whole Doomsday for real:** 🧪 Test → 🎡 Wheel tests → ☠️ The real thing → **Run the whole Doomsday**. The Doomsday screen, mic + camera off, and if you're live your stream really ends 15 seconds later. While you're live, a big red warning pops up first and its “Yes, end my stream” button only works after 5 seconds. (That warning is only for the test: the real Doomsday never asks.) Not live = a rehearsal: no stream to end, and your mic + camera come back on after 15 seconds.
+
 ## 1.39.3 (test build)
 - 🧪 **Test tab:** the 📺 Preview and 💬 Test chat buttons are now at the top right of every part of the Test tab (🧪 Tests, ✅ Checklist and ⚠️ Errors).
 - ➡️ **Tests take you to the right tab.** Running a test battle takes you to the ⚔️ Battle tab, a wheel spin to the 🎡 Wheel tab, and a card battle test to the 🃏 Card battles tab, so you're right where the action is.

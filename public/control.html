@@ -436,6 +436,14 @@
   <label class="ck" style="margin-top:10px"><input type="checkbox" id="tbLuck" checked> <span>Give the pieces some luck (shows the glow and flames; buses get luck health, speed and cow catchers)</span></label>
   <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px"><button class="ghost" onclick="tbReset()" title="Put the test battle settings back to how they came">↺ Start over</button><button class="ghost" onclick="$('tbDlg').close()">Cancel</button><button class="primary" onclick="tbSave()">💾 Save</button><button class="primary" onclick="tbSave();testBattle()" title="Save and run a test ball battle with these settings">▶ Save + run</button></div>
 </div></dialog>
+<dialog id="doomDlg" style="border:4px solid #ff2a2a;box-shadow:0 0 60px #ff2a2acc;animation:doomWarn 1s ease-in-out infinite alternate"><div class="inner" style="text-align:center;max-width:520px">
+  <div style="font-size:64px;line-height:1">🚨☠️🚨</div>
+  <h2 style="color:#ff4a4a;margin:8px 0;font-size:28px">THIS WILL END YOUR STREAM</h2>
+  <p style="font-size:17px">You're <b>LIVE</b>. This runs the whole Doomsday for real: the Doomsday screen goes up, your <b>mic and camera go off</b>, and <b>your stream ends 15 seconds later</b>. No goodbye.</p>
+  <p class="help">Your mic and camera come back on once the stream is over. (This pop-up is only for the test: the real Doomsday doesn't ask, it just happens.)</p>
+  <div class="row" style="gap:10px;justify-content:center;margin-top:14px"><button class="primary" onclick="$('doomDlg').close()" style="font-size:16px">✋ No, keep streaming</button><button id="doomGo" class="doomBtn" disabled onclick="doomTest(true)" style="font-size:16px" title="End my stream with the Doomsday (you can press it after 5 seconds)">☠️ Yes, end my stream (5)</button></div>
+</div></dialog>
+<style>@keyframes doomWarn { from { box-shadow: 0 0 30px #ff2a2a88 } to { box-shadow: 0 0 80px #ff2a2aff } } button.doomBtn { background:#c81e1e; color:#fff; border-color:#ff4a4a; font-weight:700 } button.doomBtn:disabled { opacity:.5; cursor:not-allowed }</style>
 <dialog id="hmDlg"><div class="inner" id="hmBody"></div></dialog>
 <div id="pchat"><div class="pcHead" id="pcHead"><span class="grow">💬 Pretend chat <small class="muted" style="font-weight:400">(type as anyone)</small></span><button class="ghost pcPopBtn" title="Open the pretend chat in its own window (put it on another monitor)" onclick="pchatPop()">⧉ Pop out</button><button class="ghost" title="Close" onclick="pchat(false)">✕</button></div>
   <div class="row" style="gap:4px"><input id="pcName" class="grow" list="pcNames" placeholder="Who's typing? (Twitch name)"><datalist id="pcNames"></datalist><button class="ghost" title="The battle winner" onclick="pcWinner()">🏆 Winner</button></div>
@@ -1245,6 +1253,14 @@ async function claimTest() { // 🧪 the winner claims: the pretend chat window 
   try { if (localStorage.pchat) setTimeout(() => pchat(true), 500); } catch {}
 })();
 // 🎥 OBS test: mic muted + camera hidden for 5 seconds, then back how they were; says exactly what it switched
+// ☠️ Test → Wheel → the real thing: the whole Doomsday. While you're live: a big warning first, and its button only works after 5 seconds.
+let doomTick = null;
+async function doomTest(confirmed) {
+  if (confirmed) { $('doomDlg').close(); clearInterval(doomTick); }
+  const r = await api('/api/test/doomsday', confirmed ? { confirm: true } : {}).catch(() => null); if (!r) return;
+  if (r.needConfirm) { const b = $('doomGo'); let n = 5; b.disabled = true; b.textContent = `☠️ Yes, end my stream (${n})`; $('doomDlg').showModal(); clearInterval(doomTick); doomTick = setInterval(() => { n--; if (n > 0) b.textContent = `☠️ Yes, end my stream (${n})`; else { clearInterval(doomTick); b.disabled = false; b.textContent = '☠️ Yes, end my stream'; } }, 1000); return; }
+  if (!r.obs) toast("☠️ Doomsday screen is up, but Movie Royal couldn't reach OBS (Settings → 🎥 OBS), so the mic, camera and stream weren't touched.", 8000);
+}
 async function obsMuteTest() {
   toast('🎥 Turning your mic and camera off in OBS for 5 seconds…', 5000);
   const r = await api('/api/test/obs-mute', {}).catch(() => null); if (!r) return;
@@ -1275,7 +1291,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
-  tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
+  doomReal: ['wheel', '1.39.4'], doomBack: ['wheel', '1.39.4'], tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1341,6 +1357,8 @@ function drawChecklist() {
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
     ['cardBallMaps', '⚪🃏 Card battles can use every ball map: the packs fight there as card fighters (pick the map on the Card battles tab)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'lava')">Try it</button>`],
+    ['doomReal', '☠️ Test → Wheel → ☠️ The real thing → Run the whole Doomsday: the full Doomsday for real (while live it warns you first, with a 5-second wait, then ends your stream)', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests')">See it</button>`],
+    ['doomBack', '🎙️ After a Doomsday ends the stream, your mic and camera come back on by themselves (not live: after 15 seconds)', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests')">See it</button>`],
     ['tbSettings', '⚙ Test tab → a test battle box → ⚙ Settings: how many pieces, map, countdown, fight length, pacer, laps and luck for practice battles', `<button class="ghost" style="padding:3px 9px" onclick="tbOpen()">Open</button>`],
     ['testGoTab', '🧪 Running a test battle, wheel spin or card battle from the Test tab takes you to the Battle / Wheel / Card battles tab', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests')">See it</button>`],
     ['testTools', '📺 Preview and 💬 Test chat buttons are at the top right of every Test tab part (Tests, Checklist, Errors)', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests')">See it</button>`],
@@ -2439,6 +2457,9 @@ async function drawWheelTest() {
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">☠️ Doomsday</b>
       ${B('📺 Preview the screen (8 sec)', T('/api/test/doom-preview', {}, 'Showing it on the game screen'))}${B('🎥 OBS: mic + camera off for 5 sec', "obsMuteTest()")}
       <span class="help" style="margin:0">Neither one ends your stream.</span></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">☠️ The real thing</b>
+      <button class="doomBtn" onclick="doomTest()" title="Run the whole Doomsday for real: the screen, mic + camera off, and if you're live your stream ENDS 15 seconds later">☠️ Run the whole Doomsday</button>
+      <span class="help" style="margin:0">The full Doomsday screen, then your mic + camera off. <b>If you're live, your stream really ends 15 seconds later</b> (it asks first). Not live = a rehearsal: no stream to end. Your mic + camera come back on once the stream is over.</span></div>
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><b style="width:150px">🔴 Going live</b>
       ${B('🔴 Pretend I went live', T('/api/test/live', { live: true }, '🔴 Pretending you are live (just inside Movie Royal)'))}${B('⚫ Stop pretending', T('/api/test/live', { live: false }, '⚫ Offline'))}
       ${B('🔔 Test alert in Chat tab', T('/api/test/alert', { kind: 'sub' }, 'Alert sent'), 'ghost')}</div>`;
@@ -2938,7 +2959,7 @@ function drawWSettings() {
       <p class="help">Chat can only grow or shrink the void with money (subs, gift subs, bits, donations). You can always change it with its + / − on the Spots list.</p>
       <label>If the void lands on itself it grows. After <input type="number" min="1" max="100" style="width:70px" value="${V.landings ?? 5}" onchange="wOpt('void.landings',Number(this.value))"> landings on itself it has swallowed (almost) the whole wheel.</label>
       ${tg('void.doomsday', V.doomsday, `☠️ ${esc(WD.streamer || 'Streamer')} will return for Doomsday`)}
-      ${V.doomsday ? `<p class="help" style="margin-left:22px">When the void swallows the wheel: a full-screen <b>“${esc((WD.streamer || 'Streamer').toUpperCase())} WILL RETURN FOR DOOMSDAY!!!”</b>, your mic and camera go off right away, and the stream ends 15 seconds later. No goodbye. Needs OBS connected (Settings → 🎥 OBS) ${WD.obs?.set ? '' : '<b style="color:#ffb547">— not set up yet</b>'}.</p>` : ''}
+      ${V.doomsday ? `<p class="help" style="margin-left:22px">When the void swallows the wheel: a full-screen <b>“${esc((WD.streamer || 'Streamer').toUpperCase())} WILL RETURN FOR DOOMSDAY!!!”</b>, your mic and camera go off right away, and the stream ends 15 seconds later. No goodbye. Once the stream is over, your mic and camera come back on. Needs OBS connected (Settings → 🎥 OBS) ${WD.obs?.set ? '' : '<b style="color:#ffb547">— not set up yet</b>'}.</p>` : ''}
       ${tg('void.monthly', V.monthly !== false, '📅 You can bring back 1 voided spot per month yourself (money from chat can always bring spots back)')}
       ${(() => { const vd = w.entries.filter(e => e.voided); return vd.length ? `<p class="help">Voided right now: ${vd.map(e => `<b>${esc(e.text)}</b> <button class="ghost" onclick="wUnvoid('${e.id}','${w.id}')">🕳️ bring back</button>`).join(' ')}</p>` : '<p class="help">Voided spots come back by themselves next stream, or when someone saves them with a sub, gift sub, bits or a donation.</p>'; })()}` : ''}` : ''}
     <h4 style="margin:16px 0 4px">💜 Channel points on this wheel</h4>

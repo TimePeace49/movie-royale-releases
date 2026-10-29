@@ -3937,7 +3937,7 @@ function handleMsg(m) {
     if (m.type === 'cardScene' || m.type === 'cardWacky') { window.CARDS?.msg(m); return; } // 🃏 card battles (cardfight.js)
     if (m.type === 'wheel' || m.type === 'wheelSpin') { wheelMsg(m); return; }
     if (m.type === 'wheelRound') { wheelMsg(m); return; }
-    if (m.type === 'wheelDoom') { const el = wlDoom(m.text); if (m.preview) setTimeout(() => el.remove(), 8000); return; }
+    if (m.type === 'wheelDoom') { const el = wlDoom(m.text); if (m.preview) setTimeout(() => el.remove(), 8000); else if (m.test) setTimeout(() => el.remove(), 20000); return; } // (a Doomsday test while not live goes away after 20 s)
     if (m.type === 'wheelSiren') { wlSiren(m.who, m.text); return; }
     if (m.type === 'wheelBanner') { wlInit(); if (wlShow) { wlBanner(m.html, 2600); SFX.play('wheelGrow'); } return; }
     if (m.type === 'start') startGame(m);
