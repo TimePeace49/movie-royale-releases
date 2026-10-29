@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.41.0 (test build)
+- 🧟 **New map: Zombie Horde** (ball and card battles). City streets at night, closed off with barricades. Zombies shamble out of the manholes and the street ends and chase everyone, and everyone runs. Buildings block the way. Balls that get bitten take damage (too many bites and they're eaten). A card that gets bitten is INFECTED: it's out, but it stays on the map as a zombie and chases the others. Nothing crumbles, nobody falls off, no weapons, no final fight. Map power: 🧟 Zombie Horde.
+- 🦖 **New map: Monster Mash.** The fight is on the rooftops of a few tall buildings (walls all the way down to the street, long drops into the alleys). Two giant monsters made up for Movie Royal, MAGMAW (a lava-rock lizard) and BRUTOX (a four-armed horned beast), fight in the streets. Their punches, fire breath and tail swipes smash the rooftops, and the part they hit collapses into the building. Every so often they hit each other and one stumbles into a building and knocks a corner off. Map power: 🦖 Monster Stomp.
+- 🦸 **Hero City: two new villains.** 🏗️ Wrecker swings a wrecking ball across a row of the roof and knocks everyone it hits off. 💣 Bombshell flies over in a jet and drops bombs that blow pieces up (luck can dodge it). Hero City shows 🔵 UPDATED.
+- 🧪 Test tab: boxes for 🧟 Zombie Horde and 🦖 Monster Mash (balls or cards) and 🦸 Hero City, plus checklist items.
+
 ## 1.40.0 (test build)
 - ↺ **Reset the 🔴 NEW / 🔵 UPDATED map tags** (works while you're live too): Settings → Game → 🔴 NEW / 🔵 UPDATED tags. ↺ Reset all map tags, or ↺ next to one map. Ball maps and card maps.
 - 🎉 **Chat battle fun mode, easier to find:** the power-ups + wacky effects box is now right under the Chat battle box on the 💬 Chat battle tab.

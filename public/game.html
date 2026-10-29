@@ -458,6 +458,7 @@ function makeWallP(h, o) {
   if (o.lines !== false) for (let y = 8; y < h; y += rnd(10, 22)) { g.strokeStyle = o.lines || `rgba(0,0,0,${rnd(.12, .25)})`; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.moveTo(0, y); g.lineTo(TOP_W, y + rnd(-4, 4)); g.stroke(); }
   if (o.lattice) { g.strokeStyle = o.lattice; g.lineWidth = 2; for (let y = 0; y < h; y += 18) { g.beginPath(); g.moveTo(2, y); g.lineTo(2 + w, y + 18); g.moveTo(2 + w, y); g.lineTo(2, y + 18); g.stroke(); } }
   g.fillStyle = o.lit || 'rgba(255,190,140,.12)'; g.fillRect(2 + w * .55, 0, w * .45, h);
+  if (o.windows) for (let y = 16; y < h - 6; y += 24) for (let x = 7; x < w - 4; x += 15) { g.fillStyle = Math.random() < .3 ? pick(['#ffd88a', '#ffe8b0', '#ffb060']) : 'rgba(10,12,18,.8)'; g.fillRect(x, y, 8, 11); } // 🏢 rows of windows (Monster Mash buildings)
   if (o.lip) { g.fillStyle = o.lip; g.fillRect(0, 0, TOP_W, o.lipH || 5); }
   if (o.roots) for (let i = 0; i < 4; i++) { g.fillStyle = o.roots; g.fillRect(rnd(TOP_W), 3, 2, rnd(5, 12)); }
   if (o.glowLine) { g.fillStyle = o.glowLine; g.fillRect(0, h * .35, TOP_W, 2); g.fillRect(0, h * .7, TOP_W, 2); }
@@ -1639,7 +1640,8 @@ const MAPS = {
   hero: {
     // 🦸 Hero City: a rooftop fight above the city at night. Three villains (all made up for Movie Royal) take turns:
     // Mecha Brute's giant fist slams down (everyone near it goes flying and the roof cracks), the Laser Drone locks on
-    // and zaps, and Gloom swoops in, grabs a piece and throws it off the roof.
+    // and zaps, Gloom swoops in, grabs a piece and throws it off the roof, Wrecker swings a wrecking ball across a row of
+    // the roof (everyone it hits goes flying off), and Bombshell flies over dropping bombs that blow pieces up.
     name: 'Hero City', icon: '🦸', shape: SHAPES.hex,
     tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(220,8%,${40 - i * 3}%)`, c2: `hsl(220,10%,${32 - i * 2}%)`, specks: ['#fff1', '#0003'], speckN: 10, edge: 'rgba(255,255,255,.12)',
       deco: g => { if (Math.random() < .2) { g.fillStyle = '#6a7080'; g.fillRect(rnd(10, TOP_W - 30), rnd(6, TOP_H - 16), 18, 10); g.fillStyle = '#4a505c'; g.fillRect(rnd(10, TOP_W - 20), rnd(6, TOP_H - 12), 8, 8); } } })),
@@ -1655,15 +1657,17 @@ const MAPS = {
     start() { this.v = []; this.next = 1.4; this.turn = 0; },
     villain(kind) {
       const l = alive().filter(f => !f.launch && !f.ret); if (!l.length) return;
-      kind = kind || ['fist', 'drone', 'gloom'][this.turn++ % 3];
+      kind = kind || ['fist', 'wreck', 'drone', 'gloom', 'bomber'][this.turn++ % 5];
       let tgt = pick(l); if (cfg.fair && tgt === destined && l.length > 1) tgt = pick(l.filter(f => f !== destined));
       const a = rnd(6.3), R0 = ISLAND_R + 700;
       if (kind === 'fist') { // aim where the crowd is
         let best = tgt, bs = -1; for (let j = 0; j < 6; j++) { const c = pick(l), sc = l.filter(o => Math.hypot(o.x - c.x, o.y - c.y) < S * 3).length; if (sc > bs) { bs = sc; best = c; } }
         this.v.push({ kind, x: best.x, y: best.y, r: S * (2.6 + Math.min(1.6, l.length / 120)), u: 0, warn: 1.1 });
       } else if (kind === 'drone') this.v.push({ kind, x: Math.cos(a) * R0, y: Math.sin(a) * R0, tgt, u: 0, stage: 'fly', shots: 3 + Math.floor(l.length / 60) });
+      else if (kind === 'wreck') { const dir = Math.random() < .5 ? 1 : -1; this.v.push({ kind, y: tgt.y, dir, x: -dir * (ISLAND_R + 260), u: 0, warn: 1.1, r: S * 1.8, hits: new Set() }); } // 🏗️ WRECKER: a wrecking ball swings across one row of the roof
+      else if (kind === 'bomber') { const dir = Math.random() < .5 ? 1 : -1, drops = l.filter(f => !(cfg.fair && f === destined && l.length > 1)).sort(() => Math.random() - .5).slice(0, Math.min(4, 2 + Math.floor(l.length / 40))); this.v.push({ kind, x: -dir * (ISLAND_R + 500), y: tgt.y - S * 2, dir, u: 0, bombs: drops.map(f => ({ f, x: f.x, y: f.y, dropAt: null, h: 0, done: false })) }); } // 💣 BOMBSHELL flies over and drops bombs
       else this.v.push({ kind, x: Math.cos(a) * R0, y: Math.sin(a) * R0, tgt, u: 0, stage: 'swoop', ph: rnd(6.3) });
-      SFX.play(kind === 'fist' ? 'alert' : 'whoosh');
+      SFX.play(kind === 'fist' || kind === 'wreck' ? 'alert' : 'whoosh');
     },
     update(dt) {
       if (!this.v) this.start();
@@ -1679,6 +1683,23 @@ const MAPS = {
             if (n < 60) floaters.push({ text: pick(['SMASH!', 'KA-POW!', 'BRUTE FORCE!']), x: sx(v.x), y: sy(v.y) - 160, life: 1, color: '#ffcf4a' });
           }
           if (v.u > v.warn + .9) this.v.splice(i, 1);
+          continue;
+        }
+        if (v.kind === 'wreck') { // 🏗️ WRECKER: the ball swings across and knocks everyone in its row off the roof
+          if (v.u < v.warn) continue;
+          const e = v.u - v.warn; v.x = -v.dir * (ISLAND_R + 260) + v.dir * e * 1500; if (e < .05) SFX.play('whoosh');
+          for (const f of alive()) { if (f.launch || f.ret || v.hits.has(f)) continue; if (Math.abs(f.x - v.x) < v.r + f.r && Math.abs(f.y - v.y) < v.r + f.r) { v.hits.add(f); SFX.play('clash'); shake = Math.max(shake, 10); if (cfg.fair && f === destined) push(f, v.dir * 300, rnd(-100, 100)); else launch(f, Math.atan2(rnd(-.4, .4), v.dir), rnd(1300, 1700)); if (n < 60) floaters.push({ text: pick(['WRECKED!', 'KNOCKED OFF!', 'SWING!']), x: sx(f.x), y: sy(f.y) - 90, life: .9, color: '#ffcf4a' }); } }
+          if (Math.abs(v.x) > ISLAND_R + 400 && e > .5) this.v.splice(i, 1);
+          continue;
+        }
+        if (v.kind === 'bomber') { // 💣 BOMBSHELL: flies across, each bomb falls on a piece and blows it up (luck can dodge it)
+          v.x += v.dir * 900 * dt;
+          for (const b of v.bombs) { if (b.done) continue; if (b.f.alive) { b.x = b.f.x; b.y = b.f.y; }
+            if (b.dropAt == null && Math.abs(v.x - b.x) < 60) { b.dropAt = t; b.h = 420; SFX.play('whoosh', { v: .5 }); }
+            if (b.dropAt != null) { b.h -= dt * 900; if (b.h <= 0) { b.done = true; const X = sx(b.x), Y = sy(b.y); for (let j = 0; j < 30; j++) { const a2 = rnd(6.3), sp = rnd(120, 420); parts.push({ x: X, y: Y, vx: Math.cos(a2) * sp, vy: Math.sin(a2) * sp - 80, g: 500, life: rnd(.4, .8), max: .8, size: rnd(3, 7), color: pick(['#ffd27a', '#ff7a3d', '#fff3c4']) }); }
+              shake = Math.max(shake, 12); SFX.play('boom'); for (const tl of solid) if (Math.hypot(tl.x - b.x, tl.y - b.y) < S * .9) crumbleSoon(tl, rnd(.2, .6));
+              for (const f of alive()) { const d = Math.hypot(f.x - b.x, f.y - b.y); if (d < f.r + S * .9 && !f.launch && !f.ret) blastOrDodge(f, '#ff7a3d', pick(['KABOOM!', 'BOMBED!', 'BLASTED!'])); else if (d < S * 3) push(f, (f.x - b.x) / d * 420, (f.y - b.y) / d * 420); } } } }
+          if (Math.abs(v.x) > ISLAND_R + 700 && v.bombs.every(b => b.done || b.dropAt == null)) this.v.splice(i, 1);
           continue;
         }
         if (v.kind === 'drone') { // 🛸 LASER DRONE: flies over, locks on, ZAP
@@ -1714,6 +1735,20 @@ const MAPS = {
           ctx.fillStyle = '#ff3a3a'; ctx.beginPath(); ctx.arc(0, -s * .3, s * .15, 0, 7); ctx.fill(); ctx.restore();
           continue;
         }
+        if (v.kind === 'wreck') { // a red warning band, then the wrecking ball on its chain
+          const Y = sy(v.y);
+          if (v.u < v.warn) { ctx.fillStyle = `rgba(255,60,60,${.12 + .12 * Math.sin(clock * 20)})`; ctx.strokeStyle = 'rgba(255,80,80,.8)'; ctx.lineWidth = 3; ctx.setLineDash([12, 10]); ctx.beginPath(); ctx.rect(sx(-ISLAND_R), Y - v.r * K, sx(ISLAND_R) - sx(-ISLAND_R), v.r * 2 * K); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); continue; }
+          const X = sx(v.x), R2 = v.r * 1.1; ctx.strokeStyle = '#555'; ctx.lineWidth = 6; ctx.setLineDash([10, 6]); ctx.beginPath(); ctx.moveTo(X - v.dir * 260, -40); ctx.lineTo(X, Y - R2 * 1.2); ctx.stroke(); ctx.setLineDash([]);
+          const gr = ctx.createRadialGradient(X - R2 * .3, Y - R2 * 1.5, 4, X, Y - R2, R2 * 1.1); gr.addColorStop(0, '#9aa0a8'); gr.addColorStop(1, '#2a2d34'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(X, Y - R2, R2, 0, 7); ctx.fill(); ctx.strokeStyle = '#111'; ctx.lineWidth = 3; ctx.stroke();
+          continue;
+        }
+        if (v.kind === 'bomber') { // a villain jet with a skull on it, and its falling bombs
+          const X = sx(v.x), Y = sy(v.y) - 330; ctx.save(); ctx.translate(X, Y); ctx.scale(v.dir, 1); ctx.fillStyle = '#2a2a3a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(70, 0); ctx.lineTo(-50, -18); ctx.lineTo(-70, -40); ctx.lineTo(-60, 0); ctx.lineTo(-70, 30); ctx.lineTo(-50, 14); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#ff3a6a'; ctx.beginPath(); ctx.moveTo(10, -6); ctx.lineTo(-30, -60); ctx.lineTo(-40, -6); ctx.fill(); ctx.fillStyle = '#9bf'; ctx.beginPath(); ctx.ellipse(30, -6, 16, 7, 0, 0, 7); ctx.fill();
+          ctx.font = '22px serif'; ctx.textAlign = 'center'; ctx.scale(v.dir, 1); ctx.fillText('💀', 0, 10); ctx.restore();
+          for (const b of v.bombs) if (b.dropAt != null && !b.done) { const BX = sx(b.x), BY = sy(b.y) - b.h; ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(BX, BY, 13, 0, 7); ctx.fill(); ctx.fillStyle = '#ffb030'; ctx.beginPath(); ctx.arc(BX + 6, BY - 12, 4 + Math.sin(clock * 30) * 2, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(255,60,60,.7)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(sx(b.x), sy(b.y), S * .9, S * .9 * K, 0, 0, 7); ctx.stroke(); }
+          continue;
+        }
         if (v.kind === 'drone') { // a floating drone with one red eye
           const X = sx(v.x), Y = sy(v.y) - 230 + Math.sin(clock * 3 + v.x) * 8;
           if (v.stage === 'aim' && v.tgt) { ctx.strokeStyle = `rgba(255,50,50,${.4 + .4 * Math.sin(clock * 30)})`; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(X, Y + 16); ctx.lineTo(sx(v.tgt.x), sy(v.tgt.y) - v.tgt.r); ctx.stroke(); ctx.setLineDash([]); }
@@ -1731,9 +1766,9 @@ const MAPS = {
         if (v.held) drawFighter(v.held);
       }
     },
-    snap() { return (this.v || []).map(v => ({ ...v, tgt: null, held: null })); },
-    restore(x) { this.v = (x || []).map(v => ({ ...v })); },
-    power: { name: 'VILLAIN TEAM-UP', icon: '🦹', fn() { const m = MAPS.hero; if (!m.v) return; m.villain('fist'); setTimeout(() => m.villain('drone'), 300); setTimeout(() => m.villain('gloom'), 600); shake = 12; } }
+    snap() { return (this.v || []).map(v => ({ ...v, tgt: null, held: null, hits: null, bombs: v.bombs ? v.bombs.map(b => ({ ...b, f: null })) : undefined })); },
+    restore(x) { this.v = (x || []).map(v => ({ ...v, hits: new Set(), bombs: v.bombs?.map(b => ({ ...b, f: { alive: false } })) })); },
+    power: { name: 'VILLAIN TEAM-UP', icon: '🦹', fn() { const m = MAPS.hero; if (!m.v) return; m.villain('fist'); setTimeout(() => m.villain('drone'), 300); setTimeout(() => m.villain('gloom'), 600); setTimeout(() => m.villain('wreck'), 900); setTimeout(() => m.villain('bomber'), 1200); shake = 12; } }
   },
   plague: {
     // 🐀 Plague Town: a walled medieval town seen from above. Nothing crumbles. Rats scurry out of the sewers and bite:
@@ -1910,6 +1945,341 @@ const MAPS = {
     snap() { return { r: (this.rats || []).map(r => ({ ...r, tgt: null })), g: (this.graves || []).map(g => ({ ...g })) }; },
     restore(v) { this.rats = (v?.r || []).map(r => ({ ...r })); this.graves = (v?.g || []).map(g => ({ ...g })); },
     power: { name: 'RAT SWARM', icon: '🐀', fn() { const m = MAPS.plague; if (!m.rats) return; for (let i = 0; i < 14; i++) m.rat(); SFX.play('rat'); shake = 6; } }
+  },
+  zombies: {
+    // 🧟 Zombie Horde: city streets at night, seen from above. Nothing crumbles, nobody falls. Zombies shamble out of the
+    // manholes and the street ends and go after the nearest piece; everyone runs from them. Balls get bitten and take
+    // damage (too many bites = eaten). Cards get INFECTED: they're out, but they stay on the map as zombies and chase the
+    // others. Buildings block everyone. No weapons, no final fight. The winner is still drawn by the odds before it starts.
+    name: 'Zombie Horde', icon: '🧟', K: 1, noCrumble: true, hardGround: true, ownEnd: true, noShowdown: true, rScale: 1.45, pieceScale: .78, wallScale: .3,
+    shape: (q, r, p, R) => SHAPES.rect(q, r, p, R, { a: 1, b: .56 }),
+    tops: () => [makeTopP({ c1: '#34363d', c2: '#2b2d33', specks: ['#0003'], speckN: 6, edge: 'rgba(0,0,0,.2)' })],
+    wall: { cols: ['#3a3c44', '#2c2e34', '#1e2024', '#121316'], flat: true, lines: false },
+    sky(g) { skyGrad(g, [[0, '#07080e'], [.5, '#10131c'], [1, '#191c26']]); for (let i = 0; i < 220; i++) { g.fillStyle = `rgba(${pick(['40,44,56', '30,32,40', '52,48,44'])},${rnd(.3, .7)})`; g.fillRect(rnd(W), rnd(H), rnd(20, 70), rnd(20, 70)); } }, // dark city blocks all around
+    clouds: '#2a2e3a', fog: ['rgba(120,160,110,.07)', 'rgba(8,10,14,.55)'],
+    canGo: (f, tl) => !tl.bld,
+    spawnAt: tl => !tl.bld,
+    koText: () => SKIN === 'cards' ? 'GRRAAH!' : pick(['EATEN!', '🧟 BRAINS!', 'CHOMPED!']),
+    afterBuild(R) {
+      const A = this.A = R * S * SQ3, B = this.B = A * .56, cell = S * 12;
+      const cols = Math.max(3, Math.round(A * 2 / cell)), rows = Math.max(2, Math.round(B * 2 / cell)), cw = A * 2 / cols, ch = B * 2 / rows, st = S * 2.3; // st = half a street
+      this.blds = []; this.holes = []; this.lots = []; this.lights = []; this.ends = [];
+      const mc = (cols - 1) / 2, mr = (rows - 1) / 2;
+      for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+        const x0 = -A + c * cw + st, y0 = -B + r * ch + st, x1 = -A + (c + 1) * cw - st, y1 = -B + (r + 1) * ch - st; // the block (sidewalk + building)
+        const blk = { x0, y0, x1, y1 };
+        if ((Math.abs(c - mc) <= .5 && Math.abs(r - mr) <= .5) || Math.random() < .2) { this.lots.push({ ...blk, kind: Math.random() < .5 ? 'park' : 'lot' }); continue; } // an open plaza / park / parking lot
+        const sw = S * .75, w = x1 - x0 - sw * 2, h = y1 - y0 - sw * 2;
+        if (w > S * 4 && Math.random() < .45) { const mid = x0 + sw + w * rnd(.4, .6); this.blds.push(this.bld(x0 + sw, y0 + sw, mid - S * .35, y1 - sw), this.bld(mid + S * .35, y0 + sw, x1 - sw, y1 - sw)); } // two buildings with an alley between
+        else this.blds.push(this.bld(x0 + sw, y0 + sw, x1 - sw, y1 - sw));
+      }
+      for (let c = 0; c <= cols; c++) for (let r = 0; r <= rows; r++) { const x = -A + c * cw, y = -B + r * ch; if (Math.abs(x) < A - S && Math.abs(y) < B - S && Math.random() < .55) this.holes.push({ x: x + rnd(-st * .4, st * .4), y: y + rnd(-st * .4, st * .4) }); if (Math.random() < .5) this.lights.push({ x: x + st * 1.1, y: y + st * 1.1 }); }
+      for (let c = 1; c < cols; c++) { this.ends.push({ x: -A + c * cw, y: -B + S * .5 }, { x: -A + c * cw, y: B - S * .5 }); } for (let r = 1; r < rows; r++) { this.ends.push({ x: -A + S * .5, y: -B + r * ch }, { x: A - S * .5, y: -B + r * ch }); } // where the streets leave the map: zombies come in from there
+      if (!this.holes.length) this.holes.push({ x: 0, y: 0 });
+      const pad = S * .25; for (const tl of tiles) tl.bld = this.blds.some(b => tl.x > b.x0 - pad && tl.x < b.x1 + pad && tl.y > b.y0 - pad && tl.y < b.y1 + pad);
+      this.cw = cw; this.ch = ch; this.st = st; this.cols = cols; this.rows = rows;
+      this.paint();
+    },
+    bld(x0, y0, x1, y1) { return { x0, y0, x1, y1, roof: pick(['#4a4d55', '#55504a', '#3d4450', '#5a4640', '#474a3e', '#3a3a42']), tank: Math.random() < .4, ac: Math.floor(rnd(0, 4)), lit: Math.random() < .5 }; },
+    // the city is painted once (streets, sidewalks, crosswalks, rooftops, parked cars) and reused every frame
+    paint() {
+      const A = this.A, B = this.B, P = S * 2.2, c = document.createElement('canvas'); c.width = Math.ceil(A * 2 + P * 2); c.height = Math.ceil(B * 2 + P * 2);
+      const g = c.getContext('2d'), X = x => x + A + P, Y = y => y + B + P, st = this.st, cw = this.cw, ch = this.ch;
+      g.fillStyle = '#2c2e34'; g.fillRect(X(-A) - 4, Y(-B) - 4, A * 2 + 8, B * 2 + 8); // asphalt
+      for (let i = 0; i < A * B / 160; i++) { g.fillStyle = `rgba(${pick(['0,0,0', '255,255,255'])},${rnd(.02, .06)})`; g.fillRect(X(rnd(-A, A)), Y(rnd(-B, B)), rnd(2, 6), rnd(2, 6)); }
+      g.strokeStyle = 'rgba(240,200,60,.7)'; g.lineWidth = 3; g.setLineDash([22, 18]); // center lines
+      for (let col = 0; col <= this.cols; col++) { const x = -A + col * cw; g.beginPath(); g.moveTo(X(x), Y(-B)); g.lineTo(X(x), Y(B)); g.stroke(); }
+      for (let r = 0; r <= this.rows; r++) { const y = -B + r * ch; g.beginPath(); g.moveTo(X(-A), Y(y)); g.lineTo(X(A), Y(y)); g.stroke(); }
+      g.setLineDash([]);
+      const blocks = []; for (let col = 0; col < this.cols; col++) for (let r = 0; r < this.rows; r++) blocks.push({ x0: -A + col * cw + st, y0: -B + r * ch + st, x1: -A + (col + 1) * cw - st, y1: -B + (r + 1) * ch - st });
+      for (const k of blocks) { // sidewalks + curbs, and crosswalks at the corners
+        g.fillStyle = '#5c5e66'; g.fillRect(X(k.x0), Y(k.y0), k.x1 - k.x0, k.y1 - k.y0); g.strokeStyle = '#8a8c94'; g.lineWidth = 3; g.strokeRect(X(k.x0), Y(k.y0), k.x1 - k.x0, k.y1 - k.y0);
+        g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1; for (let x = k.x0 + 14; x < k.x1; x += 14) { g.beginPath(); g.moveTo(X(x), Y(k.y0)); g.lineTo(X(x), Y(k.y0 + S * .75)); g.moveTo(X(x), Y(k.y1)); g.lineTo(X(x), Y(k.y1 - S * .75)); g.stroke(); }
+        g.fillStyle = 'rgba(235,235,235,.75)'; for (let i = 0; i < 5; i++) { if (k.x1 < A - st) g.fillRect(X(k.x1) + 5, Y(k.y0) + 4 + i * 9, st * 2 - 10, 5); if (k.y1 < B - st) g.fillRect(X(k.x0) + 4 + i * 9, Y(k.y1) + 5, 5, st * 2 - 10); } // (not past the edge of the city)
+      }
+      for (const L of this.lots) { // parks and parking lots
+        if (L.kind === 'park') { g.fillStyle = '#2f4a2c'; g.fillRect(X(L.x0) + 6, Y(L.y0) + 6, L.x1 - L.x0 - 12, L.y1 - L.y0 - 12); for (let i = 0; i < 6; i++) { const x = rnd(L.x0 + 20, L.x1 - 20), y = rnd(L.y0 + 20, L.y1 - 20); g.fillStyle = '#1f3a1e'; g.beginPath(); g.arc(X(x), Y(y), rnd(12, 20), 0, 7); g.fill(); g.fillStyle = '#2f5a2a'; g.beginPath(); g.arc(X(x) - 3, Y(y) - 3, rnd(8, 13), 0, 7); g.fill(); } }
+        else { g.fillStyle = '#34363c'; g.fillRect(X(L.x0) + 6, Y(L.y0) + 6, L.x1 - L.x0 - 12, L.y1 - L.y0 - 12); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2; for (let x = L.x0 + 14; x < L.x1 - 14; x += 26) { g.beginPath(); g.moveTo(X(x), Y(L.y0) + 10); g.lineTo(X(x), Y(L.y0) + 40); g.stroke(); } }
+      }
+      for (const b of this.blds) { // rooftops: a shadow, the edge, the roof, then AC units / a water tank
+        const w = b.x1 - b.x0, h = b.y1 - b.y0;
+        g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(X(b.x0) + 12, Y(b.y0) + 14, w, h);
+        g.fillStyle = '#23252a'; g.fillRect(X(b.x0), Y(b.y0), w, h); g.fillStyle = b.roof; g.fillRect(X(b.x0) + 5, Y(b.y0) + 5, w - 10, h - 10);
+        g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 1; for (let y = 10; y < h - 10; y += 12) { g.beginPath(); g.moveTo(X(b.x0) + 6, Y(b.y0) + y); g.lineTo(X(b.x1) - 6, Y(b.y0) + y); g.stroke(); }
+        for (let i = 0; i < b.ac; i++) { const x = X(b.x0) + 12 + (i * 37) % Math.max(20, w - 40), y = Y(b.y0) + 12 + (i * 23) % Math.max(20, h - 40); g.fillStyle = '#9aa0a8'; g.fillRect(x, y, 22, 16); g.fillStyle = '#555'; g.beginPath(); g.arc(x + 11, y + 8, 5, 0, 7); g.fill(); }
+        if (b.tank) { const x = X(b.x1) - 26, y = Y(b.y1) - 26; g.fillStyle = '#6a4a30'; g.beginPath(); g.arc(x, y, 15, 0, 7); g.fill(); g.strokeStyle = '#3a2a1a'; g.lineWidth = 2; g.stroke(); g.beginPath(); g.arc(x, y, 8, 0, 7); g.stroke(); }
+        if (b.lit) { g.fillStyle = 'rgba(255,220,140,.5)'; g.fillRect(X(b.x0) + w * .3, Y(b.y0) + h * .35, 16, 12); } // a skylight with the lights on
+      }
+      for (let i = 0; i < 26; i++) { // parked (and crashed) cars along the curbs
+        const k = pick(blocks), side = Math.floor(rnd(4)), crashed = Math.random() < .25, col = pick(['#8a2a2a', '#2a4a8a', '#c8c8c8', '#2a2a2a', '#c8a030', '#3a6a3a']);
+        let x, y, hor; if (side === 0) { x = rnd(k.x0 + 30, k.x1 - 30); y = k.y0 - st * .55; hor = true; } else if (side === 1) { x = rnd(k.x0 + 30, k.x1 - 30); y = k.y1 + st * .55; hor = true; } else if (side === 2) { x = k.x0 - st * .55; y = rnd(k.y0 + 30, k.y1 - 30); hor = false; } else { x = k.x1 + st * .55; y = rnd(k.y0 + 30, k.y1 - 30); hor = false; }
+        g.save(); g.translate(X(x), Y(y)); g.rotate((hor ? 0 : Math.PI / 2) + (crashed ? rnd(-.6, .6) : 0)); g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-21, -9, 44, 22); g.fillStyle = col; g.fillRect(-22, -11, 44, 22); g.fillStyle = '#1c2530'; g.fillRect(-8, -9, 14, 18); g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(-20, -9, 40, 5); if (crashed) { g.fillStyle = 'rgba(20,20,20,.55)'; g.fillRect(-22, -11, 16, 22); } g.restore();
+      }
+      for (const m of this.holes) { g.fillStyle = '#1a1b1e'; g.beginPath(); g.arc(X(m.x), Y(m.y), 13, 0, 7); g.fill(); g.strokeStyle = '#4a4b50'; g.lineWidth = 2; g.stroke(); for (let k2 = -6; k2 <= 6; k2 += 4) { g.beginPath(); g.moveTo(X(m.x) - 9, Y(m.y) + k2); g.lineTo(X(m.x) + 9, Y(m.y) + k2); g.stroke(); } }
+      for (let i = 0; i < 14; i++) { g.fillStyle = `rgba(${pick(['90,160,60', '120,30,30'])},${rnd(.25, .45)})`; g.beginPath(); g.ellipse(X(rnd(-A, A)), Y(rnd(-B, B)), rnd(8, 22), rnd(5, 14), rnd(3), 0, 7); g.fill(); } // goo + splats
+      // concrete barricades with hazard stripes all the way round (the city is closed off)
+      const T = S * .7; g.fillStyle = '#9a9a9a'; g.fillRect(X(-A) - T, Y(-B) - T, A * 2 + T * 2, T); g.fillRect(X(-A) - T, Y(B), A * 2 + T * 2, T); g.fillRect(X(-A) - T, Y(-B), T, B * 2); g.fillRect(X(A), Y(-B), T, B * 2);
+      g.fillStyle = '#e8b020'; for (let x = -A - T; x < A + T; x += 28) { g.fillRect(X(x), Y(-B) - T + 4, 14, T - 8); g.fillRect(X(x), Y(B) + 4, 14, T - 8); } for (let y = -B; y < B; y += 28) { g.fillRect(X(-A) - T + 4, Y(y), T - 8, 14); g.fillRect(X(A) + 4, Y(y), T - 8, 14); }
+      this.img = c; this.P = P;
+    },
+    start() {
+      this.zs = []; this.next = .3; this.groan = 1; this.seen = 0;
+      for (const f of fighters) { f.zombie = false; f.biteAt = 0; }
+      const n = fighters.length; for (let i = 0; i < Math.min(40, 3 + Math.ceil(n / 12)); i++) this.spawn();
+    },
+    spawn(at) {
+      const p = at || (Math.random() < .55 ? pick(this.holes) : pick(this.ends.length ? this.ends : this.holes));
+      this.zs.push({ x: p.x + rnd(-10, 10), y: p.y + rnd(-10, 10), vx: 0, vy: 0, face: 1, tgt: null, think: 0, rise: .9, sp: rnd(70, 110), ph: rnd(6.3), hue: rnd(80, 120), shirt: pick(['#5a6a8a', '#8a5a5a', '#6a6a4a', '#4a6a5a', '#7a7a7a', '#8a6a3a']) });
+    },
+    walls(o, r) {
+      const T = S * .7, A = this.A - r, B = this.B - r;
+      if (o.x < -A) { o.x = -A; o.vx = Math.abs(o.vx) * .3; } if (o.x > A) { o.x = A; o.vx = -Math.abs(o.vx) * .3; }
+      if (o.y < -B) { o.y = -B; o.vy = Math.abs(o.vy) * .3; } if (o.y > B) { o.y = B; o.vy = -Math.abs(o.vy) * .3; }
+      for (const b of this.blds) {
+        if (o.x < b.x0 - r || o.x > b.x1 + r || o.y < b.y0 - r || o.y > b.y1 + r) continue;
+        const nx = clamp(o.x, b.x0, b.x1), ny = clamp(o.y, b.y0, b.y1), dx = o.x - nx, dy = o.y - ny, d = Math.hypot(dx, dy);
+        if (d > 0 && d < r) { o.x = nx + dx / d * r; o.y = ny + dy / d * r; const vn = o.vx * dx / d + o.vy * dy / d; if (vn < 0) { o.vx -= vn * dx / d * 1.3; o.vy -= vn * dy / d * 1.3; } }
+        else if (d === 0) { const l = o.x - b.x0, rt = b.x1 - o.x, tp = o.y - b.y0, bt = b.y1 - o.y, m = Math.min(l, rt, tp, bt); if (m === l) o.x = b.x0 - r; else if (m === rt) o.x = b.x1 + r; else if (m === tp) o.y = b.y0 - r; else o.y = b.y1 + r; }
+      }
+    },
+    // 🃏 a card that gets bitten (or knocked out) is INFECTED: out of the battle, but it stays on the map as a zombie
+    zombify(f) {
+      if (SKIN !== 'cards' || !f.alive || f.zombie) return false;
+      f.alive = false; f.zombie = true; f.zt = t; f.vx *= .3; f.vy *= .3; elim.push(f.id); elimT.push(Math.round(t * 100) / 100);
+      const left = alive().length;
+      feed = feed.filter(e => e.id !== f.id); feed.unshift({ id: f.id, text: f.label, place: left + 1, life: 6, color: f.color }); feed = feed.slice(0, 9);
+      if (left < 60) floaters.push({ text: pick(['🧟 INFECTED!', 'TURNED!', '🧟 ONE OF THEM NOW!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 20, life: 1.2, color: '#9be05a' });
+      for (let j = 0; j < 18; j++) { const a = rnd(6.3), v = rnd(60, 200); parts.push({ x: sx(f.x), y: sy(f.y) - f.r, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, g: 200, life: rnd(.5, 1), max: 1, size: rnd(3, 7), color: pick(['#7ac83a', '#4a8a2a', '#b8e86a']) }); }
+      SFX.play('groan', { v: .8 }); SFX.play('out');
+      if (left === 1 && !winner) declareWinner(alive()[0]);
+      return true;
+    },
+    bite(z, f) { // a zombie (or a zombie card) bites a piece
+      if (!f.alive || winner || f.biteAt > t || f.launch || f.ret) return;
+      f.biteAt = t + .9; const n = alive().length, k = clamp(t / cfg.game, 0, 1);
+      const dx = f.x - z.x, dy = f.y - z.y, d = Math.hypot(dx, dy) || 1; f.vx += dx / d * 420; f.vy += dy / d * 420; // it shakes free
+      SFX.play('bite', { v: .7 });
+      if (n < 60) floaters.push({ text: pick(['CHOMP!', 'BITTEN!', 'GRRAAH!', 'NOM!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 18, life: .8, color: '#ff6a5a' });
+      for (let j = 0; j < 8; j++) { const a = rnd(6.3), v = rnd(40, 160); parts.push({ x: sx(f.x), y: sy(f.y) - f.r * .8, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 300, life: rnd(.3, .6), max: .6, size: rnd(2, 5), color: pick(['#c8202a', '#8a1a1a', '#7ac83a']) }); }
+      if (SKIN === 'cards') { // cards: infected (unless it's the drawn winner, a shield, or the pacer says not yet)
+        if ((cfg.fair && f === destined) || n <= 1) { hurt(f, 6); return; }
+        if (useShield(f)) return;
+        if (Math.random() < paceHold(n) || (n <= 2 && t < cfg.game - 2.5)) { hurt(f, 6); return; }
+        this.zombify(f); return;
+      }
+      const behind = n > paceTarget() + 1; if (!behind && t < cfg.game && f.hp != null && f.hp < 12) { f.hp = Math.max(f.hp, 4); return; } // (ahead of pace: a close call, not eaten yet)
+      hurt(f, (13 + 9 * k) * (behind ? 1.3 : 1) * (t > cfg.game ? 2 : 1)); // balls: damage (enough bites and they're eaten)
+    },
+    update(dt) {
+      if (!this.zs) this.start();
+      const k = clamp(t / cfg.game, 0, 1), l = alive(), n = l.length, over = t > cfg.game;
+      for (const f of l) if (!f.launch && !f.ret) this.walls(f, f.r);
+      if (winner) return;
+      // more zombies as time goes on (and fast when the battle's behind pace or over time)
+      const behind = n > paceTarget() * 1.15 + 1;
+      if ((this.next -= dt) <= 0) { this.next = (1.6 - 1.1 * k) / (1 + n / 100) * (behind ? .6 : 1) * (over ? .4 : 1); if (this.zs.length < Math.min(90, 6 + n / 3 + (over ? 30 : 0))) this.spawn(); }
+      if ((this.groan -= dt) <= 0) { this.groan = rnd(2.5, 5); SFX.play('groan', { v: .35, p: rnd(.8, 1.2) }); }
+      const zcards = fighters.filter(f => f.zombie && !f.falling), chasers = [...this.zs, ...zcards];
+      const prey = l.filter(f => !f.eaten);
+      // 🧟 every zombie goes for the nearest piece (they mostly leave the drawn winner alone)
+      for (const z of chasers) {
+        const card = !!z.label; z.ph = (z.ph || 0) + dt * 6; z.think = (z.think || 0) - dt;
+        if (!card && z.rise > 0) { z.rise -= dt; continue; } // climbing out of the manhole
+        if (z.think <= 0 || !z.tgt?.alive) { z.think = rnd(.3, .6); let best = null, bd = 1e9; const pool = prey.length > 40 ? Array.from({ length: 30 }, () => pick(prey)) : prey;
+          for (const f of pool) { if (cfg.fair && f === destined && prey.length > 1 && Math.random() < .7) continue; const d = Math.hypot(f.x - z.x, f.y - z.y); if (d < bd) { bd = d; best = f; } } z.tgt = best; }
+        const f = z.tgt, sp = (card ? 120 : z.sp) * (1 + .7 * k) * (behind ? 1.25 : 1) * (over ? 1.6 : 1);
+        if (f) { const dx = f.x - z.x + Math.sin(z.ph * .3) * 25, dy = f.y - z.y + Math.cos(z.ph * .27) * 25, d = Math.hypot(dx, dy) || 1; z.vx += (dx / d * sp - z.vx) * Math.min(1, dt * 3); z.vy += (dy / d * sp - z.vy) * Math.min(1, dt * 3);
+          if (Math.hypot(f.x - z.x, f.y - z.y) < f.r + (card ? z.r : 14) + 4) this.bite(z, f); }
+        else { z.vx *= .95; z.vy *= .95; }
+        z.x += z.vx * dt; z.y += z.vy * dt; this.walls(z, card ? z.r : 12); if (Math.abs(z.vx) > 8) z.face = z.vx > 0 ? 1 : -1;
+      }
+      // zombies don't stand inside each other or inside the pieces
+      eachPair(chasers, (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), m = (a.label ? a.r : 12) + (b.label ? b.r : 12); if (d > 0 && d < m) { const o = (m - d) / 2; a.x -= dx / d * o; a.y -= dy / d * o; b.x += dx / d * o; b.y += dy / d * o; } });
+      // 🏃 everyone runs away from the zombies
+      const R2 = S * 5.5;
+      for (const f of prey) {
+        if (f.launch || f.ret) continue;
+        let ax = 0, ay = 0;
+        for (const z of chasers.length > 120 ? chasers.slice(0, 120) : chasers) { const dx = f.x - z.x, dy = f.y - z.y, d = Math.hypot(dx, dy), m = (z.label ? z.r : 12) + f.r; if (d < m && d > 0) { f.x += dx / d * (m - d); f.y += dy / d * (m - d); } if (d < R2 && d > 0) { ax += dx / d * (1 - d / R2); ay += dy / d * (1 - d / R2); } }
+        const a = Math.hypot(ax, ay); if (a > .05) { f.vx += ax / a * 1000 * dt * Math.min(1, a); f.vy += ay / a * 1000 * dt * Math.min(1, a); f.target = null; f.fear = null; }
+      }
+      if (t > cfg.game + 25 && !winner) suddenDeathNow(); // (safety: never goes on forever)
+    },
+    drawZombie(z) { // 🧟 a shambling zombie, standing up (seen from the front-ish)
+      const X = sx(z.x), Y = sy(z.y), s = S * .042, step = Math.sin(z.ph) , f = z.face || 1, up = z.rise > 0 ? clamp(1 - z.rise / .9, 0, 1) : 1;
+      ctx.save(); ctx.translate(X, Y); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(0, 0, 13 * s, 5 * s, 0, 0, 7); ctx.fill();
+      if (up < 1) { ctx.beginPath(); ctx.rect(-40, -80, 80, 80); ctx.clip(); ctx.translate(0, (1 - up) * 46); }
+      ctx.scale(f * s * 10 / 10, s * 10 / 10); ctx.rotate(.12);
+      ctx.strokeStyle = '#2a2a38'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-4, -16); ctx.lineTo(-6 + step * 5, 0); ctx.moveTo(4, -16); ctx.lineTo(6 - step * 5, 0); ctx.stroke(); // legs
+      ctx.fillStyle = z.shirt; ctx.beginPath(); ctx.moveTo(-9, -36); ctx.lineTo(9, -36); ctx.lineTo(8, -14); ctx.lineTo(4, -17); ctx.lineTo(0, -13); ctx.lineTo(-4, -17); ctx.lineTo(-8, -14); ctx.closePath(); ctx.fill(); // torn shirt
+      const skin = `hsl(${z.hue},32%,52%)`; ctx.strokeStyle = skin; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(6, -33); ctx.lineTo(24, -31 + step * 2); ctx.moveTo(4, -29); ctx.lineTo(22, -26 - step * 2); ctx.stroke(); // arms reaching out
+      ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(2, -44, 9, 0, 7); ctx.fill(); // head
+      ctx.fillStyle = '#ffec6a'; ctx.beginPath(); ctx.arc(5, -46, 2.2, 0, 7); ctx.arc(-1, -46, 1.7, 0, 7); ctx.fill(); ctx.fillStyle = '#300'; ctx.fillRect(1, -40, 7, 2.5); // glowing eyes, mouth
+      ctx.restore();
+    },
+    drawWorld(pre) {
+      if (!this.img) return;
+      if (pre) for (const f of fighters) if (!f.falling) this.walls(f, f.r || 20); // pieces never start on a roof
+      ctx.drawImage(this.img, sx(-this.A - this.P), sy(-this.B - this.P));
+      drawHazardsGround();
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (const L of this.lights || []) { const X = sx(L.x), Y = sy(L.y), gr = ctx.createRadialGradient(X, Y, 4, X, Y, S * 3.2); gr.addColorStop(0, 'rgba(255,220,150,.22)'); gr.addColorStop(1, 'rgba(255,220,150,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(X, Y, S * 3.2, 0, 7); ctx.fill(); } ctx.restore(); // streetlights
+      const items = [...fighters.filter(f => !f.falling).map(f => ({ y: f.y, f })), ...(this.zs || []).map(z => ({ y: z.y, z }))].sort((a, b) => a.y - b.y), ys = new Map();
+      for (const it of items) {
+        if (it.z) { this.drawZombie(it.z); continue; }
+        const f = it.f, cy = drawFighter(f, pre); ys.set(f, cy);
+        if (f.zombie) { const X = sx(f.x), pulse = .5 + .5 * Math.sin(clock * 6 + (f.wob || 0)); ctx.fillStyle = `rgba(90,200,40,${.35 + .15 * pulse})`; ctx.beginPath(); ctx.arc(X, cy, f.r * 1.05, 0, 7); ctx.fill(); ctx.font = `${Math.max(16, f.r * .9) | 0}px serif`; ctx.textAlign = 'center'; ctx.fillText('🧟', X + f.r * .8, cy - f.r * .7); }
+      }
+      const crowd = fighters.length > 50;
+      for (const f of fighters) if (f.alive && !f.falling && (!crowd || f === winner)) drawLabel(f, ys.get(f), pre);
+      for (const f of fighters) if (f.falling && f.fz < 1000) drawFighter(f);
+    },
+    snap() { return { z: (this.zs || []).map(z => ({ ...z, tgt: null })) }; },
+    restore(v) { this.zs = (v?.z || []).map(z => ({ ...z })); },
+    power: { name: 'ZOMBIE HORDE', icon: '🧟', fn() { const m = MAPS.zombies; if (!m.zs) return; for (let i = 0; i < 12; i++) m.spawn(); SFX.play('groan', { v: 1 }); shake = 6; floaters.push({ text: '🧟 THE HORDE IS COMING!', x: CX, y: 210, life: 1.8, color: '#9be05a', clampIt: true, scr: true }); } }
+  },
+  kaiju: {
+    // 🦖 Monster Mash: the pieces fight on the rooftops of a few tall buildings (walls all the way down to the street:
+    // nothing floats). Two giant monsters, made up for Movie Royal, fight each other in the streets: MAGMAW (a lava-rock
+    // lizard) on the left and BRUTOX (a four-armed horned beast) on the right. Their punches, fire breath and tail swipes
+    // smash the rooftops: the part they hit collapses and whoever was on it drops into the building. Alleys between the
+    // buildings are a long way down too.
+    name: 'Monster Mash', icon: '🦖', noCrumble: true, wallScale: 8, rScale: 1.05, K: .55,
+    build(R) { // the city block: 2–3 buildings across, 2 deep, with alleys between them
+      const Rw = R * S * SQ3, A = Rw * 1.18, B = Rw * .66, cols = R >= 11 ? 3 : 2, gap = S * 1.5;
+      const xs = []; for (let i = 1; i < cols; i++) xs.push(-A + 2 * A * i / cols + rnd(-S, S) * 1.5);
+      this.L = { A, B, cols, gap, xs, ys: [rnd(-S, S) * .8] };
+    },
+    shape(q, r, p, R) {
+      const L = MAPS.kaiju.L; if (!L || Math.abs(p.x) > L.A || Math.abs(p.y) > L.B) return null;
+      for (const x of L.xs) if (Math.abs(p.x - x) < L.gap / 2) return null;
+      for (const y of L.ys) if (Math.abs(p.y - y) < L.gap / 2) return null;
+      const col = L.xs.filter(x => p.x > x).length, row = L.ys.filter(y => p.y > y).length;
+      return { nd: 1, top: col * 2 + row, bld: col * 2 + row };
+    },
+    tops: () => [['#6a6e78', '#5a5e68'], ['#3a3c42', '#2e3036'], ['#7a5a4a', '#6a4a3a'], ['#4a6068', '#3a5058'], ['#6a6a5a', '#5a5a4a'], ['#5a4a5e', '#4a3a4e']].map(([c1, c2]) => makeTopP({ c1, c2, specks: ['#fff1', '#0003'], speckN: 10, edge: 'rgba(255,255,255,.10)',
+      deco: g => { if (Math.random() < .14) { g.fillStyle = '#9aa0a8'; g.fillRect(rnd(10, TOP_W - 32), rnd(6, TOP_H - 18), 20, 12); g.fillStyle = '#555'; g.beginPath(); g.arc(rnd(14, TOP_W - 14), rnd(8, TOP_H - 8), 4, 0, 7); g.fill(); } } })),
+    wall: { cols: ['#4a4e5a', '#3a3e4a', '#2a2d36', '#1a1c22'], flat: true, lines: false, windows: true, lip: '#8a8e98', lipH: 4, lit: 'rgba(255,220,140,.05)' },
+    sky(g) {
+      skyGrad(g, [[0, '#1a0a0a'], [.45, '#4a1a10'], [.8, '#8a3a18'], [1, '#c8602a']]); // a burning city at dusk
+      for (let layer = 0; layer < 3; layer++) for (let x = -20; x < W; x += rnd(50, 120)) { const w = rnd(60, 130), h = rnd(220, 520) - layer * 70; g.fillStyle = ['#2a1a1a', '#1e1414', '#140c0c'][layer]; g.fillRect(x, H - h - layer * 20, w, h + layer * 20);
+        for (let wy = H - h - layer * 20 + 14; wy < H - 10; wy += 20) for (let wx = x + 8; wx < x + w - 8; wx += 15) if (Math.random() < .25) { g.fillStyle = pick(['#ffb060', '#ffd080', '#ff7a40']); g.globalAlpha = .5 - layer * .12; g.fillRect(wx, wy, 6, 9); g.globalAlpha = 1; } }
+      for (let i = 0; i < 6; i++) { const x = rnd(W), y = rnd(H * .5, H * .85), gr = g.createRadialGradient(x, y, 10, x, y, rnd(120, 260)); gr.addColorStop(0, 'rgba(255,120,40,.35)'); gr.addColorStop(1, 'rgba(255,120,40,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H); } // fires around the city
+    },
+    clouds: '#5a2a20', fog: ['rgba(255,120,60,.08)', 'rgba(20,8,6,.55)'],
+    afterBuild() { this.mons = null; },
+    start() {
+      const A = this.L.A;
+      this.mons = [{ id: 0, name: 'MAGMAW', x: -A - S * 1.4, y: -this.L.B * .5, side: -1, st: 'idle', stT: 0, lean: 0, hurt: 0, mouth: 0 }, { id: 1, name: 'BRUTOX', x: A + S * 1.4, y: -this.L.B * .5, side: 1, st: 'idle', stT: 0, lean: 0, hurt: 0, mouth: 0 }];
+      this.next = 2.2; this.turn = 0; this.atk = []; this.brawl = 9;
+      floaters.push({ text: '🦖 MONSTERS IN THE CITY!', x: CX, y: 210, life: 2, color: '#ffb060', clampIt: true, scr: true }); SFX.play('roar', { v: .9 });
+    },
+    // pick where to hit: a crowd on the rooftops (mostly not the drawn winner)
+    aim() {
+      const l = alive().filter(f => !f.falling && !f.launch); if (!l.length) return null;
+      let best = null, bs = -1; for (let j = 0; j < 8; j++) { let c = pick(l); if (cfg.fair && c === destined && l.length > 1 && Math.random() < .75) c = pick(l.filter(f => f !== destined)); const sc = l.filter(o => Math.hypot(o.x - c.x, o.y - c.y) < S * 3).length; if (sc > bs) { bs = sc; best = c; } }
+      return best;
+    },
+    attack(kind) {
+      const m = this.mons[this.turn++ % 2], tg = this.aim(); if (!tg) return;
+      kind = kind || pick(['smash', 'smash', 'breath', 'tail']);
+      const r = S * (2.2 + Math.min(1.4, alive().length / 80));
+      if (kind === 'tail') { // a sweep across the edge of the roof nearest the monster
+        const y = tg.y; this.atk.push({ kind, m, x: m.side * this.L.A, y, x1: m.side * (this.L.A - S * 6), u: 0, warn: 1.1, r: S * 1.6 });
+      } else this.atk.push({ kind, m, x: tg.x + rnd(-S, S) * .5, y: tg.y + rnd(-S, S) * .3, r, u: 0, warn: kind === 'breath' ? 1.3 : 1.05 });
+      m.st = 'wind'; m.stT = 0; SFX.play(kind === 'breath' ? 'roar' : 'alert', { v: .7 });
+    },
+    // 💥 the roof breaks: tiles near the hit collapse (never the one the drawn winner stands on)
+    smash(x, y, r, pushK = 1) {
+      const keep = cfg.fair && destined?.alive ? destined : null;
+      for (const tl of tiles) { if (tl.state >= 2) continue; const d = Math.hypot(tl.x - x, (tl.y - y) * 1.15); if (d > r) continue; if (keep && Math.hypot(tl.x - keep.x, tl.y - keep.y) < S * 1.3) continue; tl.crumble = t + d / r * .25; }
+      for (const f of alive()) { const dx = f.x - x, dy = f.y - y, d = Math.hypot(dx, dy); if (d < r * 1.7 && d > 0) { push(f, dx / d * 520 * pushK * (1 - d / (r * 1.7)), dy / d * 520 * pushK * (1 - d / (r * 1.7))); f.vhop = Math.max(f.vhop || 0, 380); hurt(f, 14 * (1 - d / (r * 1.7))); } }
+      const X = sx(x), Y = sy(y); for (let i = 0; i < 40; i++) parts.push({ x: X + rnd(-r, r) * .8, y: Y + rnd(-r, r) * K * .8, vx: rnd(-260, 260), vy: rnd(-420, -80), g: 900, life: rnd(.6, 1.3), max: 1.3, size: rnd(3, 8), color: pick(['#8a8e98', '#5a5e68', '#c8b8a0', '#3a3c42']) });
+      for (let i = 0; i < 14; i++) parts.push({ x: X + rnd(-r, r), y: Y + rnd(-r, r) * K, vx: rnd(-40, 40), vy: rnd(-90, -40), g: -20, life: rnd(1, 2), max: 2, size: rnd(14, 30), color: 'rgba(120,110,100,.35)' }); // dust
+      shake = Math.max(shake, 16); flash = Math.max(flash, .12); flashColor = '#ffb060'; SFX.play('boom'); SFX.play('crumble');
+      if (alive().length < 60) floaters.push({ text: pick(['SMASH!', 'KRAKOOM!', 'CRUMBLE!', 'WHAM!']), x: X, y: Y - 70, life: 1, color: '#ffb060' });
+    },
+    update(dt) {
+      if (!this.mons) this.start();
+      for (const m of this.mons) { m.stT += dt; m.mouth = Math.max(0, m.mouth - dt * 2); m.hurt = Math.max(0, m.hurt - dt); if (m.st !== 'idle' && m.stT > 1.8) m.st = 'idle'; }
+      if (winner) return;
+      const n = alive().length, k = clamp(t / cfg.game, 0, 1), behind = n > paceTarget() * 1.1 + 1;
+      if ((this.next -= dt) <= 0 && this.atk.length < 2) { this.next = (behind ? rnd(2, 3) : rnd(3.4, 5.2)) * (1 - .35 * k) * (t > cfg.game ? .5 : 1); this.attack(); }
+      if ((this.brawl -= dt) <= 0) { // 🦖🥊🦍 the monsters go at each other: the one that gets hit stumbles into a building and knocks a corner off
+        this.brawl = rnd(9, 14); const [a, b] = Math.random() < .5 ? this.mons : [this.mons[1], this.mons[0]];
+        a.st = 'strike'; a.stT = 0; a.mouth = 1; b.st = 'hurt'; b.stT = 0; b.hurt = 1; SFX.play('roar', { v: 1, p: a.id ? .8 : 1.1 }); SFX.play('punch'); shake = Math.max(shake, 10);
+        floaters.push({ text: `${a.name} HITS ${b.name}!`, x: CX, y: 200, life: 1.6, color: '#ffd080', clampIt: true, scr: true });
+        const edge = tiles.filter(tl => tl.state < 2 && Math.sign(tl.x) === b.side && Math.abs(tl.x) > this.L.A - S * 2.5);
+        if (edge.length) { const c = pick(edge); this.smash(c.x, c.y, S * 2.4, .7); }
+      }
+      for (const a of this.atk) {
+        a.u += dt; const m = a.m;
+        if (a.u >= a.warn && !a.hit) { a.hit = true; m.st = 'strike'; m.stT = 0;
+          if (a.kind === 'smash') this.smash(a.x, a.y, a.r);
+          else if (a.kind === 'breath') { m.mouth = 1.6; a.burn = t + 1.2; for (const f of alive()) { const d = Math.hypot(f.x - a.x, f.y - a.y); if (d < a.r * 1.3) hurt(f, 22 * (1 - d / (a.r * 1.3))); } SFX.play('fire'); }
+          else if (a.kind === 'tail') { const dir = -m.side; for (const f of alive()) if (Math.abs(f.y - a.y) < S * 2.2 && Math.sign(f.x) === m.side && Math.abs(f.x) > this.L.A - S * 6.5) { push(f, dir * -1 * 700, rnd(-120, 120)); f.vhop = 420; hurt(f, 12); } // swept off the roof
+            for (const tl of tiles) if (tl.state < 2 && Math.abs(tl.y - a.y) < S * 1.4 && Math.sign(tl.x) === m.side && Math.abs(tl.x) > this.L.A - S * 2.2 && !(cfg.fair && destined && Math.hypot(tl.x - destined.x, tl.y - destined.y) < S * 1.3)) tl.crumble = t + rnd(0, .3);
+            shake = Math.max(shake, 12); SFX.play('whoosh'); SFX.play('crumble'); }
+        }
+        if (a.kind === 'breath' && a.burn && t >= a.burn && !a.burnt) { a.burnt = true; this.smash(a.x, a.y, a.r * .85, .4); } // the roof burnt through
+      }
+      this.atk = this.atk.filter(a => a.u < a.warn + (a.kind === 'breath' ? 1.8 : .8));
+      if (t > cfg.game + 15 && !winner) suddenDeathNow(); // (safety)
+    },
+    // the monsters stand in the streets behind the buildings (drawn before the rooftops)
+    drawUnder() { for (const m of this.mons || this.idleMons()) this.drawMon(m); },
+    idleMons() { if (!this.L) return []; const A = this.L.A; return [{ id: 0, x: -A - S * 1.4, y: -this.L.B * .5, side: -1, st: 'idle', stT: 0, mouth: 0, hurt: 0 }, { id: 1, x: A + S * 1.4, y: -this.L.B * .5, side: 1, st: 'idle', stT: 0, mouth: 0, hurt: 0 }]; },
+    drawMon(m) {
+      const X = sx(m.x), Y = sy(m.y), sc = 2.0, f = -m.side; // f = which way it faces (toward the middle)
+      const bob = Math.sin(clock * 1.6 + m.id * 2) * 6, lean = m.st === 'wind' ? -.12 : m.st === 'strike' ? .22 * Math.max(0, 1 - m.stT * 1.5) : m.st === 'hurt' ? -.25 * Math.max(0, 1 - m.stT) : 0;
+      ctx.save(); ctx.translate(X, Y + 90 + bob); ctx.scale(f * sc, sc); ctx.rotate(lean);
+      if (m.id === 0) { // 🦖 MAGMAW: a lava-rock lizard (charcoal hide, glowing orange cracks, a nose horn)
+        ctx.fillStyle = '#2a2624'; ctx.beginPath(); ctx.moveTo(-60, 20); ctx.quadraticCurveTo(-120, 40, -150, 10 + Math.sin(clock * 2) * 8); ctx.quadraticCurveTo(-110, 0, -50, -10); ctx.fill(); // tail
+        ctx.beginPath(); ctx.ellipse(0, -60, 48, 85, 0, 0, 7); ctx.fill(); // body
+        ctx.fillStyle = '#3a3430'; ctx.beginPath(); ctx.ellipse(10, -60, 30, 70, 0, 0, 7); ctx.fill(); // belly
+        ctx.strokeStyle = '#ff7a1a'; ctx.lineWidth = 3; ctx.shadowColor = '#ff7a1a'; ctx.shadowBlur = GFX.quality === 'low' ? 0 : 12; for (const [x0, y0, x1, y1] of [[-30, -120, -10, -80], [-20, -60, 10, -30], [-35, -20, -15, 10], [15, -110, 30, -85]]) { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo((x0 + x1) / 2 + 6, (y0 + y1) / 2); ctx.lineTo(x1, y1); ctx.stroke(); } ctx.shadowBlur = 0;
+        ctx.fillStyle = '#2a2624'; ctx.beginPath(); ctx.ellipse(28, -110, 14, 30, .6, 0, 7); ctx.fill(); // arm
+        ctx.save(); ctx.translate(20, -150); // head
+        ctx.beginPath(); ctx.ellipse(18, 0, 42, 26, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#1a1614'; ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(58, 6 + m.mouth * 22); ctx.lineTo(10, 22 + m.mouth * 10); ctx.fill(); // jaw
+        if (m.mouth > 0) { ctx.fillStyle = '#ff5a1a'; ctx.beginPath(); ctx.ellipse(40, 12 + m.mouth * 6, 14, 6 + m.mouth * 6, 0, 0, 7); ctx.fill(); }
+        ctx.fillStyle = '#d8c8a8'; ctx.beginPath(); ctx.moveTo(48, -12); ctx.lineTo(70, -34); ctx.lineTo(56, -6); ctx.fill(); // nose horn
+        ctx.fillStyle = '#ffd020'; ctx.beginPath(); ctx.arc(26, -8, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillRect(25, -12, 2, 8); ctx.restore();
+      } else { // 🦍 BRUTOX: a four-armed horned beast (purple fur, curled horns, tusks, glowing blue eyes)
+        ctx.fillStyle = '#4a3a6a'; ctx.beginPath(); ctx.ellipse(0, -70, 60, 90, 0, 0, 7); ctx.fill(); // body
+        ctx.fillStyle = '#6a5a8a'; ctx.beginPath(); ctx.ellipse(12, -60, 32, 60, 0, 0, 7); ctx.fill(); // chest
+        ctx.strokeStyle = '#3a2a5a'; ctx.lineWidth = 3; for (let i = 0; i < 12; i++) { const a = i * .5; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 50, -70 + Math.sin(a) * 80); ctx.lineTo(Math.cos(a) * 58, -70 + Math.sin(a) * 88); ctx.stroke(); } // fur
+        ctx.fillStyle = '#4a3a6a'; const sw = m.st === 'strike' ? 1 : Math.sin(clock * 2 + 1) * .2; for (const [y, a] of [[-120, -.6 - sw * .8], [-80, -.2 - sw * .5]]) { ctx.save(); ctx.translate(30, y); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(30, 0, 34, 13, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#5a4a7a'; ctx.beginPath(); ctx.arc(64, 0, 15, 0, 7); ctx.fill(); ctx.fillStyle = '#4a3a6a'; ctx.restore(); } // four arms
+        ctx.save(); ctx.translate(14, -165); ctx.beginPath(); ctx.ellipse(0, 0, 34, 30, 0, 0, 7); ctx.fill(); // head
+        ctx.strokeStyle = '#c8b898'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(-14, -22, 18, Math.PI * .9, Math.PI * 2.1); ctx.stroke(); ctx.beginPath(); ctx.arc(18, -24, 16, Math.PI * .9, Math.PI * 2.1); ctx.stroke(); // curled horns
+        ctx.fillStyle = '#2a1a3a'; ctx.beginPath(); ctx.ellipse(16, 14 + m.mouth * 6, 16, 6 + m.mouth * 8, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#f0e8d8'; ctx.beginPath(); ctx.moveTo(4, 12); ctx.lineTo(8, 28); ctx.lineTo(12, 12); ctx.moveTo(22, 12); ctx.lineTo(26, 28); ctx.lineTo(30, 12); ctx.fill(); // mouth + tusks
+        ctx.fillStyle = '#7ad8ff'; ctx.shadowColor = '#7ad8ff'; ctx.shadowBlur = GFX.quality === 'low' ? 0 : 10; ctx.beginPath(); ctx.arc(6, -6, 5, 0, 7); ctx.arc(24, -6, 5, 0, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.restore();
+      }
+      if (m.hurt > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,80,60,${m.hurt * .3})`; ctx.beginPath(); ctx.ellipse(0, -90, 90, 130, 0, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
+      ctx.restore();
+    },
+    // attacks: the warning on the roof, then the fist / fire / tail (drawn in front)
+    drawOver() {
+      for (const a of this.atk || []) {
+        const m = a.m, X = sx(a.x), Y = sy(a.y), shX = sx(m.x) - m.side * 60, shY = sy(m.y) + 90 - 120 * 2;
+        if (a.u < a.warn) { const p = .35 + .3 * Math.sin(clock * 18); ctx.strokeStyle = `rgba(255,70,40,${p + .3})`; ctx.fillStyle = `rgba(255,70,40,${.1 + .15 * a.u / a.warn})`; ctx.lineWidth = 4; ctx.setLineDash([14, 10]);
+          if (a.kind === 'tail') { const x0 = Math.min(sx(a.x), sx(a.x1)), x1 = Math.max(sx(a.x), sx(a.x1)); ctx.beginPath(); ctx.rect(x0, Y - S * 1.6 * K, x1 - x0, S * 3.2 * K); ctx.fill(); ctx.stroke(); }
+          else { ctx.beginPath(); ctx.ellipse(X, Y, a.r, a.r * K, 0, 0, 7); ctx.fill(); ctx.stroke(); } ctx.setLineDash([]); continue; }
+        const e = a.u - a.warn;
+        if (a.kind === 'smash' && e < .55) { // the giant fist comes down
+          const k = e < .12 ? e / .12 : 1 - (e - .12) / .43, fx = shX + (X - shX) * k, fy = shY + (Y - 40 - shY) * k;
+          ctx.strokeStyle = m.id ? '#4a3a6a' : '#2a2624'; ctx.lineCap = 'round'; ctx.lineWidth = 46; ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(fx, fy); ctx.stroke();
+          ctx.fillStyle = m.id ? '#5a4a7a' : '#3a3430'; ctx.beginPath(); ctx.arc(fx, fy, 48, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 3; for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(fx - 30, fy + i * 14); ctx.lineTo(fx + 30, fy + i * 14); ctx.stroke(); }
+        }
+        if (a.kind === 'breath' && e < 1) { // a roaring stream of fire from the monster's mouth
+          const mx = sx(m.x) - m.side * 100, my = sy(m.y) + 90 - 150 * 2; ctx.save(); ctx.globalCompositeOperation = 'lighter';
+          for (let i = 0; i < 18; i++) { const u = ((clock * 3 + i / 18) % 1), x = mx + (X - mx) * u + Math.sin(clock * 20 + i) * 10, y = my + (Y - my) * u + Math.cos(clock * 17 + i) * 10, rr = 10 + u * 34; const gr = ctx.createRadialGradient(x, y, 2, x, y, rr); gr.addColorStop(0, 'rgba(255,240,160,.9)'); gr.addColorStop(.5, 'rgba(255,120,30,.6)'); gr.addColorStop(1, 'rgba(255,40,0,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rr, 0, 7); ctx.fill(); }
+          ctx.restore(); }
+        if (a.kind === 'breath' && a.burn && !a.burnt) { ctx.fillStyle = `rgba(255,90,20,${.3 + .2 * Math.sin(clock * 20)})`; ctx.beginPath(); ctx.ellipse(X, Y, a.r, a.r * K, 0, 0, 7); ctx.fill(); } // the roof glowing, about to give way
+        if (a.kind === 'tail' && e < .5) { const k = e / .5, tx = sx(a.x) + (sx(a.x1) - sx(a.x)) * k; ctx.strokeStyle = m.id ? '#4a3a6a' : '#2a2624'; ctx.lineCap = 'round'; ctx.lineWidth = 40; ctx.beginPath(); ctx.moveTo(sx(m.x), sy(m.y) + 40); ctx.quadraticCurveTo(sx(a.x), Y - 60, tx, Y); ctx.stroke(); }
+      }
+    },
+    snap() { return { a: (this.atk || []).map(a => ({ ...a, m: a.m.id })), m: (this.mons || []).map(m => ({ ...m })) }; },
+    restore(v) { if (!v) return; this.mons = v.m.map(m => ({ ...m })); this.atk = v.a.map(a => ({ ...a, m: this.mons[a.m] })); },
+    power: { name: 'MONSTER STOMP', icon: '🦖', fn() { const m = MAPS.kaiju; if (!m.mons) return; m.attack('smash'); m.next = .6; m.atk[m.atk.length - 1] && (m.atk[m.atk.length - 1].warn = .7); } }
   },
   warfield: {
     // ⚔️ Battlefield: every piece starts on the left. An army of knights, cavalry and archers comes from the right.
@@ -2568,7 +2938,7 @@ function spawnSpot(r, others = fighters) {
   return best || { x: rnd(-100, 100), y: rnd(-100, 100) };
 }
 function resetFighter(f) {
-  Object.assign(f, { hp: null, vx: 0, vy: 0, alive: true, falling: false, wrecked: null, finished: false, spinUntil: 0, fz: 0, vz: 0, saves: 0, safeUntil: 0, lastLucky: -9, think: rnd(.3), dashCd: rnd(1, 3), dashing: 0, target: null, hop: 0, vhop: 0 });
+  Object.assign(f, { hp: null, vx: 0, vy: 0, alive: true, falling: false, zombie: false, wrecked: null, finished: false, spinUntil: 0, fz: 0, vz: 0, saves: 0, safeUntil: 0, lastLucky: -9, think: rnd(.3), dashCd: rnd(1, 3), dashing: 0, target: null, hop: 0, vhop: 0 });
 }
 /** Keep pieces that are already on the cliff where they are, drop new ones in, poof removed ones. */
 function syncFighters(list) {
@@ -2641,7 +3011,7 @@ function hurt(f, dmg) {
   if (keep) { f.hp = 1; return; }
   f.hp = MAP.cars ? CARS.hpMax(f) * .3 : null; // (back to full if it dodges; a bus keeps its dents)
   window.__koN = (window.__koN || 0) + 1;
-  blastOrDodge(f, '#ff4f6d', MAP.cars ? pick(['WRECKED!', 'TOTALED!', 'SMOKED!']) : 'K.O.!');
+  blastOrDodge(f, '#ff4f6d', MAP.koText ? MAP.koText() : MAP.cars ? pick(['WRECKED!', 'TOTALED!', 'SMOKED!']) : 'K.O.!');
 }
 
 const CROWD_CELL = 70; let crowd = new Map();
@@ -2725,6 +3095,7 @@ function blastOrDodge(f, col = '#ffb347', what = 'BOOM!') {
 function fall(f) {
   if (!f.alive || f.falling) return; // already out: never count (or list) the same piece twice
   if (MAP.cars) return wreckCar(f);
+  if (MAP.zombify && !winner && MAP.zombify(f)) return; // 🧟 Zombie Horde: a knocked-out card turns into a zombie instead
   if (!winner && f.shield > 0) { const tl = nearestLand(f); if (tl && useShield(f)) { hopTo(f, tl, false); return; } }
   if (!f.noLuck && MAP.onFall?.(f)) return; // e.g. Final Stage: fly off screen, maybe fly back in
   if (!f.noLuck && luckSave(f)) return;
@@ -3843,7 +4214,7 @@ function runStep(dt) { // one step of a running battle
     if (cfg.fun?.swappy && !winner && (funSwap = (funSwap ?? rnd(6, 9)) - dt) <= 0) { funSwap = rnd(8, 12); runEvent({ event: 'swap', by: { name: '🎉 FUN MODE' }, source: 'fun' }); } // 🔀 everyone swaps places every so often
     SFX.setIntensity(t / cfg.game);
     const rs = Math.ceil(cfg.game - t); if (rs !== lastTick && rs <= 5 && rs > 0) { lastTick = rs; SFX.play('final5'); }
-    if (!winner && !suddenDeath && !cfg.fun?.noShowdown && !MAP.ownEnd && alive().length === 2 && fighters.length > 2 && t < cfg.game - 5) startSuddenDeath(true); // 2 left early: FINAL SHOWDOWN (no long hop-around)
+    if (!winner && !suddenDeath && !cfg.fun?.noShowdown && !MAP.ownEnd && !MAP.noShowdown && alive().length === 2 && fighters.length > 2 && t < cfg.game - 5) startSuddenDeath(true); // 2 left early: FINAL SHOWDOWN (no long hop-around)
     if (!winner && !suddenDeath && !MAP.noPaceChaos && cfg.pacer > 0 && t > cfg.game * .35 && t < cfg.game - 3 && alive().length > paceTarget() * (2.2 - cfg.pacer / 100) + 1 && (paceNext -= dt) <= 0) { paceNext = rnd(3.5, 5.5) * (1.5 - cfg.pacer / 200); runEvent({ event: 'random', by: { name: '⚡ ARENA' }, source: 'pace' }); } // behind pace: the arena livens it up
     if (!winner && !MAP.ownEnd && (t >= cfg.game || suddenDeath)) { if (!suddenDeath) startSuddenDeath(); else stepSuddenDeath(dt); }
 }

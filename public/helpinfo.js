@@ -8,6 +8,11 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx, sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
 // ───────── top bar ─────────
+H(/^tip:run a monster mash ball battle/i, '🦖 Monster Mash (balls)', 'A practice ball battle on Monster Mash: two giant monsters fight in the streets; their punches, fire breath and tail swipes smash the rooftops, and that part of the building collapses.');
+H(/^tip:run a monster mash card battle/i, '🦖 Monster Mash (cards)', 'A pretend card battle on Monster Mash. Your Card pool doesn\'t change.');
+H(/^tip:run a hero city test/i, '🦸 Hero City test', 'A practice battle on Hero City, with all five villains: the robot fist, the laser drone, Gloom, 🏗️ Wrecker\'s wrecking ball and 💣 Bombshell\'s bombs.');
+H(/^tip:run a zombie horde ball battle/i, '🧟 Zombie Horde (balls)', 'A practice ball battle on Zombie Horde: zombies come out of the manholes and the street ends and chase everyone. Balls that get bitten take damage; too many bites and they\'re eaten.');
+H(/^tip:run a zombie horde card battle/i, '🧟 Zombie Horde (cards)', 'A pretend card battle on Zombie Horde: a card that gets bitten is INFECTED: it\'s out, but it stays on the map as a zombie and chases the others. Your Card pool doesn\'t change.');
 H(/^tip:turn this one power-up on or off/i, '💜 One power-up on/off', 'Ticked = chat can buy this power-up with channel points during a fun chat battle. Unticked = its reward stays paused on Twitch and redeeming it does nothing. 🛡️ Shield saves them once · 💪 Mega ball is big and heavy · ⚡ Turbo is faster · 👻 Ghost can\'t be bumped for the first 10 seconds · 🦔 Spiky hurts whoever bumps it · 🧲 Magnet pulls everyone close.');
 H(/^tip:turn every wacky effect off/i, '✕ All wacky off', 'Turns every wacky effect off for chat battles.');
 H(/^tip:try a pretend chat battle with what/i, '🧪 Try it', 'Runs a pretend chat battle with 10 made-up players: the wacky effects you ticked are on, and half of them have a power-up (only the ones ticked). Your real chat battle isn\'t touched.');
