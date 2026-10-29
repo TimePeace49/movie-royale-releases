@@ -147,5 +147,4 @@ No look-alikes of real characters/brands (declined a Homer Simpson donut monster
 - Updates: the app installs only latest releases unless "Also install test builds" is on. Old versions can be installed from Settings.
 - The pinned Discord message links Derek's ideas doc (setting `ideasDoc`).
 
-## Open question
-Derek asked: "don't show chat on screen except during redemption on battles." Unclear whether he means the wheel posting in Twitch chat, or something he saw on the overlay. Ask him.
+- Derek once said "don't show chat on screen except during redemption on battles"; later he said to ignore that rule (don't act on it).
