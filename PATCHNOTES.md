@@ -3,6 +3,59 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.46.0: What's new
+Everything since 1.39.1.
+
+**🗺️ New ball maps (they work for card battles too)**
+- **🧟 Zombie Horde:** city streets at night. Zombies chase everyone; balls take bites, and bitten cards turn into zombies that keep chasing. Nobody falls off.
+- **🦖 Monster Mash:** a rooftop fight while two giant monsters smash the buildings, and the parts they hit collapse.
+- **🔮 Elemental Wizards:** four wizards on giant corner pillars cast 🔥 fireballs, 🌊 tidal waves, 🪨 boulders and ❄️ ice (frozen pieces shatter if they're still frozen when it wears off).
+- **🌋 Pompeii:** a long town running downhill to the sea. The lava chases everyone down the streets, just a bit faster than they can run, and the screen scrolls down with the chase. Buildings block everyone. Last one left wins.
+- **🦸 Hero City:** two new villains, a wrecking ball and a bomber jet.
+
+**🎉 Holiday maps (they come up any time of year)**
+- 🎃 **Haunted Graveyard:** ghosts scare pieces into running for the edge, and jack-o'-lanterns drop and explode.
+- 🦃 **Turkey Trouble:** evil turkeys peck everyone toward the edge, plus turkey trot stampedes.
+- 🎅 **Santa's Workshop:** evil reindeer stampedes, and a giant evil Santa with eye lasers.
+- 🎆 **New Year's Eve:** rockets burst on the pieces, and the giant ball drops and smashes a hole in the roof.
+- 💘 **Heartbreak Island:** evil cupids shoot arrows, and halfway through the heart breaks in two.
+- ☘️ **Leprechaun Hills:** evil leprechauns kick pieces off, and a rainbow beam blasts across.
+- 🐰 **Bunny Rampage:** a giant evil bunny stomps around, and painted eggs explode.
+- 🎇 **Fourth of July:** bottle rockets skitter across the ground, and firecracker strings go pop-pop-pop.
+
+**🃏 New card map: 🪖 WW2 Battlefield**
+- Every pack has a rifle. Two tanks shell the field, and bombers drop bombs (crosshairs and shadows show where). The last two get a one-on-one shootout.
+
+**🌐 IMDb / Rotten Tomatoes battles ("the 500 worst movies")**
+- **+ New battle → 🌐 IMDb / Rotten Tomatoes.** Tick the ready-made worst-movie lists or paste your own links, and pick how many (500 by default).
+- It skips movies that aren't in English, movies already on the Discord list, and movies you've watched or rated, then keeps going until it has the full amount. 🔄 Update reads the lists again later.
+
+**👀 Watch luck (per battle, off by default)**
+- The more someone watches your stream, the more luck they get in that battle. Every 10 hours watched = +1% luck, and both numbers can be changed. Turn it on in the battle's settings.
+
+**💜 Chat battle fun mode**
+- Chat buys power-ups with channel points only, and each power-up has its own on/off box. New power-ups: 👻 Ghost, 🦔 Spiky and 🧲 Magnet.
+- New wacky effects: 🧊 Slippery, 🔀 Swap-o-rama, 💨 Speedy and 👀 Googly eyes.
+- The fun mode box is right under the Chat battle box.
+
+**🚌 Bus maps**
+- Figure 8 Race buses steer around wrecks instead of plowing into them. Wrecks stay put, and both bus maps run faster.
+
+**☠️ Doomsday**
+- Your mic and camera stay off until the stream has really ended, then come back on by themselves.
+- You can test the whole thing for real from the Test tab. While you're live, there's a big warning first that you can only confirm after 5 seconds.
+
+**↺ Map tags**
+- Reset the 🔴 NEW / 🔵 UPDATED tags, all of them or one map at a time: Settings → Game.
+
+**🧪 Test tab**
+- **Quick test lab** at the top:
+  - Pick ball or card battle, the map, and lots of options.
+  - It plays right there on that page, never on stream.
+  - Fast-forward and chaos buttons included.
+- Tests take you to the right tab, and the 📺 Preview and 💬 Test chat buttons are on every part of the Test tab.
+- The card pool's game check boxes are gone: every pack fights.
+
 ## v1.39.1: What's new
 Everything since 1.38.1.
 

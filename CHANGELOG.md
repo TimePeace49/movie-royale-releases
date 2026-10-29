@@ -2,7 +2,7 @@
 
 What changed in each version of Movie Royal. Newest first.
 
-## 1.46.0 (test build)
+## 1.46.0 (latest release)
 - 🌐 **IMDb / Rotten Tomatoes battles** ("the 500 worst movies"): **+ New battle → 🌐 IMDb / Rotten Tomatoes**.
   - Tick the ready-made lists (🍅 Rotten Tomatoes' 100 worst movies of all time, 🎬 IMDb's lowest rated movies with 10,000+ votes, 🎬 IMDb Bottom 100) and/or paste your own IMDb or Rotten Tomatoes links. They're read in order.
   - Pick how many movies (500 by default).
