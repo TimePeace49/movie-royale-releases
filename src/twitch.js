@@ -325,7 +325,7 @@ export async function listRewards() {
 export async function listAllRewards() { // every reward on the channel, including ones made by hand on Twitch (Movie Royal can't pause those)
   if (!status.userId) throw new Error('Sign in with Twitch first');
   const j = await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}`);
-  return (j.data || []).map(r => ({ id: r.id, title: r.title, paused: r.is_paused, enabled: r.is_enabled, cost: r.cost }));
+  return (j.data || []).map(r => ({ id: r.id, title: r.title, paused: r.is_paused, enabled: r.is_enabled, cost: r.cost, prompt: r.prompt || '', input: !!r.is_user_input_required, skip: !!r.should_redemptions_skip_request_queue, color: r.background_color }));
 }
 export async function updateReward(id, { title, cost, enabled, cooldown, paused }) {
   const body = {};

@@ -124,7 +124,7 @@ function applySettings(p) {
 function muteCheck() {
   setTimeout(() => { // (wait a moment: going from one Movie Royal window to another isn't leaving the app)
     const mute = prefs.muteUnfocused !== false && !BrowserWindow.getFocusedWindow();
-    for (const w of BrowserWindow.getAllWindows()) { try { if (!w.isDestroyed() && w.webContents.isAudioMuted() !== mute) w.webContents.setAudioMuted(mute); } catch {} }
+    for (const w of BrowserWindow.getAllWindows()) { try { if (!w.isDestroyed() && !w.__celebrate && w.webContents.isAudioMuted() !== mute) w.webContents.setAudioMuted(mute); } catch {} }
   }, 150);
 }
 app.on('browser-window-focus', muteCheck);
@@ -194,6 +194,14 @@ app.whenReady().then(async () => {
     applySettings,
     windowAction: a => { const w = win; if (!w || w.isDestroyed()) return; if (a === 'min') w.minimize(); else if (a === 'close') w.close(); else if (['window', 'borderless', 'fullscreen'].includes(a)) setWindowMode(a); },
     openPath: p => shell.openPath(p),
+    // 🎉 Viewer's choice: confetti + a big pop-up over whatever you're using, on the screen your mouse is on (clicks go through it; it doesn't take your keyboard)
+    celebrate: url => {
+      const { screen } = require('electron'), d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()), b = d.bounds;
+      const w = new BrowserWindow({ x: b.x, y: b.y, width: b.width, height: b.height, transparent: true, frame: false, resizable: false, movable: false, focusable: false, skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, backgroundColor: '#00000000', webPreferences: { autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } });
+      w.__celebrate = true; w.setAlwaysOnTop(true, 'screen-saver'); w.setIgnoreMouseEvents(true); w.setVisibleOnAllWorkspaces?.(true);
+      w.loadURL(url).then(() => { if (!w.isDestroyed()) { w.showInactive(); w.webContents.setAudioMuted(false); } }).catch(() => {});
+      setTimeout(() => { if (!w.isDestroyed()) w.destroy(); }, 11500);
+    },
     fatal: msg => { dialog.showErrorBox('Movie Royal', msg); app.quit(); },
     ready: url => { if (started) return; started = true; readyUrl = url; makeTray(); createWindow(); reopenBackup(); }
   };

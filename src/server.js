@@ -142,7 +142,7 @@ function publicState() {
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, phaseAt: live.phaseAt || 0, recentChatters: recentChatters(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
     maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
-    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(annState()).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null, kind: a?.kind || null }])), annKind: annKind(), cards: cards.stateFor(), capture: { on: !!live.capture, error: live.captureError || null, size: Number(db.settings.capSize) || 30, autoHide: !!db.settings.capAutoHide, window: db.settings.capWindow || '' }, announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
+    rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, vrSetup: db.vrSetup || null, choiceObs: !!db.settings.choiceObs, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(annState()).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null, kind: a?.kind || null }])), annKind: annKind(), cards: cards.stateFor(), capture: { on: !!live.capture, error: live.captureError || null, size: Number(db.settings.capSize) || 30, autoHide: !!db.settings.capAutoHide, window: db.settings.capWindow || '' }, announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
 }
@@ -276,6 +276,7 @@ function rewardWants() {
   for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false);
   if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
   if (st.raidOn !== false && st.raidTitle) want[st.raidTitle.toLowerCase()] = !(db.live && !stream().raidUsed); // 🚀 while you're live, until someone redeems it
+  for (const k of Object.keys(VR)) want[vrTitle(k).toLowerCase()] = false; // 💧🙆🎩🎉 always on in the menu
   for (const [t, m] of Object.entries(db.rewardModes || {})) { if (m === 'off') want[t] = true; else if (m === 'on' || m === 'once') want[t] = false; } // 💰 your override (Settings → Rewards & prices) beats the rules
   return want;
 }
@@ -418,6 +419,7 @@ const twitchHandlers = {
   },
   async redeemNow(r) {
     if (db.settings.raidOn !== false && db.settings.raidTitle && r.title.toLowerCase() === db.settings.raidTitle.toLowerCase()) return raidRedeem(r); // 🚀
+    { const k = vrKind(r.title); if (k) return vrRedeem(k, r); } // 💧🙆🎩🎉 viewer rewards
     if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
     if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
     if (db.settings.pointsOn === false) return; // channel point chaos switched off
@@ -443,6 +445,7 @@ const twitchHandlers = {
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
+    if (hatChat(m)) return; // 🎩 picking a hat
     wheel.wheelChat(m); // 🎡 !respin / !spins
     moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); chatCall(m); helpChatCommand(m); giveawayChat(m);
     if (newFace) pushState(); // keeps "Recent chatters" in the control panel up to date
@@ -620,6 +623,7 @@ wss.on('connection', (ws, req) => {
   ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control';
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
+  if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
@@ -946,6 +950,77 @@ app.post('/api/raid/start', async (req, res) => {
   try { await twitch.startRaid(t.id); live.raid.started = Date.now(); twitch.say(`🚀 RAID! We're heading to ${t.name}: twitch.tv/${t.login} 💜`).catch(() => {}); pushState(); res.json({ ok: true, target: t }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
+// 💧🙆🎩🎉 viewer rewards: Hydrate, Stretch, Pick a hat, Viewer's choice. Always on in the channel points menu.
+// Set up once you're signed in (and with "Set up again" on Settings → Rewards & prices): a reward you already have keeps its name and price
+// (Movie Royal deletes its own old one and makes it again; one made by hand on Twitch can only be deleted on Twitch, and still works meanwhile).
+const VR = {
+  hydrate: { re: /hydrat/i, title: '💧 Hydrate!', cost: 300, prompt: 'Remind the streamer to drink some water!', color: '#3FA9F5' },
+  stretch: { re: /stretch/i, title: '🙆 Stretch!', cost: 300, prompt: 'Time for the streamer to stretch!', color: '#4CC77A' },
+  hat: { re: /\bhats?\b/i, title: '🎩 Pick a hat', cost: 1000, prompt: 'Pick a hat for the streamer! After you redeem, type the number or the name of a hat in chat.', color: '#B07AF5' },
+  choice: { re: /viewer.?s?.?\s*choice/i, title: "🎉 Viewer's Choice", cost: 5000, prompt: 'You get to choose! Type what you choose.', color: '#FFB020', input: true }
+};
+const HATS_DEFAULT = 'Cowboy hat\nTop hat\nWizard hat\nPirate hat\nBaseball cap\nBeanie\nParty hat\nCrown';
+const vrTitle = k => db.settings.vrTitles?.[k] || VR[k].title;
+const vrKind = title => Object.keys(VR).find(k => vrTitle(k).toLowerCase() === String(title || '').toLowerCase()) || null;
+const hats = () => String(db.settings.hatList || HATS_DEFAULT).split('\n').map(x => x.trim()).filter(Boolean).slice(0, 30);
+async function vrSetup() {
+  const all = await twitch.listAllRewards(), mine = new Set((await twitch.listRewards()).map(r => r.id)), out = {};
+  db.settings.vrTitles ||= {}; db.settings.vrCosts ||= {};
+  for (const [k, d] of Object.entries(VR)) {
+    const olds = all.filter(r => d.re.test(r.title) && !Object.entries(VR).some(([k2, d2]) => k2 !== k && vrTitle(k2).toLowerCase() === r.title.toLowerCase())), o = { removed: [], byHand: [], made: false };
+    const old = olds.find(r => !mine.has(r.id)) || olds[0], title = old?.title || db.settings.vrTitles[k] || d.title, cost = old?.cost || db.settings.vrCosts[k] || d.cost;
+    db.settings.vrTitles[k] = title; db.settings.vrCosts[k] = cost; o.title = title; o.cost = cost;
+    for (const r of olds) { if (mine.has(r.id)) { await twitch.deleteReward(r.id).catch(() => {}); o.removed.push(`${r.title} (${r.cost})`); } else o.byHand.push({ title: r.title, cost: r.cost }); }
+    if (!o.byHand.length) o.made = await twitch.createReward({ title, cost, prompt: old?.prompt || d.prompt, color: old?.color || d.color, input: old ? old.input : !!d.input, queue: old ? !old.skip : false }).catch(e => { o.error = e.message; return false; });
+    out[k] = o;
+  }
+  db.vrSetup = { at: Date.now(), ...out }; save(); rewardKey = ''; syncRewards().catch(() => {}); pushState();
+  return out;
+}
+setInterval(() => { if (twitch.status.userId && !db.vrSetup && !vrSetup.busy) { vrSetup.busy = true; vrSetup().catch(e => console.error('[twitch] viewer rewards:', e.message)).finally(() => { vrSetup.busy = false; }); } }, 30000);
+function vrRedeem(kind, r) {
+  const name = r.name || r.login || 'Someone';
+  if (kind === 'hydrate' || kind === 'stretch') return broadcast({ type: 'vrPop', kind, name }, 'control'); // the pop-up + sound in the app (only if it's the window you're on)
+  if (kind === 'hat') {
+    const list = hats(); live.hat = { by: r.login, name, at: Date.now(), list };
+    let msg = `🎩 @${name} pick a hat! Type the number or the name: `; for (let i = 0; i < list.length; i++) { const add = `${i + 1}. ${list[i]}${i < list.length - 1 ? ' · ' : ''}`; if ((msg + add).length > 480) break; msg += add; }
+    twitch.say(msg).catch(() => {});
+    broadcast({ type: 'toast', text: `🎩 ${name} redeemed Pick a hat: waiting for them to pick in chat` }, 'control'); return;
+  }
+  if (kind === 'choice') return celebrate({ name, input: String(r.input || '').slice(0, 200), login: r.login });
+}
+function hatChat(m) {
+  const h = live.hat; if (!h || m.login !== h.by) return false;
+  if (Date.now() - h.at > 5 * 60000) { live.hat = null; return false; }
+  const t = String(m.text || '').trim().replace(/^#/, ''), n = Number(t.match(/^\d+/)?.[0]);
+  const pick = n >= 1 && n <= h.list.length ? h.list[n - 1] : h.list.find(x => x.toLowerCase() === t.toLowerCase()) || h.list.find(x => t.length >= 3 && x.toLowerCase().includes(t.toLowerCase()));
+  if (!pick) return false;
+  live.hat = null;
+  twitch.say(`🎩 @${m.name} picked the ${pick}! ${streamerName()} is putting it on 😎`).catch(() => {});
+  broadcast({ type: 'vrPop', kind: 'hat', name: m.name, hat: pick }, 'control');
+  return true;
+}
+// 🎉 Viewer's choice: confetti, balloons and a big pop-up for 10 seconds, on stream (the OBS source, when you turned it on) and on your screen
+async function celebrate(c) {
+  const msg = { type: 'celebrate', name: c.name, input: c.input || '', headline: db.settings.choiceHeadline || "VIEWER'S CHOICE!", vol: db.settings.soundOn === false ? 0 : Number(db.settings.sfxVolume ?? 70) / 100, avatar: c.login ? await avatarFor(c.login).catch(() => null) : null, sound: true, at: Date.now() };
+  broadcast(msg, 'celebrate'); // 📺 the OBS source
+  if (db.settings.choiceScreen !== false) globalThis.__desktop?.celebrate?.(`http://127.0.0.1:${PORT}/celebrate.html?desk=1${db.settings.choiceObs ? '&quiet=1' : ''}#${encodeURIComponent(JSON.stringify(msg))}`); // 🖥️ over whatever you're looking at
+  broadcast({ type: 'toast', text: `🎉 ${c.name} redeemed Viewer's choice!${c.input ? ' “' + c.input + '”' : ''}` }, 'control');
+}
+async function choiceSource(on) { // 📺 the OBS browser source, in every scene (only when you turn it on)
+  db.settings.choiceObs = !!on; save();
+  const r = await obs.celebrateSource(on, `http://127.0.0.1:${PORT}/celebrate.html`);
+  pushState(); return r;
+}
+setInterval(() => { if (db.settings.choiceObs) obs.celebrateSource(true, `http://127.0.0.1:${PORT}/celebrate.html`).catch(() => {}); }, 10 * 60000); // (new scenes get it too)
+app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/vr/source', async (req, res) => { try { res.json({ ok: true, ...(await choiceSource(!!req.body?.on)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
+app.post('/api/test/vr', (req, res) => { // 🧪 pretend someone redeemed one
+  const kind = String(req.body?.kind || ''); if (!VR[kind]) return res.status(400).json({ error: 'Which reward?' });
+  twitch.pretend.until = Date.now() + 10 * 60000;
+  vrRedeem(kind, { login: 'test_viewer', name: 'test_viewer', title: vrTitle(kind), input: kind === 'choice' ? String(req.body?.input || 'We watch a scary movie next!') : '', test: true });
+  res.json({ ok: true });
+});
 app.post('/api/raid/clear', (req, res) => { live.raid = null; pushState(); res.json({ ok: true }); });
 app.post('/api/raid/setup', async (req, res) => { try { res.json({ ok: true, ...(await raidSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/raid-redeem', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'test_viewer'); raidRedeem({ login: name.toLowerCase().replace(/\s+/g, '_'), name, title: db.settings.raidTitle, test: true }); res.json({ ok: true }); });
@@ -963,6 +1038,7 @@ async function pricesInfo() {
   for (const [title, kind] of Object.entries(st.powerRewards || {})) rewards.push(R('chat', 'power:' + kind, title, ({ shield: '🛡️ Shield', mega: '💪 Mega ball', turbo: '⚡ Turbo' })[kind] || kind, st.powerCosts?.[kind]));
   const WN = { respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down', grow: '📈 Grow a spot', shrink: '📉 Shrink a spot', double: '✌️ Double trouble', stop: '🛑 Force stop' };
   for (const [k, title] of Object.entries(W.rewards || {})) if (title) rewards.push(R('wheel', 'wheel:' + k, title, WN[k] || k, W.costs?.[k]));
+  for (const [k, d] of Object.entries(VR)) rewards.push(R('viewer', 'vr:' + k, vrTitle(k), ({ hydrate: '💧 Hydrate (pop-up + chugging sound)', stretch: '🙆 Stretch (pop-up + stretching sound)', hat: '🎩 Pick a hat (they pick from your hat list in chat)', choice: "🎉 Viewer's choice (confetti, balloons, big pop-up)" })[k], db.settings.vrCosts?.[k] ?? d.cost));
   if (st.raidTitle) rewards.push(R('raid', 'raid', st.raidTitle, '🚀 Pick who we raid' + (st.raidOn === false ? ' (raid reward is off)' : ''), st.raidCost));
   const bits = Object.entries(st.bits || {}).map(([b, ev]) => ({ amount: Number(b), what: `${EVENTS[ev]?.icon || ''} ${EVENTS[ev]?.name || ev}`, event: ev, paused: !!P.bits?.[b] })).sort((a, b) => a.amount - b.amount);
   return { rewards, bits, wheel: { ...W.auto }, paused: { wheelBits: !!P.wheelBits, wheelSubs: !!P.wheelSubs, donations: !!P.donations }, twErr, bitsOn: st.bitsOn !== false, pointsOn: st.pointsOn !== false, wheelPointsOn: W.pointsOn !== false };
@@ -979,6 +1055,7 @@ app.post('/api/prices/reward', async (req, res) => {
       if (key.startsWith('wheel:')) { W.costs[key.slice(6)] = cost; wheelChanged(); }
       else if (key.startsWith('power:')) { (db.settings.powerCosts ||= {})[key.slice(6)] = cost; }
       else if (key === 'raid') db.settings.raidCost = cost;
+      else if (key.startsWith('vr:')) (db.settings.vrCosts ||= {})[key.slice(3)] = cost;
       const t = (await twitch.listRewards().catch(() => [])).find(x => x.title.toLowerCase() === title.toLowerCase());
       if (t) await twitch.updateReward(t.id, { cost });
       else if ((await twitch.listAllRewards().catch(() => [])).some(x => x.title.toLowerCase() === title.toLowerCase())) note = 'That reward was made by hand on Twitch, so only Twitch can change its price (Twitch → Creator Dashboard → Channel Points).';
@@ -1453,7 +1530,7 @@ app.post('/api/settings', (req, res) => {
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
-  broadcast(audioMsg(), 'overlay'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
+  broadcast(audioMsg(), 'overlay'); broadcast(audioMsg(), 'celebrate'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
   if (rd) discord.start(pushState);
   if (rt) twitch.start(twitchHandlers);
   if (rl) Promise.all([lb.refreshRss(db.settings.letterboxdUser), lb.refreshProfile(db.settings.letterboxdUser)]).then(() => { sweepWatched(); pushState(); });

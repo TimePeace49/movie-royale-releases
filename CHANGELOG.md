@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.37.0 (test build)
+- 🎁 **Viewer rewards, always on in the channel points menu:** 💧 Hydrate, 🙆 Stretch, 🎩 Pick a hat and 🎉 Viewer's choice. Movie Royal makes them once you're signed in. A reward you already had keeps its name and price (Movie Royal deletes it and makes it again; one made by hand on Twitch can only be deleted on Twitch, and still works meanwhile).
+  - 💧 Hydrate / 🙆 Stretch: a pop-up with a chugging / stretching sound for 5 seconds, only while Movie Royal is the window you're on.
+  - 🎩 Pick a hat: the bot lists your hats in chat with numbers; the viewer types the number or name; the bot says which one and a pop-up shows it. Your hat list: Settings → 💰 Rewards & prices.
+  - 🎉 Viewer's choice: the pop of confetti, a crowd going wild, confetti and balloons over the whole screen and a big pop-up in the middle for 10 seconds. It shows over whatever you're using on your screen, and on stream once you press **📺 Put it on my stream** (adds an OBS source “Movie Royal celebration” on top of every scene; off until you press it).
+- 🧪 Test → 🎁 Viewer rewards: pretend redeems for all four, plus checklist items.
+
 ## 1.36.0 (latest release)
 - ▶️ **Test tab: “Try each kind of battle” at the top.** Its own box for each kind, each with ▶ Run it: ⚔️ ball battle, 🎬 Discord movie battle, 🔢 number battle, 🎡 wheel, 🏯 Kung Fu Town, 🔔 Rumble Ring, 🧙 Wizard Battle, 🏛️ Colosseum, and ⚪🃏 a card battle on a ball map. The preview window pops up so you can watch.
 - **Fixed: number balls 10 and up showed only their first digit** (10 showed as 1). The whole number shows now, smaller when it's long.

@@ -8,7 +8,7 @@ window.SFX = (() => {
   const mapCustom = {};   // map id -> { name -> AudioBuffer } (that map's own sounds)
   let curMap = null;
   const lastPlay = {};    // name -> time, for rate limiting
-  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05, crowd: .7, chair: .08, slam: .06, spell: .06, zap: .05, roar: .6 };
+  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05, crowd: .7, chair: .08, slam: .06, spell: .06, zap: .05, roar: .6, chug: 2, stretch: 2, confettiPop: .5, crowdWild: 3 };
 
   function init() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; }
@@ -163,6 +163,11 @@ window.SFX = (() => {
     splat: () => { noise({ dur: .3, v: .35, type: 'lowpass', f0: 900, f1: 200, q: 2 }); tone({ type: 'sine', f0: 90, f1: 40, dur: .2, v: .3 }); },
     chop: () => { noise({ dur: .18, v: .4, type: 'highpass', f0: 3000, f1: 800 }); tone({ type: 'square', f0: 900, f1: 300, dur: .08, v: .08 }); noise({ dur: .35, v: .3, type: 'lowpass', f0: 700, f1: 150, q: 3, at: .06 }); },
     hyah: () => { const p = .85 + Math.random() * .4; tone({ type: 'sawtooth', f0: 330 * p, f1: 520 * p, dur: .09, v: .12 }); tone({ type: 'sawtooth', f0: 520 * p, f1: 260 * p, dur: .22, v: .14, at: .08 }); noise({ dur: .25, v: .08, type: 'bandpass', f0: 1800 * p, q: 1.5 }); },
+    // 💧🙆🎩🎉 viewer rewards (Hydrate, Stretch, Pick a hat, Viewer's choice)
+    chug: () => { for (let i = 0; i < 7; i++) { const at = .15 + i * .42, p = .9 + Math.random() * .2; tone({ type: 'sine', f0: 210 * p, f1: 90 * p, dur: .16, v: .45, at }); noise({ dur: .12, v: .16, type: 'lowpass', f0: 600 * p, f1: 250, q: 4, at: at + .02 }); tone({ type: 'sine', f0: 520 * p, f1: 380 * p, dur: .05, v: .06, at: at + .1 }); } noise({ dur: .5, v: .1, type: 'bandpass', f0: 1800, q: .8, at: 3.2 }); tone({ type: 'sawtooth', f0: 180, f1: 150, dur: .5, v: .06, at: 3.25, a: .05 }); }, // glug glug glug… ahh
+    stretch: () => { tone({ type: 'sawtooth', f0: 150, f1: 210, dur: 1.4, v: .1, a: .3 }); tone({ type: 'sawtooth', f0: 210, f1: 120, dur: 1.4, v: .1, at: 1.4, a: .1 }); noise({ dur: 2.6, v: .05, type: 'bandpass', f0: 700, f1: 1100, q: 3, a: .4 }); for (const at of [2.9, 3.05, 3.15]) { noise({ dur: .04, v: .3, type: 'highpass', f0: 2500, at }); tone({ type: 'square', f0: 900, f1: 400, dur: .03, v: .05, at }); } tone({ type: 'sine', f0: 260, f1: 180, dur: .8, v: .08, at: 3.4, a: .1 }); }, // a long groaning stretch… and the back cracks
+    confettiPop: () => { noise({ dur: .18, v: .7, type: 'highpass', f0: 1200, f1: 300 }); tone({ type: 'sine', f0: 140, f1: 50, dur: .25, v: .6 }); for (let i = 0; i < 18; i++) noise({ dur: .06, v: .12, type: 'bandpass', f0: 2000 + Math.random() * 4000, q: 4, at: .1 + Math.random() * 1.2 }); },
+    crowdWild: () => { noise({ dur: 7, v: .32, type: 'bandpass', f0: 800, f1: 1200, q: .35, a: .5 }); noise({ dur: 6.5, v: .16, type: 'bandpass', f0: 2600, q: .6, a: .6 }); for (let i = 0; i < 26; i++) { const at = Math.random() * 5.5, p = 250 + Math.random() * 500; tone({ type: 'sawtooth', f0: p, f1: p * (1.2 + Math.random() * .5), dur: .5 + Math.random() * .6, v: .018, at, a: .1 }); } for (let i = 0; i < 30; i++) noise({ dur: .03, v: .08, type: 'highpass', f0: 3500, at: Math.random() * 6 }); }, // cheering, whoops and clapping
     // 🧙 Wizard Battle + 🏛️ Colosseum
     spell: () => { tone({ type: 'sine', f0: 900, f1: 1800, dur: .18, v: .12 }); tone({ type: 'triangle', f0: 1350, f1: 2600, dur: .22, v: .07, at: .03 }); noise({ dur: .2, v: .06, type: 'highpass', f0: 6000 }); },
     zap: () => { tone({ type: 'sawtooth', f0: 1400, f1: 300, dur: .14, v: .12 }); noise({ dur: .12, v: .2, type: 'bandpass', f0: 3000, q: 2 }); },

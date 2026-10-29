@@ -332,6 +332,11 @@
   #raidBox.ready #raidGo { background:#9146ff; box-shadow:0 0 18px #9146ffaa; animation:updPulse .9s ease-in-out infinite alternate; }
   #raidBox .raidX { padding:4px 7px; font-size:12px; background:transparent; border:0; color:var(--muted); }
   #raidPopup { position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#0008; }
+  #vrPopup { position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#0006; cursor:pointer; }
+  #vrPopup .rpIn { background:var(--panel); border:2px solid #3fa9f5; border-radius:22px; padding:26px 40px; text-align:center; box-shadow:0 0 60px #3fa9f588; max-width:min(520px, 92vw); animation:vrIn .35s cubic-bezier(.2,1.5,.4,1); }
+  #vrPopup.vr-stretch .rpIn { border-color:#4cc77a; box-shadow:0 0 60px #4cc77a88; } #vrPopup.vr-hat .rpIn { border-color:#b07af5; box-shadow:0 0 60px #b07af588; }
+  #vrPopup .rpBurst { font-size:84px; animation:updPulse .5s ease-in-out infinite alternate; } #vrPopup h2 { color:var(--gold); font-size:40px; margin:6px 0; } #vrPopup .rpName { font-size:24px; font-weight:800; }
+  @keyframes vrIn { from { transform:scale(.3); opacity:0; } }
   #raidPopup .rpIn { background:var(--panel); border:2px solid #9146ff; border-radius:22px; padding:26px 34px; text-align:center; box-shadow:0 0 60px #9146ff88; max-width:min(460px, 92vw); }
   #raidPopup .rpBurst { font-size:54px; animation:updPulse .5s ease-in-out infinite alternate; } #raidPopup h2 { color:var(--gold); font-size:34px; margin:6px 0; }
   #raidPopup img { width:96px; height:96px; border-radius:50%; border:3px solid #9146ff; } #raidPopup .rpName { font-size:30px; font-weight:900; margin:8px 0; }
@@ -732,6 +737,11 @@
     <h3>🔢 Number battle</h3>
     <p class="help">Makes a battle where every ball is a number (it shows up as a new battle you can delete after).</p>
     <button onclick="api('/api/lists/numbers',{from:1,to:10}).then(r=>{toast('🔢 1 to 10 battle made');setView('battle')})">🔢 Make a 1–10 battle</button>
+  </div>
+  <div class="card">
+    <h3>🎁 Viewer rewards (channel points / bits)</h3>
+    <p class="help">Pretend test_viewer redeemed one. The 💧🙆🎩 pop-ups only show while Movie Royal is the window you're on. 🎩: the bot lists the hats; answer as test_viewer in 💬 Pretend chat (it opens). 🎉 shows on stream if you added the OBS source, and on your screen.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="api('/api/test/vr',{kind:'hydrate'})">💧 Hydrate</button><button onclick="api('/api/test/vr',{kind:'stretch'})">🙆 Stretch</button><button onclick="pchat(true,'test_viewer');api('/api/test/vr',{kind:'hat'})">🎩 Pick a hat</button><button class="primary" onclick="api('/api/test/vr',{kind:'choice'})">🎉 Viewer's choice</button></div>
   </div>
   <div class="card" style="grid-column:1 / -1">
     <h3>🤖 Discord self-test</h3>
@@ -1236,7 +1246,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
-  quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
+  vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1302,6 +1312,10 @@ function drawChecklist() {
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
     ['cardBallMaps', '⚪🃏 Card battles can use every ball map: the packs fight there as card fighters (pick the map on the Card battles tab)', `<button class="ghost" style="padding:3px 9px" onclick="cardTest(10,[],'lava')">Try it</button>`],
+    ['vrHydrate', '💧🙆 Hydrate / Stretch: a pop-up with a chugging / stretching sound for 5 seconds (only while Movie Royal is the window you\'re on)', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/vr',{kind:'hydrate'})">Try it</button>`],
+    ['vrHat', '🎩 Pick a hat: the bot lists your hats with numbers; the viewer types a number or name and a pop-up shows the hat', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true,'test_viewer');api('/api/test/vr',{kind:'hat'})">Try it</button>`],
+    ['vrChoice', '🎉 Viewer\'s choice: confetti and balloons over the whole screen, a big pop-up, a crowd going wild, 10 seconds', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/vr',{kind:'choice'})">Try it</button>`],
+    ['vrObs', '📺 Settings → Rewards & prices → Put it on my stream adds “Movie Royal celebration” on top of every OBS scene (off until you press it)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">Open</button>`],
     ['quickTests', '▶️ Test tab → Tests: “Try each kind of battle” is at the top, one box per kind of battle with ▶ Run it', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests')">See it</button>`],
     ['keepWinner', '📌 Card battles: “Keep the winner in my pool” on the right side (off by default). On = the winning pack doesn’t come off its count', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">See it</button>`],
     ['cardTags', '🔴 NEW / 🔵 UPDATED show on card maps in the map menus too (NEW until played on stream while live)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">See it</button>`],
@@ -1406,6 +1420,7 @@ function connect() {
     if (m.type === 'goView' && (view === 'wheel' || view === 'battle' || view === 'cards') && view !== m.view) setView(m.view); // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
     if (m.type === 'botSay') pcLog('bot', 'Movie Royal', m.text);
     if (m.type === 'raidPicked') raidPop({ ...m.raid, by: m.raid.name || m.raid.by });
+    if (m.type === 'vrPop') vrPop(m);
     if (m.type === 'errorLogged') { clearTimeout(window.errT); window.errT = setTimeout(loadErrors, 800); }
     if (m.type === 'wheelRound' && WD) { WD.round = m.round; if (m.final) { WD.final = m.final; toast('⏱️ TIME! The wheel has spoken: 🏆 ' + esc(m.final.text), 6000); } drawRound(); if (view === 'wheel') drawWheelResult(); }
     if (m.type === 'wheelBoosts') drawBoosts(m.boosts);
@@ -3092,7 +3107,7 @@ function banSearch(q) {
 async function banIt(id) { const r = await api('/api/bans', { tmdbId: id, reason: $('banReason').value.trim() }); toast('🚫 ' + esc(r.msg)); $('banReason').value = ''; await loadBans(); banSearch($('banQ').value); }
 
 // ---------- 🔊 sounds ----------
-const SOUND_INFO = { fanfare: '🏆 Winner fanfare', celebrate: '🎉 Claimed celebration', music: '🎵 Battle music (loops)', lobby: '⏳ Countdown / chat timer music (loops)', go: '📣 Fight starts', tick: '⏱️ Countdown tick', final5: '⏱️ Last 5 seconds', suddendeath: '🚨 Sudden death', claimStart: '⏱️ Claim timer starts', ding: '💬 Winner typed in chat', buzzer: '⏰ Time\'s up', bonk: '💥 Pieces bump', land: '⬇️ Piece lands', dash: '💨 Dash', crumble: '🪨 Cliff crumbles', fall: '😱 Piece falls off', out: '❌ Knocked out', lucky: '🍀 Lucky save', alert: '⚠️ Event warning', comet: '☄️ Comet', smack: '👊 Comet hit', boom: '🌠 Meteor impact', collapse: '🪨 Edge collapse', earthquake: '🌋 Earthquake', meteors: '🌠 Meteor shower', wind: '🌬️ Gale', ice: '🧊 Ice age', tornado: '🌪️ Tornado', shockwave: '💥 Shockwave', thunder: '⚡ Thunder', lightning: '⚡ Lightning zap', boulder: '🪨 Boulder', swap: '🌀 Teleport swap', lowgrav: '🪐 Low gravity', queued: '📥 Event queued', joined: '➕ Someone joined', pop: '🫧 Pop' };
+const SOUND_INFO = { chug: '💧 Hydrate pop-up (chugging water)', stretch: '🙆 Stretch pop-up', confettiPop: '🎉 Viewer\'s choice: confetti pop', crowdWild: '🎉 Viewer\'s choice: crowd going wild', fanfare: '🏆 Winner fanfare', celebrate: '🎉 Claimed celebration', music: '🎵 Battle music (loops)', lobby: '⏳ Countdown / chat timer music (loops)', go: '📣 Fight starts', tick: '⏱️ Countdown tick', final5: '⏱️ Last 5 seconds', suddendeath: '🚨 Sudden death', claimStart: '⏱️ Claim timer starts', ding: '💬 Winner typed in chat', buzzer: '⏰ Time\'s up', bonk: '💥 Pieces bump', land: '⬇️ Piece lands', dash: '💨 Dash', crumble: '🪨 Cliff crumbles', fall: '😱 Piece falls off', out: '❌ Knocked out', lucky: '🍀 Lucky save', alert: '⚠️ Event warning', comet: '☄️ Comet', smack: '👊 Comet hit', boom: '🌠 Meteor impact', collapse: '🪨 Edge collapse', earthquake: '🌋 Earthquake', meteors: '🌠 Meteor shower', wind: '🌬️ Gale', ice: '🧊 Ice age', tornado: '🌪️ Tornado', shockwave: '💥 Shockwave', thunder: '⚡ Thunder', lightning: '⚡ Lightning zap', boulder: '🪨 Boulder', swap: '🌀 Teleport swap', lowgrav: '🪐 Low gravity', queued: '📥 Event queued', joined: '➕ Someone joined', pop: '🫧 Pop' };
 let sounds = [], uploadFor = null, sndMap = '', sndPer = {};
 async function loadSounds() { const j = await fetch('/api/sounds/list' + (sndMap ? '?map=' + sndMap : '')).then(r => r.json()); sounds = j.sounds; sndPer = j.perMap || {}; drawSounds(); renderSound(); }
 function drawSounds() {
@@ -3331,6 +3346,16 @@ function openSettings(force) {
       <h3 style="margin-top:14px">🚀 Raid reward</h3>
       ${ck('raidOn', '🚀 Raid reward: a viewer redeems it, types who we raid in chat, and a box at the top of the app starts the raid when you click it (press Save). Movie Royal makes the reward (a raid reward you already have keeps its price, 1500 if there is none) and hides it for the rest of the stream once it is used.', false)}
       <div class="grid2">${f('raidTitle', 'Raid reward name on Twitch', '🚀 Pick who we raid!')}<div style="display:flex;align-items:flex-end"><button onclick="raidSetupClick(this)">🚀 Make / fix the raid reward now</button></div></div>
+      <h3 style="margin-top:18px">🎁 Viewer rewards (always on)</h3>
+      <p class="help">💧 Hydrate, 🙆 Stretch, 🎩 Pick a hat and 🎉 Viewer's choice are always in your channel points menu. Movie Royal makes them once you're signed in: a reward you already had keeps its name and price (Movie Royal deletes it and makes it again, so it can keep it on). One made by hand on Twitch can only be deleted on Twitch; it still works meanwhile.</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><button onclick="vrSetupClick(this)">🎁 Make / fix the viewer rewards now</button><span class="help" style="margin:0" id="vrSetupInfo">${vrSetupText()}</span></div>
+      ${ck('vrPopups', '💧🙆🎩 Hydrate, Stretch and Pick a hat show a pop-up with a sound for 5 seconds (only when Movie Royal is the window you\'re on)')}
+      <div><label>🎩 Hats viewers can pick (one per line; the bot lists them in chat with numbers, and the viewer types the number or the name)</label><textarea data-k="hatList" rows="6" placeholder="${esc(HATS_DEFAULT)}">${esc(s.hatList || '')}</textarea></div>
+      <h4 style="margin:14px 0 4px">🎉 Viewer's choice</h4>
+      <p class="help">When someone redeems it: confetti and balloons over the whole screen, a big pop-up in the middle, the pop of the confetti and a crowd going wild, for 10 seconds.</p>
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0"><button class="${S.choiceObs ? '' : 'primary'}" id="choiceObsBtn" onclick="choiceObs(${!S.choiceObs})">${S.choiceObs ? '⏸ Take it off my stream (remove the OBS source)' : '📺 Put it on my stream (add the OBS source)'}</button><span class="help" style="margin:0">${S.choiceObs ? '✅ On: the source <b>Movie Royal celebration</b> is on top of every OBS scene.' : '⏸ Off (paused): nothing is added to OBS until you press it.'}</span></div>
+      ${ck('choiceScreen', '🖥️ Also show it on my screen, over whatever I\'m using (on the screen my mouse is on; clicks go through it)')}
+      ${f('choiceHeadline', 'Big text at the top of the pop-up', "VIEWER'S CHOICE!")}
       <div id="pricesBody" style="margin-top:10px"><p class="help">Loading…</p></div>`,
     gfx: `<h3>🎨 Graphics</h3>
       <p class="help">How the game screen is drawn: on stream (the OBS browser source), in the app, and in pop-out windows. Lower settings help if the battle stutters or your PC gets hot while streaming.</p>
@@ -3404,7 +3429,7 @@ const MODE_OPTS = [['rules', '📏 Follow the rules'], ['on', '✅ Always on'], 
 async function drawPrices() {
   const box = $('pricesBody'); if (!box) return;
   let P; try { P = await fetch('/api/prices').then(r => r.json()); } catch { box.innerHTML = '<p class="help">⚠️ Couldn\'t load them.</p>'; return; }
-  const groups = [['battle', '⚔️ Battle tab'], ['chat', '🎲 Chat battle tab'], ['wheel', '🎡 Wheel tab'], ['raid', '🚀 Raid']];
+  const groups = [['battle', '⚔️ Battle tab'], ['chat', '🎲 Chat battle tab'], ['wheel', '🎡 Wheel tab'], ['raid', '🚀 Raid'], ['viewer', '🎁 Viewer rewards (always on)']];
   const rwRow = r => `<tr><td>${esc(r.what)}<br><small class="muted">${esc(r.title)}${r.onTwitch ? (r.mine ? '' : ' · made by hand on Twitch') : ' · not on Twitch yet'}${r.enabled === false ? ' · hidden right now' : r.enabled ? ' · showing on Twitch now' : ''}</small></td>
       <td><input type="number" min="1" style="width:100px" value="${r.cost ?? ''}" placeholder="price" onchange="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {cost:this.value})"></td>
       <td><select onchange="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {mode:this.value})">${MODE_OPTS.map(([v, n]) => `<option value="${v}" ${r.mode === v ? 'selected' : ''}>${n}</option>`).join('')}</select></td></tr>`;
@@ -3422,6 +3447,19 @@ async function drawPrices() {
 async function priceSet(r, ch) { try { const x = await api('/api/prices/reward', { ...r, ...ch }); toast(x.note ? '💡 ' + esc(x.note) : ch.mode ? '✅ Saved' : '✅ Price saved', x.note ? 8000 : 2500); } catch {} drawPrices(); }
 async function moneySet(b) { try { await api('/api/prices/money', b); toast('✅ Saved', 2000); } catch {} drawPrices(); }
 async function raidSetupClick(btn) { btn.disabled = true; try { const r = await api('/api/raid/setup', {}); toast(r.made ? `🚀 Made the raid reward (${r.cost} points)${r.removed.length ? ' · replaced ' + r.removed.map(esc).join(', ') : ''}${r.byHand.length ? `<br>⚠️ Delete the old one${r.byHand.length > 1 ? 's' : ''} you made by hand on Twitch: ${r.byHand.map(x => esc(x.title)).join(', ')}` : ''}` : r.byHand.length ? `⚠️ A raid reward made by hand on Twitch has the same name: delete it on Twitch (or change the name here), then press again.` : '🚀 The raid reward is already on Twitch.', 10000); } catch {} btn.disabled = false; drawPrices(); }
+// 🎁 viewer rewards: setup, the OBS source, and the little pop-ups
+const HATS_DEFAULT = 'Cowboy hat\nTop hat\nWizard hat\nPirate hat\nBaseball cap\nBeanie\nParty hat\nCrown';
+function vrSetupText() { const v = S?.vrSetup; if (!v) return 'Not made yet (it happens by itself once you sign in with Twitch).'; const ks = ['hydrate', 'stretch', 'hat', 'choice'].filter(k => v[k]); const hand = ks.filter(k => v[k].byHand?.length); return `Made ${new Date(v.at).toLocaleString()}: ${ks.map(k => `${esc(v[k].title)} (${v[k].cost})`).join(', ')}.${hand.length ? ` ⚠️ Made by hand on Twitch (delete on Twitch, then press the button): ${hand.map(k => esc(v[k].byHand.map(x => x.title).join(', '))).join(', ')}.` : ''}`; }
+async function vrSetupClick(btn) { btn.disabled = true; try { await api('/api/vr/setup', {}); toast('🎁 Viewer rewards checked and made on Twitch'); } catch {} btn.disabled = false; setTimeout(() => { const el = $('vrSetupInfo'); if (el) el.innerHTML = vrSetupText(); drawPrices(); }, 500); }
+async function choiceObs(on) { const b = $('choiceObsBtn'); if (b) b.disabled = true; try { const r = await api('/api/vr/source', { on }); toast(on ? `📺 Added “Movie Royal celebration” on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}` : '⏸ Removed the celebration source from OBS', 6000); } catch {} setTimeout(() => { if (sub === 'prices') openSettings(true); }, 400); }
+function vrPop(m) { // 💧🙆🎩 5 seconds, only when Movie Royal is the window you're on
+  if (!document.hasFocus() || S?.settings?.vrPopups === false) return;
+  const L = { hydrate: ['💧', 'HYDRATE!', `${esc(m.name)} says: drink some water!`, 'chug'], stretch: ['🙆', 'STRETCH!', `${esc(m.name)} says: time to stretch!`, 'stretch'], hat: ['🎩', 'HAT TIME!', `${esc(m.name)} picked: <b>${esc(m.hat || '')}</b>`, 'ding'] }[m.kind]; if (!L) return;
+  let d = $('vrPopup'); if (!d) { d = document.createElement('div'); d.id = 'vrPopup'; document.body.appendChild(d); }
+  d.className = 'vr-' + m.kind; d.innerHTML = `<div class="rpIn"><div class="rpBurst">${L[0]}</div><h2>${L[1]}</h2><div class="rpName">${L[2]}</div></div>`; d.onclick = () => d.remove();
+  try { if (window.SFX) { SFX.init(); SFX.setVolume({ on: S?.settings?.soundOn !== false, sfx: Number(S?.settings?.sfxVolume ?? 70) / 100, music: 0 }); SFX.play(L[3]); } } catch {}
+  clearTimeout(vrPop.t); vrPop.t = setTimeout(() => $('vrPopup')?.remove(), 5000);
+}
 // 🚀 raid: the box at the top (left of the connection lights) + the celebration pop-up
 let raidPending = null;
 function fitNav() { // 🧭 the top tabs: as big as they fit, never scrolling
