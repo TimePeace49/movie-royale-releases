@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viewer's Choice celebration (OBS)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Inter:wght@600;800&display=swap" rel="stylesheet">
+<!-- 🎉 Movie Royal: Viewer's Choice celebration, for OBS on its own (Movie Royal doesn't have to be open).
+     It reads your Twitch chat by itself (no login needed). When someone redeems your Viewer's Choice reward,
+     confetti and balloons fill the screen and a big pop-up shows who it was and what they typed, for 10 seconds.
+     The reward has to ask viewers to type something ("Require Viewer to Enter Text"), so it shows up in chat.
+     HOW TO USE: open this file in your web browser (double-click it) and follow the steps on the page. -->
+<style>
+  :root { --gold:#ffd23a; --pink:#ff4fa3; --purple:#8a4bff; }
+  html, body { margin:0; height:100%; overflow:hidden; background:transparent; }
+  canvas { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; }
+  #pop { position:fixed; left:50%; top:50%; width:44vw; min-height:40vh; transform:translate(-50%,-50%) scale(0); opacity:0; box-sizing:border-box;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.4vh; padding:3vh 3vw; text-align:center;
+    background:radial-gradient(circle at 50% 0%, #3a1a6a, #1a0b33 70%); border:.5vh solid var(--gold); border-radius:3vh;
+    box-shadow:0 0 6vh #ffd23a99, 0 0 14vh #ff4fa366, inset 0 0 4vh #8a4bff55; color:#fff; font-family:Inter, system-ui, sans-serif; }
+  #pop.on { animation:popIn .7s cubic-bezier(.2,1.6,.4,1) forwards, glow 1.2s ease-in-out .7s infinite alternate; }
+  #pop.off { animation:popOut .6s ease-in forwards; }
+  @keyframes popIn { 0% { transform:translate(-50%,-50%) scale(0) rotate(-8deg); opacity:0; } 100% { transform:translate(-50%,-50%) scale(1) rotate(0); opacity:1; } }
+  @keyframes popOut { to { transform:translate(-50%,-50%) scale(.2) rotate(6deg); opacity:0; } }
+  @keyframes glow { to { box-shadow:0 0 9vh #ffd23acc, 0 0 20vh #ff4fa399, inset 0 0 5vh #8a4bff88; } }
+  .burst { font-size:7vh; line-height:1; animation:bob .5s ease-in-out infinite alternate; }
+  @keyframes bob { to { transform:translateY(-1vh) scale(1.08); } }
+  h1 { margin:0; font-family:'Lilita One', Impact, sans-serif; font-weight:400; font-size:7.6vh; line-height:1; letter-spacing:.3vh;
+    background:linear-gradient(90deg, #ffd23a, #ff8a3a, #ff4fa3, #8a4bff, #3ac8ff, #ffd23a); background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 .5vh 0 #0009); animation:shine 2.5s linear infinite; }
+  @keyframes shine { to { background-position:300% 0; } }
+  .who { display:flex; align-items:center; gap:1.4vh; font-size:4vh; font-weight:800; }
+  .who img { width:7vh; height:7vh; border-radius:50%; border:.4vh solid var(--gold); }
+  .says { font-size:3.4vh; font-weight:800; color:var(--gold); max-width:100%; overflow-wrap:anywhere; }
+  .sub { font-size:2.2vh; opacity:.85; }
+
+  #setup { position:fixed; inset:0; overflow:auto; background:#140b26; color:#fff; font-family:Inter, system-ui, sans-serif; display:none; }
+  #setup .box { max-width:720px; margin:40px auto; padding:28px 32px; background:#1f1238; border:2px solid #8a4bff; border-radius:18px; }
+  #setup h2 { font-family:'Lilita One', Impact, sans-serif; font-weight:400; color:var(--gold); font-size:34px; margin:0 0 8px; }
+  #setup ol { padding-left:22px; line-height:1.6; } #setup li { margin:10px 0; }
+  #setup input { font:inherit; padding:9px 12px; border-radius:10px; border:1px solid #5a3a9a; background:#0f0820; color:#fff; width:260px; }
+  #setup button { font:inherit; font-weight:800; padding:9px 16px; border-radius:10px; border:0; background:linear-gradient(90deg,#ffb020,#ff6a3a); color:#1a0b00; cursor:pointer; }
+  #setup button.ghost { background:#2e1d52; color:#fff; border:1px solid #5a3a9a; }
+  #setup code, #setup textarea { display:block; width:100%; box-sizing:border-box; margin-top:8px; padding:10px; border-radius:10px; background:#0f0820; color:#9fe8ff; border:1px solid #5a3a9a; font:13px ui-monospace, Consolas, monospace; word-break:break-all; }
+  #setup .st { margin-top:10px; padding:10px 12px; border-radius:10px; background:#0f0820; } #setup .ok { color:#6dfc9a; } #setup .wait { color:#ffd23a; }
+  #setup small { color:#c8b8e8; }
+  #badge { position:fixed; left:12px; bottom:12px; padding:6px 10px; border-radius:8px; background:#000a; color:#fff; font:700 14px Inter, sans-serif; display:none; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="pop"></div>
+<div id="badge"></div>
+<div id="setup"><div class="box">
+  <h2>🎉 Viewer's Choice for OBS</h2>
+  <p>Confetti, balloons and a big pop-up on your stream when someone redeems your <b>Viewer's Choice</b> channel points reward. Works with just OBS open (Movie Royal doesn't have to be running). No login needed.</p>
+  <ol>
+    <li>On Twitch, your Viewer's Choice reward must have <b>Require Viewer to Enter Text</b> turned on (that's how it shows up in chat).</li>
+    <li>Your Twitch channel name: <input id="ch" placeholder="your channel name"> <button onclick="learn()">Start</button></li>
+    <li>Now <b>redeem your Viewer's Choice reward once</b> (on your own channel, type anything). This page catches it to learn which reward it is.
+      <div class="st" id="lst"><span class="wait">Waiting for you to press Start…</span></div></li>
+    <li>In OBS: <b>Sources → + → Browser</b>. <b>Untick “Local file”</b>, paste this into <b>URL</b>, and set <b>Width 1920</b>, <b>Height 1080</b> (your canvas size):
+      <textarea id="url" rows="3" readonly onclick="this.select()">(it shows up here after step 3)</textarea>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" onclick="copyUrl()">📋 Copy</button><button class="ghost" onclick="test()">▶ Test it here</button></div>
+      <small>Put the source at the top of the list so it's over everything. Add it to every scene where you want it (right-click the source → Copy, then Paste (Reference) in your other scenes).</small></li>
+    <li>Done. Keep this file where it is (OBS reads it from there).</li>
+  </ol>
+  <p><small>Optional, add to the end of the URL: <b>&amp;text=YOUR+WORDS</b> (the big text, default VIEWER'S CHOICE!) · <b>&amp;sound=0</b> (no sound) · <b>&amp;vol=50</b> (volume 0–100) · <b>&amp;test=1</b> (plays once when OBS loads it, to check).</small></p>
+  <p><small>Made by Movie Royal. Movie Royal users: Movie Royal can set this up in OBS for you (Settings → 💰 Rewards &amp; prices → 📺 Put it on my stream).</small></p>
+</div></div>
+<script>
+(() => {
+  const C = Object.assign({}, window.MR_CONFIG || {}), q = new URLSearchParams(location.search);
+  for (const k of ['channel', 'reward', 'text', 'sound', 'vol', 'test']) if (q.has(k)) C[k] = q.get(k);
+  const IN_OBS = !!window.obsstudio, esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const $ = id => document.getElementById(id), cv = $('cv'), g = cv.getContext('2d'), pop = $('pop');
+
+  // ---------- 🔊 sounds (made right here, nothing to download) ----------
+  let ac = null, bus = null, nb = null;
+  function audio() { if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; } const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ac = new AC(); const comp = ac.createDynamicsCompressor(); comp.connect(ac.destination); bus = ac.createGain(); bus.gain.value = Math.max(0, Math.min(1, (C.vol == null ? 80 : Number(C.vol)) / 100)); bus.connect(comp); nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate); const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return ac; }
+  const env = (gn, t, a, v, d) => { gn.gain.setValueAtTime(.0001, t); gn.gain.exponentialRampToValueAtTime(v, t + a); gn.gain.exponentialRampToValueAtTime(.0001, t + a + d); };
+  function tone({ type = 'sine', f0 = 440, f1 = null, dur = .2, v = .3, a = .005, at = 0 }) { const t = ac.currentTime + at, o = ac.createOscillator(), gn = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur); env(gn, t, a, v, dur); o.connect(gn); gn.connect(bus); o.start(t); o.stop(t + a + dur + .05); }
+  function noise({ dur = .3, v = .3, type = 'lowpass', f0 = 1000, f1 = null, q = 1, a = .005, at = 0 }) { const t = ac.currentTime + at, s = ac.createBufferSource(), f = ac.createBiquadFilter(), gn = ac.createGain(); s.buffer = nb; s.loop = true; f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur); env(gn, t, a, v, dur); s.connect(f); f.connect(gn); gn.connect(bus); s.start(t, Math.random()); s.stop(t + a + dur + .05); }
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  function sounds() {
+    if (C.sound === '0' || !audio()) return;
+    noise({ dur: .18, v: .7, type: 'highpass', f0: 1200, f1: 300 }); tone({ f0: 140, f1: 50, dur: .25, v: .6 }); for (let i = 0; i < 18; i++) noise({ dur: .06, v: .12, type: 'bandpass', f0: 2000 + Math.random() * 4000, q: 4, at: .1 + Math.random() * 1.2 }); // 🎊 pop!
+    noise({ dur: 7, v: .32, type: 'bandpass', f0: 800, f1: 1200, q: .35, a: .5, at: .25 }); noise({ dur: 6.5, v: .16, type: 'bandpass', f0: 2600, q: .6, a: .6, at: .25 }); // 🙌 the crowd goes wild
+    for (let i = 0; i < 26; i++) { const p = 250 + Math.random() * 500; tone({ type: 'sawtooth', f0: p, f1: p * (1.2 + Math.random() * .5), dur: .5 + Math.random() * .6, v: .018, at: .25 + Math.random() * 5.5, a: .1 }); }
+    for (let i = 0; i < 30; i++) noise({ dur: .03, v: .08, type: 'highpass', f0: 3500, at: .25 + Math.random() * 6 });
+    [[67, 0], [67, .12], [67, .24], [72, .4], [76, .75], [79, 1], [84, 1.3]].forEach(([n, at]) => { tone({ type: 'sawtooth', f0: hz(n), dur: .32, v: .1, at: at + .6 }); tone({ type: 'square', f0: hz(n - 12), dur: .32, v: .06, at: at + .6 }); }); // 🎺
+  }
+
+  // ---------- 🎊 confetti, 🎈 balloons, the pop-up ----------
+  const COLORS = ['#ffd23a', '#ff4fa3', '#8a4bff', '#3ac8ff', '#4cd97a', '#ff7a3a', '#ffffff'];
+  let parts = [], balloons = [], until = 0, running = false, W = 0, H = 0, endT = null, last = 0, t0 = 0;
+  const size = () => { const k = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * k; cv.height = H * k; g.setTransform(k, 0, 0, k, 0, 0); };
+  addEventListener('resize', size); size();
+  const R = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
+  function confetti(x, y, n, up) { for (let i = 0; i < n; i++) { const a = up ? R(-Math.PI * .9, -Math.PI * .1) : R(0, Math.PI * 2), sp = R(300, 1100) * H / 1080; parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, w: R(6, 14), h: R(10, 22), r: R(0, 6), vr: R(-12, 12), c: pick(COLORS), life: R(5, 9) }); } }
+  function balloon(delay) { const s = R(.7, 1.3) * H / 1080; balloons.push({ x: R(0, W), y: -R(120, 400) * s, vy: R(70, 150) * s, ph: R(0, 6), s, c: pick(COLORS.slice(0, 6)), delay }); }
+  function drawBalloon(b, t) { const x = b.x + Math.sin(t * 1.4 + b.ph) * 18 * b.s, y = b.y, rw = 46 * b.s, rh = 58 * b.s;
+    g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y + rh); for (let i = 1; i <= 6; i++) g.lineTo(x + Math.sin(t * 3 + i + b.ph) * 6 * b.s, y + rh + i * 22 * b.s); g.stroke();
+    const gr = g.createRadialGradient(x - rw * .35, y - rh * .4, 2, x, y, rh * 1.2); gr.addColorStop(0, '#ffffffcc'); gr.addColorStop(.25, b.c); gr.addColorStop(1, b.c); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rw, rh, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = b.c; g.beginPath(); g.moveTo(x - 7 * b.s, y + rh + 8 * b.s); g.lineTo(x + 7 * b.s, y + rh + 8 * b.s); g.lineTo(x, y + rh - 2); g.fill(); }
+  function frame(now) {
+    const dt = Math.min(.05, (now - (last || now)) / 1000); last = now; const t = (now - t0) / 1000;
+    g.clearRect(0, 0, W, H);
+    if (t < 8.5) for (let i = 0; i < 3; i++) parts.push({ x: R(0, W), y: -20, vx: R(-60, 60), vy: R(120, 260), w: R(6, 12), h: R(9, 18), r: R(0, 6), vr: R(-8, 8), c: pick(COLORS), life: 7 });
+    for (const p of parts) { p.vy += 520 * dt * (p.vy > 300 ? .2 : 1); p.vx *= Math.pow(.6, dt); p.x += p.vx * dt + Math.sin(t * 3 + p.r) * 30 * dt; p.y += p.vy * dt; p.r += p.vr * dt; p.life -= dt; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.scale(1, Math.abs(Math.cos(t * 6 + p.r))); g.fillStyle = p.c; g.globalAlpha = Math.min(1, p.life); g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore(); }
+    parts = parts.filter(p => p.life > 0 && p.y < H + 40);
+    for (const b of balloons) { if (t < b.delay) continue; b.y += b.vy * dt; drawBalloon(b, t); }
+    balloons = balloons.filter(b => b.y < H + 300);
+    if (now < until || parts.length || balloons.length) requestAnimationFrame(frame); else { running = false; g.clearRect(0, 0, W, H); }
+  }
+  function show(m) {
+    clearTimeout(endT); size(); const ms = 10000; until = performance.now() + ms; t0 = performance.now();
+    pop.className = ''; void pop.offsetWidth;
+    pop.innerHTML = `<div class="burst">🎉🎈🎊</div><h1>${esc(C.text || "VIEWER'S CHOICE!")}</h1><div class="who"><span>${esc(m.name || 'A viewer')}</span></div>${m.input ? `<div class="says">“${esc(m.input)}”</div>` : ''}<div class="sub">redeemed <b>Viewer's choice</b>! 🎉</div>`;
+    pop.className = 'on'; confetti(W * .5, H * .5, 220, false); confetti(0, H, 140, true); confetti(W, H, 140, true); for (let i = 0; i < 26; i++) balloon(R(0, 3.5));
+    sounds(); endT = setTimeout(() => { pop.className = 'off'; }, ms - 700);
+    if (!running) { running = true; last = 0; requestAnimationFrame(frame); }
+  }
+  window.test = () => { const st = $('setup'), was = st.style.display; st.style.display = 'none'; show({ name: 'test_viewer', input: 'We watch a scary movie next!' }); if (was === 'block') setTimeout(() => { st.style.display = 'block'; }, 10500); };
+
+  // ---------- 💬 Twitch chat (anonymous: no login) ----------
+  function listen(channel, onMsg, onState) {
+    let ws, dead = false;
+    const go = () => { ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+      ws.onopen = () => { ws.send('CAP REQ :twitch.tv/tags'); ws.send('PASS SCHMOOPIIE'); ws.send('NICK justinfan' + Math.floor(10000 + Math.random() * 80000)); ws.send('JOIN #' + channel.toLowerCase()); onState?.(true); };
+      ws.onmessage = e => { for (const line of String(e.data).split('\r\n')) { if (!line) continue; if (line.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); continue; }
+        const m = line.match(/^@(\S+) :(\w+)!\S+ PRIVMSG #\S+ :(.*)$/); if (!m) continue;
+        const tags = Object.fromEntries(m[1].split(';').map(kv => { const i = kv.indexOf('='); return [kv.slice(0, i), kv.slice(i + 1).replace(/\\s/g, ' ')]; }));
+        onMsg({ reward: tags['custom-reward-id'] || null, name: tags['display-name'] || m[2], text: m[3] }); } };
+      ws.onclose = () => { onState?.(false); if (!dead) setTimeout(go, 3000); }; };
+    go(); return () => { dead = true; try { ws.close(); } catch {} };
+  }
+  const badge = t => { const b = $('badge'); if (IN_OBS) return; b.textContent = t; b.style.display = t ? 'block' : 'none'; };
+  if (C.channel && C.reward) { // ▶ running (in OBS, or in a browser to check it)
+    listen(C.channel, m => { if (m.reward && m.reward === C.reward) show({ name: m.name, input: m.text }); }, on => badge(on ? `🎉 Listening to #${C.channel} for Viewer's Choice (this note doesn't show in OBS) · press T to test` : 'Reconnecting to Twitch…'));
+    addEventListener('keydown', e => { if (e.key === 't' || e.key === 'T') window.test(); });
+    if (C.test === '1') setTimeout(window.test, 1500);
+    return;
+  }
+  // ⚙️ setup (opened in a web browser)
+  $('setup').style.display = 'block';
+  let stop = null;
+  window.learn = () => {
+    const ch = $('ch').value.trim().replace(/^.*twitch\.tv\//i, '').replace(/^[@#]/, '').toLowerCase(); if (!/^\w{2,25}$/.test(ch)) { $('lst').innerHTML = '<span class="wait">Type your Twitch channel name first.</span>'; return; }
+    stop?.(); $('lst').innerHTML = `<span class="wait">Connecting to #${esc(ch)}…</span>`;
+    stop = listen(ch, m => { if (!m.reward) return; stop?.(); const url = location.href.split(/[?#]/)[0] + `?channel=${encodeURIComponent(ch)}&reward=${encodeURIComponent(m.reward)}`;
+      $('lst').innerHTML = `<span class="ok">✅ Got it! ${esc(m.name)} redeemed a reward that asks for text (“${esc(m.text)}”). That's the one.</span>`; $('url').value = url; C.channel = ch; C.reward = m.reward; },
+      on => { if (on) $('lst').innerHTML = `<span class="wait">✅ Connected to #${esc(ch)}. Now redeem your Viewer's Choice reward once (type anything)…</span>`; });
+  };
+  window.copyUrl = () => { const t = $('url'); t.select(); try { navigator.clipboard.writeText(t.value); } catch { document.execCommand('copy'); } };
+})();
+</script>
+</body>
+</html>

@@ -93,3 +93,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "v${{ steps.v.outputs.version }}" "dist/MovieRoyalBackupBots-Setup-${{ steps.v.outputs.version }}.exe" --clobber -R "${{ github.repository }}"
+
+      # 🎉 the Viewer's Choice celebration for OBS on its own (anyone can download it: it sets itself up when opened)
+      - name: Add the OBS Viewer's Choice file
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v${{ steps.v.outputs.version }}" "public/obs/viewers-choice.html" --clobber -R "${{ github.repository }}"

@@ -1,5 +1,5 @@
 // 🃏 Card battles on the game screen (OBS + the app): card packs with stick arms and legs and angry faces have a
-// martial arts brawl (Kung Fu Town) or a wrestling rumble (Rumble Ring: out only over the top rope). Health bars on top, blood, and wacky settings (low gravity, extreme gore, teleport switches…).
+// martial arts brawl (Kung Fu Town) or a wrestling rumble (Royal Rumble: out only over the top rope). Health bars on top, blood, and wacky settings (low gravity, extreme gore, teleport switches…).
 // The server picks the winner fairly (no luck) and gives every screen the same seed, so they all play the same fight.
 // Gets the graphics settings and the connection to the server from game.html (window.__royal).
 (() => {
@@ -31,8 +31,8 @@
   const grav = () => scene.wacky.lowgrav ? 520 : 1900;
   const alive = () => F.filter(f => f.alive);
   const S = f => (.72 + f.z * .4) * f.size * sizeK(); // on-screen scale (closer = bigger)
-  // 🗺️ the maps (Kung Fu Town = a street, Rumble Ring = a wrestling ring you can only leave over the top rope)
-  const MAPINFO = { kungfu: { title: '🏯 KUNG FU TOWN', intro: 'KUNG FU TOWN', weapons: ['sword', 'staff', 'nunchaku'], drops: () => scene.wacky.weapons }, ring: { title: '🔔 RUMBLE RING', intro: 'RUMBLE RING', weapons: ['chair'], drops: () => true },
+  // 🗺️ the maps (Kung Fu Town = a street, Royal Rumble = a wrestling ring you can only leave over the top rope)
+  const MAPINFO = { kungfu: { title: '🏯 KUNG FU TOWN', intro: 'KUNG FU TOWN', weapons: ['sword', 'staff', 'nunchaku'], drops: () => scene.wacky.weapons }, ring: { title: '🔔 ROYAL RUMBLE', intro: 'ROYAL RUMBLE', weapons: ['chair'], drops: () => true },
     wizard: { title: '🧙 WIZARD BATTLE', intro: 'WIZARD BATTLE', weapons: [], drops: () => false }, colosseum: { title: '🏛️ COLOSSEUM', intro: 'THE COLOSSEUM', weapons: [], drops: () => false, armed: true } };
   // 🗡️ weapons: how much harder they hit (d), how much further they reach (r), slower swings (cd), the hit word (w)
   const WSTAT = { sword: { d: 2.6, r: 30, w: 'SLASH!' }, staff: { d: 2.2, r: 40 }, nunchaku: { d: 2.4, r: 30 }, chair: { d: 2.4, r: 30, w: 'CLANG!' },
@@ -522,7 +522,7 @@
     barrel(60, GY0 + 30, 1); barrel(1860, GY0 + 40, 1.05); b.fillStyle = '#7a5530'; b.fillRect(1760, GY0 - 30, 80, 70); b.strokeStyle = '#3a2410'; b.lineWidth = 4; b.strokeRect(1760, GY0 - 30, 80, 70);
     return c;
   }
-  // ---------- 🔔 Rumble Ring (arena + ring drawn once; logo, lights and front ropes every frame) ----------
+  // ---------- 🔔 Royal Rumble (arena + ring drawn once; logo, lights and front ropes every frame) ----------
   const ROPES = [38, 76, 114], postH = 150;
   function ropeY(x0, y0, x1, y1, k0, k1, h) { return [y0 - h * k0, y1 - h * k1]; }
   function drawRing(b, front) { // back + side ropes (front = false) or the front ropes and posts (front = true)
@@ -559,7 +559,7 @@
     b.strokeStyle = 'rgba(255,255,255,.05)'; b.lineWidth = 2; for (let i = 0; i < 9; i++) { const y = 650 + Math.pow(i / 9, 1.5) * 430; b.beginPath(); b.moveTo(0, y); b.lineTo(W, y); b.stroke(); }
     // ring apron (front skirt) + the mat
     b.fillStyle = '#121216'; b.beginPath(); b.moveTo(ringL(1) - 10, GY1); b.lineTo(ringR(1) + 10, GY1); b.lineTo(ringR(1) + 10, GY1 + OUT_Y + 6); b.lineTo(ringL(1) - 10, GY1 + OUT_Y + 6); b.fill();
-    b.fillStyle = 'rgba(255,210,60,.85)'; b.font = `40px ${FONT}`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText('🔔  RUMBLE RING  🔔', 960, GY1 + 32);
+    b.fillStyle = 'rgba(255,210,60,.85)'; b.font = `40px ${FONT}`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText('🔔  ROYAL RUMBLE  🔔', 960, GY1 + 32);
     b.fillStyle = '#1a1a22'; b.beginPath(); b.moveTo(ringL(0) - 16, GY0 - 4); b.lineTo(ringR(0) + 16, GY0 - 4); b.lineTo(ringR(1) + 18, GY1 + 4); b.lineTo(ringL(1) - 18, GY1 + 4); b.fill(); // the apron edge
     const mat = b.createLinearGradient(0, GY0, 0, GY1); mat.addColorStop(0, '#c8ccd6'); mat.addColorStop(1, '#eef0f4'); b.fillStyle = mat;
     b.beginPath(); b.moveTo(ringL(0), GY0); b.lineTo(ringR(0), GY0); b.lineTo(ringR(1), GY1); b.lineTo(ringL(1), GY1); b.fill();

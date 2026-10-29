@@ -790,7 +790,7 @@ const MAPS = {
     } }
   },
   rumble: {
-    name: 'Royal Rumble', icon: '🤼', noCrumble: true, hardGround: true, aggro: 1.9, wallScale: .45, rScale: .6,
+    name: 'Rumble Royal', icon: '🤼', noCrumble: true, hardGround: true, aggro: 1.9, wallScale: .45, rScale: .6,
     shape: (q, r, p, R) => SHAPES.rect(q, r, p, R, { a: .92, b: .92 }),
     tops: () => Array.from({ length: 3 }, (_, i) => makeTopP({ c1: `hsl(210,12%,${93 - i * 2}%)`, c2: `hsl(210,10%,${84 - i * 2}%)`, specks: ['#0001'], edge: 'rgba(0,0,0,.06)' })),
     wall: { cols: ['#c4142a', '#8a0d1e', '#4a0610', '#200208'], flat: true, lines: false, lit: 'rgba(255,255,255,.06)', lip: '#fff', lipH: 3 },

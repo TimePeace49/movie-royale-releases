@@ -277,7 +277,7 @@ function rewardWants() {
   if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
   if (st.raidOn !== false && st.raidTitle) want[st.raidTitle.toLowerCase()] = !(db.live && !stream().raidUsed); // 🚀 while you're live, until someone redeems it
   for (const k of Object.keys(VR)) want[vrTitle(k).toLowerCase()] = false; // 💧🙆🎩🎉 always on in the menu
-  for (const [t, m] of Object.entries(db.rewardModes || {})) { if (m === 'off') want[t] = true; else if (m === 'on' || m === 'once') want[t] = false; } // 💰 your override (Settings → Rewards & prices) beats the rules
+  for (const [t, m] of Object.entries(db.rewardModes || {})) { if (m === 'off') want[t] = true; else if (m === 'on' || m === 'once') want[t] = false; else if (m === 'count') want[t] = countLeft(t) <= 0; } // (🔢 countdown: on until it's been used that many times this stream) // 💰 your override (Settings → Rewards & prices) beats the rules
   return want;
 }
 async function syncRewards(all = null) {
@@ -415,6 +415,7 @@ const twitchHandlers = {
     const mode = (db.rewardModes || {})[String(r.title || '').toLowerCase()];
     if (mode === 'off') return; // ⏸ paused by you (it's hidden on Twitch too)
     if (mode === 'once') { db.rewardModes[r.title.toLowerCase()] = 'off'; save(); rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); pushState(); } // used once: off until you turn it on again
+    if (mode === 'count') { const t = r.title.toLowerCase(); if (countLeft(t) <= 0) return; const st = stream(); (st.rewardUses ||= {})[t] = (st.rewardUses[t] || 0) + 1; save(); if (countLeft(t) <= 0) { rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); } pushState(); } // 🔢 one less this stream (none left = off until the next stream)
     return this.redeemNow(r);
   },
   async redeemNow(r) {
@@ -566,6 +567,9 @@ function endRollcall() {
   pushState(); refreshPreview();
 }
 // ---------- active chatters: Discord movies only go on the cliff once their person chats this stream ----------
+// 🔢 "countdown" reward rule: it can be used N times per stream, then it's off until the next stream
+const countMax = t => Math.max(1, Math.round(Number(db.rewardCounts?.[t]) || 3));
+const countLeft = t => countMax(t) - (stream().rewardUses?.[t] || 0);
 function stream() {
   const day = todayKey();
   if (!db.stream || db.stream.day !== day) { db.stream = { day, active: [] }; save(); } // new day = new stream
@@ -975,6 +979,7 @@ async function vrSetup() {
     out[k] = o;
   }
   db.vrSetup = { at: Date.now(), ...out }; save(); rewardKey = ''; syncRewards().catch(() => {}); pushState();
+  if (db.settings.choiceObs) choiceFile().then(f => obs.celebrateSource(true, f.file)).catch(() => {}); // (a remade reward has a new id: the OBS file gets it)
   return out;
 }
 setInterval(() => { if (twitch.status.userId && !db.vrSetup && !vrSetup.busy) { vrSetup.busy = true; vrSetup().catch(e => console.error('[twitch] viewer rewards:', e.message)).finally(() => { vrSetup.busy = false; }); } }, 30000);
@@ -1007,12 +1012,26 @@ async function celebrate(c) {
   if (db.settings.choiceScreen !== false) globalThis.__desktop?.celebrate?.(`http://127.0.0.1:${PORT}/celebrate.html?desk=1${db.settings.choiceObs ? '&quiet=1' : ''}#${encodeURIComponent(JSON.stringify(msg))}`); // 🖥️ over whatever you're looking at
   broadcast({ type: 'toast', text: `🎉 ${c.name} redeemed Viewer's choice!${c.input ? ' “' + c.input + '”' : ''}` }, 'control');
 }
-async function choiceSource(on) { // 📺 the OBS browser source, in every scene (only when you turn it on)
-  db.settings.choiceObs = !!on; save();
-  const r = await obs.celebrateSource(on, `http://127.0.0.1:${PORT}/celebrate.html`);
-  pushState(); return r;
+// 📺 the OBS browser source, on top of every scene (only when you turn it on). It's a file on your PC with your channel and the
+// Viewer's choice reward written in: it reads your Twitch chat by itself, so it works with just OBS open (Movie Royal can be closed).
+async function choiceFile() {
+  const login = twitch.status.login || db.owner?.login; if (!login) throw new Error('Sign in with Twitch first.');
+  const title = vrTitle('choice'), rw = (await twitch.listAllRewards()).find(r => r.title.toLowerCase() === title.toLowerCase());
+  if (!rw) throw new Error(`There's no “${title}” reward on Twitch yet. Press 🎁 Make / fix the viewer rewards now first.`);
+  const cfg = { channel: login, reward: rw.id, text: db.settings.choiceHeadline || "VIEWER'S CHOICE!", vol: db.settings.soundOn === false ? 0 : Math.round(Number(db.settings.sfxVolume ?? 70)), sound: db.settings.soundOn === false ? '0' : '1' };
+  const tpl = fs.readFileSync(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'utf8').replace('<script>', `<script>window.MR_CONFIG = ${JSON.stringify(cfg).replace(/</g, '\\u003c')};</script>\n<script>`);
+  const dir = path.join(DATA, 'obs'); fs.mkdirSync(dir, { recursive: true }); const file = path.join(dir, 'viewers-choice.html'); fs.writeFileSync(file, tpl);
+  return { file, needsText: !rw.input };
 }
-setInterval(() => { if (db.settings.choiceObs) obs.celebrateSource(true, `http://127.0.0.1:${PORT}/celebrate.html`).catch(() => {}); }, 10 * 60000); // (new scenes get it too)
+async function choiceSource(on) {
+  db.settings.choiceObs = !!on; save();
+  let note = null, file = null;
+  if (on) { const f = await choiceFile(); file = f.file; if (f.needsText) note = 'Your Viewer\'s choice reward doesn\'t ask viewers to type something, so it can\'t be seen in chat. On Twitch, turn on “Require Viewer to Enter Text” for it.'; }
+  const r = await obs.celebrateSource(on, file);
+  pushState(); return { ...r, note };
+}
+setInterval(() => { if (db.settings.choiceObs && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file)).catch(() => {}); }, 10 * 60000); // (new scenes get it too, and a new reward or channel is written in)
+app.get('/api/vr/obs-file', (req, res) => res.download(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'viewers-choice.html')); // ⬇️ the file for OBS (it sets itself up when you open it)
 app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/vr/source', async (req, res) => { try { res.json({ ok: true, ...(await choiceSource(!!req.body?.on)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/test/vr', (req, res) => { // 🧪 pretend someone redeemed one
@@ -1031,7 +1050,7 @@ async function pricesInfo() {
   const st = db.settings, W = wheel.W(), modes = db.rewardModes || {}, P = db.moneyPaused || {};
   let tw = []; const mine = new Set(); let twErr = null;
   try { tw = await twitch.listAllRewards(); for (const r of await twitch.listRewards()) mine.add(r.id); } catch (e) { twErr = twitch.status.userId ? e.message : 'Sign in with Twitch to see and change the prices on Twitch.'; }
-  const R = (group, key, title, what, cost) => { const t = tw.find(x => x.title.toLowerCase() === String(title).toLowerCase()); return { group, key, title, what, cost: t?.cost ?? cost ?? null, onTwitch: !!t, mine: !!t && mine.has(t.id), enabled: t ? t.enabled : null, mode: modes[String(title).toLowerCase()] || 'rules' }; };
+  const R = (group, key, title, what, cost) => { const t = tw.find(x => x.title.toLowerCase() === String(title).toLowerCase()); return { group, key, title, what, cost: t?.cost ?? cost ?? null, onTwitch: !!t, mine: !!t && mine.has(t.id), enabled: t ? t.enabled : null, mode: modes[String(title).toLowerCase()] || 'rules', count: countMax(String(title).toLowerCase()), left: countLeft(String(title).toLowerCase()) }; };
   const rewards = [];
   for (const [title, ev] of Object.entries(st.rewards || {})) rewards.push(R('battle', 'chaos:' + title, title, `${EVENTS[ev]?.icon || ''} ${EVENTS[ev]?.name || ev} (chaos)`, null));
   if (st.colorReward) rewards.push(R('battle', 'color', st.colorReward, '🎨 Pick your ball color' + (st.colorMode === 'points' ? '' : ' (only used when ball colors are set to channel points)'), null));
@@ -1047,7 +1066,9 @@ app.get('/api/prices', async (req, res) => res.json(await pricesInfo()));
 app.post('/api/prices/reward', async (req, res) => {
   const b = req.body || {}, title = String(b.title || ''), key = String(b.key || ''); if (!title) return res.status(400).json({ error: 'Which reward?' });
   try {
-    if (b.mode) { db.rewardModes ||= {}; if (b.mode === 'rules') delete db.rewardModes[title.toLowerCase()]; else if (['on', 'off', 'once'].includes(b.mode)) db.rewardModes[title.toLowerCase()] = b.mode; }
+    if (b.mode) { db.rewardModes ||= {}; if (b.mode === 'rules') delete db.rewardModes[title.toLowerCase()]; else if (['on', 'off', 'once', 'count'].includes(b.mode)) db.rewardModes[title.toLowerCase()] = b.mode; }
+    if (b.count != null) { (db.rewardCounts ||= {})[title.toLowerCase()] = Math.max(1, Math.min(999, Math.round(Number(b.count) || 1))); }
+    if (b.resetCount) { const st = stream(); if (st.rewardUses) delete st.rewardUses[title.toLowerCase()]; }
     let note = null;
     if (b.cost != null) {
       const cost = Math.max(1, Math.round(Number(b.cost) || 0)); if (!cost) throw new Error('Type a price.');
@@ -2417,6 +2438,7 @@ app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / 
 }); // Test tab: pretend you went live / offline
 app.post('/api/test/wheel-redeem-raw', (req, res) => { const b = req.body || {}; const ok = wheel.wheelRedeem({ title: String(b.title || ''), input: b.input, login: String(b.name || 'test').toLowerCase(), name: String(b.name || 'test'), cost: 100 }); res.json({ ok }); });
 app.post('/api/test/wheel-redeem', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const k = String(req.body?.kind || 'respin'), name = String(req.body?.name || 'test_viewer'); const ok = wheel.wheelRedeem({ title: wheel.W().rewards[k] || k, testKind: k, login: name.toLowerCase().replace(/\s+/g, '_'), name }); res.json({ ok }); });
+app.post('/api/test/reward-redeem', async (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const title = String(req.body?.title || ''); if (!title) return res.status(400).json({ error: 'Which reward?' }); await twitchHandlers.redeem({ login: 'test_viewer', name: 'test_viewer', title, input: String(req.body?.input || '') }); res.json({ ok: true, left: (db.rewardModes || {})[title.toLowerCase()] === 'count' ? countLeft(title.toLowerCase()) : null }); }); // 🧪 pretend a channel point redeem of any reward (its rules too)
 app.post('/api/test/redeem', (req, res) => { triggerEvent(req.body?.event || 'random', { name: String(req.body?.name || 'test_viewer'), avatar: null }, req.body?.bits ? 'bits' : 'points'); res.json({ ok: true }); });
 app.post('/api/test/cheer', async (req, res) => { await twitchHandlers.cheer({ bits: Number(req.body?.bits) || 100, login: null, name: String(req.body?.name || 'test_viewer') }); res.json({ ok: true }); });
 app.post('/api/test/check-movie', async (req, res) => {

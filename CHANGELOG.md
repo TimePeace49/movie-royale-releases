@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.38.0 (test build)
+- 📺 **Viewer's choice in OBS works with just OBS open.** “Put it on my stream” (Settings → 💰 Rewards & prices, or the new last step of the Setup guide) now adds a source that reads your Twitch chat by itself, so the celebration plays on stream even when Movie Royal is closed. The reward has to ask viewers to type something (Movie Royal's does).
+- 🎁 **For a friend:** the same thing as one file anyone can download: https://github.com/TimePeace49/movie-royale-releases/releases/latest/download/viewers-choice.html. They open it in their browser, type their channel, redeem their Viewer's Choice once, and it gives them what to paste into OBS. No Movie Royal needed.
+- 🔢 **New channel point rule: Countdown.** In Settings → 💰 Rewards & prices, “When it's on” → 🔢 Countdown: X uses per stream. On until it's been used that many times this stream, then off until the next stream. Shows how many are left; ↺ starts it over.
+- 🏷️ **Renamed maps:** the card wrestling map is now **🔔 Royal Rumble**, and the ball wrestling map is now **🤼 Rumble Royal**.
+- ✅ **Checklist:** 📺 Preview and 💬 Test chat buttons at the top right.
+- ⧉ **The 💬 Pretend chat pops out** into its own window (like the preview window already does), so both can go on another screen.
+
 ## 1.37.0 (test build)
 - 🎁 **Viewer rewards, always on in the channel points menu:** 💧 Hydrate, 🙆 Stretch, 🎩 Pick a hat and 🎉 Viewer's choice. Movie Royal makes them once you're signed in. A reward you already had keeps its name and price (Movie Royal deletes it and makes it again; one made by hand on Twitch can only be deleted on Twitch, and still works meanwhile).
   - 💧 Hydrate / 🙆 Stretch: a pop-up with a chugging / stretching sound for 5 seconds, only while Movie Royal is the window you're on.

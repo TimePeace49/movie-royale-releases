@@ -27,7 +27,7 @@ export const WACKY = {
 };
 export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). finalFight = the last two get a weapon each and a FINAL FIGHT with its own timer.
   { id: 'kungfu', name: 'Kung Fu Town', icon: '🏯', desc: 'A martial arts showdown in an old Chinese town, like an old kung fu movie: lanterns, tiled roofs and a dusty street.', modes: ['card'], finalFight: true },
-  { id: 'ring', name: 'Rumble Ring', icon: '🔔', desc: 'Every pack starts in a wrestling ring. Slams, suplexes, clotheslines and steel chairs: the only way out is over the top rope (the more hurt a pack is, the easier it goes over). Last pack in the ring wins.', modes: ['card'], finalFight: true },
+  { id: 'ring', name: 'Royal Rumble', icon: '🔔', desc: 'Every pack starts in a wrestling ring. Slams, suplexes, clotheslines and steel chairs: the only way out is over the top rope (the more hurt a pack is, the easier it goes over). Last pack in the ring wins.', modes: ['card'], finalFight: true },
   { id: 'wizard', name: 'Wizard Battle', icon: '🧙', desc: 'Wizards on a giant floating platform in the night sky. Magic bolts, fireballs, lightning and meteors crack the platform and knock parts away: fall through a hole or off the edge and you\'re out. No weapons.', modes: ['card'], finalFight: true },
   { id: 'colosseum', name: 'Colosseum', icon: '🏛️', desc: 'A gladiator battle in the arena: every pack starts with its own weapon (swords, spears, tridents, axes, maces, flails, hammers, scimitars) and keeps it. Turn on 🦁 Lions and lions come out of the tunnels.', modes: ['card'], finalFight: true }
 ];
@@ -193,7 +193,7 @@ export function sceneMsg() {
   const map = f?.map || b.map || 'kungfu', ball = f ? !!f.ball : (b.map === 'random' ? false : isBallMap(map));
   return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner };
 }
-// 🤼 the picture in the middle of the Rumble Ring: your own, or your Twitch picture
+// 🤼 the picture in the middle of the Royal Rumble: your own, or your Twitch picture
 export const ringLogo = () => C().ringLogo || db.owner?.avatar || '';
 export function setKeep(on) { C().keepWinner = !!on; save(); hooks.pushState(); return { keepWinner: !!on }; }
 export function setRingLogo(url) { const c = C(); c.ringLogo = url ? fileOk(url) : ''; if (url && !c.ringLogo) throw new Error('That picture didn\'t work.'); save(); sendScene(); hooks.pushState(); return { logo: ringLogo(), own: !!c.ringLogo }; }

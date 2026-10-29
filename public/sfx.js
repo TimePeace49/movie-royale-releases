@@ -172,7 +172,7 @@ window.SFX = (() => {
     spell: () => { tone({ type: 'sine', f0: 900, f1: 1800, dur: .18, v: .12 }); tone({ type: 'triangle', f0: 1350, f1: 2600, dur: .22, v: .07, at: .03 }); noise({ dur: .2, v: .06, type: 'highpass', f0: 6000 }); },
     zap: () => { tone({ type: 'sawtooth', f0: 1400, f1: 300, dur: .14, v: .12 }); noise({ dur: .12, v: .2, type: 'bandpass', f0: 3000, q: 2 }); },
     roar: () => { const p = .85 + Math.random() * .3; noise({ dur: 1.1, v: .45, type: 'lowpass', f0: 700 * p, f1: 220, q: 3, a: .08 }); tone({ type: 'sawtooth', f0: 120 * p, f1: 70, dur: 1, v: .2, a: .08 }); tone({ type: 'square', f0: 90 * p, f1: 55, dur: .9, v: .08, a: .1 }); },
-    // 🔔 Rumble Ring
+    // 🔔 Royal Rumble
     crowd: (o = {}) => { noise({ dur: 2.2, v: .16 * (o.v ?? 1), type: 'bandpass', f0: 900, f1: 1300, q: .4, a: .25 }); noise({ dur: 1.8, v: .08 * (o.v ?? 1), type: 'bandpass', f0: 2400, q: .7, a: .2 }); for (let i = 0; i < 6; i++) tone({ type: 'sawtooth', f0: 300 + Math.random() * 300, f1: 420 + Math.random() * 300, dur: .5, v: .012, at: Math.random() * .6, a: .1 }); },
     slam: () => { tone({ type: 'sine', f0: 90, f1: 35, dur: .35, v: .7 }); noise({ dur: .25, v: .45, type: 'lowpass', f0: 1400, f1: 200, q: .7 }); noise({ dur: .5, v: .12, type: 'bandpass', f0: 300, q: 2, at: .03 }); },
     chair: () => { tone({ type: 'square', f0: 620, f1: 540, dur: .12, v: .12 }); tone({ type: 'sine', f0: 1240, dur: .5, v: .12 }); tone({ type: 'sine', f0: 1870, dur: .35, v: .07 }); noise({ dur: .15, v: .3, type: 'highpass', f0: 2000 }); tone({ type: 'sine', f0: 140, f1: 60, dur: .12, v: .35 }); },
@@ -204,7 +204,7 @@ window.SFX = (() => {
   function sched() {
     while (nextT < ac.currentTime + .12) {
       const at = nextT - ac.currentTime, i = step % 16, bar = Math.floor(step / 16) % 4;
-      if (curMap === 'card-ring' && mode === 'fight') { // 🔔 Rumble Ring: driving rock: kick, big snare, palm-muted power chords
+      if (curMap === 'card-ring' && mode === 'fight') { // 🔔 Royal Rumble: driving rock: kick, big snare, palm-muted power chords
         const riff = [40, 40, 40, 43, 40, 40, 45, 43, 40, 40, 40, 43, 47, 45, 43, 38][i] + (bar === 3 ? 5 : 0);
         if (i % 4 === 0 || i === 10) tone({ type: 'sine', f0: 150, f1: 45, dur: .16, v: .55, at, bus: musicBus });
         if (i % 8 === 4) { noise({ dur: .2, v: .32, type: 'bandpass', f0: 1500, q: .6, at, bus: musicBus }); tone({ type: 'triangle', f0: 200, f1: 150, dur: .08, v: .15, at, bus: musicBus }); }

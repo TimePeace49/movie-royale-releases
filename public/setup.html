@@ -84,7 +84,8 @@ const STEPS = [
   { id: 'cloud', title: '24/7 Discord bot', sub: 'Picks while your PC is off', done: () => !!S.cloud?.enabled },
   { id: 'donations', title: 'Donations', sub: 'Tips pop up for the wheel', done: () => !!(S.settings.seJwt || S.settings.slToken) },
   { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup },
-  { id: 'obs', title: 'OBS control', sub: 'For the wheel\'s Doomsday', done: () => !!(S.settings.obsMic || S.settings.obsCam) }
+  { id: 'obs', title: 'OBS control', sub: 'For the wheel\'s Doomsday', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
+  { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs }
 ];
 
 async function load() {
@@ -285,8 +286,28 @@ const PAGES = {
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="saveObs(this)">Connect &amp; save</button></div>
     <p class="help">Connecting never changes anything in OBS. You can change this later in Settings → 🎥 OBS.</p>
     ${nav()}`;
+  },
+  choice() {
+    const gh = 'https://github.com/TimePeace49/movie-royale-releases/releases/latest/download/viewers-choice.html';
+    return `<h2>🎉 Viewer's Choice in OBS (optional)</h2><p class="why">When someone redeems your <b>🎉 Viewer's Choice</b> channel points reward: confetti and balloons over the whole stream, a big pop-up with their name and what they typed, the pop of the confetti and a crowd going wild, for 10 seconds. It's a source in OBS that reads your Twitch chat by itself, so it works with just OBS open (Movie Royal can be closed).</p>
+    <ol class="steps">
+      <li>Do the <b>Sign in with Twitch</b> step (Movie Royal makes the Viewer's Choice reward for you) and the <b>OBS control</b> step (so Movie Royal can add the source).</li>
+      <li>Press the button: Movie Royal adds <b>Movie Royal celebration</b> on top of every scene in OBS.</li>
+    </ol>
+    ${status(!!S.choiceObs, 'It\'s in OBS. Try it: Movie Royal → 🧪 Test → 🎁 Viewer rewards → 🎉 Viewer\'s choice, or redeem it yourself.')}
+    ${note('choice')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="choiceSetup(this)">${S.choiceObs ? '🔄 Set it up again' : '📺 Set it up in my OBS'}</button></div>
+    <h3 style="margin-top:22px">🎁 For a friend (no Movie Royal needed)</h3>
+    <p class="help">Send them this link to download the file: <a href="${gh}" target="_blank">${gh}</a> (or download it here: <a href="/api/vr/obs-file" download>⬇️ viewers-choice.html</a>). They open it in their web browser, type their channel name, redeem their Viewer's Choice reward once, and it gives them what to paste in OBS (Sources → + → Browser). Their reward has to ask viewers to type something.</p>
+    ${nav()}`;
   }
 };
+async function choiceSetup(btn) {
+  btn.disabled = true;
+  try { const r = await api('/api/vr/source', { on: true }); msg.choice = { ok: true, text: `Added <b>Movie Royal celebration</b> on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}.${r.note ? ' ⚠️ ' + esc(r.note) : ''}` }; }
+  catch (e) { msg.choice = { ok: false, text: esc(e.message) }; }
+  await load();
+}
 async function saveObs(btn) {
   btn.disabled = true; const pw = $('obsPw').value.trim(), body = { obsMic: $('obsMic').value.trim(), obsCam: $('obsCam').value.trim() }; if (pw) body.obsPassword = pw;
   try {

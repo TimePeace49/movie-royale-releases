@@ -7,7 +7,7 @@ export const MAP_LIST = [
   { id: 'hollywood', power: '🫨 Aftershock', name: 'Hollywood Sign', icon: '🎬', desc: 'Fight on top of the letters while earthquakes knock them down one by one.' },
   { id: 'cyber', power: '🔴 Laser Grid', name: 'Neon City', icon: '🌆', desc: 'Lasers sweep the stage — jump or get zapped.' },
   { id: 'smash', power: '💥 Final Smash', name: 'Final Stage', icon: '🥊', desc: 'A floating battle stage with side platforms and SMASH attacks.' },
-  { id: 'rumble', solid: true, power: '🤼 Tag Team', name: 'Royal Rumble', icon: '🤼', desc: 'Wrestlers fly off the top rope — wherever they land, everyone goes flying out of the ring. Plus: bounce off the ropes or get thrown over the top.' },
+  { id: 'rumble', solid: true, power: '🤼 Tag Team', name: 'Rumble Royal', icon: '🤼', desc: 'Wrestlers fly off the top rope — wherever they land, everyone goes flying out of the ring. Plus: bounce off the ropes or get thrown over the top.' },
   { id: 'pong', power: '⚪ Multiball', name: 'Pong', icon: '🏓', desc: 'A flaming ball rips straight through pieces, faster and faster. The paddles knock pieces around.' },
   { id: 'frost', power: '🌨️ Blizzard', name: 'Frozen Peak', icon: '❄️', desc: 'Slippery ice under the northern lights. Icicles drop from the sky.' },
   { id: 'donut', power: '😋 Mega Bite', name: 'Sweet Donut', icon: '🍩', desc: 'A giant sugar monster takes huge bites out of the donut. Do not be in its mouth!' },

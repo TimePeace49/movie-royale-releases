@@ -140,16 +140,16 @@ export async function capture(on) {
   });
 }
 // 🎉 Viewer's choice: a browser source (Movie Royal's celebration page) on top of every scene. Only added when you turn it on.
-export async function celebrateSource(on, url) { // (run again: adds it to scenes you made since)
+export async function celebrateSource(on, file) { // (run again: adds it to scenes you made since). file = the page on this PC
   const name = 'Movie Royal celebration';
   return session(async call => {
     const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === name);
     if (!on) { if (have) await call('RemoveInput', { inputName: name }); return { on: false, removed: !!have }; }
     const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080;
     const scenes = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName); if (!scenes.length) throw new Error('OBS has no scenes.');
-    const settings = { url, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' };
+    const settings = { is_local_file: true, local_file: file, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' };
     if (!have) await call('CreateInput', { sceneName: scenes[0], inputName: name, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true });
-    else await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true });
+    else { await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true }); await call('PressInputPropertiesButton', { inputName: name, propertyName: 'refreshnocache' }).catch(() => {}); } // (reload it: the file may have changed)
     let added = 0;
     for (const sc of scenes) {
       let id = await call('GetSceneItemId', { sceneName: sc, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
