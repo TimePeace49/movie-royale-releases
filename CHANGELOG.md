@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.35.3 (test build)
+- 🗺️ Card battles: picking another map (or another card battle with a different map) resets the screen by itself: the old winner screen goes away and the new map starts fresh. A fight that's already going isn't stopped.
+
 ## 1.35.2 (test build)
 - 🧙 Wizard Battle: wizards now cast spells at anyone from anywhere on the platform (no walking up or lining up first). They stroll around between spells, and pick all kinds of targets, not just the closest.
 

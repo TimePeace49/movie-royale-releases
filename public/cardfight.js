@@ -111,7 +111,7 @@
       else bell();
       if (m.show) SFX.music?.('fight');
     } else if (m.phase !== 'fight' && m.phase !== 'ended') { // lobby: the packs lined up and waiting
-      if (mode !== 'lobby' || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; }
+      if (mode !== 'lobby' || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; petals = []; }
       mode = 'lobby'; fightId = null; winner = null; replay = null; if (m.show) SFX.music?.('lobby');
     } else if (m.phase === 'ended' && m.last && mode !== 'won' && mode !== 'replay' && mode !== 'over' && !winner) { // (a screen that joined late: show the winner)
       if (!F.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fightId = m.fightId; }

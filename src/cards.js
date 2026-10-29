@@ -152,7 +152,7 @@ export function editPack(b) {
 
 // ---------- ⚔️ card battle setups (which packs fight: every pack, or 1 of each; all games or some) ----------
 export function saveBattle(b) {
-  const c = C(); let x = b.id ? getBattle(b.id) : null;
+  const c = C(); let x = b.id ? getBattle(b.id) : null; const mapWas = activeBattle().map;
   if (!x) { x = { ...DEF_BATTLE(), id: uid(), name: '🃏 New card battle' }; c.battles.push(x); }
   if ('name' in b && String(b.name).trim()) x.name = String(b.name).trim().slice(0, 60);
   if ('games' in b) x.games = (Array.isArray(b.games) ? b.games : []).map(g => String(g).slice(0, 60)).slice(0, 50);
@@ -161,10 +161,13 @@ export function saveBattle(b) {
   if ('pace' in b) x.pace = Math.max(0, Math.min(100, Math.round(Number(b.pace) || 0))); // ⏳ elimination pacer strength (0 = off)
   if ('length' in b) x.length = Math.max(0, Math.min(240, Math.round(Number(b.length) || 0))); // how long a fight should last (0 = by how many packs)
   if (b.activate !== false) c.activeId = x.id;
+  mapSwitched(mapWas);
   save(); hooks.pushState(); sendScene(); return { battle: x };
 }
 export function removeBattle(id) { const c = C(); if (c.battles.length <= 1) throw new Error('You need at least one card battle.'); c.battles = c.battles.filter(b => b.id !== id); C(); save(); hooks.pushState(); sendScene(); return {}; }
-export function setActive(id) { if (getBattle(id)) { C().activeId = id; save(); hooks.pushState(); sendScene(); } return {}; }
+// 🗺️ a new map (and no fight going): the old winner screen goes and the new map's ring / street / platform starts fresh
+function mapSwitched(was) { if (activeBattle().map === was || live.phase === 'fight') return; live.phase = 'idle'; live.fight = null; live.last = null; setTimeout(() => hooks.preview?.(), 50); }
+export function setActive(id) { if (getBattle(id)) { const was = activeBattle().map; C().activeId = id; mapSwitched(was); save(); hooks.pushState(); sendScene(); } return {}; }
 
 const MAX_FIGHTERS = 80;
 export function fightersFor(b = activeBattle()) {
