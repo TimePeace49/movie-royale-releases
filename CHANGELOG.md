@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.44.0 (test build)
+- 🎉 **Six new holiday maps** (ball and card battles, on Random any time of year):
+  - 🎃 **Haunted Graveyard** (Halloween): ghosts drift after the pieces, and one touch SCARES a piece into running for the edge. Jack-o'-lanterns drop out of the sky (a circle shows where) and blow up.
+  - 🎆 **New Year's Eve**: a rooftop party at midnight. Rockets shoot up and burst on the pieces, and THE GIANT BALL drops (its shadow grows first) and smashes a big hole in the roof.
+  - 💘 **Heartbreak Island** (Valentine's Day): a heart-shaped island with two evil cupids shooting arrows (a dashed line shows each shot). Halfway through, the heart BREAKS down the middle.
+  - ☘️ **Leprechaun Hills** (St. Patrick's Day): evil leprechauns hop after the pieces and kick them toward the edge, and the RAINBOW BEAM blasts across the island.
+  - 🐰 **Bunny Rampage** (Easter): a giant evil bunny hops around and stomps (its shadow shows where it lands), and painted eggs wobble, crack and blow up.
+  - 🎇 **Fourth of July**: bottle rockets skitter across the ground in straight lines, and strings of firecrackers go off pop-pop-pop and knock out the ground.
+- 🧪 Test tab: a box for each (balls or cards), plus checklist items.
+
 ## 1.43.0 (test build)
 - 🔮 **New map: Elemental Wizards** (ball and card battles). A floating island in a magical sky. Four wizards stand on giant pillars at the corners and take turns casting at the island: 🔥 fireballs blow pieces up, 🌊 a tidal wave washes pieces toward the edge, 🪨 boulders smash the ground away, and ❄️ ice freezes pieces solid (if they're still frozen when it wears off, they shatter). Every spell shows where it'll land first.
 - 🌋 **New map: Pompeii** (ball and card battles). An old Roman town with the volcano erupting behind it. Lava pours in at the top of town and flows down the roads first, then spills into the houses, and everyone runs from it. Touching lava = burned. The volcano also throws burning rocks (a circle shows where) that blow pieces up and leave little lava pools. Town walls all round, so nobody gets knocked off the edge.

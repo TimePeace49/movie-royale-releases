@@ -2619,6 +2619,254 @@ const MAPS = {
     restore(v) { if (!v) return; tiles.forEach((tl, i) => { tl.lava = !!v.l[i]; tl.lavaAt ??= t; }); this.bombs = v.b.map(b => ({ ...b })); },
     power: { name: 'ERUPTION', icon: '🌋', fn() { const m = MAPS.pompeii; if (!m.bombs) return; for (let i = 0; i < 5; i++) setTimeout(() => m.lob(), i * 220); shake = 16; SFX.play('earthquake'); } }
   },
+  halloween: {
+    // 🎃 Haunted Graveyard: a graveyard island under a full moon that crumbles from the edges. Ghosts drift after the pieces:
+    // one touch and the piece is SCARED and bolts for the edge. Jack-o'-lanterns drop out of the sky (a circle shows where) and
+    // blow up. Bats flap past in the background.
+    name: 'Haunted Graveyard', icon: '🎃', shape: SHAPES.hex, wallScale: .9,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(${100 + i * 8},${22 - i * 2}%,${24 - i * 2}%)`, c2: `hsl(${95 + i * 6},20%,${18 - i}%)`, specks: ['#0004', '#7a8a5a33'], speckN: 16, edge: 'rgba(0,0,0,.3)',
+      deco: g => { const r = Math.random(); if (r < .09) { const x = rnd(16, TOP_W - 30), y = rnd(10, TOP_H - 24); g.fillStyle = '#8a8a90'; g.beginPath(); g.moveTo(x, y + 18); g.lineTo(x, y + 6); g.arc(x + 7, y + 6, 7, Math.PI, 0); g.lineTo(x + 14, y + 18); g.fill(); g.fillStyle = '#5a5a60'; g.fillRect(x + 4, y + 8, 6, 2); } else if (r < .13) { const x = rnd(14, TOP_W - 14), y = rnd(8, TOP_H - 8); g.fillStyle = '#e8701a'; g.beginPath(); g.ellipse(x, y, 7, 6, 0, 0, 7); g.fill(); } } })), // tombstones + little pumpkins
+    wall: { cols: ['#3a3428', '#2a2418', '#1a160e', '#0e0a06'], lip: '#4a5a32', lipH: 4, lit: 'rgba(140,255,120,.06)' },
+    sky(g) {
+      skyGrad(g, [[0, '#07040e'], [.5, '#1e0e2e'], [1, '#3a1a3a']]); stars(g, 120, H * .6);
+      glowBall(g, 1480, 230, 260, 'rgba(255,240,200,.35)', 'rgba(255,200,120,0)'); g.fillStyle = '#f4ecd0'; g.beginPath(); g.arc(1480, 230, 110, 0, 7); g.fill(); g.fillStyle = 'rgba(200,190,160,.5)'; for (const [x, y, r] of [[-30, -20, 22], [30, 30, 16], [10, -50, 10]]) { g.beginPath(); g.arc(1480 + x, 230 + y, r, 0, 7); g.fill(); } // full moon
+      hills(g, [['#1a1024', 780, 160, .004], ['#0e0814', 860, 110, .006]]);
+      g.strokeStyle = '#0a060e'; g.lineCap = 'round'; for (const x of [200, 520, 1700]) { const tree = (x0, y0, a, len, w) => { if (len < 14) return; const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); tree(x1, y1, a - rnd(.3, .6), len * .72, w * .7); tree(x1, y1, a + rnd(.3, .6), len * .7, w * .7); }; tree(x, 900, -Math.PI / 2, 130, 16); } // dead trees
+    },
+    clouds: '#3a2a4a', fog: ['rgba(140,255,160,.07)', 'rgba(10,6,20,.6)'],
+    animBack() { ctx.fillStyle = '#05030a'; for (let i = 0; i < 9; i++) { const x = (i * 260 + clock * (60 + i * 9)) % (W + 200) - 100, y = 140 + (i * 97) % 420 + Math.sin(clock * 2 + i) * 30, w = Math.sin(clock * 14 + i) * 14; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 12, y - 6 - w, x - 24, y + 2); ctx.quadraticCurveTo(x - 12, y + 2, x, y + 6); ctx.quadraticCurveTo(x + 12, y + 2, x + 24, y + 2); ctx.quadraticCurveTo(x + 12, y - 6 - w, x, y); ctx.fill(); } }, // bats
+    start() { this.gh = []; this.hz = []; this.next = 3; this.gNext = .5; },
+    ghost() { const a = rnd(6.3), d = ISLAND_R + S * 2; this.gh.push({ x: Math.cos(a) * d, y: Math.sin(a) * d, tgt: null, think: 0, ph: rnd(6.3), sp: rnd(90, 135), a: 0, cool: 0 }); },
+    update(dt) {
+      if (!this.gh) this.start();
+      if (winner) return;
+      const { n, k, behind } = hPace(), prey = alive().filter(f => !f.launch && !f.ret && !f.falling);
+      if ((this.gNext -= dt) <= 0) { this.gNext = behind ? 1 : 1.8; if (this.gh.length < Math.min(24, 3 + n / 7 + k * 4)) this.ghost(); }
+      if ((this.next -= dt) <= 0) { this.next = (behind ? rnd(1.6, 2.4) : rnd(2.6, 3.8)) * (1 - .3 * k); const tg = hAim(); if (tg) { this.hz.push({ x: tg.x, y: tg.y, u: 0, warn: 1.1, r: S * 1.3 }); SFX.play('whoosh', { v: .4 }); } }
+      for (const g of this.gh) { g.ph += dt * 3; g.a = Math.min(1, g.a + dt * 1.5); g.cool -= dt; g.think -= dt;
+        if (g.think <= 0 || !g.tgt?.alive) { g.think = rnd(.6, 1.2); g.tgt = null; let bd = 1e9; for (const f of prey.length > 40 ? Array.from({ length: 30 }, () => pick(prey)) : prey) { if (cfg.fair && f === destined && prey.length > 1 && Math.random() < .8) continue; const d = Math.hypot(f.x - g.x, f.y - g.y); if (d < bd) { bd = d; g.tgt = f; } } }
+        const f = g.tgt; if (f) { const dx = f.x - g.x, dy = f.y - g.y, d = Math.hypot(dx, dy) || 1; g.x += dx / d * g.sp * (1 + .5 * k) * dt + Math.cos(g.ph) * 20 * dt; g.y += dy / d * g.sp * (1 + .5 * k) * dt;
+          if (d < f.r + S * .6 && g.cool <= 0 && !f.fear) { g.cool = 2; const od = Math.hypot(f.x, f.y) || 1; SFX.play('groan', { v: .5 });
+            if (cfg.fair && f === destined) push(f, rnd(-200, 200), rnd(-200, 200)); else { f.fear = { dx: f.x / od, dy: f.y / od, until: t + rnd(1, 1.8) }; hurt(f, 5); }
+            if (n < 40) floaters.push({ text: pick(['BOO!', '👻 SCARED!', 'EEEK!', 'RUN!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 18, life: .9, color: '#c8ffd8' });
+            g.x += rnd(-S, S) * 3; g.y += rnd(-S, S) * 3; g.a = 0; } }
+      }
+      hStep(this.hz, dt, h => { hBlast(h.x, h.y, h.r, '#ff7a1a', ['SMASHED!', 'PUMPKINED!', 'SPOOKED!', 'TRICKED!'], ['#ff7a1a', '#ffb040', '#3a6a1a', '#fff3c4']); SFX.play('splat'); });
+    },
+    drawFloor() { for (const h of this.hz || []) if (h.u < h.warn) hRing(h.x, h.y, h.r, '#ff7a1a'); },
+    drawOver() {
+      for (const h of this.hz || []) if (h.u < h.warn) { const e = h.u / h.warn, X = sx(h.x), Y = sy(h.y) - (1 - e) * 700, s = .6 + e * .5; ctx.save(); ctx.translate(X, Y); ctx.rotate(e * 6); ctx.scale(s, s); // 🎃 a falling jack-o'-lantern
+        ctx.fillStyle = '#e8701a'; for (const dx of [-14, 0, 14]) { ctx.beginPath(); ctx.ellipse(dx, 0, 16, 24, 0, 0, 7); ctx.fill(); } ctx.fillStyle = '#3a6a1a'; ctx.fillRect(-3, -32, 6, 10); ctx.fillStyle = '#ffd040'; ctx.beginPath(); ctx.moveTo(-14, -8); ctx.lineTo(-6, -2); ctx.lineTo(-14, 2); ctx.moveTo(14, -8); ctx.lineTo(6, -2); ctx.lineTo(14, 2); ctx.fill(); ctx.beginPath(); ctx.moveTo(-16, 8); ctx.lineTo(-8, 12); ctx.lineTo(0, 8); ctx.lineTo(8, 12); ctx.lineTo(16, 8); ctx.lineTo(8, 18); ctx.lineTo(-8, 18); ctx.fill(); ctx.restore(); }
+      for (const g of this.gh || []) { const X = sx(g.x), Y = sy(g.y) - 40 + Math.sin(g.ph) * 8; ctx.save(); ctx.globalAlpha = .75 * g.a; ctx.translate(X, Y); // 👻 a ghost (sheet, wavy tail, angry eyes)
+        ctx.fillStyle = '#e8fff0'; ctx.shadowColor = '#9affc0'; ctx.shadowBlur = GFX.quality === 'low' ? 0 : 18; ctx.beginPath(); ctx.arc(0, -10, 24, Math.PI, 0); ctx.lineTo(24, 22); for (let j = 0; j < 4; j++) ctx.quadraticCurveTo(18 - j * 12, 30 + Math.sin(g.ph * 2 + j) * 5, 12 - j * 12, 22); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.fillStyle = '#1a0a1a'; ctx.beginPath(); ctx.ellipse(-9, -12, 5, 7, -.3, 0, 7); ctx.ellipse(9, -12, 5, 7, .3, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(0, 4, 7, 5, 0, 0, 7); ctx.fill(); ctx.restore(); }
+    },
+    snap() { return { g: (this.gh || []).map(g => ({ ...g, tgt: null })), h: (this.hz || []).map(h => ({ ...h })) }; },
+    restore(v) { if (!v) return; this.gh = v.g.map(g => ({ ...g })); this.hz = v.h.map(h => ({ ...h })); },
+    power: { name: 'GHOST STORM', icon: '👻', fn() { const m = MAPS.halloween; if (!m.gh) return; for (const f of alive().slice(0, 8)) m.gh.push({ x: f.x + rnd(-S, S) * 3, y: f.y + rnd(-S, S) * 3, tgt: f, think: 1, ph: rnd(6.3), sp: 160, a: 0, cool: 0 }); } }
+  },
+  newyear: {
+    // 🎆 New Year's Eve: a rooftop party above the city at midnight that crumbles from the edges. Rockets shoot up from the
+    // streets and burst right on the pieces (a sparkly circle shows where), and every so often THE GIANT BALL drops (its
+    // shadow grows first) and smashes a big hole in the roof.
+    name: "New Year's Eve", icon: '🎆', shape: SHAPES.hex, wallScale: .9,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(230,${18 + i * 3}%,${22 - i * 2}%)`, c2: `hsl(232,20%,${16 - i}%)`, specks: ['#ffd70066', '#ff5ad866', '#5ad8ff66', '#ffffff55'], speckN: 26, speckS: 3, edge: 'rgba(255,215,0,.25)' })), // confetti on the roof
+    wall: { cols: ['#6a3a2a', '#5a2e22', '#3e1e16', '#24100a'], lip: '#c8c8d8', lipH: 4, lit: 'rgba(255,220,140,.08)' },
+    sky(g) { skyGrad(g, [[0, '#02030c'], [.6, '#0c1030'], [1, '#1a1640']]); stars(g, 90, H * .5); skyline(g, 900, '#0a0a18', true); skyline(g, 980, '#05050e', true);
+      g.fillStyle = '#14142a'; g.fillRect(860, 300, 200, 700); g.fillStyle = '#f0e8c8'; g.beginPath(); g.arc(960, 380, 64, 0, 7); g.fill(); g.strokeStyle = '#14142a'; g.lineWidth = 7; g.beginPath(); g.moveTo(960, 380); g.lineTo(960, 326); g.moveTo(960, 380); g.lineTo(963, 330); g.stroke(); // the clock tower at midnight
+    },
+    clouds: '#2a2a4a', fog: ['rgba(255,200,255,.06)', 'rgba(4,4,16,.6)'],
+    animBack() { for (let i = 0; i < 4; i++) { const ph = (clock * .45 + i * .27) % 1, x = 200 + ((i * 523) % 1500), y = 160 + ((i * 211) % 260), col = ['#ff5ad8', '#5ad8ff', '#ffd700', '#7aff8a'][i]; if (ph < .65) { ctx.fillStyle = col; ctx.globalAlpha = 1 - ph / .65; for (let j = 0; j < 14; j++) { const a = j / 14 * 6.28; ctx.beginPath(); ctx.arc(x + Math.cos(a) * ph * 220, y + Math.sin(a) * ph * 220 + ph * ph * 60, 3, 0, 7); ctx.fill(); } ctx.globalAlpha = 1; } } }, // fireworks far away
+    start() { this.hz = []; this.next = 2.5; this.ballNext = 8; },
+    update(dt) {
+      if (!this.hz) this.start();
+      if (winner) return;
+      const { k, behind } = hPace();
+      if ((this.next -= dt) <= 0) { this.next = (behind ? rnd(1.2, 1.8) : rnd(2, 3)) * (1 - .3 * k); const tg = hAim(); if (tg) { this.hz.push({ kind: 'rocket', x: tg.x, y: tg.y, u: 0, warn: 1, r: S * 1.2, col: pick(['#ff5ad8', '#5ad8ff', '#ffd700', '#7aff8a', '#ff6a3a']), from: rnd(-ISLAND_R, ISLAND_R) }); SFX.play('whoosh', { v: .5 }); } }
+      if ((this.ballNext -= dt) <= 0) { this.ballNext = (behind ? rnd(5, 7) : rnd(8, 11)) * (1 - .3 * k); const tg = hAim(.85); if (tg) { this.hz.push({ kind: 'ball', x: tg.x, y: tg.y, u: 0, warn: 1.7, r: S * 2.2, after: .9 }); SFX.play('alert'); } }
+      hStep(this.hz, dt, h => {
+        if (h.kind === 'ball') { hBlast(h.x, h.y, h.r, '#e8e8ff', ['DROPPED!', 'BALL DROP!', 'HAPPY NEW YEAR!', 'SQUASHED!'], ['#ffffff', '#c8d8ff', '#ffd700', '#ff5ad8']); hCrumble(h.x, h.y, h.r * .85); shake = Math.max(shake, 22); SFX.play('crash'); SFX.play('boom'); }
+        else { hBlast(h.x, h.y, h.r, h.col, ['KABOOM!', 'FIREWORKED!', 'POP!', 'SPARKLED!'], [h.col, '#fff', h.col, '#ffd700']); SFX.play('thunder', { v: .5 }); }
+      });
+    },
+    drawFloor() { for (const h of this.hz || []) if (h.u < h.warn) { if (h.kind === 'ball') { const e = h.u / h.warn; ctx.fillStyle = `rgba(0,0,0,${.15 + .35 * e})`; ctx.beginPath(); ctx.ellipse(sx(h.x), sy(h.y), h.r * (.4 + .6 * e), h.r * (.4 + .6 * e) * K, 0, 0, 7); ctx.fill(); hRing(h.x, h.y, h.r, '#e8e8ff'); } else hRing(h.x, h.y, h.r, h.col); } },
+    drawOver() {
+      for (const h of this.hz || []) { const X = sx(h.x), Y = sy(h.y);
+        if (h.kind === 'ball') { if (h.u > h.warn + .6) continue; const e = Math.min(1, h.u / h.warn), by = Y - (1 - e * e) * 900, r = h.r * .75; ctx.save(); ctx.translate(X, by); // 🪩 the giant ball, glittering
+          ctx.strokeStyle = '#888'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, -r - 900); ctx.stroke();
+          const gr = ctx.createRadialGradient(-r * .3, -r * .3, 4, 0, 0, r); gr.addColorStop(0, '#ffffff'); gr.addColorStop(.5, '#a8b8e8'); gr.addColorStop(1, '#4a5a9a'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.5; for (let j = -3; j <= 3; j++) { ctx.beginPath(); ctx.ellipse(0, 0, r * Math.cos(j / 4), r, 0, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-r * Math.cos(j / 4), j / 4 * r); ctx.lineTo(r * Math.cos(j / 4), j / 4 * r); ctx.stroke(); }
+          for (let j = 0; j < 6; j++) { const a = clock * 3 + j; ctx.fillStyle = ['#ff5ad8', '#5ad8ff', '#ffd700'][j % 3]; ctx.beginPath(); ctx.arc(Math.cos(a) * r * .6, Math.sin(a * 1.3) * r * .6, 4, 0, 7); ctx.fill(); } ctx.restore(); continue; }
+        if (h.u < h.warn && h.u > h.warn - .45) { const e = (h.u - h.warn + .45) / .45, x0 = sx(h.from), y0 = H + 40, px = x0 + (X - x0) * e, py = y0 + (Y - 30 - y0) * e; ctx.strokeStyle = h.col; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - (X - x0) * .08, py + 60); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 5, 0, 7); ctx.fill(); } // 🚀 the rocket going up
+      }
+    },
+    snap() { return { h: (this.hz || []).map(h => ({ ...h })), n: this.next, b: this.ballNext }; },
+    restore(v) { if (!v) return; this.hz = v.h.map(h => ({ ...h })); this.next = v.n; this.ballNext = v.b; },
+    power: { name: 'MIDNIGHT FINALE', icon: '🎆', fn() { const m = MAPS.newyear; if (!m.hz) return; for (let i = 0; i < 6; i++) { const tg = hAim(); if (tg) m.hz.push({ kind: 'rocket', x: tg.x + rnd(-S, S), y: tg.y + rnd(-S, S), u: -i * .15, warn: 1, r: S * 1.2, col: pick(['#ff5ad8', '#5ad8ff', '#ffd700', '#7aff8a']), from: rnd(-ISLAND_R, ISLAND_R) }); } } }
+  },
+  valentine: {
+    // 💘 Heartbreak Island: a heart-shaped island in a pink sky. Two evil cupids (grumpy, with little horns) fly around
+    // and shoot arrows at the pieces (a dashed line shows the shot first). Halfway through, the heart BREAKS: a crack runs
+    // down the middle and that strip falls away, splitting the island in two. The edges crumble too.
+    name: 'Heartbreak Island', icon: '💘', wallScale: .9,
+    shape(q, r, p, R) { const Rw = R * S * SQ3, u = p.x / (Rw * 1.05), v = -p.y / (Rw * .92) + .2, f = (u * u + v * v - 1) ** 3 - u * u * v ** 3; if (f > 0) return null; return { nd: clamp(Math.hypot(u, v - .1) / 1.2, 0, 1) }; },
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(${340 + i * 4},${60 - i * 5}%,${72 - i * 4}%)`, c2: `hsl(${335 + i * 4},55%,${62 - i * 3}%)`, specks: ['#ffffff55', '#ff3a7a44'], speckN: 14, edge: 'rgba(255,255,255,.3)',
+      deco: g => { if (Math.random() < .1) { const x = rnd(14, TOP_W - 14), y = rnd(8, TOP_H - 8); g.fillStyle = pick(['#ff2a5a', '#ffffff', '#c8104a']); g.beginPath(); g.moveTo(x, y + 6); g.bezierCurveTo(x - 10, y - 2, x - 5, y - 9, x, y - 3); g.bezierCurveTo(x + 5, y - 9, x + 10, y - 2, x, y + 6); g.fill(); } } })), // candy hearts
+    wall: { cols: ['#c84a7a', '#a83a62', '#7a2848', '#4a1428'], lip: '#ffd0e0', lipH: 5, lit: 'rgba(255,180,220,.15)' },
+    sky(g) { skyGrad(g, [[0, '#3a0a2a'], [.5, '#8a1a4a'], [1, '#e85a8a']]); stars(g, 60, H * .4); hills(g, [['#c84a7a', 800, 130, .004], ['#a8305a', 870, 90, .006]]); },
+    clouds: '#ffb0d0', fog: ['rgba(255,170,210,.15)', 'rgba(60,10,30,.5)'],
+    animBack() { for (let i = 0; i < 22; i++) { const x = (i * 197 + Math.sin(clock * .7 + i) * 40) % W, y = H - ((i * 113 + clock * (30 + i % 5 * 8)) % (H + 40)), s = 6 + i % 4 * 3; ctx.fillStyle = i % 3 ? 'rgba(255,90,140,.5)' : 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.moveTo(x, y + s); ctx.bezierCurveTo(x - s * 1.6, y - s * .2, x - s * .8, y - s * 1.4, x, y - s * .5); ctx.bezierCurveTo(x + s * .8, y - s * 1.4, x + s * 1.6, y - s * .2, x, y + s); ctx.fill(); } }, // floating hearts
+    start() { this.hz = []; this.next = 2.5; this.cup = [{ ph: 0 }, { ph: Math.PI }]; this.breakAt = cfg.game * .45; this.broke = false; this.stuck = []; },
+    cupid(i) { const c = this.cup[i], a = clock * .5 + c.ph; return [Math.cos(a) * ISLAND_R * .95, -ISLAND_R * .55 + Math.sin(a * 1.3) * ISLAND_R * .35]; }, // where each cupid is flying (world x, y; drawn high above)
+    update(dt) {
+      if (!this.hz) this.start();
+      if (winner) return;
+      const { k, behind } = hPace();
+      if (!this.broke && t >= this.breakAt - 2 && !this.warned) { this.warned = true; SFX.play('alert'); floaters.push({ text: '💔 THE HEART IS BREAKING!', x: CX, y: 220, life: 2, color: '#ffb0d0', clampIt: true, scr: true }); }
+      if (!this.broke && t >= this.breakAt) { this.broke = true; SFX.play('earthquake'); shake = 18; const safe = cfg.fair && destined; // 💔 the crack: a zig-zag strip down the middle falls away (never under the drawn winner)
+        for (const tl of solid) { const zz = Math.sin(tl.y / (S * 2.2)) * S * 1.2; if (Math.abs(tl.x - zz) < S * 1.1 && !(safe && Math.hypot(tl.x - destined.x, tl.y - destined.y) < S * 1.6)) crumbleSoon(tl, .2 + (tl.y + ISLAND_R) / (ISLAND_R * 2) * 1.4); } }
+      if ((this.next -= dt) <= 0) { this.next = (behind ? rnd(1.1, 1.6) : rnd(1.8, 2.6)) * (1 - .3 * k); const tg = hAim(); if (tg) { const i = Math.random() < .5 ? 0 : 1; this.hz.push({ i, x: tg.x, y: tg.y, f: tg, u: 0, warn: .9, r: S * .95, after: .3 }); } }
+      for (const h of this.hz) if (h.u < h.warn * .6 && h.f?.alive) { h.x = h.f.x; h.y = h.f.y; }
+      hStep(this.hz, dt, h => { SFX.play('arrows', { v: .7 }); hBlast(h.x, h.y, h.r, '#ff2a5a', ['HEARTBROKEN!', 'STRUCK!', 'DUMPED!', 'LOVESTRUCK!'], ['#ff2a5a', '#ffffff', '#ff9ac0']); this.stuck.push({ x: h.x, y: h.y, t }); });
+      this.stuck = this.stuck.filter(s => t - s.t < 4);
+    },
+    tip(i) { const [x, y] = this.cupid(i); return [sx(x), sy(y) - 300]; },
+    drawFloor() { for (const s of this.stuck || []) { const X = sx(s.x), Y = sy(s.y); ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X - 10, Y - 26); ctx.stroke(); ctx.fillStyle = '#ff2a5a'; ctx.beginPath(); ctx.moveTo(X - 10, Y - 26); ctx.lineTo(X - 18, Y - 30); ctx.lineTo(X - 8, Y - 34); ctx.fill(); } // arrows stuck in the ground
+      if (!this.broke && t > this.breakAt - 2) { ctx.strokeStyle = `rgba(120,0,30,${.5 + .4 * Math.sin(clock * 16)})`; ctx.lineWidth = 5; ctx.beginPath(); for (let y = -ISLAND_R; y <= ISLAND_R; y += S * .5) ctx.lineTo(sx(Math.sin(y / (S * 2.2)) * S * 1.2), sy(y)); ctx.stroke(); } }, // the crack about to open
+    drawOver() {
+      if (!this.cup) this.start(); // (the cupids already fly around in the lobby)
+      for (const h of this.hz || []) { const [tx, ty] = this.tip(h.i), X = sx(h.x), Y = sy(h.y);
+        if (h.u < h.warn) { ctx.strokeStyle = `rgba(255,60,120,${.4 + .3 * Math.sin(clock * 20)})`; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(X, Y); ctx.stroke(); ctx.setLineDash([]); hRing(h.x, h.y, h.r, '#ff2a5a');
+          const e = clamp((h.u - h.warn + .2) / .2, 0, 1); if (e > 0) { const px = tx + (X - tx) * e, py = ty + (Y - ty) * e, a = Math.atan2(Y - ty, X - tx); ctx.save(); ctx.translate(px, py); ctx.rotate(a); ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(0, 0); ctx.stroke(); ctx.fillStyle = '#ff2a5a'; ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-6, -7); ctx.lineTo(-6, 7); ctx.fill(); ctx.restore(); } } }
+      for (let i = 0; i < 2; i++) { const [X, Y] = this.tip(i), fl = Math.sin(clock * 18 + i) * 10; ctx.save(); ctx.translate(X, Y + Math.sin(clock * 2 + i) * 10); // 😈 an evil cupid: wings, little horns, a frown, a bow
+        ctx.fillStyle = 'rgba(255,255,255,.85)'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * 30, -14 - fl * .3, 26, 12 + fl * .4, s * .5, 0, 7); ctx.fill(); }
+        ctx.fillStyle = '#f2c0a0'; ctx.beginPath(); ctx.ellipse(0, 6, 22, 24, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(0, -26, 20, 0, 7); ctx.fill(); ctx.fillStyle = '#c8104a'; ctx.fillRect(-18, 14, 36, 12); // body, head, red shorts
+        ctx.fillStyle = '#a8102a'; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * 8, -42); ctx.lineTo(s * 14, -56); ctx.lineTo(s * 16, -40); ctx.fill(); } // horns
+        ctx.strokeStyle = '#3a1010'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-12, -34); ctx.lineTo(-3, -30); ctx.moveTo(12, -34); ctx.lineTo(3, -30); ctx.stroke(); ctx.fillStyle = '#ff2020'; ctx.beginPath(); ctx.arc(-7, -26, 3, 0, 7); ctx.arc(7, -26, 3, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(0, -12, 6, Math.PI + .3, -.3); ctx.stroke(); // brows, red eyes, frown
+        ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(26, 4, 26, -1.2, 1.2); ctx.stroke(); ctx.strokeStyle = '#eee'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(26 + Math.cos(-1.2) * 26, 4 + Math.sin(-1.2) * 26); ctx.lineTo(26 + Math.cos(1.2) * 26, 4 + Math.sin(1.2) * 26); ctx.stroke(); ctx.restore(); }
+    },
+    snap() { return { h: (this.hz || []).map(h => ({ ...h, f: null })), s: (this.stuck || []).map(s => ({ ...s })), b: this.broke, w: this.warned }; },
+    restore(v) { if (!v) return; this.hz = v.h.map(h => ({ ...h })); this.stuck = v.s.map(s => ({ ...s })); this.broke = v.b; this.warned = v.w; },
+    power: { name: 'CUPID VOLLEY', icon: '💘', fn() { const m = MAPS.valentine; if (!m.hz) return; for (let j = 0; j < 6; j++) { const tg = hAim(); if (tg) m.hz.push({ i: j % 2, x: tg.x, y: tg.y, f: tg, u: -j * .12, warn: .9, r: S * .95, after: .3 }); } } }
+  },
+  stpat: {
+    // ☘️ Leprechaun Hills: a green clover island under a rainbow. Evil leprechauns hop out and go after the pieces, kicking
+    // them toward the edge, and the RAINBOW BEAM blasts across the island from the pot of gold (a rainbow stripe shows where
+    // first). The edges crumble.
+    name: 'Leprechaun Hills', icon: '☘️', shape: SHAPES.hex, wallScale: .9,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(${118 + i * 6},${52 - i * 5}%,${42 - i * 3}%)`, c2: `hsl(${122 + i * 4},48%,${34 - i * 2}%)`, specks: ['#9aff7a44', '#0002'], speckN: 18, edge: 'rgba(0,0,0,.1)',
+      deco: g => { if (Math.random() < .12) { const x = rnd(14, TOP_W - 14), y = rnd(8, TOP_H - 8); g.fillStyle = '#7ae05a'; for (let j = 0; j < 3; j++) { const a = j * 2.09 - 1.57; g.beginPath(); g.arc(x + Math.cos(a) * 4, y + Math.sin(a) * 4, 4, 0, 7); g.fill(); } } else if (Math.random() < .04) { g.fillStyle = '#ffd040'; g.beginPath(); g.arc(rnd(10, TOP_W - 10), rnd(6, TOP_H - 6), 4, 0, 7); g.fill(); } } })), // clovers + gold coins
+    wall: { cols: ['#5a4a32', '#4a3a26', '#32261a', '#1e160e'], lip: '#6ac84a', lipH: 5, lit: 'rgba(160,255,140,.1)' },
+    sky(g) { skyGrad(g, [[0, '#4a8ad8'], [.6, '#8ac8f0'], [1, '#d8f0ff']]);
+      g.save(); g.globalAlpha = .55; ['#ff3a3a', '#ff9a2a', '#ffe03a', '#3ad84a', '#3a8aff', '#8a4aff'].forEach((c, i) => { g.strokeStyle = c; g.lineWidth = 26; g.beginPath(); g.arc(960, 900, 760 - i * 26, Math.PI, 0); g.stroke(); }); g.restore(); // the rainbow
+      hills(g, [['#4aa83a', 780, 150, .004], ['#2a8a2a', 860, 110, .006]]); g.fillStyle = '#1a1a1a'; g.beginPath(); g.ellipse(1780, 850, 60, 40, 0, 0, 7); g.fill(); g.fillStyle = '#ffd040'; g.beginPath(); g.ellipse(1780, 818, 54, 16, 0, 0, 7); g.fill(); // pot of gold
+    },
+    clouds: '#ffffff', fog: ['rgba(200,255,200,.12)', 'rgba(20,60,20,.4)'],
+    start() { this.lp = []; this.hz = []; this.next = 1; this.beamNext = 5; },
+    spawn() { const l = solid.filter(tl => Math.hypot(tl.x, tl.y) > ISLAND_R * .55); const tl = pick(l.length ? l : solid); if (tl) this.lp.push({ x: tl.x, y: tl.y, vx: 0, vy: 0, hop: 0, hv: 0, face: 1, tgt: null, think: 0, cool: rnd(.6, 1.2), sp: rnd(150, 210) }); },
+    update(dt) {
+      if (!this.lp) this.start();
+      if (winner) return;
+      const { n, k, behind } = hPace(), prey = alive().filter(f => !f.launch && !f.ret && !f.falling);
+      if ((this.next -= dt) <= 0) { this.next = (behind ? 1.2 : 2.2) * (1 - .4 * k); if (this.lp.length < Math.min(28, 4 + n / 4 + k * 4)) this.spawn(); }
+      if ((this.beamNext -= dt) <= 0) { this.beamNext = (behind ? rnd(3.5, 5) : rnd(5.5, 8)) * (1 - .3 * k); const tg = hAim(); if (tg) { this.hz.push({ kind: 'beam', y: tg.y, u: 0, warn: 1.2, after: .5, r: S * 1.25 }); SFX.play('alert'); } }
+      for (const b of this.lp) { b.think -= dt; b.cool -= dt; b.hv -= 1400 * dt; b.hop = Math.max(0, b.hop + b.hv * dt); if (b.hop === 0) b.hv = rnd(260, 380); // always hopping
+        if (b.think <= 0 || !b.tgt?.alive) { b.think = rnd(.4, .9); b.tgt = null; let bd = 1e9; for (const f of prey.length > 40 ? Array.from({ length: 30 }, () => pick(prey)) : prey) { if (cfg.fair && f === destined && prey.length > 1 && Math.random() < .75) continue; const d = Math.hypot(f.x - b.x, f.y - b.y); if (d < bd) { bd = d; b.tgt = f; } } }
+        const f = b.tgt; if (f) { const dx = f.x - b.x, dy = f.y - b.y, d = Math.hypot(dx, dy) || 1, sp = b.sp * (1 + .5 * k); b.vx += (dx / d * sp - b.vx) * Math.min(1, dt * 5); b.vy += (dy / d * sp - b.vy) * Math.min(1, dt * 5);
+          if (d < f.r + S * .7 && b.cool <= 0) { b.cool = rnd(.9, 1.4); SFX.play('kick', { v: .5 }); hurt(f, 8 + 6 * k); const a = (Math.atan2(f.y, f.x) + Math.atan2(dy, dx)) / 2; push(f, Math.cos(a) * 540, Math.sin(a) * 540); if (n < 16 && Math.random() < .3) floaters.push({ text: pick(['KICKED!', 'BEGORRA!', 'SHOO!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 16, life: .8, color: '#9aff7a' }); } }
+        b.x += b.vx * dt; b.y += b.vy * dt; if (Math.abs(b.vx) > 10) b.face = b.vx > 0 ? 1 : -1;
+        if (!isSolid(b.x, b.y)) { const tl = nearestLand(b); if (tl && Math.hypot(tl.x - b.x, tl.y - b.y) < S * 1.5) { b.x += (tl.x - b.x) * .3; b.y += (tl.y - b.y) * .3; } else b.gone = true; } }
+      this.lp = this.lp.filter(b => !b.gone);
+      hStep(this.hz, dt, h => { SFX.play('zap'); SFX.play('whoosh'); shake = Math.max(shake, 10); flash = Math.max(flash, .15); flashColor = '#fff6a0';
+        for (const f of alive()) if (!f.launch && !f.ret && Math.abs(f.y - h.y) < h.r + f.r * .5) blastOrDodge(f, '#ffe03a', pick(['RAINBOWED!', 'POT OF GOLD!', 'BLASTED!', 'NO LUCK!'])); });
+    },
+    drawFloor() { for (const h of this.hz || []) { const Y = sy(h.y), x0 = sx(-ISLAND_R), x1 = sx(ISLAND_R);
+      if (h.u < h.warn) { const bl = .35 + .3 * Math.sin(clock * 18); ['#ff3a3a', '#ff9a2a', '#ffe03a', '#3ad84a', '#3a8aff', '#8a4aff'].forEach((c, i) => { ctx.fillStyle = c; ctx.globalAlpha = bl * .45; ctx.fillRect(x0, Y - h.r * K + i * h.r * K / 3, x1 - x0, h.r * K / 3); }); ctx.globalAlpha = 1; ctx.font = '700 26px Inter, sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('🌈 RAINBOW BEAM!', sx(0), Y - h.r * K - 10); } } },
+    drawOver() {
+      for (const b of this.lp || []) { const X = sx(b.x), Y = sy(b.y); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(X, Y, 18, 6, 0, 0, 7); ctx.fill(); ctx.save(); ctx.translate(X, Y - b.hop); ctx.scale(b.face * 1.6, 1.6); // ☘️ an evil leprechaun: green coat, tall buckled hat, orange beard, red eyes
+        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-8, -6, 6, 6); ctx.fillRect(2, -6, 6, 6); ctx.fillStyle = '#2a8a2a'; ctx.beginPath(); ctx.moveTo(-12, -6); ctx.lineTo(12, -6); ctx.lineTo(8, -30); ctx.lineTo(-8, -30); ctx.fill(); ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-12, -14, 24, 4); ctx.fillStyle = '#ffd040'; ctx.fillRect(-3, -15, 6, 6);
+        ctx.fillStyle = '#f0c8a0'; ctx.beginPath(); ctx.arc(0, -38, 9, 0, 7); ctx.fill(); ctx.fillStyle = '#e8701a'; ctx.beginPath(); ctx.moveTo(-9, -38); ctx.quadraticCurveTo(0, -16, 9, -38); ctx.fill(); ctx.fillStyle = '#ff2020'; ctx.beginPath(); ctx.arc(-3, -40, 1.8, 0, 7); ctx.arc(4, -40, 1.8, 0, 7); ctx.fill();
+        ctx.fillStyle = '#1e6a1e'; ctx.fillRect(-12, -48, 24, 4); ctx.fillRect(-8, -66, 16, 18); ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-8, -52, 16, 4); ctx.fillStyle = '#ffd040'; ctx.fillRect(-3, -53, 6, 6); ctx.restore(); }
+      for (const h of this.hz || []) if (h.u >= h.warn) { const e = (h.u - h.warn) / h.after, Y = sy(h.y), x0 = sx(ISLAND_R + 300), x1 = sx(-ISLAND_R - 300), xe = x0 + (x1 - x0) * Math.min(1, e * 3); ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - e * .6; ['#ff3a3a', '#ff9a2a', '#ffe03a', '#3ad84a', '#3a8aff', '#8a4aff'].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(xe, Y - h.r * K * 1.2 + i * h.r * K * .4, x0 - xe, h.r * K * .4); }); ctx.restore(); } // 🌈 the beam
+    },
+    snap() { return { l: (this.lp || []).map(b => ({ ...b, tgt: null })), h: (this.hz || []).map(h => ({ ...h })) }; },
+    restore(v) { if (!v) return; this.lp = v.l.map(b => ({ ...b })); this.hz = v.h.map(h => ({ ...h })); },
+    power: { name: 'POT OF GOLD', icon: '🌈', fn() { const m = MAPS.stpat; if (!m.hz) return; for (let j = 0; j < 2; j++) { const tg = hAim(); if (tg) m.hz.push({ kind: 'beam', y: tg.y, u: -j * .5, warn: 1.2, after: .5, r: S * 1.25 }); } for (let i = 0; i < 5; i++) m.spawn(); } }
+  },
+  easter: {
+    // 🐰 Bunny Rampage: a spring meadow island that crumbles from the edges. A GIANT EVIL BUNNY hops around the island:
+    // its shadow shows where it'll land, and the landing STOMPS everyone nearby and breaks the ground. Painted eggs pop up
+    // on the grass, wobble, crack… and blow up.
+    name: 'Bunny Rampage', icon: '🐰', shape: SHAPES.hex, wallScale: .9,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(${95 + i * 6},${50 - i * 4}%,${55 - i * 3}%)`, c2: `hsl(${100 + i * 4},45%,${46 - i * 2}%)`, specks: ['#ffffff55', '#ffe06a55', '#ff9ad855'], speckN: 18, edge: 'rgba(0,0,0,.08)',
+      deco: g => { if (Math.random() < .14) { const x = rnd(14, TOP_W - 14), y = rnd(8, TOP_H - 8); g.fillStyle = pick(['#ffffff', '#ffe06a', '#ff9ad8', '#9ad8ff']); for (let j = 0; j < 5; j++) { const a = j * 1.26; g.beginPath(); g.arc(x + Math.cos(a) * 4, y + Math.sin(a) * 4, 3, 0, 7); g.fill(); } g.fillStyle = '#ffd040'; g.beginPath(); g.arc(x, y, 2.5, 0, 7); g.fill(); } } })), // flowers
+    wall: { cols: ['#7a5a3a', '#5e4428', '#3e2c1a', '#22180e'], lip: '#8ad86a', lipH: 5, lit: 'rgba(255,255,200,.1)' },
+    sky(g) { skyGrad(g, [[0, '#6ab0f0'], [.7, '#b8e0ff'], [1, '#f0f8ff']]); glowBall(g, 300, 200, 200, 'rgba(255,250,200,.8)', 'rgba(255,240,150,0)'); g.fillStyle = '#fff8d0'; g.beginPath(); g.arc(300, 200, 70, 0, 7); g.fill(); hills(g, [['#a8e08a', 780, 150, .004], ['#8ad06a', 860, 110, .006]]); },
+    clouds: '#ffffff', fog: ['rgba(255,255,255,.12)', 'rgba(40,80,40,.35)'],
+    start() { const tl = pick(solid) || { x: 0, y: 0 }; this.bun = { x: tl.x, y: tl.y, fx: tl.x, fy: tl.y, tx: tl.x, ty: tl.y, st: 'sit', u: 0, face: 1, wait: 2.5 }; this.eggs = []; this.next = 2; },
+    update(dt) {
+      if (!this.bun) this.start();
+      const b = this.bun; b.u += dt;
+      for (const f of alive()) { if (b.st === 'air' || f.launch || f.ret) continue; const dx = f.x - b.x, dy = f.y - b.y, d = Math.hypot(dx, dy), rr = S * 1.1 + f.r; if (d < rr && d > 0) { f.x = b.x + dx / d * rr; f.y = b.y + dy / d * rr; f.vx += dx / d * 120; f.vy += dy / d * 120; } } // you can't walk through the bunny
+      if (winner) return;
+      const { n, k, behind } = hPace();
+      if (b.st === 'sit' && b.u >= b.wait) { const tg = hAim(.85); if (tg) { b.st = 'crouch'; b.u = 0; b.tx = tg.x + rnd(-S, S) * .4; b.ty = tg.y + rnd(-S, S) * .4; b.face = b.tx > b.x ? 1 : -1; SFX.play('alert', { v: .6 }); } }
+      if (b.st === 'crouch' && b.u >= .9) { b.st = 'air'; b.u = 0; b.fx = b.x; b.fy = b.y; SFX.play('whoosh'); }
+      if (b.st === 'air') { const e = Math.min(1, b.u / .7); b.x = b.fx + (b.tx - b.fx) * e; b.y = b.fy + (b.ty - b.fy) * e;
+        if (e >= 1) { b.st = 'sit'; b.u = 0; b.wait = (behind ? rnd(.8, 1.4) : rnd(1.6, 2.6)) * (1 - .3 * k); SFX.play('slam'); SFX.play('earthquake', { v: .5 }); shake = Math.max(shake, 20);
+          hBlast(b.x, b.y, S * 1.7, '#ffffff', ['STOMPED!', 'SQUASHED!', 'HOPPED ON!', 'FLATTENED!'], ['#ffffff', '#8a6a4a', '#8ad86a']); hCrumble(b.x, b.y, S * 1.5);
+          for (const f of alive()) { const dx = f.x - b.x, dy = f.y - b.y, d = Math.hypot(dx, dy) || 1; if (d < S * 4) { push(f, dx / d * 600 * (1 - d / (S * 4)), dy / d * 600 * (1 - d / (S * 4))); f.vhop = 500; } } } } // the shockwave
+      if ((this.next -= dt) <= 0) { this.next = (behind ? rnd(1, 1.6) : rnd(1.8, 2.8)) * (1 - .3 * k); const tg = hAim(); if (tg) { this.eggs.push({ x: tg.x + rnd(-S, S) * .8, y: tg.y + rnd(-S, S) * .8, u: 0, warn: 1.8, r: S * 1.15, col: pick(['#ff9ad8', '#9ad8ff', '#ffe06a', '#b89aff', '#8aeaa0']), band: pick(['#ffffff', '#ff5a8a', '#5a8aff']) }); SFX.play('pop', { v: .4 }); } }
+      hStep(this.eggs, dt, h => { SFX.play('pop'); SFX.play('boom', { v: .6 }); hBlast(h.x, h.y, h.r, h.col, ['EGGSPLODED!', 'CRACKED!', 'SCRAMBLED!', 'EGGED!'], [h.col, h.band, '#ffffff', '#ffe06a']); });
+    },
+    drawFloor() { const b = this.bun; if (!b) return;
+      for (const h of this.eggs) if (h.u < h.warn) { hRing(h.x, h.y, h.r, h.col, h.u / h.warn); const X = sx(h.x), Y = sy(h.y), w = Math.sin(clock * (8 + h.u * 12)) * h.u * .25; ctx.save(); ctx.translate(X, Y); ctx.rotate(w); ctx.fillStyle = h.col; ctx.beginPath(); ctx.ellipse(0, -16, 13, 17, 0, 0, 7); ctx.fill(); ctx.fillStyle = h.band; ctx.fillRect(-12, -18, 24, 5); if (h.u > h.warn * .5) { ctx.strokeStyle = '#3a2a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, -26); ctx.lineTo(-2, -20); ctx.lineTo(3, -27); ctx.lineTo(8, -19); ctx.stroke(); } ctx.restore(); } // 🥚 wobbling eggs (they crack before they pop)
+      if (b.st === 'crouch' || b.st === 'air') { const e = b.st === 'air' ? Math.min(1, b.u / .7) : 0; ctx.fillStyle = `rgba(0,0,0,${.2 + .3 * e})`; ctx.beginPath(); ctx.ellipse(sx(b.tx), sy(b.ty), S * 1.7, S * 1.7 * K, 0, 0, 7); ctx.fill(); hRing(b.tx, b.ty, S * 1.7, '#ffffff'); } },
+    drawOver() { const b = this.bun; if (!b) return; // 🐰 the giant evil bunny: red eyes, angry brows, big buck teeth
+      const air = b.st === 'air' ? Math.sin(Math.min(1, b.u / .7) * Math.PI) * 260 : 0, sq = b.st === 'crouch' ? .85 : b.st === 'air' ? 1.1 : 1, X = sx(b.x), Y = sy(b.y);
+      ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(X, Y, S * 1.2, S * 1.2 * K, 0, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(X, Y - air); ctx.scale(b.face * 1.9, 1.9 * sq);
+      ctx.fillStyle = '#e8e4ec'; ctx.beginPath(); ctx.ellipse(0, -36, 40, 36, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(-30, -12, 18, 10, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(30, -10, 14, 8, 0, 0, 7); ctx.fill(); // body + feet
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-40, -36, 11, 0, 7); ctx.fill(); // tail
+      ctx.fillStyle = '#e8e4ec'; ctx.beginPath(); ctx.arc(22, -76, 26, 0, 7); ctx.fill(); for (const [ex, ea] of [[12, -.25], [30, .2]]) { ctx.fillStyle = '#e8e4ec'; ctx.beginPath(); ctx.ellipse(ex, -122, 9, 30, ea, 0, 7); ctx.fill(); ctx.fillStyle = '#ffb0c8'; ctx.beginPath(); ctx.ellipse(ex, -120, 4, 22, ea, 0, 7); ctx.fill(); } // head + ears
+      ctx.fillStyle = '#ff1a1a'; ctx.beginPath(); ctx.arc(30, -82, 5, 0, 7); ctx.fill(); ctx.strokeStyle = '#3a2a2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(22, -92); ctx.lineTo(36, -86); ctx.stroke(); ctx.fillStyle = '#ff8aa8'; ctx.beginPath(); ctx.arc(46, -72, 4, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(38, -66, 5, 9); ctx.fillRect(43, -66, 5, 9); ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1; ctx.strokeRect(38, -66, 10, 9); // eye, brow, nose, teeth
+      ctx.restore(); },
+    snap() { return { b: { ...this.bun }, e: (this.eggs || []).map(h => ({ ...h })) }; },
+    restore(v) { if (!v) return; this.bun = { ...v.b }; this.eggs = v.e.map(h => ({ ...h })); },
+    power: { name: 'BUNNY RAMPAGE', icon: '🐰', fn() { const m = MAPS.easter; if (!m.bun) return; m.bun.wait = 0; for (let i = 0; i < 6; i++) { const tg = hAim(); if (tg) m.eggs.push({ x: tg.x, y: tg.y, u: .6, warn: 1.8, r: S * 1.15, col: '#ff9ad8', band: '#ffffff' }); } } }
+  },
+  july4: {
+    // 🎇 Fourth of July: a picnic park island at dusk that crumbles from the edges, with fireworks overhead. Bottle rockets
+    // come skittering across the ground in straight lines (a dashed line shows the path) and blow up anyone they hit, and
+    // strings of firecrackers land and go off pop-pop-pop down a line, knocking out the ground under them.
+    name: 'Fourth of July', icon: '🎇', shape: SHAPES.hex, wallScale: .9,
+    tops: () => Array.from({ length: 4 }, (_, i) => makeTopP({ c1: `hsl(${105 + i * 5},${42 - i * 4}%,${40 - i * 3}%)`, c2: `hsl(${110 + i * 4},40%,${32 - i * 2}%)`, specks: ['#0002', '#ffffff22'], speckN: 16, edge: 'rgba(0,0,0,.1)',
+      deco: g => { if (Math.random() < .05) { const x = rnd(10, TOP_W - 40), y = rnd(6, TOP_H - 26); for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { g.fillStyle = (i + j) % 2 ? '#e8e8e8' : '#c8202a'; g.fillRect(x + i * 7, y + j * 7, 7, 7); } } } })), // picnic blankets
+    wall: { cols: ['#6a4a2a', '#4e3620', '#342414', '#1e140a'], lip: '#4a8a3a', lipH: 4, lit: 'rgba(255,200,150,.1)' },
+    sky(g) { skyGrad(g, [[0, '#0a0e2a'], [.55, '#2a2a5a'], [.85, '#a85a4a'], [1, '#e8904a']]); stars(g, 80, H * .45); hills(g, [['#1a2a1a', 800, 120, .004], ['#0e1a0e', 870, 80, .006]]); },
+    clouds: '#5a4a6a', fog: ['rgba(255,200,160,.08)', 'rgba(10,10,30,.5)'],
+    animBack() { for (let i = 0; i < 5; i++) { const ph = (clock * .4 + i * .21) % 1, x = 160 + ((i * 397) % 1600), y = 120 + ((i * 173) % 240), col = ['#ff3a3a', '#ffffff', '#3a6aff', '#ff3a3a', '#3a6aff'][i]; if (ph < .7) { ctx.strokeStyle = col; ctx.globalAlpha = 1 - ph / .7; ctx.lineWidth = 2.5; for (let j = 0; j < 16; j++) { const a = j / 16 * 6.28, r = ph * 200; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * .6, y + Math.sin(a) * r * .6 + ph * 40); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r + ph * 50); ctx.stroke(); } ctx.globalAlpha = 1; } } }, // fireworks overhead
+    start() { this.hz = []; this.next = 2.5; this.strNext = 5; },
+    update(dt) {
+      if (!this.hz) this.start();
+      if (winner) return;
+      const { k, behind } = hPace();
+      if ((this.next -= dt) <= 0) { this.next = (behind ? rnd(1.3, 2) : rnd(2.2, 3.2)) * (1 - .3 * k); const tg = hAim(); if (tg) { const a = rnd(6.3), d = ISLAND_R + S * 4; this.hz.push({ kind: 'rocket', ox: tg.x - Math.cos(a) * d, oy: tg.y - Math.sin(a) * d, dx: Math.cos(a), dy: Math.sin(a), len: d * 2, x: tg.x, y: tg.y, u: 0, warn: 1, after: .7, hits: new Set(), col: pick(['#ff3a3a', '#ffffff', '#3a6aff']) }); } }
+      if ((this.strNext -= dt) <= 0) { this.strNext = (behind ? rnd(3, 4.5) : rnd(5, 7)) * (1 - .3 * k); const tg = hAim(); if (tg) { const a = rnd(6.3); this.hz.push({ kind: 'string', x: tg.x - Math.cos(a) * S * 2.5, y: tg.y - Math.sin(a) * S * 2.5, dx: Math.cos(a), dy: Math.sin(a), u: 0, warn: 1, after: .9, pops: 0 }); SFX.play('whoosh', { v: .4 }); } }
+      for (const h of this.hz) { h.u += dt; const e = h.u - h.warn; if (e < 0) continue;
+        if (h.kind === 'rocket') { const along = clamp(e / h.after, 0, 1) * h.len, px = h.ox + h.dx * along, py = h.oy + h.dy * along; h.px = px; h.py = py; if (!h.sfx) { h.sfx = 1; SFX.play('whoosh'); }
+          for (const f of alive()) if (!f.launch && !f.ret && !h.hits.has(f) && Math.hypot(f.x - px, f.y - py) < f.r + S * .6) { h.hits.add(f); blastOrDodge(f, h.col, pick(['ROCKETED!', 'KABOOM!', 'BOTTLE ROCKET!', 'FIZZLED!'])); SFX.play('boom', { v: .7 }); } }
+        else { const want = Math.min(8, Math.floor(e / h.after * 8) + 1); while (h.pops < want) { const px = h.x + h.dx * S * .7 * h.pops, py = h.y + h.dy * S * .7 * h.pops; h.pops++; SFX.play('pop', { v: .6 }); shake = Math.max(shake, 5); hBlast(px, py, S * .75, '#ffd040', ['POP!', 'BANG!', 'CRACKLED!'], ['#ffd040', '#ff3a3a', '#ffffff']); hCrumble(px, py, S * .6); } } }
+      this.hz = this.hz.filter(h => h.u < h.warn + h.after + .1);
+    },
+    drawFloor() { for (const h of this.hz || []) {
+      if (h.kind === 'rocket' && h.u < h.warn) { ctx.strokeStyle = `rgba(255,255,255,${.4 + .3 * Math.sin(clock * 20)})`; ctx.lineWidth = 3; ctx.setLineDash([14, 10]); ctx.beginPath(); ctx.moveTo(sx(h.ox), sy(h.oy)); ctx.lineTo(sx(h.ox + h.dx * h.len), sy(h.oy + h.dy * h.len)); ctx.stroke(); ctx.setLineDash([]); }
+      if (h.kind === 'string') for (let j = h.pops; j < 8; j++) { const X = sx(h.x + h.dx * S * .7 * j), Y = sy(h.y + h.dy * S * .7 * j); if (h.u < h.warn) hRing(h.x + h.dx * S * .7 * j, h.y + h.dy * S * .7 * j, S * .5, '#ffd040'); ctx.fillStyle = '#c8202a'; ctx.fillRect(X - 4, Y - 14, 8, 14); ctx.fillStyle = '#ffd040'; ctx.fillRect(X - 1, Y - 18, 2, 4); } } }, // 🧨 the firecracker string
+    drawOver() { for (const h of this.hz || []) if (h.kind === 'rocket' && h.px != null && h.u < h.warn + h.after) { const X = sx(h.px), Y = sy(h.py) - 14; for (let j = 0; j < 4; j++) parts.push({ x: X - h.dx * 10, y: Y, vx: rnd(-60, 60) - h.dx * 100, vy: rnd(-60, 30), g: 200, life: rnd(.2, .4), max: .4, size: rnd(2, 4), color: pick(['#ffd040', '#ff6a1a', '#fff']) }); ctx.save(); ctx.translate(X, Y); ctx.rotate(Math.atan2(h.dy * K, h.dx)); ctx.fillStyle = h.col; ctx.fillRect(-16, -5, 26, 10); ctx.fillStyle = '#c8202a'; ctx.beginPath(); ctx.moveTo(10, -6); ctx.lineTo(20, 0); ctx.lineTo(10, 6); ctx.fill(); ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-40, 0); ctx.stroke(); ctx.restore(); } }, // 🚀 a bottle rocket
+    snap() { return { h: (this.hz || []).map(h => ({ ...h, hits: null })) }; },
+    restore(v) { if (!v) return; this.hz = v.h.map(h => ({ ...h, hits: new Set() })); },
+    power: { name: 'GRAND FINALE', icon: '🎇', fn() { const m = MAPS.july4; if (!m.hz) return; m.next = 0; m.strNext = 0; setTimeout(() => { m.next = 0; }, 300); setTimeout(() => { m.next = 0; }, 600); } }
+  },
   warfield: {
     // ⚔️ Battlefield: every piece starts on the left. An army of knights, cavalry and archers comes from the right.
     // They can't be hurt and they can't be stopped. Archers rain arrows on the back rows, the knights march in a
@@ -3419,6 +3667,13 @@ function stepHop(f, dt) {
 // shot off in a straight line (off the map unless luck saves you on the way down)
 function launch(f, ang, sp = 1500, dur = .85) { f.launch = { vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, until: t + dur }; f.safeUntil = t + dur; f.vhop = 820; f.target = null; f.dashing = 0; f.fear = null; }
 // blown up: luck gives a chance to dodge, otherwise BOOM (no luck save after that)
+// 🎉 shared bits for the holiday maps: pacing, picking a target (usually not the drawn winner), blasts, warning circles
+function hPace() { const n = alive().length; return { n, k: clamp(t / cfg.game, 0, 1), behind: n > paceTarget() * 1.1 + 1 }; }
+function hAim(avoid = .75) { const l = alive().filter(f => !f.launch && !f.ret && !f.falling); if (!l.length) return null; let best = null, bs = -1; for (let j = 0; j < 6; j++) { let c = pick(l); if (cfg.fair && c === destined && l.length > 1 && Math.random() < avoid) c = pick(l.filter(f => f !== destined)); const sc = l.filter(o => Math.hypot(o.x - c.x, o.y - c.y) < S * 2.5).length; if (sc > bs) { bs = sc; best = c; } } return best; }
+function hBlast(x, y, r, col, words, cols) { const X = sx(x), Y = sy(y); for (let j = 0; j < 26; j++) { const a = rnd(6.3), v = rnd(100, 420); parts.push({ x: X, y: Y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * .6 - 80, g: 450, life: rnd(.4, .9), max: .9, size: rnd(3, 7), color: pick(cols || [col, '#fff']) }); } shake = Math.max(shake, 9); flash = Math.max(flash, .1); flashColor = col; for (const f of alive()) if (!f.launch && !f.ret && Math.hypot(f.x - x, f.y - y) < r + f.r * .5) blastOrDodge(f, col, pick(words)); }
+function hCrumble(x, y, r) { for (const tl of solid) if (Math.hypot(tl.x - x, tl.y - y) < r && !(cfg.fair && destined && Math.hypot(tl.x - destined.x, tl.y - destined.y) < S * 1.4)) crumbleSoon(tl, rnd(.05, .5)); }
+function hRing(x, y, r, col, a = 1) { const bl = .4 + .3 * Math.sin(clock * 18); ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(sx(x), sy(y), r, r * K, 0, 0, 7); ctx.globalAlpha = (bl + .3) * a; ctx.stroke(); ctx.globalAlpha = bl * .3 * a; ctx.fill(); ctx.restore(); }
+function hStep(list, dt, fn) { for (let i = list.length - 1; i >= 0; i--) { const h = list[i]; h.u += dt; if (h.u >= h.warn && !h.hit) { h.hit = true; fn(h); } if (h.u > h.warn + (h.after ?? .4)) list.splice(i, 1); } }
 function blastOrDodge(f, col = '#ffb347', what = 'BOOM!') {
   if (!f.alive) return true;
   if (useShield(f)) { f.vhop = 620; push(f, rnd(-240, 240), rnd(-240, 240)); return false; }

@@ -134,6 +134,8 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **🔮 Elemental Wizards (`elements`, 1.43.0):** `WZ` 4 wizards (fire/water/earth/ice) at `spot(i)` (back two drawn in `drawUnder`, front two after spells in `drawOver`), `castSpell(i)` in turns → `hit(sp)`; water = a wave along wizard→target (`sp.dx/dy`), ice sets `f.iced` (updateFighters skips moving while iced) and shatters via `blastOrDodge` on thaw.
 - **🌋 Pompeii (`pompeii`, 1.43.0):** rect town (`build` → `L {A,B,xs,ys,st}`, shape tags `o.road` → `tl.road`), lava arrival `tl.safeAt` from a shortest path (road 1, house 6) from the top street, ranked for even pacing, last 4 tiles never flood; `isOut` = lava tile; town walls clamp in `update`; `lob()` volcano rocks (blast + small `flood`).
 
+- **🎉 Holiday maps (1.44.0):** `halloween` (ghosts set `f.fear` → run for the edge; falling pumpkins), `newyear` (rockets + giant ball drop), `valentine` (heart `shape`, cupids `cupid(i)`, the heart breaks at 45% of the fight), `stpat` (leprechauns like turkeys + rainbow beam band), `easter` (giant bunny `bun` sit/crouch/air hops, eggs), `july4` (bottle rockets along lines, firecracker strings). Shared helpers in game.html: `hPace/hAim/hBlast/hCrumble/hRing/hStep` (just above `blastOrDodge`). Derek wants maps for lots of holidays (not limited to their month).
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 
