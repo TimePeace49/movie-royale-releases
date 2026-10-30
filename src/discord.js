@@ -378,6 +378,7 @@ async function handle(i) {
   if (i.commandName === 'help') return i.reply(eph(helpText()));
 
   if (i.commandName === 'character') { // 🎨 their own battle character: the pictures come straight from this computer
+    if (!looks.on()) return i.reply(eph('🎨 Custom characters aren\'t on right now.'));
     const cc = i.guildId && charChannelFor(i.guildId); if (cc && i.channelId !== cc) return i.reply(eph(`🎨 Characters are made in <#${cc}>: use /character there!`));
     const picks = Object.fromEntries(looks.PARTS.map(k => [k, i.options.getInteger(k)]).filter(([, v]) => v != null));
     const r = looks.characterReply({ ...user, linked: !!db.links[user.discordId] }, picks);

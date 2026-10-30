@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.58.0
+- 👫🎨 **Two questions when Movie Royal opens** (asked once, one after the other):
+  1. **Men and women characters?** Chat picks theirs with !id man / woman / none.
+  2. **Character creation?** People make their own character in Discord with /character.
+  - Say **No** and it stays off. Turn either one on any time in Settings → Game → 🧍 Characters.
+  - Try the questions on the 🧪 Test tab (nothing gets saved there).
+- With character creation off, /character in Discord says it isn't on right now.
+
 ## 1.57.5
 - 🛠️ **Fixed the "EPERM: operation not permitted, rename … db.json" error box after updating.** Windows sometimes locks the save file for a moment (antivirus checking it, the backup bot reading it, or the old app still closing). Movie Royal now waits and tries again instead of showing an error, and if the file stays locked it saves straight into it. Nothing was lost: it just couldn't save that one moment.
 

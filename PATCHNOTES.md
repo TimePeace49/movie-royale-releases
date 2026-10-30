@@ -3,6 +3,56 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.58.0: What's new
+Everything since 1.46.0.
+
+**🧍 Characters instead of balls**
+- Tick 🧍 on the right side of the Battle, Chat battle or Giveaway tab, and every piece becomes a little person that walks and fights. Their movie poster or Twitch picture is a badge on their chest.
+- **👫 !id:** chat types `!id man`, `!id woman` or `!id none` (non-binary) to pick what their character is. It shows as a tag on their profile too.
+- **🎨 Make your own character in Discord with /character:** 50 hair styles, 75 outfits (including costumes), 25 makeups, 25 facial hairs, 2 bodies, 8 skin colors and 10 hair colors. It's their character in every battle with characters, and their profile shows it. Your PC draws a little picture of each new character and posts it in Discord.
+- **#character-creation channel:** the bot makes it, with a pinned how-to and numbered pictures of every part (each picture and each choice has a white border so they're easy to tell apart).
+- **Everyone else gets a random look** each battle. About 1 in 20 is a 🤪 chaos character with parts from everything. Themed maps dress everyone up: soldiers, wrestlers, astronauts, knights, wizards, gladiators, elves, costumes on Halloween maps, and more.
+- **🎟️ Wild spot characters:** build them in Settings → wild spots, with a live preview.
+- **🃏 Character-only maps in battles:** with characters on, Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum and WW2 Battlefield show up in the map menu too.
+- **Asked once when Movie Royal opens:** do you want men and women characters, and do you want character creation? Say no and they stay off. Settings → Game → 🧍 Characters turns them on any time.
+
+**💀 Card battle finishers and the FINAL FIGHT**
+- On maps with a 🥊 final fight, the last hit staggers the loser and the winner does a **finisher**: 20 per map, 100 in all, some ☠️ brutal and some 🤪 silly. Then a slow-motion replay of it, and a celebration (10 per map).
+- They're shuffled and never repeat until every one has been used.
+- The FINAL FIGHT! scene lasts 8 seconds, with a 3, 2, 1 countdown. The camera circles around the last two on the ground while the scenery slides past behind them.
+- **More exciting camera:** it leans toward big hits, zooms in on K.O.s, shakes on bombs, and swoops in on the winner. If you move the camera yourself, it goes back to auto after 8 seconds (ball battles too).
+- Card battles last 1 minute by default.
+
+**🚫 Movie bans**
+- New ban rules (each can be turned off): 🌍 movies not in English, ⛪ really religious movies, 🎥 documentaries, and 📅 this year's movies (they come off on January 1st).
+- The ban list fills itself from TMDB, and 🔄 Update the ban list does it again any time.
+- Unban a movie to pre-approve it. Discord tells people to ask Kirb to unban a movie they want.
+- The Banned Movies page has a search box and filters.
+
+**🎡 Wheel**
+- **⚡🔢 Auto + countdown** spot type.
+- **No respins on auto spots.** The Respin reward hides while the wheel sits on one. Anyone who sneaks one in gets a free saved respin instead, and a "nice try, sneaky sneaky" from the bot.
+- **Only the first respin counts:** respins redeemed at the same time become free saved respins for everyone after the first.
+- **History → 🎟️ Free spins** lists every free spin given, used and given back.
+- Name boxes on the Wheel tab suggest people who just chatted.
+
+**🎬 Discord movie battle**
+- **⏱️ 2-minute join timer + chat vote:** only people who chat during the 2 minutes get their movies in, and a numbered list shows on screen. Chat votes for the winner by number or name, and a right vote gives +1% luck. You press START ROYAL when ready.
+- **The winner is always asked !accept / !pass first,** so a happy "YES!" doesn't claim it by accident.
+
+**✨ More**
+- 🗺️ **Map menus** are sorted: ⚪ Ball / car only, 🃏 Character only, ⚪🃏 Both, then 🎉 Holiday maps, each A–Z.
+- ⚡ **Chat powers reminder:** a line scrolls across the top of a battle while chat powers are on.
+- 📋 **!moviesroyal** lists the commands for the tab you're on (once a minute).
+- 🎨 **Holiday app style:** close to a holiday, Movie Royal asks if you want the app dressed up for it.
+- 💲 **Check a card's price** on TCGplayer, eBay sold listings or PriceCharting from the Card battles tab.
+- 📁 **Discord channel folder:** all of Movie Royal's channels go in one "Movie Royal" folder (the hidden ones stay hidden).
+
+**🛠️ Fixes**
+- The pinned commands message in Discord always fits now (it was too long for Discord, which made the status light orange).
+- No more "EPERM … db.json" error box: if Windows locks the save file for a moment, Movie Royal waits and tries again.
+- Help mode works on every button on the 🧪 Test tab again.
+
 ## v1.46.0: What's new
 Everything since 1.39.1.
 
