@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.6
+- ✅ **The checklist is shorter: only the main features now** (76 instead of 175). Battles, claims, the wheel, Discord picks, Twitch chat and rewards, characters, card battles, OBS and the bots are all still there. The small extras are gone: camera spins, each map on its own, menu sorting, window tweaks and the like. All the maps are one line now: "Every map plays a battle to the end", tried in the 🧪 Quick test lab. Your ticks stay ticked.
+
 ## 1.59.5
 - 🎥 **The camera buttons are on the battle screen now** (Battle and Card battles tabs, and in fullscreen): move the mouse over the battle and they show at the bottom; stop moving and they hide after a couple of seconds. The old camera rows under the battle are gone.
 

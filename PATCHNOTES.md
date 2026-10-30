@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.6: What's new
+Everything since 1.59.5.
+
+- ✅ **Shorter checklist:** only the main features are on it now (76 checks instead of 175). All the maps are one check, tried in the 🧪 Quick test lab. Your ticks stay ticked.
+
 ## v1.59.5: What's new
 Everything since 1.59.4.
 
