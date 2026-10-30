@@ -471,6 +471,7 @@ H(/^tip:random numbers for every part/i, '🎲 Random look', 'Picks a random num
 H(/^tip:what \/character answers in discord with these numbers/i, '💬 Try /character', 'Shows what the bot answers in Discord when someone types /character with these numbers. It saves them for a pretend Discord person (not a real one).', ['test']);
 H(/^tip:what \/character answers with no numbers/i, '🖼️ Picture sheets', 'Shows what the bot answers when someone types /character with nothing after it: the numbered pictures of every hair style, outfit, makeup, facial hair, skin and hair color.', ['test']);
 H(/^tip:what this character looks like/i, '🎨 Preview', 'What this character looks like in battle.');
+H(/post a small picture of new characters/i, '🖼️ Character pictures in Discord', 'When someone saves a character with /character, your PC draws a small picture of it. They always get it in their own answer; with this on, it is also posted in the movie channel (at most once every 5 minutes a person).');
 H(/^tip:what this wild spot character looks like/i, '🎨 Preview', 'What the wild spot character you are building looks like in battle. It changes as you pick the parts.');
 H(/^tip:keep the changes to this wild spot character/i, '💾 Save changes', 'Saves the changes to the wild spot character you are changing (the one with the gold border).');
 H(/^tip:stop changing this one and start a new character/i, '✖ Stop changing', 'Stops changing the saved wild spot character and starts a new one (nothing is lost).');

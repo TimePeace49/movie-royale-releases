@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.55.1 (test build)
+- 🖼️ **Character pictures in Discord:** when someone saves their character with /character, your PC draws a small picture of it. They get it in their own answer, and it's posted in the movie channel ("🎨 Lucy made their Movie Royal character!"). The channel post is at most once every 5 minutes a person, and Settings → Game turns it off.
+- Through the 24/7 bot, the picture comes once Movie Royal picks the change up (within a minute while it's open). If Movie Royal was closed for more than 15 minutes, only the channel post shows (Discord stops letting the bot change their answer).
+- Update the 24/7 bot when Movie Royal asks.
+- 🧪 Test tab → 🎨 Custom characters → 💬 Try /character now shows the picture too.
+
 ## 1.55.0 (test build)
 - 🎨 **Make your own character in Discord: /character.** With nothing after it, the bot shows numbered pictures of every part. People type the numbers they want, for example `/character hair:7 outfit:3 makeup:1 facialhair:8` (also `body`, `skin` and `haircolor`; only the parts they want to change). That's their character in every battle with 🧍 characters, and their movie poster or Twitch picture becomes a badge on the chest. The parts:
   - 💇 50 hair styles (1–25 men's, 26–50 women's)

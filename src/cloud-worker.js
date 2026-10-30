@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 8; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 9; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -319,9 +319,10 @@ function characterCmd(env, ctx, s, i, user, origin) {
   const look = { ...(cur || {}) }, bad = [];
   for (const k of PARTS) { const v = picks[k]; if (v == null) continue; const n = Number(v); if (!Number.isInteger(n) || n < 1 || n > N[k].length) bad.push(`${PLABEL[k]}: pick 1 to ${N[k].length}`); else look[k] = n; }
   if (bad.length) return reply(`🤔 Those numbers aren't on the pictures:\n${bad.join('\n')}\nType **/character** with nothing after it to see the pictures again.`);
-  ctx.waitUntil(enqueue(env, { id: crypto.randomUUID(), at: Date.now(), type: 'look', user, look }).catch(e => console.error('look', e))); // answer Discord right away, save it right after
+  const home = i.guild_id && s.cfg.channels?.[i.guild_id];
+  ctx.waitUntil(enqueue(env, { id: crypto.randomUUID(), at: Date.now(), type: 'look', user, look, first: !cur, token: i.token, app: i.application_id, ch: home || i.channel_id }).catch(e => console.error('look', e))); // answer Discord right away, save it right after (the app adds a picture: token = this answer)
   const linked = !!s.links[user.discordId];
-  return reply(`✅ **Saved! This is your character now:**\n${lookText(N, look)}\n\nYou'll be this character in Movie Royal battles that use 🧍 characters${linked ? '' : ' (to be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**)'}. Change any part any time with **/character**.`);
+  return reply(`✅ **Saved! This is your character now:**\n${lookText(N, look)}\n\nYou'll be this character in Movie Royal battles that use 🧍 characters${linked ? '' : ' (to be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**)'}. Change any part any time with **/character**.\n🖼️ A small picture of your character shows up here once Movie Royal picks it up (in a minute or so while it's open).`);
 }
 
 async function pickMovie(s, value) {

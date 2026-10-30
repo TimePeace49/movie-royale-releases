@@ -60,7 +60,7 @@ export function characterReply(user, picks) {
   const { look, bad } = check(picks, cur || {});
   if (bad.length) return { saved: false, text: `🤔 Those numbers aren't on the pictures:\n${bad.join('\n')}\nType **/character** with nothing after it to see the pictures again.` };
   setLook(user.discordId, look, user.name);
-  return { saved: true, look, text: `✅ **Saved! This is your character now:**\n${lookText(look)}\n\nYou'll be this character in Movie Royal battles that use 🧍 characters${user.linked === false ? ' (to be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**)' : ''}. Change any part any time with **/character**.` };
+  return { saved: true, look, first: !cur, text: `✅ **Saved! This is your character now:**\n${lookText(look)}\n\nYou'll be this character in Movie Royal battles that use 🧍 characters${user.linked === false ? ' (to be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**)' : ''}. Change any part any time with **/character**.` };
 }
 export function setLook(discordId, look, name) {
   db.looks ||= {};
@@ -73,3 +73,24 @@ export function setLook(discordId, look, name) {
 export const nums = l => { const o = {}; for (const k of PARTS) if (l?.[k]) o[k] = l[k]; return o; };
 /** A random character (practice battles). */
 export const randomLook = () => Object.fromEntries(PARTS.map(k => [k, 1 + Math.floor(Math.random() * NAMES[k].length)]));
+
+// ---------- 🖼️ a small picture of someone's character (drawn by the app in a hidden window; posted in Discord) ----------
+let base = 'http://127.0.0.1:' + (process.env.PORT || 3737);
+export const setBase = u => { base = u; };
+/** PNG (Buffer) of this look, or null if it can't be drawn here (only the Windows app can; tests use Playwright if it's there). */
+export async function picture(look, name, size = 200) {
+  const url = `${base}/charone.html?size=${size}&look=${encodeURIComponent(JSON.stringify(nums(look)))}&name=${encodeURIComponent(String(name || '').slice(0, 24))}`;
+  let png = null;
+  try {
+    if (globalThis.__desktop?.renderPicture) png = await globalThis.__desktop.renderPicture(url);
+    else { // (not the Windows app: try Playwright, for testing)
+      const { createRequire } = await import('module'); const req = createRequire(import.meta.url); let pw;
+      for (const p of ['playwright', ...(process.env.NODE_PATH || '').split(/[:;]/).filter(Boolean).map(d => d + '/playwright')]) { try { pw = req(p); break; } catch {} }
+      if (pw) { const b = await pw.chromium.launch(); try { const pg = await b.newPage(); await pg.goto(url); png = await pg.waitForFunction(() => window.__png, null, { timeout: 10000 }).then(h => h.jsonValue()); } finally { await b.close(); } }
+    }
+  } catch (e) { console.error('[looks] couldn\'t draw the character picture:', e.message); }
+  return png && String(png).startsWith('data:image/png;base64,') ? Buffer.from(String(png).split(',')[1], 'base64') : null;
+}
+const lastPost = new Map(); // someone fiddling with their character: post it in the channel at most every 5 minutes
+export function postOk(discordId) { if (db.settings.lookPost === false) return false; const t = lastPost.get(discordId) || 0; if (Date.now() - t < 5 * 60e3) return false; lastPost.set(discordId, Date.now()); return true; }
+export const postText = (name, first) => `🎨 **${name}** ${first ? 'made their' : 'changed their'} Movie Royal character! Make yours with **/character**.`;

@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Character</title>
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style></head>
+<body><canvas id="c"></canvas>
+<script src="charparts.js"></script>
+<script>
+// 🖼️ One character as a small picture (the app makes this in a hidden window when someone saves /character,
+// then posts it in Discord). ?look={json}&name=Lucy&size=200 → window.__png = the picture (data URL)
+const Q = new URLSearchParams(location.search), size = Math.max(64, Math.min(512, Number(Q.get('size')) || 200));
+let look = {}; try { look = JSON.parse(Q.get('look') || '{}'); } catch {}
+const name = String(Q.get('name') || '').slice(0, 24), cv = document.getElementById('c'), g = cv.getContext('2d');
+const ini = name.split(/[\s_]+/).filter(Boolean).map(w => [...w][0]).join('').slice(0, 2).toUpperCase() || '★';
+function go() {
+  cv.width = size; cv.height = size + (name ? Math.round(size * .16) : 0);
+  const bg = g.createLinearGradient(0, 0, 0, cv.height); bg.addColorStop(0, '#2a1d4a'); bg.addColorStop(1, '#140c26');
+  g.fillStyle = bg; g.beginPath(); g.roundRect ? g.roundRect(0, 0, cv.width, cv.height, size * .08) : g.rect(0, 0, cv.width, cv.height); g.fill();
+  const m = size / 2, rr = size * .3;
+  g.save(); g.translate(0, size * .06); window.CHAR_PARTS.draw(g, m, rr, look, null, Q.get('col') || '#e8454a', ini); g.restore();
+  if (name) { g.fillStyle = '#ffd23a'; g.font = `800 ${Math.round(size * .1)}px Inter, Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, size / 2, size + size * .06); }
+  window.__png = cv.toDataURL('image/png');
+}
+go();
+</script></body></html>

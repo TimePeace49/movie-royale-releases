@@ -89,7 +89,7 @@ export async function applyOps(queue) {
   for (const op of queue) {
     try {
       const user = { discordId: op.user.discordId, name: op.user.name, avatar: op.user.avatar || null };
-      if (op.type === 'look') { const { look } = looks.check(op.look || {}); looks.setLook(user.discordId, look, user.name); } // 🎨 /character while the app was closed
+      if (op.type === 'look') { const { look } = looks.check(op.look || {}); looks.setLook(user.discordId, look, user.name); lookPicture(op, look, user).catch(e => console.error('[24/7] character picture:', e.message)); } // 🎨 /character from the 24/7 bot: save it, then send a picture of it
       else if (op.type === 'link') { db.links[user.discordId] = op.login; (db.linkNames ||= {})[user.discordId] = { name: user.name, avatar: user.avatar }; claimManual(user, op.login); }
       else if (op.type === 'suggest') {
         claimManual(user, db.links[user.discordId] || null);
@@ -105,6 +105,16 @@ export async function applyOps(queue) {
   status.rejected = status.rejected.slice(0, 20);
   if (queue.length) { save(); onChange(); }
   return ack;
+}
+
+/** 🖼️ A /character made through the 24/7 bot: draw it here and add the picture to their answer (Discord keeps that answer
+ *  editable for 15 minutes) + show it off in the movie channel (Settings: lookPost, at most every 5 minutes a person). */
+async function lookPicture(op, look, user) {
+  const png = await looks.picture(look, user.name); if (!png) return;
+  const multipart = (payload) => { const fd = new FormData(); fd.append('payload_json', JSON.stringify({ ...payload, attachments: [{ id: 0, filename: 'character.png' }] })); fd.append('files[0]', new Blob([png], { type: 'image/png' }), 'character.png'); return fd; };
+  if (op.token && op.app && Date.now() - op.at < 14 * 60e3) await fetch(`${DISCORD}/webhooks/${op.app}/${op.token}/messages/@original`, { method: 'PATCH', body: multipart({}) }).catch(() => {});
+  const token = db.settings.discordToken, ch = op.ch || Object.values(db.discordChannels || {})[0]?.channelId;
+  if (token && ch && looks.postOk(user.discordId)) await fetch(`${DISCORD}/channels/${ch}/messages`, { method: 'POST', headers: { Authorization: `Bot ${token}` }, body: multipart({ content: looks.postText(user.name, op.first), allowed_mentions: { parse: [] } }) }).catch(() => {});
 }
 
 /** 🎨 The /character picture sheets: Cloudflare gets them from this PC (uploaded once, again only when they change),

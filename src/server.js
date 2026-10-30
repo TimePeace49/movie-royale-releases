@@ -2719,6 +2719,13 @@ app.post('/api/test/check-movie', async (req, res) => {
 app.post('/api/test/discord', async (req, res) => { try { res.json({ msg: (await discord.postTest()).join(' · ') }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/twitch-say', async (req, res) => { try { await twitch.say(String(req.body?.text || '🧪 Movie Royal test message')); res.json({ msg: 'Sent! Check your Twitch chat.' }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/omdb', async (req, res) => res.json(await testOmdb()));
+// 🖼️ Test tab: the small picture the app posts in Discord when someone saves /character
+app.get('/api/test/look-picture', async (req, res) => {
+  let look = {}; try { look = JSON.parse(String(req.query.look || '{}')); } catch {}
+  const png = await looks.picture(looks.check(look).look, String(req.query.name || 'Test viewer'));
+  if (!png) return res.status(501).json({ error: "Only the Movie Royal app on your PC can draw the picture." });
+  res.type('png').send(png);
+});
 // 🎨 Test tab: what /character answers in Discord, for a pretend Discord person (saved as test-discord: not a real person)
 app.post('/api/test/character', (req, res) => {
   const picks = {}; for (const k of looks.PARTS) if (req.body?.[k] != null && req.body[k] !== '') picks[k] = req.body[k];

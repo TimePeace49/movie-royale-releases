@@ -319,7 +319,14 @@ async function handle(i) {
   if (i.commandName === 'character') { // 🎨 their own battle character: the pictures come straight from this computer
     const picks = Object.fromEntries(looks.PARTS.map(k => [k, i.options.getInteger(k)]).filter(([, v]) => v != null));
     const r = looks.characterReply({ ...user, linked: !!db.links[user.discordId] }, picks);
-    if (r.saved) { onChange(); return i.reply(eph(r.text)); }
+    if (r.saved) { // 🖼️ answer right away, then add a small picture of the character (drawn on this PC) + show it off in the movie channel
+      onChange(); await i.reply(eph(r.text + '\n🖼️ Drawing your character…'));
+      const png = await looks.picture(r.look, user.name);
+      if (!png) return i.editReply({ content: r.text }).catch(() => {});
+      await i.editReply({ content: r.text, files: [{ attachment: png, name: 'character.png' }] }).catch(() => {});
+      if (looks.postOk(user.discordId)) { const ch = (home && i.client.channels.cache.get(home)) || i.channel; ch?.send({ content: looks.postText(user.name, r.first), files: [{ attachment: png, name: 'character.png' }], allowedMentions: { parse: [] } }).catch(() => {}); }
+      return;
+    }
     if (Object.keys(picks).length) return i.reply(eph(r.text));
     const files = looks.SHEETS.map(sh => ({ attachment: looks.sheetFile(sh), name: sh + '.png' }));
     const embeds = looks.SHEETS.map(sh => new EmbedBuilder().setTitle(looks.SHEET_TITLE[sh]).setColor(0xffd23f).setImage(`attachment://${sh}.png`));

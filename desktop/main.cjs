@@ -206,6 +206,16 @@ app.whenReady().then(async () => {
         return { status: 200, text: await limit(w.webContents.executeJavaScript('document.documentElement.outerHTML'), 5000) };
       } finally { hiddenPages.delete(w); if (!w.isDestroyed()) w.destroy(); }
     },
+    // 🖼️ draw one of our own pages in a hidden window and hand back what it made (window.__png): the /character picture
+    renderPicture: async (url, timeout = 15000) => {
+      const w = new BrowserWindow({ show: false, width: 520, height: 600, webPreferences: { backgroundThrottling: false } });
+      try {
+        await Promise.race([w.loadURL(url), new Promise(r => setTimeout(r, timeout))]).catch(() => {});
+        const end = Date.now() + timeout;
+        while (Date.now() < end && !w.isDestroyed()) { const png = await w.webContents.executeJavaScript('window.__png || null').catch(() => null); if (png) return png; await new Promise(r => setTimeout(r, 150)); }
+        return null;
+      } finally { if (!w.isDestroyed()) w.destroy(); }
+    },
     stopPages: () => { for (const w of hiddenPages) if (!w.isDestroyed()) w.destroy(); hiddenPages.clear(); }, // ⏹ Stop on the card pack search
 
     applySettings,
