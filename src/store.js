@@ -51,7 +51,7 @@ const defaults = () => ({
     betaUpdates: false, lastSeenVersion: '', // also install pre-releases (test builds)
     seJwt: '', slToken: '', // 💵 StreamElements / Streamlabs donations
     obsUrl: 'ws://127.0.0.1:4455', obsPassword: '', obsMic: '', obsCam: '', // 🎥 OBS (the wheel's Doomsday)
-    botRemind: true, // ☁️ pop up "Update your 24/7 Discord bot" when the bot on Cloudflare is older than this version (Settings → Discord & picks)
+    botRemind: true, // (unused since 1.60.1: the "Update your 24/7 Discord bot" step always shows until the bot is updated, Derek)
     updateRepo: '', setupSeen: false, rewardsCreated: false, streamSetup: false,
     fairOdds: true,
     discordDebug: true,      // 🐞 a mods-only #movie-royal-debug channel where the bot posts Discord problems

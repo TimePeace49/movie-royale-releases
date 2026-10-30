@@ -1591,7 +1591,7 @@ app.get('/api/cloud/outdated', async (req, res) => { // ☁️ the "Update your 
   if (req.query.test) return res.json({ outdated: true, v: cloud.botVersion(), test: true }); // 🧪 Test tab: show the pop-up
   try {
     const out = await cloud.botOutdated();
-    res.json({ outdated: out && db.settings.botRemind !== false, v: cloud.botVersion(), unknown: cloud.enabled() && !cloud.versionKnown() });
+    res.json({ outdated: out, v: cloud.botVersion(), unknown: cloud.enabled() && !cloud.versionKnown() });
   } catch { res.json({ outdated: false, unknown: true }); }
 });
 // 🧭 the Setup guide's steps (setup.html has the pages). A step added since you last opened the guide pops up when the app starts,

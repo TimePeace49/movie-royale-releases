@@ -3,6 +3,13 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.60.2: What's new
+Everything since 1.60.0.
+
+- 🤖 **The chat bot pop-up tells you how:** the steps are in the pop-up, with 🔑 Sign in as the bot and a 📋 sign-in link. Open the link in a private (incognito) window and log in as the bot.
+- 🧭 **"Don't show again" on every start-up pop-up step**, except the ☁️ 24/7 Discord bot update and the 📦 monthly backup reminder. Those two keep asking until they're done.
+- 📦 **The monthly backup reminder is in the start-up pop-up now**, not a bar at the top.
+
 ## v1.60.0: What's new
 Everything since 1.59.7.
 

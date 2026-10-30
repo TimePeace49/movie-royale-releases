@@ -697,6 +697,13 @@ H(/auto \+ link/i, '⚡🔀 Auto + Link', 'An ⚡ auto spot that always links so
 H(/⚪ ball · 🃏 card/i, '🗺️ Card battle map', 'Where the card battle is fought. ⚪ = a ball battle map, 🃏 = a card battle map, ⚪🃏 = both. Card fighters can use every map marked 🃏. 🎲 Random picks any of them each fight.');
 H(/^⚪🃏 on a ball map$|card fighters on a ball map/i, '⚪🃏 Card fight on a ball map', 'Pretend packs fight on Lava Lake (a ball map) as card fighters. Nothing in your pool changes.');
 H(/^tip:don't show these new steps/i, '🆕 Don\'t show again', 'Stops the pop-up about these new Setup guide steps. They stay in the 🧭 Setup guide (link in Settings) whenever you want them.');
+H(/^tip:don't pop up about new versions/i, "Don't show again (updates)", "No more pop-up when a new version is out. You can still check for updates in Settings → 👤 Account & updates, and turn the pop-up back on there.");
+H(/^tip:never ask this again \(nothing changes\)/i, "Don't show again", "Never asks this question again and changes nothing. The switch is in Settings → Game → 🧍 Characters.");
+H(/^tip:never ask about holiday styles/i, "Don't show again (holidays)", "No more holiday style questions: the app style is set to Normal. Settings → App & background → 🎨 App style turns it back on.");
+H(/^tip:don't show this one when movie royal starts/i, "Don't show again", "This new Setup guide step won't pop up again when Movie Royal starts. It's still in the 🧭 Setup guide.");
+H(/^tip:asks again next time movie royal opens/i, 'Later', 'Closes this step. It asks again next time Movie Royal opens.');
+H(/pop up when a new version is out/i, '🔔 Update pop-up', 'When on, Movie Royal asks to install a new version when it opens (in the start-up pop-up). Off = no pop-up; use 🔄 Check for updates yourself.');
+H(/^remind me in a week$/i, 'Remind me in a week', 'The monthly backup reminder waits a week before asking again.');
 H(/^tip:ask again next time movie royal starts/i, 'Later', 'Closes the pop-up. It shows again next time Movie Royal starts, until you open the Setup guide.');
 H(/^tip:how many times it can be used each stream|countdown: x uses per stream/i, '🔢 Countdown rule', 'Pick 🔢 Countdown in “When it\'s on” and type how many times the reward can be used each stream. It stays on until it\'s been used that many times, then it\'s off (hidden on Twitch) until your next stream. The note shows how many are left.');
 H(/^tip:start this stream's countdown over/i, '↺ Start the countdown over', 'Gives the reward all its uses back for this stream.');

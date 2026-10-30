@@ -1855,8 +1855,16 @@ function renderHandNag() {
   b.style.display = 'flex';
   b.innerHTML = `<span>⚠️ ${t.length === 1 ? 'This channel point reward was' : 'These channel point rewards were'} made by hand on Twitch, so Movie Royal can't turn ${t.length === 1 ? 'it' : 'them'} off when ${t.length === 1 ? "it's" : "they're"} not being used: <b>${t.map(esc).join(', ')}</b>. Delete ${t.length === 1 ? 'it' : 'them'} on Twitch, then press <b>✨ Add any missing rewards</b> in ⚙️ Settings → Twitch so Movie Royal makes ${t.length === 1 ? 'it' : 'them'} again.</span><button class="ghost" onclick="handNagHide='${esc(k).replace(/'/g, '')}';renderHandNag()">✕</button>`;
 }
+function backupStep() { // 📦 once a month: download a backup (a start-up step, 1.60.1; no "don't show again", Derek)
+  if (!S.backupDue) return null;
+  return { key: 'backup', html: done => `<div class="holBig">📦</div><h3 style="text-align:center">Monthly backup</h3>
+    <p class="help" style="text-align:center">Download a backup of Movie Royal (your lists, people, history and settings) and keep it somewhere other than this PC, like a USB stick or cloud drive.${S.lastBackupAt ? ` Last one: ${new Date(S.lastBackupAt).toLocaleDateString()}.` : ''}</p>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="${SQ.test ? "toast('🧪 Test: this downloads the backup')" : "location.href='/api/backup'"};${done}">⬇️ Download backup</button><button onclick="${SQ.test ? '' : "api('/api/backup/snooze').catch(()=>{});"}${done}">Remind me in a week</button><button onclick="${done}" title="Asks again next time Movie Royal opens">Later</button></div>
+    <p class="help" style="text-align:center;margin-top:8px">To bring one back: Settings → 👤 Account &amp; updates → ⬆️ Restore from backup.</p>` };
+}
 function renderBackupNag() {
-  const b = $('backupNag'); if (!S.backupDue) { b.style.display = 'none'; return; }
+  const b = $('backupNag'); b.style.display = 'none'; return; // (1.60.1: it's a step in the start-up pop-up now, not a bar)
+  if (!S.backupDue) { b.style.display = 'none'; return; }
   b.style.display = 'flex';
   b.innerHTML = `📦 Monthly reminder: download a backup of Movie Royal${S.lastBackupAt ? ` (last one ${new Date(S.lastBackupAt).toLocaleDateString()})` : ''}. <button class="primary" onclick="location.href='/api/backup'">⬇️ Download backup</button><button class="ghost" onclick="api('/api/backup/snooze')">Remind me in a week</button>`;
 }
@@ -3666,7 +3674,6 @@ function openSettings(force) {
       <div class="row" style="gap:6px"><button onclick="api('/api/discord/debug-setup').then(r=>toast(r.warnings?.length ? '⚠️ '+r.warnings.map(esc).join('<br>') : '🐞 #movie-royal-debug is set up and locked', 8000))">🐞 Make / fix the debug channel</button><button class="ghost" onclick="api('/api/test/discord-debug').then(r=>toast(r.ok?'🐞 Sent a test problem to #movie-royal-debug':'⚠️ The bot is offline, or the debug channel isn\'t made yet'))">Send a test</button></div>
       <h3 style="margin-top:18px">☁️ 24/7 mode — Discord works when your PC is off</h3>
       <div id="cloudBox">${cloudHTML()}</div>
-      ${ck('botRemind', '🔔 Pop up when the 24/7 bot needs an update (when Movie Royal opens)')}
       <h3 style="margin-top:18px">🛡️ Backup bot server</h3>
       <div id="bkBox">${bkHTML()}</div>
       <h3 style="margin-top:18px">🎬 Pick rules</h3>
@@ -4110,6 +4117,7 @@ async function fillAppBox() {
       <button onclick="$('updFile').click()">📦 Install update from file…</button><input type="file" id="updFile" accept=".exe" hidden onchange="installFile(this.files[0])"></div><div id="updMsg"></div>` : ''}
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
     <p class="help">When a new <b>latest</b> release is posted there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>
+    <label class="ck"><input type="checkbox" ${S.settings.updAsk !== false ? 'checked' : ''} onchange="api('/api/settings',{updAsk:this.checked}).then(()=>{S.settings.updAsk=this.checked;toast('Saved')})"> <span>🔔 Pop up when a new version is out (when Movie Royal opens)</span></label>
     <label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;toast(this.checked ? '🧪 You will also get test builds (pre-releases).' : 'Only latest releases from now on.')})"> <span>🧪 Also install <b>test builds</b> (pre-releases). Leave this off unless you're testing new stuff.</span></label>
     ${a.desktop ? `<details style="margin-top:10px" ontoggle="if(this.open) loadPastReleases()"><summary>🕰️ Run an older version</summary><div id="pastRel" class="help">Loading…</div></details>` : ''}`;
 }
@@ -4132,7 +4140,7 @@ async function checkUpdate(btn) {
 function showUpdate(r) { sqShow([updStep(r)]); }
 function updStep(r) { return { key: 'update', html: done => `<h3>✨ Update available: ${esc(r.latest)}${r.pre ? ' 🧪 (test build)' : ''}</h3><p class="help">You have v${esc(r.version)}. Movie Royal will close, update, and open again — your lists, history and settings are kept.</p>
     ${r.notes ? `<div class="card soft" style="white-space:pre-wrap;max-height:200px;overflow:auto;font-size:13px">${esc(r.notes)}</div>` : ''}
-    <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="try{if(!SQ.test)localStorage.setItem('skipUpd','${esc(r.latest)}')}catch{};${done}">Skip this version</button><button onclick="${done}">Later</button><button class="primary" onclick="installLatest('${esc(r.url)}', this)">Install now</button></div>` }; }
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="ghost" title="Don't pop up about new versions when Movie Royal opens (turn it back on in Settings → Account &amp; updates)" onclick="if(!SQ.test){api('/api/settings',{updAsk:false}).catch(()=>{});toast('OK, no more update pop-ups. Check for updates any time: Settings → 👤 Account &amp; updates (and turn the pop-up back on there).', 8000)};${done}">Don't show again</button><button onclick="try{if(!SQ.test)localStorage.setItem('skipUpd','${esc(r.latest)}')}catch{};${done}">Skip this version</button><button onclick="${done}">Later</button><button class="primary" onclick="installLatest('${esc(r.url)}', this)">Install now</button></div>` }; }
 async function installLatest(url, btn) { btn.disabled = true; btn.textContent = 'Downloading…'; updBar({ stage: 'download', got: 0, total: 0 }); try { await api('/api/update/install-latest', { url }); } catch { updBar(null); btn.disabled = false; btn.textContent = 'Try again'; } }
 // ⬇️ update progress: a bar while it downloads, then a note while it installs (the installer shows its own bar, then Movie Royal opens again)
 function updBar(m) {
@@ -4177,10 +4185,11 @@ async function botStep(test = false) { // the 24/7 Discord bot on Cloudflare is 
   return { key: 'bot', html: done => `<h3>☁️ Update your 24/7 Discord bot</h3><p class="help">This version of Movie Royal comes with changes for the Discord bot that runs on Cloudflare (your 24/7 bot), like working with the backup bot server. The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token once.</p>
       <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&${done})">🔄 Update the bot</button></div>
       <p class="help">No token? Make one at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → <b>Create Token</b> → <b>Edit Cloudflare Workers</b> template → your account + All zones → <b>Create Token</b> → <b>Copy</b>.</p>
-      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="api('/api/settings',{botRemind:false}).catch(()=>{});${done};toast('OK, no more reminders. Turn them back on in Settings → Discord & picks → 24/7 mode. You can still update the bot there.', 8000)">Don't remind me again</button><button onclick="${done}">Later</button></div>` };
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button onclick="${done}" title="Asks again next time Movie Royal opens (until the bot is updated)">Later</button></div>` };
 }
 async function botUpdateOnOpen() { try { const st = await botStep(!!botUpdateOnOpen.test); botUpdateOnOpen.test = false; if (st) sqShow([st]); } catch {} } // (🧪 Test tab: botUpdateOnOpen.test = true)
 async function updCheckStep() { // a newer version is posted (asks each time the app opens, unless you skipped that version)
+  if (S.settings.updAsk === false) return null; // (you said: don't show again)
   const r = await fetch('/api/update/check').then(r => r.json());
   let skip = null; try { skip = localStorage.getItem('skipUpd'); } catch {}
   return r.available && r.latest !== skip ? updStep(r) : null;
@@ -4193,7 +4202,7 @@ $('startDlg').addEventListener('cancel', e => { e.preventDefault(); sqNext(); })
 const withTime = (p, ms = 9000) => Promise.race([Promise.resolve(p).catch(() => null), new Promise(r => setTimeout(() => r(null), ms))]);
 async function startPops() {
   if (PC_ONLY || !S) return;
-  const parts = await Promise.all([withTime(updCheckStep()), withTime(botStep()), ...Object.keys(FEAT_Q).map(k => featStep(k)), holStep(), withTime(whatsNewStep())]); // (in this order; the Setup guide ones last: 🧭 Set it up leaves for the guide)
+  const parts = await Promise.all([withTime(updCheckStep()), withTime(botStep()), backupStep(), ...Object.keys(FEAT_Q).map(k => featStep(k)), holStep(), withTime(whatsNewStep())]); // (in this order; the Setup guide ones last: 🧭 Set it up leaves for the guide)
   const steps = parts.flat().filter(Boolean); if (steps.length) sqShow(steps);
 }
 function sqShow(steps, test = false) { // a new list (or more steps on the end of the one that's open)
@@ -4215,7 +4224,7 @@ function sqNext() {
 }
 async function sqTest() { // 🧪 Test tab: every kind of start-up step, one after the other (nothing saved)
   const h = HOLIDAYS[0]; holTestDate = h.win(new Date().getFullYear())[1];
-  sqShow([updStep({ latest: '9.9.9', version: S.version, notes: '(pretend update: Install now would really download it, so press Later)', url: '' }), ...Object.keys(FEAT_Q).map(k => featStep(k, true)), holStep(true), ...(await whatsNewStep(true))], true);
+  sqShow([updStep({ latest: '9.9.9', version: S.version, notes: '(pretend update: Install now would really download it, so press Later)', url: '' }), { ...(backupStep() || { key: 'backup', html: done => `<div class="holBig">📦</div><h3 style="text-align:center">Monthly backup</h3><p class="help" style="text-align:center">(pretend: your backup isn't due yet)</p><div class="row" style="justify-content:center"><button onclick="${done}">Later</button></div>` }) }, ...Object.keys(FEAT_Q).map(k => featStep(k, true)), holStep(true), ...(await whatsNewStep(true))], true);
 }
 async function banRulesTest() {
   const r = await api('/api/test/ban-rules', {}); const br = r.rules || {};
@@ -4361,12 +4370,13 @@ function holStep(force = false) { // close to a holiday: dress the app up for it
   if (!force && ((S.settings.appStyle || 'auto') !== 'auto' || (a && a.year === h.year))) return null;
   return { key: 'holiday', html: () => `<div class="holBig">${h.icon}</div><h3 style="text-align:center">${esc(h.name)} is coming up!</h3>
     <p class="help" style="text-align:center">Want Movie Royal dressed up for ${esc(h.name)}? It changes the colors of the app (not your stream) until the holiday is over.</p>
-    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="holAnswer('${h.id}',${h.year},'yes')">${h.icon} Yes, turn it on</button><button onclick="holAnswer('${h.id}',${h.year},'later')" title="Asks again next time Movie Royal opens">Not now</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'cool')" title="No more asking about ${esc(h.name)} until next year">Not until next year</button></div>` };
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="holAnswer('${h.id}',${h.year},'yes')">${h.icon} Yes, turn it on</button><button onclick="holAnswer('${h.id}',${h.year},'later')" title="Asks again next time Movie Royal opens">Not now</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'cool')" title="No more asking about ${esc(h.name)} until next year">Not until next year</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'never')" title="Never ask about holiday styles again (Settings → App &amp; background → App style turns it back on)">Don't show again</button></div>` };
 }
 function holAsk(force = false) { const st = holStep(force); if (st) sqShow([st], !!force); } // (🧪 Test tab: holTestDate + holAsk(true))
 async function holAnswer(id, year, ans) {
   sqNext();
   if (ans === 'later') return toast('OK! I\'ll ask again next time Movie Royal opens.');
+  if (ans === 'never') { if (holTestDate) { holTestDate = null; return toast('🧪 Test only: you picked “Don\'t show again” (nothing saved)'); } await api('/api/settings', { appStyle: 'normal' }); return toast('OK, no more holiday questions. Settings → App & background → 🎨 App style turns it back on.', 7000); }
   if (holTestDate) { holTestDate = null; return toast(`🧪 Test only: you picked “${ans === 'yes' ? 'Yes' : 'Not until next year'}” (nothing saved)`); }
   await api('/api/settings', { holTheme: { ...(S.settings.holTheme || {}), [id]: { ans, year } } });
   toast(ans === 'yes' ? '🎨 Holiday style on! Change it any time: Settings → App & background → App style.' : `OK, no more asking about ${HOLIDAYS.find(h => h.id === id).name} until next year.`, 6000);
@@ -4382,7 +4392,7 @@ function featStep(k, test = false) {
   const q = FEAT_Q[k];
   return { key: 'feat-' + k, html: () => `<div class="holBig">${q.icon}</div><h3 style="text-align:center">${q.title}</h3>
     <p class="help" style="text-align:center">${q.text()}</p>
-    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="featAnswer('${k}',true)">${q.yesWord}</button><button onclick="featAnswer('${k}',false)">No thanks</button></div>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="featAnswer('${k}',true)">${q.yesWord}</button><button onclick="featAnswer('${k}',false)">No thanks</button><button class="ghost" onclick="featAnswer('${k}',null)" title="Never ask this again (nothing changes)">Don't show again</button></div>
     <p class="help" style="text-align:center;margin-top:10px">You can change this any time in Settings → Game → 🧍 Characters</p>` };
 }
 function featAsk(test = false) { sqShow(Object.keys(FEAT_Q).map(k => featStep(k, test)), test); } // (🧪 Test tab: featAsk(true))
@@ -4390,6 +4400,7 @@ async function featAnswer(k, yes) {
   const q = FEAT_Q[k], test = SQ.test;
   sqNext();
   if (test) return;
+  if (yes === null) { const ans = { ...(S.settings.featAsk || {}), [k]: 'skip' }; S.settings.featAsk = ans; await api('/api/settings', { featAsk: ans }); return toast('OK, no more asking. It\'s in Settings → Game → 🧍 Characters.', 5000); } // (don't show again: nothing changes)
   const ans = { ...(S.settings.featAsk || {}), [k]: yes ? 'yes' : 'no' };
   S.settings.featAsk = ans;
   await api('/api/settings', { ...(yes ? q.yes : q.no), ...(yes ? { charsDefault: true } : {}), featAsk: ans }); // (yes = battles use 🧍 characters by default)

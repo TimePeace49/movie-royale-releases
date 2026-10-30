@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.60.2
+- 🧭 **Every start-up pop-up step has "Don't show again"**: the new version step (turn it back on in Settings → 👤 Account & updates → 🔔 Pop up when a new version is out), the character questions (nothing changes), the holiday style (sets the app style to Normal) and new Setup guide steps.
+- **Two steps keep asking until they're done** (Derek): ☁️ Update your 24/7 Discord bot (the "Don't remind me again" button and its Settings box are gone) and the 📦 monthly backup.
+- 📦 **The monthly backup reminder is a step in the start-up pop-up now** (it was a bar at the top): ⬇️ Download backup, Remind me in a week, or Later.
+
 ## 1.60.1
 - 🤖 **The chat bot pop-up now tells you how.** When Movie Royal opens and asks about a 🤖 chat bot account, the steps are right in the pop-up, with 🔑 Sign in as the bot and a 📋 copy-able sign-in link. Open that link in a private (incognito) browser window and log in as the bot, so you don't have to log out of your own Twitch account. The same link is in the Setup guide and in Settings → 💜 Twitch & channel points. The other new Setup guide steps in that pop-up show their steps too.
 
