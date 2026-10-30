@@ -1330,7 +1330,9 @@ app.post('/api/obs/test', wTry(async () => obs.test()));
 // 📺 capture window on stream (Battle tab): shows a window (your browser, a YouTube video…) small in the top-left corner, through OBS
 async function setCapture(on) {
   try { await obs.capture(!!on); live.capture = !!on; live.captureError = null; }
-  catch (e) { live.captureError = `Couldn't ${on ? 'show' : 'hide'} the capture window: ${e.message}`; console.error('[obs] capture window:', e.message); pushState(); throw new Error(live.captureError); }
+  catch (e) {
+    if (!on && errlog.quiet('obs', e.message)) { live.capture = false; live.captureError = null; pushState(); return { on: false }; } // (OBS is closed: nothing to hide, no message)
+    live.captureError = `Couldn't ${on ? 'show' : 'hide'} the capture window: ${e.message}`; console.error('[obs] capture window:', e.message); pushState(); throw new Error(live.captureError); }
   pushState(); return { on: live.capture };
 }
 app.post('/api/capture', wTry(b => setCapture(b.on)));
@@ -2574,7 +2576,7 @@ app.get('/api/test/cliff-why', async (req, res) => {
   res.json(out);
 });
 // ⚠️ error history (Test tab → ⚠️ Errors)
-app.get('/api/errors', (req, res) => res.json(errlog.errors().map(e => ({ ...e, ...errlog.plain(e) }))));
+app.get('/api/errors', (req, res) => res.json(errlog.shown().map(e => ({ ...e, ...errlog.plain(e) }))));
 app.post('/api/errors/clear', (req, res) => { errlog.clear(); res.json({ ok: true }); });
 app.post('/api/errors/report', (req, res) => { const b = req.body || {}; errlog.logErr(String(b.source || 'control panel').slice(0, 30), b.msg, b.detail); res.json({ ok: true }); }); // from the control panel itself
 app.get('/api/debug-report', (req, res) => { // everything Claude needs to find a problem, as plain text (no passwords or tokens)
@@ -2591,7 +2593,7 @@ app.get('/api/debug-report', (req, res) => { // everything Claude needs to find 
     `settings: chatGate=${st.chatGate !== false} fairOdds=${st.fairOdds !== false} claimApprove=${st.claimApprove !== false} pinWinner=${st.pinWinner !== false} maxFighters=${st.maxFighters} map=${st.map} pointsOn=${st.pointsOn !== false}`,
     list?.type === 'movies' ? `stream active=${JSON.stringify(stream().active)} weekWinners=${(db.week?.winners || []).length} statuses=${JSON.stringify(list.entries.reduce((o, e) => (o[e.status || 'active'] = (o[e.status || 'active'] || 0) + 1, o), {}))}` : '',
     '', `--- errors (newest first, ${errlog.errors().length}) ---`,
-    ...errlog.errors().slice(0, 60).map(e => `${new Date(e.at).toISOString()} [${e.source}]${e.count > 1 ? ` x${e.count}` : ''} ${e.msg}${e.detail ? '\n    ' + e.detail.split('\n').slice(0, 6).join('\n    ') : ''}`)
+    ...errlog.errors().slice(0, 60).map(e => `${new Date(e.at).toISOString()} [${e.source}]${e.count > 1 ? ` x${e.count}` : ''}${e.quiet ? ' (quiet: OBS closed, not shown to Derek)' : ''} ${e.msg}${e.detail ? '\n    ' + e.detail.split('\n').slice(0, 6).join('\n    ') : ''}`)
   ].filter(x => x !== '');
   res.type('text/plain').send(lines.join('\n'));
 });

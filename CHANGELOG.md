@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.58.3
+- 🤫 **No error messages when OBS is just closed.** Movie Royal doesn't count OBS being closed as a problem any more: nothing in ⚠️ Errors, nothing in #movie-royal-debug, and hiding the capture window when a battle starts stays quiet. It's still noted in the tech report (🛠️ For Claude) in case something else goes wrong. Real OBS problems (like a wrong password) still show, and pressing 🎥 Test OBS yourself still tells you it can't reach OBS.
+
 ## 1.58.2
 - 🧭 **One pop-up when Movie Royal opens.** Everything it wants to ask now comes as steps in the same window, one after another, instead of pop-up after pop-up:
   - a new version

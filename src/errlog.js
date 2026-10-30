@@ -30,8 +30,14 @@ export function logErr(source, msg, detail = '') {
   const last = list[0];
   if (last && last.source === source && last.msg === msg && Date.now() - last.at < 60000) { last.count = (last.count || 1) + 1; last.at = Date.now(); persist(); return; } // the same thing again: just count it
   const e = { id: Math.random().toString(36).slice(2, 10), at: Date.now(), source, msg, detail: String(detail || '').slice(0, 3000), count: 1 };
+  if (quiet(source, msg)) e.quiet = true;
   list.unshift(e); list = list.slice(0, 300); persist();
-  try { onNew(e); } catch {}
+  if (!e.quiet) try { onNew(e); } catch {}
 }
-export const errors = () => list;
+// 🤫 OBS is just closed (1.58.3, Derek): not a problem, so no message about it. It's still kept for the tech report (🛠️ For Claude),
+// in case something else goes wrong. Other OBS problems (wrong password…) still show.
+const OBS_CLOSED = /couldn.t reach OBS|OBS closed the connection|ECONNREFUSED.*4455|connect ECONNREFUSED/i;
+export const quiet = (source, msg) => source === 'obs' && OBS_CLOSED.test(String(msg || ''));
+export const errors = () => list; // (everything, for the tech report)
+export const shown = () => list.filter(e => !e.quiet); // (what the ⚠️ Errors tab and its count show)
 export function clear() { list = []; persist(); }

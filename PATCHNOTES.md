@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.58.3: What's new
+Everything since 1.58.2.
+
+- 🤫 **No error messages when OBS is just closed.** Movie Royal no longer counts a closed OBS as a problem. Real OBS problems (like a wrong password) still show.
+
 ## v1.58.2: What's new
 Everything since 1.58.1.
 
