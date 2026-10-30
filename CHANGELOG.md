@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.4
+- 🎩 **Head accessories are their own part now:**
+  - People pick one with `/character accessory:<number>`. There are 50 (number 1 = none): hats, caps, beanies, crowns, tiaras, halos, cat/bunny/bear/fox ears, horns, antennae, glasses, sunglasses, an eye patch, goggles and more.
+  - Random characters sometimes get one that fits, like Santa hats on Santa's Workshop and witch hats on Halloween.
+- 💇 **Hair still has 1,000 styles.** The accessory versions came out and 15 new hair styles took their place: tall, wide, slim, ombre, two-tone, frosted tips, dyed tips, skunk stripe, rainbow streaks, glitter, wet look, messy, wavy, curly and shaved side.
+- **Old picks keep their look:** anyone who had picked a hair-with-accessory number gets the same hair plus that accessory.
+- Update your 24/7 bot when Movie Royal asks, so /character knows the accessories.
+- ✅ 🆕 Recently updated on the checklist starts empty with this update (ticks stay).
+
 ## 1.59.3
 - 🧍 **24 body types:**
   - **Builds:** regular (1–6), thin (7–12), fat (13–18) and athletic (19–24).

@@ -63,8 +63,8 @@
 // 🌐 The parts website (1.59.0, Derek): every part with its number, drawn right here (no pictures to download), so people can pick
 // their /character numbers. Movie Royal serves it at /characters.html and the 24/7 bot (Cloudflare) at <bot>/characters.
 const C = window.CHAR_PARTS, N = C.NAMES, B = C.BASE, V = C.VARS;
-const PARTS = [['hair', '💇 Hair'], ['outfit', '👕 Outfits'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['skin', '✋ Skin'], ['haircolor', '🎨 Hair color']];
-const DEF = { hair: 1, outfit: 1, makeup: 1, facialhair: 1, body: 1, skin: 3, haircolor: 2 };
+const PARTS = [['hair', '💇 Hair'], ['outfit', '👕 Outfits'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['skin', '✋ Skin'], ['haircolor', '🎨 Hair color'], ['accessory', '🎩 Head accessory']];
+const DEF = { hair: 1, outfit: 1, makeup: 1, facialhair: 1, body: 1, skin: 3, haircolor: 2, accessory: 1 };
 const COLS = ['#d84a4a', '#3a8ad8', '#3aa85a', '#c77dff', '#f0a020', '#e05aa8', '#2ab0b0', '#8a6a4a'];
 let me = { ...DEF }, tab = 'hair', shown = 0; const STEP = 120;
 try { const s = JSON.parse(localStorage.mrChar || 'null'); if (s) me = { ...me, ...s }; } catch {}
@@ -72,7 +72,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const groupName = (k, b) => { const G = C.GROUPS[k]; if (!G) return ''; const g = G.find(([a, z]) => b >= a && b <= z); return g ? g[2] : ''; };
 function lookFor(k, n) { // what a card shows: a plain character wearing that part
   const b = C.sp(k, n)[0], fem = (k === 'hair' && b > 25) || (k === 'outfit' && b > 25 && b <= 50) || k === 'makeup' || (k === 'outfit' && b > 50 && n % 2);
-  const L = { hair: fem ? 26 : 1, outfit: fem ? 26 : 1, makeup: 1, facialhair: 1, body: fem ? 2 : 1, skin: 3, haircolor: 2 };
+  const L = { hair: fem ? 26 : 1, outfit: fem ? 26 : 1, makeup: 1, facialhair: 1, body: fem ? 2 : 1, skin: 3, haircolor: 2, accessory: 1 };
   if (k === 'facialhair') { L.hair = 9; } L[k] = n; if (k === 'body') { const f = (n - 1) % 6 > 0; L.hair = f ? 26 : 1; L.outfit = 1; }
   return L;
 }

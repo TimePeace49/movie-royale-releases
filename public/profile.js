@@ -59,7 +59,7 @@ window.Profile = (() => {
     if (tab === 'overview') drawLook(p);
   }
   // 🎨 their own character (made in Discord with /character): a preview with their picture as the chest badge
-  const PARTS = [['hair', '💇'], ['outfit', '👕'], ['makeup', '💄'], ['facialhair', '🧔'], ['body', '🧍'], ['skin', '✋'], ['haircolor', '🎨']];
+  const PARTS = [['hair', '💇'], ['outfit', '👕'], ['makeup', '💄'], ['facialhair', '🧔'], ['body', '🧍'], ['skin', '✋'], ['haircolor', '🎨'], ['accessory', '🎩']];
   function lookBox(p) {
     if (!p.look || !window.CHAR_PARTS) return '';
     const N = CHAR_PARTS.NAMES, L = CHAR_PARTS.norm(p.look);

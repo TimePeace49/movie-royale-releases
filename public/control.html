@@ -1514,6 +1514,7 @@ function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? 
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
+  headAcc: ['battles', '1.59.4'],
   bodyTypes: ['battles', '1.59.3'],
   toastLong: ['screen', '1.59.2'],
   charSite: ['discord', '1.59.0'], char20x: ['battles', '1.59.0'], charsDefault: ['battles', '1.59.0'],
@@ -1533,7 +1534,7 @@ const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = Str
 // ✅ 🆕 Recently updated (1.58.1, Derek): only what came in your latest update(s) sits on top; everything else is in its own category.
 // ckBase = the version you had before updating (anything newer is "recent"). A recent item you tick stays put until you leave the tab
 // (ckStay), then it moves to its category.
-const ckStay = new Set(), CK_RECENT_RESET = '1.59.3'; // (change it to empty 🆕 Recently updated once more with an update; ticks are never cleared)
+const ckStay = new Set(), CK_RECENT_RESET = '1.59.4'; // (change it to empty 🆕 Recently updated once more with an update; ticks are never cleared)
 function ckBaseVer() {
   const cur = S?.version; if (!cur) return '9.9.9';
   try {
@@ -1642,6 +1643,7 @@ function drawChecklist() {
     ['finalIntro8', '🥊 The FINAL FIGHT! scene before the last two card packs fight lasts 8 seconds now, with a 3, 2, 1 countdown before 🔔 FIGHT! (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2)', `<button class="ghost" style="padding:3px 9px" onclick="labTry('kungfu','card')">Try it</button>`],
     ['banRules', '🚫 New movie bans: 🌍 not in English, ⛪ really religious, 🎥 documentaries. Press “Try the rules”, then in Discord try /suggest with a foreign movie (like Amélie): it\'s banned and says to ask Kirb to unban it. The pinned Discord message explains banned movies too', `<button class="ghost" style="padding:3px 9px" onclick="banRulesTest()">Try the rules</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('bans');loadBans()">Banned Movies</button>`],
     ['banSearch', '🔍 Banned Movies has a search box (title, year or reason) and a kind filter: add 300 pretend bans and search them. Also try 🔎 Check movies already picked and ✅ Pre-approve on a search result', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/ban-many',{}).then(()=>{setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button>`],
+    ['headAcc', '🎩 Head accessories: their own part now (/character accessory:<number>), 50 of them (hats, caps, ears, horns, crowns, glasses, goggles…; 1 = none). Hair has 15 new styles instead (tall, wide, ombre, two-tone, dyed tips, glitter, wavy, curly, shaved side…). Anyone who had picked a hair with an accessory keeps the same look', `<button class="ghost" style="padding:3px 9px" onclick="window.open('/characters.html?part=accessory')">Accessories</button> <button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,count:30})">Practice battle</button>`],
     ['bodyTypes', '🧍 Body types: 24 bodies = regular, thin, fat and athletic, each flat or with 5 chest sizes (easier to see now). Random characters get any build but only the smaller chest sizes. Open the parts website → 🧍 Body', `<button class="ghost" style="padding:3px 9px" onclick="window.open('/characters.html?part=body')">Bodies</button> <button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,count:30})">Practice battle</button>`],
     ['toastLong', '💬 The little pop-ups at the bottom stay longer (8 seconds, longer messages longer). Hover the mouse on one to keep it up, click it to close it. Settings → App & background → 💬 Little pop-ups stay for', `<button class="ghost" style="padding:3px 9px" onclick="toast('💬 A test pop-up: hover the mouse on me to keep me up, click me to close me')">Show one</button>`],
     ['charSite', '🌐 The parts website: every hair style, outfit, makeup, facial hair, body, skin and hair color with its number; tap parts to try them on and copy the /character command. Discord links to it (pinned in #character-creation and in /character) once the 24/7 bot is updated', `<button class="ghost" style="padding:3px 9px" onclick="window.open('/characters.html')">Open it</button>`],
@@ -4292,7 +4294,7 @@ function holTestInit() { if ($('tFin') && $('tFin').options.length < 2 && !holTe
 
 
 // 🎨 Test tab: custom characters (/character in Discord; the parts + drawing are in charparts.js)
-const LK_PARTS = [['hair', '💇 Hair'], ['outfit', '👕 Outfit'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['skin', '✋ Skin'], ['haircolor', '🎨 Hair color']];
+const LK_PARTS = [['hair', '💇 Hair'], ['outfit', '👕 Outfit'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['skin', '✋ Skin'], ['haircolor', '🎨 Hair color'], ['accessory', '🎩 Head accessory']];
 const lkRandom = () => { const N = window.CHAR_PARTS?.NAMES || {}; return Object.fromEntries(LK_PARTS.map(([k]) => [k, 1 + Math.floor(Math.random() * (N[k]?.length || 1))])); };
 function lkInit() { const N = window.CHAR_PARTS?.NAMES, box = $('lkSels'); if (!N || !box || box.children.length) return;
   if ($('lkTheme')) $('lkTheme').innerHTML = Object.keys(CHAR_PARTS.THEMES).map(id => { const m = (S.maps || []).find(x => x.id === id) || (S.cards?.maps || []).find(x => x.id === id && !x.ball); return m ? `<option value="${id}">${m.icon} ${esc(m.name)}${m.ball ? '' : ' 🃏'}</option>` : ''; }).join('');

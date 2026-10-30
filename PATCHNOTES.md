@@ -3,6 +3,13 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.4: What's new
+Everything since 1.59.3.
+
+- 🎩 **50 head accessories, their own part** (`/character accessory:<number>`): hats, caps, crowns, ears, horns, glasses, goggles and more. Random characters sometimes wear one that fits the map.
+- 💇 **15 new hair styles** in place of the old hair accessories (tall, wide, ombre, two-tone, dyed tips, glitter, wavy, curly, shaved side…), still 1,000 in all. Old picks keep their look.
+- Update your 24/7 bot when Movie Royal asks.
+
 ## v1.59.3: What's new
 Everything since 1.59.2.
 

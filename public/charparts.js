@@ -15,13 +15,14 @@
     "facialhair": ["None", "Stubble", "Mustache", "Handlebar mustache", "Goatee", "Soul patch", "Short beard", "Full beard", "Long beard", "Mutton chops", "Pencil mustache", "Walrus mustache", "Horseshoe mustache", "Van Dyke", "Chin strap", "Chin curtain", "Anchor beard", "Braided beard", "Forked beard", "Wizard beard", "Circle beard", "Box beard", "Droopy mustache", "Curled mustache", "Sideburns"],
     "body": ["Flat", "Curvy · size 2", "Curvy · size 1 (smallest)", "Curvy · size 3", "Curvy · size 4", "Curvy · size 5 (biggest)", "Thin · Flat", "Thin · Curvy · size 2", "Thin · Curvy · size 1 (smallest)", "Thin · Curvy · size 3", "Thin · Curvy · size 4", "Thin · Curvy · size 5 (biggest)", "Fat · Flat", "Fat · Curvy · size 2", "Fat · Curvy · size 1 (smallest)", "Fat · Curvy · size 3", "Fat · Curvy · size 4", "Fat · Curvy · size 5 (biggest)", "Athletic · Flat", "Athletic · Curvy · size 2", "Athletic · Curvy · size 1 (smallest)", "Athletic · Curvy · size 3", "Athletic · Curvy · size 4", "Athletic · Curvy · size 5 (biggest)"],
     "skin": ["Porcelain", "Light", "Fair", "Medium", "Olive", "Tan", "Brown", "Deep"],
-    "haircolor": ["Black", "Dark brown", "Brown", "Blonde", "Ginger", "Gray", "White", "Blue", "Pink", "Green"]
+    "haircolor": ["Black", "Dark brown", "Brown", "Blonde", "Ginger", "Gray", "White", "Blue", "Pink", "Green"],
+    "accessory": ["None", "Headband", "Bow", "Flower", "Hair clip", "Bandana", "Sweatband", "Shades on top", "Headphones", "Cat ears", "Bunny ears", "Devil horns", "Halo", "Crown", "Tiara", "Feather", "Baseball cap", "Backwards cap", "Beanie", "Pom-pom beanie", "Cowboy hat", "Top hat", "Bowler hat", "Fedora", "Party hat", "Wizard hat", "Witch hat", "Santa hat", "Pirate hat", "Chef hat", "Hard hat", "Graduation cap", "Viking helmet", "Propeller cap", "Beret", "Bucket hat", "Visor", "Flower crown", "Antlers", "Unicorn horn", "Alien antennae", "Bee antennae", "Mouse ears", "Bear ears", "Fox ears", "Glasses", "Sunglasses", "Star glasses", "Eye patch", "Monocle", "Goggles"]
   }/*END*/;
   // 🔢 20 versions of every part except the body (1.59.0, Derek). Number n of a part with N base parts = base ((n−1) % N) + 1,
   // version floor((n−1) / N) (0 = the original). So hair 51–100 are all 50 hair styles "Flipped", 101–150 "Big", and so on.
   // Skin and hair colors: each version is a family of colors. This block is read by the server too (src/looks.js): plain JSON.
   const VARS = /*VARS*/{
-    "hair": ["Flipped", "Big", "Highlights", "Headband", "Bow", "Flower", "Hair clip", "Bandana", "Sweatband", "Shades on top", "Headphones", "Cat ears", "Bunny ears", "Devil horns", "Halo", "Crown", "Tiara", "Feather", "Neon streak"],
+    "hair": ["Flipped", "Big", "Highlights", "Tall", "Wide", "Slim", "Ombre", "Two-tone", "Frosted tips", "Dyed tips", "Skunk stripe", "Rainbow streaks", "Glitter", "Wet look", "Messy", "Wavy", "Curly", "Shaved side", "Neon streak"],
     "outfit": ["Striped", "Pinstripe", "Polka dot", "Plaid", "Camo", "Stars", "Hearts", "Flames", "Zigzag", "Checkered", "Diamonds", "Sparkle", "Lightning", "Sash", "Two-tone", "Gold", "Midnight", "Pastel", "Neon"],
     "makeup": ["Glitter", "Freckles", "Blush", "Beauty mark", "Gold glow", "Tear drop", "Star", "Heart", "Lashes", "Bandage", "Scar", "War paint", "Sunburn", "Dimples", "Rhinestones", "Nose ring", "Eyebrow ring", "Cheek gem", "Sparkle eyes"],
     "facialhair": ["Gray", "Salt & pepper", "White", "Ginger", "Blond", "Black", "Blue", "Pink", "Green", "Purple", "Neon", "Frosted", "Bushy", "Trimmed", "Beaded", "Twirled", "Glitter", "Flowers", "Braided tip"],
@@ -315,8 +316,39 @@
   const heart = (g, x, y, s) => { g.beginPath(); g.moveTo(x, y + s * .35); g.bezierCurveTo(x - s * 1.1, y - s * .35, x - s * .45, y - s * 1.05, x, y - s * .45); g.bezierCurveTo(x + s * .45, y - s * 1.05, x + s * 1.1, y - s * .35, x, y + s * .35); g.fill(); };
   const twinkle = (g, x, y, s) => poly(g, x, y - s, x + s * .28, y - s * .28, x + s, y, x + s * .28, y + s * .28, x, y + s, x - s * .28, y + s * .28, x - s, y, x - s * .28, y - s * .28);
   // hair versions: drawn on top of the hair (1 Flipped and 2 Big change how the hair itself is drawn)
-  const HACC = [null, null, null, // (0 = the original, 1 Flipped and 2 Big are drawn by hairDo)
-    (g, x, y, r, c, hc) => { g.globalAlpha *= .7; for (const [a, b] of [[-.45, -.2], [-.05, .05], [.35, .3]]) line(g, shade(hc, 75), r * .06, x + r * a, y - r * .98, x + r * (a + b * .3), y - r * .7, x + r * b, y - r * .45); g.globalAlpha /= .7; },
+  // hair versions (1.59.4: the accessories moved to their own part, 🎩 Head accessory): 1 Flipped, 2 Big, 4 Tall, 5 Wide, 6 Slim change
+  // how the hair is drawn (hairDo); the others paint over the hair only (drawn on a separate canvas, 'source-atop')
+  const HFX = {
+    3: (t, x, y, r, hc) => { t.globalAlpha = .7; for (const [a, b] of [[-.45, -.2], [-.05, .05], [.35, .3]]) line(t, shade(hc, 75), r * .06, x + r * a, y - r * .98, x + r * (a + b * .3), y - r * .7, x + r * b, y - r * .45); },
+    7: (t, x, y, r, hc) => { const gr = t.createLinearGradient(0, y - r * 1.3, 0, y + r * .6); gr.addColorStop(0, shade(hc, -55)); gr.addColorStop(1, shade(hc, 70)); t.fillStyle = gr; t.globalAlpha = .75; t.fillRect(x - r * 2, y - r * 2, r * 4, r * 4); },
+    8: (t, x, y, r, hc) => { t.fillStyle = shade(hc, 85); t.globalAlpha = .7; t.fillRect(x, y - r * 2, r * 2, r * 4); },
+    9: (t, x, y, r) => { const gr = t.createRadialGradient(x, y - r * .2, r * .8, x, y - r * .2, r * 1.5); gr.addColorStop(0, 'rgba(255,248,220,0)'); gr.addColorStop(1, 'rgba(255,248,220,.95)'); t.fillStyle = gr; t.fillRect(x - r * 2, y - r * 2, r * 4, r * 4); },
+    10: (t, x, y, r) => { const gr = t.createRadialGradient(x, y - r * .2, r * .8, x, y - r * .2, r * 1.5); gr.addColorStop(0, 'rgba(255,60,170,0)'); gr.addColorStop(1, 'rgba(255,60,170,.95)'); t.fillStyle = gr; t.fillRect(x - r * 2, y - r * 2, r * 4, r * 4); },
+    11: (t, x, y, r) => { t.fillStyle = '#f4f4f0'; t.fillRect(x - r * .14, y - r * 2, r * .28, r * 4); },
+    12: (t, x, y, r) => { ['#ff3a3a', '#ff9a2b', '#ffe12b', '#3ad86a', '#2b9aff', '#9a4bff'].forEach((c, i) => { t.fillStyle = c; t.globalAlpha = .8; t.fillRect(x - r * 1.2 + i * r * .42, y - r * 2, r * .2, r * 4); }); },
+    13: (t, x, y, r) => { t.fillStyle = '#fff6b0'; for (let i = 0; i < 16; i++) twinkle(t, x + r * (((i * 37) % 23) / 23 * 2.2 - 1.1), y - r * (.2 + ((i * 53) % 19) / 19 * 1.1), r * .06); },
+    14: (t, x, y, r) => { t.fillStyle = 'rgba(255,255,255,.55)'; E(t, x - r * .35, y - r * .78, r * .3, r * .08, -.4); E(t, x + r * .3, y - r * .72, r * .22, r * .06, .4); E(t, x - r * .75, y - r * .3, r * .06, r * .25, .2); },
+    16: (t, x, y, r, hc) => { t.strokeStyle = shade(hc, -45); t.lineWidth = r * .045; for (let k = 0; k < 4; k++) { t.beginPath(); for (let i = 0; i <= 12; i++) { const xx = x - r * 1.2 + i * r * .2, yy = y - r * (1 - k * .22) + Math.sin(i * 1.4) * r * .05; i ? t.lineTo(xx, yy) : t.moveTo(xx, yy); } t.stroke(); } },
+    17: (t, x, y, r, hc) => { t.strokeStyle = shade(hc, -45); t.lineWidth = r * .035; for (let i = 0; i < 22; i++) { t.beginPath(); t.arc(x + r * (((i * 29) % 17) / 17 * 2.2 - 1.1), y - r * (.1 + ((i * 41) % 13) / 13 * 1.1), r * .08, 0, 5.5); t.stroke(); } },
+    18: (t, x, y, r) => { t.save(); t.globalCompositeOperation = 'destination-out'; t.fillRect(x - r * 2, y - r * 2, r * 1.45, r * 4); t.restore(); }
+  };
+  const HTOP = { // (drawn on top of the hair, may go past it)
+    15: (g, x, y, r, hc) => { for (const [a, b, c] of [[-.5, -.9, -.8], [-.1, -1.05, -.3], [.35, -.95, .5], [.7, -.6, .9]]) line(g, hc, r * .05, x + r * a, y + r * b, x + r * (a + c * .15), y + r * (b - .25)); },
+    18: (g, x, y, r) => { g.fillStyle = 'rgba(40,30,30,.35)'; for (let i = 0; i < 14; i++) C(g, x - r * (.55 + ((i * 7) % 5) * .08), y - r * (.2 + ((i * 11) % 9) * .07), r * .02); },
+    19: (g, x, y, r) => line(g, '#2bd6ff', r * .13, x - r * .45, y - r * 1.0, x - r * .75, y - r * .6, x - r * .8, y - r * .15)
+  };
+  const HSHAPE = { 1: [-1, 1], 2: [1.15, 1.15], 4: [1, 1.2], 5: [1.15, 1], 6: [.9, 1] }; // [x, y] scale of the hair (Flipped, Big, Tall, Wide, Slim)
+  /** Draw a hair layer (back or front) with its version: shape, then paint over the hair only. */
+  function hairLayer(g, fn, hv, hx, hy, hr, hc) {
+    const sh = HSHAPE[hv], fx = HFX[hv], draw0 = gg => { if (!sh) return fn(gg); gg.save(); gg.translate(hx, hy + hr * .1); gg.scale(sh[0], sh[1]); gg.translate(-hx, -hy - hr * .1); fn(gg); gg.restore(); };
+    if (!fx || typeof document === 'undefined' || !g.getTransform) return draw0(g);
+    const c = document.createElement('canvas'); c.width = g.canvas.width; c.height = g.canvas.height; const t = c.getContext('2d'); t.setTransform(g.getTransform()); t.lineJoin = t.lineCap = 'round';
+    t.fillStyle = hc; t.strokeStyle = hc; draw0(t); t.globalCompositeOperation = 'source-atop'; t.save(); fx(t, hx, hy, hr, hc); t.restore();
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.drawImage(c, 0, 0); g.restore();
+  }
+  // 🎩 head accessories (1.59.4, Derek: their own part, 50 of them; 1 = none). Head centre x, y; radius r.
+  const hatBrim = (g, x, y, r, c, w = 1.25, h = .16) => { g.fillStyle = shade(c, -25); E(g, x, y - r * .5, r * w, r * h); };
+  const ACC = [null,
     (g, x, y, r, c) => { g.strokeStyle = c; g.lineWidth = r * .14; g.beginPath(); g.arc(x, y, r * 1.0, PI * 1.12, PI * 1.88); g.stroke(); },
     (g, x, y, r) => { g.fillStyle = '#ff4f9a'; const bx = x + r * .55, by = y - r * .88; poly(g, bx, by, bx - r * .32, by - r * .18, bx - r * .32, by + r * .18); poly(g, bx, by, bx + r * .32, by - r * .18, bx + r * .32, by + r * .18); g.fillStyle = '#c8186a'; C(g, bx, by, r * .08); },
     (g, x, y, r) => { const fx = x - r * .62, fy = y - r * .8; g.fillStyle = '#ffd1e8'; for (let k = 0; k < 5; k++) { const a = k * PI * .4; C(g, fx + Math.cos(a) * r * .1, fy + Math.sin(a) * r * .1, r * .085); } g.fillStyle = '#ffd23a'; C(g, fx, fy, r * .06); },
@@ -332,7 +364,43 @@
     (g, x, y, r) => { g.fillStyle = '#ffc93a'; poly(g, x - r * .55, y - r * .78, x - r * .6, y - r * 1.3, x - r * .3, y - r * 1.05, x, y - r * 1.4, x + r * .3, y - r * 1.05, x + r * .6, y - r * 1.3, x + r * .55, y - r * .78); g.fillStyle = '#e8304a'; C(g, x, y - r * .95, r * .08); g.fillStyle = '#2bd6ff'; C(g, x - r * .32, y - r * .92, r * .06); C(g, x + r * .32, y - r * .92, r * .06); },
     (g, x, y, r) => { g.fillStyle = '#e8e8f4'; poly(g, x - r * .5, y - r * .82, x - r * .3, y - r * 1.02, x - r * .15, y - r * .95, x, y - r * 1.2, x + r * .15, y - r * .95, x + r * .3, y - r * 1.02, x + r * .5, y - r * .82, x, y - r * .9); g.fillStyle = '#ff6ab8'; C(g, x, y - r * 1.04, r * .07); },
     (g, x, y, r, c) => { g.save(); g.translate(x + r * .65, y - r * .95); g.rotate(.7); g.fillStyle = c; E(g, 0, -r * .3, r * .12, r * .42); line(g, shade(c, -50), r * .03, 0, r * .15, 0, -r * .7); g.restore(); },
-    (g, x, y, r) => line(g, '#2bd6ff', r * .13, x - r * .45, y - r * 1.0, x - r * .75, y - r * .6, x - r * .8, y - r * .15)
+    // hats
+    (g, x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x, y - r * .35, r * 1.02, PI, 0); g.fill(); g.fillStyle = shade(c, -30); E(g, x + r * .55, y - r * .38, r * .62, r * .12); g.fillStyle = shade(c, 30); C(g, x, y - r * 1.36, r * .07); },
+    (g, x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x, y - r * .35, r * 1.02, PI, 0); g.fill(); g.fillStyle = shade(c, -30); E(g, x - r * .7, y - r * .4, r * .45, r * .1); g.fillStyle = '#fff'; g.fillRect(x - r * .12, y - r * .55, r * .24, r * .12); },
+    (g, x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x, y - r * .3, r * 1.05, PI, 0); g.fill(); g.fillStyle = shade(c, -25); g.fillRect(x - r * 1.08, y - r * .48, r * 2.16, r * .26); },
+    (g, x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(x, y - r * .3, r * 1.05, PI, 0); g.fill(); g.fillStyle = shade(c, -25); g.fillRect(x - r * 1.08, y - r * .48, r * 2.16, r * .26); g.fillStyle = '#f4f4f0'; C(g, x, y - r * 1.42, r * .2); },
+    (g, x, y, r) => { const c = '#8a5a2a'; hatBrim(g, x, y, r, c, 1.7, .22); g.fillStyle = c; poly(g, x - r * .75, y - r * .5, x - r * .65, y - r * 1.35, x - r * .2, y - r * 1.2, x, y - r * 1.35, x + r * .2, y - r * 1.2, x + r * .65, y - r * 1.35, x + r * .75, y - r * .5); g.fillStyle = '#5a3a1a'; g.fillRect(x - r * .72, y - r * .72, r * 1.44, r * .1); },
+    (g, x, y, r) => { hatBrim(g, x, y, r, '#2a2a33', 1.25, .14); g.fillStyle = '#1a1a22'; g.fillRect(x - r * .62, y - r * 1.75, r * 1.24, r * 1.25); g.fillStyle = '#c8102e'; g.fillRect(x - r * .62, y - r * .78, r * 1.24, r * .14); },
+    (g, x, y, r) => { hatBrim(g, x, y, r, '#2a2a33', 1.2, .14); g.fillStyle = '#1a1a22'; g.beginPath(); g.arc(x, y - r * .55, r * .72, PI, 0); g.fill(); },
+    (g, x, y, r) => { hatBrim(g, x, y, r, '#3a3a48', 1.4, .16); g.fillStyle = '#4a4a5a'; poly(g, x - r * .7, y - r * .55, x - r * .55, y - r * 1.25, x, y - r * 1.1, x + r * .55, y - r * 1.25, x + r * .7, y - r * .55); g.fillStyle = '#1a1a22'; g.fillRect(x - r * .7, y - r * .72, r * 1.4, r * .12); },
+    (g, x, y, r, c) => { g.fillStyle = c; poly(g, x - r * .55, y - r * .72, x + r * .1, y - r * 1.9, x + r * .55, y - r * .72); g.fillStyle = '#ffd23a'; for (const t of [.25, .5, .75]) C(g, x - r * .55 + (r * .65) * t + r * .3 * t, y - r * .72 - r * 1.18 * t, r * .06); g.fillStyle = '#fff'; C(g, x + r * .1, y - r * 1.92, r * .12); },
+    (g, x, y, r) => { hatBrim(g, x, y, r, '#3a2a8a', 1.5, .18); g.fillStyle = '#4a3aaa'; poly(g, x - r * .75, y - r * .55, x + r * .25, y - r * 2.1, x + r * .75, y - r * .55); g.fillStyle = '#ffd23a'; star(g, x, y - r * 1.05, r * .14); star(g, x + r * .25, y - r * 1.5, r * .09); },
+    (g, x, y, r) => { hatBrim(g, x, y, r, '#1a1a22', 1.6, .18); g.fillStyle = '#22182e'; poly(g, x - r * .7, y - r * .55, x + r * .45, y - r * 2.0, x + r * .7, y - r * .55); g.fillStyle = '#8a3ad8'; g.fillRect(x - r * .68, y - r * .74, r * 1.36, r * .14); },
+    (g, x, y, r) => { g.fillStyle = '#d8283a'; poly(g, x - r * .95, y - r * .55, x - r * .2, y - r * 1.55, x + r * 1.05, y - r * 1.0, x + r * .95, y - r * .55); g.fillStyle = '#fff'; g.fillRect(x - r * 1.0, y - r * .68, r * 2.0, r * .22); C(g, x + r * 1.08, y - r * .95, r * .16); },
+    (g, x, y, r) => { g.fillStyle = '#1a1a22'; g.beginPath(); g.moveTo(x - r * 1.3, y - r * .55); g.quadraticCurveTo(x, y - r * 1.9, x + r * 1.3, y - r * .55); g.quadraticCurveTo(x, y - r * .85, x - r * 1.3, y - r * .55); g.fill(); g.fillStyle = '#f4f4f0'; C(g, x, y - r * 1.05, r * .14); line(g, '#f4f4f0', r * .04, x - r * .14, y - r * .88, x + r * .14, y - r * .76); line(g, '#f4f4f0', r * .04, x + r * .14, y - r * .88, x - r * .14, y - r * .76); },
+    (g, x, y, r) => { g.fillStyle = '#f4f4f0'; g.fillRect(x - r * .62, y - r * .95, r * 1.24, r * .45); for (const a of [-.4, 0, .4]) C(g, x + r * a, y - r * 1.2, r * .38); },
+    (g, x, y, r) => { g.fillStyle = '#ffc81e'; g.beginPath(); g.arc(x, y - r * .38, r * 1.0, PI, 0); g.fill(); g.fillStyle = '#e0a800'; g.fillRect(x - r * 1.2, y - r * .48, r * 2.4, r * .14); g.fillRect(x - r * .08, y - r * 1.38, r * .16, r * .9); },
+    (g, x, y, r) => { g.fillStyle = '#1a1a22'; poly(g, x - r * 1.15, y - r * .95, x, y - r * 1.3, x + r * 1.15, y - r * .95, x, y - r * .6); g.fillRect(x - r * .55, y - r * .9, r * 1.1, r * .35); line(g, '#ffd23a', r * .04, x + r * .3, y - r * .95, x + r * .9, y - r * .7, x + r * .95, y - r * .35); g.fillStyle = '#ffd23a'; C(g, x + r * .95, y - r * .32, r * .06); },
+    (g, x, y, r) => { g.fillStyle = '#9a9aa8'; g.beginPath(); g.arc(x, y - r * .35, r * 1.02, PI, 0); g.fill(); g.fillStyle = '#7a7a88'; g.fillRect(x - r * 1.05, y - r * .5, r * 2.1, r * .16); g.fillStyle = '#f4f0e0'; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(x + s * r * .85, y - r * .7); g.quadraticCurveTo(x + s * r * 1.45, y - r * .9, x + s * r * 1.4, y - r * 1.6); g.quadraticCurveTo(x + s * r * 1.15, y - r * 1.05, x + s * r * .7, y - r * .95); g.fill(); } },
+    (g, x, y, r) => { for (let i = 0; i < 4; i++) { g.fillStyle = ['#e8304a', '#ffd23a', '#2b9aff', '#3ad86a'][i]; g.beginPath(); g.moveTo(x, y - r * .4); g.arc(x, y - r * .4, r * 1.02, PI + i * PI / 4, PI + (i + 1) * PI / 4); g.fill(); } g.fillStyle = '#e8304a'; E(g, x - r * .3, y - r * 1.55, r * .3, r * .07); E(g, x + r * .3, y - r * 1.55, r * .3, r * .07); line(g, '#555', r * .05, x, y - r * 1.4, x, y - r * 1.55); },
+    (g, x, y, r) => { g.fillStyle = '#c8102e'; E(g, x - r * .15, y - r * .82, r * 1.0, r * .3, -.12); C(g, x - r * .1, y - r * 1.1, r * .06); },
+    (g, x, y, r, c) => { g.fillStyle = c; poly(g, x - r * 1.25, y - r * .4, x - r * .75, y - r * 1.15, x + r * .75, y - r * 1.15, x + r * 1.25, y - r * .4); g.fillStyle = shade(c, -25); g.fillRect(x - r * .78, y - r * .7, r * 1.56, r * .1); },
+    (g, x, y, r, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(x + r * .55, y - r * .52, r * .75, r * .12, 0, 0, 7); g.fill(); g.strokeStyle = c; g.lineWidth = r * .14; g.beginPath(); g.arc(x, y, r * 1.0, PI * 1.15, PI * 1.85); g.stroke(); },
+    (g, x, y, r) => { for (let k = 0; k < 9; k++) { const a = PI * (1.08 + k * .105), fx = x + Math.cos(a) * r * 1.0, fy = y + Math.sin(a) * r * 1.0; g.fillStyle = ['#ff8ac0', '#ffd23a', '#9ad0ff', '#c8a0ff'][k % 4]; for (let p = 0; p < 5; p++) { const b = p * PI * .4; C(g, fx + Math.cos(b) * r * .07, fy + Math.sin(b) * r * .07, r * .065); } g.fillStyle = '#fff'; C(g, fx, fy, r * .04); } },
+    (g, x, y, r) => { g.strokeStyle = '#8a5a2a'; g.lineWidth = r * .1; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(x + s * r * .4, y - r * .85); g.lineTo(x + s * r * .65, y - r * 1.55); g.moveTo(x + s * r * .52, y - r * 1.2); g.lineTo(x + s * r * .9, y - r * 1.35); g.moveTo(x + s * r * .6, y - r * 1.45); g.lineTo(x + s * r * .4, y - r * 1.75); g.stroke(); } },
+    (g, x, y, r) => { const gr = g.createLinearGradient(x - r * .15, y - r * 1.8, x + r * .15, y - r * .9); gr.addColorStop(0, '#ffd1f0'); gr.addColorStop(1, '#9ad0ff'); g.fillStyle = gr; poly(g, x - r * .15, y - r * .95, x, y - r * 1.85, x + r * .15, y - r * .95); },
+    (g, x, y, r) => { for (const s of [-1, 1]) { line(g, '#3ad86a', r * .05, x + s * r * .3, y - r * .9, x + s * r * .5, y - r * 1.5); g.fillStyle = '#a6ff2b'; C(g, x + s * r * .5, y - r * 1.55, r * .1); } },
+    (g, x, y, r) => { for (const s of [-1, 1]) { line(g, '#1a1a22', r * .05, x + s * r * .25, y - r * .9, x + s * r * .4, y - r * 1.3, x + s * r * .55, y - r * 1.38); g.fillStyle = '#1a1a22'; C(g, x + s * r * .58, y - r * 1.38, r * .08); } },
+    (g, x, y, r) => { for (const s of [-1, 1]) { g.fillStyle = '#2a2a33'; C(g, x + s * r * .75, y - r * .95, r * .38); g.fillStyle = '#ffb0c8'; C(g, x + s * r * .75, y - r * .95, r * .22); } },
+    (g, x, y, r, c, hc) => { for (const s of [-1, 1]) { g.fillStyle = hc; C(g, x + s * r * .7, y - r * .85, r * .24); g.fillStyle = shade(hc, -30); C(g, x + s * r * .7, y - r * .85, r * .12); } },
+    (g, x, y, r) => { for (const s of [-1, 1]) { g.fillStyle = '#e07a2a'; poly(g, x + s * r * .25, y - r * .88, x + s * r * .6, y - r * 1.5, x + s * r * .88, y - r * .65); g.fillStyle = '#f4f4f0'; poly(g, x + s * r * .45, y - r * .9, x + s * r * .6, y - r * 1.3, x + s * r * .72, y - r * .78); } },
+    // face
+    (g, x, y, r) => { g.strokeStyle = '#1a1a22'; g.lineWidth = r * .06; for (const s of [-1, 1]) { g.beginPath(); g.arc(x + s * r * .35, y - r * .05, r * .24, 0, 7); g.stroke(); } line(g, '#1a1a22', r * .05, x - r * .11, y - r * .08, x + r * .11, y - r * .08); },
+    (g, x, y, r) => { g.fillStyle = '#111'; for (const s of [-1, 1]) E(g, x + s * r * .36, y - r * .03, r * .27, r * .2); line(g, '#111', r * .06, x - r * .62, y - r * .1, x + r * .62, y - r * .1); g.fillStyle = 'rgba(255,255,255,.35)'; E(g, x - r * .44, y - r * .1, r * .08, r * .04); E(g, x + r * .28, y - r * .1, r * .08, r * .04); },
+    (g, x, y, r) => { g.fillStyle = '#ff4f9a'; for (const s of [-1, 1]) star(g, x + s * r * .37, y - r * .04, r * .3); g.fillStyle = 'rgba(30,10,30,.55)'; for (const s of [-1, 1]) star(g, x + s * r * .37, y - r * .04, r * .17); line(g, '#ff4f9a', r * .05, x - r * .1, y - r * .08, x + r * .1, y - r * .08); },
+    (g, x, y, r) => { g.fillStyle = '#111'; E(g, x - r * .35, y - r * .05, r * .22, r * .2); line(g, '#111', r * .04, x - r * .95, y - r * .45, x + r * .95, y + r * .25); },
+    (g, x, y, r) => { g.strokeStyle = '#d4a82a'; g.lineWidth = r * .05; g.beginPath(); g.arc(x + r * .35, y - r * .05, r * .24, 0, 7); g.stroke(); line(g, '#d4a82a', r * .025, x + r * .55, y + r * .1, x + r * .62, y + r * .55); },
+    (g, x, y, r) => { line(g, '#5a3a1a', r * .12, x - r * .98, y - r * .55, x + r * .98, y - r * .55); for (const s of [-1, 1]) { g.fillStyle = '#5a3a1a'; C(g, x + s * r * .36, y - r * .62, r * .26); g.fillStyle = '#7ad0ff'; C(g, x + s * r * .36, y - r * .62, r * .18); g.fillStyle = 'rgba(255,255,255,.6)'; C(g, x + s * r * .32, y - r * .67, r * .05); } }
   ];
   // outfit versions: a pattern on the outfit (16–19 change its colour)
   const OUTCOL = { 16: () => '#d4a82a', 17: () => '#1c2240', 18: b => ['#ffb0d8', '#9ad0ff', '#b8eca0', '#ffe98a', '#d4b8ff'][b % 5], 19: b => ['#ff2bd6', '#2bd6ff', '#a6ff2b', '#ff8a2b', '#ffe12b'][b % 5] };
@@ -413,7 +481,6 @@
     const L = norm(look), hr = rr * .58, hx = m, hy = m - rr * .4, ty = m + rr * .22, by = m + rr * .95, hairC = hairColN(L.haircolor), skin = skinCol(L.skin), out = OUT[sp('outfit', L.outfit)[0] - 1];
     const [hb, hv] = sp('hair', L.hair), hair = HAIR[hb - 1], ov = sp('outfit', L.outfit)[1], [mb, mv] = sp('makeup', L.makeup), [fb, fv] = sp('facialhair', L.facialhair);
     col = outCol(L.outfit, (look && look.col) || col || '#8a5cff');
-    const hairDo = fn => { if (hv !== 1 && hv !== 2) return fn(); g.save(); g.translate(hx, hy); if (hv === 1) g.scale(-1, 1); else { g.translate(0, hr * .1); g.scale(1.15, 1.15); g.translate(0, -hr * .1); } g.translate(-hx, -hy); fn(); g.restore(); }; // (Flipped / Big)
     const hairCol = hairC;
     g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
     const q = Q(g, m, ty, by, rr, col, skin), path = () => SH[out.s](g, m, ty, by, rr);
@@ -422,7 +489,7 @@
     if (out.cape) { g.fillStyle = shade(col, -45); g.beginPath(); g.moveTo(m - rr * .45, ty + rr * .02); g.lineTo(m + rr * .45, ty + rr * .02); g.lineTo(m + rr * .7, by + rr * .25); g.lineTo(m - rr * .7, by + rr * .25); g.closePath(); g.fill(); }
     if (out.back) out.back(q);
     });
-    if (hair.b) hairDo(() => { g.fillStyle = hairCol; hair.b(g, hx, hy, hr, hairCol); });
+    if (hair.b) hairLayer(g, gg => { gg.fillStyle = hairCol; hair.b(gg, hx, hy, hr, hairCol); }, hv, hx, hy, hr, hairCol);
     // body
     wide(() => {
     let fill = out.f;
@@ -453,12 +520,13 @@
     if (mv) { g.save(); MACC[mv - 1](g, hx, hy, hr); g.restore(); }
     { const bc = FCOL[fv] || hairCol, bf = BEARD[fb === 1 && fv ? 1 : fb - 1]; g.save(); if (fv === 13 || fv === 14) { const k = fv === 13 ? 1.16 : .86; g.translate(hx, hy + hr * .3); g.scale(k, k); g.translate(-hx, -hy - hr * .3); }
       g.fillStyle = bc; g.strokeStyle = bc; bf(g, hx, hy, hr, bc); g.restore(); if (FACC[fv] && !(fb === 1 && fv >= 15)) { g.save(); FACC[fv](g, hx, hy, hr, bc); g.restore(); } } // (version of "None" = a light shadow)
-    if (hair.f) hairDo(() => { g.fillStyle = hairCol; hair.f(g, hx, hy, hr, hairCol); });
-    if (HACC[hv]) { g.save(); HACC[hv](g, hx, hy, hr, col, hairCol); g.restore(); }
+    if (hair.f) hairLayer(g, gg => { gg.fillStyle = hairCol; hair.f(gg, hx, hy, hr, hairCol); }, hv, hx, hy, hr, hairCol);
+    if (HTOP[hv]) { g.save(); HTOP[hv](g, hx, hy, hr, hairCol); g.restore(); }
+    if (ACC[L.accessory - 1]) { g.save(); ACC[L.accessory - 1](g, hx, hy, hr, col, hairCol); g.restore(); } // 🎩
     const sh = g.createLinearGradient(0, hy - hr, 0, hy); sh.addColorStop(0, 'rgba(255,255,255,.18)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sh; E(g, hx, hy - hr * .5, hr * .6, hr * .32);
     g.restore();
   }
-  function norm(look) { const L = look || {}; return { hair: pick('hair', L.hair), outfit: pick('outfit', L.outfit), makeup: pick('makeup', L.makeup), facialhair: pick('facialhair', L.facialhair), body: pick('body', L.body || 1), skin: pick('skin', L.skin || 3), haircolor: pick('haircolor', L.haircolor || 2) }; }
+  function norm(look) { const L = look || {}; return { hair: pick('hair', L.hair), outfit: pick('outfit', L.outfit), makeup: pick('makeup', L.makeup), facialhair: pick('facialhair', L.facialhair), body: pick('body', L.body || 1), skin: pick('skin', L.skin || 3), haircolor: pick('haircolor', L.haircolor || 2), accessory: pick('accessory', L.accessory || 1) }; }
   /** What the legs and arms look like for this look (game.html's charLimbs). */
   function limbs(look, col) {
     const L = norm(look), o = OUT[sp('outfit', L.outfit)[0] - 1], skin = skinCol(L.skin); col = outCol(L.outfit, (look && look.col) || col || '#8a5cff');
@@ -488,7 +556,7 @@
     let h = hash(seed + '|' + (mapId || '')); const R = n => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return (h >>> 8) % n; }, from = a => a[R(a.length)];
     const g = gender === 'm' || gender === 'f' ? gender : 'n', th = THEMES[mapId];
     // 🤪 1 in 20 is pure chaos (Derek: "wtf or funny moments", but not all the time): every part picked from everything
-    if (R(100) < CHAOS_PCT || forceChaos) return { hair: 1 + R(ALLN.hair.length), outfit: 1 + R(ALLN.outfit.length), makeup: 1 + R(ALLN.makeup.length), facialhair: 1 + R(ALLN.facialhair.length), body: R(4) * 6 + from([1, 1, 3, 2, 4]), skin: 1 + R(ALLN.skin.length), haircolor: 1 + R(ALLN.haircolor.length), col: CHAOS_COL[R(CHAOS_COL.length)], chaos: true };
+    if (R(100) < CHAOS_PCT || forceChaos) return { accessory: R(2) ? 1 + R(ALLN.accessory.length) : 1, hair: 1 + R(ALLN.hair.length), outfit: 1 + R(ALLN.outfit.length), makeup: 1 + R(ALLN.makeup.length), facialhair: 1 + R(ALLN.facialhair.length), body: R(4) * 6 + from([1, 1, 3, 2, 4]), skin: 1 + R(ALLN.skin.length), haircolor: 1 + R(ALLN.haircolor.length), col: CHAOS_COL[R(CHAOS_COL.length)], chaos: true };
     // the other 19 in 20 make sense
     const hair = g === 'm' ? 1 + R(25) : g === 'f' ? 26 + R(25) : 1 + R(50);
     let outfit;
@@ -498,7 +566,9 @@
     const makeup = g === 'f' ? (R(2) ? from(MAKEUP_F) : 1) : g === 'n' ? (R(4) ? 1 : from([...MAKEUP_F, ...MAKEUP_M])) : (R(12) ? 1 : from(MAKEUP_M));
     // 🔢 the versions (1.59.0): some random characters get one too, only the ones that make sense for regular folks
     const ver = (k, n, list, pct) => list.length && R(100) < pct ? n + from(list) * BASE[k].length : n;
-    return { hair: ver('hair', hair, g === 'f' ? [1, 2, 3, 4, 5, 6, 7] : g === 'm' ? [1, 2, 3, 8, 9, 10] : [1, 2, 3, 4, 7, 8, 10], 30),
+    const ACC_OK = g === 'f' ? [2, 3, 4, 5, 15, 17, 19, 35, 38, 46, 47] : g === 'm' ? [6, 7, 17, 18, 19, 21, 24, 31, 36, 37, 46, 47] : [2, 6, 17, 18, 19, 35, 38, 46, 47], ACC_TH = { xmas: [28], halloween: [27, 12, 10], haunted: [27, 12], wizard: [26], elements: [26], newyear: [25, 22], easter: [11], stpat: [24], hero: [47] }; /* 🎩 sensible accessories (themed maps sometimes add their own) */
+    const accessory = ACC_TH[mapId] && R(3) === 0 ? from(ACC_TH[mapId]) : R(100) < 18 ? from(ACC_OK) : 1;
+    return { accessory, hair: ver('hair', hair, g === 'f' ? [1, 2, 3, 4, 5, 6, 7] : g === 'm' ? [1, 2, 3, 8, 9, 10] : [1, 2, 3, 4, 7, 8, 10], 30),
       outfit: th ? outfit : ver('outfit', outfit, [1, 2, 3, 4, 6, 7, 10, 11, 12, 14, 15, 16, 17, 18], 25),
       makeup: makeup > 1 ? ver('makeup', makeup, g === 'm' ? [2, 4] : [1, 2, 3, 4, 5, 9, 14], 25) : makeup,
       facialhair: facialhair > 1 ? ver('facialhair', facialhair, [1, 2, 3, 4, 5, 6, 13, 14], 30) : facialhair,
