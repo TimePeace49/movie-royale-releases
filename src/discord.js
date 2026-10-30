@@ -36,30 +36,38 @@ const cut = (s, n = 100) => s.length > n ? s.slice(0, n - 1) + '…' : s;
 const active = () => moviesList().entries.filter(e => e.status === 'active');
 const channelName = () => (db.settings.discordChannelName || 'movies-royal').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
 
+// (Discord's limit is 2000 letters per message: this pinned text is kept under it, see fitHelp)
 export function helpText() {
-  const max = db.settings.maxPerUser, tw = db.settings.twitchMoviesCommand || '!mymovies';
-  return [
+  const max = db.settings.maxPerUser, tw = db.settings.twitchMoviesCommand || '!mymovies', who = streamerName(), yr = new Date().getFullYear();
+  const top = [
     `**🍿 MOVIE ROYAL — how it works**`,
-    `Your movies fight it out on a crumbling cliff on ${streamerName()}'s stream. Last one standing gets watched!`,
+    `Your movies fight it out on ${who}'s stream. Last one standing gets watched!`,
     ``,
-    `**/suggest** — add a movie. Start typing and pick from the list. You get **${max} picks**, and ${max} new ones once all of yours have been picked.`,
-    `**/swap** — trade one of your movies for a different one (1 for 1). ${lockMode() === 'battle' ? 'Works any time except while a movie battle is going.' : lockMode() === 'live' ? 'Works until the stream goes live.' : 'Works any time.'}`,
-    `**/mymovies** — see your movies and picks left. Add a name to see someone else's (\`/mymovies person: Lucy\`). On Twitch: **${tw}** or **${tw} name**.`,
-    `**/list** — everything in the pool right now.`,
-    `**/linktwitch** — connect your Twitch name so your picture is your piece and chatting puts your movies on the cliff.`,
-    ...(looks.on() ? [`**/character** — make your own battle character${Object.keys(db.discordChars || {}).length ? ' in #' + charChannelName() : ''}: type /character to see the pictures, then pick a number for each part (hair, outfit, makeup, facial hair, body).`] : []),
-    `**On Twitch:** type anything in chat to claim your movie when it wins · **${db.settings.sitOutCommand || '!sitout'}** if it's too late for you (your movies skip tonight's battles) · **${db.settings.backCommand || '!imback'}** to jump back in · **${db.settings.helpCommand || '!moviesroyal'}** for all chat commands.`,
+    `**/suggest** — add a movie (pick from the list). You get **${max} picks**, and ${max} new ones once all of yours have been picked.`,
+    `**/swap** — trade one of your movies for another. ${lockMode() === 'battle' ? 'Not while a movie battle is going.' : lockMode() === 'live' ? 'Until the stream goes live.' : 'Any time.'}`,
+    `**/mymovies** — your movies and picks left (\`/mymovies person: Lucy\` for someone else's). On Twitch: **${tw}**.`,
+    `**/list** — everything in the pool.`,
+    `**/linktwitch** — connect your Twitch name (your picture becomes your piece, chatting puts your movies in).`,
+    ...(looks.on() ? [`**/character** — make your own battle character${Object.keys(db.discordChars || {}).length ? ' in #' + charChannelName() : ''}.`] : []),
+    `**On Twitch:** chat to claim your movie when it wins · **${db.settings.sitOutCommand || '!sitout'}** to skip tonight · **${db.settings.backCommand || '!imback'}** to jump back in · **${db.settings.helpCommand || '!moviesroyal'}** for all commands.`,
     ``,
-    `**In the list you'll see:**`,
-    `🚫 *banned*, *series taken* or *${new Date().getFullYear()} movie* · ✅ *already watched* · 🔒 *already picked* — somebody has it, so pick something else. Every movie can only be picked once.`,
-    `🚫 **Banned movies** (movies not in English, really religious movies, documentaries, and ones ${streamerName()} banned) need ${streamerName()}'s OK first: if you want to suggest one, ask **${banAsk()}** to unban it.`,
+    `🚫 *banned*, *series taken*${db.settings.banCurrentYear !== false ? ` or *${yr} movie*` : ''} · ✅ *already watched* · 🔒 *already picked* = pick something else (every movie can only be picked once).`,
+    `🚫 **Banned** (not in English, really religious, documentaries, or banned by ${who}): ask **${banAsk()}** to unban one first.`,
     ``,
-    `**Rules:** be in Twitch chat during the stream to get your movies on the cliff · if your movie wins, your other movies sit out until the new week (Sunday) · one movie per series${db.settings.banCurrentYear !== false ? ` · no ${new Date().getFullYear()} movies` : ''}${luckOn() ? ' · 🍀 every battle your movies lose, they get a little luckier' : ''}`,
-    ...(() => { const today = db.stream?.day === new Date().toDateString(), t = today ? (db.stream.tonight || []).filter(x => !x.text) : [], who = db.settings.spotName || 'Kirb';
-      const lines = t.map(x => `#${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}${x.viaSpot ? ` — 🎟️ ${x.owner || who}'s pick (wild spot)` : x.owner ? ` — ${x.owner}'s movie` : ''}`);
-      return lines.length ? [``, `**🎬 Tonight's movies:**`, ...lines.map(l => `• ${l}`)] : []; })(),
-    ...(db.settings.ideasDoc ? [``, `💡 **Got an idea for Movie Royal?** Maps, the wheel, how it looks, anything: [leave a note in the ideas doc](<${db.settings.ideasDoc}>) (anyone with the link can comment).`] : [])
-  ].join('\n');
+    `**Rules:** be in Twitch chat during the stream · if your movie wins, your other movies sit out until Sunday · one movie per series${luckOn() ? ' · 🍀 every loss makes your movies a little luckier' : ''}`
+  ];
+  const today = db.stream?.day === new Date().toDateString(), t = today ? (db.stream.tonight || []).filter(x => !x.text) : [], spot = db.settings.spotName || 'Kirb';
+  const movies = t.map(x => `• #${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}${x.viaSpot ? ` — 🎟️ ${x.owner || spot}'s pick (wild spot)` : x.owner ? ` — ${x.owner}'s movie` : ''}`);
+  const idea = db.settings.ideasDoc ? [``, `💡 **Got an idea for Movie Royal?** [Leave a note in the ideas doc](<${db.settings.ideasDoc}>).`] : [];
+  return fitHelp(top, movies, idea);
+}
+/** Put it together under Discord's 2000-letter limit: with lots of movies tonight, the oldest ones are left out ("+ n earlier"). */
+function fitHelp(top, movies, idea, limit = 1990) {
+  const build = (m, skipped) => [...top, ...(m.length || skipped ? [``, `**🎬 Tonight's movies:**`, ...(skipped ? [`*(+ ${skipped} earlier)*`] : []), ...m] : []), ...idea].join('\n');
+  let m = movies.slice(), skipped = 0, out = build(m, 0);
+  while (out.length > limit && m.length) { m.shift(); skipped++; out = build(m, skipped); }
+  if (out.length > limit) out = [...top, ...idea].join('\n');
+  return out.length > limit ? out.slice(0, limit - 1) + '…' : out;
 }
 
 // 📁 the "Movie Royal" channel folder (Derek): every channel the bot makes goes in it, so they're all together.
@@ -524,6 +532,6 @@ export async function selfTest() {
   const fake = { discordId: 'selftest', name: 'Self-test' };
   try { const ch = await movieChoices('Jaws', fake); add(ch.length > 0, '/suggest movie search works', ch.length ? `found ${ch.length}, like “${ch[0].name}”` : 'no results (check the TMDB key)'); } catch (e) { add(false, '/suggest movie search works', e.message); }
   try { const t = myMoviesText('selftest'); add(!!t, '/mymovies answers', t.split('\n')[0].slice(0, 90)); } catch (e) { add(false, '/mymovies answers', e.message); }
-  try { const t = helpText(); add(t.length > 50, '/help text is ready'); } catch (e) { add(false, '/help text is ready', e.message); }
+  try { const t = helpText(); add(t.length > 50, '/help text is ready'); add(t.length <= 2000, 'Pinned commands message fits in one Discord message', t.length + ' of 2000 letters'); } catch (e) { add(false, '/help text is ready', e.message); }
   return out;
 }

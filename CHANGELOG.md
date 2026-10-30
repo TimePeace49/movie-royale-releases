@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.57.3
+- 🛠️ **Fixed "couldn't post in #movies-royal … must be 2000 or fewer in length".** The pinned commands message had grown past Discord's 2,000-letter limit (the new /character line tipped it over). The wording is shorter now, and on nights with lots of movies the oldest ones in "Tonight's movies" are folded into "+ n earlier", so it always fits. The Discord self-test on the 🧪 Test tab now checks the length too.
+
 ## 1.57.2
 - ⬜ **Every hairstyle, outfit, makeup, facial hair and body on the Discord part pictures now has its own white border**, so it's easy to see where one choice ends and the next begins. The pinned message in #character-creation updates itself with the new pictures, and the 24/7 bot gets them automatically.
 
