@@ -73,7 +73,7 @@ const groupName = (k, b) => { const G = C.GROUPS[k]; if (!G) return ''; const g 
 function lookFor(k, n) { // what a card shows: a plain character wearing that part
   const b = C.sp(k, n)[0], fem = (k === 'hair' && b > 25) || (k === 'outfit' && b > 25 && b <= 50) || k === 'makeup' || (k === 'outfit' && b > 50 && n % 2);
   const L = { hair: fem ? 26 : 1, outfit: fem ? 26 : 1, makeup: 1, facialhair: 1, body: fem ? 2 : 1, skin: 3, haircolor: 2 };
-  if (k === 'facialhair') { L.hair = 9; } L[k] = n; if (k === 'body') { L.hair = 26; L.outfit = 1; }
+  if (k === 'facialhair') { L.hair = 9; } L[k] = n; if (k === 'body') { const f = (n - 1) % 6 > 0; L.hair = f ? 26 : 1; L.outfit = 1; }
   return L;
 }
 function drawTo(cv, look, col) { const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); const s = cv.width; g.save(); g.translate(0, s * .08); C.draw(g, s / 2, s * .36, look, null, col, '★'); g.restore(); }

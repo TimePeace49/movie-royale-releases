@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.3
+- 🧍 **24 body types:**
+  - **Builds:** regular (1–6), thin (7–12), fat (13–18) and athletic (19–24).
+  - **Chest:** each build comes flat or with a chest shape in 5 sizes.
+  - **Easier to see:** the chest shape is bigger and clearer now (still PG, just shading through the outfit).
+  - **Old picks:** body 1 and 2 are the same as before, so nobody's character changes.
+  - **Random characters:** they get any build, but only the 3 smaller chest sizes.
+  - **Where to see them:** the parts website → 🧍 Body shows all 24.
+- ✅ **🆕 Recently updated starts empty with this update** (your ticks stay). The next updates show their new things there again.
+
 ## 1.59.2
 - 💬 **The little pop-ups at the bottom stay longer:**
   - 8 seconds instead of 3½, and longer messages stay longer to match.

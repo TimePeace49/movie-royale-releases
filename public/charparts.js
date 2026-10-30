@@ -13,7 +13,7 @@
       "Wizard robe", "Knight armor", "Superhero suit", "Astronaut suit", "Soldier uniform", "Wrestling singlet", "Pirate coat", "Ninja outfit", "Robot suit", "Roman toga", "Vampire cloak", "Mummy wraps", "Skeleton costume", "Pumpkin costume", "Elf outfit", "Santa suit", "Holiday sweater", "Pilgrim outfit", "Bunny onesie", "Hazmat suit", "Zombie survivor", "Ski jacket", "Safari outfit", "Peasant tunic", "Dino onesie"],
     "makeup": ["None", "Rosy cheeks", "Red lipstick", "Eyeliner", "Blue eyeshadow", "Freckles", "Glitter", "Face paint stripes", "Heart cheeks", "Clown nose", "Pink lipstick", "Purple lipstick", "Black lipstick", "Pink eyeshadow", "Gold eyeshadow", "Smoky eyes", "Rainbow eyeshadow", "Winged liner + red lips", "Star cheeks", "Beauty mark", "Cat whiskers", "Butterfly face paint", "Forehead gem", "Bronze glow", "Skeleton face paint"],
     "facialhair": ["None", "Stubble", "Mustache", "Handlebar mustache", "Goatee", "Soul patch", "Short beard", "Full beard", "Long beard", "Mutton chops", "Pencil mustache", "Walrus mustache", "Horseshoe mustache", "Van Dyke", "Chin strap", "Chin curtain", "Anchor beard", "Braided beard", "Forked beard", "Wizard beard", "Circle beard", "Box beard", "Droopy mustache", "Curled mustache", "Sideburns"],
-    "body": ["Flat", "Curvy (chest)"],
+    "body": ["Flat", "Curvy · size 2", "Curvy · size 1 (smallest)", "Curvy · size 3", "Curvy · size 4", "Curvy · size 5 (biggest)", "Thin · Flat", "Thin · Curvy · size 2", "Thin · Curvy · size 1 (smallest)", "Thin · Curvy · size 3", "Thin · Curvy · size 4", "Thin · Curvy · size 5 (biggest)", "Fat · Flat", "Fat · Curvy · size 2", "Fat · Curvy · size 1 (smallest)", "Fat · Curvy · size 3", "Fat · Curvy · size 4", "Fat · Curvy · size 5 (biggest)", "Athletic · Flat", "Athletic · Curvy · size 2", "Athletic · Curvy · size 1 (smallest)", "Athletic · Curvy · size 3", "Athletic · Curvy · size 4", "Athletic · Curvy · size 5 (biggest)"],
     "skin": ["Porcelain", "Light", "Fair", "Medium", "Olive", "Tan", "Brown", "Deep"],
     "haircolor": ["Black", "Dark brown", "Brown", "Blonde", "Ginger", "Gray", "White", "Blue", "Pink", "Green"]
   }/*END*/;
@@ -389,14 +389,21 @@
     19: (g, x, y, r, c) => { g.fillStyle = c; braid(g, c, x, y + r * .95, x, y + r * 1.5, 4, r * .1); }
   };
 
-  /** 👩 A small chest shape that shows through the outfit (PG: just soft shading). Women characters + body 2. */
-  function chest(g, m, ty, rr) {
+  /** 👩 A chest shape that shows through the outfit (PG: just shading, 1.59.3 easier to see). Women characters + bodies 2–6.
+   *  5 sizes (Derek): body 3 = size 1 (smallest), 2 = size 2, 4 = size 3, 5 = size 4, 6 = size 5. Random characters only get sizes 1–3. */
+  const CHEST = { 2: 2, 3: 1, 4: 3, 5: 4, 6: 5 }, chestSize = body => CHEST[((Number(body) || 1) - 1) % 6 + 1] || 0;
+  // 🧍 body types (1.59.3, Derek): 1–6 regular, 7–12 thin, 13–18 fat, 19–24 athletic (each: flat + the 5 chest sizes, in that order)
+  const BUILD = [1, .84, 1.28, 1.14], buildOf = body => Math.min(3, Math.floor(((Number(body) || 1) - 1) / 6));
+  function chest(g, m, ty, rr, size = 2) {
+    const k = [0, .82, 1, 1.16, 1.32, 1.48][size] || 1, rx = rr * .15 * k, ry = rr * .118 * k, off = Math.min(rr * .3, rr * .148 * k + rr * .012);
     g.save();
     for (const s of [-1, 1]) {
-      const cx = m + s * rr * .155, cy = ty + rr * .2, gr = g.createRadialGradient(cx - s * rr * .03, cy - rr * .05, rr * .01, cx, cy, rr * .15);
-      gr.addColorStop(0, 'rgba(255,255,255,.26)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-      g.fillStyle = gr; E(g, cx, cy, rr * .14, rr * .11);
-      g.strokeStyle = 'rgba(0,0,0,.34)'; g.lineWidth = rr * .024; g.lineCap = 'round'; g.beginPath(); g.ellipse(cx, cy, rr * .125, rr * .095, 0, PI * .2, PI * .8); g.stroke();
+      const cx = m + s * off, cy = ty + rr * (.19 + .035 * (k - 1));
+      g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(cx, cy + ry * .18, rx, ry * .95, 0, PI * .05, PI * .95); g.fill(); // (soft shadow underneath)
+      const gr = g.createRadialGradient(cx - s * rx * .25, cy - ry * .35, rr * .01, cx, cy, rx * 1.05);
+      gr.addColorStop(0, 'rgba(255,255,255,.34)'); gr.addColorStop(.6, 'rgba(255,255,255,.1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; E(g, cx, cy, rx, ry);
+      g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = rr * .03; g.lineCap = 'round'; g.beginPath(); g.ellipse(cx, cy, rx * .92, ry * .88, 0, PI * .12, PI * .88); g.stroke();
     }
     g.restore();
   }
@@ -410,20 +417,27 @@
     const hairCol = hairC;
     g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
     const q = Q(g, m, ty, by, rr, col, skin), path = () => SH[out.s](g, m, ty, by, rr);
+    const cs = chestSize(L.body), bld = buildOf(L.body), bw = BUILD[bld], wide = fn => { if (bw === 1) return fn(); g.save(); g.translate(m, 0); g.scale(bw, 1); g.translate(-m, 0); fn(); g.restore(); }; // (thin / fat / athletic: the body is narrower or wider, the head stays)
+    wide(() => {
     if (out.cape) { g.fillStyle = shade(col, -45); g.beginPath(); g.moveTo(m - rr * .45, ty + rr * .02); g.lineTo(m + rr * .45, ty + rr * .02); g.lineTo(m + rr * .7, by + rr * .25); g.lineTo(m - rr * .7, by + rr * .25); g.closePath(); g.fill(); }
     if (out.back) out.back(q);
+    });
     if (hair.b) hairDo(() => { g.fillStyle = hairCol; hair.b(g, hx, hy, hr, hairCol); });
     // body
+    wide(() => {
     let fill = out.f;
     if (!fill) { fill = g.createLinearGradient(m - rr * .6, ty, m + rr * .6, by); fill.addColorStop(0, shade(col, 30)); fill.addColorStop(1, shade(col, -35)); }
     else if (typeof fill === 'function') fill = fill(g, m, ty, by, rr);
     g.fillStyle = fill; path(); g.fill();
     if (out.d || ov) { g.save(); path(); g.clip(); if (out.d) out.d(q); if (ov) { tint(q, L.outfit, typeof out.f === 'string'); if (OPAT[ov]) OPAT[ov](q); } g.restore(); }
-    if (L.body === 2) chest(g, m, ty, rr);
+    if (cs) chest(g, m, ty, rr, cs);
+    if (bld === 2) { g.save(); path(); g.clip(); g.fillStyle = 'rgba(0,0,0,.13)'; E(g, m, by - rr * .12, rr * .42, rr * .26); g.fillStyle = 'rgba(255,255,255,.12)'; E(g, m - rr * .1, by - rr * .22, rr * .2, rr * .1); g.restore(); } // (a round belly)
+    if (bld === 3 && !cs) { g.save(); g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = rr * .025; for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(m + sx * rr * .04, ty + rr * .28); g.quadraticCurveTo(m + sx * rr * .2, ty + rr * .33, m + sx * rr * .33, ty + rr * .22); g.stroke(); } g.restore(); } // (athletic: chest muscle lines)
     g.strokeStyle = 'rgba(15,10,20,.85)'; g.lineWidth = rr * .045; path(); g.stroke();
     if (out.t) out.t(q);
+    });
     // the picture (movie poster / Twitch picture) on the chest, or the initials
-    const ew = rr * (L.body === 2 ? .3 : .34), ex = m - ew / 2, ey = ty + rr * (L.body === 2 ? .34 : .26); // (lower + a bit smaller under a chest)
+    const ew = rr * (cs ? .31 - .016 * cs : .34), ex = m - ew / 2, ey = ty + rr * (cs ? .32 + .022 * cs : .26); // (lower + a bit smaller under a chest)
     g.save(); g.beginPath(); g.roundRect ? g.roundRect(ex, ey, ew, ew * 1.2, rr * .04) : g.rect(ex, ey, ew, ew * 1.2); g.fillStyle = '#fff'; g.fill(); g.clip();
     if (img && img.complete && img.naturalWidth) { const k = Math.max(ew / img.naturalWidth, ew * 1.2 / img.naturalHeight); g.drawImage(img, m - img.naturalWidth * k / 2, ey + ew * .6 - img.naturalHeight * k / 2, img.naturalWidth * k, img.naturalHeight * k); }
     else if (initials) { g.fillStyle = shade(col, -50); g.fillRect(ex, ey, ew, ew * 1.2); g.fillStyle = '#fff'; g.font = `${Math.round(ew * (String(initials).length > 2 ? .38 : .5))}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(initials, m, ey + ew * .62); }
@@ -474,7 +488,7 @@
     let h = hash(seed + '|' + (mapId || '')); const R = n => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return (h >>> 8) % n; }, from = a => a[R(a.length)];
     const g = gender === 'm' || gender === 'f' ? gender : 'n', th = THEMES[mapId];
     // 🤪 1 in 20 is pure chaos (Derek: "wtf or funny moments", but not all the time): every part picked from everything
-    if (R(100) < CHAOS_PCT || forceChaos) return { hair: 1 + R(ALLN.hair.length), outfit: 1 + R(ALLN.outfit.length), makeup: 1 + R(ALLN.makeup.length), facialhair: 1 + R(ALLN.facialhair.length), body: 1 + R(2), skin: 1 + R(ALLN.skin.length), haircolor: 1 + R(ALLN.haircolor.length), col: CHAOS_COL[R(CHAOS_COL.length)], chaos: true };
+    if (R(100) < CHAOS_PCT || forceChaos) return { hair: 1 + R(ALLN.hair.length), outfit: 1 + R(ALLN.outfit.length), makeup: 1 + R(ALLN.makeup.length), facialhair: 1 + R(ALLN.facialhair.length), body: R(4) * 6 + from([1, 1, 3, 2, 4]), skin: 1 + R(ALLN.skin.length), haircolor: 1 + R(ALLN.haircolor.length), col: CHAOS_COL[R(CHAOS_COL.length)], chaos: true };
     // the other 19 in 20 make sense
     const hair = g === 'm' ? 1 + R(25) : g === 'f' ? 26 + R(25) : 1 + R(50);
     let outfit;
@@ -488,12 +502,12 @@
       outfit: th ? outfit : ver('outfit', outfit, [1, 2, 3, 4, 6, 7, 10, 11, 12, 14, 15, 16, 17, 18], 25),
       makeup: makeup > 1 ? ver('makeup', makeup, g === 'm' ? [2, 4] : [1, 2, 3, 4, 5, 9, 14], 25) : makeup,
       facialhair: facialhair > 1 ? ver('facialhair', facialhair, [1, 2, 3, 4, 5, 6, 13, 14], 30) : facialhair,
-      body: g === 'f' ? 2 : 1, skin: ver('skin', 1 + R(8), [1, 2, 3, 4, 5, 6, 7, 8], 50), haircolor: R(20) ? ver('haircolor', 1 + R(7), [1, 2, 3, 4, 5, 6, 7, 9, 12, 13], 40) : 8 + R(3), col: th?.col ? from(th.col) : undefined };
+      body: from([0, 0, 0, 0, 1, 2, 3]) * 6 + (g === 'f' ? from([3, 2, 2, 4]) : 1), /* (any build; chest sizes 1–3 only: never the big ones at random) */ skin: ver('skin', 1 + R(8), [1, 2, 3, 4, 5, 6, 7, 8], 50), haircolor: R(20) ? ver('haircolor', 1 + R(7), [1, 2, 3, 4, 5, 6, 7, 9, 12, 13], 40) : 8 + R(3), col: th?.col ? from(th.col) : undefined };
   }
   // what "makes sense" for the random characters (the silly ones are left for chaos and for people's own /character)
   const CHAOS_PCT = 5, CHAOS_COL = ['#ff2bd6', '#2bd6ff', '#a6ff2b', '#ff8a2b', '#ffe12b', '#8a2bff', '#2bff9a'];
   const MAKEUP_F = [2, 3, 4, 5, 6, 7, 11, 12, 14, 15, 16, 18, 20, 24], MAKEUP_M = [2, 6, 20, 24];
   const BEARDS_OK = r1(2, 25).filter(n => n !== 18 && n !== 20); // (no braided or wizard beards on regular folks)
   const EVERYDAY_COSTUMES = [53, 57, 58, 67, 69, 72, 73, 75]; // costumes that still make sense in a normal battle (superhero, pirate, ninja, sweater, onesies…)
-  window.CHAR_PARTS = { NAMES: ALLN, BASE, VARS, GROUPS, SKIN, HAIRC, THEMES, draw, norm, limbs, chest, auto, sp, skinCol, hairCol: hairColN };
+  window.CHAR_PARTS = { chestSize, buildOf, NAMES: ALLN, BASE, VARS, GROUPS, SKIN, HAIRC, THEMES, draw, norm, limbs, chest, auto, sp, skinCol, hairCol: hairColN };
 })();

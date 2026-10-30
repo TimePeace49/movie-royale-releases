@@ -3,6 +3,12 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.3: What's new
+Everything since 1.59.2.
+
+- 🧍 **24 body types:** regular, thin, fat and athletic, each flat or with a chest shape in 5 sizes. The chest shape is easier to see now (PG). Bodies 1 and 2 stay the same. Random characters get any build but only the smaller chest sizes. See them on the parts website → 🧍 Body.
+- ✅ **A clean 🆕 Recently updated** on the checklist with this update (ticks stay).
+
 ## v1.59.2: What's new
 Everything since 1.59.1.
 
