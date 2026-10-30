@@ -3709,9 +3709,9 @@ function openSettings(force) {
         ${ck('useChatBot', 'Talk in chat as the bot (untick to talk as yourself)')}`
       : `<p class="help">Right now Movie Royal talks in chat as <b>you</b>. To have a bot do it:</p>
         <ol class="help" style="padding-left:18px;line-height:1.7"><li>Make a second Twitch account for the bot, named <b>MoviesRoyalBot</b> (Twitch names can't have spaces). Use a private window so you stay logged in as yourself.</li>
-        <li>Press <b>🔑 Sign in as the bot</b>. On the Twitch page, if it shows your own account, press <b>Not you?</b> and log in as the bot.</li>
+        <li>Easiest: press <b>📋 Copy the sign-in link</b>, paste it in a <b>private (incognito) browser window</b>, log in as the bot and click <b>Authorize</b>. Or press <b>🔑 Sign in as the bot</b>: if Twitch shows your own account, press <b>Not you?</b> and log in as the bot.</li>
         <li>In your Twitch chat type <code>/mod MoviesRoyalBot</code> so it never gets slowed down.</li></ol>
-        <button class="primary" onclick="location.href='/auth/twitch-bot'">🔑 Sign in as the bot</button>`}
+        <div class="row" style="gap:6px"><button class="primary" onclick="location.href='/auth/twitch-bot'">🔑 Sign in as the bot</button><button class="ghost" onclick="copyText(location.origin + '/auth/twitch-bot').then(ok=>ok&&toast('📋 Copied: open it in a private window and log in as the bot'))">📋 Copy the sign-in link</button></div>`}
       <h3 style="margin-top:18px">🎨 Ball colors</h3>
       ${colorHTML(s)}
       ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
@@ -3953,6 +3953,7 @@ async function bkAddHere(btn) {
   try { const r = await api('/api/backup/add-here', {}); toast(`✅ Added ${esc(r.tag || 'your bot')} to Movie Royal Backup Bots on this PC. It connects in a few seconds.`, 8000); } catch {}
   btn.disabled = false; btn.textContent = was;
 }
+async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch { await ask('Copying didn\'t work here, so copy it yourself (Ctrl+A, then Ctrl+C):', t); return false; } } // (never prompt(): the Windows app blocks it)
 async function bkCopyToken() {
   if (!confirm('Copy your Discord bot token?\n\nWhoever has it can fully control your bot. Only give it to a friend you trust, privately (never in a chat channel).')) return;
   let r; try { r = await api('/api/backup/token', {}); } catch { return; }
@@ -4157,12 +4158,15 @@ async function restore(file) {
   await api('/api/restore', data); toast('✅ Backup restored');
 }
 async function whatsNewStep(test = false) { // an update added something to set up? one step each (1.59.7, Derek: every start-up pop-up is a step)
-  const r = test ? { steps: [{ id: 'chars', title: '🧍 Characters', why: 'Battles with people instead of balls (pretend step for the test).', guide: true }] } : await fetch('/api/whatsnew').then(r => r.json());
+  const r = test ? { steps: [{ id: 'chatbot', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (pretend step for the test).', how: ['Make a second Twitch account for the bot.', 'Open the sign-in link in a private window and log in as the bot.', 'In your Twitch chat, type /mod and the bot\'s name.'], guide: true }] } : await fetch('/api/whatsnew').then(r => r.json());
   const list = (r.steps || []).filter(x => test || !(x.id === 'chars' && Object.keys(FEAT_Q).some(k => !S.settings.featAsk?.[k]))); if (!list.length) return null; // (🧍 the character questions are asked as their own steps already)
   return list.map(x => ({ key: 'guide-' + x.id, html: done => `<div class="holBig">🧭</div><h3 style="text-align:center">🆕 New in the Setup guide: ${esc(x.title)}</h3>
       ${x.why ? `<p class="help" style="text-align:center">${esc(x.why)}</p>` : ''}
+      ${x.how?.length ? `<p style="margin:10px 0 4px"><b>How:</b></p><ol class="help" style="margin:0 0 8px;padding-left:22px;line-height:1.6">${x.how.map(h => `<li>${esc(h)}</li>`).join('')}</ol>` : ''}
+      ${x.id === 'chatbot' ? `<div class="row" style="gap:6px;margin:4px 0 8px"><input class="grow" readonly value="${esc(location.origin)}/auth/twitch-bot" onclick="this.select()" title="The sign-in link for the chat bot: open it in a private window and log in as the bot"><button class="ghost" onclick="copyText('${esc(location.origin)}/auth/twitch-bot').then(ok=>ok&&toast('📋 Copied: open it in a private window and log in as the bot'))">📋 Copy link</button></div>
+        <div class="row" style="justify-content:center;margin-bottom:6px"><button class="primary" onclick="${SQ.test ? `toast('🧪 Test: this opens the Twitch sign-in for the bot')` : `location.href='/auth/twitch-bot'`}">🔑 Sign in as the bot</button></div>` : ''}
       <p class="help" style="text-align:center">You can skip it. It's always in the 🧭 Setup guide (Settings → 🧭 Setup guide).</p>
-      <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="${SQ.test ? `toast('🧪 Test: this opens the Setup guide on that step');${done}` : `location.href='/setup.html?step=${esc(x.id)}'`}">🧭 Set it up</button>
+      <div class="row" style="justify-content:center;margin-top:12px"><button class="${x.id === 'chatbot' ? 'ghost' : 'primary'}" onclick="${SQ.test ? `toast('🧪 Test: this opens the Setup guide on that step');${done}` : `location.href='/setup.html?step=${esc(x.id)}'`}">🧭 ${x.id === 'chatbot' ? 'Open the Setup guide' : 'Set it up'}</button>
         ${x.guide ? `<button class="ghost" title="Don't show this one when Movie Royal starts" onclick="${SQ.test ? '' : `api('/api/setup/seen',{ids:['${esc(x.id)}']}).catch(()=>{});`}${done}">Don't show again</button>` : ''}<button onclick="${done}" title="Ask again next time Movie Royal starts">Later</button></div>` }));
 }
 async function whatsNew() { try { const st = await whatsNewStep(); if (st) sqShow(st); else toast('Nothing new in the Setup guide right now'); } catch {} }

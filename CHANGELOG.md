@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.60.1
+- 🤖 **The chat bot pop-up now tells you how.** When Movie Royal opens and asks about a 🤖 chat bot account, the steps are right in the pop-up, with 🔑 Sign in as the bot and a 📋 copy-able sign-in link. Open that link in a private (incognito) browser window and log in as the bot, so you don't have to log out of your own Twitch account. The same link is in the Setup guide and in Settings → 💜 Twitch & channel points. The other new Setup guide steps in that pop-up show their steps too.
+
 ## 1.60.0
 - 🏁 **10 new race maps** (ball battles), each its own style:
   - **Clean races** (they pass and draft, crashes hurt little, first across the line wins): 🏟️ Speedway Oval, 🏎️ Grand Prix (rain makes it slippery), 🌃 Night Street Race (roadwork cones), ❄️ Ice Ring (hardly any grip), 🏖️ Beach Rally (waves wash over the top of the track).

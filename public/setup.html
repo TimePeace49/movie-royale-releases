@@ -161,7 +161,9 @@ const PAGES = {
     ${b ? status(true, `Movie Royal talks in chat as <b>${esc(b.name)}</b>${b.on ? '' : ' (turned off: it talks as you. Settings → 💜 Twitch & channel points)'}.`) : ''}
     <ol class="steps">
       <li>Make a second Twitch account for the bot, for example <b>MoviesRoyalBot</b> (Twitch names can't have spaces). Do it in a <b>private window</b> so you stay logged in as yourself.</li>
-      <li>Press <b>🔑 Sign in as the bot</b>. On the Twitch page, if it shows your own account, press <b>Not you?</b> and log in as the bot. Then click <b>Authorize</b>.</li>
+      <li><b>Easiest:</b> copy this sign-in link, open a <b>private (incognito) window</b> in your web browser, paste it there, log in as the <b>bot</b> and click <b>Authorize</b>:${copyBox(location.origin + '/auth/twitch-bot')}
+        <p style="color:var(--dim);font-size:13px;margin:8px 0 0">Or press <b>🔑 Sign in as the bot</b> below. ${A.desktop ? 'Your web browser opens Twitch. ' : ''}If Twitch shows your own account, press <b>Not you?</b> and log in as the bot, then click <b>Authorize</b>.</p></li>
+      <li>When it says <b>🤖 … is your chat bot!</b>, close that browser tab and come back here. This page updates by itself.</li>
       <li>In your Twitch chat, type <code>/mod MoviesRoyalBot</code> (your bot's name) so Twitch never slows it down.</li>
     </ol>
     <div class="row"><button class="twitch big" ${S.owner ? '' : 'disabled'} onclick="location.href='/auth/twitch-bot'">🔑 ${b ? 'Sign in as the bot again' : 'Sign in as the bot'}</button>${b ? `<button onclick="botHi(this)">💬 Say hi in chat</button>` : ''}</div>

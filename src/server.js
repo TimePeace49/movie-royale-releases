@@ -1600,11 +1600,11 @@ const GUIDE_STEPS = [
   { id: 'twitch', title: '💜 Sign in with Twitch' }, { id: 'rewards', title: '💎 Channel points & bits' }, { id: 'tmdb', title: '🎬 Movie search' }, { id: 'omdb', title: '🍅 Ratings' },
   { id: 'letterboxd', title: '📗 Letterboxd' }, { id: 'discord', title: '🤖 Discord bot' }, { id: 'cloud', title: '☁️ 24/7 Discord bot' }, { id: 'donations', title: '💵 Donations' },
   { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
-  { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", done: () => !!db.settings.choiceObs },
+  { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
-  { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', done: () => !!db.twitchBot },
-  { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
-  { id: 'backup', since: '1.59.7', title: '🛡️ Backup bots', why: 'A second app that keeps your Discord bot answering if the 24/7 bot has problems (on your PC or a friend\'s).', done: () => backuplink.backupWatching() || backuplink.backupActive() }
+  { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', how: ['Make a second Twitch account for the bot, like MoviesRoyalBot (Twitch names can\'t have spaces).', 'Open the sign-in link below in a private (incognito) browser window, log in there as the BOT, and press Authorize. (Or press 🔑 Sign in as the bot: if Twitch shows your own account, press "Not you?" and log in as the bot.)', 'In your Twitch chat, type /mod and the bot\'s name (like /mod MoviesRoyalBot).'], done: () => !!db.twitchBot },
+  { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', how: ['Press 🧭 Set it up and answer the two questions (men and women characters, character creation).', 'Or later: Settings → ⚔️ Game → 🧍 Characters.'], done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
+  { id: 'backup', since: '1.59.7', title: '🛡️ Backup bots', why: 'A second app that keeps your Discord bot answering if the 24/7 bot has problems (on your PC or a friend\'s).', how: ['Download MovieRoyalBackupBots-Setup from the latest release page on GitHub (under Assets) and install it.', 'Open Movie Royal Backup Bots, then in Movie Royal: Settings → 🤖 Discord & picks → 🛡️ Add my bot to the backup on this PC.'], done: () => backuplink.backupWatching() || backuplink.backupActive() }
 ];
 function guideSeen() {
   if (!Array.isArray(db.settings.setupStepsSeen)) { const was = db.settings.lastSeenVersion || '1.10.0'; db.settings.setupStepsSeen = GUIDE_STEPS.filter(x => !x.since || !newer(x.since, was)).map(x => x.id); save(); } // (first time: the steps you already had count as seen)
@@ -1616,7 +1616,7 @@ app.get('/api/whatsnew', (req, res) => {
   if (!db.settings.setupSeen) { db.settings.lastSeenVersion = VERSION; db.settings.setupStepsSeen = GUIDE_STEPS.map(x => x.id); save(); return res.json({ steps: [] }); }
   const seen = guideSeen();
   const steps = NEW_SETUP.filter(x => newer(x.since, from) && !newer(x.since, VERSION) && !x.done()).map(({ id, title, why }) => ({ id, title, why }));
-  for (const x of GUIDE_STEPS) if (!seen.has(x.id) && !x.done?.() && !steps.some(y => y.id === x.id)) steps.push({ id: x.id, title: x.title, why: x.why || '', guide: true }); // 🆕 new in the Setup guide
+  for (const x of GUIDE_STEPS) if (!seen.has(x.id) && !x.done?.() && !steps.some(y => y.id === x.id)) steps.push({ id: x.id, title: x.title, why: x.why || '', how: x.how || [], guide: true }); // 🆕 new in the Setup guide (with how to do it, right in the pop-up)
   db.settings.lastSeenVersion = VERSION; save();
   res.json({ from, to: VERSION, steps });
 });
