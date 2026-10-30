@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 6; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 7; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -106,13 +106,36 @@ function watched(cfg, m) {
   const sl = slugify(m.title);
   return !!(sl && (slugs.has(sl) || (y && (slugs.has(`${sl}-${y}`) || slugs.has(`${sl}-${y - 1}`) || slugs.has(`${sl}-${y + 1}`)))));
 }
+// 🚫 automatic ban rules: a COPY of src/banrules.js (keep them the same)
+const STORY = /^(action|adventure|animation|comedy|drama|fantasy|horror|mystery|romance|science fiction|thriller|western)$/;
+const HARD = /^(christian film|christian movie|christian drama|faith[- ]based( film| movie)?|religious film|biblical epic|bible epic)$/;
+const STRONG = /^(bible|biblical|jesus christ|jesus|moses|old testament|new testament|ten commandments|crucifixion|passion of christ|gospel|apostle|virgin mary|noah's ark|life of jesus|resurrection of jesus|christian faith)$/;
+const WEAK = /^(christianity|christian|religion|faith|god|prayer|church|pastor|catholic|catholicism|judaism|islam|prophet|miracle|heaven|angel|salvation|baptism|missionary|saint|evangelism|evangelical)$/;
+const NOT_PREACHY = /^(comedy|horror|action|science fiction|thriller)$/; // satire, exorcism horror, action movies with a bible in them…
+function ruleBan(m, rules = {}) {
+  if (!m || !Array.isArray(m.spoken)) return null; // needs the full TMDB details
+  const g = (m.allGenres || m.genres || []).map(x => String(x).toLowerCase()), kw = (m.keywords || []).map(x => String(x).toLowerCase().trim());
+  if (rules.english !== false) {
+    const sp = m.spoken.filter(x => x && x !== 'xx'), orig = m.lang || '';
+    if (sp.length ? !sp.includes('en') : (orig && orig !== 'en' && orig !== 'xx')) return { key: 'english', short: 'not in English', reason: 'not in English' };
+  }
+  if (rules.documentary !== false && g.includes('documentary') && !g.some(x => STORY.test(x))) return { key: 'documentary', short: 'documentary', reason: 'documentary' };
+  if (rules.religious !== false) {
+    const hard = kw.some(k => HARD.test(k)), strong = kw.filter(k => STRONG.test(k)).length, weak = kw.filter(k => WEAK.test(k)).length;
+    if (hard || (!g.some(x => NOT_PREACHY.test(x)) && (strong >= 1 || weak >= 3))) return { key: 'religious', short: 'religious', reason: 'religious movie' };
+  }
+  return null;
+}
 function blockReason(s, m, opts = {}) {
   const cfg = s.cfg, label = `${m.title}${m.year ? ` (${m.year})` : ''}`, who = cfg.streamer || 'the streamer';
   const existing = s.pool.find(e => String(e.tmdbId) === String(m.id) && e.status !== 'removed');
   if (existing?.status === 'watched' || (cfg.wonIds || []).includes(String(m.id))) return { short: '✅ already won', msg: `✅ **${label}** already won a battle royal and got watched.` };
   if (watched(cfg, m)) return { short: '✅ already watched', msg: `✅ ${who} has already watched **${label}** — pick another movie!` };
   const ban = (cfg.bans || []).find(b => String(b.tmdbId) === String(m.id));
-  if (ban) return { short: '🚫 banned', msg: `🚫 **${label}** is banned${ban.reason ? ` (${ban.reason})` : ''} — pick another movie!` };
+  const banMsg = reason => `🚫 **${label}** is banned${reason ? ` (${reason})` : ''}. Banned movies need ${who}'s OK first: ask **${cfg.banAsk || 'Kirb'}** to unban it if you want to suggest it. Otherwise, pick another movie!`;
+  if (ban) return { short: '🚫 banned', msg: banMsg(ban.reason) };
+  const rb = (cfg.banOk || []).includes(String(m.id)) ? null : ruleBan(m, cfg.banRules || {});
+  if (rb) return { short: '🚫 ' + rb.short, msg: banMsg(rb.reason) };
   const year = String(new Date().getFullYear());
   if (cfg.banCurrentYear !== false && m.year === year && !(cfg.yearAllow || []).includes(String(m.id))) return { short: `🚫 ${year} movie`, msg: `🚫 Movies from ${year} aren't allowed — **${label}** is too new. Pick another movie!` };
   if (m.collection) {
@@ -133,8 +156,9 @@ async function tmdb(cfg, path) {
 const shape = m => ({ id: m.id, title: m.title, year: (m.release_date || '').slice(0, 4), poster: m.poster_path ? IMG + m.poster_path : null });
 const search = async (cfg, q) => ((await tmdb(cfg, `/search/movie?query=${encodeURIComponent(q)}&include_adult=false&language=en-US&page=1`)).results || []).map(shape);
 async function movie(cfg, id) {
-  const m = await tmdb(cfg, `/movie/${encodeURIComponent(id)}?language=en-US`);
-  return { ...shape(m), collection: m.belongs_to_collection ? { id: m.belongs_to_collection.id, name: m.belongs_to_collection.name } : null };
+  const m = await tmdb(cfg, `/movie/${encodeURIComponent(id)}?language=en-US&append_to_response=keywords`);
+  return { ...shape(m), collection: m.belongs_to_collection ? { id: m.belongs_to_collection.id, name: m.belongs_to_collection.name } : null,
+    lang: m.original_language || '', allGenres: (m.genres || []).map(g => g.name), spoken: (m.spoken_languages || []).map(l => l.iso_639_1), keywords: (m.keywords?.keywords || []).map(k => k.name) };
 }
 async function manyMovies(cfg, ids, ms = 1600) {
   const out = new Map();

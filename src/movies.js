@@ -2,6 +2,7 @@
 import { db, save, getList, streamerName } from './store.js';
 import * as lb from './letterboxd.js';
 import { getMovie, searchMovies } from './tmdb.js';
+import { ruleBan } from './banrules.js';
 
 export const moviesList = () => getList('movies');
 
@@ -29,6 +30,10 @@ function lockedMsg(discordId) {
 // ---------- what can't be picked (one place, so Discord, the app and the type-ahead list all agree) ----------
 const IN_POOL = ['active', 'benched', 'paused', 'away'];
 export const currentYear = () => String(new Date().getFullYear());
+export const banAsk = () => String(db.settings.banAsk || '').trim() || 'Kirb';
+export const banMsg = (label, reason) => `🚫 **${label}** is banned${reason ? ` (${reason})` : ''}. Banned movies need ${streamerName()}'s OK first: ask **${banAsk()}** to unban it if you want to suggest it. Otherwise, pick another movie!`;
+/** the automatic ban rules (unless the streamer pre-approved this movie by unbanning it) */
+export const autoBan = movie => (db.banOk || []).includes(String(movie?.id ?? movie?.tmdbId)) ? null : ruleBan(movie, db.settings.banRules || {});
 export const isBanned = id => (db.bans || []).find(b => String(b.tmdbId) === String(id));
 /** Why this movie can't be picked right now, or null. short = the tag shown in Discord's list. */
 export function blockReason(movie, user = null, opts = {}) {
@@ -36,7 +41,9 @@ export function blockReason(movie, user = null, opts = {}) {
   const seen = lb.lookup({ title: movie.title, year: movie.year, tmdbId: movie.id });
   if (seen) return { short: '✅ already watched', msg: `✅ ${streamerName()} has already watched **${label}**${seen.rating ? ` (rated it ${lb.stars(seen.rating)})` : ''} — pick another movie!` };
   const ban = isBanned(movie.id);
-  if (ban) return { short: '🚫 banned', msg: `🚫 **${label}** is banned${ban.reason ? ` (${ban.reason})` : ''} — pick another movie!` };
+  if (ban) return { short: '🚫 banned', msg: banMsg(label, ban.reason) };
+  const rb = autoBan(movie); // 🌍 not in English / ⛪ religious / 🎥 documentary
+  if (rb) { if (opts.record) banMovie({ id: movie.id, title: movie.title, year: movie.year, poster: movie.poster }, rb.reason, rb.key); return { short: '🚫 ' + rb.short, msg: banMsg(label, rb.reason) }; }
   if (db.settings.banCurrentYear !== false && movie.year === currentYear() && !(db.yearAllow || []).includes(String(movie.id)))
     return { short: `🚫 ${currentYear()} movie`, msg: `🚫 Movies from ${currentYear()} aren't allowed — **${label}** is too new. Pick another movie!` };
   const existing = findMovie(movie.id);
@@ -95,7 +102,7 @@ export async function suggest(value, user, opts = {}) { // opts.force: streamer 
     movie = await getMovie(res[0].id);
   }
   const label = `${movie.title}${movie.year ? ` (${movie.year})` : ''}`;
-  const block = blockReason(movie, user);
+  const block = blockReason(movie, user, { record: true });
   if (block) return { ok: false, msg: block.msg };
 
   const existing = findMovie(movie.id);
@@ -142,7 +149,7 @@ export async function swapMovie(user, oldEntryId, newValue, force = false) {
   if (/^\d+$/.test(String(newValue))) movie = await getMovie(newValue);
   else { const r = await searchMovies(newValue); if (!r.length) return { ok: false, msg: `Couldn't find a movie called "${newValue}".` }; movie = await getMovie(r[0].id); }
   if (String(movie.id) === String(old.tmdbId)) return { ok: false, msg: "That's the same movie." };
-  const block = blockReason(movie, user, { swapFrom: old.id });
+  const block = blockReason(movie, user, { swapFrom: old.id, record: true });
   if (block) return { ok: false, msg: block.msg };
   const existing = findMovie(movie.id);
   if (existing && existing.status === 'active') return { ok: false, msg: `**${movie.title}** is already in the pool — pick a different one to swap to.` };
@@ -309,15 +316,18 @@ export function claimManual(user, twitchLogin) {
 }
 
 // ---------- ban list ----------
-export function banMovie(m, reason = '') {
+export function banMovie(m, reason = '', auto = null) { // auto = which automatic rule banned it ('english' | 'religious' | 'documentary')
   db.bans ||= [];
   if (isBanned(m.id ?? m.tmdbId)) return false;
-  db.bans.push({ tmdbId: m.id ?? m.tmdbId, title: m.title, year: m.year, poster: m.poster || null, reason: String(reason || '').slice(0, 80), at: Date.now() });
+  if (!auto) db.banOk = (db.banOk || []).filter(x => x !== String(m.id ?? m.tmdbId)); // banned by hand: no longer pre-approved
+  db.bans.push({ tmdbId: m.id ?? m.tmdbId, title: m.title, year: m.year, poster: m.poster || null, reason: String(reason || '').slice(0, 80), at: Date.now(), ...(auto ? { auto } : {}) });
   // pull it out of the pool if it's in there
   const e = findMovie(m.id ?? m.tmdbId); if (e && IN_POOL.includes(e.status)) e.status = 'removed';
   save(); return true;
 }
-export function unbanMovie(tmdbId) { db.bans = (db.bans || []).filter(b => String(b.tmdbId) !== String(tmdbId)); save(); }
+// unbanning = pre-approving: the automatic rules skip it from now on (Derek: banned movies need his OK first)
+export function unbanMovie(tmdbId, title = null) { const k = String(tmdbId), b = isBanned(k); db.banOkTitles ||= {}; if (b || title) db.banOkTitles[k] = b ? `${b.title}${b.year ? ` (${b.year})` : ''}` : title; db.bans = (db.bans || []).filter(b => String(b.tmdbId) !== k); db.banOk = [...new Set([...(db.banOk || []), k])]; save(); }
+export function unapprove(tmdbId) { const k = String(tmdbId); db.banOk = (db.banOk || []).filter(x => x !== k); save(); }
 export function allowThisYear(tmdbId, allow = true) {
   db.yearAllow ||= []; const k = String(tmdbId);
   db.yearAllow = allow ? [...new Set([...db.yearAllow, k])] : db.yearAllow.filter(x => x !== k);

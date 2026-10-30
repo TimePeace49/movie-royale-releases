@@ -388,9 +388,30 @@
   .rw td { padding:5px 6px; }
   .rw input { padding:5px 8px; }
   @media (max-width:1200px) { #v-pool { grid-template-columns:190px 1fr; } #v-pool .poolside { display:none; } #v-test { grid-template-columns:1fr 1fr; } }
+  /* 🎉 holiday app styles (body.hol + body.hol-<id>; see HOLIDAYS in the script) */
+  body.hol { background:radial-gradient(1200px 600px at 70% -10%, var(--glow) 0, var(--bg) 60%); }
+  body.hol header { background:var(--hdrBg); }
+  body.hol input, body.hol textarea, body.hol select, body.hol .help code, body.hol code { background:var(--field); }
+  body.hol header h1::after { content:var(--holIcon); margin-left:8px; }
+  body.hol-halloween { --bg:#140a05; --panel:#22120a; --panel2:#2e1a0e; --line:#5a3214; --text:#fff1e0; --dim:#c9a27e; --gold:#ff8c1a; --hot:#9b30ff; --glow:#4a1f05; --hdrBg:rgba(20,10,5,.88); --field:#0f0703; --holIcon:'🎃'; }
+  body.hol-xmas { --bg:#06140d; --panel:#0d2418; --panel2:#133021; --line:#2c5a3c; --text:#f2fff6; --dim:#9fc7ad; --gold:#ffd166; --hot:#e63946; --glow:#4d0f14; --hdrBg:rgba(6,20,13,.88); --field:#040d08; --holIcon:'🎄'; }
+  body.hol-turkey { --bg:#170d05; --panel:#261608; --panel2:#33200d; --line:#6b4219; --text:#fff4e6; --dim:#d1a978; --gold:#f4a62a; --hot:#c0392b; --glow:#4d2a0a; --hdrBg:rgba(23,13,5,.88); --field:#0f0803; --holIcon:'🦃'; }
+  body.hol-newyear { --bg:#05060f; --panel:#10132a; --panel2:#181c3a; --line:#333a70; --text:#f4f5ff; --dim:#a7acd6; --gold:#ffd700; --hot:#b388ff; --glow:#262b5c; --hdrBg:rgba(5,6,15,.88); --field:#03040a; --holIcon:'🎆'; }
+  body.hol-valentine { --bg:#1a0610; --panel:#2a0d1c; --panel2:#381228; --line:#6e2346; --text:#fff0f6; --dim:#d9a0bb; --gold:#ff7eb6; --hot:#ff2e63; --glow:#5c0f2e; --hdrBg:rgba(26,6,16,.88); --field:#10030a; --holIcon:'💘'; }
+  body.hol-stpat { --bg:#04140a; --panel:#0a2414; --panel2:#10301c; --line:#1f6b3a; --text:#effff4; --dim:#9fd1b0; --gold:#ffd700; --hot:#2ecc71; --glow:#0f4a24; --hdrBg:rgba(4,20,10,.88); --field:#020c06; --holIcon:'☘️'; }
+  body.hol-easter { --bg:#14102a; --panel:#221a3d; --panel2:#2c2350; --line:#4d4290; --text:#fbf7ff; --dim:#c4b8e8; --gold:#ffe28a; --hot:#ff9ed8; --glow:#3a2f6b; --hdrBg:rgba(20,16,42,.88); --field:#0c0919; --holIcon:'🐰'; }
+  body.hol-july4 { --bg:#060b1f; --panel:#0f1733; --panel2:#172244; --line:#2e3f80; --text:#f4f7ff; --dim:#a9b6e0; --gold:#ffd166; --hot:#ff3b4e; --glow:#3a0d1a; --hdrBg:rgba(6,11,31,.88); --field:#030614; --holIcon:'🎇'; }
+  #holFx { position:fixed; inset:0; pointer-events:none; z-index:40; overflow:hidden; }
+  #holFx span { position:absolute; top:-40px; font-size:18px; opacity:.22; animation:holFall linear infinite; }
+  @keyframes holFall { from { transform:translateY(-40px) rotate(0deg); } to { transform:translateY(calc(100vh + 80px)) rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #holFx { display:none; } }
+  #holDlg .holBig { font-size:54px; text-align:center; line-height:1.1; }
 </style>
 </head>
 <body>
+<div id="holFx"></div>
+<dialog id="priceDlg"><div style="padding:18px" id="priceBody"></div></dialog>
+<dialog id="holDlg"><div style="padding:18px" id="holBody"></div></dialog>
 <header>
   <h1>🍿 MOVIE ROYAL</h1>
   <nav id="nav">
@@ -573,6 +594,7 @@
     <div class="modeSeg" id="cMode"></div>
     <div class="muted" id="cCount" style="text-align:center"></div>
     <label class="ck" id="cKeepRow" title="On: the winning pack stays in your Card pool (nothing comes off its count). Off: one comes off its count so you open it."><input type="checkbox" id="cKeep" onchange="cardsApi('/api/cards/keep',{on:this.checked})"> <span>📌 Keep the winner in my pool</span></label>
+    <button onclick="priceOpen()" title="Look up what a card you just pulled from a pack is worth (TCGplayer, eBay sold listings, PriceCharting)">💲 Check a card's price</button>
     <div class="card" id="cWinCard" style="display:none"></div>
     <div class="card"><h2 style="margin:0 0 6px">🃏 In this fight</h2><div class="cfList" id="cIn"></div></div>
     <div class="card"><h2 style="margin:0 0 6px">🏆 Latest card battle winners</h2><div id="cHist" style="font-size:12.5px"></div></div>
@@ -696,11 +718,14 @@
 <section class="view" id="v-bans">
   <div class="pane card">
     <h3>🚫 Banned movies</h3>
-    <p class="help">Banned movies can't be picked in Discord (people see them with a 🚫 so they know they spelled it right). Banning a movie that's already in the pool takes it out.</p>
-    <div class="row"><input id="banQ" class="grow" placeholder="Type a movie to ban…" oninput="banSearch(this.value)"></div>
+    <p class="help">Banned movies can't be picked in Discord (people see them with a 🚫 so they know they spelled it right). Banning a movie that's already in the pool takes it out. <b>Unban</b> = you pre-approve it: the automatic rules skip it from then on.</p>
+    <div class="row"><input id="banQ" class="grow" placeholder="Type a movie to ban or pre-approve…" oninput="banSearch(this.value)"></div>
     <input id="banReason" style="margin-top:6px" placeholder="Reason (optional — people see it in Discord)">
     <div class="results" id="banResults"></div>
-    <div id="banList" style="margin-top:12px"></div>
+    <h3 style="margin-top:16px">Banned list <span class="pill" id="banCount"></span></h3>
+    <div class="row"><input id="banFilter" class="grow" placeholder="🔍 Search the banned movies (title, year or reason)…" oninput="banPage=1;drawBans()" title="Search the banned list">
+      <select id="banKind" style="width:auto" onchange="banPage=1;drawBans()" title="Which bans to show"><option value="">All bans</option><option value="hand">🚫 Banned by you</option><option value="english">🌍 Not in English</option><option value="religious">⛪ Religious</option><option value="documentary">🎥 Documentary</option></select></div>
+    <div id="banList" style="margin-top:8px"></div>
   </div>
   <div class="pane">
     <div class="card">
@@ -712,7 +737,20 @@
     <div class="card">
       <h3>🎞️ Series rule</h3>
       <p class="help">When someone picks a movie from a series (like <i>Harry Potter</i> or <i>Lord of the Rings</i>), nobody can pick another movie from that series while it's in the pool. This uses TMDB's "collection" info, so it works automatically.</p>
-      <h3 style="margin-top:14px">Also blocked automatically</h3>
+    </div>
+    <div class="card">
+      <h3>🚫 Automatic bans</h3>
+      <label class="ck"><input type="checkbox" id="brEnglish" onchange="banRule('english',this.checked)"> <span>🌍 Movies that aren't in English at all (some other languages in it is fine)</span></label>
+      <label class="ck"><input type="checkbox" id="brReligious" onchange="banRule('religious',this.checked)"> <span>⛪ Really religious movies (like <i>The Passion of the Christ</i> or <i>The Ten Commandments</i>)</span></label>
+      <label class="ck"><input type="checkbox" id="brDocumentary" onchange="banRule('documentary',this.checked)"> <span>🎥 Pure documentaries</span></label>
+      <p class="help">Uses TMDB's info (languages, genres, keywords), so now and then it may guess wrong: unban a movie to pre-approve it, or ban one by hand. A movie lands in the banned list the first time someone tries to pick it.</p>
+      <label>Who people ask to unban a movie (shown in Discord)</label><input id="banAsk" class="short" onchange="api('/api/settings',{banAsk:this.value.trim()||'Kirb'}).then(()=>toast('Saved'))" title="Who people ask to unban a movie">
+      <div id="banOkList"></div>
+      <button style="margin-top:10px" onclick="poolCheck()" title="Check the movies already picked against the ban rules">🔎 Check movies already picked</button>
+      <div id="poolCheck"></div>
+    </div>
+    <div class="card">
+      <h3>Also blocked automatically</h3>
       <p class="help">✅ Movies you've watched on Letterboxd · 🏆 movies that already won · 🔒 movies someone already picked — every movie can only be picked once.</p>
     </div>
   </div>
@@ -869,6 +907,23 @@
     <p class="help">Checks a title against every rule (watched, banned, this year, series, already in) without adding it.</p>
     <div class="row"><input id="tMovie" class="grow" placeholder="e.g. The Two Towers"><button class="primary" onclick="api('/api/test/check-movie',{query:$('tMovie').value}).then(r=>$('tMovieOut').innerHTML=esc(r.msg))">Check</button></div>
     <p id="tMovieOut" class="help"></p>
+  </div>
+  <div class="card">
+    <h3>🚫 Movie ban rules</h3>
+    <p class="help">🌍 not in English · ⛪ really religious · 🎥 documentaries. Try the rules on made-up examples (no internet needed), or fill the Banned list with 300 pretend bans to try its search box.</p>
+    <div class="row"><button class="primary" onclick="banRulesTest()">Try the rules</button><button onclick="api('/api/test/ban-many',{}).then(r=>{toast('🧪 Added '+r.n+' pretend bans: Settings → 🚫 Banned Movies');setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button><button class="ghost" onclick="api('/api/test/ban-many',{clear:true}).then(()=>{toast('Pretend bans removed');loadBans()})">Remove pretend bans</button></div>
+    <div id="tBanOut"></div>
+  </div>
+  <div class="card">
+    <h3>🎨 Holiday app style</h3>
+    <p class="help">Try a holiday's colors (not saved), or see the pop-up Movie Royal shows when it opens close to a holiday (your answer isn't saved in the test).</p>
+    <div class="row"><select id="tHolStyle" style="width:auto" title="Which holiday style to try"></select><button onclick="holTryStyle($('tHolStyle').value)">🎨 Try it</button></div>
+    <div class="row" style="margin-top:8px"><select id="tHolPop" style="width:auto" title="Pretend it's close to this holiday"></select><button onclick="holTestDate=HOLIDAYS.find(h=>h.id===$('tHolPop').value).win(new Date().getFullYear())[1];holAsk(true)">💬 Show the pop-up</button></div>
+  </div>
+  <div class="card">
+    <h3>💲 Card price check</h3>
+    <p class="help">The <b>💲 Check a card's price</b> button on the 🃏 Card battles tab: type the card you pulled, then open TCGplayer, eBay sold listings or PriceCharting in your browser.</p>
+    <button onclick="priceOpen()">💲 Open it</button>
   </div>
   <div class="card">
     <h3>⚔️ Practice battle</h3>
@@ -1403,7 +1458,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
-  watchLuck: ['battles', '1.42.0'], claimAskFirst: ['battles', '1.49.1'], holidayMaps: ['battles', '1.49.1'], respinFirst: ['wheel', '1.49.0'], spinLogTab: ['wheel', '1.49.0'], autoNoRespin: ['wheel', '1.48.2'], autoCount: ['wheel', '1.48.0'], wheelChatters: ['wheel', '1.48.0'], joinVote: ['battles', '1.47.0'], webList: ['movies', '1.46.0'], webListReal: ['movies', '1.46.0'], testLab: ['lab', '1.45.0'], ww2Map: ['battles', '1.45.0'], halloweenMap: ['battles', '1.44.0'], newyearMap: ['battles', '1.44.0'], valentineMap: ['battles', '1.44.0'], stpatMap: ['battles', '1.44.0'], easterMap: ['battles', '1.44.0'], july4Map: ['battles', '1.44.0'], elementsMap: ['battles', '1.43.0'], pompeiiMap: ['battles', '1.43.0'], xmasMap: ['battles', '1.42.0'], turkeyMap: ['battles', '1.42.0'], kaijuMap: ['battles', '1.41.0'], heroVillains: ['battles', '1.41.0'], zombieMap: ['battles', '1.41.0'], funPowers: ['chat', '1.40.0'], funWacky: ['chat', '1.40.0'], tagReset: ['battles', '1.40.0'], doomReal: ['wheel', '1.39.4'], doomBack: ['wheel', '1.39.4'], tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
+  watchLuck: ['battles', '1.42.0'], banRules: ['movies', '1.50.0'], banSearch: ['movies', '1.50.0'], holStyle: ['screen', '1.50.0'], cardPrice: ['battles', '1.50.0'], claimAskFirst: ['battles', '1.49.1'], holidayMaps: ['battles', '1.49.1'], respinFirst: ['wheel', '1.49.0'], spinLogTab: ['wheel', '1.49.0'], autoNoRespin: ['wheel', '1.48.2'], autoCount: ['wheel', '1.48.0'], wheelChatters: ['wheel', '1.48.0'], joinVote: ['battles', '1.47.0'], webList: ['movies', '1.46.0'], webListReal: ['movies', '1.46.0'], testLab: ['lab', '1.45.0'], ww2Map: ['battles', '1.45.0'], halloweenMap: ['battles', '1.44.0'], newyearMap: ['battles', '1.44.0'], valentineMap: ['battles', '1.44.0'], stpatMap: ['battles', '1.44.0'], easterMap: ['battles', '1.44.0'], july4Map: ['battles', '1.44.0'], elementsMap: ['battles', '1.43.0'], pompeiiMap: ['battles', '1.43.0'], xmasMap: ['battles', '1.42.0'], turkeyMap: ['battles', '1.42.0'], kaijuMap: ['battles', '1.41.0'], heroVillains: ['battles', '1.41.0'], zombieMap: ['battles', '1.41.0'], funPowers: ['chat', '1.40.0'], funWacky: ['chat', '1.40.0'], tagReset: ['battles', '1.40.0'], doomReal: ['wheel', '1.39.4'], doomBack: ['wheel', '1.39.4'], tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1424,7 +1479,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/card battle tests/i, 'battles']];
+  const map = [[/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1478,6 +1533,10 @@ function drawChecklist() {
     ['stpatMap', '☘️ Leprechaun Hills map (ball + card battles): Evil leprechauns kick pieces toward the edge; the rainbow beam blasts across.', `<button class="ghost" style="padding:3px 9px" onclick="labTry('stpat')">Try it</button>`],
     ['easterMap', '🐰 Bunny Rampage map (ball + card battles): A giant evil bunny hops and stomps; painted eggs crack and blow up.', `<button class="ghost" style="padding:3px 9px" onclick="labTry('easter')">Try it</button>`],
     ['july4Map', '🎇 Fourth of July map (ball + card battles): Bottle rockets skitter across the ground and firecracker strings go pop-pop-pop.', `<button class="ghost" style="padding:3px 9px" onclick="labTry('july4')">Try it</button>`],
+    ['banRules', '🚫 New movie bans: 🌍 not in English, ⛪ really religious, 🎥 documentaries. Press “Try the rules”, then in Discord try /suggest with a foreign movie (like Amélie): it\'s banned and says to ask Kirb to unban it. The pinned Discord message explains banned movies too', `<button class="ghost" style="padding:3px 9px" onclick="banRulesTest()">Try the rules</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('bans');loadBans()">Banned Movies</button>`],
+    ['banSearch', '🔍 Banned Movies has a search box (title, year or reason) and a kind filter: add 300 pretend bans and search them. Also try 🔎 Check movies already picked and ✅ Pre-approve on a search result', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/ban-many',{}).then(()=>{setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button>`],
+    ['holStyle', '🎨 Holiday app style: try each holiday\'s colors, and the pop-up (✅ Yes / Not now / Not until next year) that shows when Movie Royal opens close to a holiday. Settings → App & background → 🎨 App style', `<button class="ghost" style="padding:3px 9px" onclick="holTestDate=holNow(new Date(new Date().getFullYear(),9,25))?new Date(new Date().getFullYear(),9,25):null;holAsk(true)">Show the pop-up</button> <button class="ghost" style="padding:3px 9px" onclick="holTryStyle('xmas')">Try 🎄</button>`],
+    ['cardPrice', '💲 Card battles tab → 💲 Check a card\'s price: type a card you pulled and open TCGplayer / eBay sold / PriceCharting', `<button class="ghost" style="padding:3px 9px" onclick="priceOpen()">Open it</button>`],
     ['claimAskFirst', '✋ The winner is always asked first: press the button, then type a happy “YES!” as the winner in 💬 Pretend chat. Movie Royal should ask !accept / !pass (not claim it right away). Then type !accept (or yes) and it gets claimed', `<button class="ghost" style="padding:3px 9px" onclick="claimTest()">✋ Winner types in chat</button>`],
     ['holidayMaps', '🎉 Holiday maps are in their own “🎉 Holiday maps” section at the bottom of every map list (Battle tab, Settings, Card battles, test lab). They still show up on 🎲 Random', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">Battle tab</button>`],
     ['respinFirst', '🔁 Only the first respin counts: redeem 🔁 Respin a few times fast in 💬 Test chat (or with the pop-out chat): only the first spins, everyone else gets a free saved respin', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel')">Wheel tab</button>`],
@@ -1760,7 +1819,7 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { applyStyle(); holTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -3348,19 +3407,35 @@ function stSortBy(k) { stSort = stSort.k === k ? { k, dir: -stSort.dir } : { k, 
 // ---------- 🚫 bans ----------
 let bans = null;
 async function loadBans() { bans = await fetch('/api/bans').then(r => r.json()); drawBans(); }
-function drawBans() {
+let banPage = 1;
+const BAN_KIND = { english: '🌍', religious: '⛪', documentary: '🎥' };
+function drawBans() { // (there can be LOTS of bans: search box + kind filter, 100 at a time)
   if (!bans) return;
-  $('banList').innerHTML = bans.bans.length ? `<table><tr><th></th><th>Movie</th><th>Banned</th><th></th></tr>${bans.bans.map(b => `<tr><td class="thumb">${b.poster ? `<img class="poster" src="${esc(proxy(b.poster))}">` : '<span>🚫</span>'}</td><td><b>${esc(b.title)}</b> <span class="muted">(${esc(b.year || '????')})</span>${b.reason ? `<br><small class="muted">${esc(b.reason)}</small>` : ''}</td><td class="muted">${new Date(b.at).toLocaleDateString()}</td><td><button class="ghost" onclick="api('/api/bans/${b.tmdbId}',null,'DELETE').then(loadBans)">Unban</button></td></tr>`).join('')}</table>` : '<div class="empty">No banned movies yet.</div>';
+  const q = ($('banFilter')?.value || '').trim().toLowerCase(), kind = $('banKind')?.value || '';
+  const all = bans.bans.filter(b => (!kind || (kind === 'hand' ? !b.auto : b.auto === kind)) && (!q || `${b.title} ${b.year || ''} ${b.reason || ''}`.toLowerCase().includes(q)));
+  const shown = all.slice(0, banPage * 100);
+  $('banCount').textContent = all.length === bans.bans.length ? `${bans.bans.length}` : `${all.length} of ${bans.bans.length}`;
+  $('banList').innerHTML = !bans.bans.length ? '<p class="help">Nothing banned yet.</p>' : !all.length ? '<p class="help">No banned movies match that.</p>' : `<table><tr><th></th><th>Movie</th><th>Banned</th><th></th></tr>${shown.map(b => `<tr><td class="thumb">${b.poster ? `<img class="poster" loading="lazy" src="${esc(proxy(b.poster))}">` : `<span>${BAN_KIND[b.auto] || '🚫'}</span>`}</td><td><b>${esc(b.title)}</b> <span class="muted">(${esc(b.year || '????')})</span>${b.reason || b.auto ? `<br><small class="muted">${b.auto ? (BAN_KIND[b.auto] || '🚫') + ' automatic: ' : ''}${esc(b.reason || '')}</small>` : ''}</td><td class="muted">${new Date(b.at).toLocaleDateString()}</td><td><button class="ghost" title="Unban = pre-approve: people can suggest it" onclick="api('/api/bans/${esc(String(b.tmdbId))}',null,'DELETE').then(loadBans)">Unban</button></td></tr>`).join('')}</table>${all.length > shown.length ? `<button class="ghost" style="margin-top:8px" onclick="banPage++;drawBans()">Show more (${all.length - shown.length} left)</button>` : ''}`;
   $('yearAllow').innerHTML = bans.yearAllow.length ? `<p class="help">Allowed even though they're new:</p>${bans.yearAllow.map(a => `<span class="chip">${esc(a.title || a.tmdbId)}<button onclick="api('/api/year-allow',{tmdbId:'${esc(a.tmdbId)}',allow:false}).then(loadBans)">✕</button></span>`).join('')}` : '';
+  $('banOkList').innerHTML = bans.ok?.length ? `<p class="help">✅ Pre-approved (you unbanned them, the rules skip them; ✕ = the rules apply again):</p>${bans.ok.map(a => `<span class="chip">${esc(a.title || a.tmdbId)}<button title="Take back the pre-approval" onclick="api('/api/bans/ok',{tmdbId:'${esc(String(a.tmdbId))}',ok:false}).then(loadBans)">✕</button></span>`).join('')}` : '';
   renderBanSide();
 }
-function renderBanSide() { if (!S) return; $('banYear').checked = S.settings.banCurrentYear !== false; $('banYearNum').textContent = new Date().getFullYear(); }
+function banRule(k, on) { api('/api/settings', { banRules: { ...(S.settings.banRules || {}), [k]: on } }).then(() => toast('Saved')); }
+let poolFound = [];
+async function poolCheck() {
+  $('poolCheck').innerHTML = '<p class="help">⏳ Checking every movie in the pool with TMDB…</p>';
+  const r = await api('/api/bans/pool-check', {}).catch(e => ({ error: e.message })); if (r.error) { $('poolCheck').innerHTML = `<p class="help">⚠️ ${esc(r.error)}</p>`; return; }
+  poolFound = r.found;
+  $('poolCheck').innerHTML = `<p class="help">Checked ${r.checked} movie${r.checked === 1 ? '' : 's'}${r.partial ? ' (ran out of time: press it again for the rest)' : ''}. ${r.found.length ? `${r.found.length} break the rules. Nothing happens to them unless you ban them:` : 'All of them are fine ✅'}</p>${r.found.map((m, i) => `<div class="row" style="margin:3px 0"><span class="grow"><b>${esc(m.title)}</b> <span class="muted">(${esc(m.year || '????')})</span><br><small class="muted">${BAN_KIND[m.key] || '🚫'} ${esc(m.reason)}${m.who ? ` · ${esc(m.who)}'s pick` : ''}</small></span><button class="danger" onclick="poolBan([poolFound[${i}]])">🚫 Ban</button></div>`).join('')}${r.found.length > 1 ? `<button class="danger" style="margin-top:6px" onclick="poolBan(poolFound)">🚫 Ban all ${r.found.length}</button>` : ''}`;
+}
+async function poolBan(list) { if (list.length > 1 && !confirm(`Ban all ${list.length}? They leave the pool (hidden, not deleted).`)) return; const r = await api('/api/bans/rule-ban', { movies: list }); toast(`🚫 Banned ${r.n}`); await loadBans(); poolCheck(); }
+function renderBanSide() { if (!S) return; $('banYear').checked = S.settings.banCurrentYear !== false; $('banYearNum').textContent = new Date().getFullYear(); const br = S.settings.banRules || {}; for (const k of ['english', 'religious', 'documentary']) $('br' + k[0].toUpperCase() + k.slice(1)).checked = br[k] !== false; if (document.activeElement !== $('banAsk')) $('banAsk').value = S.settings.banAsk || 'Kirb'; }
 let bsT;
 function banSearch(q) {
   clearTimeout(bsT);
   if (q.trim().length < 2) { $('banResults').innerHTML = ''; return; }
   bsT = setTimeout(async () => {
-    const r = await fetch('/api/search?q=' + encodeURIComponent(q)).then(r => r.json());
+    const r = await fetch('/api/bans/search?q=' + encodeURIComponent(q)).then(r => r.json());
     const year = String(new Date().getFullYear());
     $('banResults').innerHTML = r.error ? `<p class="help">⚠️ ${esc(r.error)}</p>` : r.slice(0, 8).map(m => {
       const banned = bans?.bans.some(b => String(b.tmdbId) === String(m.id));
@@ -3368,7 +3443,8 @@ function banSearch(q) {
       const allowed = bans?.yearAllow.some(a => String(a.tmdbId) === String(m.id));
       return `<div class="row"><img src="${m.poster ? esc(proxy(m.poster)) : ''}" style="width:28px;height:42px;object-fit:cover;border-radius:4px"><span class="grow"><b>${esc(m.title)}</b> <span class="muted">(${esc(m.year || '????')})</span></span>
         ${isNew ? (allowed ? `<button onclick="api('/api/year-allow',{tmdbId:${m.id},allow:false}).then(()=>{loadBans();banSearch($('banQ').value)})">Block again (new)</button>` : `<button onclick="api('/api/year-allow',{tmdbId:${m.id},allow:true}).then(()=>{toast('Allowed');loadBans();banSearch($('banQ').value)})">✅ Allow (it's new)</button>`) : ''}
-        ${banned ? '<span class="tag b">banned</span>' : `<button class="danger" onclick="banIt(${m.id})">🚫 Ban</button>`}</div>`;
+        ${m.rule && !banned ? (m.ok ? `<span class="tag">✅ pre-approved</span>` : `<span class="tag b" title="Banned by the automatic rules">auto-banned: ${esc(m.rule)}</span><button onclick="api('/api/bans/ok',{tmdbId:${m.id},title:${esc(JSON.stringify(`${m.title} (${m.year || '????'})`))}}).then(()=>{toast('✅ Pre-approved');loadBans();banSearch($('banQ').value)})">✅ Pre-approve</button>`) : ''}
+        ${banned ? `<span class="tag b">banned</span><button class="ghost" onclick="api('/api/bans/${m.id}',null,'DELETE').then(()=>{loadBans();banSearch($('banQ').value)})">Unban</button>` : `<button class="danger" onclick="banIt(${m.id})">🚫 Ban</button>`}</div>`;
     }).join('') || '<p class="help">No matches.</p>';
   }, 250);
 }
@@ -3614,6 +3690,7 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🔇 Sound</h3>
       ${ck('muteUnfocused', '🔇 Mute Movie Royal while I\'m in another program (the sound comes back when I click back into Movie Royal)')}
       <p class="help">On by default. The stream isn't affected: the game screen in OBS plays its own sound. Turn this off if you capture Movie Royal's own window or desktop sound in OBS, or want to hear it while you're in other programs.</p>
+      ${holStyleHTML()}
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
     obs: `<h3>🎥 OBS (optional)</h3>
       <p class="help">Needed for the Battle tab's <b>📺 Capture window</b> (a window from your PC, small in the top-left of your stream) and the wheel's <b>☠️ Doomsday</b> (when the void swallows the wheel, Movie Royal turns your mic and camera off right away and ends the stream 15 seconds later).<br>
@@ -4020,9 +4097,110 @@ async function updateOnOpen() { // asks once each time the app opens, if there's
   } catch {}
 }
 
+
+
+
+async function banRulesTest() {
+  const r = await api('/api/test/ban-rules', {}); const br = r.rules || {};
+  $('tBanOut').innerHTML = `<table style="margin-top:8px"><tr><th>Movie (made-up TMDB info)</th><th>Result</th></tr>${r.rows.map(x => `<tr><td>${esc(x.title)}</td><td>${x.banned ? `🚫 <b>banned</b>: ${esc(x.reason)}` : '✅ allowed'}</td></tr>`).join('')}</table><p class="help">Rules on: ${['english', 'religious', 'documentary'].filter(k => br[k] !== false).join(', ') || 'none'} (Settings → 🚫 Banned Movies).</p>`;
+}
+function holTestInit() { if (!$('tHolPop') || $('tHolPop').options.length) return; const o = HOLIDAYS.map(h => `<option value="${h.id}">${h.icon} ${esc(h.name)}</option>`).join(''); $('tHolPop').innerHTML = o; $('tHolStyle').innerHTML = '<option value="">💜 Normal / my saved style</option>' + o; }
+// ---------- 💲 card price check (Derek, 1.50.0): opens price sites in your web browser for a card you pulled ----------
+let priceRecent = []; try { priceRecent = JSON.parse(localStorage.getItem('priceRecent') || '[]'); } catch {}
+function priceOpen() {
+  const last = (S.cards?.history || [])[0], games = [...new Set((S.cards?.pool || []).map(p => p.game).filter(Boolean))];
+  $('priceBody').innerHTML = `<h3>💲 Check a card's price</h3>
+    ${last ? `<p class="help">Last pack opened: <b>${esc(last.name)}</b>${last.game ? ` (${esc(last.game)})` : ''}</p>` : ''}
+    <label>Card name (add the card number, like 4/102, for the exact one)</label><input id="prName" placeholder="e.g. Charizard 4/102" title="Card name" onkeydown="if(event.key==='Enter')priceGo('tcg')">
+    <label>Game</label><select id="prGame" title="Which card game"><option value="">Any game</option>${games.map(g => `<option ${last?.game === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>
+    <p class="help">Opens in your web browser:</p>
+    <div class="row"><button class="primary" onclick="priceGo('tcg')" title="TCGplayer: market price">🃏 TCGplayer</button><button onclick="priceGo('ebay')" title="eBay sold listings: what people actually paid">🛒 eBay sold</button><button onclick="priceGo('pc')" title="PriceCharting: price history">📈 PriceCharting</button></div>
+    ${priceRecent.length ? `<p class="help" style="margin-top:12px">Recent checks:</p><div class="row">${priceRecent.map((r, i) => `<button class="ghost" style="padding:3px 9px" onclick="$('prName').value=priceRecent[${i}].name;$('prGame').value=priceRecent[${i}].game||''">${esc(r.name)}</button>`).join('')}</div>` : ''}
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button onclick="$('priceDlg').close()">Close</button></div>`;
+  $('priceDlg').showModal(); setTimeout(() => $('prName').focus(), 50);
+}
+function priceUrl(site, name, game) {
+  const q = encodeURIComponent(name), qg = encodeURIComponent(`${name} ${game || ''}`.trim());
+  return site === 'ebay' ? `https://www.ebay.com/sch/i.html?_nkw=${qg}&LH_Sold=1&LH_Complete=1` : site === 'pc' ? `https://www.pricecharting.com/search-products?q=${qg}&type=prices` : `https://www.tcgplayer.com/search/all/product?q=${q}&view=grid`;
+}
+function priceGo(site) {
+  const name = $('prName').value.trim(), game = $('prGame').value; if (!name) { $('prName').focus(); return toast('Type the card\'s name first'); }
+  priceRecent = [{ name, game }, ...priceRecent.filter(r => r.name.toLowerCase() !== name.toLowerCase())].slice(0, 8); try { localStorage.setItem('priceRecent', JSON.stringify(priceRecent)); } catch {}
+  window.open(priceUrl(site, name, game), '_blank');
+}
+// ---------- 🎉 holiday app style (Derek, 1.50.0) ----------
+// Close to a holiday, Movie Royal asks once each time it opens: ✅ Yes (turns the style on for that holiday) · Not now
+// (asks again next time) · Not until next year (no more asking about THAT holiday this year). Settings → App & background
+// has 🎨 App style: Automatic (= the pop-up), Normal always, or any holiday's style any time.
+const HOLIDAYS = (() => {
+  const d = (y, m, day) => new Date(y, m - 1, day), add = (x, n) => new Date(x.getFullYear(), x.getMonth(), x.getDate() + n);
+  const easter = y => { const a = y % 19, b = Math.floor(y / 100), c = y % 100, dd = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - dd - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), mo = Math.floor((h + l - 7 * m + 114) / 31); return d(y, mo, ((h + l - 7 * m + 114) % 31) + 1); };
+  const thanks = y => { const n1 = d(y, 11, 1), first = add(n1, (4 - n1.getDay() + 7) % 7); return add(first, 21); }; // 4th Thursday of November
+  return [ // [id, name, icon, falling things, (year) => [start, end] (end = the last day it's on)]
+    ['newyear', "New Year's", '🎆', ['🎆', '✨', '🎉', '🥂', '🎇'], y => [d(y - 1, 12, 27), d(y, 1, 2)]],
+    ['valentine', "Valentine's Day", '💘', ['💘', '💖', '💕', '🌹', '💌'], y => [d(y, 2, 7), d(y, 2, 15)]],
+    ['stpat', "St. Patrick's Day", '☘️', ['☘️', '🍀', '🌈', '🪙', '🍀'], y => [d(y, 3, 10), d(y, 3, 18)]],
+    ['easter', 'Easter', '🐰', ['🐰', '🥚', '🌷', '🐣', '🌼'], y => { const e = easter(y); return [add(e, -7), add(e, 1)]; }],
+    ['july4', 'the 4th of July', '🎇', ['🎆', '🎇', '⭐', '✨', '🎆'], y => [d(y, 6, 27), d(y, 7, 5)]],
+    ['halloween', 'Halloween', '🎃', ['🦇', '🎃', '👻', '🕸️', '🍬'], y => [d(y, 10, 17), d(y, 11, 1)]],
+    ['turkey', 'Thanksgiving', '🦃', ['🍂', '🍁', '🦃', '🌽', '🥧'], y => { const t = thanks(y); return [add(t, -7), add(t, 1)]; }],
+    ['xmas', 'Christmas', '🎄', ['❄️', '🎄', '⭐', '🎁', '❄️'], y => [d(y, 12, 1), d(y, 12, 26)]]
+  ].map(([id, name, icon, fx, win]) => ({ id, name, icon, fx, win }));
+})();
+function holNow(now = holClock()) { // the holiday that's close right now (+ which year's one it is), or null
+  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (const h of HOLIDAYS) for (const y of [day.getFullYear(), day.getFullYear() + 1]) { const [a, b] = h.win(y); if (day >= a && day <= b) return { ...h, year: y }; }
+  return null;
+}
+let holTestDate = null; const holClock = () => holTestDate || new Date();
+function holStyleId() {
+  const st = S?.settings?.appStyle || 'auto';
+  if (st === 'normal') return null;
+  if (st !== 'auto') return HOLIDAYS.some(h => h.id === st) ? st : null;
+  const h = holNow(), a = h && S.settings.holTheme?.[h.id];
+  return h && a?.ans === 'yes' && a.year === h.year ? h.id : null;
+}
+let holOn = undefined;
+function applyStyle() {
+  const id = holTry || holStyleId(); if (id === holOn) return; holOn = id;
+  document.body.className = document.body.className.replace(/\bhol(-\w+)?\b/g, '').trim();
+  if (id) document.body.classList.add('hol', 'hol-' + id);
+  const h = HOLIDAYS.find(x => x.id === id), fx = $('holFx');
+  fx.innerHTML = h && S?.settings?.holFx !== false ? Array.from({ length: 12 }, (_, i) => `<span style="left:${(i * 8.3 + Math.random() * 6).toFixed(1)}%;animation-duration:${(16 + Math.random() * 16).toFixed(1)}s;animation-delay:-${(Math.random() * 30).toFixed(1)}s;font-size:${14 + Math.round(Math.random() * 10)}px">${h.fx[i % h.fx.length]}</span>`).join('') : '';
+}
+let holTry = null; // 🧪 trying a style from the Test tab (not saved)
+function holTryStyle(id) { holTry = id || null; holOn = undefined; applyStyle(); toast(id ? `🎨 Trying the ${HOLIDAYS.find(h => h.id === id).name} style (not saved). Press it again with “Normal” to stop.` : '🎨 Back to your saved style'); }
+let holAsked = false;
+function holAsk(force = false) { // the pop-up when Movie Royal opens close to a holiday
+  if (PC_ONLY || !S) return;
+  if (!force && holAsked) return;
+  if (typeof upd !== 'undefined' && upd.open) return setTimeout(() => holAsk(force), 3000);
+  const h = holNow(); if (!h) { if (force) toast('No holiday is close on that date'); return; }
+  const a = S.settings.holTheme?.[h.id];
+  if (!force && ((S.settings.appStyle || 'auto') !== 'auto' || (a && a.year === h.year))) return;
+  holAsked = true;
+  $('holBody').innerHTML = `<div class="holBig">${h.icon}</div><h3 style="text-align:center">${esc(h.name)} is coming up!</h3>
+    <p class="help" style="text-align:center">Want Movie Royal dressed up for ${esc(h.name)}? It changes the colors of the app (not your stream) until the holiday is over.</p>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="holAnswer('${h.id}',${h.year},'yes')">${h.icon} Yes, turn it on</button><button onclick="holAnswer('${h.id}',${h.year},'later')" title="Asks again next time Movie Royal opens">Not now</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'cool')" title="No more asking about ${esc(h.name)} until next year">Not until next year</button></div>`;
+  $('holDlg').showModal();
+}
+async function holAnswer(id, year, ans) {
+  $('holDlg').close();
+  if (ans === 'later') return toast('OK! I\'ll ask again next time Movie Royal opens.');
+  if (holTestDate) { holTestDate = null; return toast(`🧪 Test only: you picked “${ans === 'yes' ? 'Yes' : 'Not until next year'}” (nothing saved)`); }
+  await api('/api/settings', { holTheme: { ...(S.settings.holTheme || {}), [id]: { ans, year } } });
+  toast(ans === 'yes' ? '🎨 Holiday style on! Change it any time: Settings → App & background → App style.' : `OK, no more asking about ${HOLIDAYS.find(h => h.id === id).name} until next year.`, 6000);
+}
+function holStyleHTML() {
+  const st = S.settings.appStyle || 'auto', h = holNow(), a = h && S.settings.holTheme?.[h.id], on = h && a?.ans === 'yes' && a.year === h.year;
+  return `<h3 style="margin-top:18px">🎨 App style</h3>
+    <select style="width:auto" onchange="api('/api/settings',{appStyle:this.value}).then(()=>toast('Saved'))" title="App style"><option value="auto" ${st === 'auto' ? 'selected' : ''}>🎉 Automatic: ask me when a holiday is close</option><option value="normal" ${st === 'normal' ? 'selected' : ''}>💜 Normal, always (never ask)</option>${HOLIDAYS.map(x => `<option value="${x.id}" ${st === x.id ? 'selected' : ''}>${x.icon} ${esc(x.name)} style, all the time</option>`).join('')}</select>
+    ${st === 'auto' ? `<p class="help">${h ? `${h.icon} ${esc(h.name)} is close: the holiday style is <b>${on ? 'on' : 'off'}</b>. <button class="ghost" style="padding:3px 9px" onclick="api('/api/settings',{holTheme:{...(S.settings.holTheme||{}),'${h.id}':{ans:'${on ? 'cool' : 'yes'}',year:${h.year}}}}).then(()=>toast('Saved'))">${on ? 'Turn it off' : 'Turn it on'}</button>` : 'No holiday is close right now. When one is, Movie Royal asks if you want its style when it opens.'}</p>` : ''}
+    <label class="ck"><input type="checkbox" ${S.settings.holFx !== false ? 'checked' : ''} onchange="api('/api/settings',{holFx:this.checked}).then(()=>{holOn=undefined;applyStyle()})"> <span>Little falling decorations (bats, snowflakes, hearts…) with the holiday styles</span></label>`;
+}
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
 if (PC_ONLY) { document.body.classList.add('pcOnly'); document.title = '💬 Pretend chat · Movie Royal'; }
-fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(holAsk, 9000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 <script src="spell.js"></script>

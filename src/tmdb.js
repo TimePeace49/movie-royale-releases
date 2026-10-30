@@ -44,7 +44,7 @@ const details = new Map();
 export async function getMovie(id) {
   const k = String(id), hit = details.get(k);
   if (hit && Date.now() - hit.t < 6 * 3600e3) return hit.v;
-  const m = await req(`/movie/${encodeURIComponent(id)}?language=en-US&append_to_response=credits`);
+  const m = await req(`/movie/${encodeURIComponent(id)}?language=en-US&append_to_response=credits,keywords`);
   const v = {
     ...shape(m),
     director: (m.credits?.crew || []).filter(c => c.job === 'Director').map(c => c.name).slice(0, 2).join(' & '),
@@ -53,7 +53,9 @@ export async function getMovie(id) {
     synopsis: firstSentence(m.overview),
     runtime: m.runtime || null,
     collection: m.belongs_to_collection ? { id: m.belongs_to_collection.id, name: m.belongs_to_collection.name } : null,
-    imdbId: m.imdb_id || null
+    imdbId: m.imdb_id || null,
+    // 🚫 for the automatic ban rules (not in English / really religious / documentaries)
+    allGenres: (m.genres || []).map(g => g.name), spoken: (m.spoken_languages || []).map(l => l.iso_639_1), keywords: (m.keywords?.keywords || []).map(k => k.name)
   };
   details.set(k, { t: Date.now(), v });
   return v;

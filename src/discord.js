@@ -4,7 +4,7 @@ import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuil
 import { db, save, streamerName } from './store.js';
 import { SYNC_NAME, SYNC_TOPIC } from './relay.js';
 import { searchMovies, getMany, cachedMovie } from './tmdb.js';
-import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, swapMovie, swapsLocked, luckOn, freePicks, swapHint, lockMode } from './movies.js';
+import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, banAsk, swapMovie, swapsLocked, luckOn, freePicks, swapHint, lockMode } from './movies.js';
 
 let client = null;
 export const status = { state: 'off', error: null, tag: null, guilds: [], warnings: [] };
@@ -44,6 +44,7 @@ export function helpText() {
     ``,
     `**In the list you'll see:**`,
     `🚫 *banned*, *series taken* or *${new Date().getFullYear()} movie* · ✅ *already watched* · 🔒 *already picked* — somebody has it, so pick something else. Every movie can only be picked once.`,
+    `🚫 **Banned movies** (movies not in English, really religious movies, documentaries, and ones ${streamerName()} banned) need ${streamerName()}'s OK first: if you want to suggest one, ask **${banAsk()}** to unban it.`,
     ``,
     `**Rules:** be in Twitch chat during the stream to get your movies on the cliff · if your movie wins, your other movies sit out until the new week (Sunday) · one movie per series${db.settings.banCurrentYear !== false ? ` · no ${new Date().getFullYear()} movies` : ''}${luckOn() ? ' · 🍀 every battle your movies lose, they get a little luckier' : ''}`,
     ...(() => { const today = db.stream?.day === new Date().toDateString(), t = today ? (db.stream.tonight || []).filter(x => !x.text) : [], who = db.settings.spotName || 'Kirb';
@@ -237,7 +238,7 @@ async function movieChoices(q, user, opts = {}) {
 }
 async function explainBlocked(value, user) {
   const id = String(value).slice(2), movie = cachedMovie(id) || (await getMany([id], 2500)).get(id);
-  return movie ? (blockReason(movie, user)?.msg || 'That movie can\'t be picked right now.') : 'That movie can\'t be picked right now.';
+  return movie ? (blockReason(movie, user, { record: true })?.msg || 'That movie can\'t be picked right now.') : 'That movie can\'t be picked right now.';
 }
 
 async function handle(i) {

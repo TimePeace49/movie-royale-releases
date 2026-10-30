@@ -12,7 +12,7 @@ import { db, save, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS } f
 import * as lb from './letterboxd.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
-import { searchMovies, findImdb } from './tmdb.js';
+import { getMany, searchMovies, findImdb } from './tmdb.js';
 import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
@@ -30,7 +30,7 @@ import * as cards from './cards.js';
 import * as chatlog from './chat.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
-import { blockReason, banMovie, unbanMovie, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
+import { blockReason, banMovie, unbanMovie, unapprove, autoBan, isBanned as isBannedId, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
 import { suggest, sweepWatched, picksUsed, addSpots, resetSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey } from './movies.js';
 
 import * as errlog from './errlog.js';
@@ -1594,7 +1594,7 @@ app.post('/api/settings', (req, res) => {
     if (k === 'seJwt' || k === 'slToken') startDonationFeed();
   }
   if ('weekStart' in body && db.week) db.week.key = weekKey(); // changing the start day never resets anyone mid-week
-  if (['maxPerUser', 'banCurrentYear', 'luckOn', 'twitchMoviesCommand', 'streamerName', 'ideasDoc'].some(k => k in body)) discord.refreshPinned?.();
+  if (['maxPerUser', 'banCurrentYear', 'luckOn', 'twitchMoviesCommand', 'streamerName', 'ideasDoc', 'banAsk'].some(k => k in body)) discord.refreshPinned?.();
   if ('discordChannelName' in body && body.discordChannelName !== undefined && rdName !== db.settings.discordChannelName) rd = true; // makes/finds the new channel
   if ('spotName' in body) for (const e of getList('movies')?.entries || []) if (e.kind === 'spot') e.label = `${db.settings.spotName || 'Kirb'}'s Pick`;
   if ('map' in body && db.settings.map !== 'random' && !mapById(db.settings.map)) db.settings.map = 'random';
@@ -2004,7 +2004,7 @@ app.post('/api/import/link', async (req, res) => {
 });
 
 // ---------- ban list ----------
-app.get('/api/bans', (req, res) => res.json({ bans: [...(db.bans || [])].sort((a, b) => b.at - a.at), yearAllow: (db.yearAllow || []).map(id => ({ tmdbId: id, title: db.yearAllowTitles?.[id] || null })), year: new Date().getFullYear() }));
+app.get('/api/bans', (req, res) => res.json({ ok: (db.banOk || []).map(id => ({ tmdbId: id, title: db.banOkTitles?.[id] || null })), bans: [...(db.bans || [])].sort((a, b) => b.at - a.at), yearAllow: (db.yearAllow || []).map(id => ({ tmdbId: id, title: db.yearAllowTitles?.[id] || null })), year: new Date().getFullYear() }));
 app.post('/api/bans', async (req, res) => {
   try {
     let id = String(req.body?.tmdbId || '');
@@ -2015,6 +2015,61 @@ app.post('/api/bans', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.delete('/api/bans/:id', (req, res) => { unbanMovie(req.params.id); pushState(); res.json({ ok: true }); });
+// 🚫 search for the Bans tab: which movies the automatic rules ban (and which are banned / pre-approved)
+app.get('/api/bans/search', async (req, res) => {
+  try {
+    const r = (await searchMovies(String(req.query.q || ''))).slice(0, 8), full = await getMany(r.map(m => m.id), 2500);
+    res.json(r.map(m => { const d = full.get(String(m.id)), rb = d ? autoBan(d) : null; return { ...m, rule: rb ? rb.reason : null, ok: (db.banOk || []).includes(String(m.id)) }; }));
+  } catch (e) { res.json({ error: e.message }); }
+});
+// ✅ pre-approve (unban) a movie the rules would ban, or take that back
+app.post('/api/bans/ok', (req, res) => {
+  const id = String(req.body?.tmdbId || ''); if (!id) return res.sendStatus(400);
+  if (req.body?.ok === false) unapprove(id); else unbanMovie(id, req.body?.title || null);
+  pushState(); res.json({ ok: true });
+});
+// 🔎 movies already in the pool that break the ban rules (Derek decides: ban them or leave them)
+app.post('/api/bans/pool-check', async (req, res) => {
+  const IN = ['active', 'benched', 'paused', 'away'], ents = (getList('movies')?.entries || []).filter(e => IN.includes(e.status) && e.tmdbId && !isBannedId(e.tmdbId));
+  const out = [], until = Date.now() + 45000;
+  for (let i = 0; i < ents.length && Date.now() < until; i += 8) {
+    const full = await getMany(ents.slice(i, i + 8).map(e => e.tmdbId), 6000);
+    for (const e of ents.slice(i, i + 8)) { const d = full.get(String(e.tmdbId)), rb = d ? autoBan(d) : null; if (rb) out.push({ tmdbId: e.tmdbId, title: e.label, year: e.sub, poster: e.poster || d.poster, reason: rb.reason, key: rb.key, who: e.backers?.[0]?.name || null }); }
+  }
+  res.json({ checked: ents.length, found: out, partial: Date.now() >= until });
+});
+app.post('/api/bans/rule-ban', (req, res) => { // ban the movies the pool check found (one or all)
+  let n = 0; for (const m of req.body?.movies || []) if (banMovie({ id: m.tmdbId, title: m.title, year: m.year, poster: m.poster }, m.reason, m.key || 'rule')) n++;
+  pushState(); refreshPreview(); res.json({ ok: true, n });
+});
+// 🧪 Test tab: the ban rules on made-up TMDB details (no internet needed), and lots of pretend bans for trying the search box
+app.post('/api/test/ban-rules', (req, res) => {
+  const T = [
+    ['Amélie (2001)', { lang: 'fr', spoken: ['fr'], allGenres: ['Comedy', 'Romance'], keywords: ['paris'] }],
+    ['Inglourious Basterds (2009): some French/German, mostly English', { lang: 'en', spoken: ['en', 'de', 'fr', 'it'], allGenres: ['Drama', 'Thriller', 'War'], keywords: ['nazi'] }],
+    ['Parasite (2019)', { lang: 'ko', spoken: ['ko', 'en'], allGenres: ['Comedy', 'Thriller', 'Drama'], keywords: [] }],
+    ['Apocalypto (2006)', { lang: 'en', spoken: ['yua'], allGenres: ['Action', 'Drama'], keywords: [] }],
+    ['The Passion of the Christ (2004)', { lang: 'en', spoken: ['en', 'he', 'la'], allGenres: ['Drama', 'History'], keywords: ['jesus christ', 'crucifixion', 'bible'] }],
+    ['The Ten Commandments (1956)', { lang: 'en', spoken: ['en'], allGenres: ['Drama', 'History'], keywords: ['moses', 'ten commandments', 'old testament'] }],
+    ["God's Not Dead (2014)", { lang: 'en', spoken: ['en'], allGenres: ['Drama'], keywords: ['christian film', 'atheism'] }],
+    ["Monty Python's Life of Brian (1979)", { lang: 'en', spoken: ['en'], allGenres: ['Comedy'], keywords: ['jesus christ', 'bible', 'satire'] }],
+    ['The Book of Eli (2010)', { lang: 'en', spoken: ['en'], allGenres: ['Action', 'Thriller', 'Science Fiction'], keywords: ['bible', 'post-apocalyptic'] }],
+    ['The Exorcist (1973)', { lang: 'en', spoken: ['en'], allGenres: ['Horror'], keywords: ['exorcism', 'priest', 'catholic', 'faith', 'god'] }],
+    ['Free Solo (2018)', { lang: 'en', spoken: ['en'], allGenres: ['Documentary'], keywords: ['climbing'] }],
+    ['Jackass: The Movie (2002)', { lang: 'en', spoken: ['en'], allGenres: ['Comedy', 'Documentary'], keywords: ['stunt'] }],
+    ['Heat (1995)', { lang: 'en', spoken: ['en', 'es'], allGenres: ['Crime', 'Drama', 'Action'], keywords: ['heist'] }]
+  ].map(([t, d]) => { const rb = autoBan({ id: 'test', ...d }); return { title: t, banned: !!rb, reason: rb?.reason || null }; });
+  res.json({ ok: true, rows: T, rules: db.settings.banRules || {} });
+});
+app.post('/api/test/ban-many', (req, res) => {
+  db.bans = (db.bans || []).filter(b => !b.test);
+  if (!req.body?.clear) {
+    const words = ['Night', 'Shadow', 'River', 'Silent', 'Golden', 'Last', 'Broken', 'Winter', 'Holy', 'Lost', 'Red', 'Paper', 'Iron', 'Secret', 'Little'], things = ['Garden', 'Prayer', 'Village', 'Mountain', 'Kingdom', 'Letters', 'Harvest', 'Road', 'Bells', 'Sea'];
+    const rs = [['not in English', 'english'], ['religious movie', 'religious'], ['documentary', 'documentary']];
+    for (let i = 0; i < 300; i++) { const [reason, auto] = rs[i % 3]; db.bans.push({ tmdbId: 'test' + i, title: `🧪 ${words[i % words.length]} ${things[(i * 7) % things.length]}${i > 149 ? ' II' : ''}`, year: String(1950 + (i * 13) % 74), poster: null, reason, auto, at: Date.now() - i * 60000, test: true }); }
+  }
+  save(); pushState(); res.json({ ok: true, n: db.bans.filter(b => b.test).length });
+});
 app.post('/api/year-allow', async (req, res) => {
   const id = String(req.body?.tmdbId || ''); if (!id) return res.sendStatus(400);
   allowThisYear(id, req.body?.allow !== false);

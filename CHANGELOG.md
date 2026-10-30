@@ -2,6 +2,23 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.50.0 (test build)
+- 🚫 **New movie bans** (Settings → 🚫 Banned Movies, each one can be turned off):
+  - 🌍 Movies that aren't in English at all. Movies that are mostly English with some other languages in them are fine.
+  - ⛪ Really religious movies, like *The Passion of the Christ* or *The Ten Commandments*. Comedies, horror and action movies that only touch on religion are still allowed.
+  - 🎥 Pure documentaries. A documentary that's also a comedy (like *Jackass*) is fine.
+  - They go by TMDB's info (languages, genres, keywords), so they can guess wrong now and then: **Unban** a movie to pre-approve it (the rules skip it from then on), or ban one by hand. Searching a movie on that page shows if the rules ban it, with a **✅ Pre-approve** button.
+  - A movie lands in the banned list the first time someone tries to pick it. **🔎 Check movies already picked** shows the movies already in the pool that break the rules. Nothing happens to them unless you ban them.
+- 📌 **Discord says banned movies need your OK first:** the pinned message and every ban message tell people to ask Kirb to unban a movie they want to suggest. You can change who they ask on the Banned Movies page. The 24/7 Discord bot follows the same rules, so Movie Royal will ask you to update it once.
+- 🔍 **Search box for banned movies:** search the banned list by title, year or reason, and filter it (banned by you / not in English / religious / documentary). It shows 100 at a time.
+- 🎨 **Holiday app style:** when a holiday is close (New Year's, Valentine's Day, St. Patrick's Day, Easter, the 4th of July, Halloween, Thanksgiving, Christmas), Movie Royal asks when it opens if you want the app dressed up for it, with its own colors and little falling decorations.
+  - **Yes** turns it on until the holiday is over.
+  - **Not now** asks again next time.
+  - **Not until next year** stops asking about that holiday until next year.
+  - Only the app changes, not your stream. Change it any time in Settings → App & background → 🎨 App style (Automatic, Normal always, or any holiday's style all year).
+- 💲 **Check a card's price:** a new button under 🥋 FIGHT! on the Card battles tab. Type a card you pulled from the pack and open TCGplayer, eBay sold listings or PriceCharting in your web browser.
+- ❓ **Fixed:** help mode stopped working when you clicked some buttons on the 🧪 Test tab (like the map "Try it" buttons).
+
 ## 1.49.1 (test build)
 - ✋ **The movie winner is always asked first.** When a Discord movie wins and the winner types in chat, Movie Royal now always asks them !accept or !pass before the movie is claimed. Before, a happy first message like "YES!" or "yeah" counted as the answer, so the movie got claimed without the question ever being asked. Now only typing !accept / !pass right away skips the question; yes / no words count once they've been asked. If the bot can't ask in chat (not signed in, or Twitch says no), you get a warning to use ✅ Accept / ⏭️ Pass on the winner card.
 - 🎉 **Holiday maps have their own section.** Every map list (Battle tab, Settings, Card battles, the test lab) now puts the holiday maps together in a "🎉 Holiday maps" section at the bottom. They're still normal maps: use them any time, and they still come up on 🎲 Random.
