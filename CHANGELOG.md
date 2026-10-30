@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.56.0 (test build)
+- 🃏 **Character-only maps in regular battles:** when a battle has 🧍 characters turned on, its map menu also lists the character-only maps: Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum and WW2 Battlefield (in the "🃏 Character only" part). Turn characters off and they leave the menu, and the battle goes back to a ball map.
+  - The characters fight there like the card packs do, with grapples, spells, rifles and weapons, and everyone is dressed for the map: ninjas, wrestlers, wizards, gladiators, soldiers.
+  - The winner is still picked fairly by the odds and luck.
+  - On maps with a 🥊 FINAL FIGHT, the last two get one, with a finisher and a celebration.
+  - The winner gets claimed in chat like any battle (the claim pop-up shows on top), and it counts in history, luck and stats.
+  - 🎲 Random still only picks ball maps.
+- 🎨 Random character looks are now the same on every game screen (the app's preview and OBS show the same people).
+- 🧪 Test tab → 🎨 Custom characters → 🗺️ Themed map battle lists the character-only maps too.
+
 ## 1.55.2 (test build)
 - 🎨 **Profiles show the character:** a viewer who made a character with /character shows a preview of it on their profile (double-click their name), with their Twitch picture on the chest and the number of every part.
 - 🎲 **Random looks are only for that battle.** Someone without their own character gets a new random look every battle, so a random look never becomes their character. Only what they pick with /character sticks. The look stays the same from the countdown to the win.

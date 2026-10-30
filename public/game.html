@@ -15,6 +15,7 @@
   .display { font-family:'Lilita One', Impact, 'Arial Black', sans-serif; letter-spacing:.5px; }
   .hidden { opacity:0; pointer-events:none; transform:scale(.92) translateY(20px); }
   /* 🎡 the wheel scene */
+  body.charFight #claim, body.charFight #roll { z-index:40; } /* 🧍 a characters battle on a character-only map: the claim pop-up goes on top of it */
   #cardLayer { position:absolute; inset:0; z-index:35; background:#1a0a08; } #cardLayer.hidden { display:none; } #cardLayer canvas { position:absolute; left:0; top:0; width:1920px; height:1080px; }
   #wheelLayer { position:absolute; inset:0; z-index:30; background:radial-gradient(circle at 34% 50%, #3a1f6e 0%, #1b0d36 55%, #0b0518 100%); transition:opacity .4s, transform .4s; }
   #wheelLayer canvas { position:absolute; inset:auto; width:1000px; height:1000px; left:40px; top:40px; }
@@ -3554,11 +3555,12 @@ function charStyle(f) { // picked once per piece from its id (so a piece looks t
 }
 // 🎨 a piece's look: their own /character always wins; everyone else gets a random one for THIS battle only (Derek: a random
 // look is never someone's default; a new battle = new piece objects = new looks). It stays the same through the countdown, fight and win.
+let lookSeed = '';
 function charLook(f) {
   if (f.look) return f.look;
-  f._seed ||= Math.random().toString(36).slice(2);
-  const k = `${f.id}|${f.gender || 'n'}|${mapId}|${f.chaos ? 1 : 0}`; // (f.chaos: the Test tab's all-chaos battle)
-  if (f._autoK !== k) { f._autoK = k; f._auto = CHAR_PARTS.auto(String(f.id) + f._seed, f.gender, mapId, f.chaos); }
+  f._seed ||= Math.random().toString(36).slice(2); const sd = lookSeed || f._seed; // (lookSeed: from the app, the same on every game screen)
+  const k = `${f.id}|${f.gender || 'n'}|${mapId}|${f.chaos ? 1 : 0}|${sd}`; // (f.chaos: the Test tab's all-chaos battle)
+  if (f._autoK !== k) { f._autoK = k; f._auto = CHAR_PARTS.auto(String(f.id) + sd, f.gender, mapId, f.chaos); }
   return f._auto;
 }
 function charToken(f, c, g, m, rr) {
@@ -4402,6 +4404,7 @@ function applyPreview(m) {
   if (phase === 'ended' && !replay) { phase = 'idle'; fighters = []; winner = null; } // the app only sends this between battles: never stay stuck on the last battle
   if (m.heal && phase !== 'idle' && phase !== 'waiting') { if (replay) endReplay(true); SFX.stopMusic(); phase = 'idle'; fighters = []; winner = null; } // the app says no battle is going: catch up
   if (phase !== 'idle' && phase !== 'waiting') return;
+  if (m.lookSeed && m.lookSeed !== lookSeed) { lookSeed = m.lookSeed; for (const f of fighters) f._dirty = true; } // 🎨 a new battle: new random looks
   setSkin(m.skin); listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length; pendingCount = m.queued || 0;
   chatGate = !!m.chatGate; if (m.chaos) chaos = m.chaos;
   if (!m.fighters.length && !chatGate) { phase = 'idle'; fighters = []; return; }
@@ -4525,6 +4528,7 @@ function wheelMsg(m) {
   });
 }
 function startGame(m) {
+  if (m.lookSeed) lookSeed = m.lookSeed;
   setSkin(m.skin);
   hideWin(); hideClaim(); camReset(); REC.length = 0;
   gameId = m.gameId; listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length;

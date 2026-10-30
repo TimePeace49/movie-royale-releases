@@ -12,6 +12,19 @@
   const imgs = new Map();
   const imgFor = src => { if (!src) return null; let i = imgs.get(src); if (!i) { i = new Image(); i.decoding = 'async'; i.src = src; imgs.set(src, i); } return i.complete && i.naturalWidth ? i : null; };
   const vr = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a); // visual-only randomness
+  // 🧍 a battle with characters on a character-only map: fighters are people (charparts.js) instead of packs.
+  // Their own /character, else a random look for this battle (scene.lookSeed: the same on every game screen; themed by map).
+  const CP = () => window.CHAR_PARTS;
+  const charLook = f => f.look || (f._lk && f._lkK === scene.lookSeed + scene.map ? f._lk : (f._lkK = scene.lookSeed + scene.map, f._lk = CP().auto(String(f.id) + (scene.lookSeed || ''), f.gender, scene.map, f.chaos)));
+  function charCanvas(f) { // drawn once (again when their picture arrives): head to waist, the movie poster / Twitch picture on the chest
+    const img = imgFor(f.image), k = `${scene.lookSeed}|${scene.map}|${img ? 1 : 0}`; if (f._cc && f._ccK === k) return f._cc;
+    const c = f._cc || document.createElement('canvas'); c.width = 200; c.height = 200; const cg = c.getContext('2d'); cg.clearRect(0, 0, 200, 200);
+    CP().draw(cg, 100, 62, charLook(f), img, f.color, (f.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase());
+    f._cc = c; f._ccK = k; return c;
+  }
+  const CHAR_COLS = ['#e8454a', '#3a8ad8', '#3aa85a', '#c77dff', '#f0a020', '#e05aa8', '#2ab0b0', '#8a6a4a', '#5a6ad8', '#d8603a']; // (outfit colours: the drawing needs #rrggbb)
+  const CHAR_SRC = [100 - 62 * .82, 100 - 62 * 1.2, 62 * 1.64, 62 * 2.2]; // the part of that canvas that fills the pack's box (x, y, w, h)
+  const limbCol = f => { if (!f.char || !CP()) return { leg: '#151515', shoe: '#151515', arm: '#151515', hand: '#f2e0c4' }; const l = CP().limbs(charLook(f), f.color); return { leg: l.legs === 'pants' || l.legs === 'shorts' ? l.pants : l.skin, shoe: l.shoe, arm: l.arm, hand: l.skin }; };
   function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   let R = Math.random; const rr = (a, b) => a + R() * (b - a);
   const snd = (n, o) => { if (scene.show && !replayOn) SFX.play(n, o); }; // (a fight still finishing behind another tab stays quiet)
@@ -85,7 +98,7 @@
       const x = lo + (c + .5) * ((hi - lo) / cols) + rr(-20, 20);
       return { ...p, x, z: clamp(z, 0, 1), h: 0, vx: 0, vz: 0, vh: 0, face: x < W / 2 ? 1 : -1, hp: 100, alive: true, size: size * rr(.94, 1.06),
         cd: rr(.3, 1.4), stun: 0, atk: null, block: 0, target: null, retarget: 0, ph: rr(0, 6), limbs: { la: 1, ra: 1, ll: 1, rl: 1 }, head: true,
-        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, down: 0, heldBy: null, lie: 0, whip: 0, whipBy: null, rebound: 0, out: false, falling: false, color: p.color || `hsl(${Math.floor(R() * 360)},65%,48%)`, weapon: COLO() ? GLAD[Math.floor(R() * GLAD.length)] : WAR() ? 'rifle' : null };
+        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, down: 0, heldBy: null, lie: 0, whip: 0, whipBy: null, rebound: 0, out: false, falling: false, color: p.color || (p.char ? CHAR_COLS[[...String(p.id)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % CHAR_COLS.length] : `hsl(${Math.floor(R() * 360)},65%,48%)`), weapon: COLO() ? GLAD[Math.floor(R() * GLAD.length)] : WAR() ? 'rifle' : null };
     });
   }
 
@@ -95,7 +108,7 @@
     if (m.type === 'finTest') return finTest(m);
     if (m.type !== 'cardScene') return;
     const was = scene; scene = { ...m, wacky: m.wacky || {} };
-    layer.classList.toggle('hidden', !m.show);
+    layer.classList.toggle('hidden', !m.show); document.body.classList.toggle('charFight', !!(m.show && m.chars)); // (🧍 the claim pop-up shows on top of a characters fight)
     if (m.show) SFX.setMap?.('card-' + (m.map || 'kungfu'));
     if (!running) { running = true; requestAnimationFrame(frame); } // (keeps going behind another tab until a fight is finished, without drawing or sound)
     if (!m.show && was.show) SFX.stopMusic?.();
@@ -858,6 +871,7 @@
     g.lineTo(x + w, y + h); for (let i = teeth; i >= 0; i--) g.lineTo(x + w * i / teeth, y + h - (i % 2 ? tz : 0)); g.closePath();
   }
   function drawFace(f, cx, top, PW, PH, s, look) {
+    if (f.char) return; // (🧍 characters have their own faces)
     const ey = top + PH * .3, ex = PW * .18, ko = !f.alive, hurt = f.hurtT > 0;
     // headband
     if (WIZ()) { // 🧙 a pointy wizard hat
@@ -888,6 +902,14 @@
     else { g.fillStyle = '#fff'; g.fillRect(cx - 9 * s, my - 4 * s, 18 * s, 8 * s); g.strokeRect(cx - 9 * s, my - 4 * s, 18 * s, 8 * s); g.beginPath(); for (let i = 1; i < 4; i++) { g.moveTo(cx - 9 * s + i * 4.5 * s, my - 4 * s); g.lineTo(cx - 9 * s + i * 4.5 * s, my + 4 * s); } g.stroke(); }
   }
   function drawPackBody(f, x, top, PW, PH, s, cut) {
+    if (f.char && CP()) { // 🧍 a character: their drawing fills the box (with the hurt flash / damage look like a pack)
+      const c = charCanvas(f), [sx, sy, sw, sh] = CHAR_SRC, cy = cut ? sh * .42 : 0;
+      g.save(); if (f.hurtT > 0) g.filter = `brightness(${1 + f.hurtT * 1.6})`; else if (f.hp < 100) g.filter = `saturate(${.55 + .45 * Math.max(0, f.hp) / 100})`;
+      g.drawImage(c, sx, sy + cy, sw, sh - cy, x - PW * .06, top + PH * cy / sh, PW * 1.12, PH - PH * cy / sh);
+      g.restore();
+      if (cut) { g.fillStyle = '#b0101c'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(x + PW * (i + .5) / 6, top + PH * cy / sh + 3 * s, 6 * s, 4 * s, 0, 0, 7); g.fill(); } }
+      return;
+    }
     const img = imgFor(f.image);
     g.save(); packPath(x, top, PW, PH, s, cut); g.clip();
     if (img) { const r = Math.max(PW / img.naturalWidth, PH / img.naturalHeight), w = img.naturalWidth * r, h = img.naturalHeight * r; g.drawImage(img, x + (PW - w) / 2, top + (PH - h) / 2, w, h); }
@@ -934,7 +956,7 @@
     if (!f.alive && f.koT > 5 && !f.out) g.globalAlpha = Math.max(.35, 1 - (f.koT - 5) * .2);
     const fy = Y - f.h, hip = fy - LL, top = hip - PH, a = f.atk, walk = Math.sin(f.ph), lean = a ? f.face * .1 : 0;
     g.translate(X, hip); g.rotate(lean); g.translate(-X, -hip);
-    g.strokeStyle = '#151515'; g.lineCap = 'round'; g.lineJoin = 'round';
+    const LC = limbCol(f); g.strokeStyle = LC.leg; g.lineCap = 'round'; g.lineJoin = 'round';
     // legs
     for (const [k, side] of [['ll', -1], ['rl', 1]]) {
       const hx = X + side * PW * .22, front = side === f.face;
@@ -943,12 +965,12 @@
       if (f.alive && a?.kind === 'kick' && front) { const u = Math.sin(Math.min(1, a.t / a.dur) * Math.PI); fx = hx + f.face * LL * 1.25 * u; fyy = hip + 4 * s - u * LL * .1 + (1 - u) * LL; }
       if (f.alive && a?.kind === 'jump') { fx = front ? hx + f.face * LL * 1.2 : hx - f.face * LL * .3; fyy = front ? hip + 6 * s : hip + LL * .6; }
       limb(hx, hip, fx, fyy, -f.face * 7 * s, 5.5 * s);
-      g.fillStyle = '#151515'; g.beginPath(); g.ellipse(fx + f.face * 4 * s, fyy, 10 * s, 5 * s, 0, 0, 7); g.fill(); // kung fu slipper
+      g.fillStyle = LC.shoe; g.beginPath(); g.ellipse(fx + f.face * 4 * s, fyy, 10 * s, 5 * s, 0, 0, 7); g.fill(); // kung fu slipper
     }
     drawPackBody(f, X - PW / 2, top, PW, PH, s, f.head ? 0 : PH * .38);
     if (f.head) drawFace(f, X, top, PW, PH, s, f.target ? Math.sign(f.target.x - f.x) : f.face);
     // arms
-    const sy = top + PH * .48;
+    const sy = top + PH * .48; g.strokeStyle = LC.arm;
     for (const [k, side] of [['la', -1], ['ra', 1]]) {
       const shx = X + side * PW * .48, front = side === f.face;
       if (!f.limbs[k]) { g.fillStyle = '#a0101a'; g.beginPath(); g.arc(shx, sy, 5 * s, 0, 7); g.fill(); continue; }
@@ -964,8 +986,8 @@
       if (f.alive && a?.kind === 'cast' && front) { const u = Math.sin(Math.min(1, a.t / a.dur) * Math.PI); hx = shx + f.face * AL * (.5 + 1.1 * u); hy = sy - 14 * s - u * 10 * s; }
       if (front && f.weapon) drawWeapon(f.weapon, hx, hy, f.face, s, a?.kind === 'punch' || (WAR() && a?.kind === 'cast') ? 0 : WAR() ? -.35 : -.9);
       if (front && WAR() && f.flash > 0) { f.flash -= 1 / 60; g.fillStyle = '#ffe27a'; g.beginPath(); g.arc(hx + f.face * 86 * s, hy - 3 * s, 10 * s, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(hx + f.face * 86 * s, hy - 3 * s, 4 * s, 0, 7); g.fill(); } // muzzle flash
-      if (front && WIZ() && f.head !== undefined) { const ang = a?.kind === 'cast' ? -.15 : -1; g.save(); g.translate(hx, hy); g.rotate(ang * f.face); g.strokeStyle = '#4a2a14'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(0, 0); g.lineTo(f.face * 34 * s, 0); g.stroke(); g.fillStyle = a?.kind === 'cast' ? '#fff' : '#c8a0ff'; g.beginPath(); g.arc(f.face * 36 * s, 0, (a?.kind === 'cast' ? 6 : 3.5) * s, 0, 7); g.fill(); g.restore(); g.strokeStyle = '#151515'; } // 🪄 the wand
-      g.fillStyle = '#f2e0c4'; g.strokeStyle = '#151515'; g.lineWidth = 2 * s; g.beginPath(); g.arc(hx, hy, 6.5 * s, 0, 7); g.fill(); g.stroke(); g.strokeStyle = '#151515';
+      if (front && WIZ() && f.head !== undefined) { const ang = a?.kind === 'cast' ? -.15 : -1; g.save(); g.translate(hx, hy); g.rotate(ang * f.face); g.strokeStyle = '#4a2a14'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(0, 0); g.lineTo(f.face * 34 * s, 0); g.stroke(); g.fillStyle = a?.kind === 'cast' ? '#fff' : '#c8a0ff'; g.beginPath(); g.arc(f.face * 36 * s, 0, (a?.kind === 'cast' ? 6 : 3.5) * s, 0, 7); g.fill(); g.restore(); g.strokeStyle = LC.arm; } // 🪄 the wand
+      g.fillStyle = LC.hand; g.strokeStyle = '#151515'; g.lineWidth = 2 * s; g.beginPath(); g.arc(hx, hy, 6.5 * s, 0, 7); g.fill(); g.stroke(); g.strokeStyle = LC.arm;
     }
     g.restore();
     if (f.alive && mode !== 'won' && !FIN.on) { // health bar on top
@@ -979,6 +1001,7 @@
     const s = o.s; g.save(); g.translate(o.x, o.y); g.rotate(o.rot);
     if (o.kind === 'head') { // the top of the pack (with its face) spinning away
       const f = o.f, PW = 74 * s, PH = 112 * s, img = imgFor(f.image);
+      if (f.char && CP()) { const c = charCanvas(f), [sx, sy, sw, sh] = CHAR_SRC; g.drawImage(c, sx, sy, sw, sh * .42, -PW * .56, -PH * .2, PW * 1.12, PH * .42); g.fillStyle = '#b0101c'; g.fillRect(-PW / 2, PH * .2, PW, 5 * s); g.restore(); return; } // 🧍 a character's head
       g.save(); g.beginPath(); g.rect(-PW / 2, -PH * .2, PW, PH * .38); g.clip();
       if (img) { const r = Math.max(PW / img.naturalWidth, PH / img.naturalHeight), w = img.naturalWidth * r, h = img.naturalHeight * r; g.drawImage(img, -w / 2, -PH * .2 + (PH - h) / 2, w, h); } else { g.fillStyle = f.color; g.fillRect(-PW / 2, -PH * .2, PW, PH); }
       g.restore(); g.strokeStyle = '#111'; g.lineWidth = 2 * s; g.strokeRect(-PW / 2, -PH * .2, PW, PH * .38);
@@ -1168,7 +1191,7 @@
     const live = alive().length, on = Object.keys(scene.wacky).filter(k => scene.wacky[k] && !(k === 'weapons' && !MI().drops()) && !(k === 'lions' && !COLO())); // (only the ones this map uses)
     g.fillStyle = 'rgba(20,6,6,.72)'; g.fillRect(0, 0, W, 62);
     g.font = `34px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#ffd23a'; g.fillText(`${MI().title} · ${scene.battleName || 'Card battle'}`, 24, 32);
-    g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText(mode === 'lobby' ? `${F.length} pack${F.length === 1 ? '' : 's'} ready` : `${live} of ${F.length} standing`, W - 24, 32);
+    g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText(mode === 'lobby' ? `${F.length} ${scene.chars ? 'fighter' : 'pack'}${F.length === 1 ? '' : 's'} ready` : `${live} of ${F.length} standing`, W - 24, 32);
     if (on.length) { g.font = '800 20px Inter, sans-serif'; g.textAlign = 'center'; const t = on.map(k => WN[k] || k).join('   '); const w = g.measureText(t).width + 30; g.fillStyle = 'rgba(160,20,40,.8)'; g.fillRect(W / 2 - w / 2, 66, w, 32); g.fillStyle = '#fff'; g.fillText(t, W / 2, 83); }
     if (mode === 'fight' || mode === 'final' || mode === 'intro') { // ⏱️ the fight clock (stops while FINAL FIGHT shows)
       const left = finalLeft > 0 ? finalLeft : Math.max(0, D - T), txt = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
@@ -1179,7 +1202,7 @@
       if (left > 0 && left <= 3) { const k = 1 - (left % 1); g.save(); g.globalAlpha = Math.min(1, (1 - k) * 2 + .2); g.font = `${Math.round(150 + 60 * k)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 12; g.strokeStyle = '#2a0808'; g.strokeText(String(Math.ceil(left)), W / 2, 580); g.fillStyle = '#ffd23a'; g.fillText(String(Math.ceil(left)), W / 2, 580); g.restore(); }
       if (left <= 0) banner('🔔 FIGHT!', 520, 90, '#ffd23a'); }
     if (toastT > 0) { g.globalAlpha = Math.min(1, toastT); banner(toastText, 200, 64, '#ff8ab0'); g.globalAlpha = 1; }
-    if (mode === 'lobby') { banner('🃏 CARD BATTLE', 330, 110); g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(F.length >= 2 ? 'Waiting for the fight…' : 'Add packs in the 📦 Card pool tab', W / 2, 410); }
+    if (mode === 'lobby') { banner(scene.chars ? '⚔️ BATTLE ROYAL' : '🃏 CARD BATTLE', 330, 110); g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(F.length >= 2 ? 'Waiting for the fight…' : scene.chars ? 'Waiting for fighters…' : 'Add packs in the 📦 Card pool tab', W / 2, 410); }
     if (mode === 'intro') { const u = modeT; if (u < 1.4) banner(MI().intro, 360, 120 + u * 20, '#ffd23a'); else banner(RUMBLE() ? 'BELL!' : 'FIGHT!', 360, 170 + (u - 1.4) * 60, '#ff3a2a'); }
     if (mode === 'replay') { g.fillStyle = '#000'; g.fillRect(0, 0, W, 70); g.fillRect(0, H - 70, W, 70); g.font = `44px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = Math.sin(now / 250) > 0 ? '#ff4a4a' : '#ffffff'; g.fillText('⏪ REPLAY', 40, H - 35); }
     if (mode === 'won' && winner) {
@@ -1187,14 +1210,14 @@
       if (u > .1) { // the winning pack, big, arms up
         const sc = 3.4 * u, PW = 74 * sc, PH = 112 * sc, top = 300, X = W / 2, hip = top + PH, f = winner;
         g.save(); g.shadowColor = '#ffd23a'; g.shadowBlur = 60; g.fillStyle = 'rgba(255,210,60,.18)'; g.beginPath(); g.ellipse(X, top + PH / 2, PW * .9, PH * .7, 0, 0, 7); g.fill(); g.restore();
-        g.strokeStyle = '#151515'; g.lineCap = 'round'; g.lineJoin = 'round';
+        const LC = limbCol(f); g.strokeStyle = LC.leg; g.lineCap = 'round'; g.lineJoin = 'round';
         for (const side of [-1, 1]) { if (!f.limbs[side < 0 ? 'll' : 'rl']) continue; const hx = X + side * PW * .22, fx = hx + side * 10 * sc, fy = Math.min(H - 40, hip + 44 * sc * .55); limb(hx, hip, fx, fy, -side * 4 * sc, 5.5 * sc); }
         drawPackBody({ ...f, hp: Math.max(f.hp, 40), hurtT: 0 }, X - PW / 2, top, PW, PH, sc, f.head ? 0 : PH * .38);
-        for (const side of [-1, 1]) { if (!f.limbs[side < 0 ? 'la' : 'ra']) continue; const shx = X + side * PW * .48, sy = top + PH * .48, hx = shx + side * 30 * sc, hy = sy - 46 * sc + Math.sin(modeT * 8 + side) * 6 * sc; limb(shx, sy, hx, hy, side * 6 * sc, 5 * sc); g.fillStyle = '#f2e0c4'; g.lineWidth = 2 * sc; g.beginPath(); g.arc(hx, hy, 6.5 * sc, 0, 7); g.fill(); g.stroke(); }
+        for (const side of [-1, 1]) { if (!f.limbs[side < 0 ? 'la' : 'ra']) continue; const shx = X + side * PW * .48, sy = top + PH * .48, hx = shx + side * 30 * sc, hy = sy - 46 * sc + Math.sin(modeT * 8 + side) * 6 * sc; g.strokeStyle = LC.arm; limb(shx, sy, hx, hy, side * 6 * sc, 5 * sc); g.fillStyle = LC.hand; g.lineWidth = 2 * sc; g.beginPath(); g.arc(hx, hy, 6.5 * sc, 0, 7); g.fill(); g.strokeStyle = '#151515'; g.stroke(); }
         if (f.head) { const keep = { atk: f.atk, yell: f.yell, alive: f.alive, hp: f.hp, hurtT: f.hurtT }; Object.assign(f, { atk: null, yell: 1, alive: true, hp: 100, hurtT: 0 }); drawFace(f, X, top, PW, PH, sc, 0); Object.assign(f, keep); }
       }
       banner('🏆 WINNER 🏆', 210, 96); banner(winner.name || '', 860, Math.min(76, 1800 / Math.max(8, (winner.name || '').length) * 1.6), '#fff');
-      g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#ffd23a'; g.textAlign = 'center'; g.fillText(scene.test ? '🧪 Pretend fight' : scene.keep ? '📌 Stays in the pool' : 'Time to open it! 📦', W / 2, 930);
+      g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#ffd23a'; g.textAlign = 'center'; g.fillText(scene.test ? (scene.chars ? '🧪 Practice round' : '🧪 Pretend fight') : scene.chars ? (winner.game && winner.game !== winner.name ? `🎬 ${winner.game}` : '🏆 Last one standing!') : scene.keep ? '📌 Stays in the pool' : 'Time to open it! 📦', W / 2, 930);
       if (Math.random() < .5) petals.push({ x: vr(0, W), y: -10, vx: vr(-40, 40), vy: vr(80, 160), r: 0, c: ['#ffd23a', '#ff5a7a', '#5ad6ff', '#ffffff'][Math.floor(Math.random() * 4)] });
     }
   }

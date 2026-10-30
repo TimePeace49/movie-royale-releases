@@ -346,7 +346,9 @@
     xmas: { o: [65, 65, 66, 67] }, turkey: { o: { m: [68, 68, 12, 15], f: [68, 68, 30, 48] } }, easter: { o: { m: [69, 69, 1, 11, 18], f: [69, 69, 26, 28, 35, 46] }, col: PASTEL },
     newyear: { o: { m: [10, 4], f: [44, 36, 27] } }, hollywood: { o: { m: [10, 4], f: [27, 44, 36] } }, gas: { o: { m: [6, 12, 19], f: [6, 12, 37] } }, desert: { o: [73] }, plague: { o: [74, 74, 9] },
     kaiju: { o: [9, 70, 53] }, donut: { o: [20] }, cyber: { o: { m: [8, 13, 17, 59], f: [31, 8, 47, 59] }, col: NEON },
-    valentine: { o: EVERY, col: VAL }, stpat: { o: EVERY, col: GREEN }, july4: { o: EVERY, col: USA }
+    valentine: { o: EVERY, col: VAL }, stpat: { o: EVERY, col: GREEN }, july4: { o: EVERY, col: USA },
+    // 🃏 the character-only maps (a battle with characters on them runs in the card fight engine)
+    kungfu: { o: [58, 58, 74] }, ring: { o: [56] }, wizard: { o: [51] }, colosseum: { o: [60, 60, 52] }, ww2: { o: [55] }
   };
   const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   /** A random look that stays the same for this piece on this map. gender 'm' | 'f' | 'n'. */

@@ -58,6 +58,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 // ---------- live state ----------
 const live = {
+  lookSeed: Math.random().toString(36).slice(2), // 🎨 random character looks for this battle (a new one after every battle; same on every game screen)
   phase: 'idle',   // idle | lobby | running | ended
   game: null,      // { id, listId, fighters }
   lastWinner: null,
@@ -78,8 +79,74 @@ let previewTimer, previewIds = null, previewList = null;
 function leaveEnded(keepMap) {
   if (live.phase !== 'ended') return;
   if (live.claim) clearTimeout(live.claim.timer); live.claim = null; if (!keepMap && !live.game?.cards) nextMap(); // (a card battle on a ball map doesn't move the ball map rotation on)
-  live.phase = 'idle'; live.game = null;
+  live.phase = 'idle'; live.game = null; cards.endChars();
   broadcast({ type: 'reset' }, 'overlay');
+}
+/** A battle has its winner: the game screen (ball maps) or the card fight engine (🧍 characters on a character-only map) says who. */
+function gameResult(m) {
+  if (!(live.game && m.gameId === live.game.id && !live.game.done)) return;
+  live.lookSeed = uid(); // 🎨 the next battle's random characters get new looks (they never stick to anyone)
+
+      live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
+      const f = live.game.fighters.find(x => x.id === m.winnerId);
+      if (!f) return;
+      if (live.game.cards) { live.lastWinner = { ...f, at: Date.now(), cards: true, gameId: live.game.id, listName: live.game.testName || '🃏 Card battle' }; try { markMapRun(live.game.map); } catch {} cards.result({ fightId: live.game.cards, winnerId: f.id, order: m.order }); save(); pushState(); return; } // 🃏 a card battle on a ball map
+      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history
+      const list = getList(live.game.listId);
+      try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
+      markMapRun(live.game.map); // full results + lifetime stats (every round, series rounds too)
+      // best of 3/5/7/9 (custom battles, chat battles, giveaways): first to win enough rounds takes it
+      let seriesInfo = null;
+      if (list && list.type !== 'movies' && (Number(list.bestOf) || 1) > 1) {
+        const bo = Number(list.bestOf), need = Math.ceil(bo / 2);
+        let sr = live.series; if (!sr || sr.listId !== list.id || sr.done || sr.bestOf !== bo) sr = live.series = { listId: list.id, bestOf: bo, need, wins: {}, names: {}, round: 0 };
+        sr.round++; (sr.games ||= []).push(live.game.id); sr.wins[f.id] = (sr.wins[f.id] || 0) + 1; sr.names[f.id] = f.label;
+        const tally = Object.entries(sr.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: sr.names[id], n }));
+        seriesInfo = { round: sr.round, bestOf: bo, need, tally, done: sr.wins[f.id] >= need };
+        broadcast({ type: 'series', gameId: live.game.id, series: seriesInfo, winnerId: f.id }, 'overlay');
+        if (!seriesInfo.done) {
+          live.lastWinner = { ...f, listId: list.id, listName: list.name, at: Date.now(), series: seriesInfo, interim: true, gameId: live.game.id };
+          if (twitch.canSay() && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
+          if (db.settings.seriesAuto === true) setTimeout(nextSeriesRound, (db.settings.replayOn !== false ? 19 : 8) * 1000);
+          save(); pushState(); return;
+        }
+        sr.done = true;
+      }
+      const byId = new Map(live.game.fighters.map(x => [x.id, x]));
+      const order = (Array.isArray(m.order) ? m.order : [f.id]).filter(id => byId.has(id));
+      const totalW = live.game.fighters.reduce((a, x) => a + (x.weight || 1), 0) || 1;
+      const slim = x => ({ label: x.label, sub: x.sub, owner: x.owner, image: x.image, poster: x.poster });
+      const rec = {
+        id: uid(), listId: list?.id, listName: list?.name, kind: list?.type, at: Date.now(),
+        winner: { ...slim(f), id: f.id, details: f.details || null, odds: (f.weight || 1) / totalW, luck: f.luck || 0 },
+        entrants: live.game.fighters.length, total: live.game.total,
+        top: order.slice(0, 5).map(id => slim(byId.get(id))),
+        events: (Array.isArray(m.events) ? m.events : []).slice(0, 40).map(e => ({ event: String(e.event), by: String(e.by || '').slice(0, 40) })),
+        claimed: null, outcome: null, gameId: live.game.id, map: live.game.map, rounds: live.series?.listId === list?.id && live.series?.games?.length > 1 ? live.series.games.slice() : undefined
+      };
+      db.history.push(rec); db.history = db.history.slice(-1000); historyVersion++;
+      live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id, gameId: live.game.id };
+      battleDoneForWheel();
+      if (seriesInfo) { live.lastWinner.series = seriesInfo; rec.series = seriesInfo; f.series = seriesInfo; }
+      if (list?.giveaway) { db.giveawayWinners ||= []; db.giveawayWinners.push({ login: f.ownerLogin || norm(f.label), name: f.label, prize: giveawaySettings().prize || giveawaySettings().title, at: Date.now() }); db.giveawayWinners = db.giveawayWinners.slice(-500); if (giveawaySettings().removeWinner) { const we = list.entries.find(x => x.id === f.id); if (we) we.status = 'out'; } }
+      if (list?.type === 'chat') for (const x of list.entries) delete x.powers; // power-ups last one battle
+      announceWinner(f, list);
+      { const c = resolveCalls(f, list); if (c) { live.lastWinner.calls = { total: c.total, right: c.right.length, names: c.right.slice(0, 8).map(o => o.name) }; rec.calls = live.lastWinner.calls; } }
+      if (list?.type === 'movies' && !live.game.test) { // movie # of the night (+ tonight's list for the pinned messages)
+        if (f.spot) { stream().spotPending = { at: Date.now(), label: f.label, gameId: live.game.id }; } // a wild spot won: no movie yet and nothing pinned (Derek's wish): the Kirb spot battle picks it
+        else { delete stream().spotPending; stream().movies = (stream().movies || 0) + 1; stream().tonight = [...(stream().tonight || []), { id: f.id, label: f.label, sub: f.sub || '', owner: f.owner || '', n: stream().movies }]; }
+        discord.refreshPinned?.();
+      } else if (stream().spotPending && !live.game.test && list && !['chat'].includes(list.type) && !list.giveaway) { // 🎟️ the Kirb spot battle: its winner is the movie we watch
+        delete stream().spotPending; stream().movies = (stream().movies || 0) + 1;
+        const t = { id: f.id, listId: list.id, label: f.label, sub: f.sub || '', owner: db.settings.spotName || 'Kirb', viaSpot: true, n: stream().movies };
+        stream().tonight = [...(stream().tonight || []), t];
+        f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
+        if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
+      }
+      if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`); // everyone who lost gets a little luckier
+      if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) fetchWinnerRatings(f, rec, live.game.id);
+      if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
+      save(); pushState();
 }
 var lastPreview = null, previewError = null; // the last cliff sent to the game screens (they check in every few seconds; any that missed it get it again)
 function refreshPreview(now = false) {
@@ -87,7 +154,7 @@ function refreshPreview(now = false) {
   previewTimer = setTimeout(async () => { try {
     if (live.phase !== 'idle') return;
     const cp = cards.ballPreview(); // 🃏 Card battles tab with a ball map: the card fighters wait on that map
-    if (cp) { const fighters = cp.fighters.map(f => ({ id: f.id, label: f.name + (f.tag ? ' ' + f.tag : ''), sub: f.game || '', image: f.image || null, weight: 1, kind: 'cards' }));
+    if (cp) { cards.charPreview(null); const fighters = cp.fighters.map(f => ({ id: f.id, label: f.name + (f.tag ? ' ' + f.tag : ''), sub: f.game || '', image: f.image || null, weight: 1, kind: 'cards' }));
       lastPreview = { type: 'preview', map: cp.map, fighters, total: fighters.length, listName: cp.name, kind: 'cards', skin: 'cards', queued: 0, chaos: chaosState(), chatGate: false }; lastPreview.key = fighters.map(f => f.id).join(',');
       broadcast(lastPreview, 'overlay'); lastPreview.at = Date.now(); return; }
     const list = getList(db.activeListId);
@@ -96,7 +163,8 @@ function refreshPreview(now = false) {
     const { fighters, total } = await buildFighters(list, previewIds);
     if (live.phase !== 'idle') return;
     previewIds = fighters.map(f => f.id);
-    lastPreview = { type: 'preview', map: currentMap(), fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
+    const pmap = currentMap(); cards.charPreview(isCharMap(pmap) && list.chars ? { map: pmap, name: list.screenTitle || list.name, fighters: charFighters(fighters), pace: clampN(db.settings.pacer ?? 50, 0, 100, 50), length: db.settings.gameSeconds, lookSeed: live.lookSeed } : null); // 🧍 a character-only map: the card fight engine shows them waiting
+    lastPreview = { type: 'preview', map: pmap, lookSeed: live.lookSeed, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
     broadcast(lastPreview, 'overlay');
     lastPreview.at = Date.now(); previewError = null;
   } catch (e) { console.error('[preview]', e); previewError = e.message; broadcast({ type: 'toast', text: `⚠️ The cliff couldn't be set up: ${e.message}` }, 'control'); } 
@@ -696,68 +764,7 @@ wss.on('connection', (ws, req) => {
     }
     if (m.type === 'cardResult') { cards.result(m); return; } // 🃏 a card battle has its winner
     if (m.type === 'phase' && live.game && m.gameId === live.game.id) { live.phase = m.phase; live.phaseAt = Date.now(); if (m.phase === 'running' && live.board) closeBoard(); pushState(); } // (the vote list goes away when the fight starts)
-    if (m.type === 'result' && live.game && m.gameId === live.game.id && !live.game.done) {
-      live.game.done = true; live.phase = 'ended'; live.phaseAt = Date.now();
-      const f = live.game.fighters.find(x => x.id === m.winnerId);
-      if (!f) return;
-      if (live.game.cards) { live.lastWinner = { ...f, at: Date.now(), cards: true, gameId: live.game.id, listName: live.game.testName || '🃏 Card battle' }; try { markMapRun(live.game.map); } catch {} cards.result({ fightId: live.game.cards, winnerId: f.id, order: m.order }); save(); pushState(); return; } // 🃏 a card battle on a ball map
-      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history
-      const list = getList(live.game.listId);
-      try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
-      markMapRun(live.game.map); // full results + lifetime stats (every round, series rounds too)
-      // best of 3/5/7/9 (custom battles, chat battles, giveaways): first to win enough rounds takes it
-      let seriesInfo = null;
-      if (list && list.type !== 'movies' && (Number(list.bestOf) || 1) > 1) {
-        const bo = Number(list.bestOf), need = Math.ceil(bo / 2);
-        let sr = live.series; if (!sr || sr.listId !== list.id || sr.done || sr.bestOf !== bo) sr = live.series = { listId: list.id, bestOf: bo, need, wins: {}, names: {}, round: 0 };
-        sr.round++; (sr.games ||= []).push(live.game.id); sr.wins[f.id] = (sr.wins[f.id] || 0) + 1; sr.names[f.id] = f.label;
-        const tally = Object.entries(sr.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: sr.names[id], n }));
-        seriesInfo = { round: sr.round, bestOf: bo, need, tally, done: sr.wins[f.id] >= need };
-        broadcast({ type: 'series', gameId: live.game.id, series: seriesInfo, winnerId: f.id }, 'overlay');
-        if (!seriesInfo.done) {
-          live.lastWinner = { ...f, listId: list.id, listName: list.name, at: Date.now(), series: seriesInfo, interim: true, gameId: live.game.id };
-          if (twitch.canSay() && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
-          if (db.settings.seriesAuto === true) setTimeout(nextSeriesRound, (db.settings.replayOn !== false ? 19 : 8) * 1000);
-          save(); pushState(); return;
-        }
-        sr.done = true;
-      }
-      const byId = new Map(live.game.fighters.map(x => [x.id, x]));
-      const order = (Array.isArray(m.order) ? m.order : [f.id]).filter(id => byId.has(id));
-      const totalW = live.game.fighters.reduce((a, x) => a + (x.weight || 1), 0) || 1;
-      const slim = x => ({ label: x.label, sub: x.sub, owner: x.owner, image: x.image, poster: x.poster });
-      const rec = {
-        id: uid(), listId: list?.id, listName: list?.name, kind: list?.type, at: Date.now(),
-        winner: { ...slim(f), id: f.id, details: f.details || null, odds: (f.weight || 1) / totalW, luck: f.luck || 0 },
-        entrants: live.game.fighters.length, total: live.game.total,
-        top: order.slice(0, 5).map(id => slim(byId.get(id))),
-        events: (Array.isArray(m.events) ? m.events : []).slice(0, 40).map(e => ({ event: String(e.event), by: String(e.by || '').slice(0, 40) })),
-        claimed: null, outcome: null, gameId: live.game.id, map: live.game.map, rounds: live.series?.listId === list?.id && live.series?.games?.length > 1 ? live.series.games.slice() : undefined
-      };
-      db.history.push(rec); db.history = db.history.slice(-1000); historyVersion++;
-      live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id, gameId: live.game.id };
-      battleDoneForWheel();
-      if (seriesInfo) { live.lastWinner.series = seriesInfo; rec.series = seriesInfo; f.series = seriesInfo; }
-      if (list?.giveaway) { db.giveawayWinners ||= []; db.giveawayWinners.push({ login: f.ownerLogin || norm(f.label), name: f.label, prize: giveawaySettings().prize || giveawaySettings().title, at: Date.now() }); db.giveawayWinners = db.giveawayWinners.slice(-500); if (giveawaySettings().removeWinner) { const we = list.entries.find(x => x.id === f.id); if (we) we.status = 'out'; } }
-      if (list?.type === 'chat') for (const x of list.entries) delete x.powers; // power-ups last one battle
-      announceWinner(f, list);
-      { const c = resolveCalls(f, list); if (c) { live.lastWinner.calls = { total: c.total, right: c.right.length, names: c.right.slice(0, 8).map(o => o.name) }; rec.calls = live.lastWinner.calls; } }
-      if (list?.type === 'movies' && !live.game.test) { // movie # of the night (+ tonight's list for the pinned messages)
-        if (f.spot) { stream().spotPending = { at: Date.now(), label: f.label, gameId: live.game.id }; } // a wild spot won: no movie yet and nothing pinned (Derek's wish): the Kirb spot battle picks it
-        else { delete stream().spotPending; stream().movies = (stream().movies || 0) + 1; stream().tonight = [...(stream().tonight || []), { id: f.id, label: f.label, sub: f.sub || '', owner: f.owner || '', n: stream().movies }]; }
-        discord.refreshPinned?.();
-      } else if (stream().spotPending && !live.game.test && list && !['chat'].includes(list.type) && !list.giveaway) { // 🎟️ the Kirb spot battle: its winner is the movie we watch
-        delete stream().spotPending; stream().movies = (stream().movies || 0) + 1;
-        const t = { id: f.id, listId: list.id, label: f.label, sub: f.sub || '', owner: db.settings.spotName || 'Kirb', viaSpot: true, n: stream().movies };
-        stream().tonight = [...(stream().tonight || []), t];
-        f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
-        if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
-      }
-      if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`); // everyone who lost gets a little luckier
-      if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) fetchWinnerRatings(f, rec, live.game.id);
-      if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
-      save(); pushState();
-    }
+    if (m.type === 'result') { gameResult(m); return; }
   });
 });
 
@@ -872,7 +879,7 @@ setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obs.doomsday(), openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
 if (db.doomRestore) setTimeout(() => obs.restoreDoom().catch(() => {}), 20000); // ☠️ Doomsday turned your mic / camera off and Movie Royal closed before it could turn them back on: do it now (once the stream is over)
 // 🃏 card battles (Card pool + Card battles tabs)
-cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true), mapTag: id => mapsWithTags().find(m => m.id === id)?.tag || null,
+cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true), charResult: (gameId, winnerId, order) => gameResult({ gameId, winnerId, order, events: [] }), mapTag: id => mapsWithTags().find(m => m.id === id)?.tag || null,
   startBall: (fight, b) => { // ⚪🃏 a card battle on a ball map: the ball game plays it with card fighters (no luck: every pack the same odds)
     if (live.phase === 'lobby' || live.phase === 'running') return 'A ball battle is going right now. Stop it first.';
     if (![...wss.clients].some(c => c.role === 'overlay')) return "The game screen isn't open. Reload the control panel (or bring back the pop-out game window).";
@@ -1625,7 +1632,7 @@ app.post('/api/settings', (req, res) => {
   if (['maxPerUser', 'banCurrentYear', 'luckOn', 'twitchMoviesCommand', 'streamerName', 'ideasDoc', 'banAsk'].some(k => k in body)) discord.refreshPinned?.();
   if ('discordChannelName' in body && body.discordChannelName !== undefined && rdName !== db.settings.discordChannelName) rd = true; // makes/finds the new channel
   if ('spotName' in body) for (const e of getList('movies')?.entries || []) if (e.kind === 'spot') e.label = `${db.settings.spotName || 'Kirb'}'s Pick`;
-  if ('map' in body && db.settings.map !== 'random' && !mapById(db.settings.map)) db.settings.map = 'random';
+  if ('map' in body && db.settings.map !== 'random' && !mapById(db.settings.map) && !isCharMap(db.settings.map)) db.settings.map = 'random';
   if (mapWas !== db.settings.map) { live.map = null; live.mapUsed = false; if (live.phase === 'idle') refreshPreview(true); }
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
@@ -2269,17 +2276,23 @@ app.post('/api/maps/reset-tags', (req, res) => { // ↺ the 🔴 NEW / 🔵 UPDA
   save(); pushState(); cards.sendScene?.(); res.json({ ok: true });
 });
 function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; mapRuns()[id] = { rev: m.rev || 1, at: Date.now() }; } // only battles while you're live count
+// 🧍 character-only maps (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2): battles with characters on can use them
+const isCharMap = id => cards.CARD_MAPS.some(m => m.id === id);
+const charsOn = () => !!getList(db.activeListId)?.chars;
+const charFighters = fighters => fighters.map(f => ({ id: f.id, packId: f.id, name: f.label, tag: '', game: f.owner || '', image: f.image || f.poster || null, color: f.color || null, char: true, look: f.look || null, gender: f.gender || 'n', chaos: f.chaos || undefined }));
 function currentMap() {
+  if (live.map && isCharMap(live.map) && !charsOn()) live.map = null; // (characters turned off: back to a ball map)
+  { const want = db.settings.map; if (isCharMap(want) && charsOn() && live.map !== want && live.phase !== 'lobby' && live.phase !== 'running') live.map = want; } // (characters turned on with a character-only map picked)
   if (!live.map) {
     const want = db.settings.map || 'random';
-    if (mapById(want)) live.map = want;
+    if (mapById(want) || (isCharMap(want) && charsOn())) live.map = want;
     else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
   }
   return live.map;
 }
 function nextMap() { if (live.mapUsed) { db.lastMap = live.map; live.map = null; live.mapUsed = false; } }
 app.post('/api/map', (req, res) => {
-  const id = String(req.body?.id || 'random'); if (id !== 'random' && !mapById(id)) return res.status(400).json({ error: 'Unknown map' });
+  const id = String(req.body?.id || 'random'); if (id !== 'random' && !mapById(id) && !isCharMap(id)) return res.status(400).json({ error: 'Unknown map' });
   db.settings.map = id; save(); live.map = null; live.mapUsed = false; if (live.vote) endVote(true);
   if (live.phase === 'idle') refreshPreview(true); pushState(); res.json({ ok: true, map: currentMap() });
 });
@@ -2736,6 +2749,7 @@ app.post('/api/test/character', (req, res) => {
 app.post('/api/test/battle', async (req, res) => { // a practice round with made-up entries; your real lists and history aren't touched
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
   if (wheel.W().show) wheel.setShow(false); // the battle goes on stream
+  cards.endChars(); // (a 🧍 character fight from before leaves the screen)
   const names = ['Popcorn Pete', 'Reel Goblin', 'VHS Kid', 'Night Owl', 'Mia', 'Big Screen Bob', 'Lena', 'Ozzy', 'Frames', 'Snack Attack'];
   const movies = [['The Thing', '1982'], ['Heat', '1995'], ['Coco', '2017'], ['Jaws', '1975'], ['Alien', '1979'], ['Arrival', '2016'], ['Hot Fuzz', '2007'], ['Oldboy', '2003'], ['Paddington 2', '2017'], ['Knives Out', '2019']];
   const count = clampN(req.body?.count, 2, Math.max(2, Number(db.settings.maxFighters) || 1000), 10);
@@ -2748,9 +2762,10 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   if (req.body?.spots) { const L = (db.settings.spotLooks || []).filter(Boolean); fighters.slice(0, Math.max(2, Math.min(4, L.length || 2))).forEach((f, i) => Object.assign(f, { label: `${db.settings.spotName || 'Kirb'}'s Pick`, sub: '', owner: db.settings.spotName || 'Kirb', spot: true, look: L.length ? looks.check(L[i % L.length]).look : undefined })); } // 🎟️ wild spots in their characters
   if (req.body?.looks) fighters.forEach((f, i) => { f.look = i === 0 && typeof req.body.looks === 'object' ? looks.check(req.body.looks).look : looks.randomLook(); if (i === 0 && typeof req.body.looks === 'object') f.owner = 'You (test)'; }); // 🎨 /character looks (the first one = the look picked on the Test tab)
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
-  const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
+  const tmap = req.body?.map && req.body.map !== 'random' && (mapById(req.body.map) || (req.body.chars && isCharMap(req.body.map))) ? req.body.map : req.body?.map === 'random' || (isCharMap(currentMap()) && !req.body?.chars) ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
+  if (isCharMap(tmap)) { cards.setShow(false); cards.endChars(); const err = startCharFight(req.body?.chaos ? '🤪 Chaos practice round' : '🧪 Practice round', true); return err ? res.status(400).json({ error: err }) : res.json({ ok: true }); } // 🧍 a character-only map
   broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
   pushState(); res.json({ ok: true });
 });
@@ -2773,7 +2788,7 @@ function nextSeriesRound() { // best-of: the next round starts by itself
   setTimeout(() => startRound().then(err => { if (err) broadcast({ type: 'toast', text: '⚠️ ' + err }, 'control'); }), 2500);
 }
 async function startRound(opts = {}) {
-  cards.setShow(false); // returns an error message, or null when the round started (opts.test: a test battle with the real pieces that changes nothing)
+  cards.setShow(false); cards.endChars(); // returns an error message, or null when the round started (opts.test: a test battle with the real pieces that changes nothing)
   if (wheel.W().show) wheel.setShow(false); // a battle is starting: the battle goes on stream
   rollWeek();
   const list = getList(db.activeListId);
@@ -2789,9 +2804,10 @@ async function startRound(opts = {}) {
   previewIds = null; if (live.vote) endVote();
   live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), startedAt: Date.now(), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test;
   live.phase = 'lobby'; live.claim = null;
+  if (isCharMap(live.game.map)) return startCharFight(list.screenTitle || list.name, !!opts.test); // 🧍 a character-only map: the card fight engine plays it
   const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
-    type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
+    type: 'start', map: currentMap(), lookSeed: live.lookSeed, gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
     lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, pacer: clampN(db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, /* 🎯 every battle's winner is drawn by the odds before it starts (luck included), and the battle plays out around it (Derek's rule) */ laps: clampN(db.settings.f8Laps ?? 5, 1, 50, 5), fun: list.type === 'chat' ? { ...(list.fun?.wacky || {}) } : null, chaos: chaosState(), queued,
     series: list.type !== 'movies' && (Number(list.bestOf) || 1) > 1 ? (live.series && !live.series.done && live.series.listId === list.id ? { bestOf: live.series.bestOf, need: live.series.need, round: live.series.round + 1, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: live.series.names[id], n })) } : { bestOf: Number(list.bestOf), need: Math.ceil(Number(list.bestOf) / 2), round: 1, tally: [] }) : null
   }, 'overlay');
@@ -2800,10 +2816,19 @@ async function startRound(opts = {}) {
   if (live.capture && db.settings.capAutoHide) setCapture(false).catch(() => {}); // 📺 the battle starts: hide the capture window (if you chose that)
   return null;
 }
+// 🧍 the battle (live.game) on a character-only map: the card fight engine plays it, with the same fair winner (odds + luck)
+function startCharFight(name, test) {
+  const g = live.game, tot = g.fighters.reduce((a, f) => a + (f.weight || 1), 0); let r = Math.random() * tot;
+  const destined = (g.fighters.find(f => (r -= (f.weight || 1)) <= 0) || g.fighters[g.fighters.length - 1]).id;
+  try { cards.startChars({ gameId: g.id, map: g.map, name, fighters: charFighters(g.fighters), destined, pace: clampN(db.settings.pacer ?? 50, 0, 100, 50), length: db.settings.gameSeconds, lookSeed: live.lookSeed, test }); }
+  catch (e) { live.game = null; live.phase = 'idle'; return e.message; }
+  g.charFight = true; live.phase = 'running'; live.phaseAt = Date.now(); if (live.board) closeBoard();
+  pushState(); return null;
+}
 function stopGather(silent) { if (!live.gather) return; clearTimeout(live.gather.timer); live.gather = null; if (!silent) broadcast({ type: 'gather', endsAt: null }, 'overlay'); }
 app.post('/api/stop', (req, res) => { // stop a battle mid-fight: no winner, nothing saved
   if (live.phase !== 'lobby' && live.phase !== 'running') return res.json({ ok: true });
-  live.phase = 'idle'; live.game = null; live.claim = null; live.series = null; live.mapUsed = false; closeBoard();
+  live.phase = 'idle'; live.game = null; live.claim = null; live.series = null; live.mapUsed = false; closeBoard(); cards.endChars();
   broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true });
 });
 app.post('/api/start', async (req, res) => {
@@ -2869,7 +2894,7 @@ app.post('/api/gather/start', (req, res) => {
   pushState(); res.json({ ok: true });
 });
 app.post('/api/gather/cancel', (req, res) => { stopGather(); closeBoard(); pushState(); res.json({ ok: true }); });
-app.post('/api/reset', (req, res) => { closeBoard(); nextMap(); live.phase = 'idle'; live.game = null; if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
+app.post('/api/reset', (req, res) => { closeBoard(); nextMap(); live.phase = 'idle'; live.game = null; cards.endChars(); if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
 // sounds: any file in public/assets/sounds named after a sound (e.g. fanfare.mp3, music.mp3) replaces the built-in one
 const SOUND_DIRS = [path.join(DATA, 'sounds'), path.join(ROOT, 'public', 'assets', 'sounds')];
 app.get('/api/sounds', (req, res) => {

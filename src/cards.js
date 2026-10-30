@@ -199,12 +199,12 @@ const TEST_COLORS = ['#e8443a', '#3a7be8', '#f2c230', '#3ac46b', '#a04ae8', '#ff
 const testFighters = n => Array.from({ length: n }, (_, i) => ({ id: 'test-' + i, packId: 'test-' + i, name: ['Blaze Booster', 'Tidal Pack', 'Thunder Pack', 'Forest Booster', 'Mystic Pack', 'Ember Booster', 'Frost Pack', 'Shadow Booster'][i % 8] + (i >= 8 ? ' ' + (Math.floor(i / 8) + 1) : ''), tag: '', game: '🧪 Pretend', image: '', color: TEST_COLORS[i % 8], test: true }));
 
 // ---------- live: what's on stream ----------
-export const live = { show: false, phase: 'idle', fight: null, last: null, wheelLink: null };
+export const live = { show: false, phase: 'idle', fight: null, last: null, wheelLink: null, charPreview: null }; // charPreview: a battle with 🧍 characters waiting on a character-only map (Battle tab)
 const wackyOn = () => Object.fromEntries(Object.keys(WACKY).map(k => [k, !!C().wacky[k]]));
 export function sceneMsg() {
-  const b = activeBattle(), f = live.fight;
-  const map = f?.map || b.map || 'kungfu', ball = f ? !!f.ball : (b.map === 'random' ? false : isBallMap(map));
-  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, fin: f?.fin ?? null, cel: f?.cel ?? null, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner };
+  const b = activeBattle(), f = live.fight, cp = !f && !live.show ? live.charPreview : null; // (🧍 cp = a battle's characters waiting on a character-only map)
+  const map = f?.map || cp?.map || b.map || 'kungfu', ball = f ? !!f.ball : cp ? false : (b.map === 'random' ? false : isBallMap(map)), own = f?.chars ? f : cp; // own = pace / length / looks of a 🧍 character battle
+  return { type: 'cardScene', show: (live.show || !!f?.chars || !!cp) && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || cp?.name || b.name, fighters: f ? f.fighters : cp ? cp.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, fin: f?.fin ?? null, cel: f?.cel ?? null, destined: f?.destined || null, pace: own ? own.pace ?? 50 : (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: own ? own.length || 0 : (f ? getBattle(f.battleId) : b)?.length || 0, wacky: own ? {} : wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner, chars: !!own, lookSeed: own?.lookSeed || '' };
 }
 // 🤼 the picture in the middle of the Royal Rumble: your own, or your Twitch picture
 export const ringLogo = () => C().ringLogo || db.owner?.avatar || '';
@@ -258,6 +258,7 @@ export function result(m) {
   const f = live.fight; if (!f || live.phase !== 'fight' || m.fightId !== f.id) return;
   const w = f.fighters.find(x => x.id === m.winnerId); if (!w) return;
   live.phase = 'ended'; if (!f.ball) markCardRun(f.map);
+  if (f.chars) { live.last = { chars: true, packId: w.id, name: w.name, test: f.test }; sendScene(); hooks.charResult?.(f.gameId, w.id, m.order); return; } // 🧍 a battle's characters: the battle does the rest (claims, luck, history)
   const rec = { id: uid(), at: Date.now(), packId: w.packId, name: w.name, game: w.game, image: w.image, fighters: f.fighters.length, battle: f.name, map: f.map, wacky: Object.keys(WACKY).filter(k => C().wacky[k]), kos: Array.isArray(m.order) ? m.order.length : 0 };
   if (!f.test) {
     const p = C().pool.find(x => x.id === w.packId);
@@ -271,6 +272,20 @@ export function result(m) {
   hooks.broadcast({ type: 'toast', text: `🃏 ${w.name} won the card battle!${f.test ? ' (pretend: nothing changed)' : rec.kept ? ' (kept in your Card pool)' : ' One comes off its count in the Card pool.'}` }, 'control');
   if (live.wheelLink) { live.wheelLink = null; setTimeout(() => hooks.linkDone(), CARD_MAPS.find(m => m.id === f.map)?.finalFight ? 34000 : 12000); } // (💀 finisher + replay + celebration first) // 🔀 a wheel spot sent us here: back to the wheel
 }
+// ---------- 🧍 a battle with characters on a character-only map (Kung Fu Town, Royal Rumble…): this fight engine plays it ----------
+// The server's battle (live.game) stays the real battle: the winner goes back to it (hooks.charResult) for claims, luck, history.
+export function charPreview(p) { const was = JSON.stringify(live.charPreview); live.charPreview = p || null; if (live.phase !== 'fight' && was !== JSON.stringify(live.charPreview)) sendScene(); }
+export function startChars(o) {
+  if (live.phase === 'fight' && !live.fight?.chars) throw new Error('A card battle is going right now. Stop it first.');
+  const mapInfo = CARD_MAPS.find(m => m.id === o.map);
+  live.fight = { id: uid(), chars: true, gameId: o.gameId, name: o.name, map: o.map, ball: false, fighters: o.fighters, startedAt: Date.now(), test: !!o.test, seed: Math.floor(Math.random() * 2 ** 31), destined: o.destined, pace: o.pace ?? 50, length: o.length || 0, lookSeed: o.lookSeed || '' };
+  if (mapInfo?.finalFight) { live.fight.fin = o.test ? Math.floor(Math.random() * FIN_COUNT) : fromPile('fin:' + o.map, FIN_COUNT); live.fight.cel = o.test ? Math.floor(Math.random() * CEL_COUNT) : fromPile('cel:' + o.map, CEL_COUNT); }
+  live.phase = 'fight'; live.last = null; live.charPreview = null;
+  sendScene(); hooks.pushState(); return live.fight.id;
+}
+/** The battle is over (next battle, reset, stop): the character fight leaves the screen. */
+export function endChars() { if (!live.fight?.chars && !live.last?.chars) return; live.fight = null; live.last = null; live.phase = 'idle'; sendScene(); hooks.pushState(); }
+
 /** 🔀 a wheel spot links to a card battle: put it on stream (and start it by itself if the spot says so). */
 export function openFromWheel(id, auto, why) {
   if (live.phase === 'fight') return 'a card battle is already going';
