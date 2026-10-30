@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.58.2: What's new
+Everything since 1.58.1.
+
+- 🧭 **One pop-up when Movie Royal opens.** A new version, new Setup guide steps, the 24/7 bot update, the character questions and the holiday style now come as steps in one window ("Step 1 of 5", with a dot for each step), not pop-up after pop-up. Esc skips a step.
+
 ## v1.58.1: What's new
 Everything since 1.58.0.
 

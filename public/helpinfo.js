@@ -319,6 +319,7 @@ H(/^tip:no more asking about/i, 'Not until next year', 'No holiday style, and no
 H(/^tip:which holiday style to try/i, '🎨 Try a style', 'Pick a holiday and press 🎨 Try it to see its colors (not saved). Pick Normal to go back.', ['test']);
 H(/^tip:pretend it's close to this holiday/i, '💬 Holiday pop-up', 'Shows the pop-up Movie Royal shows when it opens close to this holiday. Your answer isn\'t saved in the test.', ['test']);
 H(/^🎨 try it$/i, '🎨 Try it', 'Shows that holiday\'s colors (not saved).', ['test']);
+H(/^🧭 show the whole start-up pop-up$|^show it$/i, '🧭 Start-up pop-up', 'When Movie Royal opens, everything it wants to ask comes in one pop-up as steps (Step 1 of 5…): a new version, new Setup guide steps, the 24/7 bot update, the character questions, the holiday style. This shows a pretend one (nothing is saved).', ['test']);
 H(/^💬 show the questions$|^show the questions$/i, '💬 Show the questions', 'Shows the two questions Movie Royal asks once when it opens: men and women characters (!id) and character creation (/character). Nothing is saved in the test.', ['test']);
 H(/^💬 show the pop-up$/i, '💬 Show the pop-up', 'Shows the holiday pop-up as if it were close to that holiday.', ['test']);
 H(/wheel classic|pastel|neon|movie royal$|ocean|halloween|christmas|grayscale/i, 'Color theme', 'Gives every spot colors from this theme at once. You can still change single spots after.');

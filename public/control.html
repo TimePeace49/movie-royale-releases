@@ -405,20 +405,21 @@
   #holFx span { position:absolute; top:-40px; font-size:18px; opacity:.22; animation:holFall linear infinite; }
   @keyframes holFall { from { transform:translateY(-40px) rotate(0deg); } to { transform:translateY(calc(100vh + 80px)) rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { #holFx { display:none; } }
-  #featDlg .holBig, #holDlg .holBig { font-size:54px; text-align:center; line-height:1.1; }
+  #startDlg .sqHead { display:flex; align-items:center; gap:10px; margin:-4px 0 10px; font-size:13px; color:var(--muted, #b9b0d6); }
+  #startDlg .sqDots { display:flex; gap:4px; } #startDlg .sqDots i { width:9px; height:9px; border-radius:50%; background:#ffffff26; display:block; } #startDlg .sqDots i.done { background:#7ad37a; } #startDlg .sqDots i.on { background:#ffc94a; }
+  #startDlg .holBig { font-size:54px; text-align:center; line-height:1.1; }
 </style>
 </head>
 <body>
 <div id="holFx"></div>
 <dialog id="priceDlg"><div style="padding:18px" id="priceBody"></div></dialog>
-<dialog id="holDlg"><div style="padding:18px" id="holBody"></div></dialog>
 <dialog id="choiceDlg"><div class="inner" style="max-width:460px">
   <h3 style="margin-top:0">🎬 Which OBS scenes get the celebration?</h3>
   <p class="help">Tick the scenes where the 🎉 Viewer's choice confetti should show. Movie Royal puts the source <b>Movie Royal celebration</b> on top of those scenes only (and takes it out of the ones you don't tick).</p>
   <div id="choiceList" style="max-height:320px;overflow:auto;margin:8px 0"><p class="help">Asking OBS for your scenes…</p></div>
   <div class="row" style="gap:6px;margin-top:6px"><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=true)">Tick all</button><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=false)">Untick all</button><span class="grow"></span><button onclick="$('choiceDlg').close()">Cancel</button><button class="primary" id="choiceGoBtn" onclick="choiceGo()">📺 Put it in these scenes</button></div>
 </div></dialog>
-<dialog id="featDlg"><div style="padding:18px;max-width:480px" id="featBody"></div></dialog>
+<dialog id="startDlg"><div style="padding:18px;width:min(560px,90vw)" id="startBody"></div></dialog>
 <header>
   <h1>🍿 MOVIE ROYAL</h1>
   <nav id="nav">
@@ -935,9 +936,9 @@
     <div class="row" style="margin-top:8px"><select id="tHolPop" style="width:auto" title="Pretend it's close to this holiday"></select><button onclick="holTestDate=HOLIDAYS.find(h=>h.id===$('tHolPop').value).win(new Date().getFullYear())[1];holAsk(true)">💬 Show the pop-up</button></div>
   </div>
   <div class="card">
-    <h3>👫🎨 Character questions on open</h3>
-    <p class="help">The two questions Movie Royal asks once when it opens: men/women characters (!id) and character creation (/character). Your answers here aren't saved; Settings → Game → 🧍 Characters has the real switches.</p>
-    <div class="row"><button onclick="featAsk(true)">💬 Show the questions</button></div>
+    <h3>🧭 Start-up pop-up</h3>
+    <p class="help">When Movie Royal opens, everything it wants to ask comes in ONE pop-up, step by step (Step 1 of 5…): a new version, new Setup guide steps, the 24/7 bot update, men/women characters, character creation, the holiday style. Try it here: nothing is saved.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="featAsk(true)">💬 Show the questions</button><button onclick="sqTest()">🧭 Show the whole start-up pop-up</button></div>
   </div>
   <div class="card">
     <h3>🧍 Characters &amp; !id</h3>
@@ -1504,6 +1505,7 @@ function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? 
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
+  startPop: ['screen', '1.58.2'],
   choiceScenes: ['screen', '1.58.1'], ckRecent: ['tools', '1.58.1'],
   featAsk: ['screen', '1.58.0'],
   mapSort: ['battles', '1.54.1'], charCmd: ['battles', '1.55.0'], charBattle: ['battles', '1.55.0'], charProfile: ['chat', '1.55.0'], charOff: ['battles', '1.55.0'], charRandom: ['battles', '1.55.0'], charThemes: ['battles', '1.55.0'], charSpots: ['battles', '1.55.0'], charChest: ['battles', '1.55.0'], charPic: ['discord', '1.55.1'], charChaos: ['battles', '1.55.2'], charMaps: ['battles', '1.56.0'], dcFolder: ['discord', '1.57.0'], dcChars: ['discord', '1.57.0'], orbitCam: ['battles', '1.57.0'], charProfLook: ['chat', '1.55.2'], watchLuck: ['battles', '1.42.0'], banUpdate: ['movies', '1.51.0'], powersTicker: ['chat', '1.54.0'], charsSkin: ['battles', '1.53.0'], idCmd: ['chat', '1.53.0'], helpByTab: ['chat', '1.53.1'], finishers: ['battles', '1.52.0'], finalMapTag: ['battles', '1.52.0'], banYearList: ['movies', '1.51.0'], cardLen60: ['battles', '1.51.0'], finalIntro8: ['battles', '1.51.0'], camAutoBack: ['screen', '1.51.0'], cardCamFx: ['battles', '1.51.0'], banRules: ['movies', '1.50.0'], banSearch: ['movies', '1.50.0'], holStyle: ['screen', '1.50.0'], cardPrice: ['battles', '1.50.0'], claimAskFirst: ['battles', '1.49.1'], holidayMaps: ['battles', '1.49.1'], respinFirst: ['wheel', '1.49.0'], spinLogTab: ['wheel', '1.49.0'], autoNoRespin: ['wheel', '1.48.2'], autoCount: ['wheel', '1.48.0'], wheelChatters: ['wheel', '1.48.0'], joinVote: ['battles', '1.47.0'], webList: ['movies', '1.46.0'], webListReal: ['movies', '1.46.0'], testLab: ['lab', '1.45.0'], ww2Map: ['battles', '1.45.0'], halloweenMap: ['battles', '1.44.0'], newyearMap: ['battles', '1.44.0'], valentineMap: ['battles', '1.44.0'], stpatMap: ['battles', '1.44.0'], easterMap: ['battles', '1.44.0'], july4Map: ['battles', '1.44.0'], elementsMap: ['battles', '1.43.0'], pompeiiMap: ['battles', '1.43.0'], xmasMap: ['battles', '1.42.0'], turkeyMap: ['battles', '1.42.0'], kaijuMap: ['battles', '1.41.0'], heroVillains: ['battles', '1.41.0'], zombieMap: ['battles', '1.41.0'], funPowers: ['chat', '1.40.0'], funWacky: ['chat', '1.40.0'], tagReset: ['battles', '1.40.0'], doomReal: ['wheel', '1.39.4'], doomBack: ['wheel', '1.39.4'], tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
@@ -1626,6 +1628,7 @@ function drawChecklist() {
     ['finalIntro8', '🥊 The FINAL FIGHT! scene before the last two card packs fight lasts 8 seconds now, with a 3, 2, 1 countdown before 🔔 FIGHT! (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2)', `<button class="ghost" style="padding:3px 9px" onclick="labTry('kungfu','card')">Try it</button>`],
     ['banRules', '🚫 New movie bans: 🌍 not in English, ⛪ really religious, 🎥 documentaries. Press “Try the rules”, then in Discord try /suggest with a foreign movie (like Amélie): it\'s banned and says to ask Kirb to unban it. The pinned Discord message explains banned movies too', `<button class="ghost" style="padding:3px 9px" onclick="banRulesTest()">Try the rules</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('bans');loadBans()">Banned Movies</button>`],
     ['banSearch', '🔍 Banned Movies has a search box (title, year or reason) and a kind filter: add 300 pretend bans and search them. Also try 🔎 Check movies already picked and ✅ Pre-approve on a search result', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/ban-many',{}).then(()=>{setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button>`],
+    ['startPop', '🧭 One pop-up when Movie Royal opens: everything it wants to ask (a new version, new Setup guide steps, the 24/7 bot update, the character questions, the holiday style) comes as steps in the same window, “Step 1 of 5”, with dots for how far along you are. Esc skips a step', `<button class="ghost" style="padding:3px 9px" onclick="sqTest()">Show it</button>`],
     ['choiceScenes', '🎬 🎉 Viewer\'s choice in OBS: you pick which OBS scenes get the celebration (tick boxes with every scene; the one on stream is ticked first). It\'s taken out of the scenes you don\'t tick. Settings → 💰 Rewards & prices → 📺 Put it on my stream / 🎬 Pick the scenes', `<button class="ghost" style="padding:3px 9px" onclick="choicePick()">Pick the scenes</button>`],
     ['ckRecent', '✅ This checklist: only the newest update\'s things sit in 🆕 Recently updated on top, everything else is in its own category. Tick one here and it moves to its category when you leave the tab', ''],
     ['featAsk', '👫🎨 When Movie Royal opens it asks once (two questions) if you want men/women characters (!id) and character creation (/character). No = they stay off, and Settings → Game → 🧍 Characters turns them on any time', `<button class="ghost" style="padding:3px 9px" onclick="featAsk(true)">Show the questions</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings')">Settings</button>`],
@@ -4175,12 +4178,10 @@ async function checkUpdate(btn) {
   else if (!r.available) m.innerHTML = `<p class="help">✅ You're up to date (v${esc(r.version)}).</p>`;
   else showUpdate(r);
 }
-function showUpdate(r) {
-  $('updBody').innerHTML = `<h3>✨ Update available: ${esc(r.latest)}${r.pre ? ' 🧪 (test build)' : ''}</h3><p class="help">You have v${esc(r.version)}. Movie Royal will close, update, and open again — your lists, history and settings are kept.</p>
+function showUpdate(r) { sqShow([updStep(r)]); }
+function updStep(r) { return { key: 'update', html: done => `<h3>✨ Update available: ${esc(r.latest)}${r.pre ? ' 🧪 (test build)' : ''}</h3><p class="help">You have v${esc(r.version)}. Movie Royal will close, update, and open again — your lists, history and settings are kept.</p>
     ${r.notes ? `<div class="card soft" style="white-space:pre-wrap;max-height:200px;overflow:auto;font-size:13px">${esc(r.notes)}</div>` : ''}
-    <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="try{localStorage.setItem('skipUpd','${esc(r.latest)}')}catch{};upd.close()">Skip this version</button><button onclick="upd.close()">Later</button><button class="primary" onclick="installLatest('${esc(r.url)}', this)">Install now</button></div>`;
-  upd.showModal();
-}
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button onclick="try{if(!SQ.test)localStorage.setItem('skipUpd','${esc(r.latest)}')}catch{};${done}">Skip this version</button><button onclick="${done}">Later</button><button class="primary" onclick="installLatest('${esc(r.url)}', this)">Install now</button></div>` }; }
 async function installLatest(url, btn) { btn.disabled = true; btn.textContent = 'Downloading…'; updBar({ stage: 'download', got: 0, total: 0 }); try { await api('/api/update/install-latest', { url }); } catch { updBar(null); btn.disabled = false; btn.textContent = 'Try again'; } }
 // ⬇️ update progress: a bar while it downloads, then a note while it installs (the installer shows its own bar, then Movie Royal opens again)
 function updBar(m) {
@@ -4205,40 +4206,61 @@ async function restore(file) {
   let data; try { data = JSON.parse(await file.text()); } catch { return toast("⚠️ That file isn't a backup."); }
   await api('/api/restore', data); toast('✅ Backup restored');
 }
-async function whatsNew() { // an update added something to set up? ask once
-  try {
-    const r = await fetch('/api/whatsnew').then(r => r.json()); if (!r.steps?.length) return;
-    const guide = r.steps.filter(x => x.guide).map(x => x.id);
-    $('updBody').innerHTML = `<h3>🆕 New in the 🧭 Setup guide</h3><p class="help">${r.steps.length === 1 ? 'There\'s a new step' : 'There are new steps'} you can set up. You can skip ${r.steps.length === 1 ? 'it' : 'them'}; ${r.steps.length === 1 ? 'it\'s' : 'they\'re'} always in the Setup guide (the 🧭 Setup guide link in Settings).</p>
+async function whatsNewStep() { // an update added something to set up? ask once
+  const r = await fetch('/api/whatsnew').then(r => r.json()); if (!r.steps?.length) return null;
+  const guide = r.steps.filter(x => x.guide).map(x => x.id);
+  return { key: 'guide', html: done => `<h3>🆕 New in the 🧭 Setup guide</h3><p class="help">${r.steps.length === 1 ? 'There\'s a new step' : 'There are new steps'} you can set up. You can skip ${r.steps.length === 1 ? 'it' : 'them'}; ${r.steps.length === 1 ? 'it\'s' : 'they\'re'} always in the Setup guide (the 🧭 Setup guide link in Settings).</p>
       ${r.steps.map(x => `<div class="card soft" style="margin:8px 0"><b>${esc(x.title)}</b>${x.why ? `<div class="help" style="margin:4px 0 8px">${esc(x.why)}</div>` : '<div style="height:8px"></div>'}<a href="/setup.html?step=${esc(x.id)}"><button class="primary">Set it up</button></a></div>`).join('')}
-      <div class="row" style="justify-content:flex-end;margin-top:10px">${guide.length ? `<button class="ghost" title="Don't show these new steps when Movie Royal starts" onclick="api('/api/setup/seen',{ids:${esc(JSON.stringify(guide))}}).catch(()=>{});upd.close()">Don't show again</button>` : ''}<button onclick="upd.close()" title="Ask again next time Movie Royal starts">Later</button></div>`;
-    upd.showModal();
-  } catch {}
+      <div class="row" style="justify-content:flex-end;margin-top:10px">${guide.length ? `<button class="ghost" title="Don't show these new steps when Movie Royal starts" onclick="api('/api/setup/seen',{ids:${esc(JSON.stringify(guide))}}).catch(()=>{});${done}">Don't show again</button>` : ''}<button onclick="${done}" title="Ask again next time Movie Royal starts">Later</button></div>` };
 }
-async function botUpdateOnOpen() { // the 24/7 Discord bot on Cloudflare is older than this version: ask every time the app opens until it's updated
-  try {
-    if (upd.open) return setTimeout(botUpdateOnOpen, 3000);
-    const r = await fetch('/api/cloud/outdated' + (botUpdateOnOpen.test ? '?test=1' : '')).then(r => r.json()); botUpdateOnOpen.test = false;
-    if (r.unknown && (botUpdateOnOpen.tries = (botUpdateOnOpen.tries || 0) + 1) < 6) return setTimeout(botUpdateOnOpen, 120000); // couldn't reach the bot yet: ask again in 2 minutes
-    if (!r.outdated) return;
-    $('updBody').innerHTML = `<h3>☁️ Update your 24/7 Discord bot</h3><p class="help">This version of Movie Royal comes with changes for the Discord bot that runs on Cloudflare (your 24/7 bot), like working with the backup bot server. The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token once.</p>
-      <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&upd.close())">🔄 Update the bot</button></div>
+async function whatsNew() { try { const st = await whatsNewStep(); if (st) sqShow([st]); else toast('Nothing new in the Setup guide right now'); } catch {} }
+async function botStep(test = false) { // the 24/7 Discord bot on Cloudflare is older than this version: ask every time the app opens until it's updated
+  const r = await fetch('/api/cloud/outdated' + (test ? '?test=1' : '')).then(r => r.json());
+  if (r.unknown && !test && (botStep.tries = (botStep.tries || 0) + 1) < 6) setTimeout(() => botStep().then(st => st && sqAdd(st)).catch(() => {}), 120000); // couldn't reach the bot yet: ask again in 2 minutes
+  if (!r.outdated) return null;
+  return { key: 'bot', html: done => `<h3>☁️ Update your 24/7 Discord bot</h3><p class="help">This version of Movie Royal comes with changes for the Discord bot that runs on Cloudflare (your 24/7 bot), like working with the backup bot server. The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token once.</p>
+      <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&${done})">🔄 Update the bot</button></div>
       <p class="help">No token? Make one at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → <b>Create Token</b> → <b>Edit Cloudflare Workers</b> template → your account + All zones → <b>Create Token</b> → <b>Copy</b>.</p>
-      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="api('/api/settings',{botRemind:false}).catch(()=>{});upd.close();toast('OK, no more reminders. Turn them back on in Settings → Discord & picks → 24/7 mode. You can still update the bot there.', 8000)">Don't remind me again</button><button onclick="upd.close()">Later</button></div>`;
-    upd.showModal();
-  } catch {}
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="api('/api/settings',{botRemind:false}).catch(()=>{});${done};toast('OK, no more reminders. Turn them back on in Settings → Discord & picks → 24/7 mode. You can still update the bot there.', 8000)">Don't remind me again</button><button onclick="${done}">Later</button></div>` };
 }
-async function updateOnOpen() { // asks once each time the app opens, if there's a newer version posted
-  try {
-    const r = await fetch('/api/update/check').then(r => r.json());
-    let skip = null; try { skip = localStorage.getItem('skipUpd'); } catch {}
-    if (r.available && r.latest !== skip) showUpdate(r);
-  } catch {}
+async function botUpdateOnOpen() { try { const st = await botStep(!!botUpdateOnOpen.test); botUpdateOnOpen.test = false; if (st) sqShow([st]); } catch {} } // (🧪 Test tab: botUpdateOnOpen.test = true)
+async function updCheckStep() { // a newer version is posted (asks each time the app opens, unless you skipped that version)
+  const r = await fetch('/api/update/check').then(r => r.json());
+  let skip = null; try { skip = localStorage.getItem('skipUpd'); } catch {}
+  return r.available && r.latest !== skip ? updStep(r) : null;
 }
-
-
-
-
+// 🧭 ONE pop-up when Movie Royal opens (1.58.2, Derek): every start-up question is a step in the same window ("Step 1 of 5"),
+// instead of a pop-up after a pop-up. A new start-up question = a function that returns a step { key, html(done) } (done = the JS
+// that goes on to the next step: put it on every button that finishes the step), added to the list in startPops().
+const SQ = { steps: [], i: 0, test: false };
+$('startDlg').addEventListener('cancel', e => { e.preventDefault(); sqNext(); }); // (Esc = skip this step)
+const withTime = (p, ms = 9000) => Promise.race([Promise.resolve(p).catch(() => null), new Promise(r => setTimeout(() => r(null), ms))]);
+async function startPops() {
+  if (PC_ONLY || !S) return;
+  const parts = await Promise.all([withTime(updCheckStep()), withTime(whatsNewStep()), withTime(botStep()), ...Object.keys(FEAT_Q).map(k => featStep(k)), holStep()]); // (in this order)
+  const steps = parts.flat().filter(Boolean); if (steps.length) sqShow(steps);
+}
+function sqShow(steps, test = false) { // a new list (or more steps on the end of the one that's open)
+  steps = steps.filter(Boolean); if (!steps.length) return;
+  if ($('startDlg').open && !test && !SQ.test) return steps.forEach(sqAdd);
+  SQ.steps = steps; SQ.i = 0; SQ.test = test; sqDraw(); if (!$('startDlg').open) $('startDlg').showModal();
+}
+function sqAdd(st) { if (!$('startDlg').open) return sqShow([st]); if (SQ.steps.some(x => x.key === st.key)) return; SQ.steps.push(st); sqDraw(true); }
+function sqDraw(countOnly = false) {
+  const n = SQ.steps.length, st = SQ.steps[SQ.i]; if (!st) return;
+  const head = `<div class="sqHead"><span class="sqDots">${SQ.steps.map((_, j) => `<i class="${j < SQ.i ? 'done' : j === SQ.i ? 'on' : ''}"></i>`).join('')}</span><b>Step ${SQ.i + 1} of ${n}</b>${SQ.test ? ' <small class="muted">· 🧪 test: nothing is saved</small>' : ''}</div>`;
+  if (countOnly) { const h = $('startBody').querySelector('.sqHead'); if (h) { h.outerHTML = head; return; } }
+  $('startBody').innerHTML = head + st.html('sqNext()');
+}
+function sqNext() {
+  SQ.i++;
+  if (SQ.i >= SQ.steps.length) { $('startDlg').close(); if (SQ.test) toast('🧪 Test only: nothing was saved'); SQ.steps = []; SQ.i = 0; SQ.test = false; return; }
+  sqDraw();
+}
+async function sqTest() { // 🧪 Test tab: every kind of start-up step, one after the other (nothing saved)
+  const h = HOLIDAYS[0]; holTestDate = h.win(new Date().getFullYear())[1];
+  sqShow([updStep({ latest: '9.9.9', version: S.version, notes: '(pretend update: Install now would really download it, so press Later)', url: '' }), ...Object.keys(FEAT_Q).map(k => featStep(k, true)), holStep(true)], true);
+}
 async function banRulesTest() {
   const r = await api('/api/test/ban-rules', {}); const br = r.rules || {};
   $('tBanOut').innerHTML = `<table style="margin-top:8px"><tr><th>Movie (made-up TMDB info)</th><th>Result</th></tr>${r.rows.map(x => `<tr><td>${esc(x.title)}</td><td>${x.banned ? `🚫 <b>banned</b>: ${esc(x.reason)}` : '✅ allowed'}</td></tr>`).join('')}</table><p class="help">Rules on: ${['english', 'religious', 'documentary'].filter(k => br[k] !== false).join(', ') || 'none'} (Settings → 🚫 Banned Movies).</p>`;
@@ -4377,54 +4399,43 @@ function applyStyle() {
 }
 let holTry = null; // 🧪 trying a style from the Test tab (not saved)
 function holTryStyle(id) { holTry = id || null; holOn = undefined; applyStyle(); toast(id ? `🎨 Trying the ${HOLIDAYS.find(h => h.id === id).name} style (not saved). Press it again with “Normal” to stop.` : '🎨 Back to your saved style'); }
-let holAsked = false;
-function holAsk(force = false) { // the pop-up when Movie Royal opens close to a holiday
-  if (PC_ONLY || !S) return;
-  if (!force && holAsked) return;
-  if ((typeof upd !== 'undefined' && upd.open) || (!force && $('featDlg').open)) return setTimeout(() => holAsk(force), 3000);
-  const h = holNow(); if (!h) { if (force) toast('No holiday is close on that date'); return; }
+function holStep(force = false) { // close to a holiday: dress the app up for it?
+  const h = holNow(); if (!h) { if (force) toast('No holiday is close on that date'); return null; }
   const a = S.settings.holTheme?.[h.id];
-  if (!force && ((S.settings.appStyle || 'auto') !== 'auto' || (a && a.year === h.year))) return;
-  holAsked = true;
-  $('holBody').innerHTML = `<div class="holBig">${h.icon}</div><h3 style="text-align:center">${esc(h.name)} is coming up!</h3>
+  if (!force && ((S.settings.appStyle || 'auto') !== 'auto' || (a && a.year === h.year))) return null;
+  return { key: 'holiday', html: () => `<div class="holBig">${h.icon}</div><h3 style="text-align:center">${esc(h.name)} is coming up!</h3>
     <p class="help" style="text-align:center">Want Movie Royal dressed up for ${esc(h.name)}? It changes the colors of the app (not your stream) until the holiday is over.</p>
-    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="holAnswer('${h.id}',${h.year},'yes')">${h.icon} Yes, turn it on</button><button onclick="holAnswer('${h.id}',${h.year},'later')" title="Asks again next time Movie Royal opens">Not now</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'cool')" title="No more asking about ${esc(h.name)} until next year">Not until next year</button></div>`;
-  $('holDlg').showModal();
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="holAnswer('${h.id}',${h.year},'yes')">${h.icon} Yes, turn it on</button><button onclick="holAnswer('${h.id}',${h.year},'later')" title="Asks again next time Movie Royal opens">Not now</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'cool')" title="No more asking about ${esc(h.name)} until next year">Not until next year</button></div>` };
 }
+function holAsk(force = false) { const st = holStep(force); if (st) sqShow([st], !!force); } // (🧪 Test tab: holTestDate + holAsk(true))
 async function holAnswer(id, year, ans) {
-  $('holDlg').close();
+  sqNext();
   if (ans === 'later') return toast('OK! I\'ll ask again next time Movie Royal opens.');
   if (holTestDate) { holTestDate = null; return toast(`🧪 Test only: you picked “${ans === 'yes' ? 'Yes' : 'Not until next year'}” (nothing saved)`); }
   await api('/api/settings', { holTheme: { ...(S.settings.holTheme || {}), [id]: { ans, year } } });
   toast(ans === 'yes' ? '🎨 Holiday style on! Change it any time: Settings → App & background → App style.' : `OK, no more asking about ${HOLIDAYS.find(h => h.id === id).name} until next year.`, 6000);
 }
 // 👫🎨 Asked once when Movie Royal opens (1.58.0, Derek): men/women characters (!id) and character creation (/character),
-// as two separate questions. No = it stays off; Settings → Game → 🧍 Characters turns them on any time.
+// as two separate steps. No = it stays off; Settings → Game → 🧍 Characters turns them on any time.
 const FEAT_Q = {
   ids: { icon: '👫', title: 'Men and women characters?', text: () => `In battles with 🧍 characters, chat can pick what their character is by typing <code>${esc(S.settings.idCommand || '!id')} man</code>, <code>woman</code> or <code>none</code> (non-binary). It shows as a tag on their profile too. Turn it on?`, yes: { idOn: true, charGenders: true }, no: { idOn: false, charGenders: false }, yesWord: '👫 Yes, turn it on' },
   looks: { icon: '🎨', title: 'Character creation?', text: () => 'People make their own battle character in Discord with <code>/character</code>: the bot makes a #character-creation channel with numbered pictures of hair styles, outfits, makeup, facial hair and more, and they pick a number for each. That character is them in every battle with 🧍 characters. Turn it on?', yes: { looksOn: true }, no: { looksOn: false }, yesWord: '🎨 Yes, turn it on' }
 };
-let featTest = null; // 🧪 Test tab: show the questions without saving
-function featAsk(test = false) {
-  if (PC_ONLY || !S) return;
-  if (test) featTest = ['ids', 'looks'];
-  const k = featTest ? featTest[0] : Object.keys(FEAT_Q).find(x => !S.settings.featAsk?.[x]);
-  if (!k) return;
-  if (!featTest && ((typeof upd !== 'undefined' && upd.open) || document.querySelector('dialog[open]:not(#featDlg)'))) return setTimeout(() => featAsk(), 3000); // (wait for the other start-up pop-ups)
-  const q = FEAT_Q[k], n = Object.keys(FEAT_Q).indexOf(k) + 1;
-  $('featBody').innerHTML = `<div class="holBig">${q.icon}</div><h3 style="text-align:center">${q.title}</h3>
+function featStep(k, test = false) {
+  if (!test && S.settings.featAsk?.[k]) return null;
+  const q = FEAT_Q[k];
+  return { key: 'feat-' + k, html: () => `<div class="holBig">${q.icon}</div><h3 style="text-align:center">${q.title}</h3>
     <p class="help" style="text-align:center">${q.text()}</p>
     <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="featAnswer('${k}',true)">${q.yesWord}</button><button onclick="featAnswer('${k}',false)">No thanks</button></div>
-    <p class="help" style="text-align:center;margin-top:10px">Question ${n} of 2 · You can change this any time in Settings → Game → 🧍 Characters${featTest ? ' · 🧪 test: nothing is saved' : ''}</p>`;
-  if (!$('featDlg').open) $('featDlg').showModal();
+    <p class="help" style="text-align:center;margin-top:10px">You can change this any time in Settings → Game → 🧍 Characters</p>` };
 }
+function featAsk(test = false) { sqShow(Object.keys(FEAT_Q).map(k => featStep(k, test)), test); } // (🧪 Test tab: featAsk(true))
 async function featAnswer(k, yes) {
-  const q = FEAT_Q[k];
-  if (featTest) { featTest.shift(); if (!featTest.length) { featTest = null; $('featDlg').close(); return toast('🧪 Test only: nothing was saved'); } return featAsk(); }
+  const q = FEAT_Q[k], test = SQ.test;
+  sqNext();
+  if (test) return;
   const ans = { ...(S.settings.featAsk || {}), [k]: yes ? 'yes' : 'no' };
   S.settings.featAsk = ans;
-  const next = Object.keys(FEAT_Q).find(x => !ans[x]);
-  if (next) featAsk(); else $('featDlg').close(); // (the next question follows straight away in the same window)
   await api('/api/settings', { ...(yes ? q.yes : q.no), featAsk: ans });
   toast(yes ? `${q.icon} On!` : `OK, it stays off. Turn it on any time: Settings → Game → 🧍 Characters.`, 5000);
 }
@@ -4437,7 +4448,7 @@ function holStyleHTML() {
 }
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
 if (PC_ONLY) { document.body.classList.add('pcOnly'); document.title = '💬 Pretend chat · Movie Royal'; }
-fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(updateOnOpen, 2500); setTimeout(() => { if (!upd.open) whatsNew(); }, 4000); setTimeout(botUpdateOnOpen, 6000); setTimeout(featAsk, 7500); setTimeout(holAsk, 9000); setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 <script src="spell.js"></script>
