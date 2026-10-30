@@ -95,7 +95,7 @@ function refreshPreview(now = false) {
     const { fighters, total } = await buildFighters(list, previewIds);
     if (live.phase !== 'idle') return;
     previewIds = fighters.map(f => f.id);
-    lastPreview = { type: 'preview', map: currentMap(), fighters, total, listName: list.screenTitle || list.name, kind: list.type, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
+    lastPreview = { type: 'preview', map: currentMap(), fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
     broadcast(lastPreview, 'overlay');
     lastPreview.at = Date.now(); previewError = null;
   } catch (e) { console.error('[preview]', e); previewError = e.message; broadcast({ type: 'toast', text: `⚠️ The cliff couldn't be set up: ${e.message}` }, 'control'); } 
@@ -233,18 +233,33 @@ async function buildFighters(list, keepIds = null) {
         owner = b ? (u?.name || b.name) : streamerName();
       } else if (e.twitch) { ownerLogin = e.twitch; owner = e.label; image = users.get(e.twitch)?.avatar || e.image; }
       const wl = watchLuck(list, ownerLogin); // 👀 watch luck (this battle's setting)
+      const gender = list.chars ? genderOf(list, ownerLogin) : undefined; // 🧍 characters: man / woman / non-binary
       return {
         id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : 1) * (1 + wl / 100) * 10000) / 10000, luck: Math.min(100, (list.type === 'movies' && luckOn() ? (e.luckPct || 0) : 0) + wl), watchLuck: wl || undefined,
         // the glow + flames show on every battle type and every map: movies use their luck, custom/chat/giveaway lists use their extra odds (x2 = 10%, x6 = 50% flames)
         glow: Math.min(100, (e.luckPct > 0 ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
         showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
-        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null
+        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null, gender
       };
     })
   };
 }
 
+// 🧍 characters: who someone said they are with !id (m / f / n; nothing = non-binary, no tag). Off for this battle = everyone non-binary.
+const ID_WORDS = { m: /^(man|male|boy|guy|he|him|m)$/, f: /^(woman|women|female|girl|she|her|f|w)$/, n: /^(none|nonbinary|non-binary|nb|enby|they|them|neither|other|n)$/ };
+const ID_LABEL = { m: '👨 man', f: '👩 woman', n: '🧑 non-binary' };
+function genderOf(list, login) { if (db.settings.charGenders === false || db.settings.idOn === false || list?.charIds === false || !login) return 'n'; return db.ids?.[String(login).toLowerCase()] || 'n'; }
+function idChat(m) {
+  if (db.settings.idOn === false) return false; // (Settings: the !id command is off)
+  const cmd = String(db.settings.idCommand || '!id').trim().toLowerCase(), words = m.text.trim().toLowerCase().split(/\s+/); if (!cmd || words[0] !== cmd) return false;
+  const w = (words[1] || '').replace(/[^a-z-]/g, ''), login = m.login, say = t => { if (twitch.canSay()) twitch.say(`@${m.name} ${t}`).catch(() => {}); };
+  if (!w) { const cur = db.ids?.[login]; say(`your battle character is ${cur ? ID_LABEL[cur] : '🧑 non-binary (no tag)'}. Change it: ${cmd} man · ${cmd} woman · ${cmd} none · ${cmd} remove`); return true; }
+  db.ids ||= {};
+  if (/^(remove|clear|reset|delete|off)$/.test(w)) { delete db.ids[login]; save(); say(`🧑 tag removed: your battle character is non-binary.`); pushState(); return true; }
+  const k = Object.keys(ID_WORDS).find(x => ID_WORDS[x].test(w)); if (!k) { say(`try ${cmd} man, ${cmd} woman, ${cmd} none or ${cmd} remove`); return true; }
+  db.ids[login] = k; save(); say(`${ID_LABEL[k]}: got it! That's your character in battles that use characters.`); pushState(); refreshPreview(); return true;
+}
 // 👀 watch luck: in a battle with it on, every `every` streams someone watched since it was turned on = +`amount` luck (max 100)
 function watchHours(list, login) { const k = String(login || '').toLowerCase(), v = k && db.viewers?.[k]; if (!v) return 0; return Math.max(0, (v.watchMins || 0) - (list.watchLuck?.base?.[k] || 0)) / 60; } // hours watched since watch luck was turned on
 function watchLuck(list, login) { const w = list?.watchLuck; if (!w?.on || !login) return 0; return Math.min(100, Math.floor(watchHours(list, login) / Math.max(1, w.hours || 10)) * (w.amount || 1)); }
@@ -361,18 +376,23 @@ async function sayLong(text) {
   if (cur) parts.push(cur);
   for (const p of parts) { await twitch.say(p).catch(() => {}); await new Promise(r => setTimeout(r, 1200)); }
 }
-function helpChatText() {
-  const st = db.settings, parts = [];
-  parts.push(`${st.twitchMoviesCommand || '!mymovies'} (your movies, or add a name)`);
-  if (st.callsOn !== false) parts.push(`${st.callCommand || '!call'} <movie> (call the winner before the fight: +${st.callLuck ?? 1}% luck if you're right)`);
-  if (st.colorsOn !== false) parts.push(st.colorMode === 'points' ? `color: redeem "${st.colorReward}" and type a color` : `${st.colorCommand || '!color'} <color> (your ball color)`);
-  parts.push(`${st.sitOutCommand || '!sitout'} (too late? your movies skip tonight's battles) · ${st.backCommand || '!imback'}`);
-  parts.push(`${st.joinCommand || '!join'} (chat battles)`);
-  if (giveawaySettings().command) parts.push(`${giveawaySettings().command} (giveaways)`);
-  parts.push('your movie won? type anything in chat to claim it');
-  parts.push('type 1-4 during a map vote');
-  { const wc = wheel.W().cmd; parts.push(`🎡 wheel: ${wc.respin} (use a saved respin) · ${wc.spins} (how many respins you have)`); }
-  return `🍿 Movie Royal commands: ${parts.join(' · ')}. Pick movies in Discord with /suggest.`;
+function helpChatText(kind = live.view === 'cards' ? 'cards' : annKind()) { // 📋 the commands for what's going on: the tab you're on (Battle / Chat battle / Giveaway / Wheel / Card battles)
+  const st = db.settings, parts = [], idc = st.idCommand || '!id';
+  const idLine = st.idOn !== false ? `${idc} man / woman / none / remove (your battle character)` : null;
+  if (kind === 'wheel') { const wc = wheel.W().cmd; parts.push(`${wc.respin} (use a saved respin)`, `${wc.spins} (how many respins you have)`); }
+  else if (kind === 'giveaway') { if (giveawaySettings().command) parts.push(`${giveawaySettings().command} (enter the giveaway)`); parts.push(idLine); }
+  else if (kind === 'chat') { parts.push(`${st.joinCommand || '!join'} (join the battle: your Twitch picture is your piece)`); if (st.colorsOn !== false) parts.push(st.colorMode === 'points' ? `color: redeem "${st.colorReward}" and type a color` : `${st.colorCommand || '!color'} <color> (your color)`); parts.push(idLine); parts.push('type 1-4 during a map vote'); }
+  else if (kind === 'cards') parts.push('🃏 card battle: the packs fight it out, the last one standing gets opened!', idLine);
+  else {
+    parts.push(`${st.twitchMoviesCommand || '!mymovies'} (your movies, or add a name)`);
+    if (st.callsOn !== false) parts.push(`${st.callCommand || '!call'} <movie> (call the winner before the fight: +${st.callLuck ?? 1}% luck if you're right)`);
+    if (st.colorsOn !== false) parts.push(st.colorMode === 'points' ? `color: redeem "${st.colorReward}" and type a color` : `${st.colorCommand || '!color'} <color> (your ball color)`);
+    parts.push(`${st.sitOutCommand || '!sitout'} (too late? your movies skip tonight's battles) · ${st.backCommand || '!imback'}`);
+    parts.push(idLine); parts.push('your movie won? type anything in chat to claim it'); parts.push('type 1-4 during a map vote');
+  }
+  const tail = kind === 'battle' ? ' Pick movies in Discord with /suggest.' : '';
+  const head = { wheel: '🎡 Wheel commands', chat: '🎲 Chat battle commands', giveaway: '🎁 Giveaway commands', cards: '🃏 Card battle', battle: '🍿 Movie Royal commands' }[kind] || '🍿 Movie Royal commands';
+  return `${head}: ${parts.filter(Boolean).join(' · ')}.${tail}`;
 }
 function helpChatCommand(m) {
   const cmd = String(db.settings.helpCommand || '!moviesroyal').trim().toLowerCase(); if (!cmd) return;
@@ -461,6 +481,7 @@ const twitchHandlers = {
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
+    if (idChat(m)) return; // 🧍 !id man / woman / none / remove
     if (hatChat(m)) return; // 🎩 picking a hat
     wheel.wheelChat(m); // 🎡 !respin / !spins
     moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); if (!boardVote(m)) chatCall(m); helpChatCommand(m); giveawayChat(m);
@@ -1268,6 +1289,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   const mon = new Date().toLocaleDateString('en-CA').slice(0, 7), yr = mon.slice(0, 4);
   res.json({
     linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
+    id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
     login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
     followedAt: follow === undefined ? (v?.followedAt || undefined) : follow, url: login ? `https://twitch.tv/${login}` : null,
     sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: chatlog.watchStreak(v), twitchStreak: v?.streak || 0, streams: (v?.watched || []).length, lastStreams: chatlog.lastStreams(v), color: v?.color || null,
@@ -1665,6 +1687,8 @@ app.patch('/api/lists/:id', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (req.body.name != null) l.name = String(req.body.name).slice(0, 60);
   if (req.body.joinOpen != null) l.joinOpen = !!req.body.joinOpen;
+  if (req.body.chars != null) { l.chars = !!req.body.chars; refreshPreview(); } // 🧍 characters instead of balls (this battle)
+  if (req.body.charIds != null) { l.charIds = !!req.body.charIds; refreshPreview(); } // 👫 use chat's !id for the characters (off = everyone non-binary)
   if (req.body.watchLuck && typeof req.body.watchLuck === 'object') { // 👀 watch luck: every N hours watched (counted from when it's turned on) = +X% luck in this battle
     const w = req.body.watchLuck, cur = l.watchLuck ||= { on: false, hours: 10, amount: 1, since: 0, base: {} };
     const snap = () => { cur.since = Date.now(); cur.base = Object.fromEntries(Object.entries(db.viewers || {}).filter(([, v]) => v.watchMins > 0).map(([k, v]) => [k, v.watchMins])); }; // (watch time before today doesn't count)
@@ -2700,11 +2724,12 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   const lucks = [0, 0, 5, 10, 20, 35, 50, 65, 80, 100]; // practice rounds show off the luck glow and flames
   const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: req.body?.luck === false ? 0 : lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
   if (req.body?.fun) { const F = getList('chat-join')?.fun || {}, kinds = Object.keys(POWER_INFO).filter(k => !F.powersOff?.[k]); fighters.forEach((f, i) => { if (kinds.length && i % 2 === 0) { const k = kinds[(i / 2) % kinds.length]; f.powers = { [k]: k === 'shield' ? 1 : true }; f.label += ' ' + POWER_INFO[k].icon; } }); } // 🎉 Chat battle tab → 🧪 Try it: half of them powered up
+  if (req.body?.chars) fighters.forEach((f, i) => { f.gender = db.settings.charGenders === false || db.settings.idOn === false ? 'n' : ['m', 'f', 'n'][i % 3]; }); // 🧍 characters: men, women and non-binary
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
   const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
-  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
+  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
   pushState(); res.json({ ok: true });
 });
 
@@ -2744,7 +2769,7 @@ async function startRound(opts = {}) {
   live.phase = 'lobby'; live.claim = null;
   const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
-    type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
+    type: 'start', map: currentMap(), gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
     lobbySeconds: db.settings.lobbySeconds, gameSeconds: db.settings.gameSeconds, pacer: clampN(db.settings.pacer ?? 50, 0, 100, 50), fairOdds: true, /* 🎯 every battle's winner is drawn by the odds before it starts (luck included), and the battle plays out around it (Derek's rule) */ laps: clampN(db.settings.f8Laps ?? 5, 1, 50, 5), fun: list.type === 'chat' ? { ...(list.fun?.wacky || {}) } : null, chaos: chaosState(), queued,
     series: list.type !== 'movies' && (Number(list.bestOf) || 1) > 1 ? (live.series && !live.series.done && live.series.listId === list.id ? { bestOf: live.series.bestOf, need: live.series.need, round: live.series.round + 1, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: live.series.names[id], n })) } : { bestOf: Number(list.bestOf), need: Math.ceil(Number(list.bestOf) / 2), round: 1, tally: [] }) : null
   }, 'overlay');

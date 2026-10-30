@@ -462,6 +462,7 @@
     <div><label>Elimination pacer (0–100)</label><input id="tbPacer" type="number" min="0" max="100" placeholder="my setting" title="How hard the knockouts are spread over the test fight (blank = your normal pacer, 0 = off)"></div>
     <div><label>🏁 Figure 8 laps</label><input id="tbLaps" type="number" min="1" max="50" placeholder="my setting" title="How many laps the test Figure 8 Race goes (blank = your normal lap count)"></div>
   </div>
+  <label class="ck" style="margin-top:10px"><input type="checkbox" id="tbChars"> <span>🧍 Characters instead of balls (men, women and non-binary)</span></label>
   <label class="ck" style="margin-top:10px"><input type="checkbox" id="tbLuck" checked> <span>Give the pieces some luck (shows the glow and flames; buses get luck health, speed and cow catchers)</span></label>
   <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px"><button class="ghost" onclick="tbReset()" title="Put the test battle settings back to how they came">↺ Start over</button><button class="ghost" onclick="$('tbDlg').close()">Cancel</button><button class="primary" onclick="tbSave()">💾 Save</button><button class="primary" onclick="tbSave();testBattle()" title="Save and run a test ball battle with these settings">▶ Save + run</button></div>
 </div></dialog>
@@ -538,6 +539,7 @@
     <div class="bigtimer" id="bigTimer" style="display:none"><div id="bigTimerLbl"></div><div id="bigTimerNum"></div></div>
     <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
     <div id="capRow"></div>
+    <div data-chars="active"></div>
     <div class="chaosbar" data-chaos></div>
     <div class="muted" id="poolCount" style="text-align:center"></div>
     <div class="card" id="voteCard" style="display:none"></div>
@@ -643,6 +645,7 @@
       <p class="help" id="joinHint"></p>
       <button class="primary big" style="width:100%;margin-top:6px" id="chatStart" onclick="chatStart()">▶ START CHAT BATTLE</button>
       <div data-ann="chat" style="margin-top:6px"></div>
+      <div data-chars="chat-join"></div>
       <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who joined?')) api('/api/chatbattle',{clear:true})">🧹 Clear entries</button><button class="grow" onclick="api('/api/chatbattle',{select:true}).then(()=>setView('battle'))">⚔️ Open on Battle tab</button></div>
     </div>
     <div class="card">
@@ -695,6 +698,7 @@
       <p class="help" id="gaHint"></p>
       <button class="primary big" style="width:100%;margin-top:6px" id="gaStart" onclick="gaStartClick()">▶ START GIVEAWAY</button>
       <div data-ann="giveaway" style="margin-top:6px"></div>
+      <div data-chars="giveaway"></div>
       <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who entered?')) api('/api/giveaway',{clear:true})">🧹 Clear entries</button><button class="grow" title="The winner didn't show up? Their entry is taken out, then the battle runs again" onclick="gaReroll()">🔁 Reroll</button></div>
     </div>
     <div class="card" id="gaSettings"><h2>Settings</h2><p class="help">Loading…</p></div>
@@ -786,7 +790,7 @@
         <label>Battle</label><div class="seg" style="margin-bottom:8px"><button id="labTBall" onclick="labType('ball')" title="Lab: a ball battle">⚪ Ball battle</button><button id="labTCard" onclick="labType('card')" title="Lab: a card battle">🃏 Card battle</button></div>
         <label>Map</label><select id="labMap" title="Lab: which map to test" onchange="labSave()"></select>
         <div class="grid2" style="margin-top:8px"><div><label id="labNL">Pieces</label><input id="labN" type="number" min="2" max="300" title="Lab: how many pieces / packs" onchange="labSave()"></div><div><label>Fight length (s)</label><input id="labGame" type="number" min="10" max="600" placeholder="auto" title="Lab: how long the fight should take" onchange="labSave()"></div></div>
-        <div class="labBall"><div class="grid2"><div><label>Countdown (s)</label><input id="labLobby" type="number" min="0" max="60" title="Lab: countdown before the fight" onchange="labSave()"></div><div><label>On the pieces</label><select id="labSkin" title="Lab: what the pieces show" onchange="labSave()"><option value="movies">🎬 Movies</option><option value="numbers">🔢 Numbers</option><option value="chat">💬 Chat names</option></select></div></div>
+        <div class="labBall"><div class="grid2"><div><label>Countdown (s)</label><input id="labLobby" type="number" min="0" max="60" title="Lab: countdown before the fight" onchange="labSave()"></div><div><label>On the pieces</label><select id="labSkin" title="Lab: what the pieces show" onchange="labSave()"><option value="movies">🎬 Movies</option><option value="numbers">🔢 Numbers</option><option value="chat">💬 Chat names</option></select></div><div><label>Pieces look like</label><select id="labLook" title="Lab: balls or characters" onchange="labSave()"><option value="balls">⚪ Balls</option><option value="mix">🧍 Characters (mixed)</option><option value="m">👨 Characters: all men</option><option value="f">👩 Characters: all women</option><option value="n">🧑 Characters: all non-binary</option></select></div></div>
           <div class="grid2"><div><label>Luck</label><select id="labLuck" title="Lab: how much luck the pieces have" onchange="labSave()"><option value="mixed">🍀 Mixed (some lucky)</option><option value="off">None</option><option value="one">One very lucky piece</option><option value="all">Everyone lucky</option></select></div><div><label>🏁 Laps (Figure 8)</label><input id="labLaps" type="number" min="1" max="50" title="Lab: laps for Figure 8 Race" onchange="labSave()"></div></div>
           <label class="ck"><input type="checkbox" id="labSurv" onchange="labSave()"> <span title="Lab: survival race">🏁 Survival race (Figure 8)</span></label></div>
         <label style="margin-top:6px">⏳ Pacer: <b id="labPacerV"></b></label><input type="range" id="labPacer" min="0" max="100" step="5" title="Lab: the elimination pacer" oninput="$('labPacerV').textContent=pacerWord(this.value);labSave()">
@@ -921,6 +925,11 @@
     <p class="help">Try a holiday's colors (not saved), or see the pop-up Movie Royal shows when it opens close to a holiday (your answer isn't saved in the test).</p>
     <div class="row"><select id="tHolStyle" style="width:auto" title="Which holiday style to try"></select><button onclick="holTryStyle($('tHolStyle').value)">🎨 Try it</button></div>
     <div class="row" style="margin-top:8px"><select id="tHolPop" style="width:auto" title="Pretend it's close to this holiday"></select><button onclick="holTestDate=HOLIDAYS.find(h=>h.id===$('tHolPop').value).win(new Date().getFullYear())[1];holAsk(true)">💬 Show the pop-up</button></div>
+  </div>
+  <div class="card">
+    <h3>🧍 Characters &amp; !id</h3>
+    <p class="help">A practice battle with characters instead of balls (men, women and non-binary), or try the chat command in 💬 Test chat: type <code>!id man</code>, <code>!id woman</code>, <code>!id none</code> or <code>!id remove</code>, then double-click the name to see the tag on their profile.</p>
+    <div class="row"><button class="primary" onclick="testBattle({chars:true})" title="A practice battle where every piece is a character">🧍 Characters practice battle</button><button onclick="pchat(true,'test_viewer');pcLog('bot','Movie Royal','Type !id man, !id woman, !id none or !id remove')" title="Open the pretend chat to try !id">💬 Try !id in Test chat</button></div>
   </div>
   <div class="card">
     <h3>💀 Finishers &amp; celebrations</h3>
@@ -1398,7 +1407,7 @@ function labInit() {
   $('labMap').innerHTML = t === 'card' ? cardMapOpts(labSet.cmap || 'random') : `<option value="random">🎲 Random</option>` + ballMapOpts(labSet.map || 'random'); $('labMap').value = (t === 'card' ? labSet.cmap : labSet.map) || 'random';
   $('labNL').textContent = t === 'card' ? 'Packs (2–40)' : 'Pieces'; $('labN').max = t === 'card' ? 40 : 300;
   $('labN').value = (t === 'card' ? labSet.cn : labSet.n) ?? (t === 'card' ? 12 : 16); $('labGame').value = (t === 'card' ? labSet.cgame : labSet.game) ?? '';
-  $('labLobby').value = labSet.lobby ?? 3; $('labSkin').value = labSet.skin || 'movies'; $('labLuck').value = labSet.luck || 'mixed'; $('labLaps').value = labSet.laps ?? 3; $('labSurv').checked = !!labSet.surv;
+  $('labLobby').value = labSet.lobby ?? 3; $('labSkin').value = labSet.skin || 'movies'; $('labLook').value = labSet.look || 'balls'; $('labLuck').value = labSet.luck || 'mixed'; $('labLaps').value = labSet.laps ?? 3; $('labSurv').checked = !!labSet.surv;
   $('labPacer').value = labSet.pacer ?? 50; $('labPacerV').textContent = pacerWord($('labPacer').value);
   const ck = (id, on, label, tip) => `<label class="ck" title="${esc(tip || '')}"><input type="checkbox" data-lab="${id}" ${on ? 'checked' : ''} onchange="labSave()"> <span>${label}</span></label>`;
   $('labPow').innerHTML = POWERS.map(([k, n, d]) => ck('p-' + k, labSet.pow?.[k], n, 'Lab power-up: ' + d)).join('');
@@ -1410,7 +1419,7 @@ function labInit() {
 function labType(t) { labSet.type = t; labSave(true); labInit(); }
 function labSave(skip) {
   if (!skip && $('labMap')) { const t = labSet.type || 'ball', card = t === 'card';
-    Object.assign(labSet, card ? { cmap: $('labMap').value, cn: $('labN').value, cgame: $('labGame').value } : { map: $('labMap').value, n: $('labN').value, game: $('labGame').value }, { lobby: $('labLobby').value, skin: $('labSkin').value, luck: $('labLuck').value, laps: $('labLaps').value, surv: $('labSurv').checked, pacer: $('labPacer').value });
+    Object.assign(labSet, card ? { cmap: $('labMap').value, cn: $('labN').value, cgame: $('labGame').value } : { map: $('labMap').value, n: $('labN').value, game: $('labGame').value }, { lobby: $('labLobby').value, skin: $('labSkin').value, look: $('labLook').value, luck: $('labLuck').value, laps: $('labLaps').value, surv: $('labSurv').checked, pacer: $('labPacer').value });
     labSet.pow = Object.fromEntries([...document.querySelectorAll('[data-lab^="p-"]')].map(i => [i.dataset.lab.slice(2), i.checked]));
     labSet.wacky = Object.fromEntries([...document.querySelectorAll('[data-lab^="w-"]')].map(i => [i.dataset.lab.slice(2), i.checked])); }
   try { localStorage.labSet = JSON.stringify(labSet); } catch {}
@@ -1437,11 +1446,12 @@ async function labRun() {
   const fighters = Array.from({ length: n }, (_, i) => { const luck = lk === 'off' ? 0 : lk === 'all' ? 60 : lk === 'one' ? (i === 0 ? 100 : 0) : lucks[i % lucks.length];
     const f = skin === 'numbers' ? { label: String(i + 1), sub: '', kind: 'text' } : skin === 'chat' ? { label: chatters[i % chatters.length] + (i >= chatters.length ? Math.floor(i / chatters.length) + 1 : ''), sub: '', kind: 'text' } : { label: movies[i % movies.length] + (i >= movies.length ? ' ' + (Math.floor(i / movies.length) + 1) : ''), sub: String(1970 + (i * 7) % 50), kind: 'films', owner: chatters[i % chatters.length], showOwner: true };
     if (pows.length && i % 2 === 0) { const k = pows[(i / 2) % pows.length]; f.powers = { [k]: k === 'shield' ? 1 : true }; }
+    const look = labSet.look || 'balls'; if (look !== 'balls') f.gender = look === 'mix' ? ['m', 'f', 'n'][i % 3] : look;
     return { id: 'lab-' + i, weight: 1, luck, ...f }; });
   const wk = Object.fromEntries(Object.entries(labSet.wacky || {}).filter(([, v]) => v));
   labCur = { card: false, map, fighters };
   labPost({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} });
-  labPost({ type: 'start', gameId: id, fighters, total: n, map, listName: '🧪 Test lab', kind: skin === 'movies' ? 'films' : 'text', fun: Object.keys(wk).length ? wk : null, lobbySeconds: labNum(labSet.lobby, 3, 0, 60), gameSeconds: labNum(labSet.game, S.settings.gameSeconds || 30, 10, 600), pacer, fairOdds: true, laps: labNum(labSet.laps, 3, 1, 50), survival: labSet.surv ? true : null, queued: [] });
+  labPost({ type: 'start', gameId: id, fighters, total: n, map, listName: '🧪 Test lab', kind: skin === 'movies' ? 'films' : 'text', skin: (labSet.look || 'balls') !== 'balls' ? 'chars' : undefined, fun: Object.keys(wk).length ? wk : null, lobbySeconds: labNum(labSet.lobby, 3, 0, 60), gameSeconds: labNum(labSet.game, S.settings.gameSeconds || 30, 10, 600), pacer, fairOdds: true, laps: labNum(labSet.laps, 3, 1, 50), survival: labSet.surv ? true : null, queued: [] });
   const mp = (S.maps || []).find(m => m.id === map); toast(`🧪 Test lab: ${n} pieces on ${mp?.icon || ''} ${mp?.name || map}. Only on this page.`);
 }
 function labStop() { labPost({ type: 'stop' }); labCur = null; $('labIdle').style.display = ''; }
@@ -1468,7 +1478,7 @@ function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckD
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
-  watchLuck: ['battles', '1.42.0'], banUpdate: ['movies', '1.51.0'], finishers: ['battles', '1.52.0'], finalMapTag: ['battles', '1.52.0'], banYearList: ['movies', '1.51.0'], cardLen60: ['battles', '1.51.0'], finalIntro8: ['battles', '1.51.0'], camAutoBack: ['screen', '1.51.0'], cardCamFx: ['battles', '1.51.0'], banRules: ['movies', '1.50.0'], banSearch: ['movies', '1.50.0'], holStyle: ['screen', '1.50.0'], cardPrice: ['battles', '1.50.0'], claimAskFirst: ['battles', '1.49.1'], holidayMaps: ['battles', '1.49.1'], respinFirst: ['wheel', '1.49.0'], spinLogTab: ['wheel', '1.49.0'], autoNoRespin: ['wheel', '1.48.2'], autoCount: ['wheel', '1.48.0'], wheelChatters: ['wheel', '1.48.0'], joinVote: ['battles', '1.47.0'], webList: ['movies', '1.46.0'], webListReal: ['movies', '1.46.0'], testLab: ['lab', '1.45.0'], ww2Map: ['battles', '1.45.0'], halloweenMap: ['battles', '1.44.0'], newyearMap: ['battles', '1.44.0'], valentineMap: ['battles', '1.44.0'], stpatMap: ['battles', '1.44.0'], easterMap: ['battles', '1.44.0'], july4Map: ['battles', '1.44.0'], elementsMap: ['battles', '1.43.0'], pompeiiMap: ['battles', '1.43.0'], xmasMap: ['battles', '1.42.0'], turkeyMap: ['battles', '1.42.0'], kaijuMap: ['battles', '1.41.0'], heroVillains: ['battles', '1.41.0'], zombieMap: ['battles', '1.41.0'], funPowers: ['chat', '1.40.0'], funWacky: ['chat', '1.40.0'], tagReset: ['battles', '1.40.0'], doomReal: ['wheel', '1.39.4'], doomBack: ['wheel', '1.39.4'], tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
+  watchLuck: ['battles', '1.42.0'], banUpdate: ['movies', '1.51.0'], charsSkin: ['battles', '1.53.0'], idCmd: ['chat', '1.53.0'], helpByTab: ['chat', '1.53.0'], finishers: ['battles', '1.52.0'], finalMapTag: ['battles', '1.52.0'], banYearList: ['movies', '1.51.0'], cardLen60: ['battles', '1.51.0'], finalIntro8: ['battles', '1.51.0'], camAutoBack: ['screen', '1.51.0'], cardCamFx: ['battles', '1.51.0'], banRules: ['movies', '1.50.0'], banSearch: ['movies', '1.50.0'], holStyle: ['screen', '1.50.0'], cardPrice: ['battles', '1.50.0'], claimAskFirst: ['battles', '1.49.1'], holidayMaps: ['battles', '1.49.1'], respinFirst: ['wheel', '1.49.0'], spinLogTab: ['wheel', '1.49.0'], autoNoRespin: ['wheel', '1.48.2'], autoCount: ['wheel', '1.48.0'], wheelChatters: ['wheel', '1.48.0'], joinVote: ['battles', '1.47.0'], webList: ['movies', '1.46.0'], webListReal: ['movies', '1.46.0'], testLab: ['lab', '1.45.0'], ww2Map: ['battles', '1.45.0'], halloweenMap: ['battles', '1.44.0'], newyearMap: ['battles', '1.44.0'], valentineMap: ['battles', '1.44.0'], stpatMap: ['battles', '1.44.0'], easterMap: ['battles', '1.44.0'], july4Map: ['battles', '1.44.0'], elementsMap: ['battles', '1.43.0'], pompeiiMap: ['battles', '1.43.0'], xmasMap: ['battles', '1.42.0'], turkeyMap: ['battles', '1.42.0'], kaijuMap: ['battles', '1.41.0'], heroVillains: ['battles', '1.41.0'], zombieMap: ['battles', '1.41.0'], funPowers: ['chat', '1.40.0'], funWacky: ['chat', '1.40.0'], tagReset: ['battles', '1.40.0'], doomReal: ['wheel', '1.39.4'], doomBack: ['wheel', '1.39.4'], tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
   wheel: ['wheel'], wheelPoints: ['wheel'], wheelMove: ['wheel'], discordRestart: ['discord', '1.28.5'], pickLockBattle: ['movies', '1.29.0'], gfx: ['screen', '1.29.0'], botUpdPop: ['discord', '1.28.11'], backupAdd: ['discord', '1.28.8'],
   backupUpd: ['discord', '1.28.8'], backupLink: ['discord', '1.27.0'], wheelLink: ['wheel', '1.28.0'], keys: ['screen', '1.26.0'], prevPop: ['screen', '1.26.0'], pchat: ['chat', '1.25.0'], money: ['wheel'], discordSuggest: ['discord'],
@@ -1489,7 +1499,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1545,6 +1555,9 @@ function drawChecklist() {
     ['july4Map', '🎇 Fourth of July map (ball + card battles): Bottle rockets skitter across the ground and firecracker strings go pop-pop-pop.', `<button class="ghost" style="padding:3px 9px" onclick="labTry('july4')">Try it</button>`],
     ['camAutoBack', '🎥 The camera goes back to auto by itself 8 seconds after you last moved it (camera keys, scroll, drag or clicking a piece/pack), in ball and card battles', `<button class="ghost" style="padding:3px 9px" onclick="labTry('kungfu','card')">Try it</button>`],
     ['cardCamFx', '🎬 Card battle camera: a 360° spin around the last two during FINAL FIGHT! (then back to the view from before), a quick zoom-in on every K.O., screen shake on big hits and bombs, it leans toward the action, pushes in at the end of the final fight and swoops in on the winner', `<button class="ghost" style="padding:3px 9px" onclick="labTry('kungfu','card')">Try it</button>`],
+    ['charsSkin', '🧍 Characters instead of balls: tick 🧍 on the right side of the Battle / Chat battle / Giveaway tab. Heads are movie posters, your pictures, the text, or Twitch pictures; men, women and non-binary bodies with random hair and outfits', `<button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true})">Practice battle</button>`],
+    ['idCmd', '👫 Chat types !id man / woman / none / remove: their character in battles with characters, and a tag on their profile (anyone can change it any time). 👫 check box per battle, and Settings → Game can turn !id or men/women off for everyone', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true,'test_viewer')">Test chat</button>`],
+    ['helpByTab', '📋 !moviesroyal now lists the commands for the tab you are on (Battle, Chat battle, Giveaway, Wheel, Card battles). Switch tabs and type it in 💬 Test chat', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true,'test_viewer')">Test chat</button>`],
     ['finishers', '💀 Card FINAL FIGHT finishers: the hit that would knock the loser out staggers them instead (💀 FINAL BLOW!), the winner does a finisher (20 per map, brutal and silly), the replay shows the finisher, then the winner celebrates (10 per map). Watch them on the Tests tab → 💀 Finishers & celebrations', `<button class="ghost" style="padding:3px 9px" onclick="finTry()">Watch one</button>`],
     ['finalMapTag', '🥊 Maps with a final fight (and finishers) have a 🥊 in the map lists (Card battles tab, Card pool)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Card battles</button>`],
     ['banUpdate', '🔄 Banned Movies → 🔄 Update the ban list: it looks up TMDB and adds movies that break the rules (not twice; pre-approved and already-picked movies are skipped). It also ran once by itself the first time Movie Royal opened after the update. Try the pretend one first', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/ban-scan',{}).then(()=>{setView('settings');setSub('bans');loadBans()})">Pretend update</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('bans');loadBans()">Banned Movies</button>`],
@@ -2027,9 +2040,9 @@ async function cardTest(n, wacky = [], map) { await cardsApi('/api/cards/stop');
 // ⚙ Test battle settings (kept on this computer)
 let tbSet = {}; try { tbSet = JSON.parse(localStorage.tbSet || '{}'); } catch {}
 const tbNum = v => v === '' || v == null || isNaN(Number(v)) ? undefined : Number(v);
-function testBattle(extra = {}) { const b = { count: tbNum(tbSet.count) ?? (extra.numbers ? 10 : 12), map: tbSet.map || 'random', lobby: tbNum(tbSet.lobby), game: tbNum(tbSet.game), pacer: tbNum(tbSet.pacer), laps: tbNum(tbSet.laps), luck: tbSet.luck !== false, ...extra }; return api('/api/test/battle', b).catch(() => {}); }
-function tbOpen() { $('tbMap').innerHTML = `<option value="random">🎲 Random</option>` + ballMapOpts(tbSet.map); $('tbMap').value = tbSet.map || 'random'; for (const [id, k] of [['tbCount', 'count'], ['tbLobby', 'lobby'], ['tbGame', 'game'], ['tbPacer', 'pacer'], ['tbLaps', 'laps']]) $(id).value = tbSet[k] ?? ''; $('tbLuck').checked = tbSet.luck !== false; $('tbDlg').showModal(); }
-function tbSave() { tbSet = { count: $('tbCount').value, map: $('tbMap').value, lobby: $('tbLobby').value, game: $('tbGame').value, pacer: $('tbPacer').value, laps: $('tbLaps').value, luck: $('tbLuck').checked }; try { localStorage.tbSet = JSON.stringify(tbSet); } catch {} $('tbDlg').close(); toast('⚙ Test battle settings saved.'); }
+function testBattle(extra = {}) { const b = { count: tbNum(tbSet.count) ?? (extra.numbers ? 10 : 12), map: tbSet.map || 'random', lobby: tbNum(tbSet.lobby), game: tbNum(tbSet.game), pacer: tbNum(tbSet.pacer), laps: tbNum(tbSet.laps), luck: tbSet.luck !== false, chars: !!tbSet.chars, ...extra }; return api('/api/test/battle', b).catch(() => {}); }
+function tbOpen() { $('tbMap').innerHTML = `<option value="random">🎲 Random</option>` + ballMapOpts(tbSet.map); $('tbMap').value = tbSet.map || 'random'; for (const [id, k] of [['tbCount', 'count'], ['tbLobby', 'lobby'], ['tbGame', 'game'], ['tbPacer', 'pacer'], ['tbLaps', 'laps']]) $(id).value = tbSet[k] ?? ''; $('tbLuck').checked = tbSet.luck !== false; $('tbChars').checked = !!tbSet.chars; $('tbDlg').showModal(); }
+function tbSave() { tbSet = { count: $('tbCount').value, map: $('tbMap').value, lobby: $('tbLobby').value, game: $('tbGame').value, pacer: $('tbPacer').value, laps: $('tbLaps').value, luck: $('tbLuck').checked, chars: $('tbChars').checked }; try { localStorage.tbSet = JSON.stringify(tbSet); } catch {} $('tbDlg').close(); toast('⚙ Test battle settings saved.'); }
 function tbReset() { tbSet = {}; try { delete localStorage.tbSet; } catch {} tbOpen(); }
 // 🔴 NEW / 🔵 UPDATED tags: put them back on maps (all, or one at a time), e.g. a map played on stream by mistake
 function tagsHTML() {
@@ -2068,6 +2081,7 @@ function renderView() {
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
   { const el = $('capRow'), h = capHTML(); if (el && el.innerHTML !== h) el.innerHTML = h; }
+  document.querySelectorAll('[data-chars]').forEach(el => { const h = charsHTML(el.dataset.chars); if (el.dataset.k !== h) { el.dataset.k = h; el.innerHTML = h; } });
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
@@ -3593,7 +3607,12 @@ function openSettings(force) {
       <p class="help" style="margin:2px 0 0">Spreads the knockouts over the whole fight so it doesn't empty out in the first seconds, and makes it busier when it drags. It follows the fight length above: a 60-second fight gets paced over 60 seconds. 0 = off (pieces go out whenever they go out). When 2 are left early, the 🥊 FINAL SHOWDOWN still starts.</p></div>
       <p class="help">🎯 <b>Fair winner:</b> every battle's winner is drawn by the odds before the battle starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins.</p>
       ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
-      ${f('helpCommand', 'Chat command that lists every chat command', '!moviesroyal')}
+      ${f('helpCommand', 'Chat command that lists the chat commands (it lists the ones for the tab you are on)', '!moviesroyal')}
+      <h3 style="margin-top:18px">🧍 Characters &amp; ${esc(s.idCommand || '!id')}</h3>
+      <p class="help">Battles can show characters instead of balls (the 🧍 check box on the right side of the Battle, Chat battle and Giveaway tabs). Chat can pick what their character is: <code>${esc(s.idCommand || '!id')} man</code>, <code>woman</code>, <code>none</code> (non-binary) or <code>remove</code>. It shows as a tag on their profile. Anyone can change theirs any time. No pick = non-binary.</p>
+      ${ck('idOn', `💬 The ${esc(s.idCommand || '!id')} chat command is on (off: Movie Royal ignores it and hides the tags)`)}
+      ${ck('charGenders', '👫 Characters can be men or women (off: every character is non-binary)')}
+      ${f('idCommand', 'Chat command for picking your character', '!id')}
       ${ck('autoFullscreen', 'Go fullscreen when a battle starts (press Esc to leave)')}
       <h3 style="margin-top:18px">🗺️ Maps</h3>
       <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${ballMapOpts(s.map)}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
@@ -4134,6 +4153,15 @@ async function banRulesTest() {
 function holTestInit() { if ($('tFin') && $('tFin').options.length < 2 && !holTestInit.fo) { holTestInit.fo = 1; setTimeout(() => finOpts().catch(() => {}), 2500); }
   if (!$('tHolPop') || $('tHolPop').options.length) return; const o = HOLIDAYS.map(h => `<option value="${h.id}">${h.icon} ${esc(h.name)}</option>`).join(''); $('tHolPop').innerHTML = o; $('tHolStyle').innerHTML = '<option value="">💜 Normal / my saved style</option>' + o; }
 
+
+// 🧍 characters instead of balls (per battle) + chat's !id man / woman / non-binary (Settings → Game turns those off everywhere)
+function charsHTML(which) {
+  const lid = which === 'active' ? S.activeListId : which, l = (S.lists || []).find(x => x.id === lid); if (!l || l.id === 'cards') return '';
+  const st = S.settings, idOff = st.idOn === false, gOff = st.charGenders === false;
+  const box = (k, on, txt, tip, dis) => `<label class="ck" style="margin:4px 0" title="${esc(tip)}"><input type="checkbox" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''} onchange="api('/api/lists/${l.id}',{${k}:this.checked},'PATCH').then(()=>toast('Saved'))"> <span>${txt}</span></label>`;
+  return `<div class="card soft" style="margin-top:8px;padding:8px 12px">${box('chars', !!l.chars, '🧍 Characters instead of balls', 'Every piece is a little person: its head is the movie poster, your picture, the text, or the chatter\'s Twitch picture')}
+    ${l.chars ? box('charIds', l.charIds !== false && !idOff && !gOff, `👫 Use chat's ${esc(st.idCommand || '!id')} (man / woman / non-binary)`, 'On: chatters who typed !id man / woman get that character. Off: every character is non-binary', idOff || gOff) + (idOff || gOff ? '<p class="help" style="margin:0">Turned off for everyone in Settings → Game, so all characters are non-binary.</p>' : '') : ''}</div>`;
+}
 // 💀 Test tab: watch a finisher / celebration in the test lab (the lab screen has the lists: finishers.js)
 async function finOpts() {
   await labFrame(); const w = $('labFrame').contentWindow, L = w?.CARDS?.finList?.($('tFinMap').value); if (!L) return;

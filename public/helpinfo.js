@@ -456,6 +456,15 @@ H(/^tip:which finisher/i, '💀 Which finisher', 'Pick one of the 20 finishers f
 H(/^tip:which celebration/i, '🏆 Which celebration', 'Pick one of the 10 winner celebrations for that map, or 🎲 Random.', ['test']);
 H(/^▶ watch it$/i, '▶ Watch it', 'Plays it in the 🧪 Test lab: the loser gets staggered, the finisher, its replay, then the celebration. Only on this page, not on stream, and it doesn\'t use up the stream\'s shuffled pile.', ['test']);
 H(/^tip:the next finisher in the list/i, '⏭ Next', 'Picks the next finisher in the list and plays it.', ['test']);
+H(/^tip:every piece is a little person/i, '🧍 Characters instead of balls', 'This battle shows characters instead of balls: little people whose head is the movie poster, your picture, the text, or the chatter\'s Twitch picture. Men, women and non-binary bodies with random hair, outfits and colors. Works on every ball map.');
+H(/^tip:on: chatters who typed !id/i, '👫 Use chat\'s !id', 'On: chatters who typed !id man or !id woman get that character in this battle. Off: every character in this battle is non-binary.');
+H(/the .{1,20} chat command is on \(off: movie royal ignores it/i, '💬 !id command', 'Chat types !id man, !id woman, !id none (non-binary) or !id remove. It picks their battle character and shows a tag on their profile. Anyone can change theirs any time. Off: Movie Royal ignores the command, hides the tags and every character is non-binary.');
+H(/characters can be men or women/i, '👫 Men and women characters', 'Off: every character in every battle is non-binary (the !id tags stay on profiles).');
+H(/chat command for picking your character/i, '🧍 !id command word', 'What chat types to pick their character (default !id).');
+H(/^tip:lab: balls or characters/i, '🧪 Test lab: pieces look like', 'Balls, or characters: mixed, all men, all women or all non-binary.', ['test']);
+H(/^tip:a practice battle where every piece is a character/i, '🧍 Characters practice battle', 'A practice battle with characters instead of balls (men, women and non-binary). Your real lists aren\'t touched.', ['test']);
+H(/^tip:open the pretend chat to try !id/i, '💬 Try !id', 'Opens the pretend chat as test_viewer so you can type !id man / woman / none / remove and see the bot\'s answer.', ['test']);
+H(/characters instead of balls \(men, women and non-binary\)/i, '🧍 Characters (test battles)', 'Practice battles use characters instead of balls.', ['test']);
 H(/^tip:search the banned list/i, '🔍 Search banned movies', 'Finds banned movies by title, year or reason (like “religious”). There can be lots of them, so the list shows 100 at a time: press Show more for the rest.');
 H(/^tip:which bans to show/i, '🚫 Which bans', 'Show every ban, only the ones you banned by hand, or only the ones the automatic rules banned (🌍 not in English, ⛪ religious, 🎥 documentary, 📅 this year\'s movies).');
 H(/movies that aren't in english at all/i, '🌍 Not in English', 'Bans movies with no English in them at all (going by TMDB\'s spoken languages). Movies that are mostly English with some other languages are fine. Unban one to pre-approve it.');

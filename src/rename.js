@@ -15,6 +15,7 @@ export function renameUser(oldName, newName) {
   for (const p of Object.values(db.manualPeople || {})) { if (same(p.twitch)) { p.twitch = nl; out.links++; } if (same(p.name)) p.name = n; }
   // ball color
   if (db.colors?.[ol] && !db.colors[nl]) { db.colors[nl] = db.colors[ol]; delete db.colors[ol]; }
+  if (db.ids?.[ol] && !db.ids[nl]) { db.ids[nl] = db.ids[ol]; delete db.ids[ol]; } // 🧍 their !id character
   // movies (the name shown on their picks) and chat / giveaway entries
   for (const l of db.lists || []) for (const e of l.entries || []) {
     for (const b of e.backers || []) if (same(b.name)) { b.name = n; out.movies++; }

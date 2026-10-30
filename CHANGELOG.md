@@ -2,6 +2,20 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.53.0 (test build)
+- 🧍 **Characters instead of balls:** tick 🧍 on the right side of the Battle, Chat battle or Giveaway tab (each battle has its own). Every piece becomes a little person that walks and fights.
+  - The head is the movie poster, your picture, the text, or the chatter's Twitch picture.
+  - Bodies are men, women or non-binary, with random hair, outfits and colors. A piece looks the same every battle.
+  - It works on every ball map.
+- 👫 **!id:** chat types `!id man`, `!id woman`, `!id none` (non-binary) or `!id remove` (non-binary, no tag).
+  - That's their character in battles with characters, and it shows as a tag on their profile.
+  - Anyone can change theirs any time. Nobody picked = non-binary.
+  - **Turning it off:**
+    - For one battle: the 👫 box under the 🧍 box (everyone non-binary).
+    - Everywhere: Settings → Game can turn the !id command off, or turn men/women characters off. You can also change the command word there.
+- 📋 **!moviesroyal lists the commands for the tab you're on:** Battle = the movie commands, Chat battle = !join, Wheel = !respin / !myspins, Giveaway, Card battles. !id is in the battle lists.
+- 🧪 **Test tab:** a characters practice battle, characters in the test lab ("Pieces look like") and in ⚙ test battle settings, and !id in 💬 Test chat.
+
 ## 1.52.0 (test build)
 - 💀 **Finishers!** On card maps with a 🥊 final fight, the hit that would knock the loser out staggers them instead: **💀 FINAL BLOW!** Then the winner does a finisher:
   - **20 per map:** Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum and WW2 Battlefield, so 100 in all. Some are ☠️ brutal (Dragon's Breath, Table Breaker, Black Hole, Feed The Lions, Air Strike…) and some are 🤪 silly (Noodle Slurp, Rubber Chicken Beatdown, Ribbit Hex, Grape Feast, Bean Bomb…).
