@@ -1040,7 +1040,7 @@ async function vrSetup() {
     out[k] = o;
   }
   db.vrSetup = { at: Date.now(), ...out }; save(); rewardKey = ''; syncRewards().catch(() => {}); pushState();
-  if (db.settings.choiceObs) choiceFile().then(f => obs.celebrateSource(true, f.file)).catch(() => {}); // (a remade reward has a new id: the OBS file gets it)
+  if (db.settings.choiceObs) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); // (a remade reward has a new id: the OBS file gets it)
   return out;
 }
 setInterval(() => { if (twitch.status.userId && !db.vrSetup && !vrSetup.busy) { vrSetup.busy = true; vrSetup().catch(e => console.error('[twitch] viewer rewards:', e.message)).finally(() => { vrSetup.busy = false; }); } }, 30000);
@@ -1084,17 +1084,20 @@ async function choiceFile() {
   const dir = path.join(DATA, 'obs'); fs.mkdirSync(dir, { recursive: true }); const file = path.join(dir, 'viewers-choice.html'); fs.writeFileSync(file, tpl);
   return { file, needsText: !rw.input };
 }
-async function choiceSource(on) {
+const choicePick = () => Array.isArray(db.settings.choiceScenes) && db.settings.choiceScenes.length ? db.settings.choiceScenes : null; // 🎬 the OBS scenes you picked (null = the ones that have it)
+async function choiceSource(on, scenes) {
+  if (on && Array.isArray(scenes)) { if (!scenes.length) throw new Error('Pick at least one OBS scene for it.'); db.settings.choiceScenes = scenes.map(String).slice(0, 200); }
   db.settings.choiceObs = !!on; save();
   let note = null, file = null;
   if (on) { const f = await choiceFile(); file = f.file; if (f.needsText) note = 'Your Viewer\'s choice reward doesn\'t ask viewers to type something, so it can\'t be seen in chat. On Twitch, turn on “Require Viewer to Enter Text” for it.'; }
-  const r = await obs.celebrateSource(on, file);
+  let r; try { r = await obs.celebrateSource(on, file, choicePick()); } catch (e) { if (on) { db.settings.choiceObs = false; save(); } throw e; }
   pushState(); return { ...r, note };
 }
-setInterval(() => { if (db.settings.choiceObs && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file)).catch(() => {}); }, 10 * 60000); // (new scenes get it too, and a new reward or channel is written in)
+setInterval(() => { if (db.settings.choiceObs && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); }, 10 * 60000); // (keeps it in the scenes you picked, and a new reward or channel is written in)
+app.get('/api/vr/scenes', async (req, res) => { try { res.json({ ok: true, ...(await obs.sceneList()), picked: db.settings.choiceScenes || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
 app.get('/api/vr/obs-file', (req, res) => res.download(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'viewers-choice.html')); // ⬇️ the file for OBS (it sets itself up when you open it)
 app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
-app.post('/api/vr/source', async (req, res) => { try { res.json({ ok: true, ...(await choiceSource(!!req.body?.on)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
+app.post('/api/vr/source', async (req, res) => { try { res.json({ ok: true, ...(await choiceSource(!!req.body?.on, req.body?.scenes)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/test/vr', (req, res) => { // 🧪 pretend someone redeemed one
   const kind = String(req.body?.kind || ''); if (!VR[kind]) return res.status(400).json({ error: 'Which reward?' });
   twitch.pretend.until = Date.now() + 10 * 60000;

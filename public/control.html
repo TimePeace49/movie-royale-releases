@@ -412,6 +412,12 @@
 <div id="holFx"></div>
 <dialog id="priceDlg"><div style="padding:18px" id="priceBody"></div></dialog>
 <dialog id="holDlg"><div style="padding:18px" id="holBody"></div></dialog>
+<dialog id="choiceDlg"><div class="inner" style="max-width:460px">
+  <h3 style="margin-top:0">🎬 Which OBS scenes get the celebration?</h3>
+  <p class="help">Tick the scenes where the 🎉 Viewer's choice confetti should show. Movie Royal puts the source <b>Movie Royal celebration</b> on top of those scenes only (and takes it out of the ones you don't tick).</p>
+  <div id="choiceList" style="max-height:320px;overflow:auto;margin:8px 0"><p class="help">Asking OBS for your scenes…</p></div>
+  <div class="row" style="gap:6px;margin-top:6px"><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=true)">Tick all</button><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=false)">Untick all</button><span class="grow"></span><button onclick="$('choiceDlg').close()">Cancel</button><button class="primary" id="choiceGoBtn" onclick="choiceGo()">📺 Put it in these scenes</button></div>
+</div></dialog>
 <dialog id="featDlg"><div style="padding:18px;max-width:480px" id="featBody"></div></dialog>
 <header>
   <h1>🍿 MOVIE ROYAL</h1>
@@ -843,6 +849,7 @@
     <h3>🎁 Viewer rewards (channel points / bits)</h3>
     <p class="help">Pretend test_viewer redeemed one. The 💧🙆🎩 pop-ups only show while Movie Royal is the window you're on. 🎩: the bot lists the hats; answer as test_viewer in 💬 Pretend chat (it opens). 🎉 shows on stream if you added the OBS source, and on your screen.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="api('/api/test/vr',{kind:'hydrate'})">💧 Hydrate</button><button onclick="api('/api/test/vr',{kind:'stretch'})">🙆 Stretch</button><button onclick="pchat(true,'test_viewer');api('/api/test/vr',{kind:'hat'})">🎩 Pick a hat</button><button class="primary" onclick="api('/api/test/vr',{kind:'choice'})">🎉 Viewer's choice</button></div>
+    <div class="row" style="margin-top:8px"><button onclick="choicePick()" title="Pick which OBS scenes get the Viewer's choice celebration">🎬 Pick the OBS scenes</button></div>
   </div>
   <div class="card" style="grid-column:1 / -1">
     <h3>🤖 Discord self-test</h3>
@@ -1486,16 +1493,18 @@ function fillChatters(id, more = []) { const dl = $(id); if (!dl) return; const 
 function testTab(t) {
   $('v-test').classList.toggle('checkmode', t === 'check'); $('v-test').classList.toggle('errmode', t === 'errors');
   $('tTabTests').classList.toggle('on', t === 'tests'); $('tTabCheck').classList.toggle('on', t === 'check'); $('tTabErr').classList.toggle('on', t === 'errors');
+  if (t !== 'check') ckLeave();
   if (t === 'errors') { errSeen(); drawErrors(); }
   if (t === 'check') { drawChecklist(); if (S?.cloud?.enabled) fetch('/api/cloud/check', { method: 'POST' }).then(() => drawChecklist()).catch(() => {}); } // check the 24/7 bot again quietly
   try { localStorage.testTab = t; } catch {}
 }
 async function lbRefreshCk(btn) { btn.disabled = true; btn.textContent = 'Updating…'; try { const r = await api('/api/letterboxd/refresh'); toast(`📗 Letterboxd updated: ${r.count || 0} watched`); } catch {} drawChecklist(); }
 let ckDone = {}; try { ckDone = JSON.parse(localStorage.ckDone || '{}'); } catch {}
-function ckTick(k, on) { ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); newBadge(); }
+function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); newBadge(); }
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
+  choiceScenes: ['screen', '1.58.1'], ckRecent: ['tools', '1.58.1'],
   featAsk: ['screen', '1.58.0'],
   mapSort: ['battles', '1.54.1'], charCmd: ['battles', '1.55.0'], charBattle: ['battles', '1.55.0'], charProfile: ['chat', '1.55.0'], charOff: ['battles', '1.55.0'], charRandom: ['battles', '1.55.0'], charThemes: ['battles', '1.55.0'], charSpots: ['battles', '1.55.0'], charChest: ['battles', '1.55.0'], charPic: ['discord', '1.55.1'], charChaos: ['battles', '1.55.2'], charMaps: ['battles', '1.56.0'], dcFolder: ['discord', '1.57.0'], dcChars: ['discord', '1.57.0'], orbitCam: ['battles', '1.57.0'], charProfLook: ['chat', '1.55.2'], watchLuck: ['battles', '1.42.0'], banUpdate: ['movies', '1.51.0'], powersTicker: ['chat', '1.54.0'], charsSkin: ['battles', '1.53.0'], idCmd: ['chat', '1.53.0'], helpByTab: ['chat', '1.53.1'], finishers: ['battles', '1.52.0'], finalMapTag: ['battles', '1.52.0'], banYearList: ['movies', '1.51.0'], cardLen60: ['battles', '1.51.0'], finalIntro8: ['battles', '1.51.0'], camAutoBack: ['screen', '1.51.0'], cardCamFx: ['battles', '1.51.0'], banRules: ['movies', '1.50.0'], banSearch: ['movies', '1.50.0'], holStyle: ['screen', '1.50.0'], cardPrice: ['battles', '1.50.0'], claimAskFirst: ['battles', '1.49.1'], holidayMaps: ['battles', '1.49.1'], respinFirst: ['wheel', '1.49.0'], spinLogTab: ['wheel', '1.49.0'], autoNoRespin: ['wheel', '1.48.2'], autoCount: ['wheel', '1.48.0'], wheelChatters: ['wheel', '1.48.0'], joinVote: ['battles', '1.47.0'], webList: ['movies', '1.46.0'], webListReal: ['movies', '1.46.0'], testLab: ['lab', '1.45.0'], ww2Map: ['battles', '1.45.0'], halloweenMap: ['battles', '1.44.0'], newyearMap: ['battles', '1.44.0'], valentineMap: ['battles', '1.44.0'], stpatMap: ['battles', '1.44.0'], easterMap: ['battles', '1.44.0'], july4Map: ['battles', '1.44.0'], elementsMap: ['battles', '1.43.0'], pompeiiMap: ['battles', '1.43.0'], xmasMap: ['battles', '1.42.0'], turkeyMap: ['battles', '1.42.0'], kaijuMap: ['battles', '1.41.0'], heroVillains: ['battles', '1.41.0'], zombieMap: ['battles', '1.41.0'], funPowers: ['chat', '1.40.0'], funWacky: ['chat', '1.40.0'], tagReset: ['battles', '1.40.0'], doomReal: ['wheel', '1.39.4'], doomBack: ['wheel', '1.39.4'], tbSettings: ['tools', '1.39.3'], testGoTab: ['tools', '1.39.3'], testTools: ['tools', '1.39.3'], busDodge: ['battles', '1.39.2'], cpStop: ['battles', '1.39.1'], carDerby: ['battles', '1.39.0'], carRace: ['battles', '1.39.0'], f8Laps: ['battles', '1.39.0'], fairWin: ['battles', '1.39.0'], guideNew: ['screen', '1.38.1'], obsOnly: ['screen', '1.38.0'], pcPop: ['tools', '1.38.0'], ckTools: ['tools', '1.38.0'], countdown: ['chat', '1.38.0'], vrHydrate: ['chat', '1.37.0'], vrHat: ['chat', '1.37.0'], vrChoice: ['chat', '1.37.0'], vrObs: ['screen', '1.37.0'], quickTests: ['tools', '1.36.0'], keepWinner: ['battles', '1.35.5'], cardStage: ['battles', '1.35.4'], cardTags: ['battles', '1.35.4'], cardSwitch: ['battles', '1.35.4'], mapReset: ['battles', '1.35.3'], startPeople: ['screen', '1.35.1'], wizardMap: ['battles', '1.35.0'], colosseumMap: ['battles', '1.35.0'], lions: ['battles', '1.35.0'], cardCam: ['battles', '1.34.1'], rumbleRing: ['battles', '1.34.0'], ringLogo: ['battles', '1.34.0'], mapMenus: ['battles', '1.34.0'],
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], pin: ['movies'], sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], worseMovies: ['battles', '1.28.7'], numbers: ['battles'],
@@ -1506,10 +1515,25 @@ const CK_META = { // key: [category, version it came in]
   rightClick: ['screen', '1.29.0'], spotWindow: ['wheel', '1.29.0'], wheelImport: ['wheel', '1.29.0'], tonightPin: ['movies', '1.29.0']
 };
 const verNewer = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
-const ckSeenVer = () => { try { return localStorage.ckSeenVer || '1.29.0'; } catch { return '1.29.0'; } }; // (first time: everything after 1.29.0 counts as new)
-const ckIsNew = k => !!CK_META[k]?.[1] && verNewer(CK_META[k][1], ckSeenVer()) && !ckDone[k];
-function ckSeenAll() { try { localStorage.ckSeenVer = S?.version || '9.9.9'; } catch {} drawChecklist(); newBadge(); }
-function newBadge() { const n = Object.keys(CK_META).filter(ckIsNew).length, b = $('newNav'); if (b) { b.textContent = n ? '🆕' + n : ''; b.title = n ? `${n} new thing${n === 1 ? '' : 's'} to try: 🧪 Test → ✅ Checklist` : ''; } }
+// ✅ 🆕 Recently updated (1.58.1, Derek): only what came in your latest update(s) sits on top; everything else is in its own category.
+// ckBase = the version you had before updating (anything newer is "recent"). A recent item you tick stays put until you leave the tab
+// (ckStay), then it moves to its category.
+const ckStay = new Set();
+function ckBaseVer() {
+  const cur = S?.version; if (!cur) return '9.9.9';
+  try {
+    let last = localStorage.ckLastRun, base = localStorage.ckBase;
+    if (!last) { last = cur; base = '1.58.0'; } // (first time with this: only things after 1.58.0 count as recent)
+    else if (last !== cur) { base = last; last = cur; } // just updated: everything newer than the version you had
+    localStorage.ckLastRun = last; localStorage.ckBase = base || '1.58.0';
+    return localStorage.ckBase;
+  } catch { return '1.58.0'; }
+}
+const ckRecent = k => !!CK_META[k]?.[1] && verNewer(CK_META[k][1], ckBaseVer());
+const ckIsNew = k => ckRecent(k) && (!ckDone[k] || ckStay.has(k));
+function ckSeenAll() { try { localStorage.ckBase = S?.version || '9.9.9'; } catch {} ckStay.clear(); drawChecklist(); newBadge(); }
+function ckLeave() { if (ckStay.size) { ckStay.clear(); drawChecklist(); } } // (left the checklist: ticked ones go to their categories)
+function newBadge() { const n = Object.keys(CK_META).filter(k => ckRecent(k) && !ckDone[k]).length, b = $('newNav'); if (b) { b.textContent = n ? '🆕' + n : ''; b.title = n ? `${n} new thing${n === 1 ? '' : 's'} to try: 🧪 Test → ✅ Checklist` : ''; } }
 // 🧪 pretend the night's pinned messages (Test tab)
 async function pinSim(step) {
   const r = await api('/api/test/pin-sim', { step }).catch(() => null); if (!r) return;
@@ -1602,6 +1626,8 @@ function drawChecklist() {
     ['finalIntro8', '🥊 The FINAL FIGHT! scene before the last two card packs fight lasts 8 seconds now, with a 3, 2, 1 countdown before 🔔 FIGHT! (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2)', `<button class="ghost" style="padding:3px 9px" onclick="labTry('kungfu','card')">Try it</button>`],
     ['banRules', '🚫 New movie bans: 🌍 not in English, ⛪ really religious, 🎥 documentaries. Press “Try the rules”, then in Discord try /suggest with a foreign movie (like Amélie): it\'s banned and says to ask Kirb to unban it. The pinned Discord message explains banned movies too', `<button class="ghost" style="padding:3px 9px" onclick="banRulesTest()">Try the rules</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('bans');loadBans()">Banned Movies</button>`],
     ['banSearch', '🔍 Banned Movies has a search box (title, year or reason) and a kind filter: add 300 pretend bans and search them. Also try 🔎 Check movies already picked and ✅ Pre-approve on a search result', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/ban-many',{}).then(()=>{setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button>`],
+    ['choiceScenes', '🎬 🎉 Viewer\'s choice in OBS: you pick which OBS scenes get the celebration (tick boxes with every scene; the one on stream is ticked first). It\'s taken out of the scenes you don\'t tick. Settings → 💰 Rewards & prices → 📺 Put it on my stream / 🎬 Pick the scenes', `<button class="ghost" style="padding:3px 9px" onclick="choicePick()">Pick the scenes</button>`],
+    ['ckRecent', '✅ This checklist: only the newest update\'s things sit in 🆕 Recently updated on top, everything else is in its own category. Tick one here and it moves to its category when you leave the tab', ''],
     ['featAsk', '👫🎨 When Movie Royal opens it asks once (two questions) if you want men/women characters (!id) and character creation (/character). No = they stay off, and Settings → Game → 🧍 Characters turns them on any time', `<button class="ghost" style="padding:3px 9px" onclick="featAsk(true)">Show the questions</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings')">Settings</button>`],
     ['holStyle', '🎨 Holiday app style: try each holiday\'s colors, and the pop-up (✅ Yes / Not now / Not until next year) that shows when Movie Royal opens close to a holiday. Settings → App & background → 🎨 App style', `<button class="ghost" style="padding:3px 9px" onclick="holTestDate=holNow(new Date(new Date().getFullYear(),9,25))?new Date(new Date().getFullYear(),9,25):null;holAsk(true)">Show the pop-up</button> <button class="ghost" style="padding:3px 9px" onclick="holTryStyle('xmas')">Try 🎄</button>`],
     ['cardPrice', '💲 Card battles tab → 💲 Check a card\'s price: type a card you pulled and open TCGplayer / eBay sold / PriceCharting', `<button class="ghost" style="padding:3px 9px" onclick="priceOpen()">Open it</button>`],
@@ -1723,7 +1749,7 @@ function drawChecklist() {
       ${auto((st.overlays || 0) > 0, `Game screen open (${st.overlays || 0} — the app counts as one, OBS as another)`, '')}
       ${auto(!(S.rewardsByHand || []).length, (S.rewardsByHand || []).length ? `Channel point rewards made by hand on Twitch: ${S.rewardsByHand.map(esc).join(', ')}` : 'Channel point rewards are Movie Royal\'s own (it can switch them off when they can\'t be used)', go('settings', 'twitch'))}
       ${auto(!S.live || true, S.live ? '🔴 You are live' : '⚫ Not live (fine for testing: everything works offline too)', '', !S.live)}
-      ${(() => { const fresh = manual.filter(([k]) => ckIsNew(k)); return fresh.length ? `<h4 class="cknew">🆕 New in this version: try these <button class="ghost" style="padding:2px 8px;margin-left:8px" onclick="ckSeenAll()">✓ Seen them all</button></h4>${fresh.map(([k, l, a]) => man(k, l, a)).join('')}` : ''; })()}
+      ${(() => { const fresh = manual.filter(([k]) => ckIsNew(k)); return fresh.length ? `<h4 class="cknew">🆕 Recently updated: try these <button class="ghost" style="padding:2px 8px;margin-left:8px" onclick="ckSeenAll()" title="Moves them all to their own categories">✓ Move them to their categories</button></h4><p class="help" style="margin:0 0 6px">Tick one once it works: it moves to its own category when you leave this tab.</p>${fresh.map(([k, l, a]) => man(k, l, a)).join('')}` : ''; })()}
       ${TEST_CATS.map(([c, name]) => { const items = manual.filter(([k]) => (CK_META[k]?.[0] || 'other') === c && !ckIsNew(k)); return items.length ? `<h4>${name}</h4>${items.map(([k, l, a]) => man(k, l, a)).join('')}` : ''; }).join('')}
     </div>`;
 }
@@ -1771,6 +1797,7 @@ $('subnav').onclick = e => { const b = e.target.closest('button[data-s]'); if (b
 function setView(v) {
   if (view === 'settings' && v !== 'settings' && settingsDirty && !confirm('You changed some settings without saving. Leave anyway?')) return;
   if (v !== 'settings') settingsDirty = false;
+  if (v !== 'test') ckLeave();
   if (v !== view) peekOn = false; // a new tab: the preview window closes (it only pops up when you run a test that changes the stream screen)
   view = v; fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ view: v }) }).catch(() => {}); // (the chat message posts for the tab you're on)
   if (S && v === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); // Battle tab = the battle on stream
@@ -3807,7 +3834,7 @@ function openSettings(force) {
       <div><label>🎩 Hats viewers can pick (one per line; the bot lists them in chat with numbers, and the viewer types the number or the name)</label><textarea data-k="hatList" rows="6" placeholder="${esc(HATS_DEFAULT)}">${esc(s.hatList || '')}</textarea></div>
       <h4 style="margin:14px 0 4px">🎉 Viewer's choice</h4>
       <p class="help">When someone redeems it: confetti and balloons over the whole screen, a big pop-up in the middle, the pop of the confetti and a crowd going wild, for 10 seconds.</p>
-      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0"><button class="${S.choiceObs ? '' : 'primary'}" id="choiceObsBtn" onclick="choiceObs(${!S.choiceObs})">${S.choiceObs ? '⏸ Take it off my stream (remove the OBS source)' : '📺 Put it on my stream (add the OBS source)'}</button><span class="help" style="margin:0">${S.choiceObs ? '✅ On: the source <b>Movie Royal celebration</b> is on top of every OBS scene. It works with just OBS open (it reads your Twitch chat by itself).' : '⏸ Off (paused): nothing is added to OBS until you press it. Needs OBS set up (Settings → 🎥 OBS).'}</span></div>
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0"><button class="${S.choiceObs ? '' : 'primary'}" id="choiceObsBtn" onclick="choiceObs(${!S.choiceObs})">${S.choiceObs ? '⏸ Take it off my stream (remove the OBS source)' : '📺 Put it on my stream (pick the OBS scenes)'}</button>${S.choiceObs ? '<button onclick="choicePick()">🎬 Pick the scenes</button>' : ''}<span class="help" style="margin:0">${S.choiceObs ? `✅ On: the source <b>Movie Royal celebration</b> is on top of ${Array.isArray(s.choiceScenes) && s.choiceScenes.length ? 'these OBS scenes: <b>' + s.choiceScenes.map(esc).join(', ') + '</b>' : 'the OBS scenes that have it'}. It works with just OBS open (it reads your Twitch chat by itself).` : '⏸ Off (paused): nothing is added to OBS until you press it. Needs OBS set up (Settings → 🎥 OBS).'}</span></div>
       <p class="help">🎁 <b>For a friend</b> (or to set it up by hand): <a href="/api/vr/obs-file" download>⬇️ Download the OBS file</a>, or send them <b>${GH_OBS_FILE}</b>. They open the file in their web browser and it walks them through it (no Movie Royal needed). The reward has to ask viewers to type something.</p>
       ${ck('choiceScreen', '🖥️ Also show it on my screen, over whatever I\'m using (on the screen my mouse is on; clicks go through it)')}
       ${f('choiceHeadline', 'Big text at the top of the pop-up', "VIEWER'S CHOICE!")}
@@ -3908,7 +3935,25 @@ const GH_OBS_FILE = 'https://github.com/TimePeace49/movie-royale-releases/releas
 const HATS_DEFAULT = 'Cowboy hat\nTop hat\nWizard hat\nPirate hat\nBaseball cap\nBeanie\nParty hat\nCrown';
 function vrSetupText() { const v = S?.vrSetup; if (!v) return 'Not made yet (it happens by itself once you sign in with Twitch).'; const ks = ['hydrate', 'stretch', 'hat', 'choice'].filter(k => v[k]); const hand = ks.filter(k => v[k].byHand?.length); return `Made ${new Date(v.at).toLocaleString()}: ${ks.map(k => `${esc(v[k].title)} (${v[k].cost})`).join(', ')}.${hand.length ? ` ⚠️ Made by hand on Twitch (delete on Twitch, then press the button): ${hand.map(k => esc(v[k].byHand.map(x => x.title).join(', '))).join(', ')}.` : ''}`; }
 async function vrSetupClick(btn) { btn.disabled = true; try { await api('/api/vr/setup', {}); toast('🎁 Viewer rewards checked and made on Twitch'); } catch {} btn.disabled = false; setTimeout(() => { const el = $('vrSetupInfo'); if (el) el.innerHTML = vrSetupText(); drawPrices(); }, 500); }
-async function choiceObs(on) { const b = $('choiceObsBtn'); if (b) b.disabled = true; try { const r = await api('/api/vr/source', { on }); toast(on ? `📺 Added “Movie Royal celebration” on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.note ? '. ⚠️ ' + esc(r.note) : ''}` : '⏸ Removed the celebration source from OBS', r.note ? 12000 : 6000); } catch {} setTimeout(() => { if (sub === 'prices') openSettings(true); }, 400); }
+async function choiceObs(on) { if (on) return choicePick(); const b = $('choiceObsBtn'); if (b) b.disabled = true; try { await api('/api/vr/source', { on: false }); toast('⏸ Removed the celebration source from OBS', 6000); } catch {} setTimeout(() => { if (sub === 'prices') openSettings(true); }, 400); }
+// 🎬 pick which OBS scenes get the viewer's choice celebration (1.58.1, Derek: not every scene)
+async function choicePick() {
+  $('choiceList').innerHTML = '<p class="help">Asking OBS for your scenes…</p>'; $('choiceGoBtn').disabled = true; $('choiceDlg').showModal();
+  try {
+    const r = await fetch('/api/vr/scenes').then(x => x.json()); if (r.error) throw new Error(r.error);
+    if (!r.scenes?.length) throw new Error('OBS has no scenes.');
+    const on = new Set(r.picked?.length ? r.picked : r.has?.length ? r.has : [r.current].filter(Boolean));
+    $('choiceList').innerHTML = r.scenes.map(sc => `<label class="ck"><input type="checkbox" value="${esc(sc)}" ${on.has(sc) ? 'checked' : ''}> <span>${esc(sc)}${sc === r.current ? ' <small class="muted">(on stream now)</small>' : ''}${r.has?.includes(sc) ? ' <small class="muted">· has it</small>' : ''}</span></label>`).join('');
+    $('choiceGoBtn').disabled = false;
+  } catch (e) { $('choiceList').innerHTML = `<p class="help">⚠️ Couldn't reach OBS: ${esc(e.message)}. Open OBS, and check Settings → 🎥 OBS.</p>`; }
+}
+async function choiceGo() {
+  const scenes = [...document.querySelectorAll('#choiceList input:checked')].map(i => i.value);
+  if (!scenes.length) return toast('Tick at least one scene');
+  $('choiceGoBtn').disabled = true;
+  try { const r = await api('/api/vr/source', { on: true, scenes }); $('choiceDlg').close(); toast(`📺 “Movie Royal celebration” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}${r.note ? '. ⚠️ ' + esc(r.note) : ''}`, r.note ? 12000 : 6000); } catch {} finally { $('choiceGoBtn').disabled = false; }
+  setTimeout(() => { if (sub === 'prices') openSettings(true); }, 400);
+}
 function vrPop(m) { // 💧🙆🎩 5 seconds, only when Movie Royal is the window you're on
   if (!document.hasFocus() || S?.settings?.vrPopups === false) return;
   const L = { hydrate: ['💧', 'HYDRATE!', `${esc(m.name)} says: drink some water!`, 'chug'], stretch: ['🙆', 'STRETCH!', `${esc(m.name)} says: time to stretch!`, 'stretch'], hat: ['🎩', 'HAT TIME!', `${esc(m.name)} picked: <b>${esc(m.hat || '')}</b>`, 'ding'] }[m.kind]; if (!L) return;

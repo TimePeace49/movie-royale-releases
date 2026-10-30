@@ -163,26 +163,44 @@ export async function capture(on) {
   });
 }
 // 🎉 Viewer's choice: a browser source (Movie Royal's celebration page) on top of every scene. Only added when you turn it on.
-export async function celebrateSource(on, file) { // (run again: adds it to scenes you made since). file = the page on this PC
+/** 🎬 Your OBS scenes (for picking where the celebration goes): names, the one on stream now, and the ones that already have it. */
+export async function sceneList(source = 'Movie Royal celebration') {
+  return session(async call => {
+    const r = await call('GetSceneList'), scenes = (r.scenes || []).map(x => x.sceneName).reverse(); // (OBS lists them bottom-up)
+    const has = [];
+    for (const sc of scenes) if (await call('GetSceneItemId', { sceneName: sc, sourceName: source }).then(() => true).catch(() => false)) has.push(sc);
+    return { scenes, current: r.currentProgramSceneName || null, has };
+  });
+}
+// 🎉 The viewer's choice celebration as an OBS browser source, on top of the scenes you picked (1.58.1, Derek: you pick the scenes,
+// not every scene). pick = scene names (it's taken out of the others); null = keep it in the scenes that already have it.
+export async function celebrateSource(on, file, pick = null) {
   const name = 'Movie Royal celebration';
   return session(async call => {
     const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === name);
     if (!on) { if (have) await call('RemoveInput', { inputName: name }); return { on: false, removed: !!have }; }
     const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080;
-    const scenes = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName); if (!scenes.length) throw new Error('OBS has no scenes.');
+    const all = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName); if (!all.length) throw new Error('OBS has no scenes.');
+    const inScene = async sc => call('GetSceneItemId', { sceneName: sc, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
+    let target;
+    if (Array.isArray(pick)) target = pick.filter(sc => all.includes(sc));
+    else { target = []; if (have) for (const sc of all) if (await inScene(sc) != null) target.push(sc); }
+    if (!target.length) throw new Error(Array.isArray(pick) && pick.length ? 'Those scenes aren\'t in OBS any more: pick your scenes again.' : 'Pick at least one OBS scene for it.');
     const settings = { is_local_file: true, local_file: file, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' };
-    if (!have) await call('CreateInput', { sceneName: scenes[0], inputName: name, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true });
+    if (!have) await call('CreateInput', { sceneName: target[0], inputName: name, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true });
     else { await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true }); await call('PressInputPropertiesButton', { inputName: name, propertyName: 'refreshnocache' }).catch(() => {}); } // (reload it: the file may have changed)
     let added = 0;
-    for (const sc of scenes) {
-      let id = await call('GetSceneItemId', { sceneName: sc, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
-      if (id != null && have) continue; // (already in this scene: left how you have it)
-      if (id == null) { id = (await call('CreateSceneItem', { sceneName: sc, sourceName: name, sceneItemEnabled: true })).sceneItemId; added++; }
+    for (const sc of target) {
+      let id = await inScene(sc), fresh = false;
+      if (id == null) { id = (await call('CreateSceneItem', { sceneName: sc, sourceName: name, sceneItemEnabled: true })).sceneItemId; added++; fresh = true; }
+      if (!fresh && have) continue; // (already in this scene: left how you have it)
       await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: { positionX: 0, positionY: 0, alignment: 5, boundsType: 'OBS_BOUNDS_STRETCH', boundsAlignment: 0, boundsWidth: W, boundsHeight: H, rotation: 0 } }).catch(() => {});
       const n = ((await call('GetSceneItemList', { sceneName: sc })).sceneItems || []).length;
       await call('SetSceneItemIndex', { sceneName: sc, sceneItemId: id, sceneItemIndex: Math.max(0, n - 1) }).catch(() => {}); // on top of everything
       await call('SetSceneItemEnabled', { sceneName: sc, sceneItemId: id, sceneItemEnabled: true });
     }
-    return { on: true, scenes: scenes.length, added };
+    let removed = 0;
+    if (Array.isArray(pick)) for (const sc of all) { if (target.includes(sc)) continue; const id = await inScene(sc); if (id != null) { await call('RemoveSceneItem', { sceneName: sc, sceneItemId: id }).catch(() => {}); removed++; } } // (taken out of scenes you didn't pick)
+    return { on: true, scenes: target.length, sceneNames: target, added, removed };
   });
 }

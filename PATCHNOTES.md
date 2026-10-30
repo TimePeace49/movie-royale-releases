@@ -3,6 +3,12 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.58.1: What's new
+Everything since 1.58.0.
+
+- 🎬 **Viewer's choice in OBS: you pick the scenes.** 📺 Put it on my stream lists your OBS scenes with tick boxes, and the confetti celebration goes on top of only the scenes you tick. 🎬 Pick the scenes changes them any time (Settings → 💰 Rewards & prices, or the Setup guide).
+- ✅ **Tidier checklist** (🧪 Test → ✅ Checklist): everything sits in its own category. Each update puts just its new things in 🆕 Recently updated at the top, and once you tick one it moves to its category when you leave the tab.
+
 ## v1.58.0: What's new
 Everything since 1.46.0.
 

@@ -1,6 +1,6 @@
 {
   "name": "movie-royal",
-  "version": "1.58.0",
+  "version": "1.58.1",
   "description": "Battle royal movie wheel for Twitch: Discord suggestions, Letterboxd, custom lists, channel points and bits.",
   "type": "module",
   "main": "desktop/main.cjs",

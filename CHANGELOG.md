@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.58.1
+- 🎬 **Viewer's choice in OBS: you pick the scenes.** 📺 Put it on my stream (Settings → 💰 Rewards & prices, and the Setup guide) now lists your OBS scenes with tick boxes, and the celebration goes on top of only the scenes you tick (it's taken out of the others). The scene that's on stream is ticked to start with. 🎬 Pick the scenes changes them any time.
+- ✅ **Checklist tidied up:** every item is in its own category now (no more big pile of "new" ones on top). From now on, each update puts just its own new things in 🆕 Recently updated at the top. Tick one once it works and it moves to its category when you leave the tab. ✓ Move them to their categories moves them all at once.
+
 ## 1.58.0
 - 👫🎨 **Two questions when Movie Royal opens** (asked once, one after the other):
   1. **Men and women characters?** Chat picks theirs with !id man / woman / none.

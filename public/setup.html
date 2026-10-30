@@ -293,19 +293,30 @@ const PAGES = {
     return `<h2>🎉 Viewer's Choice in OBS (optional)</h2><p class="why">When someone redeems your <b>🎉 Viewer's Choice</b> channel points reward: confetti and balloons over the whole stream, a big pop-up with their name and what they typed, the pop of the confetti and a crowd going wild, for 10 seconds. It's a source in OBS that reads your Twitch chat by itself, so it works with just OBS open (Movie Royal can be closed).</p>
     <ol class="steps">
       <li>Do the <b>Sign in with Twitch</b> step (Movie Royal makes the Viewer's Choice reward for you) and the <b>OBS control</b> step (so Movie Royal can add the source).</li>
-      <li>Press the button: Movie Royal adds <b>Movie Royal celebration</b> on top of every scene in OBS.</li>
+      <li>Press the button, tick the OBS scenes it should show in, and press <b>📺 Put it in these scenes</b>: Movie Royal adds <b>Movie Royal celebration</b> on top of those scenes.</li>
     </ol>
     ${status(!!S.choiceObs, 'It\'s in OBS. Try it: Movie Royal → 🧪 Test → 🎁 Viewer rewards → 🎉 Viewer\'s choice, or redeem it yourself.')}
     ${note('choice')}
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="choiceSetup(this)">${S.choiceObs ? '🔄 Set it up again' : '📺 Set it up in my OBS'}</button></div>
+    ${chScenes ? `<div style="margin:8px 0"><b>🎬 Which OBS scenes?</b>${chScenes.scenes.map(sc => `<label style="display:block;margin:4px 0"><input type="checkbox" class="chSc" value="${esc(sc)}" ${chScenes.on.includes(sc) ? 'checked' : ''}> ${esc(sc)}${sc === chScenes.current ? ' <small>(on stream now)</small>' : ''}</label>`).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="choiceSetup(this, true)">📺 Put it in these scenes</button><button onclick="chScenes=null;load()">Cancel</button></div>`
+    : `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="choiceSetup(this)">${S.choiceObs ? '🔄 Pick the scenes again' : '📺 Set it up in my OBS'}</button></div>`}
     <h3 style="margin-top:22px">🎁 For a friend (no Movie Royal needed)</h3>
     <p class="help">Send them this link to download the file: <a href="${gh}" target="_blank">${gh}</a> (or download it here: <a href="/api/vr/obs-file" download>⬇️ viewers-choice.html</a>). They open it in their web browser, type their channel name, redeem their Viewer's Choice reward once, and it gives them what to paste in OBS (Sources → + → Browser). Their reward has to ask viewers to type something.</p>
     ${nav()}`;
   }
 };
-async function choiceSetup(btn) {
+let chScenes = null; // 🎬 the OBS scenes to pick from (1.58.1: you pick the scenes, not every scene)
+async function choiceSetup(btn, go = false) {
   btn.disabled = true;
-  try { const r = await api('/api/vr/source', { on: true }); msg.choice = { ok: true, text: `Added <b>Movie Royal celebration</b> on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}.${r.note ? ' ⚠️ ' + esc(r.note) : ''}` }; }
+  if (!go) {
+    try { const r = await fetch('/api/vr/scenes').then(x => x.json()); if (r.error) throw new Error(r.error); if (!r.scenes?.length) throw new Error('OBS has no scenes.');
+      chScenes = { scenes: r.scenes, current: r.current, on: r.picked?.length ? r.picked : r.has?.length ? r.has : [r.current].filter(Boolean) }; msg.choice = null; }
+    catch (e) { msg.choice = { ok: false, text: 'Couldn\'t reach OBS: ' + esc(e.message) + '. Do the OBS control step first, with OBS open.' }; }
+    return load();
+  }
+  const scenes = [...document.querySelectorAll('.chSc:checked')].map(i => i.value);
+  if (!scenes.length) { btn.disabled = false; msg.choice = { ok: false, text: 'Tick at least one scene.' }; return load(); }
+  try { const r = await api('/api/vr/source', { on: true, scenes }); chScenes = null; msg.choice = { ok: true, text: `Added <b>Movie Royal celebration</b> on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}: ${r.sceneNames.map(esc).join(', ')}.${r.note ? ' ⚠️ ' + esc(r.note) : ''}` }; }
   catch (e) { msg.choice = { ok: false, text: esc(e.message) }; }
   await load();
 }
