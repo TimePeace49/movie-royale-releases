@@ -1501,6 +1501,8 @@ function testTab(t) {
 }
 async function lbRefreshCk(btn) { btn.disabled = true; btn.textContent = 'Updating…'; try { const r = await api('/api/letterboxd/refresh'); toast(`📗 Letterboxd updated: ${r.count || 0} watched`); } catch {} drawChecklist(); }
 let ckDone = {}; try { ckDone = JSON.parse(localStorage.ckDone || '{}'); } catch {}
+// ✅ A fresh checklist (1.59.1, Derek: "reset check list"): every tick is cleared once when this version first opens. To clear them again in a later update, change CK_RESET.
+const CK_RESET = '1.59.1'; try { if (localStorage.ckReset !== CK_RESET) { ckDone = {}; localStorage.ckDone = '{}'; localStorage.ckReset = CK_RESET; } } catch {}
 function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); newBadge(); }
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];

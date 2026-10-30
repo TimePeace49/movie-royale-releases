@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.1: What's new
+Everything since 1.59.0.
+
+- ✅ **Fresh checklist:** every tick on 🧪 Test → ✅ Checklist is cleared once with this update, so you can test everything again from the start.
+
 ## v1.59.0: What's new
 Everything since 1.58.3.
 

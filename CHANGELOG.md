@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.1
+- ✅ **Fresh checklist:** every tick on 🧪 Test → ✅ Checklist is cleared once with this update, so you can go through everything again from the start.
+
 ## 1.59.0
 - 🔢 **20 versions of every character part** (all but the body):
   - **The counts:** 1,000 hair styles, 1,500 outfits, 500 makeups, 500 facial hairs, 160 skin colors and 200 hair colors.
