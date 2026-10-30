@@ -33,7 +33,7 @@ function drawSheet0() {
   cv.width = W0; cv.height = rows * ch + 110; g.fillStyle = '#1a1030'; g.fillRect(0, 0, cv.width, cv.height); head(S.title);
   for (let i = 0; i < n; i++) {
     const num = S.from + i, x = ox + (i % cols) * cw, y = 92 + Math.floor(i / cols) * ch, fem = (S.part === 'hair' && num > 25) || (S.part === 'outfit' && num > 25 && num <= 50) || S.part === 'makeup' || (S.part === 'outfit' && num > 50 && i % 2);
-    g.fillStyle = 'rgba(255,255,255,.06)'; g.beginPath(); g.roundRect(x + 6, y + 6, cw - 12, ch - 12, 20); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.06)'; g.beginPath(); g.roundRect(x + 8, y + 8, cw - 16, ch - 16, 20); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 5; g.stroke(); // ⬜ white border on every part (Derek: so each picture stands apart)
     const look = { hair: fem ? 26 : 1, outfit: fem ? 26 : 1, makeup: 1, facialhair: 1, body: fem ? 2 : 1, skin: 2 + (i % 5), haircolor: 2 + (i % 3) };
     look[S.part] = num; if (S.part === 'body') { look.hair = 26; look.outfit = 1; }
     const t = document.createElement('canvas'); t.width = t.height = 260; const tg = t.getContext('2d'); C.draw(tg, 130, 88, look, null, COLS[i % COLS.length], '★');

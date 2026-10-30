@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.57.2
+- ⬜ **Every hairstyle, outfit, makeup, facial hair and body on the Discord part pictures now has its own white border**, so it's easy to see where one choice ends and the next begins. The pinned message in #character-creation updates itself with the new pictures, and the 24/7 bot gets them automatically.
+
 ## 1.57.1
 - ⬜ **White borders on the character pictures in Discord.** Every part picture in #character-creation (and the little picture posted when someone makes their character) now has a white frame, so you can easily see where one picture ends and the next begins. The pinned message updates itself with the new pictures, and the 24/7 bot gets them automatically.
 
