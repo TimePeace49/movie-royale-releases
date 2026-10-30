@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.7
+- 🧭 **The Setup guide is up to date:**
+  - New steps: 🤖 Chat bot account, 🛡️ Backup bots (download it and add your bot with one click) and 🧍 Characters (men / women with !id, /character, characters by default).
+  - Channel points: ✨ Make my rewards now makes the chaos, wheel and chat battle power-up rewards in one go. It also explains the rewards Movie Royal makes by itself (Hydrate, Stretch, Pick a hat, Viewer's Choice, Raid), why rewards hide from the menu, where to change prices, and that refunds are up to you.
+  - Twitch: says what the sign-in asks for, and tells you to sign in again when an update needs a new permission.
+  - Discord: lists the Movie Royal folder and its channels. 24/7 bot: /character, and how its updates work. OBS: Doomsday, capture window and Viewer's Choice. Put it on stream: a tip about 🔇 Mute when unfocused (OBS hears it go quiet too). Movie search: the ban list.
+  - Steps added by an update show 🆕 new in the guide.
+- 🧭 **Every pop-up when Movie Royal opens is a step in the one start-up pop-up.** A new Setup guide step is now its own step (🧭 Set it up, Don't show again, Later), after the other questions.
+
 ## 1.59.6
 - ✅ **The checklist is shorter: only the main features now** (76 instead of 175). Battles, claims, the wheel, Discord picks, Twitch chat and rewards, characters, card battles, OBS and the bots are all still there. The small extras are gone: camera spins, each map on its own, menu sorting, window tweaks and the like. All the maps are one line now: "Every map plays a battle to the end", tried in the 🧪 Quick test lab. Your ticks stay ticked.
 

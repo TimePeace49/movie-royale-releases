@@ -4141,14 +4141,16 @@ async function restore(file) {
   let data; try { data = JSON.parse(await file.text()); } catch { return toast("⚠️ That file isn't a backup."); }
   await api('/api/restore', data); toast('✅ Backup restored');
 }
-async function whatsNewStep() { // an update added something to set up? ask once
-  const r = await fetch('/api/whatsnew').then(r => r.json()); if (!r.steps?.length) return null;
-  const guide = r.steps.filter(x => x.guide).map(x => x.id);
-  return { key: 'guide', html: done => `<h3>🆕 New in the 🧭 Setup guide</h3><p class="help">${r.steps.length === 1 ? 'There\'s a new step' : 'There are new steps'} you can set up. You can skip ${r.steps.length === 1 ? 'it' : 'them'}; ${r.steps.length === 1 ? 'it\'s' : 'they\'re'} always in the Setup guide (the 🧭 Setup guide link in Settings).</p>
-      ${r.steps.map(x => `<div class="card soft" style="margin:8px 0"><b>${esc(x.title)}</b>${x.why ? `<div class="help" style="margin:4px 0 8px">${esc(x.why)}</div>` : '<div style="height:8px"></div>'}<a href="/setup.html?step=${esc(x.id)}"><button class="primary">Set it up</button></a></div>`).join('')}
-      <div class="row" style="justify-content:flex-end;margin-top:10px">${guide.length ? `<button class="ghost" title="Don't show these new steps when Movie Royal starts" onclick="api('/api/setup/seen',{ids:${esc(JSON.stringify(guide))}}).catch(()=>{});${done}">Don't show again</button>` : ''}<button onclick="${done}" title="Ask again next time Movie Royal starts">Later</button></div>` };
+async function whatsNewStep(test = false) { // an update added something to set up? one step each (1.59.7, Derek: every start-up pop-up is a step)
+  const r = test ? { steps: [{ id: 'chars', title: '🧍 Characters', why: 'Battles with people instead of balls (pretend step for the test).', guide: true }] } : await fetch('/api/whatsnew').then(r => r.json());
+  const list = (r.steps || []).filter(x => test || !(x.id === 'chars' && Object.keys(FEAT_Q).some(k => !S.settings.featAsk?.[k]))); if (!list.length) return null; // (🧍 the character questions are asked as their own steps already)
+  return list.map(x => ({ key: 'guide-' + x.id, html: done => `<div class="holBig">🧭</div><h3 style="text-align:center">🆕 New in the Setup guide: ${esc(x.title)}</h3>
+      ${x.why ? `<p class="help" style="text-align:center">${esc(x.why)}</p>` : ''}
+      <p class="help" style="text-align:center">You can skip it. It's always in the 🧭 Setup guide (Settings → 🧭 Setup guide).</p>
+      <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="${SQ.test ? `toast('🧪 Test: this opens the Setup guide on that step');${done}` : `location.href='/setup.html?step=${esc(x.id)}'`}">🧭 Set it up</button>
+        ${x.guide ? `<button class="ghost" title="Don't show this one when Movie Royal starts" onclick="${SQ.test ? '' : `api('/api/setup/seen',{ids:['${esc(x.id)}']}).catch(()=>{});`}${done}">Don't show again</button>` : ''}<button onclick="${done}" title="Ask again next time Movie Royal starts">Later</button></div>` }));
 }
-async function whatsNew() { try { const st = await whatsNewStep(); if (st) sqShow([st]); else toast('Nothing new in the Setup guide right now'); } catch {} }
+async function whatsNew() { try { const st = await whatsNewStep(); if (st) sqShow(st); else toast('Nothing new in the Setup guide right now'); } catch {} }
 async function botStep(test = false) { // the 24/7 Discord bot on Cloudflare is older than this version: ask every time the app opens until it's updated
   const r = await fetch('/api/cloud/outdated' + (test ? '?test=1' : '')).then(r => r.json());
   if (r.unknown && !test && (botStep.tries = (botStep.tries || 0) + 1) < 6) setTimeout(() => botStep().then(st => st && sqAdd(st)).catch(() => {}), 120000); // couldn't reach the bot yet: ask again in 2 minutes
@@ -4172,7 +4174,7 @@ $('startDlg').addEventListener('cancel', e => { e.preventDefault(); sqNext(); })
 const withTime = (p, ms = 9000) => Promise.race([Promise.resolve(p).catch(() => null), new Promise(r => setTimeout(() => r(null), ms))]);
 async function startPops() {
   if (PC_ONLY || !S) return;
-  const parts = await Promise.all([withTime(updCheckStep()), withTime(whatsNewStep()), withTime(botStep()), ...Object.keys(FEAT_Q).map(k => featStep(k)), holStep()]); // (in this order)
+  const parts = await Promise.all([withTime(updCheckStep()), withTime(botStep()), ...Object.keys(FEAT_Q).map(k => featStep(k)), holStep(), withTime(whatsNewStep())]); // (in this order; the Setup guide ones last: 🧭 Set it up leaves for the guide)
   const steps = parts.flat().filter(Boolean); if (steps.length) sqShow(steps);
 }
 function sqShow(steps, test = false) { // a new list (or more steps on the end of the one that's open)
@@ -4194,7 +4196,7 @@ function sqNext() {
 }
 async function sqTest() { // 🧪 Test tab: every kind of start-up step, one after the other (nothing saved)
   const h = HOLIDAYS[0]; holTestDate = h.win(new Date().getFullYear())[1];
-  sqShow([updStep({ latest: '9.9.9', version: S.version, notes: '(pretend update: Install now would really download it, so press Later)', url: '' }), ...Object.keys(FEAT_Q).map(k => featStep(k, true)), holStep(true)], true);
+  sqShow([updStep({ latest: '9.9.9', version: S.version, notes: '(pretend update: Install now would really download it, so press Later)', url: '' }), ...Object.keys(FEAT_Q).map(k => featStep(k, true)), holStep(true), ...(await whatsNewStep(true))], true);
 }
 async function banRulesTest() {
   const r = await api('/api/test/ban-rules', {}); const br = r.rules || {};

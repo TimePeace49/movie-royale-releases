@@ -50,6 +50,12 @@
   .drop.over { border-color:var(--gold); color:var(--gold); }
   kbd { background:#0f0820; border:1px solid var(--line); border-bottom-width:2px; border-radius:6px; padding:0 6px; font-size:13px; }
   .tag { font-size:12px; padding:2px 8px; border-radius:20px; background:var(--panel2); color:var(--dim); }
+  .tag.new { white-space:nowrap; background:rgba(255,201,74,.18); color:var(--gold); font-weight:700; }
+  .choice { background:var(--panel2); border-radius:14px; padding:14px 16px; margin-bottom:10px; }
+  .choice h3 { margin:0 0 4px; font-size:17px; } .choice p { margin:0 0 10px; color:var(--dim); }
+  .choice .row button.on { background:var(--good); color:#062a12; border-color:var(--good); font-weight:800; }
+  ul.list { margin:6px 0 0; padding-left:20px; } ul.list li { margin:3px 0; }
+  .help { color:var(--dim); font-size:14px; }
 </style>
 </head>
 <body>
@@ -66,7 +72,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let S = null, A = null, step = new URLSearchParams(location.search).get('step') || null, msg = {};
+let NEW_IDS = null, S = null, A = null, step = new URLSearchParams(location.search).get('step') || null, msg = {};
 async function api(url, body, method = 'POST') {
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Something went wrong'); return j;
@@ -75,21 +81,25 @@ const copyBox = v => `<div class="copy"><input readonly value="${esc(v)}" onclic
 const link = (url, text) => `<a href="${esc(url)}" target="_blank">${text} ↗</a>`;
 
 const STEPS = [
-  { id: 'twitch', title: 'Sign in with Twitch', sub: 'Your account, chat & !join', done: () => !!S.owner },
-  { id: 'rewards', title: 'Channel points & bits', sub: 'Viewers trigger chaos', done: () => !!S.settings.rewardsCreated && S.status.twitch.state === 'online' },
+  { id: 'twitch', title: 'Sign in with Twitch', sub: 'Your account, chat & !join', done: () => !!S.owner && !(A.twitchMissing || []).length },
+  { id: 'chatbot', title: 'Chat bot account', sub: 'Talk in chat as a bot (optional)', done: () => !!S.chatBot },
+  { id: 'rewards', title: 'Channel points & bits', sub: 'Chaos, wheel & viewer rewards', done: () => !!S.settings.rewardsCreated && S.status.twitch.state === 'online' },
   { id: 'tmdb', title: 'Movie search', sub: 'Title, year, poster, cast', done: () => !!S.settings.tmdbKey },
   { id: 'omdb', title: 'Ratings', sub: 'Rotten Tomatoes + IMDb', done: () => !!S.settings.omdbKey },
   { id: 'letterboxd', title: 'Letterboxd', sub: 'Skip movies you\'ve seen', done: () => S.status.letterboxd.count > 0 },
   { id: 'discord', title: 'Discord bot', sub: '/suggest movies', done: () => S.status.discord.state === 'online' && (A.guilds || []).length > 0 },
   { id: 'cloud', title: '24/7 Discord bot', sub: 'Picks while your PC is off', done: () => !!S.cloud?.enabled },
+  { id: 'backup', title: 'Backup bots', sub: 'Keeps Discord answering (optional)', done: () => !!(S.backup?.watching || S.backup?.active) },
+  { id: 'chars', title: 'Characters', sub: 'People instead of balls, !id, /character', done: () => !!(S.settings.featAsk?.ids && S.settings.featAsk?.looks) },
   { id: 'donations', title: 'Donations', sub: 'Tips pop up for the wheel', done: () => !!(S.settings.seJwt || S.settings.slToken) },
   { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup },
-  { id: 'obs', title: 'OBS control', sub: 'For the wheel\'s Doomsday', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
+  { id: 'obs', title: 'OBS control', sub: 'Doomsday, capture window, confetti', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
   { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs }
 ];
 
 async function load() {
   [S, A] = await Promise.all([fetch('/api/state').then(r => r.json()), fetch('/api/app').then(r => r.json())]);
+  if (!NEW_IDS) NEW_IDS = new Set(S.settings.setupSeen ? A.guideNew || [] : []); // 🆕 = added to the guide since you last opened it (remembered for this visit)
   if (!S.settings.setupSeen) api('/api/settings', { setupSeen: true }).catch(() => {});
   if (!load.seenSent) { load.seenSent = true; api('/api/setup/seen', { ids: STEPS.map(x => x.id) }).catch(() => {}); } // (you've seen every step in the guide now: no more 🆕 pop-up for them)
   if (!step) step = (STEPS.find(s => !s.done()) || STEPS[0]).id;
@@ -99,7 +109,7 @@ function render() {
   const done = STEPS.filter(s => s.done()).length;
   $('progress').style.width = (done / STEPS.length * 100) + '%';
   $('progressTxt').textContent = `${done} of ${STEPS.length} connected`;
-  $('nav').innerHTML = STEPS.map((s, i) => `<button class="${s.id === step ? 'on' : ''} ${s.done() ? 'done' : ''}" onclick="go('${s.id}')"><span class="n">${s.done() ? '✓' : i + 1}</span><span>${esc(s.title)}<small>${esc(s.sub)}</small></span></button>`).join('');
+  $('nav').innerHTML = STEPS.map((s, i) => `<button class="${s.id === step ? 'on' : ''} ${s.done() ? 'done' : ''}" onclick="go('${s.id}')"><span class="n">${s.done() ? '✓' : i + 1}</span><span>${esc(s.title)}${NEW_IDS?.has(s.id) ? ' <span class="tag new">🆕 new</span>' : ''}<small>${esc(s.sub)}</small></span></button>`).join('');
   const keep = [...document.querySelectorAll('#page input[id]')].reduce((o, el) => (o[el.id] = el.value, o), {});
   const focus = document.activeElement?.id;
   $('page').innerHTML = PAGES[step]();
@@ -124,6 +134,7 @@ const PAGES = {
     const cb = `http://localhost:${S.port}/twitch/callback`;
     return `<h2>Sign in with Twitch</h2><p class="why">This shows your name and picture, reads your chat (for <b>!join</b> lists and the winner claim), and powers channel points and bits.</p>
     ${o ? status(true, `Signed in as <b>${esc(o.name)}</b>. Chat: ${esc(S.status.twitch.chat)}.`) : ''}
+    ${o && (A.twitchMissing || []).length ? `<div class="bad">⚠️ Movie Royal got new features since you signed in, and Twitch needs you to say yes to them. Press <b>Sign in again</b> below and click <b>Authorize</b>. <small>(missing: ${A.twitchMissing.map(esc).join(', ')})</small></div>` : ''}
     ${!ready ? `<p>Twitch needs a free "app" so Movie Royal can sign you in. It takes about 2 minutes, and you only do it once.</p>
     <ol class="steps">
       <li>Open the ${link('https://dev.twitch.tv/console/apps/create', 'Twitch Developer Console')} and sign in with your Twitch account. If it asks, turn on two-factor authentication (Twitch requires it for developer apps).</li>
@@ -137,29 +148,74 @@ const PAGES = {
     </ol>
     ${note('tw')}
     <button class="twitch big" onclick="saveTwitch()">Save &amp; sign in with Twitch</button>`
-    : `${o ? '' : `<ol class="steps"><li>Press the purple button. ${A.desktop ? 'Your web browser opens the Twitch sign-in page.' : 'You go to the Twitch sign-in page.'}</li><li>Click <b>Authorize</b>. (It asks for channel points and bits permission so viewers can trigger chaos.)</li><li>${A.desktop ? 'When it says "Signed in", close that browser tab and come back here. This page updates by itself.' : 'You come right back here.'}</li></ol>`}
+    : `${o ? '' : `<ol class="steps"><li>Press the purple button. ${A.desktop ? 'Your web browser opens the Twitch sign-in page.' : 'You go to the Twitch sign-in page.'}</li><li>Click <b>Authorize</b>. It asks for a few things: channel points and bits (rewards and chaos), talking in your chat and pinning the winner, moderating (the 💬 Chat tab and watch streaks) and starting raids (the 🚀 Raid reward).</li><li>${A.desktop ? 'When it says "Signed in", close that browser tab and come back here. This page updates by itself.' : 'You come right back here.'}</li></ol>`}
       <div class="row"><button class="twitch big" onclick="location.href='/auth/twitch'">${o ? 'Sign in again' : 'Sign in with Twitch'}</button>
       <button onclick="if(confirm('Re-enter your Twitch app keys?')) api('/api/settings',{twitchClientId:'',twitchClientSecret:''}).then(load)">Change app keys</button></div>
       <div class="info" style="margin-top:16px">If Twitch says <b>"redirect_mismatch"</b>: in the Developer Console, open your app and make sure the redirect URL is exactly:${copyBox(cb)}</div>`}
     ${nav()}`;
   },
+  chatbot() {
+    const b = S.chatBot;
+    return `<h2>🤖 Chat bot account (optional)</h2><p class="why">Movie Royal says things in your Twitch chat: the winner, the claim question (!accept / !pass), replies to commands. Right now it says them as <b>you</b>, with a name tag at the start. With a bot account, they come from the bot instead (for example <b>MoviesRoyalBot</b>).</p>
+    ${!S.owner ? `<div class="bad">Sign in with Twitch first (step 1).</div>` : ''}
+    ${b ? status(true, `Movie Royal talks in chat as <b>${esc(b.name)}</b>${b.on ? '' : ' (turned off: it talks as you. Settings → 💜 Twitch & channel points)'}.`) : ''}
+    <ol class="steps">
+      <li>Make a second Twitch account for the bot, for example <b>MoviesRoyalBot</b> (Twitch names can't have spaces). Do it in a <b>private window</b> so you stay logged in as yourself.</li>
+      <li>Press <b>🔑 Sign in as the bot</b>. On the Twitch page, if it shows your own account, press <b>Not you?</b> and log in as the bot. Then click <b>Authorize</b>.</li>
+      <li>In your Twitch chat, type <code>/mod MoviesRoyalBot</code> (your bot's name) so Twitch never slows it down.</li>
+    </ol>
+    <div class="row"><button class="twitch big" ${S.owner ? '' : 'disabled'} onclick="location.href='/auth/twitch-bot'">🔑 ${b ? 'Sign in as the bot again' : 'Sign in as the bot'}</button>${b ? `<button onclick="botHi(this)">💬 Say hi in chat</button>` : ''}</div>
+    ${note('bot')}
+    <p class="help">No bot? That's fine: Movie Royal talks as you, with the name tag from Settings → 💜 Twitch &amp; channel points.</p>
+    ${nav()}`;
+  },
+  backup() {
+    const b = S.backup || {}, k = b.backup || {};
+    const rel = 'https://github.com/TimePeace49/movie-royale-releases/releases/latest';
+    return `<h2>🛡️ Backup bots (optional)</h2><p class="why"><b>Movie Royal Backup Bots</b> is a second, small app. It checks your 24/7 Discord bot every minute, and if that bot has problems, it answers <b>/suggest</b>, <b>/swap</b>, <b>/mymovies</b>… instead. If you don't use the 24/7 bot, it answers whenever Movie Royal is closed. It also keeps reading your Twitch chat while Movie Royal is closed, so viewer profiles and watch streaks keep counting. It can run on your PC or on a friend's.</p>
+    ${!S.settings.discordToken ? `<div class="bad">Set up the <b>Discord bot</b> step first.</div>` : ''}
+    ${b.active ? `<div class="info">🛡️ ${esc(k.by || 'The backup')} is running your Discord bot right now. Switch back in Movie Royal: Settings → 🤖 Discord &amp; picks.</div>` : b.watching ? status(true, `${esc(k.by || 'A backup')} is watching your bot.`) : ''}
+    <ol class="steps">
+      <li>Download <b>MovieRoyalBackupBots-Setup</b> from the ${link(rel, 'latest release page')} (under <b>Assets</b>) and install it. It has its own installer, separate from Movie Royal.</li>
+      <li>Open <b>Movie Royal Backup Bots</b> (Start menu). Leave it open: it starts by itself with Windows from then on, hidden in the background.</li>
+      <li>Press <b>🛡️ Add my bot to the backup on this PC</b>. No copy and paste: it takes your bot from Movie Royal.<div class="row" style="margin-top:8px"><button class="primary" ${S.settings.discordToken ? '' : 'disabled'} onclick="backupAdd(this)">🛡️ Add my bot to the backup on this PC</button></div>${note('bk')}</li>
+      <li><b>A friend running your backup instead?</b> They install the same app and paste your Discord bot token in it (Movie Royal → Settings → 🤖 Discord &amp; picks → 📋 Copy my bot token). Whoever has the token fully controls your bot, so only give it to someone you trust, privately.</li>
+    </ol>
+    <p class="help">Movie Royal Backup Bots updates itself. Picks it takes come into Movie Royal when you open it.</p>
+    ${nav()}`;
+  },
+  chars() {
+    const st = S.settings, fa = st.featAsk || {}, cmd = esc(st.idCommand || '!id');
+    const yn = (k, yes) => `<div class="row"><button class="${fa[k] === 'yes' ? 'on' : ''}" onclick="charAns('${k}', true)">${yes}</button><button class="${fa[k] === 'no' ? 'on' : ''}" onclick="charAns('${k}', false)">No thanks</button></div>`;
+    return `<h2>🧍 Characters</h2><p class="why">Battles can show people instead of balls (the 🧍 box next to every battle). They dress for the map: kung fu outfits in Kung Fu Town, Santa hats in Santa's Workshop… The movie poster or Twitch picture goes on their chest.</p>
+    <div class="choice"><h3>👫 Men and women characters?</h3><p>Chat picks what their character is by typing <code>${cmd} man</code>, <code>${cmd} woman</code> or <code>${cmd} none</code> (non-binary). It shows as a tag on their profile too. Anyone can change theirs any time.</p>${yn('ids', '👫 Yes, turn it on')}</div>
+    <div class="choice"><h3>🎨 Character creation?</h3><p>People make their own character in Discord with <code>/character</code>: a number for hair, outfit, makeup, facial hair, body, skin, hair color and a head accessory. The bot makes a <b>#${esc(st.charChannelName || 'character-creation')}</b> channel for it, with a link to a page that shows every part. That character is them in every battle with characters.</p>${yn('looks', '🎨 Yes, turn it on')}</div>
+    <label style="display:flex;gap:10px;align-items:center;cursor:pointer;margin-top:6px"><input type="checkbox" style="width:auto" ${st.charsDefault ? 'checked' : ''} onchange="api('/api/settings',{charsDefault:this.checked}).then(load)"> 🧍 Battles use characters by default (each battle can still be switched with its 🧍 box)</label>
+    ${note('ch')}
+    <p class="help">Change any of this later: Settings → ⚔️ Game → 🧍 Characters.</p>
+    ${nav()}`;
+  },
   rewards() {
-    const tw = S.status.twitch, rw = Object.keys(S.settings.rewards);
-    return `<h2>Channel points &amp; bits</h2><p class="why">Viewers spend channel points or bits to fire chaos events (comets, earthquakes, tornadoes…) that hit everyone at random. Nobody can buy an advantage.</p>
+    const tw = S.status.twitch, rw = Object.keys(S.settings.rewards || {}), tags = l => l.map(r => `<span class="tag" style="margin:2px;display:inline-block">${esc(r)}</span>`).join(' ');
+    return `<h2>Channel points &amp; bits</h2><p class="why">Viewers spend channel points or bits on your stream: chaos in battles (comets, earthquakes, tornadoes… it hits everyone, nobody can buy a win), the 🎡 wheel's rewards, power-ups in chat battles, and fun ones like 💧 Hydrate and 🎉 Viewer's Choice.</p>
     ${!S.owner ? `<div class="bad">Sign in with Twitch first (step 1).</div>` : tw.state !== 'online' ? `<div class="bad">Twitch is "${esc(tw.state)}". ${esc(tw.error || '')}</div>` : ''}
     <div class="info">Channel points and bits need a Twitch <b>Affiliate</b> or <b>Partner</b> channel.</div>
     <ol class="steps">
-      <li>Press <b>Create my rewards</b>. It adds these to your channel (you can change prices, names and colors later on Twitch):<div style="margin-top:8px">${rw.map(r => `<span class="tag" style="margin:2px">${esc(r)}</span>`).join(' ')}</div></li>
-      <li>Bits work automatically: a cheer of 100+, 300+, 500+, 1000+ or 2500+ triggers a bigger event. Change the tiers in ⚙️ Settings.</li>
-      <li>Test it: on the main screen, press any chaos test button, or redeem one of the rewards on your channel.</li>
+      <li>Press <b>✨ Make my rewards</b>. It adds the ones you don't have yet (it never changes ones you already have):
+        <ul class="list"><li>💥 Chaos for battles: <div style="margin-top:4px">${tags(rw)}</div></li><li>🎡 The wheel: respin, move a spot, grow, double trouble, force stop</li><li>🎉 Chat battle power-ups: shield, mega, turbo, ghost, spiky, magnet</li></ul></li>
+      <li>Movie Royal makes these by itself once you're signed in: <b>💧 Hydrate!</b>, <b>🙆 Stretch!</b>, <b>🎩 Pick a hat</b>, <b>🎉 Viewer's Choice</b> and <b>🚀 Raid</b> (pick who you raid at the end of the stream).</li>
+      <li>Rewards that can't be used right now are switched off, so they're hidden from the channel points menu (like the wheel's rewards while a battle is on). When you close Movie Royal, they all switch off.</li>
+      <li>Change prices, names and on / off in Movie Royal: <b>Settings → 💰 Rewards &amp; prices</b>. Bits and money tiers are there too (a cheer of 100+, 300+, 500+, 1000+ or 2500+ makes a bigger chaos event).</li>
+      <li><b>Refunds:</b> Movie Royal never gives channel points back. If you want to refund someone, do it yourself on Twitch.</li>
+      <li>Test it: 🧪 Test tab in Movie Royal, or redeem one of the rewards on your channel.</li>
     </ol>
     ${note('rw')}
     ${status(S.settings.rewardsCreated && tw.state === 'online', 'Rewards are set up and Movie Royal is listening.')}
-    <button class="primary big" ${S.owner && tw.state === 'online' ? '' : 'disabled'} onclick="makeRewards(this)">✨ Create my rewards</button>
+    <button class="primary big" ${S.owner && tw.state === 'online' ? '' : 'disabled'} onclick="makeRewards(this)">✨ Make my rewards</button>
     ${nav()}`;
   },
   tmdb() {
-    return `<h2>Movie search</h2><p class="why">TMDB is a free movie database. It powers the title + year search in Discord and the poster, director, cast, genre and synopsis on the winner card.</p>
+    return `<h2>Movie search</h2><p class="why">TMDB is a free movie database. It powers the title + year search in Discord, the poster, director, cast, genre and synopsis on the winner card, and the 🚫 ban list (movies from this year, documentaries, religious and non-English movies get banned by themselves).</p>
     <ol class="steps">
       <li>Make a free account at ${link('https://www.themoviedb.org/signup', 'themoviedb.org/signup')} and confirm the email they send you.</li>
       <li>Go to ${link('https://www.themoviedb.org/settings/api', 'Settings → API')} and click <b>Create</b> (or "click here" under Request an API Key). Choose <b>Developer</b> and accept the terms.</li>
@@ -243,14 +299,19 @@ const PAGES = {
         <p style="color:var(--dim);font-size:13px;margin:8px 0 0">You don't need to turn on any "Privileged Gateway Intents".</p></li>
       <li>Press <b>Save &amp; connect</b>.<div class="row" style="margin-top:8px"><button class="primary" onclick="saveDiscord(this)">Save &amp; connect</button></div>${note('dc')}</li>
       <li>Press <b>Add the bot to my server</b>, pick your server, click <b>Continue</b> → <b>Authorize</b>.<div class="row" style="margin-top:8px"><button class="discord" ${A.discordInvite ? '' : 'disabled'} onclick="window.open(A.discordInvite)">Add the bot to my server</button></div></li>
-      <li>The bot makes a new channel called <b>#${esc(S.settings.discordChannelName || 'movies-royal')}</b> and pins a message there with every command. <b>/suggest</b> and <b>/swap</b> only work in that channel. If you don't see the commands right away, press <kbd>Ctrl</kbd>+<kbd>R</kbd> in Discord to refresh.</li>
+      <li>The bot makes a <b>${esc(S.settings.discordCategory || 'Movie Royal')}</b> folder in your server with its channels:
+        <ul class="list"><li><b>#${esc(S.settings.discordChannelName || 'movies-royal')}</b>: movie picks. A pinned message lists every command. <b>/suggest</b> and <b>/swap</b> only work here.</li>
+        <li><b>#${esc(S.settings.charChannelName || 'character-creation')}</b>: <b>/character</b> (only when character creation is on, see the 🧍 Characters step).</li>
+        <li><b>#movie-royal-debug</b>: Movie Royal posts its Discord problems here. Only mods can read it, nobody can type in it.</li>
+        <li><b>#movie-royal-sync</b>: hidden, only the bot sees it. It's for the 🛡️ Backup bots app.</li></ul>
+        If you don't see the commands right away, press <kbd>Ctrl</kbd>+<kbd>R</kbd> in Discord to refresh.</li>
       <li><b>Added the bot before?</b> Press <b>Add the bot to my server</b> again so it gets permission to make the channel and pin the message.</li>${(d.warnings || []).map(w => `<div class="bad">⚠️ ${esc(w)}</div>`).join('')}
     </ol>
     ${nav()}`;
   },
   cloud() {
     const c = S.cloud || {}, d = S.status.discord, ready = d.state === 'online' && !!S.settings.tmdbKey;
-    return `<h2>24/7 Discord bot (free)</h2><p class="why">Normally the bot only answers while Movie Royal is open. Turn this on and a tiny copy of it runs on <b>Cloudflare's free plan</b>, so people can <b>/suggest</b>, <b>/swap</b> and check <b>/mymovies</b> any time, even with your PC off. It follows all your rules, and Movie Royal brings the picks in when you open it.</p>
+    return `<h2>24/7 Discord bot (free)</h2><p class="why">Normally the bot only answers while Movie Royal is open. Turn this on and a tiny copy of it runs on <b>Cloudflare's free plan</b>, so people can <b>/suggest</b>, <b>/swap</b>, check <b>/mymovies</b> and make their <b>/character</b> any time, even with your PC off. It follows all your rules, and Movie Royal brings the picks in when you open it.</p>
     ${c.enabled ? status(true, `24/7 mode is <b>on</b>. ${c.lastSync ? 'Last synced ' + Math.max(0, Math.round((Date.now() - c.lastSync) / 60000)) + ' min ago.' : ''}`) : ''}
     ${!ready && !c.enabled ? `<div class="bad">⚠️ Set up the <b>Discord bot</b> and <b>Movie search</b> steps first (this copies them to Cloudflare).</div>` : ''}
     ${c.enabled ? '' : `<ol class="steps">
@@ -262,6 +323,7 @@ const PAGES = {
         <div class="row" style="margin-top:8px"><button class="primary" ${ready ? '' : 'disabled'} onclick="saveCloud(this)">☁️ Turn on 24/7 mode</button></div>${note('cf')}
         <p style="color:var(--dim);font-size:13px;margin:8px 0 0">The token is only used for this setup and isn't saved. You can turn it off any time in Settings → Discord &amp; picks.</p></li>
     </ol>`}
+    <div class="info">🔄 The bot on Cloudflare doesn't update by itself. When a Movie Royal update changes it, Movie Royal asks you when it opens (<b>Update your 24/7 Discord bot</b>): make a token the same way (steps 2 to 4) and paste it there.</div>
     ${nav()}`;
   },
   stream() {
@@ -272,11 +334,15 @@ const PAGES = {
       <li>For the sound: <b>Sources</b> → <b>+</b> → <b>Application Audio Capture</b> → pick <b>MovieRoyal.exe</b>. Now the game has its own volume slider in OBS.</li>
       <li>Keep the game window open (it can be behind other windows, just not minimized).</li>
     </ol>
+    <div class="info">🔇 Movie Royal goes quiet when you click into another program (so it doesn't play over everything). OBS hears that too. If the game sound cuts out on stream while you're in another program, untick <b>🔇 Mute when unfocused</b> in Settings → 🖥️ App &amp; background.<div class="row" style="margin-top:8px"><label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" style="width:auto" ${S.settings.muteUnfocused !== false ? 'checked' : ''} onchange="api('/api/settings',{muteUnfocused:this.checked}).then(load)"> 🔇 Mute when unfocused</label></div></div>
     <label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" style="width:auto" ${S.settings.streamSetup ? 'checked' : ''} onchange="api('/api/settings',{streamSetup:this.checked}).then(load)"> I've added it to OBS</label>
     ${nav()}`;
   },
   obs() {
-    return `<h2>OBS control (optional)</h2><p class="why">Only for the 🎡 wheel's <b>☠️ Doomsday</b> (Wheel → ⚙️ Wheel settings → Void spot). When the void swallows the whole wheel, Movie Royal turns your mic and camera off right away and ends your stream 15 seconds later. Skip this if you don't use it.</p>
+    return `<h2>OBS control (optional)</h2><p class="why">Lets Movie Royal do a few things in OBS for you:</p>
+    <ul class="list" style="margin:-10px 0 20px;color:var(--dim)"><li>☠️ <b>Doomsday</b> on the 🎡 wheel (Wheel → ⚙️ Wheel settings → Void spot): when the void swallows the whole wheel, your mic and camera go off and the stream ends 15 seconds later.</li>
+    <li>📺 <b>Capture window</b> (Battle tab): shows another window, like a YouTube video, small in the corner of your stream.</li>
+    <li>🎉 <b>Viewer's Choice</b> (next step): adds the confetti source to the scenes you pick.</li></ul>
     <ol class="steps">
       <li>In OBS (version 28 or newer): <b>Tools</b> → <b>WebSocket Server Settings</b>.</li>
       <li>Tick <b>Enable WebSocket server</b>. Leave the port at <b>4455</b>.</li>
@@ -336,10 +402,28 @@ async function saveTwitch() {
   location.href = '/auth/twitch';
   setTimeout(load, 800);
 }
-async function makeRewards(btn) {
-  btn.disabled = true; btn.textContent = 'Creating…';
-  try { const r = await api('/api/twitch/rewards'); msg.rw = { ok: true, text: r.made.length ? `Created ${r.made.length} rewards on your channel.` : 'All the rewards already exist on your channel.' }; }
-  catch (e) { msg.rw = { ok: false, text: /affiliate|partner|forbidden|403/i.test(e.message) ? 'Twitch says your channel can\'t have custom rewards yet (needs Affiliate or Partner).' : esc(e.message) }; }
+async function makeRewards(btn) { // 💥 chaos + 🎡 wheel + 🎉 power-ups (only the missing ones; the viewer rewards + raid are made by themselves)
+  btn.disabled = true; btn.textContent = 'Making…';
+  const made = [], errs = [];
+  for (const [url, what] of [['/api/twitch/rewards', 'chaos'], ['/api/wheel/rewards', 'wheel'], ['/api/powerups/rewards', 'power-ups']]) {
+    try { const r = await api(url); made.push(...(r.made || [])); } catch (e) { errs.push(/affiliate|partner|forbidden|403/i.test(e.message) ? 'Twitch says your channel can\'t have custom rewards yet (needs Affiliate or Partner).' : `${what}: ${e.message}`); }
+  }
+  msg.rw = errs.length ? { ok: false, text: [...new Set(errs)].map(esc).join('<br>') + (made.length ? `<br>Made ${made.length}: ${made.map(esc).join(', ')}` : '') }
+    : { ok: true, text: made.length ? `Made ${made.length} reward${made.length === 1 ? '' : 's'}: ${made.map(esc).join(', ')}.` : 'You already have all of them.' };
+  await load();
+}
+async function botHi(btn) { btn.disabled = true; try { const r = await api('/api/twitch-bot/test', {}); msg.bot = { ok: true, text: r.as ? `Said hi in your chat as <b>${esc(r.as)}</b>.` : 'Said hi in your chat.' }; } catch (e) { msg.bot = { ok: false, text: esc(e.message) }; } await load(); }
+async function backupAdd(btn) {
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try { const r = await api('/api/backup/add-here', {}); msg.bk = { ok: true, text: `Added ${esc(r.tag || 'your bot')} to Movie Royal Backup Bots. It connects in a few seconds.` }; }
+  catch (e) { msg.bk = { ok: false, text: /fetch failed|ECONNREFUSED|abort|timed? ?out/i.test(e.message) ? 'Couldn\'t reach Movie Royal Backup Bots on this PC. Install it and open it first (steps 1 and 2).' : esc(e.message) }; }
+  await load();
+}
+const CHAR_ANS = { ids: { yes: { idOn: true, charGenders: true }, no: { idOn: false, charGenders: false } }, looks: { yes: { looksOn: true }, no: { looksOn: false } } }; // (same as the start-up questions)
+async function charAns(k, yes) {
+  const fa = { ...(S.settings.featAsk || {}), [k]: yes ? 'yes' : 'no' };
+  try { await api('/api/settings', { ...CHAR_ANS[k][yes ? 'yes' : 'no'], ...(yes ? { charsDefault: true } : {}), featAsk: fa }); msg.ch = { ok: true, text: yes ? 'On!' : 'OK, it stays off.' }; }
+  catch (e) { msg.ch = { ok: false, text: esc(e.message) }; }
   await load();
 }
 async function testTmdb(btn) {

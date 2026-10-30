@@ -3,6 +3,12 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.7: What's new
+Everything since 1.59.6.
+
+- 🧭 **Setup guide brought up to date:** new steps for a 🤖 chat bot account, 🛡️ backup bots and 🧍 characters, one button that makes all your channel point rewards, and better notes on Twitch, Discord, the 24/7 bot, OBS and the stream sound. New steps show 🆕.
+- 🧭 **One start-up pop-up for everything:** new Setup guide steps are steps in it too, one each.
+
 ## v1.59.6: What's new
 Everything since 1.59.5.
 

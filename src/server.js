@@ -1497,7 +1497,12 @@ function donePage(title, msg) {
   return `<!doctype html><meta charset="utf-8"><title>Movie Royal</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#120a24;color:#f3edff;font:18px Segoe UI,system-ui,sans-serif;text-align:center">
   <div><div style="font-size:64px">✅</div><h1 style="color:#ffc94a;margin:10px 0">${title.replace(/</g, '&lt;')}</h1><p>${msg}</p></div></body>`;
 }
-app.get('/api/app', (req, res) => res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [] }));
+app.get('/api/app', (req, res) => {
+  const seen = db.settings.setupSeen ? guideSeen() : null, sc = twitch.status.scopes || [];
+  res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [],
+    guideNew: seen ? GUIDE_STEPS.filter(x => !seen.has(x.id)).map(x => x.id) : [], // 🆕 steps you haven't seen in the Setup guide yet
+    twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x)) : [] }); // signed in before a newer permission was added: sign in again
+});
 app.get('/api/close-check', async (req, res) => { // the Discord bot stops when the app closes (unless the 24/7 bot really has Discord)
   if (DESKTOP && db.settings.discordToken && cloud.enabled()) { await Promise.race([cloud.checkLink(true), new Promise(r => setTimeout(r, 6000))]); }
   res.json({ ask: DESKTOP && !!db.settings.discordToken && (!cloud.enabled() || cloud.status.linked === false) && !backuplink.backupWatching() && db.settings.closeAskBot !== false, /* (a backup bot server is watching: Discord keeps working) */ broken: cloud.enabled() && cloud.status.linked === false, why: cloud.status.linkError || '' });
@@ -1570,7 +1575,11 @@ const GUIDE_STEPS = [
   { id: 'twitch', title: '💜 Sign in with Twitch' }, { id: 'rewards', title: '💎 Channel points & bits' }, { id: 'tmdb', title: '🎬 Movie search' }, { id: 'omdb', title: '🍅 Ratings' },
   { id: 'letterboxd', title: '📗 Letterboxd' }, { id: 'discord', title: '🤖 Discord bot' }, { id: 'cloud', title: '☁️ 24/7 Discord bot' }, { id: 'donations', title: '💵 Donations' },
   { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
-  { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", done: () => !!db.settings.choiceObs }
+  { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", done: () => !!db.settings.choiceObs },
+  // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
+  { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', done: () => !!db.twitchBot },
+  { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
+  { id: 'backup', since: '1.59.7', title: '🛡️ Backup bots', why: 'A second app that keeps your Discord bot answering if the 24/7 bot has problems (on your PC or a friend\'s).', done: () => backuplink.backupWatching() || backuplink.backupActive() }
 ];
 function guideSeen() {
   if (!Array.isArray(db.settings.setupStepsSeen)) { const was = db.settings.lastSeenVersion || '1.10.0'; db.settings.setupStepsSeen = GUIDE_STEPS.filter(x => !x.since || !newer(x.since, was)).map(x => x.id); save(); } // (first time: the steps you already had count as seen)
