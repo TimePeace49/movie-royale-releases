@@ -1529,9 +1529,9 @@ function ckBaseVer() {
   const cur = S?.version; if (!cur) return '9.9.9';
   try {
     let last = localStorage.ckLastRun, base = localStorage.ckBase;
-    if (!last) { last = cur; base = '1.58.0'; } // (first time with this: only things after 1.58.0 count as recent)
+    if (!last) { last = cur; base = cur; } // (first time with this checklist, like a new install or a friend's first update: nothing counts as recent yet; from the next update on, its new things show)
     else if (last !== cur) { base = last; last = cur; } // just updated: everything newer than the version you had
-    localStorage.ckLastRun = last; localStorage.ckBase = base || '1.58.0';
+    localStorage.ckLastRun = last; localStorage.ckBase = base || cur;
     return localStorage.ckBase;
   } catch { return '1.58.0'; }
 }

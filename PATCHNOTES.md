@@ -7,6 +7,7 @@ Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a 
 Everything since 1.59.0.
 
 - ✅ **Fresh checklist:** every tick on 🧪 Test → ✅ Checklist is cleared once with this update, so you can test everything again from the start.
+- 🆕 **Recently updated starts empty** the first time someone opens the checklist. From the next update on, it shows what's new.
 
 ## v1.59.0: What's new
 Everything since 1.58.3.
