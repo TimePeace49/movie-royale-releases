@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.48.1 (test build)
+- 💬 **Wheel name boxes:** only known bots are left out now (Nightbot, StreamElements, Streamlabs, Moobot, Fossabot, Wizebot, Sound Alerts, your own chat bot, and the bot list in the giveaway settings). Someone with "bot" in their name still shows up.
+
 ## 1.48.0 (test build)
 - 🎡 **New spot type: ⚡🔢 Auto + countdown.** It's an ⚡ auto spot (the round timer pauses when it lands, and chat can still respin) with a countdown:
   - Each landing takes one off its count, even if someone respins off it afterwards.

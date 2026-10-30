@@ -613,7 +613,7 @@ const BOT_NAMES = ['nightbot', 'streamelements', 'streamlabs', 'moobot', 'fossab
 function isChatBot(login) {
   login = String(login || '').toLowerCase(); if (!login) return true;
   const extra = String(giveawaySettings?.().bots || '').toLowerCase().split(/[\s,]+/).filter(Boolean);
-  return BOT_NAMES.includes(login) || extra.includes(login) || login === String(db.twitchBot?.login || '').toLowerCase() || /bot$/.test(login);
+  return BOT_NAMES.includes(login) || extra.includes(login) || login === String(db.twitchBot?.login || '').toLowerCase(); // only KNOWN bots (Derek: a real person can have "bot" in their name)
 }
 function chattersForWheel() { const seen = new Set(), out = []; for (const m of [...live.chatLog].reverse()) { const k = String(m.login || '').toLowerCase(); if (!k || seen.has(k) || isChatBot(k)) continue; seen.add(k); out.push(m.name || m.login); if (out.length >= 40) break; } return out; }
 function recentChatters() {
