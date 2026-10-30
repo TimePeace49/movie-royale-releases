@@ -659,7 +659,7 @@
     </div>
     <div class="card">
       <h2>🎉 Fun mode: power-ups &amp; wacky effects</h2>
-      <p class="help" style="margin-top:0">Just-for-fun chat battles. Chat buys power-ups for their own ball with <b>channel points only</b>. Turn each power-up and wacky effect on or off. (The winner is still drawn by the odds before the fight; these make it a funnier show.)</p>
+      <p class="help" style="margin-top:0">Just-for-fun chat battles. Chat buys power-ups for their own ball with <b>channel points only</b>. Turn each power-up and wacky effect on or off. (Ball power-ups and wacky effects don't change who wins: the winner is still drawn by the odds before the fight. 🏁 Race power-ups are different: they can.)</p>
       <div id="funBox"></div>
     </div>
     <div class="card">
@@ -801,7 +801,7 @@
         <div class="grid2" style="margin-top:8px"><div><label id="labNL">Pieces</label><input id="labN" type="number" min="2" max="300" title="Lab: how many pieces / packs" onchange="labSave()"></div><div><label>Fight length (s)</label><input id="labGame" type="number" min="10" max="600" placeholder="auto" title="Lab: how long the fight should take" onchange="labSave()"></div></div>
         <div class="labBall"><div class="grid2"><div><label>Countdown (s)</label><input id="labLobby" type="number" min="0" max="60" title="Lab: countdown before the fight" onchange="labSave()"></div><div><label>On the pieces</label><select id="labSkin" title="Lab: what the pieces show" onchange="labSave()"><option value="movies">🎬 Movies</option><option value="numbers">🔢 Numbers</option><option value="chat">💬 Chat names</option></select></div><div><label>Pieces look like</label><select id="labLook" title="Lab: balls or characters" onchange="labSave()"><option value="balls">⚪ Balls</option><option value="mix">🧍 Characters (mixed)</option><option value="m">👨 Characters: all men</option><option value="f">👩 Characters: all women</option><option value="n">🧑 Characters: all non-binary</option><option value="custom">🎨 Characters: random /character looks</option></select></div></div>
           <div class="grid2"><div><label>Luck</label><select id="labLuck" title="Lab: how much luck the pieces have" onchange="labSave()"><option value="mixed">🍀 Mixed (some lucky)</option><option value="off">None</option><option value="one">One very lucky piece</option><option value="all">Everyone lucky</option></select></div><div><label>🏁 Laps (Figure 8)</label><input id="labLaps" type="number" min="1" max="50" title="Lab: laps for Figure 8 Race" onchange="labSave()"></div></div>
-          <label class="ck"><input type="checkbox" id="labSurv" onchange="labSave()"> <span title="Lab: survival race">🏁 Survival race (Figure 8)</span></label></div>
+          <label class="ck"><input type="checkbox" id="labSurv" onchange="labSave()"> <span title="Lab: survival race">🏁 Survival race (Figure 8 + mayhem races)</span></label></div>
         <label style="margin-top:6px">⏳ Pacer: <b id="labPacerV"></b></label><input type="range" id="labPacer" min="0" max="100" step="5" title="Lab: the elimination pacer" oninput="$('labPacerV').textContent=pacerWord(this.value);labSave()">
         <details class="labBall" style="margin-top:6px"><summary>⚡ Power-ups &amp; 🎉 wacky settings</summary><div id="labPow" class="labCks"></div><div id="labWacky" class="labCks"></div></details>
         <details class="labCard" style="margin-top:6px" open><summary>🃏 Wacky settings (change them during the fight too)</summary><div id="labCWacky" class="labCks"></div></details>
@@ -816,6 +816,9 @@
   <div class="card" id="tCheck" style="grid-column:1 / -1"></div>
   <div class="card" id="tErr" style="grid-column:1 / -1"></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">⚔️ Ball battle</h3><p class="help" style="margin:0 0 10px">A practice battle with made-up names (12 on a random map, or what you pick in ⚙ Settings). Your lists and history don't change.</p><div class="row"><button class="primary" onclick="testBattle()" title="Run a Ball battle test">▶ Run it</button><button class="ghost" onclick="tbOpen()" title="Change how test battles go: how many, map, countdown, length, luck…">⚙ Settings</button></div></div>
+  <div class="card tquick" id="raceTest"><h3 style="margin:0 0 4px">🏁 Race with power-ups</h3><p class="help" style="margin:0 0 10px">A practice race with 12 made-up racers and race power-ups on (no winner picked ahead of time). Then fire power-ups at a random racer, like chat would with channel points.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="raceTMap" title="Which race map for the test race"></select><button class="primary" onclick="raceTest()" title="Start a practice race with race power-ups on">▶ Start a test race</button></div>
+    <div class="row" style="gap:5px;flex-wrap:wrap;margin-top:8px" id="raceTPow"></div></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🎬 Discord movie battle</h3><p class="help" style="margin:0 0 10px">A test battle with everyone's real Discord movies. No winner, no luck, no cooldowns.</p><button class="primary" onclick="api('/api/test/discord-battle').then(()=>toast('🎬 Test Discord battle: it changes nothing')).catch(()=>{})" title="Run a Discord movie battle test">▶ Run it</button></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🌐 IMDb / Rotten Tomatoes battle</h3><p class="help" style="margin:0 0 10px">A pretend list of 40 made-up "worst movies" (no internet): watch it skip the ones not in English and on the Discord list, and keep going until it has 20.</p><button class="primary" onclick="api('/api/test/web-list',{max:20}).then(()=>{toast('🌐 Pretend IMDb battle made: see the Movie Pool');setView('pool')})" title="Make a pretend IMDb battle">▶ Run it</button></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🔢 Number battle</h3><p class="help" style="margin:0 0 10px">A practice battle where every ball is a number (1 to how many you pick in ⚙ Settings).</p><div class="row"><button class="primary" onclick="testBattle({numbers:true})" title="Run a Number battle test">▶ Run it</button><button class="ghost" onclick="tbOpen()" title="Change how test battles go: how many, map, countdown, length, luck…">⚙ Settings</button></div></div>
@@ -1450,7 +1453,7 @@ function labInit() {
   $('labWacky').innerHTML = WACKY_BALL.map(([k, n]) => ck('w-' + k, labSet.wacky?.[k], n.split(':')[0], 'Lab wacky: ' + n)).join('');
   const wl = S.cards?.wackyList || {}; $('labCWacky').innerHTML = Object.entries(wl).map(([k, w]) => `<label class="ck" title="${esc('Lab card wacky: ' + (w.desc || ''))}"><input type="checkbox" data-labc="${k}" ${labSet.cw?.[k] ? 'checked' : ''} onchange="labCWacky('${k}', this.checked)"> <span>${w.name}</span></label>`).join('');
   $('labSnd').textContent = labSet.sound === false ? '🔇 Sound off' : '🔊 Sound on';
-  $('labFx').innerHTML = t === 'card' ? '' : '<span class="muted">During the fight:</span>' + LAB_EVENTS.map(([k, n]) => `<button class="ghost" style="padding:3px 9px" onclick="labFx('${k}')" title="Lab chaos: ${esc(n)}">${n}</button>`).join('') + `<button class="ghost" style="padding:3px 9px" onclick="labPow()" title="Lab: give a random piece a random power-up">⚡ Random power-up</button>`;
+  $('labFx').innerHTML = t === 'card' ? '' : '<span class="muted">During the fight:</span>' + LAB_EVENTS.map(([k, n]) => `<button class="ghost" style="padding:3px 9px" onclick="labFx('${k}')" title="Lab chaos: ${esc(n)}">${n}</button>`).join('') + `<button class="ghost" style="padding:3px 9px" onclick="labPow()" title="Lab: give a random piece a random power-up">⚡ Random power-up</button>` + (t === 'card' ? '' : '<span class="muted" style="margin-left:6px">🏁 Race maps:</span>' + RACE_POWS.map(([k, n]) => `<button class="ghost" style="padding:3px 9px" onclick="labRace('${k}')" title="Lab race power-up: ${esc(n)}">${n}</button>`).join(''));
 }
 function labType(t) { labSet.type = t; labSave(true); labInit(); }
 function labSave(skip) {
@@ -1490,6 +1493,10 @@ async function labRun() {
   labPost({ type: 'start', gameId: id, fighters, total: n, map, listName: '🧪 Test lab', kind: skin === 'movies' ? 'films' : 'text', skin: (labSet.look || 'balls') !== 'balls' ? 'chars' : undefined, fun: Object.keys(wk).length ? wk : null, lobbySeconds: labNum(labSet.lobby, 3, 0, 60), gameSeconds: labNum(labSet.game, S.settings.gameSeconds || 30, 10, 600), pacer, fairOdds: true, laps: labNum(labSet.laps, 3, 1, 50), survival: labSet.surv ? true : null, queued: [] });
   const mp = (S.maps || []).find(m => m.id === map); toast(`🧪 Test lab: ${n} pieces on ${mp?.icon || ''} ${mp?.name || map}. Only on this page.`);
 }
+async function raceTest() { try { await api('/api/test/battle', { count: 12, map: $('raceTMap')?.value || 'oval', racePowers: true, lobby: 3 }); toast('🏁 Test race with race power-ups: fire some with the buttons'); } catch {} }
+function raceTPow(kind) { api('/api/test/race-power', { kind }).then(() => toast(kind === 'nuke' ? '☢️ Nuke! Watch the 15-second cut scene' : (RACE_POWS.find(x => x[0] === kind) || [])[1] + ' on a random racer')).catch(() => {}); }
+function raceTInit() { const sel = $('raceTMap'); if (!sel || sel.options.length) return; sel.innerHTML = RACE_IDS.map(id => { const m = (S.maps || []).find(x => x.id === id); return m ? `<option value="${id}">${m.icon} ${esc(m.name)}</option>` : ''; }).join(''); $('raceTPow').innerHTML = RACE_POWS.map(([k, n, d]) => `<button class="ghost" style="padding:3px 9px" title="Race test: ${esc(d)}" onclick="raceTPow('${k}')">${n}</button>`).join(''); }
+function labRace(kind) { if (!labCur?.fighters) return toast('Run a ball battle test on a race map first.'); if (!RACE_IDS.includes(labCur.map)) return toast('Race power-ups only work on race maps: pick one (🏁, 🏟️, 🏎️, 🌃, ❄️, 🏖️, 🏜️, ✖️, 🌋, 🚧, 🚀) and run the test.'); labPost({ type: 'racePower', id: null, kind, name: 'Test lab' }); }
 function labStop() { labPost({ type: 'stop' }); labCur = null; $('labIdle').style.display = ''; }
 function labSim(secs) { if (!labCur) return toast('Run a test first.'); labPost({ type: 'sim', secs }); }
 function labFx(k) { if (!labCur || labCur.card) return toast('Run a ball battle test first.'); labPost({ type: 'effect', effect: { event: k, source: 'test', by: { name: 'Test lab' } } }); }
@@ -1733,7 +1740,7 @@ function setView(v) {
   if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
-  if (v === 'test') { arrangeTests(); lkInit(); if (!$('labMap')?.options.length) labInit(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
+  if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
@@ -2391,6 +2398,8 @@ async function gaReroll() {
 }
 function funSet(ch) { api('/api/lists/chat-join', { fun: ch }, 'PATCH').catch(() => {}); }
 const POWERS = [['shield', '🛡️ Shield', 'saves them once'], ['mega', '💪 Mega ball', 'big and heavy'], ['turbo', '⚡ Turbo', 'faster, harder hits'], ['ghost', '👻 Ghost', 'nobody can bump them for the first 10 seconds'], ['spiky', '🦔 Spiky', 'bumping them hurts'], ['magnet', '🧲 Magnet', 'pulls everyone close']];
+const RACE_POWS = [['boost', '💨 Boost', 'a burst of speed'], ['shield', '🛡️ Shield', 'blocks one rocket, oil slick or bump'], ['oil', '🛢️ Drop oil', 'whoever drives over it spins out'], ['rocket', '🚀 Rocket', 'fires straight ahead at the car in front'], ['nuke', '☢️ Nuke', 'a 15-second cut scene: everyone else is wiped out, they win']];
+const RACE_IDS = ['figure8', 'oval', 'grandprix', 'nightcity', 'icering', 'beach', 'rally', 'crossover', 'volcano', 'junkyard', 'bigair']; // 🏁 race maps (same list as RACE_MAPS in maps.js)
 const WACKY_BALL = [['bouncy', '🏀 Super bouncy: every bump sends balls flying'], ['lowgrav', '🪐 Low gravity the whole time'], ['sizes', '🐜🐘 Random sizes: tiny and giant balls'], ['bigheads', '🎈 Big balls: everyone extra big (it gets crowded)'], ['chaos', '🌪️ Chaos rain: a random chaos event every few seconds'], ['disco', '🪩 Disco lights'], ['slippery', '🧊 Slippery: the ground is ice the whole time'], ['swappy', '🔀 Swap-o-rama: everyone swaps places every 10 seconds or so'], ['speedy', '💨 Speedy: every ball has turbo'], ['googly', '👀 Googly eyes on every ball']];
 function renderFun(l) {
   const box = $('funBox'); if (!box || box.contains(document.activeElement)) return;
@@ -2402,6 +2411,12 @@ function renderFun(l) {
     <p class="help" style="margin:2px 0 6px 22px">The rewards are only switched on in Twitch while this chat battle is playing with power-ups on (and only the ones ticked here); the rest of the time they're paused. No bits: channel points only.</p>
     <div class="row" style="margin-left:22px"><button ${S.canPoints === false ? 'disabled' : ''} onclick="api('/api/powerups/rewards',{}).then(r=>toast(r.made.length ? '✅ Added: ' + r.made.map(esc).join(', ') : 'They are already on Twitch.'))">✨ Add power-up rewards to Twitch</button></div>
     <p class="help" style="margin:4px 0 10px 22px">${titles.map(esc).join(' · ')}</p>
+    <b>🏁 Race power-ups with channel points</b>
+    ${ck(F.racePowers, "funSet({racePowers:this.checked})", 'Chat can use race power-ups <b>on race maps</b> (they have to <code>!join</code> first)')}
+    <div style="margin:4px 0 6px 22px;${F.racePowers ? '' : 'opacity:.55'}">${RACE_POWS.map(([k, n, d]) => `<div class="help" style="margin:2px 0">${n} <small class="muted">${d} · ${Number(S.settings.raceCosts?.[k] || 0).toLocaleString()} points</small></div>`).join('')}</div>
+    <p class="help" style="margin:2px 0 6px 22px">⚠️ With these on, the race isn't decided ahead of time: boosts, rockets and the nuke really can change who wins. Race maps: 🏁 Figure 8 Race and the 10 race maps (🏟️ 🏎️ 🌃 ❄️ 🏖️ 🏜️ ✖️ 🌋 🚧 🚀). Change the prices in Settings → 💰 Rewards &amp; prices.</p>
+    <div class="row" style="margin-left:22px;gap:6px;flex-wrap:wrap"><button ${S.canPoints === false ? 'disabled' : ''} onclick="api('/api/racepowers/rewards',{}).then(r=>toast(r.made.length ? '✅ Added: ' + r.made.map(esc).join(', ') : 'They are already on Twitch.'))">✨ Add race power-up rewards to Twitch</button><button class="ghost" onclick="setView('test');testTab('tests');setTimeout(()=>$('raceTest')?.scrollIntoView({block:'center'}),300)">🧪 Try them</button></div>
+    <p class="help" style="margin:4px 0 10px 22px">${Object.keys(S.settings.raceRewards || {}).map(esc).join(' · ')}</p>
     <b>🤪 Wacky effects</b>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 10px;margin-top:4px">
     ${WACKY_BALL.map(([k, label]) => ck(Wk[k], `funSet({wacky:{${k}:this.checked}})`, label)).join('')}</div>
@@ -3605,10 +3620,10 @@ function openSettings(force) {
       <div class="row"><button onclick="location.href='/api/backup'">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
       <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
     game: `<h3>⚔️ The battle</h3>
-      <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('gameSeconds', 'Fight length (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Figure 8 Race: how many laps', '5', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
+      <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('gameSeconds', 'Fight length (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
       <div style="margin-top:10px"><label>⏳ Elimination pacer: <b id="pacerV">${pacerWord(s.pacer ?? 50)}</b></label><input type="range" data-k="pacer" min="0" max="100" step="5" value="${s.pacer ?? 50}" oninput="$('pacerV').textContent=pacerWord(this.value)" title="How hard Movie Royal spreads the knockouts over the fight">
       <p class="help" style="margin:2px 0 0">Spreads the knockouts over the whole fight so it doesn't empty out in the first seconds, and makes it busier when it drags. It follows the fight length above: a 60-second fight gets paced over 60 seconds. 0 = off (pieces go out whenever they go out). When 2 are left early, the 🥊 FINAL SHOWDOWN still starts.</p></div>
-      <p class="help">🎯 <b>Fair winner:</b> every battle's winner is drawn by the odds before the battle starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins.</p>
+      <p class="help">🎯 <b>Fair winner:</b> every battle's winner is drawn by the odds before the battle starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins. (Except 🏁 race power-ups in a chat battle race: those can.)</p>
       ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
       ${f('helpCommand', 'Chat command that lists the chat commands (it lists the ones for the tab you are on)', '!moviesroyal')}
       <h3 style="margin-top:18px">🧍 Characters &amp; ${esc(s.idCommand || '!id')}</h3>

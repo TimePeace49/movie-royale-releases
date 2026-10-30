@@ -7,6 +7,7 @@ window.SFX = (() => {
   const custom = {};      // name -> AudioBuffer
   const mapCustom = {};   // map id -> { name -> AudioBuffer } (that map's own sounds)
   let curMap = null;
+  const CAR_MAPS = new Set(['derby', 'figure8', 'crossover', 'volcano', 'junkyard', 'bigair', 'rally']), CLEAN_RACES = new Set(['oval', 'grandprix', 'nightcity', 'icering', 'beach']); // 🚗 rock for the bumping ones, 🏁 synth for the clean races
   const lastPlay = {};    // name -> time, for rate limiting
   const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05, crowd: .7, chair: .08, slam: .06, spell: .06, zap: .05, roar: .6, chug: 2, stretch: 2, confettiPop: .5, crowdWild: 3 };
 
@@ -165,6 +166,12 @@ window.SFX = (() => {
     crash: (o = {}) => { const now = ac.currentTime; if (now - (S._crashAt || 0) < .06) return; S._crashAt = now; const v = o.v ?? 1, pan = o.pan || 0; noise({ dur: .35, v: .42 * v, type: 'lowpass', f0: 2600, f1: 300, q: .7 }); tone({ type: 'sine', f0: 110, f1: 40, dur: .25, v: .5 * v, pan }); noise({ dur: .5, v: .12 * v, type: 'highpass', f0: 4000, f1: 2500, at: .03 }); for (let i = 0; i < 3; i++) tone({ type: 'square', f0: 1800 + Math.random() * 1500, dur: .05, v: .03 * v, at: .05 + i * .06 + Math.random() * .04, pan }); }, // metal crunch + glass bits
     skid: (o = {}) => { noise({ dur: .7, v: .14 * (o.v ?? 1), type: 'bandpass', f0: 2100, f1: 1500, q: 9 }); tone({ type: 'sawtooth', f0: 900, f1: 700, dur: .6, v: .025 }); },
     rev: () => { for (const [d, at] of [[1, 0], [1.25, .55]]) { tone({ type: 'sawtooth', f0: 55 * d, f1: 150 * d, dur: .5, v: .16, a: .05, at }); tone({ type: 'square', f0: 27 * d, f1: 75 * d, dur: .5, v: .1, a: .05, at }); } tone({ type: 'sawtooth', f0: 150, f1: 70, dur: .8, v: .1, at: 1.05 }); },
+    // 🏁 race power-ups + ☢️ the nuke (1.60.0)
+    nitro: () => { noise({ dur: .9, v: .3, type: 'bandpass', f0: 600, f1: 2800, q: .8, a: .05 }); tone({ type: 'sawtooth', f0: 80, f1: 220, dur: .8, v: .12, a: .05 }); },
+    rocket: () => { noise({ dur: .7, v: .35, type: 'highpass', f0: 1500, f1: 4000, a: .02 }); tone({ type: 'sawtooth', f0: 300, f1: 900, dur: .5, v: .06 }); },
+    klaxon: () => { for (let i = 0; i < 4; i++) { tone({ type: 'square', f0: 440, f1: 440, dur: .28, v: .12, at: i * .32 }); tone({ type: 'square', f0: 330, f1: 330, dur: .28, v: .1, at: i * .32 + .16 }); } },
+    nukeFall: () => { tone({ type: 'sine', f0: 2600, f1: 300, dur: 2.5, v: .14, a: .1 }); noise({ dur: 2.5, v: .12, type: 'bandpass', f0: 3000, f1: 400, q: 2, a: 1.5 }); },
+    nuke: () => { noise({ dur: 4.5, v: .9, type: 'lowpass', f0: 2400, f1: 40, q: .6 }); tone({ type: 'sine', f0: 70, f1: 18, dur: 4, v: .8 }); tone({ type: 'sawtooth', f0: 50, f1: 20, dur: 3, v: .25, a: .05 }); noise({ dur: 6, v: .35, type: 'lowpass', f0: 300, f1: 60, a: 1.2, at: .4 }); },
     gun: (o) => { noise({ dur: .12, v: .55 * (o.v ?? 1), type: 'highpass', f0: 900 }); tone({ type: 'square', f0: 180, f1: 60, dur: .06, v: .12 * (o.v ?? 1) }); }, // 🔫 a rifle shot
     tank: () => { noise({ dur: .6, v: .7, type: 'lowpass', f0: 500 }); tone({ type: 'sine', f0: 90, f1: 30, dur: .5, v: .5 }); }, // 🛞 a tank gun
     plane: () => { for (let i = 0; i < 6; i++) tone({ type: 'sawtooth', f0: 70 + i * 3, f1: 60, dur: .5, v: .05, at: i * .45 }); noise({ dur: 2.6, v: .12, type: 'lowpass', f0: 300, a: .8 }); }, // ✈️ a bomber going over
@@ -239,7 +246,15 @@ window.SFX = (() => {
         if (i === 8) tone({ type: 'triangle', f0: hz([63, 62, 66, 61][bar]), dur: STEP * 6, v: .04 + intensity * .03, a: .05, at, bus: musicBus });
         if (i % 4 === 2 && intensity > .5) noise({ dur: .05, v: .05, type: 'highpass', f0: 6000, at, bus: musicBus });
       } else
-      if ((curMap === 'derby' || curMap === 'figure8') && mode === 'fight') { // 🚗 cars: a pounding rock beat, a chugging guitar and an engine drone
+      if (CLEAN_RACES.has(curMap) && mode === 'fight') { // 🏁 clean races: a quick synth drive, arpeggio over a pumping bass
+        const arp = [64, 67, 71, 76, 71, 67, 64, 67, 62, 66, 69, 74, 69, 66, 62, 66][i] + (bar === 2 ? -3 : bar === 3 ? 2 : 0);
+        if (i % 4 === 0) tone({ type: 'sine', f0: 130, f1: 45, dur: .14, v: .5, at, bus: musicBus });
+        if (i % 4 === 2) noise({ dur: .05, v: .08, type: 'highpass', f0: 7000, at, bus: musicBus });
+        if (i % 8 === 4) noise({ dur: .14, v: .2, type: 'bandpass', f0: 1800, q: .7, at, bus: musicBus });
+        tone({ type: 'square', f0: hz(arp), dur: STEP * .55, v: .028 + intensity * .02, at, bus: musicBus });
+        if (i % 2 === 0) tone({ type: 'sawtooth', f0: hz(40 + (bar === 2 ? -3 : bar === 3 ? 2 : 0)), dur: STEP * .9, v: .05, at, bus: musicBus });
+      } else
+      if (CAR_MAPS.has(curMap) && mode === 'fight') { // 🚗 cars: a pounding rock beat, a chugging guitar and an engine drone
         const riff = [40, 40, 52, 40, 40, 50, 40, 47, 40, 40, 52, 40, 43, 45, 47, 38][i] + (bar === 3 ? 3 : 0);
         if (i % 4 === 0 || i === 6) tone({ type: 'sine', f0: 140, f1: 45, dur: .16, v: .55, at, bus: musicBus });
         if (i % 8 === 4) noise({ dur: .2, v: .3, type: 'bandpass', f0: 1700, q: .6, at, bus: musicBus });

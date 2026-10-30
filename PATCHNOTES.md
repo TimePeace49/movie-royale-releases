@@ -3,6 +3,18 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.60.0: What's new
+Everything since 1.59.7.
+
+- 🏁 **10 new race maps:**
+  - Clean races: 🏟️ Speedway Oval, 🏎️ Grand Prix, 🌃 Night Street Race, ❄️ Ice Ring, 🏖️ Beach Rally.
+  - Mixed: 🏜️ Desert Rally.
+  - Mayhem: ✖️ Crossover Chaos, 🌋 Volcano Run, 🚧 Junkyard Smash, 🚀 Big Air Stadium.
+  - Race cars, monster trucks and school buses.
+- 🏁 **Race power-ups in chat battles:** 💨 Boost, 🛡️ Shield, 🛢️ Drop oil and 🚀 Rocket, bought with channel points. Turn them on with the check box on the Chat battle tab. With them on, the race isn't decided ahead of time: they can change who wins.
+- ☢️ **The Nuke** (20,000 points): a 15-second cut scene. The one who calls it gets a force field and everyone else is blown away.
+- 🧪 Try it all in the Test tab: 🏁 Race with power-ups.
+
 ## v1.59.7: What's new
 Everything since 1.59.6.
 

@@ -202,7 +202,7 @@ const PAGES = {
     <div class="info">Channel points and bits need a Twitch <b>Affiliate</b> or <b>Partner</b> channel.</div>
     <ol class="steps">
       <li>Press <b>✨ Make my rewards</b>. It adds the ones you don't have yet (it never changes ones you already have):
-        <ul class="list"><li>💥 Chaos for battles: <div style="margin-top:4px">${tags(rw)}</div></li><li>🎡 The wheel: respin, move a spot, grow, double trouble, force stop</li><li>🎉 Chat battle power-ups: shield, mega, turbo, ghost, spiky, magnet</li></ul></li>
+        <ul class="list"><li>💥 Chaos for battles: <div style="margin-top:4px">${tags(rw)}</div></li><li>🎡 The wheel: respin, move a spot, grow, double trouble, force stop</li><li>🎉 Chat battle power-ups: shield, mega, turbo, ghost, spiky, magnet</li><li>🏁 Race power-ups: boost, shield, drop oil, rocket, ☢️ nuke (20,000 points)</li></ul></li>
       <li>Movie Royal makes these by itself once you're signed in: <b>💧 Hydrate!</b>, <b>🙆 Stretch!</b>, <b>🎩 Pick a hat</b>, <b>🎉 Viewer's Choice</b> and <b>🚀 Raid</b> (pick who you raid at the end of the stream).</li>
       <li>Rewards that can't be used right now are switched off, so they're hidden from the channel points menu (like the wheel's rewards while a battle is on). When you close Movie Royal, they all switch off.</li>
       <li>Change prices, names and on / off in Movie Royal: <b>Settings → 💰 Rewards &amp; prices</b>. Bits and money tiers are there too (a cheer of 100+, 300+, 500+, 1000+ or 2500+ makes a bigger chaos event).</li>
@@ -402,10 +402,10 @@ async function saveTwitch() {
   location.href = '/auth/twitch';
   setTimeout(load, 800);
 }
-async function makeRewards(btn) { // 💥 chaos + 🎡 wheel + 🎉 power-ups (only the missing ones; the viewer rewards + raid are made by themselves)
+async function makeRewards(btn) { // 💥 chaos + 🎡 wheel + 🎉 power-ups + 🏁 race power-ups (only the missing ones; the viewer rewards + raid are made by themselves)
   btn.disabled = true; btn.textContent = 'Making…';
   const made = [], errs = [];
-  for (const [url, what] of [['/api/twitch/rewards', 'chaos'], ['/api/wheel/rewards', 'wheel'], ['/api/powerups/rewards', 'power-ups']]) {
+  for (const [url, what] of [['/api/twitch/rewards', 'chaos'], ['/api/wheel/rewards', 'wheel'], ['/api/powerups/rewards', 'power-ups'], ['/api/racepowers/rewards', 'race power-ups']]) {
     try { const r = await api(url); made.push(...(r.made || [])); } catch (e) { errs.push(/affiliate|partner|forbidden|403/i.test(e.message) ? 'Twitch says your channel can\'t have custom rewards yet (needs Affiliate or Partner).' : `${what}: ${e.message}`); }
   }
   msg.rw = errs.length ? { ok: false, text: [...new Set(errs)].map(esc).join('<br>') + (made.length ? `<br>Made ${made.length}: ${made.map(esc).join(', ')}` : '') }

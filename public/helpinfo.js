@@ -47,8 +47,8 @@ H(/^tip:lab: how long the fight/i, '🧪 Test lab: fight length', 'How many seco
 H(/^tip:lab: countdown/i, '🧪 Test lab: countdown', 'Seconds of countdown before the fight starts (0 = right away).', ['test']);
 H(/^tip:lab: what the pieces show/i, '🧪 Test lab: what\'s on the pieces', 'Made-up movies, numbers (like a number battle) or made-up chat names.', ['test']);
 H(/^tip:lab: how much luck/i, '🧪 Test lab: luck', 'How much luck the test pieces get, to see the luck glow and how luck changes the odds.', ['test']);
-H(/^tip:lab: laps/i, '🧪 Test lab: laps', 'How many laps the Figure 8 Race takes in the test.', ['test']);
-H(/^tip:lab: survival race/i, '🧪 Test lab: survival race', 'Makes the Figure 8 test a survival race.', ['test']);
+H(/^tip:lab: laps/i, '🧪 Test lab: laps', 'How many laps the races (Figure 8 + the race maps) take in the test.', ['test']);
+H(/^tip:lab: survival race/i, '🧪 Test lab: survival race', 'Makes the Figure 8 test (or a mayhem race: ✖️ 🌋 🚧 🚀) a survival race: last one running wins.', ['test']);
 H(/^tip:lab: the elimination pacer/i, '🧪 Test lab: pacer', 'How hard the pacer works to spread the knockouts over the whole fight (0 = off).', ['test']);
 H(/^tip:lab power-up/i, '🧪 Test lab: power-ups', 'Ticked power-ups are given to every other piece in the test.', ['test']);
 H(/^tip:lab wacky/i, '🧪 Test lab: wacky settings', 'Ticked wacky settings are on for the test battle (like a fun battle).', ['test']);
@@ -61,6 +61,10 @@ H(/^tip:lab: sound/i, '🔊 Lab sound', 'Turns the test lab\'s sound on or off.'
 H(/^tip:lab: bigger screen/i, '⛶ Bigger', 'Makes the lab screen as wide as the page (press again to go back).', ['test']);
 H(/^tip:lab chaos/i, '🧪 Test lab: chaos events', 'Sets off this chaos event in the test battle right now (✨ Map power = the map\'s own special power).', ['test']);
 H(/^tip:lab: give a random piece/i, '⚡ Random power-up', 'Gives a random piece in the test battle a random power-up.', ['test']);
+H(/^tip:lab race power-up/i, '🏁 Test lab: race power-ups', 'Fires this race power-up on a random racer in the test race (only on race maps): 💨 Boost, 🛡️ Shield, 🛢️ Drop oil, 🚀 Rocket straight ahead, or ☢️ Nuke (the 15-second cut scene where everyone else is wiped out).', ['test']);
+H(/^tip:start a practice race with race power-ups/i, '▶ Start a test race', 'A practice race on the race map picked next to it, with 12 made-up racers and race power-ups on, so no winner is picked ahead of time. Then use the buttons under it to fire power-ups.', ['test']);
+H(/^tip:which race map for the test race/i, '🏁 Test race map', 'Which race map the test race uses.', ['test']);
+H(/^tip:race test:/i, '🏁 Race power-up test', 'Fires this race power-up on a random racer in the race on stream (start a test race first). ☢️ Nuke plays the whole 15-second cut scene.', ['test']);
 H(/^tip:run an elemental wizards ball battle/i, '🔮 Elemental Wizards (balls)', 'A practice ball battle on Elemental Wizards: four wizards on giant pillars take turns casting. 🔥 Fire blows pieces up, 🌊 Water sends a tidal wave that washes pieces toward the edge, 🪨 Earth drops a boulder that breaks the ground away, ❄️ Ice freezes pieces solid (if they are still frozen when it wears off, they shatter). Each spell shows where it will land first.', ['test']);
 H(/^tip:run an elemental wizards card battle/i, '🔮 Elemental Wizards (cards)', 'A pretend card battle on Elemental Wizards, same four wizards and spells.', ['test']);
 H(/^tip:run a pompeii ball battle/i, '🌋 Pompeii (balls)', 'A practice ball battle on Pompeii: a long Roman town running downhill to the sea. The lava pours in at the top and chases everyone down through the streets, a little faster than anyone can run, and the screen scrolls down with the chase. Buildings block everyone. Nobody outruns it: the last one left wins.', ['test']);
@@ -217,6 +221,9 @@ H(/start chat battle/i, '▶ START CHAT BATTLE', 'Starts the battle with everyon
 H(/clear entries/i, '🧹 Clear entries', 'Takes everyone who joined off the list, ready for next time. Nothing is deleted: they\'re only hidden, and come straight back if they join again.');
 H(/open on battle tab/i, '⚔️ Open on Battle tab', 'Goes to the Battle tab with this battle on the cliff.');
 H(/power up their own ball/i, 'Power-ups', 'Chat can spend channel points on their own ball: 🛡️ Shield (saves them once), 💪 Mega (big and heavy) or ⚡ Turbo (faster, harder hits). They have to !join first. With power-ups or fun effects on, the fight decides the winner instead of the odds.');
+H(/add race power-up rewards/i, '✨ Add race power-up rewards to Twitch', 'Makes the race channel point rewards on Twitch (once): 💨 Boost, 🛡️ Shield, 🛢️ Drop oil, 🚀 Rocket and ☢️ Nuke (20,000 points). They only switch on while a chat battle with race power-ups is on a race map, and stay hidden otherwise. Change the prices in Settings → 💰 Rewards & prices.');
+H(/race power-ups on race maps|chat can use race power-ups/i, '🏁 Race power-ups', 'Chat can spend channel points during a race (a chat battle on a race map): 💨 Boost, 🛡️ Shield (blocks one rocket, oil slick or bump), 🛢️ Drop oil behind them, 🚀 Rocket straight ahead, ☢️ Nuke (a 15-second cut scene: a force field around them, everyone else is wiped out, they win). They have to !join first. With these on, the race is NOT decided ahead of time: the power-ups really can change who wins.');
+H(/^🧪 try them$/i, '🧪 Try them', 'Opens the Test tab at 🏁 Race with power-ups, where you can start a practice race and fire every power-up (the nuke too).');
 H(/add power-up rewards/i, '✨ Add power-up rewards to Twitch', 'Makes the Shield, Mega and Turbo channel point rewards on Twitch (once). They only switch on while a chat battle with power-ups is playing, and stay hidden otherwise.');
 H(/super bouncy/i, '🏀 Super bouncy', 'Every bump sends balls flying. Fun mode: the fight decides the winner, not the odds.');
 H(/random sizes/i, '🐜🐘 Random sizes', 'Every ball gets a random size, tiny to giant.');
@@ -554,7 +561,7 @@ H(/countdown when you press start/i, 'Countdown', 'Seconds of countdown before t
 H(/fight length/i, 'Fight length', 'How long the fight lasts before sudden death.');
 H(/^tip:stop the pack search and search again/i, '🔄 Search again', 'Stops the pack search and runs it again with the same words.');
 H(/^tip:stop the pack search \(/i, '⏹ Stop the search', 'Ends the pack search right away (handy if it seems stuck). Searching never takes more than about 30 seconds now; if it does, press this.');
-H(/figure 8 race: how many laps/i, '🏁 Figure 8 Race laps', 'How many laps the Figure 8 Race map goes (1 to 50). More laps = a longer race. The white flag comes out on the last lap.');
+H(/figure 8 race: how many laps|races: how many laps/i, '🏁 Race laps', 'How many laps every race goes: the Figure 8 Race and the 10 race maps (1 to 50). More laps = a longer race. The white flag comes out on the last lap.');
 H(/^🚗 demolition derby$|^tip:run a demolition derby/i, '🚗 Demolition Derby test', 'A practice battle on the Demolition Derby map with 12 made-up school buses. Your lists and history don\'t change.');
 H(/^🏁 figure 8 race$|^tip:run a (1-lap )?figure 8 race|^tip:run a figure 8 last bus/i, '🏁 Figure 8 Race test', 'A practice race with 12 made-up school buses. ▶ Run it uses your lap count, 1 lap is a quick one, and 💥 Last bus standing shows the rare race with no finish line.');
 H(/max pieces on the cliff/i, 'Max pieces', 'The most pieces that fit on the cliff.');

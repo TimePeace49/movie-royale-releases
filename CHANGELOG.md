@@ -2,6 +2,23 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.60.0
+- 🏁 **10 new race maps** (ball battles), each its own style:
+  - **Clean races** (they pass and draft, crashes hurt little, first across the line wins): 🏟️ Speedway Oval, 🏎️ Grand Prix (rain makes it slippery), 🌃 Night Street Race (roadwork cones), ❄️ Ice Ring (hardly any grip), 🏖️ Beach Rally (waves wash over the top of the track).
+  - **Mixed:** 🏜️ Desert Rally (monster trucks, dust devils).
+  - **Mayhem** (everyone rams everyone): ✖️ Crossover Chaos (school buses, the track crosses itself twice), 🌋 Volcano Run (monster trucks, lava bombs), 🚧 Junkyard Smash (buses, junk cars drop in), 🚀 Big Air Stadium (monster trucks fly off ramps; land on someone and you crush them).
+  - New rides: low race cars with a rear wing, and monster trucks on big wheels, plus the school buses. Every map has its own map power for chaos.
+  - The lap setting is now for every race (Settings → Game → 🏁 Races: how many laps).
+- 🏁 **Race power-ups for chat battles:**
+  - Chat battle tab → 🏁 Race power-ups. Chatters who typed !join spend channel points on 💨 Boost, 🛡️ Shield, 🛢️ Drop oil, 🚀 Rocket (fires straight ahead) and ☢️ **Nuke**.
+  - They work on every race map (the Figure 8 too). Redeemed before the race = it goes off right after the green flag.
+  - **With them on, the race isn't decided ahead of time:** the power-ups really can change who wins.
+  - ✨ Add race power-up rewards to Twitch makes the rewards. They only show on Twitch while they can be used. Prices are in Settings → 💰 Rewards & prices, and the Setup guide's ✨ Make my rewards makes them too.
+- ☢️ **The Nuke** (20,000 points, one per race): a 15-second cut scene.
+  - An alarm sounds and a force field forms around the one who called it. The missile comes down, then a flash, the blast wave and a mushroom cloud, and every other car is blown away.
+  - The smoke clears and only the winner is left, in their force-field bubble.
+- 🧪 **Test tab:** 🏁 Race with power-ups (start a test race on any race map, then fire every power-up, the nuke too). The 🧪 Quick test lab has race power-up buttons. No checklist items.
+
 ## 1.59.7
 - 🧭 **The Setup guide is up to date:**
   - New steps: 🤖 Chat bot account, 🛡️ Backup bots (download it and add your bot with one click) and 🧍 Characters (men / women with !id, /character, characters by default).
