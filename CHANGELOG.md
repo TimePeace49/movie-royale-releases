@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.48.2 (test build)
+- ⚡ **No respins on auto spots** (⚡ Auto, ⚡🔢 Auto + countdown and ⚡🔀 Auto + Link):
+  - While the wheel sits on an auto spot, the 🔁 Respin channel point reward hides from the menu, and nobody can respin.
+  - Someone who redeems it just before it hides gets a saved respin for later, and the bot tells them.
+  - !respin keeps their saved spin, and the 🎟️ streamer respin button says no.
+  - You carry on as usual with 🎡 SPIN.
+
 ## 1.48.1 (test build)
 - 💬 **Wheel name boxes:** only known bots are left out now (Nightbot, StreamElements, Streamlabs, Moobot, Fossabot, Wizebot, Sound Alerts, your own chat bot, and the bot list in the giveaway settings). Someone with "bot" in their name still shows up.
 

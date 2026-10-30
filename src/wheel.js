@@ -276,6 +276,7 @@ function blocked(kind, source) {
   if (st.round?.state === 'ended' && st.round.wheelId === w?.id && roundOn(w) && ['points', 'bank', 'mine'].includes(source)) return 'the timer already ran out on this one.';
   if (kind !== 'respin') return null;
   const e = lastEntry(); if (!e || !rulesOn(w)) return null;
+  if (/^auto/.test(e.type) && source !== 'you') return `“${e.text}” is an ⚡ auto spot: no respins on it.`; // (Derek: nobody can respin an auto spot; you carry on with 🎡 SPIN)
   if (source === 'points' && e.noPointRespin) return `“${e.text}” can't be respun with channel points.`;
   if (source === 'bank' && e.noBankRespin) return `“${e.text}” can't be respun with saved spins.`;
   return null;
@@ -644,6 +645,7 @@ export function wheelRedeem(r) {
   }
   try { request(kind, { name: r.name, login: r.login, source: 'points', cost }); logIt(kind); }
   catch (e) {
+    if (/auto spot/.test(e.message) && kind === 'respin') { const left = giveSpins(r.name, 1, 'respin redeemed on an auto spot', { name: 'auto' }); logIt(`landed on an auto spot: saved for later (has ${left})`); sayW(wh, `🎡 @${r.name} no respins on an ⚡ auto spot! Your respin is saved for later: type ${st.cmd.respin} when you want it (${left} saved) 💜`); return true; }
     if (/ran out/.test(e.message) && kind === 'respin') { const left = giveSpins(r.name, 1, 'respin redeemed after the timer ran out', { name: 'auto' }); logIt(`the timer had run out: saved for later (has ${left})`); sayW(wh, `🎡 @${r.name} the timer already ran out! Your respin is saved for next time — type ${st.cmd.respin} when you want it 💜`); return true; }
     giveBack(`${r.name}: ${e.message}`); sayW(wh, `🎡 Sorry @${r.name}, ${e.message} 💜`);
   }

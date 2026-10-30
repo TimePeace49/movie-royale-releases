@@ -285,7 +285,8 @@ function rewardWants() {
   const powersOn = on && !wheelUp && l?.type === 'chat' && !!l.fun?.powerups;
   for (const [title, kind] of Object.entries(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn || !!l?.fun?.powersOff?.[kind]; // (each power-up can be switched off on the Chat battle tab)
   const wh = W.wheels.find(w => w.id === W.activeId), P = { respin: true, move: true, up: true, down: true, grow: true, shrink: false, ...(wh?.opts?.points || {}) };
-  for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false);
+  const onAuto = /^auto/.test(W.last?.type || '') && W.round?.state !== 'ended' && !W.final; // ⚡ landed on an auto spot: no respins (Derek)
+  for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false && !(kind === 'respin' && onAuto));
   if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
   if (st.raidOn !== false && st.raidTitle) want[st.raidTitle.toLowerCase()] = !(db.live && !stream().raidUsed); // 🚀 while you're live, until someone redeems it
   for (const k of Object.keys(VR)) want[vrTitle(k).toLowerCase()] = false; // 💧🙆🎩🎉 always on in the menu
@@ -312,6 +313,7 @@ async function syncRewards(all = null) {
   finally { rewardBusy = false; }
 }
 setInterval(() => syncRewards().catch(() => {}), 15000); // follows the wheel / battle on stream
+let lastOnAuto = false; setInterval(() => { const W = wheel.W(), on = /^auto/.test(W.last?.type || '') && W.round?.state !== 'ended' && !W.final; if (on !== lastOnAuto) { lastOnAuto = on; syncRewards().catch(() => {}); } }, 1500); // ⚡ the Respin reward hides quickly while the wheel sits on an auto spot
 setInterval(() => { rewardKey = ''; }, 5 * 60000); // and double-checks Twitch every few minutes
 setTimeout(() => { rewardKey = ''; syncRewards().catch(() => {}); }, 8000);
 
