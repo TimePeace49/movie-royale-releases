@@ -597,6 +597,10 @@ H(/.*/, '➕ Your own pack', 'The name, game, how many you have and a picture (a
 H(/^⏹ stop it$/i, '⏹ Stop the pretend fight', 'Stops the card battle that is going.');
 H(/^who's in$/i, '👥 Who\'s in', 'Everyone who entered the giveaway so far.');
 H(/(every pack|1 of each)\d*$/i, '🃏 Your card battles', 'One of your saved card battles: click it to change its settings and see its packs. The number is how many fighters it has.');
+H(/^tip:who.s spinning: pick from the people who chatted/i, '🎡 Who\'s spinning?', 'The name shown for this spin. Click the box (or start typing) to pick from the people who chatted most recently, newest first. Bots are left out. Blank = you.');
+H(/^tip:who gets the spins: people who chatted/i, '🎟️ Give spins: who', 'Who gets the saved spins. Click the box (or start typing) to pick from the people who chatted most recently (bots left out), then everyone who already has saved spins.');
+H(/^tip:who paid for the grow/i, '📈 Grow: who paid', 'Who paid for the grow. Click the box (or start typing) to pick from the people who chatted most recently (bots left out).');
+H(/auto \+ countdown/i, '⚡🔢 Auto + countdown', 'An ⚡ auto spot with a countdown. When it lands, the round timer pauses (do the thing, then spin again or respin) and one comes off its count. At 0 it leaves the wheel on the next spin. Respins work on it like on any auto spot.');
 H(/auto \+ link/i, '⚡🔀 Auto + Link', 'An ⚡ auto spot that always links somewhere: when it lands, the round timer pauses and Movie Royal goes straight to the wheel, battle or card battle you pick under 🔀 (⚙ spot settings). Then it comes back.');
 H(/⚪ ball · 🃏 card/i, '🗺️ Card battle map', 'Where the card battle is fought. ⚪ = a ball battle map, 🃏 = a card battle map, ⚪🃏 = both. Card fighters can use every map marked 🃏. 🎲 Random picks any of them each fight.');
 H(/^⚪🃏 on a ball map$|card fighters on a ball map/i, '⚪🃏 Card fight on a ball map', 'Pretend packs fight on Lava Lake (a ball map) as card fighters. Nothing in your pool changes.');

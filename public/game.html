@@ -4367,7 +4367,7 @@ function wlCard(r, k) {
   $('wlK').innerHTML = k || (r.voided ? `${VX} The void ate` : r.type === 'void' ? `${VX} The void! Respinning…` : r.kind === 'respin' ? `${RX} Respin landed on` : r.kind === 'up' ? '⬆️ Moved up to' : r.kind === 'down' ? '⬇️ Moved down to' : '🎡 The wheel says');
   $('wlT').textContent = r.text; $('wlT').style.fontSize = r.text.length > 40 ? '40px' : r.text.length > 22 ? '52px' : '64px';
   $('wlR').textContent = wlOpts.rules === false ? '' : r.rule || '';
-  const tp = r.voided ? `<span>${VX} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${VX} respinning…</span>` : r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : /^auto/.test(r.type) ? '<span>⚡ auto</span>' : '';
+  const tp = r.voided ? `<span>${VX} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${VX} respinning…</span>` : r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : r.type === 'autocount' ? `<span>⚡ auto · 🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : /^auto/.test(r.type) ? '<span>⚡ auto</span>' : '';
   $('wlM').innerHTML = tp + `${wlOpts.showPct === false ? '' : `<span>🍀 ${r.pct}% of the wheel</span>`}<span>${r.by?.source === 'points' ? '💜' : '👤'} ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ' (channel points)' : ''}</span>${r.from ? `<span>was: ${esc(r.from.text)}</span>` : ''}`;
   if (r.link) { let h = r.link; try { h = new URL(r.link).hostname.replace(/^www\./, ''); } catch {} $('wlM').innerHTML += `<span>🔗 ${esc(h)}</span>`; } // the spot's web page
   $('wlCard').style.borderColor = r.color || '#ffc94a';

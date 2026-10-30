@@ -2,6 +2,19 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.48.0 (test build)
+- 🎡 **New spot type: ⚡🔢 Auto + countdown.** It's an ⚡ auto spot (the round timer pauses when it lands, and chat can still respin) with a countdown:
+  - Each landing takes one off its count, even if someone respins off it afterwards.
+  - The wheel shows it as "Spot (auto 2)".
+  - At 0 it leaves the wheel on the next spin.
+  - ➖ / ➕ under the result fix the count by hand.
+- 🔁 **Respins on auto spots:** checked that chat can respin with channel points or saved spins while an auto spot has the timer paused (spots only block respins if you tick 🚫 no respins on them).
+- 💬 **Name boxes on the Wheel tab suggest chatters:**
+  - The boxes are "Who's spinning?", "Give spins" and "Who paid for it?".
+  - Click one (or start typing) and the people who chatted most recently show first.
+  - Bots are left out: Nightbot, StreamElements, Streamlabs, your own chat bot, and any name ending in "bot".
+  - Give spins also lists everyone who already has saved spins.
+
 ## 1.47.0 (test build)
 - 🎬 **Discord battle: ⏱️ 2-min join timer + chat vote** (the timer button on the Battle tab when the Discord movie battle is picked):
   - **The board resets:** only people who type in Twitch chat during the 2 minutes get their movies on (plus anything you put in yourself with ▶).

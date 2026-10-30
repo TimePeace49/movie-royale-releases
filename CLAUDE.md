@@ -143,6 +143,9 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 
 - **🔮 Discord join timer + chat vote (1.47.0, Derek):** `/api/gather/start` on the Discord list (`live.gather.discord`): `stream().active = []` (board reset, chatGate on), `live.calls.clear()`, `live.board = makeBoard()` (numbered active entries by picker then title), Twitch say; timer end does NOT `startRound` for Discord (other lists still auto-start). `boardVote(m)` (plain number / exact or unique-prefix name while the board is up and before running) → `live.calls` (same as `!call`, paid out by `resolveCalls` with `callLuck`). `gatherBoard` ws msg (`boardRows()`: luck, on = person chatted, votes) → game.html `drawBoard()` on the right; closed by `closeBoard()` at phase running / stop / reset / cancel.
 
+- **⚡🔢 Auto + countdown spot (`autocount`, 1.48.0):** `/^auto/` = auto behaviour (pause 'auto', respins allowed), plus countdown fields (`countStart/count/autoKnock`), knocked on landing, NOT given back on respin (Derek: auto = it auto-runs), leaves at 0 on the next fresh spin, label "(auto n)", `/api/wheel/knock` works on it.
+- **Wheel name boxes suggest chatters (1.48.0):** state `wheelChatters` = `chattersForWheel()` (newest first from `live.chatLog`, max 40, no bots: `BOT_NAMES` + giveaway bot list + `db.twitchBot` + names ending in "bot") → control `fillChatters(datalistId, more)` on `#wBy`, `#gsWho`, `#grWho`.
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 

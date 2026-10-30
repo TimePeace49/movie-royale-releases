@@ -24,7 +24,7 @@ export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true,
   void: { on: false, label: 'VOID', weight: 1, color: '#0b0b12', landings: 5, doomsday: false, monthly: true },
   pop: { on: true, sub: true, gift: true, bits: true, money: true, grow: true, shrink: false, spins: true, unvoid: true } };
 export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
-export const TYPES = { timer: '⏱️ Timer', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' };
+export const TYPES = { timer: '⏱️ Timer', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', autocount: '⚡🔢 Auto + countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' };
 const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#ffffff', hub: '🎡', hubImage: '', lines: '#ffffff', font: 'Inter', textScale: 1, textColor: '' };
 
 export function W() {
@@ -58,7 +58,7 @@ export function cleanEntry(e) {
   const out = { id: e.id || uid(), text: String(e.text ?? e.label ?? '').slice(0, 200), weight: e.weight === 0 || e.weight === '0' ? 0 : num(e.weight, 1, 0, 1e7) || 1, color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : null,
     rule: String(e.rule || '').slice(0, 2000), on: e.on !== false && e.enabled !== false, type, voided: e.voided || null, image: fileOk(e.image === '/gauntlet.svg' ? '' : e.image), sound: fileOk(e.sound),
     noPointRespin: !!e.noPointRespin, noBankRespin: !!e.noBankRespin, link: cleanLink(e.link), goTo: cleanGoTo(e.goTo) };
-  if (type === 'countdown') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); out.autoKnock = e.autoKnock !== false; }
+  if (type === 'countdown' || type === 'autocount') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); out.autoKnock = e.autoKnock !== false; }
   if (type === 'timercount') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); } // a timer spot: each WIN takes one off, at 0 it goes invisible
   if (type === 'timermax') { out.maxWins = Math.round(num(e.maxWins, 1, 1, 1000)); out.wins = Math.round(num(e.wins, 0, 0, 1000)); out.maxedOff = !!e.maxedOff; } // a timer spot that can only win so many times a night
   return out;
@@ -78,7 +78,7 @@ function layout(w) {
 }
 const rulesOn = w => w?.opts?.rules !== false;
 // the words shown in the slice: countdown spots show how many are left, auto spots say (auto)
-const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, e.maxWins - (e.wins || 0))} left)` : /^auto/.test(e.type) ? `${e.text} (auto)` : e.text;
+const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'autocount' ? `${e.text} (auto ${e.count})` : e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, e.maxWins - (e.wins || 0))} left)` : /^auto/.test(e.type) ? `${e.text} (auto)` : e.text;
 // a spot WON (the round timer ran out on it, or the next fresh spin started with no round timer): timer + countdown / timer + max spots count it
 function countWin(w, entryId) {
   if (!w || !rulesOn(w)) return;
@@ -307,7 +307,7 @@ function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Te
   if (kind === 'spin') { // a fresh spin: last winner leaves (if set), finished countdowns leave, a new round timer gets ready
     const sl0 = layout(w);
     if (w.removeWinner && st.last?.wheelId === w.id) { const e = w.entries.find(x => x.id === st.last.entryId); if (e && sl0.length > 1) e.on = false; }
-    for (const e of w.entries) if (e.type === 'countdown' && e.count <= 0 && e.on) e.on = false;
+    for (const e of w.entries) if ((e.type === 'countdown' || e.type === 'autocount') && e.count <= 0 && e.on) e.on = false;
     if (!roundOn(w) && st.last?.wheelId === w.id) countWin(w, st.last.entryId); // no round timer: the last landing was the winner
     hideUsedUp(w);
     st.final = null; st.last = null;
@@ -331,13 +331,13 @@ function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Te
     to = rot0 + (mod(-phi - rot0 + Math.PI, TAU) - Math.PI); dur = 1.6;
   }
   const s = sl[idx], prev = st.last, rules = rulesOn(w);
-  // leaving a countdown spot that already had one knocked off? give it back
+  // leaving a countdown spot that already had one knocked off? give it back (not ⚡🔢 auto + countdown: an auto spot already ran when it landed)
   if (kind !== 'spin' && prev?.knocked) { const pe = getWheel(prev.wheelId)?.entries.find(e => e.id === prev.entryId); if (pe && pe.type === 'countdown') pe.count = Math.min(pe.countStart, pe.count + 1); }
   const spinId = kind === 'spin' ? uid() : prev?.spinId || uid();
   const type = rules ? s.e.type : 'timer';
   const rec = { id: uid(), at: Date.now(), wheelId: w.id, wheelName: w.name, kind, by: { ...by }, spinId, entryId: s.e.id, text: s.e.text, rule: rules ? s.e.rule || '' : '', pct: s.pct, color: s.color, spots: sl.length, type, sound: s.e.sound || '', link: s.e.link || '',
     from: kind === 'spin' ? null : prev ? { entryId: prev.entryId, text: prev.text, pct: prev.pct } : null };
-  if (type === 'countdown') { rec.countBefore = s.e.count; if (s.e.autoKnock && s.e.count > 0) { s.e.count--; rec.knocked = true; } rec.countLeft = s.e.count; }
+  if (type === 'countdown' || type === 'autocount') { rec.countBefore = s.e.count; if (s.e.autoKnock && s.e.count > 0) { s.e.count--; rec.knocked = true; } rec.countLeft = s.e.count; }
   if (by.source === 'void' && type !== 'void') rec.voided = true;
   st.history.push(rec); if (st.history.length > 50000) st.history = st.history.slice(-50000);
   w.rot = mod(to, TAU);
@@ -402,7 +402,7 @@ function doomsday(w) {
 
 // ---------- after it lands: knock one off ----------
 export function knock(delta = -1) {
-  const st = W(), e = lastEntry(); if (!e || e.type !== 'countdown') throw new Error('The last spot is not a countdown spot.');
+  const st = W(), e = lastEntry(); if (!e || (e.type !== 'countdown' && e.type !== 'autocount')) throw new Error('The last spot is not a countdown spot.');
   snap(delta < 0 ? `knocked one off ${e.text}` : `put one back on ${e.text}`);
   e.count = Math.max(0, Math.min(e.countStart, e.count + delta)); st.last.countLeft = e.count;
   if (delta < 0) st.last.knocked = true;
