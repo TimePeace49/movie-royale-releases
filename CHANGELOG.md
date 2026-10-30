@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.57.4
+- ⬛ **The Discord part pictures are square now.** Discord shows the 9 pictures as a grid of squares and was cutting off whatever stuck out (the body and color pictures were cut in half, and the white borders got cut off). Now every picture shows whole in the pinned message in #character-creation, with a white border around each picture and around every hairstyle, outfit and so on inside it.
+
 ## 1.57.3
 - 🛠️ **Fixed "couldn't post in #movies-royal … must be 2000 or fewer in length".** The pinned commands message had grown past Discord's 2,000-letter limit (the new /character line tipped it over). The wording is shorter now, and on nights with lots of movies the oldest ones in "Tonight's movies" are folded into "+ n earlier", so it always fits. The Discord self-test on the 🧪 Test tab now checks the length too.
 
