@@ -19,7 +19,9 @@ const SHEETS = {
 };
 const P = new URLSearchParams(location.search).get('sheet') || new URLSearchParams(location.search).get('part') || 'hair', S = SHEETS[P] || SHEETS.hair, C = window.CHAR_PARTS, N = C.NAMES, cv = document.getElementById('c'), g = cv.getContext('2d');
 const COLS = ['#d84a4a', '#3a8ad8', '#3aa85a', '#c77dff', '#f0a020', '#e05aa8', '#2ab0b0', '#8a6a4a'];
-function drawSheet() {
+function drawSheet() { drawSheet0(); frame(); }
+function frame() { g.save(); g.strokeStyle = '#fff'; g.lineWidth = 14; g.strokeRect(7, 7, cv.width - 14, cv.height - 14); g.restore(); } // ⬜ a white border, so pictures next to each other in Discord don't blend together (Derek)
+function drawSheet0() {
   if (P === 'colors') {
     cv.width = 1400; cv.height = 620; g.fillStyle = '#1a1030'; g.fillRect(0, 0, cv.width, cv.height);
     head(S.title);

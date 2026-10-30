@@ -17,6 +17,7 @@ function go() {
   const m = size / 2, rr = size * .3;
   g.save(); g.translate(0, size * .06); window.CHAR_PARTS.draw(g, m, rr, look, null, Q.get('col') || '#e8454a', ini); g.restore();
   if (name) { g.fillStyle = '#ffd23a'; g.font = `800 ${Math.round(size * .1)}px Inter, Arial, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, size / 2, size + size * .06); }
+  g.strokeStyle = '#fff'; g.lineWidth = Math.max(4, size * .03); g.beginPath(); g.roundRect ? g.roundRect(g.lineWidth / 2, g.lineWidth / 2, cv.width - g.lineWidth, cv.height - g.lineWidth, size * .08) : g.rect(0, 0, cv.width, cv.height); g.stroke(); // ⬜ white border
   window.__png = cv.toDataURL('image/png');
 }
 go();

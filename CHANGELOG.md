@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.57.1
+- ⬜ **White borders on the character pictures in Discord.** Every part picture in #character-creation (and the little picture posted when someone makes their character) now has a white frame, so you can easily see where one picture ends and the next begins. The pinned message updates itself with the new pictures, and the 24/7 bot gets them automatically.
+
 ## 1.57.0 (test build)
 - 📁 **Movie Royal channel folder in Discord:** the bot puts all its channels in one channel folder called "Movie Royal": the movie picks channel, the new #character-creation, and the hidden #movie-royal-debug (mods and owner only) and #movie-royal-sync (bot only). Those two stay hidden: moving them keeps their own settings. Settings → Discord can rename the folder or turn it off.
 - 🎨 **#character-creation channel:**
