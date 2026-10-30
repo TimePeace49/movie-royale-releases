@@ -397,7 +397,7 @@ function helpChatText(kind = live.view === 'cards' ? 'cards' : annKind()) { // 
 function helpChatCommand(m) {
   const cmd = String(db.settings.helpCommand || '!moviesroyal').trim().toLowerCase(); if (!cmd) return;
   const first = m.text.toLowerCase().split(/\s+/)[0]; if (first !== cmd && first !== '!movieroyal') return;
-  if (Date.now() - helpCd < 30000 || !twitch.canSay()) return; helpCd = Date.now();
+  if (Date.now() - helpCd < 60000 || !twitch.canSay()) return; helpCd = Date.now(); // (1 minute between lists; switching tabs resets it: Derek)
   sayLong(helpChatText());
 }
 // !sitout / !imback: a viewer takes their movies out of tonight's battles (too late to watch) or puts them back
@@ -945,7 +945,7 @@ async function announceNow() {
   pushState();
 }
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
-  const v = String(req.body?.view || ''); live.view = v;
+  const v = String(req.body?.view || ''); if (v !== live.view) helpCd = 0; live.view = v; // (a new tab = !moviesroyal can list its commands right away)
   if (v === 'cards' || v === 'battle') { if (live.phase === 'ended' && (v === 'cards') !== !!live.game?.cards) { leaveEnded(true); } } // (each tab shows its own battle)
   if (v === 'cards') { if (wheel.W().show) wheel.setShow(false); cards.setShow(true); } else if (v === 'battle' || v === 'wheel') cards.setShow(false);
   if (v === 'cards' || v === 'battle') refreshPreview(true); // üÉè Card battles tab = the card battle on stream

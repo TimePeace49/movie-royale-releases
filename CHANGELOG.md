@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.53.1 (test build)
+- ⏱️ **!moviesroyal** can be used once a minute (it was every 30 seconds). Switching tabs resets the wait, so chat can see the new tab's commands right away.
+
 ## 1.53.0 (test build)
 - 🧍 **Characters instead of balls:** tick 🧍 on the right side of the Battle, Chat battle or Giveaway tab (each battle has its own). Every piece becomes a little person that walks and fights.
   - The head is the movie poster, your picture, the text, or the chatter's Twitch picture.
