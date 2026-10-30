@@ -113,14 +113,29 @@ if (!db.settings.v14) { db.settings.v14 = true; db.settings.pickLock = 'battle';
 if (!db.settings.v13) { db.settings.v13 = true; delete db.settings.botSkipV; db.settings.botRemind = true; } // the 24/7 bot update pop-up is back on (it has its own on/off box now)
 if (!db.settings.v5) { db.settings.v5 = true; if (!db.settings.lobbySeconds) db.settings.lobbySeconds = 5; } // 5-second countdown when you press Start
 
-let timer;
+let timer, tries = 0;
+// 💾 Save db.json. Windows sometimes locks the file for a moment (antivirus, the backup bot reading it, the old app still
+// closing after an update: Derek got "EPERM: operation not permitted, rename" on open) — never crash, just try again.
 export function save() {
   clearTimeout(timer);
-  timer = setTimeout(() => {
-    fs.writeFileSync(FILE + '.tmp', JSON.stringify(db, null, 1));
-    fs.renameSync(FILE + '.tmp', FILE);
-  }, 150);
+  timer = setTimeout(writeNow, tries ? Math.min(5000, 250 * tries) : 150);
 }
+function writeNow() {
+  const text = JSON.stringify(db, null, 1);
+  try {
+    fs.writeFileSync(FILE + '.tmp', text);
+    try { fs.renameSync(FILE + '.tmp', FILE); }
+    catch (e) { if (tries < 8) throw e; fs.writeFileSync(FILE, text); try { fs.unlinkSync(FILE + '.tmp'); } catch {} } // still locked after a while: write it straight in
+    tries = 0;
+  } catch (e) {
+    tries++;
+    if (tries === 3) console.log('[store] the save file is busy (' + e.code + '), trying again…');
+    if (tries > 30) { console.error('[store] couldn\'t save your data: ' + e.message); tries = 0; return; }
+    save();
+  }
+}
+/** Save right away (on quit). */
+export function saveNow() { clearTimeout(timer); writeNow(); }
 
 export const uid = () => crypto.randomBytes(6).toString('hex');
 export const getList = id => db.lists.find(l => l.id === id);

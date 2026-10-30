@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.57.5
+- 🛠️ **Fixed the "EPERM: operation not permitted, rename … db.json" error box after updating.** Windows sometimes locks the save file for a moment (antivirus checking it, the backup bot reading it, or the old app still closing). Movie Royal now waits and tries again instead of showing an error, and if the file stays locked it saves straight into it. Nothing was lost: it just couldn't save that one moment.
+
 ## 1.57.4
 - ⬛ **The Discord part pictures are square now.** Discord shows the 9 pictures as a grid of squares and was cutting off whatever stuck out (the body and color pictures were cut in half, and the white borders got cut off). Now every picture shows whole in the pinned message in #character-creation, with a white border around each picture and around every hairstyle, outfit and so on inside it.
 
