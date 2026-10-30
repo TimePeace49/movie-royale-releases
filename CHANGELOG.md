@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.2
+- 💬 **The little pop-ups at the bottom stay longer:**
+  - 8 seconds instead of 3½, and longer messages stay longer to match.
+  - Hover the mouse on one to keep it up, and click it to close it.
+  - Change how long in Settings → App & background → 💬 Little pop-ups stay for.
+
 ## 1.59.1
 - 🆕 **Recently updated starts empty** the first time someone opens the checklist (a new install, or a friend updating). From their next update on, it shows what's new in that update.
 

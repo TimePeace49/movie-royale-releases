@@ -60,7 +60,7 @@
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
   .grid3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
   #toasts { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center; }
-  .toast { background:var(--panel2); border:1px solid var(--gold); padding:12px 20px; border-radius:12px; z-index:200; box-shadow:0 10px 40px #0008; max-width:80vw; }
+  .toast { cursor:pointer; background:var(--panel2); border:1px solid var(--gold); padding:12px 20px; border-radius:12px; z-index:200; box-shadow:0 10px 40px #0008; max-width:80vw; }
   #wEntTable select { max-width:170px; } /* (the spot list fits without scrolling sideways) */
   dialog { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:18px; width:min(560px, 94vw); padding:0; }
   dialog::backdrop { background:#000a; }
@@ -1101,7 +1101,16 @@ const when = t => { const d = new Date(t); return d.toLocaleDateString(undefined
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const isMovieList = l => l && (l.type === 'movies' || l.type === 'films');
 
-function toast(msg, ms = 3500) { let box = $('toasts'); if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); } const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = msg; box.appendChild(d); setTimeout(() => d.remove(), ms); }
+// 💬 the little pop-ups at the bottom (1.59.2, Derek: they last longer). Settings → App & background → "Little pop-ups stay for"
+// (toastSecs, default 8): a normal one stays that long, a longer one stays longer in step. The mouse on it keeps it up; a click closes it.
+function toast(msg, ms = 3500) {
+  let box = $('toasts'); if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); }
+  const secs = Math.max(2, Math.min(60, Number(S?.settings?.toastSecs) || 8)), keep = Math.min(90000, Math.max(secs * 1000, ms * secs / 3.5));
+  const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = msg; d.title = 'Click to close'; box.appendChild(d);
+  let left = keep, t0 = Date.now(), tm = setTimeout(() => d.remove(), left);
+  d.onmouseenter = () => { clearTimeout(tm); left -= Date.now() - t0; }; d.onmouseleave = () => { t0 = Date.now(); tm = setTimeout(() => d.remove(), Math.max(1500, left)); };
+  d.onclick = e => { if (e.target.closest('button,a,input,select')) return; clearTimeout(tm); d.remove(); };
+}
 // the main tabs always stay on screen: the page itself never scrolls (each tab scrolls inside itself)
 addEventListener('scroll', e => { if (e.target === document || e.target === document.body || e.target === document.documentElement) { if (scrollY) scrollTo(0, 0); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; } }, true);
 // 🔍 Test tab: everything that decides who's on the cliff, so a missing ball can be explained
@@ -1505,6 +1514,7 @@ function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? 
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
+  toastLong: ['screen', '1.59.2'],
   charSite: ['discord', '1.59.0'], char20x: ['battles', '1.59.0'], charsDefault: ['battles', '1.59.0'],
   obsQuiet: ['screen', '1.58.3'],
   startPop: ['screen', '1.58.2'],
@@ -1630,6 +1640,7 @@ function drawChecklist() {
     ['finalIntro8', '🥊 The FINAL FIGHT! scene before the last two card packs fight lasts 8 seconds now, with a 3, 2, 1 countdown before 🔔 FIGHT! (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2)', `<button class="ghost" style="padding:3px 9px" onclick="labTry('kungfu','card')">Try it</button>`],
     ['banRules', '🚫 New movie bans: 🌍 not in English, ⛪ really religious, 🎥 documentaries. Press “Try the rules”, then in Discord try /suggest with a foreign movie (like Amélie): it\'s banned and says to ask Kirb to unban it. The pinned Discord message explains banned movies too', `<button class="ghost" style="padding:3px 9px" onclick="banRulesTest()">Try the rules</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('bans');loadBans()">Banned Movies</button>`],
     ['banSearch', '🔍 Banned Movies has a search box (title, year or reason) and a kind filter: add 300 pretend bans and search them. Also try 🔎 Check movies already picked and ✅ Pre-approve on a search result', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/ban-many',{}).then(()=>{setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button>`],
+    ['toastLong', '💬 The little pop-ups at the bottom stay longer (8 seconds, longer messages longer). Hover the mouse on one to keep it up, click it to close it. Settings → App & background → 💬 Little pop-ups stay for', `<button class="ghost" style="padding:3px 9px" onclick="toast('💬 A test pop-up: hover the mouse on me to keep me up, click me to close me')">Show one</button>`],
     ['charSite', '🌐 The parts website: every hair style, outfit, makeup, facial hair, body, skin and hair color with its number; tap parts to try them on and copy the /character command. Discord links to it (pinned in #character-creation and in /character) once the 24/7 bot is updated', `<button class="ghost" style="padding:3px 9px" onclick="window.open('/characters.html')">Open it</button>`],
     ['char20x', '🔢 Every part has 20 versions now (1,000 hair styles, 1,500 outfits, 500 makeups, 500 facial hairs, 160 skins, 200 hair colors; 2 bodies): flipped, big, headbands, cat ears, crowns… patterns, gold, neon… Random characters get some too. Run a characters battle', `<button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,count:30})">Practice battle</button>`],
     ['charsDefault', '🧍 Battles use characters by default once you said yes to men/women characters or character creation (Settings → Game → 🧍 Battles use characters by default). A battle you changed the 🧍 box on yourself keeps your choice', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings')">Settings</button>`],
@@ -3818,6 +3829,7 @@ function openSettings(force) {
       ${ck('runInBackground', 'Keep running in the tray when I close the window')}
       ${ck('startWithWindows', 'Start Movie Royal when Windows starts (quietly, in the tray)', false)}
       <h3 style="margin-top:18px">🔇 Sound</h3>
+      <div style="max-width:340px"><label>💬 Little pop-ups at the bottom stay for (seconds; longer messages stay longer)</label><input type="number" min="2" max="60" data-k="toastSecs" value="${Number(s.toastSecs) || 8}" title="How long the little pop-ups at the bottom stay"></div>
       ${ck('muteUnfocused', '🔇 Mute Movie Royal while I\'m in another program (the sound comes back when I click back into Movie Royal)')}
       <p class="help">On by default. The stream isn't affected: the game screen in OBS plays its own sound. Turn this off if you capture Movie Royal's own window or desktop sound in OBS, or want to hear it while you're in other programs.</p>
       ${holStyleHTML()}

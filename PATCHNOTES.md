@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.2: What's new
+Everything since 1.59.1.
+
+- 💬 **The little pop-ups at the bottom stay longer:** 8 seconds instead of 3½ (longer messages longer). Hover the mouse on one to keep it up; click it to close it. Change it in Settings → App & background.
+
 ## v1.59.1: What's new
 Everything since 1.59.0.
 
