@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.52.0 (test build)
+- 💀 **Finishers!** On card maps with a 🥊 final fight, the hit that would knock the loser out staggers them instead: **💀 FINAL BLOW!** Then the winner does a finisher:
+  - **20 per map:** Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum and WW2 Battlefield, so 100 in all. Some are ☠️ brutal (Dragon's Breath, Table Breaker, Black Hole, Feed The Lions, Air Strike…) and some are 🤪 silly (Noodle Slurp, Rubber Chicken Beatdown, Ribbit Hex, Grape Feast, Bean Bomb…).
+  - **The replay is the finisher,** played again in slow motion.
+  - **Then the winner celebrates,** with 10 celebrations per map that fit it (Lantern Release, Belt Raise, Owl Messenger, Laurel Crown, Medal Ceremony…), then the winner screen.
+  - **Shuffled, never repeated early:** every finisher and celebration comes up once before any repeats, then they're all shuffled again. Test fights don't use up the pile.
+  - **Try them:** 🧪 Test tab → 💀 Finishers & celebrations shows any one in the test lab.
+- 🥊 **Maps with a final fight have a 🥊 in the map lists.**
+
 ## 1.51.0 (test build)
 - 🔄 **The ban list fills itself:** the first time Movie Royal opens after this update, it looks up TMDB and adds movies that break the ban rules to your banned list (not in English, really religious, documentaries, this year's movies). It takes a few minutes in the background.
   - Movies already on your list stay, and nothing gets added twice.
@@ -10,13 +19,6 @@ What changed in each version of Movie Royal. Newest first.
 - 📅 **This year's movies are on the banned list** (filter: 📅 This year's movies). On January 1st they come off the list, unless another rule bans them, and the new year's movies go on.
 - ⏱️ **Card battles last 1 minute by default.** Card battles that were set to "by how many packs" are now 1 minute. You can still change it in 📦 Card pool → ⏱️ Fight length.
 - 🥊 **The FINAL FIGHT! scene lasts 8 seconds** (it was about 3), with a big 3, 2, 1 countdown before 🔔 FIGHT! During it, the camera does a dramatic 360° spin around the last two packs, then settles back on the view you had before.
-- 💀 **Finishers!** On card maps with a 🥊 final fight, the hit that would knock the loser out staggers them instead: **💀 FINAL BLOW!** Then the winner does a finisher:
-  - **20 per map:** Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum and WW2 Battlefield, so 100 in all. Some are ☠️ brutal (Dragon's Breath, Table Breaker, Black Hole, Feed The Lions, Air Strike…) and some are 🤪 silly (Noodle Slurp, Rubber Chicken Beatdown, Ribbit Hex, Grape Feast, Bean Bomb…).
-  - **The replay is the finisher,** played again in slow motion.
-  - **Then the winner celebrates,** with 10 celebrations per map that fit it (Lantern Release, Belt Raise, Owl Messenger, Laurel Crown, Medal Ceremony…), then the winner screen.
-  - **Shuffled, never repeated early:** every finisher and celebration comes up once before any repeats, then they're all shuffled again. Test fights don't use up the pile.
-  - **Try them:** 🧪 Test tab → 💀 Finishers & celebrations shows any one in the test lab.
-- 🥊 **Maps with a final fight have a 🥊 in the map lists.**
 - 🎬 **More exciting card battle camera:**
   - It leans toward wherever the latest big hit landed.
   - It zooms in quickly on every K.O.
