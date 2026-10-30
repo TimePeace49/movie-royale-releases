@@ -204,7 +204,7 @@ const wackyOn = () => Object.fromEntries(Object.keys(WACKY).map(k => [k, !!C().w
 export function sceneMsg() {
   const b = activeBattle(), f = live.fight;
   const map = f?.map || b.map || 'kungfu', ball = f ? !!f.ball : (b.map === 'random' ? false : isBallMap(map));
-  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner };
+  return { type: 'cardScene', show: live.show && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || b.name, fighters: f ? f.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, fin: f?.fin ?? null, cel: f?.cel ?? null, destined: f?.destined || null, pace: (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: (f ? getBattle(f.battleId) : b)?.length || 0, wacky: wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner };
 }
 // 🤼 the picture in the middle of the Royal Rumble: your own, or your Twitch picture
 export const ringLogo = () => C().ringLogo || db.owner?.avatar || '';
@@ -222,6 +222,15 @@ export function setWacky(key, on) {
   save(); hooks.broadcast({ type: 'cardWacky', wacky: wackyOn(), key, on: !!on }, 'overlay'); hooks.pushState(); return { wacky: wackyOn() };
 }
 export function wackyOff() { for (const k of Object.keys(C().wacky)) C().wacky[k] = false; save(); hooks.broadcast({ type: 'cardWacky', wacky: wackyOn() }, 'overlay'); hooks.pushState(); return {}; }
+// 💀 finishers + 🏆 celebrations (public/finishers.js): how many each FINAL FIGHT map has (keep in step with that file).
+// A shuffled pile per map: each one comes up once before any repeats, then the pile is refilled and shuffled again (Derek).
+export const FIN_COUNT = 20, CEL_COUNT = 10;
+function fromPile(key, n) {
+  const c = C(); c.piles ||= {}; let p = c.piles[key];
+  if (!Array.isArray(p) || !p.length || p.some(i => i >= n)) { const last = c.pileLast?.[key]; p = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } if (n > 1 && p[p.length - 1] === last) [p[0], p[p.length - 1]] = [p[p.length - 1], p[0]]; } // (never the same one twice in a row across a refill)
+  const i = p.pop(); c.piles[key] = p; (c.pileLast ||= {})[key] = i; return i;
+}
+export const pileState = () => { const c = C(); return Object.fromEntries(Object.entries(c.piles || {}).map(([k, v]) => [k, { left: v.length }])); };
 /** ▶ FIGHT! (opts.test = pretend packs, nothing in your pool changes) */
 export function start(opts = {}) {
   if (live.phase === 'fight') throw new Error('A card battle is already going.');
@@ -231,6 +240,11 @@ export function start(opts = {}) {
   const pickMap = opts.map && cardMaps().some(m => m.id === opts.map) ? opts.map : b.map === 'random' ? (() => { const all = cardMaps(); return all[Math.floor(Math.random() * all.length)].id; })() : (b.map || 'kungfu');
   live.fight = { id: uid(), battleId: b.id, name: opts.test ? '🧪 Pretend card battle' : b.name, map: pickMap, ball: isBallMap(pickMap), fighters, startedAt: Date.now(), test: !!opts.test,
     seed: Math.floor(Math.random() * 2 ** 31), destined: fighters[Math.floor(Math.random() * fighters.length)].id }; // every pack has the same chance (no luck); every game screen plays the same fight from the same seed
+  const mapInfo = CARD_MAPS.find(m => m.id === pickMap);
+  if (mapInfo?.finalFight) { // (test fights pick at random, so they don't use up the pile for the stream)
+    live.fight.fin = opts.test ? Math.floor(Math.random() * FIN_COUNT) : fromPile('fin:' + pickMap, FIN_COUNT);
+    live.fight.cel = opts.test ? Math.floor(Math.random() * CEL_COUNT) : fromPile('cel:' + pickMap, CEL_COUNT);
+  }
   if (live.fight.ball) { const err = hooks.startBall(live.fight, b); if (err) { live.fight = null; throw new Error(err); } } // ⚪ a ball map: the ball game plays it, with card fighters
   live.phase = 'fight'; live.show = true; live.last = null;
   hooks.goView('cards');
@@ -255,7 +269,7 @@ export function result(m) {
   live.last = { ...rec, test: f.test };
   save(); sendScene(); hooks.pushState();
   hooks.broadcast({ type: 'toast', text: `🃏 ${w.name} won the card battle!${f.test ? ' (pretend: nothing changed)' : rec.kept ? ' (kept in your Card pool)' : ' One comes off its count in the Card pool.'}` }, 'control');
-  if (live.wheelLink) { live.wheelLink = null; setTimeout(() => hooks.linkDone(), 12000); } // 🔀 a wheel spot sent us here: back to the wheel
+  if (live.wheelLink) { live.wheelLink = null; setTimeout(() => hooks.linkDone(), CARD_MAPS.find(m => m.id === f.map)?.finalFight ? 34000 : 12000); } // (💀 finisher + replay + celebration first) // 🔀 a wheel spot sent us here: back to the wheel
 }
 /** 🔀 a wheel spot links to a card battle: put it on stream (and start it by itself if the spot says so). */
 export function openFromWheel(id, auto, why) {

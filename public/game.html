@@ -205,6 +205,7 @@
 <script src="wheel.js"></script>
 <script src="ask.js"></script>
 <script src="chat.js"></script>
+<script src="finishers.js"></script>
 <script src="cardfight.js"></script>
 <script>
 (() => {
@@ -4978,7 +4979,7 @@ function handleMsg(m) {
     if (replay && ['claimStart', 'claimedDirect', 'claimed', 'claimExpired', 'chat', 'claimWaiting', 'claimPassed'].includes(m.type)) { replay.pending.push(m); return; } // after the replay
     if (replay && (m.type === 'start' || m.type === 'reset' || m.type === 'claimClose')) endReplay(true);
     if ((m.type === 'wheelSpin' && m.kind === 'spin') || m.type === 'wheelUndo') document.getElementById('wlDoom')?.remove(); // a fresh spin (or ⏪ undo) clears Doomsday
-    if (m.type === 'cardScene' || m.type === 'cardWacky') { window.CARDS?.msg(m); return; } // 🃏 card battles (cardfight.js)
+    if (m.type === 'cardScene' || m.type === 'cardWacky' || m.type === 'finTest') { window.CARDS?.msg(m); return; } // 🃏 card battles (cardfight.js)
     if (m.type === 'wheel' || m.type === 'wheelSpin') { wheelMsg(m); return; }
     if (m.type === 'wheelRound') { wheelMsg(m); return; }
     if (m.type === 'wheelDoom') { const el = wlDoom(m.text); if (m.preview) setTimeout(() => el.remove(), 8000); else if (m.test) setTimeout(() => el.remove(), 20000); return; } // (a Doomsday test while not live goes away after 20 s)

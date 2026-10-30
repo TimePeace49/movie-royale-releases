@@ -1315,6 +1315,7 @@ app.post('/api/cards/active', wTry(b => cards.setActive(b.id)));
 app.post('/api/cards/start', wTry(b => { if (wheel.W().show) wheel.setShow(false); return cards.start({ test: !!b.test, n: b.n, map: b.test ? b.map : null }); }));
 app.post('/api/cards/stop', wTry(() => cards.stop()));
 app.post('/api/cards/reset', wTry(() => cards.reset()));
+app.get('/api/cards/piles', (req, res) => res.json(cards.pileState())); // 💀 how many finishers / celebrations are left in each map's pile
 app.post('/api/cards/wacky', wTry(b => b.allOff ? cards.wackyOff() : cards.setWacky(b.key, b.on)));
 app.post('/api/cards/show', wTry(b => { if (b.show && wheel.W().show) wheel.setShow(false); cards.setShow(!!b.show); return {}; }));
 app.post('/api/capture/windows', wTry(async () => obs.captureWindows()));
