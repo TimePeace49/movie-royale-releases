@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.60.3
+- 🚛 **Tow trucks on the race maps** (all except the Figure 8): when a car is wrecked on the road, a tow truck drives in, hooks it and drags it off the road. It takes 3 seconds, so piles of wrecks don't block the road any more. A car that's stuck for a few seconds gets pulled back to the middle of the road too. In tests, no car got stuck any more, and races end sooner.
+
 ## 1.60.2
 - 🧭 **Every start-up pop-up step has "Don't show again"**: the new version step (turn it back on in Settings → 👤 Account & updates → 🔔 Pop up when a new version is out), the character questions (nothing changes), the holiday style (sets the app style to Normal) and new Setup guide steps.
 - **Two steps keep asking until they're done** (Derek): ☁️ Update your 24/7 Discord bot (the "Don't remind me again" button and its Settings box are gone) and the 📦 monthly backup.

@@ -3084,10 +3084,11 @@ const BUS = (() => {
     { name: 'Derby #', base: '#ffffff', side: (g, w, h, d) => { g.fillStyle = d.col2; g.fillRect(0, h * .5, w, h * .5); g.fillStyle = '#fff'; g.beginPath(); g.arc(w * .5, h * .74, h * .2, 0, 7); g.fill(); g.fillStyle = '#111'; g.font = `900 ${h * .28}px Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(d.num, w * .5, h * .75); } },
   ];
   // 🏁 body shapes (1.60.0): school bus (Derek's original), a low race car, a monster truck (body up on big wheels). Sizes are × r.
-  const BODY = { bus: { L: 3.0, W: 1.3, Hb: 1.05, hood: .55, Hh: .62, wr: .3, z0: 0, bus: true }, racer: { L: 2.95, W: 1.3, Hb: .56, hood: .95, Hh: .3, trunk: .72, Ht: .34, wr: .27, z0: 0, wing: true }, truck: { L: 2.6, W: 1.45, Hb: .8, hood: .8, Hh: .52, wr: .52, z0: .44 } };
+  const BODY = { bus: { L: 3.0, W: 1.3, Hb: 1.05, hood: .55, Hh: .62, wr: .3, z0: 0, bus: true }, racer: { L: 2.95, W: 1.3, Hb: .56, hood: .95, Hh: .3, trunk: .72, Ht: .34, wr: .27, z0: 0, wing: true }, truck: { L: 2.6, W: 1.45, Hb: .8, hood: .8, Hh: .52, wr: .52, z0: .44 }, tow: { L: 2.8, W: 1.3, Hb: .78, hood: .7, Hh: .5, trunk: 1.05, Ht: .34, wr: .3, z0: 0, tow: true } };
+  const TOWPAINT = { name: 'Tow truck', base: '#f2a900', side: (g, w, h) => { g.fillStyle = '#1a1a1a'; g.fillRect(0, h * .66, w, h * .16); g.fillStyle = '#f2a900'; for (let x = -h; x < w; x += h * .3) { g.beginPath(); g.moveTo(x, h * .82); g.lineTo(x + h * .15, h * .66); g.lineTo(x + h * .25, h * .66); g.lineTo(x + h * .1, h * .82); g.fill(); } } };
   // ---- the bus, as a real 3D box (sides, front, back, roof) seen at this tilt
   function draw(ctx, X, Y, hd, r, o = {}) {
-    const BD = BODY[o.kind] || BODY.bus, K = o.K ?? .6, p = P[(o.paint ?? 0) % P.length], L = r * BD.L, W = r * BD.W, Hb = r * BD.Hb, dmg = o.dmg || 0, dead = !!o.dead, hood = r * BD.hood * (1 - dmg * .45), Hh = r * BD.Hh * (1 - dmg * .25); const crush = dmg * r * .18; /* the front and back crumple in as it takes hits */
+    const BD = BODY[o.kind] || BODY.bus, K = o.K ?? .6, p = BD.tow ? TOWPAINT : P[(o.paint ?? 0) % P.length], L = r * BD.L, W = r * BD.W, Hb = r * BD.Hb, dmg = o.dmg || 0, dead = !!o.dead, hood = r * BD.hood * (1 - dmg * .45), Hh = r * BD.Hh * (1 - dmg * .25); const crush = dmg * r * .18; /* the front and back crumple in as it takes hits */
     const z0 = r * BD.z0, c = Math.cos(hd), s = Math.sin(hd), lift = o.lift || 0, pt = (x, y, z) => [X + x * c - y * s, Y + (x * s + y * c) * K - z - z0 - lift], ptW = (x, y, z) => [X + x * c - y * s, Y + (x * s + y * c) * K - z - lift], ptG = (x, y) => [X + x * c - y * s, Y + (x * s + y * c) * K];
     const base = p.base, d = { col2: o.col2 || '#d81e1e', num: o.num ?? '7' };
     // shadow + wheels
@@ -3160,6 +3161,7 @@ const BUS = (() => {
       ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(xb, -W * .45, xf - xb, W * .12);
       if (BD.bus) { ctx.fillStyle = '#ddd'; ctx.fillRect(xb + (xf - xb) * .2, -W * .18, W * .3, W * .36); ctx.fillRect(xb + (xf - xb) * .72, -W * .18, W * .3, W * .36); // roof hatches
       for (const [x, col] of [[xf - r * .1, '#ff3030'], [xb + r * .1, '#ff3030']]) { ctx.fillStyle = col; ctx.fillRect(x - r * .06, -W * .42, r * .12, r * .18); ctx.fillRect(x - r * .06, W * .42 - r * .18, r * .12, r * .18); } }
+      else if (BD.tow) { ctx.fillStyle = '#222'; ctx.fillRect(xb + (xf - xb) * .3, -W * .4, (xf - xb) * .3, W * .8); ctx.fillStyle = '#ffb000'; ctx.fillRect(xb + (xf - xb) * .33, -W * .36, (xf - xb) * .24, W * .3); ctx.fillRect(xb + (xf - xb) * .33, W * .06, (xf - xb) * .24, W * .3); } // (the light bar)
       else { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(xb, -W * .09, xf - xb, W * .07); ctx.fillRect(xb, W * .02, xf - xb, W * .07); } // (race stripes)
       if (dmg > 0) { ctx.save(); ctx.translate(xb, -W / 2); dents(xf - xb, W, 5); ctx.restore(); }
     });
@@ -3723,6 +3725,7 @@ function raceMap(d) {
       const V = this.V = Math.max(380, this.L / (d.lapSecs || 10)); this.laps = cfg.laps || 5; cfg.game = this.survival ? Math.max(cfg.game, 40) : this.laps * this.L / V / .9 + 2;
       this.flag = 'green'; this.flagT = t; this.done = false; this.lastLapSaid = false; this.grip = 1; this.gripUntil = 0; this.hz = []; this.next = rnd(4, 7);
       for (const f of fighters) { this.locate(f); f.pace = rnd(.94, 1.04); f.seed = rnd(6.3); f.ramT = 0; f.ramOff = null; f.spun = false; f.passT = 0; f.passLane = null; f.boostUntil = 0; f.rShield = 0; f.nukeShield = false; f.hop = 0; f.vhop = 0; }
+      this.tows = []; for (const f of fighters) { f.towed = false; f.towJob = null; f.towMove = false; f.stuckS = null; }
       RP.start(); NUKE.reset(); d.start?.call(this);
       floaters.push({ text: this.survival ? `💥 LAST ${this.noun} STANDING!` : `🏁 ${this.laps} LAP${this.laps === 1 ? '' : 'S'} — GREEN FLAG!`, x: CX, y: 210, life: 2.2, color: this.survival ? '#ff6a4a' : '#7dff8a', clampIt: true, scr: true }); SFX.play('rev');
     },
@@ -3737,9 +3740,10 @@ function raceMap(d) {
       if (NUKE.on) { NUKE.step(dt); dt *= NUKE.timeK(); if (dt <= 0) return; }
       const live = alive(), cars = fighters.filter(f => !f.falling), dk = this.dmgK(), dF = cfg.fair ? destined : null, tw = this.tw, V = this.V, laps = this.laps, L = this.L;
       const grip = (d.grip || 7) * (this.gripUntil > t ? this.grip : 1), turn = d.turn || 3.6, lead = live.reduce((m, f) => Math.max(m, f.s), -1);
-      const wrecks = fighters.filter(f => !f.alive && f.wrecked != null && !f.finished);
+      const wrecks = fighters.filter(f => !f.alive && f.wrecked != null && !f.finished && !f.towed && !f.towMove);
       for (const f of live) {
-        CARS.fix(f); RP.hop(f, dt, (g, v) => this.land(g, v, dk)); if (f.hop > 0) continue; // (in the air: it flies on)
+        CARS.fix(f); if (f.towJob) continue; // (🚛 a tow truck has it)
+        RP.hop(f, dt, (g, v) => this.land(g, v, dk)); if (f.hop > 0) continue; // (in the air: it flies on)
         const p = this.locate(f), sp = f.vx * p.tx + f.vy * p.ty;
         let vT = V * f.pace * (1 + CARS.luck(f) * .3) * (.94 + .06 * Math.sin(t * .6 + f.seed)) * (.55 + .45 * CARS.hpK(f)) * (d.speedAt?.call(this, f) ?? 1);
         if (f === dF) { const sched = clamp(t / (cfg.game - 2), 0, 1) * laps; vT = V * clamp(1.02 + (sched - f.s) * .5, .95, 1.3); }
@@ -3776,16 +3780,54 @@ function raceMap(d) {
         CARS.drive(f, Math.atan2(ty - f.y, tx - f.x), clamp((vT - sp) / (V * .22), -1, 1), dt, { maxV: V * 1.4 * bk, acc: V * 1.3 * bk, grip, turn });
       }
       for (const f of cars) {
+        if (f.towed || f.towMove) continue; // (🚛 off the road / on the hook)
         if (!f.alive) { const k = Math.exp(-7 * dt); f.vx *= k; f.vy *= k; RP.hop(f, dt); } f.x += f.vx * dt; f.y += f.vy * dt;
         if (f.si == null || f.hop > 0) continue; const p = f.alive ? this.locate(f) : this.pts[f.si], lim = tw / 2 - CARS.reach(f, -p.ty, p.tx) * .85, off = (f.x - p.x) * -p.ty + (f.y - p.y) * p.tx;
         if (Math.abs(off) > lim) { const nx = -p.ty * Math.sign(off), ny = p.tx * Math.sign(off), vo = f.vx * nx + f.vy * ny, back = Math.abs(off) - lim; f.x -= nx * back; f.y -= ny * back; if (vo > 0) { f.vx -= nx * vo * 1.4; f.vy -= ny * vo * 1.4; if (f.alive) CARS.wall(f, nx, ny, vo, dk * (d.wallK ?? 1)); } }
       }
-      CARS.collide(cars.filter(f => !(f.hop > 8)), dk);
-      RP.step(dt); this.hzStep(dt, dk); d.step?.call(this, dt, dk);
+      CARS.collide(cars.filter(f => !(f.hop > 8) && !f.towed && !f.towMove), dk);
+      RP.step(dt); this.hzStep(dt, dk); d.step?.call(this, dt, dk); this.towStep(dt);
       if (this.flag === 'green' && t - this.flagT > 3) this.flag = 'none';
       if (!this.survival && !this.lastLapSaid && this.flag !== 'green' && lead >= laps - 1) { this.lastLapSaid = true; this.flag = 'white'; this.flagT = t; floaters.push({ text: '🏳️ WHITE FLAG: LAST LAP!', x: CX, y: 210, life: 2, color: '#ffffff', clampIt: true, scr: true }); SFX.play('final5'); }
       if (!this.survival && !this.done && !winner && !NUKE.on) { const w = dF && dF.alive ? dF : null, first = w && w.s >= laps ? w : !cfg.fair ? live.filter(f => f.s >= laps).sort((a, b) => b.s - a.s)[0] : null; if (first) this.finish(first); }
       if (t > cfg.game + 15 && !winner && !NUKE.on) suddenDeathNow(); // (safety)
+    },
+    // 🚛 TOW TRUCKS (1.60.3, Derek: cars got stuck behind wrecks): a wreck on the road (or a car stuck for 3.5 s) gets towed in 3 seconds:
+    // 1 s driving in from off the road, .3 s hooking up, 1.4 s dragging it (a wreck off past the edge, a stuck car back to the middle of the road), .3 s leaving
+    towStep(dt) {
+      if (NUKE.on || NUKE.hit || winner || !this.pts) return;
+      this.tows ||= [];
+      for (const f of fighters) if (!f.alive && f.wrecked != null && !f.finished && !f.towed && !f.towJob && !f.falling && t - f.wrecked > .5 && this.offRoad(f.x, f.y) < f.r * .8 && this.tows.length < 10) this.towStart(f, false);
+      if (t > 5) for (const f of alive()) { if (f.towJob || f.hop > 0) continue; if (f.stuckS == null || f.s - f.stuckS > .006) { f.stuckS = f.s; f.stuckT = t; } else if (t - f.stuckT > 3.5 && this.tows.length < 10) { f.stuckS = null; this.towStart(f, true); } }
+      for (const j of this.tows) {
+        const u = t - j.t0, f = j.f, ease = x => x * x * (3 - 2 * x);
+        if (u < 1) { const k = ease(u); j.x = j.from.x + (j.at.x - j.from.x) * k; j.y = j.from.y + (j.at.y - j.from.y) * k; j.hd = Math.atan2(j.at.y - j.from.y, j.at.x - j.from.x); if (j.live) { f.vx *= .8; f.vy *= .8; } }
+        else if (u < 1.3) { if (!j.hooked) { j.hooked = true; SFX.play('bonk', { p: .6 }); sparkle(sx(f.x), sy(f.y) - f.r, '#ffd27a', 8); } f.vx = f.vy = 0; }
+        else if (u < 2.7) { f.towMove = true; const k = ease((u - 1.3) / 1.4), hx = j.hook.x + (j.to.x - j.hook.x) * k, hy = j.hook.y + (j.to.y - j.hook.y) * k, a = Math.atan2(j.to.y - j.hook.y, j.to.x - j.hook.x);
+          f.x = hx; f.y = hy; f.vx = f.vy = 0; f.hd += angW(a - f.hd) * Math.min(1, dt * 4); const gap = f.r * 2.9; j.x = hx + Math.cos(a) * gap; j.y = hy + Math.sin(a) * gap; j.hd = a; }
+        else if (!j.done) { j.done = true; f.towMove = false; f.towJob = null;
+          if (j.live) { const p = this.locate(f); f.hd = Math.atan2(p.ty, p.tx); f.vx = p.tx * this.V * .4; f.vy = p.ty * this.V * .4; f.stuckS = null; f.spinUntil = 0; } else f.towed = true; }
+        else { const k = (u - 2.7) / .3; j.x += Math.cos(j.hd) * 900 * dt; j.y += Math.sin(j.hd) * 900 * dt; j.alpha = clamp(1 - k, 0, 1); }
+      }
+      this.tows = this.tows.filter(j => t - j.t0 < 3);
+    },
+    towStart(f, live) {
+      const si = f.si ?? Math.round(((f.s % 1) + 1) % 1 * this.M) % this.M, p = this.pts[si], half = this.tw / 2, off = (f.x - p.x) * -p.ty + (f.y - p.y) * p.tx;
+      let best = null; for (const side of off >= 0 ? [1, -1] : [-1, 1]) { for (const extra of [1, 1.8, 2.8, 4, 5.5]) { const d = side * half - off + side * f.r * 2.6 * extra + side * 30, to = { x: f.x - p.ty * d, y: f.y + p.tx * d }, o = this.offRoad(to.x, to.y); if (!best || o > best.o) best = { side, to, o }; if (o > f.r * 1.6) break; } if (best.o > f.r * 1.6) break; }
+      if (best.o < f.r * 1.2) { const nx0 = -p.ty * best.side, ny0 = p.tx * best.side, k = Math.min(...[nx0 ? ((this.A + 120) * Math.sign(nx0) - f.x) / nx0 : 1e9, ny0 ? ((this.B + 120) * Math.sign(ny0) - f.y) / ny0 : 1e9].filter(v => v > 0)); best.to = { x: f.x + nx0 * k, y: f.y + ny0 * k }; } // (no free spot nearby: off the edge of the map)
+      const side = best.side, nx = -p.ty * side, ny = p.tx * side;
+      const to = live ? (() => { const q = this.at(f.s + 40 / this.L); return { x: q.x, y: q.y }; })() : best.to;
+      const from = { x: f.x + nx * (half + 320) + p.tx * rnd(-140, 140), y: f.y + ny * (half + 320) + p.ty * rnd(-140, 140) }, dir = Math.atan2(f.y - from.y, f.x - from.x), gap = f.r * 2.9;
+      const job = { f, live, from, at: { x: f.x - Math.cos(dir) * gap, y: f.y - Math.sin(dir) * gap }, hook: { x: f.x, y: f.y }, to, t0: t, x: from.x, y: from.y, hd: dir, alpha: 1, r: f.r };
+      f.towJob = job; this.tows.push(job);
+      if (alive().length < 40) floaters.push({ text: live ? '🚛 TOW TRUCK!' : pick(['🚛 TOWED!', '🚛 CLEARING THE ROAD!', '🚛 TOW TRUCK!']), x: sx(f.x), y: sy(f.y) - f.r * 2.2 - 40, life: 1.2, color: '#ffb000' });
+    },
+    drawTows() {
+      for (const j of this.tows || []) { const X = sx(j.x), Y = sy(j.y), u = t - j.t0; ctx.save(); ctx.globalAlpha = j.alpha ?? 1;
+        if (u > 1 && j.f && !j.done) { const c = Math.cos(j.hd), s2 = Math.sin(j.hd), bx = X - c * j.r * 1.3, by = Y - s2 * j.r * 1.3 * K - j.r * .5, f = j.f; ctx.strokeStyle = '#222'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(bx, by - j.r * .5); ctx.lineTo(sx(f.x), sy(f.y) - f.r * .5); ctx.stroke(); } // the tow cable
+        const top = BUS.draw(ctx, X, Y, j.hd, j.r, { K, kind: 'tow', dmg: 0 });
+        if (Math.sin(clock * 12) > 0) glowBall(ctx, X, top - 4, j.r * .9, 'rgba(255,190,40,.95)', 'rgba(255,140,0,0)'); // the flashing light
+        ctx.restore(); }
     },
     land(f, v, dk) { // came down from a jump: on top of someone = crushed
       shake = Math.max(shake, Math.min(8, v / 160)); SFX.play('crash', { v: clamp(v / 900, .3, 1) });
@@ -3853,10 +3895,10 @@ function raceMap(d) {
       ctx.save(); ctx.setTransform(gScale, 0, 0, gScale, 0, 0); ctx.font = "800 30px Inter, sans-serif"; const w = ctx.measureText(txt).width + 40; ctx.fillStyle = 'rgba(18,10,36,.82)'; roundRect(ctx, 40, 92, w, 52, 26); ctx.fill(); ctx.fillStyle = this.flag === 'white' ? '#fff' : NUKE.on ? '#b6ff4a' : '#ffc94a'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, 60, 119); ctx.restore();
     },
     drawFloor() { this.drawTrack(); d.drawFloor?.call(this); this.drawHz(true); RP.drawGround(); },
-    drawOver() { this.drawFlagman(); d.drawOver?.call(this); this.drawHz(false); RP.drawAir(); NUKE.drawWorld(); this.drawLaps(); },
+    drawOver() { this.drawFlagman(); this.drawTows(); d.drawOver?.call(this); this.drawHz(false); RP.drawAir(); NUKE.drawWorld(); this.drawLaps(); },
     drawCar: (f, lobby) => CARS.draw(f, lobby),
-    snap() { return { flag: this.flag, hz: this.hz.map(h => ({ ...h, hit: h.hit ? { ...h.hit } : undefined, bits: h.bits?.map(b => ({ ...b })) })), rp: RP.snap(), x: d.snap?.call(this) }; },
-    restore(v) { if (!v) return; this.flag = v.flag; this.hz = v.hz.map(h => ({ ...h, hit: h.hit ? { ...h.hit } : undefined, bits: h.bits?.map(b => ({ ...b })) })); RP.restore(v.rp); d.restore?.call(this, v.x); },
+    snap() { return { flag: this.flag, hz: this.hz.map(h => ({ ...h, hit: h.hit ? { ...h.hit } : undefined, bits: h.bits?.map(b => ({ ...b })) })), rp: RP.snap(), x: d.snap?.call(this), tows: (this.tows || []).map(j => ({ ...j })) }; },
+    restore(v) { if (!v) return; this.flag = v.flag; this.tows = (v.tows || []).map(j => ({ ...j })); this.hz = v.hz.map(h => ({ ...h, hit: h.hit ? { ...h.hit } : undefined, bits: h.bits?.map(b => ({ ...b })) })); RP.restore(v.rp); d.restore?.call(this, v.x); },
     power: d.power, d
   };
 }

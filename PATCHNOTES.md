@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.60.3: What's new
+Everything since 1.60.2.
+
+- 🚛 **Tow trucks on the race maps** (all except the Figure 8): wrecked cars get towed off the road in 3 seconds, and stuck cars get pulled free. No more cars stuck behind piles of wrecks.
+
 ## v1.60.2: What's new
 Everything since 1.60.0.
 
