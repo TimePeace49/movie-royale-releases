@@ -3,7 +3,6 @@
 What changed in each version of Movie Royal. Newest first.
 
 ## 1.59.1
-- ✅ **Fresh checklist:** every tick on 🧪 Test → ✅ Checklist is cleared once with this update, so you can go through everything again from the start.
 - 🆕 **Recently updated starts empty** the first time someone opens the checklist (a new install, or a friend updating). From their next update on, it shows what's new in that update.
 
 ## 1.59.0
