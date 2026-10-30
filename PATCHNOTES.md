@@ -3,6 +3,14 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.0: What's new
+Everything since 1.58.3.
+
+- 🔢 **20 versions of every character part:** 1,000 hair styles, 1,500 outfits, 500 makeups, 500 facial hairs, 160 skin colors and 200 hair colors (the 2 bodies stay). Headbands, cat ears, crowns, patterned and neon outfits, glitter, dyed beards, color families and more. Numbers people already picked stay the same.
+- 🌐 **The parts website:** every part with its number, on your 24/7 bot (works while your PC is off). People try parts on and copy the /character command. Discord links to it in #character-creation and in /character. Update the 24/7 bot when Movie Royal asks.
+- 🧍 **Battles use characters by default** once you said yes to men/women characters or character creation (Settings → Game).
+- 🖥️ **Fullscreen** covers the screen without putting Windows in fullscreen mode, so the Start menu and taskbar look normal.
+
 ## v1.58.3: What's new
 Everything since 1.58.2.
 

@@ -95,8 +95,9 @@ async function intoFolder(g, ch, warn) {
 // 🎨 #character-creation: people make their battle character here with /character (pinned: how it works + the numbered pictures)
 const charChannelName = () => (db.settings.charChannelName || 'character-creation').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
 export const charChannelFor = guildId => db.discordChars?.[guildId]?.channelId || null;
-const CHAR_TOPIC = '🎨 Make your Movie Royal battle character: type /character to see the numbered pictures, then pick a number for each part.';
-const charPinText = () => `🎨 **Make your own Movie Royal character!**\nYou'll be this character in ${streamerName()}'s battles that use 🧍 characters (your movie poster or Twitch picture goes on your chest).\n\n**1.** Look at the numbered pictures in this message (they're in the 📌 pins any time, or type **/character** with nothing after it).\n**2.** Type **/character** and fill in a number for each part, for example \`/character hair:7 outfit:3 makeup:1 facialhair:8\`. Only the parts you want to change; one of each.\n**3.** You get a picture of your character, and it's shown off in here.\n\nParts: 💇 hair (1–25 men's styles, 26–50 women's) · 👕 outfit (1–25 men's, 26–50 women's, 51–75 costumes) · 💄 makeup · 🧔 facial hair · 🧍 body · ✋ skin · 🎨 hair color.\nTo be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**.`;
+const CHAR_TOPIC = '🎨 Make your Movie Royal battle character: the pinned message links every part with its number, then type /character with your numbers.';
+const charPinText = () => looks.site() ? `🎨 **Make your own Movie Royal character!**\nYou'll be this character in ${streamerName()}'s battles that use 🧍 characters (your movie poster or Twitch picture goes on your chest).\n\n**1.** Open the parts website: **<${looks.site()}>**\nEvery part with its number: ${looks.counts()}. Tap parts to try them on.\n**2.** Copy the command it makes and paste it here, or type **/character** and fill in the numbers yourself, for example \`/character hair:7 outfit:3 makeup:1 facialhair:8\`. Only the parts you want to change.\n**3.** You get a picture of your character, and it's shown off in here.\n\nTo be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**.`
+  : `🎨 **Make your own Movie Royal character!**\nYou'll be this character in ${streamerName()}'s battles that use 🧍 characters (your movie poster or Twitch picture goes on your chest).\n\n**1.** Look at the numbered pictures in this message (they're in the 📌 pins any time, or type **/character** with nothing after it). They show the first ones of each part: there are ${looks.counts()}.\n**2.** Type **/character** and fill in a number for each part, for example \`/character hair:7 outfit:3 makeup:1 facialhair:8\`. Only the parts you want to change; one of each.\n**3.** You get a picture of your character, and it's shown off in here.\n\nParts: 💇 hair (1–25 men's styles, 26–50 women's) · 👕 outfit (1–25 men's, 26–50 women's, 51–75 costumes) · 💄 makeup · 🧔 facial hair · 🧍 body · ✋ skin · 🎨 hair color.\nTo be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**.`;
 async function setupChars(g) {
   const warn = [];
   if (!looks.on() || db.settings.charChannel === false || !db.discordChannels?.[g.id]) return warn;
@@ -111,7 +112,7 @@ async function setupChars(g) {
     let msg = rec.pinId ? await ch.messages.fetch(rec.pinId).catch(() => null) : null;
     if (msg && rec.pinKey !== key) { await msg.delete().catch(() => {}); msg = null; }
     if (!msg) {
-      const files = looks.SHEETS.map(sh => ({ attachment: looks.sheetFile(sh), name: sh + '.png' }));
+      const files = looks.site() ? [] : looks.SHEETS.map(sh => ({ attachment: looks.sheetFile(sh), name: sh + '.png' })); // (🌐 with the parts website: just the link, no pictures)
       msg = await ch.send({ content: text, files, allowedMentions: { parse: [] } }); // (one pinned message: the how-to + every numbered picture sheet)
       await msg.pin().catch(() => warn.push(`${g.name}: couldn't pin the how-to in #${ch.name} — give the bot "Manage Messages".`));
     }
@@ -142,6 +143,7 @@ async function setupGuild(g) {
   save();
   return warn;
 }
+export async function refreshChars() { if (!client) return; for (const g of client.guilds.cache.values()) await setupChars(g).catch(() => {}); } // (🌐 the parts website link changed: re-post the pinned how-to)
 export async function refreshPinned() { if (!client) return; for (const g of client.guilds.cache.values()) await setupGuild(g); }
 
 // 📌 keep Movie Royal's pinned message at the TOP of the channel's pins (if other messages got pinned after it, pin ours again)
@@ -391,6 +393,7 @@ async function handle(i) {
       return;
     }
     if (Object.keys(picks).length) return i.reply(eph(r.text));
+    if (looks.site()) return i.reply(eph(r.text)); // 🌐 the link to the parts website is in the text
     const files = looks.SHEETS.map(sh => ({ attachment: looks.sheetFile(sh), name: sh + '.png' }));
     const embeds = looks.SHEETS.map(sh => new EmbedBuilder().setTitle(looks.SHEET_TITLE[sh]).setColor(0xffd23f).setImage(`attachment://${sh}.png`));
     return i.reply({ content: r.text, embeds, files, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Royal characters</title>
+<meta name="description" content="Every part for your Movie Royal battle character, with its number for /character in Discord.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#140c26; --card:#21163c; --card2:#2a1d4a; --line:#ffffff1f; --text:#efeaff; --muted:#b9b0d6; --gold:#ffd23a; --pink:#ff4f9a; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 Inter, system-ui, sans-serif; }
+  a { color:var(--gold); }
+  .wrap { max-width:1180px; margin:0 auto; padding:16px; }
+  h1 { font:400 clamp(28px,5vw,44px)/1.05 'Lilita One', Impact, sans-serif; color:var(--gold); margin:6px 0 4px; letter-spacing:.5px; }
+  .lead { color:var(--muted); margin:0 0 14px; }
+  .builder { display:grid; grid-template-columns:auto minmax(0,1fr); gap:16px; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px; position:sticky; top:8px; z-index:5; box-shadow:0 10px 30px #0008; }
+  .builder canvas { width:150px; height:150px; border-radius:14px; background:linear-gradient(#2a1d4a,#140c26); border:3px solid #fff; display:block; }
+  .picks { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .pick { background:var(--card2); border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:13px; cursor:pointer; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+  .pick b { color:var(--gold); }
+  .pick.on { border-color:var(--gold); }
+  .cmd { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .cmd code { flex:1 1 260px; min-width:0; background:#0b0716; border:1px solid var(--line); border-radius:10px; padding:9px 11px; font:600 13px ui-monospace, Consolas, monospace; color:#fff; overflow-wrap:anywhere; }
+  button { font:600 14px Inter, sans-serif; border:0; border-radius:10px; padding:9px 14px; cursor:pointer; background:var(--card2); color:var(--text); border:1px solid var(--line); }
+  button.primary { background:linear-gradient(90deg,#ffc94a,#ff6a3d); color:#2a1408; border:0; }
+  .tabs { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 10px; }
+  .tabs button { border-radius:999px; }
+  .tabs button.on { background:var(--gold); color:#2a1408; border-color:var(--gold); }
+  .tools { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+  .tools input { flex:1 1 220px; min-width:0; background:#0b0716; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:9px 11px; font:15px Inter, sans-serif; }
+  .tools select { background:#0b0716; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:9px; font:14px Inter, sans-serif; max-width:100%; }
+  .count { color:var(--muted); font-size:13px; }
+  h2 { font:400 22px 'Lilita One', Impact, sans-serif; color:var(--gold); margin:18px 0 8px; }
+  h2 small { font:600 13px Inter, sans-serif; color:var(--muted); margin-left:6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:10px; }
+  .it { background:var(--card); border:3px solid #ffffffd9; border-radius:14px; padding:6px 6px 8px; text-align:center; cursor:pointer; position:relative; transition:transform .12s; }
+  .it:hover { transform:translateY(-2px); }
+  .it.on { border-color:var(--gold); box-shadow:0 0 0 3px #ffd23a55; }
+  .it canvas { width:100%; aspect-ratio:1; display:block; }
+  .it .n { position:absolute; left:6px; top:6px; background:var(--gold); color:#2a1408; font:400 15px 'Lilita One', Impact, sans-serif; border-radius:999px; min-width:28px; height:28px; padding:0 6px; display:flex; align-items:center; justify-content:center; }
+  .it .nm { font:600 12px/1.25 Inter, sans-serif; margin-top:4px; min-height:2.5em; overflow-wrap:anywhere; }
+  .sw { width:100%; aspect-ratio:1; border-radius:10px; }
+  .more { display:block; margin:12px auto; }
+  .foot { color:var(--muted); font-size:13px; margin:24px 0 10px; text-align:center; }
+  @media (max-width:640px) { .builder { grid-template-columns:1fr; position:static; } .builder canvas { width:120px; height:120px; margin:0 auto; } .grid { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); } }
+</style></head>
+<body><div class="wrap">
+  <h1>🎨 Movie Royal characters</h1>
+  <p class="lead">Every part for your battle character, with its number. Tap parts to try them on, then copy the command and paste it in Discord. That's your character in every battle with 🧍 characters.</p>
+  <div class="builder">
+    <canvas id="me" width="300" height="300"></canvas>
+    <div style="min-width:0">
+      <div class="picks" id="picks"></div>
+      <div class="cmd"><code id="cmd"></code><button class="primary" onclick="copyCmd(this)">📋 Copy</button><button onclick="randomize()" title="A random character">🎲 Random</button></div>
+      <p class="count" style="margin:8px 0 0">Paste it in Discord (in #character-creation). You only need the parts you want to change.</p>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="tools"><input id="q" type="search" placeholder="Search a number or a name (like 7, “afro” or “headband”)" oninput="debounce()"><select id="ver" onchange="show()"></select><span class="count" id="count"></span></div>
+  <div id="list"></div>
+  <p class="foot">Made by Movie Royal. Numbers never change, so your character stays the same.</p>
+</div>
+<script src="charparts.js"></script>
+<script>
+// 🌐 The parts website (1.59.0, Derek): every part with its number, drawn right here (no pictures to download), so people can pick
+// their /character numbers. Movie Royal serves it at /characters.html and the 24/7 bot (Cloudflare) at <bot>/characters.
+const C = window.CHAR_PARTS, N = C.NAMES, B = C.BASE, V = C.VARS;
+const PARTS = [['hair', '💇 Hair'], ['outfit', '👕 Outfits'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['skin', '✋ Skin'], ['haircolor', '🎨 Hair color']];
+const DEF = { hair: 1, outfit: 1, makeup: 1, facialhair: 1, body: 1, skin: 3, haircolor: 2 };
+const COLS = ['#d84a4a', '#3a8ad8', '#3aa85a', '#c77dff', '#f0a020', '#e05aa8', '#2ab0b0', '#8a6a4a'];
+let me = { ...DEF }, tab = 'hair', shown = 0; const STEP = 120;
+try { const s = JSON.parse(localStorage.mrChar || 'null'); if (s) me = { ...me, ...s }; } catch {}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const groupName = (k, b) => { const G = C.GROUPS[k]; if (!G) return ''; const g = G.find(([a, z]) => b >= a && b <= z); return g ? g[2] : ''; };
+function lookFor(k, n) { // what a card shows: a plain character wearing that part
+  const b = C.sp(k, n)[0], fem = (k === 'hair' && b > 25) || (k === 'outfit' && b > 25 && b <= 50) || k === 'makeup' || (k === 'outfit' && b > 50 && n % 2);
+  const L = { hair: fem ? 26 : 1, outfit: fem ? 26 : 1, makeup: 1, facialhair: 1, body: fem ? 2 : 1, skin: 3, haircolor: 2 };
+  if (k === 'facialhair') { L.hair = 9; } L[k] = n; if (k === 'body') { L.hair = 26; L.outfit = 1; }
+  return L;
+}
+function drawTo(cv, look, col) { const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); const s = cv.width; g.save(); g.translate(0, s * .08); C.draw(g, s / 2, s * .36, look, null, col, '★'); g.restore(); }
+function drawMe() { drawTo(document.getElementById('me'), me, '#e8454a'); try { localStorage.mrChar = JSON.stringify(me); } catch {}
+  document.getElementById('picks').innerHTML = PARTS.map(([k, t]) => `<span class="pick ${k === tab ? 'on' : ''}" onclick="go('${k}')" title="${esc(N[k][me[k] - 1])}">${t.split(' ')[0]} <b>${me[k]}</b> ${esc(N[k][me[k] - 1])}</span>`).join('');
+  document.getElementById('cmd').textContent = '/character ' + PARTS.map(([k]) => `${k}:${me[k]}`).join(' '); }
+function copyCmd(btn) { const t = document.getElementById('cmd').textContent; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { btn.textContent = '✅ Copied'; setTimeout(() => btn.textContent = '📋 Copy', 1500); }).catch(() => { const r = document.createRange(); r.selectNode(document.getElementById('cmd')); getSelection().removeAllRanges(); getSelection().addRange(r); }); }
+function randomize() { for (const [k] of PARTS) me[k] = 1 + Math.floor(Math.random() * N[k].length); drawMe(); show(true); }
+function go(k) { tab = k; document.getElementById('q').value = ''; fillVer(); show(); drawMe(); }
+function fillVer() { const k = tab, base = B[k].length, vs = V[k] || [];
+  document.getElementById('ver').innerHTML = `<option value="">All ${N[k].length} ${PARTS.find(p => p[0] === k)[1].split(' ').slice(1).join(' ').toLowerCase()}</option><option value="0">1–${base}: the originals</option>` + vs.map((t, i) => `<option value="${i + 1}">${(i + 1) * base + 1}–${(i + 2) * base}: ${esc(t)}</option>`).join(''); }
+let dT; function debounce() { clearTimeout(dT); dT = setTimeout(show, 200); }
+let io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { const el = e.target; io.unobserve(el); paint(el); } }, { rootMargin: '300px' });
+function paint(el) { const k = el.dataset.k, n = +el.dataset.n, cv = el.querySelector('canvas'); if (cv) drawTo(cv, lookFor(k, n), COLS[n % COLS.length]); }
+function items() {
+  const k = tab, q = document.getElementById('q').value.trim().toLowerCase(), v = document.getElementById('ver').value, base = B[k].length;
+  let ns = N[k].map((_, i) => i + 1);
+  if (v !== '') ns = ns.filter(n => C.sp(k, n)[1] === +v);
+  if (q) ns = /^\d+$/.test(q) ? ns.filter(n => String(n) === q || (q.length >= 2 && String(n).startsWith(q))) : ns.filter(n => q.split(/\s+/).every(w => N[k][n - 1].toLowerCase().includes(w)));
+  return ns;
+}
+function show(keep) {
+  const k = tab, list = document.getElementById('list'), ns = items(), base = B[k].length;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  document.getElementById('count').textContent = `${ns.length} of ${N[k].length}`;
+  if (!keep) shown = 0; const upTo = Math.max(STEP, shown || STEP); shown = upTo;
+  let html = '', lastV = -1;
+  for (const n of ns.slice(0, upTo)) {
+    const [b, v] = C.sp(k, n);
+    if (v !== lastV) { lastV = v; html += `${html ? '</div>' : ''}<h2>${v ? esc(V[k][v - 1]) : 'The originals'}<small>${v * base + 1}–${(v + 1) * base}</small></h2><div class="grid">`; }
+    const g = groupName(k, b), nm = N[k][n - 1];
+    html += `<div class="it ${me[k] === n ? 'on' : ''}" data-k="${k}" data-n="${n}" onclick="choose(${n})" title="${esc(nm)}${g ? ' (' + esc(g) + ')' : ''}"><span class="n">${n}</span><canvas width="200" height="200"></canvas><div class="nm">${esc(nm)}</div></div>`;
+  }
+  html += ns.length ? '</div>' : '<p class="count">Nothing matches that.</p>';
+  if (ns.length > upTo) html += `<button class="more" onclick="shown+=${STEP * 2};show(true)">Show more (${ns.length - upTo} left)</button>`;
+  list.innerHTML = html;
+  io.disconnect(); list.querySelectorAll('.it').forEach(el => io.observe(el));
+}
+function choose(n) { me[tab] = n; drawMe(); document.querySelectorAll('#list .it').forEach(el => el.classList.toggle('on', +el.dataset.n === n)); }
+document.getElementById('tabs').innerHTML = PARTS.map(([k, t]) => `<button data-k="${k}" onclick="go('${k}')">${t} <small>(${N[k].length})</small></button>`).join('');
+const want = new URLSearchParams(location.search).get('part'); if (want && N[want]) tab = want;
+fillVer(); show(); drawMe();
+(document.fonts?.ready || Promise.resolve()).then(() => { drawMe(); document.querySelectorAll('#list .it').forEach(el => { if (el.querySelector('canvas')) paint(el); }); }).catch(() => {});
+</script></body></html>

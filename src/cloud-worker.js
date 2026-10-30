@@ -11,13 +11,15 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 10; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 11; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     try {
       if (url.pathname === '/sync') return await sync(req, env);
       if (url.pathname === '/sync/pic') return await putPic(req, env, url); // 🎨 the app uploads the /character picture sheets from the streamer's PC
+      if (url.pathname === '/characters' || url.pathname === '/characters/' || url.pathname === '/characters.html') { const b = await env.KV.get('pic:sitehtml'); return new Response(b || 'The parts website is not uploaded yet: the streamer opens Movie Royal once.', { status: b ? 200 : 404, headers: { 'content-type': b ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'public, max-age=300' } }); } // 🌐 the parts website (uploaded from the streamer's PC)
+      if (/^\/(characters\/)?charparts\.js$/.test(url.pathname)) { const b = await env.KV.get('pic:sitejs'); return new Response(b || '', { status: b ? 200 : 404, headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=300' } }); }
       if (url.pathname === '/chars/v') return new Response((await env.KV.get('picsV')) || '', { headers: { 'content-type': 'text/plain' } });
       const pm = url.pathname.match(/^\/chars\/([a-z0-9]+)\.png$/);
       if (pm) { const b = await env.KV.get('pic:' + pm[1], 'arrayBuffer'); return b ? new Response(b, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } }) : new Response('not found', { status: 404 }); }
@@ -311,7 +313,9 @@ function characterCmd(env, ctx, s, i, user, origin) {
   for (const k of PARTS) { const v = opt(i, k); if (v != null) picks[k] = v; }
   const how = 'Type **/character** and fill in a number for each part, for example `/character hair:7 outfit:3 makeup:1 facialhair:8`. You only need the parts you want to change (also `body`, `skin` and `haircolor`). Pick 1 of each.';
   if (!Object.keys(picks).length) {
-    const text = `🎨 **Make your own Movie Royal character!** Look at the pictures below and pick a number for each part.\n${how}\n\n${cur ? `**Your character right now:**\n${lookText(N, cur)}` : "You haven't made one yet: until you do, your piece is a random character."}`;
+    const site = s.cfg.charSite;
+    const text = `🎨 **Make your own Movie Royal character!** ${site ? `See every part with its number (and try them on) here: <${site}>` : 'Look at the pictures below and pick a number for each part.'}\n${how}\n\n${cur ? `**Your character right now:**\n${lookText(N, cur)}` : "You haven't made one yet: until you do, your piece is a random character."}`;
+    if (site) return reply(text); // 🌐 the parts website: just the link
     const base = s.cfg.picsUrl || origin, v = s.cfg.lookPics;
     const embeds = v ? SHEETS.map(([k, t]) => ({ title: t, color: 0xffd23f, image: { url: `${base}/chars/${k}.png?v=${v}` } })) : [];
     const list = v ? '' : '\n\n' + PARTS.map(k => `${PLABEL[k]}: ${N[k].map((x, n) => `${n + 1} ${x}`).join(' · ')}`).join('\n'); // no pictures uploaded yet: the numbers in words
@@ -319,7 +323,7 @@ function characterCmd(env, ctx, s, i, user, origin) {
   }
   const look = { ...(cur || {}) }, bad = [];
   for (const k of PARTS) { const v = picks[k]; if (v == null) continue; const n = Number(v); if (!Number.isInteger(n) || n < 1 || n > N[k].length) bad.push(`${PLABEL[k]}: pick 1 to ${N[k].length}`); else look[k] = n; }
-  if (bad.length) return reply(`🤔 Those numbers aren't on the pictures:\n${bad.join('\n')}\nType **/character** with nothing after it to see the pictures again.`);
+  if (bad.length) return reply(`🤔 Those numbers aren't on the list:\n${bad.join('\n')}\n${s.cfg.charSite ? `Every part with its number: <${s.cfg.charSite}>` : 'Type **/character** with nothing after it to see the pictures again.'}`);
   const home = i.guild_id && s.cfg.channels?.[i.guild_id];
   ctx.waitUntil(enqueue(env, { id: crypto.randomUUID(), at: Date.now(), type: 'look', user, look, first: !cur, token: i.token, app: i.application_id, ch: cc || home || i.channel_id }).catch(e => console.error('look', e))); // answer Discord right away, save it right after (the app adds a picture: token = this answer)
   const linked = !!s.links[user.discordId];

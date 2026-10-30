@@ -55,7 +55,7 @@ function hardenWindow(w) {
 // "fullscreen windowed"), 'fullscreen'. Borderless needs a window made without a frame, so switching to / from it makes a new window.
 let swapping = false;
 function createWindow(mode = prefs.windowMode || 'window') {
-  const frameless = mode === 'borderless', old = win;
+  const frameless = mode !== 'window', old = win; // (1.59.0: Fullscreen is frameless too, see placeWindow)
   const w = new BrowserWindow({
     width: 1560, height: 980, minWidth: 1000, minHeight: 700, frame: !frameless,
     title: 'Movie Royal', icon: ICON, backgroundColor: '#120a24', autoHideMenuBar: true, show: false,
@@ -78,15 +78,14 @@ function createWindow(mode = prefs.windowMode || 'window') {
 }
 function placeWindow(w, mode) {
   const { screen } = require('electron'), d = screen.getDisplayMatching(w.getBounds());
-  if (mode === 'fullscreen') { w.setFullScreen(true); return; }
   if (w.isFullScreen()) w.setFullScreen(false);
-  if (mode === 'borderless') { w.setBounds(d.bounds); return; } // the whole screen, like a game's borderless fullscreen
+  if (mode === 'borderless' || mode === 'fullscreen') { w.setBounds(d.bounds); return; } // the whole screen, like a game's borderless fullscreen. 1.59.0 (Derek): Fullscreen no longer puts Windows itself in fullscreen mode, which changed how the Start menu / taskbar looked
   w.maximize();
 }
 function setWindowMode(mode) {
   mode = ['window', 'borderless', 'fullscreen'].includes(mode) ? mode : 'window'; prefs.windowMode = mode;
   if (!win || win.isDestroyed()) return;
-  if ((mode === 'borderless') !== (win.__mode === 'borderless')) return createWindow(mode); // the frame can only change on a new window
+  if ((mode !== 'window') !== (win.__mode !== 'window')) return createWindow(mode); // the frame can only change on a new window
   win.__mode = mode; setTimeout(() => !win.isDestroyed() && placeWindow(win, mode), 50);
 }
 function showWindow() { if (!win) return createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); }

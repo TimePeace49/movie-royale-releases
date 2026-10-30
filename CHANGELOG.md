@@ -2,6 +2,24 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.0
+- 🔢 **20 versions of every character part** (all but the body):
+  - **The counts:** 1,000 hair styles, 1,500 outfits, 500 makeups, 500 facial hairs, 160 skin colors and 200 hair colors.
+  - **The versions:**
+    - Hair: flipped, big, highlights, headbands, bows, cat and bunny ears, devil horns, halos, crowns, tiaras, neon streaks and more.
+    - Outfits: striped, plaid, camo, stars, hearts, flames, lightning, sashes, gold, midnight, pastel and neon.
+    - Makeup: glitter, freckles, tear drops, war paint, nose rings and more.
+    - Facial hair: dyed, bushy, trimmed, beaded or twirled beards.
+    - Colors: whole families of skin and hair colors (natural ones, plus mint, zombie, alien, gold, silver…).
+  - Numbers people already picked stay the same. Random characters get some of the versions too, and chaos characters can get anything.
+- 🌐 **The parts website.** A page with every part and its number: people tap parts to try them on, then copy the /character command it makes.
+  - It's put on your 24/7 bot, so it works any time, even while your PC is off.
+  - #character-creation pins the link instead of the 9 pictures, and /character answers with it.
+  - Update your 24/7 bot when Movie Royal asks (the website needs it). Until then, Discord keeps showing the pictures.
+  - 🧪 Test → 🎨 Custom characters → 🌐 Parts website opens it.
+- 🧍 **Battles use characters by default** once you said yes to men/women characters or character creation (Settings → Game turns it off). A battle where you ticked or unticked 🧍 yourself keeps your choice.
+- 🖥️ **Fullscreen no longer puts Windows itself in fullscreen mode.** That changed how the Start menu and taskbar looked. Fullscreen now covers the screen without a border, like a game's borderless fullscreen.
+
 ## 1.58.3
 - 🤫 **No error messages when OBS is just closed.** Movie Royal doesn't count OBS being closed as a problem any more: nothing in ⚠️ Errors, nothing in #movie-royal-debug, and hiding the capture window when a battle starts stays quiet. It's still noted in the tech report (🛠️ For Claude) in case something else goes wrong. Real OBS problems (like a wrong password) still show, and pressing 🎥 Test OBS yourself still tells you it can't reach OBS.
 

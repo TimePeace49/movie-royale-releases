@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { db, save, ROOT, streamerName } from './store.js';
 import * as lb from './letterboxd.js';
 import { picksClosed, closedMsg, moviesList, picksUsed, wonThisWeek, backOn, swapsLocked, luckOn, suggest, swapMovie, claimManual, swapMsg, swapHint } from './movies.js';
-import { helpText, peopleIndex } from './discord.js';
+import { helpText, peopleIndex, refreshChars } from './discord.js';
 import * as looks from './looks.js';
 
 const CF = 'https://api.cloudflare.com/client/v4';
@@ -67,7 +67,7 @@ export function buildConfig() {
     charChannels: Object.fromEntries(Object.entries(db.discordChars || {}).map(([g, c]) => [g, c.channelId])), // 🎨 #character-creation (/character only works there)
     debugChannels: db.settings.discordDebug === false ? [] : Object.values(db.discordDebug || {}).map(r => r.channelId).filter(Boolean),
     // 🎨 /character: everyone's picks (numbers only), the part names, and the picture sheets' version once they're uploaded from this PC
-    looksOn: looks.on(), looks: Object.fromEntries(Object.entries(db.looks || {}).map(([id, l]) => [id, looks.nums(l)])), lookNames: looks.NAMES, lookPics: status.picsV === looks.picsVersion ? looks.picsVersion : null, picsUrl: cloud().url || '',
+    looksOn: looks.on(), looks: Object.fromEntries(Object.entries(db.looks || {}).map(([id, l]) => [id, looks.nums(l)])), lookNames: looks.NAMES, lookPics: status.picsV === looks.picsVersion ? looks.picsVersion : null, picsUrl: cloud().url || '', charSite: looks.site(),
     helpText: helpText(), tmdbKey: db.settings.tmdbKey || '', botToken: db.settings.discordToken || '', publicKey: cloud().publicKey || ''
   };
 }
@@ -123,15 +123,17 @@ async function lookPicture(op, look, user) {
 async function uploadPics() {
   const c = cloud();
   try {
+    const hv = await fetch(c.url + '/health', { signal: AbortSignal.timeout(10000) }).then(x => x.json()).then(j => Number(j.v) || 0).catch(() => 0);
+    const siteOk = () => { const url = hv >= 11 ? c.url.replace(/\/+$/, '') + '/characters' : null; if ((db.charSite?.url || null) !== url) { db.charSite = url ? { url } : null; save(); lastHash = ''; refreshChars().catch(() => {}); } }; // 🌐 the parts website (needs the 24/7 bot 1.59.0+)
     const r = await fetch(c.url + '/chars/v', { signal: AbortSignal.timeout(10000) });
-    if (r.ok && (await r.text()).trim() === looks.picsVersion) { status.picsV = looks.picsVersion; return; } // already there
-    for (const sh of looks.SHEETS) {
-      const up = await fetch(`${c.url}/sync/pic?name=${sh}&v=${looks.picsVersion}`, { method: 'PUT', headers: { Authorization: `Bearer ${c.syncKey}`, 'content-type': 'image/png' }, body: fs.readFileSync(looks.sheetFile(sh)), signal: AbortSignal.timeout(30000) });
+    if (r.ok && (await r.text()).trim() === looks.picsVersion) { status.picsV = looks.picsVersion; siteOk(); return; } // already there
+    for (const [sh, file, type] of [...looks.SHEETS.map(sh => [sh, looks.sheetFile(sh), 'image/png']), ['sitehtml', looks.SITE.sitehtml, 'text/html'], ['sitejs', looks.SITE.sitejs, 'application/javascript']]) { // (+ 🌐 the parts website)
+      const up = await fetch(`${c.url}/sync/pic?name=${sh}&v=${looks.picsVersion}`, { method: 'PUT', headers: { Authorization: `Bearer ${c.syncKey}`, 'content-type': type }, body: fs.readFileSync(file), signal: AbortSignal.timeout(30000) });
       if (!up.ok) throw new Error(`picture ${sh}: ${up.status}`);
     }
     const fin = await fetch(`${c.url}/sync/pic?done=1&v=${looks.picsVersion}`, { method: 'PUT', headers: { Authorization: `Bearer ${c.syncKey}` }, signal: AbortSignal.timeout(15000) });
     if (!fin.ok) throw new Error('pictures: ' + fin.status);
-    status.picsV = looks.picsVersion; lastHash = ''; // (the rules sent right after say the pictures are there)
+    status.picsV = looks.picsVersion; lastHash = ''; siteOk(); // (the rules sent right after say the pictures are there)
   } catch (e) { console.error('[24/7] couldn\'t upload the /character pictures:', e.message); }
 }
 

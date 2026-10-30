@@ -198,7 +198,11 @@ function discordPeople() {
 }
 function findHistory(id) { return id && db.history.find(h => h.id === id); }
 
-function publicState() {
+// 🧍 Battles use characters by default (1.59.0, Derek): when men/women characters or character creation is on (said yes on the start-up
+// questions), every battle shows characters, unless you changed that battle's 🧍 box yourself (l.charsSet). Setting `charsDefault`.
+function applyCharsDefault() { const on = !!db.settings.charsDefault; for (const l of db.lists || []) if (!l.charsSet && !!l.chars !== on) l.chars = on; }
+applyCharsDefault();
+function publicState() { applyCharsDefault();
   const mask = v => (v ? '••••••' + String(v).slice(-4) : '');
   const st = db.settings;
   return {
@@ -1704,7 +1708,7 @@ app.patch('/api/lists/:id', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (req.body.name != null) l.name = String(req.body.name).slice(0, 60);
   if (req.body.joinOpen != null) l.joinOpen = !!req.body.joinOpen;
-  if (req.body.chars != null) { l.chars = !!req.body.chars; refreshPreview(); } // 🧍 characters instead of balls (this battle)
+  if (req.body.chars != null) { l.chars = !!req.body.chars; l.charsSet = true; refreshPreview(); } // 🧍 characters instead of balls (this battle; you changed it, so the default leaves it alone)
   if (req.body.charIds != null) { l.charIds = !!req.body.charIds; refreshPreview(); } // 👫 use chat's !id for the characters (off = everyone non-binary)
   if (req.body.watchLuck && typeof req.body.watchLuck === 'object') { // 👀 watch luck: every N hours watched (counted from when it's turned on) = +X% luck in this battle
     const w = req.body.watchLuck, cur = l.watchLuck ||= { on: false, hours: 10, amount: 1, since: 0, base: {} };
