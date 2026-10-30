@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.59.5
+- 🎥 **The camera buttons are on the battle screen now** (Battle and Card battles tabs, and in fullscreen): move the mouse over the battle and they show at the bottom; stop moving and they hide after a couple of seconds. The old camera rows under the battle are gone.
+
 ## 1.59.4
 - 🎩 **Head accessories are their own part now:**
   - People pick one with `/character accessory:<number>`. There are 50 (number 1 = none): hats, caps, beanies, crowns, tiaras, halos, cat/bunny/bear/fox ears, horns, antennae, glasses, sunglasses, an eye patch, goggles and more.

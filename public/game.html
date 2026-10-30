@@ -228,6 +228,7 @@ const W = 1920, H = 1080, CX = 960, CY = 615, S = 30, SQ3 = Math.sqrt(3);
 // draws lighter while it's hidden or small (power saver); the stream (OBS) always uses the settings as they are.
 const GFX = { res: '1080', fps: 0, quality: 'high', showFps: false, appSaver: true, hidden: false, small: false, fpsUntil: 0, scale: 100, glow: true, particles: 'auto', shake: 100, flash: true, smooth: true };
 const IN_APP = window.parent !== window;
+if (IN_APP) { let mt = 0; addEventListener('mousemove', () => { const now = Date.now(); if (now - mt > 200) { mt = now; try { parent.postMessage({ royalMouse: 1 }, '*'); } catch {} } }); } // 🎥 tells the app the mouse moved over the battle (its camera buttons show)
 const RES_SCALE = { '720': 1280 / 1920, '900': 1600 / 1920, '1080': 1, '1440': 2560 / 1920, '2160': 2 };
 let gScale = 1;
 const saving = () => IN_APP && GFX.appSaver && (GFX.hidden || GFX.small);

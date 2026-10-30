@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.59.5: What's new
+Everything since 1.59.4.
+
+- 🎥 **Camera buttons on the battle screen** (in the app and in fullscreen): they show when you move the mouse over the battle and hide when you stop.
+
 ## v1.59.4: What's new
 Everything since 1.59.3.
 

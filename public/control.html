@@ -121,6 +121,10 @@
   #wEntTable tr.dragging { opacity:.45; }
   #wEntTable tr.dropAbove td { box-shadow:inset 0 3px 0 var(--gold); }
   #wEntTable tr.dropBelow td { box-shadow:inset 0 -3px 0 var(--gold); }
+  #camBar { position:absolute; left:10px; right:10px; margin:0 auto; width:fit-content; bottom:14px; transform:translateY(8px); z-index:6; display:flex; gap:4px; padding:6px 8px; background:#140c26e6; border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 30px #0009; opacity:0; pointer-events:none; transition:opacity .35s, transform .35s; flex-wrap:wrap; justify-content:center; }
+  #camBar.show { opacity:1; pointer-events:auto; transform:translateY(0); }
+  #camBar button { padding:6px 12px; font-weight:700; }
+  #stage.peek #camBar, #stage.awayMode #camBar { display:none; }
   #stage.peek { z-index:60; border:2px solid var(--gold); min-width:320px; min-height:210px; padding-top:34px; box-shadow:0 20px 80px #000c; }
   #stage.peek iframe { top:34px; height:calc(100% - 34px); }
   #peekBar { display:none; }
@@ -503,6 +507,7 @@
 
 <div id="stage">
   <iframe id="game" src="about:blank" allow="autoplay; fullscreen" title="Movie Royal game"></iframe><script>if (!/[?&]pchat=1/.test(location.search)) document.getElementById('game').src = '/game.html'; /* (the popped-out pretend chat window has no game in it) */</script>
+  <div id="camBar" title="Camera: click someone on the battle to follow them, scroll to zoom, drag to move. Hides when the mouse stops."><button onclick="cam('prev')" title="Follow the previous one">◀</button><button onclick="cam('next')" title="Follow one (Tab)">🎯 Follow</button><button onclick="cam('next')" title="Follow the next one">▶</button><button onclick="cam('overview')" title="See the whole battle (O)">🗺️</button><button onclick="cam('auto')" title="Back to the automatic camera (R)">🎥 Auto</button><button onclick="cam('left')" title="Move left (A)">⬅</button><button onclick="cam('right')" title="Move right (D)">➡</button><button onclick="cam('up')" title="Move up (W)">⬆</button><button onclick="cam('down')" title="Move down (S)">⬇</button><button onclick="cam('out')" title="Zoom out (Q)">➖</button><button onclick="cam('in')" title="Zoom in (E)">➕</button></div>
   <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><div id="fsWacky"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
   <div class="pgrip" data-d="se" title="Drag to resize"></div><div class="pgrip" data-d="sw" title="Drag to resize"></div><div class="pgrip" data-d="e"></div><div class="pgrip" data-d="w"></div><div class="pgrip" data-d="s"></div>
   <div id="peekBar" title="Drag to move. Drag a corner or edge to resize."><span>📺 What's on stream right now</span><button onclick="event.stopPropagation();previewPop()" title="Open the preview in its own window (put it on another monitor)">⧉ Pop out</button><button id="peekGo" onclick="event.stopPropagation();peek(false);setView(S?.wheelShow ? 'wheel' : 'battle')">↗ Battle tab</button><button onclick="event.stopPropagation();peekBig()">⤢ Bigger / smaller</button><button onclick="event.stopPropagation();peek(false)">✕ Close</button></div>
@@ -537,7 +542,7 @@
       <span class="muted">Screen title</span>
       <input id="screenTitle" style="width:240px" placeholder="shown at the top of the battle" onchange="saveTitle(this.value)">
       <span class="grow"></span>
-      <span class="seg" title="Camera — click a piece on the battle to follow it, scroll to zoom, drag to move"><button onclick="cam('prev')" title="Follow the previous piece">◀</button><button onclick="cam('next')" title="Follow the next piece (Tab)">🎯 Follow</button><button onclick="cam('next')" title="Follow the next piece">▶</button><button onclick="cam('overview')" title="See the whole cliff (O)">🗺️</button><button onclick="cam('auto')" title="Back to the automatic camera (R)">🎥 Auto</button><button onclick="cam('left')" title="Move left (A)">⬅</button><button onclick="cam('right')" title="Move right (D)">➡</button><button onclick="cam('up')" title="Move up (W)">⬆</button><button onclick="cam('down')" title="Move down (S)">⬇</button><button onclick="cam('out')" title="Zoom out (Q)">➖</button><button onclick="cam('in')" title="Zoom in (E)">➕</button></span>
+
     </div>
   </div>
   <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
@@ -592,10 +597,6 @@
       <span class="muted" title="Wacky settings: turn them on before the fight or in the middle of it. Click again to turn one off.">🤪 Wacky</span>
       <div class="powers" id="cWackyBar"></div>
       <button class="ghost" onclick="cardsApi('/api/cards/wacky',{allOff:true})" title="Turn every wacky setting off">✕ All off</button>
-    </div>
-    <div class="under cCamRow">
-      <span class="muted" title="Camera: click a pack on the fight to follow it, scroll to zoom, drag to move, double-click for the auto camera">🎥 Camera</span>
-      <span class="seg" title="Camera — click a pack on the fight to follow it, scroll to zoom, drag to move"><button onclick="cam('prev')" title="Follow the previous pack">◀</button><button onclick="cam('next')" title="Follow a pack (Tab)">🎯 Follow</button><button onclick="cam('next')" title="Follow the next pack">▶</button><button onclick="cam('overview')" title="See the whole map (O)">🗺️</button><button onclick="cam('auto')" title="Back to the automatic camera (R)">🎥 Auto</button><button onclick="cam('left')" title="Move left (A)">⬅</button><button onclick="cam('right')" title="Move right (D)">➡</button><button onclick="cam('up')" title="Move up (W)">⬆</button><button onclick="cam('down')" title="Move down (S)">⬇</button><button onclick="cam('out')" title="Zoom out (Q)">➖</button><button onclick="cam('in')" title="Zoom in (E)">➕</button></span>
     </div>
   </div>
   <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
@@ -1514,6 +1515,7 @@ function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? 
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
 const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in]
+  camBar: ['screen', '1.59.4'],
   headAcc: ['battles', '1.59.4'],
   bodyTypes: ['battles', '1.59.3'],
   toastLong: ['screen', '1.59.2'],
@@ -1643,6 +1645,7 @@ function drawChecklist() {
     ['finalIntro8', '🥊 The FINAL FIGHT! scene before the last two card packs fight lasts 8 seconds now, with a 3, 2, 1 countdown before 🔔 FIGHT! (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2)', `<button class="ghost" style="padding:3px 9px" onclick="labTry('kungfu','card')">Try it</button>`],
     ['banRules', '🚫 New movie bans: 🌍 not in English, ⛪ really religious, 🎥 documentaries. Press “Try the rules”, then in Discord try /suggest with a foreign movie (like Amélie): it\'s banned and says to ask Kirb to unban it. The pinned Discord message explains banned movies too', `<button class="ghost" style="padding:3px 9px" onclick="banRulesTest()">Try the rules</button> <button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('bans');loadBans()">Banned Movies</button>`],
     ['banSearch', '🔍 Banned Movies has a search box (title, year or reason) and a kind filter: add 300 pretend bans and search them. Also try 🔎 Check movies already picked and ✅ Pre-approve on a search result', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/ban-many',{}).then(()=>{setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button>`],
+    ['camBar', '🎥 The camera buttons are on the battle screen now (Battle and Card battles tabs, and in fullscreen): move the mouse over the battle and they show at the bottom; stop moving and they hide after a couple of seconds', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle')">Battle tab</button>`],
     ['headAcc', '🎩 Head accessories: their own part now (/character accessory:<number>), 50 of them (hats, caps, ears, horns, crowns, glasses, goggles…; 1 = none). Hair has 15 new styles instead (tall, wide, ombre, two-tone, dyed tips, glitter, wavy, curly, shaved side…). Anyone who had picked a hair with an accessory keeps the same look', `<button class="ghost" style="padding:3px 9px" onclick="window.open('/characters.html?part=accessory')">Accessories</button> <button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,count:30})">Practice battle</button>`],
     ['bodyTypes', '🧍 Body types: 24 bodies = regular, thin, fat and athletic, each flat or with 5 chest sizes (easier to see now). Random characters get any build but only the smaller chest sizes. Open the parts website → 🧍 Body', `<button class="ghost" style="padding:3px 9px" onclick="window.open('/characters.html?part=body')">Bodies</button> <button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,count:30})">Practice battle</button>`],
     ['toastLong', '💬 The little pop-ups at the bottom stay longer (8 seconds, longer messages longer). Hover the mouse on one to keep it up, click it to close it. Settings → App & background → 💬 Little pop-ups stay for', `<button class="ghost" style="padding:3px 9px" onclick="toast('💬 A test pop-up: hover the mouse on me to keep me up, click me to close me')">Show one</button>`],
@@ -2397,6 +2400,17 @@ async function start() {
 }
 async function gatherClick() { if (S.gather) return api('/api/gather/cancel'); goFullscreen(); await api('/api/gather/start', { seconds: 120 }); }
 function cam(action) { api('/api/camera', { action }); }
+// 🎥 the camera buttons sit on the battle screen itself (1.59.5, Derek), in the app and in fullscreen: they show when the mouse moves over
+// the battle and hide again after 2.5 s without moving (the game sends its mouse moves up: game.html 'royalMouse').
+let camBarT = 0;
+function camBarPing() {
+  const bar = $('camBar'); if (!bar) return;
+  const ok = document.fullscreenElement === $('stage') || view === 'battle' || view === 'cards'; if (!ok || $('stage').classList.contains('peek')) return bar.classList.remove('show');
+  bar.classList.add('show'); clearTimeout(camBarT); camBarT = setTimeout(() => { if (!bar.matches(':hover')) bar.classList.remove('show'); else camBarPing(); }, 2500);
+}
+addEventListener('message', e => { if (e.data?.royalMouse) camBarPing(); });
+document.addEventListener('DOMContentLoaded', () => { $('stage')?.addEventListener('mousemove', camBarPing); });
+setTimeout(() => $('stage')?.addEventListener('mousemove', camBarPing), 0);
 async function saveTitle(v) { await api('/api/lists/' + list().id, { screenTitle: v }, 'PATCH'); toast('Title updated'); }
 async function setActive(id) { histList = null; await api('/api/active', { id }); }
 
