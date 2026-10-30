@@ -21,6 +21,7 @@ import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePe
 import { getRatings, testOmdb } from './ratings.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
+import * as looks from './looks.js';
 import * as backuplink from './backuplink.js';
 import { MAP_LIST, mapById, GROUND_EVENTS } from './maps.js';
 import * as wheel from './wheel.js';
@@ -216,6 +217,7 @@ async function buildFighters(list, keepIds = null) {
     else if (list.type === 'movies') { const b = e.backers?.[0]; const tw = b && db.links[b.discordId]; if (tw) logins.push(tw); }
     else if (e.twitch) logins.push(e.twitch);
   }
+  const spotOrder = list.type === 'movies' ? list.entries.filter(x => isSpot(x) && x.status === 'active').sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0) || String(a.id).localeCompare(String(b.id))).map(x => x.id) : [], spotLooks = (db.settings.spotLooks || []).filter(Boolean); // 🎟️ wild spots wear your wild spot characters in order
   const users = await Promise.race([twitch.getUsers(logins).catch(() => new Map()), new Promise(r => setTimeout(() => r(new Map()), 4000))]); // pictures are nice, but never hold up the cliff
   return {
     total: pool.length,
@@ -234,13 +236,14 @@ async function buildFighters(list, keepIds = null) {
       } else if (e.twitch) { ownerLogin = e.twitch; owner = e.label; image = users.get(e.twitch)?.avatar || e.image; }
       const wl = watchLuck(list, ownerLogin); // 👀 watch luck (this battle's setting)
       const gender = list.chars ? genderOf(list, ownerLogin) : undefined; // 🧍 characters: man / woman / non-binary
+      const lk = !list.chars ? undefined : list.type === 'movies' && isSpot(e) && spotLooks.length ? looks.check(spotLooks[Math.max(0, spotOrder.indexOf(e.id)) % spotLooks.length]).look : looks.lookFor({ discordId: list.type === 'movies' && !isSpot(e) ? e.backers?.[0]?.discordId : null, login: ownerLogin, gender }); // 🎨 wild spots: your wild spot characters; everyone else: their own /character (wins over !id)
       return {
         id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : 1) * (1 + wl / 100) * 10000) / 10000, luck: Math.min(100, (list.type === 'movies' && luckOn() ? (e.luckPct || 0) : 0) + wl), watchLuck: wl || undefined,
         // the glow + flames show on every battle type and every map: movies use their luck, custom/chat/giveaway lists use their extra odds (x2 = 10%, x6 = 50% flames)
         glow: Math.min(100, (e.luckPct > 0 ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
         showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
-        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null, gender
+        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null, gender, look: lk
       };
     })
   };
@@ -1290,6 +1293,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   res.json({
     linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
     id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
+    look: (() => { const l = looks.lookOf(discordId) || looks.lookOf(looks.discordFor(login)); return l ? looks.nums(l) : null; })(), // 🎨 their own /character
     login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
     followedAt: follow === undefined ? (v?.followedAt || undefined) : follow, url: login ? `https://twitch.tv/${login}` : null,
     sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: chatlog.watchStreak(v), twitchStreak: v?.streak || 0, streams: (v?.watched || []).length, lastStreams: chatlog.lastStreams(v), color: v?.color || null,
@@ -1624,6 +1628,7 @@ app.post('/api/settings', (req, res) => {
   if ('map' in body && db.settings.map !== 'random' && !mapById(db.settings.map)) db.settings.map = 'random';
   if (mapWas !== db.settings.map) { live.map = null; live.mapUsed = false; if (live.phase === 'idle') refreshPreview(true); }
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
+  if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   broadcast(audioMsg(), 'overlay'); broadcast(audioMsg(), 'celebrate'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
@@ -2714,6 +2719,13 @@ app.post('/api/test/check-movie', async (req, res) => {
 app.post('/api/test/discord', async (req, res) => { try { res.json({ msg: (await discord.postTest()).join(' · ') }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/twitch-say', async (req, res) => { try { await twitch.say(String(req.body?.text || '🧪 Movie Royal test message')); res.json({ msg: 'Sent! Check your Twitch chat.' }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/omdb', async (req, res) => res.json(await testOmdb()));
+// 🎨 Test tab: what /character answers in Discord, for a pretend Discord person (saved as test-discord: not a real person)
+app.post('/api/test/character', (req, res) => {
+  const picks = {}; for (const k of looks.PARTS) if (req.body?.[k] != null && req.body[k] !== '') picks[k] = req.body[k];
+  const r = looks.characterReply({ discordId: 'test-discord', name: 'Pretend Discord person', linked: true }, picks);
+  if (r.saved) pushState();
+  res.json({ ...r, pics: Object.keys(picks).length ? [] : looks.SHEETS.map(s => ({ url: `/chars/${s}.png`, title: looks.SHEET_TITLE[s] })) });
+});
 app.post('/api/test/battle', async (req, res) => { // a practice round with made-up entries; your real lists and history aren't touched
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
   if (wheel.W().show) wheel.setShow(false); // the battle goes on stream
@@ -2725,6 +2737,8 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   const fighters = many.map(([t, y], i) => ({ id: 'test-' + i, label: t, sub: y, weight: 1, luck: req.body?.luck === false ? 0 : lucks[i % lucks.length], owner: names[i % names.length], showOwner: true, kind: 'films', details: { director: 'Test', genres: ['Test'], synopsis: 'This is a practice round.' } }));
   if (req.body?.fun) { const F = getList('chat-join')?.fun || {}, kinds = Object.keys(POWER_INFO).filter(k => !F.powersOff?.[k]); fighters.forEach((f, i) => { if (kinds.length && i % 2 === 0) { const k = kinds[(i / 2) % kinds.length]; f.powers = { [k]: k === 'shield' ? 1 : true }; f.label += ' ' + POWER_INFO[k].icon; } }); } // 🎉 Chat battle tab → 🧪 Try it: half of them powered up
   if (req.body?.chars) fighters.forEach((f, i) => { f.gender = db.settings.charGenders === false || db.settings.idOn === false ? 'n' : ['m', 'f', 'n'][i % 3]; }); // 🧍 characters: men, women and non-binary
+  if (req.body?.spots) { const L = (db.settings.spotLooks || []).filter(Boolean); fighters.slice(0, Math.max(2, Math.min(4, L.length || 2))).forEach((f, i) => Object.assign(f, { label: `${db.settings.spotName || 'Kirb'}'s Pick`, sub: '', owner: db.settings.spotName || 'Kirb', spot: true, look: L.length ? looks.check(L[i % L.length]).look : undefined })); } // 🎟️ wild spots in their characters
+  if (req.body?.looks) fighters.forEach((f, i) => { f.look = i === 0 && typeof req.body.looks === 'object' ? looks.check(req.body.looks).look : looks.randomLook(); if (i === 0 && typeof req.body.looks === 'object') f.owner = 'You (test)'; }); // 🎨 /character looks (the first one = the look picked on the Test tab)
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
   const tmap = req.body?.map && req.body.map !== 'random' && mapById(req.body.map) ? req.body.map : req.body?.map === 'random' ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };

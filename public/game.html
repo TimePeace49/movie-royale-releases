@@ -205,6 +205,7 @@
 <script src="wheel.js"></script>
 <script src="ask.js"></script>
 <script src="chat.js"></script>
+<script src="charparts.js"></script>
 <script src="finishers.js"></script>
 <script src="cardfight.js"></script>
 <script>
@@ -3482,6 +3483,7 @@ function setMap(id) {
   if (!MAPS[id]) id = 'classic';
   if (id === mapId && MAP._tops) return false;
   mapId = id; MAP = MAPS[id]; SFX.setMap?.(id); K = MAP.K || 0.55;
+  try { if (SKIN === 'chars') for (const f of fighters) f._dirty = true; } catch {} // 🎨 themed maps dress the characters
   MAP._tops ||= MAP.tops();
   const g = bg.getContext('2d'); g.clearRect(0, 0, W, H); g.save(); MAP.sky(g); g.restore();
   for (const c of clouds) c.col = MAP.clouds;
@@ -3550,7 +3552,10 @@ function charStyle(f) { // picked once per piece from its id (so a piece looks t
   const hairCol = rnd(10) < 8 ? CH.hair[rnd(8)] : CH.hair[8 + rnd(2)];
   return f.ch = { g, skin: CH.skin[rnd(6)], hair: hairCol, pants: CH.pants[rnd(6)], shoe: CH.shoe[rnd(5)], style: rnd(4), beard: g === 'm' && rnd(3) === 0, shirt2: shade(f.color || '#888888', -35), bow: rnd(2) === 0 };
 }
+// 🎨 a piece's look: their own /character always wins; everyone else gets a random one that stays the same for them on this map
+function charLook(f) { if (f.look) return f.look; const k = `${f.id}|${f.gender || 'n'}|${mapId}`; if (f._autoK !== k) { f._autoK = k; f._auto = CHAR_PARTS.auto(String(f.id), f.gender, mapId); } return f._auto; }
 function charToken(f, c, g, m, rr) {
+  if (window.CHAR_PARTS) { CHAR_PARTS.draw(g, m, rr, charLook(f), ok(f.img) ? f.img : null, f.color, initials(f.label)); return; } // 🎨 their own /character, else a random look (themed on themed maps)
   const st = charStyle(f), hr = rr * .58, hx = m, hy = m - rr * .4, col = f.color || '#8a5cff', ty = m + rr * .22, by = m + rr * .95;
   // hair behind the head (long hair, ponytail, hood)
   g.fillStyle = st.hair;
@@ -3561,7 +3566,7 @@ function charToken(f, c, g, m, rr) {
   const bodyPath = () => { g.beginPath(); if (st.g === 'f') { g.moveTo(m - rr * .34, ty); g.lineTo(m + rr * .34, ty); g.lineTo(m + rr * .62, by + rr * .1); g.lineTo(m - rr * .62, by + rr * .1); } else if (st.g === 'm') { g.moveTo(m - rr * .55, ty + rr * .08); g.quadraticCurveTo(m - rr * .55, ty, m - rr * .4, ty); g.lineTo(m + rr * .4, ty); g.quadraticCurveTo(m + rr * .55, ty, m + rr * .55, ty + rr * .08); g.lineTo(m + rr * .42, by); g.lineTo(m - rr * .42, by); } else { g.moveTo(m - rr * .48, ty + rr * .06); g.quadraticCurveTo(m - rr * .48, ty, m - rr * .36, ty); g.lineTo(m + rr * .36, ty); g.quadraticCurveTo(m + rr * .48, ty, m + rr * .48, ty + rr * .06); g.lineTo(m + rr * .46, by); g.lineTo(m - rr * .46, by); } g.closePath(); };
   const bg2 = g.createLinearGradient(m - rr * .6, ty, m + rr * .6, by); bg2.addColorStop(0, shade(col, 30)); bg2.addColorStop(1, shade(col, -35)); g.fillStyle = bg2; bodyPath(); g.fill(); g.stroke();
   if (st.g === 'm') { g.fillStyle = st.shirt2; g.beginPath(); g.moveTo(m - rr * .12, ty); g.lineTo(m, ty + rr * .2); g.lineTo(m + rr * .12, ty); g.fill(); if (st.style === 2) { g.fillStyle = st.shirt2; g.fillRect(m - rr * .04, ty + rr * .16, rr * .08, rr * .5); } } // collar / tie
-  else if (st.g === 'f') { g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(m - rr * .5, by - rr * .05, rr, rr * .06); if (st.bow) { g.fillStyle = '#ff5a9a'; g.beginPath(); g.moveTo(m, hy - hr * .95); g.lineTo(m - hr * .5, hy - hr * 1.2); g.lineTo(m - hr * .5, hy - hr * .7); g.closePath(); g.moveTo(m, hy - hr * .95); g.lineTo(m + hr * .5, hy - hr * 1.2); g.lineTo(m + hr * .5, hy - hr * .7); g.closePath(); g.fill(); } } // dress hem + hair bow
+  else if (st.g === 'f') { g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(m - rr * .5, by - rr * .05, rr, rr * .06); window.CHAR_PARTS?.chest(g, m, ty, rr); if (st.bow) { g.fillStyle = '#ff5a9a'; g.beginPath(); g.moveTo(m, hy - hr * .95); g.lineTo(m - hr * .5, hy - hr * 1.2); g.lineTo(m - hr * .5, hy - hr * .7); g.closePath(); g.moveTo(m, hy - hr * .95); g.lineTo(m + hr * .5, hy - hr * 1.2); g.lineTo(m + hr * .5, hy - hr * .7); g.closePath(); g.fill(); } } // dress hem + hair bow
   else { g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(m - rr * .22, ty + rr * .45, rr * .44, rr * .18); g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = rr * .025; g.beginPath(); g.moveTo(m - rr * .1, ty); g.lineTo(m - rr * .12, ty + rr * .3); g.moveTo(m + rr * .1, ty); g.lineTo(m + rr * .12, ty + rr * .3); g.stroke(); } // hoodie pocket + strings
   // head: the picture (poster / your picture / Twitch picture) or the text
   g.save(); g.beginPath(); g.arc(hx, hy, hr, 0, 7); g.clip();
@@ -3578,7 +3583,7 @@ function charToken(f, c, g, m, rr) {
   const shine = g.createLinearGradient(0, hy - hr, 0, hy); shine.addColorStop(0, 'rgba(255,255,255,.22)'); shine.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = shine; g.beginPath(); g.ellipse(hx, hy - hr * .45, hr * .62, hr * .35, 0, 0, 7); g.fill();
 }
 function charLimbs(f, x, cy, foot) { // 🧍 legs (pants or bare under a dress) + arms with hands, walking with how fast it moves
-  const st = charStyle(f), r = f.r, sp = Math.min(1, Math.hypot(f.vx || 0, f.vy || 0) / 120), ph = clock * 12 + (f.wob || 0), hip = cy + r * (st.g === 'f' ? .98 : .92), lw = Math.max(2, r * (st.g === 'm' ? .19 : .15));
+  const st = window.CHAR_PARTS ? (() => { const l = CHAR_PARTS.limbs(charLook(f), f.color); return { g: l.legs === 'pants' || l.legs === 'shorts' ? 'm' : 'f', skin: l.skin, pants: l.pants, shoe: l.shoe, arm: l.arm }; })() : charStyle(f), r = f.r, sp = Math.min(1, Math.hypot(f.vx || 0, f.vy || 0) / 120), ph = clock * 12 + (f.wob || 0), hip = cy + r * (st.g === 'f' ? .98 : .92), lw = Math.max(2, r * (st.g === 'm' ? .19 : .15));
   ctx.lineCap = 'round';
   for (const side of [-1, 1]) {
     const sw = Math.sin(ph + (side > 0 ? Math.PI : 0)) * r * .3 * (sp + .1), hx0 = x + side * r * .2, fx = hx0 + sw, fy = Math.max(hip + r * .15, foot - Math.max(0, Math.cos(ph + (side > 0 ? Math.PI : 0))) * r * .15 * sp);
@@ -3587,7 +3592,7 @@ function charLimbs(f, x, cy, foot) { // 🧍 legs (pants or bare under a dress) 
   }
   for (const side of [-1, 1]) {
     const shx = x + side * r * (st.g === 'm' ? .5 : .4), shy = cy + r * .32, hx = shx + side * r * (.25 + .15 * Math.sin(ph * .7 + side)), hy = shy + r * (.42 - .35 * sp * Math.max(0, Math.sin(ph + side)));
-    ctx.strokeStyle = shade(f.color || '#8a5cff', -20); ctx.lineWidth = Math.max(2, r * .14); ctx.beginPath(); ctx.moveTo(shx, shy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.strokeStyle = st.arm || shade(f.color || '#8a5cff', -20); ctx.lineWidth = Math.max(2, r * .14); ctx.beginPath(); ctx.moveTo(shx, shy); ctx.lineTo(hx, hy); ctx.stroke();
     ctx.fillStyle = st.skin; ctx.strokeStyle = 'rgba(15,10,20,.7)'; ctx.lineWidth = Math.max(1, r * .04); ctx.beginPath(); ctx.arc(hx, hy, r * .12, 0, 7); ctx.fill(); ctx.stroke();
   }
 }
@@ -3634,6 +3639,7 @@ function syncFighters(list) {
       if (f.image !== m.image) { f._dirty = true; f.img = loadImg(m.image, () => makeToken(f)); }
       if (f.label !== m.label) f._dirty = true;
       if ((f.gender || 'n') !== (m.gender || 'n')) { f._dirty = true; f.ch = null; } // 🧍 they changed their !id
+      if (JSON.stringify(f.look || null) !== JSON.stringify(m.look || null)) f._dirty = true; // 🎨 they changed their /character
       const before = f.color; Object.assign(f, m); f.color = m.color || f.baseColor;
       if (f.color !== before) f._dirty = true; // chat changed their ball colour
     } else {

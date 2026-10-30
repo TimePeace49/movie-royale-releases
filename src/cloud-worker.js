@@ -11,12 +11,16 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 7; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 8; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     try {
       if (url.pathname === '/sync') return await sync(req, env);
+      if (url.pathname === '/sync/pic') return await putPic(req, env, url); // 🎨 the app uploads the /character picture sheets from the streamer's PC
+      if (url.pathname === '/chars/v') return new Response((await env.KV.get('picsV')) || '', { headers: { 'content-type': 'text/plain' } });
+      const pm = url.pathname.match(/^\/chars\/([a-z0-9]+)\.png$/);
+      if (pm) { const b = await env.KV.get('pic:' + pm[1], 'arrayBuffer'); return b ? new Response(b, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } }) : new Response('not found', { status: 404 }); }
       if (url.pathname === '/health') { // ?deep=1: also check the storage works (the backup bot server uses this)
         if (url.searchParams.has('deep')) { try { await env.KV.get('config'); } catch (e) { return json({ ok: false, error: 'storage: ' + (e?.message || e), v: WORKER_V }, 503); } }
         return json({ ok: true, at: Date.now(), v: WORKER_V });
@@ -55,6 +59,17 @@ async function sync(req, env) {
   return json({ ok: true });
 }
 
+// 🎨 /character picture sheets, sent from the streamer's PC (only when they change: KV writes are limited)
+async function putPic(req, env, url) {
+  if ((req.headers.get('authorization') || '') !== `Bearer ${env.SYNC_KEY}`) return json({ error: 'bad key' }, 401);
+  if (req.method !== 'PUT') return json({ error: 'PUT only' }, 405);
+  if (url.searchParams.get('done')) { await env.KV.put('picsV', String(url.searchParams.get('v') || '')); return json({ ok: true }); }
+  const name = String(url.searchParams.get('name') || ''); if (!/^[a-z0-9]{1,20}$/.test(name)) return json({ error: 'bad name' }, 400);
+  const buf = await req.arrayBuffer(); if (!buf.byteLength || buf.byteLength > 5e6) return json({ error: 'bad size' }, 400);
+  await env.KV.put('pic:' + name, buf);
+  return json({ ok: true });
+}
+
 // ---------- Discord signature check ----------
 const hex = h => new Uint8Array((h.match(/.{2}/g) || []).map(b => parseInt(b, 16)));
 async function verify(req, body, publicKey) {
@@ -74,7 +89,7 @@ async function verify(req, body, publicKey) {
 async function loadState(env, cfg0) {
   const [cfg, queue] = await Promise.all([cfg0 || env.KV.get('config', 'json'), env.KV.get('queue', 'json')]);
   if (!cfg) return null;
-  const s = { cfg, queue: queue || [], pool: (cfg.pool || []).map(e => ({ ...e })), users: JSON.parse(JSON.stringify(cfg.users || {})), links: { ...(cfg.links || {}) } };
+  const s = { cfg, queue: queue || [], pool: (cfg.pool || []).map(e => ({ ...e })), users: JSON.parse(JSON.stringify(cfg.users || {})), links: { ...(cfg.links || {}) }, looks: { ...(cfg.looks || {}) } };
   for (const op of s.queue) applyOp(s, op);
   return s;
 }
@@ -91,6 +106,7 @@ function applyOp(s, op) {
     if (old) old.status = 'removed';
     s.pool.push({ id: 'tmdb-' + op.movie.id, tmdbId: op.movie.id, label: op.movie.title, sub: op.movie.year, status: benched ? 'benched' : 'active', backers: [{ discordId: op.user.discordId, name: op.user.name }], collection: op.movie.collection || null, weight: 1, luckPct: old?.luckPct || 0, pending: true });
   } else if (op.type === 'link') s.links[op.user.discordId] = op.login;
+  else if (op.type === 'look') s.looks[op.user.discordId] = op.look;
 }
 const mineOf = (s, id) => s.pool.filter(e => IN_POOL.includes(e.status) && e.backers?.some(b => b.discordId === id));
 function picksUsed(s, id) { const u = userOf(s, id); return mineOf(s, id).length ? (u.used || 0) : 0; }
@@ -277,7 +293,35 @@ async function interaction(req, env, ctx) {
     ctx.waitUntil(enqueue(env, { id: crypto.randomUUID(), at: Date.now(), type: 'link', user, login }).catch(e => console.error('link', e))); // answer Discord right away, save it right after
     return reply(`Linked! Your piece will use **${login}**'s Twitch picture, and chatting as ${login} on Twitch puts your movies on the cliff.`);
   }
+  if (name === 'character') return characterCmd(env, ctx, s, i, user, new URL(req.url).origin);
   return reply('🤔 Unknown command.');
+}
+
+// 🎨 /character: a number for each part. A COPY of characterReply in src/looks.js (keep them alike).
+const PARTS = ['hair', 'outfit', 'makeup', 'facialhair', 'body', 'skin', 'haircolor'];
+const PLABEL = { hair: '💇 Hair', outfit: '👕 Outfit', makeup: '💄 Makeup', facialhair: '🧔 Facial hair', body: '🧍 Body', skin: '✋ Skin', haircolor: '🎨 Hair color' };
+const SHEETS = [['hair', "💇 Hair 1–25 (men's styles)"], ['hair2', "💇 Hair 26–50 (women's styles)"], ['outfit', "👕 Outfits 1–25 (men's)"], ['outfit2', "👗 Outfits 26–50 (women's)"], ['outfit3', '🦸 Outfits 51–75 (costumes)'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['colors', '🎨 Skin + hair color']];
+const PDEF = { skin: 3, haircolor: 2, body: 1 };
+function lookText(N, look) { return PARTS.map(k => `${PLABEL[k]} **#${look?.[k] || PDEF[k] || 1}** ${(N[k] || [])[(look?.[k] || PDEF[k] || 1) - 1] || '?'}${look?.[k] ? '' : ' *(not picked yet)*'}`).join('\n'); }
+function characterCmd(env, ctx, s, i, user, origin) {
+  const N = s.cfg.lookNames;
+  if (!N || s.cfg.looksOn === false) return reply(`🎨 Custom characters aren't on right now${N ? '' : ' (open Movie Royal once so the 24/7 bot gets them)'}.`);
+  const cur = s.looks[user.discordId] || null, picks = {};
+  for (const k of PARTS) { const v = opt(i, k); if (v != null) picks[k] = v; }
+  const how = 'Type **/character** and fill in a number for each part, for example `/character hair:7 outfit:3 makeup:1 facialhair:8`. You only need the parts you want to change (also `body`, `skin` and `haircolor`). Pick 1 of each.';
+  if (!Object.keys(picks).length) {
+    const text = `🎨 **Make your own Movie Royal character!** Look at the pictures below and pick a number for each part.\n${how}\n\n${cur ? `**Your character right now:**\n${lookText(N, cur)}` : "You haven't made one yet: until you do, your piece is a random character."}`;
+    const base = s.cfg.picsUrl || origin, v = s.cfg.lookPics;
+    const embeds = v ? SHEETS.map(([k, t]) => ({ title: t, color: 0xffd23f, image: { url: `${base}/chars/${k}.png?v=${v}` } })) : [];
+    const list = v ? '' : '\n\n' + PARTS.map(k => `${PLABEL[k]}: ${N[k].map((x, n) => `${n + 1} ${x}`).join(' · ')}`).join('\n'); // no pictures uploaded yet: the numbers in words
+    return json({ type: 4, data: { content: (text + list).slice(0, 2000), embeds, flags: EPH, allowed_mentions: { parse: [] } } });
+  }
+  const look = { ...(cur || {}) }, bad = [];
+  for (const k of PARTS) { const v = picks[k]; if (v == null) continue; const n = Number(v); if (!Number.isInteger(n) || n < 1 || n > N[k].length) bad.push(`${PLABEL[k]}: pick 1 to ${N[k].length}`); else look[k] = n; }
+  if (bad.length) return reply(`🤔 Those numbers aren't on the pictures:\n${bad.join('\n')}\nType **/character** with nothing after it to see the pictures again.`);
+  ctx.waitUntil(enqueue(env, { id: crypto.randomUUID(), at: Date.now(), type: 'look', user, look }).catch(e => console.error('look', e))); // answer Discord right away, save it right after
+  const linked = !!s.links[user.discordId];
+  return reply(`✅ **Saved! This is your character now:**\n${lookText(N, look)}\n\nYou'll be this character in Movie Royal battles that use 🧍 characters${linked ? '' : ' (to be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**)'}. Change any part any time with **/character**.`);
 }
 
 async function pickMovie(s, value) {

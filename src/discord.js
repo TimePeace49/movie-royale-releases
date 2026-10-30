@@ -3,6 +3,7 @@
 import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, MessageFlags, ChannelType, PermissionFlagsBits } from 'discord.js';
 import { db, save, streamerName } from './store.js';
 import { SYNC_NAME, SYNC_TOPIC } from './relay.js';
+import * as looks from './looks.js';
 import { searchMovies, getMany, cachedMovie } from './tmdb.js';
 import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, banAsk, swapMovie, swapsLocked, luckOn, freePicks, swapHint, lockMode } from './movies.js';
 
@@ -22,6 +23,12 @@ const commands = [
   new SlashCommandBuilder().setName('list').setDescription('See every movie in the battle royal pool'),
   new SlashCommandBuilder().setName('linktwitch').setDescription('Connect your Twitch name (your picture on the cliff + chat check-in)')
     .addStringOption(o => o.setName('username').setDescription('Your Twitch username').setRequired(true)),
+  (() => { // 🎨 /character: a number for each part (leave them all empty to see the pictures)
+    const c = new SlashCommandBuilder().setName('character').setDescription('Make your own battle character: pick a number for each part (empty = see the pictures)');
+    const say = { hair: "Hair style number: 1–25 men's styles, 26–50 women's styles", outfit: "Outfit number: 1–25 men's, 26–50 women's, 51–75 costumes", makeup: 'Makeup number (1 = none)', facialhair: 'Facial hair number (1 = none)', body: 'Body number (1 = flat, 2 = curvy)', skin: 'Skin color number', haircolor: 'Hair color number' };
+    for (const k of looks.PARTS) c.addIntegerOption(o => o.setName(k).setDescription(say[k]).setMinValue(1).setMaxValue(looks.NAMES[k].length));
+    return c;
+  })(),
   new SlashCommandBuilder().setName('help').setDescription('How Movie Royal works')
 ].map(c => c.toJSON());
 
@@ -40,6 +47,7 @@ export function helpText() {
     `**/mymovies** — see your movies and picks left. Add a name to see someone else's (\`/mymovies person: Lucy\`). On Twitch: **${tw}** or **${tw} name**.`,
     `**/list** — everything in the pool right now.`,
     `**/linktwitch** — connect your Twitch name so your picture is your piece and chatting puts your movies on the cliff.`,
+    ...(looks.on() ? [`**/character** — make your own battle character: type /character to see the pictures, then pick a number for each part (hair, outfit, makeup, facial hair, body).`] : []),
     `**On Twitch:** type anything in chat to claim your movie when it wins · **${db.settings.sitOutCommand || '!sitout'}** if it's too late for you (your movies skip tonight's battles) · **${db.settings.backCommand || '!imback'}** to jump back in · **${db.settings.helpCommand || '!moviesroyal'}** for all chat commands.`,
     ``,
     `**In the list you'll see:**`,
@@ -307,6 +315,16 @@ async function handle(i) {
   }
 
   if (i.commandName === 'help') return i.reply(eph(helpText()));
+
+  if (i.commandName === 'character') { // 🎨 their own battle character: the pictures come straight from this computer
+    const picks = Object.fromEntries(looks.PARTS.map(k => [k, i.options.getInteger(k)]).filter(([, v]) => v != null));
+    const r = looks.characterReply({ ...user, linked: !!db.links[user.discordId] }, picks);
+    if (r.saved) { onChange(); return i.reply(eph(r.text)); }
+    if (Object.keys(picks).length) return i.reply(eph(r.text));
+    const files = looks.SHEETS.map(sh => ({ attachment: looks.sheetFile(sh), name: sh + '.png' }));
+    const embeds = looks.SHEETS.map(sh => new EmbedBuilder().setTitle(looks.SHEET_TITLE[sh]).setColor(0xffd23f).setImage(`attachment://${sh}.png`));
+    return i.reply({ content: r.text, embeds, files, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+  }
 
   if (i.commandName === 'linktwitch') {
     const name = i.options.getString('username').trim().replace(/^@/, '').toLowerCase();

@@ -7,6 +7,7 @@ import { db, save, ROOT, streamerName } from './store.js';
 import * as lb from './letterboxd.js';
 import { picksClosed, closedMsg, moviesList, picksUsed, wonThisWeek, backOn, swapsLocked, luckOn, suggest, swapMovie, claimManual, swapMsg, swapHint } from './movies.js';
 import { helpText, peopleIndex } from './discord.js';
+import * as looks from './looks.js';
 
 const CF = 'https://api.cloudflare.com/client/v4';
 const DISCORD = 'https://discord.com/api/v10';
@@ -64,6 +65,8 @@ export function buildConfig() {
     backOn: backOn(), swapsLocked: swapsLocked(), swapMsg: swapMsg(), swapHint: swapHint(), picksClosed: picksClosed(), closedMsg: closedMsg(), luckOn: luckOn(),
     channels: Object.fromEntries(Object.entries(db.discordChannels || {}).map(([g, c]) => [g, c.channelId])),
     debugChannels: db.settings.discordDebug === false ? [] : Object.values(db.discordDebug || {}).map(r => r.channelId).filter(Boolean),
+    // 🎨 /character: everyone's picks (numbers only), the part names, and the picture sheets' version once they're uploaded from this PC
+    looksOn: looks.on(), looks: Object.fromEntries(Object.entries(db.looks || {}).map(([id, l]) => [id, looks.nums(l)])), lookNames: looks.NAMES, lookPics: status.picsV === looks.picsVersion ? looks.picsVersion : null, picsUrl: cloud().url || '',
     helpText: helpText(), tmdbKey: db.settings.tmdbKey || '', botToken: db.settings.discordToken || '', publicKey: cloud().publicKey || ''
   };
 }
@@ -86,7 +89,8 @@ export async function applyOps(queue) {
   for (const op of queue) {
     try {
       const user = { discordId: op.user.discordId, name: op.user.name, avatar: op.user.avatar || null };
-      if (op.type === 'link') { db.links[user.discordId] = op.login; (db.linkNames ||= {})[user.discordId] = { name: user.name, avatar: user.avatar }; claimManual(user, op.login); }
+      if (op.type === 'look') { const { look } = looks.check(op.look || {}); looks.setLook(user.discordId, look, user.name); } // 🎨 /character while the app was closed
+      else if (op.type === 'link') { db.links[user.discordId] = op.login; (db.linkNames ||= {})[user.discordId] = { name: user.name, avatar: user.avatar }; claimManual(user, op.login); }
       else if (op.type === 'suggest') {
         claimManual(user, db.links[user.discordId] || null);
         const r = await suggest(String(op.movie.id), user, { cloud: true }); // the 24/7 bot already checked picks were open
@@ -103,6 +107,23 @@ export async function applyOps(queue) {
   return ack;
 }
 
+/** 🎨 The /character picture sheets: Cloudflare gets them from this PC (uploaded once, again only when they change),
+ *  so the 24/7 bot can show them while this PC is off. */
+async function uploadPics() {
+  const c = cloud();
+  try {
+    const r = await fetch(c.url + '/chars/v', { signal: AbortSignal.timeout(10000) });
+    if (r.ok && (await r.text()).trim() === looks.picsVersion) { status.picsV = looks.picsVersion; return; } // already there
+    for (const sh of looks.SHEETS) {
+      const up = await fetch(`${c.url}/sync/pic?name=${sh}&v=${looks.picsVersion}`, { method: 'PUT', headers: { Authorization: `Bearer ${c.syncKey}`, 'content-type': 'image/png' }, body: fs.readFileSync(looks.sheetFile(sh)), signal: AbortSignal.timeout(30000) });
+      if (!up.ok) throw new Error(`picture ${sh}: ${up.status}`);
+    }
+    const fin = await fetch(`${c.url}/sync/pic?done=1&v=${looks.picsVersion}`, { method: 'PUT', headers: { Authorization: `Bearer ${c.syncKey}` }, signal: AbortSignal.timeout(15000) });
+    if (!fin.ok) throw new Error('pictures: ' + fin.status);
+    status.picsV = looks.picsVersion; lastHash = ''; // (the rules sent right after say the pictures are there)
+  } catch (e) { console.error('[24/7] couldn\'t upload the /character pictures:', e.message); }
+}
+
 /** Pull picks made in Discord while we were away, add them for real, then upload the latest rules. */
 export async function sync(force = false) {
   if (!enabled() || busy) return status;
@@ -110,6 +131,8 @@ export async function sync(force = false) {
   try {
     const { queue = [] } = await api('GET');
     const ack = await applyOps(queue);
+    if (!checkedV) await checkVersion();
+    if (status.picsV !== looks.picsVersion && (status.botV || 0) >= 8) await uploadPics(); // 🎨 before the rules, so the bot hears the pictures are there
     const config = buildConfig(), hash = JSON.stringify(config);
     const due = force || ack.length || (hash !== lastHash && Date.now() - (status.lastPush || 0) > 120000);
     if (due) { await api('POST', { config, ack }); lastHash = hash; status.lastPush = Date.now(); }

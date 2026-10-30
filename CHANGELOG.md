@@ -2,6 +2,25 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.55.0 (test build)
+- 🎨 **Make your own character in Discord: /character.** With nothing after it, the bot shows numbered pictures of every part. People type the numbers they want, for example `/character hair:7 outfit:3 makeup:1 facialhair:8` (also `body`, `skin` and `haircolor`; only the parts they want to change). That's their character in every battle with 🧍 characters, and their movie poster or Twitch picture becomes a badge on the chest. The parts:
+  - 💇 50 hair styles (1–25 men's, 26–50 women's)
+  - 👕 75 outfits (1–25 men's, 26–50 women's, 51–75 costumes)
+  - 💄 25 makeups and 🧔 25 facial hairs
+  - 🧍 2 bodies, 8 skin colors and 10 hair colors
+- 🎲 **Everyone else gets a random look from the same parts:** men get men's hair (and often facial hair), women get women's hair and sometimes makeup, non-binary get any. A piece keeps the same look all battle.
+- 🗺️ **Themed maps dress everyone up:**
+  - Battlefield = soldiers, Rumble Royal = wrestlers, Deep Space = astronauts
+  - Dragon Keep = knights and peasants, Pompeii = togas, Zombie Horde = survivors and hazmat suits
+  - Hero City = superheroes, Frozen Peak = ski jackets, Santa's Workshop = elves and Santa suits, Halloween maps = costumes
+  - Holiday maps get holiday colors, and more
+- A person's own /character always wins over all of that (and over their !id).
+- 👩 **Women characters** have a small chest shape in their outfit so they stand out (PG, just shading).
+- 🎟️ **Wild spot characters:** Settings → wild spots has a character builder with a live preview. The 1st wild spot wears character 1, the 2nd wears character 2, and so on. The 🎨 button on a wild spot in the pool takes you there.
+- 🤖 **The pictures come from your computer.** The app's own bot sends them straight from your PC. The 24/7 bot gets them uploaded once from your PC (again only if they change), so they still show while your PC is off. Update the 24/7 bot when Movie Royal asks.
+- Settings → Game → **Use people's own characters** turns /character looks off.
+- Try everything on the 🧪 Test tab → 🎨 Custom characters.
+
 ## 1.54.1 (test build)
 - 🗺️ **Map menus sorted in a new order:** ⚪ Ball / car only (the bus maps for now) on top, then 🃏 Character only (all the card maps), then ⚪🃏 Both (every other map), each A–Z. 🎉 Holiday maps stay at the very bottom. The NEW / UPDATED tag list in Settings → Game uses the same parts.
 
