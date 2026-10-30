@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.54.0 (test build)
+- ⚡ **Chat powers reminder:** while a battle is going and chat powers are on (channel points or bits), a slim line scrolls across the top of the battle: "⚡ Chat powers are on! Use channel points or bits to shake up this battle". The title and timer move down a little to make room. It goes away when the battle ends or the chat powers are turned off.
+
 ## 1.53.1 (test build)
 - ⏱️ **!moviesroyal** can be used once a minute (it was every 30 seconds). Switching tabs resets the wait, so chat can see the new tab's commands right away.
 

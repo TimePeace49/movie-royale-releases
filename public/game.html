@@ -4252,6 +4252,22 @@ function drawBoard() {
   });
   ctx.restore();
 }
+// ⚡ while a battle is going and chat can use channel points / bits on it: a slim scrolling reminder across the very top
+// (Derek, 1.54.0: simple, lets chat know the powers exist; stands out without getting in the way). The rest of the top of the screen moves down a little.
+const TICK_H = 40; let tickX = 0, tickLast = 0;
+function tickerOn() { return phase === 'running' && SKIN !== 'cards' && (chaos.points || chaos.bits); }
+function drawTicker() {
+  const now = performance.now(), dt = Math.min(.1, (now - (tickLast || now)) / 1000); tickLast = now;
+  const how = chaos.points && chaos.bits ? 'channel points or bits' : chaos.points ? 'channel points' : 'bits';
+  const msg = `⚡ Chat powers are on!  Use ${how} to shake up this battle  ☄️ 🌪️ 🌠     ·     `;
+  ctx.save(); const g = ctx.createLinearGradient(0, 0, 0, TICK_H); g.addColorStop(0, 'rgba(70,20,110,.92)'); g.addColorStop(1, 'rgba(30,8,50,.92)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, TICK_H);
+  ctx.fillStyle = 'rgba(255,201,74,.85)'; ctx.fillRect(0, TICK_H - 3, W, 3);
+  ctx.font = "800 22px Inter, 'Segoe UI', sans-serif"; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  const mw = ctx.measureText(msg).width; tickX = (tickX + dt * 110) % mw;
+  ctx.fillStyle = '#ffe9a8'; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4;
+  for (let x = -tickX; x < W; x += mw) ctx.fillText(msg, x, TICK_H / 2);
+  ctx.restore();
+}
 function pill(x, y, w, h, fill) { ctx.fillStyle = fill; roundRect(ctx, x, y, w, h, h / 2); ctx.fill(); }
 function drawHUD() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -4998,7 +5014,7 @@ function frame(now) {
   if (flash > 0 && GFX.flash === false) flash = 0; // (advanced: no screen flashes)
   if (flash > 0) { ctx.globalAlpha = clamp(flash, 0, .6); ctx.fillStyle = flashColor; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; flash -= dt * 2; }
   if (replay) drawReplayLook();
-  else if (phase !== 'idle') drawHUD();
+  else if (phase !== 'idle') { const tk = tickerOn(); if (tk) { ctx.save(); ctx.translate(0, TICK_H); } drawHUD(); if (tk) { ctx.restore(); drawTicker(); } }
   if (replay || phase === 'idle') { // (the HUD isn't drawn: pop-ups still run out of time, so they don't show up late when the battle comes back on screen)
     for (const b of banners) b.life -= dtReal; banners = banners.filter(b => b.life > 0);
     for (const f of floaters) f.life -= dtReal; floaters = floaters.filter(f => f.life > 0);
