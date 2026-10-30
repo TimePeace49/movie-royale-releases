@@ -64,6 +64,7 @@ export function buildConfig() {
     pool, users, people: peopleIndex().map(p => ({ discordId: p.discordId, name: p.name })), links: db.links || {},
     backOn: backOn(), swapsLocked: swapsLocked(), swapMsg: swapMsg(), swapHint: swapHint(), picksClosed: picksClosed(), closedMsg: closedMsg(), luckOn: luckOn(),
     channels: Object.fromEntries(Object.entries(db.discordChannels || {}).map(([g, c]) => [g, c.channelId])),
+    charChannels: Object.fromEntries(Object.entries(db.discordChars || {}).map(([g, c]) => [g, c.channelId])), // 🎨 #character-creation (/character only works there)
     debugChannels: db.settings.discordDebug === false ? [] : Object.values(db.discordDebug || {}).map(r => r.channelId).filter(Boolean),
     // 🎨 /character: everyone's picks (numbers only), the part names, and the picture sheets' version once they're uploaded from this PC
     looksOn: looks.on(), looks: Object.fromEntries(Object.entries(db.looks || {}).map(([id, l]) => [id, looks.nums(l)])), lookNames: looks.NAMES, lookPics: status.picsV === looks.picsVersion ? looks.picsVersion : null, picsUrl: cloud().url || '',

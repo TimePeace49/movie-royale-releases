@@ -1050,29 +1050,29 @@
     const S0 = .7, S1 = FINAL_INTRO - 1.9, t = modeT, zz = clamp(1750 / (Math.abs(bx - ax) + 520), 1.2, 1.8); // (close in, but both always fit: side by side they're the full gap apart)
     if (t < S0) { const k = easeIO(t / S0); cine.from ||= { x: cam.x, y: cam.y, z: cam.z }; cine.rot = 0; cine.orb = null; cam.x = cine.from.x + (px - cine.from.x) * k; cam.y = cine.from.y + (py - cine.from.y) * k; cam.z = cine.from.z + (zz - cine.from.z) * k; return; }
     if (t < S1) { if (!cine.orbit) cine.orbit = { px, a: [a.x - px, a.z], b: [b.x - px, b.z], zc: (a.z + b.z) / 2 }; cine.orb = easeIO((t - S0) / (S1 - S0)) * Math.PI * 2; cine.rot = 0; cam.x = px; cam.y = py; cam.z = zz; return; }
-    cine.orb = null; cine.orbit = null; cine.snap = null; cine.rot = 0; const sv = cine.saved, goal = sv?.manual ? sv : camGoal(), k = easeIO(Math.min(1, (t - S1) / (FINAL_INTRO - S1 - .3)));
+    cine.orb = null; cine.orbit = null; cine.rot = 0; const sv = cine.saved, goal = sv?.manual ? sv : camGoal(), k = easeIO(Math.min(1, (t - S1) / (FINAL_INTRO - S1 - .3)));
     cine.end ||= { x: cam.x, y: cam.y, z: cam.z }; cam.x = cine.end.x + (goal.x - cine.end.x) * k; cam.y = cine.end.y + (goal.y - cine.end.y) * k; cam.z = cine.end.z + (goal.z - cine.end.z) * k;
   }
-  // the orbit is faked in 2D: the stage behind slides past once (a picture of it taken when the circle starts, wrapped around), and each of the
-  // two is moved around the middle: across = cos(angle), toward/away from the camera = sin(angle) (nearer = lower on screen + bigger, drawn in front)
+  // the orbit is faked in 2D: the scenery behind (sky, buildings, crowd: the map picture above the floor) slides past once, wrapped
+  // around; the floor / ring / platform under them stays put; and each of the two is moved around the middle: across = cos(angle),
+  // toward/away from the camera = sin(angle) (nearer = lower on screen + bigger, drawn in front)
   function orbitPose(f, o, ang) { const [dx, z0] = f === finalPair[0] ? o.a : o.b; return { x: o.px + dx * Math.cos(ang), z: clamp(o.zc + Math.sin(ang) * Math.sign(dx || 1) * .34 + (z0 - o.zc) * Math.cos(ang), 0, 1) }; }
   function drawOrbit(now) {
-    const o = cine.orbit, ang = cine.orb;
-    if (!cine.snap) cine.snap = stageSnap(now);
-    const off = ((ang / (Math.PI * 2)) * W) % W; // the room slides past once
-    g.drawImage(cine.snap, -off, 0, W, H); g.drawImage(cine.snap, W - off, 0, W, H); g.drawImage(cine.snap, -W - off, 0, W, H);
-    const seam = (W - off) % W; const gr = g.createLinearGradient(seam - 140, 0, seam + 140, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(seam - 140, 0, 280, H); // (soft where the picture wraps)
+    const o = cine.orbit, ang = cine.orb, hz = GY0 - 4, off = ((ang / (Math.PI * 2)) * W) % W; // (hz: where the floor starts)
+    g.save(); g.beginPath(); g.rect(-W, -H, W * 3, hz + H); g.clip(); // the scenery: slides past once
+    for (const x0 of [-off - W, -off, W - off]) g.drawImage(bg, x0, 0, W, H);
+    const seam = (W - off) % W, gr = g.createLinearGradient(seam - 140, 0, seam + 140, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(0,0,0,.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(seam - 140, 0, 280, H);
+    g.restore();
+    g.save(); g.beginPath(); g.rect(-W, hz, W * 3, H * 2); g.clip(); g.drawImage(bg, 0, 0, W, H); g.restore(); // the floor: stays under them
+    drawStage(now, true);
     const pose = finalPair.map(f => [f, orbitPose(f, o, ang)]), [[fa, pa], [fb, pb]] = pose;
     for (const [f, p] of pose.sort((x, y) => x[1].z - y[1].z)) { // the far one first
       const keep = { x: f.x, z: f.z, face: f.face, target: f.target }, other = f === fa ? pb : pa;
       Object.assign(f, { x: p.x, z: p.z, face: other.x >= p.x ? 1 : -1, target: { x: other.x, alive: true } }); drawFighter(f); Object.assign(f, keep);
     }
+    if (RUMBLE()) drawRing(g, true);
   }
-  function stageSnap(now) { // a picture of the map with nobody on it (drawn once, then slid past while the camera circles)
-    const snap = document.createElement('canvas'); snap.width = cv.width; snap.height = cv.height;
-    g.save(); g.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0); drawStage(now, true); g.restore();
-    snap.getContext('2d').drawImage(cv, 0, 0); return snap;
-  }
+
   function camStep(dt) {
     if (cine.quake > .2) cine.quake *= Math.pow(.03, dt); else cine.quake = 0;
     if (mode === 'final' && finalPair) { spinCam(); return; }
@@ -1203,12 +1203,11 @@
     const vg = g.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * .95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,6,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H); // old film look
     if (GFX.quality === 'high') { g.fillStyle = 'rgba(255,230,190,.05)'; for (let i = 0; i < 3; i++) g.fillRect(vr(0, W), 0, 1.5, H); }
   }
-  function drawStage(now, snap) { // the map behind the fighters (snap = for the circling camera's picture: nobody falling, front ropes too)
-    g.drawImage(bg, 0, 0, W, H);
-    if (RUMBLE()) ringLogo(); else if (WIZ()) { if (!snap) for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (!COLO()) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
+  function drawStage(now, orbit) { // the map behind the fighters (orbit = the circling FINAL FIGHT camera drew the picture itself; nobody falling)
+    if (!orbit) g.drawImage(bg, 0, 0, W, H);
+    if (RUMBLE()) ringLogo(); else if (WIZ()) { if (!orbit) for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (!COLO() && !orbit) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
     g.drawImage(floor, 0, 0);
     if (RUMBLE()) arenaLights(now / 1000);
-    if (snap && RUMBLE()) drawRing(g, true);
   }
   function banner(text, y, size, col = '#ffd23a') { g.font = `${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = size * .16; g.strokeStyle = '#2a0808'; g.strokeText(text, W / 2, y); g.fillStyle = col; g.fillText(text, W / 2, y); }
   function hud(now) {

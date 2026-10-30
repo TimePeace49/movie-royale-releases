@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.57.0 (test build)
+- 📁 **Movie Royal channel folder in Discord:** the bot puts all its channels in one channel folder called "Movie Royal": the movie picks channel, the new #character-creation, and the hidden #movie-royal-debug (mods and owner only) and #movie-royal-sync (bot only). Those two stay hidden: moving them keeps their own settings. Settings → Discord can rename the folder or turn it off.
+- 🎨 **#character-creation channel:**
+  - A pinned message shows how to make a character, with every numbered picture right in it: hair, outfits, makeup, facial hair, body, skin and hair colors.
+  - /character only works in there (anywhere else it points people to it).
+  - New characters get shown off in there.
+  - Works with the 24/7 bot too: update it when Movie Royal asks.
+- 🎥 **FINAL FIGHT camera:** while it circles the last two, the floor, ring or platform now stays under them. Only the scenery behind (sky, buildings, crowd) slides past, so they never look like they're standing outside the ring.
+
 ## 1.56.1 (test build)
 - 🎥 **FINAL FIGHT camera circles around them on the ground now** (a horizontal 360), instead of spinning the picture like a wheel. The two swap sides as the camera goes around, the one nearer the camera gets bigger and comes forward, they keep facing each other, and the map slides past behind them once. Then it settles back to the normal view for the fight.
 

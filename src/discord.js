@@ -47,7 +47,7 @@ export function helpText() {
     `**/mymovies** — see your movies and picks left. Add a name to see someone else's (\`/mymovies person: Lucy\`). On Twitch: **${tw}** or **${tw} name**.`,
     `**/list** — everything in the pool right now.`,
     `**/linktwitch** — connect your Twitch name so your picture is your piece and chatting puts your movies on the cliff.`,
-    ...(looks.on() ? [`**/character** — make your own battle character: type /character to see the pictures, then pick a number for each part (hair, outfit, makeup, facial hair, body).`] : []),
+    ...(looks.on() ? [`**/character** — make your own battle character${Object.keys(db.discordChars || {}).length ? ' in #' + charChannelName() : ''}: type /character to see the pictures, then pick a number for each part (hair, outfit, makeup, facial hair, body).`] : []),
     `**On Twitch:** type anything in chat to claim your movie when it wins · **${db.settings.sitOutCommand || '!sitout'}** if it's too late for you (your movies skip tonight's battles) · **${db.settings.backCommand || '!imback'}** to jump back in · **${db.settings.helpCommand || '!moviesroyal'}** for all chat commands.`,
     ``,
     `**In the list you'll see:**`,
@@ -62,14 +62,65 @@ export function helpText() {
   ].join('\n');
 }
 
+// 📁 the "Movie Royal" channel folder (Derek): every channel the bot makes goes in it, so they're all together.
+// Moving a channel in keeps its own permissions (the mods-only debug channel and the bot-only sync channel stay hidden).
+const catName = () => String(db.settings.discordCategory || 'Movie Royal').trim().slice(0, 90) || 'Movie Royal';
+const catBusy = new Map();
+async function folder(g) {
+  if (db.settings.discordFolder === false) return null;
+  if (catBusy.has(g.id)) return catBusy.get(g.id);
+  const p = (async () => {
+    db.discordFolders ||= {};
+    let cat = g.channels.cache.get(db.discordFolders[g.id]) || g.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === catName().toLowerCase());
+    if (!cat) cat = await g.channels.create({ name: catName(), type: ChannelType.GuildCategory, reason: 'Movie Royal: all its channels together' }).catch(() => null);
+    else if (cat.name !== catName()) await cat.setName(catName()).catch(() => {});
+    if (cat) { db.discordFolders[g.id] = cat.id; save(); }
+    return cat;
+  })();
+  catBusy.set(g.id, p); try { return await p; } finally { catBusy.delete(g.id); }
+}
+async function intoFolder(g, ch, warn) {
+  if (!ch || db.settings.discordFolder === false) return;
+  const cat = await folder(g); if (!cat) { warn.push(`${g.name}: couldn't make the "${catName()}" channel folder — give the bot "Manage Channels".`); return; }
+  if (ch.parentId !== cat.id) await ch.setParent(cat.id, { lockPermissions: false, reason: 'Movie Royal: all its channels in one folder' }).catch(() => warn.push(`${g.name}: couldn't move #${ch.name} into the "${catName()}" folder — give the bot "Manage Channels".`));
+}
+// 🎨 #character-creation: people make their battle character here with /character (pinned: how it works + the numbered pictures)
+const charChannelName = () => (db.settings.charChannelName || 'character-creation').toLowerCase().replace(/[^a-z0-9-]+/g, '-');
+export const charChannelFor = guildId => db.discordChars?.[guildId]?.channelId || null;
+const CHAR_TOPIC = '🎨 Make your Movie Royal battle character: type /character to see the numbered pictures, then pick a number for each part.';
+const charPinText = () => `🎨 **Make your own Movie Royal character!**\nYou'll be this character in ${streamerName()}'s battles that use 🧍 characters (your movie poster or Twitch picture goes on your chest).\n\n**1.** Look at the numbered pictures in this message (they're in the 📌 pins any time, or type **/character** with nothing after it).\n**2.** Type **/character** and fill in a number for each part, for example \`/character hair:7 outfit:3 makeup:1 facialhair:8\`. Only the parts you want to change; one of each.\n**3.** You get a picture of your character, and it's shown off in here.\n\nParts: 💇 hair (1–25 men's styles, 26–50 women's) · 👕 outfit (1–25 men's, 26–50 women's, 51–75 costumes) · 💄 makeup · 🧔 facial hair · 🧍 body · ✋ skin · 🎨 hair color.\nTo be your character in Twitch chat battles too, link your Twitch name with **/linktwitch**.`;
+async function setupChars(g) {
+  const warn = [];
+  if (!looks.on() || db.settings.charChannel === false || !db.discordChannels?.[g.id]) return warn;
+  db.discordChars ||= {};
+  let ch = g.channels.cache.get(db.discordChars[g.id]?.channelId) || g.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === charChannelName());
+  try { if (!ch) ch = await g.channels.create({ name: charChannelName(), type: ChannelType.GuildText, topic: CHAR_TOPIC, parent: (await folder(g))?.id, reason: 'Movie Royal: character creation' }); }
+  catch (e) { warn.push(`${g.name}: couldn't make #${charChannelName()} — give the bot "Manage Channels".`); return warn; }
+  await intoFolder(g, ch, warn);
+  const rec = db.discordChars[g.id] = { ...(db.discordChars[g.id] || {}), channelId: ch.id };
+  try { // the pinned how-to with the picture sheets (posted again when the pictures or the text change)
+    const text = charPinText(), key = looks.picsVersion + '|' + text;
+    let msg = rec.pinId ? await ch.messages.fetch(rec.pinId).catch(() => null) : null;
+    if (msg && rec.pinKey !== key) { await msg.delete().catch(() => {}); msg = null; }
+    if (!msg) {
+      const files = looks.SHEETS.map(sh => ({ attachment: looks.sheetFile(sh), name: sh + '.png' }));
+      msg = await ch.send({ content: text, files, allowedMentions: { parse: [] } }); // (one pinned message: the how-to + every numbered picture sheet)
+      await msg.pin().catch(() => warn.push(`${g.name}: couldn't pin the how-to in #${ch.name} — give the bot "Manage Messages".`));
+    }
+    rec.pinId = msg.id; rec.pinKey = key; await keepPinOnTop(ch, msg.id);
+  } catch (e) { warn.push(`${g.name}: couldn't post in #${ch.name} (${e.message}).`); }
+  save(); return warn;
+}
+
 async function setupGuild(g) {
   const warn = [];
   db.discordChannels ||= {};
   let ch = g.channels.cache.get(db.discordChannels[g.id]?.channelId) || g.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === channelName());
   try {
-    if (!ch) ch = await g.channels.create({ name: channelName(), type: ChannelType.GuildText, topic: `🍿 Movie Royal — /suggest a movie for ${streamerName()}'s stream. Commands are pinned.` });
+    if (!ch) ch = await g.channels.create({ name: channelName(), type: ChannelType.GuildText, topic: `🍿 Movie Royal — /suggest a movie for ${streamerName()}'s stream. Commands are pinned.`, parent: (await folder(g))?.id });
   } catch (e) { warn.push(`${g.name}: couldn't create #${channelName()} — give the bot "Manage Channels", or make the channel yourself.`); }
   if (!ch) return warn;
+  await intoFolder(g, ch, warn); // 📁 in the Movie Royal folder
   const rec = db.discordChannels[g.id] = { ...(db.discordChannels[g.id] || {}), channelId: ch.id, name: ch.name };
   // pinned commands message (updated when the text changes)
   try {
@@ -124,12 +175,13 @@ async function setupDebug(g) {
   ];
   let ch = g.channels.cache.get(db.discordDebug[g.id]?.channelId) || g.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === DEBUG_NAME);
   try {
-    if (!ch) ch = await g.channels.create({ name: DEBUG_NAME, type: ChannelType.GuildText, topic: DEBUG_TOPIC, permissionOverwrites: overwrites, reason: 'Movie Royal debug channel (mods only)' });
+    if (!ch) ch = await g.channels.create({ name: DEBUG_NAME, type: ChannelType.GuildText, topic: DEBUG_TOPIC, permissionOverwrites: overwrites, parent: (await folder(g))?.id, reason: 'Movie Royal debug channel (mods only)' });
     else {
       await ch.permissionOverwrites.set(overwrites, 'Movie Royal debug channel: mods only, bot posts').catch(() => warn.push(`${g.name}: couldn't lock #${DEBUG_NAME} — give the bot "Manage Roles", or set it to mods-only yourself.`));
       if (ch.topic !== DEBUG_TOPIC) await ch.setTopic(DEBUG_TOPIC).catch(() => {});
     }
   } catch (e) { warn.push(`${g.name}: couldn't make the #${DEBUG_NAME} channel (${e.message}).`); return warn; }
+  await intoFolder(g, ch, warn); // (keeps its mods-only permissions)
   const rec = db.discordDebug[g.id] = { ...(db.discordDebug[g.id] || {}), channelId: ch.id };
   try { // the pinned "don't type here" message: always there and pinned
     let msg = rec.pinId ? await ch.messages.fetch(rec.pinId).catch(() => null) : null;
@@ -154,9 +206,10 @@ async function setupSync(g) {
   ];
   let ch = g.channels.cache.get(db.discordSync[g.id]?.channelId) || g.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === SYNC_NAME);
   try {
-    if (!ch) ch = await g.channels.create({ name: SYNC_NAME, type: ChannelType.GuildText, topic: SYNC_TOPIC, permissionOverwrites: overwrites, reason: 'Movie Royal: talks to the backup bot server' });
+    if (!ch) ch = await g.channels.create({ name: SYNC_NAME, type: ChannelType.GuildText, topic: SYNC_TOPIC, permissionOverwrites: overwrites, parent: (await folder(g))?.id, reason: 'Movie Royal: talks to the backup bot server' });
     else await ch.permissionOverwrites.set(overwrites, 'Movie Royal sync channel: only the bot').catch(() => warn.push(`${g.name}: couldn't hide #${SYNC_NAME} — give the bot "Manage Roles", or hide it yourself.`));
   } catch (e) { warn.push(`${g.name}: couldn't make the #${SYNC_NAME} channel for the backup bot server (${e.message}).`); return warn; }
+  await intoFolder(g, ch, warn); // (keeps its bot-only permissions)
   db.discordSync[g.id] = { channelId: ch.id }; save();
   return warn;
 }
@@ -194,7 +247,7 @@ export async function start(changed) {
       try { await rest.put(Routes.applicationGuildCommands(s.discordClientId, guildId), { body: commands }); }
       catch (e) { console.error('[discord] commands for', guildId, e.message); }
     };
-    const prep = async g => { await register(g.id); const w = await setupGuild(g); w.push(...await setupDebug(g).catch(e => [`${g.name}: debug channel: ${e.message}`])); w.push(...await setupSync(g).catch(e => [`${g.name}: sync channel: ${e.message}`])); return w; };
+    const prep = async g => { await register(g.id); const w = await setupGuild(g); w.push(...await setupDebug(g).catch(e => [`${g.name}: debug channel: ${e.message}`])); w.push(...await setupChars(g).catch(e => [`${g.name}: character channel: ${e.message}`])); w.push(...await setupSync(g).catch(e => [`${g.name}: sync channel: ${e.message}`])); return w; }; // (order = their order in the Movie Royal folder)
     client = new Client({ intents: [GatewayIntentBits.Guilds] });
     client.rest.on?.('response', (req, res) => { // Discord turned the token down (it was reset on the Discord website): say so plainly
       if (res?.status === 401 && status.state !== 'token reset') { status.state = 'token reset'; status.error = "Discord doesn't accept your bot token any more (it was reset on the Discord website). Paste the new one in the Bot token box below and press Save."; onChange(); }
@@ -317,6 +370,7 @@ async function handle(i) {
   if (i.commandName === 'help') return i.reply(eph(helpText()));
 
   if (i.commandName === 'character') { // 🎨 their own battle character: the pictures come straight from this computer
+    const cc = i.guildId && charChannelFor(i.guildId); if (cc && i.channelId !== cc) return i.reply(eph(`🎨 Characters are made in <#${cc}>: use /character there!`));
     const picks = Object.fromEntries(looks.PARTS.map(k => [k, i.options.getInteger(k)]).filter(([, v]) => v != null));
     const r = looks.characterReply({ ...user, linked: !!db.links[user.discordId] }, picks);
     if (r.saved) { // 🖼️ answer right away, then add a small picture of the character (drawn on this PC) + show it off in the movie channel
@@ -324,7 +378,7 @@ async function handle(i) {
       const png = await looks.picture(r.look, user.name);
       if (!png) return i.editReply({ content: r.text }).catch(() => {});
       await i.editReply({ content: r.text, files: [{ attachment: png, name: 'character.png' }] }).catch(() => {});
-      if (looks.postOk(user.discordId)) { const ch = (home && i.client.channels.cache.get(home)) || i.channel; ch?.send({ content: looks.postText(user.name, r.first), files: [{ attachment: png, name: 'character.png' }], allowedMentions: { parse: [] } }).catch(() => {}); }
+      if (looks.postOk(user.discordId)) { const cc = i.guildId && charChannelFor(i.guildId), ch = (cc && i.client.channels.cache.get(cc)) || (home && i.client.channels.cache.get(home)) || i.channel; ch?.send({ content: looks.postText(user.name, r.first), files: [{ attachment: png, name: 'character.png' }], allowedMentions: { parse: [] } }).catch(() => {}); }
       return;
     }
     if (Object.keys(picks).length) return i.reply(eph(r.text));
@@ -451,6 +505,9 @@ export async function selfTest() {
       const missing = want.filter(n => !have.has(n));
       add(!missing.length, `Slash commands are set up (${want.map(n => '/' + n).join(' ')})`, missing.length ? 'missing: ' + missing.map(n => '/' + n).join(' ') + ' (restart Movie Royal)' : '');
     } catch (e) { add(false, 'Slash commands are set up', e.message); }
+    if (db.settings.discordFolder !== false) { const cat = g.channels.cache.get(db.discordFolders?.[g.id]); add(!!cat, `The "${catName()}" channel folder exists`, cat ? '' : 'press 🔄 Restart the Discord bot (needs "Manage Channels")');
+      if (cat) { const ids = [db.discordChannels?.[g.id]?.channelId, db.discordChars?.[g.id]?.channelId, db.discordDebug?.[g.id]?.channelId, db.discordSync?.[g.id]?.channelId].filter(Boolean), out = ids.map(id => g.channels.cache.get(id)).filter(c => c && c.parentId !== cat.id); add(!out.length, 'All the Movie Royal channels are in it', out.length ? 'not yet: ' + out.map(c => '#' + c.name).join(', ') + ' (they get moved when the bot starts)' : ''); } }
+    if (looks.on() && db.settings.charChannel !== false) { const cch = g.channels.cache.get(db.discordChars?.[g.id]?.channelId); add(!!cch, `#${charChannelName()} exists`, cch ? '' : 'press 🔄 Restart the Discord bot'); }
     const drec = db.discordDebug?.[g.id], dch = drec && g.channels.cache.get(drec.channelId);
     if (db.settings.discordDebug !== false) {
       add(!!dch, '#movie-royal-debug exists', dch ? '' : 'Settings → Discord → Make / fix the debug channel');

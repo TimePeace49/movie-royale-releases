@@ -1613,7 +1613,7 @@ app.post('/api/update/install-latest', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-const RESTART_DISCORD = ['discordToken', 'discordClientId', 'discordGuildId'];
+const RESTART_DISCORD = ['discordToken', 'discordClientId', 'discordGuildId', 'discordFolder', 'discordCategory', 'charChannel', 'charChannelName', 'looksOn']; // (the channel folder / character channel get made or moved again)
 const RESTART_TWITCH = ['twitchClientId', 'twitchClientSecret', 'twitchChannel'];
 app.post('/api/settings', (req, res) => {
   const body = req.body || {};
