@@ -18,6 +18,7 @@
 
   let scene = { show: false, phase: 'idle', fighters: [], wacky: {}, map: 'kungfu' };
   let F = [], parts = [], texts = [], flyers = [], weapons = [], petals = [];
+  const FINAL_INTRO = 8; // ⏱️ seconds the 🥊 FINAL FIGHT! scene shows before the last two fight (Derek, 1.51.0; was 3.2)
   let T = 0, acc = 0, running = false, replayOn = false, rbuf = [], replay = null, weapDrops = 0, lastKO = 0, D = 60, PACE = 50, showdownSaid = false, finalLeft = 0, finalPair = null, mode = 'lobby', modeT = 0, fightId = null, destined = null, order = [], winner = null, sent = false, teleT = 5, weapT = 7, slowUntil = 0;
   const floor = document.createElement('canvas'), fg = floor.getContext('2d'); floor.width = W; floor.height = H;
   let bg = null, bgScale = 0, bgMap = null;
@@ -102,6 +103,7 @@
       fightId = m.fightId; destined = m.destined; R = mulberry(m.seed || 1); order = []; winner = null; sent = false;
       cam.follow = null; cam.manual = false; cam.overview = false;
       F = makeFighters(m.fighters); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H);
+      Object.assign(cine, { rot: 0, quake: 0, punch: null, hit: null, saved: null, from: null, end: null });
       mode = 'intro'; modeT = 0; T = 0; acc = 0; teleT = 5; weapT = 7; slowUntil = 0; weapDrops = 0; lastKO = 0; rbuf = []; replay = null; replayOn = false; showdownSaid = false; finalLeft = 0; finalPair = null;
       PACE = clamp(Number(m.pace ?? 50), 0, 100); D = clamp(Number(m.length) || (25 + F.length * 1.6), 15, 240); // ⏳ how long the fight should take, and how hard the pacer works
       const late = (Date.now() - (m.startedAt || Date.now())) / 1000 - 2.4; // a screen that opened in the middle of the fight catches up (same seed = same fight)
@@ -259,7 +261,7 @@
     if (f.cd <= 0 && f.h === 0 && t?.alive && arms && Math.abs(dz) < .22) { startAtk(f, 'cast'); f.face = dx >= 0 ? 1 : -1; f.atk.spell = 'shot'; f.atk.foe = t; f.atk.dur = .4; f.atk.hitAt = .22; f.cd = rr(.9, 1.7) * (finalLeft > 0 ? .7 : 1); }
     return true;
   }
-  function boom(x, z, r, dmg, word1) { // 💥 a shell or a bomb goes off: a crater, flying dirt, and everyone close gets hurt and thrown
+  function boom(x, z, r, dmg, word1) { quake(12); // 💥 a shell or a bomb goes off: a crater, flying dirt, and everyone close gets hurt and thrown
     for (const o of F) if (o.alive && !o.falling && Math.abs(o.x - x) < r && Math.abs(o.z - z) < r / 1100) { const k = 1 - Math.abs(o.x - x) / r; o.vx += Math.sign(o.x - x || 1) * 420 * (k + .3); o.vh = Math.max(o.vh, 240 * k); o.stun = .55; o.hurtT = .3; o.atk = null; damage(null, o, dmg * (.5 + .5 * k) * paceBoost() * (T > D * 1.35 ? 2 : 1), 'boom'); }
     for (let i = 0; i < 30; i++) parts.push({ x, y: zY(z) - 20, vx: vr(-420, 420), vy: vr(-620, -80), g: 1100, life: vr(.5, 1), max: 1, size: vr(4, 11), color: ['#5a4632', '#3a2e22', '#ffb02a', '#ff6a1a', '#7a6a5a'][Math.floor(Math.random() * 5)], gz: null });
     for (let i = 0; i < 12; i++) parts.push({ x: x + vr(-40, 40), y: zY(z) - vr(20, 90), vx: vr(-60, 60), vy: vr(-90, -20), g: -20, life: vr(.8, 1.6), max: 1.6, size: vr(14, 30), color: 'rgba(60,56,50,.55)', gz: null, dust: true });
@@ -423,6 +425,7 @@
     const keep = o.id === destined, gore = !!scene.wacky.gore;
     o.hp -= dmg; if (keep) o.hp = Math.max(8, o.hp); // (the fair winner is drawn at the start; it gets hurt but stays up)
     const s = S(o), bx = o.x, by = zY(o.z) - o.h - 80 * s;
+    if (!soft) onHit(bx, by, dmg); // 🎥
     if (!soft && kind !== 'bleed') {
       blood(bx, by, o.z, Math.round(dmg * (gore ? 2.4 : .9)), f ? f.face : 0, gore ? 1.5 : 1);
       if (o.stains.length < 14) o.stains.push({ x: Math.random(), y: Math.random() * .9 + .05, r: .06 + Math.random() * .1 * (gore ? 1.6 : 1) });
@@ -451,10 +454,10 @@
     if (over) { o.out = true; const k = crazy() ? 2 : 1; o.vx = over * rr(260, 340) * k * (scene.wacky.lowgrav ? 1.4 : 1); o.vh = rr(440, 520) * (crazy() ? 1.25 : 1); o.h = Math.max(o.h, 30); } // ⬆️ up and over the top rope, down to the floor
     else if (fall) { o.falling = true; o.vh = Math.min(o.vh, 0); o.vx *= .3; o.vz = 0; } // 🕳️ down through the platform
     else o.vx += (f ? f.face : vr(-1, 1)) * 260;
-    lastKO = T; if (o.weapon && !MI().armed) { weapons.push({ kind: o.weapon, x: o.x, z: o.z, h: 60, vh: 200 }); o.weapon = null; } // the weapon drops for someone else
+    onKO(o); lastKO = T; if (o.weapon && !MI().armed) { weapons.push({ kind: o.weapon, x: o.x, z: o.z, h: 60, vh: 200 }); o.weapon = null; } // the weapon drops for someone else
     if (alive().length === 2 && !showdownSaid) { showdownSaid = true;
       if (scene.finalFight) { // 🥊 FINAL FIGHT (maps that have one): the clock stops, the last two face off across the street with a weapon each, a bell, then a timed fight
-        const [a, b] = alive(); finalPair = [a, b]; mode = 'final'; modeT = 0;
+        const [a, b] = alive(); finalPair = [a, b]; mode = 'final'; modeT = 0; finalCam();
         const kinds = MI().weapons, k1 = Math.floor(R() * Math.max(1, kinds.length));
         if (WIZ()) { tiles.forEach(t => { t.hp = 2; t.fallT = 0; }); bolts = []; zaps = []; word('THE PLATFORM REBUILDS!', W / 2, 600, '#d6a8ff', 50); } // 🧙 a whole platform for the duel
         for (const [f, x, face, k] of [[a, W * .3, 1, kinds[k1]], [b, W * .7, -1, kinds[(k1 + 1 + Math.floor(R() * 2)) % kinds.length]]]) { puff(f, '#ffd23a'); Object.assign(f, { x, z: .55, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, weapon: MI().armed ? f.weapon : k || null, target: f === a ? b : a, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0 }); puff(f, '#ffd23a'); }
@@ -853,27 +856,63 @@
   // auto = gently zooms in on where the packs are (closer as fewer are left); scroll / drag / click on the game, the buttons
   // under it, or keys (Q/E zoom, WASD move, Tab follow, O whole map, R auto) take over until you go back to 🎥 Auto
   const cam = { x: W / 2, y: H / 2, z: 1, manual: false, overview: false, follow: null, lost: 0, auto: true };
+  // 🎬 (Derek, 1.51.0) the camera goes back to auto 8 s after your last camera key / mouse move; FINAL FIGHT does a 360° spin
+  // around the last two, then settles back on the view from before; K.O.s get a quick punch-in; big hits shake the screen
+  const CAM_IDLE = 8000; let camTouch = 0; const touch = () => { camTouch = performance.now(); };
+  const cine = { rot: 0, quake: 0, punch: null, hit: null, saved: null, from: null };
+  const easeIO = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+  function quake(n) { cine.quake = Math.min(26, cine.quake + n); }
+  function onHit(x, y, dmg) { cine.hit = { x, y, t: performance.now() }; if (dmg >= 14) quake(Math.min(9, dmg * .3)); }
+  function onKO(o) { quake(14); if (!cam.manual && !cam.follow && !cam.overview && alive().length > 2) cine.punch = { x: o.x, y: zY(o.z) - o.h - 70 * S(o), t: 0, dur: 1.15 }; }
+  function finalCam() { // remember the view from before the FINAL FIGHT spin
+    cine.saved = { x: cam.x, y: cam.y, z: cam.z, manual: cam.manual, follow: cam.follow, overview: cam.overview }; cine.from = null; cine.punch = null;
+    cam.follow = null; cam.overview = false; cam.manual = false; cine.end = null;
+  }
   const camClamp = () => { cam.z = clamp(cam.z, 1, 3.2); const hw = W / 2 / cam.z, hh = H / 2 / cam.z; cam.x = clamp(cam.x, hw, W - hw); cam.y = clamp(cam.y, hh, H - hh); };
   const fpos = f => [f.x, zY(f.z) - f.h - 70 * S(f)];
   function camGoal() {
+    if (mode === 'over' && winner && modeT < 1.7 && !cam.manual) { const [x, y] = fpos(winner); return { x, y, z: 2.3 }; } // 🏆 swoop in on the winner
     if (mode === 'replay' || mode === 'over') return { x: W / 2, y: H / 2, z: 1 }; // (the replay shows everyone)
     if (cam.follow) { const f = cam.follow; if (!F.includes(f)) cam.follow = null; else { const [x, y] = fpos(f); return { x, y, z: 2.1 }; } }
     if (cam.overview || mode === 'lobby' || mode === 'intro' || mode === 'won' || !cam.auto || !F.length) return { x: W / 2, y: H / 2, z: 1 };
     const live = mode === 'final' && finalPair ? finalPair : alive(); if (!live.length) return { x: W / 2, y: H / 2, z: 1 };
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const f of live) { const [x, y] = fpos(f); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y - 90); y1 = Math.max(y1, y + 110); }
-    const z = clamp(Math.min(W / (x1 - x0 + 520), H / (y1 - y0 + 420)), 1, live.length <= 2 ? 1.75 : 1.45);
-    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z };
+    let z = clamp(Math.min(W / (x1 - x0 + 520), H / (y1 - y0 + 420)), 1, live.length <= 2 ? (finalLeft > 0 ? 1.95 : 1.75) : 1.45), x = (x0 + x1) / 2, y = (y0 + y1) / 2;
+    if (cine.punch) return { x: cine.punch.x, y: cine.punch.y, z: 2.2 }; // 💥 a quick punch-in on a K.O.
+    const h = cine.hit, age = h ? (performance.now() - h.t) / 1000 : 9;
+    if (age < 1.6 && live.length > 2) { const k = .28 * (1 - age / 1.6); x += (h.x - x) * k; y += (h.y - y) * k; z += .12 * (1 - age / 1.6); } // leans toward the latest big hit
+    if (finalLeft > 0 && finalLeft < 5) z += (5 - finalLeft) * .06; // the last seconds of the final fight: slowly pushes in
+    const n = performance.now() / 1000; z *= 1 + .025 * Math.sin(n / 1.3); x += 14 * Math.sin(n / 2.1); // (it breathes a little: never a dead still shot)
+    return { x, y, z };
+  }
+  function spinCam() { // 🥊 FINAL FIGHT: a 360° turn around the last two, then back to the view from before
+    const [a, b] = finalPair, [ax, ay] = fpos(a), [bx, by] = fpos(b), px = (ax + bx) / 2, py = (ay + by) / 2 + 20, half = Math.abs(bx - ax) / 2 + 150;
+    const S0 = .7, S1 = FINAL_INTRO - 1.9, t = modeT;
+    const fit = r => Math.min(1.75, 880 / (half * Math.abs(Math.cos(r)) + 1), 470 / (half * Math.abs(Math.sin(r)) + 120)); // both always on screen at every angle
+    if (t < S0) { const k = easeIO(t / S0); cine.from ||= { x: cam.x, y: cam.y, z: cam.z }; cine.rot = 0; cam.x = cine.from.x + (px - cine.from.x) * k; cam.y = cine.from.y + (py - cine.from.y) * k; cam.z = cine.from.z + (fit(0) - cine.from.z) * k; return; }
+    if (t < S1) { const u = easeIO((t - S0) / (S1 - S0)), r = u * Math.PI * 2; cine.rot = r; cam.z = Math.max(1, fit(r)); cam.x = px + 60 * Math.sin(r); cam.y = py + 30 * (1 - Math.cos(r)); return; }
+    cine.rot = 0; const sv = cine.saved, goal = sv?.manual ? sv : camGoal(), k = easeIO(Math.min(1, (t - S1) / (FINAL_INTRO - S1 - .3)));
+    cine.end ||= { x: cam.x, y: cam.y, z: cam.z }; cam.x = cine.end.x + (goal.x - cine.end.x) * k; cam.y = cine.end.y + (goal.y - cine.end.y) * k; cam.z = cine.end.z + (goal.z - cine.end.z) * k;
   }
   function camStep(dt) {
+    if (cine.quake > .2) cine.quake *= Math.pow(.03, dt); else cine.quake = 0;
+    if (mode === 'final' && finalPair) { spinCam(); return; }
+    if (cine.saved) { const sv = cine.saved; cine.saved = null; cine.end = null; cine.rot = 0; if (sv.manual) { cam.manual = true; } else { cam.follow = sv.follow && sv.follow.alive ? sv.follow : null; cam.overview = sv.overview; } } // (back to how it was)
+    if (cine.punch && (cine.punch.t += dt) > cine.punch.dur) cine.punch = null;
+    if ((cam.manual || cam.follow || cam.overview) && camTouch && performance.now() - camTouch > CAM_IDLE) { cam.manual = false; cam.follow = null; cam.overview = false; camTouch = 0; } // 🎥 left alone: back to auto
     if (cam.follow && !cam.follow.alive) { cam.lost += dt; if (cam.lost > 1.4) { cam.follow = null; cam.lost = 0; } } else cam.lost = 0;
-    if (!cam.manual) { const g2 = camGoal(), k = Math.min(1, dt * (cam.follow ? 4 : 1.6)); cam.z += (g2.z - cam.z) * k; cam.x += (g2.x - cam.x) * k; cam.y += (g2.y - cam.y) * k; }
+    if (!cam.manual) { const g2 = camGoal(), k = Math.min(1, dt * (cine.punch ? 5 : cam.follow ? 4 : 1.8)); cam.z += (g2.z - cam.z) * k; cam.x += (g2.x - cam.x) * k; cam.y += (g2.y - cam.y) * k; }
     camClamp();
   }
-  const camApply = () => { g.translate(W / 2, H / 2); g.scale(cam.z, cam.z); g.translate(-cam.x, -cam.y); };
-  const toWorld = (px, py) => [cam.x + (px - W / 2) / cam.z, cam.y + (py - H / 2) / cam.z];
-  function camZoomAt(px, py, f) { const [wx, wy] = toWorld(px, py); cam.follow = null; cam.overview = false; cam.manual = true; cam.z = clamp(cam.z * f, 1, 3.2); cam.x = wx - (px - W / 2) / cam.z; cam.y = wy - (py - H / 2) / cam.z; camClamp(); }
+  const camApply = () => {
+    let sx = 0, sy = 0; if (cine.quake > .2) { const q = cine.quake * Math.max(0, Math.min(2, (GFX.shake ?? 100) / 100)); sx = (Math.random() - .5) * 2 * q; sy = (Math.random() - .5) * 2 * q; }
+    g.translate(W / 2 + sx, H / 2 + sy); if (cine.rot) g.rotate(cine.rot); g.scale(cam.z, cam.z); g.translate(-cam.x, -cam.y);
+  };
+  const toWorld = (px, py) => { const dx = px - W / 2, dy = py - H / 2, c = Math.cos(-cine.rot), s2 = Math.sin(-cine.rot); return [cam.x + (dx * c - dy * s2) / cam.z, cam.y + (dx * s2 + dy * c) / cam.z]; };
+  function camZoomAt(px, py, f) { touch(); const [wx, wy] = toWorld(px, py); cam.follow = null; cam.overview = false; cam.manual = true; cam.z = clamp(cam.z * f, 1, 3.2); cam.x = wx - (px - W / 2) / cam.z; cam.y = wy - (py - H / 2) / cam.z; camClamp(); }
   const followable = () => F.filter(f => f.alive).sort((a, b) => a.x - b.x);
   function camCmd(a) {
+    if (a !== 'auto' && a !== 'reset') touch(); else camTouch = 0;
     if (a === 'next' || a === 'prev') { const l = followable(); if (!l.length) return; const i = cam.follow ? l.indexOf(cam.follow) : -1; cam.follow = l[(i + (a === 'next' ? 1 : -1) + l.length) % l.length]; cam.manual = false; cam.overview = false; return; }
     if (a === 'overview') { cam.follow = null; cam.manual = false; cam.overview = true; return; }
     if (a === 'auto' || a === 'reset') { cam.follow = null; cam.manual = false; cam.overview = false; return; }
@@ -886,10 +925,10 @@
   layer.addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); const [x, y] = toCv(e); camZoomAt(x, y, Math.pow(1.0015, -e.deltaY)); }, { passive: false });
   layer.addEventListener('pointerdown', e => { e.stopPropagation(); if (e.button === 0) cdrag = { x: e.clientX, y: e.clientY, moved: false }; });
   layer.addEventListener('pointermove', e => { if (!cdrag) return; const r = cv.getBoundingClientRect(), dx = (e.clientX - cdrag.x) * W / r.width, dy = (e.clientY - cdrag.y) * H / r.height;
-    if (!cdrag.moved && Math.hypot(dx, dy) < 4) return; cdrag.moved = true; cam.manual = true; cam.follow = null; cam.overview = false; cam.x -= dx / cam.z; cam.y -= dy / cam.z; camClamp(); cdrag.x = e.clientX; cdrag.y = e.clientY; });
+    if (!cdrag.moved && Math.hypot(dx, dy) < 4) return; cdrag.moved = true; touch(); cam.manual = true; cam.follow = null; cam.overview = false; cam.x -= dx / cam.z; cam.y -= dy / cam.z; camClamp(); cdrag.x = e.clientX; cdrag.y = e.clientY; });
   layer.addEventListener('pointerup', e => { e.stopPropagation(); const d = cdrag; cdrag = null; if (!d || d.moved) return;
     const [wx, wy] = toWorld(...toCv(e)); let best = null, bd = 1e9; for (const f of F) if (f.alive) { const [x, y] = fpos(f), dd = Math.hypot(x - wx, y - wy); if (dd < bd) { bd = dd; best = f; } }
-    if (best && bd < 110 * S(best)) { cam.follow = best; cam.manual = false; cam.overview = false; } else if (cam.follow) cam.follow = null; });
+    if (best && bd < 110 * S(best)) { touch(); cam.follow = best; cam.manual = false; cam.overview = false; } else if (cam.follow) cam.follow = null; });
   for (const ev of ['click', 'dblclick']) layer.addEventListener(ev, e => { e.stopPropagation(); if (ev === 'dblclick') camCmd('auto'); });
 
   // ---------- 🎞️ the frame ----------
@@ -943,12 +982,12 @@
     requestAnimationFrame(frame);
     const cap = scene.show ? GFX.fps || 0 : 30; if (cap && lastFrame && now - lastFrame < 1000 / cap - 1.5) return;
     const real = Math.min(.1, (now - (lastFrame || now)) / 1000); lastFrame = now;
-    if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
+    if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > FINAL_INTRO) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
     const k = RY().scale?.() || 1; if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
     if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : WIZ() ? drawBgWizard(bgScale) : COLO() ? drawBgColosseum(bgScale) : WAR() ? drawBgWar(bgScale) : drawBg(bgScale); }
     modeT += real; toastT -= real; camStep(real);
     if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; bell(); if (RUMBLE()) snd('crowd'); }
-    if (mode === 'final' && modeT > 3.2) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
+    if (mode === 'final' && modeT > FINAL_INTRO) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
     if (mode === 'replay') { replayOn = true; replay.t = (replay.t ?? replay.frames[0].T) + real * .45; while (replay.i < replay.frames.length - 1 && replay.frames[replay.i + 1].T <= replay.t) replay.i++; if (replay.t >= replay.frames[replay.frames.length - 1].T + .4) { mode = 'won'; modeT = 0; replayOn = false; replay = null; snd('fanfare'); } }
     else { acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; }
     if (mode === 'fight' || (mode === 'over' && modeT < 1.6)) { rbuf.push({ T, f: F.map(f => ({ x: f.x, z: f.z, h: f.h, face: f.face, ph: f.ph, atk: f.atk && { ...f.atk }, alive: f.alive, koT: f.koT, limbs: { ...f.limbs }, head: f.head, hp: f.hp, hurtT: f.hurtT, block: f.block, weapon: f.weapon, yell: f.yell, down: f.down, lie: f.lie, heldBy: !!f.heldBy, out: f.out, falling: f.falling, sn: f.stains.length, look: f.target ? Math.sign(f.target.x - f.x) : f.face })) }); if (rbuf.length > 260) rbuf.shift(); } // ⏪ the last few seconds, for the replay
@@ -962,7 +1001,9 @@
     for (const p of petals) { p.x += (p.vx + Math.sin(now / 700 + p.r) * 30) * real; p.y += p.vy * real; p.r += real * 2; } petals = petals.filter(p => p.y < H + 20 && p.x < W + 40);
 
     g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = GFX.smooth !== false;
+    if (cine.rot) { g.fillStyle = '#000'; g.fillRect(0, 0, W, H); }
     g.save(); camApply(); // 🎥 the world (the top bar, banners and the winner screen stay put)
+    if (cine.rot || cine.quake > .2) { g.drawImage(bg, -W * .75, -H * .75, W * 2.5, H * 2.5); g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(-W * .75, -H * .75, W * 2.5, H * 2.5); } // (past the edges while the camera spins / shakes)
     g.drawImage(bg, 0, 0, W, H);
     if (RUMBLE()) ringLogo(); else if (WIZ()) { for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (!COLO()) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
     g.drawImage(floor, 0, 0);
@@ -996,7 +1037,9 @@
       g.fillStyle = finalLeft > 0 ? 'rgba(200,30,30,.9)' : 'rgba(20,6,6,.8)'; g.beginPath(); g.roundRect?.(W / 2 - 90, 108, 180, 58, 14); g.fill(); g.font = `44px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(mode === 'final' ? '⏸ ' + txt : txt, W / 2, 138); }
     if (mode === 'final' && finalPair) { const u = Math.min(1, modeT / .35); g.save(); g.translate(W / 2, 360); g.scale(.6 + .4 * u, .6 + .4 * u); g.translate(-W / 2, -360); banner('🥊 FINAL FIGHT! 🥊', 330, 120, '#ff3a2a'); g.restore();
       g.font = `48px ${FONT}`; g.textAlign = 'center'; g.lineWidth = 8; g.strokeStyle = '#2a0808'; const vs = `${finalPair[0].name}  VS  ${finalPair[1].name}`.slice(0, 70); g.strokeText(vs, W / 2, 430); g.fillStyle = '#fff'; g.fillText(vs, W / 2, 430);
-      if (modeT > 2.4) banner('🔔 FIGHT!', 520, 90, '#ffd23a'); }
+      const left = FINAL_INTRO - .8 - modeT; // (3, 2, 1… then 🔔 FIGHT!)
+      if (left > 0 && left <= 3) { const k = 1 - (left % 1); g.save(); g.globalAlpha = Math.min(1, (1 - k) * 2 + .2); g.font = `${Math.round(150 + 60 * k)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 12; g.strokeStyle = '#2a0808'; g.strokeText(String(Math.ceil(left)), W / 2, 580); g.fillStyle = '#ffd23a'; g.fillText(String(Math.ceil(left)), W / 2, 580); g.restore(); }
+      if (left <= 0) banner('🔔 FIGHT!', 520, 90, '#ffd23a'); }
     if (toastT > 0) { g.globalAlpha = Math.min(1, toastT); banner(toastText, 200, 64, '#ff8ab0'); g.globalAlpha = 1; }
     if (mode === 'lobby') { banner('🃏 CARD BATTLE', 330, 110); g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(F.length >= 2 ? 'Waiting for the fight…' : 'Add packs in the 📦 Card pool tab', W / 2, 410); }
     if (mode === 'intro') { const u = modeT; if (u < 1.4) banner(MI().intro, 360, 120 + u * 20, '#ffd23a'); else banner(RUMBLE() ? 'BELL!' : 'FIGHT!', 360, 170 + (u - 1.4) * 60, '#ff3a2a'); }
@@ -1019,5 +1062,6 @@
   }
   window.CARDS = { msg, on: () => !layer.classList.contains('hidden'), cam: a => camCmd(a), camAuto: on => { cam.auto = !!on; }, camState: () => ({ ...cam, follow: cam.follow?.name || null }), state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }),
     sim: secs => { const out = []; let last = alive().length; if (mode === 'intro') mode = 'fight'; for (let i = 0; i < secs * 60 && !winner; i++) { if (mode === 'final') { mode = 'fight'; finalLeft = 20; } step(DT); const n = alive().length; if (n !== last) { out.push([+T.toFixed(1), n]); last = n; } } return { out, T, winner: winner?.id || null, destined, falls: F.filter(f => f.falling).length, lions: lions.length }; },
+    state: () => ({ mode, modeT: +modeT.toFixed(2), alive: alive().length, rot: +cine.rot.toFixed(2), z: +cam.z.toFixed(2), quake: +cine.quake.toFixed(1), punch: !!cine.punch, manual: cam.manual }), // (tests)
     dbg: () => alive().map(f => ({ id: f.id, d: f.id === destined, x: Math.round(f.x), z: +f.z.toFixed(2), h: Math.round(f.h), hp: Math.round(f.hp), down: +f.down.toFixed(2), held: !!f.heldBy, whip: f.whip, reb: +f.rebound.toFixed(2), atk: f.atk?.kind, stun: +f.stun.toFixed(2), tgt: f.target?.id, seek: !!f.seek, w: f.weapon, cd: +f.cd.toFixed(2) })) }; // (for testing: plays the fight fast, without drawing)
 })();

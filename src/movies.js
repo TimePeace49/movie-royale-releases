@@ -34,7 +34,9 @@ export const banAsk = () => String(db.settings.banAsk || '').trim() || 'Kirb';
 export const banMsg = (label, reason) => `🚫 **${label}** is banned${reason ? ` (${reason})` : ''}. Banned movies need ${streamerName()}'s OK first: ask **${banAsk()}** to unban it if you want to suggest it. Otherwise, pick another movie!`;
 /** the automatic ban rules (unless the streamer pre-approved this movie by unbanning it) */
 export const autoBan = movie => (db.banOk || []).includes(String(movie?.id ?? movie?.tmdbId)) ? null : ruleBan(movie, db.settings.banRules || {});
-export const isBanned = id => (db.bans || []).find(b => String(b.tmdbId) === String(id));
+// (📅 "this year" entries only count in their own year, and only while that rule is on: on Jan 1 they stop blocking right away)
+const yearBanLive = b => b.auto !== 'year' || (String(b.year) === currentYear() && db.settings.banCurrentYear !== false);
+export const isBanned = id => (db.bans || []).find(b => String(b.tmdbId) === String(id) && yearBanLive(b));
 /** Why this movie can't be picked right now, or null. short = the tag shown in Discord's list. */
 export function blockReason(movie, user = null, opts = {}) {
   const label = `${movie.title}${movie.year ? ` (${movie.year})` : ''}`;
@@ -326,10 +328,11 @@ export function banMovie(m, reason = '', auto = null) { // auto = which automati
   save(); return true;
 }
 // unbanning = pre-approving: the automatic rules skip it from now on (Derek: banned movies need his OK first)
-export function unbanMovie(tmdbId, title = null) { const k = String(tmdbId), b = isBanned(k); db.banOkTitles ||= {}; if (b || title) db.banOkTitles[k] = b ? `${b.title}${b.year ? ` (${b.year})` : ''}` : title; db.bans = (db.bans || []).filter(b => String(b.tmdbId) !== k); db.banOk = [...new Set([...(db.banOk || []), k])]; save(); }
+export function unbanMovie(tmdbId, title = null) { const k = String(tmdbId), b = (db.bans || []).find(x => String(x.tmdbId) === k); if (b?.auto === 'year') allowThisYear(k, true); db.banOkTitles ||= {}; if (b || title) db.banOkTitles[k] = b ? `${b.title}${b.year ? ` (${b.year})` : ''}` : title; db.bans = (db.bans || []).filter(b => String(b.tmdbId) !== k); db.banOk = [...new Set([...(db.banOk || []), k])]; save(); }
 export function unapprove(tmdbId) { const k = String(tmdbId); db.banOk = (db.banOk || []).filter(x => x !== k); save(); }
 export function allowThisYear(tmdbId, allow = true) {
   db.yearAllow ||= []; const k = String(tmdbId);
   db.yearAllow = allow ? [...new Set([...db.yearAllow, k])] : db.yearAllow.filter(x => x !== k);
+  if (allow) db.bans = (db.bans || []).filter(b => !(b.auto === 'year' && String(b.tmdbId) === k)); // (off the banned list too)
   save();
 }

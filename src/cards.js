@@ -40,12 +40,13 @@ function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) re
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
 export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, holiday: !!m.holiday, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
 export const isBallMap = id => !CARD_MAPS.some(m => m.id === id) && MAP_LIST.some(m => m.id === id);
-const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu' });
+const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu', length: 60 }); // ⏱️ fights last 1 minute by default (Derek, 1.51.0)
 export function C() {
   const c = (db.cards ||= {});
   c.pool ||= []; c.history ||= []; c.wacky ||= {};
   if (!Array.isArray(c.battles) || !c.battles.length) c.battles = [DEF_BATTLE()];
   if (!c.battles.some(b => b.id === c.activeId)) c.activeId = c.battles[0].id;
+  if (!c.len60) { for (const b of c.battles) if (!b.length) b.length = 60; c.len60 = true; } // (1.51.0: card battles set to "by how many packs" become 1 minute, once)
   return c;
 }
 export const left = p => Math.max(0, Math.round(Number(p.count) || 0));

@@ -4,16 +4,19 @@ import { db } from './store.js';
 const cache = new Map();
 const IMG = 'https://image.tmdb.org/t/p/w342';
 
-function req(pathAndQuery) {
+function req(pathAndQuery, ms = 2500) {
   const key = (db.settings.tmdbKey || '').trim();
   if (!key) throw new Error('TMDB key not set (Settings in the control panel)');
   const bearer = key.length > 40; // v4 "Read Access Token" vs v3 "API Key"
   const url = `https://api.themoviedb.org/3${pathAndQuery}${bearer ? '' : `${pathAndQuery.includes('?') ? '&' : '?'}api_key=${key}`}`;
-  return fetch(url, { headers: bearer ? { Authorization: `Bearer ${key}` } : {}, signal: AbortSignal.timeout(2500) })
+  return fetch(url, { headers: bearer ? { Authorization: `Bearer ${key}` } : {}, signal: AbortSignal.timeout(ms) })
     .then(r => { if (!r.ok) throw new Error('TMDB HTTP ' + r.status); return r.json(); });
 }
 
-const shape = m => ({ id: m.id, title: m.title, year: (m.release_date || '').slice(0, 4), poster: m.poster_path ? IMG + m.poster_path : null, popularity: m.popularity || 0, lang: m.original_language || '' });
+/** 🚫 the ban list builder: any TMDB address (longer time limit) */
+export const tmdbGet = (path, ms = 10000) => req(path, ms);
+
+export const shape = m => ({ id: m.id, title: m.title, year: (m.release_date || '').slice(0, 4), poster: m.poster_path ? IMG + m.poster_path : null, popularity: m.popularity || 0, lang: m.original_language || '' });
 
 export async function searchMovies(q) {
   q = (q || '').trim();
@@ -41,10 +44,10 @@ const firstSentence = t => {
 
 /** Full details: director, top cast, genres, one-sentence synopsis, series (collection), IMDb id. Cached. */
 const details = new Map();
-export async function getMovie(id) {
+export async function getMovie(id, ms = 2500) {
   const k = String(id), hit = details.get(k);
   if (hit && Date.now() - hit.t < 6 * 3600e3) return hit.v;
-  const m = await req(`/movie/${encodeURIComponent(id)}?language=en-US&append_to_response=credits,keywords`);
+  const m = await req(`/movie/${encodeURIComponent(id)}?language=en-US&append_to_response=credits,keywords`, ms);
   const v = {
     ...shape(m),
     director: (m.credits?.crew || []).filter(c => c.job === 'Director').map(c => c.name).slice(0, 2).join(' & '),

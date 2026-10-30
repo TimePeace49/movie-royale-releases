@@ -13,6 +13,7 @@ import * as lb from './letterboxd.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
 import { getMany, searchMovies, findImdb } from './tmdb.js';
+import { scan as banScan, runScan, yearCleanup, setScanHooks } from './banscan.js';
 import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
@@ -2015,6 +2016,21 @@ app.post('/api/bans', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.delete('/api/bans/:id', (req, res) => { unbanMovie(req.params.id); pushState(); res.json({ ok: true }); });
+// 🔄 the ban list builder (banscan.js): progress goes to the control panel as it runs
+let scanPushAt = 0;
+setScanHooks({ changed: () => { broadcast({ type: 'banScan', scan: banScan }, 'control'); if (!banScan.running || Date.now() - scanPushAt > 15000) { scanPushAt = Date.now(); pushState(); } } });
+app.get('/api/bans/scan', (req, res) => res.json(banScan));
+app.post('/api/bans/scan', (req, res) => { if (banScan.running) return res.json({ ok: false, error: 'Already updating the list.' }); runScan({ only: req.body?.only || null }).catch(() => {}); res.json({ ok: true }); });
+app.post('/api/test/ban-scan', (req, res) => { if (banScan.running) return res.json({ ok: false, error: 'Already updating the list.' }); runScan({ fake: true }).catch(() => {}); res.json({ ok: true }); });
+app.post('/api/test/ban-year', async (req, res) => { // 🧪 pretend it's a new year: last year's pretend "this year" bans come off the list
+  const last = String(Number(new Date().getFullYear()) - 1);
+  for (let i = 0; i < 3; i++) (db.bans ||= []).push({ tmdbId: 'year-test' + i, title: `🧪 Last Year's Hit ${i + 1}`, year: last, poster: null, reason: `${last} movie`, auto: 'year', at: Date.now(), test: true });
+  save(); const before = db.bans.length, r = await yearCleanup(); pushState();
+  res.json({ ok: true, added: 3, removed: r.removed, kept: r.kept, before, after: db.bans.length });
+});
+// first open after the update: build the ban list once (when TMDB is set up), and check the "this year" bans every 6 hours
+setTimeout(() => { yearCleanup().catch(() => {}); if (!db.banSeed && String(db.settings.tmdbKey || '').trim()) runScan().catch(() => {}); }, 20000);
+setInterval(() => { yearCleanup().catch(() => {}); }, 6 * 3600e3);
 // 🚫 search for the Bans tab: which movies the automatic rules ban (and which are banned / pre-approved)
 app.get('/api/bans/search', async (req, res) => {
   try {

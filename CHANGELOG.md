@@ -2,6 +2,23 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.51.0 (test build)
+- 🔄 **The ban list fills itself:** the first time Movie Royal opens after this update, it looks up TMDB and adds movies that break the ban rules to your banned list (not in English, really religious, documentaries, this year's movies). It takes a few minutes in the background.
+  - Movies already on your list stay, and nothing gets added twice.
+  - Pre-approved (unbanned) movies and movies someone already picked are skipped. 🔎 Check movies already picked shows those.
+- 🔄 **Update the ban list** button (Settings → 🚫 Banned Movies) does the same any time and only adds new ones.
+- 📅 **This year's movies are on the banned list** (filter: 📅 This year's movies). On January 1st they come off the list, unless another rule bans them, and the new year's movies go on.
+- ⏱️ **Card battles last 1 minute by default.** Card battles that were set to "by how many packs" are now 1 minute. You can still change it in 📦 Card pool → ⏱️ Fight length.
+- 🥊 **The FINAL FIGHT! scene lasts 8 seconds** (it was about 3), with a big 3, 2, 1 countdown before 🔔 FIGHT! During it, the camera does a dramatic 360° spin around the last two packs, then settles back on the view you had before.
+- 🎬 **More exciting card battle camera:**
+  - It leans toward wherever the latest big hit landed.
+  - It zooms in quickly on every K.O.
+  - The screen shakes on big hits, bombs and tank shells. The "Screen shake" graphics setting controls how much.
+  - It's shot closer in the final fight and pushes in during the last 5 seconds.
+  - It swoops in on the winner.
+  - It never sits completely still.
+- 🎥 **The camera goes back to auto by itself:** if you move it (camera keys, scroll, drag, or click a pack to follow it), it's yours. Leave it alone for 8 seconds and it goes back to the auto camera. This works in ball battles too.
+
 ## 1.50.0 (test build)
 - 🚫 **New movie bans** (Settings → 🚫 Banned Movies, each one can be turned off):
   - 🌍 Movies that aren't in English at all. Movies that are mostly English with some other languages in them are fine.

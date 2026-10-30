@@ -4695,7 +4695,10 @@ function camFit() { // where the auto camera wants to be: the whole cliff that's
   const z = clamp(Math.min(W * .86 / bw, H * .6 / bh), camOpt.base, camOpt.base * 2);
   return { z, fx: (x0 + x1) / 2, fy: (y0 + y1) / 2 + 30 };
 }
+// 🎥 left alone for 8 s after your last camera key / mouse move: back to the auto camera (Derek, 1.51.0)
+let camTouch = 0; const camTouched = () => { camTouch = performance.now(); };
 function updateCam(dt) {
+  if ((cam.manual || cam.follow || cam.overview) && camTouch && performance.now() - camTouch > 8000) { camTouch = 0; camReset(); }
   if (cam.follow) { // locked onto one piece, like following a marble
     const f = cam.follow;
     if (!fighters.includes(f)) cam.follow = null;
@@ -4717,12 +4720,13 @@ function camReset() { cam.manual = false; cam.follow = null; cam.overview = fals
 function followable() { return fighters.filter(f => f.alive && !f.falling).sort((a, b) => (b.weight || 1) - (a.weight || 1) || a.label.localeCompare(b.label)); }
 function followStep(d) { const l = followable(); if (!l.length) return; const i = cam.follow ? l.indexOf(cam.follow) : -1; cam.follow = l[(i + d + l.length) % l.length]; cam.overview = false; cam.manual = false; }
 function camZoomAt(px, py, factor) {
+  camTouched();
   if (cam.follow) { cam.follow = null; }
   cam.overview = false;
   const wx = cam.fx + (px - CX) / cam.z, wy = cam.fy + (py - CAM_Y) / cam.z;
   cam.z = clamp(cam.z * factor, .18, 5); cam.fx = wx - (px - CX) / cam.z; cam.fy = wy - (py - CAM_Y) / cam.z; cam.manual = true;
 }
-function camCmd(a) { if (a === 'next') return followStep(1); if (a === 'prev') return followStep(-1); if (a === 'overview') { camReset(); cam.overview = true; return; } if (a === 'auto') return camReset(); if (a === 'in') camZoomAt(CX, CAM_Y, 1.25); else if (a === 'out') camZoomAt(CX, CAM_Y, 1 / 1.25); else if (a === 'reset') camReset(); else if (a === 'left' || a === 'right' || a === 'up' || a === 'down') { cam.manual = true; cam.follow = null; cam.overview = false; const d = 120 / cam.z; if (a === 'left') cam.fx -= d; if (a === 'right') cam.fx += d; if (a === 'up') cam.fy -= d; if (a === 'down') cam.fy += d; } }
+function camCmd(a) { if (a === 'auto') camTouch = 0; else camTouched(); if (a === 'next') return followStep(1); if (a === 'prev') return followStep(-1); if (a === 'overview') { camReset(); cam.overview = true; return; } if (a === 'auto') return camReset(); if (a === 'in') camZoomAt(CX, CAM_Y, 1.25); else if (a === 'out') camZoomAt(CX, CAM_Y, 1 / 1.25); else if (a === 'reset') camReset(); else if (a === 'left' || a === 'right' || a === 'up' || a === 'down') { cam.manual = true; cam.follow = null; cam.overview = false; const d = 120 / cam.z; if (a === 'left') cam.fx -= d; if (a === 'right') cam.fx += d; if (a === 'up') cam.fy -= d; if (a === 'down') cam.fy += d; } }
 const toCanvas = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
 addEventListener('wheel', e => { e.preventDefault(); const [x, y] = toCanvas(e); camZoomAt(x, y, Math.pow(1.0015, -e.deltaY)); }, { passive: false });
 let drag = null;
@@ -4730,7 +4734,7 @@ addEventListener('pointerdown', e => { if (e.button === 0 && !e.target.closest?.
 addEventListener('pointermove', e => {
   if (!drag) return; const r = cv.getBoundingClientRect(), dx = (e.clientX - drag.x) * W / r.width, dy = (e.clientY - drag.y) * H / r.height;
   if (!drag.moved && Math.hypot(dx, dy) < 4) return;
-  drag.moved = true; cam.manual = true; cam.follow = null; cam.overview = false; cam.fx -= dx / cam.z; cam.fy -= dy / cam.z; drag.x = e.clientX; drag.y = e.clientY;
+  drag.moved = true; camTouched(); cam.manual = true; cam.follow = null; cam.overview = false; cam.fx -= dx / cam.z; cam.fy -= dy / cam.z; drag.x = e.clientX; drag.y = e.clientY;
 });
 addEventListener('pointerup', e => {
   const d = drag; drag = null;
@@ -4739,7 +4743,7 @@ addEventListener('pointerup', e => {
   const [px, py] = toCanvas(e), wx = cam.fx + (px - CX) / cam.z, wy = cam.fy + (py - CAM_Y) / cam.z;
   let best = null, bd = 1e9;
   for (const f of fighters) if (f.alive && !f.falling) { const dd = Math.hypot(sx(f.x) - wx, sy(f.y) - f.r - wy); if (dd < bd) { bd = dd; best = f; } }
-  if (best && bd < Math.max(best.r * 2.2, 26 / cam.z)) { cam.follow = best; cam.overview = false; cam.manual = false; } else if (cam.follow) cam.follow = null;
+  if (best && bd < Math.max(best.r * 2.2, 26 / cam.z)) { camTouched(); cam.follow = best; cam.overview = false; cam.manual = false; } else if (cam.follow) cam.follow = null;
 });
 addEventListener('dblclick', camReset);
 let followTag = '';
