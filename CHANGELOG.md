@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.54.1 (test build)
+- 🗺️ **Map menus sorted in a new order:** ⚪ Ball / car only (the bus maps for now) on top, then 🃏 Character only (all the card maps), then ⚪🃏 Both (every other map), each A–Z. 🎉 Holiday maps stay at the very bottom. The NEW / UPDATED tag list in Settings → Game uses the same parts.
+
 ## 1.54.0 (test build)
 - ⚡ **Chat powers reminder:** while a battle is going and chat powers are on (channel points or bits), a slim line scrolls across the top of the battle: "⚡ Chat powers are on! Use channel points or bits to shake up this battle". The title and timer move down a little to make room. It goes away when the battle ends or the chat powers are turned off.
 
