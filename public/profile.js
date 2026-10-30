@@ -36,7 +36,7 @@ window.Profile = (() => {
     const tabs = [['overview', '📋 Overview'], ['respins', '🎟️ Respins'], ['games', '🏆 Games'], ['chat', '💬 Chat log']];
     const tb = `<div class="tabs">${tabs.map(([k, n]) => `<button class="${tab === k ? 'on' : ''}" onclick="Profile.tab('${k}')">${n}</button>`).join('')}</div>`;
     let body = '';
-    if (tab === 'overview') body = `<div class="grid">
+    if (tab === 'overview') body = lookBox(p) + `<div class="grid">
         <div class="st"><b>${dt(p.createdAt)}</b><small>Twitch account made${p.createdAt ? ` (${ago(Date.parse(p.createdAt))} ago)` : ''}</small></div>
         <div class="st"><b>${p.followedAt === null ? 'Not following' : p.followedAt ? dt(p.followedAt) : '—'}</b><small>Following since${p.followedAt ? ` (${ago(p.followedAt)})` : ''}</small></div>
         <div class="st"><b>${p.sub?.months ? `${p.sub.months} month${p.sub.months === 1 ? '' : 's'}` : p.sub?.now ? 'yes' : '—'}</b><small>Subscribed</small></div>
@@ -56,6 +56,22 @@ window.Profile = (() => {
       <h4>🏆 Wins</h4>${p.wins.length ? p.wins.map(h => `<div class="line">${esc(dt(h.at))} · <b>${esc(h.label)}</b>${h.sub ? ` (${esc(h.sub)})` : ''} <span class="muted">${esc(h.list || '')}</span></div>`).join('') : '<div class="muted">No wins yet.</div>'}`;
     if (tab === 'chat') body = p.log.length ? `<div style="font-size:14px">${p.log.map(m => window.ChatUI ? ChatUI.row(m) : `<div class="line">${esc(m.text)}</div>`).join('')}</div>` : '<div class="muted">Nothing they said is saved yet (chat is saved from version 1.12 on).</div>';
     dlg.innerHTML = head + tb + `<div class="pb">${body}</div>`;
+    if (tab === 'overview') drawLook(p);
+  }
+  // 🎨 their own character (made in Discord with /character): a preview with their picture as the chest badge
+  const PARTS = [['hair', '💇'], ['outfit', '👕'], ['makeup', '💄'], ['facialhair', '🧔'], ['body', '🧍'], ['skin', '✋'], ['haircolor', '🎨']];
+  function lookBox(p) {
+    if (!p.look || !window.CHAR_PARTS) return '';
+    const N = CHAR_PARTS.NAMES, L = CHAR_PARTS.norm(p.look);
+    return `<h4 style="margin-top:4px">🎨 Their character <span class="muted" style="font-weight:400">(made in Discord with /character)</span></h4><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <canvas id="profLook" width="150" height="150" style="background:#1d1630;border-radius:12px;flex:none" title="Their own battle character"></canvas>
+      <div class="muted" style="font-size:13px;line-height:1.6">${PARTS.map(([k, ic]) => `${ic} #${L[k]} ${esc(N[k][L[k] - 1] || '')}`).join('<br>')}</div></div>`;
+  }
+  function drawLook(p) {
+    const c = document.getElementById('profLook'); if (!c || !window.CHAR_PARTS) return;
+    const paint = img => { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); CHAR_PARTS.draw(g, 75, 46, p.look, img, p.color || '#8a5cff', String(p.name || '?').slice(0, 2).toUpperCase()); };
+    paint(null);
+    if (p.avatar) { const im = new Image(); im.onload = () => paint(im); im.src = p.avatar; }
   }
   async function post(url, body) { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()); if (r.error) alert('⚠️ ' + r.error); return r; }
   async function mod(action, seconds, ask) {

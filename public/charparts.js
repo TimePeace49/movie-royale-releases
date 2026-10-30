@@ -350,16 +350,24 @@
   };
   const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   /** A random look that stays the same for this piece on this map. gender 'm' | 'f' | 'n'. */
-  function auto(seed, gender, mapId) {
+  function auto(seed, gender, mapId, forceChaos) {
     let h = hash(seed + '|' + (mapId || '')); const R = n => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return (h >>> 8) % n; }, from = a => a[R(a.length)];
     const g = gender === 'm' || gender === 'f' ? gender : 'n', th = THEMES[mapId];
+    // 🤪 1 in 20 is pure chaos (Derek: "wtf or funny moments", but not all the time): every part picked from everything
+    if (R(100) < CHAOS_PCT || forceChaos) return { hair: 1 + R(50), outfit: 1 + R(75), makeup: 1 + R(25), facialhair: 1 + R(25), body: 1 + R(2), skin: 1 + R(8), haircolor: 1 + R(10), col: CHAOS_COL[R(CHAOS_COL.length)], chaos: true };
+    // the other 19 in 20 make sense
     const hair = g === 'm' ? 1 + R(25) : g === 'f' ? 26 + R(25) : 1 + R(50);
     let outfit;
     if (th) { const o = th.o; outfit = from(Array.isArray(o) ? o : g === 'n' ? [...o.m, ...o.f] : o[g]); }
-    else outfit = R(5) === 0 ? 51 + R(25) : g === 'm' ? 1 + R(25) : g === 'f' ? 26 + R(25) : 1 + R(50);
-    const facialhair = g === 'm' && R(100) >= 45 ? 2 + R(24) : 1;
-    const makeup = (g === 'f' ? R(2) : g === 'n' ? R(4) : R(12)) === 0 ? 2 + R(24) : 1;
-    return { hair, outfit, makeup, facialhair, body: g === 'f' ? 2 : 1, skin: 1 + R(8), haircolor: R(10) < 9 ? 1 + R(7) : 8 + R(3), col: th?.col ? from(th.col) : undefined };
+    else outfit = R(12) === 0 ? from(EVERYDAY_COSTUMES) : g === 'm' ? 1 + R(25) : g === 'f' ? 26 + R(25) : 1 + R(50);
+    const facialhair = g === 'm' && R(100) >= 45 ? from(BEARDS_OK) : 1;
+    const makeup = g === 'f' ? (R(2) ? from(MAKEUP_F) : 1) : g === 'n' ? (R(4) ? 1 : from([...MAKEUP_F, ...MAKEUP_M])) : (R(12) ? 1 : from(MAKEUP_M));
+    return { hair, outfit, makeup, facialhair, body: g === 'f' ? 2 : 1, skin: 1 + R(8), haircolor: R(20) ? 1 + R(7) : 8 + R(3), col: th?.col ? from(th.col) : undefined };
   }
+  // what "makes sense" for the random characters (the silly ones are left for chaos and for people's own /character)
+  const CHAOS_PCT = 5, CHAOS_COL = ['#ff2bd6', '#2bd6ff', '#a6ff2b', '#ff8a2b', '#ffe12b', '#8a2bff', '#2bff9a'];
+  const MAKEUP_F = [2, 3, 4, 5, 6, 7, 11, 12, 14, 15, 16, 18, 20, 24], MAKEUP_M = [2, 6, 20, 24];
+  const BEARDS_OK = r1(2, 25).filter(n => n !== 18 && n !== 20); // (no braided or wizard beards on regular folks)
+  const EVERYDAY_COSTUMES = [53, 57, 58, 67, 69, 72, 73, 75]; // costumes that still make sense in a normal battle (superhero, pirate, ninja, sweater, onesies…)
   window.CHAR_PARTS = { NAMES, GROUPS, SKIN, HAIRC, THEMES, draw, norm, limbs, chest, auto };
 })();

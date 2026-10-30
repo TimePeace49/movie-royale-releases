@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.55.2 (test build)
+- 🎨 **Profiles show the character:** a viewer who made a character with /character shows a preview of it on their profile (double-click their name), with their Twitch picture on the chest and the number of every part.
+- 🎲 **Random looks are only for that battle.** Someone without their own character gets a new random look every battle, so a random look never becomes their character. Only what they pick with /character sticks. The look stays the same from the countdown to the win.
+- 🤪 **Chaos characters:** about 1 in 20 random characters is pure chaos: every part picked from everything (wizard beards on ballerinas, clown noses on knights, neon hair). The rest make sense: no silly makeup or wizard beards on regular folks, and fewer odd hair colors and costumes. 🧪 Test tab → 🎨 Custom characters → 🤪 Chaos battle shows only chaos ones.
+
 ## 1.55.1 (test build)
 - 🖼️ **Character pictures in Discord:** when someone saves their character with /character, your PC draws a small picture of it. They get it in their own answer, and it's posted in the movie channel ("🎨 Lucy made their Movie Royal character!"). The channel post is at most once every 5 minutes a person, and Settings → Game turns it off.
 - Through the 24/7 bot, the picture comes once Movie Royal picks the change up (within a minute while it's open). If Movie Royal was closed for more than 15 minutes, only the channel post shows (Discord stops letting the bot change their answer).

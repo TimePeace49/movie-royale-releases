@@ -3552,8 +3552,15 @@ function charStyle(f) { // picked once per piece from its id (so a piece looks t
   const hairCol = rnd(10) < 8 ? CH.hair[rnd(8)] : CH.hair[8 + rnd(2)];
   return f.ch = { g, skin: CH.skin[rnd(6)], hair: hairCol, pants: CH.pants[rnd(6)], shoe: CH.shoe[rnd(5)], style: rnd(4), beard: g === 'm' && rnd(3) === 0, shirt2: shade(f.color || '#888888', -35), bow: rnd(2) === 0 };
 }
-// 🎨 a piece's look: their own /character always wins; everyone else gets a random one that stays the same for them on this map
-function charLook(f) { if (f.look) return f.look; const k = `${f.id}|${f.gender || 'n'}|${mapId}`; if (f._autoK !== k) { f._autoK = k; f._auto = CHAR_PARTS.auto(String(f.id), f.gender, mapId); } return f._auto; }
+// 🎨 a piece's look: their own /character always wins; everyone else gets a random one for THIS battle only (Derek: a random
+// look is never someone's default; a new battle = new piece objects = new looks). It stays the same through the countdown, fight and win.
+function charLook(f) {
+  if (f.look) return f.look;
+  f._seed ||= Math.random().toString(36).slice(2);
+  const k = `${f.id}|${f.gender || 'n'}|${mapId}|${f.chaos ? 1 : 0}`; // (f.chaos: the Test tab's all-chaos battle)
+  if (f._autoK !== k) { f._autoK = k; f._auto = CHAR_PARTS.auto(String(f.id) + f._seed, f.gender, mapId, f.chaos); }
+  return f._auto;
+}
 function charToken(f, c, g, m, rr) {
   if (window.CHAR_PARTS) { CHAR_PARTS.draw(g, m, rr, charLook(f), ok(f.img) ? f.img : null, f.color, initials(f.label)); return; } // 🎨 their own /character, else a random look (themed on themed maps)
   const st = charStyle(f), hr = rr * .58, hx = m, hy = m - rr * .4, col = f.color || '#8a5cff', ty = m + rr * .22, by = m + rr * .95;
@@ -4438,7 +4445,7 @@ function wlRound(rd) {
 let wlId = '', wlOpts = {};
 const LAB = new URLSearchParams(location.search).has('lab'); // 🧪 the Test lab: a battle that runs only on this page (never on stream, never talks to the app)
 const PREVIEW_WIN = new URLSearchParams(location.search).has('preview'); // 📺 the test preview popped out (another monitor): shows what's on stream, no sound
-window.__royal = { GFX, scale: () => gScale, send: o => send(o), map: () => MAP }; // 🃏 for cardfight.js (this page's code lives inside its own function)
+window.__royal = { GFX, scale: () => gScale, send: o => send(o), map: () => MAP, looks: () => fighters.map(f => ({ id: f.id, look: f.look || f._auto })) }; // 🃏 for cardfight.js (this page's code lives inside its own function)
 if (PREVIEW_WIN) { document.title = 'Movie Royal — Preview (what\'s on stream)'; setTimeout(() => window.SFX?.setVolume({ on: false }), 0); }
 const WHEEL_ONLY = new URLSearchParams(location.search).has('wheel'); // the wheel popped out in its own window: always the wheel, no sound (the app already plays it)
 function wlSet(on) { if (WHEEL_ONLY) on = true; SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
