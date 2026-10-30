@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.56.1 (test build)
+- 🎥 **FINAL FIGHT camera circles around them on the ground now** (a horizontal 360), instead of spinning the picture like a wheel. The two swap sides as the camera goes around, the one nearer the camera gets bigger and comes forward, they keep facing each other, and the map slides past behind them once. Then it settles back to the normal view for the fight.
+
 ## 1.56.0 (test build)
 - 🃏 **Character-only maps in regular battles:** when a battle has 🧍 characters turned on, its map menu also lists the character-only maps: Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum and WW2 Battlefield (in the "🃏 Character only" part). Turn characters off and they leave the menu, and the battle goes back to a ball map.
   - The characters fight there like the card packs do, with grapples, spells, rifles and weapons, and everyone is dressed for the map: ninjas, wrestlers, wizards, gladiators, soldiers.
