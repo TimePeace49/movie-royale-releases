@@ -147,6 +147,8 @@ Twitch chat / channel points / bits / subs, and donations (StreamElements / Stre
 - **⚡🔢 Auto + countdown spot (`autocount`, 1.48.0):** `/^auto/` = auto behaviour (pause 'auto', no respins since 1.48.2), plus countdown fields (`countStart/count/autoKnock`), knocked on landing, NOT given back on respin (Derek: auto = it auto-runs), leaves at 0 on the next fresh spin, label "(auto n)", `/api/wheel/knock` works on it.
 - **Wheel name boxes suggest chatters (1.48.0):** state `wheelChatters` = `chattersForWheel()` (newest first from `live.chatLog`, max 40, no bots: `BOT_NAMES` + giveaway bot list + `db.twitchBot`; NOT names ending in "bot": Derek wants only known bots left out) → control `fillChatters(datalistId, more)` on `#wBy`, `#gsWho`, `#grWho`.
 
+- **🔁 First respin only + 🎟️ Free spins log (1.49.0, Derek):** `collides()` is ALWAYS on (ignores `collide.on`): a chat respin while a respin is spinning (`spinning.kind`), queued, or within `collide.secs` after it lands (`respinLandAt`) → saved respin (points: `giveSpins`, bank: keeps it). Ledger: gives = `st.grants`, uses/give-backs = `st.spinLog` (`spinLog()` in wheel.js); `/api/wheel/spin-log` merges them; control History `histMode 'spins'` → `drawSpinLog()`.
+
 ## Things we said no to
 No look-alikes of real characters/brands (declined a Homer Simpson donut monster, Bomberman, and Marvel's Infinity Gauntlet — use original designs instead).
 

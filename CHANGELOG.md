@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.49.0 (test build)
+- 🔁 **Only the first respin counts, always.** If several people redeem a respin at the same time, the first one spins. Everyone else's goes into their account as a free saved respin instead, and the bot tells them. This counts for channel points and saved spins (!respin), and it applies while a respin is spinning, waiting to spin, or in the few seconds after it lands. It's always on now: the old on/off switch is gone, and you can still set the seconds in the wheel's settings.
+- 🎟️ **History → 🎟️ Free spins:** a new tab listing every free (saved) wheel spin:
+  - given, with why: subs, bits, respins at the same time, sneaky auto-spot respins, or ones you gave by hand
+  - used, with when and on which wheel
+  - given back, when a used one couldn't spin
+  - totals, plus who has saved spins right now
+  - There's a search and Given / Used filters, so you can double-check everything was done right.
+
 ## 1.48.3 (test build)
 - 😏 **Sneaky respins on auto spots:** if someone redeems 🔁 Respin while the wheel is on an auto spot (before the reward hides), the wheel doesn't spin. They get a free saved respin in their account instead, and the bot says: "Nice try @name, sneaky sneaky! No respins on an ⚡ auto spot, so no spin for you right now… but one has been added to your account for the future 💜". Trying !respin there gets a "Nice try" too (their saved respin stays saved).
 

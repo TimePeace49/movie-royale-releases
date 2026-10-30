@@ -243,6 +243,7 @@ export function linkClear() { W().chain = []; clearTimeout(linkT); save(); }
 
 // after every landing: start / pause the round timer
 function landed(w, rec) {
+  if (spinning?.kind === 'respin') respinLandAt = Date.now();
   spinning = null;
   const st = W(); let r = st.round;
   if (!roundOn(w)) { if (!queue.length && rec.by?.source !== 'void' && rec.type !== 'void') followLink(w, rec); return; } // no round timer: where it stops is the win
@@ -283,7 +284,9 @@ function blocked(kind, source) {
 }
 // two people ask for a respin at almost the same time: the first one spins, everyone else gets a saved respin instead
 let lastRespinAt = 0;
-function collides(w) { const c = w?.opts?.collide; if (!c || c.on === false) return false; return spinning?.kind === 'respin' && Date.now() - lastRespinAt < (Number(c.secs) || 5) * 1000 || queue.some(j => j.kind === 'respin'); }
+// (Derek: ALWAYS on, no matter how it's redeemed: while a respin is spinning, waiting to spin, or just landed (a few seconds), any other chat respin is saved for later instead)
+let respinLandAt = 0;
+function collides(w) { const secs = Number(w?.opts?.collide?.secs) || 5; return spinning?.kind === 'respin' || queue.some(j => j.kind === 'respin') || Date.now() - respinLandAt < secs * 1000; }
 function pump() {
   clearTimeout(qTimer);
   if (!queue.length) return;
@@ -425,7 +428,9 @@ export function giveSpins(who, n, reason = '', by = {}) {
   bump(); save(); hooks.pushState();
   return b.spins;
 }
-function refundBank(by) { const b = W().bank[bkey(by.login || by.name)]; if (b) { b.spins++; b.used = Math.max(0, b.used - 1); save(); } }
+// 🎟️ the free-spins log (History → 🎟️ Free spins): every saved spin used, and every one given back (given ones are in st.grants)
+export function spinLog(rec) { const st = W(); (st.spinLog ||= []).push({ id: uid(), at: Date.now(), ...rec }); if (st.spinLog.length > 20000) st.spinLog = st.spinLog.slice(-20000); }
+function refundBank(by) { const b = W().bank[bkey(by.login || by.name)]; if (b) { b.spins++; b.used = Math.max(0, b.used - 1); spinLog({ kind: 'back', name: b.name, login: b.login, n: 1, reason: 'the respin couldn\'t spin, so it went back', left: b.spins }); save(); } }
 export function useMine() { // the streamer's own respins: a few per stream (3 by default), they come back when a new stream starts
   const st = W(); if (!st.last) throw new Error('Spin the wheel first.');
   if ((st.mine.left || 0) <= 0) throw new Error(`No streamer respins left this stream (you get ${st.mine.perStream} each stream).`);
@@ -498,9 +503,9 @@ export function wheelChat(m) {
   if (!st.last) { say(`🎡 @${m.name} hang tight, the wheel hasn't been spun yet! Your ${b.spins} respin${b.spins === 1 ? ' is' : 's are'} safe.`); return true; }
   const why = blocked('respin', 'bank'); if (why) { say(`🎡 Sorry @${m.name}, ${why} Your respin${b.spins === 1 ? ' is' : 's are'} still saved! 💜`); return true; }
   if (collides(lw)) { say(`🎡 @${m.name} someone beat you to it by a hair! Your respin is still saved (${b.spins}) 💜`); log({ kind: 'collide', wheelId: lw.id, wheelName: lw.name, text: 'Respin came in at the same time: kept for later', by: { name: m.name, login: m.login, source: 'bank' } }); bump(); return true; }
-  b.spins--; b.used++; b.usedLog ||= []; b.usedLog.unshift(Date.now()); b.usedLog = b.usedLog.slice(0, 100); save();
+  b.spins--; b.used++; b.usedLog ||= []; b.usedLog.unshift(Date.now()); b.usedLog = b.usedLog.slice(0, 100); spinLog({ kind: 'used', name: b.name, login: b.login, n: 1, reason: `typed ${st.cmd.respin}`, wheel: lw?.name || '', left: b.spins }); save();
   try { request('respin', { name: m.name, login: m.login, source: 'bank' }); say(`🎡 @${m.name} used a saved respin! ${RX} Respinning… (${b.spins} left)`); }
-  catch (e) { b.spins++; b.used--; save(); say(/auto spot/.test(e.message) ? `😏 Nice try @${m.name}, sneaky sneaky! No respins on an ⚡ auto spot. Your respin is still saved for later (${b.spins}) 💜` : `🎡 @${m.name} ${e.message} Your respin is still saved.`); }
+  catch (e) { b.spins++; b.used--; spinLog({ kind: 'back', name: b.name, login: b.login, n: 1, reason: `couldn't spin: ${e.message}`, left: b.spins }); save(); say(/auto spot/.test(e.message) ? `😏 Nice try @${m.name}, sneaky sneaky! No respins on an ⚡ auto spot. Your respin is still saved for later (${b.spins}) 💜` : `🎡 @${m.name} ${e.message} Your respin is still saved.`); }
   return true;
 }
 // subs, gift subs, bits and donations ("money"): with the wheel on stream you get a pop-up to grow / shrink spots, give respins

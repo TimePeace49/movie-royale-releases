@@ -1128,6 +1128,12 @@ for (const [key, file] of [['madeKirbportions', 'wheel-of-kirbportions.json']]) 
     db.settings[key] = true; save();
   } catch (e) { console.error('[wheel] ready-made wheel', file, e.message); }
 }
+app.get('/api/wheel/spin-log', (req, res) => { // 🎟️ History → Free spins: every saved spin given, used or given back (newest first)
+  const st = wheel.W(), out = [];
+  for (const g of st.grants || []) out.push({ at: g.at, kind: g.amount >= 0 ? 'given' : 'taken', name: g.name, n: Math.abs(g.amount), reason: g.reason || '', by: g.by || '' });
+  for (const u of st.spinLog || []) out.push({ at: u.at, kind: u.kind, name: u.name, n: u.n || 1, reason: u.reason || '', wheel: u.wheel || '', left: u.left });
+  out.sort((a, b) => b.at - a.at); res.json({ rows: out.slice(0, Math.min(5000, Number(req.query.limit) || 2000)), bank: Object.values(st.bank || {}).map(b => ({ name: b.name, spins: b.spins, got: b.got || 0, used: b.used || 0 })).sort((a, b) => b.spins - a.spins) });
+});
 app.get('/api/wheel', (req, res) => { const w = wheel.W(); res.json({ wheels: w.wheels, activeId: w.activeId, show: w.show, last: w.last || null, rewards: w.rewards, costs: w.costs, pointsOn: w.pointsOn !== false, chatOn: w.chatOn !== false, ver: w.ver || 0, historyCount: w.history.length, palette: wheel.PAL, canPoints: !!twitch.status.userId, types: wheel.TYPES, mine: { ...w.mine, name: `${streamerName()}'s spins` }, bank: Object.values(w.bank).sort((a, b) => b.spins - a.spins || a.name.localeCompare(b.name)), grants: w.grants.slice(-300).reverse(), boosts: w.boosts, auto: w.auto, redeemLog: w.redeemLog, donations: { ...donations.status, se: !!db.settings.seJwt, sl: !!db.settings.slToken, seState: donations.status.se, slState: donations.status.sl }, cmd: w.cmd, streamer: streamerName(), round: wheel.getRound(), undo: wheel.undoList(), folders: w.folders, final: w.final || null, bringBack: w.bringBack, live: !!db.live, obs: { set: !!(db.settings.obsMic || db.settings.obsCam || db.settings.obsPassword), ...obs.status } }); });
 app.post('/api/wheel', (req, res) => { const w = wheel.newWheel(req.body?.name || 'New wheel', Array.isArray(req.body?.entries) ? req.body.entries : []); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
 app.put('/api/wheel/:id', (req, res) => {
