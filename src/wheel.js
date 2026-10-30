@@ -500,7 +500,7 @@ export function wheelChat(m) {
   if (collides(lw)) { say(`🎡 @${m.name} someone beat you to it by a hair! Your respin is still saved (${b.spins}) 💜`); log({ kind: 'collide', wheelId: lw.id, wheelName: lw.name, text: 'Respin came in at the same time: kept for later', by: { name: m.name, login: m.login, source: 'bank' } }); bump(); return true; }
   b.spins--; b.used++; b.usedLog ||= []; b.usedLog.unshift(Date.now()); b.usedLog = b.usedLog.slice(0, 100); save();
   try { request('respin', { name: m.name, login: m.login, source: 'bank' }); say(`🎡 @${m.name} used a saved respin! ${RX} Respinning… (${b.spins} left)`); }
-  catch (e) { b.spins++; b.used--; save(); say(`🎡 @${m.name} ${e.message} Your respin is still saved.`); }
+  catch (e) { b.spins++; b.used--; save(); say(/auto spot/.test(e.message) ? `😏 Nice try @${m.name}, sneaky sneaky! No respins on an ⚡ auto spot. Your respin is still saved for later (${b.spins}) 💜` : `🎡 @${m.name} ${e.message} Your respin is still saved.`); }
   return true;
 }
 // subs, gift subs, bits and donations ("money"): with the wheel on stream you get a pop-up to grow / shrink spots, give respins
@@ -645,7 +645,7 @@ export function wheelRedeem(r) {
   }
   try { request(kind, { name: r.name, login: r.login, source: 'points', cost }); logIt(kind); }
   catch (e) {
-    if (/auto spot/.test(e.message) && kind === 'respin') { const left = giveSpins(r.name, 1, 'respin redeemed on an auto spot', { name: 'auto' }); logIt(`landed on an auto spot: saved for later (has ${left})`); sayW(wh, `🎡 @${r.name} no respins on an ⚡ auto spot! Your respin is saved for later: type ${st.cmd.respin} when you want it (${left} saved) 💜`); return true; }
+    if (/auto spot/.test(e.message) && kind === 'respin') { const left = giveSpins(r.name, 1, 'respin redeemed on an auto spot', { name: 'auto' }); logIt(`landed on an auto spot: saved for later (has ${left})`); sayW(wh, `😏 Nice try @${r.name}, sneaky sneaky! No respins on an ⚡ auto spot, so no spin for you right now… but one has been added to your account for the future 💜 Type ${st.cmd.respin} when you want it (${left} saved)`); return true; }
     if (/ran out/.test(e.message) && kind === 'respin') { const left = giveSpins(r.name, 1, 'respin redeemed after the timer ran out', { name: 'auto' }); logIt(`the timer had run out: saved for later (has ${left})`); sayW(wh, `🎡 @${r.name} the timer already ran out! Your respin is saved for next time — type ${st.cmd.respin} when you want it 💜`); return true; }
     giveBack(`${r.name}: ${e.message}`); sayW(wh, `🎡 Sorry @${r.name}, ${e.message} 💜`);
   }

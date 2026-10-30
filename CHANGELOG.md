@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.48.3 (test build)
+- 😏 **Sneaky respins on auto spots:** if someone redeems 🔁 Respin while the wheel is on an auto spot (before the reward hides), the wheel doesn't spin. They get a free saved respin in their account instead, and the bot says: "Nice try @name, sneaky sneaky! No respins on an ⚡ auto spot, so no spin for you right now… but one has been added to your account for the future 💜". Trying !respin there gets a "Nice try" too (their saved respin stays saved).
+
 ## 1.48.2 (test build)
 - ⚡ **No respins on auto spots** (⚡ Auto, ⚡🔢 Auto + countdown and ⚡🔀 Auto + Link):
   - While the wheel sits on an auto spot, the 🔁 Respin channel point reward hides from the menu, and nobody can respin.
