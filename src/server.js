@@ -522,17 +522,23 @@ function claimWait(m, instant = false) {
   broadcast({ type: 'claimWaiting', winner: c.winner, name: m.name, text: m.text, streamer: streamerName(), accept: claimCmds().accept, pass: claimCmds().pass }, 'overlay');
   broadcast({ type: 'toast', text: `✋ ${m.name} is here! Movie Royal asked them in chat: ${claimCmds().accept} or ${claimCmds().pass}. (You can also press ✅ Accept / ⏭️ Pass on the winner card.)` }, 'control');
   pushState();
-  if (claimAnswer(m)) return; // their first message already said it
+  if (claimAnswer(m, true)) return; // their first message already typed !accept / !pass
   const w = c.winner, label = `${w?.label || 'Your movie'}${w?.sub ? ` (${w.sub})` : ''}`;
-  if (twitch.canSay()) twitch.say(`@${m.name} 🍿 ${label} won! Type ${claimCmds().accept} to watch it now, or ${claimCmds().pass} to save it for another night (you keep your luck).`).catch(() => {});
+  const ask = `@${m.name} 🍿 ${label} won! Type ${claimCmds().accept} to watch it now, or ${claimCmds().pass} to save it for another night (you keep your luck).`;
+  c.asked = Date.now();
+  if (!twitch.canSay()) { broadcast({ type: 'toast', text: `⚠️ Movie Royal couldn't ask ${m.name} in chat (not signed in to Twitch chat). Press ✅ Accept or ⏭️ Pass on the winner card.` }, 'control'); return; }
+  twitch.say(ask).catch(e => { console.error('[claim] couldn\'t ask the winner in chat:', e.message); broadcast({ type: 'toast', text: `⚠️ Couldn't ask ${m.name} in chat: ${e.message}. Press ✅ Accept or ⏭️ Pass on the winner card.` }, 'control'); });
 }
 const claimCmds = () => ({ accept: db.settings.acceptCommand || '!accept', pass: db.settings.passCommand || '!pass' });
 // the winner answers in chat: !accept / !pass (or yes / no)
-function claimAnswer(m) {
+// (the message that made them the claimer only counts if it's the exact command: a happy "YES!" when their movie wins
+//  isn't an answer, because they haven't been asked yet — 1.49.1, Derek: it was claimed without asking)
+function claimAnswer(m, firstMsg = false) {
   const c = live.claim; if (!c?.waiting || c.done || !isWinnerMsg(c.winner, m)) return false;
   const t = String(m.text || '').trim().toLowerCase(), first = t.split(/\s+/)[0], k = claimCmds();
-  const yes = first === k.accept.toLowerCase() || /^(accept|yes|yep|yeah|y|approve|watch|watch it)$/.test(t.replace(/[!.]/g, ''));
-  const no = first === k.pass.toLowerCase() || /^(pass|no|nope|n|skip|later|not tonight)$/.test(t.replace(/[!.]/g, ''));
+  const words = !firstMsg && !!c.asked;
+  const yes = first === k.accept.toLowerCase() || (words && /^(accept|yes|yep|yeah|y|approve|watch|watch it)$/.test(t.replace(/[!.]/g, '')));
+  const no = first === k.pass.toLowerCase() || (words && /^(pass|no|nope|n|skip|later|not tonight)$/.test(t.replace(/[!.]/g, '')));
   if (yes === no) return false;
   if (yes) { acceptClaim(m.name); if (twitch.canSay()) twitch.say(`@${m.name} ✅ Locked in! Enjoy the movie 🍿`).catch(() => {}); }
   else { passClaim(m.name); if (twitch.canSay()) twitch.say(`@${m.name} ⏭️ No problem! Your movie goes back in the battle and keeps its luck.`).catch(() => {}); }

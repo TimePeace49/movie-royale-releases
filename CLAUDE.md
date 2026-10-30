@@ -156,3 +156,4 @@ No look-alikes of real characters/brands (declined a Homer Simpson donut monster
 - The pinned Discord message links Derek's ideas doc (setting `ideasDoc`).
 
 - Derek once said "don't show chat on screen except during redemption on battles"; later he said to ignore that rule (don't act on it).
+- **1.49.1:** holiday maps = `HOLIDAY` in maps.js (`m.holiday`, passed through `cardMaps()`); `mapGroups()` puts them in a last "🎉 Holiday maps" optgroup (still normal maps, on Random). Claims: `claimAnswer(m, firstMsg)` — the message that starts the claim only counts if it's the exact !accept/!pass command; yes/no words only after `c.asked` (Derek: a "YES!" got claimed without asking). Failed/impossible ask → control toast.

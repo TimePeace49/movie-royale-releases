@@ -38,7 +38,7 @@ const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev 
 export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
-export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
+export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, holiday: !!m.holiday, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
 export const isBallMap = id => !CARD_MAPS.some(m => m.id === id) && MAP_LIST.some(m => m.id === id);
 const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu' });
 export function C() {

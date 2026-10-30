@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.49.1 (test build)
+- ✋ **The movie winner is always asked first.** When a Discord movie wins and the winner types in chat, Movie Royal now always asks them !accept or !pass before the movie is claimed. Before, a happy first message like "YES!" or "yeah" counted as the answer, so the movie got claimed without the question ever being asked. Now only typing !accept / !pass right away skips the question; yes / no words count once they've been asked. If the bot can't ask in chat (not signed in, or Twitch says no), you get a warning to use ✅ Accept / ⏭️ Pass on the winner card.
+- 🎉 **Holiday maps have their own section.** Every map list (Battle tab, Settings, Card battles, the test lab) now puts the holiday maps together in a "🎉 Holiday maps" section at the bottom. They're still normal maps: use them any time, and they still come up on 🎲 Random.
+
 ## 1.49.0 (test build)
 - 🔁 **Only the first respin counts, always.** If several people redeem a respin at the same time, the first one spins. Everyone else's goes into their account as a free saved respin instead, and the bot tells them. This counts for channel points and saved spins (!respin), and it applies while a respin is spinning, waiting to spin, or in the few seconds after it lands. It's always on now: the old on/off switch is gone, and you can still set the seconds in the wheel's settings.
 - 🎟️ **History → 🎟️ Free spins:** a new tab listing every free (saved) wheel spin:

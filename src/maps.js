@@ -44,6 +44,9 @@ for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
 // Ball maps are for both unless listed here as ball-only. Card-only maps live in cards.js (CARD_MAPS).
 const BALL_ONLY = ['derby', 'figure8']; // 🚗 car maps: ball battles only
 for (const m of MAP_LIST) m.modes = BALL_ONLY.includes(m.id) ? ['ball'] : ['ball', 'card'];
+// 🎉 holiday maps: normal maps (any time of year, on Random too), just listed in their own section at the bottom of map menus (Derek)
+export const HOLIDAY = ['xmas', 'turkey', 'halloween', 'newyear', 'valentine', 'stpat', 'easter', 'july4'];
+for (const m of MAP_LIST) if (HOLIDAY.includes(m.id)) m.holiday = true;
 // chaos events that break the ground: never used on maps where nothing breaks (their channel point rewards get paused there)
 export const GROUND_EVENTS = ['collapse', 'lightning'];
 export const mapById = id => MAP_LIST.find(m => m.id === id);
