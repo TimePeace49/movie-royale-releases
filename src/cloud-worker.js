@@ -11,7 +11,8 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 14; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 15;
+export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -220,8 +221,13 @@ function myMoviesText(s, id) {
   if (u.wonThisWeek) head = `🏆 Your movie won this week — your movies sit out until **${backOn(s.cfg)}**. ` + head;
   if (!s.cfg.swapsLocked && mine.length) head += s.cfg.swapHint || ' (You can /swap any of them until the stream starts.)';
   const tag = e => e.status === 'benched' ? ` 💤 back ${backOn(s.cfg)}` : e.status === 'paused' ? ' ⏸ paused' : e.status === 'away' ? ' 💤 out tonight' : '';
-  const luck = e => s.cfg.luckOn && e.luckPct ? ` 🍀+${(+e.luckPct).toFixed(2)}%` : '';
-  return head + (mine.length ? '\n' + mine.map(e => `• ${e.label}${e.sub ? ` (${e.sub})` : ''}${tag(e)}${luck(e)}${e.pending ? ' ⏳' : ''}`).join('\n') : '');
+  return head + (mine.length ? '\n' + mine.map(e => `• ${e.label}${e.sub ? ` (${e.sub})` : ''}${tag(e)}${luckTxt(s, e)}${e.pending ? ' ⏳' : ''}`).join('\n') : '');
+}
+// 🍀 every movie's luck (1.61.5, the same words as the app's /mymovies): its own luck + the picker's 👀 watch luck
+const pctTxt = n => String(Math.round((Number(n) || 0) * 100) / 100);
+function luckTxt(s, e) {
+  const own = s.cfg.luckOn ? Number(e.luckPct) || 0 : 0, wl = e.kind === 'spot' ? 0 : Number(s.users?.[e.backers?.[0]?.discordId]?.watchLuck) || 0; if (!s.cfg.luckOn && !wl) return '';
+  return ` · 🍀 **${pctTxt(Math.min(100, own + wl))}%** luck${wl ? ` (${pctTxt(own)}% + 👀 ${pctTxt(wl)}% watch luck)` : ''}`;
 }
 function people(s) {
   const m = new Map();
@@ -283,7 +289,7 @@ async function interaction(req, env, ctx) {
     const p = findPerson(s, who);
     if (!p) return reply(`Couldn't find anyone called **${who}** with movies.`);
     const mine = mineOf(s, p.discordId);
-    return reply(mine.length ? `🎬 **${p.name}**'s movies: ${mine.map(e => `${e.label}${e.sub ? ` (${e.sub})` : ''}`).join(', ')}` : `**${p.name}** has no movies in right now.`);
+    return reply(mine.length ? `🎬 **${p.name}**'s movies: ${mine.map(e => `${e.label}${e.sub ? ` (${e.sub})` : ''}${luckTxt(s, e)}`).join(', ')}` : `**${p.name}** has no movies in right now.`);
   }
   if (name === 'list') {
     const list = s.pool.filter(e => e.status === 'active').sort((a, b) => (b.weight || 1) - (a.weight || 1));

@@ -15,7 +15,7 @@ import * as twitch from './twitch.js';
 import { getMany, searchMovies, findImdb } from './tmdb.js';
 import { scan as banScan, runScan, yearCleanup, setScanHooks, dubCleanup } from './banscan.js';
 import * as listsrc from './listsrc.js';
-import { undoMovieWin, resetCooldowns } from './movies.js';
+import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
@@ -1376,7 +1376,11 @@ app.get('/api/viewer/:login', async (req, res) => {
     sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: chatlog.watchStreak(v), twitchStreak: v?.streak || 0, streams: (v?.watched || []).length, lastStreams: chatlog.lastStreams(v), color: v?.color || null,
     watch: v ? { total: v.watchMins || 0, stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamWatch || 0 : 0 } : null,
     chats: v ? { stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamMsgs || 0 : 0, month: v.byMonth?.[mon] || 0, year: v.byYear?.[yr] || 0, total: v.msgs || 0, first: v.first, last: v.last } : null,
-    discord: dp ? { id: dp.discordId, name: dp.name, avatar: dp.avatar, movies: dp.active, watched: dp.watched, picksUsed: dp.used, max: dp.max } : null,
+    discord: dp ? (() => { // 🍀 each movie's luck (own luck + 👀 watch luck), like !mymovies shows
+      const ents = getList('movies')?.entries || [], on = luckOn(), wl = watchLuckFor(dp.discordId);
+      const movies = dp.active.map(m => { const e = ents.find(x => x.id === m.id), L = e ? movieLuck(e) : { own: 0, wl: 0, total: 0 }; return { ...m, luck: L.total, ownLuck: L.own, watchLuck: L.wl }; });
+      return { id: dp.discordId, name: dp.name, avatar: dp.avatar, movies, watched: dp.watched, picksUsed: dp.used, max: dp.max, luckOn: on, watchLuck: wl };
+    })() : null,
     stats: sum ? { battles: sum[0], wins: sum[1], p2: sum[2], p3: sum[3], top5: sum[5], top10: sum[6], luck: Math.round(sum[7] * 10) / 10 } : null, wins,
     spins: { now: spinsNow, usedStream: usedNow, beforeStream: Math.max(0, spinsNow + usedNow - givenNow), gotTotal: bank?.got || 0, usedTotal: bank?.used || 0, used: used.slice(-50).reverse(), grants: w.grants.filter(g => g.login === login || norm(g.name) === n).slice(-50).reverse() },
     log: chatlog.search({ login, days: 120, limit: 200 })
@@ -1401,6 +1405,16 @@ app.post('/api/test/final', async (req, res) => {
   const body = { count: 3, lobby: 0, game: 40, luck: false, showdownTest: true, ...(kind === 'chars' ? { chars: true, map: map || 'kungfu' } : { map: map && mapById(map) ? map : 'classic' }) };
   try { const r = await fetch(`http://127.0.0.1:${PORT}/api/test/battle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); res.status(r.status).json(await r.json()); }
   catch (e) { res.status(400).json({ error: e.message }); }
+});
+// 🧪 Test tab: what !mymovies (Twitch), /mymovies (the app's Discord bot) and the 24/7 bot answer for someone, with every movie's 🍀 luck
+app.post('/api/test/mymovies', async (req, res) => {
+  const all = discordPeople().filter(p => p.active.length), want = String(req.body?.who || '');
+  const p = all.find(x => x.discordId === want) || all[0];
+  if (!p) return res.status(400).json({ error: 'Nobody has a movie in the Discord movie battle yet. Add one first (Movie Pool, or 💬 Pretend chat → pretend movie).' });
+  const cmd = db.settings.twitchMoviesCommand || '!mymovies';
+  let cloudTxt = null; try { const wk = await import('./cloud-worker.js'), cfg = cloud.buildConfig(), st = { cfg, queue: [], pool: (cfg.pool || []).map(e => ({ ...e })), users: JSON.parse(JSON.stringify(cfg.users || {})), links: { ...(cfg.links || {}) }, looks: {} }; cloudTxt = wk.__test?.myMoviesText(st, p.discordId) || null; } catch (e) { cloudTxt = '(could not make it: ' + e.message + ')'; }
+  res.json({ ok: true, name: p.name, twitch: p.twitch || '', people: all.map(x => ({ id: x.discordId, name: x.name })), id: p.discordId, luckOn: !!db.settings.luckOn, watchOn: !!getList('movies')?.watchLuck?.on,
+    chat: `@${p.twitch || p.name} ${discord.myMoviesText(p.discordId, true)}`, cmd, discord: discord.myMoviesText(p.discordId), cloud: cloudTxt });
 });
 app.post('/api/test/reveal', wTry(b => { if (!wheel.W().show) wheel.setShow(true); return wheel.revealTest({ theme: b.theme || null, text: b.text, image: b.image }); })); // 🧪 a pretend mystery card (theme = a holiday to try)
 app.post('/api/app-style', (req, res) => { const id = String(req.body?.id || '').replace(/[^\w-]/g, '').slice(0, 20); live.appStyle = id || null; res.json({ ok: true }); }); // 🎨 the control panel says which holiday style it shows (🎁 mystery packs match it)

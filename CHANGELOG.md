@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.61.5
+- 🍀 **!mymovies and /mymovies show each movie's luck:** Twitch chat answers like `Heat (1995) 🍀9.5%`, Discord shows `🍀 9.5% luck` and splits it into the movie's own luck and 👀 watch luck when watch luck is on. Same when someone looks up another person's movies.
+- 👤 **Chatter profiles show luck too:** the 🎬 Movies part of a profile lists every movie with its 🍀 luck (hover it to see own luck + watch luck).
+- 🧪 Test tab → **🍀 !mymovies and /mymovies with luck**: pick a person and see exactly what Twitch chat, Movie Royal's Discord bot and the 24/7 bot would answer (nothing is sent), plus **👤 Open their profile**.
+- ☁️ The 24/7 Discord bot needs its usual update for this (Movie Royal pops up the reminder).
+
 ## 1.61.4
 - 🥊 **FINAL FIGHT 360, like your drawing:** the last two are moved to the middle and stand still, and the camera walks a full circle around them. The map is copied all the way round, so you see it behind them the whole way. The scenery slides past behind them, the floor right under them stays put and the floor in front slides the other way. The drawn ring and lines on the floor are gone. On 🔔 Royal Rumble and 🧙 Wizard Battle the ring / floating platform stays with them while the crowd and sky go round.
 - 🧱 **Broken ground is fixed for the FINAL FIGHT:** craters (🪖 WW2) are gone and fallen tiles (🧙 Wizard Battle) come back, but the blood stays where the ground didn't fall.

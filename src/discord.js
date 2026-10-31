@@ -5,7 +5,7 @@ import { db, save, streamerName } from './store.js';
 import { SYNC_NAME, SYNC_TOPIC } from './relay.js';
 import * as looks from './looks.js';
 import { searchMovies, getMany, cachedMovie } from './tmdb.js';
-import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, banAsk, swapMovie, swapsLocked, luckOn, freePicks, swapHint, lockMode } from './movies.js';
+import { suggest, moviesList, findMovie, userActive, picksUsed, wonThisWeek, backOn, rollWeek, claimManual, blockReason, banAsk, swapMovie, swapsLocked, luckOn, freePicks, swapHint, lockMode, movieLuck, pctTxt } from './movies.js';
 
 let client = null;
 export const status = { state: 'off', error: null, tag: null, guilds: [], warnings: [] };
@@ -427,7 +427,12 @@ export function findPerson(q) {
 export function othersText(p, plain = false) {
   const mine = userActive(p.discordId), b = s => plain ? s : `**${s}**`;
   if (!mine.length) return `${b(p.name)} has no movies in right now.`;
-  return `🎬 ${b(p.name)}'s movies: ${mine.map(e => `${e.label}${e.sub ? ` (${e.sub})` : ''}${e.status === 'benched' ? ` 💤 back ${backOn()}` : e.status === 'paused' ? ' ⏸' : ''}${luckOn() && e.luckPct ? ` 🍀+${(+e.luckPct).toFixed(2)}%` : ''}`).join(', ')}`;
+  return `🎬 ${b(p.name)}'s movies: ${mine.map(e => `${e.label}${e.sub ? ` (${e.sub})` : ''}${e.status === 'benched' ? ` 💤 back ${backOn()}` : e.status === 'paused' ? ' ⏸' : ''}${luckTxt(e, plain)}`).join(', ')}`;
+}
+// 🍀 every movie's luck (1.61.5, Derek): "🍀 3.5% luck" (0% too, while luck or watch luck is on), watch luck counted in
+function luckTxt(e, plain) {
+  const L = movieLuck(e); if (!luckOn() && !L.wl) return '';
+  return plain ? ` 🍀${pctTxt(L.total)}%` : ` · 🍀 **${pctTxt(L.total)}%** luck${L.wl ? ` (${pctTxt(L.own)}% + 👀 ${pctTxt(L.wl)}% watch luck)` : ''}`;
 }
 
 /** Shared by /mymovies and the Twitch chat command. */
@@ -441,7 +446,7 @@ export function myMoviesText(discordId, plain = false) {
   if (wonThisWeek(discordId)) head = `🏆 Your movie won this week — your movies sit out until ${b(backOn())}. ` + head;
   if (!plain && !swapsLocked() && mine.length) head += swapHint();
   const tag = e => e.status === 'benched' ? ` 💤 back ${backOn()}` : e.status === 'paused' ? ' ⏸ paused' : e.status === 'away' ? ' 💤 out tonight' : '';
-  const luck = e => luckOn() && e.luckPct ? ` 🍀+${(+e.luckPct).toFixed(2)}%` : '';
+  const luck = e => luckTxt(e, plain);
   if (plain) return `${head} ${mine.length ? 'Your movies: ' + mine.map(e => `${e.label}${e.sub ? ` (${e.sub})` : ''}${tag(e)}${luck(e)}`).join(', ') : 'No movies in yet — /suggest one in Discord!'}`;
   return head + (mine.length ? '\n' + mine.map(e => `• ${e.label}${e.sub ? ` (${e.sub})` : ''}${tag(e)}${luck(e)}`).join('\n') : '');
 }

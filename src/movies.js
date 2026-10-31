@@ -168,6 +168,16 @@ export async function swapMovie(user, oldEntryId, newValue, force = false) {
 
 // ---------- luck: every battle your movie is on the cliff it gets a little luckier, until one of your movies wins ----------
 export const luckOn = () => !!db.settings.luckOn;
+// 👀 watch luck for a Discord person on the Discord movie battle (same sum as the server's watchLuck: hours watched since it was turned on)
+export function watchLuckFor(discordId) {
+  const w = moviesList()?.watchLuck, login = discordId && db.links?.[discordId]; if (!w?.on || !login) return 0;
+  const k = String(login).toLowerCase(), v = db.viewers?.[k]; if (!v) return 0;
+  const hrs = Math.max(0, (v.watchMins || 0) - (w.base?.[k] || 0)) / 60;
+  return Math.min(100, Math.floor(hrs / Math.max(1, w.hours || 10)) * (w.amount || 1));
+}
+// 🍀 how much luck a movie has, for /mymovies and !mymovies (1.61.5, Derek: show the luck every movie has): its own luck + the picker's watch luck
+export const pctTxt = n => String(Math.round((Number(n) || 0) * 100) / 100);
+export function movieLuck(e) { const own = luckOn() ? Number(e.luckPct) || 0 : 0, wl = e.kind === 'spot' ? 0 : watchLuckFor(e.backers?.[0]?.discordId); return { own, wl, total: Math.min(100, own + wl) }; }
 export const luckMultiplier = e => luckOn() ? 1 + Math.max(0, Number(e.luckPct) || 0) / 100 : 1;
 export function addLuck(entryIds, streamKey = '') {
   if (!luckOn()) return;

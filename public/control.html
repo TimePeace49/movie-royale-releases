@@ -956,6 +956,12 @@
     <div id="tBanOut"></div>
   </div>
   <div class="card">
+    <h3>🍀 !mymovies and /mymovies with luck</h3>
+    <p class="help">Shows what someone gets back from <b>!mymovies</b> in Twitch chat, <b>/mymovies</b> in Discord, and the ☁️ 24/7 Discord bot: every movie with its 🍀 luck (their own luck plus 👀 watch luck, when that's on). Nothing is sent anywhere.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMmWho" style="width:auto" title="Whose movies to show"><option value="">(the first person with movies)</option></select><button class="primary" onclick="mmTest()">🍀 Show the answers</button><button onclick="mmProfile()" title="Opens this person's profile: the 🎬 Movies part shows each movie's luck">👤 Open their profile</button></div>
+    <div id="tMmOut"></div>
+  </div>
+  <div class="card">
     <h3>🎁 Mystery spot (hidden reveal)</h3>
     <p class="help">A wheel spot nobody knows until it lands: a card pack pops up (here and on stream), you click it, the top tears off and a card shows the hidden words / picture. Set one up: 🎡 Wheel → ⚙ on a spot → 🎁 Hidden reveal. With a holiday app style on, the pack and card dress up for it.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tRevTheme" style="width:auto" title="Mystery card look"><option value="">🎨 My app style</option><option value="normal">💜 Normal</option><option value="newyear">🎆 New Year's</option><option value="valentine">💘 Valentine's Day</option><option value="stpat">☘️ St. Patrick's Day</option><option value="easter">🐰 Easter</option><option value="july4">🎇 4th of July</option><option value="halloween">🎃 Halloween</option><option value="turkey">🦃 Thanksgiving</option><option value="xmas">🎄 Christmas</option></select>
@@ -1606,7 +1612,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -3261,6 +3267,20 @@ async function sceneFinal(kind) {
 }
 async function sceneReveal() { try { await api('/api/test/reveal', {}); } catch {} }
 async function sceneVr(kind) { try { await api('/api/test/vr', { kind }); } catch {} }
+async function mmTest() { // 🧪 !mymovies / /mymovies with every movie's luck
+  let r; try { r = await api('/api/test/mymovies', { who: $('tMmWho').value || '' }); } catch { mmLast = null; return; }
+  mmLast = r;
+  const sel = $('tMmWho'), cur = r.id; sel.innerHTML = r.people.map(p => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  const box = (t, x) => `<div style="margin-top:8px"><b>${t}</b><pre style="white-space:pre-wrap;margin:4px 0;padding:8px 10px;background:var(--panel2);border-radius:8px;font:13px/1.45 Inter,sans-serif">${esc(x || '(nothing)').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</pre></div>`;
+  $('tMmOut').innerHTML = (r.luckOn || r.watchOn ? '' : '<p class="help">⚠️ 🍀 Luck is off (Settings → 🍀 Luck &amp; swaps), so no luck shows.</p>') + box(`💜 Twitch chat (${esc(r.cmd)})`, r.chat) + box('🤖 Discord /mymovies (Movie Royal\'s bot)', r.discord) + box('☁️ 24/7 Discord bot /mymovies', r.cloud);
+}
+let mmLast = null;
+async function mmProfile() { // 🧪 the chatter profile with each movie's luck
+  if (!mmLast || ($('tMmWho').value && $('tMmWho').value !== mmLast.id)) { await mmTest(); }
+  if (!mmLast) return;
+  if (!window.Profile) return toast('The profile window isn\'t loaded yet: try again in a second.');
+  Profile.open(mmLast.twitch || '', { discordId: mmLast.id });
+}
 async function revealLand() { // 🧪 land on the picked wheel's first mystery spot
   await loadWheel().catch(() => {}); const w = wCur(), e = w?.entries.find(x => x.reveal?.on && (x.reveal.text || x.reveal.image) && x.on !== false && !x.voided && x.weight > 0);
   if (!e) return toast('No mystery spot on this wheel yet: 🎡 Wheel → ⚙ on a spot → 🎁 Hidden reveal (add hidden words or a picture).', 8000);

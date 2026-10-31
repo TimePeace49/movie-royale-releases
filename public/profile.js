@@ -45,7 +45,7 @@ window.Profile = (() => {
         <div class="st"><b>${S.now}</b><small>🎟️ respins right now</small></div></div>
       ${p.lastStreams?.length ? `<h4>🔥 Your last ${p.lastStreams.length} streams</h4><div class="muted" style="display:flex;flex-wrap:wrap;gap:6px">${p.lastStreams.map(x => `<span title="${x.watched ? 'Watched (chatted or in the viewer list)' : 'Missed'}" style="padding:2px 8px;border-radius:8px;background:${x.watched ? '#7dffb022' : '#ff7a7a22'}">${x.watched ? '✅' : '❌'} ${new Date(x.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>`).join('')}</div><div class="muted" style="font-size:12px;margin-top:4px">Newest first. Missing one starts the streak over.</div>` : ''}
       <h4>💬 Chats</h4><div class="grid"><div class="st"><b>${C?.stream ?? 0}</b><small>this stream</small></div><div class="st"><b>${C?.month ?? 0}</b><small>this month</small></div><div class="st"><b>${C?.year ?? 0}</b><small>this year</small></div><div class="st"><b>${C?.total ?? 0}</b><small>all time${C?.first ? ` (since ${dt(C.first)})` : ''}</small></div></div>
-      ${p.discord ? `<h4>🎬 Movies (Discord: ${esc(p.discord.name)})</h4><div class="muted">${p.discord.movies.length ? p.discord.movies.map(m => esc(m.label) + (m.sub ? ` (${esc(m.sub)})` : '')).join(' · ') : 'No movies in the pool right now.'} · ${p.discord.watched} watched · picks used ${p.discord.picksUsed}/${p.discord.max}</div>` : ''}
+      ${p.discord ? `<h4>🎬 Movies (Discord: ${esc(p.discord.name)})</h4>${movieLines(p.discord)}<div class="muted">${p.discord.watched} watched · picks used ${p.discord.picksUsed}/${p.discord.max}</div>` : ''}
       ${p.about ? `<h4>About</h4><div class="muted">${esc(p.about)}</div>` : ''}
       ${p.login ? `<h4>🛡️ Moderate</h4><div class="row"><button onclick="Profile.mod('timeout',60)">⏱ 1 min</button><button onclick="Profile.mod('timeout',600)">⏱ 10 min</button><button onclick="Profile.mod('timeout',3600)">⏱ 1 hour</button><button onclick="Profile.mod('timeout',0,true)">⏱ Custom…</button><button class="red" onclick="Profile.mod('ban')">🔨 Ban</button><button onclick="Profile.mod('unban')">↩️ Unban</button></div>` : ''}`;
     if (tab === 'respins') body = `<div class="grid"><div class="st"><b>${S.beforeStream}</b><small>had when the stream started</small></div><div class="st"><b>${S.usedStream}</b><small>used this stream</small></div><div class="st"><b>${S.now}</b><small>have right now</small></div><div class="st"><b>${S.gotTotal} / ${S.usedTotal}</b><small>ever given / ever used</small></div></div>
@@ -66,6 +66,18 @@ window.Profile = (() => {
     return `<h4 style="margin-top:4px">🎨 Their character <span class="muted" style="font-weight:400">(made in Discord with /character)</span></h4><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <canvas id="profLook" width="150" height="150" style="background:#1d1630;border-radius:12px;flex:none" title="Their own battle character"></canvas>
       <div class="muted" style="font-size:13px;line-height:1.6">${PARTS.map(([k, ic]) => `${ic} #${L[k]} ${esc(N[k][L[k] - 1] || '')}`).join('<br>')}</div></div>`;
+  }
+  // 🍀 their movies with each one's luck (own luck + 👀 watch luck), like !mymovies shows
+  function movieLines(d) {
+    if (!d.movies.length) return '<div class="muted">No movies in the pool right now.</div>';
+    const pct = n => String(Math.round((Number(n) || 0) * 100) / 100), showLuck = d.luckOn || d.watchLuck > 0;
+    const rows = d.movies.map(m => {
+      const st = m.away ? ' <span class="muted">🛌 sitting out tonight</span>' : m.benched ? ' <span class="muted">💤 benched</span>' : m.paused ? ' <span class="muted">⏸ paused</span>' : '';
+      const luck = showLuck ? ` <b class="profLuck" title="${m.watchLuck ? `${pct(m.ownLuck)}% own luck + ${pct(m.watchLuck)}% watch luck` : 'Luck on this movie'}" style="color:#7dffb0">🍀 ${pct(m.luck)}%</b>` : '';
+      return `<div class="line">🎬 <b>${esc(m.label)}</b>${m.sub ? ` <span class="muted">(${esc(m.sub)})</span>` : ''}${luck}${st}</div>`;
+    }).join('');
+    const note = d.watchLuck > 0 ? `<div class="muted">👀 Includes +${pct(d.watchLuck)}% watch luck on each movie.</div>` : !d.luckOn ? '<div class="muted">🍀 Luck is turned off, so it isn\'t shown.</div>' : '';
+    return rows + note;
   }
   function drawLook(p) {
     const c = document.getElementById('profLook'); if (!c || !window.CHAR_PARTS) return;

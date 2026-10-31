@@ -5,7 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { db, save, ROOT, streamerName } from './store.js';
 import * as lb from './letterboxd.js';
-import { picksClosed, closedMsg, moviesList, picksUsed, wonThisWeek, backOn, swapsLocked, luckOn, suggest, swapMovie, claimManual, swapMsg, swapHint } from './movies.js';
+import { picksClosed, closedMsg, moviesList, picksUsed, wonThisWeek, backOn, swapsLocked, luckOn, suggest, swapMovie, claimManual, swapMsg, swapHint, watchLuckFor } from './movies.js';
 import { helpText, peopleIndex, refreshChars } from './discord.js';
 import * as looks from './looks.js';
 
@@ -54,7 +54,7 @@ export function buildConfig() {
     return { id: e.id, tmdbId: e.tmdbId || null, label: e.label, sub: e.sub || '', status: e.status, kind: e.kind || null, weight: e.weight || 1, luckPct: e.luckPct || 0, backers: (e.backers || []).map(b => ({ discordId: b.discordId, name: b.name })), collection: e.details?.collection || null };
   });
   for (const id of Object.keys(db.manualPeople || {})) ids.add(id);
-  const users = {}; for (const id of ids) { const free = (db.freePicks || {})[id] || 0; users[id] = { used: Math.max(0, picksUsed(id) - free), free, wonThisWeek: wonThisWeek(id) }; } // free replacement picks (older 24/7 bots just see fewer picks used)
+  const users = {}; for (const id of ids) { const free = (db.freePicks || {})[id] || 0, wl = watchLuckFor(id); users[id] = { used: Math.max(0, picksUsed(id) - free), free, wonThisWeek: wonThisWeek(id), ...(wl ? { watchLuck: wl } : {}) }; } // (👀 watch luck: /mymovies shows it, 1.61.5) // free replacement picks (older 24/7 bots just see fewer picks used)
   const w = lb.exportWatched();
   return {
     v: 1, streamer: streamerName(), maxPerUser: Number(db.settings.maxPerUser) || 3, banCurrentYear: db.settings.banCurrentYear !== false,

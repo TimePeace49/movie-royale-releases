@@ -196,6 +196,9 @@ H(/^💧 hydrate$|^🙆 stretch$|^🎩 pick a hat$|^🎉 viewer's choice$/i, '�
 H(/^🚀 raid: pick a stream$/i, '🚀 Raid pick test', 'Pretends a viewer redeemed the raid reward and typed a channel: the raid box pops up at the top. It only raids if you press it there.');
 H(/^🎬 scenes$/i, '🎬 Scenes', 'One button for each big moment on stream: final showdowns, the mystery card, Doomsday, and the channel point reward pop-ups.');
 H(/show what they typed on the pop-up/i, '💬 Show their pick', 'Off (the default): the 🎉 Viewer\'s choice pop-up only shows who redeemed it, and their pick stays a secret: they tell you later. On: it also shows what they typed. Changing it updates the reward\'s message on Twitch (if Movie Royal made the reward) and the OBS source.');
+H(/^🍀 show the answers$|^tip:whose movies to show/i, '🍀 !mymovies test', 'Shows what this person would get back from !mymovies in Twitch chat, /mymovies in Discord and the ☁️ 24/7 bot, with every movie\'s luck. Nothing is sent to Twitch or Discord.');
+H(/^👤 open their profile$|tip:opens this person's profile: the 🎬 movies/i, '👤 Profile luck test', 'Opens this person\'s chatter profile. Its 🎬 Movies part lists each movie with its 🍀 luck (own luck plus 👀 watch luck).');
+H(/^🍀 !mymovies and \/mymovies with luck$/i, '🍀 !mymovies test', 'Try what people see when they check their movies, with the luck of every movie.');
 H(/^🏁 laps for this race/i, '🏁 Laps for this race', 'Shows when the next battle is on a race map. Pick how many laps the race is before you press Start (− / + or type a number). It is the same setting as Settings → Game → 🏁 Races: how many laps, so every race map uses it.');
 H(/allow movies that have an english dub/i, '🗣️ Allow dubbed movies', 'With 🌍 Not in English on, movies that likely have an English dub are allowed anyway: cartoons, anime, and well-known movies (at least the number of TMDB votes in the box below). TMDB doesn\'t list dubs, so this is a guess: small foreign movies still get banned. Turning it on (or changing the number) checks the movies the rule banned before and takes the dubbed ones off the list. Bans you made by hand stay.');
 H(/well-known = at least/i, '🗣️ Well-known = at least … TMDB votes', 'How many votes a foreign movie needs on TMDB to count as well-known (so it likely has an English dub). Lower = more foreign movies allowed. Default 1000.');
@@ -649,7 +652,7 @@ H(/your camera in obs/i, 'Camera source', 'Your camera\'s name in OBS, for Dooms
 H(/save & test the connection/i, '🔌 Save & test', 'Saves and checks Movie Royal can talk to OBS.');
 H(/sounds for/i, 'Sounds for', 'Which sounds you\'re changing: all maps, one map, or one wheel.');
 H(/⬆️ upload/i, '⬆️ Upload', 'Use your own sound file for this.');
-H(/what movies do i have|^!mymovies$/i, '!mymovies command', 'Viewers type it to see their movies and picks left. Add a name to see someone else\'s.');
+H(/what movies do i have|^!mymovies$/i, '!mymovies command', 'Viewers type it to see their movies (with each one\'s 🍀 luck) and picks left. Add a name to see someone else\'s.');
 H(/cooldown per person/i, 'Cooldown', 'How often each person can use it.');
 H(/free — viewers type !color/i, 'Ball colors: free', 'Viewers type !color pink to change their ball. Silent, 10-second cooldown.');
 H(/channel points — adds one reward/i, 'Ball colors: channel points', 'Adds one reward, "Royal: Ball color", that viewers redeem and type a color.');
