@@ -3,6 +3,57 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.66.2: What's new
+Everything since 1.60.4.
+
+**🎬 Movie nights**
+- 🔞 **Nudity heads-up:** when a movie wins, Movie Royal checks its IMDb Parents Guide and TMDB's tags. If it has nudity, the Winner card on the Battle tab says so in red and lists every scene with about when it is ("~47 min in", "at 1:12:30", "near the end", or "time not listed"). Orange = sex scenes but no nudity listed. The winner pop-up on stream just says "This movie has nudity" (no times). It's never typed in Twitch chat. The switches are in Settings → 🎬 Movie info.
+- ⏱️ **Movie length** on the winner screen, in the 🎬 Movie Pool and in the list under the battle (like "2 h 7 min"). Movies that were added without it get it filled in by themselves.
+- 🎞️ **Series go in order:** a movie in a series (like Harry Potter) can only be picked once you've watched every movie before it. The later ones are banned as 🎞️ sequels and come off by themselves when you watch the one before. People are told which one has to be watched first.
+- 🔒 **Series locks:** whoever picks the next movie of a series gets the series locked, so nobody else can pick its next movie. If their next set of picks doesn't include it, the series opens up for everyone. 🚫 Banned Movies → 🎞️ Series shows every series, what's next and who has it locked; you can change a lock by hand or ➕ add a series.
+- 🔁 **Redo without the passed movie:** when a winner passes, 🔁 Redo the battle without [movie] (right side of the Battle tab) starts the battle again right away without it.
+- 🛌 **Sit out after a pass:** the bot asks the person in chat if they want to sit out the rest of tonight. Anyone who sits out is told how to come back (!imback), and stays on the People list.
+- ⏭️ **!skip:** viewers can take one of their movies out of the next battle only (`!skip 2` or `!skip Heat`; the same again puts it back).
+- 🍀 **!mymovies and /mymovies show each movie's luck**, and so do chatter profiles.
+- 🗣️ **Dubbed movies aren't banned any more:** the 🌍 Not in English rule lets through movies that likely have an English dub (cartoons, anime and well-known movies).
+
+**🌐 The 500 worst movies (IMDb / Rotten Tomatoes battles)**
+- ⭐ Each movie shows its rating from the list (IMDb out of 10 or 🍅 %, or TMDB's when the list didn't show one) and its ⏱️ length, in the Movie Pool and the list under the battle.
+- People can pick a movie that's on it in Discord: it leaves the 500 list within a few seconds and the next movie on the list takes its place.
+- It never has a movie that belongs to someone (picked in Discord, or the next movie of their locked series), and movies on it never show as taken when people suggest them.
+- No sequels until you've watched the movies before them.
+- It updates as the last thing Movie Royal does when it opens.
+
+**🚫 Banned movies**
+- 🔄 **Refresh the whole banned list** (top of 🚫 Banned Movies): checks every ban rule, this year's bans, dubs and every series in one go. The movies you banned yourself are never touched.
+- ⬇️ **Export my bans** / ⬆️ **Import bans:** a spreadsheet file of the movies you banned yourself, to keep or to move to another PC.
+
+**🍀 Luck & timers**
+- 🍀 **New Luck tab in Settings** with every luck setting. 👀 Watch luck can be turned on for each battle there (off by default), with how many hours watched give how much luck.
+- 🎟️ **Wild spot luck: once a night** (the default): a wild spot gets +1% the first Discord movie battle it loses while you're live, and that's all for that stream. You can switch it to every battle, or no luck.
+- ⏱️⏳ **Battle timer and elimination pacer for every battle** (Settings → ⚔️ Game), next to every wheel's spin time. (The pacer for all battles didn't save before: fixed.)
+
+**⚔️ Battles & maps**
+- 🥊 **FINAL FIGHT 360:** the last two stand still in the middle while the camera walks a full circle around them, with the map going round behind them.
+- 🎥 **Calmer cameras:** much less wobble, and about half the shaking.
+- 📏 **Map size slider** on the right side of the Battle, Chat battle and Giveaway tabs: 50% to 200%. Bigger maps and longer race tracks.
+- 🏁 **No races with more than 50 pieces** (change the number in Settings → ⚔️ Game), and a 🏁 Laps box on the Battle tab when the next battle is a race.
+- 🏁 **Finish lines fixed:** a new 🏎️ Grand Prix layout, the line never sits where the road touches itself, and the flag stand is beside the road.
+- 📋 **The list under the battle shows who's really in**, with a 🔎 search box. Everyone else is under 👀 Show the … not in, with a tag saying why.
+
+**🎡 Wheel**
+- 🎁 **Mystery spots:** a spot with hidden words and/or a hidden picture. When the wheel lands on it, a card pack pops up in Movie Royal and on stream; open it to show what it really is. With a holiday app style on, the pack dresses up for the holiday.
+- Every spot rule is in the spot menu now, including 🎁 Hidden reveal and ⏱️🔀 Timer + Link.
+
+**🎥 OBS, rewards & the app**
+- 🎥 **Settings → OBS has everything OBS in one place**, each with its own switch. 📺 The capture window shows by itself during the 2-min join timer.
+- 📣 **Roll call as its own OBS browser source**, so it shows in scenes without the game screen.
+- 🎁 Hydrate, Stretch, Pick a hat and Viewer's choice can each be switched off. 🎉 Viewer's choice keeps their pick a secret (you can show it in Settings → 💰 Rewards & prices).
+- 🔍 **Search all settings** (top left of ⚙️ Settings), and **every option is in one place** now.
+- 🤫 Fixed false "Something went wrong" errors caused by ads on web pages Movie Royal reads in the background.
+- 🎬 **Test tab → Scenes:** one button for each big moment on stream. Most new things above can be tried in the 🧪 Test tab.
+- ☁️ **Update your 24/7 Discord bot** when Movie Royal asks (series rules, luck in /mymovies, dubbed movies).
+
 ## v1.60.4: What's new
 Everything since 1.60.3.
 

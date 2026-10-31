@@ -485,8 +485,8 @@ async function fetchWinnerNudity(f, rec) {
   if (live.lastWinner?.id === f.id) { live.lastWinner.nudity = r; pushState(); }
   nudeToStream(f, r);
 }
-// 📺 the winner pop-up on stream gets a short red line with about when (1.66.1, Derek: fine on the pop-up, NOT typed in chat)
-const nudeSlim = n => { if (!n || (!n.has && !n.sex)) return null; const t = [...new Set((n.scenes || []).map(x => x.label).filter(l => l !== 'time not listed'))]; return { has: !!n.has, sex: !!n.sex, level: n.level || null, times: t.slice(0, 6), more: Math.max(0, t.length - 6) }; };
+// 📺 the winner pop-up on stream gets a red "has nudity" line (1.66.1, Derek: fine on the pop-up, NOT typed in chat; 1.66.2: no times there)
+const nudeSlim = n => n?.has ? { has: true } : null; // (1.66.2, Derek: on stream just say there's nudity, no times)
 function nudeToStream(f, n) { if (db.settings.nudityCheck === false || db.settings.nudityStream === false) return; broadcast({ type: 'nudity', id: f.id, nudity: nudeSlim(n) }, 'overlay'); }
 function fakeNudity(runtime = 112) { // 🧪 a pretend Parents Guide page → the same reader + rules the real check uses
   const items = ['In the opening scene a man runs out of a lake naked; his bare buttocks are seen from behind.', 'A woman is shown topless in a shower scene at 1:12:30, for a few seconds.', 'A couple has sex under the sheets, no nudity is shown.', 'There is no frontal nudity.', 'Near the end, a woman takes off her top and her breasts are briefly seen.', 'Around 47 minutes in, people skinny dip in a pool at night (from a distance).', 'A painting of a nude woman hangs on a wall.'];

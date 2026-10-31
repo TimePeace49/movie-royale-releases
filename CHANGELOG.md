@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.66.2
+- 🔞 The winner pop-up on stream now just says **"This movie has nudity"** (no times). The Winner card in the app still lists every scene with about when it is.
+
 ## 1.66.1
 - 🔞 The nudity heads-up now also shows on the **winner pop-up on stream**: a short red line with about when each scene is (like "~47 min in · at 1:12:30 · near the end"). The Winner card in the app still lists every scene. It's never typed in Twitch chat. Turn the stream part off with the 📺 switch in Settings → 🎬 Movie info.
 - 🧪 Test tab → 🔞 Nudity heads-up → **⚔️ Practice battle**: a practice round whose winner gets a pretend nudity result, so you can see both.
