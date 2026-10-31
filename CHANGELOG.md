@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.65.1
+- ⬇️ **Export my bans:** Settings → 🚫 Banned Movies → ⬇️ Export my bans downloads the movies you banned yourself (not the automatic ones) as a spreadsheet file (.csv). **⬆️ Import bans** adds them back from that file (here or on another PC); it skips ones already banned and never removes any.
+- The banned list is never reset by updates: the 🎞️ series check only adds and removes its own 🎞️ sequel bans, never yours or the other automatic ones.
+- 🧪 Test tab → ⬇️ Export my bans (makes the file and reads it back; nothing changes).
+
 ## 1.65.0
 - 🔁 **Redo without the passed movie:** when a winner passes, a **🔁 Redo the battle without [movie]** button shows on the right of the Battle tab. It starts the battle again right away without that movie (it's back in after that).
 - 🛌 **Sit out after a pass:** the bot asks the person in chat if they want to sit out the rest of tonight. Yes = all their movies take a break until the next stream, no = they stay in.

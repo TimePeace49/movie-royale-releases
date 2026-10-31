@@ -2334,6 +2334,36 @@ app.post('/api/import/link', async (req, res) => {
 });
 
 // ---------- ban list ----------
+// ⬇️⬆️ the movies YOU banned (not the automatic ones): export as a spreadsheet file, import it again (here or on another PC)
+const myBans = () => (db.bans || []).filter(b => !b.auto && !b.test).sort((a, b) => (a.at || 0) - (b.at || 0));
+const csvCell = v => { const t = String(v ?? ''); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+function bansCsv() { return ['tmdbId,title,year,reason,banned on', ...myBans().map(b => [b.tmdbId, b.title, b.year || '', b.reason || '', b.at ? new Date(b.at).toISOString().slice(0, 10) : ''].map(csvCell).join(','))].join('\r\n') + '\r\n'; }
+function parseCsv(text) { // (quotes, commas inside quotes, "" = a quote)
+  const rows = [], t = String(text || '').replace(/^﻿/, ''); let row = [], cell = '', q = false;
+  for (let i = 0; i < t.length; i++) { const ch = t[i];
+    if (q) { if (ch === '"' && t[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; }
+    else if (ch === '"') q = true; else if (ch === ',') { row.push(cell); cell = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(cell); cell = ''; if (row.some(x => x.trim())) rows.push(row); row = []; } else cell += ch; }
+  row.push(cell); if (row.some(x => x.trim())) rows.push(row); return rows;
+}
+function bansFromFile(text) { // → [{tmdbId, title, year, reason}] from our CSV (or a JSON list)
+  const s = String(text || '').trim(); if (!s) return [];
+  if (s[0] === '{' || s[0] === '[') { const j = JSON.parse(s), list = Array.isArray(j) ? j : j.bans || []; return list.map(b => ({ tmdbId: b.tmdbId ?? b.id, title: b.title || '', year: b.year || '', reason: b.reason || '' })).filter(b => /^\d+$/.test(String(b.tmdbId))); }
+  const rows = parseCsv(s), head = rows[0].map(h => h.trim().toLowerCase()), ix = k => head.indexOf(k), hasHead = ix('tmdbid') >= 0;
+  return (hasHead ? rows.slice(1) : rows).map(r => ({ tmdbId: (r[hasHead ? ix('tmdbid') : 0] || '').trim(), title: (r[hasHead ? ix('title') : 1] || '').trim(), year: (r[hasHead ? ix('year') : 2] || '').trim(), reason: (r[hasHead ? ix('reason') : 3] || '').trim() })).filter(b => /^\d+$/.test(b.tmdbId));
+}
+app.get('/api/bans/export', (req, res) => { res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Content-Disposition', `attachment; filename="movie-royal-my-bans-${new Date().toISOString().slice(0, 10)}.csv"`); res.send('﻿' + bansCsv()); });
+app.post('/api/bans/import', express.text({ type: '*/*', limit: '5mb' }), (req, res) => { // adds them as your own bans (never removes any)
+  let list; try { list = bansFromFile(req.body); } catch (e) { return res.status(400).json({ error: "That file isn't a Movie Royal bans file (CSV or JSON)." }); }
+  if (!list.length) return res.status(400).json({ error: 'No movies found in that file (it needs a tmdbId column).' });
+  let added = 0, had = 0;
+  for (const b of list) { if (isBannedId(b.tmdbId) || (db.bans || []).some(x => String(x.tmdbId) === String(b.tmdbId))) { had++; continue; } if (banMovie({ id: Number(b.tmdbId), title: b.title || `TMDB ${b.tmdbId}`, year: b.year || null }, b.reason)) added++; }
+  save(); pushState(); refreshPreview(); if (cloud.enabled()) cloud.sync(true).catch?.(() => {});
+  res.json({ ok: true, found: list.length, added, had });
+});
+app.post('/api/test/ban-export', (req, res) => { // 🧪 the export file, read back (nothing changes)
+  const csv = bansCsv(), back = bansFromFile(csv), mine = myBans();
+  res.json({ ok: true, mine: mine.length, lines: csv.trim().split(/\r?\n/).slice(0, 6), readBack: back.length, same: back.length === mine.length && back.every((b, i) => String(b.tmdbId) === String(mine[i].tmdbId) && b.title === mine[i].title) });
+});
 app.get('/api/bans', (req, res) => res.json({ ok: (db.banOk || []).map(id => ({ tmdbId: id, title: db.banOkTitles?.[id] || null })), bans: [...(db.bans || [])].sort((a, b) => b.at - a.at), yearAllow: (db.yearAllow || []).map(id => ({ tmdbId: id, title: db.yearAllowTitles?.[id] || null })), year: new Date().getFullYear() }));
 app.post('/api/bans', async (req, res) => {
   try {
