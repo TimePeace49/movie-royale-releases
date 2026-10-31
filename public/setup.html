@@ -337,7 +337,7 @@ const PAGES = {
       <li>For the sound: <b>Sources</b> → <b>+</b> → <b>Application Audio Capture</b> → pick <b>MovieRoyal.exe</b>. Now the game has its own volume slider in OBS.</li>
       <li>Keep the game window open (it can be behind other windows, just not minimized).</li>
     </ol>
-    <div class="info">🔇 Movie Royal goes quiet when you click into another program (so it doesn't play over everything). OBS hears that too. If the game sound cuts out on stream while you're in another program, untick <b>🔇 Mute when unfocused</b> in Settings → 🖥️ App &amp; background.<div class="row" style="margin-top:8px"><label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" style="width:auto" ${S.settings.muteUnfocused !== false ? 'checked' : ''} onchange="api('/api/settings',{muteUnfocused:this.checked}).then(load)"> 🔇 Mute when unfocused</label></div></div>
+    <div class="info">🔇 Movie Royal goes quiet when you click into another program (so it doesn't play over everything). OBS hears that too. If the game sound cuts out on stream while you're in another program, untick <b>🔇 Mute when unfocused</b> in Settings → 🔊 Sounds.<div class="row" style="margin-top:8px"><label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" style="width:auto" ${S.settings.muteUnfocused !== false ? 'checked' : ''} onchange="api('/api/settings',{muteUnfocused:this.checked}).then(load)"> 🔇 Mute when unfocused</label></div></div>
     <label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" style="width:auto" ${S.settings.streamSetup ? 'checked' : ''} onchange="api('/api/settings',{streamSetup:this.checked}).then(load)"> I've added it to OBS</label>
     ${nav()}`;
   },

@@ -265,6 +265,14 @@
     #wEntTable tbody td:nth-child(7) { flex:1 1 140px; min-width:0; } #wEntTable tbody td:nth-child(7) select { width:100% !important; max-width:none; }
   }
   /* ⏱️⏳ Settings → Game: timer + pacer per battle; 🍀 Settings → Luck: per battle rows */
+  /* 🔍 settings search */
+  .setSearchWrap { position:relative; margin:0 0 8px; } .setSearchWrap input { width:100%; }
+  #setResults { display:none; margin-top:6px; max-height:55vh; overflow-y:auto; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:4px; }
+  #setResults.on { display:block; }
+  .srHit { display:block; width:100%; text-align:left; padding:6px 8px; border-radius:8px; margin:2px 0; background:transparent; border:0; white-space:normal; }
+  .srHit:hover, .srHit:focus { background:var(--panel2); } .srHit b { display:block; font-size:13.5px; font-weight:600; } .srHit small { color:var(--muted,#b9a8d8); font-size:12px; }
+  .setFlash { outline:2px solid var(--gold,#ffc94a); outline-offset:3px; border-radius:8px; animation:setFlash 2.4s ease; }
+  @keyframes setFlash { 0%, 30% { box-shadow:0 0 0 6px #ffc94a55; } 100% { box-shadow:0 0 0 0 transparent; } }
   .srRow { padding:6px 8px; border-radius:8px; background:var(--panel2); margin:4px 0; } .srRow select { width:auto; max-width:100%; }
   .tmRow { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:center; padding:8px 12px; border-radius:10px; background:var(--panel2); margin:6px 0; }
   .tmRow input[type=range] { width:100%; } .tmRow label { margin:0 0 2px; }
@@ -802,6 +810,8 @@
       <label>Sound effects <span id="sfxVal"></span></label><input type="range" min="0" max="100" id="sfxVol" oninput="volChange('sfxVolume', this.value)">
       <label>Music <span id="musVal"></span></label><input type="range" min="0" max="100" id="musVol" oninput="volChange('musicVolume', this.value)">
       <p class="help">Sound plays from the game screen, so OBS picks it up with the game window.</p>
+      <label class="ck"><input type="checkbox" id="sndMuteUnf" onchange="S.settings.muteUnfocused=this.checked;api('/api/settings',{muteUnfocused:this.checked}).then(()=>toast('Saved'))"> <span>🔇 Mute Movie Royal while I'm in another program (the sound comes back when I click back into Movie Royal)</span></label>
+      <p class="help">On by default. The stream isn't affected: the game screen in OBS plays its own sound. Turn this off if you capture Movie Royal's own window or desktop sound in OBS, or want to hear it while you're in other programs.</p>
     </div>
     <div class="card">
       <h3>Make it yours</h3>
@@ -977,6 +987,11 @@
     <div id="tSrOut"></div>
   </div>
   <div class="card">
+    <h3>🔍 Settings search</h3>
+    <p class="help">Opens ⚙️ Settings and searches for a word, like you'd type in 🔍 Search all settings at its top left. Click a match to jump to it.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><input id="tSsQ" style="width:180px" value="laps" title="What to search for in Settings"><button class="primary" onclick="setView('settings');setTimeout(()=>{$('setSearch').value=$('tSsQ').value;setSearchRun($('tSsQ').value);$('setSearch').focus()},300)">🔍 Search Settings</button></div>
+  </div>
+  <div class="card">
     <h3>📏 Map size</h3>
     <p class="help">Runs a practice battle (made-up movies) at the size you pick here, without changing your real setting. Bigger = bigger cliffs and arenas and longer race tracks. Your real size is the 📏 slider on the right side of the Battle, Chat battle and Giveaway tabs.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMsSize" style="width:auto" title="Which map size to try"><option value="50">50% (smallest)</option><option value="75">75%</option><option value="100" selected>100% (normal)</option><option value="150">150%</option><option value="200">200% (biggest)</option></select><select id="tMsMap" style="width:auto" title="Which map to try it on"></select><button class="primary" onclick="msTest()">▶ Try it</button></div>
@@ -1090,6 +1105,7 @@
 <!-- ⚙️ SETTINGS -->
 <section class="view" id="v-settings">
   <div class="pane card subnav" id="subnav">
+    <div class="setSearchWrap"><input id="setSearch" type="search" placeholder="🔍 Search all settings…" autocomplete="off" title="Type a few letters of any setting: the matches show here, click one to go straight to it" oninput="setSearchRun(this.value)" onfocus="setSearchRun(this.value)" onkeydown="setSearchKey(event)"><div id="setResults"></div></div>
     <button data-s="account" class="on">👤 Account &amp; updates</button>
     <button data-s="game">⚔️ Game</button>
     <button data-s="discord">🤖 Discord &amp; picks</button>
@@ -1653,7 +1669,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1692,7 +1708,7 @@ function drawChecklist() {
     ['discordRestart', '🔄 Restart the Discord bot: it comes back online (Settings → Discord & picks)', T('Try it', "discordRestart()", false)],
     ['pickLockBattle', '🔒 Discord picks + swaps lock while a movie battle is going and open again once it has its winner (try the 🤖 test Discord battle: watch the 🎬 Movie picks button)', T('Try it', "api('/api/test/discord-battle').then(()=>toast('Test Discord battle: the 🎬 Movie picks button on the Battle tab shows CLOSED until it has its winner',8000))")],
     ['gfx', '🎨 Graphics settings change the game screen (resolution, FPS lock, quality): the 📈 FPS counter shows what you get', T('FPS counter', "gfxTest()")],
-    ['muteUnfocused', '🔇 Movie Royal goes quiet when you click into another program, and the sound comes back when you click back (Settings → App & background)', T('Try it', "api('/api/test/battle',{count:12}).then(()=>toast('A practice battle is playing: click into another program and its sound stops, click back and it comes back',9000)).catch(()=>{})")],
+    ['muteUnfocused', '🔇 Movie Royal goes quiet when you click into another program, and the sound comes back when you click back (Settings → 🔊 Sounds)', T('Try it', "api('/api/test/battle',{count:12}).then(()=>toast('A practice battle is playing: click into another program and its sound stops, click back and it comes back',9000)).catch(()=>{})")],
     ['prices', '💰 Every reward, bits and donation amount in one place (Settings → 💰 Rewards & prices): change a price, pause one, make it always on or off after one use', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('prices')">See it</button>`],
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
@@ -1835,7 +1851,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(drawPrices, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -2190,8 +2206,8 @@ function timingHTML() {
     tmCW: v => Number(v) ? secsWord(v) : 'by how many packs',
     tmPac: v => pacerWord(v)
   });
-  const row = (key, name, sub, t, p, tips) => `<div class="tmRow" data-tm="${esc(key)}">
-      <div class="tmName"><b>${esc(name)}</b><small class="muted">${sub}</small></div>
+  const row = (key, name, sub, t, p, tips, extra = '') => `<div class="tmRow" data-tm="${esc(key)}">
+      <div class="tmName"><b>${esc(name)}</b><small class="muted">${sub}</small>${extra}</div>
       <div><label>⏱️ Battle timer: <b class="tmTV">${window[t.w](t.v)}</b></label><input type="range" min="${t.min}" max="${t.max}" step="5" value="${t.v}" title="${tips[0]}" oninput="this.previousElementSibling.querySelector('b').textContent=${t.w}(this.value)" onchange="tmSet('${esc(key)}','t',this.value)"></div>
       <div><label>⏳ Elimination pacer: <b class="tmPV">${window[p.w](p.v)}</b></label><input type="range" min="${p.min}" max="100" step="5" value="${p.v}" title="${tips[1]}" oninput="this.previousElementSibling.querySelector('b').textContent=${p.w}(this.value)" onchange="tmSet('${esc(key)}','p',this.value)"></div>
     </div>`;
@@ -2200,8 +2216,8 @@ function timingHTML() {
     <p class="help" style="margin:0 0 6px">The <b>battle timer</b> is how long a fight lasts. The <b>elimination pacer</b> spreads the knockouts over that time so the cliff doesn't empty out in the first seconds, and makes it busier when it drags (0 = off: pieces go out whenever they go out; when 2 are left early, the 🥊 FINAL SHOWDOWN still starts). 🏁 Races use the timer as the race time. Each slider saves right away.</p>
     <div id="tmBox">
     ${row('all', '🌐 All battles', 'Every battle that doesn\'t have its own', { v: allT, min: 10, max: Math.max(300, allT), w: 'tmAllT' }, { v: allP, min: 0, w: 'tmPac' }, ['How long a battle lasts', 'How hard the knockouts are spread over the battle (0 = off)'])}
-    <h4 style="margin:12px 0 2px">Each battle <small class="muted" style="font-weight:400">(slide all the way left = same as all battles)</small></h4>
-    ${S.lists.map(l => row('list:' + l.id, l.name, esc(TYPE[l.type] || ''), { v: Number(l.gameSeconds) || 0, min: 0, max: Math.max(300, Number(l.gameSeconds) || 0), w: 'tmTW' }, { v: l.pacer != null && Number(l.pacer) >= 0 ? Number(l.pacer) : -5, min: -5, w: 'tmPW' }, own)).join('')}
+    <h4 style="margin:12px 0 2px">Each battle <small class="muted" style="font-weight:400">(slide all the way left = same as all battles; 🧍 = characters instead of balls)</small></h4>
+    ${S.lists.map(l => row('list:' + l.id, l.name, esc(TYPE[l.type] || ''), { v: Number(l.gameSeconds) || 0, min: 0, max: Math.max(300, Number(l.gameSeconds) || 0), w: 'tmTW' }, { v: l.pacer != null && Number(l.pacer) >= 0 ? Number(l.pacer) : -5, min: -5, w: 'tmPW' }, own, `<label class="ck" style="margin:3px 0 0;font-size:12.5px" title="Characters instead of balls in this battle (the same as the 🧍 box on its tab)"><input type="checkbox" ${l.chars ? 'checked' : ''} onchange="api('/api/lists/${esc(l.id)}',{chars:this.checked},'PATCH').then(()=>toast('Saved',1500)).catch(()=>{})"> <span>🧍 Characters</span></label>`)).join('')}
     ${cb.map(b => row('card:' + b.id, b.name, '🃏 Card battle (same sliders as the 🃏 Card pool tab)', { v: Number(b.length) || 0, min: 0, max: 180, w: 'tmCW' }, { v: b.pace ?? 50, min: 0, w: 'tmPac' }, ['How long this card fight should last (all the way left = by how many packs fight)', 'How hard the knockouts are spread over this card fight (0 = off)'])).join('')}
     </div>
     <h4 style="margin:12px 0 2px">🎡 Wheel spin time <small class="muted" style="font-weight:400">(how long each wheel spins; also in each wheel's own settings)</small></h4>
@@ -2232,7 +2248,7 @@ async function capSave() {
 }
 function renderView() {
   if (!S) return;
-  document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
+  document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons(el.dataset.chaos || ''));
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
   { const el = $('capRow'), h = capHTML(); if (el && el.innerHTML !== h) el.innerHTML = h; }
   renderLaps(); renderMapSize();
@@ -2516,11 +2532,11 @@ async function saveTitle(v) { await api('/api/lists/' + list().id, { screenTitle
 async function setActive(id) { histList = null; await api('/api/active', { id }); }
 
 // ---------- channel points / bits on-off ----------
-function chaosButtons() {
+function chaosButtons(only = '') { // only: 'picks' = just 🎬 Movie picks, 'chaos' = just ⭐ Points / 💎 Bits (Settings shows each one in one place)
   const c = S?.chaos || { points: true, bits: true }, pc = !!S?.picksClosed;
-  return `<button class="${pc ? 'off' : 'on'} picksBtn" title="${pc ? (S.picksClosedManual ? 'Click to let people add movies again' : (S.pickLock === 'battle' ? 'Locked while the movie battle is going: opens again once it has its winner (Settings → Discord & picks)' : 'Closed because you’re live (Settings → Discord & picks)')) : 'Click to stop people adding movies (e.g. during stream)'}" onclick="picksToggle(${pc})">🎬 Movie picks ${pc ? 'CLOSED' : 'OPEN'}</button>
+  return `${only === 'chaos' ? '' : `<button class="${pc ? 'off' : 'on'} picksBtn" title="${pc ? (S.picksClosedManual ? 'Click to let people add movies again' : (S.pickLock === 'battle' ? 'Locked while the movie battle is going: opens again once it has its winner (Settings → Discord & picks)' : 'Closed because you’re live (Settings → Discord & picks)')) : 'Click to stop people adding movies (e.g. during stream)'}" onclick="picksToggle(${pc})">🎬 Movie picks ${pc ? 'CLOSED' : 'OPEN'}</button>`}${only === 'picks' ? '' : `
     <button class="${c.points ? 'on' : 'off'}" title="Click to turn ${c.points ? 'off' : 'on'}" onclick="chaosToggle('points', ${!c.points})">⭐ Points ${c.points ? 'ON' : 'OFF'}</button>
-    <button class="${c.bits ? 'on' : 'off'}" title="Click to turn ${c.bits ? 'off' : 'on'}" onclick="chaosToggle('bits', ${!c.bits})">💎 Bits ${c.bits ? 'ON' : 'OFF'}</button>`;
+    <button class="${c.bits ? 'on' : 'off'}" title="Click to turn ${c.bits ? 'off' : 'on'}" onclick="chaosToggle('bits', ${!c.bits})">💎 Bits ${c.bits ? 'ON' : 'OFF'}</button>`}`;
 }
 async function picksToggle(open) {
   if (open && !S.picksClosedManual && S.picksClosed) return toast(S.pickLock === 'battle' ? 'Picks are locked while the movie battle is going. They open again once it has its winner (change that in Settings → Discord & picks).' : 'Picks are closed because you’re live. Change that in Settings → Discord & picks.', 7000);
@@ -2528,7 +2544,7 @@ async function picksToggle(open) {
   toast(r.closed ? '🔒 Movie picks are <b>closed</b>. Discord /suggest is paused.' : '🍿 Movie picks are <b>open</b> again.');
 }
 async function chaosToggle(k, v) {
-  S.chaos = { ...S.chaos, [k]: v }; document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
+  S.chaos = { ...S.chaos, [k]: v }; document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons(el.dataset.chaos || ''));
   const r = await api('/api/chaos-toggle', { [k]: v });
   toast(`${k === 'points' ? '⭐ Channel point' : '💎 Bits'} chaos is <b>${v ? 'ON' : 'OFF'}</b>${r.msg ? ' · ' + esc(r.msg) : ''}`);
 }
@@ -3838,7 +3854,7 @@ function renderSound() {
   if (document.activeElement?.id !== 'bSfx') $('bSfx').value = st.sfxVolume ?? 70;
   if (document.activeElement?.id !== 'bMus') $('bMus').value = st.musicVolume ?? 35;
   $('bSfxVal').textContent = $('bSfx').value + '%'; $('bMusVal').textContent = $('bMus').value + '%';
-  $('sndToggle').textContent = on ? '🔊 Sound is ON' : '🔇 Sound is OFF';
+  $('sndToggle').textContent = on ? '🔊 Sound is ON' : '🔇 Sound is OFF'; if ($('sndMuteUnf') && document.activeElement !== $('sndMuteUnf')) $('sndMuteUnf').checked = S.settings.muteUnfocused !== false;
   $('sndToggle').className = on ? '' : 'danger';
   if (document.activeElement?.id !== 'sfxVol') $('sfxVol').value = st.sfxVolume ?? 70;
   if (document.activeElement?.id !== 'musVol') $('musVol').value = st.musicVolume ?? 35;
@@ -3904,6 +3920,54 @@ async function createList() {
   if (items && r.id) { toast('Adding…'); const b = await api(`/api/lists/${r.id}/bulk`, { text: items }); toast(`Added ${b.added}${b.failed.length ? `<br><small>Skipped:<br>${b.failed.slice(0, 8).map(esc).join('<br>')}</small>` : ''}`, b.failed.length ? 8000 : 3000); }
 }
 
+// ---------- 🔍 search every setting (left of the Settings tab) ----------
+const SET_SKIP = new Set(['notes']); // (patch notes are reading, not settings)
+function setSearchIndex() {
+  const out = [], nav = [...document.querySelectorAll('#subnav button[data-s]')], navName = k => (nav.find(b => b.dataset.s === k)?.textContent || k).trim();
+  const roots = nav.map(b => b.dataset.s).filter(k => !SET_SKIP.has(k)).map(k => [k, k === 'bans' ? $('v-bans') : k === 'sounds' ? $('v-sounds') : document.querySelector(`#settingsBody .sub[data-s="${k}"]`)]).filter(([, r]) => r);
+  for (const [k, root] of roots) {
+    out.push({ k, el: null, text: navName(k), where: navName(k), sec: '' });
+    let sec = '';
+    root.querySelectorAll('h3, h4, label, button, summary, .tmName b, th').forEach(el => {
+      if (el.closest('#setResults') || el.closest('dialog')) return;
+      let t = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (el.matches('h3')) { sec = t; }
+      if (!t || t.length < 2) t = el.title || el.querySelector('input,select,textarea')?.placeholder || ''; if (!t) return;
+      if (el.matches('button') && /^(save|✕|▶|−|\+|on|off)$/i.test(t)) return;
+      const help = window.helpFind ? (helpFind((el.title ? 'tip:' + el.title : '') || t, navName(k) + ' › ' + sec) || helpFind(t, navName(k) + ' › ' + sec)) : null;
+      out.push({ k, el, text: t.slice(0, 160), where: navName(k), sec: el.matches('h3') ? '' : sec, more: help ? `${help.title} ${help.text}` : '' });
+    });
+  }
+  return out;
+}
+let setIdx = null, setIdxAt = 0, setHits = [];
+async function setSearchRun(q) {
+  const box = $('setResults'); q = String(q || '').trim().toLowerCase();
+  if (!q) { box.innerHTML = ''; box.classList.remove('on'); return; }
+  if (!setIdx || Date.now() - setIdxAt > 15000) { // (render the tabs that fill in later, so they can be searched too)
+    if (!$('pricesBody')?.querySelector('table')) await drawPrices().catch(() => {});
+    if (!$('kbBody')?.innerHTML) try { drawKeybinds(); } catch {}
+    if (!bans) await loadBans().catch(() => {});
+    setIdx = setSearchIndex(); setIdxAt = Date.now();
+  }
+  const words = q.split(/\s+/), seen = new Set();
+  setHits = setIdx.map(x => { const hay = `${x.text} ${x.sec} ${x.where}`.toLowerCase(), more = (x.more || '').toLowerCase(); if (!words.every(w => hay.includes(w) || more.includes(w))) return null; return { ...x, score: (x.text.toLowerCase().includes(q) ? 0 : words.every(w => hay.includes(w)) ? 1 : 2) + (x.el ? 0 : -1) }; })
+    .filter(Boolean).sort((a, b) => a.score - b.score).filter(x => { const key = x.k + '|' + x.text; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 40);
+  box.innerHTML = setHits.length ? setHits.map((x, i) => `<button class="srHit" onclick="setSearchGo(${i})"><b>${esc(x.text.length > 90 ? x.text.slice(0, 88) + '…' : x.text)}</b><small>${esc(x.where)}${x.sec && x.sec !== x.text ? ' › ' + esc(x.sec.slice(0, 60)) : ''}</small></button>`).join('') : '<p class="help" style="margin:6px 8px">Nothing matches. Try another word.</p>';
+  box.classList.add('on');
+}
+function setSearchKey(e) { if (e.key === 'Enter' && setHits.length) { e.preventDefault(); setSearchGo(0); } if (e.key === 'Escape') { e.target.value = ''; setSearchRun(''); } }
+function setSearchGo(i) {
+  const x = setHits[i]; if (!x) return; setSub(x.k); $('setResults').classList.remove('on');
+  setTimeout(() => { let el = x.el; if (el && !el.isConnected) el = null; // (the tab was redrawn: find it again by its words)
+    if (!el && x.text) { const root = x.k === 'bans' ? $('v-bans') : x.k === 'sounds' ? $('v-sounds') : document.querySelector(`#settingsBody .sub[data-s="${x.k}"]`); el = [...(root?.querySelectorAll('h3, h4, label, button, summary, .tmName b, th') || [])].find(e => (e.innerText || '').replace(/\s+/g, ' ').trim().startsWith(x.text.slice(0, 40))); }
+    if (!el) return; const d = el.closest('details'); if (d) d.open = true;
+    const tgt = el.closest('label, .tmRow, .srRow, .lkRow, .row, .card') || el; tgt.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    tgt.classList.remove('setFlash'); void tgt.offsetWidth; tgt.classList.add('setFlash'); setTimeout(() => tgt.classList.remove('setFlash'), 2600);
+    const inp = el.matches('label') ? el.querySelector('input,select,textarea') || el.nextElementSibling : null; if (inp?.matches?.('input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea')) setTimeout(() => inp.focus({ preventScroll: true }), 400);
+  }, 120);
+}
+document.addEventListener('click', e => { if (!e.target.closest?.('.setSearchWrap')) $('setResults')?.classList.remove('on'); });
 // ---------- ⚙️ settings (sub-tabs) ----------
 function openSettings(force) {
   if (!force && view !== 'settings') return setView('settings');
@@ -3928,7 +3992,6 @@ function openSettings(force) {
       ${timingHTML()}
       <p class="help">🎯 <b>Fair winner:</b> every battle's winner is drawn by the odds before the battle starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins. (Except 🏁 race power-ups in a chat battle race: those can.)</p>
       ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
-      ${f('helpCommand', 'Chat command that lists the chat commands (it lists the ones for the tab you are on)', '!moviesroyal')}
       <h3 style="margin-top:18px">🧍 Characters &amp; ${esc(s.idCommand || '!id')}</h3>
       <p class="help">Battles can show characters instead of balls (the 🧍 check box on the right side of the Battle, Chat battle and Giveaway tabs). Chat can pick what their character is: <code>${esc(s.idCommand || '!id')} man</code>, <code>woman</code>, <code>none</code> (non-binary) or <code>remove</code>. It shows as a tag on their profile. Anyone can change theirs any time. No pick = non-binary.</p>
       ${ck('charsDefault', '🧍 Battles use characters by default (every battle, unless you changed its 🧍 box yourself; it turns on when you say yes to men/women characters or character creation)')}
@@ -3940,6 +4003,7 @@ function openSettings(force) {
       <p class="help" style="margin:0 0 6px">In Discord, <code>/character</code> shows numbered pictures of hair styles, outfits, makeup, facial hair and body; people pick one number of each (plus skin and hair color) and that's their character in battles with 🧍 characters. Their own character always wins over what they picked with !id (if they never picked a body, !id woman gives the curvy one). Their movie poster or Twitch picture moves to a badge on the chest. Twitch chat battles use it once they've linked their Twitch name with <code>/linktwitch</code>. Off: everyone gets a random character again.</p>
       ${ck('autoFullscreen', 'Go fullscreen when a battle starts (press Esc to leave)')}
       <h3 style="margin-top:18px">🗺️ Maps</h3>
+      <div data-msize style="max-width:520px"></div>
       <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${ballMapOpts(s.map, charsNow(), raceTooBig())}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
       <p class="help">You can also change the map under the battle screen, or press 🗳️ Chat vote: 4 random maps, chat types 1–4. The vote lasts the number of seconds above (120 seconds = 2 minutes).</p>
       ${tagsHTML()}
@@ -3974,8 +4038,9 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🎬 Pick rules</h3>
       <div class="grid2">${f('maxPerUser', 'Movies each person can pick', '', 'number')}<div><label>A new week starts on</label><select data-k="weekStart">${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((x, i) => `<option value="${i}" ${Number(s.weekStart ?? 0) === i ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div>
       <p class="help">People can't add more until <b>all</b> their movies have been watched. When someone's movie wins, their other movies sit out until the new week.</p>
-      ${ck('banCurrentYear', `Block movies that came out this year (${new Date().getFullYear()}) — allow single ones on the Bans tab`)}
       ${ck('chatGate', "Only put someone's movies on the cliff once they chat on Twitch this stream")}
+      <p class="help" style="margin:4px 0 0">🚫 Banned movies, this year's movies and the 🎞️ series rules: Settings → 🚫 Banned Movies.</p>
+      <div class="row" style="gap:8px;align-items:center;margin-top:8px"><span class="help" style="margin:0">Picks right now:</span><div class="chaosbar" data-chaos="picks" style="max-width:220px">${chaosButtons('picks')}</div></div>
       <h3 style="margin-top:18px">🎟️ Wildcard spots</h3>
       <div class="grid2">${f('spotName', 'Spot name (e.g. Kirb)')}${f('spotMax', 'Spots each week', '', 'number')}${f('spotTwitch', 'Their Twitch name (for the picture, optional)')}</div>
       ${spSetHTML()}
@@ -4010,6 +4075,7 @@ function openSettings(force) {
       <p class="help">Status: <b>${esc(tw.state)}</b>${tw.login ? ' as ' + esc(tw.login) : ''} · chat: ${esc(tw.chat)}</p>
       ${tw.login && !tw.canChat ? `<p class="help" style="color:var(--gold)">⚠️ To reply to <code>${esc(s.twitchMoviesCommand)}</code> in chat, Movie Royal needs one more permission. <a href="/auth/twitch">Sign in with Twitch again</a>.</p>` : ''}
       <div class="grid2">${f('twitchMoviesCommand', '“What movies do I have?” chat command (add a name to see someone else’s)', '!mymovies')}${f('twitchCooldown', 'Cooldown per person (seconds)', '30', 'number')}</div>
+      ${f('helpCommand', 'Chat command that lists the chat commands (it lists the ones for the tab you are on)', '!moviesroyal')}
       <h3 style="margin-top:18px">🤖 Chat bot account (Movies Royal Bot)</h3>
       ${f('chatTag', 'Name tag at the start of Movie Royal\'s chat messages while it talks as you (empty = no tag)', '🤖 Movies Royal Bot:')}
       ${S.chatBot ? `<div class="card soft" style="margin:6px 0"><div class="row" style="align-items:center;gap:10px">${S.chatBot.avatar ? `<img src="${esc(proxy(S.chatBot.avatar))}" style="width:36px;height:36px;border-radius:50%">` : '🤖'}<span class="grow">Movie Royal talks in chat as <b>${esc(S.chatBot.name)}</b>${S.chatBot.on ? '' : ' <span class="muted">(turned off below: it talks as you)</span>'}${S.chatBot.error ? `<br><small style="color:var(--bad)">⚠️ Last time it couldn't talk, so you did: ${esc(S.chatBot.error)}</small>` : ''}</span>
@@ -4029,14 +4095,8 @@ function openSettings(force) {
       <div class="grid2">${f('acceptCommand', '✅ Winner\'s “watch it now” chat command', '!accept')}${f('passCommand', '⏭️ Winner\'s “not tonight” chat command', '!pass')}</div>
       <div class="grid2">${f('sitOutCommand', '🛌 “Sit out tonight” chat command (their movies skip tonight’s battles)', '!sitout')}${f('backCommand', '🙋 “I’m back” chat command', '!imback')}</div>
       <p class="help">Replies to <code>${esc(s.twitchMoviesCommand)}</code> and winner posts come from <b>your own Twitch account</b> — no separate bot needed.</p>
-      <h3 style="margin-top:18px">⚡ Chaos on / off</h3><div class="chaosbar" data-chaos style="max-width:420px">${chaosButtons()}</div>
+      <h3 style="margin-top:18px">⚡ Chaos on / off</h3><div class="chaosbar" data-chaos="chaos" style="max-width:300px">${chaosButtons('chaos')}</div>
       <p class="help">Turning channel points off also pauses your Movie Royal rewards on Twitch so nobody spends points by accident.</p>
-      <h3 style="margin-top:18px">⭐ Channel point rewards</h3>
-      <div id="rewardsBox"><p class="help">Loading your rewards from Twitch…</p></div>
-      <h3 style="margin-top:18px">💎 Bits</h3>
-      <p class="help">A cheer triggers the biggest tier it reaches.</p>
-      <div id="bits">${Object.entries(s.bits).map(([b, e]) => `<div class="row" style="margin-bottom:6px"><input class="rt" type="number" style="width:120px" value="${esc(b)}"> <span class="muted">bits or more →</span><select class="re" style="width:220px">${evOpts(e)}</select><button class="ghost danger" onclick="this.parentNode.remove();dirty()">✕</button></div>`).join('')}</div>
-      <button onclick="addRow('bits')">+ Tier</button>
       <details style="margin-top:16px"><summary>Advanced: Twitch app keys</summary>
         <p class="help">Redirect URL: <code>http://localhost:${port}/twitch/callback</code></p>
         <div class="grid2">${f('twitchClientId', 'Client ID')}${f('twitchClientSecret', 'Client Secret', '', 'password')}</div>${f('twitchChannel', 'Channel to read chat from')}</details>
@@ -4047,6 +4107,7 @@ function openSettings(force) {
       ${f('slToken', 'Streamlabs Socket API token (streamlabs.com → Settings → API Settings → API Tokens → Your Socket API Token)', 'paste here', 'password')}
       <p class="help">Press Save after pasting. Test it from Wheel → 🌐 All wheels → 🧪 Test donation, or send a test tip from StreamElements.</p>
       <h3 style="margin-top:18px" id="annSet">📣 Chat messages (every hour)</h3>
+      <div data-ann="battle" style="max-width:560px;margin:4px 0 8px"></div>
       <p class="help">The <b>📣 Chat message</b> button (on the Battle, Chat battle, Giveaway and Wheel tabs) is one switch for every tab: it posts in Twitch chat right away, then again every so often, and each time it posts the message for the tab you're on. Turn it off and on again to post right now. It stops when your stream ends. Leave a box empty to use the default (shown in grey). Words in {curly brackets} fill in by themselves: <code>{discord}</code> your Discord link, <code>{channel}</code> the movie channel, <code>{commands}</code> the commands command, <code>{join}</code> / <code>{enter}</code> the join / giveaway command, <code>{prize}</code>, <code>{respin}</code>, <code>{myspins}</code>, <code>{streamer}</code>.</p>
       <div class="grid2">${f('discordServerLink', '🔗 Your Discord server invite link (for {discord}; empty = the bot makes one)', 'https://discord.gg/…')}${f('announceMins', 'How often (minutes)', '60', 'number', 'min="5" max="600"')}</div>
       ${[['announceBattle', '⚔️ Battle tab (Discord movie battle)', 'battle'], ['announceChat', '🎲 Chat battle tab', 'chat'], ['announceGiveaway', '🎁 Giveaway tab', 'giveaway'], ['announceWheel', '🎡 Wheel tab', 'wheel']].map(([k, t, d]) => `<div><label>${t}</label><textarea data-k="${k}" rows="2" maxlength="490" placeholder="${esc(S.announceDefaults?.[d] || '')}">${esc(s[k] || '')}</textarea></div>`).join('')}`,
@@ -4067,10 +4128,8 @@ function openSettings(force) {
       <p class="help">The Discord bot and <code>!mymovies</code> only answer while Movie Royal is running. Keep it in the tray (by the clock).</p>
       ${ck('runInBackground', 'Keep running in the tray when I close the window')}
       ${ck('startWithWindows', 'Start Movie Royal when Windows starts (quietly, in the tray)', false)}
-      <h3 style="margin-top:18px">🔇 Sound</h3>
+      <h3 style="margin-top:18px">💬 Pop-ups</h3>
       <div style="max-width:340px"><label>💬 Little pop-ups at the bottom stay for (seconds; longer messages stay longer)</label><input type="number" min="2" max="60" data-k="toastSecs" value="${Number(s.toastSecs) || 8}" title="How long the little pop-ups at the bottom stay"></div>
-      ${ck('muteUnfocused', '🔇 Mute Movie Royal while I\'m in another program (the sound comes back when I click back into Movie Royal)')}
-      <p class="help">On by default. The stream isn't affected: the game screen in OBS plays its own sound. Turn this off if you capture Movie Royal's own window or desktop sound in OBS, or want to hear it while you're in other programs.</p>
       ${holStyleHTML()}
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
     obs: `<h3>🎥 OBS (optional)</h3>
@@ -4095,7 +4154,8 @@ function openSettings(force) {
         <label class="ck"><input type="checkbox" ${s.capAutoHide ? 'checked' : ''} onchange="api('/api/capture/settings',{autoHide:this.checked}).then(()=>toast('Saved'))"> <span>🙈 Always hide it when a battle starts (also when you turned it on yourself)</span></label></div>
       <div class="card soft obsBox"><h4>🎉 Viewer's choice celebration</h4>
         <p class="help" style="margin:0 0 6px">The confetti when someone redeems 🎉 Viewer's choice: a browser source <b>Movie Royal celebration</b> on top of the scenes you pick. ${S.settings.choiceObs ? '<b style="color:var(--good)">On your stream now.</b>' : 'Not in OBS right now.'}</p>
-        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${S.settings.choiceObs ? '' : 'primary'}" onclick="choiceObs(${!S.settings.choiceObs})">${S.settings.choiceObs ? '⏸ Take it out of OBS' : '▶ Put it on my stream (pick scenes)'}</button>${S.settings.choiceObs ? '<button onclick="choicePick()">🎬 Change scenes</button>' : ''}<button class="ghost" onclick="api('/api/test/vr',{kind:'choice'}).then(()=>toast('🎉 Pretend viewer\\'s choice'))">🧪 Try it</button></div></div>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${S.settings.choiceObs ? '' : 'primary'}" onclick="choiceObs(${!S.settings.choiceObs})">${S.settings.choiceObs ? '⏸ Take it out of OBS' : '▶ Put it on my stream (pick scenes)'}</button>${S.settings.choiceObs ? '<button onclick="choicePick()">🎬 Change scenes</button>' : ''}<button class="ghost" onclick="api('/api/test/vr',{kind:'choice'}).then(()=>toast('🎉 Pretend viewer\\'s choice'))">🧪 Try it</button></div>
+        <p class="help" style="margin:6px 0 0">🎁 <b>For a friend</b> (or to set it up by hand): <a href="/api/vr/obs-file" download>⬇️ Download the OBS file</a>, or send them <b>${GH_OBS_FILE}</b>. They open the file in their web browser and it walks them through it (no Movie Royal needed). The reward has to ask viewers to type something.</p></div>
       <div class="card soft obsBox"><h4>📣 Roll call</h4>
         ${cki('rollOnGame', '📣 Show roll call on the game screen')}
         <p class="help">Roll call can also be its own <b>browser source</b>, so it shows in scenes that don't have the game screen (like your camera or Just Chatting scene). It's see-through until a roll call starts. ${S.settings.rollObs ? '<b style="color:var(--good)">In OBS now (Movie Royal roll call).</b>' : ''}</p>
@@ -4111,7 +4171,7 @@ function openSettings(force) {
     bans: `<div id="bansSlot"></div>`,
     sounds: `<div id="soundsSlot"></div>`,
     prices: `<h3>💰 Rewards &amp; prices</h3>
-      <p class="help">Every channel point reward, bits amount and donation amount in one place, sorted by tab. They're still in their usual places too: changing them here changes them there. Changes save right away.</p>
+      <p class="help">Every channel point reward, bits amount and donation amount lives here, sorted by tab. Prices and "when it's on" save right away.</p>
       <h3 style="margin-top:14px">🚀 Raid reward</h3>
       ${ck('raidOn', '🚀 Raid reward: a viewer redeems it, types who we raid in chat, and a box at the top of the app starts the raid when you click it (press Save). Movie Royal makes the reward (a raid reward you already have keeps its price, 1500 if there is none) and hides it for the rest of the stream once it is used.', false)}
       <div class="grid2">${f('raidTitle', 'Raid reward name on Twitch', '🚀 Pick who we raid!')}<div style="display:flex;align-items:flex-end"><button onclick="raidSetupClick(this)">🚀 Make / fix the raid reward now</button></div></div>
@@ -4124,12 +4184,17 @@ function openSettings(force) {
       <div><label>🎩 Hats viewers can pick (one per line; the bot lists them in chat with numbers, and the viewer types the number or the name)</label><textarea data-k="hatList" rows="6" placeholder="${esc(HATS_DEFAULT)}">${esc(s.hatList || '')}</textarea></div>
       <h4 style="margin:14px 0 4px">🎉 Viewer's choice</h4>
       <p class="help">When someone redeems it: confetti and balloons over the whole screen, a big pop-up in the middle, the pop of the confetti and a crowd going wild, for 10 seconds.</p>
-      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0"><button class="${S.choiceObs ? '' : 'primary'}" id="choiceObsBtn" onclick="choiceObs(${!S.choiceObs})">${S.choiceObs ? '⏸ Take it off my stream (remove the OBS source)' : '📺 Put it on my stream (pick the OBS scenes)'}</button>${S.choiceObs ? '<button onclick="choicePick()">🎬 Pick the scenes</button>' : ''}<span class="help" style="margin:0">${S.choiceObs ? `✅ On: the source <b>Movie Royal celebration</b> is on top of ${Array.isArray(s.choiceScenes) && s.choiceScenes.length ? 'these OBS scenes: <b>' + s.choiceScenes.map(esc).join(', ') + '</b>' : 'the OBS scenes that have it'}. It works with just OBS open (it reads your Twitch chat by itself).` : '⏸ Off (paused): nothing is added to OBS until you press it. Needs OBS set up (Settings → 🎥 OBS).'}</span></div>
-      <p class="help">🎁 <b>For a friend</b> (or to set it up by hand): <a href="/api/vr/obs-file" download>⬇️ Download the OBS file</a>, or send them <b>${GH_OBS_FILE}</b>. They open the file in their web browser and it walks them through it (no Movie Royal needed). The reward has to ask viewers to type something.</p>
+      <p class="help" style="margin:6px 0">📺 Putting the celebration on your stream (which OBS scenes, or a file for a friend): Settings → 🎥 OBS → 🎉 Viewer's choice celebration.</p>
       ${ck('choiceScreen', '🖥️ Also show it on my screen, over whatever I\'m using (on the screen my mouse is on; clicks go through it)')}
       ${f('choiceHeadline', 'Big text at the top of the pop-up', "VIEWER'S CHOICE!")}
       ${cki('choiceShowPick', '💬 Show what they typed on the pop-up (off: their pick stays a secret and they tell you later)', false)}
-      <div id="pricesBody" style="margin-top:10px"><p class="help">Loading…</p></div>`,
+      <div id="pricesBody" style="margin-top:10px"><p class="help">Loading…</p></div>
+      <h3 style="margin-top:18px">⭐ Reward names, cooldowns and what they do</h3>
+      <div id="rewardsBox"><p class="help">Loading your rewards from Twitch…</p></div>
+      <h3 style="margin-top:18px">💎 Bits → chaos</h3>
+      <p class="help">A cheer triggers the biggest tier it reaches. (Press Save after changing these.)</p>
+      <div id="bits">${Object.entries(s.bits).map(([b, e]) => `<div class="row" style="margin-bottom:6px"><input class="rt" type="number" style="width:120px" value="${esc(b)}"> <span class="muted">bits or more →</span><select class="re" style="width:220px">${evOpts(e)}</select><button class="ghost danger" onclick="this.parentNode.remove();dirty()">✕</button></div>`).join('')}</div>
+      <button onclick="addRow('bits')">+ Tier</button>`,
     gfx: `<h3>🎨 Graphics</h3>
       <p class="help">How the game screen is drawn: on stream (the OBS browser source), in the app, and in pop-out windows. Lower settings help if the battle stutters or your PC gets hot while streaming.</p>
       <div class="grid2">
@@ -4213,7 +4278,7 @@ async function drawPrices() {
     `<p class="help"><b>When it's on:</b> 📏 Follow the rules = Movie Royal shows it only while it can be used (for example wheel rewards while the wheel is on stream). ✅ Always on and ⏸ Off beat the rules until you change it back. 🔢 Countdown = on until it's been used that many times this stream, then off until your next stream (the number box sets how many; ↺ starts the countdown over). ⏸ Off hides it from the channel points menu. 1️⃣ = on until someone uses it once, then off.</p>` +
     groups.map(([g, name]) => { const rs = P.rewards.filter(r => r.group === g); let h = `<h3 style="margin-top:18px">${name}</h3>`;
       if (rs.length) h += `<table class="rw"><tr><th style="text-align:left">💜 Channel points</th><th>Price</th><th>When it's on</th></tr>${rs.map(rwRow).join('')}</table>`;
-      if (g === 'battle') h += `<h4 style="margin:12px 0 4px">💎 Bits (chaos)</h4>${P.bits.length ? `<table class="rw"><tr><th style="text-align:left">What</th><th>Bits</th><th></th></tr>${P.bits.map(x => `<tr><td>${esc(x.what)}</td><td><input type="number" min="1" style="width:100px" value="${x.amount}" onchange="moneySet({bitsFrom:${x.amount},bitsTo:this.value})"></td><td>${pz('bits:' + x.amount, x.paused, 'Pause')}</td></tr>`).join('')}</table>` : '<p class="help">No bits amounts set (Settings → Game).</p>'}`;
+      if (g === 'battle') h += `<p class="help" style="margin:8px 0 0">💎 Bits for chaos: the <b>💎 Bits → chaos</b> tiers further down.</p>`;
       if (g === 'wheel') h += `<h4 style="margin:12px 0 4px">💵 Subs, bits and donations on the wheel</h4><div>${num('subSpins', P.wheel.subSpins, '🎟️ Respins per sub')}${num('giftSpins', P.wheel.giftSpins, '🎁 Respins per gift sub')}${num('bitsPer', P.wheel.bitsPer, '💎 Every')} ${num('bitsSpins', P.wheel.bitsSpins, 'bits gives respins:')}${num('dollarsPer', P.wheel.dollarsPer, '💵 Pop-up for donations of $')}${num('popBits', P.wheel.popBits, '💎 Pop-up for bits from')}</div>
         <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:6px">${pz('wheelSubs', P.paused.wheelSubs, 'Pause subs / gift subs on the wheel')}${pz('wheelBits', P.paused.wheelBits, 'Pause bits on the wheel')}${pz('donations', P.paused.donations, 'Pause donations on the wheel')}</div>`;
       return h; }).join('');
@@ -4385,10 +4450,8 @@ async function loadRewards() {
     if (r.error) throw new Error(r.error);
     rewards = r.rewards;
     box.innerHTML = `<p class="help">Change a name, price or what it does, then press <b>Save</b> on that row — it updates on Twitch right away. Only rewards Movie Royal made can be edited here (Twitch's rule).</p>
-      ${rewards.length ? `<table class="rw"><tr><th>On</th><th>Reward name</th><th>Cost</th><th>Cooldown (s)</th><th>Does</th><th></th></tr>${rewards.map(x => `<tr data-id="${x.id}">
-        <td><input type="checkbox" class="r-on" ${x.enabled ? 'checked' : ''}></td>
+      ${rewards.length ? `<table class="rw"><tr><th>Reward name</th><th>Cooldown (s)</th><th>Does</th><th></th></tr>${rewards.map(x => `<tr data-id="${x.id}">
         <td><input class="r-title" value="${esc(x.title)}"></td>
-        <td><input class="r-cost" type="number" min="1" value="${x.cost}" style="width:90px"></td>
         <td><input class="r-cd" type="number" min="0" value="${x.cooldown || 0}" style="width:80px"></td>
         <td><select class="r-ev">${evOpts(x.event)}</select></td>
         <td style="white-space:nowrap"><button class="primary" onclick="saveReward(this)">Save</button> <button class="ghost danger" title="Delete from Twitch" onclick="delReward(this)">✕</button></td></tr>`).join('')}</table>` : ''}
@@ -4399,8 +4462,8 @@ async function loadRewards() {
 }
 async function saveReward(btn) {
   const tr = btn.closest('tr'), q = c => tr.querySelector(c);
-  await api('/api/twitch/rewards/' + tr.dataset.id, { title: q('.r-title').value.trim(), cost: Number(q('.r-cost').value), enabled: q('.r-on').checked, cooldown: Number(q('.r-cd').value) || 0, event: q('.r-ev').value || null }, 'PATCH');
-  toast('✅ Updated on Twitch'); loadRewards();
+  await api('/api/twitch/rewards/' + tr.dataset.id, { title: q('.r-title').value.trim(), cooldown: Number(q('.r-cd').value) || 0, event: q('.r-ev').value || null }, 'PATCH'); // (price + on/off: the list above)
+  toast('✅ Updated on Twitch'); loadRewards(); drawPrices();
 }
 async function delReward(btn) { if (!confirm('Delete this reward from your Twitch channel?')) return; await api('/api/twitch/rewards/' + btn.closest('tr').dataset.id, null, 'DELETE'); toast('Deleted'); loadRewards(); }
 function addRow(id) {

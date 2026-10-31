@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.64.0
+- 🔍 **Search all settings:** a search box at the top left of ⚙️ Settings. Type a few letters ("volume", "laps", "bits", "raid"…): every match shows with its tab and section; click one (or press Enter) and it jumps there and lights it up.
+- ⚙️ **Settings cleaned up: every option is in one place** (the quick buttons on the other tabs stay):
+  - ⭐ Channel point reward names, cooldowns and what they do, and the 💎 Bits → chaos tiers moved from 💜 Twitch to 💰 Rewards & prices (the price and "when it's on" are only in the list there now; the second bits table is gone).
+  - 🎉 Putting the viewer's choice celebration in OBS (and the file for a friend) is only in 🎥 OBS now.
+  - 📅 Banning this year's movies is only in 🚫 Banned Movies now (it was in 🤖 Discord & picks too).
+  - 🎬 Movie picks open / closed moved to 🤖 Discord & picks (⭐ Points / 💎 Bits stay in 💜 Twitch).
+  - 🔇 Mute while in another program moved to 🔊 Sounds; the chat command that lists the commands moved to 💜 Twitch with the other chat commands.
+  - Added to Settings so everything can be done there: 📏 Map size (⚔️ Game → Maps), 🧍 characters for each battle (⚔️ Game → Each battle) and the 📣 hourly chat message on/off switch (💜 Twitch → Chat messages).
+- 🧪 Test tab → 🔍 Settings search.
+
 ## 1.63.1
 - 🏁 **No races with more than 50 pieces** (Derek): 🎲 Random and the chat map vote leave the race maps out, they're greyed out in the map menu ("no races over 50"), and a race you picked switches to another map when the battle starts (a pop-up says which). Change the number in Settings → ⚔️ Game.
 - 📏 **Map size slider** on the right side of the Battle, Chat battle and Giveaway tabs: 50% to 200% for every ball map. Bigger cliffs and arenas, and longer race tracks (twice as long at 200%).
