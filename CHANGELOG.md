@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.62.1
+- 👀 **Watch luck on / off in Settings → 🍀 Luck:** every battle has its own 👀 Watch luck box (off by default), and right next to it how many hours watched give how much luck. It all saves right away. 👀 Who has watch luck shows everyone's hours and luck.
+
 ## 1.62.0
 - ⏱️⏳ **Battle timer and elimination pacer sliders for every battle** (Settings → ⚔️ Game): one pair for 🌐 all battles, and under it a pair for each battle (Discord movies, chat battle, giveaway, your own battles and card battles). Slide a battle all the way left and it uses the ones for all battles. They save right away. The Battle tab's countdown and fight clock follow the battle's own timer.
 - 🛠️ The elimination pacer slider for all battles didn't actually save before (it always stayed at Normal). Fixed.

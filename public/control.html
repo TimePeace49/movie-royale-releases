@@ -268,6 +268,7 @@
   .tmRow { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:center; padding:8px 12px; border-radius:10px; background:var(--panel2); margin:6px 0; }
   .tmRow input[type=range] { width:100%; } .tmRow label { margin:0 0 2px; }
   .tmName { display:flex; flex-direction:column; min-width:0; } .tmName b, .tmName small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .wlLine { display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px; flex:1 1 100%; padding-top:6px; border-top:1px solid var(--line); } .wlHow { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; } .wlHow input[type=number] { width:64px; padding:4px 6px; }
   .lkRow { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; padding:8px 12px; border-radius:10px; background:var(--panel2); margin:6px 0; } .lkRow .tmName { flex:1 1 220px; }
   @media (max-width:1250px) { .tmRow { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .tmRow .tmName { grid-column:1 / -1; } }
   .wsplit { cursor:col-resize; border-radius:6px; background:linear-gradient(90deg,transparent 3px,var(--line) 3px,var(--line) 7px,transparent 7px); } .wsplit:hover, .wsplit.drag { background:linear-gradient(90deg,transparent 2px,var(--gold,#ffc94a) 2px,var(--gold,#ffc94a) 8px,transparent 8px); }
@@ -969,7 +970,7 @@
   </div>
   <div class="card">
     <h3>🍀 !mymovies and /mymovies with luck</h3>
-    <p class="help">Shows what someone gets back from <b>!mymovies</b> in Twitch chat, <b>/mymovies</b> in Discord, and the ☁️ 24/7 Discord bot: every movie with its 🍀 luck (their own luck plus 👀 watch luck, when that's on). Nothing is sent anywhere.</p>
+    <p class="help">Shows what someone gets back from <b>!mymovies</b> in Twitch chat, <b>/mymovies</b> in Discord, and the ☁️ 24/7 Discord bot: every movie with its 🍀 luck (their own luck plus 👀 watch luck, when that's on: turn it on or off for each battle in Settings → 🍀 Luck). Nothing is sent anywhere.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMmWho" style="width:auto" title="Whose movies to show"><option value="">(the first person with movies)</option></select><button class="primary" onclick="mmTest()">🍀 Show the answers</button><button onclick="mmProfile()" title="Opens this person's profile: the 🎬 Movies part shows each movie's luck">👤 Open their profile</button></div>
     <div id="tMmOut"></div>
   </div>
@@ -1930,15 +1931,21 @@ function renderBackupNag() {
   b.innerHTML = `📦 Monthly reminder: download a backup of Movie Royal${S.lastBackupAt ? ` (last one ${new Date(S.lastBackupAt).toLocaleDateString()})` : ''}. <button class="primary" onclick="location.href='/api/backup'">⬇️ Download backup</button><button class="ghost" onclick="api('/api/backup/snooze')">Remind me in a week</button>`;
 }
 // ---------- 🍀 luck saves ----------
-function luckBattlesHTML() { // Settings → 🍀 Luck: every battle's watch luck + save / reset / bring back
-  return S.lists.map(l => { const w = l.watchLuck; return `<div class="lkRow"><div class="tmName"><b>${esc(l.name)}</b><small class="muted">${esc(TYPE[l.type] || '')} · 👀 ${w?.on ? `<b style="color:var(--good)">watch luck on</b>: every ${w.hours || 10} h watched = +${w.amount || 1}%` : 'watch luck off'}</small></div>${luckTools(l.id)}</div>`; }).join('');
+function luckBattlesHTML() { // Settings → 🍀 Luck: every battle's watch luck (on/off + how much) + save / reset / bring back
+  return S.lists.map(l => { const w = l.watchLuck || {}, id = esc(l.id); return `<div class="lkRow"><div class="tmName"><b>${esc(l.name)}</b><small class="muted">${esc(TYPE[l.type] || '')}</small></div>${luckTools(l.id, true)}
+    <div class="wlLine"><label class="ck" style="margin:0" title="Turn watch luck on or off for this battle"><input type="checkbox" ${w.on ? 'checked' : ''} onchange="wlToggle('${id}', {on:this.checked})"> <span>👀 Watch luck ${w.on ? '<b style="color:var(--good)">on</b>' : '<span class="muted">off</span>'}</span></label>
+      <span class="wlHow"><span class="muted">every</span><input type="number" min="1" max="500" value="${w.hours || 10}" title="How many hours someone has to watch to get one step of watch luck" onchange="wlToggle('${id}', {hours:Number(this.value)})"><span class="muted">hours watched = +</span><input type="number" min="1" max="100" value="${w.amount || 1}" title="How much luck each step of watch luck gives (%)" onchange="wlToggle('${id}', {amount:Number(this.value)})"><span class="muted">% luck</span></span></div></div>`; }).join('');
+}
+async function wlToggle(lid, ch) { // 👀 watch luck on/off (or how much) for one battle, saved right away
+  try { await api('/api/lists/' + lid, { watchLuck: ch }, 'PATCH'); const l = S.lists.find(x => x.id === lid), w = { hours: 10, amount: 1, ...(l?.watchLuck || {}), ...ch };
+    toast('on' in ch ? (ch.on ? `👀 Watch luck is on for ${esc(l?.name || 'this battle')}: every ${w.hours} h watched = +${w.amount}% luck (counting from now).` : `👀 Watch luck is off for ${esc(l?.name || 'this battle')}.`) : 'Saved', 'on' in ch ? 5000 : 1500); } catch {}
 }
 let luckBattlesKey = '';
 function luckBattlesSync() { const el = $('setLuckBattles'); if (!el) return; const h = luckBattlesHTML(); if (h !== luckBattlesKey) { luckBattlesKey = h; el.innerHTML = h; } }
 let luckFor = 'movies';
-function luckTools(lid = 'movies') {
+function luckTools(lid = 'movies', inLuckTab) {
   const l = S.lists.find(x => x.id === lid) || list(), odds = l.type !== 'movies', n = (S.luckSaves || []).filter(x => x.listId === l.id).length, w = odds ? 'odds' : 'luck';
-  return `<span class="luckTools"><button class="ghost" title="Watch luck: people who watch your streams get luck in this battle" onclick="wlOpen('${l.id}')">👀 Watch luck${l.watchLuck?.on ? ' ✅' : ''}</button><button class="ghost" title="Save everyone's ${w} so you can bring it back later" onclick="luckSave('${l.id}')">💾 Save ${w}</button><button class="ghost" title="${odds ? 'Set everyone to the same odds' : 'Set all luck to 0'} (saved first, so you can bring it back)" onclick="luckReset('${l.id}')">↺ ${odds ? 'Everyone' : 'Reset luck'}${odds ? ' to 1' : ''}</button><button class="ghost" onclick="luckOpen('${l.id}')">📂 Saved ${w}${n ? ` (${n})` : ''}</button></span>`;
+  return `<span class="luckTools"><button class="ghost" title="Watch luck: people who watch your streams get luck in this battle" onclick="wlOpen('${l.id}')">${inLuckTab ? '👀 Who has watch luck' : `👀 Watch luck${l.watchLuck?.on ? ' ✅' : ''}`}</button><button class="ghost" title="Save everyone's ${w} so you can bring it back later" onclick="luckSave('${l.id}')">💾 Save ${w}</button><button class="ghost" title="${odds ? 'Set everyone to the same odds' : 'Set all luck to 0'} (saved first, so you can bring it back)" onclick="luckReset('${l.id}')">↺ ${odds ? 'Everyone' : 'Reset luck'}${odds ? ' to 1' : ''}</button><button class="ghost" onclick="luckOpen('${l.id}')">📂 Saved ${w}${n ? ` (${n})` : ''}</button></span>`;
 }
 const luckWord = lid => (S.lists.find(x => x.id === lid)?.type || 'movies') === 'movies' ? 'luck' : 'odds';
 async function luckSave(lid = 'movies') { await api('/api/luck/save', { listId: lid }); toast(`💾 Saved. Bring it back any time from 📂 Saved ${luckWord(lid)}.`); }
@@ -3908,8 +3915,8 @@ function openSettings(force) {
       ${ck('spotLuck', `${esc(s.spotName)} wildcard spots get luck when they lose too — at most +1% per stream (they don't need anyone chatting)`, false)}
       <p class="help">🍀 Where luck shows: the glow and flames on the cliff, <code>${esc(s.twitchMoviesCommand || '!mymovies')}</code> in Twitch chat, <code>/mymovies</code> in Discord, the 🎬 Movie Pool and every chatter's profile.</p>
       <h3 style="margin-top:18px">👀 Watch luck</h3>
-      <p class="help">People who watch your streams get extra luck in a battle: every few hours watched (counted from when you turn it on) = a bit more luck. It's <b>off by default</b> and set per battle. When it's on, it's just added into their luck (the 🍀 number everywhere above).</p>
-      <h3 style="margin-top:18px">💾 Save, reset and bring back luck (each battle)</h3>
+      <p class="help">People who watch your streams get extra luck in a battle: every few hours watched (counted from when you turn it on) = a bit more luck. It's <b>off by default</b>. Turn it on or off for each battle with its 👀 Watch luck box below (and change how much right there). When it's on, it's just added into their luck (the 🍀 number everywhere above).</p>
+      <h3 style="margin-top:18px">🎯 Each battle: 👀 watch luck + 💾 save, reset and bring back</h3>
       <p class="help">Want a few battles without luck? <b>↺ Reset luck</b> (it saves everyone's luck first), then <b>📂 Saved luck → Bring back</b> when you're done. Battles that aren't Discord movie battles have <b>odds</b> instead: the same buttons save and reset those.</p>
       <div id="setLuckBattles">${luckBattlesHTML()}</div>
       <h3 style="margin-top:18px">🔮 Chat calls the winner</h3>
