@@ -53,6 +53,7 @@ export function helpText() {
     ``,
     `🚫 *banned*, *series taken*${db.settings.banCurrentYear !== false ? ` or *${yr} movie*` : ''} · ✅ *already watched* · 🔒 *already picked* = pick something else (every movie can only be picked once).`,
     `🚫 **Banned** (not in English, really religious, documentaries, or banned by ${who}): ask **${banAsk()}** to unban one first.`,
+    `🎞️ **Series go in order:** a sequel opens once ${who} has watched the one before it. Pick the next one of a series and it's 🔒 yours: keep picking its next movie or it opens up for everyone.`,
     ``,
     `**Rules:** be in Twitch chat during the stream · if your movie wins, your other movies sit out until Sunday · one movie per series${luckOn() ? ' · 🍀 every loss makes your movies a little luckier' : ''}`
   ];

@@ -58,7 +58,7 @@ export function buildConfig() {
   const w = lb.exportWatched();
   return {
     v: 1, streamer: streamerName(), maxPerUser: Number(db.settings.maxPerUser) || 3, banCurrentYear: db.settings.banCurrentYear !== false,
-    yearAllow: (db.yearAllow || []).map(String), bans: (db.bans || []).filter(b => !b.test && b.auto !== 'year').map(b => ({ tmdbId: String(b.tmdbId), reason: b.reason || '' })), banOk: (db.banOk || []).map(String), banRules: db.settings.banRules || {}, banAsk: String(db.settings.banAsk || '').trim() || 'Kirb',
+    yearAllow: (db.yearAllow || []).map(String), bans: (db.bans || []).filter(b => !b.test && b.auto !== 'year').map(b => ({ tmdbId: String(b.tmdbId), reason: b.reason || '', ...(b.auto === 'sequel' ? { auto: 'sequel', next: b.next || '' } : {}) })), seriesLocks: Object.fromEntries(Object.entries(db.seriesInfo?.locks || {}).filter(([, l]) => l?.nextId).map(([cid, l]) => [cid, { discordId: l.discordId, name: l.name, nextId: String(l.nextId), series: db.seriesInfo.known?.[cid] || '' }])), // 🎞️ series in order + 🔒 series locks (1.63.0) banOk: (db.banOk || []).map(String), banRules: db.settings.banRules || {}, banAsk: String(db.settings.banAsk || '').trim() || 'Kirb',
     watched: { tmdb: w.tmdb.map(String), keys: w.keys, slugs: w.slugs },
     wonIds: list.entries.filter(e => e.status === 'watched' && e.tmdbId).map(e => String(e.tmdbId)),
     pool, users, people: peopleIndex().map(p => ({ discordId: p.discordId, name: p.name })), links: db.links || {},

@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.63.0
+- 🎞️ **Series go in order:** a movie in a series (like Harry Potter) can only be picked once you've watched every movie before it. The later ones go on the 🚫 Banned list as 🎞️ sequels and come off by themselves when you watch the one before. People are told which one has to be watched first.
+- 🔒 **Series locks:** whoever picks the next movie of a series gets the series locked, so nobody else can pick its next movie. When their movie gets watched, the next one opens only for them. If their next set of picks doesn't include it (or they swap it away), the series opens up for everyone.
+- 🚫 Banned Movies → **🎞️ Series:** every series Movie Royal knows, what's next, who has it locked (change it by hand with the menu), every movie marked ✅ watched / ▶️ next / 🎞️ banned, and **➕ Add a series**. The ban list has a 🎞️ Sequels filter.
+- Movie Royal finds series by itself: from people's picks, the 500 list, the movies you watched on Letterboxd, and popular series.
+- 🔚 **The last thing Movie Royal does when it opens:** check the series (sequel bans + locks), then update the 🌐 web lists (the 500 worst movies).
+- 🌐 The 500 list never has a movie that belongs to someone: picked in Discord or the next movie of someone's locked series. Movies on the 500 list never show as taken when people suggest them.
+- 🎡 **Wheel spin time** for every wheel is in Settings → ⚔️ Game now, next to the battle timers.
+- ☁️ The 24/7 Discord bot needs its usual update for the series rules (Movie Royal pops up the reminder).
+- 🧪 Test tab → **🎞️ Series in order + 🔒 series locks**: a pretend series, step by step.
+
 ## 1.62.3
 - 🌐 **The 500 worst movies (IMDb / Rotten Tomatoes battles) and Discord picks:**
   - People can pick a movie in Discord even if it's on the 500 list. When they do, it leaves the 500 list within a few seconds and the next movie on the list takes its place (if that battle is fighting right now, it waits until it's over). The Movie Pool card lists the ones that left and what replaced them.

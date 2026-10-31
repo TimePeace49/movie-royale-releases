@@ -11,8 +11,8 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 15;
-export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 16;
+export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -155,7 +155,10 @@ function blockReason(s, m, opts = {}) {
   if (watched(cfg, m)) return { short: '✅ already watched', msg: `✅ ${who} has already watched **${label}** — pick another movie!` };
   const ban = (cfg.bans || []).find(b => String(b.tmdbId) === String(m.id));
   const banMsg = reason => `🚫 **${label}** is banned${reason ? ` (${reason})` : ''}. Banned movies need ${who}'s OK first: ask **${cfg.banAsk || 'Kirb'}** to unban it if you want to suggest it. Otherwise, pick another movie!`;
+  if (ban?.auto === 'sequel') return { short: '🎞️ watch in order', msg: `🎞️ **${label}** can't be picked yet: ${who} watches series in order, so **${ban.next || 'the movie before it'}** has to be watched first.` };
   if (ban) return { short: '🚫 banned', msg: banMsg(ban.reason) };
+  if (m.id) { const lk = Object.values(cfg.seriesLocks || {}).find(l => String(l.nextId) === String(m.id) && l.discordId !== opts.userId); // 🔒 someone's series
+    if (lk && opts.userId !== undefined) return { short: `🔒 ${lk.name}'s series`, msg: `🔒 The *${lk.series || 'series'}* is locked for **${lk.name}**: they get first pick of **${label}**. If they don't pick it with their next movies, it opens up for everyone.` }; }
   const rb = (cfg.banOk || []).includes(String(m.id)) ? null : ruleBan(m, cfg.banRules || {});
   if (rb) return { short: '🚫 ' + rb.short, msg: banMsg(rb.reason) };
   const year = String(new Date().getFullYear());
@@ -166,6 +169,29 @@ function blockReason(s, m, opts = {}) {
   }
   if (existing && IN_POOL.includes(existing.status) && existing.id !== opts.swapFrom) return { short: '🔒 already picked', msg: `🔒 **${label}** was already picked by **${existing.backers?.[0]?.name || who}** — everyone needs a different movie. Pick another one!` };
   return null;
+}
+
+// 🎞️ series in order: a COPY of nextPart/seriesRule in src/series.js (keep them the same)
+const partLabel = p => `${p.title}${p.year ? ` (${p.year})` : ''}`;
+function nextPart(parts, seen) { const t = new Date().toISOString().slice(0, 10); return parts.filter(p => p.date && p.date <= t).find(p => !seen(p)) || null; }
+function seriesRule({ parts, seen, lock, movieId, userId, name, streamer, ok }) {
+  const me = parts.find(p => String(p.id) === String(movieId)); if (!me?.date || seen(me) || ok?.(me)) return null;
+  const next = nextPart(parts, seen); if (!next) return null;
+  if (String(me.id) !== String(next.id) && me.date > next.date)
+    return { key: 'sequel', next, short: '🎞️ watch in order', msg: `🎞️ **${partLabel(me)}** can't be picked yet: ${streamer} watches the *${name}* in order, so **${partLabel(next)}** has to be watched first.` };
+  if (String(me.id) === String(next.id) && lock?.discordId && lock.discordId !== userId)
+    return { key: 'locked', next, short: `🔒 ${lock.name}'s series`, msg: `🔒 The *${name}* is locked for **${lock.name}**: they get first pick of **${partLabel(next)}**. If they don't pick it with their next movies, it opens up for everyone.` };
+  return null;
+}
+async function seriesBlock(s, m, userId) { // (a series Movie Royal hasn't seen yet: ask TMDB which movies are in it)
+  const c = m?.collection; if (!c?.id || (s.cfg.banOk || []).includes(String(m.id))) return null;
+  try {
+    const r = await tmdb(s.cfg, `/collection/${encodeURIComponent(c.id)}?language=en-US`);
+    const parts = (r.parts || []).map(p => ({ id: String(p.id), title: p.title, year: (p.release_date || '').slice(0, 4), date: p.release_date || '' })).sort((a, b) => (a.date || '9').localeCompare(b.date || '9'));
+    const won = new Set([...(s.cfg.wonIds || []), ...s.pool.filter(e => e.status === 'watched').map(e => String(e.tmdbId))]);
+    const seen = p => won.has(String(p.id)) || watched(s.cfg, p), lock = (s.cfg.seriesLocks || {})[c.id];
+    return seriesRule({ parts, seen, lock, movieId: m.id, userId, name: r.name || c.name, streamer: s.cfg.streamer || 'the streamer', ok: p => (s.cfg.banOk || []).includes(String(p.id)) });
+  } catch { return null; }
 }
 
 // ---------- TMDB ----------
@@ -354,7 +380,7 @@ async function doSuggest(env, s, user, value, ch) {
   const { m, err, block } = await pickMovie(s, value);
   if (err) return err;
   if (block) return block.msg;
-  const b = blockReason(s, m); if (b) return b.msg;
+  const b = blockReason(s, m, { userId: user.discordId }) || await seriesBlock(s, m, user.discordId); if (b) return b.msg;
   if (!free && picksUsed(s, user.discordId) >= max) {
     const left = mineOf(s, user.discordId);
     return `🔒 You've used all ${max} picks. You get ${max} new ones once all of them have been picked — still waiting on: ${left.map(e => `**${e.label} (${e.sub})**`).join(', ')}.`;
@@ -375,7 +401,7 @@ async function doSwap(env, s, user, oldId, value, ch) {
   if (err) return err;
   if (block) return block.msg;
   if (String(m.id) === String(old.tmdbId)) return "That's the same movie.";
-  const b = blockReason(s, m, { swapFrom: old.id }); if (b) return b.msg;
+  const b = blockReason(s, m, { swapFrom: old.id, userId: user.discordId }) || await seriesBlock(s, m, user.discordId); if (b) return b.msg;
   const op = { id: crypto.randomUUID(), at: Date.now(), type: 'swap', user, oldId: old.id, movie: m };
   await enqueue(env, op);
   const msg = `🔁 ${user.name} swapped **${old.label}${old.sub ? ` (${old.sub})` : ''}** for **${m.title}${m.year ? ` (${m.year})` : ''}**.`;

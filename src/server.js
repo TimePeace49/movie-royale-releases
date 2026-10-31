@@ -10,10 +10,11 @@ import { spawn } from 'child_process';
 import { streamerName } from './store.js';
 import { db, save, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS } from './store.js';
 import * as lb from './letterboxd.js';
+import * as series from './series.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
 import { getMany, searchMovies, findImdb, tmdbGet } from './tmdb.js';
-import { scan as banScan, runScan, yearCleanup, setScanHooks, dubCleanup } from './banscan.js';
+import { scan as banScan, runScan, yearCleanup, setScanHooks, dubCleanup, dubFix } from './banscan.js';
 import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
@@ -2052,12 +2053,7 @@ const webLook = async (it, fake) => { // the TMDB movie for a list item (IMDb id
 };
 const hEsc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // 🎞️ sequels: a movie in a series only goes on a 🌐 web list once you've watched every movie in that series that came out before it
-async function seriesParts(cid) { // the movies in a TMDB series (collection), oldest first (kept a week)
-  const C = (db.tmdbColl ||= {}), hit = C[cid]; if (hit && Date.now() - hit.at < 7 * 86400e3) return hit.parts;
-  const r = await tmdbGet(`/collection/${encodeURIComponent(cid)}?language=en-US`, 10000);
-  const parts = (r.parts || []).map(p => ({ id: String(p.id), title: p.title, year: (p.release_date || '').slice(0, 4), date: p.release_date || '' })).sort((a, b) => (a.date || '9').localeCompare(b.date || '9'));
-  C[cid] = { at: Date.now(), name: r.name || '', parts }; return parts;
-}
+const seriesParts = cid => series.partsOf(cid);
 const seenMovie = p => !!lb.lookup({ title: p.title, year: p.year, tmdbId: p.id }) || (getList('movies')?.entries || []).some(e => String(e.tmdbId) === String(p.id) && e.status === 'watched');
 async function sequelGap(tm, src, it) { // → the earlier movie in its series you haven't watched (null = fine)
   let parts;
@@ -2071,7 +2067,7 @@ async function sequelGap(tm, src, it) { // → the earlier movie in its series y
   return parts.find(p => p.date && p.date < me.date && String(p.id) !== String(tm.id) && !seenMovie(p)) || null;
 }
 // 🎬 movies someone picked in Discord (any that aren't hidden: in the pool, sitting out, benched or already watched) never go on a 🌐 web list
-const discordPicked = () => new Map((getList('movies')?.entries || []).filter(e => e.tmdbId && e.status !== 'removed').map(e => [String(e.tmdbId), e]));
+const discordPicked = () => { const m = new Map((getList('movies')?.entries || []).filter(e => e.tmdbId && e.status !== 'removed').map(e => [String(e.tmdbId), e])); for (const [id, l] of series.lockedNext()) if (!m.has(id)) m.set(id, { by: `${l.by} (🔒 their ${l.series})` }); return m; }; // (+ 🔒 the next movie of a series locked for someone: it's theirs)
 async function syncWebList(l) {
   const src = l.source || {}, max = src.max || 500, urls = (src.urls || []).filter(Boolean), fake = src.fake;
   l.job = { running: true, step: 'Reading the lists…', done: 0, total: 0, at: Date.now() }; pushState();
@@ -2179,9 +2175,22 @@ async function webTakenSweep(opts = {}) { // opts.extra = Map(tmdbId → pretend
   return done;
 }
 setInterval(() => webTakenSweep().catch(() => {}), 5000);
-setTimeout(async () => { // 🎞️🎬 lists made before 1.62.3: read them again once with the new rules (sequels + picked in Discord), which also saves spares
-  for (const l of db.lists) if (l.source?.kind === 'web' && !l.source.fake && (l.source.rulesV || 0) < 2 && !l.job?.running && (l.source.urls || []).length) await syncWebList(l).catch(() => {});
-}, 45000);
+// 🎞️ series locks + sequel bans: a quick check every minute (nothing to download unless a new series turns up)
+series.setHooks({ streamer: () => streamerName(), toast: t => broadcast({ type: 'toast', text: hEsc(t) }, 'control'), changed: () => { pushState(); if (cloud.enabled()) cloud.sync(true).catch?.(() => {}); webTakenSweep().catch(() => {}); } });
+setInterval(() => { if (!openLast.running) series.refresh().catch(() => {}); }, 60000);
+// 🔚 the LAST thing on open (Derek): once everything else has started (Letterboxd, the ban list builder), update the 🎞️ series bans, then read the 🌐 web lists (the 500 worst) again
+const openLast = { running: false, step: '', at: 0 };
+async function runOpenLast(waitFor) {
+  openLast.running = true;
+  try {
+    await new Promise(r => setTimeout(r, 30000));
+    await Promise.race([Promise.resolve(waitFor).catch(() => {}), new Promise(r => setTimeout(r, 180000))]); // (Letterboxd first: it says what you've watched)
+    for (let i = 0; i < 60 && (banScan.running || dubFix.running); i++) await new Promise(r => setTimeout(r, 5000));
+    openLast.step = 'series'; await series.refresh({ deep: true }).catch(() => {});
+    for (const l of db.lists) if (l.source?.kind === 'web' && !l.source.fake && (l.source.urls || []).length && !l.job?.running && !(live.game?.listId === l.id && ['lobby', 'running'].includes(live.phase))) { openLast.step = 'web'; await syncWebList(l).catch(() => {}); }
+    openLast.at = Date.now();
+  } finally { openLast.running = false; openLast.step = ''; }
+}
 app.post('/api/test/web-taken', async (req, res) => { // 🧪 pretend someone picks a movie from the pretend IMDb battle in Discord (nothing real changes)
   const l = [...db.lists].reverse().find(x => x.source?.kind === 'web' && x.source.fake);
   if (!l) return res.status(400).json({ error: 'Make the pretend IMDb battle first: 🧪 Test tab → 🌐 IMDb / Rotten Tomatoes battle → Try it.' });
@@ -2276,6 +2285,34 @@ app.post('/api/bans', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.delete('/api/bans/:id', (req, res) => { unbanMovie(req.params.id); pushState(); res.json({ ok: true }); });
+// 🎞️ series in order + 🔒 series locks (🚫 Banned Movies → 🎞️ Series)
+app.get('/api/series', (req, res) => res.json({ series: series.list(), log: series.recent().map(l => ({ ...l, text: series.eventText(l) })), state: series.state, openLast, people: discordPeople().map(p => ({ id: p.discordId, name: p.name })).sort((a, b) => a.name.localeCompare(b.name)) }));
+app.post('/api/series/lock', async (req, res) => { // by hand: lock a series for someone (or open it for everyone)
+  try { const id = String(req.body?.discordId || ''), p = id ? discordPeople().find(x => x.discordId === id) : null; if (id && !p) throw new Error("That person isn't on the Discord list."); const r = await series.setLock(String(req.body?.id), p ? { discordId: p.discordId, name: p.name } : null); res.json({ ok: true, ...r }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/series/refresh', (req, res) => { if (series.state.running) return res.json({ ok: false, error: 'Already checking the series.' }); series.refresh({ deep: !!req.body?.deep }).then(() => broadcast({ type: 'toast', text: '🎞️ Series checked: the sequel bans and locks are up to date.' }, 'control')).catch(() => {}); res.json({ ok: true }); });
+app.post('/api/series/add', async (req, res) => { // add a series by one of its movies (so its sequels get banned now)
+  try { let id = String(req.body?.tmdbId || ''); if (!/^\d+$/.test(id)) { const r = await searchMovies(String(req.body?.query || '')); if (!r.length) throw new Error('Movie not found'); id = String(r[0].id); }
+    const m = await tmdbMovie(id, 8000); if (!m.collection) throw new Error(`${m.title} isn't part of a series on TMDB.`);
+    await series.addSeries(m.collection.id); res.json({ ok: true, name: m.collection.name, id: m.collection.id }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/test/series', (req, res) => { // 🧪 a pretend series, step by step (nothing real changes)
+  const parts = [1, 2, 3, 4].map(n => ({ id: 'w' + n, title: `Wizard School ${n}`, year: String(2000 + n * 2), date: `${2000 + n * 2}-06-01` }));
+  const seenSet = new Set(), seen = p => seenSet.has(p.id), out = [], A = { discordId: 'pa', name: 'Pretend_Alex' }, B = { discordId: 'pb', name: 'Pretend_Bea' };
+  let lock = null, pool = [], t = 1000; const max = 3;
+  const ask = (who, n) => { const r = series.seriesRule({ parts, seen, lock, movieId: 'w' + n, userId: who.discordId, name: 'Wizard School series', streamer: streamerName() }); return r ? r.msg.replace(/\*\*/g, '').replace(/\*/g, '') : `✅ ${who.name} can pick Wizard School ${n}`; };
+  const step = () => { const next = series.nextPart(parts, seen), h = next && pool.find(x => x.id === next.id); const r = series.lockStep(lock, { next, holder: h ? h.who : null, addedSince: (id, since) => pool.filter(x => x.who.discordId === id && x.at > since).length, max, now: ++t }); lock = r.lock; return r.event; };
+  const state = () => { const next = series.nextPart(parts, seen); return `next to watch: ${next ? next.title : 'none'} · banned: ${parts.filter(p => next && p.date > next.date && !seen(p)).map(p => p.title.replace('Wizard School ', '#')).join(', ') || 'none'} · ${lock ? `🔒 locked for ${lock.name}` : '🔓 open for everyone'}`; };
+  out.push({ say: '1. Nobody has watched any of it yet', state: state(), checks: [ask(B, 2), ask(B, 1)] });
+  pool.push({ id: 'w1', who: A, at: ++t }); step(); out.push({ say: '2. Pretend_Alex picks Wizard School 1', state: state(), checks: [ask(B, 2)] });
+  seenSet.add('w1'); pool = pool.filter(x => x.id !== 'w1'); step(); out.push({ say: '3. Wizard School 1 wins and gets watched', state: state(), checks: [ask(B, 2), ask(A, 2), ask(A, 3)] });
+  for (let i = 1; i <= 3; i++) { pool.push({ id: 'other' + i, who: A, at: ++t }); step(); }
+  out.push({ say: "4. Alex's next 3 picks are other movies (not Wizard School 2)", state: state(), checks: [ask(B, 2)] });
+  pool.push({ id: 'w2', who: B, at: ++t }); step(); out.push({ say: '5. Pretend_Bea picks Wizard School 2', state: state(), checks: [ask(A, 2), ask(A, 3)] });
+  res.json({ ok: true, steps: out });
+});
 // 🔄 the ban list builder (banscan.js): progress goes to the control panel as it runs
 let scanPushAt = 0;
 setScanHooks({ changed: () => { broadcast({ type: 'banScan', scan: banScan }, 'control'); if (!banScan.running || Date.now() - scanPushAt > 15000) { scanPushAt = Date.now(); pushState(); } } });
@@ -3301,5 +3338,6 @@ server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
   const tick = async () => { await lb.refreshRss(db.settings.letterboxdUser); sweepWatched(); pushState(); };
   tick(); setInterval(tick, 30 * 60 * 1000);
   const full = async (first) => { if (!db.settings.letterboxdUser) return; await lb.refreshProfile(db.settings.letterboxdUser); const n = sweepWatched(); pushState(); if (first) { const st = lb.stats(); setTimeout(() => broadcast({ type: 'toast', text: st.profileError ? `📗 Couldn't update Letterboxd: ${st.profileError}` : `📗 Letterboxd updated: ${st.count} watched${n ? `, ${n} taken out of the battles` : ''}` }, 'control'), 1500); } };
-  full(true); setInterval(full, 6 * 60 * 60 * 1000); // whole profile when the app opens, then every 6 hours
+  const lbFirst = full(true); setInterval(full, 6 * 60 * 60 * 1000); // whole profile when the app opens, then every 6 hours
+  runOpenLast(lbFirst).catch(() => {}); // 🔚 the last thing on open: 🎞️ series bans, then the 🌐 web lists
 });

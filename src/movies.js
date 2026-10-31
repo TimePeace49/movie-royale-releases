@@ -31,6 +31,10 @@ function lockedMsg(discordId) {
 const IN_POOL = ['active', 'benched', 'paused', 'away'];
 export const currentYear = () => String(new Date().getFullYear());
 export const banAsk = () => String(db.settings.banAsk || '').trim() || 'Kirb';
+// 🎞️ series in order + series locks live in src/series.js (it plugs in here, so movies.js doesn't import it)
+const seriesHook = { block: () => null, ensure: async () => {}, picked: () => {} };
+export const setSeriesHook = h => Object.assign(seriesHook, h);
+export const ensureSeries = m => seriesHook.ensure(m);
 export const banMsg = (label, reason) => `🚫 **${label}** is banned${reason ? ` (${reason})` : ''}. Banned movies need ${streamerName()}'s OK first: ask **${banAsk()}** to unban it if you want to suggest it. Otherwise, pick another movie!`;
 /** the automatic ban rules (unless the streamer pre-approved this movie by unbanning it) */
 export const autoBan = movie => (db.banOk || []).includes(String(movie?.id ?? movie?.tmdbId)) ? null : ruleBan(movie, db.settings.banRules || {});
@@ -43,7 +47,10 @@ export function blockReason(movie, user = null, opts = {}) {
   const seen = lb.lookup({ title: movie.title, year: movie.year, tmdbId: movie.id });
   if (seen) return { short: '✅ already watched', msg: `✅ ${streamerName()} has already watched **${label}**${seen.rating ? ` (rated it ${lb.stars(seen.rating)})` : ''} — pick another movie!` };
   const ban = isBanned(movie.id);
+  if (ban?.auto === 'sequel') return { short: '🎞️ watch in order', msg: `🎞️ **${label}** can't be picked yet: ${streamerName()} watches series in order, so **${ban.next || 'the movie before it'}** has to be watched first.` };
   if (ban) return { short: '🚫 banned', msg: banMsg(label, ban.reason) };
+  const sr = seriesHook.block(movie, user); // 🎞️ a sequel you haven't caught up on / 🔒 someone's series
+  if (sr) { if (opts.record && sr.key === 'sequel') seriesHook.picked({ details: { collection: movie.collection } }); return { short: sr.short, msg: sr.msg }; }
   const rb = autoBan(movie); // 🌍 not in English / ⛪ religious / 🎥 documentary
   if (rb) { if (opts.record) banMovie({ id: movie.id, title: movie.title, year: movie.year, poster: movie.poster }, rb.reason, rb.key); return { short: '🚫 ' + rb.short, msg: banMsg(label, rb.reason) }; }
   if (db.settings.banCurrentYear !== false && movie.year === currentYear() && !(db.yearAllow || []).includes(String(movie.id)))
@@ -104,6 +111,7 @@ export async function suggest(value, user, opts = {}) { // opts.force: streamer 
     movie = await getMovie(res[0].id);
   }
   const label = `${movie.title}${movie.year ? ` (${movie.year})` : ''}`;
+  await seriesHook.ensure(movie).catch?.(() => {});
   const block = blockReason(movie, user, { record: true });
   if (block) return { ok: false, msg: block.msg };
 
@@ -114,7 +122,7 @@ export async function suggest(value, user, opts = {}) { // opts.force: streamer 
   else if (user) usePick(user.discordId);
   const entry = makeEntry(movie, user, existing);
   if (!existing) moviesList().entries.push(entry);
-  save();
+  save(); try { seriesHook.picked(entry); } catch {}
   const left = user ? db.settings.maxPerUser - picksUsed(user.discordId) : 0;
   if (free) { const r = { ok: true, public: entry.status !== 'benched', picksLeft: left, msg: `🎬 **${label}** joined the battle royal${user ? `, suggested by <@${user.discordId}>` : ''}! (free replacement pick)`, entry }; if (entry.status === 'benched') r.msg = `🎬 **${label}** is saved (free replacement pick)! Your movie already won this week, so it sits out until **${backOn()}**.`; return r; }
   if (entry.status === 'benched') return { ok: true, public: false, picksLeft: left, msg: `🎬 **${label}** is saved! Your movie already won this week, so it sits out until **${backOn()}**, then it jumps into the battle royal.`, entry };
@@ -151,6 +159,7 @@ export async function swapMovie(user, oldEntryId, newValue, force = false) {
   if (/^\d+$/.test(String(newValue))) movie = await getMovie(newValue);
   else { const r = await searchMovies(newValue); if (!r.length) return { ok: false, msg: `Couldn't find a movie called "${newValue}".` }; movie = await getMovie(r[0].id); }
   if (String(movie.id) === String(old.tmdbId)) return { ok: false, msg: "That's the same movie." };
+  await seriesHook.ensure(movie).catch?.(() => {});
   const block = blockReason(movie, user, { swapFrom: old.id, record: true });
   if (block) return { ok: false, msg: block.msg };
   const existing = findMovie(movie.id);
@@ -162,7 +171,7 @@ export async function swapMovie(user, oldEntryId, newValue, force = false) {
   const entry = makeEntry(movie, user, existing, luck); // picks used stays the same: it's a 1-for-1 trade
   if (old.status === 'benched') entry.status = 'benched';
   if (!existing) l.entries.push(entry);
-  save();
+  save(); try { seriesHook.picked(entry); seriesHook.picked(old); } catch {}
   return { ok: true, public: true, msg: `🔁 <@${user.discordId}> swapped **${old.label}${old.sub ? ` (${old.sub})` : ''}** for **${movie.title}${movie.year ? ` (${movie.year})` : ''}**.`, entry };
 }
 

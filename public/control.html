@@ -265,6 +265,7 @@
     #wEntTable tbody td:nth-child(7) { flex:1 1 140px; min-width:0; } #wEntTable tbody td:nth-child(7) select { width:100% !important; max-width:none; }
   }
   /* ⏱️⏳ Settings → Game: timer + pacer per battle; 🍀 Settings → Luck: per battle rows */
+  .srRow { padding:6px 8px; border-radius:8px; background:var(--panel2); margin:4px 0; } .srRow select { width:auto; max-width:100%; }
   .tmRow { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:center; padding:8px 12px; border-radius:10px; background:var(--panel2); margin:6px 0; }
   .tmRow input[type=range] { width:100%; } .tmRow label { margin:0 0 2px; }
   .tmName { display:flex; flex-direction:column; min-width:0; } .tmName b, .tmName small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -749,7 +750,7 @@
     <div class="results" id="banResults"></div>
     <h3 style="margin-top:16px">Banned list <span class="pill" id="banCount"></span></h3>
     <div class="row"><input id="banFilter" class="grow" placeholder="🔍 Search the banned movies (title, year or reason)…" oninput="banPage=1;drawBans()" title="Search the banned list">
-      <select id="banKind" style="width:auto" onchange="banPage=1;drawBans()" title="Which bans to show"><option value="">All bans</option><option value="hand">🚫 Banned by you</option><option value="english">🌍 Not in English</option><option value="religious">⛪ Religious</option><option value="documentary">🎥 Documentary</option><option value="year">📅 This year's movies</option></select></div>
+      <select id="banKind" style="width:auto" onchange="banPage=1;drawBans()" title="Which bans to show"><option value="">All bans</option><option value="hand">🚫 Banned by you</option><option value="english">🌍 Not in English</option><option value="religious">⛪ Religious</option><option value="documentary">🎥 Documentary</option><option value="year">📅 This year's movies</option><option value="sequel">🎞️ Sequels (watch in order)</option></select></div>
     <div id="banList" style="margin-top:8px"></div>
   </div>
   <div class="pane">
@@ -759,9 +760,13 @@
       <p class="help">Want to let one through anyway? Search it on the left and press <b>Allow</b> — or allow it below.</p>
       <div id="yearAllow"></div>
     </div>
-    <div class="card">
-      <h3>🎞️ Series rule</h3>
-      <p class="help">When someone picks a movie from a series (like <i>Harry Potter</i> or <i>Lord of the Rings</i>), nobody can pick another movie from that series while it's in the pool. This uses TMDB's "collection" info, so it works automatically.</p>
+    <div class="card" id="seriesCard">
+      <h3>🎞️ Series</h3>
+      <p class="help" style="margin-bottom:4px"><b>In order:</b> a movie in a series (like <i>Harry Potter</i>) can only be picked once you've watched every movie before it. The later ones are on the banned list (🎞️) and come off by themselves when you watch the one before.</p>
+      <p class="help" style="margin-bottom:4px"><b>🔒 Locks:</b> whoever picks the next movie of a series gets the series locked: nobody else can pick its next movie. When their movie gets watched, the next one opens only for them. If they pick other movies with their next picks (or drop it), it opens up for everyone. Change any lock by hand below.</p>
+      <p class="help">Only one movie of a series can be in the pool at a time. Movies picked before this rule stay in.</p>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><input id="srQ" class="grow" style="min-width:140px" placeholder="🔍 Find a series…" oninput="drawSeries()" title="Search the series by name or movie"><button onclick="seriesAdd()" title="Add a series by typing one of its movies: its sequels get banned right away">➕ Add a series</button><button onclick="api('/api/series/refresh',{deep:true}).then(r=>{if(r.ok===false)toast(esc(r.error));else toast('🎞️ Checking the series (finding new ones can take a few minutes)…')})" title="Check every series again now and look for new ones (Movie Royal does this by itself every time it opens)">🔄 Check now</button></div>
+      <div id="srList" style="margin-top:8px"></div>
     </div>
     <div class="card">
       <h3>🚫 Automatic bans</h3>
@@ -961,6 +966,12 @@
     <div class="row" style="margin-top:6px"><button onclick="api('/api/test/ban-scan',{}).then(r=>{if(!r.ok)return toast(esc(r.error));setView('settings');setSub('bans');loadBans()})" title="A pretend 🔄 Update the ban list: adds made-up movies, no internet">🔄 Pretend list update</button><button onclick="api('/api/test/ban-year',{}).then(r=>{toast(`📅 Pretend new year: added ${r.added} of last year's movies, ${r.removed} came off the list`);loadBans()})" title="Pretend it's a new year: last year's movies come off the banned list">📅 Pretend a new year</button></div>
     <div class="row" style="margin-top:6px"><button onclick="api('/api/test/ban-dub',{}).then(r=>$('tBanOut').innerHTML=`<p class='help'>🗣️ ${r.on ? `${r.removed} of 3 pretend “not in English” bans came off (likely dubbed). Still banned: ${r.stillBanned.map(esc).join(', ') || 'none'}.` : 'The 🗣️ dubbed setting (or the 🌍 rule) is off, so nothing came off.'}</p>`)" title="Three pretend 'not in English' bans get checked again for an English dub (no internet)">🗣️ Try dubbed movies</button></div>
     <div id="tBanOut"></div>
+  </div>
+  <div class="card">
+    <h3>🎞️ Series in order + 🔒 series locks</h3>
+    <p class="help">Walks a pretend series (Wizard School 1–4) through every step: sequels banned, someone picks the first one and gets the lock, it gets watched, the next one opens only for them, they pick other movies, it opens up for everyone. Nothing real changes. The real series are in 🚫 Banned Movies → 🎞️ Series.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="seriesTest()">🎞️ Run the pretend series</button><button onclick="setView('settings');setSub('bans');setTimeout(()=>$('seriesCard')?.scrollIntoView({block:'start'}),200)" title="Open 🚫 Banned Movies → 🎞️ Series">↗ See the real series</button></div>
+    <div id="tSrOut"></div>
   </div>
   <div class="card">
     <h3>⏱️ Battle timer &amp; ⏳ pacer for each battle</h3>
@@ -1631,7 +1642,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2181,8 +2192,16 @@ function timingHTML() {
     <h4 style="margin:12px 0 2px">Each battle <small class="muted" style="font-weight:400">(slide all the way left = same as all battles)</small></h4>
     ${S.lists.map(l => row('list:' + l.id, l.name, esc(TYPE[l.type] || ''), { v: Number(l.gameSeconds) || 0, min: 0, max: Math.max(300, Number(l.gameSeconds) || 0), w: 'tmTW' }, { v: l.pacer != null && Number(l.pacer) >= 0 ? Number(l.pacer) : -5, min: -5, w: 'tmPW' }, own)).join('')}
     ${cb.map(b => row('card:' + b.id, b.name, '🃏 Card battle (same sliders as the 🃏 Card pool tab)', { v: Number(b.length) || 0, min: 0, max: 180, w: 'tmCW' }, { v: b.pace ?? 50, min: 0, w: 'tmPac' }, ['How long this card fight should last (all the way left = by how many packs fight)', 'How hard the knockouts are spread over this card fight (0 = off)'])).join('')}
-    </div>`;
+    </div>
+    <h4 style="margin:12px 0 2px">🎡 Wheel spin time <small class="muted" style="font-weight:400">(how long each wheel spins; also in each wheel's own settings)</small></h4>
+    <div id="tmWheels">${tmWheelsHTML()}</div>`;
 }
+function tmWheelsHTML() { // 🎡 every wheel's spin time (same as 🎡 Wheel → ⚙ → Spin time)
+  if (!WD?.wheels) { loadWheel().then(() => { const el = $('tmWheels'); if (el) el.innerHTML = tmWheelsHTML(); }).catch(() => {}); return '<p class="help">Loading the wheels…</p>'; }
+  return WD.wheels.map(w => `<div class="tmRow tmWheel"><div class="tmName"><b>${esc(w.name)}</b><small class="muted">🎡 Wheel${w.folder ? ` · 📁 ${esc(w.folder)}` : ''}</small></div><div><label>🎡 Spin time: <b>${Number(w.spinSecs) || 10} s</b></label><input type="range" min="2" max="40" step="1" value="${Math.min(40, Number(w.spinSecs) || 10)}" title="How long this wheel spins" oninput="this.previousElementSibling.querySelector('b').textContent=this.value+' s'" onchange="tmWheelSet('${esc(w.id)}', this.value)"></div><div></div></div>`).join('') || '<p class="help">No wheels yet.</p>';
+}
+async function tmWheelSet(id, v) { try { await api('/api/wheel/' + id, { spinSecs: Number(v) }, 'PUT'); const w = WD?.wheels?.find(x => x.id === id); if (w) w.spinSecs = Number(v); wVer = -1; toast('Saved', 1500); } catch {} }
+
 async function tmSet(key, which, v) { // ⏱️⏳ save one slider right away
   v = Number(v);
   try {
@@ -3362,6 +3381,10 @@ async function webTakenTest() { // 🧪 a pretend Discord pick of a movie on the
   let r; try { r = await api('/api/test/web-taken', {}); } catch { return; }
   const d = r.done[0]; $('tWebOut').innerHTML = d ? `🎬 Pretend_Picker picked <b>${esc(d.title)}</b> → it left “${esc(r.list)}” and <b>${d.rep ? esc(d.rep) : 'nothing (no spares left)'}</b> took its place · ${r.before} movies before, ${r.after} after · spares ${r.sparesBefore} → ${r.sparesAfter}` : 'Nothing happened (the battle may be running).';
 }
+async function seriesTest() { // 🧪 a pretend series, step by step
+  let r; try { r = await api('/api/test/series', {}); } catch { return; }
+  $('tSrOut').innerHTML = r.steps.map(x => `<div class="help" style="margin-top:8px"><b>${esc(x.say)}</b><br>${esc(x.state)}${x.checks.map(c => `<br>• ${esc(c)}`).join('')}</div>`).join('');
+}
 let mmLast = null;
 async function mmProfile() { // 🧪 the chatter profile with each movie's luck
   if (!mmLast || ($('tMmWho').value && $('tMmWho').value !== mmLast.id)) { await mmTest(); }
@@ -3695,9 +3718,9 @@ function stSortBy(k) { stSort = stSort.k === k ? { k, dir: -stSort.dir } : { k, 
 
 // ---------- 🚫 bans ----------
 let bans = null;
-async function loadBans() { bans = await fetch('/api/bans').then(r => r.json()); drawBans(); if (!banScanState) fetch('/api/bans/scan').then(r => r.json()).then(banScanShow).catch(() => {}); }
+async function loadBans() { bans = await fetch('/api/bans').then(r => r.json()); drawBans(); loadSeries(); if (!banScanState) fetch('/api/bans/scan').then(r => r.json()).then(banScanShow).catch(() => {}); }
 let banPage = 1;
-const BAN_KIND = { english: '🌍', religious: '⛪', documentary: '🎥', year: '📅' };
+const BAN_KIND = { english: '🌍', religious: '⛪', documentary: '🎥', year: '📅', sequel: '🎞️' };
 function drawBans() { // (there can be LOTS of bans: search box + kind filter, 100 at a time)
   if (!bans) return;
   const q = ($('banFilter')?.value || '').trim().toLowerCase(), kind = $('banKind')?.value || '';
@@ -3709,6 +3732,23 @@ function drawBans() { // (there can be LOTS of bans: search box + kind filter, 1
   $('banOkList').innerHTML = bans.ok?.length ? `<p class="help">✅ Pre-approved (you unbanned them, the rules skip them; ✕ = the rules apply again):</p>${bans.ok.map(a => `<span class="chip">${esc(a.title || a.tmdbId)}<button title="Take back the pre-approval" onclick="api('/api/bans/ok',{tmdbId:'${esc(String(a.tmdbId))}',ok:false}).then(loadBans)">✕</button></span>`).join('')}` : '';
   renderBanSide();
 }
+// 🎞️ series in order + 🔒 series locks
+let seriesData = null;
+async function loadSeries() { try { seriesData = await fetch('/api/series').then(r => r.json()); drawSeries(); } catch {} }
+function drawSeries() {
+  const d = seriesData, el = $('srList'); if (!d || !el) return;
+  const q = ($('srQ')?.value || '').trim().toLowerCase();
+  const all = d.series.filter(x => !q || `${x.name} ${x.parts.map(p => p.label).join(' ')}`.toLowerCase().includes(q)), shown = all.slice(0, 40);
+  const ppl = cur => `<option value="">🔓 Open for everyone</option>${d.people.map(p => `<option value="${esc(p.id)}" ${cur === p.id ? 'selected' : ''}>🔒 ${esc(p.name)}</option>`).join('')}${cur && !d.people.some(p => p.id === cur) ? `<option value="${esc(cur)}" selected>🔒 (someone not on the list)</option>` : ''}`;
+  const part = p => `<span title="${p.seen ? 'watched' : p.next ? 'next to watch' : p.banned ? 'banned until the one before it is watched' : p.soon ? 'not out yet' : ''}" style="${p.seen ? 'opacity:.55;text-decoration:line-through' : p.next ? 'color:var(--gold,#ffc94a);font-weight:700' : ''}">${p.seen ? '✅' : p.next ? '▶️' : p.banned ? '🎞️' : p.ok ? '👍' : '⏳'} ${esc(p.label)}</span>`;
+  el.innerHTML = (d.state?.running ? `<p class="help">⏳ ${esc(d.state.step || 'Checking the series…')}</p>` : '') + (!d.series.length ? '<p class="help">No series yet: they show up as people pick movies from one (and when Movie Royal opens, it finds the series of movies you watched and popular ones). ➕ Add a series to add one now.</p>'
+    : `${shown.map(x => `<div class="srRow"><div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><b class="grow">${esc(x.name)}</b><select title="Lock this series for someone (or open it for everyone)" onchange="seriesLock('${esc(x.id)}', this.value)" ${x.next ? '' : 'disabled'}>${ppl(x.lock?.discordId || '')}</select></div>
+      <div class="help" style="margin:2px 0 0">${x.next ? `Next: <b>${esc(x.next.label)}</b>${x.lock ? ` · 🔒 ${esc(x.lock.name)}${x.lock.held ? ' has it picked' : x.lock.waitFrom ? ' gets first pick with their next movies' : ''}${x.lock.manual ? ' (set by you)' : ''}` : ''}` : '✅ All watched'}</div>
+      <details><summary class="help">${x.parts.length} movies</summary><div class="help" style="display:flex;flex-direction:column;gap:2px">${x.parts.map(part).join('')}</div></details></div>`).join('')}${all.length > shown.length ? `<p class="help">Showing 40 of ${all.length}. Search to find another.</p>` : ''}`)
+    + (d.log?.length ? `<details style="margin-top:6px"><summary class="help">🕑 What changed lately</summary><div class="help">${d.log.slice(0, 15).map(l => `${new Date(l.at).toLocaleString()}: ${esc(l.text)}`).join('<br>')}</div></details>` : '');
+}
+async function seriesLock(id, who) { try { await api('/api/series/lock', { id, discordId: who || null }); toast(who ? '🔒 Locked: only they can pick its next movie (until they pass on it with their next picks)' : '🔓 Open for everyone'); loadSeries(); loadBans(); } catch { loadSeries(); } }
+async function seriesAdd() { const q = await ask('Type a movie from the series (like Harry Potter and the Sorcerer\'s Stone):', ''); if (!q) return; try { const r = await api('/api/series/add', { query: q }); toast(`🎞️ Added the ${esc(r.name)}: its later movies are banned until you watch the one before.`); loadBans(); } catch {} }
 // 🔄 the ban list builder (it runs on the server; progress comes in as 'banScan' messages)
 let banScanState = null;
 async function banScanGo() { const r = await api('/api/bans/scan', {}); if (!r.ok) return toast('⚠️ ' + esc(r.error || '')); toast('🔄 Updating the ban list: it looks up TMDB and adds the new ones (a few minutes)'); }
