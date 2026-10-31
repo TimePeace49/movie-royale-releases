@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.66.0
+- 🔞 **Nudity heads-up on the Winner card:** when a movie wins, Movie Royal checks its IMDb Parents Guide (the "Sex & Nudity" part) and TMDB's tags. If it has nudity, the Winner card on the Battle tab says so **in red** and lists every scene it found, each with about when it is in the movie ("~47 min in", "at 1:12:30", "near the end", or "time not listed" when nobody wrote a time). Orange = sex scenes but no nudity listed. Only you see it: never on stream or in chat. Turn it off in Settings → 🎬 Movie info.
+- ⭐ **Ratings on the 500 worst list:** IMDb / Rotten Tomatoes battles show each movie's rating from the list (IMDb out of 10 or 🍅 %, or TMDB's rating when the list didn't show one) in the 🎬 Movie Pool and in the battle list under the battle. Your list picks them up the next time it updates (on open).
+- ⏱️ **Movie length everywhere:** every movie in the 🎬 Movie Pool now shows how long it is (the battle list already did). Movies that were added without their length get it filled in by themselves in the background.
+- 🧪 Test tab → 🔞 Nudity heads-up (a pretend movie, or type any real movie to check it). The 🌐 IMDb / Rotten Tomatoes battle test now shows ratings and lengths too.
+
 ## 1.65.3
 - 🤫 Fixed a false "Something went wrong" error: when Movie Royal reads a web page in the background (like the IMDb pages for the 500 worst list), an ad or tracking picture on that page sometimes doesn't load. That's harmless and no longer shows as an error (it's still in the tech report).
 - Those background pages now skip ads and trackers altogether, can't open pop-up windows, and stay muted, so they load faster too.

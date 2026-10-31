@@ -20,6 +20,7 @@ import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, sp
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
+import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
 import * as looks from './looks.js';
@@ -150,7 +151,7 @@ function gameResult(m) {
         if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
       }
       if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`, !!db.live || !!live.fakeLive); // everyone who lost gets a little luckier (🎟️ wild spots: once a night while live, see Settings → 🍀 Luck)
-      if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) fetchWinnerRatings(f, rec, live.game.id);
+      if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) { fetchWinnerRatings(f, rec, live.game.id); fetchWinnerNudity(f, rec); }
       if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
       save(); pushState();
 }
@@ -472,6 +473,16 @@ async function fetchWinnerRatings(f, rec, gameId) {
     if (live.lastWinner?.id === f.id) live.lastWinner.ratings = r;
     broadcast({ type: 'ratings', gameId, id: f.id, ratings: r }, 'overlay'); pushState();
   } catch (e) { console.error('[ratings]', e.message); }
+}
+// 🔞 nudity heads-up on the winner card (control panel only: never on stream or in chat), with about when each scene is
+async function fetchWinnerNudity(f, rec) {
+  if (db.settings.nudityCheck === false) return;
+  if (live.lastWinner?.id === f.id) { live.lastWinner.nudity = { checking: true }; pushState(); }
+  let r;
+  try { r = await checkNudity({ tmdbId: f.tmdbId, imdbId: f.details?.imdbId, runtime: f.details?.runtime }); }
+  catch (e) { r = { unknown: true, error: e.message }; }
+  rec.winner.nudity = r; save(); historyVersion++;
+  if (live.lastWinner?.id === f.id) { live.lastWinner.nudity = r; pushState(); }
 }
 // winner goes into Twitch chat once the replay on screen is done (so chat doesn't spoil it)
 function announceWinner(f, list) {
@@ -2050,7 +2061,7 @@ async function addFilm(l, value) {
   const m = await tmdbMovie(id);
   if (l.entries.some(e => String(e.tmdbId) === String(m.id) && e.status === 'active')) throw new Error('already in this list');
   const e = { id: 'film-' + m.id + '-' + uid().slice(0, 4), tmdbId: m.id, label: m.title, sub: m.year, poster: m.poster, weight: 1, status: 'active', addedAt: Date.now(),
-    details: { director: m.director, cast: m.cast, genres: m.genres, synopsis: m.synopsis, runtime: m.runtime, collection: m.collection, imdbId: m.imdbId } };
+    details: { director: m.director, cast: m.cast, genres: m.genres, synopsis: m.synopsis, runtime: m.runtime, collection: m.collection, imdbId: m.imdbId, tmdbRating: m.rating ?? null } };
   l.entries.push(e); return e;
 }
 // 💩 a battle pool made from a Letterboxd page (default: the 500 lowest rated films). "🔄 Update from Letterboxd" fetches it again:
@@ -2111,6 +2122,9 @@ const webLook = async (it, fake) => { // the TMDB movie for a list item (IMDb id
   if (!hit) { const r = await searchMovies(it.title).catch(() => []); hit = r.find(m => it.year && Math.abs(Number(m.year) - Number(it.year)) <= 1 && m.title.toLowerCase() === it.title.toLowerCase()) || r.find(m => it.year && String(m.year) === String(it.year)) || (it.year ? null : r[0]); }
   if (!hit) return null; c = { id: String(hit.id), lang: hit.lang || '', title: hit.title, year: hit.year }; cache[it.key] = c; return c;
 };
+// ⭐ the rating the list itself shows (IMDb out of 10 / Rotten Tomatoes %): kept on the entry as webRating, shown in the pool + battle list
+const webRate = it => it?.rating != null ? { site: 'imdb', v: Number(it.rating) } : it?.rt != null ? { site: 'rt', v: Number(it.rt) } : null;
+const setRate = (e, it) => { const r = webRate(it); if (r) e.webRating = r; if (it?.runtime && !e.details?.runtime) e.details = { ...(e.details || {}), runtime: it.runtime }; };
 const hEsc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // 🎞️ sequels: a movie in a series only goes on a 🌐 web list once you've watched every movie in that series that came out before it
 const seriesParts = cid => series.partsOf(cid);
@@ -2153,7 +2167,7 @@ async function syncWebList(l) {
       }
       return used;
     };
-    const keepSpare = (items, used) => { if (kept.length >= max) spare = items.slice(used, used + 120).map(it => ({ key: it.key, title: it.title, year: it.year, imdbId: it.imdbId, tmdbId: it.tmdbId, lang: it.lang })); };
+    const keepSpare = (items, used) => { if (kept.length >= max) spare = items.slice(used, used + 120).map(it => ({ key: it.key, title: it.title, year: it.year, imdbId: it.imdbId, tmdbId: it.tmdbId, lang: it.lang, rating: it.rating, rt: it.rt, runtime: it.runtime })); };
     if (fake) keepSpare(fake, await take(fake));
     else for (const url of urls) { // each link in order, reading deeper (more pages) while it still needs movies
       if (kept.length >= max) break;
@@ -2168,19 +2182,19 @@ async function syncWebList(l) {
     // add the new ones, keep the ones still on it, and hide the ones that dropped off (never deleted)
     const want = new Set(kept.map(k => k.tm.id)), have = new Map(l.entries.filter(e => e.tmdbId && e.status !== 'removed').map(e => [String(e.tmdbId), e]));
     const todo = kept.filter(k => !have.has(k.tm.id)); let added = 0, gone = 0;
-    kept.forEach(k => { const e = have.get(k.tm.id); if (e) e.webRank = k.rank; });
+    kept.forEach(k => { const e = have.get(k.tm.id); if (e) { e.webRank = k.rank; setRate(e, k); } });
     l.job = { running: true, step: 'Adding the movies…', done: 0, total: todo.length, at: Date.now() }; pushState();
     let k = 0;
     await Promise.all(Array.from({ length: fake ? 1 : 5 }, async () => { while (k < todo.length) { const it = todo[k++];
       try { const removed = l.entries.find(e => String(e.tmdbId) === it.tm.id && e.status === 'removed');
-        if (removed) { removed.status = 'active'; removed.webRank = it.rank; delete removed.webTaken; }
-        else if (fake) l.entries.push({ id: 'film-' + it.tm.id + '-' + uid().slice(0, 4), tmdbId: it.tm.id, label: it.title, sub: String(it.year || ''), weight: 1, status: 'active', addedAt: Date.now(), webRank: it.rank });
-        else { const e = await addFilm(l, it.tm.id); e.webRank = it.rank; }
+        if (removed) { removed.status = 'active'; removed.webRank = it.rank; delete removed.webTaken; setRate(removed, it); }
+        else if (fake) { const e = { id: 'film-' + it.tm.id + '-' + uid().slice(0, 4), tmdbId: it.tm.id, label: it.title, sub: String(it.year || ''), weight: 1, status: 'active', addedAt: Date.now(), webRank: it.rank }; setRate(e, it); l.entries.push(e); }
+        else { const e = await addFilm(l, it.tm.id); e.webRank = it.rank; setRate(e, it); }
         added++; } catch { stats.missed.push(it.title); }
       l.job.done++; if (l.job.done % 10 === 0) pushState(); } }));
     for (const e of l.entries) if (e.tmdbId && !want.has(String(e.tmdbId)) && ['active', 'paused'].includes(e.status)) { e.status = 'removed'; gone++; }
     l.source = { ...src, spare, rulesV: 2, at: Date.now(), count: kept.length, added, gone, foreign: stats.foreign, discord: stats.discord, watched: stats.watched, sequel: stats.sequel, sequels: stats.sequels, missed: stats.missed.slice(0, 50), sources: stats.sources, error: null };
-    l.job = null; save(); pushState(); refreshPreview();
+    l.job = null; save(); pushState(); refreshPreview(); if (!fake) setTimeout(() => fillMovieInfo().catch(() => {}), 3000); // (⏱️ ⭐ any that are missing their length / rating)
     const skip = [stats.foreign && `${stats.foreign} not in English`, stats.discord && `${stats.discord} picked in Discord`, stats.watched && `${stats.watched} you've watched`, stats.sequel && `${stats.sequel} sequels (you haven't seen the one before)`].filter(Boolean).join(', ');
     broadcast({ type: 'toast', text: `🌐 “${l.name}” is ready: ${kept.length} movies (${added} new${gone ? `, ${gone} left` : ''})${skip ? ` · skipped ${skip}` : ''}${kept.length < max ? ` · only found ${kept.length} of ${max}: add another link to fill it up` : ''}` }, 'control');
   } catch (e) {
@@ -2205,7 +2219,7 @@ async function webReplace(l, rank, extraPicked) {
       else if (src.fake) { e = { id: 'film-' + tm.id + '-' + uid().slice(0, 4), tmdbId: tm.id, label: it.title, sub: String(it.year || ''), weight: 1, status: 'active', addedAt: Date.now() }; l.entries.push(e); }
       else e = await addFilm(l, tm.id);
     } catch { continue; }
-    e.webRank = rank; e.webSpare = true; l.source.spare = spare; return e;
+    e.webRank = rank; e.webSpare = true; setRate(e, it); l.source.spare = spare; return e;
   }
   l.source.spare = [];
   if (!src.fake) setTimeout(() => { if (!l.job?.running) syncWebList(l).catch(() => {}); }, 1500); // no spares left: read the lists again (it fills back up)
@@ -2235,6 +2249,30 @@ async function webTakenSweep(opts = {}) { // opts.extra = Map(tmdbId → pretend
   return done;
 }
 setInterval(() => webTakenSweep().catch(() => {}), 5000);
+// ⏱️ ⭐ movie length (and the TMDB rating, for 🌐 web lists that didn't show one) for movies that are missing it:
+// a few at a time in the background (older entries, and ones added before we kept it). Each one is only tried once a week.
+let fillBusy = false;
+async function fillMovieInfo(max = 80) {
+  if (fillBusy || !(db.settings.tmdbKey || '').trim()) return 0; fillBusy = true; let n = 0;
+  try {
+    const todo = [];
+    for (const l of db.lists) if (l.type === 'movies' || l.type === 'films') for (const e of l.entries) {
+      if (!e.tmdbId || e.kind === 'spot' || e.test || e.status === 'removed' || l.source?.fake) continue;
+      const needRun = !e.details?.runtime, needRate = l.source?.kind === 'web' && !e.webRating && e.details?.tmdbRating == null;
+      if ((needRun || needRate) && !(e.infoTry > Date.now() - 7 * 864e5)) todo.push(e);
+    }
+    for (const e of todo.slice(0, max)) {
+      e.infoTry = Date.now();
+      const m = await tmdbMovie(e.tmdbId, 8000).catch(() => null); if (!m) continue;
+      e.details = { ...(e.details || {}) }; if (m.runtime) e.details.runtime = m.runtime; if (m.rating != null) e.details.tmdbRating = m.rating; if (!e.details.imdbId && m.imdbId) e.details.imdbId = m.imdbId;
+      n++; await new Promise(r => setTimeout(r, 120));
+    }
+    if (todo.length) { save(); pushState(); }
+  } catch (e) { console.error('[movie info] ' + e.message); }
+  finally { fillBusy = false; }
+  return n;
+}
+setTimeout(() => fillMovieInfo().catch(() => {}), 40000); setInterval(() => fillMovieInfo().catch(() => {}), 10 * 60000);
 // 🎞️ series locks + sequel bans: a quick check every minute (nothing to download unless a new series turns up)
 series.setHooks({ streamer: () => streamerName(), toast: t => broadcast({ type: 'toast', text: hEsc(t) }, 'control'), changed: () => { pushState(); if (cloud.enabled()) cloud.sync(true).catch?.(() => {}); webTakenSweep().catch(() => {}); } });
 setInterval(() => { if (!openLast.running) series.refresh().catch(() => {}); }, 60000);
@@ -2276,8 +2314,22 @@ app.post('/api/lists/web', (req, res) => { // make a new IMDb / Rotten Tomatoes 
   syncWebList(l);
   pushState(); res.json({ ok: true, id: l.id });
 });
+app.post('/api/test/nudity', async (req, res) => { // 🧪 🔞 the nudity heads-up: a real check of any movie, or a pretend one (no internet)
+  const b = req.body || {};
+  if (b.fake) { // pretend Parents Guide page → the same reader + rules the real check uses
+    const items = ['In the opening scene a man runs out of a lake naked; his bare buttocks are seen from behind.', 'A woman is shown topless in a shower scene at 1:12:30, for a few seconds.', 'A couple has sex under the sheets, no nudity is shown.', 'There is no frontal nudity.', 'Near the end, a woman takes off her top and her breasts are briefly seen.', 'Around 47 minutes in, people skinny dip in a pool at night (from a distance).', 'A painting of a nude woman hangs on a wall.'];
+    const html = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { categories: [{ category: { id: 'NUDITY', text: 'Sex & Nudity' }, severity: { text: 'Moderate' }, guideItems: { edges: items.map(t => ({ node: { text: { plaidHtml: t } } })) } }] } } })}</script>`;
+    return res.json({ title: 'Pretend Movie (2001)', runtime: 112, nudity: { ...nudeJudge({ guide: nudeParse(html), tags: ['female nudity'], runtime: 112 }), at: Date.now() } });
+  }
+  const q = String(b.query || '').trim(); if (!q) return res.status(400).json({ error: 'Type a movie name first.' });
+  try {
+    const hit = /^\d+$/.test(q) ? { id: q } : (await searchMovies(q))[0]; if (!hit) return res.status(404).json({ error: `Couldn't find “${q}” on TMDB.` });
+    const m = await tmdbMovie(hit.id, 8000);
+    res.json({ title: `${m.title}${m.year ? ` (${m.year})` : ''}`, runtime: m.runtime, nudity: await checkNudity({ tmdbId: m.id, imdbId: m.imdbId, runtime: m.runtime }, !!b.force) });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/test/web-list', (req, res) => { // 🧪 a pretend IMDb battle (made-up movies, no internet): shows the skipping + "keep going until full"
-  const fake = Array.from({ length: 40 }, (_, i) => ({ key: 'tt-test-' + i, title: `Bad Movie ${i + 1}`, year: 1990 + (i % 30), tmdbId: 990000 + i, lang: i % 7 === 3 ? 'fr' : 'en' }));
+  const fake = Array.from({ length: 40 }, (_, i) => ({ key: 'tt-test-' + i, title: `Bad Movie ${i + 1}`, year: 1990 + (i % 30), tmdbId: 990000 + i, lang: i % 7 === 3 ? 'fr' : 'en', rating: Math.round((1 + i * 0.07) * 10) / 10, runtime: 78 + (i * 13) % 60 })); // (⭐ pretend IMDb ratings + ⏱️ lengths)
   fake[1].coll = 'c1'; fake[12] = { ...fake[12], title: 'Bad Movie 2: The Sequel', year: 2005, coll: 'c1' }; // 🎞️ a pretend series: the sequel is skipped (you haven't watched Bad Movie 2)
   const fakeColl = { c1: [{ id: '990001', title: 'Bad Movie 2', year: '1991', date: '1991-05-01' }, { id: '990012', title: 'Bad Movie 2: The Sequel', year: '2005', date: '2005-05-01' }] };
   const movies = getList('movies'); if (movies && !movies.entries.some(e => String(e.tmdbId) === '990005')) movies.entries.push({ id: 'film-990005-test', tmdbId: 990005, label: 'Bad Movie 6', sub: '1995', weight: 1, status: 'active', addedAt: Date.now(), test: true });

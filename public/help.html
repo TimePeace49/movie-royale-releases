@@ -138,7 +138,7 @@
 
   <section data-k="battle list entries add manually quick add wheel state watched delete pause disable luck">
     <h2>📋 The list under the battle</h2>
-    <p>Scroll down on the Battle tab to see who's <b>really in the battle</b>: the pieces waiting on the cliff for the next battle (or fighting in the one that's running), with luck, odds, chance and each movie's ⏱️ length. Everything else (movies sitting out, people who haven't typed in Twitch chat yet, entries that didn't fit on the cliff) is hidden under <b>👀 Show the … not in</b>, with a tag saying why. The <b>🔎 Search a person or movie</b> box finds anyone or any movie in the battle, in or out, by their Discord or Twitch name or the title. Each row has buttons:</p>
+    <p>Scroll down on the Battle tab to see who's <b>really in the battle</b>: the pieces waiting on the cliff for the next battle (or fighting in the one that's running), with luck, odds, chance and each movie's ⏱️ length (and its ⭐ rating on IMDb / Rotten Tomatoes battles; the 🎬 Movie Pool shows both too). Everything else (movies sitting out, people who haven't typed in Twitch chat yet, entries that didn't fit on the cliff) is hidden under <b>👀 Show the … not in</b>, with a tag saying why. The <b>🔎 Search a person or movie</b> box finds anyone or any movie in the battle, in or out, by their Discord or Twitch name or the title. Each row has buttons:</p>
     <ul><li><b>✅</b> marks a movie watched.</li><li><b>⏸</b> sits it out for now, and <b>▶</b> puts it back.</li><li><b>✕</b> deletes it.</li></ul>
     <p><b>➕ Add</b> at the top makes the battle match your old wheel. For Discord movies, type the person's name (or Twitch name), then start typing their movie and click it. New people are added for you, and pick limits don't apply when you add by hand. For text or chat battles, type items separated by commas.</p>
   </section>
@@ -545,7 +545,16 @@
     <li>It skips movies that aren't in English, 🎞️ sequels when you haven't watched the movies before them in that series, and movies you've watched or rated on Letterboxd (each of those can be turned off). Skipped movies don't count: it keeps reading further down the lists until it has the full amount.</li>
     <li>🎬 <b>Movies someone picked in Discord never go on it.</b> People can still pick a movie that's on it: then it leaves this battle within a few seconds and the next movie on the list takes its place (after the battle if it's fighting right now).</li>
     <li>Try both with 🧪 Test tab → 🌐 IMDb / Rotten Tomatoes battle → <b>▶ Run it</b>, then <b>🎬 Pretend a Discord pick</b>.</li>
-    <li>500 movies takes a few minutes; the 🎬 Movie Pool shows how far it is. <b>🔄 Update</b> reads the lists again later.</li></ul>
+    <li>500 movies takes a few minutes; the 🎬 Movie Pool shows how far it is. <b>🔄 Update</b> reads the lists again later.</li>
+    <li>⭐ Each movie shows its <b>rating</b> from the list (IMDb out of 10, or 🍅 Rotten Tomatoes %; TMDB's rating when the list didn't show one) and ⏱️ its <b>length</b>, in the 🎬 Movie Pool and in the battle list under the battle.</li></ul>
+  </section>
+  <section>
+    <h2>🔞 Nudity heads-up</h2>
+    <p>When a movie wins, Movie Royal checks it for nudity. If it has some, the <b>Winner card</b> on the Battle tab says so <b style="color:#ff5a5a">in red</b> and lists every scene it found, each with <b>about when it is</b> in the movie (like <b>~1 h 12 min in</b>). Only you see it: never on stream, never in chat.</p>
+    <ul><li>It reads the movie's <b>IMDb Parents Guide</b> (the "Sex &amp; Nudity" part, written by IMDb users) and TMDB's tags on the movie.</li>
+    <li>Times come from what people wrote there: an exact time when they gave one, otherwise a rough spot like "near the start", "around the middle" or "near the end", or "time not listed" when they didn't say. So treat the times as a guide, not to the second.</li>
+    <li>Orange instead of red = sex scenes, but no nudity listed. "No nudity found" in grey = nothing was found.</li>
+    <li>Turn it off in <b>Settings → 🎬 Movie info</b>. Try it in 🧪 Test → <b>🔞 Nudity heads-up</b> (a pretend movie, or type any real one).</li></ul>
   </section>
   <section>
     <h2>🧪 Quick test lab</h2>

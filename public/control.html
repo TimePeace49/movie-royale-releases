@@ -355,6 +355,12 @@
   .kbRow.clash { border-color:var(--bad); }
   .kbKey { min-width:92px; font-family:ui-monospace, Consolas, monospace; font-weight:800; padding:4px 10px; border-radius:8px; background:#2a1d4a; border:1px solid #9b7bff; border-bottom-width:3px; }
   .kbKey.off { opacity:.55; font-weight:400; } .kbKey.wait { background:var(--gold); color:#1a1030; border-color:var(--gold); }
+  .nudeBox { margin:8px auto 2px; max-width:520px; text-align:left; font-size:13px; }
+  .nudeBox.nudeRed, .nudeBox.nudeAmber { padding:8px 10px; border-radius:10px; }
+  .nudeRed { color:#ff5a5a; background:rgba(255,60,60,.1); border:1px solid rgba(255,90,90,.55); }
+  .nudeAmber { color:#ffb347; background:rgba(255,170,60,.08); border:1px solid rgba(255,170,60,.45); }
+  .nudeBox ul { margin:4px 0 2px; padding-left:18px; } .nudeBox li { margin:2px 0; }
+  .nudeBox .nudeWhy { opacity:.75; display:block; margin-top:3px; }
   .claimNow { margin:10px 0; padding:12px; border-radius:14px; background:#163a26; border:2px solid #7dffb0; box-shadow:0 0 22px #7dffb055; animation:updPulse .9s ease-in-out infinite alternate; }
   .obsBox { margin:10px 0; padding:10px 14px; } .obsBox h4 { margin:0 0 4px; }
   tr.pausedRow { opacity:.5; } tr.pausedRow:hover { opacity:.8; }
@@ -870,7 +876,7 @@
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="raceTMap" title="Which race map for the test race"></select><button class="primary" onclick="raceTest()" title="Start a practice race with race power-ups on">▶ Start a test race</button><button onclick="raceBigTest()" title="A practice battle with one more piece than races allow, on the picked race map: it goes on another map instead">🏁 Too many for a race?</button></div>
     <div class="row" style="gap:5px;flex-wrap:wrap;margin-top:8px" id="raceTPow"></div></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🎬 Discord movie battle</h3><p class="help" style="margin:0 0 10px">A test battle with everyone's real Discord movies. No winner, no luck, no cooldowns.</p><button class="primary" onclick="api('/api/test/discord-battle').then(()=>toast('🎬 Test Discord battle: it changes nothing')).catch(()=>{})" title="Run a Discord movie battle test">▶ Run it</button></div>
-  <div class="card tquick"><h3 style="margin:0 0 4px">🌐 IMDb / Rotten Tomatoes battle</h3><p class="help" style="margin:0 0 10px">A pretend list of 40 made-up "worst movies" (no internet): watch it skip the ones not in English, picked in Discord, and a 🎞️ sequel whose first movie you haven't watched, and keep going until it has 20. Then <b>🎬 Pretend a Discord pick</b>: one of its movies gets picked, leaves the battle, and the next one takes its place.</p><button class="primary" onclick="api('/api/test/web-list',{max:20}).then(()=>{toast('🌐 Pretend IMDb battle made: see the Movie Pool');setView('pool')})" title="Make a pretend IMDb battle">▶ Run it</button> <button onclick="webTakenTest()" title="Someone pretends to pick one of the pretend IMDb battle's movies in Discord">🎬 Pretend a Discord pick</button><div id="tWebOut" class="help" style="margin-top:6px"></div></div>
+  <div class="card tquick"><h3 style="margin:0 0 4px">🌐 IMDb / Rotten Tomatoes battle</h3><p class="help" style="margin:0 0 10px">A pretend list of 40 made-up "worst movies" (no internet): watch it skip the ones not in English, picked in Discord, and a 🎞️ sequel whose first movie you haven't watched, and keep going until it has 20 (each one shows its ⭐ IMDb rating and ⏱️ length in the Movie Pool and the battle list). Then <b>🎬 Pretend a Discord pick</b>: one of its movies gets picked, leaves the battle, and the next one takes its place.</p><button class="primary" onclick="api('/api/test/web-list',{max:20}).then(()=>{toast('🌐 Pretend IMDb battle made: see the Movie Pool');setView('pool')})" title="Make a pretend IMDb battle">▶ Run it</button> <button onclick="webTakenTest()" title="Someone pretends to pick one of the pretend IMDb battle's movies in Discord">🎬 Pretend a Discord pick</button><div id="tWebOut" class="help" style="margin-top:6px"></div></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🔢 Number battle</h3><p class="help" style="margin:0 0 10px">A practice battle where every ball is a number (1 to how many you pick in ⚙ Settings).</p><div class="row"><button class="primary" onclick="testBattle({numbers:true})" title="Run a Number battle test">▶ Run it</button><button class="ghost" onclick="tbOpen()" title="Change how test battles go: how many, map, countdown, length, luck…">⚙ Settings</button></div></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🎡 Wheel</h3><p class="help" style="margin:0 0 10px">Spins the wheel on stream; the round timer ends 13 seconds later with a winner.</p><button class="primary" onclick="api('/api/wheel/spin',{kind:'spin'}).then(()=>setTimeout(()=>api('/api/wheel/timer',{cmd:'end'}).catch(()=>{}),13000)).then(()=>toast('🎡 Spinning: the round timer ends in 13 seconds')).catch(()=>{})" title="Run a Wheel test">▶ Run it</button></div>
   <div class="card" style="grid-column:1 / -1">
@@ -999,6 +1005,11 @@
     <h3>⬇️ Export my bans</h3>
     <p class="help">Makes the export file of the movies <b>you</b> banned (not the automatic ones), then reads it back the way ⬆️ Import does, to show it all comes back. Nothing changes. The real buttons are in Settings → 🚫 Banned Movies.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="banExportTest()">🧪 Try the export</button><button onclick="location.href='/api/bans/export'" title="Download the movies YOU banned as a .csv file">⬇️ Download it</button></div><div id="tBanExp"></div>
+  </div>
+  <div class="card">
+    <h3>🔞 Nudity heads-up</h3>
+    <p class="help">What the red warning on the Winner card looks like when a movie with nudity wins: every scene from the IMDb Parents Guide with about when it is in the movie. <b>🧪 Pretend one</b> = a made-up movie (no internet). <b>🔍 Check a movie</b> = the real check for any movie you type (needs your TMDB key; IMDb is read like a browser does). Only you ever see it.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="nudeTest(true)">🧪 Pretend one</button><input id="tNudeQ" class="grow" style="min-width:160px" placeholder="A movie name, like Titanic" onkeydown="if(event.key==='Enter')nudeTest(false)"><button onclick="nudeTest(false)" title="Look this movie up for real: IMDb Parents Guide + TMDB">🔍 Check a movie</button></div><div id="tNudeOut" style="margin-top:6px"></div>
   </div>
   <div class="card">
     <h3>🔍 Settings search</h3>
@@ -1683,7 +1694,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2341,6 +2352,7 @@ function renderWinner() {
     <div class="t">${esc(w.label)}${w.sub ? ' (' + esc(w.sub) + ')' : ''}</div>${w.details?.runtime ? `<div class="muted">⏱️ ${blRun(w.details.runtime)}</div>` : ''}
     <div class="muted">${w.owner ? (isMovieList(w) || w.kind === 'movies' ? 'Picked by ' : '') + esc(w.owner) : ''}</div>
     ${r && Object.keys(r).length ? `<div class="muted" style="margin-top:4px">${r.rt ? '🍅 ' + esc(r.rt) + ' ' : ''}${r.imdb ? '⭐ IMDb ' + esc(r.imdb) + ' ' : ''}${r.lb ? '📗 ' + esc(r.lb) : ''}</div>` : ''}
+    ${nudeHTML(w.nudity)}
     ${c?.waiting && !c.done ? `<div class="claimNow"><div style="font-size:15px">✋ <b>${esc(c.waiting.name)}</b> is here${w.test ? ' <small class="muted">(test: nothing changes)</small>' : ''}</div><div class="muted" style="margin:2px 0 8px">“${esc(String(c.waiting.text).slice(0, 90))}”</div>
       <div class="row" style="gap:8px;justify-content:center"><button class="primary" onclick="api('/api/claim/accept').then(()=>toast('✅ Claimed!'))">✅ Accept winner</button><button class="danger" onclick="api('/api/claim/pass').then(()=>toast('⏭️ Passed: their movie is back in and they keep their luck'))">⏭️ Pass</button></div></div>`
       : `<p style="margin:8px 0"><b>${claimTxt}</b></p>`}
@@ -2355,6 +2367,17 @@ function renderWinner() {
       <button class="ghost" onclick="api('/api/win/hide').then(()=>toast('Pop-up hidden on stream'))">✕ Hide the pop-up on stream</button>
       <button onclick="api('/api/claim/close')">Next round →</button>
     </div>`;
+}
+// 🔞 the nudity heads-up on the Winner card (only here, never on stream): red = nudity, every scene with about when it is
+function nudeHTML(n) {
+  if (!n) return '';
+  if (n.checking) return '<div class="nudeBox muted">🔞 Checking for nudity…</div>';
+  if (n.unknown) return `<div class="nudeBox muted" title="${esc(n.error || '')}">🔞 Couldn't check this one for nudity</div>`;
+  if (!n.has && !n.sex) return `<div class="nudeBox muted">🔞 No nudity found${n.level ? ` (IMDb: ${esc(n.level)})` : ''}</div>`;
+  const sc = n.scenes || [];
+  return `<div class="nudeBox ${n.has ? 'nudeRed' : 'nudeAmber'}"><b>${n.has ? '🔞 Heads up: this movie has nudity' : '💋 Sex scenes (no nudity listed)'}</b>${n.level ? ` <small>· IMDb: ${esc(n.level)}</small>` : ''}
+    ${sc.length ? `<ul>${sc.map(x => `<li><b>${esc(x.label)}</b> ${esc(x.text)}</li>`).join('')}${n.more ? `<li>…and ${n.more} more</li>` : ''}</ul>` : `<div><small>${n.has ? 'No times listed for it.' : ''}</small></div>`}
+    ${n.why?.length ? `<small class="nudeWhy">From ${esc(n.why.join(' · '))}</small>` : ''}</div>`;
 }
 function renderRoll() {
   const rc = S.rollcall, card = $('rollCard'), movies = list().type === 'movies';
@@ -2469,10 +2492,10 @@ function renderBattleList() {
     const spot = e.kind === 'spot', on = e.status === 'active', inNow = isIn(e), pct = on && inNow ? (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1) / total * 100 : 0;
     const head = lastIn !== inNow ? `<tr class="blHead"><td colspan="${l.type === 'movies' ? 6 : 5}">${inNow ? `✅ In this battle (${all.filter(isIn).filter(hit).length})` : `💤 Not in this battle (${all.filter(x => !isIn(x)).filter(hit).length}) <small class="muted">sitting out, hasn't chatted yet, or didn't fit on the cliff</small>`}</td></tr>` : ''; lastIn = inNow;
     const why = !inNow && on && e.skipNext ? '<span class="tag b" title="Its picker typed !skip: it sits out the next battle, then it\'s back">⏭️ skips the next battle</span>' : !inNow && on && S.redoSkip?.id === e.id ? '<span class="tag b" title="Passed: the redo battle leaves it out once">🔁 left out of the redo</span>' : !inNow && on ? (l.type === 'movies' && S.settings.chatGate !== false && e.backers?.length && !S.chatters?.includes(e.backers[0].discordId) && !e.forceIn ? '<span class="tag b" title="Their picker hasn\'t typed in Twitch chat tonight (chat check)">💬 hasn\'t chatted</span>' : '<span class="tag b" title="More entries than fit on the cliff (Most pieces on the cliff); it can still get picked next time">🎲 didn\'t fit</span>') : '';
-    const rt = l.type === 'movies' || l.type === 'films' || l.type === 'web' ? blRun(e.details?.runtime) : '';
+    const rt = l.type === 'movies' || l.type === 'films' || l.type === 'web' ? blRun(e.details?.runtime) : '', rate = rateTxt(e, l);
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const who = l.type === 'movies' ? (spot ? 'Wildcard' : e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you') : '';
-    return `${head}<tr style="${on && inNow ? '' : 'opacity:.55'}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b> ${spot && e.status === 'benched' ? spotTag : tag[e.status] || ''}${why}${on && e.forceIn ? ' <span class="tag w" title="You put it back yourself: no cooldown, no chat check">▶ put back by you</span>' : ''}<br><small class="muted">${[esc(e.sub || ''), rt ? '⏱️ ' + rt : '', who].filter(Boolean).join(' · ')}</small></td>
+    return `${head}<tr style="${on && inNow ? '' : 'opacity:.55'}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b> ${spot && e.status === 'benched' ? spotTag : tag[e.status] || ''}${why}${on && e.forceIn ? ' <span class="tag w" title="You put it back yourself: no cooldown, no chat check">▶ put back by you</span>' : ''}<br><small class="muted">${[esc(e.sub || ''), rt ? '⏱️ ' + rt : '', rate, who].filter(Boolean).join(' · ')}</small></td>
       ${l.type === 'movies' ? `<td class="luck" title="Luck: extra % chance">${S.luckOn ? `🍀 <input type="number" step="0.5" min="0" value="${+(e.luckPct || 0).toFixed(2)}" style="width:62px;padding:2px 4px" onchange="api('/api/luck',{listId:'${l.id}',id:'${e.id}',luckPct:this.value})">%` : '<span class="muted">luck off</span>'}</td>` : ''}
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div></td>
       <td style="white-space:nowrap">${on && inNow ? `<div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small>` : ''}</td>
@@ -2506,6 +2529,9 @@ function blInSet(l) {
   const gate = l.type === 'movies' && S.settings.chatGate !== false, on = new Set(S.chatters || []);
   return new Set(l.entries.filter(e => e.status === 'active' && (!gate || e.kind === 'spot' || e.forceIn || !e.backers?.length || on.has(e.backers[0].discordId))).map(e => e.id));
 }
+// ⭐ the rating on a 🌐 IMDb / Rotten Tomatoes battle (the list's own: IMDb out of 10 / 🍅 %; else TMDB's) + ⏱️ length, for the pool + battle list
+const rateTxt = (e, l) => { if (l?.source?.kind !== 'web' && !e.webRating) return ''; const r = e.webRating; if (r?.site === 'imdb') return `⭐ IMDb ${(+r.v).toFixed(1)}`; if (r?.site === 'rt') return `🍅 ${Math.round(r.v)}%`; return e.details?.tmdbRating != null ? `⭐ TMDB ${(+e.details.tmdbRating).toFixed(1)}` : ''; };
+const movieInfo = (e, l) => { if (!e.tmdbId) return ''; const rt = blRun(e.details?.runtime), rate = rateTxt(e, l); return (rt ? ' · ⏱️ ' + rt : '') + (rate ? ' · ' + rate : ''); };
 const blRun = m => { m = Math.round(Number(m) || 0); if (!m) return ''; const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h${r ? ` ${r} min` : ''}` : `${r} min`; }; // ⏱️ 127 → "2 h 7 min"
 let qaT;
 function qaSearch(q) {
@@ -2734,13 +2760,14 @@ function renderPool() {
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const waiting = l.type === 'movies' && S.settings.chatGate !== false && !spot && e.backers?.length && !S.chatters.includes(e.backers[0].discordId);
     const series = e.details?.collection ? ` · 🎞️ ${esc(e.details.collection.name)}` : '';
-    const sub = (spot ? `Wildcard · if one wins, all ${esc(S.settings.spotName)} spots leave for the week` : l.type === 'movies' ? `${esc(e.sub)} · ${e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you'}${series}` : l.type === 'films' && !e.tmdbId ? '📝 plain text (not a movie)' : esc(e.sub || '')) + (waiting ? ` · <span style="color:var(--gold)">💬 joins once ${esc(e.backers[0].name)} chats</span>` : '');
+    const info = movieInfo(e, l);
+    const sub = (spot ? `Wildcard · if one wins, all ${esc(S.settings.spotName)} spots leave for the week` : l.type === 'movies' ? `${esc(e.sub)}${info} · ${e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you'}${series}` : l.type === 'films' && !e.tmdbId ? '📝 plain text (not a movie)' : esc(e.sub || '') + info) + (waiting ? ` · <span style="color:var(--gold)">💬 joins once ${esc(e.backers[0].name)} chats</span>` : '');
     const luck = l.type === 'movies' && S.luckOn ? (spot ? `<div class="luck" title="Wildcard spots only get luck you give them">🍀 <input type="number" step="0.01" min="0" value="${e.luckPct || 0}" style="width:64px;padding:2px 4px" onchange="api('/api/luck',{id:'${e.id}',luckPct:this.value})">%</div>` : e.luckPct ? `<div class="luck" title="Built up from battles it lost">🍀 +${(+e.luckPct).toFixed(2)}%</div>` : '') : '';
     return `<tr style="${waiting ? 'opacity:.5' : ''}"><td class="thumb">${img}</td><td>${l.type === 'text' || l.type === 'pics' || (l.type === 'films' && !e.tmdbId) ? `<input value="${esc(e.label)}" style="font-weight:700;max-width:260px" title="Click to change it" onchange="api('/api/lists/${l.id}/entries/${e.id}',{label:this.value},'PATCH')">` : `<b>${esc(e.label)}</b>`}<br><small class="muted">${sub}</small></td>
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)" title="Odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div>${luck}</td>
       <td><div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small></td>
       <td style="white-space:nowrap">${spot ? `<button class="ghost" title="What the wild spots look like as characters" onclick="spGo()">🎨</button>` : ''}${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}<button class="ghost" title="Pause — off the cliff until you resume it" onclick="setStatus('${e.id}','paused')">⏸️</button>${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}<button class="ghost danger" title="Remove" onclick="setStatus('${e.id}','removed')">✕</button></td></tr>`;
-  }).join('') + hidden.slice(0, 500).map(e => `<tr class="pausedRow" title="${e.status === 'paused' ? 'Paused' : 'Taken out'}: not on the cliff. ▶ puts it back in."><td class="thumb">${e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`}</td><td><b>${esc(e.label)}</b>${e.sub ? ` <small class="muted">(${esc(e.sub)})</small>` : ''}<br><small class="muted">⏸ paused: not on the cliff</small></td><td><span class="muted">${e.weight || 1}</span></td><td><small class="muted">—</small></td><td style="white-space:nowrap"><button class="ghost" title="Put it back in" onclick="setStatus('${e.id}','active')">▶ Bring back</button></td></tr>`).join('');
+  }).join('') + hidden.slice(0, 500).map(e => `<tr class="pausedRow" title="${e.status === 'paused' ? 'Paused' : 'Taken out'}: not on the cliff. ▶ puts it back in."><td class="thumb">${e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`}</td><td><b>${esc(e.label)}</b>${e.sub ? ` <small class="muted">(${esc(e.sub)})</small>` : ''}<br><small class="muted">⏸ paused: not on the cliff${movieInfo(e, l)}</small></td><td><span class="muted">${e.weight || 1}</span></td><td><small class="muted">—</small></td><td style="white-space:nowrap"><button class="ghost" title="Put it back in" onclick="setStatus('${e.id}','active')">▶ Bring back</button></td></tr>`).join('');
 
   add += `
     <div class="row" style="margin-top:8px;gap:8px;align-items:center"><button class="ghost" onclick="shareSave('/api/lists/${l.id}/export')" title="Save this battle as a file you can send to another streamer">📤 Export this battle</button><span class="help" style="margin:0">Got a battle file from someone? Drop it in 📥 Import below: it opens as a new battle.</span></div>
@@ -3444,6 +3471,12 @@ async function passFlowTest() { // 🧪 pretend winner → !pass → "sit out to
   pchat(true, r.login); toast(`🏆 ${esc(r.name)} won with ${esc(r.label || 'their movie')}: they type !pass…`, 6000);
   const say = t => api('/api/test/chat', { name: r.login, text: t }).catch(() => {});
   setTimeout(() => say(S?.settings?.passCommand || '!pass'), 1500); setTimeout(() => say('yes'), 7000);
+}
+async function nudeTest(fake) { // 🧪 🔞 the Winner card's nudity warning, pretend or for a real movie
+  const q = $('tNudeQ').value.trim(); if (!fake && !q) return toast('Type a movie name first');
+  $('tNudeOut').innerHTML = '<p class="help">🔞 Checking… (reading the IMDb Parents Guide can take a few seconds)</p>';
+  let r; try { r = await api('/api/test/nudity', fake ? { fake: true } : { query: q, force: true }); } catch { $('tNudeOut').innerHTML = ''; return; }
+  $('tNudeOut').innerHTML = `<p class="help" style="margin:4px 0 0"><b>${esc(r.title)}</b>${r.runtime ? ' · ⏱️ ' + blRun(r.runtime) : ''}</p>${nudeHTML(r.nudity)}`;
 }
 async function banExportTest() { let r; try { r = await api('/api/test/ban-export', {}); } catch { return; } $('tBanExp').innerHTML = `<p class="help" style="margin-top:8px">${r.mine} movie${r.mine === 1 ? '' : 's'} banned by you · read back: ${r.readBack} · ${r.same ? '✅ all the same' : '⚠️ something didn\'t match'}</p><pre style="white-space:pre-wrap;font-size:12px;background:var(--panel2);padding:8px;border-radius:8px;margin:0">${esc(r.lines.join('\n'))}${r.mine > 5 ? '\n…' : ''}</pre>`; }
 let mmLast = null;
@@ -4151,6 +4184,9 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🍅 OMDb — Rotten Tomatoes + IMDb ratings (free)</h3>
       <p class="help">Get a free key at <a href="https://www.omdbapi.com/apikey.aspx" target="_blank">omdbapi.com/apikey.aspx</a> (pick FREE), then click the link in the email they send to turn it on. The Letterboxd rating doesn't need a key.</p>
       ${f('omdbKey', 'OMDb key', 'paste here')}
+      <h3 style="margin-top:18px" id="nudeSet">🔞 Nudity heads-up</h3>
+      ${cki('nudityCheck', '🔞 When a movie wins, check it for nudity and warn me in red on the Winner card, with about when each scene is')}
+      <p class="help">Only you see it (in this app): never on stream or in chat. It reads the movie's IMDb Parents Guide (the "Sex &amp; Nudity" part) plus TMDB's tags on it. Times come from what people wrote there: an exact time when they gave one, otherwise a rough spot ("near the start", "near the end") or "time not listed". Try it in 🧪 Test → 🔞 Nudity heads-up.</p>
       <h3 style="margin-top:18px">📗 Letterboxd</h3>
       ${f('letterboxdUser', 'Letterboxd username')}
       <p class="help">Movie Royal reads your <b>whole</b> Letterboxd profile by itself (every 6 hours, and when it starts), so watched movies are blocked automatically — nothing to download. Winners are remembered as watched too, even before you log them.

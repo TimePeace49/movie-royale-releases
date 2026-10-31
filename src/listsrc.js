@@ -1,6 +1,6 @@
 // 🌐 Movie lists from IMDb and Rotten Tomatoes (for battles like "the 500 worst movies").
 // Reads a list/chart/search page from IMDb, or a Rotten Tomatoes guide/browse page, and gives back the movies on it in
-// order: [{ key, title, year, imdbId? }]. Inside the Windows app it reads pages with a hidden browser window (so pages
+// order: [{ key, title, year, imdbId?, rating? (IMDb, out of 10), rt? (Rotten Tomatoes %) }]. Inside the Windows app it reads pages with a hidden browser window (so pages
 // that load with JavaScript, and "50 more" / "Load more" buttons, work); otherwise it uses a plain download.
 // NOTE: written without being able to reach IMDb or Rotten Tomatoes from the cloud session (blocked there), so the
 // readers are built to be forgiving: they try the page's own data first, then fall back to reading the links.
@@ -23,8 +23,9 @@ async function getHtml(url, opts = {}) {
 }
 
 // ---------- 🎬 IMDb ----------
+const rateNum = v => { const n = Number(v); return v != null && v !== '' && isFinite(n) && n > 0 && n <= 10 ? Math.round(n * 10) / 10 : null; };
 function imdbFromJson(html) { // the page's own data (__NEXT_DATA__): every title object with an id like tt0123456
-  const out = [], seen = new Set();
+  const out = [], seen = new Map();
   const m = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/); if (!m) return out;
   let data; try { data = JSON.parse(m[1]); } catch { return out; }
   const walk = (o, depth = 0) => {
@@ -32,7 +33,9 @@ function imdbFromJson(html) { // the page's own data (__NEXT_DATA__): every titl
     if (Array.isArray(o)) { for (const x of o) walk(x, depth + 1); return; }
     const id = o.id || o.titleId || o.const, tt = typeof id === 'string' && /^tt\d+$/.test(id) ? id : null;
     const title = o.titleText?.text || (typeof o.titleText === 'string' ? o.titleText : null) || o.originalTitleText?.text;
-    if (tt && title && !seen.has(tt)) { const type = o.titleType?.id || o.titleType?.text || ''; if (!/series|episode|game|podcast|music/i.test(type)) { seen.add(tt); out.push({ key: tt, imdbId: tt, title, year: o.releaseYear?.year || (typeof o.releaseYear === 'number' ? o.releaseYear : null) || null }); } }
+    const rating = rateNum((o.ratingsSummary || o.ratingSummary)?.aggregateRating); // ⭐ the IMDb rating (charts: ratingsSummary, search: ratingSummary)
+    if (tt && title && !seen.has(tt)) { const type = o.titleType?.id || o.titleType?.text || ''; if (!/series|episode|game|podcast|music/i.test(type)) { seen.set(tt, out.length); out.push({ key: tt, imdbId: tt, title, year: o.releaseYear?.year || (typeof o.releaseYear === 'number' ? o.releaseYear : null) || null, rating }); } }
+    else if (tt && rating != null && seen.has(tt) && out[seen.get(tt)].rating == null) out[seen.get(tt)].rating = rating;
     for (const k in o) walk(o[k], depth + 1);
   };
   walk(data); return out;
@@ -41,7 +44,7 @@ function imdbFromLd(html) { // JSON-LD item lists (names + links, no years)
   const out = [];
   for (const m of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
     let d; try { d = JSON.parse(m[1]); } catch { continue; }
-    for (const it of d?.itemListElement || []) { const x = it.item || it, tt = String(x.url || '').match(/tt\d+/)?.[0]; if (tt && x.name) out.push({ key: tt, imdbId: tt, title: decode(x.name), year: null }); }
+    for (const it of d?.itemListElement || []) { const x = it.item || it, tt = String(x.url || '').match(/tt\d+/)?.[0]; if (tt && x.name) out.push({ key: tt, imdbId: tt, title: decode(x.name), year: null, rating: rateNum(x.aggregateRating?.ratingValue) }); }
   }
   return out;
 }
@@ -49,12 +52,15 @@ function imdbFromLinks(html) { // last try: the title links on the page
   const out = [], seen = new Set();
   for (const m of html.matchAll(/href="\/title\/(tt\d+)\/[^"]*"[^>]*>([\s\S]{1,300}?)<\/a>/g)) {
     const tt = m[1], t = decode(m[2]).replace(/^\d+\.\s*/, ''); if (!t || seen.has(tt) || /^(see|more|\d+)$/i.test(t)) continue; seen.add(tt);
-    const after = html.slice(m.index, m.index + 900).match(/\b(19\d\d|20\d\d)\b/); out.push({ key: tt, imdbId: tt, title: t, year: after ? +after[1] : null });
+    const after = html.slice(m.index, m.index + 900).match(/\b(19\d\d|20\d\d)\b/);
+    let near = html.slice(m.index + m[0].length, m.index + 3000); const nx = near.search(new RegExp(`href="/title/(?!${tt})tt\\d+`)); if (nx > 0) near = near.slice(0, nx); // (only up to the next movie)
+    const r = near.match(/ipc-rating-star--rating[^>]*>\s*([\d.]+)/) || near.match(/IMDb rating:?\s*([\d.]+)/i);
+    out.push({ key: tt, imdbId: tt, title: t, year: after ? +after[1] : null, rating: r ? rateNum(r[1]) : null });
   }
   return out;
 }
 function imdbParse(html) { // the page's data first, then any more titles on the page (pressing "50 more" adds them to the page but not to its data)
-  const out = [], seen = new Set(); for (const list of [imdbFromJson(html), imdbFromLd(html), imdbFromLinks(html)]) for (const it of list) if (!seen.has(it.key)) { seen.add(it.key); out.push(it); } return out;
+  const out = [], seen = new Map(); for (const list of [imdbFromJson(html), imdbFromLd(html), imdbFromLinks(html)]) for (const it of list) { const i = seen.get(it.key); if (i == null) { seen.set(it.key, out.length); out.push(it); } else if (out[i].rating == null && it.rating != null) out[i].rating = it.rating; } return out;
 }
 async function readImdb(url, want, onPage) {
   const u = new URL(url), isList = /\/list\/ls\d+/.test(u.pathname), isSearch = /\/search\//.test(u.pathname);
@@ -74,15 +80,17 @@ async function readImdb(url, want, onPage) {
 
 // ---------- 🍅 Rotten Tomatoes ----------
 function rtParse(html) {
-  const out = [], seen = new Set(), push = (slug, title, year) => { slug = slug.replace(/\/$/, ''); if (!slug || seen.has(slug) || !title) return; seen.add(slug); out.push({ key: 'rt:' + slug, title, year: year || null }); };
+  const out = [], seen = new Map(), push = (slug, title, year, rt) => { slug = slug.replace(/\/$/, ''); if (!slug || !title) return; const i = seen.get(slug); if (i != null) { if (out[i].rt == null && rt != null) out[i].rt = rt; return; } seen.set(slug, out.length); out.push({ key: 'rt:' + slug, title, year: year || null, rt: rt ?? null }); };
+  const score = chunk => { const m = chunk.match(/tMeterScore[^>]*>\s*(\d{1,3})\s*%/) || chunk.match(/criticsscore="(\d{1,3})"/i) || chunk.match(/slot="critics-?score"[^>]*>\s*(\d{1,3})\s*%/i); return m ? Math.min(100, +m[1]) : null; }; // 🍅 the Tomatometer next to it
   // editorial guides ("the 100 worst movies"): <div class="article_movie_title"><h2><a href=".../m/slug">Title</a> <span class="subtle start-year">(2002)</span>
   for (const m of html.matchAll(/<a[^>]+href="(?:https?:\/\/www\.rottentomatoes\.com)?\/m\/([\w-]+)\/?"[^>]*>([\s\S]{1,200}?)<\/a>\s*(?:<span[^>]*start-year[^>]*>\s*\(?(\d{4})\)?)?/g)) {
     const t = decode(m[2]); if (!t || /^\d+%?$/.test(t) || /^(read|see|watch|more)/i.test(t)) continue;
     const y = m[3] ? +m[3] : +(html.slice(m.index, m.index + 600).match(/\((19\d\d|20\d\d)\)/)?.[1] || 0) || null;
-    push(m[1], t, y);
+    let near = html.slice(m.index, m.index + 900); const nx = near.slice(m[0].length).search(/href="(?:https?:\/\/www\.rottentomatoes\.com)?\/m\//); if (nx > 0) near = near.slice(0, m[0].length + nx);
+    push(m[1], t, y, score(near));
   }
   // browse pages: tiles with a title span inside a link to /m/slug
-  for (const m of html.matchAll(/href="\/m\/([\w-]+)"[\s\S]{0,1500}?data-qa="discovery-media-list-item-title"[^>]*>([\s\S]*?)<\/span>/g)) push(m[1], decode(m[2]), null);
+  for (const m of html.matchAll(/href="\/m\/([\w-]+)"[\s\S]{0,1500}?data-qa="discovery-media-list-item-title"[^>]*>([\s\S]*?)<\/span>/g)) push(m[1], decode(m[2]), null, score(m[0]));
   return out;
 }
 async function readRt(url, want, onPage) {

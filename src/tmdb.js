@@ -57,6 +57,7 @@ export async function getMovie(id, ms = 2500) {
     runtime: m.runtime || null,
     collection: m.belongs_to_collection ? { id: m.belongs_to_collection.id, name: m.belongs_to_collection.name } : null,
     imdbId: m.imdb_id || null,
+    rating: m.vote_average && m.vote_count ? Math.round(m.vote_average * 10) / 10 : null, // ⭐ TMDB's own rating (out of 10)
     // 🚫 for the automatic ban rules (not in English / really religious / documentaries)
     votes: m.vote_count || 0, allGenres: (m.genres || []).map(g => g.name), spoken: (m.spoken_languages || []).map(l => l.iso_639_1), keywords: (m.keywords?.keywords || []).map(k => k.name)
   };
