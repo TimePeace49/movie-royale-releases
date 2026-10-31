@@ -34,6 +34,7 @@
   const FINAL_INTRO = 8; // ⏱️ seconds the 🥊 FINAL FIGHT! scene shows before the last two fight (Derek, 1.51.0; was 3.2)
   let T = 0, acc = 0, running = false, replayOn = false, rbuf = [], replay = null, weapDrops = 0, lastKO = 0, D = 60, PACE = 50, showdownSaid = false, finalLeft = 0, finalPair = null, mode = 'lobby', modeT = 0, fightId = null, destined = null, order = [], winner = null, sent = false, teleT = 5, weapT = 7, slowUntil = 0;
   const floor = document.createElement('canvas'), fg = floor.getContext('2d'); floor.width = W; floor.height = H;
+  const crat = document.createElement('canvas'), cg = crat.getContext('2d'); crat.width = W; crat.height = H; // 💥 craters (broken ground) on their own layer: the FINAL FIGHT fixes the ground but the blood stays (1.61.4)
   let bg = null, bgScale = 0, bgMap = null;
 
   // ---------- helpers ----------
@@ -116,7 +117,7 @@
     if (m.phase === 'fight' && m.fightId && m.fightId !== fightId) { // a new fight
       fightId = m.fightId; destined = m.destined; R = mulberry(m.seed || 1); order = []; winner = null; sent = false;
       cam.follow = null; cam.manual = false; cam.overview = false;
-      F = makeFighters(m.fighters); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H);
+      F = makeFighters(m.fighters); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H);
       Object.assign(cine, { rot: 0, quake: 0, punch: null, hit: null, saved: null, from: null, end: null }); FIN.on = false; FIN.flash = null;
       mode = 'intro'; modeT = 0; T = 0; acc = 0; teleT = 5; weapT = 7; slowUntil = 0; weapDrops = 0; lastKO = 0; rbuf = []; replay = null; replayOn = false; showdownSaid = false; finalLeft = 0; finalPair = null;
       PACE = clamp(Number(m.pace ?? 50), 0, 100); D = clamp(Number(m.length) || (25 + F.length * 1.6), 15, 240); // ⏳ how long the fight should take, and how hard the pacer works
@@ -128,7 +129,7 @@
       else bell();
       if (m.show) SFX.music?.('fight');
     } else if (m.phase !== 'fight' && m.phase !== 'ended') { // lobby: the packs lined up and waiting
-      if (mode !== 'lobby' || was.map !== m.map || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { /* (a new map: line them up again for it) */ R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; petals = []; }
+      if (mode !== 'lobby' || was.map !== m.map || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { /* (a new map: line them up again for it) */ R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; petals = []; }
       mode = 'lobby'; fightId = null; winner = null; replay = null; FIN.on = false; if (m.show) SFX.music?.('lobby');
     } else if (m.phase === 'ended' && m.last && mode !== 'won' && mode !== 'replay' && mode !== 'over' && !winner) { // (a screen that joined late: show the winner)
       if (!F.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fightId = m.fightId; }
@@ -280,7 +281,7 @@
     for (const o of F) if (o.alive && !o.falling && Math.abs(o.x - x) < r && Math.abs(o.z - z) < r / 1100) { const k = 1 - Math.abs(o.x - x) / r; o.vx += Math.sign(o.x - x || 1) * 420 * (k + .3); o.vh = Math.max(o.vh, 240 * k); o.stun = .55; o.hurtT = .3; o.atk = null; damage(null, o, dmg * (.5 + .5 * k) * paceBoost() * (T > D * 1.35 ? 2 : 1), 'boom'); }
     for (let i = 0; i < 30; i++) parts.push({ x, y: zY(z) - 20, vx: vr(-420, 420), vy: vr(-620, -80), g: 1100, life: vr(.5, 1), max: 1, size: vr(4, 11), color: ['#5a4632', '#3a2e22', '#ffb02a', '#ff6a1a', '#7a6a5a'][Math.floor(Math.random() * 5)], gz: null });
     for (let i = 0; i < 12; i++) parts.push({ x: x + vr(-40, 40), y: zY(z) - vr(20, 90), vx: vr(-60, 60), vy: vr(-90, -20), g: -20, life: vr(.8, 1.6), max: 1.6, size: vr(14, 30), color: 'rgba(60,56,50,.55)', gz: null, dust: true });
-    const s = .7 + z * .4; fg.fillStyle = 'rgba(30,22,14,.55)'; fg.beginPath(); fg.ellipse(x, zY(z), 58 * s, 16 * s, 0, 0, 7); fg.fill(); fg.fillStyle = 'rgba(20,14,8,.5)'; fg.beginPath(); fg.ellipse(x, zY(z) + 2, 36 * s, 9 * s, 0, 0, 7); fg.fill(); // the crater stays
+    const s = .7 + z * .4; cg.fillStyle = 'rgba(30,22,14,.55)'; cg.beginPath(); cg.ellipse(x, zY(z), 58 * s, 16 * s, 0, 0, 7); cg.fill(); cg.fillStyle = 'rgba(20,14,8,.5)'; cg.beginPath(); cg.ellipse(x, zY(z) + 2, 36 * s, 9 * s, 0, 0, 7); cg.fill(); // the crater stays (until the FINAL FIGHT fixes the ground)
     word(word1 || 'BOOM!', x, zY(z) - 150, '#ffb02a', 58); snd('boom');
   }
   function warTarget() { const n = alive().length, pool = F.filter(f => f.alive && !f.falling && f.id !== destined); if (!pool.length || n <= 2 || R() < paceHold(n)) return null; return pool[Math.floor(R() * pool.length)]; } // (never the fair winner; the pacer can hold fire)
@@ -476,7 +477,8 @@
         const [a, b] = alive(); finalPair = [a, b]; mode = 'final'; modeT = 0; finalCam();
         const kinds = MI().weapons, k1 = Math.floor(R() * Math.max(1, kinds.length));
         if (WIZ()) { tiles.forEach(t => { t.hp = 2; t.fallT = 0; }); bolts = []; zaps = []; word('THE PLATFORM REBUILDS!', W / 2, 600, '#d6a8ff', 50); } // 🧙 a whole platform for the duel
-        for (const [f, x, face, k] of [[a, W * .3, 1, kinds[k1]], [b, W * .7, -1, kinds[(k1 + 1 + Math.floor(R() * 2)) % kinds.length]]]) { puff(f, '#ffd23a'); Object.assign(f, { x, z: .55, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, weapon: MI().armed ? f.weapon : k || null, target: f === a ? b : a, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0 }); puff(f, '#ffd23a'); }
+        cg.clearRect(0, 0, W, H); // (1.61.4, Derek: the broken ground is fixed (craters gone, fallen tiles back), the blood where the ground didn't fall stays)
+        for (const [f, x, face, k] of [[a, W * .4, 1, kinds[k1]], [b, W * .6, -1, kinds[(k1 + 1 + Math.floor(R() * 2)) % kinds.length]]]) { puff(f, '#ffd23a'); Object.assign(f, { x, z: .55, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, weapon: MI().armed ? f.weapon : k || null, target: f === a ? b : a, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0 }); puff(f, '#ffd23a'); }
         weapons = []; bell();
       } else { toast('🥊 FINAL SHOWDOWN!'); bell(); } }
     const s = S(o);
@@ -533,7 +535,7 @@
     const map = m.map || 'kungfu'; scene = { ...scene, show: true, phase: 'fight', map, finalFight: true, fin: Number.isInteger(m.fin) ? m.fin : null, cel: Number.isInteger(m.cel) ? m.cel : null, wacky: scene.wacky || {} };
     layer.classList.remove('hidden'); SFX.setMap?.('card-' + map);
     const packs = m.fighters || [{ id: 'fa', packId: 'fa', name: 'Winner Pack', game: 'Test', image: null, color: '#e8b830' }, { id: 'fb', packId: 'fb', name: 'Loser Pack', game: 'Test', image: null, color: '#5a8aff' }];
-    R = Math.random; fightId = 'fintest-' + Date.now(); destined = packs[0].id; order = []; winner = null; sent = true; F = makeFighters(packs); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H);
+    R = Math.random; fightId = 'fintest-' + Date.now(); destined = packs[0].id; order = []; winner = null; sent = true; F = makeFighters(packs); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H);
     const [a, b] = F; Object.assign(a, { x: W * .4, z: .55, face: 1, weapon: MI().armed ? a.weapon : (MI().weapons[0] || null) }); Object.assign(b, { x: W * .6, z: .55, face: -1, hp: 5 });
     finalPair = [a, b]; showdownSaid = true; mode = 'fight'; finalLeft = 10; FIN.on = false; Object.assign(cine, { rot: 0, quake: 0, punch: null, hit: null, saved: null, from: null, end: null });
     if (!running) { running = true; requestAnimationFrame(frame); }
@@ -1046,52 +1048,44 @@
     const n = performance.now() / 1000; z *= 1 + .008 * Math.sin(n / 2.6); x += 5 * Math.sin(n / 4.2); // (it breathes a tiny bit: never a dead still shot)
     return { x, y, z };
   }
-  function spinCam() { // 🥊 FINAL FIGHT: the camera walks a full circle around the last two (they swap sides, the near one gets bigger), then back to the view from before
+  function spinCam() { // 🥊 FINAL FIGHT (1.61.4, Derek's drawing): the camera walks a full circle around the last two, who stand still in the middle; the map is copied all the way round
     const [a, b] = finalPair, [ax, ay] = fpos(a), [bx, by] = fpos(b), px = (ax + bx) / 2, py = (ay + by) / 2 - 10;
-    const S0 = .7, S1 = FINAL_INTRO - 1.9, t = modeT, zz = clamp(1750 / (Math.abs(bx - ax) + 520), 1.2, 1.8); // (close in, but both always fit: side by side they're the full gap apart)
+    const S0 = .7, S1 = FINAL_INTRO - 1.9, t = modeT, zz = clamp(1750 / (Math.abs(bx - ax) + 520), 1.2, 1.7); // (close in, both always fit)
     if (t < S0) { const k = easeIO(t / S0); cine.from ||= { x: cam.x, y: cam.y, z: cam.z }; cine.rot = 0; cine.orb = null; cam.x = cine.from.x + (px - cine.from.x) * k; cam.y = cine.from.y + (py - cine.from.y) * k; cam.z = cine.from.z + (zz - cine.from.z) * k; return; }
-    if (t < S1) { if (!cine.orbit) cine.orbit = { px, a: [a.x - px, a.z], b: [b.x - px, b.z], zc: (a.z + b.z) / 2 }; cine.orb = easeIO((t - S0) / (S1 - S0)) * Math.PI * 2; cine.rot = 0; cam.x = px; cam.y = py; cam.z = zz; return; }
+    if (t < S1) { if (!cine.orbit) cine.orbit = { px, yp: zY((a.z + b.z) / 2) }; cine.orb = easeIO((t - S0) / (S1 - S0)) * Math.PI * 2; cine.rot = 0; cam.x = px; cam.y = py; cam.z = zz; return; }
     cine.orb = null; cine.orbit = null; cine.rot = 0; const sv = cine.saved, goal = sv?.manual ? sv : camGoal(), k = easeIO(Math.min(1, (t - S1) / (FINAL_INTRO - S1 - .3)));
     cine.end ||= { x: cam.x, y: cam.y, z: cam.z }; cam.x = cine.end.x + (goal.x - cine.end.x) * k; cam.y = cine.end.y + (goal.y - cine.end.y) * k; cam.z = cine.end.z + (goal.z - cine.end.z) * k;
   }
-  // the orbit is faked in 2D: the scenery behind (sky, buildings, crowd: the map picture above the floor) slides past once, wrapped
-  // around; the floor / ring / platform under them stays put; and each of the two is moved around the middle: across = cos(angle),
-  // toward/away from the camera = sin(angle) (nearer = lower on screen + bigger, drawn in front)
-  function orbitPose(f, o, ang) { const [dx, z0] = f === finalPair[0] ? o.a : o.b; return { x: o.px + dx * Math.cos(ang), z: clamp(o.zc + Math.sin(ang) * Math.sign(dx || 1) * .34 + (z0 - o.zc) * Math.cos(ang), 0, 1) }; }
-  function floorColors() { // the map's floor colors (far + near), for the turning floor while the camera circles
-    try { const c = document.createElement('canvas'); c.width = 48; c.height = 27; const x = c.getContext('2d'); x.drawImage(bg, 0, 0, 48, 27);
-      const avg = (y0, y1) => { const d = x.getImageData(0, y0, 48, y1 - y0).data; let r = 0, gg = 0, b = 0, n = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; } return [r / n, gg / n, b / n].map(Math.round); };
-      return [avg(Math.floor(GY0 / H * 27), Math.floor(GY0 / H * 27) + 3), avg(24, 27)]; } catch { return [[90, 70, 55], [120, 95, 72]]; }
-  }
-  function drawOrbitFloor(o, ang, hz) { // (1.61.1, Derek: "go around them, not rotate") the floor turns with the camera: planks / tiles on the ground swing around the two
-    const [far, near] = o.cols || (o.cols = floorColors()), rgb = (c, k = 1, a = 1) => `rgba(${c.map(v => Math.round(Math.min(255, v * k))).join(',')},${a})`;
-    const gr = g.createLinearGradient(0, hz, 0, H); gr.addColorStop(0, rgb(far, .85)); gr.addColorStop(1, rgb(near, 1.05)); g.fillStyle = gr; g.fillRect(-W, hz, W * 3, H * 2);
-    const Dz = Math.max(220, Math.abs(o.a[0]) || 320) / .34, zc = o.zc, sc = z => .72 + z * .4, s0 = sc(zc), cs = Math.cos(ang), sn = Math.sin(ang);
-    const P = (u, v) => { const X = u * cs - v * sn, V = u * sn + v * cs, z = zc + V / Dz; return z < -1.2 ? null : [o.px + X * sc(z) / s0, zY(z)]; };
-    const line = (pts) => { let on = false; g.beginPath(); for (const p of pts) { if (!p) { on = false; continue; } if (on) g.lineTo(p[0], p[1]); else { g.moveTo(p[0], p[1]); on = true; } } g.stroke(); };
-    const step = 170, R = 1700, N = 28;
-    g.lineWidth = 3; g.strokeStyle = rgb(far, .55, .55);
-    for (let u = -R; u <= R; u += step) line(Array.from({ length: N + 1 }, (_, i) => P(u, -R + i * 2 * R / N)));
-    g.lineWidth = 2; g.strokeStyle = rgb(far, .6, .35);
-    for (let v = -R; v <= R; v += step) line(Array.from({ length: N + 1 }, (_, i) => P(-R + i * 2 * R / N, v)));
-    g.lineWidth = 6; g.strokeStyle = 'rgba(255,215,90,.55)'; line(Array.from({ length: 49 }, (_, i) => { const a = i / 48 * Math.PI * 2; return P(Math.cos(a) * 520, Math.sin(a) * 520); })); // a ring around the two
-    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, p0 = P(Math.cos(a) * 470, Math.sin(a) * 470), p1 = P(Math.cos(a) * 570, Math.sin(a) * 570); if (p0 && p1) { g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke(); } } // (marks on the ring: you see it turn)
-    const fade = g.createLinearGradient(0, hz, 0, hz + 120); fade.addColorStop(0, rgb(far, .7, .9)); fade.addColorStop(1, rgb(far, .7, 0)); g.fillStyle = fade; g.fillRect(-W, hz, W * 3, 120); // (far away: hazy)
-  }
-  function drawOrbit(now) {
-    const o = cine.orbit, ang = cine.orb, hz = GY0 - 4, off = ((ang / (Math.PI * 2)) * W * 2) % W; // (hz: where the floor starts; the scenery passes twice in a full circle)
-    g.save(); g.beginPath(); g.rect(-W, -H, W * 3, hz + H); g.clip(); // the scenery: slides past once
-    for (const x0 of [-off - W, -off, W - off]) g.drawImage(bg, x0, 0, W, H);
-    const seam = (W - off) % W, gr = g.createLinearGradient(seam - 140, 0, seam + 140, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(0,0,0,.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(seam - 140, 0, 280, H);
-    g.restore();
-    g.save(); g.beginPath(); g.rect(-W, hz, W * 3, H * 2); g.clip(); drawOrbitFloor(o, ang, hz); g.restore(); // the floor: turns under them with the camera
-    drawStage(now, true);
-    const pose = finalPair.map(f => [f, orbitPose(f, o, ang)]), [[fa, pa], [fb, pb]] = pose;
-    for (const [f, p] of pose.sort((x, y) => x[1].z - y[1].z)) { // the far one first
-      const keep = { x: f.x, z: f.z, face: f.face, target: f.target }, other = f === fa ? pb : pa;
-      Object.assign(f, { x: p.x, z: p.z, face: other.x >= p.x ? 1 : -1, target: { x: other.x, alive: true } }); drawFighter(f); Object.assign(f, keep);
+  // The orbit, faked in 2D like a camera on a circular track around them (Derek's drawing): a picture of the whole stage (sky,
+  // buildings, floor, blood) is taken once and copied all the way round (ORB_COPIES copies = one full circle). Turning the camera
+  // slides it sideways: the scenery and the far floor slide one way, the floor right under the two doesn't move, and the floor in
+  // front of them slides the other way (closer = faster), like a real camera walking around them. The two don't move.
+  const ORB_COPIES = 4;
+  const orbitKeep = () => RUMBLE() ? [[ringL(0) - 16, GY0 - 118], [ringR(0) + 16, GY0 - 118], [ringR(1) + 150, H + 60], [ringL(1) - 150, H + 60]] // (the ring, posts and all)
+    : WIZ() ? [[platL(0) - 8, GY0 - 8], [platR(0) + 8, GY0 - 8], [platR(1) + 8, GY1 + 52], [W / 2 + 60, GY1 + 190], [W / 2 - 60, GY1 + 190], [platL(1) - 8, GY1 + 52]] : null; // (the platform and the rock under it)
+  function drawOrbit(now, k) {
+    const o = cine.orbit, ang = cine.orb, hz = GY0 - 4, yp = Math.max(hz + 60, o.yp), shift = ang / (Math.PI * 2) * ORB_COPIES * W;
+    if (!o.snap) { // 📸 the stage as it is now (drawn on the screen once, then kept)
+      g.save(); g.setTransform(k, 0, 0, k, 0, 0); drawStage(now, false); g.restore();
+      const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; c.getContext('2d').drawImage(cv, 0, 0); o.snap = c; o.sk = cv.width / W;
     }
-    if (RUMBLE()) drawRing(g, true);
+    const snap = o.snap, sk = o.sk, x0 = cam.x - W / 2 / cam.z - 4, x1 = cam.x + W / 2 / cam.z + 4;
+    const band = (y0, y1, sh, ty0 = y0, ty1 = y1) => { // one horizontal slice of the picture, copied side by side and slid by sh
+      const m0 = Math.floor((x0 + sh) / W), m1 = Math.floor((x1 + sh) / W);
+      for (let m = m0; m <= m1; m++) g.drawImage(snap, 0, y0 * sk, W * sk, (y1 - y0) * sk, m * W - sh, ty0, W, ty1 - ty0);
+    };
+    const top = cam.y - H / 2 / cam.z - 20, bot = cam.y + H / 2 / cam.z + 20, keep = orbitKeep();
+    const joins = y1 => { const m0 = Math.floor((x0 + shift) / W), m1 = Math.floor((x1 + shift) / W); for (let m = m0; m <= m1 + 1; m++) { const sx = m * W - shift, gr = g.createLinearGradient(sx - 120, 0, sx + 120, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(sx - 120, top, 240, y1 - top); } }; // (soft joins between the copies)
+    if (keep) { // 🔔🧙 the ring / the floating platform turns as one piece with them in the middle: everything around it (crowd, sky) goes round
+      band(0, H, shift, Math.min(0, top), Math.max(H, bot)); joins(Math.max(H, bot));
+      g.save(); g.beginPath(); keep.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.clip(); g.drawImage(snap, 0, 0, snap.width, snap.height, 0, 0, W, H); g.restore();
+    } else {
+      band(0, hz, shift, Math.min(0, top), hz); // the scenery behind (stretched up if the camera shows above the picture)
+      joins(hz);
+      const STRIP = 6; // the floor, slice by slice: k = 1 at the horizon, 0 under the two, below 0 in front of them
+      for (let y = hz; y < Math.max(H, bot); y += STRIP) { const yy = Math.min(y, H - STRIP), kk = 1 - (y + STRIP / 2 - hz) / (yp - hz); band(yy, yy + STRIP, shift * kk, y, y + STRIP + 1); }
+    }
+    for (const f of [...finalPair].sort((p, q) => p.z - q.z)) drawFighter(f); // the two: they stand still (the far one first)
   }
 
   function camStep(dt) {
@@ -1209,7 +1203,7 @@
     if (cine.rot) { g.fillStyle = '#000'; g.fillRect(0, 0, W, H); }
     g.save(); camApply(); // 🎥 the world (the top bar, banners and the winner screen stay put)
     if (cine.rot || cine.quake > .2) { g.drawImage(bg, -W * .75, -H * .75, W * 2.5, H * 2.5); g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(-W * .75, -H * .75, W * 2.5, H * 2.5); } // (past the edges while the camera spins / shakes)
-    if (cine.orb != null && cine.orbit && finalPair) { drawOrbit(now); g.restore(); hud(now); finHud(now); return; } // 🎥 the FINAL FIGHT camera circling the last two
+    if (cine.orb != null && cine.orbit && finalPair) { drawOrbit(now, k); g.restore(); hud(now); finHud(now); return; } // 🎥 the FINAL FIGHT camera circling the last two
     drawStage(now, false);
     for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - (w.kind === 'chair' ? 28 * s : 6), 1, s, w.h > 0 ? T * 8 : 0); }
     const shown = mode === 'replay' && replay ? replay.frames[replay.i].f.map((sn, i) => ({ ...F[i], ...sn, stains: F[i].stains.slice(0, sn.sn), target: { x: F[i].x * 0 + sn.x + sn.look * 50, alive: true } })) : F;
@@ -1232,7 +1226,7 @@
   function drawStage(now, orbit) { // the map behind the fighters (orbit = the circling FINAL FIGHT camera drew the picture itself; nobody falling)
     if (!orbit) g.drawImage(bg, 0, 0, W, H);
     if (RUMBLE()) ringLogo(); else if (WIZ()) { if (!orbit) for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (!COLO() && !orbit) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
-    g.drawImage(floor, 0, 0);
+    g.drawImage(crat, 0, 0); g.drawImage(floor, 0, 0);
     if (RUMBLE()) arenaLights(now / 1000);
   }
   function banner(text, y, size, col = '#ffd23a') { g.font = `${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = size * .16; g.strokeStyle = '#2a0808'; g.strokeText(text, W / 2, y); g.fillStyle = col; g.fillText(text, W / 2, y); }

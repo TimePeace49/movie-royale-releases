@@ -24,7 +24,7 @@ export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true,
   void: { on: false, label: 'VOID', weight: 1, color: '#0b0b12', landings: 5, doomsday: false, monthly: true },
   pop: { on: true, sub: true, gift: true, bits: true, money: true, grow: true, shrink: false, spins: true, unvoid: true } };
 export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
-export const TYPES = { timer: '⏱️ Timer', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', autocount: '⚡🔢 Auto + countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' };
+export const TYPES = { timer: '⏱️ Timer', mystery: '🎁 Hidden reveal (mystery)', timerlink: '⏱️🔀 Timer + Link', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', autocount: '⚡🔢 Auto + countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' }; // (1.61.4, Derek: every spot rule in the menu: 🎁 mystery + ⏱️🔀 timer + link are timer spots with the reveal / link on)
 const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#ffffff', hub: '🎡', hubImage: '', lines: '#ffffff', font: 'Inter', textScale: 1, textColor: '' };
 
 export function W() {
@@ -65,6 +65,7 @@ export function cleanEntry(e) {
   // the card inside shows the hidden words / picture. Kept even while it's off, so switching it back on doesn't lose them.
   const rv = e.reveal && typeof e.reveal === 'object' ? { on: !!e.reveal.on, text: String(e.reveal.text || '').slice(0, 300), image: fileOk(e.reveal.image) } : null;
   if (rv && (rv.on || rv.text || rv.image)) out.reveal = rv;
+  if (type === 'mystery') out.reveal = { text: '', image: '', ...(out.reveal || {}), on: true }; // 🎁 the menu's mystery spot = a timer spot with the hidden reveal on
   return out;
 }
 const active = () => W().wheels.find(x => x.id === W().activeId);
@@ -269,7 +270,7 @@ function landed(w, rec) {
 // ---------- 🎁 hidden reveal (mystery spots) ----------
 // Lands on a mystery spot: a card pack with the spot's cover pops up on stream and in the control panel. You click the pack
 // (only in the control panel), the top tears off and a card comes out with the hidden words / picture. The stream follows.
-const isMystery = e => !!(e?.reveal?.on && (e.reveal.text || e.reveal.image));
+const isMystery = e => !!((e?.reveal?.on || e?.type === 'mystery') && (e.reveal?.text || e.reveal?.image));
 const revealMsg = extra => ({ type: 'wheelReveal', theme: hooks.theme() || null, ...extra });
 function revealPack(w, rec) {
   const st = W(); st.reveal = { id: rec.id, wheelId: w.id, entryId: rec.entryId, cover: rec.mystery, open: false, at: Date.now() }; save();

@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.61.4
+- 🥊 **FINAL FIGHT 360, like your drawing:** the last two are moved to the middle and stand still, and the camera walks a full circle around them. The map is copied all the way round, so you see it behind them the whole way. The scenery slides past behind them, the floor right under them stays put and the floor in front slides the other way. The drawn ring and lines on the floor are gone. On 🔔 Royal Rumble and 🧙 Wizard Battle the ring / floating platform stays with them while the crowd and sky go round.
+- 🧱 **Broken ground is fixed for the FINAL FIGHT:** craters (🪖 WW2) are gone and fallen tiles (🧙 Wizard Battle) come back, but the blood stays where the ground didn't fall.
+- 🎡 **Every spot rule is in the spot menu now:** 🎁 Hidden reveal (mystery) and ⏱️🔀 Timer + Link were added (next to ⚡🔀 Auto + Link and the rest). Picking 🎁 opens the spot's settings so you can type the hidden words.
+
 ## 1.61.3
 - 🎁 **Mystery card pack closes right away:** pressing ✕ Close after opening it now closes it at once in Movie Royal (it could take 30–40 seconds), and the stream closes it too.
 - 🎉 **Viewer's choice keeps their pick a secret** (Derek: they tell you later): the pop-up only shows who redeemed it. The reward's message on Twitch now says "Type anything to redeem, then tell the streamer your pick" (when Movie Royal made the reward; one you wrote yourself stays). Want it shown? Settings → 💰 Rewards & prices → 💬 Show what they typed on the pop-up.
