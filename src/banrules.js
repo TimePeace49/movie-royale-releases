@@ -7,12 +7,15 @@ const HARD = /^(christian film|christian movie|christian drama|faith[- ]based( f
 const STRONG = /^(bible|biblical|jesus christ|jesus|moses|old testament|new testament|ten commandments|crucifixion|passion of christ|gospel|apostle|virgin mary|noah's ark|life of jesus|resurrection of jesus|christian faith)$/;
 const WEAK = /^(christianity|christian|religion|faith|god|prayer|church|pastor|catholic|catholicism|judaism|islam|prophet|miracle|heaven|angel|salvation|baptism|missionary|saint|evangelism|evangelical)$/;
 const NOT_PREACHY = /^(comedy|horror|action|science fiction|thriller)$/; // satire, exorcism horror, action movies with a bible in them…
+// 🗣️ dubbed movies are fine (1.61.0, Derek): TMDB doesn't say which movies have an English dub, so this guesses: cartoons/anime
+// and well-known movies (at least rules.dubVotes TMDB votes, default 1000) almost always have one. Small foreign movies still get banned.
+export function likelyDubbed(m, g, rules = {}) { return g.includes('animation') || (Number(m.votes) || 0) >= Math.max(1, Number(rules.dubVotes) || 1000); }
 export function ruleBan(m, rules = {}) {
   if (!m || !Array.isArray(m.spoken)) return null; // needs the full TMDB details
   const g = (m.allGenres || m.genres || []).map(x => String(x).toLowerCase()), kw = (m.keywords || []).map(x => String(x).toLowerCase().trim());
   if (rules.english !== false) {
     const sp = m.spoken.filter(x => x && x !== 'xx'), orig = m.lang || '';
-    if (sp.length ? !sp.includes('en') : (orig && orig !== 'en' && orig !== 'xx')) return { key: 'english', short: 'not in English', reason: 'not in English' };
+    if ((sp.length ? !sp.includes('en') : (orig && orig !== 'en' && orig !== 'xx')) && !(rules.dubbed !== false && likelyDubbed(m, g, rules))) return { key: 'english', short: 'not in English', reason: 'not in English' };
   }
   if (rules.documentary !== false && g.includes('documentary') && !g.some(x => STORY.test(x))) return { key: 'documentary', short: 'documentary', reason: 'documentary' };
   if (rules.religious !== false) {

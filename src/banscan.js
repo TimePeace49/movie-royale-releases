@@ -79,6 +79,25 @@ export async function runScan({ fake = false, only = null } = {}) {
   return scan;
 }
 
+// 🗣️ dubbed movies are allowed now (1.61.0, Derek): movies the "not in English" rule banned before get checked again once
+// (and again when the 🗣️ setting changes), and come off the list when they likely have an English dub. Bans by hand stay.
+export const dubFix = { running: false, done: 0, total: 0, removed: 0 };
+export async function dubCleanup({ fake = false } = {}) {
+  if (dubFix.running) return dubFix;
+  const R = db.settings.banRules || {};
+  if (R.english === false || R.dubbed === false) return dubFix;
+  const list = (db.bans || []).filter(b => b.auto === 'english' && (fake ? b.test && b.fake : !b.test));
+  Object.assign(dubFix, { running: true, done: 0, total: list.length, removed: 0 });
+  let i = 0;
+  const worker = async () => { while (i < list.length) { const b = list[i++];
+    try { const d = fake ? { id: b.tmdbId, ...b.fake } : await getMovie(b.tmdbId, 10000), rb = autoBan(d);
+      if (!rb) { db.bans = db.bans.filter(x => x !== b); dubFix.removed++; } else if (rb.key !== b.auto) { b.auto = rb.key; b.reason = rb.reason; } } catch {}
+    dubFix.done++; if (!fake) await sleep(60); } };
+  try { await Promise.all(Array.from({ length: 4 }, worker)); }
+  finally { dubFix.running = false; if (!fake) db.dubChecked = 1; save(); hooks.changed(); }
+  return dubFix;
+}
+
 // 📅 new year: last year's "this year" bans come off (unless another rule bans them), and the new year's go on
 export async function yearCleanup(now = currentYear()) {
   const old = (db.bans || []).filter(b => b.auto === 'year' && String(b.year) !== now);

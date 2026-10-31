@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 13; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 14; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -130,12 +130,15 @@ const HARD = /^(christian film|christian movie|christian drama|faith[- ]based( f
 const STRONG = /^(bible|biblical|jesus christ|jesus|moses|old testament|new testament|ten commandments|crucifixion|passion of christ|gospel|apostle|virgin mary|noah's ark|life of jesus|resurrection of jesus|christian faith)$/;
 const WEAK = /^(christianity|christian|religion|faith|god|prayer|church|pastor|catholic|catholicism|judaism|islam|prophet|miracle|heaven|angel|salvation|baptism|missionary|saint|evangelism|evangelical)$/;
 const NOT_PREACHY = /^(comedy|horror|action|science fiction|thriller)$/; // satire, exorcism horror, action movies with a bible in them…
+// 🗣️ dubbed movies are fine (1.61.0, Derek): TMDB doesn't say which movies have an English dub, so this guesses: cartoons/anime
+// and well-known movies (at least rules.dubVotes TMDB votes, default 1000) almost always have one. Small foreign movies still get banned.
+function likelyDubbed(m, g, rules = {}) { return g.includes('animation') || (Number(m.votes) || 0) >= Math.max(1, Number(rules.dubVotes) || 1000); }
 function ruleBan(m, rules = {}) {
   if (!m || !Array.isArray(m.spoken)) return null; // needs the full TMDB details
   const g = (m.allGenres || m.genres || []).map(x => String(x).toLowerCase()), kw = (m.keywords || []).map(x => String(x).toLowerCase().trim());
   if (rules.english !== false) {
     const sp = m.spoken.filter(x => x && x !== 'xx'), orig = m.lang || '';
-    if (sp.length ? !sp.includes('en') : (orig && orig !== 'en' && orig !== 'xx')) return { key: 'english', short: 'not in English', reason: 'not in English' };
+    if ((sp.length ? !sp.includes('en') : (orig && orig !== 'en' && orig !== 'xx')) && !(rules.dubbed !== false && likelyDubbed(m, g, rules))) return { key: 'english', short: 'not in English', reason: 'not in English' };
   }
   if (rules.documentary !== false && g.includes('documentary') && !g.some(x => STORY.test(x))) return { key: 'documentary', short: 'documentary', reason: 'documentary' };
   if (rules.religious !== false) {
@@ -176,7 +179,7 @@ const search = async (cfg, q) => ((await tmdb(cfg, `/search/movie?query=${encode
 async function movie(cfg, id) {
   const m = await tmdb(cfg, `/movie/${encodeURIComponent(id)}?language=en-US&append_to_response=keywords`);
   return { ...shape(m), collection: m.belongs_to_collection ? { id: m.belongs_to_collection.id, name: m.belongs_to_collection.name } : null,
-    lang: m.original_language || '', allGenres: (m.genres || []).map(g => g.name), spoken: (m.spoken_languages || []).map(l => l.iso_639_1), keywords: (m.keywords?.keywords || []).map(k => k.name) };
+    lang: m.original_language || '', votes: m.vote_count || 0, allGenres: (m.genres || []).map(g => g.name), spoken: (m.spoken_languages || []).map(l => l.iso_639_1), keywords: (m.keywords?.keywords || []).map(k => k.name) };
 }
 async function manyMovies(cfg, ids, ms = 1600) {
   const out = new Map();

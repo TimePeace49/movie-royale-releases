@@ -61,6 +61,10 @@ export function cleanEntry(e) {
   if (type === 'countdown' || type === 'autocount') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); out.autoKnock = e.autoKnock !== false; }
   if (type === 'timercount') { out.countStart = Math.round(num(e.countStart, 3, 1, 100000)); out.count = Math.round(num(e.count ?? out.countStart, out.countStart, 0, 100000)); } // a timer spot: each WIN takes one off, at 0 it goes invisible
   if (type === 'timermax') { out.maxWins = Math.round(num(e.maxWins, 1, 1, 1000)); out.wins = Math.round(num(e.wins, 0, 0, 1000)); out.maxedOff = !!e.maxedOff; } // a timer spot that can only win so many times a night
+  // 🎁 hidden reveal (mystery spot, 1.61.0): the spot's own words / picture are the cover; when it lands, a card pack pops up and
+  // the card inside shows the hidden words / picture. Kept even while it's off, so switching it back on doesn't lose them.
+  const rv = e.reveal && typeof e.reveal === 'object' ? { on: !!e.reveal.on, text: String(e.reveal.text || '').slice(0, 300), image: fileOk(e.reveal.image) } : null;
+  if (rv && (rv.on || rv.text || rv.image)) out.reveal = rv;
   return out;
 }
 const active = () => W().wheels.find(x => x.id === W().activeId);
@@ -99,9 +103,9 @@ export const view = w => w && ({ id: w.id, name: w.name, title: w.title, rot: w.
   voidOn: !!w.opts.void.on && rulesOn(w), voided: w.entries.filter(e => e.voided).map(e => e.text),
   entries: layout(w).map(s => ({ id: s.e.id, text: s.e.text, label: slotLabel(w, s.e), weight: s.e.weight, color: s.color, rule: rulesOn(w) ? s.e.rule : '', image: s.e.image, sound: s.e.sound, type: rulesOn(w) ? s.e.type : 'timer', count: s.e.count })) });
 
-let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {}, openBattle: () => 'not ready', openCards: () => 'not ready', goView: () => {} };
+let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {}, openBattle: () => 'not ready', openCards: () => 'not ready', goView: () => {}, theme: () => null };
 let busyUntil = 0, spinning = null; const queue = []; let qTimer = null;
-export function initWheel(h) { hooks = { ...hooks, ...h }; W(); const st = W(); if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } }
+export function initWheel(h) { hooks = { ...hooks, ...h }; W(); const st = W(); st.reveal = null; if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } }
 export function wheelMsg() { const w = W(), a = active(); return { type: 'wheel', show: w.show, wheel: view(a), last: w.last && w.last.wheelId === a?.id ? w.last : null, final: w.final && w.final.wheelId === a?.id ? w.final : null, round: roundView() }; }
 export function setShow(on) { W().show = !!on; save(); hooks.broadcast(wheelMsg()); hooks.pushState(); }
 const bump = () => { const st = W(); st.ver = (st.ver || 0) + 1; };
@@ -127,6 +131,7 @@ export const undoList = () => undo.slice().reverse().map(u => ({ id: u.id, at: u
 export function undoTo(id) {
   const i = id ? undo.findIndex(u => u.id === id) : undo.length - 1; if (i < 0) throw new Error('Nothing to go back to.');
   const u = undo[i], st = W(), w = getWheel(u.wheelId);
+  if (st.reveal) revealClose(true); // (🎁 an open card pack goes away)
   queue.length = 0; clearTimeout(qTimer); clearTimeout(roundT); for (const t of voidTimers) clearTimeout(t); voidTimers.length = 0; busyUntil = 0; spinning = null;
   if (w) { w.entries = JSON.parse(u.entries); w.rot = u.rot; }
   st.last = u.last ? JSON.parse(u.last) : null; st.final = u.final ? JSON.parse(u.final) : null; st.bank = JSON.parse(u.bank); st.mine.left = u.mine; st.voidHits = JSON.parse(u.voidHits);
@@ -245,6 +250,7 @@ export function linkClear() { W().chain = []; clearTimeout(linkT); save(); }
 function landed(w, rec) {
   if (spinning?.kind === 'respin') respinLandAt = Date.now();
   spinning = null;
+  if (rec.mystery && W().last?.id === rec.id) revealPack(w, rec);
   const st = W(); let r = st.round;
   if (!roundOn(w)) { if (!queue.length && rec.by?.source !== 'void' && rec.type !== 'void') followLink(w, rec); return; } // no round timer: where it stops is the win
   if (r?.state === 'ending') return finalize();
@@ -258,6 +264,48 @@ function landed(w, rec) {
   if (/^auto/.test(rec.type)) roundPause('auto');
   else if (rec.type === 'countdown') roundPause('countdown');
   sendRound();
+}
+
+// ---------- 🎁 hidden reveal (mystery spots) ----------
+// Lands on a mystery spot: a card pack with the spot's cover pops up on stream and in the control panel. You click the pack
+// (only in the control panel), the top tears off and a card comes out with the hidden words / picture. The stream follows.
+const isMystery = e => !!(e?.reveal?.on && (e.reveal.text || e.reveal.image));
+const revealMsg = extra => ({ type: 'wheelReveal', theme: hooks.theme() || null, ...extra });
+function revealPack(w, rec) {
+  const st = W(); st.reveal = { id: rec.id, wheelId: w.id, entryId: rec.entryId, cover: rec.mystery, open: false, at: Date.now() }; save();
+  hooks.broadcast(revealMsg({ stage: 'pack', id: rec.id, cover: rec.mystery, wheelName: w.name, color: rec.color }));
+}
+/** 🎁 open the pack (Derek clicked it): the hidden side goes to every screen */
+export function revealOpen(id) {
+  const st = W(); if (!st.reveal && id && st.last?.id === id && st.last.mystery) { const w0 = getWheel(st.last.wheelId); if (w0) revealPack(w0, st.last); } // (closed without opening: it comes back)
+  const R = st.reveal; if (!R || (id && R.id !== id)) throw new Error('That card pack is gone (the wheel spun again).');
+  if (R.open) return { already: true, hidden: R.hidden };
+  const w = getWheel(R.wheelId), e = w?.entries.find(x => x.id === R.entryId); if (!e?.reveal) throw new Error('That spot has no hidden side any more.');
+  const hidden = { text: e.reveal.text || '', image: e.reveal.image || '' };
+  Object.assign(R, { open: true, hidden, openedAt: Date.now() });
+  const rec = st.history.find(h => h.id === R.id); if (rec) rec.revealed = hidden;
+  if (st.last?.id === R.id) st.last.revealed = hidden;
+  if (st.final?.id === R.id || (st.final && st.final.entryId === R.entryId && !st.final.revealed)) st.final.revealed = hidden;
+  bump(); save();
+  hooks.broadcast(revealMsg({ stage: 'open', id: R.id, cover: R.cover, hidden, color: rec?.color }));
+  hooks.broadcast(wheelMsg()); hooks.pushState();
+  if (hidden.text && w) setTimeout(() => sayW(w, `🎁 The mystery spot “${R.cover.text}” was… ${hidden.text}!`), 1800);
+  return { hidden };
+}
+/** 🎁 close the pop-up (on stream too) */
+export function revealClose(quiet) { const st = W(); if (!st.reveal) return {}; st.reveal = null; if (!quiet) save(); hooks.broadcast(revealMsg({ stage: 'close' })); return {}; }
+export const revealState = () => { const R = W().reveal; return R ? { id: R.id, cover: R.cover, open: R.open, hidden: R.open ? R.hidden : null, theme: hooks.theme() || null } : null; };
+/** 🧪 Test tab: a pretend mystery card (nothing on the wheel changes); theme = a holiday id to try its pack */
+export function revealTest({ theme, text, image } = {}) {
+  const st = W(), id = 'test-' + uid(); st.reveal = { id, test: true, cover: { text: '❓ Mystery spot', image: '' }, open: false, hiddenTest: { text: text || '🎉 You found the secret: free respins for everyone!', image: image || '' }, theme: theme || null };
+  hooks.broadcast({ type: 'wheelReveal', theme: theme || hooks.theme() || null, stage: 'pack', id, cover: st.reveal.cover, test: true });
+  return { id };
+}
+export function revealOpenTest(id) {
+  const st = W(), R = st.reveal; if (!R?.test || R.id !== id) return revealOpen(id);
+  R.open = true; R.hidden = R.hiddenTest;
+  hooks.broadcast({ type: 'wheelReveal', theme: R.theme || hooks.theme() || null, stage: 'open', id, cover: R.cover, hidden: R.hidden, test: true });
+  return { hidden: R.hidden };
 }
 
 // ---------- spinning ----------
@@ -343,6 +391,8 @@ function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Te
     from: kind === 'spin' ? null : prev ? { entryId: prev.entryId, text: prev.text, pct: prev.pct } : null };
   if (type === 'countdown' || type === 'autocount') { rec.countBefore = s.e.count; if (s.e.autoKnock && s.e.count > 0) { s.e.count--; rec.knocked = true; } rec.countLeft = s.e.count; }
   if (by.source === 'void' && type !== 'void') rec.voided = true;
+  if (isMystery(s.e) && type !== 'void' && by.source !== 'void') rec.mystery = { text: s.e.text, image: s.e.image || '' }; // 🎁 (the cover: the hidden side only goes out when you open the pack)
+  if (st.reveal) revealClose(true); // (a new spin: an open card pack goes away)
   st.history.push(rec); if (st.history.length > 50000) st.history = st.history.slice(-50000);
   w.rot = mod(to, TAU);
   st.last = { ...rec };

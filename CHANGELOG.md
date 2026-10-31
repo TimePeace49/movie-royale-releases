@@ -2,6 +2,21 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.61.0
+- 🎁 **Mystery spots on the wheel (hidden reveal):** in a spot's ⚙, tick 🎁 Hidden reveal and add hidden words and/or a hidden picture. On the wheel the spot shows its normal words and picture, so nobody knows what it does.
+  - When the wheel lands on it, a **card pack** with that cover pops up in Movie Royal and on stream. Click the pack (or press Enter): the top tears off, a card slides out and shows the hidden words / picture, on stream too, and the bot says it in chat.
+  - With a **holiday app style** on, the pack and card dress up for that holiday (Halloween, Christmas, Valentine's Day and the rest). There's a 🎁 box for it on the holiday pop-up and in Settings → App & background → 🎨 App style (on by default).
+  - 👀 Preview it in the spot's ⚙ (only you see it), 🎁 Open the card pack on the wheel's result opens it again if you closed it. Try it: 🧪 Test → 🎁 Mystery spot.
+- ⏱️ **Movie length** on the winner screen and in the list under the battle (like "2 h 7 min").
+- 📋 **The list under the battle shows who's really in:** the pieces on the cliff (or in the battle that's running) come first. Movies sitting out, people who haven't chatted yet and entries that didn't fit are under 👀 Show the … not in, with a tag saying why. New 🔎 search box for a person (Discord or Twitch name) or a movie title.
+- 🗣️ **Dubbed movies aren't banned any more:** the 🌍 Not in English rule now lets through movies that likely have an English dub (cartoons, anime and well-known movies). TMDB doesn't list dubs, so Movie Royal guesses by how many TMDB votes a movie has (1000 by default, change it in Settings → 🚫 Banned Movies). Movies the rule banned before get checked again once and the dubbed ones come off the list. Bans you made by hand stay. The 24/7 Discord bot needs one update for it (Movie Royal asks when it opens).
+- 🎁 **Hydrate, Stretch, Pick a hat and Viewer's choice can each be switched off** (Settings → 💰 Rewards & prices → 🎁 Viewer rewards). Off = hidden from your channel points menu.
+- 🎥 **Settings → OBS has everything OBS in one place**, each with its own switch and setup: ☠️ Doomsday (mic, camera, ending the stream), 📺 Capture window, 🎉 Viewer's choice celebration, 📣 Roll call and the game screen's address. 🎥 Let Movie Royal use OBS switches all of it off at once.
+  - 📺 **Capture window during the 2-min join timer:** once a window is picked, it shows by itself (small, top-left) when you start the join timer and hides when the battle starts.
+- 📣 **Roll call as its own OBS browser source:** so roll call shows in scenes without the game screen. Movie Royal can add it to the scenes you pick, or add `/rollcall.html` by hand (1920 × 1080). There's a new Setup guide step for it.
+- 🛌 **Sitting out keeps people on the People list:** their movies just sit out of tonight's battle (🛌), so you still see the whole community.
+- 🏁 **Laps box on the Battle tab:** when the next battle is on a race map, pick the laps on the right side before you start (also on the Chat battle tab).
+
 ## 1.60.4
 - 🎀 **Hair accessories are their own part** (Derek: "they are their own thing"), so a character can wear one with a head accessory.
   - There are 30: headbands, bows, flowers, daisies, pearl clips, barrettes, butterfly / star / heart / cherry / leaf / snowflake / rainbow clips, a scrunchie, bobbles, hair ties, beads, a ribbon, bobby pins, hair sticks, a jeweled comb, hair gems and a braided headband.

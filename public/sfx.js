@@ -145,6 +145,10 @@ window.SFX = (() => {
     wheelMove: () => S.whoosh(),
     wheelTimer: () => { for (let i = 0; i < 3; i++) { tone({ type: 'square', f0: 880, dur: .18, v: .2, at: i * .3 }); tone({ type: 'square', f0: 660, dur: .18, v: .14, at: i * .3 + .1 }); } },
     wheelGrow: () => notes([72, 76, 79, 84], .07, (n, at) => tone({ type: 'triangle', f0: hz(n), dur: .14, v: .16, at })),
+    // 🎁 mystery spot card pack (1.61.0): crinkle while it waits, the rip, and the sparkly reveal
+    packShake: () => { for (let i = 0; i < 5; i++) noise({ dur: .06 + Math.random() * .05, v: .07, type: 'bandpass', f0: 2500 + Math.random() * 2500, q: 2.5, at: i * .07 + Math.random() * .03 }); },
+    packTear: () => { for (let i = 0; i < 9; i++) noise({ dur: .045 + Math.random() * .04, v: .16 + Math.random() * .08, type: 'bandpass', f0: 1400 + Math.random() * 2600, f1: 900, q: 1.4, at: i * .045 + Math.random() * .015 }); noise({ dur: .5, v: .1, type: 'highpass', f0: 3000, a: .02, at: .05 }); },
+    cardReveal: () => { notes([79, 84, 88, 91, 96, 100], .07, (n, at) => tone({ type: 'triangle', f0: hz(n), dur: .4, v: .14, at })); noise({ dur: 1.2, v: .06, type: 'highpass', f0: 6000, a: .3, at: .1 }); tone({ type: 'sine', f0: hz(72), dur: 1.4, v: .12, a: .05, at: .42 }); tone({ type: 'sine', f0: hz(79), dur: 1.4, v: .1, a: .05, at: .42 }); },
     // 🐄 Fart Farm, 🐀 Plague Town and ⚔️ Battlefield
     moo: (o = {}) => { const p = o.p || 1; tone({ type: 'sawtooth', f0: 165 * p, f1: 118 * p, dur: .9, v: .14 * (o.v ?? 1), a: .12 }); tone({ type: 'square', f0: 168 * p, f1: 120 * p, dur: .85, v: .05 * (o.v ?? 1), a: .15 }); tone({ type: 'sine', f0: 82 * p, f1: 60 * p, dur: .9, v: .18 * (o.v ?? 1), a: .1 }); },
     stampede: () => { noise({ dur: 1.8, v: .3, f0: 260, f1: 120, a: .25 }); for (let i = 0; i < 14; i++) tone({ type: 'sine', f0: 70 + Math.random() * 20, f1: 38, dur: .09, v: .3, at: i * .12 + Math.random() * .04 }); },

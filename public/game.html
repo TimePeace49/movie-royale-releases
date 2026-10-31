@@ -203,6 +203,7 @@
 </div>
 
 <script src="sfx.js"></script>
+<script src="reveal.js"></script>
 <script src="wheel.js"></script>
 <script src="ask.js"></script>
 <script src="chat.js"></script>
@@ -5029,13 +5030,21 @@ function wlUse(w) { if (!w) return; wlVoided(w); wlId = w.id; wlOpts = { ...(w.o
 function wlCard(r, k) {
   if (!r) { $('wlCard').classList.add('off'); return; }
   $('wlK').innerHTML = k || (r.voided ? `${VX} The void ate` : r.type === 'void' ? `${VX} The void! Respinning…` : r.kind === 'respin' ? `${RX} Respin landed on` : r.kind === 'up' ? '⬆️ Moved up to' : r.kind === 'down' ? '⬇️ Moved down to' : '🎡 The wheel says');
-  $('wlT').textContent = r.text; $('wlT').style.fontSize = r.text.length > 40 ? '40px' : r.text.length > 22 ? '52px' : '64px';
+  const shown = r.revealed?.text || r.text; if (r.mystery && !k) $('wlK').innerHTML = r.revealed ? '🎁 Mystery spot revealed' : '🎁 Mystery spot!'; // (🎁 hidden reveal spot: the card's words once it's open)
+  $('wlT').textContent = shown; $('wlT').style.fontSize = shown.length > 40 ? '40px' : shown.length > 22 ? '52px' : '64px';
   $('wlR').textContent = wlOpts.rules === false ? '' : r.rule || '';
   const tp = r.voided ? `<span>${VX} VOIDED for the rest of the stream</span>` : r.type === 'void' ? `<span>${VX} respinning…</span>` : r.type === 'countdown' ? `<span>🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : r.type === 'autocount' ? `<span>⚡ auto · 🔢 ${r.countLeft ?? '?'} left${r.countLeft === 0 ? ' — leaves the wheel!' : ''}</span>` : /^auto/.test(r.type) ? '<span>⚡ auto</span>' : '';
   $('wlM').innerHTML = tp + `${wlOpts.showPct === false ? '' : `<span>🍀 ${r.pct}% of the wheel</span>`}<span>${r.by?.source === 'points' ? '💜' : '👤'} ${esc(r.by?.name || '')}${r.by?.source === 'points' ? ' (channel points)' : ''}</span>${r.from ? `<span>was: ${esc(r.from.text)}</span>` : ''}`;
   if (r.link) { let h = r.link; try { h = new URL(r.link).hostname.replace(/^www\./, ''); } catch {} $('wlM').innerHTML += `<span>🔗 ${esc(h)}</span>`; } // the spot's web page
   $('wlCard').style.borderColor = r.color || '#ffc94a';
   $('wlCard').classList.remove('off');
+}
+// 🎁 mystery spot card pack (1.61.0): Derek opens it in the control panel, the stream follows (closes by itself 14 s after it opens)
+function wlReveal(m) {
+  clearTimeout(wlReveal.t);
+  if (m.stage === 'close') return RevealPack.remove(true);
+  if (!RevealPack.current() || RevealPack.current().id !== m.id) RevealPack.show($('stage'), { id: m.id, cover: m.cover, theme: m.theme, scale: 1.55, sound: k => SFX.play(k) });
+  if (m.stage === 'open') { RevealPack.open(m.id, m.hidden, m.cover?.text); wlReveal.t = setTimeout(() => RevealPack.remove(true), 14000); }
 }
 function wlRecentDraw() { $('wlRecent').innerHTML = wlRecent.slice(0, 5).map(r => `<div><i style="background:${esc(r.color)}"></i>${{ spin: '🎡', respin: RX, up: '⬆️', down: '⬇️' }[r.kind] || '🎡'} ${esc(r.text.length > 42 ? r.text.slice(0, 41) + '…' : r.text)}<span class="muted">${esc(r.by?.name || '')} · ${new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span></div>`).join(''); }
 function wlBanner(html, ms = 1800) { const b = $('wlBanner'); b.innerHTML = html; b.classList.add('on'); clearTimeout(wlBanner.t); wlBanner.t = setTimeout(() => b.classList.remove('on'), ms); }
@@ -5148,6 +5157,7 @@ function landOnCliff(f) {
   best.crumble = 1e9; if (best.state === 1) best.state = 0; winTile = best;
   hopTo(f, best, true); f.safeUntil = 1e9;
 }
+const runTime = m => { m = Math.round(Number(m) || 0); if (!m) return ''; const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h${r ? ` ${r} min` : ''}` : `${r} min`; }; // ⏱️ 127 → "2 h 7 min"
 function declareWinner(f) {
   if (winner) return;
   landOnCliff(f);
@@ -5224,7 +5234,7 @@ function fillWin(f) {
   $('win').classList.toggle('vert', movie);
   $('win').classList.toggle('spotwin', !!f.spot);
   if (movie) {
-    $('wYear').textContent = [f.sub, (d.genres || []).slice(0, 3).join(' · ')].filter(Boolean).join('  •  ');
+    $('wYear').textContent = [f.sub, runTime(d.runtime), (d.genres || []).slice(0, 3).join(' · ')].filter(Boolean).join('  •  '); // (⏱️ how long it is: 1.61.0, Derek)
     const r = ratingsById[f.id] || f.ratings;
     $('wRatings').innerHTML = ratingsHtml(r || {}, !r);
   } else $('wYear').textContent = f.sub || '';
@@ -5232,6 +5242,7 @@ function fillWin(f) {
   if (d.director) rows.push(`<div><b>Director</b>${esc(d.director)}</div>`);
   if (d.cast?.length) rows.push(`<div><b>Starring</b>${esc(d.cast.join(', '))}</div>`);
   if (d.genres?.length) rows.push(`<div><b>Genre</b>${esc(d.genres.join(' · '))}</div>`);
+  if (d.runtime) rows.push(`<div><b>Length</b>⏱️ ${esc(runTime(d.runtime))}</div>`);
   $('wMeta').innerHTML = rows.join('');
   $('wSyn').textContent = d.synopsis || '';
   const showOwner = f.showOwner ?? (kind === 'movies');
@@ -5646,6 +5657,7 @@ function handleMsg(m) {
     if (replay && (m.type === 'start' || m.type === 'reset' || m.type === 'claimClose')) endReplay(true);
     if ((m.type === 'wheelSpin' && m.kind === 'spin') || m.type === 'wheelUndo') document.getElementById('wlDoom')?.remove(); // a fresh spin (or ⏪ undo) clears Doomsday
     if (m.type === 'cardScene' || m.type === 'cardWacky' || m.type === 'finTest') { window.CARDS?.msg(m); return; } // 🃏 card battles (cardfight.js)
+    if (m.type === 'wheelReveal') { wlReveal(m); return; }
     if (m.type === 'wheel' || m.type === 'wheelSpin') { wheelMsg(m); return; }
     if (m.type === 'wheelRound') { wheelMsg(m); return; }
     if (m.type === 'wheelDoom') { const el = wlDoom(m.text); if (m.preview) setTimeout(() => el.remove(), 8000); else if (m.test) setTimeout(() => el.remove(), 20000); return; } // (a Doomsday test while not live goes away after 20 s)

@@ -338,7 +338,9 @@
   .kbKey { min-width:92px; font-family:ui-monospace, Consolas, monospace; font-weight:800; padding:4px 10px; border-radius:8px; background:#2a1d4a; border:1px solid #9b7bff; border-bottom-width:3px; }
   .kbKey.off { opacity:.55; font-weight:400; } .kbKey.wait { background:var(--gold); color:#1a1030; border-color:var(--gold); }
   .claimNow { margin:10px 0; padding:12px; border-radius:14px; background:#163a26; border:2px solid #7dffb0; box-shadow:0 0 22px #7dffb055; animation:updPulse .9s ease-in-out infinite alternate; }
+  .obsBox { margin:10px 0; padding:10px 14px; } .obsBox h4 { margin:0 0 4px; }
   tr.pausedRow { opacity:.5; } tr.pausedRow:hover { opacity:.8; }
+  tr.blHead td { background:var(--panel2); font-weight:700; padding:6px 10px; border-radius:6px; } tr.blHead small { font-weight:400; }
   #raidBox { display:inline-flex; align-items:center; gap:2px; margin-left:auto; flex:0 1 auto; min-width:0; }
   #raidBox + .dots { margin-left:8px; }
   #raidGo { background:#2a1650; border:1px solid #9146ff; color:#fff; border-radius:10px; padding:5px 10px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
@@ -418,8 +420,8 @@
 <div id="holFx"></div>
 <dialog id="priceDlg"><div style="padding:18px" id="priceBody"></div></dialog>
 <dialog id="choiceDlg"><div class="inner" style="max-width:460px">
-  <h3 style="margin-top:0">🎬 Which OBS scenes get the celebration?</h3>
-  <p class="help">Tick the scenes where the 🎉 Viewer's choice confetti should show. Movie Royal puts the source <b>Movie Royal celebration</b> on top of those scenes only (and takes it out of the ones you don't tick).</p>
+  <h3 style="margin-top:0" id="choiceDlgT">🎬 Which OBS scenes get the celebration?</h3>
+  <p class="help" id="choiceDlgH">Tick the scenes where the 🎉 Viewer's choice confetti should show. Movie Royal puts the source <b>Movie Royal celebration</b> on top of those scenes only (and takes it out of the ones you don't tick).</p>
   <div id="choiceList" style="max-height:320px;overflow:auto;margin:8px 0"><p class="help">Asking OBS for your scenes…</p></div>
   <div class="row" style="gap:6px;margin-top:6px"><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=true)">Tick all</button><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=false)">Untick all</button><span class="grow"></span><button onclick="$('choiceDlg').close()">Cancel</button><button class="primary" id="choiceGoBtn" onclick="choiceGo()">📺 Put it in these scenes</button></div>
 </div></dialog>
@@ -459,7 +461,8 @@
   <div class="row" style="gap:6px"><select id="capWin" class="grow"><option value="">(press 🔄 to list your windows)</option></select><button class="ghost" onclick="capList()" title="Ask OBS for your open windows">🔄</button></div>
   <label style="margin-top:10px">Size: <b id="capSizeV">30</b>% of the stream</label>
   <input id="capSize" type="range" min="10" max="60" step="1" value="30" oninput="$('capSizeV').textContent=this.value" onchange="capSize(this.value)">
-  <label class="ck" style="margin-top:10px"><input type="checkbox" id="capAuto"> Hide it when the battle starts</label>
+  <label class="ck" style="margin-top:10px"><input type="checkbox" id="capAutoShow"> ⏱️ Show it by itself during the 2-min join timer</label>
+  <label class="ck"><input type="checkbox" id="capAuto"> Hide it when the battle starts</label>
   <p class="help" id="capMsg"></p>
   <div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="$('capDlg').close()">Cancel</button><button class="primary" onclick="capSave()">💾 Save</button></div>
 </div></dialog>
@@ -552,6 +555,7 @@
     <div class="bigtimer" id="bigTimer" style="display:none"><div id="bigTimerLbl"></div><div id="bigTimerNum"></div></div>
     <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
     <div id="capRow"></div>
+    <div data-laps></div>
     <div data-chars="active"></div>
     <div class="chaosbar" data-chaos></div>
     <div class="muted" id="poolCount" style="text-align:center"></div>
@@ -655,6 +659,7 @@
       <button class="primary big" style="width:100%;margin-top:6px" id="chatStart" onclick="chatStart()">▶ START CHAT BATTLE</button>
       <div data-ann="chat" style="margin-top:6px"></div>
       <div data-chars="chat-join"></div>
+      <div data-laps></div>
       <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who joined?')) api('/api/chatbattle',{clear:true})">🧹 Clear entries</button><button class="grow" onclick="api('/api/chatbattle',{select:true}).then(()=>setView('battle'))">⚔️ Open on Battle tab</button></div>
     </div>
     <div class="card">
@@ -754,6 +759,9 @@
     <div class="card">
       <h3>🚫 Automatic bans</h3>
       <label class="ck"><input type="checkbox" id="brEnglish" onchange="banRule('english',this.checked)"> <span>🌍 Movies that aren't in English at all (some other languages in it is fine)</span></label>
+      <div id="brDubRow" style="margin:0 0 6px 26px"><label class="ck" style="margin:2px 0"><input type="checkbox" id="brDubbed" onchange="banRule('dubbed',this.checked)"> <span>🗣️ …but allow movies that have an English dub (cartoons / anime and well-known movies)</span></label>
+        <div class="row" style="gap:6px;margin-left:26px"><span class="help" style="margin:0">Well-known = at least</span><input id="brDubVotes" type="number" min="1" step="100" style="width:90px" title="🗣️ Well-known = at least this many TMDB votes" onchange="banRule('dubVotes',Math.max(1,Math.round(Number(this.value)||1000)))"><span class="help" style="margin:0">TMDB votes</span></div>
+        <p class="help" style="margin:2px 0 0 26px">TMDB doesn't say which movies have a dub, so Movie Royal guesses: cartoons, anime and well-known movies almost always have one. Small foreign movies still get banned. Unban or ban any movie by hand if the guess is wrong.</p></div>
       <label class="ck"><input type="checkbox" id="brReligious" onchange="banRule('religious',this.checked)"> <span>⛪ Really religious movies (like <i>The Passion of the Christ</i> or <i>The Ten Commandments</i>)</span></label>
       <label class="ck"><input type="checkbox" id="brDocumentary" onchange="banRule('documentary',this.checked)"> <span>🎥 Pure documentaries</span></label>
       <p class="help">Uses TMDB's info (languages, genres, keywords), so now and then it may guess wrong: unban a movie to pre-approve it, or ban one by hand. A movie lands in the banned list the first time someone tries to pick it.</p>
@@ -928,10 +936,28 @@
   </div>
   <div class="card">
     <h3>🚫 Movie ban rules</h3>
-    <p class="help">🌍 not in English · ⛪ really religious · 🎥 documentaries. Try the rules on made-up examples (no internet needed), or fill the Banned list with 300 pretend bans to try its search box.</p>
+    <p class="help">🌍 not in English (dubbed ones allowed) · ⛪ really religious · 🎥 documentaries. Try the rules on made-up examples (no internet needed), or fill the Banned list with 300 pretend bans to try its search box.</p>
     <div class="row"><button class="primary" onclick="banRulesTest()">Try the rules</button><button onclick="api('/api/test/ban-many',{}).then(r=>{toast('🧪 Added '+r.n+' pretend bans: Settings → 🚫 Banned Movies');setView('settings');setSub('bans');loadBans()})">Add 300 pretend bans</button><button class="ghost" onclick="api('/api/test/ban-many',{clear:true}).then(()=>{toast('Pretend bans removed');loadBans()})">Remove pretend bans</button></div>
     <div class="row" style="margin-top:6px"><button onclick="api('/api/test/ban-scan',{}).then(r=>{if(!r.ok)return toast(esc(r.error));setView('settings');setSub('bans');loadBans()})" title="A pretend 🔄 Update the ban list: adds made-up movies, no internet">🔄 Pretend list update</button><button onclick="api('/api/test/ban-year',{}).then(r=>{toast(`📅 Pretend new year: added ${r.added} of last year's movies, ${r.removed} came off the list`);loadBans()})" title="Pretend it's a new year: last year's movies come off the banned list">📅 Pretend a new year</button></div>
+    <div class="row" style="margin-top:6px"><button onclick="api('/api/test/ban-dub',{}).then(r=>$('tBanOut').innerHTML=`<p class='help'>🗣️ ${r.on ? `${r.removed} of 3 pretend “not in English” bans came off (likely dubbed). Still banned: ${r.stillBanned.map(esc).join(', ') || 'none'}.` : 'The 🗣️ dubbed setting (or the 🌍 rule) is off, so nothing came off.'}</p>`)" title="Three pretend 'not in English' bans get checked again for an English dub (no internet)">🗣️ Try dubbed movies</button></div>
     <div id="tBanOut"></div>
+  </div>
+  <div class="card">
+    <h3>🎁 Mystery spot (hidden reveal)</h3>
+    <p class="help">A wheel spot nobody knows until it lands: a card pack pops up (here and on stream), you click it, the top tears off and a card shows the hidden words / picture. Set one up: 🎡 Wheel → ⚙ on a spot → 🎁 Hidden reveal. With a holiday app style on, the pack and card dress up for it.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tRevTheme" style="width:auto" title="Mystery card look"><option value="">🎨 My app style</option><option value="normal">💜 Normal</option><option value="newyear">🎆 New Year's</option><option value="valentine">💘 Valentine's Day</option><option value="stpat">☘️ St. Patrick's Day</option><option value="easter">🐰 Easter</option><option value="july4">🎇 4th of July</option><option value="halloween">🎃 Halloween</option><option value="turkey">🦃 Thanksgiving</option><option value="xmas">🎄 Christmas</option></select>
+      <input id="tRevText" class="grow" placeholder="Hidden words for the test (optional)" title="Hidden words for the test card"></div>
+    <div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><button class="primary" onclick="revealTest()">🎁 Try a mystery card</button><button onclick="revealLand()" title="Spins the wheel onto the first mystery spot of the wheel that's picked">🎡 Land on my mystery spot</button></div>
+  </div>
+  <div class="card">
+    <h3>🎥 OBS switches &amp; 📣 roll call page</h3>
+    <p class="help">Settings → 🎥 OBS: every OBS thing has its own switch and setup there. Roll call can be its own OBS browser source (see-through until a roll call starts).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="window.open('/rollcall.html?demo=1','_blank','width=960,height=560')">👀 Roll call page (pretend)</button><button onclick="api('/api/test/cap-join',{}).then(()=>toast('📺 Capture window is up like at the start of the join timer: it hides in 10 seconds'))" title="Shows the capture window like the 2-min join timer does, then hides it after 10 seconds">📺 Capture window like the join timer</button><button onclick="setView('settings');setSub('obs')">🎥 Open OBS settings</button></div>
+  </div>
+  <div class="card">
+    <h3>📋 Battle list, 🏁 race laps &amp; ⏱️ movie length</h3>
+    <p class="help">The list under the battle shows who's really in (👀 shows the rest), with a 🔎 search for a person or movie and each movie's ⏱️ length. On a race map, the 🏁 Laps box shows on the right side. A practice round's winner screen shows ⏱️ the length too.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="setView('battle');setTimeout(()=>{$('battleList')?.scrollIntoView({behavior:'smooth'});$('blSearch')?.focus()},300)">📋 Go to the battle list</button><button onclick="api('/api/settings',{map:'oval'}).then(()=>{setView('battle');toast('🏁 Map set to Speedway Oval: the 🏁 Laps box is on the right. Set the map back with 🗺️ Map.',8000)})">🏁 Show me the laps box</button><button onclick="testBattle()">⚔️ Practice round (winner shows ⏱️)</button></div>
   </div>
   <div class="card">
     <h3>🎨 Holiday app style</h3>
@@ -1088,6 +1114,7 @@
 
 <script src="wheel.js"></script>
 <script src="sfx.js"></script>
+<script src="reveal.js"></script>
 <script src="ask.js"></script>
 <script src="helpinfo.js"></script>
 <script src="chat.js"></script>
@@ -1414,6 +1441,7 @@ async function doomTest(confirmed) {
   if (confirmed) { $('doomDlg').close(); clearInterval(doomTick); }
   const r = await api('/api/test/doomsday', confirmed ? { confirm: true } : {}).catch(() => null); if (!r) return;
   if (r.needConfirm) { const b = $('doomGo'); let n = 5; b.disabled = true; b.textContent = `☠️ Yes, end my stream (${n})`; $('doomDlg').showModal(); clearInterval(doomTick); doomTick = setInterval(() => { n--; if (n > 0) b.textContent = `☠️ Yes, end my stream (${n})`; else { clearInterval(doomTick); b.disabled = false; b.textContent = '☠️ Yes, end my stream'; } }, 1000); return; }
+  if (r.off) return toast('☠️ Doomsday screen is up. The OBS part (mic, camera, ending the stream) is switched off in Settings → 🎥 OBS, so nothing in OBS was touched.', 8000);
   if (!r.obs) toast("☠️ Doomsday screen is up, but Movie Royal couldn't reach OBS (Settings → 🎥 OBS), so the mic, camera and stream weren't touched.", 8000);
 }
 async function obsMuteTest() {
@@ -1565,7 +1593,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1716,11 +1744,13 @@ function connect() {
     if (m.type === 'errorLogged') { clearTimeout(window.errT); window.errT = setTimeout(loadErrors, 800); }
     if (m.type === 'wheelRound' && WD) { WD.round = m.round; if (m.final) { WD.final = m.final; toast('⏱️ TIME! The wheel has spoken: 🏆 ' + esc(m.final.text), 6000); } drawRound(); if (view === 'wheel') drawWheelResult(); }
     if (m.type === 'wheelBoosts') drawBoosts(m.boosts);
+    if (m.type === 'wheelReveal') ctlReveal(m);
+    if (m.type === 'cliff' && S) { S.cliff = m.cliff; if (view === 'battle') renderBattleList(); } // 📋 who's really in the battle changed
     if (m.type === 'state') {
       const was = S?.phase; S = m.state; render();
     }
   };
-  sock.onclose = () => setTimeout(connect, 1500);
+  sock.onclose = () => { applyStyle.sent = undefined; setTimeout(connect, 1500); }; // (Movie Royal restarted: tell it the app style again)
 }
 
 // ---------- tabs ----------
@@ -2014,7 +2044,7 @@ function renderCardPool() {
 async function cpPic(id) { const v = await ask('Link to a picture of this pack (or leave it empty for no picture):', S.cards.pool.find(p => p.id === id)?.image || ''); if (v !== null && v !== undefined) cpSet(id, { image: String(v).trim() }); }
 // 📺 capture window (Battle tab): a small OBS window capture in the top-left of the stream
 function capHTML() {
-  const c = S.capture || {};
+  const c = S.capture || {}; if (c.allowed === false && !c.on) return ''; // (switched off in Settings → 🎥 OBS)
   const sz = c.size || 30;
   return `<div class="row" style="gap:6px;flex-wrap:nowrap"><button class="${c.on ? 'primary' : ''} grow" onclick="capToggle(${!c.on})" title="Shows a window from your PC (your browser, a YouTube video…) small in the top-left corner of the stream, through OBS. Press again to hide it.">📺 Capture window: <b>${c.on ? 'ON' : 'OFF'}</b></button><button class="ghost" title="Pick the window, the size, and whether it hides when the battle starts" onclick="capOpen()">⚙</button></div>
     <div class="row" style="gap:4px;flex-wrap:nowrap;align-items:center;margin-top:4px"><span class="muted" style="font-size:12px;white-space:nowrap">📏 Size</span><button class="ghost" style="padding:3px 10px" title="Make the capture window smaller" onclick="capSize(${sz - 5})">−</button><input type="range" min="10" max="60" step="1" value="${sz}" class="grow" title="How big the capture window is on stream (changes right away while it's showing)" oninput="this.nextElementSibling.textContent=this.value+'%'" onchange="capSize(this.value)"><b style="min-width:38px;text-align:right;font-size:13px">${sz}%</b><button class="ghost" style="padding:3px 10px" title="Make the capture window bigger" onclick="capSize(${sz + 5})">+</button></div>${c.error ? `<p class="help" style="color:var(--bad);margin:4px 0 0">⚠️ ${esc(c.error)}</p>` : ''}`;
@@ -2026,7 +2056,7 @@ async function capToggle(on) {
 async function capSize(v) { v = Math.max(10, Math.min(60, Math.round(Number(v) || 30))); try { await api('/api/capture/settings', { size: v }); } catch {} }
 async function capOpen() {
   const c = S.capture || {};
-  $('capSize').value = c.size || 30; $('capSizeV').textContent = c.size || 30; $('capAuto').checked = !!c.autoHide; $('capMsg').textContent = '';
+  $('capSize').value = c.size || 30; $('capSizeV').textContent = c.size || 30; $('capAuto').checked = !!c.autoHide; $('capAutoShow').checked = c.autoShow !== false; $('capMsg').textContent = '';
   if (c.window && ![...$('capWin').options].some(o => o.value === c.window)) $('capWin').insertAdjacentHTML('beforeend', `<option value="${esc(c.window)}">${esc(c.window.split(':')[0] || c.window)}</option>`);
   $('capWin').value = c.window || '';
   $('capDlg').showModal(); capList();
@@ -2078,13 +2108,14 @@ async function capTest() { try { await api('/api/capture', { on: true }); toast(
 const pacerWord = v => { v = Number(v); return v <= 0 ? 'Off' : v < 35 ? `Light (${v})` : v < 65 ? `Normal (${v})` : v < 90 ? `Strong (${v})` : `Very strong (${v})`; };
 async function winMode(v) { try { await api('/api/window', { action: v }); } catch {} }
 async function capSave() {
-  try { await api('/api/capture/settings', { window: $('capWin').value, size: Number($('capSize').value), autoHide: $('capAuto').checked }); $('capDlg').close(); toast('📺 Saved.'); } catch {}
+  try { await api('/api/capture/settings', { window: $('capWin').value, size: Number($('capSize').value), autoHide: $('capAuto').checked, autoShow: $('capAutoShow').checked }); $('capDlg').close(); toast('📺 Saved.'); if (sub === 'obs' && view === 'settings') setTimeout(() => openSettings(true), 300); } catch {}
 }
 function renderView() {
   if (!S) return;
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
   { const el = $('capRow'), h = capHTML(); if (el && el.innerHTML !== h) el.innerHTML = h; }
+  renderLaps();
   document.querySelectorAll('[data-chars]').forEach(el => { const h = charsHTML(el.dataset.chars); if (el.dataset.k !== h) { el.dataset.k = h; el.innerHTML = h; } });
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
@@ -2156,7 +2187,7 @@ function renderWinner() {
   const r = w.ratings;
   wc.innerHTML = `<h2>Winner</h2><div class="winner">
     ${w.spot ? '<div style="font-size:48px">🎟️</div>' : w.poster ? `<img src="${esc(proxy(w.poster))}">` : w.image ? `<img src="${esc(proxy(w.image))}" style="width:80px;height:80px;border-radius:50%">` : ''}
-    <div class="t">${esc(w.label)}${w.sub ? ' (' + esc(w.sub) + ')' : ''}</div>
+    <div class="t">${esc(w.label)}${w.sub ? ' (' + esc(w.sub) + ')' : ''}</div>${w.details?.runtime ? `<div class="muted">⏱️ ${blRun(w.details.runtime)}</div>` : ''}
     <div class="muted">${w.owner ? (isMovieList(w) || w.kind === 'movies' ? 'Picked by ' : '') + esc(w.owner) : ''}</div>
     ${r && Object.keys(r).length ? `<div class="muted" style="margin-top:4px">${r.rt ? '🍅 ' + esc(r.rt) + ' ' : ''}${r.imdb ? '⭐ IMDb ' + esc(r.imdb) + ' ' : ''}${r.lb ? '📗 ' + esc(r.lb) : ''}</div>` : ''}
     ${c?.waiting && !c.done ? `<div class="claimNow"><div style="font-size:15px">✋ <b>${esc(c.waiting.name)}</b> is here${w.test ? ' <small class="muted">(test: nothing changes)</small>' : ''}</div><div class="muted" style="margin:2px 0 8px">“${esc(String(c.waiting.text).slice(0, 90))}”</div>
@@ -2251,7 +2282,7 @@ function renderVote() {
   clearTimeout(window._vT); window._vT = setTimeout(renderVote, 1000);
 }
 // ---------- the list under the battle: everything in it, with luck, odds and quick buttons ----------
-let blFor = null, blFilter = '';
+let blFor = null, blFilter = '', blMore = false;
 function renderBattleList() {
   const l = list(), box = $('battleList'); if (!box) return;
   if (blFor !== l.id + l.type) {
@@ -2263,29 +2294,58 @@ function renderBattleList() {
     else if (l.type === 'films') add = `<div class="row"><b>➕ Add</b><input id="qaMovie" class="grow" placeholder="Start typing a movie…" oninput="qaSearch(this.value)"></div><div class="results" id="qaRes"></div>`;
     else if (l.type !== 'pics') add = `<div class="row"><b>➕ Add</b><input id="qaText" class="grow" placeholder="${l.type === 'chat' ? 'Twitch names' : 'Items'} — commas or new lines, x3 for triple odds" onkeydown="if(event.key==='Enter') qaText()"><button class="primary" onclick="qaText()">Add</button></div>`;
     else add = `<p class="help" style="margin:0">Add pictures in the 📋 Pool tab.</p>`;
-    box.innerHTML = `<div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0" id="blTitle"></h3><span id="blLuck"></span><input placeholder="Filter…" style="width:170px" oninput="blFilter=this.value.toLowerCase();renderBattleList()"></div>${add}<div id="blTable" style="margin-top:10px"></div><p class="scrollhint">Edit more in the 📋 Pool and 👥 People tabs.</p>`;
+    box.innerHTML = `<div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0" id="blTitle"></h3><span id="blLuck"></span></div><div class="row blSearch" style="margin-bottom:8px"><input id="blSearch" class="grow" type="search" placeholder="🔎 Search a person or movie…" value="${esc(blFilter)}" oninput="blFilter=this.value.toLowerCase().trim();renderBattleList()"><button class="ghost" id="blMoreBtn" onclick="blMore=!blMore;renderBattleList()"></button></div>${add}<div id="blTable" style="margin-top:10px"></div><p class="scrollhint">Edit more in the 📋 Pool and 👥 People tabs.</p>`;
   }
   if ($('blLuck')) $('blLuck').innerHTML = l.type === 'movies' ? (S.luckOn ? luckTools('movies') : '') : (document.activeElement?.closest?.('#blLuck') ? $('blLuck').innerHTML : `${luckTools(l.id)}<span class="help" style="margin:0 6px 0 10px">Rounds</span>${boSel(l.bestOf, `api('/api/lists/${l.id}',{bestOf:this.value},'PATCH').then(()=>toast('Saved'))`)}`);
   renderLuckDlg();
   if ($('qaPeople')) $('qaPeople').innerHTML = S.people.map(p => `<option value="${esc(p.name)}">${p.twitch ? esc(p.twitch) : ''}</option>`).join('');
-  const show = l.entries.filter(e => ['active', 'paused', 'benched', 'away'].includes(e.status) && (!blFilter || e.label.toLowerCase().includes(blFilter) || (e.backers || []).some(b => b.name.toLowerCase().includes(blFilter))));
+  // 📋 1.61.0 (Derek): the list shows who's REALLY in the battle first (the pieces on the cliff / in the running battle),
+  // then the rest under "Not in this battle" (shown with 👀). The search box finds a person or a movie in all of them.
+  const inSet = blInSet(l), isIn = e => inSet.has(e.id);
+  const q = blFilter, hit = e => !q || [e.label, e.sub, e.twitch, ...(e.backers || []).map(b => b.name), ...(e.backers || []).map(b => S.people.find(p => p.discordId === b.discordId)?.twitch)].some(x => x && String(x).toLowerCase().includes(q));
+  const all = l.entries.filter(e => ['active', 'paused', 'benched', 'away'].includes(e.status));
+  const notIn = all.filter(e => !isIn(e));
+  const show = all.filter(e => hit(e) && (isIn(e) || blMore || q));
   const act = l.entries.filter(e => e.status === 'active'), luckOnNow = l.type === 'movies' && S.luckOn;
-  const total = act.reduce((s, e) => s + (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1), 0) || 1;
-  $('blTitle').innerHTML = `📋 ${esc(l.name)} <span class="pill">${act.length} in</span>${show.length > act.length ? ` <span class="pill">${show.length - act.length} sitting out</span>` : ''}`;
+  const total = act.filter(isIn).reduce((s, e) => s + (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1), 0) || 1;
+  const inN = all.filter(isIn).length, running = !!S.cliff?.running && S.cliff.listId === l.id;
+  $('blTitle').innerHTML = `📋 ${esc(l.name)} <span class="pill" style="border-color:var(--good)" title="${running ? 'In the battle that is running now' : 'Waiting on the cliff: these are the ones in the next battle'}">✅ ${inN} ${running ? 'fighting' : 'in the battle'}</span>${notIn.length ? ` <span class="pill" title="In the pool but not in this battle (sitting out, haven't chatted, or didn't fit)">${notIn.length} not in</span>` : ''}`;
+  if ($('blMoreBtn')) { $('blMoreBtn').textContent = blMore ? '🙈 Only who\'s in' : `👀 Show the ${notIn.length} not in`; $('blMoreBtn').style.display = notIn.length ? '' : 'none'; }
   const tag = { paused: '<span class="tag p">⏸️ paused</span>', benched: '<span class="tag b">💤 won this week</span>', away: '<span class="tag b">📣 out tonight</span>' }, spotTag = '<span class="tag b">💤 a wild spot won this week</span>';
-  const rows = show.sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || (b.weight - a.weight) || a.label.localeCompare(b.label)).slice(0, 600).map(e => {
-    const spot = e.kind === 'spot', on = e.status === 'active', pct = on ? (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1) / total * 100 : 0;
+  let lastIn = null;
+  const rows = show.sort((a, b) => (isIn(a) ? 0 : 1) - (isIn(b) ? 0 : 1) || (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || (b.weight - a.weight) || a.label.localeCompare(b.label)).slice(0, 600).map(e => {
+    const spot = e.kind === 'spot', on = e.status === 'active', inNow = isIn(e), pct = on && inNow ? (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1) / total * 100 : 0;
+    const head = lastIn !== inNow ? `<tr class="blHead"><td colspan="${l.type === 'movies' ? 6 : 5}">${inNow ? `✅ In this battle (${all.filter(isIn).filter(hit).length})` : `💤 Not in this battle (${all.filter(x => !isIn(x)).filter(hit).length}) <small class="muted">sitting out, hasn't chatted yet, or didn't fit on the cliff</small>`}</td></tr>` : ''; lastIn = inNow;
+    const why = !inNow && on ? (l.type === 'movies' && S.settings.chatGate !== false && e.backers?.length && !S.chatters?.includes(e.backers[0].discordId) && !e.forceIn ? '<span class="tag b" title="Their picker hasn\'t typed in Twitch chat tonight (chat check)">💬 hasn\'t chatted</span>' : '<span class="tag b" title="More entries than fit on the cliff (Most pieces on the cliff); it can still get picked next time">🎲 didn\'t fit</span>') : '';
+    const rt = l.type === 'movies' || l.type === 'films' || l.type === 'web' ? blRun(e.details?.runtime) : '';
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const who = l.type === 'movies' ? (spot ? 'Wildcard' : e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you') : '';
-    return `<tr style="${on ? '' : 'opacity:.55'}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b> ${spot && e.status === 'benched' ? spotTag : tag[e.status] || ''}${on && e.forceIn ? ' <span class="tag w" title="You put it back yourself: no cooldown, no chat check">▶ put back by you</span>' : ''}<br><small class="muted">${[esc(e.sub || ''), who].filter(Boolean).join(' · ')}</small></td>
+    return `${head}<tr style="${on && inNow ? '' : 'opacity:.55'}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b> ${spot && e.status === 'benched' ? spotTag : tag[e.status] || ''}${why}${on && e.forceIn ? ' <span class="tag w" title="You put it back yourself: no cooldown, no chat check">▶ put back by you</span>' : ''}<br><small class="muted">${[esc(e.sub || ''), rt ? '⏱️ ' + rt : '', who].filter(Boolean).join(' · ')}</small></td>
       ${l.type === 'movies' ? `<td class="luck" title="Luck: extra % chance">${S.luckOn ? `🍀 <input type="number" step="0.5" min="0" value="${+(e.luckPct || 0).toFixed(2)}" style="width:62px;padding:2px 4px" onchange="api('/api/luck',{listId:'${l.id}',id:'${e.id}',luckPct:this.value})">%` : '<span class="muted">luck off</span>'}</td>` : ''}
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div></td>
-      <td style="white-space:nowrap">${on ? `<div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small>` : ''}</td>
+      <td style="white-space:nowrap">${on && inNow ? `<div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small>` : ''}</td>
       <td style="white-space:nowrap;text-align:right">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}${on ? `<button class="ghost" title="Disable for now (pause)" onclick="setStatus('${e.id}','paused')">⏸️</button>` : `<button class="ghost" title="Put it back in the battle now (skips the cooldown and the chat check)" onclick="setStatus('${e.id}','active')">▶</button>`}<button class="ghost danger" title="Delete" onclick="if(confirm('Delete ${esc(e.label).replace(/'/g, '')}?')) setStatus('${e.id}','removed')">✕</button></td></tr>`;
   }).join('');
   if (document.activeElement?.matches?.('#blTable input, #blTable select, #blTable textarea')) return; // don't redraw under your cursor while typing in it
-  $('blTable').innerHTML = show.length ? `<table><tr><th></th><th>Entry</th>${l.type === 'movies' ? '<th>Luck</th>' : ''}<th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>` : '<div class="empty">Nothing in this battle yet — add some above.</div>';
+  $('blTable').innerHTML = show.length ? `<table><tr><th></th><th>Entry</th>${l.type === 'movies' ? '<th>Luck</th>' : ''}<th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>` : q ? `<div class="empty">Nobody or nothing matches “${esc(blFilter)}”.</div>` : all.length ? `<div class="empty">Nobody is in this battle yet${l.type === 'movies' && S.settings.chatGate !== false ? ': people show up here once they type in Twitch chat' : ''}. ${notIn.length ? '👀 shows the rest.' : ''}</div>` : '<div class="empty">Nothing in this battle yet — add some above.</div>';
 }
+// who's really in the battle: the server's cliff (or the running battle); if it hasn't said yet, work it out the same way the server does
+// 🏁 Laps box on the Battle tab's right side (1.61.0, Derek): shows when the next battle is on a race map (not survival-only ones)
+function renderLaps() {
+  const boxes = document.querySelectorAll('[data-laps]'); if (!boxes.length) return;
+  const mp = (S.maps || []).find(m => m.id === S.mapNow), busy = S.phase === 'lobby' || S.phase === 'running';
+  if (!mp?.race) { boxes.forEach(b => { if (b.innerHTML) { b.innerHTML = ''; b.dataset.k = ''; } }); return; }
+  const n = Math.max(1, Math.min(50, Number(S.settings.f8Laps) || 5));
+  const h = `<div class="card soft lapsBox" style="margin-top:8px;padding:8px 12px"><div class="row" style="gap:6px"><b class="grow">🏁 Laps for this race</b><div class="odds"><button ${busy ? 'disabled' : ''} onclick="setLaps(${n - 1})">−</button><input class="lapsN" type="number" min="1" max="50" title="🏁 Laps for this race" value="${n}" ${busy ? 'disabled' : ''} onchange="setLaps(this.value)"><button ${busy ? 'disabled' : ''} onclick="setLaps(${n + 1})">+</button></div></div><p class="help" style="margin:2px 0 0">${busy ? 'Locked while the race runs: changes count from the next one.' : `${esc(mp.name)} · every race map uses this. Pick it before you start.`}</p></div>`;
+  boxes.forEach(b => { if (b.dataset.k !== h && !b.contains(document.activeElement)) { b.dataset.k = h; b.innerHTML = h; } });
+}
+function setLaps(v) { v = Math.max(1, Math.min(50, Math.round(Number(v) || 5))); S.settings.f8Laps = v; renderLaps(); api('/api/settings', { f8Laps: v }).then(() => toast(`🏁 ${v} lap${v === 1 ? '' : 's'}`)); }
+function blInSet(l) {
+  if (S.cliff && S.cliff.listId === l.id && Array.isArray(S.cliff.ids)) return new Set(S.cliff.ids);
+  const gate = l.type === 'movies' && S.settings.chatGate !== false, on = new Set(S.chatters || []);
+  return new Set(l.entries.filter(e => e.status === 'active' && (!gate || e.kind === 'spot' || e.forceIn || !e.backers?.length || on.has(e.backers[0].discordId))).map(e => e.id));
+}
+const blRun = m => { m = Math.round(Number(m) || 0); if (!m) return ''; const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h${r ? ` ${r} min` : ''}` : `${r} min`; }; // ⏱️ 127 → "2 h 7 min"
 let qaT;
 function qaSearch(q) {
   clearTimeout(qaT);
@@ -2709,7 +2769,7 @@ function renderPeople() {
       <td>${p.manual ? `<input class="tw" value="${esc(p.name)}" style="font-weight:700" onchange="api('/api/discord/people/${p.discordId}',{name:this.value})">` : `<b data-user="${esc(p.twitch || '')}" data-discord="${esc(p.discordId)}" title="Double-click for their profile" style="cursor:pointer">${esc(p.name)}</b>`}<br><small class="muted">${p.manual ? 'added by you' : 'Discord'}${p.twitch && !p.manual ? ' · 💜 linked' : ''} · ${p.watched} watched</small></td>
       <td><button class="${p.chatting ? '' : 'ghost'}" onclick="api('/api/stream/toggle',{discordId:'${p.discordId}'})">${p.chatting ? '🟢 In' : '⚪ Not yet'}</button></td>
       <td style="white-space:nowrap"><input type="number" min="0" max="99" value="${p.used}" style="width:56px;padding:4px" onchange="api('/api/discord/people/${p.discordId}',{picksUsed:this.value})"> <small class="muted">/ ${max}</small>${locked ? ' 🔒' : ''}${p.free ? `<br><small style="color:var(--gold)" title="Their movie got watched outside a battle: one pick that skips the limit and closed picks">🎟️ +${p.free} free pick</small>` : ''}</td>
-      <td>${p.active.map(m => `<span class="chip">${m.benched ? '💤 ' : m.paused ? '⏸️ ' : ''}${esc(m.label)}${m.sub ? ` (${esc(m.sub)})` : ''}<button title="Take ${esc(p.name)} off this movie" onclick="unback('${m.id}','${p.discordId}')">✕</button></span>`).join('')}
+      <td>${p.active.map(m => `<span class="chip"${m.away ? ' title="Sitting out tonight (!sitout): back with !imback"' : ''}>${m.benched ? '💤 ' : m.paused ? '⏸️ ' : m.away ? '🛌 ' : ''}${esc(m.label)}${m.sub ? ` (${esc(m.sub)})` : ''}<button title="Take ${esc(p.name)} off this movie" onclick="unback('${m.id}','${p.discordId}')">✕</button></span>`).join('')}
         <button class="ghost" style="padding:2px 10px" onclick="addMovieFor('${p.discordId}')">＋ movie</button><div class="results" id="pm-${p.discordId}"></div></td>
       <td><input class="tw" value="${esc(p.twitch)}" placeholder="not linked" onchange="api('/api/discord/people/${p.discordId}', {twitch:this.value}).then(()=>toast('Twitch link saved'))"></td>
       <td style="white-space:nowrap"><button ${p.used ? '' : 'disabled'} title="Give them a fresh set of picks" onclick="api('/api/discord/people/${p.discordId}', {resetPicks:true}).then(()=>toast('They can pick again'))">🔓</button>${p.manual ? `<button class="ghost danger" title="Remove this person" onclick="if(confirm('Remove this person and take them off their movies?')) api('/api/people/${p.discordId}',null,'DELETE')">✕</button>` : ''}</td></tr>`;
@@ -2920,7 +2980,7 @@ function drawSpots() {
       <table class="went" id="wEntTable" style="width:100%"><thead><tr><th title="Drag ⠿ to move a spot up or down the list"></th><th title="👁️ showing on the wheel / 🙈 invisible (off the wheel, still in this list). Click to switch.">👁️</th><th>🎨</th><th style="text-align:left">Spot</th><th title="Size: 2 = twice as big">Size</th><th>%</th><th style="text-align:left">Rule</th><th></th></tr></thead><tbody>
       ${w.entries.map((e, i) => `<tr data-i="${i}" class="${e.on === false || !e.weight || e.voided ? 'off' : ''}"><td class="wgrip" title="Drag to move this spot">⠿</td><td>${e.voided ? `<button class="ghost" title="Taken off by the void tonight. Press to bring it back." onclick="wUnvoid('${e.id}','${w.id}')">🙈</button>` : e.on !== false ? `<button class="ghost wEye" title="Showing on the wheel. Press to make it invisible (it stays in this list)." onclick="wEnt(${i},{on:false})">👁️</button>` : `<button class="ghost wEye hid" title="Invisible: not on the wheel. Press to show it again." onclick="wEnt(${i},{on:true})">🙈</button>`}</td>
         <td><input type="color" value="${e.color || autoCol(e)}" title="${e.color ? 'Custom color (right-click to reset)' : 'Auto color'}" onchange="wEnt(${i},{color:this.value})" oncontextmenu="event.preventDefault();wEnt(${i},{color:null})"></td>
-        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.goTo ? `<small class="muted" title="When this spot wins it goes there, then comes back">🔀 → ${goToName(e.goTo)}</small>` : e.type === 'autolink' ? '<small style="color:#ff8a7a">⚠️ pick where it links (⚙)</small>' : ''}${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
+        <td style="min-width:150px"><input type="text" value="${esc(e.text)}" onchange="wEnt(${i},{text:this.value})" ${e.type === 'void' ? 'disabled title="Change the void in ⚙️ Wheel settings"' : ''}>${e.goTo ? `<small class="muted" title="When this spot wins it goes there, then comes back">🔀 → ${goToName(e.goTo)}</small>` : e.type === 'autolink' ? '<small style="color:#ff8a7a">⚠️ pick where it links (⚙)</small>' : ''}${e.voided ? `<small style="color:#ff8a7a">🕳️ voided tonight <a href="#" onclick="wUnvoid('${e.id}','${w.id}');return false">bring back</a></small>` : ''}${e.sound ? '<small class="muted"> 🔊</small>' : ''}${e.reveal?.on ? `<small class="muted" title="Hidden reveal: ${esc((e.reveal.text || '(a picture)').slice(0, 80))}"> 🎁 mystery</small>` : ''}${e.noPointRespin || e.noBankRespin ? `<small class="muted"> 🚫 respins</small>` : ''}</td>
         <td style="white-space:nowrap">${e.type === 'void' ? `<button class="ghost" title="Shrink the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><span class="muted" title="Chat can only change the void with money (subs, gift subs, bits, donations). You can always change it." style="padding:0 6px">💵 / you</span><button class="ghost" title="Grow the void by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>` : `<button class="ghost" title="Shrink by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},-1)">−</button><input type="number" min="0" step="0.1" value="${+Number(e.weight).toFixed(3)}" onchange="wEnt(${i},{weight:Number(this.value)})"><button class="ghost" title="Grow by ${w.opts.growPct || 10}% of the wheel" onclick="wGrow(${i},1)">+</button>`}</td><td class="muted" style="white-space:nowrap">${pct(e)}%</td>
         <td style="min-width:140px">${e.type === 'void' ? '<b>🕳️ Void</b>' : !w.opts.rules ? '<span class="muted" title="Rules are off for this wheel (⚙️ Wheel settings)">plain</span>' : `${typeSel(e.type, `wEnt(${i},{type:this.value${e.type !== 'countdown' && e.type !== 'autocount' && e.type !== 'timercount' ? `,count:${e.countStart ?? 3},countStart:${e.countStart ?? 3}` : ''}})`)}${e.type === 'countdown' || e.type === 'autocount' || e.type === 'timercount' ? `<div><small class="muted">${e.count}/${e.countStart} left</small></div>` : e.type === 'timermax' ? `<div><small class="muted">won ${e.wins || 0}/${e.maxWins ?? 1} tonight</small></div>` : ''}`}${e.rule ? `<div class="muted" style="font-size:12px;max-width:220px;white-space:normal" title="${esc(e.rule)}">📜 ${esc(e.rule.length > 60 ? e.rule.slice(0, 60) + '…' : e.rule)}</div>` : ''}</td>
         <td style="white-space:nowrap"><button class="ghost ${wOpen === e.id ? 'primary' : ''}" title="Spot options (type, respins, picture)" onclick="wOpen=wOpen==='${e.id}'?null:'${e.id}';renderWheel()">⚙</button><button class="ghost danger" title="Take it off the wheel (it goes invisible and stays in this list)" onclick="wDel(${i})">✕</button></td></tr>
@@ -3019,10 +3079,25 @@ function spotOptsHTML(w, e, i) {
           <label>🔗 Link to a web page (optional): a button opens it when this spot wins<input type="url" placeholder="e.g. https://www.geoguessr.com" value="${esc(e.link || '')}" onchange="wEnt(${i},{link:this.value.trim()})"></label>${e.link ? `<p class="help" style="margin:2px 0 8px"><a href="#" onclick="wLink('${esc(e.link)}');return false">🔗 Try it</a></p>` : ''}
           ${goToHTML(w, e, i)}
           <label>📜 Words shown on stream when it lands (optional)<textarea placeholder="e.g. Play one round of Mario Kart" onchange="wEnt(${i},{rule:this.value})">${esc(e.rule || '')}</textarea></label>
+          ${e.type !== 'void' ? revealHTML(e, i) : ''}
           <div class="row" style="gap:14px;flex-wrap:wrap"><label class="ck"><input type="checkbox" ${e.noPointRespin ? 'checked' : ''} onchange="wEnt(${i},{noPointRespin:this.checked})"> <span>🚫 No channel point respins</span></label><label class="ck"><input type="checkbox" ${e.noBankRespin ? 'checked' : ''} onchange="wEnt(${i},{noBankRespin:this.checked})"> <span>🚫 No respins from given/saved spins</span></label></div>
           <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.image ? `<img src="${esc(e.image)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : ''}<button onclick="wPic(url=>wEnt(${i},{image:url}))">🖼️ ${e.image ? 'Change' : 'Add a'} picture</button>${e.image ? `<button class="ghost" onclick="wEnt(${i},{image:''})">Remove picture</button>` : ''}</div>
           <div class="row" style="gap:8px;margin-top:8px;align-items:center">${e.sound ? `<button class="ghost" onclick="wPlay('${esc(e.sound)}')">▶️</button><span class="muted">🔊 plays when it lands here</span>` : ''}<button onclick="wSnd1(url=>wEnt(${i},{sound:url}))">🔊 ${e.sound ? 'Change' : 'Add a'} sound for this spot</button>${e.sound ? `<button class="ghost" onclick="wEnt(${i},{sound:''})">Remove sound</button>` : ''}</div>
           ${e.type !== 'void' ? `<div class="row" style="justify-content:flex-end;margin-top:12px"><button class="ghost danger" onclick="wDelForGood(${i})">🗑 Delete for good</button></div>` : ''}`;
+}
+// 🎁 hidden reveal (mystery spot, 1.61.0, Derek): the spot's words / picture are the cover, the card in the pack shows these
+function revealHTML(e, i) {
+  const r = e.reveal || {};
+  return `<div class="card soft" style="padding:8px 12px;margin:8px 0"><label class="ck" style="margin:0"><input type="checkbox" ${r.on ? 'checked' : ''} onchange="wReveal(${i},{on:this.checked})"> <span>🎁 <b>Hidden reveal</b> (mystery spot): nobody knows what it does until it lands. The spot's words and picture are the cover; when it lands, a card pack pops up, you click it and the card inside shows the hidden words / picture</span></label>
+    ${r.on ? `<label style="margin-top:6px">🤫 Hidden words (on the card)<textarea placeholder="e.g. Everyone gets a free respin!" onchange="wReveal(${i},{text:this.value})">${esc(r.text || '')}</textarea></label>
+      <div class="row" style="gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap">${r.image ? `<img src="${esc(r.image)}" style="width:44px;height:44px;border-radius:8px;object-fit:cover">` : ''}<button onclick="wPic(url=>wReveal(${i},{image:url}))">🖼️ ${r.image ? 'Change the' : 'Add a'} hidden picture</button>${r.image ? `<button class="ghost" onclick="wReveal(${i},{image:''})">Remove it</button>` : ''}<span class="grow"></span><button class="ghost" onclick="revealPreview(${i})" title="Opens the card pack only here, not on stream">👀 Preview it</button></div>
+      ${!r.text && !r.image ? '<p class="help" style="margin:4px 0 0">⚠️ Add hidden words or a picture, or it lands like a normal spot.</p>' : ''}` : ''}</div>`;
+}
+function wReveal(i, ch) { const e = wCur().entries[i]; wEnt(i, { reveal: { on: false, text: '', image: '', ...(e.reveal || {}), ...ch } }); }
+function revealPreview(i) { // 👀 only here (nothing on stream)
+  const e = wCur().entries[i], r = e.reveal || {};
+  RevealPack.show(document.body, { id: 'preview', cover: { text: e.text, image: e.image }, theme: S.settings.revealThemed === false ? null : holOn, clickable: true, fixed: true,
+    onOpen: () => RevealPack.open('preview', { text: r.text, image: r.image }, e.text), onClose: () => RevealPack.remove(true) });
 }
 function wSpotDlgSync() {
   let d = $('wSpotDlg'); const w = wCur(), i = w ? w.entries.findIndex(x => x.id === wOpen) : -1;
@@ -3064,7 +3139,7 @@ function drawWheelResult() {
   const respin = `<button class="primary" onclick="wSpin('respin')">🔁 ${esc(me)} respin</button>`;
   if (F) { // ⏱️ time ran out: this is what we do
     $('wResult').innerHTML = `<div class="wres wfinal"><div class="muted">⏱️ TIME! The wheel has spoken · ${esc(new Date(F.at).toLocaleTimeString())}</div>
-      <div class="t" style="font-size:32px">🏆 ${esc(F.text)}</div><div class="muted">🍀 ${F.pct}% of the wheel</div>${F.rule ? `<div class="r">📜 ${esc(F.rule)}</div>` : ''}${linkBtn(F, true)}
+      <div class="t" style="font-size:32px">🏆 ${esc(F.revealed?.text || F.text)}</div>${F.revealed ? `<div class="muted">🎁 Mystery spot: ${esc(F.text)}</div>` : ''}<div class="muted">🍀 ${F.pct}% of the wheel</div>${F.rule ? `<div class="r">📜 ${esc(F.rule)}</div>` : ''}${linkBtn(F, true)}
       <p class="help" style="margin:8px 0 0">Respins and moves are closed for this round. Press 🎡 SPIN to start a new round (or ⏪ Undo if something went wrong).</p></div>`;
     return;
   }
@@ -3080,6 +3155,7 @@ function drawWheelResult() {
   const src = r.by?.source === 'points' ? ' 💜 points' : r.by?.source === 'bank' ? ' 🎟️ saved spin' : r.by?.source === 'mine' ? ' 🎟️ your spin' : r.by?.source === 'void' ? ' 🕳️ the void' : '';
   $('wResult').innerHTML = `<div class="wres" style="border-color:${esc(r.color)}"><div class="muted">${{ spin: '🎡 Landed on', respin: '🔁 Respin landed on', up: '⬆️ Moved up to', down: '⬇️ Moved down to' }[r.kind]} · ${esc(new Date(r.at).toLocaleTimeString())} · ${esc(r.by?.name || '')}${src}</div>
     <div class="t">${esc(r.text)}${rules && /^auto/.test(type) ? ' <span class="muted" style="font-size:16px">(auto)</span>' : ''}</div><div class="muted">🍀 ${r.pct}% of the wheel${r.from ? ` · was ${esc(r.from.text)}` : ''}${r.voided ? ' · 🕳️ voided for tonight' : ''}</div>${r.rule ? `<div class="r">📜 ${esc(r.rule)}</div>` : ''}
+    ${r.mystery ? `<div class="r" style="border-color:var(--gold)">🎁 ${r.revealed ? `Revealed: <b>${esc(r.revealed.text || '(a picture)')}</b>${r.revealed.image ? ` <img src="${esc(r.revealed.image)}" style="height:34px;vertical-align:middle;border-radius:6px">` : ''}` : `Mystery spot! <button class="primary" style="margin-left:6px" onclick="api('/api/wheel/reveal',{id:'${esc(r.id)}'})">🎁 Open the card pack</button>`}</div>` : ''}
     ${acts ? `<div style="margin-top:10px;display:grid;gap:8px">${acts}</div>` : ''}
     <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">${e.type !== 'void' ? `<button class="ghost" onclick="wGrowLast(1)">📈 Grow this spot</button><button class="ghost" onclick="wGrowLast(-1)">📉 Shrink it</button>` : ''}<button class="ghost" onclick="wHideLast()" title="Takes it off the wheel but keeps it in the list (press 🙈 there to show it again)">🙈 Make it invisible</button></div></div>`;
 }
@@ -3093,7 +3169,7 @@ function drawRound() {
   const why = { auto: '⚡ Paused: auto spot. Spin again to carry on.', countdown: '🔢 Paused: countdown spot. Spin again to carry on.', you: '⏸️ Paused by you' }[R.why] || '';
   const head = `<div class="row drag" style="justify-content:space-between;align-items:center" onpointerdown="wRoundDrag(event)" title="Drag to move it"><b>⏱️ Round timer</b><span><button class="ghost" style="padding:2px 8px" title="${wRoundMin ? 'Show' : 'Make it small'}" onclick="wRoundMin=!wRoundMin;drawRound()">${wRoundMin ? '▸' : '▾'}</button>${R.state === 'ended' ? `<button class="ghost" style="padding:2px 8px" title="Close" onclick="wRoundGone='${key}';drawRound()">✕</button>` : ''}</span></div>`;
   const L = R.state === 'ended' ? WD.final : WD.last?.wheelId === R.wheelId ? WD.last : null; // the winner so far (or the final winner)
-  const who = wSpinning && R.state !== 'ended' ? '<div class="who">🎡 …</div>' : L ? `<div class="who">${R.state === 'ended' ? '🏆 WINNER: ' : '🎯 '}${esc(L.text)}</div>${R.state === 'ended' ? `<div style="text-align:center">${linkBtn(L, true)}</div>` : ''}` : '';
+  const who = wSpinning && R.state !== 'ended' ? '<div class="who">🎡 …</div>' : L ? `<div class="who">${R.state === 'ended' ? '🏆 WINNER: ' : '🎯 '}${esc(L.revealed?.text || L.text)}</div>${R.state === 'ended' ? `<div style="text-align:center">${linkBtn(L, true)}</div>` : ''}` : '';
   if (wRoundMin) { box.innerHTML = head + `<div class="big" style="font-size:30px" id="wrBig"></div>${who}`; wRoundTick(); return; }
   box.innerHTML = head + `<div class="big" id="wrBig"></div>${who}<div class="bar"><i id="wrBar"></i></div>
     <div class="why">${R.state === 'armed' ? 'Starts when the spin lands' : R.state === 'ending' ? '⏱️ Time! Whatever this spin lands on wins' : R.state === 'ended' ? (L ? 'The wheel has spoken!' : 'Time is up') : L ? `That's the winner if the time runs out now. ${why}` : why}</div>
@@ -3147,6 +3223,23 @@ function wheelSpinMsg(m) {
   if (WD && 'round' in m) { WD.round = m.round; if (m.kind === 'spin') WD.final = null; wSpinning = true; drawRound(); }
   wSpinning = true; $('wResult').innerHTML = `<div class="wres"><div class="t">${m.kind === 'respin' ? '🔁 Respinning…' : m.kind === 'spin' ? '🎡 Spinning…' : '↕️ Moving…'}</div><div class="muted">${esc(m.by?.name || '')}${m.by?.source === 'points' ? ' 💜 channel points' : ''}</div></div>`;
   WVc.set(m.wheel, m.from); WVc.spin({ from: m.from, to: m.to, dur: m.dur, ease: m.ease }, () => { wSpinning = false; WVc.highlight(m.index); loadWheel().then(() => { drawWheelResult(); if (view === 'wheel' && wTab !== 'spots') renderWheel(); }); });
+}
+// 🎁 mystery spot card pack (1.61.0): pops up here when the wheel lands on a hidden reveal spot. Click it to open it (the stream follows).
+function ctlReveal(m) {
+  if (m.stage === 'close') return RevealPack.remove(true);
+  if (!RevealPack.current() || RevealPack.current().id !== m.id) RevealPack.show(document.body, { id: m.id, cover: m.cover, theme: m.theme, clickable: m.stage === 'pack', fixed: true,
+    onOpen: id => api('/api/wheel/reveal', { id }).catch(() => { const c = RevealPack.current(); if (c && !c.open) RevealPack.remove(true); }),
+    onClose: () => api('/api/wheel/reveal', { close: true }).catch(() => RevealPack.remove(true)) });
+  if (m.stage === 'open') RevealPack.open(m.id, m.hidden, m.cover?.text);
+}
+async function revealLand() { // 🧪 land on the picked wheel's first mystery spot
+  await loadWheel().catch(() => {}); const w = wCur(), e = w?.entries.find(x => x.reveal?.on && (x.reveal.text || x.reveal.image) && x.on !== false && !x.voided && x.weight > 0);
+  if (!e) return toast('No mystery spot on this wheel yet: 🎡 Wheel → ⚙ on a spot → 🎁 Hidden reveal (add hidden words or a picture).', 8000);
+  try { await api('/api/test/wheel-land', { entryId: e.id, wheelId: w.id }); setView('wheel'); toast(`🎡 Landing on “${esc(e.text)}”…`); } catch {}
+}
+async function revealTest() { // 🧪 Test tab: a pretend mystery card (theme = a holiday, or the app's style)
+  const th = $('tRevTheme')?.value || '';
+  try { await api('/api/test/reveal', { theme: th || null, text: $('tRevText')?.value.trim() || undefined }); toast('🎁 A pretend mystery card pack is up: click it to open it (the stream shows it too)'); } catch {}
 }
 // 📜 wheel history, grouped by stream night
 async function drawWHist() {
@@ -3496,7 +3589,7 @@ async function poolCheck() {
   $('poolCheck').innerHTML = `<p class="help">Checked ${r.checked} movie${r.checked === 1 ? '' : 's'}${r.partial ? ' (ran out of time: press it again for the rest)' : ''}. ${r.found.length ? `${r.found.length} break the rules. Nothing happens to them unless you ban them:` : 'All of them are fine ✅'}</p>${r.found.map((m, i) => `<div class="row" style="margin:3px 0"><span class="grow"><b>${esc(m.title)}</b> <span class="muted">(${esc(m.year || '????')})</span><br><small class="muted">${BAN_KIND[m.key] || '🚫'} ${esc(m.reason)}${m.who ? ` · ${esc(m.who)}'s pick` : ''}</small></span><button class="danger" onclick="poolBan([poolFound[${i}]])">🚫 Ban</button></div>`).join('')}${r.found.length > 1 ? `<button class="danger" style="margin-top:6px" onclick="poolBan(poolFound)">🚫 Ban all ${r.found.length}</button>` : ''}`;
 }
 async function poolBan(list) { if (list.length > 1 && !confirm(`Ban all ${list.length}? They leave the pool (hidden, not deleted).`)) return; const r = await api('/api/bans/rule-ban', { movies: list }); toast(`🚫 Banned ${r.n}`); await loadBans(); poolCheck(); }
-function renderBanSide() { if (!S) return; $('banYear').checked = S.settings.banCurrentYear !== false; $('banYearNum').textContent = new Date().getFullYear(); const br = S.settings.banRules || {}; for (const k of ['english', 'religious', 'documentary']) $('br' + k[0].toUpperCase() + k.slice(1)).checked = br[k] !== false; if (document.activeElement !== $('banAsk')) $('banAsk').value = S.settings.banAsk || 'Kirb'; }
+function renderBanSide() { if (!S) return; $('banYear').checked = S.settings.banCurrentYear !== false; $('banYearNum').textContent = new Date().getFullYear(); const br = S.settings.banRules || {}; for (const k of ['english', 'religious', 'documentary', 'dubbed']) $('br' + k[0].toUpperCase() + k.slice(1)).checked = br[k] !== false; $('brDubRow').style.opacity = br.english === false ? '.5' : ''; if (document.activeElement !== $('brDubVotes')) $('brDubVotes').value = br.dubVotes || 1000; if (document.activeElement !== $('banAsk')) $('banAsk').value = S.settings.banAsk || 'Kirb'; }
 let bsT;
 function banSearch(q) {
   clearTimeout(bsT);
@@ -3518,7 +3611,7 @@ function banSearch(q) {
 async function banIt(id) { const r = await api('/api/bans', { tmdbId: id, reason: $('banReason').value.trim() }); toast('🚫 ' + esc(r.msg)); $('banReason').value = ''; await loadBans(); banSearch($('banQ').value); }
 
 // ---------- 🔊 sounds ----------
-const SOUND_INFO = { chug: '💧 Hydrate pop-up (chugging water)', stretch: '🙆 Stretch pop-up', confettiPop: '🎉 Viewer\'s choice: confetti pop', crowdWild: '🎉 Viewer\'s choice: crowd going wild', fanfare: '🏆 Winner fanfare', celebrate: '🎉 Claimed celebration', music: '🎵 Battle music (loops)', lobby: '⏳ Countdown / chat timer music (loops)', go: '📣 Fight starts', tick: '⏱️ Countdown tick', final5: '⏱️ Last 5 seconds', suddendeath: '🚨 Sudden death', claimStart: '⏱️ Claim timer starts', ding: '💬 Winner typed in chat', buzzer: '⏰ Time\'s up', bonk: '💥 Pieces bump', land: '⬇️ Piece lands', dash: '💨 Dash', crumble: '🪨 Cliff crumbles', fall: '😱 Piece falls off', out: '❌ Knocked out', lucky: '🍀 Lucky save', alert: '⚠️ Event warning', comet: '☄️ Comet', smack: '👊 Comet hit', boom: '🌠 Meteor impact', collapse: '🪨 Edge collapse', earthquake: '🌋 Earthquake', meteors: '🌠 Meteor shower', wind: '🌬️ Gale', ice: '🧊 Ice age', tornado: '🌪️ Tornado', shockwave: '💥 Shockwave', thunder: '⚡ Thunder', lightning: '⚡ Lightning zap', boulder: '🪨 Boulder', swap: '🌀 Teleport swap', lowgrav: '🪐 Low gravity', queued: '📥 Event queued', joined: '➕ Someone joined', pop: '🫧 Pop' };
+const SOUND_INFO = { packShake: '🎁 Mystery spot: the pack shakes', packTear: '🎁 Mystery spot: the pack tears open', cardReveal: '🎁 Mystery spot: the card is revealed', chug: '💧 Hydrate pop-up (chugging water)', stretch: '🙆 Stretch pop-up', confettiPop: '🎉 Viewer\'s choice: confetti pop', crowdWild: '🎉 Viewer\'s choice: crowd going wild', fanfare: '🏆 Winner fanfare', celebrate: '🎉 Claimed celebration', music: '🎵 Battle music (loops)', lobby: '⏳ Countdown / chat timer music (loops)', go: '📣 Fight starts', tick: '⏱️ Countdown tick', final5: '⏱️ Last 5 seconds', suddendeath: '🚨 Sudden death', claimStart: '⏱️ Claim timer starts', ding: '💬 Winner typed in chat', buzzer: '⏰ Time\'s up', bonk: '💥 Pieces bump', land: '⬇️ Piece lands', dash: '💨 Dash', crumble: '🪨 Cliff crumbles', fall: '😱 Piece falls off', out: '❌ Knocked out', lucky: '🍀 Lucky save', alert: '⚠️ Event warning', comet: '☄️ Comet', smack: '👊 Comet hit', boom: '🌠 Meteor impact', collapse: '🪨 Edge collapse', earthquake: '🌋 Earthquake', meteors: '🌠 Meteor shower', wind: '🌬️ Gale', ice: '🧊 Ice age', tornado: '🌪️ Tornado', shockwave: '💥 Shockwave', thunder: '⚡ Thunder', lightning: '⚡ Lightning zap', boulder: '🪨 Boulder', swap: '🌀 Teleport swap', lowgrav: '🪐 Low gravity', queued: '📥 Event queued', joined: '➕ Someone joined', pop: '🫧 Pop' };
 let sounds = [], uploadFor = null, sndMap = '', sndPer = {};
 async function loadSounds() { const j = await fetch('/api/sounds/list' + (sndMap ? '?map=' + sndMap : '')).then(r => r.json()); sounds = j.sounds; sndPer = j.perMap || {}; drawSounds(); renderSound(); }
 function drawSounds() {
@@ -3617,6 +3710,7 @@ function openSettings(force) {
   const s = S.settings, port = S.port, tw = S.status.twitch, o = S.owner, d = S.status.discord;
   const f = (k, label, ph = '', type = 'text', extra = '') => `<label>${label}</label><input data-k="${k}" type="${type}" value="${esc(s[k])}" placeholder="${esc(ph)}" ${/Command$|^spotName$|^colorReward$|^streamerName$|^twitchChannel$|^discordChannelName$|^letterboxdUser$/.test(k) ? 'class="short"' : ''} ${extra}>`;
   const ck = (k, text, def = true) => `<label class="ck"><input type="checkbox" data-k="${k}" ${(def ? s[k] !== false : !!s[k]) ? 'checked' : ''}> <span>${text}</span></label>`;
+  const cki = (k, text, def = true, then = '') => `<label class="ck"><input type="checkbox" ${(def ? s[k] !== false : !!s[k]) ? 'checked' : ''} onchange="S.settings['${k}']=this.checked;api('/api/settings',{${k}:this.checked}).then(()=>toast('Saved'));${then}"> <span>${text}</span></label>`; // (saves right away)
   const evOpts = sel => Object.entries(S.events).map(([k, e]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${e.icon} ${e.name}</option>`).join('');
   const subs = {
     account: `<h3>👤 Your account</h3>
@@ -3773,13 +3867,40 @@ function openSettings(force) {
       ${holStyleHTML()}
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
     obs: `<h3>🎥 OBS (optional)</h3>
-      <p class="help">Needed for the Battle tab's <b>📺 Capture window</b> (a window from your PC, small in the top-left of your stream) and the wheel's <b>☠️ Doomsday</b> (when the void swallows the wheel, Movie Royal turns your mic and camera off right away and ends the stream 15 seconds later).<br>
-      In OBS: <b>Tools → WebSocket Server Settings</b> → tick <b>Enable WebSocket server</b> → <b>Show Connect Info</b> → copy the password here. (OBS 28 or newer has it built in.)</p>
+      <p class="help">Movie Royal can do a few things in OBS for you (each one below can be switched off). To connect: in OBS, <b>Tools → WebSocket Server Settings</b> → tick <b>Enable WebSocket server</b> → <b>Show Connect Info</b> → copy the password here. (OBS 28 or newer has it built in.)</p>
       ${f('obsUrl', 'OBS address (leave this unless you changed the port in OBS)', 'ws://127.0.0.1:4455')}
       ${f('obsPassword', 'OBS WebSocket password', 'paste here', 'password')}
-      <div>${f('obsMic', 'Your mic in OBS (pick it from the list; empty = every mic in OBS)', 'Mic/Aux', 'text', 'list="obsIn"')}${f('obsCam', 'Your camera in OBS (pick it from the list; empty = every camera in OBS)', 'Video Capture Device', 'text', 'list="obsIn"')}</div><datalist id="obsIn"></datalist>
       <div class="row" style="gap:8px;margin-top:8px;align-items:center"><button onclick="obsTest()">🔌 Save &amp; test the connection</button><span id="obsRes" class="help" style="margin:0"></span></div>
-      <p class="help">The test never changes anything in OBS. It lists your sources so you can pick your mic and camera from the boxes above.</p>`,
+      <p class="help">The test never changes anything in OBS. It lists your sources so you can pick your mic and camera below.</p>
+      <h3 style="margin-top:18px">🔌 What Movie Royal may do in OBS</h3>
+      ${cki('obsOn', '🎥 Let Movie Royal use OBS (off = it never touches OBS, and takes out what it added)', true, "$('obsParts').style.opacity=this.checked?'':'.45'")}
+      <div id="obsParts" style="${s.obsOn === false ? 'opacity:.45' : ''}">
+      <div class="card soft obsBox"><h4>☠️ Doomsday</h4>
+        ${cki('obsDoomOn', '☠️ When the void swallows the wheel: mute my mic, hide my camera and end the stream 15 seconds later')}
+        <p class="help">Off = the Doomsday screen still shows on stream, but nothing in OBS is touched. Your mic and camera come back on by themselves once the stream is over.</p>
+        <div>${f('obsMic', 'Your mic in OBS (pick it from the list; empty = every mic in OBS)', 'Mic/Aux', 'text', 'list="obsIn"')}${f('obsCam', 'Your camera in OBS (pick it from the list; empty = every camera in OBS)', 'Video Capture Device', 'text', 'list="obsIn"')}</div><datalist id="obsIn"></datalist>
+        <div class="row" style="gap:6px;margin-top:6px"><button onclick="obsMuteTest()">🎥 Test mic + camera off (5 s)</button><button onclick="api('/api/test/doom-preview',{}).then(()=>toast('☠️ Doomsday screen only: nothing turns off'))">☠️ Show the Doomsday screen only</button></div></div>
+      <div class="card soft obsBox"><h4>📺 Capture window</h4>
+        ${cki('obsCapOn', '📺 Capture window: a window from your PC (your browser, a YouTube video…) small in the top-left corner of your stream')}
+        <p class="help" style="margin:2px 0 6px">${(S.capture || {}).window || s.capWindow ? `Window: <b>${esc(String((S.capture || {}).window || s.capWindow).split(':')[0])}</b> · size ${Number((S.capture || {}).size || s.capSize) || 30}%` : '⚠️ No window picked yet: press ⚙ Set it up.'}</p>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="capOpen()">⚙ Set it up (window + size)</button><button onclick="capToggle(${!(S.capture || {}).on})">${(S.capture || {}).on ? '🙈 Hide it now' : '👀 Show it now'}</button></div>
+        <label class="ck" style="margin-top:6px"><input type="checkbox" ${s.capAutoShow !== false ? 'checked' : ''} onchange="api('/api/capture/settings',{autoShow:this.checked}).then(()=>toast('Saved'))"> <span>⏱️ Show it by itself during the 2-min join timer (it hides when the battle starts)</span></label>
+        <label class="ck"><input type="checkbox" ${s.capAutoHide ? 'checked' : ''} onchange="api('/api/capture/settings',{autoHide:this.checked}).then(()=>toast('Saved'))"> <span>🙈 Always hide it when a battle starts (also when you turned it on yourself)</span></label></div>
+      <div class="card soft obsBox"><h4>🎉 Viewer's choice celebration</h4>
+        <p class="help" style="margin:0 0 6px">The confetti when someone redeems 🎉 Viewer's choice: a browser source <b>Movie Royal celebration</b> on top of the scenes you pick. ${S.settings.choiceObs ? '<b style="color:var(--good)">On your stream now.</b>' : 'Not in OBS right now.'}</p>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${S.settings.choiceObs ? '' : 'primary'}" onclick="choiceObs(${!S.settings.choiceObs})">${S.settings.choiceObs ? '⏸ Take it out of OBS' : '▶ Put it on my stream (pick scenes)'}</button>${S.settings.choiceObs ? '<button onclick="choicePick()">🎬 Change scenes</button>' : ''}<button class="ghost" onclick="api('/api/test/vr',{kind:'choice'}).then(()=>toast('🎉 Pretend viewer\\'s choice'))">🧪 Try it</button></div></div>
+      <div class="card soft obsBox"><h4>📣 Roll call</h4>
+        ${cki('rollOnGame', '📣 Show roll call on the game screen')}
+        <p class="help">Roll call can also be its own <b>browser source</b>, so it shows in scenes that don't have the game screen (like your camera or Just Chatting scene). It's see-through until a roll call starts. ${S.settings.rollObs ? '<b style="color:var(--good)">In OBS now (Movie Royal roll call).</b>' : ''}</p>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${S.settings.rollObs ? '' : 'primary'}" onclick="${S.settings.rollObs ? 'rollObs(false)' : `scenePick('roll')`}">${S.settings.rollObs ? '⏸ Take it out of OBS' : '➕ Add it to OBS for me (pick scenes)'}</button>${S.settings.rollObs ? `<button onclick="scenePick('roll')">🎬 Change scenes</button>` : ''}<button class="ghost" onclick="window.open('/rollcall.html?demo=1','_blank','width=960,height=560')">👀 Preview (pretend roll call)</button></div>
+        <details style="margin-top:6px"><summary>Add it by hand instead</summary><ol class="help" style="margin:6px 0 0 18px;padding:0">
+          <li>In OBS, pick the scene, then <b>Sources → + → Browser</b>, name it <b>Roll call</b>.</li>
+          <li>URL: <code>http://localhost:${port}/rollcall.html</code> <button class="ghost" style="padding:2px 8px" onclick="copyText('http://localhost:${port}/rollcall.html').then(()=>toast('Copied'))">📋 Copy</button></li>
+          <li>Width <b>1920</b>, Height <b>1080</b>, then OK. Stretch it over the whole scene and keep it on top.</li>
+          <li>Want the roll call sounds from it too? Add <code>?sound=1</code> to the end of the address (leave it off if the game screen is playing in the same scene).</li></ol></details></div>
+      <div class="card soft obsBox"><h4>🖥️ The game screen</h4>
+        <p class="help" style="margin:0">Battles, card battles and the wheel all show on one browser source. In OBS: <b>Sources → + → Browser</b>, URL <code>http://localhost:${port}/game.html</code> <button class="ghost" style="padding:2px 8px" onclick="copyText('http://localhost:${port}/game.html').then(()=>toast('Copied'))">📋 Copy</button>, width <b>1920</b>, height <b>1080</b>, tick <b>Control audio via OBS</b>. The <a href="/setup.html?step=obs">🧭 Setup guide</a> walks you through it.</p></div>
+      </div>`,
     bans: `<div id="bansSlot"></div>`,
     sounds: `<div id="soundsSlot"></div>`,
     prices: `<h3>💰 Rewards &amp; prices</h3>
@@ -3787,9 +3908,11 @@ function openSettings(force) {
       <h3 style="margin-top:14px">🚀 Raid reward</h3>
       ${ck('raidOn', '🚀 Raid reward: a viewer redeems it, types who we raid in chat, and a box at the top of the app starts the raid when you click it (press Save). Movie Royal makes the reward (a raid reward you already have keeps its price, 1500 if there is none) and hides it for the rest of the stream once it is used.', false)}
       <div class="grid2">${f('raidTitle', 'Raid reward name on Twitch', '🚀 Pick who we raid!')}<div style="display:flex;align-items:flex-end"><button onclick="raidSetupClick(this)">🚀 Make / fix the raid reward now</button></div></div>
-      <h3 style="margin-top:18px">🎁 Viewer rewards (always on)</h3>
-      <p class="help">💧 Hydrate, 🙆 Stretch, 🎩 Pick a hat and 🎉 Viewer's choice are always in your channel points menu. Movie Royal makes them once you're signed in: a reward you already had keeps its name and price (Movie Royal deletes it and makes it again, so it can keep it on). One made by hand on Twitch can only be deleted on Twitch; it still works meanwhile.</p>
+      <h3 style="margin-top:18px">🎁 Viewer rewards</h3>
+      <p class="help">💧 Hydrate, 🙆 Stretch, 🎩 Pick a hat and 🎉 Viewer's choice are in your channel points menu all the time (switch any of them off below). Movie Royal makes them once you're signed in: a reward you already had keeps its name and price (Movie Royal deletes it and makes it again, so it can keep it on). One made by hand on Twitch can only be deleted on Twitch; it still works meanwhile.</p>
       <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><button onclick="vrSetupClick(this)">🎁 Make / fix the viewer rewards now</button><span class="help" style="margin:0" id="vrSetupInfo">${vrSetupText()}</span></div>
+      <div class="grid2" style="margin:6px 0">${cki('vrHydrateOn', '💧 Hydrate reward on')}${cki('vrStretchOn', '🙆 Stretch reward on')}${cki('vrHatOn', '🎩 Pick a hat reward on')}${cki('vrChoiceOn', '🎉 Viewer\'s choice reward on')}</div>
+      <p class="help" style="margin-top:0">Off = hidden from your channel points menu (Movie Royal switches it off on Twitch).</p>
       ${ck('vrPopups', '💧🙆🎩 Hydrate, Stretch and Pick a hat show a pop-up with a sound for 5 seconds (only when Movie Royal is the window you\'re on)')}
       <div><label>🎩 Hats viewers can pick (one per line; the bot lists them in chat with numbers, and the viewer types the number or the name)</label><textarea data-k="hatList" rows="6" placeholder="${esc(HATS_DEFAULT)}">${esc(s.hatList || '')}</textarea></div>
       <h4 style="margin:14px 0 4px">🎉 Viewer's choice</h4>
@@ -3895,12 +4018,19 @@ const GH_OBS_FILE = 'https://github.com/TimePeace49/movie-royale-releases/releas
 const HATS_DEFAULT = 'Cowboy hat\nTop hat\nWizard hat\nPirate hat\nBaseball cap\nBeanie\nParty hat\nCrown';
 function vrSetupText() { const v = S?.vrSetup; if (!v) return 'Not made yet (it happens by itself once you sign in with Twitch).'; const ks = ['hydrate', 'stretch', 'hat', 'choice'].filter(k => v[k]); const hand = ks.filter(k => v[k].byHand?.length); return `Made ${new Date(v.at).toLocaleString()}: ${ks.map(k => `${esc(v[k].title)} (${v[k].cost})`).join(', ')}.${hand.length ? ` ⚠️ Made by hand on Twitch (delete on Twitch, then press the button): ${hand.map(k => esc(v[k].byHand.map(x => x.title).join(', '))).join(', ')}.` : ''}`; }
 async function vrSetupClick(btn) { btn.disabled = true; try { await api('/api/vr/setup', {}); toast('🎁 Viewer rewards checked and made on Twitch'); } catch {} btn.disabled = false; setTimeout(() => { const el = $('vrSetupInfo'); if (el) el.innerHTML = vrSetupText(); drawPrices(); }, 500); }
-async function choiceObs(on) { if (on) return choicePick(); const b = $('choiceObsBtn'); if (b) b.disabled = true; try { await api('/api/vr/source', { on: false }); toast('⏸ Removed the celebration source from OBS', 6000); } catch {} setTimeout(() => { if (sub === 'prices') openSettings(true); }, 400); }
+async function choiceObs(on) { if (on) return choicePick(); const b = $('choiceObsBtn'); if (b) b.disabled = true; try { await api('/api/vr/source', { on: false }); toast('⏸ Removed the celebration source from OBS', 6000); } catch {} setTimeout(() => { if (sub === 'prices' || sub === 'obs') openSettings(true); }, 400); }
+// 📣 the roll call browser source in OBS (1.61.0): same scene picker as the celebration
+let sceneFor = 'choice';
+function scenePick(kind) { sceneFor = kind; return choicePick(); }
+async function rollObs(on) { try { await api('/api/obs/roll-source', { on }); toast(on ? '📣 Roll call is in OBS' : '⏸ Took the roll call source out of OBS', 6000); } catch {} setTimeout(() => { if (sub === 'obs') openSettings(true); }, 400); }
 // 🎬 pick which OBS scenes get the viewer's choice celebration (1.58.1, Derek: not every scene)
 async function choicePick() {
+  const roll = sceneFor === 'roll'; sceneFor = 'choice'; $('choiceDlg').dataset.for = roll ? 'roll' : 'choice';
+  $('choiceDlgT').textContent = roll ? '🎬 Which OBS scenes get the roll call?' : '🎬 Which OBS scenes get the celebration?';
+  $('choiceDlgH').innerHTML = roll ? 'Tick the scenes where 📣 roll call should show. Movie Royal puts the browser source <b>Movie Royal roll call</b> on top of those scenes only (and takes it out of the ones you don\'t tick). It\'s see-through until a roll call starts.' : 'Tick the scenes where the 🎉 Viewer\'s choice confetti should show. Movie Royal puts the source <b>Movie Royal celebration</b> on top of those scenes only (and takes it out of the ones you don\'t tick).';
   $('choiceList').innerHTML = '<p class="help">Asking OBS for your scenes…</p>'; $('choiceGoBtn').disabled = true; $('choiceDlg').showModal();
   try {
-    const r = await fetch('/api/vr/scenes').then(x => x.json()); if (r.error) throw new Error(r.error);
+    const r = await fetch('/api/vr/scenes' + (roll ? '?for=roll' : '')).then(x => x.json()); if (r.error) throw new Error(r.error);
     if (!r.scenes?.length) throw new Error('OBS has no scenes.');
     const on = new Set(r.picked?.length ? r.picked : r.has?.length ? r.has : [r.current].filter(Boolean));
     $('choiceList').innerHTML = r.scenes.map(sc => `<label class="ck"><input type="checkbox" value="${esc(sc)}" ${on.has(sc) ? 'checked' : ''}> <span>${esc(sc)}${sc === r.current ? ' <small class="muted">(on stream now)</small>' : ''}${r.has?.includes(sc) ? ' <small class="muted">· has it</small>' : ''}</span></label>`).join('');
@@ -3911,8 +4041,9 @@ async function choiceGo() {
   const scenes = [...document.querySelectorAll('#choiceList input:checked')].map(i => i.value);
   if (!scenes.length) return toast('Tick at least one scene');
   $('choiceGoBtn').disabled = true;
+  if ($('choiceDlg').dataset.for === 'roll') { try { const r = await api('/api/obs/roll-source', { on: true, scenes }); $('choiceDlg').close(); toast(`📣 “Movie Royal roll call” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}`, 6000); } catch {} $('choiceGoBtn').disabled = false; setTimeout(() => { if (sub === 'obs') openSettings(true); }, 400); return; }
   try { const r = await api('/api/vr/source', { on: true, scenes }); $('choiceDlg').close(); toast(`📺 “Movie Royal celebration” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}${r.note ? '. ⚠️ ' + esc(r.note) : ''}`, r.note ? 12000 : 6000); } catch {} finally { $('choiceGoBtn').disabled = false; }
-  setTimeout(() => { if (sub === 'prices') openSettings(true); }, 400);
+  setTimeout(() => { if (sub === 'prices' || sub === 'obs') openSettings(true); }, 400);
 }
 function vrPop(m) { // 💧🙆🎩 5 seconds, only when Movie Royal is the window you're on
   if (!document.hasFocus() || S?.settings?.vrPopups === false) return;
@@ -4356,7 +4487,8 @@ function holStyleId() {
 }
 let holOn = undefined;
 function applyStyle() {
-  const id = holTry || holStyleId(); if (id === holOn) return; holOn = id;
+  const id = holTry || holStyleId(); if (id !== applyStyle.sent && S) { applyStyle.sent = id; fetch('/api/app-style', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id || '' }) }).catch(() => {}); } // (🎁 mystery card packs on stream match it)
+  if (id === holOn) return; holOn = id;
   document.body.className = document.body.className.replace(/\bhol(-\w+)?\b/g, '').trim();
   if (id) document.body.classList.add('hol', 'hol-' + id);
   const h = HOLIDAYS.find(x => x.id === id), fx = $('holFx');
@@ -4370,7 +4502,8 @@ function holStep(force = false) { // close to a holiday: dress the app up for it
   if (!force && ((S.settings.appStyle || 'auto') !== 'auto' || (a && a.year === h.year))) return null;
   return { key: 'holiday', html: () => `<div class="holBig">${h.icon}</div><h3 style="text-align:center">${esc(h.name)} is coming up!</h3>
     <p class="help" style="text-align:center">Want Movie Royal dressed up for ${esc(h.name)}? It changes the colors of the app (not your stream) until the holiday is over.</p>
-    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="holAnswer('${h.id}',${h.year},'yes')">${h.icon} Yes, turn it on</button><button onclick="holAnswer('${h.id}',${h.year},'later')" title="Asks again next time Movie Royal opens">Not now</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'cool')" title="No more asking about ${esc(h.name)} until next year">Not until next year</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'never')" title="Never ask about holiday styles again (Settings → App &amp; background → App style turns it back on)">Don't show again</button></div>` };
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="holAnswer('${h.id}',${h.year},'yes')">${h.icon} Yes, turn it on</button><button onclick="holAnswer('${h.id}',${h.year},'later')" title="Asks again next time Movie Royal opens">Not now</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'cool')" title="No more asking about ${esc(h.name)} until next year">Not until next year</button><button class="ghost" onclick="holAnswer('${h.id}',${h.year},'never')" title="Never ask about holiday styles again (Settings → App &amp; background → App style turns it back on)">Don't show again</button></div>
+    <label class="ck" style="justify-content:center;margin-top:12px" title="The wheel's 🎁 mystery card packs (hidden reveal spots) get the holiday look too"><input type="checkbox" ${S.settings.revealThemed !== false ? 'checked' : ''} onchange="if(holTestDate){toast('🧪 Test only: nothing saved');return}S.settings.revealThemed=this.checked;api('/api/settings',{revealThemed:this.checked}).then(()=>toast('Saved'))"> <span>🎁 Dress up the wheel's mystery card packs for ${esc(h.name)} too</span></label>` };
 }
 function holAsk(force = false) { const st = holStep(force); if (st) sqShow([st], !!force); } // (🧪 Test tab: holTestDate + holAsk(true))
 async function holAnswer(id, year, ans) {
@@ -4411,7 +4544,8 @@ function holStyleHTML() {
   return `<h3 style="margin-top:18px">🎨 App style</h3>
     <select style="width:auto" onchange="api('/api/settings',{appStyle:this.value}).then(()=>toast('Saved'))" title="App style"><option value="auto" ${st === 'auto' ? 'selected' : ''}>🎉 Automatic: ask me when a holiday is close</option><option value="normal" ${st === 'normal' ? 'selected' : ''}>💜 Normal, always (never ask)</option>${HOLIDAYS.map(x => `<option value="${x.id}" ${st === x.id ? 'selected' : ''}>${x.icon} ${esc(x.name)} style, all the time</option>`).join('')}</select>
     ${st === 'auto' ? `<p class="help">${h ? `${h.icon} ${esc(h.name)} is close: the holiday style is <b>${on ? 'on' : 'off'}</b>. <button class="ghost" style="padding:3px 9px" onclick="api('/api/settings',{holTheme:{...(S.settings.holTheme||{}),'${h.id}':{ans:'${on ? 'cool' : 'yes'}',year:${h.year}}}}).then(()=>toast('Saved'))">${on ? 'Turn it off' : 'Turn it on'}</button>` : 'No holiday is close right now. When one is, Movie Royal asks if you want its style when it opens.'}</p>` : ''}
-    <label class="ck"><input type="checkbox" ${S.settings.holFx !== false ? 'checked' : ''} onchange="api('/api/settings',{holFx:this.checked}).then(()=>{holOn=undefined;applyStyle()})"> <span>Little falling decorations (bats, snowflakes, hearts…) with the holiday styles</span></label>`;
+    <label class="ck"><input type="checkbox" ${S.settings.holFx !== false ? 'checked' : ''} onchange="api('/api/settings',{holFx:this.checked}).then(()=>{holOn=undefined;applyStyle()})"> <span>Little falling decorations (bats, snowflakes, hearts…) with the holiday styles</span></label>
+    <label class="ck"><input type="checkbox" ${S.settings.revealThemed !== false ? 'checked' : ''} onchange="S.settings.revealThemed=this.checked;api('/api/settings',{revealThemed:this.checked}).then(()=>toast('Saved'))"> <span>🎁 The wheel's mystery card packs get the holiday look too (when a holiday style is on)</span></label>`;
 }
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
 if (PC_ONLY) { document.body.classList.add('pcOnly'); document.title = '💬 Pretend chat · Movie Royal'; }

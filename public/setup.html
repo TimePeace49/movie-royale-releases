@@ -94,7 +94,8 @@ const STEPS = [
   { id: 'donations', title: 'Donations', sub: 'Tips pop up for the wheel', done: () => !!(S.settings.seJwt || S.settings.slToken) },
   { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup },
   { id: 'obs', title: 'OBS control', sub: 'Doomsday, capture window, confetti', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
-  { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs }
+  { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs },
+  { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs }
 ];
 
 async function load() {
@@ -344,7 +345,9 @@ const PAGES = {
     return `<h2>OBS control (optional)</h2><p class="why">Lets Movie Royal do a few things in OBS for you:</p>
     <ul class="list" style="margin:-10px 0 20px;color:var(--dim)"><li>☠️ <b>Doomsday</b> on the 🎡 wheel (Wheel → ⚙️ Wheel settings → Void spot): when the void swallows the whole wheel, your mic and camera go off and the stream ends 15 seconds later.</li>
     <li>📺 <b>Capture window</b> (Battle tab): shows another window, like a YouTube video, small in the corner of your stream.</li>
-    <li>🎉 <b>Viewer's Choice</b> (next step): adds the confetti source to the scenes you pick.</li></ul>
+    <li>🎉 <b>Viewer's Choice</b> (next step): adds the confetti source to the scenes you pick.</li>
+    <li>📣 <b>Roll call</b> (last step): its own browser source, so roll call shows in any scene.</li></ul>
+    <p class="help" style="margin-top:-10px">Each one can be switched off any time in Movie Royal: Settings → 🎥 OBS (that page also sets them up).</p>
     <ol class="steps">
       <li>In OBS (version 28 or newer): <b>Tools</b> → <b>WebSocket Server Settings</b>.</li>
       <li>Tick <b>Enable WebSocket server</b>. Leave the port at <b>4455</b>.</li>
@@ -354,6 +357,25 @@ const PAGES = {
     ${note('obs')}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="saveObs(this)">Connect &amp; save</button></div>
     <p class="help">Connecting never changes anything in OBS. You can change this later in Settings → 🎥 OBS.</p>
+    ${nav()}`;
+  },
+  rollcall() {
+    const url = `${location.protocol}//${location.host}/rollcall.html`;
+    return `<h2>📣 Roll call in OBS (optional)</h2><p class="why">Roll call (everyone with a Discord movie types in chat within 2 minutes) shows on the game screen. This puts it in <b>any</b> OBS scene too, even ones without the game screen, like your camera or Just Chatting scene. It's see-through until a roll call starts.</p>
+    ${status(!!S.settings.rollObs, 'It\'s in OBS. Try it: Movie Royal → Battle tab → 📣 2-minute roll call, or the 👀 Preview below.')}
+    ${note('rollcall')}
+    <h3>Easy way: Movie Royal adds it</h3>
+    <p class="help">Needs the <b>OBS control</b> step done, with OBS open.</p>
+    ${rcScenes ? `<div style="margin:8px 0"><b>🎬 Which OBS scenes?</b>${rcScenes.scenes.map(sc => `<label style="display:block;margin:4px 0"><input type="checkbox" class="rcSc" value="${esc(sc)}" ${rcScenes.on.includes(sc) ? 'checked' : ''}> ${esc(sc)}${sc === rcScenes.current ? ' <small>(on stream now)</small>' : ''}</label>`).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="rollSetup(this, true)">📣 Put it in these scenes</button><button onclick="rcScenes=null;load()">Cancel</button></div>`
+    : `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="rollSetup(this)">${S.settings.rollObs ? '🔄 Pick the scenes again' : '📣 Add it to my OBS'}</button><button onclick="window.open('/rollcall.html?demo=1','_blank','width=960,height=560')">👀 Preview</button></div>`}
+    <h3 style="margin-top:22px">Or add it by hand</h3>
+    <ol class="steps">
+      <li>In OBS, pick the scene, then <b>Sources → + → Browser</b>. Name it <b>Roll call</b>.</li>
+      <li>Paste this as the URL:${copyBox(url)}</li>
+      <li>Width <b>1920</b>, Height <b>1080</b>, press OK, and stretch it over the whole scene (keep it on top).</li>
+    </ol>
+    <p class="help">If the game screen is in the same scene, turn off <b>📣 Show roll call on the game screen</b> in Settings → 🎥 OBS so it doesn't show twice. Add <code>?sound=1</code> to the address for the roll call sounds.</p>
     ${nav()}`;
   },
   choice() {
@@ -373,6 +395,21 @@ const PAGES = {
     ${nav()}`;
   }
 };
+let rcScenes = null; // 📣 the OBS scenes for the roll call source (1.61.0)
+async function rollSetup(btn, go = false) {
+  btn.disabled = true;
+  if (!go) {
+    try { const r = await fetch('/api/vr/scenes?for=roll').then(x => x.json()); if (r.error) throw new Error(r.error); if (!r.scenes?.length) throw new Error('OBS has no scenes.');
+      rcScenes = { scenes: r.scenes, current: r.current, on: r.picked?.length ? r.picked : r.has?.length ? r.has : [r.current].filter(Boolean) }; msg.rollcall = null; }
+    catch (e) { msg.rollcall = { ok: false, text: 'Couldn\'t reach OBS: ' + esc(e.message) + '. Do the OBS control step first, with OBS open (or add it by hand below).' }; }
+    return load();
+  }
+  const scenes = [...document.querySelectorAll('.rcSc:checked')].map(i => i.value);
+  if (!scenes.length) { btn.disabled = false; msg.rollcall = { ok: false, text: 'Tick at least one scene.' }; return load(); }
+  try { const r = await api('/api/obs/roll-source', { on: true, scenes }); rcScenes = null; msg.rollcall = { ok: true, text: `Added <b>Movie Royal roll call</b> on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}: ${r.sceneNames.map(esc).join(', ')}.` }; }
+  catch (e) { msg.rollcall = { ok: false, text: esc(e.message) }; }
+  await load();
+}
 let chScenes = null; // 🎬 the OBS scenes to pick from (1.58.1: you pick the scenes, not every scene)
 async function choiceSetup(btn, go = false) {
   btn.disabled = true;

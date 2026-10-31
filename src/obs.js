@@ -175,7 +175,15 @@ export async function sceneList(source = 'Movie Royal celebration') {
 // 🎉 The viewer's choice celebration as an OBS browser source, on top of the scenes you picked (1.58.1, Derek: you pick the scenes,
 // not every scene). pick = scene names (it's taken out of the others); null = keep it in the scenes that already have it.
 export async function celebrateSource(on, file, pick = null) {
-  const name = 'Movie Royal celebration';
+  return browserSource('Movie Royal celebration', on, (W, H) => ({ is_local_file: true, local_file: file, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick);
+}
+// 📣 Roll call as its own OBS browser source (1.61.0, Derek): Movie Royal's /rollcall.html, on top of the scenes you picked.
+export const ROLL_NAME = 'Movie Royal roll call';
+export async function rollSource(on, url, pick = null) {
+  return browserSource(ROLL_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick);
+}
+/** A browser source on top of the scenes you picked (taken out of the others); off = removed from OBS. */
+async function browserSource(name, on, mkSettings, pick = null) {
   return session(async call => {
     const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === name);
     if (!on) { if (have) await call('RemoveInput', { inputName: name }); return { on: false, removed: !!have }; }
@@ -186,7 +194,7 @@ export async function celebrateSource(on, file, pick = null) {
     if (Array.isArray(pick)) target = pick.filter(sc => all.includes(sc));
     else { target = []; if (have) for (const sc of all) if (await inScene(sc) != null) target.push(sc); }
     if (!target.length) throw new Error(Array.isArray(pick) && pick.length ? 'Those scenes aren\'t in OBS any more: pick your scenes again.' : 'Pick at least one OBS scene for it.');
-    const settings = { is_local_file: true, local_file: file, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' };
+    const settings = mkSettings(W, H);
     if (!have) await call('CreateInput', { sceneName: target[0], inputName: name, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true });
     else { await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true }); await call('PressInputPropertiesButton', { inputName: name, propertyName: 'refreshnocache' }).catch(() => {}); } // (reload it: the file may have changed)
     let added = 0;
