@@ -4235,7 +4235,7 @@ function holTestInit() { if ($('tFin') && $('tFin').options.length < 2 && !holTe
 
 
 // 🎨 Test tab: custom characters (/character in Discord; the parts + drawing are in charparts.js)
-const LK_PARTS = [['hair', '💇 Hair'], ['outfit', '👕 Outfit'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['skin', '✋ Skin'], ['haircolor', '🎨 Hair color'], ['accessory', '🎩 Head accessory']];
+const LK_PARTS = [['hair', '💇 Hair'], ['outfit', '👕 Outfit'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['skin', '✋ Skin'], ['haircolor', '🎨 Hair color'], ['accessory', '🎩 Head accessory'], ['hairaccessory', '🎀 Hair accessory']];
 const lkRandom = () => { const N = window.CHAR_PARTS?.NAMES || {}; return Object.fromEntries(LK_PARTS.map(([k]) => [k, 1 + Math.floor(Math.random() * (N[k]?.length || 1))])); };
 function lkInit() { const N = window.CHAR_PARTS?.NAMES, box = $('lkSels'); if (!N || !box || box.children.length) return;
   if ($('lkTheme')) $('lkTheme').innerHTML = Object.keys(CHAR_PARTS.THEMES).map(id => { const m = (S.maps || []).find(x => x.id === id) || (S.cards?.maps || []).find(x => x.id === id && !x.ball); return m ? `<option value="${id}">${m.icon} ${esc(m.name)}${m.ball ? '' : ' 🃏'}</option>` : ''; }).join('');

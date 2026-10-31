@@ -67,7 +67,7 @@ export function buildConfig() {
     charChannels: Object.fromEntries(Object.entries(db.discordChars || {}).map(([g, c]) => [g, c.channelId])), // 🎨 #character-creation (/character only works there)
     debugChannels: db.settings.discordDebug === false ? [] : Object.values(db.discordDebug || {}).map(r => r.channelId).filter(Boolean),
     // 🎨 /character: everyone's picks (numbers only), the part names, and the picture sheets' version once they're uploaded from this PC
-    looksOn: looks.on(), looks: Object.fromEntries(Object.entries(db.looks || {}).map(([id, l]) => [id, looks.nums(l)])), lookNames: looks.NAMES, lookPics: status.picsV === looks.picsVersion ? looks.picsVersion : null, picsUrl: cloud().url || '', charSite: looks.site(),
+    looksOn: looks.on(), looks: Object.fromEntries(Object.entries(db.looks || {}).map(([id, l]) => [id, looks.nums(l)])), lookNames: looks.NAMES, lookParts: looks.PARTS, lookLabels: looks.LABEL, lookPics: status.picsV === looks.picsVersion ? looks.picsVersion : null, picsUrl: cloud().url || '', charSite: looks.site(),
     helpText: helpText(), tmdbKey: db.settings.tmdbKey || '', botToken: db.settings.discordToken || '', publicKey: cloud().publicKey || ''
   };
 }

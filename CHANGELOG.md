@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.60.4
+- 🎀 **Hair accessories are their own part** (Derek: "they are their own thing"), so a character can wear one with a head accessory.
+  - There are 30: headbands, bows, flowers, daisies, pearl clips, barrettes, butterfly / star / heart / cherry / leaf / snowflake / rainbow clips, a scrunchie, bobbles, hair ties, beads, a ribbon, bobby pins, hair sticks, a jeweled comb, hair gems and a braided headband.
+  - It has its own 🎀 Hair accessory tab on the parts website, and Discord uses `/character hairaccessory:<number>` (1 = none). Profiles and the Test tab's character builder show it too.
+  - Random characters sometimes wear one (never under a hat).
+  - The 24/7 Discord bot needs one update for it (Movie Royal asks when it opens). After that, new character parts work without updating the bot.
+- 🏁 **Race starts:**
+  - The start line now sits on a long straight, so the whole starting grid sits on the straight instead of around the corner behind it.
+  - Big races get up to 6 cars side by side, and the rows set off one after another at the green flag, so there's no 25-car pile-up in turn 1.
+
 ## 1.60.3
 - 🚛 **Tow trucks on the race maps** (all except the Figure 8): when a car is wrecked on the road, a tow truck drives in, hooks it and drags it off the road. It takes 3 seconds, so piles of wrecks don't block the road any more. A car that's stuck for a few seconds gets pulled back to the middle of the road too. In tests, no car got stuck any more, and races end sooner.
 

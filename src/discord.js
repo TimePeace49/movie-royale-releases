@@ -25,7 +25,7 @@ const commands = [
     .addStringOption(o => o.setName('username').setDescription('Your Twitch username').setRequired(true)),
   (() => { // 🎨 /character: a number for each part (leave them all empty to see the pictures)
     const c = new SlashCommandBuilder().setName('character').setDescription('Make your own battle character: pick a number for each part (empty = see the pictures)');
-    const say = { hair: "Hair style number: 1–25 men's styles, 26–50 women's styles", outfit: "Outfit number: 1–25 men's, 26–50 women's, 51–75 costumes", makeup: 'Makeup number (1 = none)', facialhair: 'Facial hair number (1 = none)', body: 'Body: 1–6 regular, 7–12 thin, 13–18 fat, 19–24 athletic (flat + 5 chest sizes each)', skin: 'Skin color number', haircolor: 'Hair color number', accessory: 'Head accessory: hats, ears, horns, glasses… (1 = none)' };
+    const say = { hair: "Hair style number: 1–25 men's styles, 26–50 women's styles", outfit: "Outfit number: 1–25 men's, 26–50 women's, 51–75 costumes", makeup: 'Makeup number (1 = none)', facialhair: 'Facial hair number (1 = none)', body: 'Body: 1–6 regular, 7–12 thin, 13–18 fat, 19–24 athletic (flat + 5 chest sizes each)', skin: 'Skin color number', haircolor: 'Hair color number', accessory: 'Head accessory: hats, ears, horns, glasses… (1 = none)', hairaccessory: 'Hair accessory: bows, clips, headbands, flowers… (1 = none)' };
     for (const k of looks.PARTS) c.addIntegerOption(o => o.setName(k).setDescription(say[k]).setMinValue(1).setMaxValue(looks.NAMES[k].length));
     return c;
   })(),

@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 12; // bump when this file changes: the app offers to update the bot
+export const WORKER_V = 13; // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
@@ -300,18 +300,20 @@ async function interaction(req, env, ctx) {
 }
 
 // 🎨 /character: a number for each part. A COPY of characterReply in src/looks.js (keep them alike).
-const PARTS = ['hair', 'outfit', 'makeup', 'facialhair', 'body', 'skin', 'haircolor', 'accessory'];
-const PLABEL = { hair: '💇 Hair', outfit: '👕 Outfit', makeup: '💄 Makeup', facialhair: '🧔 Facial hair', body: '🧍 Body', skin: '✋ Skin', haircolor: '🎨 Hair color', accessory: '🎩 Head accessory' };
+const PARTS0 = ['hair', 'outfit', 'makeup', 'facialhair', 'body', 'skin', 'haircolor', 'accessory', 'hairaccessory']; // (v13: Movie Royal sends its own list in cfg.lookParts / cfg.lookLabels, so new parts work without a bot update)
+const PLABEL0 = { hair: '💇 Hair', outfit: '👕 Outfit', makeup: '💄 Makeup', facialhair: '🧔 Facial hair', body: '🧍 Body', skin: '✋ Skin', haircolor: '🎨 Hair color', accessory: '🎩 Head accessory', hairaccessory: '🎀 Hair accessory' };
+let PARTS = PARTS0, PLABEL = PLABEL0;
 const SHEETS = [['hair', "💇 Hair 1–25 (men's styles)"], ['hair2', "💇 Hair 26–50 (women's styles)"], ['outfit', "👕 Outfits 1–25 (men's)"], ['outfit2', "👗 Outfits 26–50 (women's)"], ['outfit3', '🦸 Outfits 51–75 (costumes)'], ['makeup', '💄 Makeup'], ['facialhair', '🧔 Facial hair'], ['body', '🧍 Body'], ['colors', '🎨 Skin + hair color']];
 const PDEF = { skin: 3, haircolor: 2, body: 1 };
 function lookText(N, look) { return PARTS.map(k => `${PLABEL[k]} **#${look?.[k] || PDEF[k] || 1}** ${(N[k] || [])[(look?.[k] || PDEF[k] || 1) - 1] || '?'}${look?.[k] ? '' : ' *(not picked yet)*'}`).join('\n'); }
 function characterCmd(env, ctx, s, i, user, origin) {
   const N = s.cfg.lookNames, cc = i.guild_id && s.cfg.charChannels?.[i.guild_id];
+  PARTS = Array.isArray(s.cfg.lookParts) ? s.cfg.lookParts : PARTS0; PLABEL = { ...PLABEL0, ...(s.cfg.lookLabels || {}) };
   if (cc && i.channel_id !== cc) return reply(`🎨 Characters are made in <#${cc}>: use /character there!`);
   if (!N || s.cfg.looksOn === false) return reply(`🎨 Custom characters aren't on right now${N ? '' : ' (open Movie Royal once so the 24/7 bot gets them)'}.`);
   const cur = s.looks[user.discordId] || null, picks = {};
   for (const k of PARTS) { const v = opt(i, k); if (v != null) picks[k] = v; }
-  const how = 'Type **/character** and fill in a number for each part, for example `/character hair:7 outfit:3 makeup:1 facialhair:8 accessory:17`. You only need the parts you want to change (also `body`, `skin` and `haircolor`). Pick 1 of each.';
+  const how = 'Type **/character** and fill in a number for each part, for example `/character hair:7 outfit:3 makeup:1 facialhair:8 accessory:17`. You only need the parts you want to change (also `hairaccessory`, `body`, `skin` and `haircolor`). Pick 1 of each.';
   if (!Object.keys(picks).length) {
     const site = s.cfg.charSite;
     const text = `🎨 **Make your own Movie Royal character!** ${site ? `See every part with its number (and try them on) here: <${site}>` : 'Look at the pictures below and pick a number for each part.'}\n${how}\n\n${cur ? `**Your character right now:**\n${lookText(N, cur)}` : "You haven't made one yet: until you do, your piece is a random character."}`;

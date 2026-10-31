@@ -14,8 +14,8 @@ export const BASE_NAMES = JSON.parse(src.slice(src.indexOf('/*NAMES*/') + 9, src
 export const VARS = JSON.parse(src.slice(src.indexOf('/*VARS*/') + 8, src.indexOf('/*VEND*/')));
 const vname = (k, b, base, tag) => k === 'skin' || k === 'haircolor' ? `${tag} ${base}` : k === 'makeup' && b === 1 ? tag : k === 'facialhair' && b === 1 ? `Shadow · ${tag}` : `${base} · ${tag}`;
 export const NAMES = Object.fromEntries(Object.entries(BASE_NAMES).map(([k, list]) => [k, VARS[k] ? [...list, ...VARS[k].flatMap(tag => list.map((x, i) => vname(k, i + 1, x, tag)))] : list.slice()]));
-export const PARTS = ['hair', 'outfit', 'makeup', 'facialhair', 'body', 'skin', 'haircolor', 'accessory'];
-export const LABEL = { hair: '💇 Hair', outfit: '👕 Outfit', makeup: '💄 Makeup', facialhair: '🧔 Facial hair', body: '🧍 Body', skin: '✋ Skin', haircolor: '🎨 Hair color', accessory: '🎩 Head accessory' };
+export const PARTS = ['hair', 'outfit', 'makeup', 'facialhair', 'body', 'skin', 'haircolor', 'accessory', 'hairaccessory']; // (🎀 hairaccessory 1.60.4)
+export const LABEL = { hair: '💇 Hair', outfit: '👕 Outfit', makeup: '💄 Makeup', facialhair: '🧔 Facial hair', body: '🧍 Body', skin: '✋ Skin', haircolor: '🎨 Hair color', accessory: '🎩 Head accessory', hairaccessory: '🎀 Hair accessory' };
 export const SHEETS = ['hair', 'hair2', 'outfit', 'outfit2', 'outfit3', 'makeup', 'facialhair', 'body', 'colors']; // (same as public/charsheet.html) // the picture sheets (public/chars/<name>.png)
 export const SHEET_TITLE = { hair: "💇 Hair 1–25 (men's styles)", hair2: "💇 Hair 26–50 (women's styles)", outfit: "👕 Outfits 1–25 (men's)", outfit2: "👗 Outfits 26–50 (women's)", outfit3: '🦸 Outfits 51–75 (costumes)', makeup: '💄 Makeup', facialhair: '🧔 Facial hair', body: '🧍 Body', colors: '🎨 Skin + hair color' };
 export const sheetFile = s => path.join(PUB, 'chars', s + '.png');
@@ -64,8 +64,8 @@ export function lookText(look, sep = '\n') {
 }
 // 🌐 The parts website (1.59.0): the 24/7 bot (Cloudflare) hosts it once this PC uploaded it (db.charSite), or a link set by hand (settings.charSite)
 export const site = () => { if (db.settings.charSite) return String(db.settings.charSite); const c = db.settings.cloud || {}; return c.enabled && c.url && db.charSite?.url ? db.charSite.url : null; };
-export const counts = () => `${NAMES.hair.length} hair styles, ${NAMES.outfit.length} outfits, ${NAMES.accessory.length - 1} head accessories, ${NAMES.makeup.length} makeups, ${NAMES.facialhair.length} facial hairs, ${NAMES.body.length} bodies, ${NAMES.skin.length} skin colors and ${NAMES.haircolor.length} hair colors`;
-export const howTo = () => `Type **/character** and fill in a number for each part, for example \`/character hair:7 outfit:3 makeup:1 facialhair:8 accessory:17\`. You only need the parts you want to change (also \`body\`, \`skin\` and \`haircolor\`). Pick 1 of each.`;
+export const counts = () => `${NAMES.hair.length} hair styles, ${NAMES.outfit.length} outfits, ${NAMES.accessory.length - 1} head accessories, ${NAMES.hairaccessory.length - 1} hair accessories, ${NAMES.makeup.length} makeups, ${NAMES.facialhair.length} facial hairs, ${NAMES.body.length} bodies, ${NAMES.skin.length} skin colors and ${NAMES.haircolor.length} hair colors`;
+export const howTo = () => `Type **/character** and fill in a number for each part, for example \`/character hair:7 outfit:3 makeup:1 facialhair:8 accessory:17\`. You only need the parts you want to change (also \`hairaccessory\`, \`body\`, \`skin\` and \`haircolor\`). Pick 1 of each.`;
 
 /** What /character answers (the app's own Discord bot and the 🧪 Test tab use this). */
 export function characterReply(user, picks) {

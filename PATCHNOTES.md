@@ -3,6 +3,12 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.60.4: What's new
+Everything since 1.60.3.
+
+- 🎀 **Hair accessories, their own part:** 30 bows, clips, headbands, flowers and more, worn together with a head accessory. They have their own tab on the parts website, and Discord uses `/character hairaccessory:<number>`. Update your 24/7 Discord bot when Movie Royal asks.
+- 🏁 **Cleaner race starts:** the grid lines up on a straight, and the rows set off one after another.
+
 ## v1.60.3: What's new
 Everything since 1.60.2.
 
