@@ -15,7 +15,7 @@ import * as twitch from './twitch.js';
 import { getMany, searchMovies, findImdb } from './tmdb.js';
 import { scan as banScan, runScan, yearCleanup, setScanHooks, dubCleanup } from './banscan.js';
 import * as listsrc from './listsrc.js';
-import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor } from './movies.js';
+import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
@@ -148,7 +148,7 @@ function gameResult(m) {
         f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
         if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
       }
-      if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`); // everyone who lost gets a little luckier
+      if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`, !!db.live || !!live.fakeLive); // everyone who lost gets a little luckier (🎟️ wild spots: once a night while live, see Settings → 🍀 Luck)
       if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) fetchWinnerRatings(f, rec, live.game.id);
       if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
       save(); pushState();
@@ -1410,6 +1410,13 @@ app.post('/api/test/final', async (req, res) => {
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 // 🧪 Test tab: what !mymovies (Twitch), /mymovies (the app's Discord bot) and the 24/7 bot answer for someone, with every movie's 🍀 luck
+app.post('/api/test/spot-luck', (req, res) => { // 🧪 🎟️ wild spot luck: pretend nights of Discord movie battles the spot loses (nothing real changes)
+  const mode = ['off', 'night', 'battle'].includes(req.body?.mode) ? req.body.mode : spotLuckMode(), n = Math.max(1, Math.min(6, Math.round(Number(req.body?.battles) || 3)));
+  const night = (e, key, isLive) => Array.from({ length: n }, () => Math.round(spotLuckGain(e, key, isLive, mode) * 100) / 100);
+  const run = isLive => { const e = { kind: 'spot', luckPct: 0 }, a = night(e, 'test-night-1', isLive), b = night(e, 'test-night-2', isLive); return { night1: a, night2: b, total: Math.round([...a, ...b].reduce((x, y) => x + y, 0) * 100) / 100 }; };
+  const spots = (getList('movies')?.entries || []).filter(e => e.kind === 'spot' && e.status !== 'removed').map(e => ({ label: e.label, luck: Math.round((e.luckPct || 0) * 100) / 100, status: e.status }));
+  res.json({ mode, battles: n, luckOn: luckOn(), live: run(true), notLive: run(false), liveNow: !!db.live || !!live.fakeLive, spots, per: Number(db.settings.luckPerBattle ?? 1), nightAmt: Number(db.settings.spotLuckNight ?? 1) });
+});
 app.post('/api/test/mymovies', async (req, res) => {
   const all = discordPeople().filter(p => p.active.length), want = String(req.body?.who || '');
   const p = all.find(x => x.discordId === want) || all[0];

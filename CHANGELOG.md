@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.62.2
+- 🎟️ **Wild spot luck is on: once a night** (Derek). The first Discord movie battle a wild spot loses while you're live gives it +1%, and that's all for that stream: 1 battle or 3 battles, still +1% that night.
+- Change it in Settings → 🍀 Luck → 🎟️ wild spot luck: 🌙 Once a night (default, and you can change the amount), ⚔️ Every battle (like everyone else's movies) or 🚫 No luck.
+- 🧪 Test tab → **🎟️ Wild spot luck**: pretends a wild spot loses battles two nights in a row and shows the luck it gets each battle, live and not live (nothing real changes).
+
 ## 1.62.1
 - 👀 **Watch luck on / off in Settings → 🍀 Luck:** every battle has its own 👀 Watch luck box (off by default), and right next to it how many hours watched give how much luck. It all saves right away. 👀 Who has watch luck shows everyone's hours and luck.
 

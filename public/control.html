@@ -969,6 +969,12 @@
     <p class="help" id="tTmOut" style="margin:6px 0 0"></p>
   </div>
   <div class="card">
+    <h3>🎟️ Wild spot luck</h3>
+    <p class="help">Pretends a wild spot loses Discord movie battles two nights in a row and shows the luck it would get each battle, live and not live. Nothing real changes. Set the rule in Settings → 🍀 Luck.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tSlMode" style="width:auto" title="Which wild spot luck rule to try"><option value="">(the one in Settings)</option><option value="night">🌙 Once a night</option><option value="battle">⚔️ Every battle</option><option value="off">🚫 No luck</option></select><select id="tSlN" style="width:auto" title="How many battles a night"><option value="1">1 battle a night</option><option value="3" selected>3 battles a night</option><option value="5">5 battles a night</option></select><button class="primary" onclick="slTest()">🎟️ Try it</button></div>
+    <div id="tSlOut"></div>
+  </div>
+  <div class="card">
     <h3>🍀 !mymovies and /mymovies with luck</h3>
     <p class="help">Shows what someone gets back from <b>!mymovies</b> in Twitch chat, <b>/mymovies</b> in Discord, and the ☁️ 24/7 Discord bot: every movie with its 🍀 luck (their own luck plus 👀 watch luck, when that's on: turn it on or off for each battle in Settings → 🍀 Luck). Nothing is sent anywhere.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMmWho" style="width:auto" title="Whose movies to show"><option value="">(the first person with movies)</option></select><button class="primary" onclick="mmTest()">🍀 Show the answers</button><button onclick="mmProfile()" title="Opens this person's profile: the 🎬 Movies part shows each movie's luck">👤 Open their profile</button></div>
@@ -1625,7 +1631,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -3346,6 +3352,12 @@ function tmTestShow() { // 🧪 which timer + pacer the picked battle uses
   $('tTmOut').innerHTML = l ? `⏱️ <b>${secsWord(fightSecsOf(l))}</b> ${ownT ? '(its own)' : '(same as all battles)'} · ⏳ <b>${pacerWord(fightPacerOf(l))}</b> ${ownP ? '(its own)' : '(same as all battles)'}` : '';
 }
 async function tmTest() { const id = $('tTmList')?.value; if (!id) return; try { await api('/api/test/battle', { list: id, count: tbNum(tbSet.count) ?? 12, map: tbSet.map || 'random' }); } catch {} }
+async function slTest() { // 🧪 🎟️ wild spot luck rule
+  let r; try { r = await api('/api/test/spot-luck', { mode: $('tSlMode').value || undefined, battles: Number($('tSlN').value) }); } catch { return; }
+  const name = { night: '🌙 Once a night', battle: '⚔️ Every battle', off: '🚫 No luck' }[r.mode], pc = v => `+${v}%`;
+  const line = (t, x) => `<div><b>${t}:</b> night 1: ${x.night1.map(pc).join(', ')} · night 2: ${x.night2.map(pc).join(', ')} → <b>${x.total}% in all</b></div>`;
+  $('tSlOut').innerHTML = `<div class="help" style="margin-top:8px;line-height:1.7">${r.luckOn ? '' : '⚠️ 🍀 Luck is off (Settings → 🍀 Luck), so for real nobody gets any.<br>'}Rule: <b>${name}</b> · ${r.battles} battle${r.battles === 1 ? '' : 's'} a night, the spot loses every one<br>${line('📺 While live', r.live)}${line('💤 Not live', r.notLive)}<div class="muted">You're ${r.liveNow ? '' : 'not '}live right now. Wild spots now: ${r.spots.length ? r.spots.map(x => `${esc(x.label)} 🍀 ${x.luck}%${x.status !== 'active' ? ` (${esc(x.status)})` : ''}`).join(' · ') : 'none'}</div></div>`;
+}
 let mmLast = null;
 async function mmProfile() { // 🧪 the chatter profile with each movie's luck
   if (!mmLast || ($('tMmWho').value && $('tMmWho').value !== mmLast.id)) { await mmTest(); }
@@ -3911,8 +3923,10 @@ function openSettings(force) {
     luck: `<h3>🍀 Luck</h3>
       ${ck('luckOn', '<b>Turn on luck</b> — every battle a Discord movie loses makes it a little more likely to win next time. It builds week to week. Your luck only starts over when one of your movies actually gets watched (a win counts as watched; “Not watching it — put it back” gives the luck back).', false)}
       ${f('luckPerBattle', 'Extra chance per battle (%)', '1', 'number', 'step="0.01" min="0"')}
-      <p class="help">Default is <b>1%</b> per battle, so a movie that lost 10 battles is 10% more likely to win. ${esc(s.spotName)} spots don't get luck on their own unless you turn it on below. You can also set theirs by hand.</p>
-      ${ck('spotLuck', `${esc(s.spotName)} wildcard spots get luck when they lose too — at most +1% per stream (they don't need anyone chatting)`, false)}
+      <p class="help">Default is <b>1%</b> per battle, so a movie that lost 10 battles is 10% more likely to win. ${esc(s.spotName)} wild spots get their luck by the rule below. You can also set theirs by hand (🍀 on the Pool tab).</p>
+      <h3 style="margin-top:18px">🎟️ ${esc(s.spotName || 'Kirb')} wild spot luck</h3>
+      <div class="grid2"><div><label>How ${esc(s.spotName || 'Kirb')} spots get luck</label><select data-k="spotLuckMode" title="How the wild spots get luck when they lose">${[['night', '🌙 Once a night (default)'], ['battle', '⚔️ Every battle, like everyone else'], ['off', '🚫 No luck']].map(([v, t]) => `<option value="${v}" ${(s.spotLuckMode || 'night') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div>${f('spotLuckNight', '🌙 Once a night: how much (%)', '1', 'number', 'step="0.5" min="0" max="100"')}</div></div>
+      <p class="help" style="margin:4px 0 0">🌙 <b>Once a night:</b> the first Discord movie battle a wild spot loses while you're live gives it +${esc(String(s.spotLuckNight ?? 1))}%, and that's it for the stream: 1 battle or 3 battles, it's still +${esc(String(s.spotLuckNight ?? 1))}% that night. ⚔️ <b>Every battle</b> gives them the same luck as everyone else (${esc(String(s.luckPerBattle ?? 1))}% for every battle they lose, live or not). They don't need anyone chatting.</p>
       <p class="help">🍀 Where luck shows: the glow and flames on the cliff, <code>${esc(s.twitchMoviesCommand || '!mymovies')}</code> in Twitch chat, <code>/mymovies</code> in Discord, the 🎬 Movie Pool and every chatter's profile.</p>
       <h3 style="margin-top:18px">👀 Watch luck</h3>
       <p class="help">People who watch your streams get extra luck in a battle: every few hours watched (counted from when you turn it on) = a bit more luck. It's <b>off by default</b>. Turn it on or off for each battle with its 👀 Watch luck box below (and change how much right there). When it's on, it's just added into their luck (the 🍀 number everywhere above).</p>

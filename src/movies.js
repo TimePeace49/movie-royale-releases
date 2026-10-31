@@ -179,16 +179,22 @@ export function watchLuckFor(discordId) {
 export const pctTxt = n => String(Math.round((Number(n) || 0) * 100) / 100);
 export function movieLuck(e) { const own = luckOn() ? Number(e.luckPct) || 0 : 0, wl = e.kind === 'spot' ? 0 : watchLuckFor(e.backers?.[0]?.discordId); return { own, wl, total: Math.min(100, own + wl) }; }
 export const luckMultiplier = e => luckOn() ? 1 + Math.max(0, Number(e.luckPct) || 0) / 100 : 1;
-export function addLuck(entryIds, streamKey = '') {
+// 🎟️ wild spot luck (Settings → 🍀 Luck): 'off' | 'night' (default: +spotLuckNight% once a stream, when they lose a Discord movie battle while live) | 'battle' (like every other movie)
+export const spotLuckMode = () => ['off', 'night', 'battle'].includes(db.settings.spotLuckMode) ? db.settings.spotLuckMode : 'night';
+export function spotLuckGain(e, streamKey, isLive, mode = spotLuckMode()) { // how much luck a wild spot gets for losing one battle (0 = none), and marks the night
+  const per = Math.max(0, Number(db.settings.luckPerBattle ?? 1)), night = Math.max(0, Math.min(100, Number(db.settings.spotLuckNight ?? 1)));
+  if (mode === 'battle') return per;
+  if (mode !== 'night' || !isLive || !streamKey || e.spotLuckKey === streamKey) return 0;
+  e.spotLuckKey = streamKey; return night;
+}
+export function addLuck(entryIds, streamKey = '', isLive = false) {
   if (!luckOn()) return;
   const per = Math.max(0, Number(db.settings.luckPerBattle ?? 0.01));
   for (const e of moviesList().entries) {
     if (!entryIds.includes(e.id)) continue;
     if (e.status === 'benched' || (e.backers?.[0] && wonThisWeek(e.backers[0].discordId))) continue; // on cooldown after their movie got watched: no luck
-    if (e.kind === 'spot') { // wildcard spots (optional): at most +1% per stream
-      if (!db.settings.spotLuck || e.spotLuckKey === streamKey) continue;
-      e.spotLuckKey = streamKey; e.luckPct = Math.round(((e.luckPct || 0) + Math.min(1, per)) * 10000) / 10000;
-    } else e.luckPct = Math.round(((e.luckPct || 0) + per) * 10000) / 10000;
+    const add = e.kind === 'spot' ? spotLuckGain(e, streamKey, isLive) : per; // wildcard spots: see spotLuckMode
+    if (add) e.luckPct = Math.round(((e.luckPct || 0) + add) * 10000) / 10000;
   }
   save();
 }
