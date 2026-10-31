@@ -327,8 +327,9 @@ export async function listAllRewards() { // every reward on the channel, includi
   const j = await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}`);
   return (j.data || []).map(r => ({ id: r.id, title: r.title, paused: r.is_paused, enabled: r.is_enabled, cost: r.cost, prompt: r.prompt || '', input: !!r.is_user_input_required, skip: !!r.should_redemptions_skip_request_queue, color: r.background_color }));
 }
-export async function updateReward(id, { title, cost, enabled, cooldown, paused }) {
+export async function updateReward(id, { title, cost, enabled, cooldown, paused, prompt }) {
   const body = {};
+  if (prompt != null) body.prompt = String(prompt).slice(0, 200);
   if (paused != null) body.is_paused = !!paused;
   if (title != null) body.title = String(title).slice(0, 45);
   if (cost != null) body.cost = Math.max(1, Math.round(Number(cost)));

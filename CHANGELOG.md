@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.61.3
+- 🎁 **Mystery card pack closes right away:** pressing ✕ Close after opening it now closes it at once in Movie Royal (it could take 30–40 seconds), and the stream closes it too.
+- 🎉 **Viewer's choice keeps their pick a secret** (Derek: they tell you later): the pop-up only shows who redeemed it. The reward's message on Twitch now says "Type anything to redeem, then tell the streamer your pick" (when Movie Royal made the reward; one you wrote yourself stays). Want it shown? Settings → 💰 Rewards & prices → 💬 Show what they typed on the pop-up.
+
 ## 1.61.2
 - 🏁 **Finish lines fixed on the race maps** (Derek: the Grand Prix one):
   - 🏎️ **Grand Prix has a new layout:** the bottom-right hairpin ran right into the start straight, so the finish line and the grid sat where two parts of the road blended together. Now the road never touches itself.

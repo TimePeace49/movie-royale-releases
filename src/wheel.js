@@ -293,7 +293,7 @@ export function revealOpen(id) {
   return { hidden };
 }
 /** 🎁 close the pop-up (on stream too) */
-export function revealClose(quiet) { const st = W(); if (!st.reveal) return {}; st.reveal = null; if (!quiet) save(); hooks.broadcast(revealMsg({ stage: 'close' })); return {}; }
+export function revealClose(quiet) { const st = W(), had = !!st.reveal; st.reveal = null; if (had && !quiet) save(); if (had || !quiet) hooks.broadcast(revealMsg({ stage: 'close' })); return {}; } // (a Close click always reaches every screen, even if the pack was already gone here)
 export const revealState = () => { const R = W().reveal; return R ? { id: R.id, cover: R.cover, open: R.open, hidden: R.open ? R.hidden : null, theme: hooks.theme() || null } : null; };
 /** 🧪 Test tab: a pretend mystery card (nothing on the wheel changes); theme = a holiday id to try its pack */
 export function revealTest({ theme, text, image } = {}) {

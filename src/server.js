@@ -1064,6 +1064,15 @@ const VR = {
   hat: { re: /\bhats?\b/i, title: '🎩 Pick a hat', cost: 1000, prompt: 'Pick a hat for the streamer! After you redeem, type the number or the name of a hat in chat.', color: '#B07AF5' },
   choice: { re: /viewer.?s?.?\s*choice/i, title: "🎉 Viewer's Choice", cost: 5000, prompt: 'You get to choose! Type what you choose.', color: '#FFB020', input: true }
 };
+// 🎉 Viewer's choice (1.61.3, Derek: "don't say what they are picking, they tell me later"): the pick stays a secret unless
+// settings.choiceShowPick. The reward still asks them to type something (the OBS celebration page sees redeems in chat by that).
+const CHOICE_PROMPTS = { show: VR.choice.prompt, secret: 'You get to choose! Type anything to redeem, then tell the streamer your pick.' };
+const choicePrompt = () => db.settings.choiceShowPick ? CHOICE_PROMPTS.show : CHOICE_PROMPTS.secret;
+async function fixChoicePrompt() { // (only our own reward, and only if it still has one of our prompts: one you wrote yourself stays)
+  if (!twitch.status.userId) return;
+  const title = vrTitle('choice').toLowerCase(), mine = new Set((await twitch.listRewards()).map(r => r.id));
+  for (const r of await twitch.listAllRewards()) if (mine.has(r.id) && r.title.toLowerCase() === title && Object.values(CHOICE_PROMPTS).includes(r.prompt) && r.prompt !== choicePrompt()) await twitch.updateReward(r.id, { prompt: choicePrompt() });
+}
 const HATS_DEFAULT = 'Cowboy hat\nTop hat\nWizard hat\nPirate hat\nBaseball cap\nBeanie\nParty hat\nCrown';
 const vrTitle = k => db.settings.vrTitles?.[k] || VR[k].title;
 const vrOff = k => db.settings['vr' + k[0].toUpperCase() + k.slice(1) + 'On'] === false; // (1.61.0, Derek: hat / hydrate / stretch / viewer's choice each on or off: vrHydrateOn, vrStretchOn, vrHatOn, vrChoiceOn)
@@ -1077,13 +1086,14 @@ async function vrSetup() {
     const old = olds.find(r => !mine.has(r.id)) || olds[0], title = old?.title || db.settings.vrTitles[k] || d.title, cost = old?.cost || db.settings.vrCosts[k] || d.cost;
     db.settings.vrTitles[k] = title; db.settings.vrCosts[k] = cost; o.title = title; o.cost = cost;
     for (const r of olds) { if (mine.has(r.id)) { await twitch.deleteReward(r.id).catch(() => {}); o.removed.push(`${r.title} (${r.cost})`); } else o.byHand.push({ title: r.title, cost: r.cost }); }
-    if (!o.byHand.length) o.made = await twitch.createReward({ title, cost, prompt: old?.prompt || d.prompt, color: old?.color || d.color, input: old ? old.input : !!d.input, queue: old ? !old.skip : false }).catch(e => { o.error = e.message; return false; });
+    if (!o.byHand.length) o.made = await twitch.createReward({ title, cost, prompt: old?.prompt || (k === 'choice' ? choicePrompt() : d.prompt), color: old?.color || d.color, input: old ? old.input : !!d.input, queue: old ? !old.skip : false }).catch(e => { o.error = e.message; return false; });
     out[k] = o;
   }
   db.vrSetup = { at: Date.now(), ...out }; save(); rewardKey = ''; syncRewards().catch(() => {}); pushState();
   if (db.settings.choiceObs && obsOk()) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); // (a remade reward has a new id: the OBS file gets it)
   return out;
 }
+setInterval(() => { if (twitch.status.userId && !fixChoicePrompt.done) { fixChoicePrompt.done = true; fixChoicePrompt().catch(e => console.error('[twitch] viewer\'s choice prompt:', e.message)); } }, 45000);
 setInterval(() => { if (twitch.status.userId && !db.vrSetup && !vrSetup.busy) { vrSetup.busy = true; vrSetup().catch(e => console.error('[twitch] viewer rewards:', e.message)).finally(() => { vrSetup.busy = false; }); } }, 30000);
 function vrRedeem(kind, r) {
   if (vrOff(kind)) return; // (switched off: it's hidden on Twitch too)
@@ -1110,6 +1120,7 @@ function hatChat(m) {
 }
 // 🎉 Viewer's choice: confetti, balloons and a big pop-up for 10 seconds, on stream (the OBS source, when you turned it on) and on your screen
 async function celebrate(c) {
+  if (!db.settings.choiceShowPick) c = { ...c, input: '' }; // 🤫 their pick stays a secret: they tell you later
   const msg = { type: 'celebrate', name: c.name, input: c.input || '', headline: db.settings.choiceHeadline || "VIEWER'S CHOICE!", vol: db.settings.soundOn === false ? 0 : Number(db.settings.sfxVolume ?? 70) / 100, avatar: c.login ? await avatarFor(c.login).catch(() => null) : null, sound: true, at: Date.now() };
   broadcast(msg, 'celebrate'); // 📺 the OBS source
   if (db.settings.choiceScreen !== false) globalThis.__desktop?.celebrate?.(`http://127.0.0.1:${PORT}/celebrate.html?desk=1${db.settings.choiceObs ? '&quiet=1' : ''}#${encodeURIComponent(JSON.stringify(msg))}`); // 🖥️ over whatever you're looking at
@@ -1121,7 +1132,7 @@ async function choiceFile() {
   const login = twitch.status.login || db.owner?.login; if (!login) throw new Error('Sign in with Twitch first.');
   const title = vrTitle('choice'), rw = (await twitch.listAllRewards()).find(r => r.title.toLowerCase() === title.toLowerCase());
   if (!rw) throw new Error(`There's no “${title}” reward on Twitch yet. Press 🎁 Make / fix the viewer rewards now first.`);
-  const cfg = { channel: login, reward: rw.id, text: db.settings.choiceHeadline || "VIEWER'S CHOICE!", vol: db.settings.soundOn === false ? 0 : Math.round(Number(db.settings.sfxVolume ?? 70)), sound: db.settings.soundOn === false ? '0' : '1' };
+  const cfg = { channel: login, reward: rw.id, hidePick: !db.settings.choiceShowPick, text: db.settings.choiceHeadline || "VIEWER'S CHOICE!", vol: db.settings.soundOn === false ? 0 : Math.round(Number(db.settings.sfxVolume ?? 70)), sound: db.settings.soundOn === false ? '0' : '1' };
   const tpl = fs.readFileSync(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'utf8').replace('<script>', `<script>window.MR_CONFIG = ${JSON.stringify(cfg).replace(/</g, '\\u003c')};</script>\n<script>`);
   const dir = path.join(DATA, 'obs'); fs.mkdirSync(dir, { recursive: true }); const file = path.join(dir, 'viewers-choice.html'); fs.writeFileSync(file, tpl);
   return { file, needsText: !rw.input };
@@ -1722,6 +1733,7 @@ app.post('/api/settings', (req, res) => {
   if (('obsOn' in body && body.obsOn === false) || ('obsCapOn' in body && body.obsCapOn === false)) { if (live.capture) obs.capture(false).catch(() => {}); live.capture = false; live.capAutoOn = false; } // 🎥 switched off: Movie Royal takes its things back out of OBS
   if ('obsOn' in body && body.obsOn === false) { if (db.settings.choiceObs) obs.celebrateSource(false).catch(() => {}); if (db.settings.rollObs) obs.rollSource(false).catch(() => {}); }
   if ('obsOn' in body && body.obsOn === true) { if (db.settings.choiceObs && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); if (db.settings.rollObs) rollObsSource(true).catch(() => {}); }
+  if ('choiceShowPick' in body) { fixChoicePrompt().catch(e => console.error('[twitch] viewer\'s choice prompt:', e.message)); if (db.settings.choiceObs && obsOk() && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); } // 🤫 show / hide their pick
   if ('weekStart' in body && db.week) db.week.key = weekKey(); // changing the start day never resets anyone mid-week
   if (['maxPerUser', 'banCurrentYear', 'luckOn', 'twitchMoviesCommand', 'streamerName', 'ideasDoc', 'banAsk'].some(k => k in body)) discord.refreshPinned?.();
   if ('discordChannelName' in body && body.discordChannelName !== undefined && rdName !== db.settings.discordChannelName) rd = true; // makes/finds the new channel

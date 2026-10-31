@@ -3242,7 +3242,7 @@ function ctlReveal(m) {
   if (m.stage === 'close') return RevealPack.remove(true);
   if (!RevealPack.current() || RevealPack.current().id !== m.id) RevealPack.show(document.body, { id: m.id, cover: m.cover, theme: m.theme, clickable: m.stage === 'pack', fixed: true,
     onOpen: id => api('/api/wheel/reveal', { id }).catch(() => { const c = RevealPack.current(); if (c && !c.open) RevealPack.remove(true); }),
-    onClose: () => api('/api/wheel/reveal', { close: true }).catch(() => RevealPack.remove(true)) });
+    onClose: () => { RevealPack.remove(); api('/api/wheel/reveal', { close: true }).catch(() => {}); } }); // (1.61.3, Derek: Close took 30-40 s: now it goes at once here, and the stream follows)
   if (m.stage === 'open') RevealPack.open(m.id, m.hidden, m.cover?.text);
 }
 // 🎬 Test tab → Scenes (1.61.1, Derek): each scene on its own
@@ -3945,6 +3945,7 @@ function openSettings(force) {
       <p class="help">🎁 <b>For a friend</b> (or to set it up by hand): <a href="/api/vr/obs-file" download>⬇️ Download the OBS file</a>, or send them <b>${GH_OBS_FILE}</b>. They open the file in their web browser and it walks them through it (no Movie Royal needed). The reward has to ask viewers to type something.</p>
       ${ck('choiceScreen', '🖥️ Also show it on my screen, over whatever I\'m using (on the screen my mouse is on; clicks go through it)')}
       ${f('choiceHeadline', 'Big text at the top of the pop-up', "VIEWER'S CHOICE!")}
+      ${cki('choiceShowPick', '💬 Show what they typed on the pop-up (off: their pick stays a secret and they tell you later)', false)}
       <div id="pricesBody" style="margin-top:10px"><p class="help">Loading…</p></div>`,
     gfx: `<h3>🎨 Graphics</h3>
       <p class="help">How the game screen is drawn: on stream (the OBS browser source), in the app, and in pop-out windows. Lower settings help if the battle stutters or your PC gets hot while streaming.</p>

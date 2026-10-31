@@ -117,7 +117,7 @@
   function show(m) {
     clearTimeout(endT); size(); const ms = 10000; until = performance.now() + ms; t0 = performance.now();
     pop.className = ''; void pop.offsetWidth;
-    pop.innerHTML = `<div class="burst">🎉🎈🎊</div><h1>${esc(C.text || "VIEWER'S CHOICE!")}</h1><div class="who"><span>${esc(m.name || 'A viewer')}</span></div>${m.input ? `<div class="says">“${esc(m.input)}”</div>` : ''}<div class="sub">redeemed <b>Viewer's choice</b>! 🎉</div>`;
+    pop.innerHTML = `<div class="burst">🎉🎈🎊</div><h1>${esc(C.text || "VIEWER'S CHOICE!")}</h1><div class="who"><span>${esc(m.name || 'A viewer')}</span></div>${m.input && !C.hidePick ? `<div class="says">“${esc(m.input)}”</div>` : ''}<div class="sub">redeemed <b>Viewer's choice</b>! 🎉</div>`;
     pop.className = 'on'; confetti(W * .5, H * .5, 220, false); confetti(0, H, 140, true); confetti(W, H, 140, true); for (let i = 0; i < 26; i++) balloon(R(0, 3.5));
     sounds(); endT = setTimeout(() => { pop.className = 'off'; }, ms - 700);
     if (!running) { running = true; last = 0; requestAnimationFrame(frame); }
