@@ -800,6 +800,19 @@
 <!-- 🧪 TEST -->
 <section class="view" id="v-test">
   <div class="card ttabs stickytop" style="grid-column:1 / -1;padding:8px;box-shadow:0 6px 18px #0008;top:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="seg"><button id="tTabTests" class="on" onclick="testTab('tests')">🧪 Tests</button><button id="tTabCheck" onclick="testTab('check')">✅ Checklist</button><button id="tTabErr" onclick="testTab('errors')">⚠️ Errors <span id="errN"></span></button></div><span style="flex:1"></span><span id="tTabTools" style="display:inline-flex;gap:6px;flex-wrap:wrap"><button onclick="previewToggle()" title="The little window that shows what's on stream (⧉ Pop out on it puts it on another monitor)">📺 Preview</button><button onclick="pchat(!$('pchat').classList.contains('on') || (pcWin && !pcWin.closed))" title="Type in chat as any viewer (⧉ Pop out on it puts it on another monitor)">💬 Test chat</button></span></div>
+  <div class="card" id="sceneCard" style="grid-column:1 / -1">
+    <h3>🎬 Scenes</h3>
+    <p class="help">Each button plays one scene on the stream screen (and in Movie Royal), so you can see how it looks. Nothing real changes: no winners, no luck, nothing saved.</p>
+    <h4 style="margin:10px 0 4px">🥊 Final showdowns (straight to the last two)</h4>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="scBallMap" style="width:auto" title="Which ball map for the final showdown test"></select><button onclick="sceneFinal('ball')">⚪ Ball battle: FINAL SHOWDOWN</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"><select id="scCardMap" style="width:auto" title="Which map for the final fight test"></select><button onclick="sceneFinal('card')">🃏 Card battle: FINAL FIGHT</button><button onclick="sceneFinal('chars')">🧍 Characters: FINAL FIGHT</button></div>
+    <p class="help" style="margin:4px 0 0">Maps with their own ending (races, the Derby, Pompeii, Zombie Horde) have no final showdown. The FINAL FIGHT has the 360° camera, the bell, the fight and a finisher.</p>
+    <h4 style="margin:12px 0 4px">🎡 Wheel</h4>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="sceneReveal()">🎁 Mystery spot reveal</button><button onclick="api('/api/test/doom-preview',{}).then(()=>toast('☠️ The Doomsday screen (nothing turns off)'))">☠️ Doomsday (screen only)</button><button onclick="doomTest()" title="The whole Doomsday: the screen, your mic and camera off in OBS, and the stream ends if you're live (it asks first)">☠️ Whole Doomsday (OBS too)</button></div>
+    <h4 style="margin:12px 0 4px">🎁 Channel point rewards</h4>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="sceneVr('hydrate')">💧 Hydrate</button><button onclick="sceneVr('stretch')">🙆 Stretch</button><button onclick="pchat(true,'test_viewer');sceneVr('hat')">🎩 Pick a hat</button><button onclick="sceneVr('choice')">🎉 Viewer's choice</button><button onclick="api('/api/test/raid-pick',{login:'movieroyal_test',name:'MovieRoyal_Test'}).then(()=>toast('🚀 Pretend raid pick: the raid box is at the top (it won\'t really raid unless you press it)'))">🚀 Raid: pick a stream</button></div>
+    <p class="help" style="margin:4px 0 0">💧 Hydrate, 🙆 Stretch and 🎩 Pick a hat pop up here in Movie Royal; 🎉 Viewer's choice is the confetti on stream.</p>
+  </div>
   <div class="card" id="labCard" style="grid-column:1 / -1">
     <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap"><h3 class="grow" style="margin:0">🧪 Quick test lab</h3><span class="help" style="margin:0">Runs only here, on this page. Never on stream, nothing saved, nothing sent to chat or Discord.</span></div>
     <div class="labGrid">
@@ -1548,7 +1561,7 @@ async function lbRefreshCk(btn) { btn.disabled = true; btn.textContent = 'Updati
 let ckDone = {}; try { ckDone = JSON.parse(localStorage.ckDone || '{}'); } catch {}
 function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); newBadge(); }
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
-const TEST_CATS = [['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
+const TEST_CATS = [['scenes', '🎬 Scenes'], ['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in] (1.59.6, Derek: only the main features are on the checklist now)
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], allMaps: ['battles', '1.45.0'], pin: ['movies'],
   sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], numbers: ['battles'], wheel: ['wheel'], wheelPoints: ['wheel'],
@@ -1598,7 +1611,7 @@ function arrangeTests() { // put the Test tab's cards under category headers (on
   const groups = {};
   for (const c of cards) {
     const h = c.querySelector('h3')?.textContent || '';
-    let cat = c.id === 'labCard' ? 'lab' : c.classList.contains('tquick') ? 'quick' : c.id === 'wTestCard' ? 'wheel' : (map.find(([re]) => re.test(h)) || [])[1];
+    let cat = c.id === 'sceneCard' ? 'scenes' : c.id === 'labCard' ? 'lab' : c.classList.contains('tquick') ? 'quick' : c.id === 'wTestCard' ? 'wheel' : (map.find(([re]) => re.test(h)) || [])[1];
     if (!h && c.id !== 'wTestCard') cat = 'tools';
     if (cat === 'connect') cat = 'screen';
     (groups[cat || 'other'] ||= []).push(c);
@@ -1877,7 +1890,7 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { applyStyle(); holTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { applyStyle(); holTestInit(); sceneInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -3232,6 +3245,17 @@ function ctlReveal(m) {
     onClose: () => api('/api/wheel/reveal', { close: true }).catch(() => RevealPack.remove(true)) });
   if (m.stage === 'open') RevealPack.open(m.id, m.hidden, m.cover?.text);
 }
+// 🎬 Test tab → Scenes (1.61.1, Derek): each scene on its own
+function sceneInit() {
+  if ($('scBallMap') && !$('scBallMap').options.length && S?.maps) $('scBallMap').innerHTML = ballMapOpts('classic');
+  if ($('scCardMap') && !$('scCardMap').options.length && S?.cards?.maps) $('scCardMap').innerHTML = S.cards.maps.filter(m => m.finalFight && !m.ball).map(m => `<option value="${esc(m.id)}">${esc(m.icon || '')} ${esc(m.name)} 🥊</option>`).join('');
+}
+async function sceneFinal(kind) {
+  sceneInit(); const map = kind === 'ball' ? $('scBallMap').value : $('scCardMap').value;
+  try { await api('/api/test/final', { kind, map }); setView(kind === 'card' ? 'cards' : 'battle'); toast(kind === 'ball' ? '🥊 Practice round: one piece goes out right away, then the FINAL SHOWDOWN' : '🥊 One goes out right away, then the FINAL FIGHT (360° camera, bell, fight, finisher)', 7000); } catch {}
+}
+async function sceneReveal() { try { await api('/api/test/reveal', {}); } catch {} }
+async function sceneVr(kind) { try { await api('/api/test/vr', { kind }); } catch {} }
 async function revealLand() { // 🧪 land on the picked wheel's first mystery spot
   await loadWheel().catch(() => {}); const w = wCur(), e = w?.entries.find(x => x.reveal?.on && (x.reveal.text || x.reveal.image) && x.on !== false && !x.voided && x.weight > 0);
   if (!e) return toast('No mystery spot on this wheel yet: 🎡 Wheel → ⚙ on a spot → 🎁 Hidden reveal (add hidden words or a picture).', 8000);

@@ -150,6 +150,7 @@ H(/^tip:mystery card look/i, '🎨 Mystery card look', 'Which look the test card
 H(/dress up the wheel's mystery card packs|mystery card packs get the holiday look/i, '🎁 Holiday mystery packs', 'On (the default): when a holiday app style is on, the wheel\'s 🎁 mystery card packs and cards get that holiday\'s look on stream too (pumpkins and bats for Halloween, snowflakes and trees for Christmas…). Off = always the normal purple and gold pack.');
 H(/^🎁 mystery$|^tip:hidden reveal: /i, '🎁 Mystery spot', 'This spot has a hidden reveal: a card pack pops up when the wheel lands on it.');
 H(/^🎁 mystery spot \(hidden reveal\)$|^🎥 obs switches|^📋 battle list, 🏁 race laps/i, '🧪 Test card', 'Buttons to try this feature.');
+H(/^🎁 mystery spot reveal$/i, '🎁 Mystery spot reveal', 'A pretend mystery card pack, here and on stream. Click it to open it.');
 H(/mystery/i, '🎲 Mystery (chaos power)', 'Sets off one random power. Nobody knows which until it happens.');
 H(/^◀$/, '◀ Follow the previous piece', 'The camera locks onto the previous piece in the fight, like following a marble.');
 H(/^▶$/, '▶ Play', 'Plays this sound so you can hear it.', /sound|settings/i);
@@ -185,6 +186,15 @@ H(/^🎥 open obs settings$/i, '🎥 OBS settings', 'Opens Settings → 🎥 OBS
 H(/^📋 go to the battle list$/i, '📋 Battle list', 'Jumps to the list under the battle and puts you in its 🔎 search box.');
 H(/^🏁 show me the laps box$/i, '🏁 Laps box test', 'Sets the map to 🏟️ Speedway Oval so the 🏁 Laps box shows on the right side of the Battle tab. Set your map back with 🗺️ Map.');
 H(/^⚔️ practice round \(winner shows/i, '⚔️ Practice round', 'A pretend battle with made-up movies; the winner screen shows ⏱️ how long the movie is.');
+H(/^⚪ ball battle: final showdown$/i, '⚪ Final showdown test', 'A practice ball battle with 3 pieces on the map you picked: one goes out right away, so you see the FINAL SHOWDOWN (the last two charge at each other). Nothing is saved.');
+H(/^🃏 card battle: final fight$/i, '🃏 Final fight test', 'A pretend card battle with 3 packs on the map you picked: one goes out right away, then the FINAL FIGHT: the 360° camera around the last two, the bell, the timed fight and a finisher. Nothing changes in your Card pool.');
+H(/^🧍 characters: final fight$/i, '🧍 Characters final fight test', 'The same FINAL FIGHT with 🧍 characters instead of card packs (a practice round, nothing saved).');
+H(/^tip:which ball map for the final showdown|^tip:which map for the final fight/i, '🗺️ Test map', 'Which map the final showdown / final fight test uses.');
+H(/^☠️ doomsday \(screen only\)$/i, '☠️ Doomsday screen', 'Shows the Doomsday screen on stream for a few seconds. Nothing in OBS is touched.');
+H(/^☠️ whole doomsday \(obs too\)$|^tip:the whole doomsday: the screen/i, '☠️ Whole Doomsday', 'The real thing: the Doomsday screen, your mic and camera off in OBS for 15 seconds, then back on. If you\'re live it asks first, because it ends the stream.');
+H(/^💧 hydrate$|^🙆 stretch$|^🎩 pick a hat$|^🎉 viewer's choice$/i, '🎁 Reward scene', 'Pretends test_viewer redeemed it, so you see its pop-up (💧 🙆 🎩 here in Movie Royal) or the 🎉 confetti on stream. A reward that is switched off says so instead.');
+H(/^🚀 raid: pick a stream$/i, '🚀 Raid pick test', 'Pretends a viewer redeemed the raid reward and typed a channel: the raid box pops up at the top. It only raids if you press it there.');
+H(/^🎬 scenes$/i, '🎬 Scenes', 'One button for each big moment on stream: final showdowns, the mystery card, Doomsday, and the channel point reward pop-ups.');
 H(/^🏁 laps for this race/i, '🏁 Laps for this race', 'Shows when the next battle is on a race map. Pick how many laps the race is before you press Start (− / + or type a number). It is the same setting as Settings → Game → 🏁 Races: how many laps, so every race map uses it.');
 H(/allow movies that have an english dub/i, '🗣️ Allow dubbed movies', 'With 🌍 Not in English on, movies that likely have an English dub are allowed anyway: cartoons, anime, and well-known movies (at least the number of TMDB votes in the box below). TMDB doesn\'t list dubs, so this is a guess: small foreign movies still get banned. Turning it on (or changing the number) checks the movies the rule banned before and takes the dubbed ones off the list. Bans you made by hand stay.');
 H(/well-known = at least/i, '🗣️ Well-known = at least … TMDB votes', 'How many votes a foreign movie needs on TMDB to count as well-known (so it likely has an English dub). Lower = more foreign movies allowed. Default 1000.');

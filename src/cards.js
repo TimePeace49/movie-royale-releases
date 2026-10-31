@@ -204,7 +204,7 @@ const wackyOn = () => Object.fromEntries(Object.keys(WACKY).map(k => [k, !!C().w
 export function sceneMsg() {
   const b = activeBattle(), f = live.fight, cp = !f && !live.show ? live.charPreview : null; // (🧍 cp = a battle's characters waiting on a character-only map)
   const map = f?.map || cp?.map || b.map || 'kungfu', ball = f ? !!f.ball : cp ? false : (b.map === 'random' ? false : isBallMap(map)), own = f?.chars ? f : cp; // own = pace / length / looks of a 🧍 character battle
-  return { type: 'cardScene', show: (live.show || !!f?.chars || !!cp) && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || cp?.name || b.name, fighters: f ? f.fighters : cp ? cp.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, fin: f?.fin ?? null, cel: f?.cel ?? null, destined: f?.destined || null, pace: own ? own.pace ?? 50 : (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: own ? own.length || 0 : (f ? getBattle(f.battleId) : b)?.length || 0, wacky: own ? {} : wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner, chars: !!own, lookSeed: own?.lookSeed || '' };
+  return { type: 'cardScene', show: (live.show || !!f?.chars || !!cp) && !ball, ball, phase: live.phase, map: map === 'random' ? 'kungfu' : map, finalFight: !!CARD_MAPS.find(m => m.id === map)?.finalFight, battleName: f?.name || cp?.name || b.name, fighters: f ? f.fighters : cp ? cp.fighters : fightersFor(b).fighters, fightId: f?.id || null, startedAt: f?.startedAt || 0, seed: f?.seed || 0, fin: f?.fin ?? null, cel: f?.cel ?? null, destined: f?.destined || null, pace: own ? own.pace ?? 50 : (f ? getBattle(f.battleId) : b)?.pace ?? 50, length: own ? own.length || 0 : (f ? getBattle(f.battleId) : b)?.length || 0, wacky: own ? {} : wackyOn(), last: live.phase === 'ended' ? live.last : null, test: !!f?.test, logo: ringLogo(), keep: !!C().keepWinner, chars: !!own, lookSeed: own?.lookSeed || '', finalNow: !!f?.finalNow };
 }
 // 🤼 the picture in the middle of the Royal Rumble: your own, or your Twitch picture
 export const ringLogo = () => C().ringLogo || db.owner?.avatar || '';
@@ -239,7 +239,7 @@ export function start(opts = {}) {
   if (fighters.length < 2) throw new Error(C().pool.some(p => p.status === 'active' && left(p) > 0) ? 'Need at least 2 packs in this card battle (check which games it uses, or "1 of each").' : 'Add at least 2 packs in the 🃏 Card pool tab first.');
   const pickMap = opts.map && cardMaps().some(m => m.id === opts.map) ? opts.map : b.map === 'random' ? (() => { const all = cardMaps(); return all[Math.floor(Math.random() * all.length)].id; })() : (b.map || 'kungfu');
   live.fight = { id: uid(), battleId: b.id, name: opts.test ? '🧪 Pretend card battle' : b.name, map: pickMap, ball: isBallMap(pickMap), fighters, startedAt: Date.now(), test: !!opts.test,
-    seed: Math.floor(Math.random() * 2 ** 31), destined: fighters[Math.floor(Math.random() * fighters.length)].id }; // every pack has the same chance (no luck); every game screen plays the same fight from the same seed
+    seed: Math.floor(Math.random() * 2 ** 31), destined: fighters[Math.floor(Math.random() * fighters.length)].id, finalNow: !!opts.finalNow }; // every pack has the same chance (no luck); every game screen plays the same fight from the same seed
   const mapInfo = CARD_MAPS.find(m => m.id === pickMap);
   if (mapInfo?.finalFight) { // (test fights pick at random, so they don't use up the pile for the stream)
     live.fight.fin = opts.test ? Math.floor(Math.random() * FIN_COUNT) : fromPile('fin:' + pickMap, FIN_COUNT);
@@ -278,7 +278,7 @@ export function charPreview(p) { const was = JSON.stringify(live.charPreview); l
 export function startChars(o) {
   if (live.phase === 'fight' && !live.fight?.chars) throw new Error('A card battle is going right now. Stop it first.');
   const mapInfo = CARD_MAPS.find(m => m.id === o.map);
-  live.fight = { id: uid(), chars: true, gameId: o.gameId, name: o.name, map: o.map, ball: false, fighters: o.fighters, startedAt: Date.now(), test: !!o.test, seed: Math.floor(Math.random() * 2 ** 31), destined: o.destined, pace: o.pace ?? 50, length: o.length || 0, lookSeed: o.lookSeed || '' };
+  live.fight = { id: uid(), chars: true, gameId: o.gameId, name: o.name, map: o.map, ball: false, fighters: o.fighters, startedAt: Date.now(), test: !!o.test, finalNow: !!o.finalNow, seed: Math.floor(Math.random() * 2 ** 31), destined: o.destined, pace: o.pace ?? 50, length: o.length || 0, lookSeed: o.lookSeed || '' };
   if (mapInfo?.finalFight) { live.fight.fin = o.test ? Math.floor(Math.random() * FIN_COUNT) : fromPile('fin:' + o.map, FIN_COUNT); live.fight.cel = o.test ? Math.floor(Math.random() * CEL_COUNT) : fromPile('cel:' + o.map, CEL_COUNT); }
   live.phase = 'fight'; live.last = null; live.charPreview = null;
   sendScene(); hooks.pushState(); return live.fight.id;

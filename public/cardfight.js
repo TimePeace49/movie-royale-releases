@@ -160,6 +160,7 @@
     if (mode === 'final') { for (const f of F) { f.ph += dt * 3; if (!f.alive) physics(f, dt); } return; } // (the clock stops while FINAL FIGHT shows; the last one out still lands)
     T += dt;
     const live = alive();
+    if (mode === 'fight' && scene.finalNow && T > 1.2 && live.length > 2 && !finalPair) { for (const o of live.filter(x => x.id !== destined).slice(0, live.length - 2)) ko(o, null); return; } // 🧪 Test tab → 🎬 Scenes: straight to the last two (FINAL FIGHT)
     if (mode !== 'fight') { for (const f of F) { if (FIN.on && (f === FIN.W || f === FIN.L)) continue; f.ph += dt * 3; physics(f, dt); } return; }
     if (scene.wacky.teleport && (teleT -= dt) <= 0 && live.length > 2) { // 🔀 two packs swap places
       teleT = rr(3.5, 6); const a = live[Math.floor(R() * live.length)]; let b = live[Math.floor(R() * live.length)]; if (b === a) b = live[(live.indexOf(a) + 1) % live.length];
@@ -1020,11 +1021,11 @@
   const CAM_IDLE = 8000; let camTouch = 0; const touch = () => { camTouch = performance.now(); };
   const cine = { rot: 0, orb: null, snap: null, quake: 0, punch: null, hit: null, saved: null, from: null }; // orb = the FINAL FIGHT camera's angle while it circles the last two (Derek: a horizontal 360, around them on the ground)
   const easeIO = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-  function quake(n) { cine.quake = Math.min(26, cine.quake + n); }
-  function onHit(x, y, dmg) { cine.hit = { x, y, t: performance.now() }; if (dmg >= 14) quake(Math.min(9, dmg * .3)); }
-  function onKO(o) { quake(14); if (!cam.manual && !cam.follow && !cam.overview && alive().length > 2) cine.punch = { x: o.x, y: zY(o.z) - o.h - 70 * S(o), t: 0, dur: 1.15 }; }
+  function quake(n) { cine.quake = Math.min(13, cine.quake + n * .5); } // (1.61.1, Derek: less shaky: half the shake it had)
+  function onHit(x, y, dmg) { cine.hit = { x, y, t: performance.now() }; if (dmg >= 18) quake(Math.min(6, dmg * .2)); }
+  function onKO(o) { quake(10); if (!cam.manual && !cam.follow && !cam.overview && alive().length > 2) cine.punch = { x: o.x, y: zY(o.z) - o.h - 70 * S(o), t: 0, dur: 1.4 }; }
   function finalCam() { // remember the view from before the FINAL FIGHT spin
-    cine.saved = { x: cam.x, y: cam.y, z: cam.z, manual: cam.manual, follow: cam.follow, overview: cam.overview }; cine.from = null; cine.punch = null;
+    cine.saved = { x: cam.x, y: cam.y, z: cam.z, manual: cam.manual, follow: cam.follow, overview: cam.overview }; cine.from = null; cine.punch = null; cam.sg = null;
     cam.follow = null; cam.overview = false; cam.manual = false; cine.end = null;
   }
   const camClamp = () => { cam.z = clamp(cam.z, 1, 3.2); const hw = W / 2 / cam.z, hh = H / 2 / cam.z; cam.x = clamp(cam.x, hw, W - hw); cam.y = clamp(cam.y, hh, H - hh); };
@@ -1038,11 +1039,11 @@
     const live = mode === 'final' && finalPair ? finalPair : alive(); if (!live.length) return { x: W / 2, y: H / 2, z: 1 };
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const f of live) { const [x, y] = fpos(f); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y - 90); y1 = Math.max(y1, y + 110); }
     let z = clamp(Math.min(W / (x1 - x0 + 520), H / (y1 - y0 + 420)), 1, live.length <= 2 ? (finalLeft > 0 ? 1.95 : 1.75) : 1.45), x = (x0 + x1) / 2, y = (y0 + y1) / 2;
-    if (cine.punch) return { x: cine.punch.x, y: cine.punch.y, z: 2.2 }; // 💥 a quick punch-in on a K.O.
+    if (cine.punch) return { x: cine.punch.x, y: cine.punch.y, z: 1.9 }; // 💥 a punch-in on a K.O.
     const h = cine.hit, age = h ? (performance.now() - h.t) / 1000 : 9;
-    if (age < 1.6 && live.length > 2) { const k = .28 * (1 - age / 1.6); x += (h.x - x) * k; y += (h.y - y) * k; z += .12 * (1 - age / 1.6); } // leans toward the latest big hit
+    if (age < 1.6 && live.length > 2) { const k = .12 * (1 - age / 1.6); x += (h.x - x) * k; y += (h.y - y) * k; z += .04 * (1 - age / 1.6); } // leans a little toward the latest big hit
     if (finalLeft > 0 && finalLeft < 5) z += (5 - finalLeft) * .06; // the last seconds of the final fight: slowly pushes in
-    const n = performance.now() / 1000; z *= 1 + .025 * Math.sin(n / 1.3); x += 14 * Math.sin(n / 2.1); // (it breathes a little: never a dead still shot)
+    const n = performance.now() / 1000; z *= 1 + .008 * Math.sin(n / 2.6); x += 5 * Math.sin(n / 4.2); // (it breathes a tiny bit: never a dead still shot)
     return { x, y, z };
   }
   function spinCam() { // 🥊 FINAL FIGHT: the camera walks a full circle around the last two (they swap sides, the near one gets bigger), then back to the view from before
@@ -1057,13 +1058,33 @@
   // around; the floor / ring / platform under them stays put; and each of the two is moved around the middle: across = cos(angle),
   // toward/away from the camera = sin(angle) (nearer = lower on screen + bigger, drawn in front)
   function orbitPose(f, o, ang) { const [dx, z0] = f === finalPair[0] ? o.a : o.b; return { x: o.px + dx * Math.cos(ang), z: clamp(o.zc + Math.sin(ang) * Math.sign(dx || 1) * .34 + (z0 - o.zc) * Math.cos(ang), 0, 1) }; }
+  function floorColors() { // the map's floor colors (far + near), for the turning floor while the camera circles
+    try { const c = document.createElement('canvas'); c.width = 48; c.height = 27; const x = c.getContext('2d'); x.drawImage(bg, 0, 0, 48, 27);
+      const avg = (y0, y1) => { const d = x.getImageData(0, y0, 48, y1 - y0).data; let r = 0, gg = 0, b = 0, n = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; } return [r / n, gg / n, b / n].map(Math.round); };
+      return [avg(Math.floor(GY0 / H * 27), Math.floor(GY0 / H * 27) + 3), avg(24, 27)]; } catch { return [[90, 70, 55], [120, 95, 72]]; }
+  }
+  function drawOrbitFloor(o, ang, hz) { // (1.61.1, Derek: "go around them, not rotate") the floor turns with the camera: planks / tiles on the ground swing around the two
+    const [far, near] = o.cols || (o.cols = floorColors()), rgb = (c, k = 1, a = 1) => `rgba(${c.map(v => Math.round(Math.min(255, v * k))).join(',')},${a})`;
+    const gr = g.createLinearGradient(0, hz, 0, H); gr.addColorStop(0, rgb(far, .85)); gr.addColorStop(1, rgb(near, 1.05)); g.fillStyle = gr; g.fillRect(-W, hz, W * 3, H * 2);
+    const Dz = Math.max(220, Math.abs(o.a[0]) || 320) / .34, zc = o.zc, sc = z => .72 + z * .4, s0 = sc(zc), cs = Math.cos(ang), sn = Math.sin(ang);
+    const P = (u, v) => { const X = u * cs - v * sn, V = u * sn + v * cs, z = zc + V / Dz; return z < -1.2 ? null : [o.px + X * sc(z) / s0, zY(z)]; };
+    const line = (pts) => { let on = false; g.beginPath(); for (const p of pts) { if (!p) { on = false; continue; } if (on) g.lineTo(p[0], p[1]); else { g.moveTo(p[0], p[1]); on = true; } } g.stroke(); };
+    const step = 170, R = 1700, N = 28;
+    g.lineWidth = 3; g.strokeStyle = rgb(far, .55, .55);
+    for (let u = -R; u <= R; u += step) line(Array.from({ length: N + 1 }, (_, i) => P(u, -R + i * 2 * R / N)));
+    g.lineWidth = 2; g.strokeStyle = rgb(far, .6, .35);
+    for (let v = -R; v <= R; v += step) line(Array.from({ length: N + 1 }, (_, i) => P(-R + i * 2 * R / N, v)));
+    g.lineWidth = 6; g.strokeStyle = 'rgba(255,215,90,.55)'; line(Array.from({ length: 49 }, (_, i) => { const a = i / 48 * Math.PI * 2; return P(Math.cos(a) * 520, Math.sin(a) * 520); })); // a ring around the two
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, p0 = P(Math.cos(a) * 470, Math.sin(a) * 470), p1 = P(Math.cos(a) * 570, Math.sin(a) * 570); if (p0 && p1) { g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke(); } } // (marks on the ring: you see it turn)
+    const fade = g.createLinearGradient(0, hz, 0, hz + 120); fade.addColorStop(0, rgb(far, .7, .9)); fade.addColorStop(1, rgb(far, .7, 0)); g.fillStyle = fade; g.fillRect(-W, hz, W * 3, 120); // (far away: hazy)
+  }
   function drawOrbit(now) {
-    const o = cine.orbit, ang = cine.orb, hz = GY0 - 4, off = ((ang / (Math.PI * 2)) * W) % W; // (hz: where the floor starts)
+    const o = cine.orbit, ang = cine.orb, hz = GY0 - 4, off = ((ang / (Math.PI * 2)) * W * 2) % W; // (hz: where the floor starts; the scenery passes twice in a full circle)
     g.save(); g.beginPath(); g.rect(-W, -H, W * 3, hz + H); g.clip(); // the scenery: slides past once
     for (const x0 of [-off - W, -off, W - off]) g.drawImage(bg, x0, 0, W, H);
     const seam = (W - off) % W, gr = g.createLinearGradient(seam - 140, 0, seam + 140, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(0,0,0,.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(seam - 140, 0, 280, H);
     g.restore();
-    g.save(); g.beginPath(); g.rect(-W, hz, W * 3, H * 2); g.clip(); g.drawImage(bg, 0, 0, W, H); g.restore(); // the floor: stays under them
+    g.save(); g.beginPath(); g.rect(-W, hz, W * 3, H * 2); g.clip(); drawOrbitFloor(o, ang, hz); g.restore(); // the floor: turns under them with the camera
     drawStage(now, true);
     const pose = finalPair.map(f => [f, orbitPose(f, o, ang)]), [[fa, pa], [fb, pb]] = pose;
     for (const [f, p] of pose.sort((x, y) => x[1].z - y[1].z)) { // the far one first
@@ -1076,11 +1097,16 @@
   function camStep(dt) {
     if (cine.quake > .2) cine.quake *= Math.pow(.03, dt); else cine.quake = 0;
     if (mode === 'final' && finalPair) { spinCam(); return; }
-    if (cine.saved) { const sv = cine.saved; cine.saved = null; cine.end = null; cine.rot = 0; cine.orb = null; cine.orbit = null; cine.snap = null; if (sv.manual) { cam.manual = true; } else { cam.follow = sv.follow && sv.follow.alive ? sv.follow : null; cam.overview = sv.overview; } } // (back to how it was)
+    if (cine.saved) { const sv = cine.saved; cine.saved = null; cam.sg = null; cine.end = null; cine.rot = 0; cine.orb = null; cine.orbit = null; cine.snap = null; if (sv.manual) { cam.manual = true; } else { cam.follow = sv.follow && sv.follow.alive ? sv.follow : null; cam.overview = sv.overview; } } // (back to how it was)
     if (cine.punch && (cine.punch.t += dt) > cine.punch.dur) cine.punch = null;
     if ((cam.manual || cam.follow || cam.overview) && camTouch && performance.now() - camTouch > CAM_IDLE) { cam.manual = false; cam.follow = null; cam.overview = false; camTouch = 0; } // 🎥 left alone: back to auto
     if (cam.follow && !cam.follow.alive) { cam.lost += dt; if (cam.lost > 1.4) { cam.follow = null; cam.lost = 0; } } else cam.lost = 0;
-    if (!cam.manual) { const g2 = camGoal(), k = Math.min(1, dt * (cine.punch ? 5 : cam.follow ? 4 : 1.8)); cam.z += (g2.z - cam.z) * k; cam.x += (g2.x - cam.x) * k; cam.y += (g2.y - cam.y) * k; }
+    if (!cam.manual) { // (1.61.1, Derek: less shaky) the goal is smoothed and small changes ignored, then the camera eases to it
+      const g2 = camGoal(), sg = cam.sg || (cam.sg = { ...g2 }), quick = cine.punch || cam.follow || FIN.on || mode === 'over', kg = Math.min(1, dt * (quick ? 6 : 1.1)), k = Math.min(1, dt * (cine.punch ? 3.2 : cam.follow ? 3.5 : 1.5));
+      if (quick || Math.abs(g2.z - sg.z) / sg.z > .02) sg.z += (g2.z - sg.z) * kg;
+      if (quick || Math.hypot(g2.x - sg.x, g2.y - sg.y) > 22 / cam.z) { sg.x += (g2.x - sg.x) * kg; sg.y += (g2.y - sg.y) * kg; }
+      cam.z += (sg.z - cam.z) * k; cam.x += (sg.x - cam.x) * k; cam.y += (sg.y - cam.y) * k;
+    } else cam.sg = null;
     camClamp();
   }
   const camApply = () => {

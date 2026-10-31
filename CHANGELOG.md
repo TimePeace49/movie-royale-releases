@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.61.1
+- 🎥 **Calmer auto camera** (card battles, character fights and ball battles): small movements are ignored and it eases into place, so it doesn't wobble. Shaking on hits, K.O.s and booms is about half as strong, the lean toward big hits and the "breathing" are much smaller.
+- 🥊 **The FINAL FIGHT 360° goes around them:** the floor now turns under the last two while the camera circles them (with a ring on the ground), and the town slides past faster behind them, so it looks like the camera walking around them instead of them spinning.
+- 🎬 **Test tab → 🎬 Scenes** (at the top): one button for each big moment on stream: ⚪ ball battle FINAL SHOWDOWN, 🃏 card battle FINAL FIGHT, 🧍 characters FINAL FIGHT (pick the map; it goes straight to the last two), 🎁 mystery spot reveal, ☠️ Doomsday (screen only, or the whole thing), 💧 Hydrate, 🙆 Stretch, 🎩 Pick a hat, 🎉 Viewer's choice and 🚀 Raid: pick a stream.
+
 ## 1.61.0
 - 🎁 **Mystery spots on the wheel (hidden reveal):** in a spot's ⚙, tick 🎁 Hidden reveal and add hidden words and/or a hidden picture. On the wheel the spot shows its normal words and picture, so nobody knows what it does.
   - When the wheel lands on it, a **card pack** with that cover pops up in Movie Royal and on stream. Click the pack (or press Enter): the top tears off, a card slides out and shows the hidden words / picture, on stream too, and the bot says it in chat.

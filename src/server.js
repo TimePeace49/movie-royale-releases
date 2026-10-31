@@ -1382,6 +1382,15 @@ app.post('/api/test/cap-join', wTry(async () => { // 🧪 the capture window sho
   if (!db.settings.capWindow) throw new Error('Pick a window first: Settings → 🎥 OBS → 📺 Capture window → ⚙ Set it up.');
   await setCapture(true); live.capAutoOn = true; setTimeout(() => { if (live.capAutoOn) setCapture(false).catch(() => {}); }, 10000); return { ok: true };
 }));
+// 🧪 Test tab → 🎬 Scenes: straight to the last two (kind: ball = FINAL SHOWDOWN, card = a card battle's FINAL FIGHT, chars = characters' FINAL FIGHT)
+app.post('/api/test/final', async (req, res) => {
+  const kind = String(req.body?.kind || 'ball'), map = String(req.body?.map || '');
+  if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is going: wait for it to finish (or ↺ Reset battlefield).' });
+  if (kind === 'card') { try { if (wheel.W().show) wheel.setShow(false); const finals = cards.cardMaps().filter(m => m.finalFight && !m.ball).map(m => m.id); return res.json({ ok: true, ...cards.start({ test: true, n: 3, map: finals.includes(map) ? map : 'kungfu', finalNow: true }) }); } catch (e) { return res.status(400).json({ error: e.message }); } }
+  const body = { count: 3, lobby: 0, game: 40, luck: false, showdownTest: true, ...(kind === 'chars' ? { chars: true, map: map || 'kungfu' } : { map: map && mapById(map) ? map : 'classic' }) };
+  try { const r = await fetch(`http://127.0.0.1:${PORT}/api/test/battle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); res.status(r.status).json(await r.json()); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/test/reveal', wTry(b => { if (!wheel.W().show) wheel.setShow(true); return wheel.revealTest({ theme: b.theme || null, text: b.text, image: b.image }); })); // 🧪 a pretend mystery card (theme = a holiday to try)
 app.post('/api/app-style', (req, res) => { const id = String(req.body?.id || '').replace(/[^\w-]/g, '').slice(0, 20); live.appStyle = id || null; res.json({ ok: true }); }); // 🎨 the control panel says which holiday style it shows (🎁 mystery packs match it)
 app.post('/api/wheel/knock', wTry(b => ({ left: wheel.knock(Number(b.delta) || -1) })));
@@ -2875,8 +2884,8 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   const tmap = req.body?.map && req.body.map !== 'random' && (mapById(req.body.map) || (req.body.chars && isCharMap(req.body.map))) ? req.body.map : req.body?.map === 'random' || (isCharMap(currentMap()) && !req.body?.chars) ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now() };
   live.phase = 'lobby'; live.claim = null;
-  if (isCharMap(tmap)) { cards.setShow(false); cards.endChars(); const err = startCharFight(req.body?.chaos ? '🤪 Chaos practice round' : '🧪 Practice round', true); return err ? res.status(400).json({ error: err }) : res.json({ ok: true }); } // 🧍 a character-only map
-  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: !req.body?.racePowers, racePowers: !!req.body?.racePowers, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [] }, 'overlay');
+  if (isCharMap(tmap)) { cards.setShow(false); cards.endChars(); const err = startCharFight(req.body?.chaos ? '🤪 Chaos practice round' : req.body?.showdownTest ? '🥊 Final fight test' : '🧪 Practice round', true, !!req.body?.showdownTest); return err ? res.status(400).json({ error: err }) : res.json({ ok: true }); } // 🧍 a character-only map
+  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : db.settings.gameSeconds, pacer: clampN(req.body?.pacer ?? db.settings.pacer ?? 50, 0, 100, 50), fairOdds: !req.body?.racePowers, racePowers: !!req.body?.racePowers, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [], showdownTest: !!req.body?.showdownTest }, 'overlay');
   pushState(); res.json({ ok: true });
 });
 
@@ -2928,10 +2937,10 @@ async function startRound(opts = {}) {
   return null;
 }
 // 🧍 the battle (live.game) on a character-only map: the card fight engine plays it, with the same fair winner (odds + luck)
-function startCharFight(name, test) {
+function startCharFight(name, test, finalNow) {
   const g = live.game, tot = g.fighters.reduce((a, f) => a + (f.weight || 1), 0); let r = Math.random() * tot;
   const destined = (g.fighters.find(f => (r -= (f.weight || 1)) <= 0) || g.fighters[g.fighters.length - 1]).id;
-  try { cards.startChars({ gameId: g.id, map: g.map, name, fighters: charFighters(g.fighters), destined, pace: clampN(db.settings.pacer ?? 50, 0, 100, 50), length: db.settings.gameSeconds, lookSeed: live.lookSeed, test }); }
+  try { cards.startChars({ gameId: g.id, map: g.map, name, fighters: charFighters(g.fighters), destined, pace: clampN(db.settings.pacer ?? 50, 0, 100, 50), length: db.settings.gameSeconds, lookSeed: live.lookSeed, test, finalNow: !!finalNow }); }
   catch (e) { live.game = null; live.phase = 'idle'; return e.message; }
   g.charFight = true; live.phase = 'running'; live.phaseAt = Date.now(); if (live.board) closeBoard();
   pushState(); return null;

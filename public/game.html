@@ -5115,7 +5115,7 @@ function startGame(m) {
   gameId = m.gameId; listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length;
   if (m.chaos) chaos = m.chaos;
   movieNo = m.movieNo || null; series = m.series || null;
-  cfg = { laps: clamp(Number(m.laps) || 5, 1, 50), survival: m.survival ?? null, lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, pacer: m.pacer ?? 50, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null }; funNext = rnd(3, 5); funSwap = null;
+  cfg = { laps: clamp(Number(m.laps) || 5, 1, 50), survival: m.survival ?? null, lobby: m.lobbySeconds ?? 0, game: m.gameSeconds ?? 30, pacer: m.pacer ?? 50, fair: m.fairOdds !== false, fun: m.fun && Object.values(m.fun).some(Boolean) ? m.fun : null, sdTest: !!m.showdownTest }; funNext = rnd(3, 5); funSwap = null;
   for (const f of fighters) { f.hp = null; f.hurtAt = null; } // full health every battle
   t = 0; lobbyLeft = cfg.lobby; winner = null; winTile = null; destined = null; suddenDeath = false; showdown = false; paceNext = 6; resultSent = false;
   hazards = []; parts = []; feed = []; banners = []; floaters = []; queue = (m.queued || []).slice();
@@ -5388,12 +5388,15 @@ function updateCam(dt) {
   }
   if (MAP.camFit && !cam.manual && !cam.overview) { const g = MAP.camFit(), k = Math.min(1, dt * 2.5); cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k; return; } // maps with their own camera (Pompeii scrolls down with the chase)
   if (cam.overview) { const k = Math.min(1, dt * 3); cam.z += (Math.min(camOpt.base, camOpt.fit) * .95 - cam.z) * k; cam.fx += (camOpt.cx - cam.fx) * k; cam.fy += (camOpt.cy - cam.fy) * k; return; }
-  if (cam.manual || !camOpt.auto) { if (!cam.manual) { const pre = phase === 'idle' || phase === 'waiting' || phase === 'lobby', g = pre ? camFit() : { z: camOpt.base, fx: camOpt.cx, fy: camOpt.cy }, k = Math.min(1, dt * 3); cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k; } return; }
-  const g = camFit(), k = Math.min(1, dt * 1.2);
-  cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k;
+  if (cam.manual || !camOpt.auto) { cam.sg = null; if (!cam.manual) { const pre = phase === 'idle' || phase === 'waiting' || phase === 'lobby', g = pre ? camFit() : { z: camOpt.base, fx: camOpt.cx, fy: camOpt.cy }, k = Math.min(1, dt * 3); cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k; } return; }
+  // (1.61.1, Derek: less shaky) the goal itself is smoothed first and small changes are ignored, then the camera eases to it
+  const g = camFit(), sg = cam.sg || (cam.sg = { ...g }), kg = Math.min(1, dt * .8), k = Math.min(1, dt * 1.4);
+  if (Math.abs(g.z - sg.z) / sg.z > .015) sg.z += (g.z - sg.z) * kg;
+  if (Math.hypot(g.fx - sg.fx, g.fy - sg.fy) > 18 / cam.z) { sg.fx += (g.fx - sg.fx) * kg; sg.fy += (g.fy - sg.fy) * kg; }
+  cam.z += (sg.z - cam.z) * k; cam.fx += (sg.fx - cam.fx) * k; cam.fy += (sg.fy - cam.fy) * k;
 }
 function applyCam() { ctx.translate(CX, CAM_Y); ctx.scale(cam.z, cam.z); ctx.translate(-cam.fx, -cam.fy); }
-function camReset() { cam.manual = false; cam.follow = null; cam.overview = false; }
+function camReset() { cam.manual = false; cam.follow = null; cam.overview = false; cam.sg = null; }
 function followable() { return fighters.filter(f => f.alive && !f.falling).sort((a, b) => (b.weight || 1) - (a.weight || 1) || a.label.localeCompare(b.label)); }
 function followStep(d) { const l = followable(); if (!l.length) return; const i = cam.follow ? l.indexOf(cam.follow) : -1; cam.follow = l[(i + d + l.length) % l.length]; cam.overview = false; cam.manual = false; }
 function camZoomAt(px, py, factor) {
@@ -5552,6 +5555,7 @@ function runStep(dt) { // one step of a running battle
     if (cfg.fun?.swappy && !winner && (funSwap = (funSwap ?? rnd(6, 9)) - dt) <= 0) { funSwap = rnd(8, 12); runEvent({ event: 'swap', by: { name: '🎉 FUN MODE' }, source: 'fun' }); } // 🔀 everyone swaps places every so often
     SFX.setIntensity(t / cfg.game);
     const rs = Math.ceil(cfg.game - t); if (rs !== lastTick && rs <= 5 && rs > 0) { lastTick = rs; SFX.play('final5'); }
+    if (cfg.sdTest && !winner && !suddenDeath && t > 1.5 && alive().length > 2) for (const f of alive().filter(x => x !== destined).slice(0, alive().length - 2)) { f.noLuck = true; fall(f); f.noLuck = false; } // 🧪 Test tab → 🎬 Scenes: straight to the last two (FINAL SHOWDOWN)
     if (!winner && !suddenDeath && !cfg.fun?.noShowdown && !MAP.ownEnd && !MAP.noShowdown && alive().length === 2 && fighters.length > 2 && t < cfg.game - 5) startSuddenDeath(true); // 2 left early: FINAL SHOWDOWN (no long hop-around)
     if (!winner && !suddenDeath && !MAP.noPaceChaos && cfg.pacer > 0 && t > cfg.game * .35 && t < cfg.game - 3 && alive().length > paceTarget() * (2.2 - cfg.pacer / 100) + 1 && (paceNext -= dt) <= 0) { paceNext = rnd(3.5, 5.5) * (1.5 - cfg.pacer / 200); runEvent({ event: 'random', by: { name: '⚡ ARENA' }, source: 'pace' }); } // behind pace: the arena livens it up
     if (!winner && !MAP.ownEnd && (t >= cfg.game || suddenDeath)) { if (!suddenDeath) startSuddenDeath(); else stepSuddenDeath(dt); }
@@ -5584,7 +5588,7 @@ function frame(now) {
   ctx.clearRect(0, 0, W, H);
   drawSky();
   ctx.save();
-  if (shake > .2) { const sk = shake * clamp((GFX.shake ?? 100) / 100, 0, 2); if (sk > .2) ctx.translate(rnd(-sk, sk), rnd(-sk, sk)); shake *= Math.pow(.02, dt); } // (advanced: screen shake strength)
+  if (shake > .2) { const sk = shake * .55 * clamp((GFX.shake ?? 100) / 100, 0, 2); if (sk > .2) ctx.translate(rnd(-sk, sk), rnd(-sk, sk)); shake *= Math.pow(.02, dt); } // (advanced: screen shake strength)
   if (!replay) updateCam(dtReal); applyCam();
   if (phase !== 'idle' || !TRANSPARENT) {
     if (!tiles.length) buildIsland();
