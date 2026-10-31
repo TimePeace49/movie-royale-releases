@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.65.3
+- 🤫 Fixed a false "Something went wrong" error: when Movie Royal reads a web page in the background (like the IMDb pages for the 500 worst list), an ad or tracking picture on that page sometimes doesn't load. That's harmless and no longer shows as an error (it's still in the tech report).
+- Those background pages now skip ads and trackers altogether, can't open pop-up windows, and stay muted, so they load faster too.
+
 ## 1.65.2
 - 🔄 **Refresh the whole banned list** (top of Settings → 🚫 Banned Movies): one button that looks at everything: new movies that break the ban rules (looked up on TMDB), last year's "this year" bans coming off, "not in English" bans re-checked for English dubs, and every 🎞️ series (sequel bans + locks). The line next to it shows how far it is. It only adds or removes automatic bans: the ones you banned yourself are never touched. (It replaces the old 🔄 Update the ban list button further down.)
 - 🧪 Test tab → 🔄 Pretend whole refresh (made-up movies, no internet).

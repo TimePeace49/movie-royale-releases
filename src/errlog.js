@@ -16,7 +16,8 @@ const SOURCES = { twitch: 'Twitch', discord: 'Discord bot', '24/7': '24/7 Discor
 export function plain(e) {
   const m = String(e.msg || ''), who = SOURCES[e.source] || 'Movie Royal';
   let what = 'Something went wrong', fix = 'If it keeps happening: ⚠️ Errors → 🛠️ For Claude → Copy, and send it to Claude.';
-  if (/HTTP 403/.test(m) && e.source === 'letterboxd') { what = 'Letterboxd turned away the full profile read'; fix = 'Your newest watched movies still come in (from your Letterboxd feed). Nothing to do.'; }
+  if (PAGE_BIT.test(m)) { what = 'A web page it was reading in the background had a picture or ad that didn\'t load'; fix = 'Nothing to do: it doesn\'t change anything.'; }
+  else if (/HTTP 403/.test(m) && e.source === 'letterboxd') { what = 'Letterboxd turned away the full profile read'; fix = 'Your newest watched movies still come in (from your Letterboxd feed). Nothing to do.'; }
   else if (/401|unauthori[sz]ed|invalid.*token|token.*(expired|invalid)/i.test(m)) { what = 'The sign-in stopped working'; fix = e.source === 'twitch' ? 'Sign in with Twitch again (top right).' : 'Check the token / key in ⚙️ Settings.'; }
   else if (/403|forbidden|missing access|permission/i.test(m)) { what = "It wasn't allowed to do that"; fix = 'Check the permissions (sign in again, or re-invite the Discord bot).'; }
   else if (/fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT|timeout|aborted|network|socket hang up|EAI_AGAIN/i.test(m)) { what = "Couldn't reach the internet (or that site was down)"; fix = 'Usually fixes itself. If it keeps happening, check your internet.'; }
@@ -37,7 +38,9 @@ export function logErr(source, msg, detail = '') {
 // 🤫 OBS is just closed (1.58.3, Derek): not a problem, so no message about it. It's still kept for the tech report (🛠️ For Claude),
 // in case something else goes wrong. Other OBS problems (wrong password…) still show.
 const OBS_CLOSED = /couldn.t reach OBS|OBS closed the connection|ECONNREFUSED.*4455|connect ECONNREFUSED/i;
-export const quiet = (source, msg) => source === 'obs' && OBS_CLOSED.test(String(msg || ''));
+// 🤫 a web page Movie Royal reads in the background (the 500 worst list, card pack search) had a picture / ad / tracker that didn't load (1.65.3, Derek saw one): harmless
+const PAGE_BIT = /Failed to load URL: .* with error: ERR_[A-Z_]+/i;
+export const quiet = (source, msg) => (source === 'obs' && OBS_CLOSED.test(String(msg || ''))) || PAGE_BIT.test(String(msg || ''));
 export const errors = () => list; // (everything, for the tech report)
-export const shown = () => list.filter(e => !e.quiet); // (what the ⚠️ Errors tab and its count show)
+export const shown = () => list.filter(e => !e.quiet && !quiet(e.source, e.msg)); // (what the ⚠️ Errors tab and its count show; also hides ones saved before a rule was quiet)
 export function clear() { list = []; persist(); }

@@ -170,6 +170,15 @@ app.whenReady().then(async () => {
   ]));
   let started = false;
   const hiddenPages = new Set(); // hidden windows reading shop pages (card pack search)
+  // (those pages get their own session that skips ad / tracker requests: they only slow it down and a tracker that doesn't load showed up as an error, 1.65.3)
+  const ADS = ['doubleclick.net', 'googlesyndication.com', 'googleadservices.com', 'adnxs.com', 'amazon-adsystem.com', 'krushmedia.com', 'scorecardresearch.com', 'adsrvr.org', 'rubiconproject.com', 'pubmatic.com', 'openx.net', 'criteo.com', 'criteo.net', 'taboola.com', 'outbrain.com', 'moatads.com', 'casalemedia.com', 'quantserve.com', 'adsafeprotected.com', 'bidswitch.net', 'teads.tv', 'sharethrough.com', '3lift.com', 'smartadserver.com', 'yieldmo.com', 'indexww.com', 'media.net', 'adform.net', 'ads-twitter.com', 'facebook.net', 'hotjar.com'];
+  let pageSes = null;
+  const pagesSession = () => {
+    if (pageSes) return pageSes;
+    pageSes = require('electron').session.fromPartition('mr-pages');
+    try { pageSes.webRequest.onBeforeRequest({ urls: ['<all_urls>'] }, (d, cb) => { let h = ''; try { h = new URL(d.url).hostname; } catch {} cb({ cancel: ADS.some(a => h === a || h.endsWith('.' + a)) }); }); } catch {}
+    return pageSes;
+  };
   globalThis.__desktop = {
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
     refocus: () => { const w = BrowserWindow.getFocusedWindow() || win; if (w && !w.isDestroyed()) { w.blur(); setTimeout(() => !w.isDestroyed() && w.focus(), 30); } },
@@ -181,8 +190,9 @@ app.whenReady().then(async () => {
       const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
       const limit = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('took too long')), ms))]);
       if (!render) { const r = await net.fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000) }); return { status: r.status, text: await limit(r.text(), 15000) }; }
-      const w = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { backgroundThrottling: false } });
+      const w = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { backgroundThrottling: false, session: pagesSession() } });
       hiddenPages.add(w);
+      w.webContents.setAudioMuted(true); w.webContents.setWindowOpenHandler(() => ({ action: 'deny' })); // (no sound, and no pop-up windows from the page)
       try {
         const end = Date.now() + timeout;
         await limit(w.loadURL(url, { userAgent: UA }), timeout).catch(() => {}); // (some shop pages never say they're done loading)
