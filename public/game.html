@@ -360,10 +360,11 @@ function makeWall(h) {
 }
 
 const Rfor = n => clamp(Math.round(5 + 1.05 * Math.sqrt(Math.max(1, n))), 7, 24); // more pieces = bigger cliff
-let builtFor = 0;
+let builtFor = 0, MAPK = 1, builtK = 1; // 📏 MAPK = map size (Battle tab → right side): bigger cliffs, longer race tracks
+const setMapK = v => { const k = clamp(Number(v) || 1, .5, 2); const ch = Math.abs(k - MAPK) > .001; MAPK = k; return ch; };
 function buildIsland(n = fighters.length || 12) {
-  builtFor = n;
-  R = Math.max(5, Math.round(Rfor(n) * (MAP.rScale || 1)));
+  builtFor = n; builtK = MAPK;
+  R = Math.max(5, Math.min(44, Math.round(Rfor(n) * (MAP.rScale || 1) * MAPK)));
   MAP._safe = undefined; MAP.build?.(R);
   tiles = []; tileMap.clear();
   const span = MAP.span ? MAP.span(R) : Math.ceil(R * 2.4) + 4;
@@ -4992,9 +4993,9 @@ function applyPreview(m) {
   setSkin(m.skin); listName = m.listName || ''; kind = m.kind || 'text'; totalEntries = m.total || m.fighters.length; pendingCount = m.queued || 0;
   chatGate = !!m.chatGate; if (m.chaos) chaos = m.chaos;
   if (!m.fighters.length && !chatGate) { phase = 'idle'; fighters = []; return; }
-  const changed = m.map ? setMap(m.map) : false;
+  const changed = m.map ? setMap(m.map) : false; if (m.mapSize != null) setMapK(m.mapSize);
   if (phase === 'idle') { hideWin(); hideClaim(); buildIsland(m.fighters.length); fighters = []; feed = []; banners = []; hazards = []; winner = null; phase = 'waiting'; }
-  else if (changed || Math.abs(Rfor(m.fighters.length) - Rfor(builtFor)) >= 2) rebuildKeep(m.fighters.length);
+  else if (changed || builtK !== MAPK || Math.abs(Rfor(m.fighters.length) - Rfor(builtFor)) >= 2) rebuildKeep(m.fighters.length);
   syncFighters(m.fighters); fighters.forEach(applyPowers); MAP.arrange?.();
 }
 /** New map or a much bigger/smaller crowd while pieces wait: rebuild the cliff and spread everyone over it again. */
@@ -5032,7 +5033,7 @@ function wlRound(rd) {
 let wlId = '', wlOpts = {};
 const LAB = new URLSearchParams(location.search).has('lab'); // 🧪 the Test lab: a battle that runs only on this page (never on stream, never talks to the app)
 const PREVIEW_WIN = new URLSearchParams(location.search).has('preview'); // 📺 the test preview popped out (another monitor): shows what's on stream, no sound
-window.__royal = { GFX, scale: () => gScale, send: o => send(o), map: () => MAP, st: () => ({ fighters, t, phase, cfg, winner, destined, nuke: NUKE, rp: RP, mapId, bus: BUS }), looks: () => fighters.map(f => ({ id: f.id, look: f.look || f._auto })) }; // 🃏 for cardfight.js (this page's code lives inside its own function)
+window.__royal = { GFX, size: () => ({ R, k: MAPK, tiles: tiles.length, L: MAP.L || null }), scale: () => gScale, send: o => send(o), map: () => MAP, st: () => ({ fighters, t, phase, cfg, winner, destined, nuke: NUKE, rp: RP, mapId, bus: BUS }), looks: () => fighters.map(f => ({ id: f.id, look: f.look || f._auto })) }; // 🃏 for cardfight.js (this page's code lives inside its own function)
 if (PREVIEW_WIN) { document.title = 'Movie Royal — Preview (what\'s on stream)'; setTimeout(() => window.SFX?.setVolume({ on: false }), 0); }
 const WHEEL_ONLY = new URLSearchParams(location.search).has('wheel'); // the wheel popped out in its own window: always the wheel, no sound (the app already plays it)
 function wlSet(on) { if (WHEEL_ONLY) on = true; SFX.setMap?.(on ? 'wheel-' + wlId : mapId); wlShow = on; $('wheelLayer').classList.toggle('hidden', !on); }
@@ -5132,9 +5133,9 @@ function startGame(m) {
   hazards = []; parts = []; feed = []; banners = []; floaters = []; queue = (m.queued || []).slice();
   Object.assign(mods, { windUntil: 0, iceUntil: 0, gravUntil: 0, quakeUntil: 0 });
   gatherEnd = 0;
-  const changed = m.map ? setMap(m.map) : false;
+  const changed = m.map ? setMap(m.map) : false; setMapK(m.mapSize ?? 1);
   if (phase !== 'waiting') { buildIsland(m.fighters.length); fighters = []; }
-  else if (changed || Math.abs(Rfor(m.fighters.length) - Rfor(builtFor)) >= 2) rebuildKeep(m.fighters.length);
+  else if (changed || builtK !== MAPK || Math.abs(Rfor(m.fighters.length) - Rfor(builtFor)) >= 2) rebuildKeep(m.fighters.length);
   syncFighters(m.fighters); fighters.forEach(resetFighter); fighters.forEach(f => { applyPowers(f); f.funSize = cfg.fun?.sizes ? rnd(.55, 2.1) : 1; }); sizeAll(); MAP.arrange?.(); lastTick = 0; pendingCount = 0; elim = []; elimT = []; evLog = [];
   SFX.music('lobby');
   phase = 'lobby'; send({ type: 'phase', phase, gameId });

@@ -167,17 +167,17 @@ function refreshPreview(now = false) {
     if (live.phase !== 'idle') return;
     const cp = cards.ballPreview(); // 🃏 Card battles tab with a ball map: the card fighters wait on that map
     if (cp) { cards.charPreview(null); const fighters = cp.fighters.map(f => ({ id: f.id, label: f.name + (f.tag ? ' ' + f.tag : ''), sub: f.game || '', image: f.image || null, weight: 1, kind: 'cards' }));
-      lastPreview = { type: 'preview', map: cp.map, fighters, total: fighters.length, listName: cp.name, kind: 'cards', skin: 'cards', queued: 0, chaos: chaosState(), chatGate: false }; lastPreview.key = fighters.map(f => f.id).join(',');
+      lastPreview = { type: 'preview', mapSize: mapSizeK(), map: cp.map, fighters, total: fighters.length, listName: cp.name, kind: 'cards', skin: 'cards', queued: 0, chaos: chaosState(), chatGate: false }; lastPreview.key = fighters.map(f => f.id).join(',');
       broadcast(lastPreview, 'overlay'); lastPreview.at = Date.now(); return; }
     const list = getList(db.activeListId);
     if (!list) return;
     if (previewList !== list.id) { previewIds = null; previewList = list.id; }
     const { fighters, total } = await buildFighters(list, previewIds);
     if (live.phase !== 'idle') return;
-    previewIds = fighters.map(f => f.id);
+    previewIds = fighters.map(f => f.id); cliffN = fighters.length;
     { const k = list.id + ':' + previewIds.join(','); if (k !== refreshPreview.cliffKey) { refreshPreview.cliffKey = k; broadcast({ type: 'cliff', cliff: cliffInfo() }, 'control'); } } // 📋 the Battle tab's list shows who's really in
     const pmap = currentMap(); cards.charPreview(isCharMap(pmap) && list.chars ? { map: pmap, name: list.screenTitle || list.name, fighters: charFighters(fighters), pace: fightPacer(list), length: fightSecs(list), lookSeed: live.lookSeed } : null); // 🧍 a character-only map: the card fight engine shows them waiting
-    lastPreview = { type: 'preview', map: pmap, lookSeed: live.lookSeed, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
+    lastPreview = { type: 'preview', mapSize: mapSizeK(), map: pmap, lookSeed: live.lookSeed, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
     broadcast(lastPreview, 'overlay');
     lastPreview.at = Date.now(); previewError = null;
   } catch (e) { console.error('[preview]', e); previewError = e.message; broadcast({ type: 'toast', text: `⚠️ The cliff couldn't be set up: ${e.message}` }, 'control'); } 
@@ -229,7 +229,7 @@ function publicState() { applyCharsDefault();
     status: { discord: discord.status, twitch: twitch.status, donations: donations.status, letterboxd: lb.stats(), overlays: [...wss.clients].filter(c => c.role === 'overlay').length },
     movieNo: (stream().movies || 0) + 1, phase: live.phase, lastWinner: live.lastWinner, claim: live.claim && { ...live.claim, timer: undefined },
     noShowStreak: db.noShowStreak || 0, chatters: stream().active, cliff: cliffInfo(), phaseAt: live.phaseAt || 0, fightSecs: live.game?.secs || null, recentChatters: recentChatters(), wheelChatters: chattersForWheel(), gather: live.gather ? { endsAt: live.gather.endsAt } : null, rollcall: live.rollcall && { ...live.rollcall, timer: undefined }, awayCount: (getList('movies')?.entries || []).filter(e => e.status === 'away').length,
-    maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
+    raceMax: raceMax(), cliffN: cliffCount(), maps: mapsWithTags(), mapNow: (live.phase === 'lobby' || live.phase === 'running') && live.game?.map || currentMap(), vote: live.vote && { options: live.vote.options, endsAt: live.vote.endsAt }, colorCount: Object.keys(db.colors || {}).length,
     rewardsByHand: rewardsByHand || [], backupDue: backupDue(), lastBackupAt: db.lastBackupAt || null, luckSaves: (db.luckSaves || []).map(x => ({ id: x.id, at: x.at, name: x.name, listId: x.listId || 'movies', kind: x.kind || 'luck', count: Object.keys(x.luck).length, total: Math.round(Object.values(x.luck).reduce((a, b) => a + b, 0) * 10) / 10 })), series: live.series && !live.series.done ? { listId: live.series.listId, bestOf: live.series.bestOf, need: live.series.need, round: live.series.round, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ label: live.series.names[id], n })) } : null, chaos: chaosState(), calls: { open: live.phase !== 'running' && live.phase !== 'ended', count: live.calls?.size || 0, top: live.calls ? callSummary().slice(0, 6) : [] }, picksClosed: picksClosed(), picksClosedManual: !!db.picksClosed, raid: live.raid ? { by: live.raid.name, target: live.raid.target, started: live.raid.started || null, test: !!live.raid.test } : null, raidSetup: db.raidSetup || null, vrSetup: db.vrSetup || null, choiceObs: !!db.settings.choiceObs, chatBot: db.twitchBot ? { name: db.twitchBot.user?.name, login: db.twitchBot.user?.login, avatar: db.twitchBot.user?.avatar, on: twitch.botOn(), error: twitch.botStatus.error } : null, announce: Object.fromEntries(Object.entries(annState()).map(([k, a]) => [k, { on: !!a?.on, last: a?.last || 0, error: a?.error || null, kind: a?.kind || null }])), annKind: annKind(), cards: cards.stateFor(), capture: { on: !!live.capture, error: live.captureError || null, size: Number(db.settings.capSize) || 30, autoHide: !!db.settings.capAutoHide, autoShow: db.settings.capAutoShow !== false, allowed: obsOk('Cap'), window: db.settings.capWindow || '' }, announceMins: Math.max(5, Number(db.settings.announceMins) || 60), announceDefaults: ANNOUNCE_DEFAULTS, pickLock: lockMode(), autoLocked: autoLocked(), live: !!db.live || !!live.fakeLive, fakeLive: !!live.fakeLive, swapLock: !!db.swapLock, swapsLocked: swapsLocked(), luckOn: luckOn(), banCount: (db.bans || []).length,
     port: PORT
   };
@@ -377,6 +377,17 @@ function powerUp(r, kind) {
 // They really can change who wins (Derek), so a battle with them on has no winner picked ahead of time (fairOdds: false). Never refunds.
 const RACE_INFO = { boost: { icon: '💨', say: 'a BOOST' }, shield: { icon: '🛡️', say: 'a SHIELD' }, oil: { icon: '🛢️', say: 'an OIL SLICK behind them' }, rocket: { icon: '🚀', say: 'a ROCKET straight ahead' }, nuke: { icon: '☢️', say: 'a ☢️ NUKE. Everyone else is about to be wiped out' } };
 const isRaceMap = id => RACE_MAPS.includes(id);
+// 🏁 no races with more than settings.raceMax pieces (Derek: 50): random / vote / start skip the race maps, picking one is refused
+const raceMax = () => Math.max(2, Math.round(Number(db.settings.raceMax) || 50));
+let cliffN = null; // how many pieces the active battle has on the cliff right now (set by refreshPreview / startRound)
+function cliffCount() {
+  if ((live.phase === 'lobby' || live.phase === 'running') && live.game?.fighters) return live.game.fighters.length;
+  if (cliffN != null && previewList === db.activeListId) return cliffN;
+  const l = getList(db.activeListId); return Math.min((l?.entries || []).filter(e => e.status === 'active').length, Number(db.settings.maxFighters) || 1000);
+}
+const raceOk = (n = cliffCount()) => n <= raceMax();
+function mapSizeK() { return clampN(db.settings.mapSize, 50, 200, 100) / 100; } // 📏 map size for every ball map (Battle tab, right side): bigger cliffs + longer race tracks
+const nonRaceMap = () => { const pool = MAP_LIST.filter(m => !isRaceMap(m.id) && m.id !== db.lastMap); return pool[Math.floor(Math.random() * pool.length)].id; };
 const racePowersOn = l => !!(l?.type === 'chat' && l.fun?.racePowers && isRaceMap(currentMap()));
 function racePowerUp(r, kind) {
   const l = getList(db.activeListId), say = t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); };
@@ -931,7 +942,7 @@ cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true), cha
     const fighters = fight.fighters.map(f => ({ id: f.id, label: f.name + (f.tag ? ' ' + f.tag : ''), sub: f.game || '', image: f.image || null, weight: 1, kind: 'cards', color: f.color }));
     live.game = { id: uid(), cards: fight.id, listId: null, fighters, total: fighters.length, map: fight.map, startedAt: Date.now(), ...(fight.test ? { test: true, testName: fight.name } : {}) };
     live.phase = 'lobby'; live.claim = null;
-    broadcast({ type: 'start', map: fight.map, gameId: live.game.id, fighters, total: fighters.length, listName: fight.name, kind: 'cards', skin: 'cards', lobbySeconds: 3, gameSeconds: b.length || db.settings.gameSeconds, pacer: b.pace ?? 50, fairOdds: true, queued: [] }, 'overlay');
+    broadcast({ type: 'start', mapSize: mapSizeK(), map: fight.map, gameId: live.game.id, fighters, total: fighters.length, listName: fight.name, kind: 'cards', skin: 'cards', lobbySeconds: 3, gameSeconds: b.length || db.settings.gameSeconds, pacer: b.pace ?? 50, fairOdds: true, queued: [] }, 'overlay');
     pushState(); return null;
   },
   stopBall: () => { if (live.game?.cards) { live.phase = 'idle'; live.game = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); } },
@@ -1767,6 +1778,7 @@ app.post('/api/settings', (req, res) => {
   if (mapWas !== db.settings.map) { live.map = null; live.mapUsed = false; if (live.phase === 'idle') refreshPreview(true); }
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
+  if (('mapSize' in body || 'raceMax' in body) && live.phase === 'idle') { refreshPreview(true); pushState(); } // 📏 map size / 🏁 race limit changed
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   broadcast(audioMsg(), 'overlay'); broadcast(audioMsg(), 'celebrate'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
@@ -2561,17 +2573,21 @@ const charFighters = fighters => fighters.map(f => ({ id: f.id, packId: f.id, na
 function currentMap() {
   if (live.map && isCharMap(live.map) && !charsOn()) live.map = null; // (characters turned off: back to a ball map)
   { const want = db.settings.map; if (isCharMap(want) && charsOn() && live.map !== want && live.phase !== 'lobby' && live.phase !== 'running') live.map = want; } // (characters turned on with a character-only map picked)
+  const idle = live.phase !== 'lobby' && live.phase !== 'running';
+  if (idle && live.map && isRaceMap(live.map) && !raceOk()) { live.raceSkip = live.map; live.map = null; } // 🏁 too many pieces for a race
+  if (idle && live.raceSkip && raceOk() && (!live.map || !isRaceMap(live.map))) { live.map = live.raceSkip; live.raceSkip = null; } // (few enough again: back to that race)
   if (!live.map) {
-    const want = db.settings.map || 'random';
-    if (mapById(want) || (isCharMap(want) && charsOn())) live.map = want;
-    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
+    const want = db.settings.map || 'random', big = !raceOk();
+    if ((mapById(want) && !(big && isRaceMap(want))) || (isCharMap(want) && charsOn())) live.map = want;
+    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap && !(big && isRaceMap(m.id))); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
   }
   return live.map;
 }
-function nextMap() { if (live.mapUsed) { db.lastMap = live.map; live.map = null; live.mapUsed = false; } }
+function nextMap() { if (live.mapUsed) { db.lastMap = live.map; live.map = null; live.mapUsed = false; live.raceSkip = null; } }
 app.post('/api/map', (req, res) => {
   const id = String(req.body?.id || 'random'); if (id !== 'random' && !mapById(id) && !isCharMap(id)) return res.status(400).json({ error: 'Unknown map' });
-  db.settings.map = id; save(); live.map = null; live.mapUsed = false; if (live.vote) endVote(true);
+  if (isRaceMap(id) && !raceOk()) return res.status(400).json({ error: `🏁 No races with more than ${raceMax()} pieces: this battle has ${cliffCount()}. (Change the number in Settings → ⚔️ Game.)` });
+  db.settings.map = id; save(); live.map = null; live.mapUsed = false; live.raceSkip = null; if (live.vote) endVote(true);
   if (live.phase === 'idle') refreshPreview(true); pushState(); res.json({ ok: true, map: currentMap() });
 });
 app.post('/api/shuffle', (req, res) => { broadcast({ type: 'shuffle' }, 'overlay'); res.json({ ok: true }); });
@@ -2582,7 +2598,7 @@ function endVote(cancel) {
   const v = live.vote; if (!v) return; clearTimeout(v.timer); live.vote = null;
   if (cancel) { broadcast({ type: 'vote', vote: null }, 'overlay'); pushState(); return; }
   const top = Math.max(...v.options.map(o => o.count)), best = v.options.filter(o => o.count === top), win = best[Math.floor(Math.random() * best.length)];
-  live.map = win.id; live.mapUsed = false;
+  live.map = win.id; live.mapUsed = false; live.raceSkip = null;
   broadcast({ type: 'voteEnd', id: win.id, name: win.name }, 'overlay');
   broadcast({ type: 'toast', text: `🗳️ Chat picked ${win.icon} ${win.name} (${win.count} vote${win.count === 1 ? '' : 's'})` }, 'control');
   if (twitch.canSay()) twitch.say(`🗳️ Chat picked the map: ${win.icon} ${win.name}!`).catch(() => {});
@@ -2592,7 +2608,7 @@ app.post('/api/vote/start', (req, res) => {
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'Start the vote before the battle.' });
   if (live.vote) endVote(true);
   const seconds = clampN(req.body?.seconds ?? db.settings.voteSeconds, 10, 180, 30);
-  const pool = MAP_LIST.slice().sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 }));
+  const big = !raceOk(), pool = MAP_LIST.filter(m => !(big && isRaceMap(m.id))).sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 })); // (🏁 no races in the vote when there are too many)
   live.vote = { options: pool, voters: new Map(), endsAt: Date.now() + seconds * 1000 };
   live.vote.timer = setTimeout(() => endVote(false), seconds * 1000);
   broadcast(voteMsg(false), 'overlay'); pushState();
@@ -3047,12 +3063,13 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   if (req.body?.spots) { const L = (db.settings.spotLooks || []).filter(Boolean); fighters.slice(0, Math.max(2, Math.min(4, L.length || 2))).forEach((f, i) => Object.assign(f, { label: `${db.settings.spotName || 'Kirb'}'s Pick`, sub: '', owner: db.settings.spotName || 'Kirb', spot: true, look: L.length ? looks.check(L[i % L.length]).look : undefined })); } // 🎟️ wild spots in their characters
   if (req.body?.looks) fighters.forEach((f, i) => { f.look = i === 0 && typeof req.body.looks === 'object' ? looks.check(req.body.looks).look : looks.randomLook(); if (i === 0 && typeof req.body.looks === 'object') f.owner = 'You (test)'; }); // 🎨 /character looks (the first one = the look picked on the Test tab)
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
-  const tmap = req.body?.map && req.body.map !== 'random' && (mapById(req.body.map) || (req.body.chars && isCharMap(req.body.map))) ? req.body.map : req.body?.map === 'random' || (isCharMap(currentMap()) && !req.body?.chars) ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
+  let tmap = req.body?.map && req.body.map !== 'random' && (mapById(req.body.map) || (req.body.chars && isCharMap(req.body.map))) ? req.body.map : req.body?.map === 'random' || (isCharMap(currentMap()) && !req.body?.chars) ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
+  let raceSkipped = null; if (isRaceMap(tmap) && fighters.length > raceMax()) { raceSkipped = tmap; tmap = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(tmap)?.name || tmap)} instead.` }, 'control'); }
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now(), secs: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList) };
   live.phase = 'lobby'; live.claim = null;
   if (isCharMap(tmap)) { cards.setShow(false); cards.endChars(); const err = startCharFight(req.body?.chaos ? '🤪 Chaos practice round' : req.body?.showdownTest ? '🥊 Final fight test' : '🧪 Practice round', true, !!req.body?.showdownTest); return err ? res.status(400).json({ error: err }) : res.json({ ok: true }); } // 🧍 a character-only map
-  broadcast({ type: 'start', gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : tList ? `🧪 Practice: ${tList.screenTitle || tList.name}` : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList), pacer: req.body?.pacer != null ? clampN(req.body.pacer, 0, 100, 50) : fightPacer(tList), fairOdds: !req.body?.racePowers, racePowers: !!req.body?.racePowers, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [], showdownTest: !!req.body?.showdownTest }, 'overlay');
-  pushState(); res.json({ ok: true });
+  broadcast({ type: 'start', mapSize: req.body?.mapSize != null ? clampN(req.body.mapSize, 50, 200, 100) / 100 : mapSizeK(), gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : tList ? `🧪 Practice: ${tList.screenTitle || tList.name}` : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList), pacer: req.body?.pacer != null ? clampN(req.body.pacer, 0, 100, 50) : fightPacer(tList), fairOdds: !req.body?.racePowers, racePowers: !!req.body?.racePowers, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [], showdownTest: !!req.body?.showdownTest }, 'overlay');
+  pushState(); res.json({ ok: true, map: tmap, raceSkipped });
 });
 
 app.get('/api/search', async (req, res) => {
@@ -3086,13 +3103,14 @@ async function startRound(opts = {}) {
     const on = fighters.map(f => `${f.label}${f.owner ? ' (' + f.owner + ')' : ''}`).join(', ') || 'nothing yet';
     return `Only ${fighters.length} movie on the cliff (${on}) — need at least 2. Movies join when their person types in Twitch chat. If someone typed but didn't get in, link them under "Recent chatters" in the Pool tab, or switch them on in the People tab.`;
   }
-  previewIds = null; if (live.vote) endVote();
+  previewIds = null; cliffN = fighters.length; if (live.vote) endVote();
+  { const m0 = currentMap(); if (isRaceMap(m0) && fighters.length > raceMax()) { live.raceSkip = m0; live.map = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(live.map)?.name || live.map)} instead.` }, 'control'); } }
   live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test;
   live.phase = 'lobby'; live.claim = null;
   if (isCharMap(live.game.map)) return startCharFight(list.screenTitle || list.name, !!opts.test); // 🧍 a character-only map: the card fight engine plays it
   const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
-    type: 'start', map: currentMap(), lookSeed: live.lookSeed, gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
+    type: 'start', mapSize: mapSizeK(), map: currentMap(), lookSeed: live.lookSeed, gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
     lobbySeconds: db.settings.lobbySeconds, gameSeconds: live.game.secs, pacer: fightPacer(list), fairOdds: !racePowersOn(list), racePowers: racePowersOn(list), /* 🏁 race power-ups can change who wins (Derek), so then no winner is picked ahead of time */ /* 🎯 every battle's winner is drawn by the odds before it starts (luck included), and the battle plays out around it (Derek's rule) */ laps: clampN(db.settings.f8Laps ?? 5, 1, 50, 5), fun: list.type === 'chat' ? { ...(list.fun?.wacky || {}) } : null, chaos: chaosState(), queued,
     series: list.type !== 'movies' && (Number(list.bestOf) || 1) > 1 ? (live.series && !live.series.done && live.series.listId === list.id ? { bestOf: live.series.bestOf, need: live.series.need, round: live.series.round + 1, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: live.series.names[id], n })) } : { bestOf: Number(list.bestOf), need: Math.ceil(Number(list.bestOf) / 2), round: 1, tally: [] }) : null
   }, 'overlay');

@@ -564,6 +564,7 @@
     <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
     <div id="capRow"></div>
     <div data-laps></div>
+    <div data-msize></div>
     <div data-chars="active"></div>
     <div class="chaosbar" data-chaos></div>
     <div class="muted" id="poolCount" style="text-align:center"></div>
@@ -668,6 +669,7 @@
       <div data-ann="chat" style="margin-top:6px"></div>
       <div data-chars="chat-join"></div>
       <div data-laps></div>
+      <div data-msize></div>
       <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who joined?')) api('/api/chatbattle',{clear:true})">🧹 Clear entries</button><button class="grow" onclick="api('/api/chatbattle',{select:true}).then(()=>setView('battle'))">⚔️ Open on Battle tab</button></div>
     </div>
     <div class="card">
@@ -721,6 +723,7 @@
       <button class="primary big" style="width:100%;margin-top:6px" id="gaStart" onclick="gaStartClick()">▶ START GIVEAWAY</button>
       <div data-ann="giveaway" style="margin-top:6px"></div>
       <div data-chars="giveaway"></div>
+      <div data-msize></div>
       <div class="row" style="margin-top:10px"><button class="grow" onclick="if(confirm('Clear everyone who entered?')) api('/api/giveaway',{clear:true})">🧹 Clear entries</button><button class="grow" title="The winner didn't show up? Their entry is taken out, then the battle runs again" onclick="gaReroll()">🔁 Reroll</button></div>
     </div>
     <div class="card" id="gaSettings"><h2>Settings</h2><p class="help">Loading…</p></div>
@@ -850,7 +853,7 @@
   <div class="card" id="tErr" style="grid-column:1 / -1"></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">⚔️ Ball battle</h3><p class="help" style="margin:0 0 10px">A practice battle with made-up names (12 on a random map, or what you pick in ⚙ Settings). Your lists and history don't change.</p><div class="row"><button class="primary" onclick="testBattle()" title="Run a Ball battle test">▶ Run it</button><button class="ghost" onclick="tbOpen()" title="Change how test battles go: how many, map, countdown, length, luck…">⚙ Settings</button></div></div>
   <div class="card tquick" id="raceTest"><h3 style="margin:0 0 4px">🏁 Race with power-ups</h3><p class="help" style="margin:0 0 10px">A practice race with 12 made-up racers and race power-ups on (no winner picked ahead of time). Then fire power-ups at a random racer, like chat would with channel points.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="raceTMap" title="Which race map for the test race"></select><button class="primary" onclick="raceTest()" title="Start a practice race with race power-ups on">▶ Start a test race</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="raceTMap" title="Which race map for the test race"></select><button class="primary" onclick="raceTest()" title="Start a practice race with race power-ups on">▶ Start a test race</button><button onclick="raceBigTest()" title="A practice battle with one more piece than races allow, on the picked race map: it goes on another map instead">🏁 Too many for a race?</button></div>
     <div class="row" style="gap:5px;flex-wrap:wrap;margin-top:8px" id="raceTPow"></div></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🎬 Discord movie battle</h3><p class="help" style="margin:0 0 10px">A test battle with everyone's real Discord movies. No winner, no luck, no cooldowns.</p><button class="primary" onclick="api('/api/test/discord-battle').then(()=>toast('🎬 Test Discord battle: it changes nothing')).catch(()=>{})" title="Run a Discord movie battle test">▶ Run it</button></div>
   <div class="card tquick"><h3 style="margin:0 0 4px">🌐 IMDb / Rotten Tomatoes battle</h3><p class="help" style="margin:0 0 10px">A pretend list of 40 made-up "worst movies" (no internet): watch it skip the ones not in English, picked in Discord, and a 🎞️ sequel whose first movie you haven't watched, and keep going until it has 20. Then <b>🎬 Pretend a Discord pick</b>: one of its movies gets picked, leaves the battle, and the next one takes its place.</p><button class="primary" onclick="api('/api/test/web-list',{max:20}).then(()=>{toast('🌐 Pretend IMDb battle made: see the Movie Pool');setView('pool')})" title="Make a pretend IMDb battle">▶ Run it</button> <button onclick="webTakenTest()" title="Someone pretends to pick one of the pretend IMDb battle's movies in Discord">🎬 Pretend a Discord pick</button><div id="tWebOut" class="help" style="margin-top:6px"></div></div>
@@ -972,6 +975,11 @@
     <p class="help">Walks a pretend series (Wizard School 1–4) through every step: sequels banned, someone picks the first one and gets the lock, it gets watched, the next one opens only for them, they pick other movies, it opens up for everyone. Nothing real changes. The real series are in 🚫 Banned Movies → 🎞️ Series.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="seriesTest()">🎞️ Run the pretend series</button><button onclick="setView('settings');setSub('bans');setTimeout(()=>$('seriesCard')?.scrollIntoView({block:'start'}),200)" title="Open 🚫 Banned Movies → 🎞️ Series">↗ See the real series</button></div>
     <div id="tSrOut"></div>
+  </div>
+  <div class="card">
+    <h3>📏 Map size</h3>
+    <p class="help">Runs a practice battle (made-up movies) at the size you pick here, without changing your real setting. Bigger = bigger cliffs and arenas and longer race tracks. Your real size is the 📏 slider on the right side of the Battle, Chat battle and Giveaway tabs.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMsSize" style="width:auto" title="Which map size to try"><option value="50">50% (smallest)</option><option value="75">75%</option><option value="100" selected>100% (normal)</option><option value="150">150%</option><option value="200">200% (biggest)</option></select><select id="tMsMap" style="width:auto" title="Which map to try it on"></select><button class="primary" onclick="msTest()">▶ Try it</button></div>
   </div>
   <div class="card">
     <h3>⏱️ Battle timer &amp; ⏳ pacer for each battle</h3>
@@ -1552,7 +1560,7 @@ async function labRun() {
     const packs = Array.from({ length: n }, (_, i) => ({ id: 'lab-' + i, packId: 'lab-' + i, name: names[i % 8] + (i >= 8 ? ' ' + (Math.floor(i / 8) + 1) : ''), tag: '', game: '🧪 Test', image: '', color: colors[i % 8], test: true }));
     const mi = all.find(m => m.id === map) || {}, len = labNum(labSet.cgame, 60, 0, 600); // (card fights: 1 minute unless you type a length)
     labCur = { card: true, map };
-    if (mi.ball) { labPost({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} }); labPost({ type: 'start', gameId: id, map, fighters: packs.map(p => ({ id: p.id, label: p.name, sub: p.game, image: null, weight: 1, kind: 'cards', color: p.color })), total: n, listName: '🧪 Test lab', kind: 'cards', skin: 'cards', lobbySeconds: 3, gameSeconds: len || S.settings.gameSeconds || 30, pacer, fairOdds: true, queued: [] }); }
+    if (mi.ball) { labPost({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} }); labPost({ type: 'start', mapSize: (Number(S.settings.mapSize) || 100) / 100, gameId: id, map, fighters: packs.map(p => ({ id: p.id, label: p.name, sub: p.game, image: null, weight: 1, kind: 'cards', color: p.color })), total: n, listName: '🧪 Test lab', kind: 'cards', skin: 'cards', lobbySeconds: 3, gameSeconds: len || S.settings.gameSeconds || 30, pacer, fairOdds: true, queued: [] }); }
     else { labPost({ type: 'reset' }); labPost({ type: 'cardScene', show: true, ball: false, phase: 'fight', map, finalFight: !!mi.finalFight, battleName: '🧪 Test lab', fighters: packs, fightId: id, startedAt: Date.now(), seed: Math.floor(Math.random() * 2 ** 31), destined: packs[Math.floor(Math.random() * n)].id, pace: pacer, length: len, wacky: { ...labCW }, logo: S.cards?.ringLogo || '' }); }
     toast(`🧪 Test lab: ${n} packs on ${mi.icon || ''} ${mi.name || map}. Only on this page.`); return;
   }
@@ -1567,10 +1575,13 @@ async function labRun() {
   const wk = Object.fromEntries(Object.entries(labSet.wacky || {}).filter(([, v]) => v));
   labCur = { card: false, map, fighters };
   labPost({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} });
-  labPost({ type: 'start', gameId: id, fighters, total: n, map, listName: '🧪 Test lab', kind: skin === 'movies' ? 'films' : 'text', skin: (labSet.look || 'balls') !== 'balls' ? 'chars' : undefined, fun: Object.keys(wk).length ? wk : null, lobbySeconds: labNum(labSet.lobby, 3, 0, 60), gameSeconds: labNum(labSet.game, S.settings.gameSeconds || 30, 10, 600), pacer, fairOdds: true, laps: labNum(labSet.laps, 3, 1, 50), survival: labSet.surv ? true : null, queued: [] });
+  labPost({ type: 'start', mapSize: (Number(S.settings.mapSize) || 100) / 100, gameId: id, fighters, total: n, map, listName: '🧪 Test lab', kind: skin === 'movies' ? 'films' : 'text', skin: (labSet.look || 'balls') !== 'balls' ? 'chars' : undefined, fun: Object.keys(wk).length ? wk : null, lobbySeconds: labNum(labSet.lobby, 3, 0, 60), gameSeconds: labNum(labSet.game, S.settings.gameSeconds || 30, 10, 600), pacer, fairOdds: true, laps: labNum(labSet.laps, 3, 1, 50), survival: labSet.surv ? true : null, queued: [] });
   const mp = (S.maps || []).find(m => m.id === map); toast(`🧪 Test lab: ${n} pieces on ${mp?.icon || ''} ${mp?.name || map}. Only on this page.`);
 }
 async function raceTest() { try { await api('/api/test/battle', { count: 12, map: $('raceTMap')?.value || 'oval', racePowers: true, lobby: 3 }); toast('🏁 Test race with race power-ups: fire some with the buttons'); } catch {} }
+async function raceBigTest() { // 🧪 more pieces than a race allows: it should switch to a non-race map
+  const n = (S.raceMax || 50) + 1; try { const r = await api('/api/test/battle', { count: n, map: $('raceTMap')?.value || 'oval', lobby: 3 }); if (r.raceSkipped) toast(`🏁 ${n} pieces: no race (${S.raceMax || 50} at most), so it went on ${esc((S.maps || []).find(m => m.id === r.map)?.name || r.map)} instead`); else toast('⚠️ It raced anyway (that would be a bug).'); } catch {}
+}
 function raceTPow(kind) { api('/api/test/race-power', { kind }).then(() => toast(kind === 'nuke' ? '☢️ Nuke! Watch the 15-second cut scene' : (RACE_POWS.find(x => x[0] === kind) || [])[1] + ' on a random racer')).catch(() => {}); }
 function raceTInit() { const sel = $('raceTMap'); if (!sel || sel.options.length) return; sel.innerHTML = RACE_IDS.map(id => { const m = (S.maps || []).find(x => x.id === id); return m ? `<option value="${id}">${m.icon} ${esc(m.name)}</option>` : ''; }).join(''); $('raceTPow').innerHTML = RACE_POWS.map(([k, n, d]) => `<button class="ghost" style="padding:3px 9px" title="Race test: ${esc(d)}" onclick="raceTPow('${k}')">${n}</button>`).join(''); }
 function labRace(kind) { if (!labCur?.fighters) return toast('Run a ball battle test on a race map first.'); if (!RACE_IDS.includes(labCur.map)) return toast('Race power-ups only work on race maps: pick one (🏁, 🏟️, 🏎️, 🌃, ❄️, 🏖️, 🏜️, ✖️, 🌋, 🚧, 🚀) and run the test.'); labPost({ type: 'racePower', id: null, kind, name: 'Test lab' }); }
@@ -1642,7 +1653,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1926,7 +1937,7 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { applyStyle(); holTestInit(); sceneInit(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { applyStyle(); holTestInit(); sceneInit(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); luckBattlesSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -2224,7 +2235,7 @@ function renderView() {
   document.querySelectorAll('[data-chaos]').forEach(el => el.innerHTML = chaosButtons());
   document.querySelectorAll('[data-ann]').forEach(el => { const h = annHTML(el.dataset.ann); if (el.innerHTML !== h) el.innerHTML = h; });
   { const el = $('capRow'), h = capHTML(); if (el && el.innerHTML !== h) el.innerHTML = h; }
-  renderLaps();
+  renderLaps(); renderMapSize();
   document.querySelectorAll('[data-chars]').forEach(el => { const h = charsHTML(el.dataset.chars); if (el.dataset.k !== h) { el.dataset.k = h; el.innerHTML = h; } });
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
@@ -2275,7 +2286,7 @@ function renderBattle() {
   else gb.textContent = S.activeListId === 'movies' ? '⏱️ 2-min join timer + chat vote' : '⏱️ 2-min chat timer, then start';
   const mp = (S.maps || []).find(m => m.id === S.mapNow), pkey = (mp?.id || '') + Object.keys(S.events).join();
   if ($('events').dataset.k !== pkey) { $('events').dataset.k = pkey; $('fsPowers').innerHTML = $('events').innerHTML = Object.entries(S.events).map(([k, e]) => k === 'mappower' ? (mp?.power ? `<button class="mp" title="${esc(mp.name)}'s special power" onclick="api('/api/effect',{event:'mappower'})">${esc(mp.power)}</button>` : '') : `<button title="${esc(e.desc)}" onclick="api('/api/effect',{event:'${k}'})">${e.icon} ${esc(e.name)}</button>`).join(''); }
-  if (document.activeElement !== $('mapSel')) $('mapSel').innerHTML = `<option value="random" ${S.settings.map === 'random' ? 'selected' : ''}>🎲 Random${S.settings.map === 'random' && mp ? ` (next: ${esc(mp.name)})` : ''}</option>` + ballMapOpts(S.settings.map, charsNow());
+  if (document.activeElement !== $('mapSel')) $('mapSel').innerHTML = `<option value="random" ${S.settings.map === 'random' ? 'selected' : ''}>🎲 Random${S.settings.map === 'random' && mp ? ` (next: ${esc(mp.name)})` : ''}</option>` + ballMapOpts(S.settings.map, charsNow(), raceTooBig());
   renderVote(); renderBattleList(); renderCalls();
   if ($('pracMap') && !$('pracMap').options.length) $('pracMap').innerHTML = `<option value="">Same as the battle</option><option value="random">🎲 Random</option>` + ballMapOpts(null);
   renderSeries();
@@ -2366,7 +2377,7 @@ function renderCalls() {
 }
 // map menu entries with the 🔴 NEW / 🔵 UPDATED tags
 const modeTag = m => { const md = m.modes || ['ball', 'card']; return md.includes('ball') && md.includes('card') ? '⚪🃏' : md.includes('card') ? '🃏' : '⚪'; }; // ⚪ ball battles · 🃏 card battles · ⚪🃏 both
-const mapOpt = (m, sel) => `<option value="${m.id}" ${sel ? 'selected' : ''} ${m.tag === 'new' ? 'style="color:#ff5c5c"' : m.tag === 'updated' ? 'style="color:#5cb8ff"' : ''}>${m.icon} ${esc(m.name)}${m.finalFight ? ' 🥊' : ''}  ${modeTag(m)}${m.tag === 'new' ? '  🔴 NEW' : m.tag === 'updated' ? '  🔵 UPDATED' : ''}</option>`;
+const mapOpt = (m, sel, noRace) => `<option value="${m.id}" ${sel ? 'selected' : ''} ${noRace && m.race ? `disabled title="No races with more than ${S.raceMax || 50} pieces"` : ''} ${m.tag === 'new' ? 'style="color:#ff5c5c"' : m.tag === 'updated' ? 'style="color:#5cb8ff"' : ''}>${m.icon} ${esc(m.name)}${m.finalFight ? ' 🥊' : ''}  ${modeTag(m)}${m.tag === 'new' ? '  🔴 NEW' : m.tag === 'updated' ? '  🔵 UPDATED' : ''}${noRace && m.race ? `  (no races over ${S.raceMax || 50})` : ''}</option>`;
 // map menus (Derek's order): ⚪ ball / car only → 🃏 character only (card maps) → ⚪🃏 both, each A–Z, a line between
 // (🎉 holiday maps always go in their own section at the very bottom, A–Z)
 const MAP_SECS = [['ball', '⚪ Ball / car only'], ['card', '🃏 Character only'], ['both', '⚪🃏 Both']];
@@ -2377,7 +2388,8 @@ const mapGroups = (list, only, opt) => { const az = (a, b) => a.name.localeCompa
 const cardMapOpts = sel => `<option value="random" ${sel === 'random' ? 'selected' : ''}>🎲 Random (any card map)</option>` + mapGroups(S.cards?.maps || [], 'card', m => mapOpt(m, m.id === sel)); // (🔴 NEW / 🔵 UPDATED like the ball maps)
 // (chars = the battle has 🧍 characters on: the 🃏 character-only maps can be picked too, and its characters fight there)
 const charsNow = () => !!(S.lists || []).find(l => l.id === S.activeListId)?.chars;
-const ballMapOpts = (sel, chars) => mapGroups([...(S.maps || []), ...(chars ? (S.cards?.maps || []).filter(m => !m.ball) : [])], 'ball', m => mapOpt(m, sel === m.id));
+const ballMapOpts = (sel, chars, noRace) => mapGroups([...(S.maps || []), ...(chars ? (S.cards?.maps || []).filter(m => !m.ball) : [])], 'ball', m => mapOpt(m, sel === m.id, noRace)); // noRace: 🏁 too many pieces for a race
+const raceTooBig = () => (S.cliffN || 0) > (S.raceMax || 50);
 const mapName = id => { const m = (S.maps || []).find(x => x.id === id) || (S.cards?.maps || []).find(x => x.id === id); return m ? `${m.icon} ${m.name}` : id === '?' ? 'Unknown map' : id; };
 async function voteClick() { if (S.vote) await api('/api/vote/end'); else { await api('/api/vote/start', { seconds: S.settings.voteSeconds || 120 }); toast('🗳️ Map vote started — chat types 1, 2, 3 or 4'); } }
 function renderVote() {
@@ -2448,6 +2460,14 @@ function renderLaps() {
   const h = `<div class="card soft lapsBox" style="margin-top:8px;padding:8px 12px"><div class="row" style="gap:6px"><b class="grow">🏁 Laps for this race</b><div class="odds"><button ${busy ? 'disabled' : ''} onclick="setLaps(${n - 1})">−</button><input class="lapsN" type="number" min="1" max="50" title="🏁 Laps for this race" value="${n}" ${busy ? 'disabled' : ''} onchange="setLaps(this.value)"><button ${busy ? 'disabled' : ''} onclick="setLaps(${n + 1})">+</button></div></div><p class="help" style="margin:2px 0 0">${busy ? 'Locked while the race runs: changes count from the next one.' : `${esc(mp.name)} · every race map uses this. Pick it before you start.`}</p></div>`;
   boxes.forEach(b => { if (b.dataset.k !== h && !b.contains(document.activeElement)) { b.dataset.k = h; b.innerHTML = h; } });
 }
+function renderMapSize() { // 📏 map size for every ball map (bigger cliffs, longer race tracks)
+  const boxes = document.querySelectorAll('[data-msize]'); if (!boxes.length) return;
+  const v = Math.max(50, Math.min(200, Number(S.settings.mapSize) || 100)), busy = S.phase === 'lobby' || S.phase === 'running';
+  const h = `<div class="card soft msBox" style="margin-top:8px;padding:8px 12px"><label style="margin:0 0 2px">📏 Map size: <b class="msV">${msWord(v)}</b></label><input type="range" min="50" max="200" step="10" value="${v}" ${busy ? 'disabled' : ''} title="How big every map is: bigger cliffs and arenas, longer race tracks (100% = normal)" oninput="document.querySelectorAll('.msV').forEach(b=>b.textContent=msWord(this.value))" onchange="setMapSize(this.value)"><div class="help" style="margin:2px 0 0;font-size:12px">Bigger cliffs and arenas, longer race tracks. Every map, every battle.${busy ? ' (After this battle.)' : ''}</div></div>`;
+  boxes.forEach(b => { if (b.dataset.k !== h && !b.contains(document.activeElement)) { b.dataset.k = h; b.innerHTML = h; } });
+}
+const msWord = v => { v = Number(v); return v === 100 ? '100% (normal)' : v < 100 ? `${v}% (smaller)` : `${v}% (bigger)`; };
+function setMapSize(v) { v = Math.max(50, Math.min(200, Math.round(Number(v) || 100))); S.settings.mapSize = v; renderMapSize(); api('/api/settings', { mapSize: v }).then(() => toast(`📏 Map size ${v}%`, 2500)); }
 function setLaps(v) { v = Math.max(1, Math.min(50, Math.round(Number(v) || 5))); S.settings.f8Laps = v; renderLaps(); api('/api/settings', { f8Laps: v }).then(() => toast(`🏁 ${v} lap${v === 1 ? '' : 's'}`)); }
 function blInSet(l) {
   if (S.cliff && S.cliff.listId === l.id && Array.isArray(S.cliff.ids)) return new Set(S.cliff.ids);
@@ -3385,6 +3405,8 @@ async function seriesTest() { // 🧪 a pretend series, step by step
   let r; try { r = await api('/api/test/series', {}); } catch { return; }
   $('tSrOut').innerHTML = r.steps.map(x => `<div class="help" style="margin-top:8px"><b>${esc(x.say)}</b><br>${esc(x.state)}${x.checks.map(c => `<br>• ${esc(c)}`).join('')}</div>`).join('');
 }
+function msTestInit() { const sel = $('tMsMap'); if (!sel || sel.options.length || !S?.maps) return; sel.innerHTML = `<option value="random">🎲 Random</option>` + ballMapOpts('oval'); }
+async function msTest() { msTestInit(); try { await api('/api/test/battle', { count: 12, map: $('tMsMap').value || 'random', mapSize: Number($('tMsSize').value), lobby: 3 }); toast(`📏 Practice battle at ${esc($('tMsSize').value)}%`); } catch {} }
 let mmLast = null;
 async function mmProfile() { // 🧪 the chatter profile with each movie's luck
   if (!mmLast || ($('tMmWho').value && $('tMmWho').value !== mmLast.id)) { await mmTest(); }
@@ -3902,7 +3924,7 @@ function openSettings(force) {
       <div class="row"><button onclick="location.href='/api/backup'">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
       <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
     game: `<h3>⚔️ The battle</h3>
-      <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
+      <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('raceMax', '🏁 No races with more than this many pieces (a race map is skipped)', '50', 'number', 'min="2" max="1000"')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
       ${timingHTML()}
       <p class="help">🎯 <b>Fair winner:</b> every battle's winner is drawn by the odds before the battle starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins. (Except 🏁 race power-ups in a chat battle race: those can.)</p>
       ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
@@ -3918,7 +3940,7 @@ function openSettings(force) {
       <p class="help" style="margin:0 0 6px">In Discord, <code>/character</code> shows numbered pictures of hair styles, outfits, makeup, facial hair and body; people pick one number of each (plus skin and hair color) and that's their character in battles with 🧍 characters. Their own character always wins over what they picked with !id (if they never picked a body, !id woman gives the curvy one). Their movie poster or Twitch picture moves to a badge on the chest. Twitch chat battles use it once they've linked their Twitch name with <code>/linktwitch</code>. Off: everyone gets a random character again.</p>
       ${ck('autoFullscreen', 'Go fullscreen when a battle starts (press Esc to leave)')}
       <h3 style="margin-top:18px">🗺️ Maps</h3>
-      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${ballMapOpts(s.map, charsNow())}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
+      <div class="grid2"><div><label>Map</label><select data-k="map"><option value="random" ${s.map === 'random' ? 'selected' : ''}>🎲 Random (a different one each battle)</option>${ballMapOpts(s.map, charsNow(), raceTooBig())}</select></div><div>${f('voteSeconds', 'Chat map vote length (in seconds)', '120', 'number', 'min="10" max="600"')}</div></div>
       <p class="help">You can also change the map under the battle screen, or press 🗳️ Chat vote: 4 random maps, chat types 1–4. The vote lasts the number of seconds above (120 seconds = 2 minutes).</p>
       ${tagsHTML()}
       <h3 style="margin-top:18px">🎥 Camera</h3>
