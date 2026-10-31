@@ -8,7 +8,7 @@ import { WebSocketServer } from 'ws';
 import os from 'os';
 import { spawn } from 'child_process';
 import { streamerName } from './store.js';
-import { db, save, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS } from './store.js';
+import { db, save, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS, saveInfo, DB_FILE } from './store.js';
 import * as lb from './letterboxd.js';
 import * as series from './series.js';
 import * as discord from './discord.js';
@@ -20,6 +20,7 @@ import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, sp
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb } from './ratings.js';
+import { ruleBan } from './banrules.js';
 import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
 import { parseImport, toLines, importLink } from './importer.js';
 import * as cloud from './cloud.js';
@@ -864,7 +865,7 @@ function finishClaim(claimed, text) {
 
 // ---------- websocket ----------
 wss.on('connection', (ws, req) => {
-  ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control';
+  ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control'; ws.ua = String(req.headers['user-agent'] || ''); // (OBS's browser says "OBS/31…": 🤖 Test all looks for it)
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
@@ -1501,11 +1502,13 @@ app.post('/api/test/mymovies', async (req, res) => {
   const all = discordPeople().filter(p => p.active.length), want = String(req.body?.who || '');
   const p = all.find(x => x.discordId === want) || all[0];
   if (!p) return res.status(400).json({ error: 'Nobody has a movie in the Discord movie battle yet. Add one first (Movie Pool, or 💬 Pretend chat → pretend movie).' });
-  const cmd = db.settings.twitchMoviesCommand || '!mymovies';
-  let cloudTxt = null; try { const wk = await import('./cloud-worker.js'), cfg = cloud.buildConfig(), st = { cfg, queue: [], pool: (cfg.pool || []).map(e => ({ ...e })), users: JSON.parse(JSON.stringify(cfg.users || {})), links: { ...(cfg.links || {}) }, looks: {} }; cloudTxt = wk.__test?.myMoviesText(st, p.discordId) || null; } catch (e) { cloudTxt = '(could not make it: ' + e.message + ')'; }
-  res.json({ ok: true, name: p.name, twitch: p.twitch || '', people: all.map(x => ({ id: x.discordId, name: x.name })), id: p.discordId, luckOn: !!db.settings.luckOn, watchOn: !!getList('movies')?.watchLuck?.on,
-    chat: `@${p.twitch || p.name} ${discord.myMoviesText(p.discordId, true)}`, cmd, discord: discord.myMoviesText(p.discordId), cloud: cloudTxt });
+  const cmd = db.settings.twitchMoviesCommand || '!mymovies', t = await myMoviesTexts(p);
+  res.json({ ok: true, name: p.name, twitch: p.twitch || '', people: all.map(x => ({ id: x.discordId, name: x.name })), id: p.discordId, luckOn: !!db.settings.luckOn, watchOn: !!getList('movies')?.watchLuck?.on, cmd, ...t });
 });
+async function myMoviesTexts(p) { // what Twitch chat, Movie Royal's Discord bot and the 24/7 bot answer to !mymovies / /mymovies (nothing is sent)
+  let cloudTxt = null; try { const wk = await import('./cloud-worker.js'), cfg = cloud.buildConfig(), st = { cfg, queue: [], pool: (cfg.pool || []).map(e => ({ ...e })), users: JSON.parse(JSON.stringify(cfg.users || {})), links: { ...(cfg.links || {}) }, looks: {} }; cloudTxt = wk.__test?.myMoviesText(st, p.discordId) || null; } catch (e) { cloudTxt = '(could not make it: ' + e.message + ')'; }
+  return { chat: `@${p.twitch || p.name} ${discord.myMoviesText(p.discordId, true)}`, discord: discord.myMoviesText(p.discordId), cloud: cloudTxt };
+}
 app.post('/api/test/reveal', wTry(b => { if (!wheel.W().show) wheel.setShow(true); return wheel.revealTest({ theme: b.theme || null, text: b.text, image: b.image }); })); // 🧪 a pretend mystery card (theme = a holiday to try)
 app.post('/api/app-style', (req, res) => { const id = String(req.body?.id || '').replace(/[^\w-]/g, '').slice(0, 20); live.appStyle = id || null; res.json({ ok: true }); }); // 🎨 the control panel says which holiday style it shows (🎁 mystery packs match it)
 app.post('/api/wheel/knock', wTry(b => ({ left: wheel.knock(Number(b.delta) || -1) })));
@@ -2529,24 +2532,26 @@ app.post('/api/bans/rule-ban', (req, res) => { // ban the movies the pool check 
   pushState(); refreshPreview(); res.json({ ok: true, n });
 });
 // 🧪 Test tab: the ban rules on made-up TMDB details (no internet needed), and lots of pretend bans for trying the search box
+// 🚫 sample movies for the ban rules, with what each one should get under the standard rules (🤖 Test all checks them; 🧪 Try the rules shows them)
+const BAN_SAMPLES = [
+    ['Amélie (2001): well-known, so it likely has an English dub', { lang: 'fr', spoken: ['fr'], allGenres: ['Comedy', 'Romance'], keywords: ['paris'], votes: 11000 }, null],
+    ['Spirited Away (2001): anime, has an English dub', { lang: 'ja', spoken: ['ja'], allGenres: ['Animation', 'Family', 'Fantasy'], keywords: [], votes: 17000 }, null],
+    ['Le Petit Village (a small French movie, 40 votes)', { lang: 'fr', spoken: ['fr'], allGenres: ['Drama'], keywords: [], votes: 40 }, 'english'],
+    ['Inglourious Basterds (2009): some French/German, mostly English', { lang: 'en', spoken: ['en', 'de', 'fr', 'it'], allGenres: ['Drama', 'Thriller', 'War'], keywords: ['nazi'] }, null],
+    ['Parasite (2019)', { lang: 'ko', spoken: ['ko', 'en'], allGenres: ['Comedy', 'Thriller', 'Drama'], keywords: [] }, null],
+    ['Apocalypto (2006)', { lang: 'en', spoken: ['yua'], allGenres: ['Action', 'Drama'], keywords: [] }, 'english'],
+    ['The Passion of the Christ (2004)', { lang: 'en', spoken: ['en', 'he', 'la'], allGenres: ['Drama', 'History'], keywords: ['jesus christ', 'crucifixion', 'bible'] }, 'religious'],
+    ['The Ten Commandments (1956)', { lang: 'en', spoken: ['en'], allGenres: ['Drama', 'History'], keywords: ['moses', 'ten commandments', 'old testament'] }, 'religious'],
+    ["God's Not Dead (2014)", { lang: 'en', spoken: ['en'], allGenres: ['Drama'], keywords: ['christian film', 'atheism'] }, 'religious'],
+    ["Monty Python's Life of Brian (1979)", { lang: 'en', spoken: ['en'], allGenres: ['Comedy'], keywords: ['jesus christ', 'bible', 'satire'] }, null],
+    ['The Book of Eli (2010)', { lang: 'en', spoken: ['en'], allGenres: ['Action', 'Thriller', 'Science Fiction'], keywords: ['bible', 'post-apocalyptic'] }, null],
+    ['The Exorcist (1973)', { lang: 'en', spoken: ['en'], allGenres: ['Horror'], keywords: ['exorcism', 'priest', 'catholic', 'faith', 'god'] }, null],
+    ['Free Solo (2018)', { lang: 'en', spoken: ['en'], allGenres: ['Documentary'], keywords: ['climbing'] }, 'documentary'],
+    ['Jackass: The Movie (2002)', { lang: 'en', spoken: ['en'], allGenres: ['Comedy', 'Documentary'], keywords: ['stunt'] }, null],
+    ['Heat (1995)', { lang: 'en', spoken: ['en', 'es'], allGenres: ['Crime', 'Drama', 'Action'], keywords: ['heist'] }, null]
+];
 app.post('/api/test/ban-rules', (req, res) => {
-  const T = [
-    ['Amélie (2001): well-known, so it likely has an English dub', { lang: 'fr', spoken: ['fr'], allGenres: ['Comedy', 'Romance'], keywords: ['paris'], votes: 11000 }],
-    ['Spirited Away (2001): anime, has an English dub', { lang: 'ja', spoken: ['ja'], allGenres: ['Animation', 'Family', 'Fantasy'], keywords: [], votes: 17000 }],
-    ['Le Petit Village (a small French movie, 40 votes)', { lang: 'fr', spoken: ['fr'], allGenres: ['Drama'], keywords: [], votes: 40 }],
-    ['Inglourious Basterds (2009): some French/German, mostly English', { lang: 'en', spoken: ['en', 'de', 'fr', 'it'], allGenres: ['Drama', 'Thriller', 'War'], keywords: ['nazi'] }],
-    ['Parasite (2019)', { lang: 'ko', spoken: ['ko', 'en'], allGenres: ['Comedy', 'Thriller', 'Drama'], keywords: [] }],
-    ['Apocalypto (2006)', { lang: 'en', spoken: ['yua'], allGenres: ['Action', 'Drama'], keywords: [] }],
-    ['The Passion of the Christ (2004)', { lang: 'en', spoken: ['en', 'he', 'la'], allGenres: ['Drama', 'History'], keywords: ['jesus christ', 'crucifixion', 'bible'] }],
-    ['The Ten Commandments (1956)', { lang: 'en', spoken: ['en'], allGenres: ['Drama', 'History'], keywords: ['moses', 'ten commandments', 'old testament'] }],
-    ["God's Not Dead (2014)", { lang: 'en', spoken: ['en'], allGenres: ['Drama'], keywords: ['christian film', 'atheism'] }],
-    ["Monty Python's Life of Brian (1979)", { lang: 'en', spoken: ['en'], allGenres: ['Comedy'], keywords: ['jesus christ', 'bible', 'satire'] }],
-    ['The Book of Eli (2010)', { lang: 'en', spoken: ['en'], allGenres: ['Action', 'Thriller', 'Science Fiction'], keywords: ['bible', 'post-apocalyptic'] }],
-    ['The Exorcist (1973)', { lang: 'en', spoken: ['en'], allGenres: ['Horror'], keywords: ['exorcism', 'priest', 'catholic', 'faith', 'god'] }],
-    ['Free Solo (2018)', { lang: 'en', spoken: ['en'], allGenres: ['Documentary'], keywords: ['climbing'] }],
-    ['Jackass: The Movie (2002)', { lang: 'en', spoken: ['en'], allGenres: ['Comedy', 'Documentary'], keywords: ['stunt'] }],
-    ['Heat (1995)', { lang: 'en', spoken: ['en', 'es'], allGenres: ['Crime', 'Drama', 'Action'], keywords: ['heist'] }]
-  ].map(([t, d]) => { const rb = autoBan({ id: 'test', ...d }); return { title: t, banned: !!rb, reason: rb?.reason || null }; });
+  const T = BAN_SAMPLES.map(([t, d]) => { const rb = autoBan({ id: 'test', ...d }); return { title: t, banned: !!rb, reason: rb?.reason || null }; });
   res.json({ ok: true, rows: T, rules: db.settings.banRules || {} });
 });
 app.post('/api/test/ban-many', (req, res) => {
@@ -3070,6 +3075,161 @@ app.post('/api/test/discord-selftest', async (req, res) => { // 🤖 everything 
     discord.postDebug(`🤖 **Discord self-test:** ${bad.length ? `${bad.length} problem${bad.length === 1 ? '' : 's'}` : 'everything passed ✅'}\n${out.map(x => `${x.ok === false ? '❌' : x.ok ? '✅' : '🟡'} ${x.label}${x.detail ? ` — ${x.detail}` : ''}`).join('\n')}`);
     res.json({ ok: true, results: out });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+// 🤖 Test all (1.67.0, Derek: "a test all in the checklist: it does all the checks by itself in the background, lists them and
+// ticks them off as they're done"). These are the checks the server does; the control panel does the battle ones in a hidden test screen.
+// Every check is read-only: nothing goes on stream, in chat or in Discord, nothing is fixed or saved.
+// Each answers { ok: true | false | 'warn' | null (= skipped: not set up, or can't be checked right now), note, items? }.
+const within = (p, ms, what) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`${what} took too long to answer`)), ms))]);
+const plural = (n, a, b = a + 's') => `${n} ${n === 1 ? a : b}`;
+const SELF_CHECKS = {
+  async twitch() {
+    if (!db.settings.twitchClientId) return { ok: false, note: "Twitch isn't set up yet: 🧭 Setup guide → Twitch" };
+    if (!twitch.status.userId) return { ok: false, note: 'not signed in: Settings → 💜 Twitch → Sign in with Twitch' };
+    const me = await within(twitch.meCheck(), 15000, 'Twitch').catch(e => { throw new Error(`Twitch didn't accept your sign-in (${e.message}): sign in again`); });
+    return me ? { ok: true, note: `signed in as ${me}` } : { ok: false, note: "Twitch didn't say who you are: sign in again" };
+  },
+  async twitchPerms() {
+    if (!twitch.status.userId) return { ok: null, note: 'not signed in' };
+    const sc = twitch.status.scopes || [], miss = twitch.SCOPES.filter(x => !sc.includes(x));
+    return miss.length ? { ok: false, note: `sign in again so Movie Royal gets ${plural(miss.length, 'new permission')} (Settings → 💜 Twitch)` } : { ok: true, note: `all ${sc.length} there` };
+  },
+  async twitchChat() { if (!twitch.status.userId) return { ok: null, note: 'not signed in' }; const c = String(twitch.status.chat || 'off'); return /^reading/.test(c) ? { ok: true, note: c } : { ok: false, note: `chat: ${c}` }; },
+  async twitchPost() { if (!twitch.status.userId) return { ok: null, note: 'not signed in' }; return twitch.status.canChat ? { ok: true, note: 'allowed' } : { ok: false, note: 'sign in again and allow "send chat messages" (Settings → 💜 Twitch)' }; },
+  async chatBot() {
+    if (!db.twitchBot) return { ok: null, note: 'no bot account: Movie Royal talks in chat as you, with the 🤖 name tag' };
+    const l = await within(twitch.botCheck(), 15000, 'Twitch').catch(e => { throw new Error(`the bot account's sign-in stopped working (${e.message}): Settings → 💜 Twitch → 🤖 sign in as the bot again`); });
+    return l ? { ok: true, note: `posts as ${l}${twitch.botOn() ? '' : ' (switched off in Settings → 💜 Twitch)'}` } : { ok: false, note: "Twitch didn't say who the bot is: sign in as the bot again" };
+  },
+  async rewards() {
+    if (!twitch.status.userId) return { ok: null, note: 'not signed in' };
+    let all; try { all = await within(twitch.listAllRewards(), 15000, 'Twitch'); } catch (e) { return /affiliate|partner|403/i.test(e.message) ? { ok: null, note: "channel points aren't on for this channel" } : { ok: false, note: e.message }; }
+    const byHand = rewardsByHand || [];
+    return byHand.length ? { ok: 'warn', note: `made by hand on Twitch, so Movie Royal can't switch them off: ${byHand.join(', ')}` } : { ok: true, note: `${plural(all.length, 'reward')} on your channel, none in the way` };
+  },
+  async discord() {
+    if (!db.settings.discordToken) return { ok: null, note: "the Discord bot isn't set up" };
+    const out = await within(discord.selfTest(), 45000, 'The Discord check'), bad = out.filter(x => x.ok === false);
+    return { ok: !bad.length, note: bad.length ? bad.slice(0, 3).map(x => `${x.label}${x.detail ? ` (${x.detail})` : ''}`).join(' · ') : `${plural(out.filter(x => x.ok).length, 'thing')} checked, all fine`, items: out.map(x => ({ ok: x.ok, label: x.label, detail: x.detail || '' })) };
+  },
+  async cloud() {
+    if (!cloud.enabled()) return { ok: null, note: 'the 24/7 bot is off (Discord only works while Movie Royal is open)' };
+    const st = await within(cloud.checkLink(false), 30000, 'The 24/7 bot'); // (false = only look: the usual check every 10 minutes fixes the link)
+    if (!st.linked) return { ok: false, note: st.linkError ? `Discord isn't pointed at it (${st.linkError})` : "Discord isn't pointed at it (Movie Royal fixes that by itself within 10 minutes)" };
+    if (st.botUp === false) return { ok: false, note: "it isn't answering" };
+    if (await cloud.botOutdated()) return { ok: false, note: 'it needs its update: Settings → 🤖 Discord & picks → ☁️ Update the 24/7 bot' };
+    return { ok: true, note: `up to date${cloud.status.botV ? ` (v${cloud.status.botV})` : ''} and connected to Discord` };
+  },
+  async backup() {
+    if (!db.backupSeen && !backuplink.backupWatching()) return { ok: null, note: 'no backup bot server (it\'s optional)' };
+    await within(backuplink.tick({ force: true }), 20000, 'The backup check').catch(() => {});
+    return backuplink.backupWatching() ? { ok: true, note: 'a backup bot server is watching your Discord bot' } : { ok: false, note: "the backup bot server hasn't checked in lately: is Movie Royal Backup Bots running?" };
+  },
+  async tmdb() {
+    if (!(db.settings.tmdbKey || '').trim()) return { ok: false, note: 'no TMDB key: Settings → 🎬 Movie info' };
+    const r = await within(searchMovies('Jaws'), 15000, 'TMDB').catch(e => { throw new Error(/401/.test(e.message) ? 'TMDB says the key is wrong: paste the long "API Read Access Token" again' : e.message); });
+    return r.length ? { ok: true, note: `found ${r[0].title} (${r[0].year})` } : { ok: false, note: 'TMDB found nothing for "Jaws"' };
+  },
+  async omdb() { if (!(db.settings.omdbKey || '').trim()) return { ok: null, note: 'no OMDb key (only needed for Rotten Tomatoes + IMDb ratings)' }; const r = await within(testOmdb(), 15000, 'OMDb'); return r.ok ? { ok: true, note: r.sample || 'works' } : { ok: false, note: r.error || 'OMDb said no' }; },
+  async letterboxd() {
+    if (!db.settings.letterboxdUser) return { ok: null, note: 'no Letterboxd username' };
+    const st = lb.stats();
+    if (!(st.count > 0)) return { ok: false, note: `no watched movies read from ${db.settings.letterboxdUser} yet${st.profileError ? ` (${st.profileError})` : ''}` };
+    return st.profileError ? { ok: 'warn', note: `${st.count} watched known, but the last update failed: ${st.profileError}` } : { ok: true, note: `${st.count} watched movies known` };
+  },
+  async donations() {
+    const se = !!db.settings.seJwt, sl = !!db.settings.slToken; if (!se && !sl) return { ok: null, note: 'not set up (StreamElements / Streamlabs)' };
+    const bad = [se && donations.status.se !== 'online' && `StreamElements: ${donations.status.se}`, sl && donations.status.sl !== 'online' && `Streamlabs: ${donations.status.sl}`].filter(Boolean);
+    return bad.length ? { ok: false, note: bad.join(' · ') } : { ok: true, note: [se && 'StreamElements', sl && 'Streamlabs'].filter(Boolean).join(' + ') + ' connected' };
+  },
+  async obs() {
+    if (db.settings.obsOn === false) return { ok: null, note: 'Movie Royal is set not to use OBS (Settings → 🎥 OBS)' };
+    let v; try { v = await within(obs.test(), 8000, 'OBS'); } catch { return { ok: null, note: "OBS is closed (or can't be reached): open OBS and test again" }; }
+    const screens = [...wss.clients].filter(c => c.role === 'overlay'), inObs = screens.filter(c => /\bOBS\//i.test(c.ua || '')).length, other = screens.filter(c => !/Electron|HeadlessChrome/i.test(c.ua || '')).length;
+    return inObs || other ? { ok: true, note: `OBS ${v.obs}: the game screen is open in it` } : { ok: false, note: `OBS ${v.obs} is open, but the Movie Royal game screen isn't loaded in it: 🧭 Setup guide → OBS` };
+  },
+  async update() {
+    if (!repoName()) return { ok: null, note: 'no update address set' };
+    const list = (await within(ghReleases(), 15000, 'GitHub')).filter(x => x.url && (db.settings.betaUpdates || !x.pre));
+    const best = list.reduce((a, x) => !a || newer(x.version, a.version) ? x : a, null);
+    if (!best) return { ok: null, note: 'no versions found' };
+    return newer(best.version, VERSION) ? { ok: 'warn', note: `${best.tag} is out (you have v${VERSION}): Settings → 👤 Account & updates → 🔄 Check for updates` } : { ok: true, note: `v${VERSION} is the newest` };
+  },
+  async data() {
+    let size = 0; try { const txt = fs.readFileSync(DB_FILE, 'utf8'); size = txt.length; JSON.parse(txt); } catch (e) { return { ok: false, note: `your data file can't be read: ${e.message}` }; }
+    if (saveInfo.err && saveInfo.errAt > saveInfo.at) return { ok: false, note: `the last save didn't work: ${saveInfo.err}` };
+    const mb = size > 1e6 ? (size / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(size / 1e3)) + ' KB', days = db.lastBackupAt ? Math.floor((Date.now() - db.lastBackupAt) / 864e5) : null;
+    if (days == null || days > 30) return { ok: 'warn', note: `saves fine (${mb}), but ${days == null ? 'no backup downloaded yet' : `the last backup is ${days} days old`}: Settings → 👤 Account & updates → ⬇️ Download backup` };
+    return { ok: true, note: `saves fine (${mb}); last backup ${days ? plural(days, 'day') + ' ago' : 'today'}` };
+  },
+  async files() {
+    const names = new Set([...JSON.stringify(db).matchAll(/\/uploads\/([^"'?#\\\s)]+)/g)].map(m => { try { return decodeURIComponent(m[1]); } catch { return m[1]; } }));
+    const missing = [...names].filter(n => !fs.existsSync(path.join(UPLOADS, n)));
+    return missing.length ? { ok: 'warn', note: `${plural(missing.length, 'picture')} you added ${missing.length === 1 ? 'is' : 'are'} missing: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? '…' : ''}` } : { ok: true, note: names.size ? `${plural(names.size, 'picture')} you added, all there` : 'no pictures added yet' };
+  },
+  async errors() {
+    const day = errlog.shown().filter(e => Date.now() - (e.at || 0) < 864e5).sort((a, b) => (b.at || 0) - (a.at || 0));
+    return day.length ? { ok: 'warn', note: `${plural(day.length, 'error')} in the last day (newest: ${errlog.plain(day[0]).what}): see ⚠️ Errors` } : { ok: true, note: 'none in the last day' };
+  },
+  async banRules() { // the sample movies against the standard rules (your own rule settings aren't used, so the answers are always the same)
+    const R = { english: true, religious: true, documentary: true, dubbed: true, dubVotes: 1000 }, wrong = [];
+    for (const [t, d, want] of BAN_SAMPLES) { const rb = ruleBan({ id: 'test', ...d }, R); if ((rb?.key || null) !== want) wrong.push(`${t.split(':')[0]}: ${rb?.key || 'not banned'} (should be ${want || 'not banned'})`); }
+    return wrong.length ? { ok: false, note: wrong.slice(0, 3).join(' · ') } : { ok: true, note: `${BAN_SAMPLES.length} sample movies all right` };
+  },
+  async botRules() { // the 24/7 bot has its own copy of the ban + series rules: do they still give the same answers?
+    const wk = await import('./cloud-worker.js'); if (!wk.__test?.blockReason || !wk.__test?.seriesRule) return { ok: false, note: "the 24/7 bot's code couldn't be checked" };
+    const R = { english: true, religious: true, documentary: true, dubbed: true, dubVotes: 1000 }, wrong = [];
+    BAN_SAMPLES.forEach(([t, d], i) => { const a = ruleBan({ id: 'test', ...d }, R), b = wk.__test.blockReason({ cfg: { banRules: R, bans: [], banOk: [], wonIds: [], seriesLocks: {}, banCurrentYear: false, watched: {}, streamer: 'the streamer' }, pool: [] }, { id: 'sample-' + i, title: t.split(' (')[0], year: '', ...d });
+      if (!!a !== !!b || (a && b.short !== '🚫 ' + a.short)) wrong.push(`${t.split(':')[0]}: Movie Royal ${a ? a.short : 'allows it'}, the 24/7 bot ${b ? b.short.replace('🚫 ', '') : 'allows it'}`); });
+    const parts = [1, 2, 3].map(n => ({ id: 'p' + n, title: 'Part ' + n, year: String(2000 + n), date: `${2000 + n}-01-01` })), seenSet = new Set(['p1']), seen = p => seenSet.has(p.id);
+    for (const [movieId, userId, lock] of [['p2', 'a', null], ['p3', 'a', null], ['p2', 'b', { discordId: 'a', name: 'A' }], ['p2', 'a', { discordId: 'a', name: 'A' }]]) {
+      const o = { parts, seen, lock, movieId, userId, name: 'Sample series', streamer: 'the streamer' }, a = series.seriesRule(o), b = wk.__test.seriesRule(o);
+      if ((a?.key || null) !== (b?.key || null)) wrong.push(`series rule (${movieId}): Movie Royal ${a?.key || 'allows it'}, the 24/7 bot ${b?.key || 'allows it'}`);
+    }
+    return wrong.length ? { ok: false, note: wrong.slice(0, 3).join(' · ') } : { ok: true, note: `${BAN_SAMPLES.length} ban samples + 4 series cases give the same answers` };
+  },
+  async series() { // 🎞️ the series rules + 🔒 locks, step by step (a pretend series: nothing real changes)
+    const parts = [1, 2, 3, 4].map(n => ({ id: 'w' + n, title: `Wizard School ${n}`, year: String(2000 + n * 2), date: `${2000 + n * 2}-06-01` })), seenSet = new Set(), seen = p => seenSet.has(p.id);
+    const A = { discordId: 'pa', name: 'Pretend_Alex' }, B = { discordId: 'pb', name: 'Pretend_Bea' }; let lock = null, pool = [], t = 1000;
+    const ask = (who, n) => series.seriesRule({ parts, seen, lock, movieId: 'w' + n, userId: who.discordId, name: 'Wizard School series', streamer: 'the streamer' })?.key || 'ok';
+    const step = () => { const next = series.nextPart(parts, seen), h = next && pool.find(x => x.id === next.id); const r = series.lockStep(lock, { next, holder: h ? h.who : null, addedSince: (id, since) => pool.filter(x => x.who.discordId === id && x.at > since).length, max: 3, now: ++t }); lock = r.lock; };
+    const got = [], want = ['sequel', 'ok', 'sequel', 'locked', 'ok', 'sequel', 'ok', 'locked', 'sequel'];
+    got.push(ask(B, 2), ask(B, 1));
+    pool.push({ id: 'w1', who: A, at: ++t }); step(); got.push(ask(B, 2));
+    seenSet.add('w1'); pool = pool.filter(x => x.id !== 'w1'); step(); got.push(ask(B, 2), ask(A, 2), ask(A, 3));
+    for (let i = 1; i <= 3; i++) { pool.push({ id: 'other' + i, who: A, at: ++t }); step(); } got.push(ask(B, 2));
+    pool.push({ id: 'w2', who: B, at: ++t }); step(); got.push(ask(A, 2), ask(A, 3));
+    const bad = want.map((w, i) => w !== got[i] ? `step ${i + 1}: ${got[i]} (should be ${w})` : null).filter(Boolean);
+    return bad.length ? { ok: false, note: bad.slice(0, 3).join(' · ') } : { ok: true, note: 'sequel bans, locks, and the lock opening up after 3 other picks all right' };
+  },
+  async spotLuck() {
+    const L = Math.max(0, Math.min(100, Number(db.settings.spotLuckNight ?? 1))), per = Math.max(0, Number(db.settings.luckPerBattle ?? 1)), e = {};
+    const got = [spotLuckGain(e, 'n1', true, 'night'), spotLuckGain(e, 'n1', true, 'night'), spotLuckGain(e, 'n2', false, 'night'), spotLuckGain(e, 'n2', true, 'night'), spotLuckGain({}, 'n3', true, 'off'), spotLuckGain({}, 'n3', true, 'battle')], want = [L, 0, 0, L, 0, per];
+    return got.every((g, i) => g === want[i]) ? { ok: true, note: `once a night: +${L}% the first battle a wild spot loses while you're live, then nothing until the next stream` } : { ok: false, note: `got ${got.join(', ')} (should be ${want.join(', ')})` };
+  },
+  async nudity() {
+    const n = fakeNudity(112), labels = (n.scenes || []).map(x => x.label);
+    const good = n.has && labels.length === 5 && labels.includes('at 1:12:30') && labels.includes('~47 min in') && labels.some(l => /^near the start/.test(l)) && labels.some(l => /^near the end/.test(l));
+    return good ? { ok: true, note: '5 scenes found in the pretend Parents Guide page, with their times' } : { ok: false, note: `found ${labels.length} scenes: ${labels.join(', ')}` };
+  },
+  async lists() { // 🌐 the IMDb / Rotten Tomatoes readers on sample pages (no internet)
+    const nd = { props: { pageProps: { searchResults: { titleResults: { titleListItems: [{ titleId: 'tt0000001', titleText: 'Sample Worst One', releaseYear: 2008, ratingSummary: { aggregateRating: 1.9 }, titleType: { id: 'movie' } }, { titleId: 'tt0000002', titleText: 'Sample Worst Two', releaseYear: 2004, ratingSummary: { aggregateRating: 2.2 } }] } } } } };
+    const imdb = listsrc._test.imdbParse(`<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(nd)}</script><li><a href="/title/tt0000003/"><h3>51. Sample Worst Three</h3></a><span>2010</span><span class="ipc-rating-star--rating">1.8</span></li>`);
+    const rt = listsrc._test.rtParse(`<div class="article_movie_title"><h2><a href="https://www.rottentomatoes.com/m/sample_bad">Sample Bad</a> <span class="subtle start-year">(2002)</span> <span class="tMeterScore">0%</span></h2></div>`);
+    const good = imdb.length === 3 && imdb.map(x => x.rating).join() === '1.9,2.2,1.8' && rt.length === 1 && rt[0].rt === 0 && rt[0].year === 2002;
+    return good ? { ok: true, note: 'IMDb (with ratings) and Rotten Tomatoes (with 🍅 %) sample pages read right' } : { ok: false, note: `IMDb: ${imdb.map(x => `${x.title} ${x.rating}`).join(', ')} · RT: ${rt.map(x => `${x.title} ${x.rt}`).join(', ')}` };
+  },
+  async banExport() { const csv = bansCsv(), back = bansFromFile(csv), mine = myBans(); const same = back.length === mine.length && back.every((b, i) => String(b.tmdbId) === String(mine[i].tmdbId) && b.title === mine[i].title); return same ? { ok: true, note: mine.length ? `${plural(mine.length, 'movie')} you banned: the file reads back the same` : "you haven't banned any movies yourself yet (the file works)" } : { ok: false, note: `${mine.length} banned, ${back.length} read back` }; },
+  async myMovies() {
+    const p = discordPeople().find(x => x.active.length); if (!p) return { ok: null, note: 'nobody has a movie in the Discord movie battle yet' };
+    const t = await myMoviesTexts(p), titles = (getList('movies')?.entries || []).filter(e => e.backers?.[0]?.discordId === p.discordId && e.status === 'active').map(e => e.label).slice(0, 3);
+    const miss = [['Twitch chat', t.chat], ["Movie Royal's Discord bot", t.discord], ...(cloud.enabled() ? [['the 24/7 bot', t.cloud]] : [])].filter(([, x]) => !x || /could not make it/.test(x) || !titles.every(tt => x.includes(tt))).map(([w]) => w);
+    return miss.length ? { ok: false, note: `${miss.join(', ')}: the answer for ${p.name} is missing their movies` } : { ok: true, note: `${p.name}'s movies show right in Twitch chat, Discord${cloud.enabled() ? ' and the 24/7 bot' : ''}` };
+  }
+};
+app.post('/api/test/check', async (req, res) => { // 🤖 Test all: one check at a time (the control panel lists them and ticks them off)
+  const id = String(req.body?.id || ''), f = SELF_CHECKS[id]; if (!f) return res.status(404).json({ ok: false, note: 'unknown check' });
+  try { res.json(await within(f(), 60000, 'This check')); } catch (e) { res.json({ ok: false, note: e.message }); }
 });
 app.post('/api/test/discord-debug', (req, res) => { // Test tab: a pretend problem in the debug channel
   discord.postDebug(debugText({ source: 'discord', msg: 'This is a test from the 🧪 Test tab. If you can read this, the debug channel works!', detail: '', at: Date.now() }));

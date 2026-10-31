@@ -3,6 +3,19 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.67.0: What's new
+Everything since 1.66.2.
+
+- 🤖 **Test all** (🧪 Test → ✅ Checklist): one button that checks everything Movie Royal can check by itself, in the background. Nothing goes on stream, in chat or in Discord, nothing is changed, and you can keep using the app while it runs (about a minute). The list ticks each check off as it's done: ✅ fine, ❌ a problem (it says what to do), 🟡 worth a look, ⚪ skipped (not set up).
+  - ⚙️ **Your connections:** Twitch, your chat bot account, channel point rewards, the Discord bot (tried with a pretend person), the 24/7 bot, the backup bot server, TMDB, OMDb, Letterboxd, donations, OBS (with the game screen in it) and updates.
+  - ⚔️ **Battles in a hidden test screen:** a practice battle, a number battle, characters, a battle on every map (the winner has to end up on land), every card battle map, character fights, and every finisher and celebration.
+  - 🎬 **Movie nights:** the ban rules (and that the 24/7 bot gives the same answers), series in order + locks, wild spot luck, !mymovies, the IMDb / Rotten Tomatoes readers, the nudity check and the ban export file.
+  - 🖥️ **The app:** your data saves (and you have a backup from the last month), the pictures you added are there, no new errors, every button has a help note, and no two key binds share a key.
+  - Checklist items a check really covers get ticked by themselves ("checked by 🤖 Test all").
+- 🤖 **Test all not done:** only the checks that haven't passed yet.
+- 🗂️ **Side tabs on the Test tab:** 🧪 Tests and ✅ Checklist both have a tab for each group down the left side, like Settings. 📋 All tests / 📋 Everything shows it all on one page. Keys: [ and ] go to the tab above / below, Shift+T starts Test all.
+- ❓ Help mode now has a note for the last few buttons and boxes that didn't have one.
+
 ## v1.66.2: What's new
 Everything since 1.60.4.
 

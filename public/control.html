@@ -349,6 +349,25 @@
   .labCks { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:2px 10px; margin-top:6px; }
   #labCard.card-mode .labBall, #labCard:not(.card-mode) .labCard { display:none; }
   #v-test.checkmode > .card:not(#tCheck):not(.ttabs), #v-test.errmode > .card:not(#tErr):not(.ttabs) { display:none; }
+  /* 🗂️ ✅ Checklist parts down the left side + 🤖 Test all (1.67.0, Derek) */
+  .ckWrap { display:grid; grid-template-columns:220px minmax(0,1fr); gap:14px; align-items:start; margin-top:10px; }
+  .ckSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(100vh - var(--hdr) - 90px); overflow:auto; }
+  #tCheck .ckSide button { display:flex; align-items:center; gap:6px; } #tCheck .ckSide button .pill { margin-left:auto; flex:none; }
+  .ckSec.tOff { display:none; } .ckSec > h4:first-child { margin-top:0; }
+  .taBar { height:8px; border-radius:6px; background:var(--panel2); overflow:hidden; margin:2px 0 6px; } .taBar i { display:block; height:100%; background:var(--gold); transition:width .3s; }
+  .taItem.run .ckIcon { animation:taSpin 1.2s linear infinite; } @keyframes taSpin { to { transform:rotate(360deg); } }
+  .taBad { color:#ff8a8a; } .taItem details summary { cursor:pointer; }
+  @media (max-width:1150px) { .ckWrap { grid-template-columns:190px minmax(0,1fr); } }
+  /* 🗂️ Tests: one tab per category down the left side, like Settings (1.67.0, Derek) */
+  #tWrap { grid-column:1 / -1; display:grid; grid-template-columns:220px minmax(0,1fr); gap:14px; align-items:start; min-width:0; }
+  #tSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(100vh - var(--hdr) - 90px); overflow:auto; }
+  #tSide button { display:flex; align-items:center; gap:6px; }
+  #tSide button .pill { margin-left:auto; flex:none; }
+  #tMain { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; align-content:start; min-width:0; }
+  #tMain > .tOff { display:none !important; }
+  #v-test.checkmode > #tWrap, #v-test.errmode > #tWrap { display:none; }
+  @media (max-width:1500px) { #tMain { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  @media (max-width:1150px) { #tWrap { grid-template-columns:190px minmax(0,1fr); } }
   #v-test:not(.checkmode) > #tCheck, #v-test:not(.errmode) > #tErr { display:none; }
   .kbGrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:6px 12px; }
   .kbRow { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:10px; background:#ffffff0a; border:1px solid #ffffff14; }
@@ -1311,7 +1330,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && hmOn() && 
 // Each key presses the same button you'd click, so it does exactly what the button does. Changed keys are saved in settings.keybinds.
 const kbVis = el => !!el && el.offsetParent !== null && !el.disabled;
 function kbClick(scope, re, why) { // press the visible button in that part of the screen whose words match
-  const b = [...document.querySelectorAll(`${scope} button, ${scope} .btn`)].find(x => kbVis(x) && re.test(x.textContent.trim()));
+  let b = [...document.querySelectorAll(`${scope} button, ${scope} .btn`)].find(x => kbVis(x) && re.test(x.textContent.trim()));
+  if (!b && /#v-test/.test(scope) && $('tMain') && !$('v-test').classList.contains('checkmode') && !$('v-test').classList.contains('errmode')) { // 🗂️ it's on another Test tab category: open that one first
+    const h = [...$('tMain').querySelectorAll('button, .btn')].find(x => !x.disabled && re.test(x.textContent.trim())), c = h?.closest('[data-tcat]')?.dataset.tcat;
+    if (c) { testCat(c, true); if (kbVis(h)) { h.scrollIntoView({ block: 'center' }); b = h; } }
+  }
   if (b) { b.click(); return true; } toast(`⌨️ ${why || 'That button'} isn't on screen right now`); return false;
 }
 function kbFocus(scope, re) { const i = [...document.querySelectorAll(`${scope} input, ${scope} textarea`)].find(x => kbVis(x) && re.test(x.placeholder || '')); if (i) { i.focus(); i.select?.(); } else toast('⌨️ No box to type in here right now'); }
@@ -1368,6 +1391,9 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['x-tests', 'test', '🧪 Tests', '1', () => testTab('tests')],
   ['x-check', 'test', '✅ Checklist', '2', () => testTab('check')],
   ['x-errors', 'test', '⚠️ Errors', '3', () => testTab('errors')],
+  ['x-catUp', 'test', '🗂️ Side tab above (Tests categories / Checklist parts)', '[', () => testCatStep(-1)],
+  ['x-catDown', 'test', '🗂️ Side tab below (Tests categories / Checklist parts)', ']', () => testCatStep(1)],
+  ['x-testAll', 'test', '🤖 Test all (Checklist)', 'Shift+T', () => taRun(false)],
   ['x-chat', 'test', '💬 Pretend chat on / off', 'C', () => pchat(!$('pchat').classList.contains('on'))],
   ['x-live', 'test', '🔴 Pretend I\'m live on / off', 'L', () => api('/api/test/live', { live: !S.fakeLive })],
   ['x-prev', 'test', '📺 Preview window on / off', 'V', () => previewToggle()],
@@ -1574,7 +1600,7 @@ function labInit() {
   $('labN').value = (t === 'card' ? labSet.cn : labSet.n) ?? (t === 'card' ? 12 : 16); $('labGame').value = (t === 'card' ? labSet.cgame : labSet.game) ?? '';
   $('labLobby').value = labSet.lobby ?? 3; $('labSkin').value = labSet.skin || 'movies'; $('labLook').value = labSet.look || 'balls'; $('labLuck').value = labSet.luck || 'mixed'; $('labLaps').value = labSet.laps ?? 3; $('labSurv').checked = !!labSet.surv;
   $('labPacer').value = labSet.pacer ?? 50; $('labPacerV').textContent = pacerWord($('labPacer').value);
-  const ck = (id, on, label, tip) => `<label class="ck" title="${esc(tip || '')}"><input type="checkbox" data-lab="${id}" ${on ? 'checked' : ''} onchange="labSave()"> <span>${label}</span></label>`;
+  const ck = (id, on, label, tip) => `<label class="ck" title="${esc(tip || '')}"><input type="checkbox" data-lab="${id}" title="${esc(tip || '')}" ${on ? 'checked' : ''} onchange="labSave()"> <span>${label}</span></label>`;
   $('labPow').innerHTML = POWERS.map(([k, n, d]) => ck('p-' + k, labSet.pow?.[k], n, 'Lab power-up: ' + d)).join('');
   $('labWacky').innerHTML = WACKY_BALL.map(([k, n]) => ck('w-' + k, labSet.wacky?.[k], n.split(':')[0], 'Lab wacky: ' + n)).join('');
   const wl = S.cards?.wackyList || {}; $('labCWacky').innerHTML = Object.entries(wl).map(([k, w]) => `<label class="ck" title="${esc('Lab card wacky: ' + (w.desc || ''))}"><input type="checkbox" data-labc="${k}" ${labSet.cw?.[k] ? 'checked' : ''} onchange="labCWacky('${k}', this.checked)"> <span>${w.name}</span></label>`).join('');
@@ -1633,7 +1659,7 @@ function labPow() { if (!labCur?.fighters) return toast('Run a ball battle test 
 function labCWacky(k, on) { labCW[k] = on; if (on && k === 'giant') labCW.tiny = false; if (on && k === 'tiny') labCW.giant = false; if (on && k === 'turbo') labCW.slowmo = false; if (on && k === 'slowmo') labCW.turbo = false; labSet.cw = { ...labCW }; labSave(true); labPost({ type: 'cardWacky', wacky: { ...labCW }, key: k, on }); document.querySelectorAll('[data-labc]').forEach(i => { i.checked = !!labCW[i.dataset.labc]; }); }
 function labSound() { labSet.sound = labSet.sound === false; labSave(true); $('labSnd').textContent = labSet.sound === false ? '🔇 Sound off' : '🔊 Sound on'; labPost({ type: 'audio', on: labSet.sound !== false, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: Number(S.settings.musicVolume ?? 35) / 100 }); }
 function labBig() { $('labCard').classList.toggle('big'); }
-function labTry(map, kind) { setView('test'); testTab('tests'); labSet.type = kind === 'card' ? 'card' : 'ball'; if (kind === 'card') labSet.cmap = map; else labSet.map = map; labSave(true); labInit(); $('labCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); labRun(); }
+function labTry(map, kind) { setView('test'); testTab('tests'); labSet.type = kind === 'card' ? 'card' : 'ball'; if (kind === 'card') labSet.cmap = map; else labSet.map = map; labSave(true); labInit(); testGo('labCard', 'start'); labRun(); }
 labCW = { ...(labSet.cw || {}) };
 // 🎡 name boxes on the Wheel tab: suggest the people who chatted most recently (newest first, bots left out)
 function fillChatters(id, more = []) { const dl = $(id); if (!dl) return; const seen = new Set(), names = []; for (const n of [...(S.wheelChatters || []), ...more]) { const k = String(n).toLowerCase(); if (!n || seen.has(k)) continue; seen.add(k); names.push(n); } const html = names.map(n => `<option value="${esc(n)}">`).join(''); if (dl.innerHTML !== html) dl.innerHTML = html; }
@@ -1692,7 +1718,7 @@ async function pinSim(step) {
   if (!r.ok) return toast(esc(r.error || 'Could not do that.'));
   $('pinSimOut').innerHTML = step === 'clear' ? '' : `<b>Twitch pin:</b>\n${esc(r.text)}${r.discord ? `\n\n<b>Pinned Discord message:</b>\n${esc(r.discord)}` : ''}`;
 }
-function arrangeTests() { // put the Test tab's cards under category headers (once)
+function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
   const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
@@ -1704,24 +1730,53 @@ function arrangeTests() { // put the Test tab's cards under category headers (on
     if (cat === 'connect') cat = 'screen';
     (groups[cat || 'other'] ||= []).push(c);
   }
-  const jump = document.createElement('div'); jump.className = 'card tjump'; jump.style.cssText = 'grid-column:1 / -1;padding:8px 12px';
-  jump.innerHTML = '<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><span class="muted">Jump to:</span>' + TEST_CATS.filter(([c]) => groups[c]).map(([c, n]) => `<button class="ghost" style="padding:3px 10px" onclick="document.getElementById('tcat-${c}').scrollIntoView({behavior:'smooth',block:'start'})">${n}</button>`).join('') + '</div>';
-  box.appendChild(jump);
-  for (const [c, n] of TEST_CATS) { if (!groups[c]) continue; const hd = document.createElement('div'); hd.className = 'card tcat'; hd.id = 'tcat-' + c; hd.style.cssText = 'grid-column:1 / -1'; hd.innerHTML = `<h2 style="margin:0">${n}</h2>`; box.appendChild(hd); for (const card of groups[c]) box.appendChild(card); }
+  // 🗂️ a tab for each category down the left side (1.67.0, Derek: "tabs on the side to get to categories quickly"); 📋 All tests = everything on one page
+  const wrap = document.createElement('div'); wrap.id = 'tWrap';
+  const side = document.createElement('div'); side.id = 'tSide'; side.className = 'card subnav'; // (a div: the top tabs' nav style isn't for this)
+  const main = document.createElement('div'); main.id = 'tMain';
+  wrap.append(side, main); box.appendChild(wrap);
+  const cats = TEST_CATS.filter(([c]) => groups[c]);
+  for (const [c, n] of cats) { const hd = document.createElement('div'); hd.className = 'card tcat'; hd.id = 'tcat-' + c; hd.dataset.tcat = c; hd.style.cssText = 'grid-column:1 / -1'; hd.innerHTML = `<h2 style="margin:0">${n}</h2>`; main.appendChild(hd); for (const card of groups[c]) { card.dataset.tcat = c; main.appendChild(card); } }
+  side.innerHTML = cats.map(([c, n]) => `<button data-tc="${c}" title="Show the tests for ${esc(n)}" onclick="testCat('${c}')"><span>${n}</span><span class="pill">${groups[c].length}</span></button>`).join('') + `<button data-tc="all" title="Show every test on one page" onclick="testCat('all')"><span>📋 All tests</span></button>`;
+  let tc = ''; try { tc = localStorage.testCat || ''; } catch {}
+  testCat(tc === 'all' || groups[tc] ? tc : cats[0]?.[0] || 'all', true);
 }
+function testCat(c, quiet) { // 🗂️ show one category of tests (or 'all'); remembered for next time
+  const main = $('tMain'); if (!main) return;
+  main.dataset.cat = c;
+  for (const el of main.children) el.classList.toggle('tOff', c !== 'all' && el.dataset.tcat !== c);
+  document.querySelectorAll('#tSide button[data-tc]').forEach(b => b.classList.toggle('on', b.dataset.tc === c));
+  try { localStorage.testCat = c; } catch {}
+  testSideTop();
+  if (!quiet) $('v-test').scrollTo({ top: 0 });
+}
+function testCatStep(d) { // [ / ] keys: the side tab above / below (🧪 Tests categories, or the ✅ Checklist parts)
+  if ($('v-test').classList.contains('checkmode')) { const bs = [...document.querySelectorAll('#tCheck .ckSide button[data-ckc]')]; if (!bs.length) return; const i = bs.findIndex(b => b.classList.contains('on')); return ckCatGo(bs[(i + d + bs.length) % bs.length].dataset.ckc); }
+  const bs = [...document.querySelectorAll('#tSide button[data-tc]')]; if (!bs.length) return;
+  if ($('v-test').classList.contains('errmode')) testTab('tests');
+  const i = bs.findIndex(b => b.classList.contains('on')); testCat(bs[(i + d + bs.length) % bs.length].dataset.tc);
+}
+function testGo(el, block = 'center') { // open the Test tab at this card (or something in it): switches to its category first
+  el = typeof el === 'string' ? $(el) : el; if (!el) return;
+  if (view !== 'test') setView('test'); testTab('tests');
+  const c = el.closest('[data-tcat]')?.dataset.tcat; if (c && $('tMain')?.dataset.cat !== 'all') testCat(c, true);
+  setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block }), 60);
+}
+function testSideTop() { const t = document.querySelector('#v-test > .ttabs'); if (!t?.offsetHeight) return; const top = Math.max(0, t.offsetHeight - 14 + 12) + 'px'; for (const sd of [$('tSide'), document.querySelector('#tCheck .ckSide')]) if (sd) sd.style.top = top; } // (just under the 🧪 Tests / ✅ Checklist / ⚠️ Errors bar)
+addEventListener('resize', () => testSideTop());
 function drawChecklist() {
   const box = $('tCheck'); if (!box || !S) return;
   const st = S.status || {}, tw = st.twitch || {}, dc = st.discord || {}, c = S.cloud || {}, set = S.settings || {};
   const auto = (ok, label, fix, mid) => `<div class="ckItem ${ok ? 'ok' : mid ? 'mid' : 'no'}"><span class="ckIcon">${ok ? '✅' : mid ? '🟡' : '❌'}</span><span class="ckText">${label}</span><span class="ckAct">${!ok && fix ? fix : ''}</span></div>`;
   const go = (v, s2) => `<button class="ghost" style="padding:3px 9px" onclick="setView('${v}')${s2 ? `;setSub('${s2}')` : ''}">Fix it</button>`;
-  const man = (k, label, act) => `<div class="ckItem ${ckDone[k] ? 'done' : 'todo'}"><span class="ckIcon"><input type="checkbox" title="Tick it once it works" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span class="ckText">${ckIsNew(k) ? '<span class="newTag">🆕</span> ' : ''}${label}${ckDone[k] ? ` <small class="muted">(worked ${new Date(ckDone[k]).toLocaleDateString()})</small>` : ''}</span><span class="ckAct">${act || ''}</span></div>`;
+  const man = (k, label, act) => `<div class="ckItem ${ckDone[k] ? 'done' : 'todo'}"><span class="ckIcon"><input type="checkbox" title="Tick it once it works" ${ckDone[k] ? 'checked' : ''} onchange="ckTick('${k}',this.checked)"></span><span class="ckText">${ckIsNew(k) ? '<span class="newTag">🆕</span> ' : ''}${label}${ckDone[k] ? ` <small class="muted">(worked ${new Date(ckDone[k]).toLocaleDateString()}${ckAuto[k] ? ', checked by 🤖 Test all' : ''})</small>` : ''}</span><span class="ckAct">${act || ''}</span></div>`;
   const T = (txt, js, screen = true) => `<button class="ghost" style="padding:3px 9px" onclick="${screen ? 'peek(true);' : ''}${js}">${txt}</button>`; // stays on the checklist: the pop-up window shows what happens
   const manual = [ // "Try it" = works offline (not live, nobody else needed); the pop-up window shows what happens
     ['practice', 'A practice battle plays and ends with a winner', T('Try it', "api('/api/test/battle',{count:12}).catch(()=>{})")],
     ['discordBattle', 'A test Discord battle plays, and after Next round the balls come back', T('Try it', "api('/api/test/discord-battle').then(()=>toast('Test battle! When it ends, press Next round on the winner card and watch the balls come back')).catch(()=>{})")],
     ['chatJoin', 'Someone types in Twitch chat and their movies join the cliff', T('Try it', "api('/api/test/chat-join').then(r=>toast(r.ok?'💬 '+esc(r.name)+' typed in chat: their movies join the cliff':'⚠️ '+esc(r.error)))")],
     ['claim', 'A movie winner types in chat → ✅ Accept and ⏭️ Pass both work', T('Try it', "claimTest()")],
-    ['allMaps', '🗺️ Every map plays a battle to the end with a winner on land (ball maps, card / character maps, holiday and bus maps): try a few in the 🧪 Quick test lab', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests');setTimeout(()=>$('labCard')?.scrollIntoView({block:'center'}),200)">Test lab</button>`],
+    ['allMaps', '🗺️ Every map plays a battle to the end with a winner on land (ball maps, card / character maps, holiday and bus maps): try a few in the 🧪 Quick test lab (🤖 Test all plays every one by itself)', `<button class="ghost" style="padding:3px 9px" onclick="testGo('labCard')">Test lab</button>`],
     ['pin', 'The claimed movie gets pinned in Twitch chat', T('Test pin', "api('/api/test/pin').then(()=>toast('📌 Pinned a test message in your Twitch chat'))", false)],
     ['sitout', '!sitout and !imback work in chat', T('Try it', "api('/api/test/sitout').then(r=>toast(r.ok?'🛌 '+esc(r.name)+' typed !sitout (their movies leave the cliff), then !imback in 5 seconds':'⚠️ '+esc(r.error), 7000))")],
     ['chaos', 'A channel point / bits chaos event hits the battle', T('Try it', "api('/api/test/battle',{count:12}).then(()=>setTimeout(()=>api('/api/test/redeem',{event:'comet',name:'test_viewer'}),7000)).then(()=>toast('Practice battle: a ☄️ comet hits once the fight starts'))")],
@@ -1738,10 +1793,10 @@ function drawChecklist() {
     ['raid', '🚀 Raid reward: a viewer redeems it, types a channel in chat, the pop-up celebrates and the 🚀 box at the top starts the raid (try it with 💬 Pretend chat → 🚀 Raid)', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true);setTimeout(()=>pcRedeem('raid'),300)">Try it</button>`],
     ['doubleStop', '✌️ Double trouble and 🛑 Force stop wheel rewards (💬 Pretend chat → ✌️ Double / 🛑 Stop)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');pchat(true)">Try it</button>`],
     ['watchLuck', '👀 Battle tab → a battle\'s luck buttons → 👀 Watch luck: every 10 hours someone watches = +1% luck in that battle (both numbers can be changed; off by default, per battle)', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle');setTimeout(()=>wlOpen(S.activeListId),300)">Open</button>`],
-    ['charCmd', '🎨 /character in Discord: with no numbers it shows numbered pictures of hair, outfits, makeup, facial hair (and skin + hair colors); with numbers it saves that person\'s character. Try it on the 🧪 Tests tab → 🎨 Custom characters (💬 Try /character / 🖼️ Show the picture sheets), then for real in Discord', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests');setTimeout(()=>{lkInit();$('lkCard')?.scrollIntoView({block:'center'})},200)">Open it</button>`],
+    ['charCmd', '🎨 /character in Discord: with no numbers it shows numbered pictures of hair, outfits, makeup, facial hair (and skin + hair colors); with numbers it saves that person\'s character. Try it on the 🧪 Tests tab → 🎨 Custom characters (💬 Try /character / 🖼️ Show the picture sheets), then for real in Discord', `<button class="ghost" style="padding:3px 9px" onclick="lkInit();testGo('lkCard')">Open it</button>`],
     ['charBattle', '🎨 People who made a character are that character in battles with 🧍 characters (their poster / Twitch picture is a badge on the chest). Run the practice battle: every piece has its own look and the first one is the look you picked', `<button class="ghost" style="padding:3px 9px" onclick="lkInit();testBattle({chars:true,looks:lkGet()})">Practice battle</button>`],
     ['charSpots', '🎟️ Wild spot characters: Settings → wild spots has a builder with a live preview (🎨 on a wild spot in the pool goes there). The 1st spot wears character 1, the 2nd character 2…', `<button class="ghost" style="padding:3px 9px" onclick="spGo()">Make them</button> <button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,spots:true})">Practice battle</button>`],
-    ['charPic', '🖼️ /character in Discord: after saving, the person gets a small picture of their character, and it is posted in the movie channel (Settings → Game turns that off). Try 💬 Try /character on the 🧪 Tests tab → 🎨 Custom characters to see the picture', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests');setTimeout(()=>{lkInit();lkTry(false);$('lkCard')?.scrollIntoView({block:'center'})},200)">Show it</button>`],
+    ['charPic', '🖼️ /character in Discord: after saving, the person gets a small picture of their character, and it is posted in the movie channel (Settings → Game turns that off). Try 💬 Try /character on the 🧪 Tests tab → 🎨 Custom characters to see the picture', `<button class="ghost" style="padding:3px 9px" onclick="lkInit();lkTry(false);testGo('lkCard')">Show it</button>`],
     ['dcChars', '🎨 Discord: #character-creation has a pinned message with how to make a character and every numbered picture. /character only works in there (elsewhere it points people to it), and new characters get shown off in there', ''],
     ['charMaps', '🃏 Battles with 🧍 characters on can use the character-only maps (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2 Battlefield): they show in the map menu only while the battle has characters on. Everyone dresses for the map (ninjas, wrestlers, wizards, gladiators, soldiers) and the final two get a FINAL FIGHT with a finisher. The winner gets claimed like any battle', `<button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,map:'kungfu'})">Kung Fu Town</button> <button class="ghost" style="padding:3px 9px" onclick="testBattle({chars:true,map:'ring'})">Royal Rumble</button>`],
     ['charProfLook', '🎨 A viewer who made a character shows a preview of it on their profile (double-click their name in chat)', ''],
@@ -1765,8 +1820,8 @@ function drawChecklist() {
     ['joinVote', '🎬 Discord battle → ⏱️ 2-min join timer + chat vote: the board empties, the numbered movie list shows on the right, typing a number or movie name in 💬 Test chat votes (🗳️ shows on the list), and when the 2 minutes are up it waits for you to press START', T('Try it', "setActive('movies');setTimeout(()=>{setView('battle');gatherClick()},300)")],
     ['webListReal', '🌐 New battle → 🌐 IMDb / Rotten Tomatoes with the worst-movies lists: it reads the real sites (a few minutes) and ends up with 500 movies', `<button class="ghost" style="padding:3px 9px" onclick="newList();selType('web')">Open it</button>`],
     ['funPowers', '🎉 Chat battle tab → Fun mode: chat buys 🛡️ ⚡ 💪 👻 🦔 🧲 power-ups with channel points, each one can be switched on or off', `<button class="ghost" style="padding:3px 9px" onclick="setView('chat')">Open</button>`],
-    ['doomReal', '☠️ Test → Wheel → ☠️ The real thing → Run the whole Doomsday: the full Doomsday for real (while live it warns you first, with a 5-second wait, then ends your stream)', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests')">See it</button>`],
-    ['doomBack', '🎙️ After a Doomsday ends the stream, your mic and camera come back on by themselves (not live: after 15 seconds)', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests')">See it</button>`],
+    ['doomReal', '☠️ Test → Wheel → ☠️ The real thing → Run the whole Doomsday: the full Doomsday for real (while live it warns you first, with a 5-second wait, then ends your stream)', `<button class="ghost" style="padding:3px 9px" onclick="testGo('wTestCard','start')">See it</button>`],
+    ['doomBack', '🎙️ After a Doomsday ends the stream, your mic and camera come back on by themselves (not live: after 15 seconds)', `<button class="ghost" style="padding:3px 9px" onclick="testGo('wTestCard','start')">See it</button>`],
     ['vrHydrate', '💧🙆 Hydrate / Stretch: a pop-up with a chugging / stretching sound for 5 seconds (only while Movie Royal is the window you\'re on)', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/vr',{kind:'hydrate'})">Try it</button>`],
     ['vrHat', '🎩 Pick a hat: the bot lists your hats with numbers; the viewer types a number or name and a pop-up shows the hat', `<button class="ghost" style="padding:3px 9px" onclick="pchat(true,'test_viewer');api('/api/test/vr',{kind:'hat'})">Try it</button>`],
     ['vrChoice', '🎉 Viewer\'s choice: confetti and balloons over the whole screen, a big pop-up, a crowd going wild, 10 seconds', `<button class="ghost" style="padding:3px 9px" onclick="api('/api/test/vr',{kind:'choice'})">Try it</button>`],
@@ -1777,9 +1832,9 @@ function drawChecklist() {
     ['cardWacky', '🤪 Card battle wacky settings: turn on low gravity, extreme gore, teleport switches… before or during a fight (keys 1–9 in fullscreen)', `<button class="ghost" style="padding:3px 9px" onclick="setView('cards')">Try it</button>`],
     ['winModes', '🖥️ Window mode: Window, Fullscreen window or Fullscreen (Settings → Graphics)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setTimeout(()=>setSub('gfx'),100)">Try it</button>`],
     ['capture', '📺 Capture window: ⚙ next to 📺 on the Battle tab, pick your browser window, then 📺 shows it small in the top-left of your OBS scene (press again to hide)', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle');setTimeout(capOpen,300)">Try it</button>`],
-    ['pinSpots', '📌 The movie pin in Twitch chat says which movie of the night it is, lists the earlier ones and whose they were; a wild spot win pins nothing; the wild spot battle\'s winner gets pinned as the movie (a text entry isn\'t pinned: you pin it yourself)', `<button class="ghost" style="padding:3px 9px" onclick="setView('test');setTimeout(()=>$('pinSimOut')?.scrollIntoView({behavior:'smooth',block:'center'}),200)">Try it</button>`],
+    ['pinSpots', '📌 The movie pin in Twitch chat says which movie of the night it is, lists the earlier ones and whose they were; a wild spot win pins nothing; the wild spot battle\'s winner gets pinned as the movie (a text entry isn\'t pinned: you pin it yourself)', `<button class="ghost" style="padding:3px 9px" onclick="testGo('pinSimOut')">Try it</button>`],
     ['backupLink', '🛡️ A backup bot server (Movie Royal Backup Bots) is watching your Discord bot', T('Check', "bkCheck()", false)],
-    ['wheelLink', '🔀 A linked wheel spot spins another wheel (or plays a battle), then comes back', `<button class="ghost" style="padding:3px 9px" onclick="testTab('tests');setTimeout(()=>document.getElementById('wtSpot')?.scrollIntoView({block:'center'}),200);toast('Link a spot in its ⚙ on the Wheel tab, then pick it here in 🎯 Land on a spot and press Spin onto it',8000)">How</button>`],
+    ['wheelLink', '🔀 A linked wheel spot spins another wheel (or plays a battle), then comes back', `<button class="ghost" style="padding:3px 9px" onclick="testGo('wtSpot');toast('Link a spot in its ⚙ on the Wheel tab, then pick it here in 🎯 Land on a spot and press Spin onto it',8000)">How</button>`],
     ['keys', '⌨️ Key binds work (Space spins on the Wheel tab, Ctrl+H help mode…)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('keys')">See them</button>`],
     ['money', 'A sub / bits / donation pop-up shows up on the wheel', T('Try it', "api('/api/wheel/show',{show:true}).then(()=>api('/api/test/wheel-boost',{kind:'bits',bits:500})).then(()=>toast('💎 Test 500 bits: the pop-up shows on the left of the Wheel tab'))")],
     ['discordSuggest', '/suggest and /linktwitch work in Discord with Movie Royal open', T('Self-test', "discordSelfTest()", false)],
@@ -1795,9 +1850,10 @@ function drawChecklist() {
     ['wheelImport', '📥 Import a wheel with 📂 Choose a file (Windows Explorer)', `<button class="ghost" style="padding:3px 9px" onclick="setView('wheel');setTimeout(wImport,300)">Try it</button>`],
   ];
   const doneN = manual.filter(([k]) => ckDone[k]).length;
-  box.innerHTML = `<div class="row" style="align-items:center"><h3 class="grow" style="margin:0">✅ Is everything working?</h3><span class="pill">${doneN}/${manual.length} tried</span><button class="ghost" onclick="if(confirm('Untick everything on the checklist?')){ckDone={};try{localStorage.ckDone='{}'}catch{};drawChecklist()}">Untick all</button></div>
-    <div class="ckl">
-      <h4>Set up (checked by itself)</h4>
+  // 🗂️ the checklist in parts, with a tab for each down the left side (1.67.0, Derek), like Settings; 📋 Everything = all of it on one page
+  const fresh = manual.filter(([k]) => ckIsNew(k)), secs = [];
+  secs.push(['auto', '🤖 Test all', `<div id="taBox">${taHTML()}</div>`, taPill()]);
+  secs.push(['setup', '⚙️ Set up (checked by itself)', `
       ${auto(tw.state === 'online', `Twitch signed in${tw.login ? ` as <b>${esc(tw.login)}</b>` : ''}`, '<a class="btn ghost" href="/auth/twitch" style="padding:3px 9px">Sign in</a>')}
       ${auto(/^reading/.test(tw.chat || ''), `Reading Twitch chat${tw.chat ? ` <small class="muted">(${esc(tw.chat)})</small>` : ''}`, go('settings', 'twitch'))}
       ${auto(!!tw.canChat, 'Movie Royal can post in Twitch chat', '<a class="btn ghost" href="/auth/twitch" style="padding:3px 9px">Sign in again</a>')}
@@ -1810,10 +1866,187 @@ function drawChecklist() {
       ${auto((st.overlays || 0) > 0, `Game screen open (${st.overlays || 0} — the app counts as one, OBS as another)`, '')}
       ${auto(!(S.rewardsByHand || []).length, (S.rewardsByHand || []).length ? `Channel point rewards made by hand on Twitch: ${S.rewardsByHand.map(esc).join(', ')}` : 'Channel point rewards are Movie Royal\'s own (it can switch them off when they can\'t be used)', go('settings', 'twitch'))}
       ${auto(!S.live || true, S.live ? '🔴 You are live' : '⚫ Not live (fine for testing: everything works offline too)', '', !S.live)}
-      ${(() => { const fresh = manual.filter(([k]) => ckIsNew(k)); return fresh.length ? `<h4 class="cknew">🆕 Recently updated: try these <button class="ghost" style="padding:2px 8px;margin-left:8px" onclick="ckSeenAll()" title="Moves them all to their own categories">✓ Move them to their categories</button></h4><p class="help" style="margin:0 0 6px">Tick one once it works: it moves to its own category when you leave this tab.</p>${fresh.map(([k, l, a]) => man(k, l, a)).join('')}` : ''; })()}
-      ${TEST_CATS.map(([c, name]) => { const items = manual.filter(([k]) => (CK_META[k]?.[0] || 'other') === c && !ckIsNew(k)); return items.length ? `<h4>${name}</h4>${items.map(([k, l, a]) => man(k, l, a)).join('')}` : ''; }).join('')}
-    </div>`;
+      `, '']);
+  if (fresh.length) secs.push(['new', '🆕 Recently updated', `<div class="row" style="align-items:center;margin:0 0 6px"><span class="help grow" style="margin:0">Tick one once it works: it moves to its own category when you leave this tab.</span><button class="ghost" style="padding:2px 8px" onclick="ckSeenAll()" title="Moves them all to their own categories">✓ Move them to their categories</button></div>${fresh.map(([k, l, a]) => man(k, l, a)).join('')}`, `${fresh.filter(([k]) => ckDone[k]).length}/${fresh.length}`]);
+  for (const [c, name] of TEST_CATS) { const items = manual.filter(([k]) => (CK_META[k]?.[0] || 'other') === c && !ckIsNew(k)); if (items.length) secs.push([c, name, items.map(([k, l, a]) => man(k, l, a)).join(''), `${items.filter(([k]) => ckDone[k]).length}/${items.length}`]); }
+  if (ckCat !== 'all' && !secs.some(x => x[0] === ckCat)) ckCat = 'auto';
+  box.innerHTML = `<div class="row" style="align-items:center;gap:8px;flex-wrap:wrap"><h3 class="grow" style="margin:0">✅ Is everything working?</h3><span class="pill">${doneN}/${manual.length} tried</span><span id="taBtns" style="display:inline-flex;gap:6px;flex-wrap:wrap">${taBtns()}</span><button class="ghost" onclick="if(confirm('Untick everything on the checklist?')){ckDone={};ckAuto={};try{localStorage.ckDone='{}';localStorage.ckAuto='{}'}catch{};drawChecklist()}">Untick all</button></div>
+    <div class="ckWrap"><div class="ckSide card subnav">${secs.map(([id, n, , pill]) => `<button data-ckc="${id}" class="${ckCat === id ? 'on' : ''}" title="Show the checklist part: ${esc(n)}" onclick="ckCatGo('${id}')"><span>${n}</span>${pill ? `<span class="pill">${pill}</span>` : ''}</button>`).join('')}<button data-ckc="all" class="${ckCat === 'all' ? 'on' : ''}" title="Show the whole checklist on one page" onclick="ckCatGo('all')"><span>📋 Everything</span></button></div>
+    <div class="ckl">${secs.map(([id, n, html]) => `<div class="ckSec${ckCat !== 'all' && ckCat !== id ? ' tOff' : ''}" data-ckc="${id}"><h4 class="${id === 'new' ? 'cknew' : ''}">${n}</h4>${html}</div>`).join('')}</div></div>`;
+  box.querySelectorAll('.ckAct button:not([title]), .ckAct a.btn:not([title])').forEach(b => { b.title = `Checklist: try “${hmClean(b.closest('.ckItem')?.querySelector('.ckText')?.textContent || '').slice(0, 90)}”`; }); // (❓ help mode explains these buttons)
+  testSideTop();
 }
+// 🤖 Test all (1.67.0, Derek: "a test all in the checklist: it does all the checks by itself in the background, just give me a list
+// of all the checks and check them as they are done" + "a test all not done button too"). The server does the connection / rules /
+// data checks (/api/test/check); the battles run here in a hidden test screen (game.html?lab=1: never on stream, never talks to the app).
+// Nothing goes on stream, in chat or in Discord, and nothing is changed. A check that really covers a checklist item ticks it.
+const TA_CATS = [['setup', '⚙️ Set up & connections'], ['battles', '⚔️ Battles (in a hidden test screen: nothing on stream)'], ['movies', '🎬 Movie nights & Discord picks'], ['app', '🖥️ The app']];
+const TA_ICON = { wait: '⏳', run: '🔄', ok: '✅', bad: '❌', warn: '🟡', skip: '⚪' };
+const TA = { run: null, res: {}, at: 0, errs: [] };
+try { const j = JSON.parse(localStorage.taLast || '{}'); TA.res = j.res || {}; TA.at = j.at || 0; for (const k in TA.res) if (TA.res[k].s === 'run' || TA.res[k].s === 'wait') delete TA.res[k]; } catch {}
+let ckAuto = {}; try { ckAuto = JSON.parse(localStorage.ckAuto || '{}'); } catch {}
+function taList() {
+  const sv = (id, cat, label, ck) => ({ id, cat, label, ck, srv: true });
+  return [
+    sv('twitch', 'setup', '💜 Twitch: signed in'), sv('twitchPerms', 'setup', '💜 Twitch: every permission Movie Royal needs'), sv('twitchChat', 'setup', '💜 Twitch: reading chat'), sv('twitchPost', 'setup', '💜 Twitch: can post in chat'),
+    sv('chatBot', 'setup', '🤖 Twitch: your chat bot account'), sv('rewards', 'setup', '⭐ Channel point rewards are Movie Royal\'s own'),
+    sv('discord', 'setup', '🤖 Discord bot: online, channels, pins and slash commands (tried with a pretend person)', 'discordSuggest'), sv('cloud', 'setup', '☁️ 24/7 Discord bot: up to date and connected to Discord', 'discordClosed'), sv('backup', 'setup', '🛡️ Backup bot server is watching your Discord bot', 'backupLink'),
+    sv('tmdb', 'setup', '🎬 Movie search (TMDB)'), sv('omdb', 'setup', '🍅 Ratings (OMDb)'), sv('letterboxd', 'setup', '📗 Letterboxd'), sv('donations', 'setup', '💰 Donations (StreamElements / Streamlabs)'), sv('obs', 'setup', '🎥 OBS: connected, with the game screen in it'), sv('update', 'setup', '🔄 Updates: you have the newest version'),
+    { id: 'bPractice', cat: 'battles', label: '⚔️ A practice battle plays to the end with the winner on land', ck: 'practice', run: () => taBallOne({}) },
+    { id: 'bNumbers', cat: 'battles', label: '🔢 A number battle plays to the end', ck: 'numbers', run: () => taBallOne({ skin: 'numbers' }) },
+    { id: 'bChars', cat: 'battles', label: '🧍 A battle with characters plays to the end', ck: 'charsSkin', run: () => taBallOne({ look: 'mix' }) },
+    { id: 'bMaps', cat: 'battles', label: '🗺️ Every ball, race and holiday map: a battle ends with the winner on land', run: taAllMaps },
+    { id: 'bCards', cat: 'battles', label: '🃏 Every card battle map ends with the right winner', run: taCardMaps },
+    { id: 'bCharMaps', cat: 'battles', label: '🧍 Character fights on the character-only maps end with the right winner', run: c => taCardMaps(c, true) },
+    { id: 'bFinishers', cat: 'battles', label: '💀 Every finisher and celebration plays without a problem', ck: 'finishers', run: taFinishers },
+    { id: 'bGame', cat: 'battles', label: '🖥️ The game screen had no errors during these battles', run: taGameErrs },
+    sv('banRules', 'movies', '🚫 Ban rules (not in English, religious, documentaries, dubbed) give the right answers', 'banRules'), sv('botRules', 'movies', '☁️ The 24/7 bot\'s copy of the ban + series rules gives the same answers'),
+    sv('series', 'movies', '🎞️ Series in order + 🔒 series locks (a pretend series)'), sv('spotLuck', 'movies', '🎟️ Wild spot luck: once a night'), sv('myMovies', 'movies', '🍀 !mymovies answers in Twitch chat, Discord and the 24/7 bot'),
+    sv('lists', 'movies', '🌐 IMDb / Rotten Tomatoes pages are read right (ratings too)'), sv('nudity', 'movies', '🔞 The nudity check reads a Parents Guide page right'), sv('banExport', 'movies', '⬇️ The export file of your bans reads back the same'),
+    sv('data', 'app', '💾 Your data saves fine (and a backup in the last month)'), sv('files', 'app', '🖼️ The pictures you added are all there'), sv('errors', 'app', '⚠️ No new errors in the last day'),
+    { id: 'help', cat: 'app', label: '❓ Help mode has a note for every button and box', ck: 'helpMode', run: taHelp }, { id: 'keys', cat: 'app', label: '⌨️ No two key binds on the same key', run: taKeys }
+  ];
+}
+const taDone = c => TA.res[c.id]?.s === 'ok' || (!!c.ck && !!ckDone[c.ck]);
+function taPill() { const L = taList(), n = s => L.filter(c => TA.res[c.id]?.s === s).length; if (TA.run) return `${TA.run.i}/${TA.run.ids.length}`; return TA.at ? `✅${n('ok')}${n('bad') ? ` ❌${n('bad')}` : ''}` : ''; }
+function taBtns() {
+  return TA.run ? `<span class="pill" style="align-self:center">🔄 ${TA.run.i}/${TA.run.ids.length}</span><button class="danger" onclick="taStop()">⏹ Stop testing</button>`
+    : `<button class="primary" title="Check everything Movie Royal can check by itself, in the background: nothing goes on stream, in chat or in Discord" onclick="taRun(false)">🤖 Test all</button><button title="Only the checks that haven't passed yet (and not the ones whose checklist item is already ticked)" onclick="taRun(true)">🤖 Test all not done</button>`;
+}
+function taHTML() {
+  const L = taList(), r = TA.run, n = s => L.filter(c => TA.res[c.id]?.s === s).length;
+  const top = r ? `<div class="taBar"><i style="width:${Math.round(r.i / Math.max(1, r.ids.length) * 100)}%"></i></div><p class="help" style="margin:0 0 6px">🔄 Checking ${r.i} of ${r.ids.length}${r.only ? ' (the ones not done yet)' : ''}… Keep using Movie Royal if you want: nothing goes on stream.</p>`
+    : TA.at ? `<p class="help" style="margin:0 0 6px">Last time: ${esc(new Date(TA.at).toLocaleString())} · ✅ ${n('ok')} fine · ❌ ${n('bad')} problem${n('bad') === 1 ? '' : 's'} · 🟡 ${n('warn')} to look at · ⚪ ${n('skip')} skipped (not set up)</p>`
+    : `<p class="help" style="margin:0 0 6px">Press <b>🤖 Test all</b>: Movie Royal checks everything it can by itself, in the background, and ticks each one off here as it's done. Nothing goes on stream, in chat or in Discord, and nothing is changed.</p>`;
+  return top + TA_CATS.map(([c, name]) => `<h4 style="margin:12px 0 4px">${name}</h4>` + L.filter(x => x.cat === c).map(x => { const st = TA.res[x.id] || {};
+    return `<div class="ckItem taItem ${st.s || 'none'}"><span class="ckIcon">${TA_ICON[st.s] || '▫️'}</span><span class="ckText">${esc(x.label)}${st.note ? `<br><small class="${st.s === 'bad' ? 'taBad' : 'muted'}">${esc(st.note)}</small>` : ''}${st.items?.length ? `<details><summary class="help" style="margin:2px 0 0">Details (${st.items.length})</summary><div class="help" style="margin:2px 0 0">${st.items.map(it => `${it.ok === false ? '❌' : it.ok === true ? '✅' : it.ok === 'warn' ? '🟡' : '⚪'} ${esc(it.label)}${it.detail ? ` <span class="muted">(${esc(it.detail)})</span>` : ''}`).join('<br>')}</div></details>` : ''}</span><span class="ckAct">${x.ck && ckDone[x.ck] ? '<small class="muted" title="Its checklist item is ticked">☑️ on the checklist</small>' : ''}</span></div>`; }).join('')).join('')
+    + `<p class="help" style="margin:10px 0 0">The rest of the checklist (the other parts on the left) needs you: things on stream, in Twitch chat, in Discord or in OBS.</p>`;
+}
+function taDraw() { const b = $('taBox'); if (b) b.innerHTML = taHTML(); const t = $('taBtns'); if (t) t.innerHTML = taBtns(); const p = document.querySelector('.ckSide button[data-ckc="auto"] .pill'); if (p) p.textContent = taPill(); }
+function taSave() { try { localStorage.taLast = JSON.stringify({ at: TA.at, res: TA.res }); localStorage.ckDone = JSON.stringify(ckDone); localStorage.ckAuto = JSON.stringify(ckAuto); } catch {} }
+const taYield = () => new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(); ch.port2.postMessage(0); }); // (a breather between bits, so Movie Royal stays smooth: not slowed down when it's in the background like timers are)
+function taStop() { if (TA.run) { TA.run.stop = true; toast('⏹ Stopping after this check…'); } }
+async function taRun(only) {
+  if (TA.run) return toast('🤖 Test all is already running');
+  const all = taList(), todo = only ? all.filter(c => !taDone(c)) : all;
+  if (!todo.length) { ckCatGo('auto'); return toast('✅ Everything Test all can check is already done'); }
+  if ((S.phase === 'lobby' || S.phase === 'running') && !confirm('A battle is going right now. Test all runs in the background (nothing goes on stream), but it can make Movie Royal a bit slower for a minute. Start it anyway?')) return;
+  const prev = { ...TA.res }; TA.run = { ids: todo.map(c => c.id), i: 0, only, stop: false }; TA.errs = []; TA.used = false;
+  for (const c of todo) TA.res[c.id] = { s: 'wait' };
+  ckCat = 'auto'; try { localStorage.ckCat = 'auto'; } catch {} if (view === 'test') testTab('check'); else drawChecklist();
+  for (const c of todo) {
+    if (TA.run.stop) { if (prev[c.id]) TA.res[c.id] = prev[c.id]; else delete TA.res[c.id]; continue; } // (stopped: the ones it didn't get to keep what they had)
+    TA.res[c.id] = { s: 'run' }; taDraw();
+    let r; try { r = c.srv ? await fetch('/api/test/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id }) }).then(x => x.json()) : await c.run(c); }
+    catch (e) { r = { ok: false, note: String(e?.message || e) === 'stopped' ? 'stopped' : `something went wrong: ${e?.message || e}` }; }
+    const s = r?.ok === true ? 'ok' : r?.ok === false ? 'bad' : r?.ok === 'warn' ? 'warn' : 'skip';
+    TA.res[c.id] = { s, note: r?.note || '', items: Array.isArray(r?.items) ? r.items.slice(0, 120) : undefined, at: Date.now() };
+    if (s === 'ok' && c.ck && !ckDone[c.ck]) { ckDone[c.ck] = Date.now(); ckAuto[c.ck] = Date.now(); }
+    TA.run.i++; taSave(); taDraw();
+  }
+  if (TA.res.bMaps?.s === 'ok' && TA.res.bCards?.s === 'ok' && !ckDone.allMaps) { ckDone.allMaps = Date.now(); ckAuto.allMaps = Date.now(); } // 🗺️ every map, ball and card
+  const stopped = TA.run.stop; TA.run = null; TA.at = Date.now(); taSave(); taFrameEnd();
+  const L = taList(), n = k => L.filter(c => TA.res[c.id]?.s === k).length;
+  toast(`🤖 Test all ${stopped ? 'stopped' : 'done'}: ✅ ${n('ok')} fine${n('bad') ? ` · ❌ ${n('bad')} problem${n('bad') === 1 ? '' : 's'}` : ''}${n('warn') ? ` · 🟡 ${n('warn')} to look at` : ''}${n('skip') ? ` · ⚪ ${n('skip')} skipped` : ''}`, 9000);
+  drawChecklist(); newBadge?.();
+}
+// the hidden test screen
+let taFrameP = null;
+function taFrame() {
+  TA.used = true; if (taFrameP) return taFrameP;
+  const f = document.createElement('iframe'); f.id = 'taFrame'; f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = 'position:fixed;left:-3000px;top:0;width:640px;height:360px;border:0;visibility:hidden;pointer-events:none';
+  taFrameP = new Promise((ok, no) => { const t = setTimeout(() => no(new Error("the hidden test screen didn't open")), 45000);
+    f.onload = () => { clearTimeout(t); const w = f.contentWindow;
+      try { w.addEventListener('error', e => TA.errs.push(String(e.message || e.error || 'error'))); w.addEventListener('unhandledrejection', e => TA.errs.push(String(e.reason?.message || e.reason || 'error'))); w.postMessage({ royalGfx: { hidden: true } }, '*'); } catch {}
+      setTimeout(() => { try { w.__royalLab({ type: 'audio', on: false, sfx: 0, music: 0 }); } catch {} ok(w); }, 600); }; });
+  f.src = '/game.html?lab=1&testall=1'; document.body.appendChild(f);
+  taFrameP.catch(() => { taFrameP = null; });
+  return taFrameP;
+}
+function taFrameEnd() { $('taFrame')?.remove(); taFrameP = null; }
+const TA_MOVIES = ['The Thing', 'Heat', 'Coco', 'Jaws', 'Alien', 'Arrival', 'Hot Fuzz', 'Oldboy', 'Paddington 2', 'Knives Out', 'Fargo', 'Speed'];
+async function taBall(w, { map, n = 8, skin = 'movies', look = 'balls', kind, fighters } = {}) {
+  fighters ||= Array.from({ length: n }, (_, i) => ({ id: 'ta-' + i, weight: 1, luck: [0, 0, 10, 35][i % 4], ...(skin === 'numbers' ? { label: String(i + 1), sub: '', kind: 'text' } : { label: TA_MOVIES[i % TA_MOVIES.length], sub: String(1970 + i * 6), kind: 'films', owner: 'Test', showOwner: true }), ...(look !== 'balls' ? { gender: ['m', 'f', 'n'][i % 3] } : {}) }));
+  try { w.__royalLab({ type: 'reset' }); } catch {}
+  w.__royalLab({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} });
+  w.__royalLab({ type: 'start', mapSize: 1, gameId: 'ta-' + Date.now(), fighters, total: fighters.length, map, listName: '🤖 Test all', kind: kind || (skin === 'movies' ? 'films' : 'text'), skin: kind === 'cards' ? 'cards' : look !== 'balls' ? 'chars' : undefined, fun: null, lobbySeconds: 0, gameSeconds: 25, pacer: 50, fairOdds: true, racePowers: false, laps: 1, survival: null, queued: [] });
+  let st = null;
+  for (let sec = 0; sec < 300; sec += 2) { st = w.__royalSim(2); if (st.winner || st.phase !== 'running') break; if (TA.run?.stop) throw new Error('stopped'); await taYield(); }
+  const ck = w.__royalCheck?.();
+  try { w.__royalLab({ type: 'reset' }); } catch {}
+  if (!ck) return { ok: false, note: st?.phase === 'running' ? `no winner after ${Math.round(st.t)} s of battle` : `it ended without a winner (${st?.phase || '?'})` };
+  if (!ck.onLand && !ck.hopping) return { ok: false, note: `the winner (${ck.label}) wasn't on land`, ck }; // (hopping = the game is already bringing the winner back onto the land, like it does on stream)
+  return { ok: true, note: `${ck.label} won after ${Math.round(st?.t || 0)} s`, ck };
+}
+const taBallMaps = () => (S.maps || []).filter(m => (m.modes || ['ball']).includes('ball'));
+async function taBallOne(o) { const w = await taFrame(), map = taBallMaps().find(m => m.id === 'classic')?.id || taBallMaps()[0]?.id || 'classic'; return taBall(w, { map, ...o }); }
+async function taAllMaps(c) {
+  const w = await taFrame(), maps = taBallMaps(), bad = [], items = [];
+  for (const [i, m] of maps.entries()) {
+    if (TA.run?.stop) throw new Error('stopped');
+    TA.res[c.id] = { s: 'run', note: `map ${i + 1} of ${maps.length}: ${m.icon || ''} ${m.name}` }; taDraw(); await taYield();
+    let r; for (let k = 0; k < 2 && !r?.ok; k++) { try { r = await taBall(w, { map: m.id }); } catch (e) { if (e.message === 'stopped') throw e; r = { ok: false, note: e.message }; } } // (a problem has to happen twice in a row: no false alarms from one odd battle)
+    items.push({ ok: r.ok, label: `${m.icon || ''} ${m.name}`, detail: r.ok ? '' : r.note }); if (!r.ok) bad.push(`${m.name}: ${r.note}`);
+  }
+  return bad.length ? { ok: false, note: bad.slice(0, 3).join(' · ') + (bad.length > 3 ? ` (+${bad.length - 3} more)` : ''), items } : { ok: true, note: `${maps.length} maps, every one ended with the winner on land`, items };
+}
+async function taCard(w, map, chars) {
+  const mi = (S.cards?.maps || []).find(m => m.id === map) || {}, n = 8, colors = ['#d8402a', '#2a7ad8', '#e8b020', '#3aa84a', '#9a4ad8', '#e8702a', '#2ab8c8', '#5a5a6a'];
+  const packs = Array.from({ length: n }, (_, i) => chars ? { id: 'ta-' + i, packId: 'ta-' + i, name: TA_MOVIES[i], tag: '', game: 'Test', image: null, color: null, char: true, look: null, gender: ['m', 'f', 'n'][i % 3] } : { id: 'ta-' + i, packId: 'ta-' + i, name: ['Blaze', 'Tidal', 'Thunder', 'Forest', 'Mystic', 'Ember', 'Frost', 'Shadow'][i] + ' Pack', tag: '', game: '🧪 Test', image: '', color: colors[i], test: true });
+  if (mi.ball) { const r = await taBall(w, { map, kind: 'cards', fighters: packs.map(p => ({ id: p.id, label: p.name, sub: p.game, image: null, weight: 1, kind: 'cards', color: p.color })) }); return r; } // (a ball map with card battles too)
+  const destined = packs[Math.floor(Math.random() * n)].id;
+  try { w.__royalLab({ type: 'reset' }); } catch {}
+  w.__royalLab({ type: 'cardScene', show: true, ball: false, phase: 'fight', map, finalFight: !!mi.finalFight, battleName: '🤖 Test all', fighters: packs, fightId: 'ta-' + Date.now(), startedAt: Date.now(), seed: Math.floor(Math.random() * 2 ** 31), destined, pace: 50, length: 40, wacky: {}, logo: '', lookSeed: chars ? 'ta' + Date.now() : undefined, chars: !!chars });
+  let r = null;
+  for (let sec = 0; sec < 300; sec += 3) { r = w.CARDS.sim(3); if (r.winner) break; if (TA.run?.stop) throw new Error('stopped'); await taYield(); }
+  w.__royalLab({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} });
+  if (!r?.winner) return { ok: false, note: `no winner after ${Math.round(r?.T || 0)} s` };
+  if (r.winner !== destined) return { ok: false, note: 'the wrong one won (not the one the odds picked)' };
+  return { ok: true, note: `won after ${Math.round(r.T)} s` };
+}
+async function taCardMaps(c, chars) {
+  const w = await taFrame(), maps = (S.cards?.maps || []).filter(m => chars ? !m.ball : true), bad = [], items = [];
+  if (!maps.length) return { ok: null, note: 'no card maps found' };
+  for (const [i, m] of maps.entries()) {
+    if (TA.run?.stop) throw new Error('stopped');
+    TA.res[c.id] = { s: 'run', note: `map ${i + 1} of ${maps.length}: ${m.icon || ''} ${m.name}` }; taDraw(); await taYield();
+    let r; for (let k = 0; k < 2 && !r?.ok; k++) { try { r = await taCard(w, m.id, chars); } catch (e) { if (e.message === 'stopped') throw e; r = { ok: false, note: e.message }; } }
+    items.push({ ok: r.ok, label: `${m.icon || ''} ${m.name}`, detail: r.ok ? '' : r.note }); if (!r.ok) bad.push(`${m.name}: ${r.note}`);
+  }
+  return bad.length ? { ok: false, note: bad.slice(0, 3).join(' · ') + (bad.length > 3 ? ` (+${bad.length - 3} more)` : ''), items } : { ok: true, note: `${maps.length} maps, every fight ended with the winner the odds picked`, items };
+}
+async function taFinishers(c) {
+  const w = await taFrame(), maps = (S.cards?.maps || []).filter(m => m.finalFight && !m.ball), bad = [], items = [];
+  if (!maps.length) return { ok: null, note: 'no FINAL FIGHT maps found' };
+  for (const [i, m] of maps.entries()) {
+    if (TA.run?.stop) throw new Error('stopped');
+    TA.res[c.id] = { s: 'run', note: `map ${i + 1} of ${maps.length}: ${m.icon || ''} ${m.name}` }; taDraw(); await taYield();
+    let errs; try { w.__royalLab({ type: 'cardScene', show: true, ball: false, phase: 'idle', map: m.id, finalFight: true, battleName: '🤖 Test all', fighters: [], wacky: {} }); errs = w.CARDS.finCheck(m.id, 6) || []; } catch (e) { errs = [e.message]; }
+    try { w.__royalLab({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} }); } catch {}
+    const L = w.CARDS.finList?.(m.id) || { fin: [], cel: [] };
+    items.push({ ok: !errs.length, label: `${m.icon || ''} ${m.name}: ${L.fin.length} finishers + ${L.cel.length} celebrations`, detail: errs.slice(0, 2).join(' · ') }); if (errs.length) bad.push(`${m.name}: ${errs[0]}`);
+  }
+  return bad.length ? { ok: false, note: bad.slice(0, 3).join(' · '), items } : { ok: true, note: `${maps.length} maps, every finisher and celebration played through`, items };
+}
+async function taGameErrs() { const e = [...new Set(TA.errs)]; return !TA.used ? { ok: null, note: 'no battles were checked this time' } : e.length ? { ok: false, note: `${e.length} error${e.length === 1 ? '' : 's'}: ${e.slice(0, 2).join(' · ')}`, items: e.slice(0, 20).map(x => ({ ok: false, label: x })) } : { ok: true, note: 'no errors' }; }
+async function taHelp() {
+  const miss = []; let n = 0;
+  for (const sec of document.querySelectorAll('section.view')) { const v = sec.id.replace(/^v-/, ''); if (v === 'help') continue; const tab = hmClean(document.querySelector(`#nav button[data-v="${v}"]`)?.textContent || '');
+    for (const el of sec.querySelectorAll('button, select, input:not([type=hidden]), textarea')) { if (el.closest('#taBox, template, [hidden]')) continue; const label = hmLabel(el); if (!label && !el.title) continue; n++;
+      const card = el.closest('.card, .pane, dialog, .sub, section, #pchat'), hs = card ? [...card.querySelectorAll('h2, h3, h4')].filter(h => h === el || h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING || h.contains(el)) : [];
+      const where = `${tab} › ${hmClean(hs[hs.length - 1]?.textContent || '')}`, hit = (el.title && window.helpFind?.('tip:' + el.title, where)) || window.helpFind?.(label, where, el.id) || (label ? null : window.helpFind?.(hmClean(hs[hs.length - 1]?.textContent || ''), where));
+      if (!hit) miss.push(`${tab}: ${(label || el.title).slice(0, 50)}`); } }
+  const u = [...new Set(miss)];
+  return u.length ? { ok: 'warn', note: `${u.length} without a note yet (tell Claude): ${u.slice(0, 3).join(' · ')}`, items: u.slice(0, 60).map(x => ({ ok: 'warn', label: x })) } : { ok: true, note: `${n} buttons and boxes, all explained` };
+}
+async function taKeys() {
+  const clash = [];
+  for (const a of KEYBINDS) { const k = kbKey(a[0]); if (!k) continue; for (const b of KEYBINDS) if (a[0] < b[0] && kbKey(b[0]) === k && (a[1] === b[1] || a[1] === 'any' || b[1] === 'any')) clash.push(`${k}: ${a[2]} + ${b[2]}`); }
+  return clash.length ? { ok: 'warn', note: `the same key twice: ${clash.slice(0, 2).join(' · ')} (Settings → ⌨️ Key binds)` } : { ok: true, note: `${KEYBINDS.length} key binds, no two on the same key` };
+}
+let ckCat = 'auto'; try { ckCat = localStorage.ckCat || 'auto'; } catch {}
+function ckCatGo(c) { ckCat = c; try { localStorage.ckCat = c; } catch {} drawChecklist(); $('v-test').scrollTo({ top: 0 }); }
 // put the typing cursor at the end (number boxes can't do that: skip them instead of crashing)
 function caretEnd(el) { try { if (el && /^(text|search|url|tel|password|textarea|)$/.test(el.type || '')) el.setSelectionRange(el.value.length, el.value.length); } catch {} }
 const SCREEN_TESTS = /^\/api\/(cards\/start|lists\/numbers|test\/(wheel-boost|donation|alert|discord-battle|chat-join|sitout|everyone-in|claim-chat|chat|wheel-land|doom-preview|power|wheel-redeem|wheel-redeem-raw|redeem|cheer|battle))(\?|$)/;
@@ -2670,7 +2903,7 @@ function renderFun(l) {
     ${ck(F.racePowers, "funSet({racePowers:this.checked})", 'Chat can use race power-ups <b>on race maps</b> (they have to <code>!join</code> first)')}
     <div style="margin:4px 0 6px 22px;${F.racePowers ? '' : 'opacity:.55'}">${RACE_POWS.map(([k, n, d]) => `<div class="help" style="margin:2px 0">${n} <small class="muted">${d} · ${Number(S.settings.raceCosts?.[k] || 0).toLocaleString()} points</small></div>`).join('')}</div>
     <p class="help" style="margin:2px 0 6px 22px">⚠️ With these on, the race isn't decided ahead of time: boosts, rockets and the nuke really can change who wins. Race maps: 🏁 Figure 8 Race and the 10 race maps (🏟️ 🏎️ 🌃 ❄️ 🏖️ 🏜️ ✖️ 🌋 🚧 🚀). Change the prices in Settings → 💰 Rewards &amp; prices.</p>
-    <div class="row" style="margin-left:22px;gap:6px;flex-wrap:wrap"><button ${S.canPoints === false ? 'disabled' : ''} onclick="api('/api/racepowers/rewards',{}).then(r=>toast(r.made.length ? '✅ Added: ' + r.made.map(esc).join(', ') : 'They are already on Twitch.'))">✨ Add race power-up rewards to Twitch</button><button class="ghost" onclick="setView('test');testTab('tests');setTimeout(()=>$('raceTest')?.scrollIntoView({block:'center'}),300)">🧪 Try them</button></div>
+    <div class="row" style="margin-left:22px;gap:6px;flex-wrap:wrap"><button ${S.canPoints === false ? 'disabled' : ''} onclick="api('/api/racepowers/rewards',{}).then(r=>toast(r.made.length ? '✅ Added: ' + r.made.map(esc).join(', ') : 'They are already on Twitch.'))">✨ Add race power-up rewards to Twitch</button><button class="ghost" onclick="testGo('raceTest')">🧪 Try them</button></div>
     <p class="help" style="margin:4px 0 10px 22px">${Object.keys(S.settings.raceRewards || {}).map(esc).join(' · ')}</p>
     <b>🤪 Wacky effects</b>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 10px;margin-top:4px">
@@ -4770,7 +5003,7 @@ async function finTry(next) {
   testTab?.('tests'); await labFrame(); $('labIdle').style.display = 'none';
   const v = id => $(id).value === '' ? null : Number($(id).value);
   labPost({ type: 'finTest', map: $('tFinMap').value, fin: v('tFin'), cel: v('tCel') });
-  $('labCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  testGo('labCard'); // (it plays in the 🧪 Test lab: that tab opens)
 }
 // ---------- 💲 card price check (Derek, 1.50.0): opens price sites in your web browser for a card you pulled ----------
 let priceRecent = []; try { priceRecent = JSON.parse(localStorage.getItem('priceRecent') || '[]'); } catch {}

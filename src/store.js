@@ -124,20 +124,22 @@ export function save() {
   clearTimeout(timer);
   timer = setTimeout(writeNow, tries ? Math.min(5000, 250 * tries) : 150);
 }
+export const saveInfo = { at: 0, err: null, errAt: 0 }; // (🤖 Test all: did the last save work?)
 function writeNow() {
   const text = JSON.stringify(db, null, 1);
   try {
     fs.writeFileSync(FILE + '.tmp', text);
     try { fs.renameSync(FILE + '.tmp', FILE); }
     catch (e) { if (tries < 8) throw e; fs.writeFileSync(FILE, text); try { fs.unlinkSync(FILE + '.tmp'); } catch {} } // still locked after a while: write it straight in
-    tries = 0;
+    tries = 0; saveInfo.at = Date.now(); saveInfo.err = null;
   } catch (e) {
     tries++;
     if (tries === 3) console.log('[store] the save file is busy (' + e.code + '), trying again…');
-    if (tries > 30) { console.error('[store] couldn\'t save your data: ' + e.message); tries = 0; return; }
+    if (tries > 30) { console.error('[store] couldn\'t save your data: ' + e.message); saveInfo.err = e.message; saveInfo.errAt = Date.now(); tries = 0; return; }
     save();
   }
 }
+export const DB_FILE = FILE;
 /** Save right away (on quit). */
 export function saveNow() { clearTimeout(timer); writeNow(); }
 

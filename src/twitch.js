@@ -322,6 +322,10 @@ export async function listRewards() {
   const j = await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}&only_manageable_rewards=true`);
   return (j.data || []).map(r => ({ id: r.id, title: r.title, cost: r.cost, enabled: r.is_enabled, paused: r.is_paused, color: r.background_color, cooldown: r.global_cooldown_setting?.is_enabled ? r.global_cooldown_setting.global_cooldown_seconds : 0 }));
 }
+/** 🤖 Test all: is your Twitch sign-in still good? (reads your own name; changes nothing) */
+export async function meCheck() { const j = await helix('users'); return j.data?.[0]?.login || null; }
+/** 🤖 Test all: is the chat bot account's sign-in still good? (null = no bot account) */
+export async function botCheck() { if (!db.twitchBot?.tokens?.access) return null; const j = await botHelix('users'); return j.data?.[0]?.login || null; }
 export async function listAllRewards() { // every reward on the channel, including ones made by hand on Twitch (Movie Royal can't pause those)
   if (!status.userId) throw new Error('Sign in with Twitch first');
   const j = await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}`);

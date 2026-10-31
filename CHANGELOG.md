@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.67.0
+- 🤖 **Test all** (🧪 Test → ✅ Checklist): one button that checks everything Movie Royal can check by itself, in the background. Nothing goes on stream, in chat or in Discord, nothing is changed, and you can keep using the app while it runs (about a minute). The list ticks each check off as it's done: ✅ fine, ❌ a problem (with what to do), 🟡 worth a look, ⚪ skipped (not set up).
+  - ⚙️ Your connections: Twitch (sign-in, permissions, chat, your chat bot account, channel point rewards), the Discord bot (tried with a pretend person), the 24/7 bot, the backup bot server, TMDB, OMDb, Letterboxd, donations, OBS (with the game screen in it) and updates.
+  - ⚔️ Battles in a hidden test screen: a practice battle, a number battle, characters, **every map** (the winner has to end up on land), every card battle map, character fights, every finisher and celebration.
+  - 🎬 The ban rules (and that the 24/7 bot gives the same answers), series in order + locks, wild spot luck, !mymovies, the IMDb / Rotten Tomatoes readers, the nudity check, the ban export file.
+  - 🖥️ Your data saves (and a backup in the last month), the pictures you added are there, no new errors, every button has a help note, no two key binds on the same key.
+  - Checklist items a check really covers get ticked by themselves ("checked by 🤖 Test all").
+- 🤖 **Test all not done:** only the checks that haven't passed yet (skips ones whose checklist item is already ticked).
+- 🗂️ **Side tabs on the Test tab:** 🧪 Tests and ✅ Checklist both have a tab for each group down the left side, like Settings (📋 All tests / 📋 Everything shows it all on one page). Keys: [ and ] = the tab above / below, Shift+T = Test all.
+- ❓ Help notes for the last few buttons and boxes that didn't have one (map powers, the 🧍 box, the fun power-up boxes, the checklist buttons…).
+
 ## 1.66.2
 - 🔞 The winner pop-up on stream now just says **"This movie has nudity"** (no times). The Winner card in the app still lists every scene with about when it is.
 
