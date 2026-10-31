@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.65.2
+- 🔄 **Refresh the whole banned list** (top of Settings → 🚫 Banned Movies): one button that looks at everything: new movies that break the ban rules (looked up on TMDB), last year's "this year" bans coming off, "not in English" bans re-checked for English dubs, and every 🎞️ series (sequel bans + locks). The line next to it shows how far it is. It only adds or removes automatic bans: the ones you banned yourself are never touched. (It replaces the old 🔄 Update the ban list button further down.)
+- 🧪 Test tab → 🔄 Pretend whole refresh (made-up movies, no internet).
+
 ## 1.65.1
 - ⬇️ **Export my bans:** Settings → 🚫 Banned Movies → ⬇️ Export my bans downloads the movies you banned yourself (not the automatic ones) as a spreadsheet file (.csv). **⬆️ Import bans** adds them back from that file (here or on another PC); it skips ones already banned and never removes any.
 - The banned list is never reset by updates: the 🎞️ series check only adds and removes its own 🎞️ sequel bans, never yours or the other automatic ones.

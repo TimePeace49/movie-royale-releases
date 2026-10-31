@@ -2405,8 +2405,26 @@ app.post('/api/test/series', (req, res) => { // 🧪 a pretend series, step by s
 });
 // 🔄 the ban list builder (banscan.js): progress goes to the control panel as it runs
 let scanPushAt = 0;
-setScanHooks({ changed: () => { broadcast({ type: 'banScan', scan: banScan }, 'control'); if (!banScan.running || Date.now() - scanPushAt > 15000) { scanPushAt = Date.now(); pushState(); } } });
-app.get('/api/bans/scan', (req, res) => res.json(banScan));
+// 🔄 refresh the WHOLE banned list (Banned Movies, top): the rule scan, last year's bans, the dub check and every 🎞️ series. Only adds / removes automatic bans, never yours.
+const banAll = { running: false, at: 0 };
+app.post('/api/bans/refresh-all', async (req, res) => {
+  if (banAll.running || banScan.running) return res.json({ ok: false, error: 'Already refreshing the banned list.' });
+  banAll.running = true; res.json({ ok: true }); const fake = !!req.body?.fake; // (🧪 fake = pretend movies, no internet)
+  const before = (db.bans || []).length, mineBefore = (db.bans || []).filter(b => !b.auto && !b.test).length, show = step => broadcast({ type: 'banScan', scan: { ...banScan, running: true, all: true, step } }, 'control');
+  let err = null;
+  try {
+    if (fake) await runScan({ fake: true }); else if (String(db.settings.tmdbKey || '').trim()) await runScan(); else err = 'needs your TMDB key (Settings → Movie info) to look movies up';
+    show("📅 Taking off last year's “this year” bans…"); if (!fake) await yearCleanup().catch(() => {});
+    show('🗣️ Checking “not in English” bans for English dubs…'); await dubCleanup({ fake }).catch(() => {});
+    show('🎞️ Checking every series (sequels + locks)…'); await series.refresh({ deep: !fake }).catch(() => {});
+  } catch (e) { err = e.message; }
+  banAll.running = false; banAll.at = Date.now(); save(); pushState(); if (cloud.enabled()) cloud.sync(true).catch?.(() => {});
+  const after = (db.bans || []).length, mineAfter = (db.bans || []).filter(b => !b.auto && !b.test).length;
+  if (mineAfter < mineBefore) console.error(`[bans] refresh-all: your own bans went from ${mineBefore} to ${mineAfter} (should never happen)`);
+  broadcast({ type: 'banScan', scan: { ...banScan, running: false, all: false, allDone: { before, after, at: banAll.at, err } } }, 'control');
+});
+setScanHooks({ changed: () => { broadcast({ type: 'banScan', scan: { ...banScan, all: banAll.running } }, 'control'); if (!banScan.running || Date.now() - scanPushAt > 15000) { scanPushAt = Date.now(); pushState(); } } });
+app.get('/api/bans/scan', (req, res) => res.json({ ...banScan, all: banAll.running }));
 app.post('/api/bans/scan', (req, res) => { if (banScan.running) return res.json({ ok: false, error: 'Already updating the list.' }); runScan({ only: req.body?.only || null }).catch(() => {}); res.json({ ok: true }); });
 app.post('/api/test/ban-scan', (req, res) => { if (banScan.running) return res.json({ ok: false, error: 'Already updating the list.' }); runScan({ fake: true }).catch(() => {}); res.json({ ok: true }); });
 app.post('/api/test/ban-year', async (req, res) => { // 🧪 pretend it's a new year: last year's pretend "this year" bans come off the list
