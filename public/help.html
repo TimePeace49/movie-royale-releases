@@ -60,7 +60,7 @@
       <li>Want the winner pop-up gone? Click its <b>✕</b>, or press <b>✕ Hide the pop-up on stream</b> on the winner card.</li>
       <li>Press <b>Next round →</b> to put the pieces back for another round.</li>
     </ol>
-    <p class="tip">Change the countdown and fight length in <b>Settings → Game</b>.</p>
+    <p class="tip">Change the countdown and battle timer in <b>Settings → Game</b> (each battle can have its own timer and pacer).</p>
   </section>
 
   <section data-k="sudden death time runs out overtime timer end">
@@ -285,7 +285,7 @@
   <section data-k="close picks open stop adding movies during stream suggest off toggle">
     <h2>🎬 Opening and closing movie picks</h2>
     <p>Press <b>🎬 Movie picks OPEN</b> on the Battle tab to close picks, for example during the stream. While picks are closed, <code>/suggest</code> in Discord (and the 24/7 bot) tells people picks are closed. Their movies stay in, <code>/mymovies</code> and <code>/list</code> still work, and you can still add movies yourself. Press it again to open picks.</p>
-    <p>By default, picks lock by themselves only while a Discord movie battle is going: from when you press Start until it has its winner. In <b>Settings → Luck & swaps</b> you can make them lock the whole time you're live, or never, and turn off the bot's "picks are open/closed" posts.</p>
+    <p>By default, picks lock by themselves only while a Discord movie battle is going: from when you press Start until it has its winner. In <b>Settings → 🤖 Discord &amp; picks</b> you can make them lock the whole time you're live, or never, and turn off the bot's "picks are open/closed" posts.</p>
   </section>
 
   <section data-k="call predict guess winner !call chat luck bet">
@@ -331,7 +331,7 @@
 
   <section data-k="swap change switch movie lock live">
     <h2>🔁 Swapping movies</h2>
-    <p>People use <code>/swap</code> in Discord to trade one movie for another, 1 for 1. By default, swaps (and new picks) lock only while a Discord movie battle is going: people can swap right up until you press Start, and again once it has its winner. You can change that to the whole time you're live, or never (Settings → Luck & swaps → 🔒 When adding and swapping movies lock). You can also lock or unlock them yourself in <b>Settings → Luck &amp; swaps</b> or on the Pool tab.</p>
+    <p>People use <code>/swap</code> in Discord to trade one movie for another, 1 for 1. By default, swaps (and new picks) lock only while a Discord movie battle is going: people can swap right up until you press Start, and again once it has its winner. You can change that to the whole time you're live, or never (Settings → 🤖 Discord &amp; picks → 🔒 When adding and swapping movies lock). You can also lock or unlock them yourself in <b>Settings → 🤖 Discord &amp; picks</b> or on the Pool tab.</p>
   </section>
 
   <section data-k="mymovies command twitch chat !mymovies left cooldown someone else name lookup luck">
@@ -355,12 +355,12 @@
 
   <section data-k="luck lucky chance better odds clover reset">
     <h2>🍀 Luck</h2>
-    <p>Turn it on in <b>Settings → Luck &amp; swaps</b>. Every battle a Discord movie loses, it gets a bit more likely to win (1% by default — change it in Settings). It builds battle to battle and week to week. Your luck only starts over when one of your movies actually gets watched. A win counts as watched, and if you press “Not watching it — put it back”, the luck comes back too.</p>
+    <p>Turn it on in <b>Settings → 🍀 Luck</b>: every luck setting is there (luck per battle, wildcard spot luck, 👀 watch luck for each battle, saving / resetting luck and chat calling the winner). Every battle a Discord movie loses, it gets a bit more likely to win (1% by default — change it in Settings). It builds battle to battle and week to week. Your luck only starts over when one of your movies actually gets watched. A win counts as watched, and if you press “Not watching it — put it back”, the luck comes back too.</p>
     <p><b>Cooldown:</b> once someone's movie gets watched, they don't build luck again until the new week. <b>LUCKY!</b> saves are rare on purpose: only pieces that have luck can get lucky, and only once every several seconds on the whole map.</p>
     <p><b>Free replacement pick:</b> if a movie gets watched outside a battle (you mark it ✅ or it's on your Letterboxd), its person is told in Discord they can pick a new one. That one pick works any time, even with picks closed or all their picks used.</p>
     <p>Kirb spots don't build luck on their own — set their luck by hand with the 🍀 box on the Pool tab. You'll see each movie's luck as 🍀 +x% in the Pool.</p>
       <p>Luck also makes a piece a little bigger as it builds up (about 6% bigger for every 10% luck), and bigger pieces knock the others back harder.</p>
-      <p><b>Luck saves:</b> press <b>💾 Save luck</b> to keep a copy of everyone's luck. <b>↺ Reset luck</b> sets it all to 0 for a few battles, and saves it first. <b>📂 Luck saves → Bring back</b> puts any saved luck back (and saves what you had just before, just in case). The buttons are above the list on the Battle tab and in Settings → Luck.</p>
+      <p><b>Luck saves:</b> press <b>💾 Save luck</b> to keep a copy of everyone's luck. <b>↺ Reset luck</b> sets it all to 0 for a few battles, and saves it first. <b>📂 Luck saves → Bring back</b> puts any saved luck back (and saves what you had just before, just in case). The buttons are above the list on the Battle tab and in Settings → 🍀 Luck (every battle's buttons are there).</p>
     <p><b>Wildcard spots</b> don't get luck on their own unless you turn that on in Settings → Luck. Then they go up at most 1% per stream, and they don't need anyone chatting.</p>
       <p><b>You can see it:</b> at 5% luck a piece starts to glow in its color, brighter every 5%. At 50% it catches fire, with flames in its color that get bigger every 5%. That part is just for looks.</p>
       <p><b>Custom battles</b> don't have luck, but you can save their <b>odds</b> the same way: <b>💾 Save odds</b>, <b>↺ Everyone to 1</b> (saves first), then <b>📂 Saved odds → Bring back</b>. The buttons are above the list on the Battle tab.</p>
@@ -445,9 +445,10 @@
     <p>Settings → Graphics: <b>Window mode</b> for Movie Royal itself: Window, Fullscreen window (fills the screen with no border, like a game's borderless mode) or Fullscreen. Without a title bar, use 🗕 and ✕ at the top right. <b>Advanced graphics</b>: render scale, how many particles, screen shake, glows, screen flashes and smooth pictures.</p>
   </section>
 
-  <section data-k="pacing showdown final two sudden death exciting knockouts arena">
+  <section data-k="pacing showdown final two sudden death exciting knockouts arena timer fight length battle timer slider pacer each battle">
     <h2>⏳ How a battle plays out</h2>
-    <p>Knockouts are spread over the whole battle so it doesn't empty out in the first seconds (how hard: <b>⏳ Elimination pacer</b> in Settings → Game; it follows the fight length, 0 = off). If it's moving too slowly, the arena throws in extra chaos (⚡ ARENA). When only 2 are left with time still on the clock, it's a <b>🥊 FINAL SHOWDOWN</b>: they charge at each other, powers go off faster and the ground breaks away until one is left. When the time runs out with more left, it's <b>SUDDEN DEATH</b>.</p>
+    <p>Knockouts are spread over the whole battle so it doesn't empty out in the first seconds (how hard: <b>⏳ Elimination pacer</b> in Settings → Game; it follows the battle timer, 0 = off). If it's moving too slowly, the arena throws in extra chaos (⚡ ARENA). When only 2 are left with time still on the clock, it's a <b>🥊 FINAL SHOWDOWN</b>: they charge at each other, powers go off faster and the ground breaks away until one is left. When the time runs out with more left, it's <b>SUDDEN DEATH</b>.</p>
+    <p><b>⏱️ Battle timer &amp; ⏳ pacer for each battle:</b> Settings → ⚔️ Game has one battle timer and one elimination pacer for all battles, and under them a pair of sliders for every battle (the Discord movie battle, chat battle, giveaway, your own battles and card battles). Slide a battle all the way left (🌐) and it uses the ones for all battles. They save right away. Try one with 🧪 Test tab → <b>⏱️ Battle timer &amp; ⏳ pacer for each battle</b>.</p>
   </section>
 
   <section data-k="chat message hourly announce every hour post tab commands discord link">

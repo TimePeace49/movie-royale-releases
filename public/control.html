@@ -264,6 +264,12 @@
     #wEntTable tbody td:nth-child(4) { flex:1 1 calc(100% - 150px); min-width:0; }
     #wEntTable tbody td:nth-child(7) { flex:1 1 140px; min-width:0; } #wEntTable tbody td:nth-child(7) select { width:100% !important; max-width:none; }
   }
+  /* ⏱️⏳ Settings → Game: timer + pacer per battle; 🍀 Settings → Luck: per battle rows */
+  .tmRow { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:center; padding:8px 12px; border-radius:10px; background:var(--panel2); margin:6px 0; }
+  .tmRow input[type=range] { width:100%; } .tmRow label { margin:0 0 2px; }
+  .tmName { display:flex; flex-direction:column; min-width:0; } .tmName b, .tmName small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lkRow { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; padding:8px 12px; border-radius:10px; background:var(--panel2); margin:6px 0; } .lkRow .tmName { flex:1 1 220px; }
+  @media (max-width:1250px) { .tmRow { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .tmRow .tmName { grid-column:1 / -1; } }
   .wsplit { cursor:col-resize; border-radius:6px; background:linear-gradient(90deg,transparent 3px,var(--line) 3px,var(--line) 7px,transparent 7px); } .wsplit:hover, .wsplit.drag { background:linear-gradient(90deg,transparent 2px,var(--gold,#ffc94a) 2px,var(--gold,#ffc94a) 8px,transparent 8px); }
   #v-wheel .pane { min-height:0; overflow:auto; }
   #v-wheel > .pane:last-child { overflow:hidden; }
@@ -956,6 +962,12 @@
     <div id="tBanOut"></div>
   </div>
   <div class="card">
+    <h3>⏱️ Battle timer &amp; ⏳ pacer for each battle</h3>
+    <p class="help">Every battle can have its own battle timer and elimination pacer (Settings → ⚔️ Game). Pick a battle to see what it uses, then run a pretend battle with them (12 made-up movies; your real battles and history aren't touched).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tTmList" style="width:auto" title="Which battle's timer and pacer to try" onchange="tmTestShow()"></select><button class="primary" onclick="tmTest()">▶ Pretend battle with its timer &amp; pacer</button><button onclick="setView('settings');setSub('game');setTimeout(()=>$('tmBox')?.scrollIntoView({block:'center'}),100)" title="Settings → Game: the battle timer and elimination pacer sliders">⚙ Change the sliders</button></div>
+    <p class="help" id="tTmOut" style="margin:6px 0 0"></p>
+  </div>
+  <div class="card">
     <h3>🍀 !mymovies and /mymovies with luck</h3>
     <p class="help">Shows what someone gets back from <b>!mymovies</b> in Twitch chat, <b>/mymovies</b> in Discord, and the ☁️ 24/7 Discord bot: every movie with its 🍀 luck (their own luck plus 👀 watch luck, when that's on). Nothing is sent anywhere.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMmWho" style="width:auto" title="Whose movies to show"><option value="">(the first person with movies)</option></select><button class="primary" onclick="mmTest()">🍀 Show the answers</button><button onclick="mmProfile()" title="Opens this person's profile: the 🎬 Movies part shows each movie's luck">👤 Open their profile</button></div>
@@ -1055,7 +1067,7 @@
     <button data-s="account" class="on">👤 Account &amp; updates</button>
     <button data-s="game">⚔️ Game</button>
     <button data-s="discord">🤖 Discord &amp; picks</button>
-    <button data-s="luck">🍀 Luck &amp; swaps</button>
+    <button data-s="luck">🍀 Luck</button>
     <button data-s="twitch">💜 Twitch &amp; channel points</button>
     <button data-s="movies">🎬 Movie info (TMDB, OMDb, Letterboxd)</button>
     <button data-s="app">🖥️ App &amp; background</button>
@@ -1612,7 +1624,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1896,8 +1908,8 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { applyStyle(); holTestInit(); sceneInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
-  renderHeader(); renderBattle(); renderView(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
+function render() { applyStyle(); holTestInit(); sceneInit(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+  renderHeader(); renderBattle(); renderView(); luckBattlesSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }
@@ -1918,6 +1930,11 @@ function renderBackupNag() {
   b.innerHTML = `📦 Monthly reminder: download a backup of Movie Royal${S.lastBackupAt ? ` (last one ${new Date(S.lastBackupAt).toLocaleDateString()})` : ''}. <button class="primary" onclick="location.href='/api/backup'">⬇️ Download backup</button><button class="ghost" onclick="api('/api/backup/snooze')">Remind me in a week</button>`;
 }
 // ---------- 🍀 luck saves ----------
+function luckBattlesHTML() { // Settings → 🍀 Luck: every battle's watch luck + save / reset / bring back
+  return S.lists.map(l => { const w = l.watchLuck; return `<div class="lkRow"><div class="tmName"><b>${esc(l.name)}</b><small class="muted">${esc(TYPE[l.type] || '')} · 👀 ${w?.on ? `<b style="color:var(--good)">watch luck on</b>: every ${w.hours || 10} h watched = +${w.amount || 1}%` : 'watch luck off'}</small></div>${luckTools(l.id)}</div>`; }).join('');
+}
+let luckBattlesKey = '';
+function luckBattlesSync() { const el = $('setLuckBattles'); if (!el) return; const h = luckBattlesHTML(); if (h !== luckBattlesKey) { luckBattlesKey = h; el.innerHTML = h; } }
 let luckFor = 'movies';
 function luckTools(lid = 'movies') {
   const l = S.lists.find(x => x.id === lid) || list(), odds = l.type !== 'movies', n = (S.luckSaves || []).filter(x => x.listId === l.id).length, w = odds ? 'odds' : 'luck';
@@ -2124,6 +2141,47 @@ async function wlRows() {
 }
 async function wlSave(restart) { try { await api('/api/lists/' + wlList, { watchLuck: { on: $('wlOn').checked, hours: Number($('wlEvery').value), amount: Number($('wlAmt').value), ...(restart ? { restart: true } : {}) } }, 'PATCH'); toast(restart ? '↺ Counting from now.' : '👀 Watch luck saved.'); if (restart) wlRows(); else $('wlDlg').close(); } catch {} }
 async function capTest() { try { await api('/api/capture', { on: true }); toast('📺 Showing in OBS for 5 seconds…'); setTimeout(() => api('/api/capture', { on: false }).catch(() => {}), 5000); } catch {} }
+// ⏱️⏳ battle timer + elimination pacer: one for all battles, and each battle can have its own (Settings → Game)
+const secsWord = v => { v = Math.round(Number(v) || 0); return v >= 60 ? `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')} min` : `${v} s`; };
+const fightSecsOf = l => Number(l?.gameSeconds) > 0 ? Number(l.gameSeconds) : Number(S.settings.gameSeconds) || 30;
+const fightPacerOf = l => l?.pacer != null && Number(l.pacer) >= 0 ? Number(l.pacer) : Number(S.settings.pacer ?? 50);
+function timingHTML() {
+  const s = S.settings, allT = Number(s.gameSeconds) || 30, allP = Number(s.pacer ?? 50), cb = S.cards?.battles || [];
+  // the words under each slider (by name, so the slider can update them while you drag)
+  Object.assign(window, {
+    tmAllT: v => secsWord(Math.max(10, v)),
+    tmTW: v => Number(v) >= 10 ? secsWord(v) : `🌐 Same as all battles (${secsWord(Number(S.settings.gameSeconds) || 30)})`,
+    tmPW: v => Number(v) >= 0 ? pacerWord(v) : `🌐 Same as all battles (${pacerWord(S.settings.pacer ?? 50)})`,
+    tmCW: v => Number(v) ? secsWord(v) : 'by how many packs',
+    tmPac: v => pacerWord(v)
+  });
+  const row = (key, name, sub, t, p, tips) => `<div class="tmRow" data-tm="${esc(key)}">
+      <div class="tmName"><b>${esc(name)}</b><small class="muted">${sub}</small></div>
+      <div><label>⏱️ Battle timer: <b class="tmTV">${window[t.w](t.v)}</b></label><input type="range" min="${t.min}" max="${t.max}" step="5" value="${t.v}" title="${tips[0]}" oninput="this.previousElementSibling.querySelector('b').textContent=${t.w}(this.value)" onchange="tmSet('${esc(key)}','t',this.value)"></div>
+      <div><label>⏳ Elimination pacer: <b class="tmPV">${window[p.w](p.v)}</b></label><input type="range" min="${p.min}" max="100" step="5" value="${p.v}" title="${tips[1]}" oninput="this.previousElementSibling.querySelector('b').textContent=${p.w}(this.value)" onchange="tmSet('${esc(key)}','p',this.value)"></div>
+    </div>`;
+  const own = ['How long this battle lasts (all the way left = the timer for all battles)', 'How hard the knockouts are spread over this battle (all the way left = the pacer for all battles)'];
+  return `<h3 style="margin-top:18px">⏱️ Battle timer &amp; ⏳ Elimination pacer</h3>
+    <p class="help" style="margin:0 0 6px">The <b>battle timer</b> is how long a fight lasts. The <b>elimination pacer</b> spreads the knockouts over that time so the cliff doesn't empty out in the first seconds, and makes it busier when it drags (0 = off: pieces go out whenever they go out; when 2 are left early, the 🥊 FINAL SHOWDOWN still starts). 🏁 Races use the timer as the race time. Each slider saves right away.</p>
+    <div id="tmBox">
+    ${row('all', '🌐 All battles', 'Every battle that doesn\'t have its own', { v: allT, min: 10, max: Math.max(300, allT), w: 'tmAllT' }, { v: allP, min: 0, w: 'tmPac' }, ['How long a battle lasts', 'How hard the knockouts are spread over the battle (0 = off)'])}
+    <h4 style="margin:12px 0 2px">Each battle <small class="muted" style="font-weight:400">(slide all the way left = same as all battles)</small></h4>
+    ${S.lists.map(l => row('list:' + l.id, l.name, esc(TYPE[l.type] || ''), { v: Number(l.gameSeconds) || 0, min: 0, max: Math.max(300, Number(l.gameSeconds) || 0), w: 'tmTW' }, { v: l.pacer != null && Number(l.pacer) >= 0 ? Number(l.pacer) : -5, min: -5, w: 'tmPW' }, own)).join('')}
+    ${cb.map(b => row('card:' + b.id, b.name, '🃏 Card battle (same sliders as the 🃏 Card pool tab)', { v: Number(b.length) || 0, min: 0, max: 180, w: 'tmCW' }, { v: b.pace ?? 50, min: 0, w: 'tmPac' }, ['How long this card fight should last (all the way left = by how many packs fight)', 'How hard the knockouts are spread over this card fight (0 = off)'])).join('')}
+    </div>`;
+}
+async function tmSet(key, which, v) { // ⏱️⏳ save one slider right away
+  v = Number(v);
+  try {
+    if (key === 'all') { const k = which === 't' ? 'gameSeconds' : 'pacer'; if (which === 't') v = Math.max(10, v); S.settings[k] = v; await api('/api/settings', { [k]: v }); tmRefresh(); }
+    else if (key.startsWith('list:')) await api('/api/lists/' + key.slice(5), which === 't' ? { gameSeconds: v >= 10 ? v : 0 } : { pacer: v >= 0 ? v : null }, 'PATCH');
+    else if (key.startsWith('card:')) await api('/api/cards/battle', { id: key.slice(5), activate: false, ...(which === 't' ? { length: v } : { pace: v }) });
+    toast('Saved', 1500);
+  } catch {}
+}
+function tmRefresh() { // the "🌐 Same as all battles (…)" words follow the main sliders
+  document.querySelectorAll('#tmBox .tmRow[data-tm^="list:"]').forEach(r => { const [t, p] = r.querySelectorAll('input[type=range]'); r.querySelector('.tmTV').textContent = tmTW(t.value); r.querySelector('.tmPV').textContent = tmPW(p.value); });
+}
 const pacerWord = v => { v = Number(v); return v <= 0 ? 'Off' : v < 35 ? `Light (${v})` : v < 65 ? `Normal (${v})` : v < 90 ? `Strong (${v})` : `Very strong (${v})`; };
 async function winMode(v) { try { await api('/api/window', { action: v }); } catch {} }
 async function capSave() {
@@ -2177,7 +2235,7 @@ function renderBattle() {
   $('playList').innerHTML = S.lists.map(x => `<option value="${x.id}" ${x.id === S.activeListId ? 'selected' : ''}>${esc(x.name)} — ${TYPE[x.type]}</option>`).join('');
   if (document.activeElement !== $('screenTitle')) { $('screenTitle').value = l.screenTitle || ''; $('screenTitle').placeholder = l.name; }
   const n = l.entries.filter(e => e.status === 'active').length;
-  $('poolCount').innerHTML = `${n} in the pool${S.settings.lobbySeconds > 0 ? ` · ${S.settings.lobbySeconds}s countdown, then a ${S.settings.gameSeconds}s fight` : ''}`;
+  $('poolCount').innerHTML = `${n} in the pool${S.settings.lobbySeconds > 0 ? ` · ${S.settings.lobbySeconds}s countdown, then a ${secsWord(fightSecsOf(l))} fight` : ''}`;
   renderBigTimer();
   const g = S.gather, gb = $('gatherBtn');
   gb.disabled = busy;
@@ -2253,7 +2311,7 @@ function renderBigTimer() {
   const box = $('bigTimer'), el = (Date.now() - (S.phaseAt || Date.now())) / 1000;
   let lbl = '', num = '';
   if (S.phase === 'lobby') { lbl = 'Starting in'; num = Math.max(1, Math.ceil(S.settings.lobbySeconds - el)); }
-  else if (S.phase === 'running') { const left = Math.max(0, Math.ceil(S.settings.gameSeconds - el)); lbl = 'Fight time left'; num = `0:${String(left).padStart(2, '0')}`; }
+  else if (S.phase === 'running') { const left = Math.max(0, Math.ceil((S.fightSecs || fightSecsOf(S.lists.find(x => x.id === S.activeListId))) - el)); lbl = 'Fight time left'; num = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; }
   else if (S.gather) { const left = Math.max(0, Math.ceil((S.gather.endsAt - Date.now()) / 1000)); lbl = S.activeListId === 'movies' ? 'Join time' : 'Battle starts in'; num = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; }
   box.style.display = lbl ? '' : 'none';
   if (!lbl) return;
@@ -3272,8 +3330,15 @@ async function mmTest() { // 🧪 !mymovies / /mymovies with every movie's luck
   mmLast = r;
   const sel = $('tMmWho'), cur = r.id; sel.innerHTML = r.people.map(p => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   const box = (t, x) => `<div style="margin-top:8px"><b>${t}</b><pre style="white-space:pre-wrap;margin:4px 0;padding:8px 10px;background:var(--panel2);border-radius:8px;font:13px/1.45 Inter,sans-serif">${esc(x || '(nothing)').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</pre></div>`;
-  $('tMmOut').innerHTML = (r.luckOn || r.watchOn ? '' : '<p class="help">⚠️ 🍀 Luck is off (Settings → 🍀 Luck &amp; swaps), so no luck shows.</p>') + box(`💜 Twitch chat (${esc(r.cmd)})`, r.chat) + box('🤖 Discord /mymovies (Movie Royal\'s bot)', r.discord) + box('☁️ 24/7 Discord bot /mymovies', r.cloud);
+  $('tMmOut').innerHTML = (r.luckOn || r.watchOn ? '' : '<p class="help">⚠️ 🍀 Luck is off (Settings → 🍀 Luck), so no luck shows.</p>') + box(`💜 Twitch chat (${esc(r.cmd)})`, r.chat) + box('🤖 Discord /mymovies (Movie Royal\'s bot)', r.discord) + box('☁️ 24/7 Discord bot /mymovies', r.cloud);
 }
+function tmTestShow() { // 🧪 which timer + pacer the picked battle uses
+  const sel = $('tTmList'); if (!sel) return; const cur = sel.value || S.activeListId;
+  sel.innerHTML = S.lists.map(l => `<option value="${esc(l.id)}" ${l.id === cur ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
+  const l = S.lists.find(x => x.id === sel.value), ownT = Number(l?.gameSeconds) > 0, ownP = l?.pacer != null && Number(l.pacer) >= 0;
+  $('tTmOut').innerHTML = l ? `⏱️ <b>${secsWord(fightSecsOf(l))}</b> ${ownT ? '(its own)' : '(same as all battles)'} · ⏳ <b>${pacerWord(fightPacerOf(l))}</b> ${ownP ? '(its own)' : '(same as all battles)'}` : '';
+}
+async function tmTest() { const id = $('tTmList')?.value; if (!id) return; try { await api('/api/test/battle', { list: id, count: tbNum(tbSet.count) ?? 12, map: tbSet.map || 'random' }); } catch {} }
 let mmLast = null;
 async function mmProfile() { // 🧪 the chatter profile with each movie's luck
   if (!mmLast || ($('tMmWho').value && $('tMmWho').value !== mmLast.id)) { await mmTest(); }
@@ -3771,9 +3836,8 @@ function openSettings(force) {
       <div class="row"><button onclick="location.href='/api/backup'">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
       <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
     game: `<h3>⚔️ The battle</h3>
-      <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('gameSeconds', 'Fight length (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
-      <div style="margin-top:10px"><label>⏳ Elimination pacer: <b id="pacerV">${pacerWord(s.pacer ?? 50)}</b></label><input type="range" data-k="pacer" min="0" max="100" step="5" value="${s.pacer ?? 50}" oninput="$('pacerV').textContent=pacerWord(this.value)" title="How hard Movie Royal spreads the knockouts over the fight">
-      <p class="help" style="margin:2px 0 0">Spreads the knockouts over the whole fight so it doesn't empty out in the first seconds, and makes it busier when it drags. It follows the fight length above: a 60-second fight gets paced over 60 seconds. 0 = off (pieces go out whenever they go out). When 2 are left early, the 🥊 FINAL SHOWDOWN still starts.</p></div>
+      <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
+      ${timingHTML()}
       <p class="help">🎯 <b>Fair winner:</b> every battle's winner is drawn by the odds before the battle starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins. (Except 🏁 race power-ups in a chat battle race: those can.)</p>
       ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
       ${f('helpCommand', 'Chat command that lists the chat commands (it lists the ones for the tab you are on)', '!moviesroyal')}
@@ -3828,26 +3892,30 @@ function openSettings(force) {
       <div class="grid2">${f('spotName', 'Spot name (e.g. Kirb)')}${f('spotMax', 'Spots each week', '', 'number')}${f('spotTwitch', 'Their Twitch name (for the picture, optional)')}</div>
       ${spSetHTML()}
       ${ck('autoSpots', 'Add the spots automatically every new week')}
-      <h3 style="margin-top:18px">💡 Ideas doc</h3>
-      ${f('ideasDoc', 'Link in the pinned Discord message where people can leave ideas (blank = no link)', 'https://docs.google.com/…')}`,
-    luck: `<h3>🍀 Luck</h3>
-      ${ck('luckOn', '<b>Turn on luck</b> — every battle a Discord movie loses makes it a little more likely to win next time. It builds week to week. Your luck only starts over when one of your movies actually gets watched (a win counts as watched; “Not watching it — put it back” gives the luck back).', false)}
-      ${f('luckPerBattle', 'Extra chance per battle (%)', '1', 'number', 'step="0.01" min="0"')}
-      <div class="row" style="margin:8px 0">${luckTools()}</div>
-      <p class="help">Want a few battles without luck? <b>Reset luck</b> (it saves everyone's luck first), then use <b>📂 Luck saves → Bring back</b> when you're done.</p>
-      <p class="help">Default is <b>1%</b> per battle, so a movie that lost 10 battles is 10% more likely to win. ${esc(s.spotName)} spots don't get luck on their own unless you turn it on below. You can also set theirs by hand.</p>
-      ${ck('spotLuck', `${esc(s.spotName)} wildcard spots get luck when they lose too — at most +1% per stream (they don't need anyone chatting)`, false)}
       <h3 style="margin-top:18px">🔁 Swaps (<code>/swap</code> in Discord)</h3>
       <p class="help">People can trade one of their movies for a new one (1 for 1) without using a pick.</p>
       <div><label>🔒 When adding and swapping movies lock by themselves</label><select data-k="pickLock">${[['battle', 'Only during movie battles: from Start until it has its winner (default)'], ['live', 'The whole time I\'m live on Twitch'], ['off', 'Never: only when I lock them myself']].map(([v, t]) => `<option value="${v}" ${(s.pickLock || 'battle') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
       <p class="help">The default: people can <code>/suggest</code> and <code>/swap</code> right up until you press Start on a Discord movie battle. They lock while it plays and open again once it has its winner. You can still lock them yourself any time (🎬 Movie picks button on the Battle tab, Lock now below).</p>
       ${ck('announcePicks', 'Post in the Discord movies channel when picks open or close')}
+      <p class="help">You can also open and close picks any time with the <b>🎬 Movie picks</b> button on the Battle tab.</p>
+      <div class="row"><span class="grow">Right now: <b style="color:${S.swapsLocked ? 'var(--bad)' : 'var(--good)'}">${S.swapsLocked ? '🔒 locked' : '🔓 open'}</b></span><button onclick="api('/api/swaps/lock',{locked:${!S.swapLock}}).then(()=>openSettings(true))">${S.swapLock ? 'Unlock' : 'Lock now'}</button></div>
+      <h3 style="margin-top:18px">💡 Ideas doc</h3>
+      ${f('ideasDoc', 'Link in the pinned Discord message where people can leave ideas (blank = no link)', 'https://docs.google.com/…')}`,
+    luck: `<h3>🍀 Luck</h3>
+      ${ck('luckOn', '<b>Turn on luck</b> — every battle a Discord movie loses makes it a little more likely to win next time. It builds week to week. Your luck only starts over when one of your movies actually gets watched (a win counts as watched; “Not watching it — put it back” gives the luck back).', false)}
+      ${f('luckPerBattle', 'Extra chance per battle (%)', '1', 'number', 'step="0.01" min="0"')}
+      <p class="help">Default is <b>1%</b> per battle, so a movie that lost 10 battles is 10% more likely to win. ${esc(s.spotName)} spots don't get luck on their own unless you turn it on below. You can also set theirs by hand.</p>
+      ${ck('spotLuck', `${esc(s.spotName)} wildcard spots get luck when they lose too — at most +1% per stream (they don't need anyone chatting)`, false)}
+      <p class="help">🍀 Where luck shows: the glow and flames on the cliff, <code>${esc(s.twitchMoviesCommand || '!mymovies')}</code> in Twitch chat, <code>/mymovies</code> in Discord, the 🎬 Movie Pool and every chatter's profile.</p>
+      <h3 style="margin-top:18px">👀 Watch luck</h3>
+      <p class="help">People who watch your streams get extra luck in a battle: every few hours watched (counted from when you turn it on) = a bit more luck. It's <b>off by default</b> and set per battle. When it's on, it's just added into their luck (the 🍀 number everywhere above).</p>
+      <h3 style="margin-top:18px">💾 Save, reset and bring back luck (each battle)</h3>
+      <p class="help">Want a few battles without luck? <b>↺ Reset luck</b> (it saves everyone's luck first), then <b>📂 Saved luck → Bring back</b> when you're done. Battles that aren't Discord movie battles have <b>odds</b> instead: the same buttons save and reset those.</p>
+      <div id="setLuckBattles">${luckBattlesHTML()}</div>
       <h3 style="margin-top:18px">🔮 Chat calls the winner</h3>
       ${ck('callsOn', 'Let Twitch chat call the winner before the fight (Discord movie battles)')}
       <div class="grid2">${f('callCommand', 'Chat command', '!call')}${f('callLuck', 'Luck for calling it right (% on their own movies)', '1', 'number', 'min="0" max="20" step="0.5"')}</div>
-      <p class="help">Viewers type <code>${esc(s.callCommand || '!call')} Heat</code> (part of the title is enough) any time before the fight starts, and can change their call. If their movie wins, everyone who called it gets named in chat, and their own movies get the extra luck. Their Twitch name has to be linked to their Discord (<code>/linktwitch</code>) for the luck. The command never replies, so it doesn't spam chat.</p>
-      <p class="help">You can also open and close picks any time with the <b>🎬 Movie picks</b> button on the Battle tab.</p>
-      <div class="row"><span class="grow">Right now: <b style="color:${S.swapsLocked ? 'var(--bad)' : 'var(--good)'}">${S.swapsLocked ? '🔒 locked' : '🔓 open'}</b></span><button onclick="api('/api/swaps/lock',{locked:${!S.swapLock}}).then(()=>openSettings(true))">${S.swapLock ? 'Unlock' : 'Lock now'}</button></div>`,
+      <p class="help">Viewers type <code>${esc(s.callCommand || '!call')} Heat</code> (part of the title is enough) any time before the fight starts, and can change their call. If their movie wins, everyone who called it gets named in chat, and their own movies get the extra luck. Their Twitch name has to be linked to their Discord (<code>/linktwitch</code>) for the luck. The command never replies, so it doesn't spam chat.</p>`,
     twitch: `<h3>💜 Twitch</h3>
       <p class="help">Status: <b>${esc(tw.state)}</b>${tw.login ? ' as ' + esc(tw.login) : ''} · chat: ${esc(tw.chat)}</p>
       ${tw.login && !tw.canChat ? `<p class="help" style="color:var(--gold)">⚠️ To reply to <code>${esc(s.twitchMoviesCommand)}</code> in chat, Movie Royal needs one more permission. <a href="/auth/twitch">Sign in with Twitch again</a>.</p>` : ''}
@@ -4276,7 +4344,7 @@ async function saveSettings() {
   const body = {};
   document.querySelectorAll('#settingsBody [data-k]').forEach(el => {
     const k = el.dataset.k;
-    body[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' || k === 'weekStart' ? Number(el.value) : el.value.trim();
+    body[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' || el.type === 'range' || k === 'weekStart' ? Number(el.value) : el.value.trim();
   });
   if ($('bits')) body.bits = Object.fromEntries([...document.querySelectorAll('#bits .row')].map(r => [r.querySelector('.rt').value.trim(), r.querySelector('.re').value]).filter(([k]) => k));
   await api('/api/settings', body);

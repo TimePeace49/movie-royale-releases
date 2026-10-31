@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.62.0
+- ⏱️⏳ **Battle timer and elimination pacer sliders for every battle** (Settings → ⚔️ Game): one pair for 🌐 all battles, and under it a pair for each battle (Discord movies, chat battle, giveaway, your own battles and card battles). Slide a battle all the way left and it uses the ones for all battles. They save right away. The Battle tab's countdown and fight clock follow the battle's own timer.
+- 🛠️ The elimination pacer slider for all battles didn't actually save before (it always stayed at Normal). Fixed.
+- 🍀 **New Luck tab in Settings** with every luck setting: luck on/off and how much per battle, wildcard spot luck, 👀 watch luck for each battle (still off by default; when it's on it's just added into the luck), save / reset / bring back luck for each battle, and chat calling the winner. The swap settings moved to 🤖 Discord & picks.
+- 🧪 Test tab → **⏱️ Battle timer & ⏳ pacer for each battle**: pick a battle, see what it uses, and run a pretend battle with them.
+
 ## 1.61.5
 - 🍀 **!mymovies and /mymovies show each movie's luck:** Twitch chat answers like `Heat (1995) 🍀9.5%`, Discord shows `🍀 9.5% luck` and splits it into the movie's own luck and 👀 watch luck when watch luck is on. Same when someone looks up another person's movies.
 - 👤 **Chatter profiles show luck too:** the 🎬 Movies part of a profile lists every movie with its 🍀 luck (hover it to see own luck + watch luck).

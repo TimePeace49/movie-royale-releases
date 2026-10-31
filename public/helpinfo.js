@@ -9,6 +9,22 @@ const H = (re, title, text, ctx) => L.push({ re, title, text, ctx: Array.isArray
   sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
 // ───────── top bar ─────────
+H(/^tip:how long this battle lasts/i, '⏱️ This battle\'s timer', 'How long this battle lasts. All the way left (🌐) = it uses the timer for all battles. 🏁 On race maps it\'s the race time. Saves right away.');
+H(/^tip:how hard the knockouts are spread over this battle/i, '⏳ This battle\'s pacer', 'How hard the knockouts are spread over this battle\'s timer (0 = off: pieces go out whenever they go out). All the way left (🌐) = it uses the pacer for all battles. Saves right away.');
+H(/^tip:how long a battle lasts$/i, '⏱️ Battle timer (all battles)', 'How long a fight lasts, for every battle that doesn\'t have its own timer below. Saves right away.');
+H(/^tip:how hard the knockouts are spread over the battle \(0/i, '⏳ Elimination pacer (all battles)', 'Spreads the knockouts over the whole fight so it doesn\'t empty out in the first seconds, and makes it busier when it drags. For every battle that doesn\'t have its own pacer below. 0 = off. Saves right away.');
+H(/^tip:how long this card fight/i, '⏱️ Card fight length', 'How long this card battle\'s fight should last (the same slider as in the 🃏 Card pool tab). All the way left = it picks a length from how many packs fight.');
+H(/^tip:how hard the knockouts are spread over this card fight/i, '⏳ Card fight pacer', 'How hard the knockouts are spread over this card battle\'s fight (0 = off). The same slider as in the 🃏 Card pool tab.');
+H(/^⏱️ battle timer & ⏳ elimination pacer$/i, '⏱️ Battle timer & ⏳ pacer', 'One timer and pacer for all battles, and each battle (Discord movies, chat battle, giveaway, your own battles, card battles) can have its own. Slide a battle all the way left to use the ones for all battles.');
+H(/^tip:which battle's timer and pacer to try|^▶ pretend battle with its timer & pacer$/i, '🧪 Timer & pacer test', 'Runs a pretend battle (made-up movies, nothing saved) with the picked battle\'s own timer and pacer, so you can see how long it lasts and how the knockouts spread.', ['test']);
+H(/^tip:settings → game: the battle timer|^⚙ change the sliders$/i, '⚙ Timer & pacer sliders', 'Opens Settings → ⚔️ Game at the battle timer and elimination pacer sliders.', ['test']);
+H(/^⏱️ battle timer & ⏳ pacer for each battle$/i, '🧪 Timer & pacer test', 'Try a battle\'s own timer and pacer with a pretend battle.', ['test']);
+H(/^each battle \(slide all the way left/i, '⏱️⏳ Each battle', 'A battle timer and pacer for every battle. Slide one all the way left (🌐) and that battle uses the ones for all battles above.');
+H(/^⏱️ battle timer: /i, '⏱️ Battle timer', 'How long the battle lasts. 🌐 Same as all battles = it uses the 🌐 All battles timer. Saves right away.');
+H(/^🔮 chat calls the winner$/i, '🔮 Chat calls the winner', 'Twitch chat can call the winner before a Discord movie battle starts (!call and part of a title). If they\'re right, their own movies get extra luck.');
+H(/^🍀 luck$/i, '🍀 Luck settings', 'Every luck setting in one place: luck on/off and how much per battle, wildcard spot luck, 👀 watch luck for each battle, saving / resetting / bringing back luck, and chat calling the winner.');
+H(/^👀 watch luck$/i, '👀 Watch luck', 'People who watch your streams get extra luck in a battle. Off by default, set per battle with the 👀 Watch luck buttons below. When it\'s on, it\'s just added into their luck.');
+H(/^💾 save, reset and bring back luck/i, '💾 Luck for each battle', 'Every battle\'s luck buttons: 👀 watch luck, 💾 save, ↺ reset and 📂 bring back. Battles that aren\'t Discord movie battles have odds instead of luck.');
 H(/^tip:watch luck: people who watch/i, '👀 Watch luck', 'Per battle, off by default. Every 10 hours someone watches your streams (you can change it) gives them +1% luck (you can change that too) in this battle, counted from the moment you turn it on. The window shows who has how much right now.');
 H(/turn on watch luck for this battle/i, '👀 Watch luck on/off', 'Turns watch luck on or off for this one battle. Turning it on starts counting watched hours from now.');
 H(/^tip:how many hours someone has to watch/i, 'Every … hours', 'How many hours someone has to watch your streams to get one step of luck (10 to start).');
@@ -165,7 +181,7 @@ H(/^➖$|^➕$/, 'Zoom the camera', '➖ zooms out, ➕ zooms in (same as scroll
 H(/start royal/i, '▶ START ROYAL', 'Starts the battle that\'s on the cliff: a short countdown, then the fight. The last piece standing wins. During the fight this button shows the time left. Change the countdown and fight length in Settings → Game.');
 H(/join timer \+ chat vote|^⏳ join time/i, '⏱️ 2-min join timer + chat vote (Discord battle)', 'For the Discord movie battle. Starts a 2-minute join time: the board is reset, so only people who type in Twitch chat now get their movies on (plus any you put in yourself with ▶). A numbered list of every movie shows on the right of the battle screen with who picked it and their luck, and the bot tells chat to vote who wins by typing the number or the movie name. If their pick wins, they get extra luck on their own movies (Settings → the call-the-winner luck, 1% to start). When the 2 minutes are up nothing starts by itself: you press START ROYAL when you\'re ready. Click it again during the 2 minutes to cancel.');
 H(/chat timer, then start|2-min chat timer/i, '⏱️ 2-min chat timer, then start', 'Gives chat 2 minutes to show up first. Discord movies hop on the cliff when their person types in Twitch chat, and chat battles fill up with !join. When the 2 minutes run out the battle starts by itself. Press it again to cancel.');
-H(/movie picks (open|closed)/i, '🎬 Movie picks OPEN / CLOSED', 'Opens or closes Discord movie picks. While closed, /suggest in Discord (and the 24/7 bot) tells people picks are closed. Movies already picked stay in, and /mymovies and /list still work. Settings → Luck & swaps can close picks by itself while you\'re live.');
+H(/movie picks (open|closed)/i, '🎬 Movie picks OPEN / CLOSED', 'Opens or closes Discord movie picks. While closed, /suggest in Discord (and the 24/7 bot) tells people picks are closed. Movies already picked stay in, and /mymovies and /list still work. Settings → 🤖 Discord & picks can close picks by itself while you\'re live.');
 H(/points (on|off)/i, '⭐ Points ON / OFF', 'Turns channel point chaos on or off. Off also switches off Movie Royal\'s chaos rewards on Twitch, so nobody spends points by accident. Green = on, red = off.');
 H(/bits (on|off)/i, '💎 Bits ON / OFF', 'Turns bits chaos on or off. When on, cheering the bits amounts you set in Settings → Twitch sets off chaos powers in the battle.');
 H(/^📣 show roll call on the game screen/i, '📣 Roll call on the game screen', 'On: roll call shows on the game screen (the battle browser source). Turn it off if you use the separate roll call browser source in the same scene, so it doesn\'t show twice.');
@@ -265,7 +281,7 @@ H(/wheel of names share link|wheel of names link/i, 'Import a link', 'Paste a Wh
 H(/^import link$|^get list$/i, 'Import link', 'Brings in the entries from the Wheel of Names link (or list link) you pasted.');
 H(/^reset odds$/i, 'Reset odds', 'Sets everything in this battle back to normal odds (1).');
 H(/^clear$/i, 'Clear', 'Empties this battle. Asks first.', /pool|movie/i);
-H(/^lock now$|^unlock$/i, '🔒 Lock / unlock swaps', 'Stops (or allows) /swap in Discord. By default, picks and swaps lock by themselves only while a movie battle is going (Start → winner). Change that in Settings → Luck & swaps.');
+H(/^lock now$|^unlock$/i, '🔒 Lock / unlock swaps', 'Stops (or allows) /swap in Discord. By default, picks and swaps lock by themselves only while a movie battle is going (Start → winner). Change that in Settings → 🤖 Discord & picks.');
 H(/update the numbers/i, '🔢 Update the numbers', 'Changes a number battle\'s range (like 1 to 50). Numbers outside the new range are removed, missing ones are added, and numbers you keep keep their odds.');
 H(/^from$|^to$|#nlFrom|#nlTo|#numFrom|#numTo/i, 'From / To', 'The first and last number in the number battle. Every number in between gets its own ball.');
 H(/recent chatters/i, 'Recent chatters', 'People who typed in Twitch chat lately. If someone typed but their movies didn\'t hop on, link their Twitch name to their Discord here.');
@@ -510,9 +526,9 @@ H(/pretend chat window|^💬 pretend chat$|#pcBtn/i, '💬 Pretend chat', 'Opens
 // ───────── ⚙️ Settings ─────────
 SECTION(null);
 H(/account & updates/i, '👤 Account & updates', 'Your name in the app, backups, where updates come from, and test builds.');
-H(/^⚔️ game$/i, '⚔️ Game settings', 'Countdown, fight length, max pieces, best-of, fullscreen, map vote time, cliff size, camera, replay.');
+H(/^⚔️ game$/i, '⚔️ Game settings', 'Countdown, battle timer and elimination pacer (for all battles and each battle), max pieces, best-of, fullscreen, map vote time, cliff size, camera, replay.');
 H(/discord & picks/i, '🤖 Discord & picks', 'The Discord bot, 24/7 mode, the debug channel, picks per person, the new week, wild spots and the ideas doc.');
-H(/luck & swaps/i, '🍀 Luck & swaps', 'Luck, when picks and swaps lock, and chat calling the winner.');
+H(/^🔁 swaps \(\/swap in discord\)$/i, '🔁 Swaps', 'When /suggest and /swap lock by themselves, and locking them yourself.');
 H(/twitch & channel points/i, '💜 Twitch & channel points', 'Twitch sign-in, chat commands, ball colors, winner posts and pins, claims, sit out, channel point rewards, bits tiers and donations.');
 H(/movie info/i, '🎬 Movie info', 'TMDB (movie search), OMDb (ratings) and Letterboxd (watched movies).');
 H(/app & background/i, '🖥️ App & background', 'Keep running in the tray, start with Windows, data folder, setup guide.');

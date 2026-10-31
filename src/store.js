@@ -40,7 +40,7 @@ const defaults = () => ({
     maxPerUser: 3,
     maxFighters: 1000, f8Laps: 5, cliffSize: 130, announceWinner: true, wheelOfNamesKey: '', autoCamera: true, replayOn: true,
     lobbySeconds: 5,
-    gameSeconds: 30,
+    gameSeconds: 30, pacer: 50,
     soundOn: true, sfxVolume: 70, musicVolume: 35,
     spotName: 'Kirb', spotTwitch: '', spotMax: 3, weekStart: 0, autoSpots: true,
     runInBackground: false, startWithWindows: false, chatGate: true, autoFullscreen: true,
