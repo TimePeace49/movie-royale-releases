@@ -3461,8 +3461,15 @@ Object.assign(MAPS, {
       if (!this.tc || this.tc.key !== key) { const cv = this.tc?.cv || document.createElement('canvas'); cv.width = Math.ceil(hx * 2 * sc); cv.height = Math.ceil(hy * 2 * sc); const g = cv.getContext('2d'); g.setTransform(sc, 0, 0, sc, hx * sc, hy * sc); this.paintTrack(g); this.tc = { key, cv }; }
       ctx.drawImage(this.tc.cv, CX - hx, CY - hy, hx * 2, hy * 2);
     },
+    flagSpot() { // (1.61.1) the flag stand goes beside the start line, off the road: the far side if it's free, else the near side
+      const s0 = this.pts[0], key = `${this.tw}|${s0.x}|${s0.y}`; if (this.flagAt?.key === key) return this.flagAt;
+      let nx = -s0.ty, ny = s0.tx; if (Math.abs(ny) > .5 ? ny > 0 : nx * s0.x < 0) { nx = -nx; ny = -ny; } // (a road across the screen: the far side first (up), so the stand never covers the road; a road up the screen: the outside of the track)
+      const d0 = this.tw / 2 + 70, free = (x, y) => !this.offRoad || this.offRoad(x, y) > 45;
+      let at = null; for (const sg of [1, -1]) for (const dd of [d0, d0 + 40, d0 + 90]) { const x = s0.x + nx * dd * sg, y = s0.y + ny * dd * sg; if (!at && free(x, y)) at = { x, y }; }
+      return this.flagAt = { key, ...(at || { x: s0.x + nx * d0, y: s0.y + ny * d0 }) };
+    },
     drawFlagman() {
-      if (!this.pts) return; const s0 = this.pts[0], X = sx(s0.x + this.tw / 2 + 50), Y = sy(s0.y), fl = this.flag, wave = Math.sin(clock * 9) * .5;
+      if (!this.pts) return; const fp = this.flagSpot(), X = sx(fp.x), Y = sy(fp.y), fl = this.flag, wave = Math.sin(clock * 9) * .5;
       ctx.save(); ctx.translate(X, Y);
       ctx.fillStyle = '#2a2a33'; ctx.fillRect(-26, -90, 52, 90); ctx.fillStyle = '#4a4a55'; ctx.fillRect(-32, -96, 64, 10); // the stand
       ctx.fillStyle = '#e9b48a'; ctx.beginPath(); ctx.arc(0, -126, 11, 0, 7); ctx.fill(); ctx.fillStyle = '#2a4aa0'; ctx.fillRect(-11, -116, 22, 26); ctx.fillStyle = '#111'; ctx.fillRect(-12, -138, 24, 6); // the flagman
@@ -3703,8 +3710,12 @@ function raceMap(d) {
         const M = pts.length, dirA = j => Math.atan2(pts[(j + M) % M].ty, pts[(j + M) % M].tx), run = [];
         for (let j = 0; j < M; j++) { let turn = 0, k = 0; while (k < M - 1) { const a = angW(dirA(j - k) - dirA(j - k - 1)); turn += Math.abs(a); if (turn > .3) break; k++; } run.push(k); } // run[j] = how many points straight behind j
         const step = this.L / M, need = Math.ceil((gridLen + 80) / step); let best = -1, bestV = -1e9;
-        for (let j = 0; j < M; j++) { const back = run[j], mid = (j - Math.floor(back / 2) + M) % M; if (back < 6) continue; const fits = back >= need, v = (fits ? 1e6 : 0) + Math.min(back, need * 1.4) * 10 + pts[mid].y * .5 - (back > need ? (back - need) * 2 : 0); if (v > bestV) { bestV = v; best = j; } } // (a straight long enough for the grid, near the viewer; the line sits just past the grid)
-        if (best > 0) { const back = run[best], at = (best - Math.max(0, back - Math.max(need, Math.round(back * .55))) + M) % M; for (let r = 0; r < at; r++) pts.push(pts.shift()); }
+        // (1.61.1, Derek: the finish line sat where two parts of the road ran into each other) clear[j] = no other part of the road near point j
+        const near = Math.ceil(tw * 2.2 / step), gapAt = pts.map((p, j) => { let m = 1e9; for (let i = 0; i < M; i += 2) { const di = Math.min(Math.abs(i - j), M - Math.abs(i - j)); if (di > near) m = Math.min(m, Math.hypot(p.x - pts[i].x, p.y - pts[i].y)); } return m / tw; }); // how far the next other part of the road is (in road widths)
+        const clearRun = (j, n, k0 = 1.3) => { for (let k = -6; k <= n; k++) if (gapAt[(j - k + M) % M] < k0) return false; return true; }; // (the line, a bit past it, and the grid behind it)
+        for (let j = 0; j < M; j++) { const back = run[j], mid = (j - Math.floor(back / 2) + M) % M; if (back < 3) continue; const fits = back >= need, n = Math.max(back, need), v = (clearRun(j, n) ? 4e6 : 0) + (clearRun(j, n, .8) ? 2e6 : 0) + (fits ? 1e6 : 0) + Math.min(back, need * 1.4) * 10 + pts[mid].y * .5 - (back > need ? (back - need) * 2 : 0); if (v > bestV) { bestV = v; best = j; } } // (no other road near the line or the grid: best; at least no crossing in it (Crossover Chaos); then a long straight) // (a straight long enough for the grid, near the viewer; the line sits just past the grid)
+        if (best > 0) { const back = run[best]; let at = (best - Math.max(0, back - Math.max(need, Math.round(back * .55))) + M) % M; if (!clearRun(at, need, .8)) at = best; for (let r = 0; r < at; r++) pts.push(pts.shift()); }
+        this.flagAt = null; // (the flag stand: worked out again for the new start line)
       }
       this.props = []; const nP = d.props?.n || 0, rr = this.A, bb = this.B; for (let i = 0, tries = 0; i < nP && tries < nP * 30; tries++) { const x = rnd(-rr, rr), y = rnd(-bb, bb), kind = pick(d.props.kinds), sz = rnd(.8, 1.25) * (d.props.size || 34); if (this.offRoad(x, y) < sz * 1.2 + 14) continue; this.props.push({ x, y, kind, s: sz }); i++; }
       this.props.sort((a, b) => a.y - b.y); this.tc = null; d.built?.call(this);
@@ -3898,7 +3909,7 @@ function raceMap(d) {
       if (!this.tc || this.tc.key !== key) { const cv = this.tc?.cv || document.createElement('canvas'); cv.width = Math.ceil(hx * 2 * sc); cv.height = Math.ceil(hy * 2 * sc); const g = cv.getContext('2d'); g.setTransform(sc, 0, 0, sc, hx * sc, hy * sc); this.paintTrack(g); this.tc = { key, cv }; }
       ctx.drawImage(this.tc.cv, CX - hx, CY - hy, hx * 2, hy * 2);
     },
-    drawFlagman: MAPS.figure8.drawFlagman,
+    drawFlagman: MAPS.figure8.drawFlagman, flagSpot: MAPS.figure8.flagSpot,
     drawLaps() {
       if ((phase !== 'running' && phase !== 'ended') || NUKE.on) return; const lead = Math.max(0, ...alive().map(f => f.s), ...(winner ? [winner.s] : []));
       const txt = NUKE.on || NUKE.hit ? '☢️ NUCLEAR STRIKE' : this.survival ? `💥 LAST ${this.noun} STANDING` : `🏁 LAP ${clamp(Math.floor(lead) + 1, 1, this.laps)} / ${this.laps}`;
@@ -3930,7 +3941,7 @@ Object.assign(MAPS, {
   }),
   grandprix: raceMap({ // 🏎️ clean: a twisty road course
     name: 'Grand Prix', icon: '🏎️', style: 'clean', vehicle: 'racer', rScale: 1.75, twK: 5.4, twFrac: .5, lapSecs: 9, turn: 4.2,
-    path: RACE.spline([[-.95, .75], [-.98, -.1], [-.7, -.85], [-.15, -.95], [.25, -.55], [.55, -.95], [.95, -.75], [.97, -.05], [.55, .2], [.45, .55], [.85, .95], [.1, .95], [-.35, .6]]),
+    path: RACE.spline([[-.95, .7], [-.97, -.15], [-.7, -.85], [-.15, -.95], [.22, -.5], [.55, -.95], [.95, -.75], [.97, .05], [.65, .3], [.95, .65], [.7, .95], [-.1, .95], [-.55, .75]]), // (1.61.1: the old bottom-right hairpin ran into the straight)
     road: { asphalt: '#3a3a40', curbs: true, line: null, wall: '#2a6a2a', marks: 30 },
     tops: topsOf(i => `hsl(105,${42 - i * 3}%,${38 - i * 2}%)`, i => `hsl(108,40%,${28 - i}%)`, ['#d8e09a33', '#1a3a1a55']), wall: { cols: ['#4a5a3a', '#3a4a2a', '#26301c', '#141a0e'], lip: '#5a8a3a', lipH: 3 },
     sky(g) { skyGrad(g, [[0, '#3a86e8'], [.6, '#a8d8ff'], [1, '#e8f6ff']]); hills(g, [['#6aa85a', 560, 70, .004], ['#4a8a40', 620, 45, .007]]); crowdStands(g, 640, 3, true); },

@@ -49,7 +49,7 @@ export const MAP_LIST = [
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
 // map menus until it's been played on stream again. (Maps never played on stream show "NEW".)
-const REV = { gas: 2, plague: 2, warfield: 2, hero: 2 };
+const REV = { gas: 2, plague: 2, warfield: 2, hero: 2, grandprix: 2, crossover: 2 }; // (1.61.1: Grand Prix got a new layout, Crossover Chaos a new start spot)
 for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
 // ⚪🃏 which battles a map is for: ball battles, card battles, or both (Derek says when a map is only for one).
 // Ball maps are for both unless listed here as ball-only. Card-only maps live in cards.js (CARD_MAPS).

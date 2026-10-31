@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.61.2
+- 🏁 **Finish lines fixed on the race maps** (Derek: the Grand Prix one):
+  - 🏎️ **Grand Prix has a new layout:** the bottom-right hairpin ran right into the start straight, so the finish line and the grid sat where two parts of the road blended together. Now the road never touches itself.
+  - The start / finish line now only goes where no other part of the road is close by (with the whole starting grid behind it), on every race map. On ✖️ Crossover Chaos it's no longer next to a crossing.
+  - The 🏁 flag stand stands beside the road at the line (not on the road any more).
+
 ## 1.61.1
 - 🎥 **Calmer auto camera** (card battles, character fights and ball battles): small movements are ignored and it eases into place, so it doesn't wobble. Shaking on hits, K.O.s and booms is about half as strong, the lean toward big hits and the "breathing" are much smaller.
 - 🥊 **The FINAL FIGHT 360° goes around them:** the floor now turns under the last two while the camera circles them (with a ring on the ground), and the town slides past faster behind them, so it looks like the camera walking around them instead of them spinning.
