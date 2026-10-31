@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.62.3
+- 🌐 **The 500 worst movies (IMDb / Rotten Tomatoes battles) and Discord picks:**
+  - People can pick a movie in Discord even if it's on the 500 list. When they do, it leaves the 500 list within a few seconds and the next movie on the list takes its place (if that battle is fighting right now, it waits until it's over). The Movie Pool card lists the ones that left and what replaced them.
+  - Movies someone has picked in Discord never go on the 500 list (this used to be a setting; now it's always on).
+- 🎞️ **No sequels before their first movie:** a movie in a series only goes on the 500 list once you've watched every movie in that series that came out before it (from Letterboxd, or won and watched in a Discord battle). It's a check box on the battle's card (on by default). Your lists are read again once with the new rules after the update.
+- 🧪 Test tab → 🌐 IMDb / Rotten Tomatoes battle: the pretend list now has a sequel that gets skipped, and **🎬 Pretend a Discord pick** shows a movie leaving and the next one taking its place.
+
 ## 1.62.2
 - 🎟️ **Wild spot luck is on: once a night** (Derek). The first Discord movie battle a wild spot loses while you're live gives it +1%, and that's all for that stream: 1 battle or 3 battles, still +1% that night.
 - Change it in Settings → 🍀 Luck → 🎟️ wild spot luck: 🌙 Once a night (default, and you can change the amount), ⚔️ Every battle (like everyone else's movies) or 🚫 No luck.

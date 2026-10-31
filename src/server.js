@@ -12,7 +12,7 @@ import { db, save, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS } f
 import * as lb from './letterboxd.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
-import { getMany, searchMovies, findImdb } from './tmdb.js';
+import { getMany, searchMovies, findImdb, tmdbGet } from './tmdb.js';
 import { scan as banScan, runScan, yearCleanup, setScanHooks, dubCleanup } from './banscan.js';
 import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
@@ -2043,40 +2043,69 @@ async function syncLetterboxdList(l) {
 // keeps going (more pages, then the next link) until it has `max` movies, skipping movies that aren't in English, that
 // are already on the Discord movie list, or that you've watched / rated on Letterboxd (each skip can be turned off).
 // "🔄 Update" reads them again: new ones come in, ones that dropped off (or that you've watched since) leave.
+const webLook = async (it, fake) => { // the TMDB movie for a list item (IMDb ids match exactly; Rotten Tomatoes goes by title + year)
+  if (fake) return it.tmdbId ? { id: String(it.tmdbId), lang: it.lang || 'en', title: it.title, year: it.year } : null;
+  const cache = (db.webTmdb ||= {}); let c = cache[it.key]; if (c?.id && c.lang != null) return c;
+  let hit = it.imdbId ? await findImdb(it.imdbId).catch(() => null) : null;
+  if (!hit) { const r = await searchMovies(it.title).catch(() => []); hit = r.find(m => it.year && Math.abs(Number(m.year) - Number(it.year)) <= 1 && m.title.toLowerCase() === it.title.toLowerCase()) || r.find(m => it.year && String(m.year) === String(it.year)) || (it.year ? null : r[0]); }
+  if (!hit) return null; c = { id: String(hit.id), lang: hit.lang || '', title: hit.title, year: hit.year }; cache[it.key] = c; return c;
+};
+const hEsc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// 🎞️ sequels: a movie in a series only goes on a 🌐 web list once you've watched every movie in that series that came out before it
+async function seriesParts(cid) { // the movies in a TMDB series (collection), oldest first (kept a week)
+  const C = (db.tmdbColl ||= {}), hit = C[cid]; if (hit && Date.now() - hit.at < 7 * 86400e3) return hit.parts;
+  const r = await tmdbGet(`/collection/${encodeURIComponent(cid)}?language=en-US`, 10000);
+  const parts = (r.parts || []).map(p => ({ id: String(p.id), title: p.title, year: (p.release_date || '').slice(0, 4), date: p.release_date || '' })).sort((a, b) => (a.date || '9').localeCompare(b.date || '9'));
+  C[cid] = { at: Date.now(), name: r.name || '', parts }; return parts;
+}
+const seenMovie = p => !!lb.lookup({ title: p.title, year: p.year, tmdbId: p.id }) || (getList('movies')?.entries || []).some(e => String(e.tmdbId) === String(p.id) && e.status === 'watched');
+async function sequelGap(tm, src, it) { // → the earlier movie in its series you haven't watched (null = fine)
+  let parts;
+  if (src.fake) { parts = it.coll ? src.fakeColl?.[it.coll] : null; if (!parts) return null; }
+  else {
+    const c = (db.webTmdb ||= {})[it.key]; let cid = c?.coll;
+    if (cid === undefined) { const m = await tmdbMovie(tm.id, 8000); cid = m?.collection?.id || 0; if (c) c.coll = cid; }
+    if (!cid) return null; parts = await seriesParts(cid);
+  }
+  const me = parts.find(p => String(p.id) === String(tm.id)); if (!me?.date) return null;
+  return parts.find(p => p.date && p.date < me.date && String(p.id) !== String(tm.id) && !seenMovie(p)) || null;
+}
+// 🎬 movies someone picked in Discord (any that aren't hidden: in the pool, sitting out, benched or already watched) never go on a 🌐 web list
+const discordPicked = () => new Map((getList('movies')?.entries || []).filter(e => e.tmdbId && e.status !== 'removed').map(e => [String(e.tmdbId), e]));
 async function syncWebList(l) {
   const src = l.source || {}, max = src.max || 500, urls = (src.urls || []).filter(Boolean), fake = src.fake;
   l.job = { running: true, step: 'Reading the lists…', done: 0, total: 0, at: Date.now() }; pushState();
   try {
-    const onDiscord = new Set((getList('movies')?.entries || []).filter(e => e.tmdbId && e.status !== 'removed').map(e => String(e.tmdbId)));
-    const cache = (db.webTmdb ||= {}), kept = [], seenTm = new Set(), stats = { foreign: 0, discord: 0, watched: 0, missed: [], read: 0, sources: [] };
-    const look = async it => { // the TMDB movie for a list item (IMDb ids match exactly; Rotten Tomatoes goes by title + year)
-      if (fake) return it.tmdbId ? { id: String(it.tmdbId), lang: it.lang || 'en', title: it.title, year: it.year } : null;
-      let c = cache[it.key]; if (c?.id && c.lang != null) return c;
-      let hit = it.imdbId ? await findImdb(it.imdbId).catch(() => null) : null;
-      if (!hit) { const r = await searchMovies(it.title).catch(() => []); hit = r.find(m => it.year && Math.abs(Number(m.year) - Number(it.year)) <= 1 && m.title.toLowerCase() === it.title.toLowerCase()) || r.find(m => it.year && String(m.year) === String(it.year)) || r.find(m => m.title.toLowerCase() === it.title.toLowerCase()) || (!it.year ? r[0] : null); }
-      if (!hit) return null; c = { id: String(hit.id), lang: hit.lang || '', title: hit.title, year: hit.year }; cache[it.key] = c; return c;
-    };
-    const take = async items => { // check items in order until there are enough
+    const onDiscord = new Set(discordPicked().keys());
+    const kept = [], seenTm = new Set(), stats = { foreign: 0, discord: 0, watched: 0, sequel: 0, sequels: [], missed: [], read: 0, sources: [] };
+    const look = it => webLook(it, fake);
+    let spare = []; // the next ones on the list after it's full: they take the place of any that get picked in Discord
+    const take = async items => { // check items in order until there are enough (returns how many it went through)
+      let used = items.length;
       for (let i = 0; i < items.length && kept.length < max; i += 8) {
         const batch = items.slice(i, i + 8); const tms = await Promise.all(batch.map(it => look(it).catch(() => null)));
-        batch.forEach((it, j) => { if (kept.length >= max) return; const tm = tms[j]; stats.read++;
+        const gaps = src.skipSequels === false ? [] : await Promise.all(batch.map((it, j) => tms[j] && !onDiscord.has(tms[j].id) ? sequelGap(tms[j], src, it).catch(() => null) : null));
+        batch.forEach((it, j) => { if (kept.length >= max) return; const tm = tms[j]; stats.read++; if (kept.length + 1 >= max) used = i + j + 1;
           if (!tm) { stats.missed.push(`${it.title}${it.year ? ` (${it.year})` : ''}`); return; }
           if (seenTm.has(tm.id)) return; seenTm.add(tm.id);
           if (src.english !== false && tm.lang && tm.lang !== 'en') { stats.foreign++; return; }
-          if (src.skipDiscord !== false && onDiscord.has(tm.id)) { stats.discord++; return; }
+          if (onDiscord.has(tm.id)) { stats.discord++; return; } // (always: a movie someone picked in Discord is theirs)
           if (src.skipWatched !== false && lb.lookup({ title: tm.title || it.title, year: tm.year || it.year, tmdbId: tm.id })) { stats.watched++; return; }
+          if (gaps[j]) { stats.sequel++; if (stats.sequels.length < 50) stats.sequels.push(`${tm.title || it.title} (needs ${gaps[j].title}${gaps[j].year ? ` (${gaps[j].year})` : ''})`); return; } // 🎞️ you haven't watched the one before it
           kept.push({ ...it, tm, rank: kept.length + 1 }); });
         l.job = { running: true, step: `Checking the movies… ${kept.length} of ${max} so far`, done: stats.read, total: 0, at: Date.now() }; pushState();
       }
+      return used;
     };
-    if (fake) await take(fake);
+    const keepSpare = (items, used) => { if (kept.length >= max) spare = items.slice(used, used + 120).map(it => ({ key: it.key, title: it.title, year: it.year, imdbId: it.imdbId, tmdbId: it.tmdbId, lang: it.lang })); };
+    if (fake) keepSpare(fake, await take(fake));
     else for (const url of urls) { // each link in order, reading deeper (more pages) while it still needs movies
       if (kept.length >= max) break;
       let want = (max - kept.length) * 2 + 20, items = [], err = null;
       try { items = await listsrc.readList(url, Math.min(2500, want), (page, n) => { l.job = { running: true, step: `Reading ${listsrc.siteOf(url) === 'imdb' ? 'IMDb' : 'Rotten Tomatoes'}… page ${page} (${n} movies)`, done: 0, total: 0, at: Date.now() }; pushState(); }); } catch (e) { err = e.message; }
       stats.sources.push({ url, found: items.length, error: err });
-      const before = kept.length; await take(items);
-      if (kept.length < max && items.length >= Math.min(2500, want) && !err) { const more = await listsrc.readList(url, Math.min(2500, want * 3), () => {}).catch(() => []); await take(more.slice(items.length)); } // (still short: read further down that list)
+      const before = kept.length; keepSpare(items, await take(items));
+      if (kept.length < max && items.length >= Math.min(2500, want) && !err) { const more = (await listsrc.readList(url, Math.min(2500, want * 3), () => {}).catch(() => [])).slice(items.length); keepSpare(more, await take(more)); } // (still short: read further down that list)
       stats.sources[stats.sources.length - 1].used = kept.length - before;
     }
     if (!kept.length) throw new Error(stats.sources.find(x => x.error)?.error || 'no movies left after skipping (try turning a skip off)');
@@ -2088,15 +2117,15 @@ async function syncWebList(l) {
     let k = 0;
     await Promise.all(Array.from({ length: fake ? 1 : 5 }, async () => { while (k < todo.length) { const it = todo[k++];
       try { const removed = l.entries.find(e => String(e.tmdbId) === it.tm.id && e.status === 'removed');
-        if (removed) { removed.status = 'active'; removed.webRank = it.rank; }
+        if (removed) { removed.status = 'active'; removed.webRank = it.rank; delete removed.webTaken; }
         else if (fake) l.entries.push({ id: 'film-' + it.tm.id + '-' + uid().slice(0, 4), tmdbId: it.tm.id, label: it.title, sub: String(it.year || ''), weight: 1, status: 'active', addedAt: Date.now(), webRank: it.rank });
         else { const e = await addFilm(l, it.tm.id); e.webRank = it.rank; }
         added++; } catch { stats.missed.push(it.title); }
       l.job.done++; if (l.job.done % 10 === 0) pushState(); } }));
     for (const e of l.entries) if (e.tmdbId && !want.has(String(e.tmdbId)) && ['active', 'paused'].includes(e.status)) { e.status = 'removed'; gone++; }
-    l.source = { ...src, at: Date.now(), count: kept.length, added, gone, foreign: stats.foreign, discord: stats.discord, watched: stats.watched, missed: stats.missed.slice(0, 50), sources: stats.sources, error: null };
+    l.source = { ...src, spare, rulesV: 2, at: Date.now(), count: kept.length, added, gone, foreign: stats.foreign, discord: stats.discord, watched: stats.watched, sequel: stats.sequel, sequels: stats.sequels, missed: stats.missed.slice(0, 50), sources: stats.sources, error: null };
     l.job = null; save(); pushState(); refreshPreview();
-    const skip = [stats.foreign && `${stats.foreign} not in English`, stats.discord && `${stats.discord} on the Discord list`, stats.watched && `${stats.watched} you've watched`].filter(Boolean).join(', ');
+    const skip = [stats.foreign && `${stats.foreign} not in English`, stats.discord && `${stats.discord} picked in Discord`, stats.watched && `${stats.watched} you've watched`, stats.sequel && `${stats.sequel} sequels (you haven't seen the one before)`].filter(Boolean).join(', ');
     broadcast({ type: 'toast', text: `🌐 “${l.name}” is ready: ${kept.length} movies (${added} new${gone ? `, ${gone} left` : ''})${skip ? ` · skipped ${skip}` : ''}${kept.length < max ? ` · only found ${kept.length} of ${max}: add another link to fill it up` : ''}` }, 'control');
   } catch (e) {
     console.error('[web list] ' + e.message);
@@ -2104,13 +2133,72 @@ async function syncWebList(l) {
     broadcast({ type: 'toast', text: `⚠️ ${l.name}: ${e.message}` }, 'control');
   }
 }
+// 🎬→🌐 someone picked (in Discord) a movie that's on a web list: it leaves that list and the next movie on it takes its place
+async function webReplace(l, rank, extraPicked) {
+  const src = l.source || {}, picked = new Set([...discordPicked().keys(), ...(extraPicked ? extraPicked.keys() : [])]);
+  const inList = new Set(l.entries.filter(e => e.tmdbId && ['active', 'paused'].includes(e.status)).map(e => String(e.tmdbId))), spare = [...(src.spare || [])];
+  while (spare.length) {
+    const it = spare.shift(), tm = await webLook(it, src.fake).catch(() => null); if (!tm) continue;
+    if (inList.has(tm.id) || picked.has(tm.id)) continue;
+    if (src.english !== false && tm.lang && tm.lang !== 'en') continue;
+    if (src.skipWatched !== false && lb.lookup({ title: tm.title || it.title, year: tm.year || it.year, tmdbId: tm.id })) continue;
+    if (src.skipSequels !== false && await sequelGap(tm, src, it).catch(() => null)) continue; // 🎞️
+    let e = l.entries.find(x => String(x.tmdbId) === tm.id && x.status === 'removed');
+    try {
+      if (e) { e.status = 'active'; delete e.webTaken; }
+      else if (src.fake) { e = { id: 'film-' + tm.id + '-' + uid().slice(0, 4), tmdbId: tm.id, label: it.title, sub: String(it.year || ''), weight: 1, status: 'active', addedAt: Date.now() }; l.entries.push(e); }
+      else e = await addFilm(l, tm.id);
+    } catch { continue; }
+    e.webRank = rank; e.webSpare = true; l.source.spare = spare; return e;
+  }
+  l.source.spare = [];
+  if (!src.fake) setTimeout(() => { if (!l.job?.running) syncWebList(l).catch(() => {}); }, 1500); // no spares left: read the lists again (it fills back up)
+  return null;
+}
+let webSweepBusy = false;
+async function webTakenSweep(opts = {}) { // opts.extra = Map(tmdbId → pretend Discord pick) for the test; opts.only = one list
+  if (webSweepBusy) return []; webSweepBusy = true; const done = [];
+  try {
+    const picked = discordPicked(); for (const [k, v] of opts.extra || []) picked.set(k, v);
+    for (const l of db.lists) {
+      if (l.source?.kind !== 'web' || l.job?.running || (opts.only && l.id !== opts.only)) continue;
+      if (live.game?.listId === l.id && ['lobby', 'running'].includes(live.phase)) continue; // its battle is going: after it's over
+      const hits = l.entries.filter(e => e.tmdbId && ['active', 'paused'].includes(e.status) && picked.has(String(e.tmdbId)));
+      for (const e of hits) {
+        const d = picked.get(String(e.tmdbId)), by = d.backers?.[0]?.name || d.by || db.settings.streamerName || db.owner?.name || 'someone';
+        e.status = 'removed'; e.webTaken = { by, at: Date.now() };
+        const rep = await webReplace(l, e.webRank, opts.extra);
+        const t = { title: `${e.label}${e.sub ? ` (${e.sub})` : ''}`, by, at: Date.now(), rep: rep ? `${rep.label}${rep.sub ? ` (${rep.sub})` : ''}` : null };
+        l.source.taken = [t, ...(l.source.taken || [])].slice(0, 20); done.push({ list: l.name, ...t });
+        broadcast({ type: 'toast', text: `🎬 ${hEsc(by)} picked <b>${hEsc(t.title)}</b> in Discord, so it left “${hEsc(l.name)}”${t.rep ? ` and <b>${hEsc(t.rep)}</b> took its place` : ' (no more spares: reading the list again to fill it back up)'}.` }, 'control');
+      }
+      if (hits.length) { save(); pushState(); if (db.activeListId === l.id) refreshPreview(); }
+    }
+  } catch (e) { console.error('[web list] ' + e.message); }
+  finally { webSweepBusy = false; }
+  return done;
+}
+setInterval(() => webTakenSweep().catch(() => {}), 5000);
+setTimeout(async () => { // 🎞️🎬 lists made before 1.62.3: read them again once with the new rules (sequels + picked in Discord), which also saves spares
+  for (const l of db.lists) if (l.source?.kind === 'web' && !l.source.fake && (l.source.rulesV || 0) < 2 && !l.job?.running && (l.source.urls || []).length) await syncWebList(l).catch(() => {});
+}, 45000);
+app.post('/api/test/web-taken', async (req, res) => { // 🧪 pretend someone picks a movie from the pretend IMDb battle in Discord (nothing real changes)
+  const l = [...db.lists].reverse().find(x => x.source?.kind === 'web' && x.source.fake);
+  if (!l) return res.status(400).json({ error: 'Make the pretend IMDb battle first: 🧪 Test tab → 🌐 IMDb / Rotten Tomatoes battle → Try it.' });
+  if (l.job?.running) return res.status(400).json({ error: 'The pretend battle is still filling up, try again in a second.' });
+  const act = l.entries.filter(e => e.status === 'active' && e.tmdbId); if (!act.length) return res.status(400).json({ error: 'The pretend battle has no movies.' });
+  const e = act[Math.floor(Math.random() * act.length)], before = act.length, spares = (l.source.spare || []).length;
+  for (let i = 0; i < 20 && webSweepBusy; i++) await new Promise(r => setTimeout(r, 100));
+  const done = await webTakenSweep({ only: l.id, extra: new Map([[String(e.tmdbId), { by: 'Pretend_Picker' }]]) });
+  res.json({ ok: true, list: l.name, picked: `${e.label}${e.sub ? ` (${e.sub})` : ''}`, done, before, after: l.entries.filter(x => x.status === 'active').length, sparesBefore: spares, sparesAfter: (l.source.spare || []).length, listId: l.id });
+});
 app.get('/api/lists/web/presets', (req, res) => res.json(listsrc.PRESETS));
 app.post('/api/lists/web', (req, res) => { // make a new IMDb / Rotten Tomatoes battle, or change + update one
   const b = req.body || {}; let l = b.listId ? getList(b.listId) : null;
   if (l?.job?.running) return res.status(400).json({ error: 'Already updating, give it a minute.' });
   const urls = Array.isArray(b.urls) ? b.urls.map(u => String(u).trim()).filter(u => /^https?:\/\//i.test(u)).slice(0, 10) : null;
   if (urls) { const bad = urls.find(u => !listsrc.siteOf(u)); if (bad) return res.status(400).json({ error: `That link isn't IMDb or Rotten Tomatoes: ${bad}` }); }
-  const opts = { ...(urls ? { urls } : {}), ...(b.max != null ? { max: Math.max(10, Math.min(1000, Number(b.max) || 500)) } : {}), ...['english', 'skipDiscord', 'skipWatched'].reduce((o, k) => (b[k] != null ? { ...o, [k]: !!b[k] } : o), {}) };
+  const opts = { ...(urls ? { urls } : {}), ...(b.max != null ? { max: Math.max(10, Math.min(1000, Number(b.max) || 500)) } : {}), ...['english', 'skipDiscord', 'skipWatched', 'skipSequels'].reduce((o, k) => (b[k] != null ? { ...o, [k]: !!b[k] } : o), {}) };
   if (!l) {
     if (!b.fake && !(urls || []).length) return res.status(400).json({ error: 'Add at least one IMDb or Rotten Tomatoes link.' });
     l = { id: uid(), name: String(b.name || '💩 The 500 worst movies').slice(0, 60), type: 'films', entries: [], joinOpen: false, source: { kind: 'web', max: 500, english: true, skipDiscord: true, skipWatched: true, urls: [], ...opts, ...(b.fake ? { fake: b.fake } : {}) } };
@@ -2121,9 +2209,11 @@ app.post('/api/lists/web', (req, res) => { // make a new IMDb / Rotten Tomatoes 
 });
 app.post('/api/test/web-list', (req, res) => { // 🧪 a pretend IMDb battle (made-up movies, no internet): shows the skipping + "keep going until full"
   const fake = Array.from({ length: 40 }, (_, i) => ({ key: 'tt-test-' + i, title: `Bad Movie ${i + 1}`, year: 1990 + (i % 30), tmdbId: 990000 + i, lang: i % 7 === 3 ? 'fr' : 'en' }));
+  fake[1].coll = 'c1'; fake[12] = { ...fake[12], title: 'Bad Movie 2: The Sequel', year: 2005, coll: 'c1' }; // 🎞️ a pretend series: the sequel is skipped (you haven't watched Bad Movie 2)
+  const fakeColl = { c1: [{ id: '990001', title: 'Bad Movie 2', year: '1991', date: '1991-05-01' }, { id: '990012', title: 'Bad Movie 2: The Sequel', year: '2005', date: '2005-05-01' }] };
   const movies = getList('movies'); if (movies && !movies.entries.some(e => String(e.tmdbId) === '990005')) movies.entries.push({ id: 'film-990005-test', tmdbId: 990005, label: 'Bad Movie 6', sub: '1995', weight: 1, status: 'active', addedAt: Date.now(), test: true });
   req.body = { name: '🧪 Pretend worst movies (IMDb test)', fake, max: Number(req.body?.max) || 20, english: true, skipDiscord: true, skipWatched: true };
-  const b = req.body, l = { id: uid(), name: b.name, type: 'films', entries: [], joinOpen: false, source: { kind: 'web', max: b.max, english: true, skipDiscord: true, skipWatched: true, urls: [], fake } };
+  const b = req.body, l = { id: uid(), name: b.name, type: 'films', entries: [], joinOpen: false, source: { kind: 'web', max: b.max, english: true, skipDiscord: true, skipWatched: true, skipSequels: true, urls: [], fake, fakeColl } };
   db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); syncWebList(l).then(() => { const mv = getList('movies'); if (mv) mv.entries = mv.entries.filter(e => e.id !== 'film-990005-test'); save(); });
   pushState(); res.json({ ok: true, id: l.id });
 });
