@@ -70,6 +70,7 @@ export function onChat(m, opts = {}) {
   const t = opts.imported ? (m.at || Date.now()) : Date.now(); // imported = chat the backup bot server saw while Movie Royal was closed
   const v = tracked(m.login) ? viewer(m.login, m.name) : null;
   if (v) {
+  v.byMonth ||= {}; v.byYear ||= {}; v.msgs ||= 0; // (an older / partial viewer record)
   v.last = Math.max(v.last || 0, t); v.msgs++; v.byMonth[month(t)] = (v.byMonth[month(t)] || 0) + 1; v.byYear[year(t)] = (v.byYear[year(t)] || 0) + 1;
   if (!opts.imported || (streamKey() && t >= streamKey())) { // (old chat doesn't count toward this stream)
     if (v.streamKey !== streamKey()) { v.streamKey = streamKey(); v.streamMsgs = 0; v.streamWatch = 0; }

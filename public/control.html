@@ -273,6 +273,7 @@
   .srHit:hover, .srHit:focus { background:var(--panel2); } .srHit b { display:block; font-size:13.5px; font-weight:600; } .srHit small { color:var(--muted,#b9a8d8); font-size:12px; }
   .setFlash { outline:2px solid var(--gold,#ffc94a); outline-offset:3px; border-radius:8px; animation:setFlash 2.4s ease; }
   @keyframes setFlash { 0%, 30% { box-shadow:0 0 0 6px #ffc94a55; } 100% { box-shadow:0 0 0 0 transparent; } }
+  .redoBtn { width:100%; margin-top:6px; padding:10px; border-radius:12px; background:linear-gradient(135deg,#5b3a9e,#3a2a6e); border:1px solid #8a6ad8; white-space:normal; }
   .srRow { padding:6px 8px; border-radius:8px; background:var(--panel2); margin:4px 0; } .srRow select { width:auto; max-width:100%; }
   .tmRow { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:center; padding:8px 12px; border-radius:10px; background:var(--panel2); margin:6px 0; }
   .tmRow input[type=range] { width:100%; } .tmRow label { margin:0 0 2px; }
@@ -567,6 +568,7 @@
   <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
   <div class="side">
     <button class="primary big" id="startBtn" onclick="start()">▶ START ROYAL</button>
+    <div id="redoBox"></div>
     <div data-ann="battle" style="margin-top:6px"></div>
     <div class="bigtimer" id="bigTimer" style="display:none"><div id="bigTimerLbl"></div><div id="bigTimerNum"></div></div>
     <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
@@ -985,6 +987,11 @@
     <p class="help">Walks a pretend series (Wizard School 1–4) through every step: sequels banned, someone picks the first one and gets the lock, it gets watched, the next one opens only for them, they pick other movies, it opens up for everyone. Nothing real changes. The real series are in 🚫 Banned Movies → 🎞️ Series.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="seriesTest()">🎞️ Run the pretend series</button><button onclick="setView('settings');setSub('bans');setTimeout(()=>$('seriesCard')?.scrollIntoView({block:'start'}),200)" title="Open 🚫 Banned Movies → 🎞️ Series">↗ See the real series</button></div>
     <div id="tSrOut"></div>
+  </div>
+  <div class="card">
+    <h3>⏭️ Pass, sit out and skip a battle</h3>
+    <p class="help">With the 💬 pretend chat (it opens by itself): <b>🏆 Winner passes</b> = a pretend movie winner types <code>!pass</code>, the bot asks if they want to sit out the rest of tonight, and they answer yes (a pretend winner changes nothing). Then the <b>🔁 Redo the battle without…</b> button shows on the Battle tab. <b>⏭️ Someone skips a movie</b> = a viewer types <code>!skip 1</code> (that movie sits out the next battle), then again 8 seconds later to put it back.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="passFlowTest()" title="A pretend winner passes in chat and answers the sit out question">🏆 Winner passes</button><button onclick="api('/api/test/skip-one',{}).then(r=>{if(r.ok===false)return toast(esc(r.error));pchat(true,r.name);toast('⏭️ '+esc(r.name)+' typed !skip 1: see the Battle list (⏭️ skips the next battle)')}).catch(()=>{})" title="A viewer types !skip 1, then again to put it back">⏭️ Someone skips a movie</button></div>
   </div>
   <div class="card">
     <h3>🔍 Settings search</h3>
@@ -1669,7 +1676,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards under category headers (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2291,6 +2298,7 @@ function renderBattle() {
   const busy = S.phase === 'lobby' || S.phase === 'running', l = list();
   $('startBtn').disabled = false; $('startBtn').classList.toggle('danger', busy); $('startBtn').classList.toggle('primary', !busy);
   $('startBtn').textContent = busy ? '⏹ STOP BATTLE' : '▶ START ROYAL';
+  { const w = S.lastWinner, show = !!(w?.passed && !w.redone && S.phase === 'ended' && w.listId === S.activeListId), h = show ? `<button class="redoBtn" onclick="redoBattle()" title="Battle again right away, without the movie that was passed (it's back in after that)">🔁 Redo the battle without <b>${esc(w.label)}</b></button>` : ''; if ($('redoBox').dataset.k !== h) { $('redoBox').dataset.k = h; $('redoBox').innerHTML = h; } } // ⏭️ the winner passed
   $('playList').innerHTML = S.lists.map(x => `<option value="${x.id}" ${x.id === S.activeListId ? 'selected' : ''}>${esc(x.name)} — ${TYPE[x.type]}</option>`).join('');
   if (document.activeElement !== $('screenTitle')) { $('screenTitle').value = l.screenTitle || ''; $('screenTitle').placeholder = l.name; }
   const n = l.entries.filter(e => e.status === 'active').length;
@@ -2453,7 +2461,7 @@ function renderBattleList() {
   const rows = show.sort((a, b) => (isIn(a) ? 0 : 1) - (isIn(b) ? 0 : 1) || (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || (b.weight - a.weight) || a.label.localeCompare(b.label)).slice(0, 600).map(e => {
     const spot = e.kind === 'spot', on = e.status === 'active', inNow = isIn(e), pct = on && inNow ? (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1) / total * 100 : 0;
     const head = lastIn !== inNow ? `<tr class="blHead"><td colspan="${l.type === 'movies' ? 6 : 5}">${inNow ? `✅ In this battle (${all.filter(isIn).filter(hit).length})` : `💤 Not in this battle (${all.filter(x => !isIn(x)).filter(hit).length}) <small class="muted">sitting out, hasn't chatted yet, or didn't fit on the cliff</small>`}</td></tr>` : ''; lastIn = inNow;
-    const why = !inNow && on ? (l.type === 'movies' && S.settings.chatGate !== false && e.backers?.length && !S.chatters?.includes(e.backers[0].discordId) && !e.forceIn ? '<span class="tag b" title="Their picker hasn\'t typed in Twitch chat tonight (chat check)">💬 hasn\'t chatted</span>' : '<span class="tag b" title="More entries than fit on the cliff (Most pieces on the cliff); it can still get picked next time">🎲 didn\'t fit</span>') : '';
+    const why = !inNow && on && e.skipNext ? '<span class="tag b" title="Its picker typed !skip: it sits out the next battle, then it\'s back">⏭️ skips the next battle</span>' : !inNow && on && S.redoSkip?.id === e.id ? '<span class="tag b" title="Passed: the redo battle leaves it out once">🔁 left out of the redo</span>' : !inNow && on ? (l.type === 'movies' && S.settings.chatGate !== false && e.backers?.length && !S.chatters?.includes(e.backers[0].discordId) && !e.forceIn ? '<span class="tag b" title="Their picker hasn\'t typed in Twitch chat tonight (chat check)">💬 hasn\'t chatted</span>' : '<span class="tag b" title="More entries than fit on the cliff (Most pieces on the cliff); it can still get picked next time">🎲 didn\'t fit</span>') : '';
     const rt = l.type === 'movies' || l.type === 'films' || l.type === 'web' ? blRun(e.details?.runtime) : '';
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const who = l.type === 'movies' ? (spot ? 'Wildcard' : e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you') : '';
@@ -2484,6 +2492,7 @@ function renderMapSize() { // 📏 map size for every ball map (bigger cliffs, l
 }
 const msWord = v => { v = Number(v); return v === 100 ? '100% (normal)' : v < 100 ? `${v}% (smaller)` : `${v}% (bigger)`; };
 function setMapSize(v) { v = Math.max(50, Math.min(200, Math.round(Number(v) || 100))); S.settings.mapSize = v; renderMapSize(); api('/api/settings', { mapSize: v }).then(() => toast(`📏 Map size ${v}%`, 2500)); }
+async function redoBattle() { try { await api('/api/battle/redo', {}); } catch {} } // 🔁 the winner passed: battle again without that movie
 function setLaps(v) { v = Math.max(1, Math.min(50, Math.round(Number(v) || 5))); S.settings.f8Laps = v; renderLaps(); api('/api/settings', { f8Laps: v }).then(() => toast(`🏁 ${v} lap${v === 1 ? '' : 's'}`)); }
 function blInSet(l) {
   if (S.cliff && S.cliff.listId === l.id && Array.isArray(S.cliff.ids)) return new Set(S.cliff.ids);
@@ -3423,6 +3432,12 @@ async function seriesTest() { // 🧪 a pretend series, step by step
 }
 function msTestInit() { const sel = $('tMsMap'); if (!sel || sel.options.length || !S?.maps) return; sel.innerHTML = `<option value="random">🎲 Random</option>` + ballMapOpts('oval'); }
 async function msTest() { msTestInit(); try { await api('/api/test/battle', { count: 12, map: $('tMsMap').value || 'random', mapSize: Number($('tMsSize').value), lobby: 3 }); toast(`📏 Practice battle at ${esc($('tMsSize').value)}%`); } catch {} }
+async function passFlowTest() { // 🧪 pretend winner → !pass → "sit out tonight?" → yes
+  let r; try { r = await api('/api/test/claim-chat', { say: false }); } catch { return; } if (r.ok === false) return toast(esc(r.error));
+  pchat(true, r.login); toast(`🏆 ${esc(r.name)} won with ${esc(r.label || 'their movie')}: they type !pass…`, 6000);
+  const say = t => api('/api/test/chat', { name: r.login, text: t }).catch(() => {});
+  setTimeout(() => say(S?.settings?.passCommand || '!pass'), 1500); setTimeout(() => say('yes'), 7000);
+}
 let mmLast = null;
 async function mmProfile() { // 🧪 the chatter profile with each movie's luck
   if (!mmLast || ($('tMmWho').value && $('tMmWho').value !== mmLast.id)) { await mmTest(); }
@@ -4094,6 +4109,8 @@ function openSettings(force) {
       ${ck('claimApprove', '✋ When the winner types in chat, stop the claim timer and ask them in chat: watch it now (!accept) or pass (!pass). It does whatever they answer (a pass puts the movie back and they keep their luck). The ✅ Accept / ⏭️ Pass buttons on the winner card are for doing it yourself.')}
       <div class="grid2">${f('acceptCommand', '✅ Winner\'s “watch it now” chat command', '!accept')}${f('passCommand', '⏭️ Winner\'s “not tonight” chat command', '!pass')}</div>
       <div class="grid2">${f('sitOutCommand', '🛌 “Sit out tonight” chat command (their movies skip tonight’s battles)', '!sitout')}${f('backCommand', '🙋 “I’m back” chat command', '!imback')}</div>
+      ${f('skipCommand', '⏭️ “Skip one battle” chat command (one of their movies sits out the next battle: !skip 2 or !skip Heat)', '!skip')}
+      <p class="help" style="margin:2px 0 0">When a winner passes, the bot asks them in chat if they want to sit out the rest of tonight (they answer yes / no). Anyone who sits out is told how to come back.</p>
       <p class="help">Replies to <code>${esc(s.twitchMoviesCommand)}</code> and winner posts come from <b>your own Twitch account</b> — no separate bot needed.</p>
       <h3 style="margin-top:18px">⚡ Chaos on / off</h3><div class="chaosbar" data-chaos="chaos" style="max-width:300px">${chaosButtons('chaos')}</div>
       <p class="help">Turning channel points off also pauses your Movie Royal rewards on Twitch so nobody spends points by accident.</p>

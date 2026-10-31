@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.65.0
+- 🔁 **Redo without the passed movie:** when a winner passes, a **🔁 Redo the battle without [movie]** button shows on the right of the Battle tab. It starts the battle again right away without that movie (it's back in after that).
+- 🛌 **Sit out after a pass:** the bot asks the person in chat if they want to sit out the rest of tonight. Yes = all their movies take a break until the next stream, no = they stay in.
+- 🙋 Anyone who sits out is told in chat how to come back (!imback).
+- ⏭️ **!skip:** viewers can take one of their movies out of the next battle only (`!skip 2` or `!skip Heat`; the same again puts it back). It shows as "⏭️ skips the next battle" in the battle list. The command is in Settings → 💜 Twitch & channel points and in !moviesroyal.
+- 🧪 Test tab → **⏭️ Pass, sit out and skip a battle**.
+
 ## 1.64.0
 - 🔍 **Search all settings:** a search box at the top left of ⚙️ Settings. Type a few letters ("volume", "laps", "bits", "raid"…): every match shows with its tab and section; click one (or press Enter) and it jumps there and lights it up.
 - ⚙️ **Settings cleaned up: every option is in one place** (the quick buttons on the other tabs stay):
