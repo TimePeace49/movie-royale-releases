@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.63.1
+- 🏁 **No races with more than 50 pieces** (Derek): 🎲 Random and the chat map vote leave the race maps out, they're greyed out in the map menu ("no races over 50"), and a race you picked switches to another map when the battle starts (a pop-up says which). Change the number in Settings → ⚔️ Game.
+- 📏 **Map size slider** on the right side of the Battle, Chat battle and Giveaway tabs: 50% to 200% for every ball map. Bigger cliffs and arenas, and longer race tracks (twice as long at 200%).
+- 🧪 Test tab: **📏 Map size** (a practice battle at any size, your setting stays the same) and 🏁 Race with power-ups → **🏁 Too many for a race?**
+
 ## 1.63.0
 - 🎞️ **Series go in order:** a movie in a series (like Harry Potter) can only be picked once you've watched every movie before it. The later ones go on the 🚫 Banned list as 🎞️ sequels and come off by themselves when you watch the one before. People are told which one has to be watched first.
 - 🔒 **Series locks:** whoever picks the next movie of a series gets the series locked, so nobody else can pick its next movie. When their movie gets watched, the next one opens only for them. If their next set of picks doesn't include it (or they swap it away), the series opens up for everyone.
