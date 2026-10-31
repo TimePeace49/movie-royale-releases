@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.66.1
+- 🔞 The nudity heads-up now also shows on the **winner pop-up on stream**: a short red line with about when each scene is (like "~47 min in · at 1:12:30 · near the end"). The Winner card in the app still lists every scene. It's never typed in Twitch chat. Turn the stream part off with the 📺 switch in Settings → 🎬 Movie info.
+- 🧪 Test tab → 🔞 Nudity heads-up → **⚔️ Practice battle**: a practice round whose winner gets a pretend nudity result, so you can see both.
+
 ## 1.66.0
 - 🔞 **Nudity heads-up on the Winner card:** when a movie wins, Movie Royal checks its IMDb Parents Guide (the "Sex & Nudity" part) and TMDB's tags. If it has nudity, the Winner card on the Battle tab says so **in red** and lists every scene it found, each with about when it is in the movie ("~47 min in", "at 1:12:30", "near the end", or "time not listed" when nobody wrote a time). Orange = sex scenes but no nudity listed. Only you see it: never on stream or in chat. Turn it off in Settings → 🎬 Movie info.
 - ⭐ **Ratings on the 500 worst list:** IMDb / Rotten Tomatoes battles show each movie's rating from the list (IMDb out of 10 or 🍅 %, or TMDB's rating when the list didn't show one) in the 🎬 Movie Pool and in the battle list under the battle. Your list picks them up the next time it updates (on open).

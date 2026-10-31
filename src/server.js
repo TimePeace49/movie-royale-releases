@@ -98,7 +98,7 @@ function gameResult(m) {
       const f = live.game.fighters.find(x => x.id === m.winnerId);
       if (!f) return;
       if (live.game.cards) { live.lastWinner = { ...f, at: Date.now(), cards: true, gameId: live.game.id, listName: live.game.testName || '🃏 Card battle' }; try { markMapRun(live.game.map); } catch {} cards.result({ fightId: live.game.cards, winnerId: f.id, order: m.order }); save(); pushState(); return; } // 🃏 a card battle on a ball map
-      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history
+      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; if (live.game.nudeTest) { live.lastWinner.nudity = fakeNudity(f.details?.runtime); nudeToStream(f, live.lastWinner.nudity); } pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history (🔞 nudeTest: a pretend nudity result for the winner)
       const list = getList(live.game.listId);
       try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
       markMapRun(live.game.map); // full results + lifetime stats (every round, series rounds too)
@@ -483,6 +483,15 @@ async function fetchWinnerNudity(f, rec) {
   catch (e) { r = { unknown: true, error: e.message }; }
   rec.winner.nudity = r; save(); historyVersion++;
   if (live.lastWinner?.id === f.id) { live.lastWinner.nudity = r; pushState(); }
+  nudeToStream(f, r);
+}
+// 📺 the winner pop-up on stream gets a short red line with about when (1.66.1, Derek: fine on the pop-up, NOT typed in chat)
+const nudeSlim = n => { if (!n || (!n.has && !n.sex)) return null; const t = [...new Set((n.scenes || []).map(x => x.label).filter(l => l !== 'time not listed'))]; return { has: !!n.has, sex: !!n.sex, level: n.level || null, times: t.slice(0, 6), more: Math.max(0, t.length - 6) }; };
+function nudeToStream(f, n) { if (db.settings.nudityCheck === false || db.settings.nudityStream === false) return; broadcast({ type: 'nudity', id: f.id, nudity: nudeSlim(n) }, 'overlay'); }
+function fakeNudity(runtime = 112) { // 🧪 a pretend Parents Guide page → the same reader + rules the real check uses
+  const items = ['In the opening scene a man runs out of a lake naked; his bare buttocks are seen from behind.', 'A woman is shown topless in a shower scene at 1:12:30, for a few seconds.', 'A couple has sex under the sheets, no nudity is shown.', 'There is no frontal nudity.', 'Near the end, a woman takes off her top and her breasts are briefly seen.', 'Around 47 minutes in, people skinny dip in a pool at night (from a distance).', 'A painting of a nude woman hangs on a wall.'];
+  const html = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { categories: [{ category: { id: 'NUDITY', text: 'Sex & Nudity' }, severity: { text: 'Moderate' }, guideItems: { edges: items.map(t => ({ node: { text: { plaidHtml: t } } })) } }] } } })}</script>`;
+  return { ...nudeJudge({ guide: nudeParse(html), tags: ['female nudity'], runtime }), at: Date.now(), test: true };
 }
 // winner goes into Twitch chat once the replay on screen is done (so chat doesn't spoil it)
 function announceWinner(f, list) {
@@ -2316,11 +2325,7 @@ app.post('/api/lists/web', (req, res) => { // make a new IMDb / Rotten Tomatoes 
 });
 app.post('/api/test/nudity', async (req, res) => { // 🧪 🔞 the nudity heads-up: a real check of any movie, or a pretend one (no internet)
   const b = req.body || {};
-  if (b.fake) { // pretend Parents Guide page → the same reader + rules the real check uses
-    const items = ['In the opening scene a man runs out of a lake naked; his bare buttocks are seen from behind.', 'A woman is shown topless in a shower scene at 1:12:30, for a few seconds.', 'A couple has sex under the sheets, no nudity is shown.', 'There is no frontal nudity.', 'Near the end, a woman takes off her top and her breasts are briefly seen.', 'Around 47 minutes in, people skinny dip in a pool at night (from a distance).', 'A painting of a nude woman hangs on a wall.'];
-    const html = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { categories: [{ category: { id: 'NUDITY', text: 'Sex & Nudity' }, severity: { text: 'Moderate' }, guideItems: { edges: items.map(t => ({ node: { text: { plaidHtml: t } } })) } }] } } })}</script>`;
-    return res.json({ title: 'Pretend Movie (2001)', runtime: 112, nudity: { ...nudeJudge({ guide: nudeParse(html), tags: ['female nudity'], runtime: 112 }), at: Date.now() } });
-  }
+  if (b.fake) return res.json({ title: 'Pretend Movie (2001)', runtime: 112, nudity: fakeNudity(112) }); // (no internet)
   const q = String(b.query || '').trim(); if (!q) return res.status(400).json({ error: 'Type a movie name first.' });
   try {
     const hit = /^\d+$/.test(q) ? { id: q } : (await searchMovies(q))[0]; if (!hit) return res.status(404).json({ error: `Couldn't find “${q}” on TMDB.` });
@@ -3220,7 +3225,7 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
   let tmap = req.body?.map && req.body.map !== 'random' && (mapById(req.body.map) || (req.body.chars && isCharMap(req.body.map))) ? req.body.map : req.body?.map === 'random' || (isCharMap(currentMap()) && !req.body?.chars) ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   let raceSkipped = null; if (isRaceMap(tmap) && fighters.length > raceMax()) { raceSkipped = tmap; tmap = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(tmap)?.name || tmap)} instead.` }, 'control'); }
-  live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, map: tmap, startedAt: Date.now(), secs: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList) };
+  live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, nudeTest: !!req.body?.nudity, map: tmap, startedAt: Date.now(), secs: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList) };
   live.phase = 'lobby'; live.claim = null;
   if (isCharMap(tmap)) { cards.setShow(false); cards.endChars(); const err = startCharFight(req.body?.chaos ? '🤪 Chaos practice round' : req.body?.showdownTest ? '🥊 Final fight test' : '🧪 Practice round', true, !!req.body?.showdownTest); return err ? res.status(400).json({ error: err }) : res.json({ ok: true }); } // 🧍 a character-only map
   broadcast({ type: 'start', mapSize: req.body?.mapSize != null ? clampN(req.body.mapSize, 50, 200, 100) / 100 : mapSizeK(), gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : tList ? `🧪 Practice: ${tList.screenTitle || tList.name}` : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList), pacer: req.body?.pacer != null ? clampN(req.body.pacer, 0, 100, 50) : fightPacer(tList), fairOdds: !req.body?.racePowers, racePowers: !!req.body?.racePowers, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [], showdownTest: !!req.body?.showdownTest }, 'overlay');

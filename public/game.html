@@ -98,6 +98,10 @@
   #win .rate .lg.rt { background:#fa320a; color:#fff; } #win .rate .lg.imdb { background:#f5c518; color:#000; } #win .rate .lg.lb { background:#202830; color:#fff; }
   #win .rate .lg.lb i { display:inline-block; width:10px; height:10px; border-radius:50%; margin:0 1px; } 
   #win .rate.wait b { opacity:.45; animation:blink 1s infinite alternate; }
+  /* 🔞 nudity heads-up with about when (1.66.1, Derek: fine on the pop-up) */
+  #win .nude { display:none; margin-top:14px; font-size:24px; font-weight:800; line-height:1.3; color:#ff7070; background:rgba(255,40,40,.13); border:2px solid rgba(255,90,90,.65); border-radius:14px; padding:8px 18px; max-width:100%; }
+  #win .nude.on { display:block; } #win .nude.sx { color:#ffbf66; background:rgba(255,160,40,.12); border-color:rgba(255,170,60,.6); }
+  #win .nude small { display:block; font-size:19px; font-weight:700; opacity:.95; margin-top:2px; }
   @keyframes blink { to { opacity:.15 } }
   #win.spotwin .kick { font-size:56px; }
   @keyframes stamp { from { transform:rotate(-20deg) scale(3); opacity:0 } to { transform:rotate(9deg) scale(1); opacity:1 } }
@@ -167,6 +171,7 @@
       <h1 class="display" id="wTitle"></h1>
       <div class="year" id="wYear"></div>
       <div class="ratings" id="wRatings"></div>
+      <div class="nude" id="wNude"></div>
       <div class="meta" id="wMeta"></div>
       <div class="syn" id="wSyn"></div>
       <div class="owner" id="wOwner"></div>
@@ -5229,7 +5234,11 @@ function suddenDeathNow() {
 // ================= HTML cards =================
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const ratingsById = {};
+const ratingsById = {}, nudeById = {};
+function nudeFill(n) { // 🔞 the red line on the winner pop-up: about when each scene is
+  const el = $('wNude'); el.classList.toggle('on', !!n); el.classList.toggle('sx', !!n && !n.has); if (!n) { el.innerHTML = ''; return; }
+  el.innerHTML = `${n.has ? '🔞 Nudity' : '💋 Sex scenes'}${n.level ? ` (IMDb: ${esc(n.level)})` : ''}<small>${n.times?.length ? esc(n.times.join(' · ')) + (n.more ? ` · +${n.more} more` : '') : 'no times listed'}</small>`;
+}
 function ratingsHtml(r, waiting) {
   const one = (cls, logo, v) => `<div class="rate${!v && waiting ? ' wait' : ''}"><span class="lg ${cls}">${logo}</span><b>${esc(v || (waiting ? '…' : '—'))}</b></div>`;
   return one('rt', '🍅 RT', r.rt) + one('imdb', 'IMDb', r.imdb) + one('lb', '<i style="background:#ff8000"></i><i style="background:#00e054"></i><i style="background:#40bcf4"></i>', r.lb);
@@ -5250,6 +5259,7 @@ function fillWin(f) {
     const r = ratingsById[f.id] || f.ratings;
     $('wRatings').innerHTML = ratingsHtml(r || {}, !r);
   } else $('wYear').textContent = f.sub || '';
+  nudeFill(nudeById[f.id] || null);
   const rows = [];
   if (d.director) rows.push(`<div><b>Director</b>${esc(d.director)}</div>`);
   if (d.cast?.length) rows.push(`<div><b>Starring</b>${esc(d.cast.join(', '))}</div>`);
@@ -5703,6 +5713,7 @@ function handleMsg(m) {
     else if (m.type === 'claimExpired') claimExpired();
     else if (m.type === 'claimWaiting') claimWaiting(m);
     else if (m.type === 'claimPassed') claimPassed(m);
+    else if (m.type === 'nudity') { nudeById[m.id] = m.nudity; const f = winner?.id === m.id ? winner : claimWinner?.id === m.id ? claimWinner : null; if (f) nudeFill(m.nudity); }
     else if (m.type === 'ratings') { ratingsById[m.id] = m.ratings; const f = winner?.id === m.id ? winner : claimWinner?.id === m.id ? claimWinner : null; if (f && !$('win').classList.contains('hidden')) $('wRatings').innerHTML = ratingsHtml(m.ratings, false); }
     else if (m.type === 'reloadSounds') SFX.reload();
     else if (m.type === 'shuffle') shufflePieces();

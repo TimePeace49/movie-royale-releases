@@ -1008,8 +1008,8 @@
   </div>
   <div class="card">
     <h3>🔞 Nudity heads-up</h3>
-    <p class="help">What the red warning on the Winner card looks like when a movie with nudity wins: every scene from the IMDb Parents Guide with about when it is in the movie. <b>🧪 Pretend one</b> = a made-up movie (no internet). <b>🔍 Check a movie</b> = the real check for any movie you type (needs your TMDB key; IMDb is read like a browser does). Only you ever see it.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="nudeTest(true)">🧪 Pretend one</button><input id="tNudeQ" class="grow" style="min-width:160px" placeholder="A movie name, like Titanic" onkeydown="if(event.key==='Enter')nudeTest(false)"><button onclick="nudeTest(false)" title="Look this movie up for real: IMDb Parents Guide + TMDB">🔍 Check a movie</button></div><div id="tNudeOut" style="margin-top:6px"></div>
+    <p class="help">What the red warning on the Winner card looks like when a movie with nudity wins: every scene from the IMDb Parents Guide with about when it is in the movie. <b>🧪 Pretend one</b> = a made-up movie (no internet). <b>🔍 Check a movie</b> = the real check for any movie you type (needs your TMDB key; IMDb is read like a browser does). <b>⚔️ Practice battle</b> = a practice round whose winner gets a pretend nudity result: see the Winner card and the red line on the winner pop-up on stream. It's never typed in chat.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="nudeTest(true)">🧪 Pretend one</button><button onclick="testBattle({nudity:true, count:6})" title="A practice round whose winner gets a pretend nudity result (Winner card + the pop-up on stream)">⚔️ Practice battle</button><input id="tNudeQ" class="grow" style="min-width:160px" placeholder="A movie name, like Titanic" onkeydown="if(event.key==='Enter')nudeTest(false)"><button onclick="nudeTest(false)" title="Look this movie up for real: IMDb Parents Guide + TMDB">🔍 Check a movie</button></div><div id="tNudeOut" style="margin-top:6px"></div>
   </div>
   <div class="card">
     <h3>🔍 Settings search</h3>
@@ -2368,7 +2368,7 @@ function renderWinner() {
       <button onclick="api('/api/claim/close')">Next round →</button>
     </div>`;
 }
-// 🔞 the nudity heads-up on the Winner card (only here, never on stream): red = nudity, every scene with about when it is
+// 🔞 the nudity heads-up on the Winner card (the stream pop-up gets just the times, chat never gets it): red = nudity, every scene with about when it is
 function nudeHTML(n) {
   if (!n) return '';
   if (n.checking) return '<div class="nudeBox muted">🔞 Checking for nudity…</div>';
@@ -4186,7 +4186,8 @@ function openSettings(force) {
       ${f('omdbKey', 'OMDb key', 'paste here')}
       <h3 style="margin-top:18px" id="nudeSet">🔞 Nudity heads-up</h3>
       ${cki('nudityCheck', '🔞 When a movie wins, check it for nudity and warn me in red on the Winner card, with about when each scene is')}
-      <p class="help">Only you see it (in this app): never on stream or in chat. It reads the movie's IMDb Parents Guide (the "Sex &amp; Nudity" part) plus TMDB's tags on it. Times come from what people wrote there: an exact time when they gave one, otherwise a rough spot ("near the start", "near the end") or "time not listed". Try it in 🧪 Test → 🔞 Nudity heads-up.</p>
+      ${cki('nudityStream', '📺 Also show it on the winner pop-up on stream (a short red line with the times)')}
+      <p class="help">The Winner card here shows every scene; the pop-up on stream shows just the times. It's never typed in Twitch chat. It reads the movie's IMDb Parents Guide (the "Sex &amp; Nudity" part) plus TMDB's tags on it. Times come from what people wrote there: an exact time when they gave one, otherwise a rough spot ("near the start", "near the end") or "time not listed". Try it in 🧪 Test → 🔞 Nudity heads-up.</p>
       <h3 style="margin-top:18px">📗 Letterboxd</h3>
       ${f('letterboxdUser', 'Letterboxd username')}
       <p class="help">Movie Royal reads your <b>whole</b> Letterboxd profile by itself (every 6 hours, and when it starts), so watched movies are blocked automatically — nothing to download. Winners are remembered as watched too, even before you log them.
