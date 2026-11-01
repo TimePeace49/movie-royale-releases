@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.67.1
+- 🎁 **Hidden reveal (mystery) spots are ⚡ auto spots now** (Derek): when the wheel lands on one, the round timer pauses until you press 🎡 SPIN, and nobody can respin it (chat's respins are saved for later, like every auto spot). It shows (auto) on the wheel, and the spot menu calls it 🎁⚡ Hidden reveal (auto). Ticking 🎁 Hidden reveal on a timer or auto spot makes it a mystery spot; unticking it leaves a plain ⚡ auto spot.
+- 🧪 Try it: Test → 🎁 Mystery spot → 🎡 Land on my mystery spot (then 🔁 Respin in 💬 Test chat).
+
 ## 1.67.0
 - 🤖 **Test all** (🧪 Test → ✅ Checklist): one button that checks everything Movie Royal can check by itself, in the background. Nothing goes on stream, in chat or in Discord, nothing is changed, and you can keep using the app while it runs (about a minute). The list ticks each check off as it's done: ✅ fine, ❌ a problem (with what to do), 🟡 worth a look, ⚪ skipped (not set up).
   - ⚙️ Your connections: Twitch (sign-in, permissions, chat, your chat bot account, channel point rewards), the Discord bot (tried with a pretend person), the 24/7 bot, the backup bot server, TMDB, OMDb, Letterboxd, donations, OBS (with the game screen in it) and updates.

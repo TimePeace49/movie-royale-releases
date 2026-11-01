@@ -24,7 +24,9 @@ export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true,
   void: { on: false, label: 'VOID', weight: 1, color: '#0b0b12', landings: 5, doomsday: false, monthly: true },
   pop: { on: true, sub: true, gift: true, bits: true, money: true, grow: true, shrink: false, spins: true, unvoid: true } };
 export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
-export const TYPES = { timer: '⏱️ Timer', mystery: '🎁 Hidden reveal (mystery)', timerlink: '⏱️🔀 Timer + Link', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', autocount: '⚡🔢 Auto + countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' }; // (1.61.4, Derek: every spot rule in the menu: 🎁 mystery + ⏱️🔀 timer + link are timer spots with the reveal / link on)
+export const TYPES = { timer: '⏱️ Timer', mystery: '🎁⚡ Hidden reveal (auto)', timerlink: '⏱️🔀 Timer + Link', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', autocount: '⚡🔢 Auto + countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' }; // (1.61.4, Derek: every spot rule in the menu: ⏱️🔀 timer + link is a timer spot with the link on; 🎁 mystery = an ⚡ auto spot with the reveal on since 1.67.1)
+// ⚡ auto behaviour (the round timer pauses, nobody can respin it): every auto kind, and 🎁 mystery spots (1.67.1, Derek: "for hidden spot it is a auto spot no timer")
+export const isAutoType = t => /^auto/.test(t || '') || t === 'mystery';
 const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#ffffff', hub: '🎡', hubImage: '', lines: '#ffffff', font: 'Inter', textScale: 1, textColor: '' };
 
 export function W() {
@@ -65,7 +67,7 @@ export function cleanEntry(e) {
   // the card inside shows the hidden words / picture. Kept even while it's off, so switching it back on doesn't lose them.
   const rv = e.reveal && typeof e.reveal === 'object' ? { on: !!e.reveal.on, text: String(e.reveal.text || '').slice(0, 300), image: fileOk(e.reveal.image) } : null;
   if (rv && (rv.on || rv.text || rv.image)) out.reveal = rv;
-  if (type === 'mystery') out.reveal = { text: '', image: '', ...(out.reveal || {}), on: true }; // 🎁 the menu's mystery spot = a timer spot with the hidden reveal on
+  if (type === 'mystery') out.reveal = { text: '', image: '', ...(out.reveal || {}), on: true }; // 🎁 the menu's mystery spot = an ⚡ auto spot with the hidden reveal on
   return out;
 }
 const active = () => W().wheels.find(x => x.id === W().activeId);
@@ -83,7 +85,7 @@ function layout(w) {
 }
 const rulesOn = w => w?.opts?.rules !== false;
 // the words shown in the slice: countdown spots show how many are left, auto spots say (auto)
-const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'autocount' ? `${e.text} (auto ${e.count})` : e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, e.maxWins - (e.wins || 0))} left)` : /^auto/.test(e.type) ? `${e.text} (auto)` : e.text;
+const slotLabel = (w, e) => !rulesOn(w) ? e.text : e.type === 'autocount' ? `${e.text} (auto ${e.count})` : e.type === 'countdown' || e.type === 'timercount' ? `${e.text} (${e.count})` : e.type === 'timermax' ? `${e.text} (${Math.max(0, e.maxWins - (e.wins || 0))} left)` : isAutoType(e.type) ? `${e.text} (auto)` : e.text;
 // a spot WON (the round timer ran out on it, or the next fresh spin started with no round timer): timer + countdown / timer + max spots count it
 function countWin(w, entryId) {
   if (!w || !rulesOn(w)) return;
@@ -256,13 +258,13 @@ function landed(w, rec) {
   if (!roundOn(w)) { if (!queue.length && rec.by?.source !== 'void' && rec.type !== 'void') followLink(w, rec); return; } // no round timer: where it stops is the win
   if (r?.state === 'ending') return finalize();
   if (!r || r.state === 'ended' || r.wheelId !== w.id) return; // no round going
-  if (/^auto/.test(rec.type) && !queue.length && w.entries.find(x => x.id === rec.entryId)?.goTo) { // ⚡ auto spot with a link: the clock pauses and the link happens right away
+  if (isAutoType(rec.type) && !queue.length && w.entries.find(x => x.id === rec.entryId)?.goTo) { // ⚡ auto spot with a link: the clock pauses and the link happens right away
     if (r.state === 'running') roundPause('auto');
     sendRound(); followLink(w, rec, true); return;
   }
   if (r.state === 'armed') { r.left = r.total; roundRun(); }
-  else if (r.state === 'paused' && r.why !== 'you' && !/^auto/.test(rec.type) && rec.type !== 'countdown') roundRun(); // moved / respun off an auto or countdown spot: the clock goes again
-  if (/^auto/.test(rec.type)) roundPause('auto');
+  else if (r.state === 'paused' && r.why !== 'you' && !isAutoType(rec.type) && rec.type !== 'countdown') roundRun(); // moved / respun off an auto or countdown spot: the clock goes again
+  if (isAutoType(rec.type)) roundPause('auto');
   else if (rec.type === 'countdown') roundPause('countdown');
   sendRound();
 }
@@ -326,7 +328,7 @@ function blocked(kind, source) {
   if (st.round?.state === 'ended' && st.round.wheelId === w?.id && roundOn(w) && ['points', 'bank', 'mine'].includes(source)) return 'the timer already ran out on this one.';
   if (kind !== 'respin') return null;
   const e = lastEntry(); if (!e || !rulesOn(w)) return null;
-  if (/^auto/.test(e.type) && source !== 'you') return `“${e.text}” is an ⚡ auto spot: no respins on it.`; // (Derek: nobody can respin an auto spot; you carry on with 🎡 SPIN)
+  if (isAutoType(e.type) && source !== 'you') return `“${e.text}” is an ⚡ auto spot: no respins on it.`; // (Derek: nobody can respin an auto spot; you carry on with 🎡 SPIN)
   if (source === 'points' && e.noPointRespin) return `“${e.text}” can't be respun with channel points.`;
   if (source === 'bank' && e.noBankRespin) return `“${e.text}” can't be respun with saved spins.`;
   return null;

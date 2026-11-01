@@ -215,7 +215,7 @@ H(/boulder/i, '🪨 Boulder (chaos power)', 'A big boulder rolls across the map,
 H(/teleport swap/i, '🌀 Teleport Swap (chaos power)', 'Random pieces swap places with each other instantly. Someone safe in the middle can end up on the edge.');
 H(/low gravity/i, '🪐 Low Gravity', 'Everything floats and slides further for a while (in Fun mode it lasts the whole battle). Hits send pieces flying.');
 H(/poltergeist/i, '👻 Poltergeist (chaos power)', 'An invisible ghost shoves random pieces around for a few seconds.');
-H(/^🎁 hidden reveal/i, '🎁 Hidden reveal (mystery spot)', 'Makes this spot a mystery: on the wheel it shows its normal words and picture (the cover). When the wheel lands on it, a card pack with that cover pops up in Movie Royal and on stream. Click the pack (or press Enter): the top tears off and a card comes out showing the hidden words / picture. With a holiday app style on, the pack and card dress up for it.');
+H(/^🎁 hidden reveal/i, '🎁 Hidden reveal (mystery spot)', 'Makes this spot a mystery: on the wheel it shows its normal words and picture (the cover). A mystery spot is an ⚡ auto spot: when it lands the round timer pauses until you press 🎡 SPIN, and nobody can respin it. When the wheel lands on it, a card pack with that cover pops up in Movie Royal and on stream. Click the pack (or press Enter): the top tears off and a card comes out showing the hidden words / picture. With a holiday app style on, the pack and card dress up for it.');
 H(/hidden picture/i, '🖼️ Hidden picture', 'A picture on the card when the pack is opened (optional, with or without hidden words).');
 H(/^tip:opens the card pack only here/i, '👀 Preview the mystery card', 'Opens this spot\'s card pack only here in Movie Royal (not on stream), so you can see how it looks.');
 H(/open the card pack/i, '🎁 Open the card pack', 'Opens the mystery spot\'s card pack: the card shows the hidden words / picture here and on stream. Works even if you closed the pack without opening it.');
@@ -225,7 +225,7 @@ H(/^🎁 try a mystery card/i, '🎁 Try a mystery card', 'A pretend mystery spo
 H(/^tip:spins the wheel onto the first mystery spot|^🎡 land on my mystery spot/i, '🎡 Land on my mystery spot', 'Spins the picked wheel onto its first mystery spot (a spot with 🎁 Hidden reveal on), so you can try the real thing.');
 H(/^tip:mystery card look/i, '🎨 Mystery card look', 'Which look the test card pack gets: your app style, normal, or a holiday.');
 H(/dress up the wheel's mystery card packs|mystery card packs get the holiday look/i, '🎁 Holiday mystery packs', 'On (the default): when a holiday app style is on, the wheel\'s 🎁 mystery card packs and cards get that holiday\'s look on stream too (pumpkins and bats for Halloween, snowflakes and trees for Christmas…). Off = always the normal purple and gold pack.');
-H(/^🎁 mystery$|^tip:hidden reveal: /i, '🎁 Mystery spot', 'This spot has a hidden reveal: a card pack pops up when the wheel lands on it.');
+H(/^🎁 mystery$|^tip:hidden reveal: /i, '🎁 Mystery spot', 'This spot has a hidden reveal: a card pack pops up when the wheel lands on it. It\'s an ⚡ auto spot: the round timer pauses and nobody can respin it.');
 H(/^🎁 mystery spot \(hidden reveal\)$|^🎥 obs switches|^📋 battle list, 🏁 race laps/i, '🧪 Test card', 'Buttons to try this feature.');
 H(/^🎁 mystery spot reveal$/i, '🎁 Mystery spot reveal', 'A pretend mystery card pack, here and on stream. Click it to open it.');
 H(/mystery/i, '🎲 Mystery (chaos power)', 'Sets off one random power. Nobody knows which until it happens.');
