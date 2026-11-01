@@ -3,6 +3,16 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.67.2: What's new
+Everything since 1.67.0.
+
+- ↺ **Reset wheel = back to how you set it up:** the reset button above the ✏️ Spots list puts the wheel back to how it was right before its first spin. Every spot's size, count, wins and on/off come back, voided spots return, and the round timer and last result are cleared. It asks first and shows what will change back; ↩️ Undo reset takes it back. Until you reset, the wheel stays exactly as it is.
+  - Your setup = how the wheel was right before its first spin (or grow, shrink, double…) since the last reset. Changes you make yourself in the ✏️ Spots list (sizes, adding spots…) become part of your setup.
+  - If your wheel isn't the way you want it right now, set it up how you want it before your next spin, and that's what ↺ Reset wheel will bring back.
+- ⚖️ **All the same size** is its own button now (it used to be the reset button): every spot gets size 1, and that becomes your setup.
+- 🎁 **Hidden reveal (mystery) spots are ⚡ auto spots:** when the wheel lands on one, the round timer pauses until you press 🎡 SPIN, and nobody can respin it (chat's respins are saved for later, like every auto spot). It shows (auto) on the wheel, and the spot menu calls it 🎁⚡ Hidden reveal (auto).
+- 🧪 Try them: Test → ↺ Reset wheel shows what a reset would bring back (nothing changes), and Test → 🎁 Mystery spot → 🎡 Land on my mystery spot. 🤖 Test all also checks the reset on a pretend wheel.
+
 ## v1.67.0: What's new
 Everything since 1.66.2.
 
