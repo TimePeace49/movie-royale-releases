@@ -416,7 +416,11 @@ H(/title on stream/i, 'Title on stream', 'Words shown above the wheel on stream.
 H(/^📁 folder/i, 'Folder', 'Which folder this wheel is in.');
 H(/sort a.z/i, '🔤 Sort A–Z', 'Puts the spots in alphabetical order. You can also drag spots by ⠿ to put them in any order.');
 H(/show all/i, '👁️ Show all', 'Makes every invisible spot visible again.');
-H(/reset all sizes/i, '↺ Reset all sizes', 'Puts every spot back to size 1 (you can undo it).');
+H(/^tip:back to how you set it up, before the first spin|^tip:nothing to reset: it's just how you set it up|^↺ reset wheel$/i, '↺ Reset wheel', 'Puts this wheel back to how you set it up, before its first spin: every spot\'s size, count, wins and on/off come back, voided spots return, and the round timer and last result are cleared. It asks first and lists what changes back (↩️ Undo reset takes it back). Movie Royal remembers your setup right before the first spin since the last reset; what you change yourself in the ✏️ Spots list becomes part of it. Greyed out = nothing to reset.');
+H(/^tip:every spot the same size|^⚖️ all the same size$|reset all sizes/i, '⚖️ All the same size', 'Makes every spot on this wheel size 1 (the void keeps its own size). This becomes your setup, so ↺ Reset wheel keeps them the same size. ↩️ Undo same size puts the sizes back.');
+H(/^↩️ undo reset$|^↩️ undo same size$/i, '↩️ Undo', 'Takes back the last ↺ Reset wheel (or ⚖️ All the same size): the spots go back to how they were right before it.');
+H(/^tip:what reset wheel would bring back|^↺ what would reset bring back/i, '↺ What would Reset bring back?', 'Shows, for the wheel picked on the 🎡 Wheel tab, which spots ↺ Reset wheel would change back (and to what), and runs the reset on a pretend wheel to show it comes back exactly right. Nothing on your wheel changes.', ['test']);
+
 H(/edit as text/i, '📝 Edit as text', 'Shows all the spots as plain text, one per line, so you can paste or edit lots at once (like Wheel of Names).');
 H(/spot name \(press enter\)/i, 'Add a spot', 'Type a spot\'s name and press Enter (or Add).');
 H(/^add$/i, 'Add', 'Adds what you typed.');

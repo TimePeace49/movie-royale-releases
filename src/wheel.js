@@ -358,6 +358,7 @@ function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Te
   if (kind === 'spin' && live && roundOn(w) && st.last) kind = 'respin';
   // a respin gets the timer going again after an auto / countdown spot (if you paused it yourself, only you can restart it)
   if (kind === 'respin' && live && roundOn(w) && r.state === 'paused' && (r.why !== 'you' || by.source === 'you')) roundRun();
+  keepSetup(w); // (↺ the wheel as you set it up: remembered right before the first spin since the last reset)
   snap(kind === 'spin' ? 'a new spin' : kind === 'respin' ? `${by.name}'s respin` : `${by.name} moved it ${kind}`);
   if (kind === 'spin') { // a fresh spin: last winner leaves (if set), finished countdowns leave, a new round timer gets ready
     const sl0 = layout(w);
@@ -460,7 +461,7 @@ function doomsday(w) {
 // ---------- after it lands: knock one off ----------
 export function knock(delta = -1) {
   const st = W(), e = lastEntry(); if (!e || (e.type !== 'countdown' && e.type !== 'autocount')) throw new Error('The last spot is not a countdown spot.');
-  snap(delta < 0 ? `knocked one off ${e.text}` : `put one back on ${e.text}`);
+  keepSetup(lastWheel()); snap(delta < 0 ? `knocked one off ${e.text}` : `put one back on ${e.text}`);
   e.count = Math.max(0, Math.min(e.countStart, e.count + delta)); st.last.countLeft = e.count;
   if (delta < 0) st.last.knocked = true;
   log({ kind: 'knock', wheelId: st.last.wheelId, wheelName: st.last.wheelName, entryId: e.id, text: e.text, amount: delta, countLeft: e.count, by: { name: streamerName(), source: 'you' } });
@@ -504,7 +505,7 @@ export function unvoid(entryId, by = {}, reason = '', wheelId, force) {
     if (st.bringBack.used >= 1) { if (!force) return { needOverride: true, text: e.text }; broke = true; }
     st.bringBack.used++;
   }
-  snap(`brought back ${e.text}`);
+  keepSetup(w); snap(`brought back ${e.text}`);
   e.voided = null;
   log({ kind: 'unvoid', wheelId: w.id, wheelName: w.name, entryId: e.id, text: e.text, reason: String(reason || '').slice(0, 120), broke, by: { name: by.name || streamerName(), login: by.login || '', source: by.source || 'you' } });
   refresh();
@@ -520,7 +521,7 @@ function doubleSpot(w, e, by) {
   if (e.type === 'void') throw new Error("channel points can't change the void.");
   if (e.voided) throw new Error(`“${e.text}” is voided tonight.`);
   if (e.on === false || !(e.weight > 0)) throw new Error(`“${e.text}” isn't on the wheel right now.`);
-  snap(`doubled ${e.text}`);
+  keepSetup(w); snap(`doubled ${e.text}`);
   const before = pctOf(w, e), voidE = w.entries.find(x => x.type === 'void' && x.on !== false && !x.voided);
   setShare(w, e, Math.min(.9, before / 100 * 2), voidE && voidE !== e ? [voidE] : []);
   const after = pctOf(w, e);
@@ -629,6 +630,7 @@ export function grow(entryId, amount = 1, by = {}, reason = '', wheelId, money) 
   const e = w?.entries.find(x => x.id === entryId); if (!e) throw new Error('No such spot.');
   if (e.voided) throw new Error(`“${e.text}” is voided. Bring it back first.`);
   if (e.type === 'void' && !money && by.source && !['you', 'mod'].includes(by.source)) throw new Error('Only money (subs, gift subs, bits, donations) or the streamer can grow or shrink the VOID.');
+  keepSetup(w);
   if (!e.on || !(e.weight > 0)) { e.on = true; e.weight = e.weight > 0 ? e.weight : 1; }
   snap(`${amount > 0 ? 'grew' : 'shrank'} ${e.text}`);
   const before = pctOf(w, e), step = (Number(w.opts.growPct) || 10) / 100;
@@ -640,15 +642,70 @@ export function grow(entryId, amount = 1, by = {}, reason = '', wheelId, money) 
   if (by.source === 'points' || by.source === 'auto') banner(amount > 0 ? `📈 ${esc(e.text)} GREW!<small>${esc(by.name || '')} made it ${after}% of the wheel</small>` : `📉 ${esc(e.text)} SHRANK!<small>${esc(by.name || '')} made it ${after}% of the wheel</small>`);
   return after;
 }
+// ↺ the wheel as you set it up (1.67.2, Derek: "unless I reset the wheel leave it as is; if I reset bring it back to the original
+// before any spins"): remembered right before the first change since the last reset (a spin, a grow / shrink, a double, a bring-back,
+// a knock), kept up to date when YOU change spots in the ✏️ Spots list, and put back by ↺ Reset wheel. Nothing else resets it.
+const SETUP_KEYS = ['weight', 'on', 'count', 'wins', 'maxedOff', 'voided'];
+const setupOf = e => ({ weight: e.weight, on: e.on !== false, count: e.count ?? null, wins: e.wins ?? null, maxedOff: e.maxedOff ?? null, voided: e.voided || null });
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+function keepSetup(w) { if (w && !w.setup) w.setup = { at: Date.now(), e: Object.fromEntries(w.entries.map(e => [e.id, setupOf(e)])) }; }
+/** the ✏️ Spots list saved: what you changed yourself is part of your setup (the game's changes since the first spin aren't) */
+export function setupEdit(w, before) {
+  if (!w?.setup) return; const old = new Map((before || []).map(e => [e.id, setupOf(e)])), S = w.setup.e;
+  for (const e of w.entries) { const o = old.get(e.id), now = setupOf(e); if (!o || !S[e.id]) { S[e.id] = now; continue; } for (const k of SETUP_KEYS) if (!same(now[k], o[k])) S[e.id][k] = now[k]; }
+  for (const id of Object.keys(S)) if (!w.entries.some(e => e.id === id)) delete S[id];
+}
+function putBack(e, s) { for (const k of SETUP_KEYS) { const v = s[k]; if (k === 'on') e.on = v !== false; else if (k === 'weight') e.weight = v; else if (k === 'voided') e.voided = v || null; else if (v == null) delete e[k]; else e[k] = v; } }
+/** what ↺ Reset wheel would change (nothing changes): [{ text, was, now }] in plain words */
+export function setupDiff(wheelId) {
+  const w = getWheel(wheelId) || active(); if (!w?.setup) return { at: null, rows: [] };
+  const tot = es => es.filter(e => e.on !== false && !e.voided && e.weight > 0).reduce((a, e) => a + e.weight, 0) || 1;
+  const fake = w.entries.map(e => ({ ...e, ...(w.setup.e[e.id] || {}) })), T0 = tot(fake), T1 = tot(w.entries), pc = (e, T) => e.on !== false && !e.voided && e.weight > 0 ? Math.round(e.weight / T * 1000) / 10 + '%' : e.voided ? 'voided' : 'invisible';
+  const rows = [];
+  for (const e of w.entries) { const s = w.setup.e[e.id]; if (!s) continue; const was = { ...e, ...s }, a = pc(was, T0), b = pc(e, T1), bits = [];
+    if (a !== b) bits.push(`${b} → ${a}`); if (!same(s.count, e.count ?? null) && s.count != null) bits.push(`count ${e.count} → ${s.count}`); if (!same(s.wins, e.wins ?? null) && s.wins != null) bits.push(`wins ${e.wins || 0} → ${s.wins}`);
+    if (bits.length) rows.push({ id: e.id, text: e.text || '(the void)', change: bits.join(' · ') }); }
+  return { at: w.setup.at, rows };
+}
+/** ↺ Reset wheel: every spot back to how it was right before the first spin (sizes, counts, wins, on/off, voided spots back) */
+export function resetWheel(wheelId) {
+  const st = W(), w = getWheel(wheelId) || active(); if (!w?.setup) throw new Error('Nothing to reset: the wheel is just how you set it up (it hasn\'t been spun since the last reset).');
+  const d = setupDiff(w.id).rows.length; snap('reset the wheel');
+  w.resetBackup = { at: Date.now(), e: Object.fromEntries(w.entries.map(e => [e.id, setupOf(e)])), last: st.last?.wheelId === w.id ? st.last : null };
+  for (const e of w.entries) { const s = w.setup.e[e.id]; if (s) putBack(e, s); }
+  w.setup = null; delete w.sizeBackup;
+  if (st.round?.wheelId === w.id) { clearTimeout(roundT); st.round = null; sendRound(); } // (no round going: it starts again at the first spin)
+  if (st.last?.wheelId === w.id) st.last = null; if (st.final?.wheelId === w.id) st.final = null; if (st.reveal?.wheelId === w.id) revealClose();
+  log({ kind: 'reset', wheelId: w.id, wheelName: w.name, text: 'Back to how you set it up (before the first spin)', by: { name: streamerName(), source: 'you' } });
+  refresh(); return { changed: d };
+}
+/** 🧪 the same reset on a pretend copy of a wheel (nothing real changes): set up → play (grow, void, knock, max wins) → reset → same as the setup? */
+export function resetSelfTest() {
+  const w = { entries: [{ id: 'a', text: 'Big one', weight: 3, on: true, type: 'timer', voided: null }, { id: 'b', text: 'Countdown', weight: 1, on: true, type: 'countdown', count: 3, countStart: 3, voided: null }, { id: 'c', text: 'Max wins', weight: 1, on: true, type: 'timermax', wins: 0, maxWins: 1, maxedOff: false, voided: null }, { id: 'd', text: 'Small', weight: 1, on: true, type: 'timer', voided: null }] };
+  const want = JSON.stringify(w.entries); keepSetup(w);
+  w.entries[0].weight = 7; w.entries[1].count = 0; w.entries[1].on = false; w.entries[2].wins = 1; w.entries[2].maxedOff = true; w.entries[2].on = false; w.entries[3].voided = { at: 1 };
+  const before = w.entries.map(e => ({ ...e })); w.entries[3].weight = 2; setupEdit(w, before); // (you made "Small" bigger yourself: that stays)
+  for (const e of w.entries) putBack(e, w.setup.e[e.id]);
+  const got = JSON.parse(JSON.stringify(w.entries)), exp = JSON.parse(want); exp[3].weight = 2;
+  return { ok: JSON.stringify(got) === JSON.stringify(exp), got, want: exp };
+}
+/** ⚖️ every spot the same size: you changing your setup (↩️ Undo puts the sizes back) */
 export function resetSizes(wheelId) {
   const w = getWheel(wheelId) || active(); const before = w.entries.map(e => ({ id: e.id, weight: e.weight }));
-  snap('reset all sizes');
+  snap('every spot the same size');
   for (const e of w.entries) e.weight = e.type === 'void' ? (w.opts.void.weight || 1) : 1;
-  w.sizeBackup = { at: Date.now(), before };
-  log({ kind: 'reset', wheelId: w.id, wheelName: w.name, text: 'All spots back to the same size', by: { name: streamerName(), source: 'you' } });
+  if (w.setup) for (const e of w.entries) if (w.setup.e[e.id]) w.setup.e[e.id].weight = e.weight; // (your setup is all the same size now too)
+  w.sizeBackup = { at: Date.now(), before }; delete w.resetBackup;
+  log({ kind: 'reset', wheelId: w.id, wheelName: w.name, text: 'Every spot the same size', by: { name: streamerName(), source: 'you' } });
   refresh();
 }
-export function undoReset(wheelId) { const w = getWheel(wheelId) || active(); if (!w.sizeBackup) throw new Error('Nothing to undo.'); for (const b of w.sizeBackup.before) { const e = w.entries.find(x => x.id === b.id); if (e) e.weight = b.weight; } w.sizeBackup = null; refresh(); }
+export function undoReset(wheelId) {
+  const st = W(), w = getWheel(wheelId) || active();
+  if (w.resetBackup) { // ↩️ undo ↺ Reset wheel: the wheel as it was right before (and the setup stays remembered)
+    keepSetup(w); for (const e of w.entries) { const b = w.resetBackup.e[e.id]; if (b) putBack(e, b); } if (w.resetBackup.last && !st.last) st.last = w.resetBackup.last; w.resetBackup = null; refresh(); return;
+  }
+  if (!w.sizeBackup) throw new Error('Nothing to undo.'); for (const b of w.sizeBackup.before) { const e = w.entries.find(x => x.id === b.id); if (e) e.weight = b.weight; } w.sizeBackup = null; refresh();
+}
 // match a typed spot name (pop-ups)
 function findSpot(w, text, withVoid) {
   const raw = String(text || '').trim(), q = norm(raw); if (!q || !w) return null;

@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.67.2
+- ↺ **Reset wheel = back to how you set it up** (Derek): the reset button above the ✏️ Spots list now puts the wheel back to how it was right before its first spin: every spot's size, count, wins and on/off come back, voided spots return, and the round timer and last result are cleared. It asks first and lists what will change back; ↩️ Undo reset takes it back. Until you reset, the wheel stays exactly as it is.
+  - Movie Royal remembers your setup right before the first spin (or grow, shrink, double…) since the last reset. What you change yourself in the ✏️ Spots list (sizes, adding spots…) becomes part of your setup.
+  - From this version on: if your wheel isn't the way you want it right now, set it up how you want it before your next spin, and that's what ↺ Reset wheel will bring back.
+- ⚖️ **All the same size** is its own button now (it used to be the reset button): every spot size 1, and that becomes your setup.
+- 🧪 Test → ↺ Reset wheel shows what a reset would bring back for your wheel (nothing changes), and 🤖 Test all checks the reset on a pretend wheel.
+
 ## 1.67.1
 - 🎁 **Hidden reveal (mystery) spots are ⚡ auto spots now** (Derek): when the wheel lands on one, the round timer pauses until you press 🎡 SPIN, and nobody can respin it (chat's respins are saved for later, like every auto spot). It shows (auto) on the wheel, and the spot menu calls it 🎁⚡ Hidden reveal (auto). Ticking 🎁 Hidden reveal on a timer or auto spot makes it a mystery spot; unticking it leaves a plain ⚡ auto spot.
 - 🧪 Try it: Test → 🎁 Mystery spot → 🎡 Land on my mystery spot (then 🔁 Respin in 💬 Test chat).
