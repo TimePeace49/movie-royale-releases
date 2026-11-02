@@ -252,7 +252,7 @@ export function start(opts = {}) {
   return { n: fighters.length, cut };
 }
 export function stop() { if (live.phase !== 'fight') return {}; if (live.fight?.ball) hooks.stopBall(); live.phase = 'idle'; live.fight = null; sendScene(); hooks.pushState(); if (live.wheelLink) { live.wheelLink = null; } return {}; }
-export function reset() { live.phase = 'idle'; live.fight = null; live.last = null; sendScene(); hooks.pushState(); return {}; }
+export function reset() { live.phase = 'idle'; live.fight = null; live.last = null; hooks.stopBall(); sendScene(); hooks.pushState(); return {}; } // (1.68.0: on a ball map, e.g. a holiday map, the ball game is cleared too)
 /** The game screen says who won (first screen to answer counts). */
 export function result(m) {
   const f = live.fight; if (!f || live.phase !== 'fight' || m.fightId !== f.id) return;

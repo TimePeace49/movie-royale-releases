@@ -16,7 +16,7 @@ export const MAP_LIST = [
   { id: 'desert', power: '🪱 Worm Frenzy', name: 'Dune Sea', icon: '🏜️', desc: 'Nobody falls off: a giant sand worm bursts up and swallows pieces whole.' },
   { id: 'castle', power: '🐉 Dragon Raid', name: 'Dragon Keep', icon: '🐉', desc: 'A castle courtyard. Dragons swoop down, knocking pieces flying and burning holes in the floor.' },
   { id: 'tiers', power: '🫨 Tremor', name: 'Tumble Tower', icon: '🧱', desc: 'Four floors stacked up: the biggest on top, each one below it smaller. Stand on a tile for 5 seconds and it gives way: drop to the floor below. Fall through the bottom and you are out.' },
-  { id: 'gas', power: '🐄 Stampede', name: 'Fart Farm', icon: '💨', desc: 'Big cows stampede across the field, trampling pieces flat and farting on whoever is behind them. UFOs beam pieces up into the saucer.' },
+  { id: 'gas', power: '🐄 Stampede', name: 'Fart Farm', icon: '💨', desc: 'Big cows stampede across whatever ground is left, trampling pieces flat and farting on whoever is behind them. UFOs beam pieces up or drop cows on the crowd, and near the end the mothership takes them one at a time.' },
   { id: 'hero', power: '🦹 Villain Team-Up', name: 'Hero City', icon: '🦸', desc: 'A rooftop fight above the city at night. Villains attack: a giant robot fist smashes down, a laser drone zaps, a caped flyer grabs pieces and throws them off the roof, a wrecking ball swings across and knocks pieces off, and a bomber jet drops bombs that blow pieces up.' },
   { id: 'plague', solid: true, power: '🐀 Rat Swarm', name: 'Plague Town', icon: '🐀', desc: 'A walled medieval town seen from above. Rats bite and infect you, and the sick pass it on to anyone they bump. Run from the rats! Nothing crumbles.' },
   { id: 'warfield', solid: true, power: '🐎 Royal Charge', name: 'Battlefield', icon: '⚔️', desc: 'Every piece on one side, an unstoppable army on the other: archers hit the back rows, knights crush the front, and the cavalry hits both sides. Nothing crumbles.' },
@@ -49,7 +49,7 @@ export const MAP_LIST = [
 ];
 // 🔵 When you change how a map plays or looks, bump its number here: the map then shows "UPDATED" in the
 // map menus until it's been played on stream again. (Maps never played on stream show "NEW".)
-const REV = { gas: 2, plague: 2, warfield: 2, hero: 2, grandprix: 2, crossover: 2 }; // (1.61.1: Grand Prix got a new layout, Crossover Chaos a new start spot)
+const REV = { gas: 3, plague: 2, warfield: 2, hero: 2, grandprix: 2, crossover: 2 }; // (1.61.1: Grand Prix got a new layout, Crossover Chaos a new start spot; 1.68.0: Fart Farm reworked)
 for (const m of MAP_LIST) m.rev = REV[m.id] || 1;
 // ⚪🃏 which battles a map is for: ball battles, card battles, or both (Derek says when a map is only for one).
 // Ball maps are for both unless listed here as ball-only. Card-only maps live in cards.js (CARD_MAPS).

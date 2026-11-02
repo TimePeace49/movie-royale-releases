@@ -640,7 +640,7 @@
       <span class="grow"></span>
       <button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
       <button onclick="popOut()" title="Open the game in its own window (for OBS window capture)">🪟 Pop out</button>
-      <button onclick="cardsApi('/api/cards/reset')" title="Clear the street: back to the packs lined up and waiting">↺ Reset street</button>
+      <button onclick="cardsApi('/api/cards/reset')" title="Clear the battlefield: the packs line up again, waiting for the next fight (on every map, the ball and holiday maps too)">↺ Reset battlefield</button>
     </div>
     <div class="under">
       <span class="muted" title="Wacky settings: turn them on before the fight or in the middle of it. Click again to turn one off.">🤪 Wacky</span>
@@ -980,7 +980,15 @@
   <div class="card">
     <h3>🃏 Card battle tests</h3>
     <p class="help">Pretend card packs fight on stream (Kung Fu Town, the 🔔 Royal Rumble or a ball map). Nothing in your 📦 Card pool changes. Turn wacky settings on or off on the 🃏 Card battles tab, or with the buttons here.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cardTest(8)">🥋 Pretend fight (8 packs)</button><button onclick="cardTest(30)">🥋 Big pretend fight (30 packs)</button><button onclick="cardTest(8,['gore'])">🩸 Gore fight</button><button onclick="cardTest(12,['lowgrav','teleport','weapons','boom'])">🤪 Wacky fight</button><button onclick="cardTest(10,[],'lava')" title="Card fighters on a ball map (Lava Lake)">⚪🃏 On a ball map</button><button onclick="cardTest(6,[],'kungfu')" title="6 packs in Kung Fu Town: watch the FINAL FIGHT when 2 are left">🥊 Final fight</button><button onclick="cardTest(10,[],'ring')" title="10 packs in the Royal Rumble: wrestling moves, chairs, and out only over the top rope">🔔 Royal Rumble</button><button onclick="cardTest(12,[],'wizard')" title="12 wizard packs on the floating platform: spells crack it and packs fall through">🧙 Wizard Battle</button><button onclick="cardTest(12,[],'colosseum')" title="12 gladiator packs in the Colosseum, each with its own weapon">🏛️ Colosseum</button><button onclick="cardTest(10,['lions'],'colosseum')" title="10 gladiators with 🦁 Lions on (turn Lions off on the Card battles tab and they go back to the tunnels)">🦁 Lions</button><button onclick="cardTest(8,[],'ring').then(()=>setTimeout(()=>cam('next'),4500))" title="A pretend card fight where the camera follows a pack after a few seconds (then try the 🎥 Camera buttons on the Card battles tab)">🎥 Card camera</button><button class="ghost" onclick="cardsApi('/api/cards/stop')">⏹ Stop it</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cardTest(8)">🥋 Pretend fight (8 packs)</button><button onclick="cardTest(30)">🥋 Big pretend fight (30 packs)</button><button onclick="cardTest(8,['gore'])">🩸 Gore fight</button><button onclick="cardTest(12,['lowgrav','teleport','weapons','boom'])">🤪 Wacky fight</button><button onclick="cardTest(10,[],'lava')" title="Card fighters on a ball map (Lava Lake)">⚪🃏 On a ball map</button><button onclick="cardTest(6,[],'kungfu')" title="6 packs in Kung Fu Town: watch the FINAL FIGHT when 2 are left">🥊 Final fight</button><button onclick="cardTest(10,[],'ring')" title="10 packs in the Royal Rumble: wrestling moves, chairs, and out only over the top rope">🔔 Royal Rumble</button><button onclick="cardTest(12,[],'wizard')" title="12 wizard packs on the floating platform: spells crack it and packs fall through">🧙 Wizard Battle</button><button onclick="cardTest(12,[],'colosseum')" title="12 gladiator packs in the Colosseum, each with its own weapon">🏛️ Colosseum</button><button onclick="cardTest(10,['lions'],'colosseum')" title="10 gladiators with 🦁 Lions on (turn Lions off on the Card battles tab and they go back to the tunnels)">🦁 Lions</button><button onclick="cardTest(8,[],'ring').then(()=>setTimeout(()=>cam('next'),4500))" title="A pretend card fight where the camera follows a pack after a few seconds (then try the 🎥 Camera buttons on the Card battles tab)">🎥 Card camera</button><button onclick="cardTest(8,[],'halloween')" title="8 pretend packs on a 🎉 holiday map (Halloween). Then try ↺ Reset battlefield on the Card battles tab: it clears it, during the fight or after">🎃 On a holiday map</button><button class="ghost" onclick="cardsApi('/api/cards/reset')" title="The Card battles tab's ↺ Reset battlefield: clears the fight on any map, ball and holiday maps too">↺ Reset battlefield</button><button class="ghost" onclick="cardsApi('/api/cards/stop')">⏹ Stop it</button></div>
+  </div>
+  <div class="card">
+    <h3>⏳ No long waits</h3>
+    <p class="help">Runs 6 quick battles in a hidden test screen (nothing on stream, nothing saved) with your battle timer and pacer, and shows the longest time nobody got knocked out while 3 or more were left. The pacer never holds knockouts back for more than about 7 seconds. 💨 Fart Farm is picked first.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="lwMap" style="width:auto" onfocus="lwFill()" title="Which map the hidden battles are on"><option value="gas">💨 Fart Farm</option></select>
+      <label class="muted" style="margin:0" title="How many pieces each hidden battle has">Pieces <input id="lwN" type="number" min="4" max="200" value="20" style="width:66px" title="How many pieces each hidden battle has"></label>
+      <button class="primary" onclick="lwRun(this)" title="Runs 6 hidden battles on that map and shows the longest wait without a knockout in each">▶ Run 6 hidden battles</button></div>
+    <div id="lwOut" class="help" style="margin-top:8px"></div>
   </div>
   <div class="card">
     <h3>⚡ Pretend channel points / bits</h3>
@@ -1725,7 +1733,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1986,6 +1994,38 @@ async function taBall(w, { map, n = 8, skin = 'movies', look = 'balls', kind, fi
 }
 const taBallMaps = () => (S.maps || []).filter(m => (m.modes || ['ball']).includes('ball'));
 async function taBallOne(o) { const w = await taFrame(), map = taBallMaps().find(m => m.id === 'classic')?.id || taBallMaps()[0]?.id || 'classic'; return taBall(w, { map, ...o }); }
+// ⏳ No long waits (1.68.0, Derek: 12 pieces sat on the last bit of Fart Farm for 15 s): quick hidden battles, the longest stretch without a knockout
+function lwFill() { const sel = $('lwMap'); if (!sel || !(S.maps || []).length || sel.dataset.filled) return; const v = sel.value || 'gas'; sel.innerHTML = ballMapOpts(v); sel.value = v; sel.dataset.filled = '1'; }
+async function lwRun(btn) {
+  if (TA.run) return toast('Wait for 🤖 Test all to finish first (it uses the same hidden test screen).');
+  lwFill(); const map = $('lwMap').value || 'gas', n = Math.max(4, Math.min(200, Math.round(Number($('lwN').value) || 20))), secs = Number(S.settings?.gameSeconds) || 30, pacer = S.settings?.pacer ?? 50, out = $('lwOut'), rows = [], waits = [];
+  const mi = (S.maps || []).find(m => m.id === map), name = mi ? `${mi.icon || ''} ${mi.name}` : map;
+  btn.disabled = true; out.innerHTML = '⏳ Opening the hidden test screen…';
+  try {
+    const w = await taFrame();
+    for (let i = 0; i < 6; i++) {
+      out.innerHTML = `⏳ ${esc(name)}: battle ${i + 1} of 6…` + (rows.length ? '<br>' + rows.join('<br>') : '');
+      const fighters = Array.from({ length: n }, (_, j) => ({ id: 'lw-' + j, weight: 1, luck: [0, 0, 10, 35][j % 4], label: TA_MOVIES[j % TA_MOVIES.length], sub: String(1970 + j * 3), kind: 'films' }));
+      try { w.__royalLab({ type: 'reset' }); } catch {}
+      w.__royalLab({ type: 'cardScene', show: false, phase: 'idle', fighters: [], map: 'kungfu', wacky: {} });
+      w.__royalLab({ type: 'start', mapSize: (Number(S.settings?.mapSize) || 100) / 100, gameId: 'lw-' + Date.now(), fighters, total: n, map, listName: '⏳ No long waits', kind: 'films', fun: null, lobbySeconds: 0, gameSeconds: secs, pacer, fairOdds: true, racePowers: false, laps: 1, survival: null, queued: [] });
+      let lastN = n, lastAt = 0, worst = { len: 0 }, st = null;
+      for (let s = 0; s < secs * 4 + 480; s++) {
+        st = w.__royalSim(.25);
+        if (st.alive !== lastN) { if (lastN > 2 && st.t - lastAt > worst.len) worst = { len: st.t - lastAt, at: lastAt, n: lastN }; lastN = st.alive; lastAt = st.t; }
+        if (st.winner || st.phase !== 'running') break;
+        if (s % 40 === 39) await taYield();
+      }
+      const ck = w.__royalCheck?.(); waits.push(worst.len);
+      rows.push(`${worst.len > 12 ? '❌' : worst.len > 8 ? '🟡' : '✅'} Battle ${i + 1}: longest wait <b>${worst.len.toFixed(1)} s</b>${worst.n ? (worst.at < .5 ? ' (before the first knockout)' : ` (${worst.n} left, ${Math.round(worst.at)} s in)`) : ''} · over after ${Math.round(st?.t || 0)} s${!ck ? ' · ⚠️ no winner' : !ck.onLand && !ck.hopping ? ' · ⚠️ the winner wasn\'t on land' : ''}`);
+    }
+    try { w.__royalLab({ type: 'reset' }); } catch {}
+    const top = Math.max(...waits);
+    out.innerHTML = `<b>${top > 12 ? '❌' : top > 8 ? '🟡' : '✅'} ${esc(name)}, ${n} pieces, ${secs} s timer, pacer ${pacer}: the longest wait was ${top.toFixed(1)} s.</b><br>` + rows.join('<br>');
+  } catch (e) { out.innerHTML = '⚠️ ' + esc(e.message); }
+  if (!TA.run) taFrameEnd();
+  btn.disabled = false;
+}
 async function taAllMaps(c) {
   const w = await taFrame(), maps = taBallMaps(), bad = [], items = [];
   for (const [i, m] of maps.entries()) {

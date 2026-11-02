@@ -3,6 +3,17 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.68.0: What's new
+Everything since 1.67.2.
+
+- 💨 **Fart Farm reworked:** the cow herds run across the ground that's left (near the end they used to miss it), and everything on the map follows the pace, so the end never sits still. New:
+  - 🛸🐄 **Cow drops:** a UFO drops a cow on the crowd (yellow ring = incoming). Everyone close by goes flying, and the one right under it can get squashed.
+  - 🛸 **The mothership:** in the last quarter it parks over the field and takes them one at a time (a red ring locks on, then its beam pulls the piece up).
+  - When the battle is ahead of schedule, the cows just knock pieces over and the UFOs put pieces back down ("👽 WRONG ONE!").
+- ⏳ **No more long waits, on every map:** the elimination pacer never holds knockouts back for more than about 7 seconds (it could hold them for 15 seconds or more when a battle got way ahead early).
+- ↺ **Reset battlefield on the Card battles tab works on every map**, the ball and holiday maps too, during the fight or after it (it used to be called ↺ Reset street). After any reset, the last battle's cows, ghosts, UFOs and so on are cleared from the map.
+- 🧪 Test tab → **⏳ No long waits** (6 quick hidden battles: the longest wait without a knockout) and **🎃 On a holiday map** + **↺ Reset battlefield** under 🃏 Card battle tests.
+
 ## v1.67.2: What's new
 Everything since 1.67.0.
 

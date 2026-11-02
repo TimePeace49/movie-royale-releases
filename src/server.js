@@ -1014,7 +1014,7 @@ cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true), cha
     broadcast({ type: 'start', mapSize: mapSizeK(), map: fight.map, gameId: live.game.id, fighters, total: fighters.length, listName: fight.name, kind: 'cards', skin: 'cards', lobbySeconds: 3, gameSeconds: b.length || db.settings.gameSeconds, pacer: b.pace ?? 50, fairOdds: true, queued: [] }, 'overlay');
     pushState(); return null;
   },
-  stopBall: () => { if (live.game?.cards) { live.phase = 'idle'; live.game = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); } },
+  stopBall: () => { if (live.game?.cards) { live.phase = 'idle'; live.game = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); } }, // (STOP FIGHT and ↺ Reset battlefield: going, or finished and still on screen)
  say: t => twitch.canSay() ? twitch.say(t) : Promise.resolve(), goView: v => broadcast({ type: 'goView', view: v }, 'control'), linkDone: () => { if (wheel.linkWaiting()?.cards) { cards.setShow(false); wheel.linkBack(); wheelChanged(); } } });
 // 🔀 a wheel spot sent us to a battle: put it on stream (and start it), then go back to the wheel once it has a winner
 function openBattleFromWheel(listId, auto, why) {
@@ -3525,7 +3525,7 @@ app.post('/api/gather/start', (req, res) => {
   pushState(); res.json({ ok: true });
 });
 app.post('/api/gather/cancel', (req, res) => { stopGather(); closeBoard(); if (live.capture && live.capAutoOn) setCapture(false).catch(() => {}); pushState(); res.json({ ok: true }); });
-app.post('/api/reset', (req, res) => { closeBoard(); nextMap(); live.phase = 'idle'; live.game = null; cards.endChars(); if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
+app.post('/api/reset', (req, res) => { if (live.game?.cards) cards.reset(); /* (a card battle on a ball map: its card side resets too) */ closeBoard(); nextMap(); live.phase = 'idle'; live.game = null; cards.endChars(); if (live.claim) clearTimeout(live.claim.timer); live.claim = null; broadcast({ type: 'reset' }, 'overlay'); pushState(); refreshPreview(true); res.json({ ok: true }); });
 // sounds: any file in public/assets/sounds named after a sound (e.g. fanfare.mp3, music.mp3) replaces the built-in one
 const SOUND_DIRS = [path.join(DATA, 'sounds'), path.join(ROOT, 'public', 'assets', 'sounds')];
 app.get('/api/sounds', (req, res) => {

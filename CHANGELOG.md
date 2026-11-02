@@ -2,6 +2,20 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.68.0
+- 💨 **Fart Farm reworked** (Derek: 12 pieces sat on the last bit of ground for 15 seconds):
+  - 🐄 The herds run across the ground that's left. They used to start where the field used to be, so near the end they often missed the last bit of ground.
+  - 🛸🐄 **Cow drops:** a UFO grabs a cow and drops it on the crowd (a yellow ring = incoming). Everyone close by goes flying, and the one right under it can get squashed. Then the cow bounces off, dazed.
+  - 🛸 **The mothership:** in the last quarter of the battle (or once the ground is nearly gone), a huge mothership parks over the field and takes them one at a time. A red ring locks on, then its beam pulls the piece up.
+  - ⏳ Everything on the map follows the pace: when the battle is ahead of schedule, the cows just knock pieces over instead of trampling them off, the UFOs put pieces back down ("👽 WRONG ONE!"), and toots push back toward the middle. Much less hopping back onto the ground.
+  - The UFOs fly lower when the camera is zoomed in, so they stay on screen under the title.
+  - It shows 🔵 UPDATED in the map menus.
+- ⏳ **No more long waits, on every map:** the elimination pacer never holds knockouts back for more than about 7 seconds. Before, when a battle got way ahead of schedule early, it could keep saving everyone for 15 seconds or more (that's what happened on Fart Farm).
+- ↺ **Reset battlefield on the Card battles tab works on every map** (Derek: it didn't work with the holiday maps). On a ball or holiday map it used to leave the fight on screen, and the next card fight couldn't start. Now it clears it, during the fight or after it, and the packs line up again. The button was called ↺ Reset street; it's ↺ Reset battlefield now (it isn't always a street).
+- ↺ After any reset, a map's own things from the last battle (cows, ghosts, UFOs, eggs…) are cleared instead of staying frozen on screen.
+- A winner that was up in a UFO beam at the very end now lands instead of floating.
+- 🧪 Test tab → **⏳ No long waits:** runs 6 quick hidden battles on a map (💨 Fart Farm first) with your battle timer and pacer, and shows the longest wait without a knockout. **🃏 Card battle tests → 🎃 On a holiday map** and **↺ Reset battlefield** to try the reset. Try the new Fart Farm in the 🧪 Quick test lab.
+
 ## 1.67.2
 - ↺ **Reset wheel = back to how you set it up** (Derek): the reset button above the ✏️ Spots list now puts the wheel back to how it was right before its first spin: every spot's size, count, wins and on/off come back, voided spots return, and the round timer and last result are cleared. It asks first and lists what will change back; ↩️ Undo reset takes it back. Until you reset, the wheel stays exactly as it is.
   - Movie Royal remembers your setup right before the first spin (or grow, shrink, double…) since the last reset. What you change yourself in the ✏️ Spots list (sizes, adding spots…) becomes part of your setup.
