@@ -73,11 +73,11 @@ const groupName = (k, b) => { const G = C.GROUPS[k]; if (!G) return ''; const g 
 function lookFor(k, n) { // what a card shows: a plain character wearing that part
   const b = C.sp(k, n)[0], fem = (k === 'hair' && b > 25) || (k === 'outfit' && b > 25 && b <= 50) || k === 'makeup' || (k === 'outfit' && b > 50 && n % 2);
   const L = { hair: fem ? 26 : 1, outfit: fem ? 26 : 1, makeup: 1, facialhair: 1, body: fem ? 2 : 1, skin: 3, haircolor: 2, accessory: 1, hairaccessory: 1 };
-  if (k === 'facialhair') { L.hair = 9; } L[k] = n; if (k === 'body') { const f = (n - 1) % 6 > 0; L.hair = f ? 26 : 1; L.outfit = 1; }
+  if (k === 'facialhair') { L.hair = 9; } L[k] = n; if (k === 'body') { const f = n <= 24 && (n - 1) % 6 > 0; L.hair = f ? 26 : 1; L.outfit = 1; }
   return L;
 }
-function drawTo(cv, look, col) { const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); const s = cv.width; g.save(); g.translate(0, s * .08); C.draw(g, s / 2, s * .36, look, null, col, '★'); g.restore(); }
-function drawMe() { drawTo(document.getElementById('me'), me, '#e8454a'); try { localStorage.mrChar = JSON.stringify(me); } catch {}
+function drawTo(cv, look, col, full) { const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); const s = cv.width; if (full && C.figureFit) { C.figureFit(g, s * .05, s * .03, s * .9, s * .94, look, null, col, '★', s * .34); return; } g.save(); g.translate(0, s * .08); C.draw(g, s / 2, s * .36, look, null, col, '★'); g.restore(); } // (full = 🧍 the whole character: the builder + the body list)
+function drawMe() { drawTo(document.getElementById('me'), me, '#e8454a', true); try { localStorage.mrChar = JSON.stringify(me); } catch {}
   document.getElementById('picks').innerHTML = PARTS.map(([k, t]) => `<span class="pick ${k === tab ? 'on' : ''}" onclick="go('${k}')" title="${esc(N[k][me[k] - 1])}">${t.split(' ')[0]} <b>${me[k]}</b> ${esc(N[k][me[k] - 1])}</span>`).join('');
   document.getElementById('cmd').textContent = '/character ' + PARTS.map(([k]) => `${k}:${me[k]}`).join(' '); }
 function copyCmd(btn) { const t = document.getElementById('cmd').textContent; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { btn.textContent = '✅ Copied'; setTimeout(() => btn.textContent = '📋 Copy', 1500); }).catch(() => { const r = document.createRange(); r.selectNode(document.getElementById('cmd')); getSelection().removeAllRanges(); getSelection().addRange(r); }); }
@@ -87,7 +87,7 @@ function fillVer() { const k = tab, base = B[k].length, vs = V[k] || [];
   document.getElementById('ver').innerHTML = `<option value="">All ${N[k].length} ${PARTS.find(p => p[0] === k)[1].split(' ').slice(1).join(' ').toLowerCase()}</option><option value="0">1–${base}: the originals</option>` + vs.map((t, i) => `<option value="${i + 1}">${(i + 1) * base + 1}–${(i + 2) * base}: ${esc(t)}</option>`).join(''); }
 let dT; function debounce() { clearTimeout(dT); dT = setTimeout(show, 200); }
 let io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { const el = e.target; io.unobserve(el); paint(el); } }, { rootMargin: '300px' });
-function paint(el) { const k = el.dataset.k, n = +el.dataset.n, cv = el.querySelector('canvas'); if (cv) drawTo(cv, lookFor(k, n), COLS[n % COLS.length]); }
+function paint(el) { const k = el.dataset.k, n = +el.dataset.n, cv = el.querySelector('canvas'); if (cv) drawTo(cv, lookFor(k, n), COLS[n % COLS.length], k === 'body'); }
 function items() {
   const k = tab, q = document.getElementById('q').value.trim().toLowerCase(), v = document.getElementById('ver').value, base = B[k].length;
   let ns = N[k].map((_, i) => i + 1);

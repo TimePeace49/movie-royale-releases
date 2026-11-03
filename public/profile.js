@@ -81,7 +81,7 @@ window.Profile = (() => {
   }
   function drawLook(p) {
     const c = document.getElementById('profLook'); if (!c || !window.CHAR_PARTS) return;
-    const paint = img => { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); CHAR_PARTS.draw(g, 75, 46, p.look, img, p.color || '#8a5cff', String(p.name || '?').slice(0, 2).toUpperCase()); };
+    const paint = img => { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); const ini = String(p.name || '?').slice(0, 2).toUpperCase(); if (CHAR_PARTS.figureFit) CHAR_PARTS.figureFit(g, c.width * .06, c.height * .03, c.width * .88, c.height * .94, p.look, img, p.color || '#8a5cff', ini, c.width * .3); else CHAR_PARTS.draw(g, 75, 46, p.look, img, p.color || '#8a5cff', ini); }; // (🧍 the whole character, so the body type shows)
     paint(null);
     if (p.avatar) { const im = new Image(); im.onload = () => paint(im); im.src = p.avatar; }
   }
