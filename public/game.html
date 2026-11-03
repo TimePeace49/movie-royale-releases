@@ -4232,7 +4232,7 @@ function makeToken(f) {
   // a picture that was already loaded (Twitch avatars after the first battle) calls this before the piece has a size yet:
   // that used to crash and leave the cliff empty. sizeAll() draws it as soon as the size is known.
   if (!(f.r > 0) || !Number.isFinite(f.r)) { f._dirty = true; return; }
-  const D = Math.ceil((f.r + 6) * 2 * 2); // 2x for crispness
+  const up = SKIN === 'chars' && window.CHAR_PARTS?.room ? CHAR_PARTS.room(charLook(f)) : 0, D = Math.ceil((f.r * (1 + (up > .03 ? up : 0)) + 6) * 2 * 2); // 2x for crispness (🧍 1.70.0: more room for a bobblehead or a long neck)
   const c = document.createElement('canvas'); c.width = c.height = D;
   const g = c.getContext('2d'), m = D / 2, rr = f.r * 2;
   if (SKIN === 'cards') { cardToken(f, c, g, m, rr); f.token = c; return; }
@@ -4294,7 +4294,7 @@ function charLook(f) {
   return f._auto;
 }
 function charToken(f, c, g, m, rr) {
-  if (window.CHAR_PARTS) { CHAR_PARTS.draw(g, m, rr, charLook(f), ok(f.img) ? f.img : null, f.color, initials(f.label)); return; } // 🎨 their own /character, else a random look (themed on themed maps)
+  if (window.CHAR_PARTS) { const lk = charLook(f), k = CHAR_PARTS.limbs(lk, f.color).k; f.legUp = !k ? 0 : k.legL > 1 ? f.r * (k.legL - 1) * .5 : -f.r * (1 - k.legL) * .12; CHAR_PARTS.draw(g, m, rr, lk, ok(f.img) ? f.img : null, f.color, initials(f.label)); return; } // 🎨 their own /character, else a random look (themed on themed maps). (🧍 1.70.0: long legs lift the piece, stubby ones lower it)
   const st = charStyle(f), hr = rr * .58, hx = m, hy = m - rr * .4, col = f.color || '#8a5cff', ty = m + rr * .22, by = m + rr * .95;
   // hair behind the head (long hair, ponytail, hood)
   g.fillStyle = st.hair;
@@ -4322,17 +4322,17 @@ function charToken(f, c, g, m, rr) {
   const shine = g.createLinearGradient(0, hy - hr, 0, hy); shine.addColorStop(0, 'rgba(255,255,255,.22)'); shine.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = shine; g.beginPath(); g.ellipse(hx, hy - hr * .45, hr * .62, hr * .35, 0, 0, 7); g.fill();
 }
 function charLimbs(f, x, cy, foot) { // 🧍 legs (pants or bare under a dress) + arms with hands, walking with how fast it moves
-  const st = window.CHAR_PARTS ? (() => { const l = CHAR_PARTS.limbs(charLook(f), f.color); return { g: l.legs === 'pants' || l.legs === 'shorts' ? 'm' : 'f', skin: l.skin, pants: l.pants, shoe: l.shoe, arm: l.arm }; })() : charStyle(f), r = f.r, sp = Math.min(1, Math.hypot(f.vx || 0, f.vy || 0) / 120), ph = clock * 12 + (f.wob || 0), hip = cy + r * (st.g === 'f' ? .98 : .92), lw = Math.max(2, r * (st.g === 'm' ? .19 : .15));
+  const st = window.CHAR_PARTS ? (() => { const l = CHAR_PARTS.limbs(charLook(f), f.color); return { g: l.legs === 'pants' || l.legs === 'shorts' ? 'm' : 'f', skin: l.skin, pants: l.pants, shoe: l.shoe, arm: l.arm, k: l.k }; })() : charStyle(f), K = st.k || {}, r = f.r, sp = Math.min(1, Math.hypot(f.vx || 0, f.vy || 0) / 120), ph = clock * 12 + (f.wob || 0), hip = cy + r * (st.g === 'f' ? .98 : .92), lw = Math.max(2, r * (st.g === 'm' ? .19 : .15) * (K.leg || 1)); // (🧍 K = the body type's arm / leg sizes, 1.70.0)
   ctx.lineCap = 'round';
   for (const side of [-1, 1]) {
-    const sw = Math.sin(ph + (side > 0 ? Math.PI : 0)) * r * .3 * (sp + .1), hx0 = x + side * r * .2, fx = hx0 + sw, fy = Math.max(hip + r * .15, foot - Math.max(0, Math.cos(ph + (side > 0 ? Math.PI : 0))) * r * .15 * sp);
+    const sw = Math.sin(ph + (side > 0 ? Math.PI : 0)) * r * .3 * (sp + .1), hx0 = x + side * r * .2 * (K.hipX || 1), fx = hx0 + sw, fy = Math.max(hip + r * .15, foot - Math.max(0, Math.cos(ph + (side > 0 ? Math.PI : 0))) * r * .15 * sp);
     ctx.strokeStyle = st.g === 'f' ? st.skin : st.pants; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(hx0, hip); ctx.lineTo(fx, fy); ctx.stroke();
-    ctx.fillStyle = st.shoe; ctx.beginPath(); ctx.ellipse(fx + side * r * .06, fy, r * .17, r * .09, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = st.shoe; ctx.beginPath(); ctx.ellipse(fx + side * r * .06, fy, r * .17 * (K.foot || 1), r * .09 * (K.foot || 1), 0, 0, 7); ctx.fill();
   }
   for (const side of [-1, 1]) {
-    const shx = x + side * r * (st.g === 'm' ? .5 : .4), shy = cy + r * .32, hx = shx + side * r * (.25 + .15 * Math.sin(ph * .7 + side)), hy = shy + r * (.42 - .35 * sp * Math.max(0, Math.sin(ph + side)));
-    ctx.strokeStyle = st.arm || shade(f.color || '#8a5cff', -20); ctx.lineWidth = Math.max(2, r * .14); ctx.beginPath(); ctx.moveTo(shx, shy); ctx.lineTo(hx, hy); ctx.stroke();
-    ctx.fillStyle = st.skin; ctx.strokeStyle = 'rgba(15,10,20,.7)'; ctx.lineWidth = Math.max(1, r * .04); ctx.beginPath(); ctx.arc(hx, hy, r * .12, 0, 7); ctx.fill(); ctx.stroke();
+    const aL = K.armL || 1, shx = x + side * r * (st.g === 'm' ? .5 : .4) * (K.shX || 1), shy = cy + r * (.32 + .73 * (1 - (K.tk || 1))), hx = shx + side * r * (.25 + .15 * Math.sin(ph * .7 + side)) * aL, hy = shy + r * (.42 - .35 * sp * Math.max(0, Math.sin(ph + side))) * aL;
+    ctx.strokeStyle = st.arm || shade(f.color || '#8a5cff', -20); ctx.lineWidth = Math.max(2, r * .14 * (K.arm || 1)); ctx.beginPath(); ctx.moveTo(shx, shy); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = st.skin; ctx.strokeStyle = 'rgba(15,10,20,.7)'; ctx.lineWidth = Math.max(1, r * .04); ctx.beginPath(); ctx.arc(hx, hy, r * .12 * (K.hand || 1), 0, 7); ctx.fill(); ctx.stroke();
   }
 }
 function shade(hex, amt) { const n = parseInt(hex.slice(1), 16); const c = v => clamp(v + amt, 0, 255); return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`; }
@@ -4692,7 +4692,7 @@ function drawFighter(f, lobby) {
   const x = sx(f.x), gy = sy(f.y) - (f.zo || 0), D = f.token.width / 2;
   const lift = lobby ? f.h : f.hop || 0;
   const bob = f.alive ? Math.sin(clock * 6 + f.wob) * 1.5 : 0;
-  const cy = gy - f.r - 6 - lift + bob + (f.falling ? f.fz : 0);
+  const cy = gy - f.r - 6 - lift + bob + (f.falling ? f.fz : 0) - (SKIN === 'chars' && !f.falling ? f.legUp || 0 : 0);
   if (!f.falling && !(f.dashing > 0) && cam.follow !== f && winner !== f && !(f.squash > t) && !f.eaten) { // fast path: no save/restore
     ctx.fillStyle = lobby ? `rgba(20,10,30,${clamp(.4 - f.h / 2500, .05, .4)})` : 'rgba(20,10,30,.38)'; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill();
     if ((f.glow ?? f.luck) >= 5) drawLuckFx(f, x, cy);

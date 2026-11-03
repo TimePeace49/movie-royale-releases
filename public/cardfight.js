@@ -18,13 +18,15 @@
   const charLook = f => { const k = scene.lookSeed + scene.map + (f.team ?? ''); if (f._lk && f._lkK === k) return f._lk; const base = f.look || CP().auto(String(f.id) + (scene.lookSeed || ''), f.gender, scene.map, f.chaos); f._lkK = k; return (f._lk = PIR() && f.team != null ? pirDress(base, f) : base); };
   function charCanvas(f) { // drawn once (again when their picture arrives): head to waist, the movie poster / Twitch picture on the chest
     const img = imgFor(f.image), k = `${scene.lookSeed}|${scene.map}|${img ? 1 : 0}|${f.team ?? ''}`; if (f._cc && f._ccK === k) return f._cc;
-    const c = f._cc || document.createElement('canvas'); c.width = 200; c.height = 200; const cg = c.getContext('2d'); cg.clearRect(0, 0, 200, 200);
-    CP().draw(cg, 100, 62, charLook(f), img, f.color, (f.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase());
+    const c = f._cc || document.createElement('canvas'); c.width = 200; c.height = 200 + CHAR_TOP; const cg = c.getContext('2d'); cg.clearRect(0, 0, c.width, c.height);
+    cg.save(); cg.translate(0, CHAR_TOP); CP().draw(cg, 100, 62, charLook(f), img, f.color, (f.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()); cg.restore(); // (🧍 1.70.0: room on top for a big head or a long neck)
+    const up = CP().room?.(charLook(f)) || 0; f._ccUp = up > .03 ? Math.min(CHAR_SRC[1], up * 62 + 4) : 0; // (how far above the usual box that character's head goes)
     f._cc = c; f._ccK = k; return c;
   }
+  const CHAR_TOP = 60; // (the drawing starts this far down its canvas)
   const CHAR_COLS = ['#e8454a', '#3a8ad8', '#3aa85a', '#c77dff', '#f0a020', '#e05aa8', '#2ab0b0', '#8a6a4a', '#5a6ad8', '#d8603a']; // (outfit colours: the drawing needs #rrggbb)
-  const CHAR_SRC = [100 - 62 * .82, 100 - 62 * 1.2, 62 * 1.64, 62 * 2.2]; // the part of that canvas that fills the pack's box (x, y, w, h)
-  const limbCol = f => { if (!f.char || !CP()) return { leg: '#151515', shoe: '#151515', arm: '#151515', hand: '#f2e0c4' }; const l = CP().limbs(charLook(f), f.color); return { leg: l.legs === 'pants' || l.legs === 'shorts' ? l.pants : l.skin, shoe: l.shoe, arm: l.arm, hand: l.skin }; };
+  const CHAR_SRC = [100 - 62 * .82, CHAR_TOP + 100 - 62 * 1.2, 62 * 1.64, 62 * 2.2]; // the part of that canvas that fills the pack's box (x, y, w, h)
+  const limbCol = f => { if (!f.char || !CP()) return { leg: '#151515', shoe: '#151515', arm: '#151515', hand: '#f2e0c4', k: null }; const l = CP().limbs(charLook(f), f.color); return { leg: l.legs === 'pants' || l.legs === 'shorts' ? l.pants : l.skin, shoe: l.shoe, arm: l.arm, hand: l.skin, k: l.k }; }; // (k = 🧍 the body type's arm / leg sizes, 1.70.0)
   function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   // 🏴‍☠️ everyone on the Pirate Battle wears pirate clothes in their crew's colour (their own face, hair and skin stay):
@@ -1075,7 +1077,7 @@
   }
   function drawPackBody(f, x, top, PW, PH, s, cut) {
     if (f.char && CP()) { // 🧍 a character: their drawing fills the box (with the hurt flash / damage look like a pack)
-      const c = charCanvas(f), [sx, sy, sw, sh] = CHAR_SRC, cy = cut ? sh * .42 : 0;
+      const c = charCanvas(f), [sx, sy, sw, sh] = CHAR_SRC, cy = cut ? sh * .42 : -(f._ccUp || 0); // (🧍 a big head / long neck goes above the box)
       g.save(); if (f.hurtT > 0) g.filter = `brightness(${1 + f.hurtT * 1.6})`; else if (f.hp < 100) g.filter = `saturate(${.55 + .45 * Math.max(0, f.hp) / 100})`;
       g.drawImage(c, sx, sy + cy, sw, sh - cy, x - PW * .06, top + PH * cy / sh, PW * 1.12, PH - PH * cy / sh);
       g.restore();
@@ -1128,7 +1130,7 @@
     g.restore();
   }
   function drawFighter(f) {
-    const s = S(f), X = f.x, Y = zY(f.z), PW = 74 * s, PH = 112 * s, LL = 44 * s, AL = 40 * s, gl = gnd(f);
+    const LC = limbCol(f), K = LC.k || {}, s = S(f), X = f.x, Y = zY(f.z), PW = 74 * s, PH = 112 * s, LL = 44 * s * (K.legL || 1), AL = 40 * s * (K.armL || 1), gl = gnd(f); // (🧍 K = the body type: longer / shorter legs and arms)
     const pc = PIR() && f.team != null && CREW[f.team], overSea = PIR() && (f.swing || f.falling || !onDeck(f.x, f.z));
     if (!overSea) { g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(X, Y - gl, PW * .62 * (1 - Math.min(.5, (f.h - gl) / 400)), 11 * s, 0, 0, 7); g.fill(); } // shadow
     if (pc && f.alive && !overSea && !FIN.on && mode !== 'won') { g.strokeStyle = pc.col; g.lineWidth = 4 * s; g.globalAlpha = .9; g.beginPath(); g.ellipse(X, Y - gl, PW * .66, 12.5 * s, 0, 0, 7); g.stroke(); g.globalAlpha = 1; } // 🏴‍☠️ a ring in their crew's colour
@@ -1138,25 +1140,25 @@
     if (!f.alive && f.koT > 5 && !f.out) g.globalAlpha = Math.max(.35, 1 - (f.koT - 5) * .2);
     const fy = Y - f.h, hip = fy - LL, top = hip - PH, a = f.atk, walk = Math.sin(f.ph), lean = a ? f.face * .1 : 0;
     g.translate(X, hip); g.rotate(lean); g.translate(-X, -hip);
-    const LC = limbCol(f); g.strokeStyle = LC.leg; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.strokeStyle = LC.leg; g.lineCap = 'round'; g.lineJoin = 'round';
     // legs
     for (const [k, side] of [['ll', -1], ['rl', 1]]) {
-      const hx = X + side * PW * .22, front = side === f.face;
+      const hx = X + side * PW * .22 * (K.hipX || 1), front = side === f.face;
       if (!f.limbs[k]) { g.fillStyle = '#a0101a'; g.beginPath(); g.arc(hx, hip + 2 * s, 5 * s, 0, 7); g.fill(); continue; }
       let fx = hx + walk * 12 * s * side, fyy = fy - Math.max(0, Math.cos(f.ph) * side) * 6 * s;
       if (f.alive && a?.kind === 'kick' && front) { const u = Math.sin(Math.min(1, a.t / a.dur) * Math.PI); fx = hx + f.face * LL * 1.25 * u; fyy = hip + 4 * s - u * LL * .1 + (1 - u) * LL; }
       if (f.alive && a?.kind === 'jump') { fx = front ? hx + f.face * LL * 1.2 : hx - f.face * LL * .3; fyy = front ? hip + 6 * s : hip + LL * .6; }
-      limb(hx, hip, fx, fyy, -f.face * 7 * s, 5.5 * s);
-      g.fillStyle = LC.shoe; g.beginPath(); g.ellipse(fx + f.face * 4 * s, fyy, 10 * s, 5 * s, 0, 0, 7); g.fill(); // kung fu slipper
+      limb(hx, hip, fx, fyy, -f.face * 7 * s, 5.5 * s * (K.leg || 1));
+      g.fillStyle = LC.shoe; g.beginPath(); g.ellipse(fx + f.face * 4 * s, fyy, 10 * s * (K.foot || 1), 5 * s * (K.foot || 1), 0, 0, 7); g.fill(); // kung fu slipper
     }
     drawPackBody(f, X - PW / 2, top, PW, PH, s, f.head ? 0 : PH * .38);
     if (f.head) drawFace(f, X, top, PW, PH, s, f.target ? Math.sign(f.target.x - f.x) : f.face);
     // arms
-    const sy = top + PH * .48; g.strokeStyle = LC.arm;
+    const sy = top + PH * (.48 + .332 * (1 - (K.tk || 1))), aK = K.armL || 1; g.strokeStyle = LC.arm; // (a shorter torso: the shoulders are lower)
     for (const [k, side] of [['la', -1], ['ra', 1]]) {
-      const shx = X + side * PW * .48, front = side === f.face;
+      const shx = X + side * PW * (.355 * (K.shX || 1) + .125), front = side === f.face;
       if (!f.limbs[k]) { g.fillStyle = '#a0101a'; g.beginPath(); g.arc(shx, sy, 5 * s, 0, 7); g.fill(); continue; }
-      let hx = shx + f.face * (front ? 18 : 8) * s, hy = sy - (front ? 20 : 12) * s + walk * 2 * s; // guard up
+      let hx = shx + f.face * (front ? 18 : 8) * s * aK, hy = sy - (front ? 20 : 12) * s * aK + walk * 2 * s; // guard up
       if (f.alive && a?.kind === 'punch' && front) { const u = Math.sin(Math.min(1, a.t / a.dur) * Math.PI); hx = shx + f.face * AL * (.4 + 1.25 * u); hy = sy - 6 * s; }
       if (f.alive && a?.kind === 'jump') { hx = shx - f.face * AL * .5; hy = sy - AL * .7; }
       if (f.block > 0) { hx = shx + f.face * 14 * s; hy = sy - 30 * s; }
@@ -1164,12 +1166,12 @@
       if (f.alive && a?.kind === 'clothes' && front) { hx = shx + f.face * AL * 1.6; hy = sy - 4 * s; }
       if (f.alive && a?.kind === 'elbow' && front) { hx = shx + f.face * 6 * s; hy = sy + AL * .6; }
       if (!f.alive) { hx = shx + side * AL * .9; hy = sy + AL * .2; }
-      limb(shx, sy, hx, hy, side * 6 * s, 5 * s);
+      limb(shx, sy, hx, hy, side * 6 * s, 5 * s * (K.arm || 1));
       if (f.alive && a?.kind === 'cast' && front) { const u = Math.sin(Math.min(1, a.t / a.dur) * Math.PI); hx = shx + f.face * AL * (.5 + 1.1 * u); hy = sy - 14 * s - u * 10 * s; }
       if (front && f.weapon) drawWeapon(f.weapon, hx, hy, f.face, s, a?.kind === 'punch' || (WAR() && a?.kind === 'cast') ? 0 : WAR() ? -.35 : -.9);
       if (front && WAR() && f.flash > 0) { f.flash -= 1 / 60; g.fillStyle = '#ffe27a'; g.beginPath(); g.arc(hx + f.face * 86 * s, hy - 3 * s, 10 * s, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(hx + f.face * 86 * s, hy - 3 * s, 4 * s, 0, 7); g.fill(); } // muzzle flash
       if (front && WIZ() && f.head !== undefined) { const ang = a?.kind === 'cast' ? -.15 : -1; g.save(); g.translate(hx, hy); g.rotate(ang * f.face); g.strokeStyle = '#4a2a14'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(0, 0); g.lineTo(f.face * 34 * s, 0); g.stroke(); g.fillStyle = a?.kind === 'cast' ? '#fff' : '#c8a0ff'; g.beginPath(); g.arc(f.face * 36 * s, 0, (a?.kind === 'cast' ? 6 : 3.5) * s, 0, 7); g.fill(); g.restore(); g.strokeStyle = LC.arm; } // 🪄 the wand
-      g.fillStyle = LC.hand; g.strokeStyle = '#151515'; g.lineWidth = 2 * s; g.beginPath(); g.arc(hx, hy, 6.5 * s, 0, 7); g.fill(); g.stroke(); g.strokeStyle = LC.arm;
+      g.fillStyle = LC.hand; g.strokeStyle = '#151515'; g.lineWidth = 2 * s; g.beginPath(); g.arc(hx, hy, 6.5 * s * (K.hand || 1), 0, 7); g.fill(); g.stroke(); g.strokeStyle = LC.arm;
     }
     g.restore();
     if (f.alive && mode !== 'won' && !FIN.on) { // health bar on top

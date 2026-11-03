@@ -13,7 +13,7 @@
       "Wizard robe", "Knight armor", "Superhero suit", "Astronaut suit", "Soldier uniform", "Wrestling singlet", "Pirate coat", "Ninja outfit", "Robot suit", "Roman toga", "Vampire cloak", "Mummy wraps", "Skeleton costume", "Pumpkin costume", "Elf outfit", "Santa suit", "Holiday sweater", "Pilgrim outfit", "Bunny onesie", "Hazmat suit", "Zombie survivor", "Ski jacket", "Safari outfit", "Peasant tunic", "Dino onesie"],
     "makeup": ["None", "Rosy cheeks", "Red lipstick", "Eyeliner", "Blue eyeshadow", "Freckles", "Glitter", "Face paint stripes", "Heart cheeks", "Clown nose", "Pink lipstick", "Purple lipstick", "Black lipstick", "Pink eyeshadow", "Gold eyeshadow", "Smoky eyes", "Rainbow eyeshadow", "Winged liner + red lips", "Star cheeks", "Beauty mark", "Cat whiskers", "Butterfly face paint", "Forehead gem", "Bronze glow", "Skeleton face paint"],
     "facialhair": ["None", "Stubble", "Mustache", "Handlebar mustache", "Goatee", "Soul patch", "Short beard", "Full beard", "Long beard", "Mutton chops", "Pencil mustache", "Walrus mustache", "Horseshoe mustache", "Van Dyke", "Chin strap", "Chin curtain", "Anchor beard", "Braided beard", "Forked beard", "Wizard beard", "Circle beard", "Box beard", "Droopy mustache", "Curled mustache", "Sideburns"],
-    "body": ["Flat", "Curvy · size 2", "Curvy · size 1 (smallest)", "Curvy · size 3", "Curvy · size 4", "Curvy · size 5 (biggest)", "Thin · Flat", "Thin · Curvy · size 2", "Thin · Curvy · size 1 (smallest)", "Thin · Curvy · size 3", "Thin · Curvy · size 4", "Thin · Curvy · size 5 (biggest)", "Fat · Flat", "Fat · Curvy · size 2", "Fat · Curvy · size 1 (smallest)", "Fat · Curvy · size 3", "Fat · Curvy · size 4", "Fat · Curvy · size 5 (biggest)", "Athletic · Flat", "Athletic · Curvy · size 2", "Athletic · Curvy · size 1 (smallest)", "Athletic · Curvy · size 3", "Athletic · Curvy · size 4", "Athletic · Curvy · size 5 (biggest)"],
+    "body": ["Flat", "Curvy · size 2", "Curvy · size 1 (smallest)", "Curvy · size 3", "Curvy · size 4", "Curvy · size 5 (biggest)", "Thin · Flat", "Thin · Curvy · size 2", "Thin · Curvy · size 1 (smallest)", "Thin · Curvy · size 3", "Thin · Curvy · size 4", "Thin · Curvy · size 5 (biggest)", "Fat · Flat", "Fat · Curvy · size 2", "Fat · Curvy · size 1 (smallest)", "Fat · Curvy · size 3", "Fat · Curvy · size 4", "Fat · Curvy · size 5 (biggest)", "Athletic · Flat", "Athletic · Curvy · size 2", "Athletic · Curvy · size 1 (smallest)", "Athletic · Curvy · size 3", "Athletic · Curvy · size 4", "Athletic · Curvy · size 5 (biggest)", "Muscular", "Dad bod", "Beer belly", "Stocky", "Big & tall", "Lanky", "Swimmer", "Barrel chest", "Chubby", "Strongman", "Wiry", "Bobblehead", "Pinhead", "Noodle arms", "Gorilla arms", "Stubby legs", "Stilt legs", "Pear", "Triangle", "Egg", "Long neck", "Big hands & feet"],
     "skin": ["Porcelain", "Light", "Fair", "Medium", "Olive", "Tan", "Brown", "Deep"],
     "haircolor": ["Black", "Dark brown", "Brown", "Blonde", "Ginger", "Gray", "White", "Blue", "Pink", "Green"],
     "accessory": ["None", "Headband", "Bow", "Flower", "Hair clip", "Bandana", "Sweatband", "Shades on top", "Headphones", "Cat ears", "Bunny ears", "Devil horns", "Halo", "Crown", "Tiara", "Feather", "Baseball cap", "Backwards cap", "Beanie", "Pom-pom beanie", "Cowboy hat", "Top hat", "Bowler hat", "Fedora", "Party hat", "Wizard hat", "Witch hat", "Santa hat", "Pirate hat", "Chef hat", "Hard hat", "Graduation cap", "Viking helmet", "Propeller cap", "Beret", "Bucket hat", "Visor", "Flower crown", "Antlers", "Unicorn horn", "Alien antennae", "Bee antennae", "Mouse ears", "Bear ears", "Fox ears", "Glasses", "Sunglasses", "Star glasses", "Eye patch", "Monocle", "Goggles"],
@@ -35,7 +35,7 @@
   const ALLN = Object.fromEntries(Object.entries(BASE).map(([k, list]) => [k, VARS[k] ? [...list, ...VARS[k].flatMap(tag => list.map((x, i) => vname(k, i + 1, x, tag)))] : list.slice()]));
   const sp = (k, n) => { const N0 = BASE[k].length, i = Math.max(0, (Number(n) || 1) - 1); return [i % N0 + 1, Math.floor(i / N0)]; }; // number → [base, version]
   // groups people see on the picture sheets (anyone can pick anything)
-  const GROUPS = { hair: [[1, 25, "men's styles"], [26, 50, "women's styles"]], outfit: [[1, 25, "men's"], [26, 50, "women's"], [51, 75, 'costumes (anyone)']] };
+  const GROUPS = { hair: [[1, 25, "men's styles"], [26, 50, "women's styles"]], outfit: [[1, 25, "men's"], [26, 50, "women's"], [51, 75, 'costumes (anyone)']], body: [[1, 24, 'regular, thin, fat or athletic (flat + 5 chest sizes each)'], [25, 35, "men's builds"], [36, 46, 'odd ones (anyone)']] };
   const SKIN = ['#fbe3d0', '#f6d7b8', '#eac39a', '#d6a37a', '#c4956a', '#b07a52', '#8a5a3a', '#5e3a24'];
   const HAIRC = ['#1a1210', '#3a2414', '#6a3e1e', '#e0c070', '#b8501e', '#8a8a8a', '#ecebe6', '#3a6ad8', '#e05aa8', '#3aa85a'];
   const PI = Math.PI;
@@ -224,13 +224,13 @@
     { s: 'wide', legs: 'pants', pants: '#d42020', f: '#d42020', arm: '#d42020', shoe: '#18181e', d: q => { q.R(-.06, 0, .12, 1, '#fff'); q.R(-.7, q.H - .1, 1.4, .14, '#fff'); q.belt(.42, '#18181e', '#ffd23a'); } },
     { s: 'shirt', legs: 'pants', arm: 'c', d: q => { for (const yy of [.3, .5]) q.L('#fff', .04, ...Array.from({ length: 9 }, (_, k) => [-.48 + k * .12, yy + (k % 2 ? -.05 : .05)]).flat()); q.dots('rgba(255,255,255,.8)', .2, .018); } },
     { s: 'wide', legs: 'pants', pants: '#2a2a2e', f: '#2a2a2e', arm: '#2a2a2e', d: q => { q.P(W, -.34, 0, .34, 0, .26, .18, 0, .22, -.26, .18); q.belt(.5, '#18181e', '#c8c8c8'); } },
-    { s: 'wide', legs: 'pants', pants: 'c', arm: 'c', back: q => { for (const s of [-1, 1]) { q.E(s * .2, -1.45, .1, .32, q.c, s * .15); q.E(s * .2, -1.42, .05, .22, '#ffb0c8', s * .15); } }, d: q => { q.E(0, .45, .3, .32, '#fff'); q.zip('rgba(0,0,0,.2)'); } },
+    { s: 'wide', legs: 'pants', pants: 'c', arm: 'c', hood: true, back: q => { for (const s of [-1, 1]) { q.E(s * .2, -1.45, .1, .32, q.c, s * .15); q.E(s * .2, -1.42, .05, .22, '#ffb0c8', s * .15); } }, d: q => { q.E(0, .45, .3, .32, '#fff'); q.zip('rgba(0,0,0,.2)'); } },
     { s: 'wide', legs: 'pants', pants: '#e8d020', f: '#e8d020', arm: '#e8d020', shoe: '#2a2a2a', d: q => { q.zip('#888'); q.P('#18181e', -.38, .28, -.26, .08, -.14, .28); q.P('#e8d020', -.34, .26, -.26, .14, -.18, .26); for (const s of [-1, 1]) q.L('rgba(0,0,0,.2)', .02, s * .45, 0, s * .4, 1); }, t: q => q.E(0, 0, .3, .08, '#c8b010') },
     { s: 'shirt', legs: 'pants', pants: '#4a4a3a', d: q => { for (const [x, y] of [[-.35, .55], [.3, .2], [.4, .62], [-.2, .15]]) q.P('rgba(0,0,0,.45)', x - .05, y, x + .02, y - .06, x + .06, y + .02, x, y + .06); q.L('#5a3a1a', .09, -.55, 0, .45, q.H + .05); q.E(-.3, .4, .1, .06, 'rgba(110,80,40,.35)'); } },
     { s: 'wide', legs: 'pants', arm: 'c', d: q => { q.P('#fff', -.7, .3, 0, .45, .7, .3, .7, .38, 0, .53, -.7, .38); q.zip('rgba(0,0,0,.35)'); }, t: q => q.E(0, 0, .26, .08, q.dk) },
     { s: 'shirt', legs: 'shorts', pants: '#b09868', f: '#c8b080', arm: '#c8b080', shoe: '#5a3a1a', d: q => { q.flaps('#b09868'); for (const s of [-1, 1]) q.R(s > 0 ? .15 : -.37, .18, .22, .14, '#b8a070'); q.belt(.6, '#6a4a2a', '#c8a050'); } },
     { s: 'long', legs: 'pants', pants: '#5a4a3a', f: '#9a7a50', arm: '#9a7a50', shoe: '#4a3020', d: q => { q.P('#f0e6cc', -.1, 0, .1, 0, 0, .25); for (let i = 0; i < 3; i++) { q.L('#5a3a1a', .015, -.08, .04 + i * .07, .08, .1 + i * .07); q.L('#5a3a1a', .015, .08, .04 + i * .07, -.08, .1 + i * .07); } q.L('#d8c090', .04, -.7, .45, .7, .45); } },
-    { s: 'wide', legs: 'pants', pants: 'c', arm: 'c', back: q => { for (let i = 0; i < 5; i++) q.P(q.dk, -.36 + i * .18, -1.08 - Math.sin(i / 4 * PI) * .2, -.27 + i * .18, -1.4 - Math.sin(i / 4 * PI) * .25, -.18 + i * .18, -1.08 - Math.sin(i / 4 * PI) * .2); }, d: q => { q.E(0, .45, .32, .34, q.lt); for (let i = 0; i < 3; i++) q.L(q.c, .02, -.22, .3 + i * .13, .22, .3 + i * .13); } }
+    { s: 'wide', legs: 'pants', pants: 'c', arm: 'c', hood: true, back: q => { for (let i = 0; i < 5; i++) q.P(q.dk, -.36 + i * .18, -1.08 - Math.sin(i / 4 * PI) * .2, -.27 + i * .18, -1.4 - Math.sin(i / 4 * PI) * .25, -.18 + i * .18, -1.08 - Math.sin(i / 4 * PI) * .2); }, d: q => { q.E(0, .45, .32, .34, q.lt); for (let i = 0; i < 3; i++) q.L(q.c, .02, -.22, .3 + i * .13, .22, .3 + i * .13); } }
   ];
 
   // ---------- 💄 makeup: { u: under the eyes, o: over the smile } and 🧔 facial hair ----------
@@ -500,9 +500,70 @@
 
   /** 👩 A chest shape that shows through the outfit (PG: just shading, 1.59.3 easier to see). Women characters + bodies 2–6.
    *  5 sizes (Derek): body 3 = size 1 (smallest), 2 = size 2, 4 = size 3, 5 = size 4, 6 = size 5. Random characters only get sizes 1–3. */
-  const CHEST = { 2: 2, 3: 1, 4: 3, 5: 4, 6: 5 }, chestSize = body => CHEST[((Number(body) || 1) - 1) % 6 + 1] || 0;
+  const CHEST = { 2: 2, 3: 1, 4: 3, 5: 4, 6: 5 }, chestSize = body => (Number(body) || 1) > 24 ? 0 : CHEST[((Number(body) || 1) - 1) % 6 + 1] || 0;
   // 🧍 body types (1.59.3, Derek): 1–6 regular, 7–12 thin, 13–18 fat, 19–24 athletic (each: flat + the 5 chest sizes, in that order)
   const BUILD = [1, .84, 1.28, 1.14], buildOf = body => Math.min(3, Math.floor(((Number(body) || 1) - 1) / 6));
+  // 🧍 more body types (1.70.0, Derek: "more males body types and some odd ones too"): 25–35 men's builds, 36–46 odd ones (anyone).
+  // w = width of the whole body; sh / mid / hip = width at the shoulders / the middle / the bottom (a smooth curve through the three);
+  // bel = a belly bulge; mus = muscle lines (1 lean, 2 big); hk = head size; nk = a neck (how far up the head goes); tk = torso height;
+  // arm / leg = how thick, armL / legL = how long, hand / foot = how big. Left out = 1 (0 for bel, mus, nk). Only ADD at the end.
+  const BODY2 = [
+    { w: 1.06, sh: 1.34, mid: 1.06, hip: .9, mus: 2, arm: 1.65, leg: 1.35, hand: 1.15 }, // 25 Muscular
+    { w: 1.1, mid: 1.07, hip: 1.1, bel: .17, arm: 1.1, leg: 1.1 }, // 26 Dad bod
+    { sh: .94, mid: 1.1, hip: 1.02, bel: .45, arm: .85, leg: .85 }, // 27 Beer belly
+    { w: 1.24, sh: 1.12, mid: 1.08, hip: 1.06, tk: .86, arm: 1.35, leg: 1.4, legL: .8 }, // 28 Stocky
+    { w: 1.3, sh: 1.16, mid: 1.12, hip: 1.1, bel: .1, tk: 1.06, arm: 1.45, leg: 1.45, legL: 1.18, hand: 1.15, foot: 1.15 }, // 29 Big & tall
+    { w: .76, sh: .94, mid: .9, hip: .9, tk: 1.06, arm: .7, leg: .72, armL: 1.2, legL: 1.3 }, // 30 Lanky
+    { sh: 1.3, mid: .95, hip: .8, mus: 1, arm: 1.2, leg: 1.05 }, // 31 Swimmer
+    { w: 1.12, sh: 1.1, mid: 1.24, hip: .96, mus: 1, arm: 1.25, leg: 1.15 }, // 32 Barrel chest
+    { w: 1.2, sh: 1.02, mid: 1.1, hip: 1.12, bel: .12, arm: 1.2, leg: 1.2, legL: .92 }, // 33 Chubby
+    { w: 1.22, sh: 1.36, mid: 1.15, hip: 1.05, bel: .18, mus: 2, arm: 1.75, leg: 1.5, hand: 1.2 }, // 34 Strongman
+    { w: .88, mid: .9, hip: .88, mus: 1, arm: .85, leg: .85 }, // 35 Wiry
+    { hk: 1.42, w: .8, tk: .76, arm: .8, leg: .85, legL: .8 }, // 36 Bobblehead
+    { hk: .6, w: 1.22, sh: 1.22, mid: 1.12, arm: 1.3, leg: 1.25 }, // 37 Pinhead
+    { arm: .42, armL: 1.5, hand: .85 }, // 38 Noodle arms
+    { w: 1.08, sh: 1.2, arm: 1.8, armL: 1.5, hand: 1.8 }, // 39 Gorilla arms
+    { legL: .42, leg: 1.45, foot: 1.2 }, // 40 Stubby legs
+    { legL: 1.95, leg: .7, foot: .9 }, // 41 Stilt legs
+    { sh: .72, mid: 1.08, hip: 1.42 }, // 42 Pear
+    { sh: 1.62, mid: .95, hip: .6, arm: 1.4, leg: .75, legL: .85 }, // 43 Triangle
+    { sh: .78, mid: 1.38, hip: .9, arm: .9, leg: .9 }, // 44 Egg
+    { nk: .44 }, // 45 Long neck
+    { hand: 2.1, foot: 2 } // 46 Big hands & feet
+  ];
+  const BK0 = { w: 1, sh: 1, mid: 1, hip: 1, bel: 0, mus: 0, hk: 1, nk: 0, tk: 1, arm: 1, leg: 1, armL: 1, legL: 1, hand: 1, foot: 1 };
+  const bodyK = body => { const n = Math.round(Number(body) || 1); return n > 24 && BODY2[n - 25] ? { ...BK0, ...BODY2[n - 25], n } : { ...BK0, old: true, n }; };
+  /** How wide a new body type is at t (0 = the shoulders … 1 = the bottom of the torso), 1 = a regular body. */
+  const bodyW = (K, t) => { t = Math.max(0, Math.min(1, t)); const c = 2 * K.mid - .5 * (K.sh + K.hip); return K.w * ((1 - t) * (1 - t) * K.sh + 2 * t * (1 - t) * c + t * t * K.hip + K.bel * Math.exp(-(((t - .7) / .2) ** 2))); };
+  /** Draws the body layer on its own canvas, then copies it back one row at a time, each row as wide as the body type is there,
+   *  so outfits, patterns and outlines all follow the new shape. (A turned or skewed drawing just gets wider or narrower.) */
+  let WCV = null;
+  function warpBody(g, paint, m, ty, by, rr, K) {
+    const T = g.getTransform ? g.getTransform() : null;
+    if (!T || Math.abs(T.b) > 1e-6 || Math.abs(T.c) > 1e-6 || typeof document === 'undefined' || !g.canvas) { g.save(); g.translate(m, 0); g.scale(K.w, 1); g.translate(-m, 0); paint(g); g.restore(); return; }
+    const cw = g.canvas.width, ch = g.canvas.height; if (!WCV) WCV = document.createElement('canvas');
+    if (WCV.width !== cw || WCV.height !== ch) { WCV.width = cw; WCV.height = ch; }
+    const o = WCV.getContext('2d'); o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, cw, ch); o.setTransform(T); o.lineJoin = 'round'; o.lineCap = 'round';
+    paint(o);
+    const dev = y => T.d * y + T.f, mx = T.a * m + T.e, y0 = dev(ty), y1 = dev(by), a = Math.max(0, Math.floor(Math.min(dev(ty - rr * .35), dev(by + rr * .6)))), b = Math.min(ch, Math.ceil(Math.max(dev(ty - rr * .35), dev(by + rr * .6))));
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+    for (let y = a; y < b; y++) { const k = bodyW(K, (y + .5 - y0) / (y1 - y0)); g.drawImage(WCV, 0, y, cw, 1, mx - mx * k, y, cw * k, 1); }
+    g.restore();
+  }
+  /** Belly + muscles of the new body types (inside the outfit). */
+  function bodyDetails(g, path, m, ty, by, rr, K) {
+    const H = by - ty; g.save(); path(); g.clip(); g.lineCap = 'round';
+    if (K.bel > 0) { g.fillStyle = `rgba(0,0,0,${.08 + .1 * K.bel})`; E(g, m, by - H * .2, rr * (.24 + .3 * K.bel), H * (.22 + .26 * K.bel)); g.fillStyle = 'rgba(255,255,255,.13)'; E(g, m - rr * .12, by - H * .34, rr * (.1 + .12 * K.bel), H * (.07 + .08 * K.bel), -.3); } // (a round belly)
+    if (K.mus) {
+      const big = K.mus > 1; g.strokeStyle = `rgba(0,0,0,${big ? .34 : .26})`; g.lineWidth = rr * (big ? .03 : .022);
+      for (const sx of [-1, 1]) {
+        g.beginPath(); g.moveTo(m + sx * rr * .05, ty + H * .4); g.quadraticCurveTo(m + sx * rr * .24, ty + H * .5, m + sx * rr * .4, ty + H * .27); g.stroke(); // chest
+        for (let i = 0; i < (big ? 3 : 2); i++) { const yy = ty + H * (.58 + i * .13); g.beginPath(); g.moveTo(m + sx * rr * .2, yy); g.lineTo(m + sx * rr * .32, yy - H * .03); g.stroke(); } // abs + sides
+        if (big) { g.beginPath(); g.arc(m + sx * rr * .44, ty + H * .2, rr * .13, sx > 0 ? PI * .85 : PI * 1.6, sx > 0 ? PI * 1.4 : PI * 2.15); g.stroke(); g.fillStyle = 'rgba(255,255,255,.1)'; E(g, m + sx * rr * .22, ty + H * .26, rr * .14, H * .11); } // shoulders + chest shine
+      }
+    }
+    g.restore();
+  }
   function chest(g, m, ty, rr, size = 2) {
     const k = [0, .82, 1, 1.16, 1.32, 1.48][size] || 1, rx = rr * .15 * k, ry = rr * .118 * k, off = Math.min(rr * .3, rr * .148 * k + rr * .012);
     g.save();
@@ -519,38 +580,52 @@
 
   /** A character on a token canvas (head centre m, m − .4·rr; the movie poster / Twitch picture is a badge on the chest). */
   function draw(g, m, rr, look, img, col, initials) {
-    const L = norm(look), hr = rr * .58, hx = m, hy = m - rr * .4, ty = m + rr * .22, by = m + rr * .95, hairC = hairColN(L.haircolor), skin = skinCol(L.skin), out = OUT[sp('outfit', L.outfit)[0] - 1];
+    const L = norm(look), K = bodyK(L.body), nb = !K.old, hr = rr * .58, hx = m, hy = m - rr * .4, by = m + rr * .95, ty = nb ? by - rr * .73 * K.tk : m + rr * .22, hairC = hairColN(L.haircolor), skin = skinCol(L.skin), out = OUT[sp('outfit', L.outfit)[0] - 1];
     const [hb, hv] = sp('hair', L.hair), hair = HAIR[hb - 1], ov = sp('outfit', L.outfit)[1], [mb, mv] = sp('makeup', L.makeup), [fb, fv] = sp('facialhair', L.facialhair);
     col = outCol(L.outfit, (look && look.col) || col || '#8a5cff');
     const hairCol = hairC, rc = (look && look.rc) || null; // (rc = a team colour: 🏴‍☠️ the Pirate Battle's crews. Clothes with their own colour, bandanas and the hat's band take it)
     g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
     const q = Q(g, m, ty, by, rr, col, skin), path = () => SH[out.s](g, m, ty, by, rr);
     const cs = chestSize(L.body), bld = buildOf(L.body), bw = BUILD[bld], wide = fn => { if (bw === 1) return fn(); g.save(); g.translate(m, 0); g.scale(bw, 1); g.translate(-m, 0); fn(); g.restore(); }; // (thin / fat / athletic: the body is narrower or wider, the head stays)
-    wide(() => {
-    if (out.cape) { g.fillStyle = shade(col, -45); g.beginPath(); g.moveTo(m - rr * .45, ty + rr * .02); g.lineTo(m + rr * .45, ty + rr * .02); g.lineTo(m + rr * .7, by + rr * .25); g.lineTo(m - rr * .7, by + rr * .25); g.closePath(); g.fill(); }
-    if (out.back) out.back(q);
+    // 🧍 body types 25+ (1.70.0): the body has its own shape (warpBody), the head can be bigger, smaller or up on a long neck
+    const hShift = nb ? Math.max(0, ty - (m + rr * .22)) - K.nk * rr : 0, hk = nb ? K.hk : 1, headOn = !!(hShift || hk !== 1); // (a shorter torso brings the head down onto it; a taller one just goes up behind the chin)
+    const headXf = gg => { if (headOn) { gg.translate(hx, hy + hr + hShift); gg.scale(hk, hk); gg.translate(-hx, -(hy + hr)); } }; // (around the chin)
+    const hood = headOn && !!out.hood; // (a hood's ears / spikes stay on the head)
+    const layer = paint => { if (!nb) { wide(() => paint(g, q, path)); return; } warpBody(g, gg => paint(gg, Q(gg, m, ty, by, rr, col, skin), () => SH[out.s](gg, m, ty, by, rr)), m, ty, by, rr, K); };
+    layer((gg, qq) => {
+      if (out.cape) { gg.fillStyle = shade(col, -45); gg.beginPath(); gg.moveTo(m - rr * .45, ty + rr * .02); gg.lineTo(m + rr * .45, ty + rr * .02); gg.lineTo(m + rr * .7, by + rr * .25); gg.lineTo(m - rr * .7, by + rr * .25); gg.closePath(); gg.fill(); }
+      if (out.back && !hood) out.back(qq);
     });
-    if (hair.b) hairLayer(g, gg => { gg.fillStyle = hairCol; hair.b(gg, hx, hy, hr, hairCol); }, hv, hx, hy, hr, hairCol);
+    if (hood) { g.save(); headXf(g); out.back(Q(g, m, m + rr * .22, by, rr, col, skin)); g.restore(); }
+    if (hair.b) { g.save(); headXf(g); hairLayer(g, gg => { gg.fillStyle = hairCol; hair.b(gg, hx, hy, hr, hairCol); }, hv, hx, hy, hr, hairCol); g.restore(); }
     // body
-    wide(() => {
-    let fill = rc && typeof out.f === 'string' ? null : out.f;
-    if (!fill) { fill = g.createLinearGradient(m - rr * .6, ty, m + rr * .6, by); fill.addColorStop(0, shade(col, 30)); fill.addColorStop(1, shade(col, -35)); }
-    else if (typeof fill === 'function') fill = fill(g, m, ty, by, rr);
-    g.fillStyle = fill; path(); g.fill();
-    if (out.d || ov) { g.save(); path(); g.clip(); if (out.d) out.d(q); if (ov) { tint(q, L.outfit, typeof out.f === 'string'); if (OPAT[ov]) OPAT[ov](q); } g.restore(); }
-    if (cs) chest(g, m, ty, rr, cs);
-    if (bld === 2) { g.save(); path(); g.clip(); g.fillStyle = 'rgba(0,0,0,.13)'; E(g, m, by - rr * .12, rr * .42, rr * .26); g.fillStyle = 'rgba(255,255,255,.12)'; E(g, m - rr * .1, by - rr * .22, rr * .2, rr * .1); g.restore(); } // (a round belly)
-    if (bld === 3 && !cs) { g.save(); g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = rr * .025; for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(m + sx * rr * .04, ty + rr * .28); g.quadraticCurveTo(m + sx * rr * .2, ty + rr * .33, m + sx * rr * .33, ty + rr * .22); g.stroke(); } g.restore(); } // (athletic: chest muscle lines)
-    g.strokeStyle = 'rgba(15,10,20,.85)'; g.lineWidth = rr * .045; path(); g.stroke();
-    if (out.t) out.t(q);
+    layer((gg, qq, pp) => {
+      let fill = rc && typeof out.f === 'string' ? null : out.f;
+      if (!fill) { fill = gg.createLinearGradient(m - rr * .6, ty, m + rr * .6, by); fill.addColorStop(0, shade(col, 30)); fill.addColorStop(1, shade(col, -35)); }
+      else if (typeof fill === 'function') fill = fill(gg, m, ty, by, rr);
+      gg.fillStyle = fill; pp(); gg.fill();
+      if (out.d || ov) { gg.save(); pp(); gg.clip(); if (out.d) out.d(qq); if (ov) { tint(qq, L.outfit, typeof out.f === 'string'); if (OPAT[ov]) OPAT[ov](qq); } gg.restore(); }
+      if (cs) chest(gg, m, ty, rr, cs);
+      if (!nb && bld === 2) { gg.save(); pp(); gg.clip(); gg.fillStyle = 'rgba(0,0,0,.13)'; E(gg, m, by - rr * .12, rr * .42, rr * .26); gg.fillStyle = 'rgba(255,255,255,.12)'; E(gg, m - rr * .1, by - rr * .22, rr * .2, rr * .1); gg.restore(); } // (a round belly)
+      if (!nb && bld === 3 && !cs) { gg.save(); gg.strokeStyle = 'rgba(0,0,0,.28)'; gg.lineWidth = rr * .025; for (const sx of [-1, 1]) { gg.beginPath(); gg.moveTo(m + sx * rr * .04, ty + rr * .28); gg.quadraticCurveTo(m + sx * rr * .2, ty + rr * .33, m + sx * rr * .33, ty + rr * .22); gg.stroke(); } gg.restore(); } // (athletic: chest muscle lines)
+      if (nb) bodyDetails(gg, pp, m, ty, by, rr, K);
+      gg.strokeStyle = 'rgba(15,10,20,.85)'; gg.lineWidth = rr * .045; pp(); gg.stroke();
+      if (out.t) out.t(qq);
     });
     // the picture (movie poster / Twitch picture) on the chest, or the initials
-    const ew = rr * (cs ? .31 - .016 * cs : .34), ex = m - ew / 2, ey = ty + rr * (cs ? .32 + .022 * cs : .26); // (lower + a bit smaller under a chest)
+    const bk = nb ? Math.min(1, K.tk, Math.max(.7, bodyW(K, .45))) : 1; // (smaller on a small body)
+    const ew = rr * (cs ? .31 - .016 * cs : .34) * bk, ex = m - ew / 2, ey = ty + rr * (cs ? .32 + .022 * cs : .26) * (nb ? K.tk : 1); // (lower + a bit smaller under a chest)
     g.save(); g.beginPath(); g.roundRect ? g.roundRect(ex, ey, ew, ew * 1.2, rr * .04) : g.rect(ex, ey, ew, ew * 1.2); g.fillStyle = '#fff'; g.fill(); g.clip();
     if (img && img.complete && img.naturalWidth) { const k = Math.max(ew / img.naturalWidth, ew * 1.2 / img.naturalHeight); g.drawImage(img, m - img.naturalWidth * k / 2, ey + ew * .6 - img.naturalHeight * k / 2, img.naturalWidth * k, img.naturalHeight * k); }
     else if (initials) { g.fillStyle = shade(col, -50); g.fillRect(ex, ey, ew, ew * 1.2); g.fillStyle = '#fff'; g.font = `${Math.round(ew * (String(initials).length > 2 ? .38 : .5))}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(initials, m, ey + ew * .62); }
     g.restore(); g.strokeStyle = 'rgba(15,10,20,.8)'; g.lineWidth = rr * .025; g.strokeRect(ex, ey, ew, ew * 1.2);
+    // 🦒 a long neck (body type 45): the head is up high on it
+    if (hShift < -rr * .02) { const nw = rr * .12 * hk, y0 = hy + hr + hShift - rr * .08, y1 = ty + rr * .05;
+      g.fillStyle = skin; g.fillRect(hx - nw, y0, nw * 2, y1 - y0); g.fillStyle = 'rgba(0,0,0,.1)'; g.fillRect(hx - nw, y0, nw * .6, y1 - y0);
+      g.strokeStyle = 'rgba(15,10,20,.85)'; g.lineWidth = rr * .04; g.beginPath(); g.moveTo(hx - nw, y0); g.lineTo(hx - nw, y1); g.moveTo(hx + nw, y0); g.lineTo(hx + nw, y1); g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = rr * .018; for (let i = 1; i <= 3; i++) { const yy = y0 + (y1 - y0) * i / 4; g.beginPath(); g.moveTo(hx - nw * .6, yy); g.quadraticCurveTo(hx, yy + rr * .025, hx + nw * .6, yy); g.stroke(); } }
     // face
+    g.save(); headXf(g);
     g.fillStyle = skin; g.strokeStyle = 'rgba(15,10,20,.9)'; g.lineWidth = rr * .045; g.beginPath(); g.arc(hx, hy, hr, 0, 7); g.fill(); g.stroke();
     g.fillStyle = shade(skin, -18); for (const s of [-1, 1]) E(g, hx + s * hr * .98, hy + hr * .05, hr * .13, hr * .2); // ears
     const mk = MAKEUP[mb - 1];
@@ -567,6 +642,7 @@
     if (ACC[L.accessory - 1]) { g.save(); ACC[L.accessory - 1](g, hx, hy, hr, col, hairCol, rc); g.restore(); } // 🎩
     const sh = g.createLinearGradient(0, hy - hr, 0, hy); sh.addColorStop(0, 'rgba(255,255,255,.18)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sh; E(g, hx, hy - hr * .5, hr * .6, hr * .32);
     g.restore();
+    g.restore();
   }
   function norm(look) { const L = look || {}; return { hair: pick('hair', L.hair), outfit: pick('outfit', L.outfit), makeup: pick('makeup', L.makeup), facialhair: pick('facialhair', L.facialhair), body: pick('body', L.body || 1), skin: pick('skin', L.skin || 3), haircolor: pick('haircolor', L.haircolor || 2), accessory: pick('accessory', L.accessory || 1), hairaccessory: pick('hairaccessory', L.hairaccessory || 1) }; }
   /** What the legs and arms look like for this look (game.html's charLimbs). */
@@ -574,7 +650,41 @@
     const L = norm(look), o = OUT[sp('outfit', L.outfit)[0] - 1], skin = skinCol(L.skin); col = outCol(L.outfit, (look && look.col) || col || '#8a5cff');
     const pants = o.pants === 'c' ? shade(col, -25) : o.pants || (o.legs === 'shorts' ? shade(col, -40) : '#2a3a6a');
     const arm = o.arm === 'skin' ? skin : o.arm === 'c' || (look && look.rc && o.arm) ? shade(col, -20) : o.arm || (typeof o.f === 'string' ? o.f : shade(col, -20));
-    return { skin, legs: o.legs, pants, arm, shoe: o.shoe || (o.legs === 'bare' || o.legs === 'gown' ? '#c8102a' : '#1a1a1a') };
+    const K = bodyK(L.body), k = K.old ? null : { shX: bodyW(K, 0), hipX: bodyW(K, 1), arm: K.arm, armL: K.armL, leg: K.leg, legL: K.legL, hand: K.hand, foot: K.foot, tk: K.tk, nk: K.nk, hk: K.hk }; // 🧍 body types 25+ (1.70.0): arm / leg sizes for the battle screens
+    return { skin, legs: o.legs, pants, arm, shoe: o.shoe || (o.legs === 'bare' || o.legs === 'gown' ? '#c8102a' : '#1a1a1a'), k };
+  }
+  /** 🧍 How much room a character needs (in rr from the middle m): top of the hair / hat, bottom of the shoes, half its width. */
+  function figureBox(look) {
+    const K = bodyK(norm(look).body), hk = K.old ? 1 : K.hk, hS = K.old ? 0 : Math.max(0, .73 * (1 - K.tk)) - K.nk, chin = .18 + hS;
+    const half = Math.max(.78, (K.old ? 1 : Math.max(bodyW(K, 0), bodyW(K, .5), bodyW(K, 1))) * .6, .47 * (K.old ? 1 : bodyW(K, 0)) + .16 * K.armL + .1 * K.hand + .04);
+    return { top: chin - 1.16 * hk - .5 * hk, bot: .91 + .6 * K.legL + .09 * K.foot, half }; // (.5: room for big hair and hats)
+  }
+  /** How much higher than usual (in rr) a character's head goes: a big head or a long neck (0 = the usual). */
+  const room = look => Math.max(0, -figureBox(look).top - 1.48);
+  /** 🧍 The whole character standing (legs + arms + the usual drawing), so the body types show on the pictures and the parts website. */
+  function figure(g, m, rr, look, img, col, initials) {
+    const L = norm(look), K = bodyK(L.body), lm = limbs(look, col), k = lm.k || {}, by = m + rr * .95, ty = by - rr * .73 * (K.old ? 1 : K.tk);
+    const hip = by - rr * .04, legLen = rr * .6 * (k.legL || 1), foot = hip + legLen, lw = rr * .14 * (k.leg || 1), aw = rr * .12 * (k.arm || 1), hx0 = rr * .17 * (k.hipX || 1), shX = rr * .45 * (k.shX || 1);
+    const legCol = lm.legs === 'pants' || lm.legs === 'shorts' ? lm.pants : lm.skin, ink = 'rgba(15,10,20,.85)';
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    for (const s of [-1, 1]) { // legs + shoes
+      const x0 = m + s * hx0, x1 = x0 + s * rr * .05;
+      line(g, ink, lw + rr * .05, x0, hip, x1, foot); line(g, legCol, lw, x0, hip, x1, foot);
+      if (lm.legs === 'shorts') line(g, lm.skin, lw * .9, x0 + (x1 - x0) * .5, hip + legLen * .5, x1, foot - rr * .02);
+      g.fillStyle = ink; E(g, x1 + s * rr * .05, foot + rr * .01, rr * .145 * (k.foot || 1), rr * .078 * (k.foot || 1)); g.fillStyle = lm.shoe; E(g, x1 + s * rr * .05, foot + rr * .01, rr * .125 * (k.foot || 1), rr * .06 * (k.foot || 1));
+    }
+    for (const s of [-1, 1]) { // arms hanging at the sides (behind the body) + hands
+      const sx = m + s * shX, sy = ty + rr * .1, ex = sx + s * rr * .14 * (k.armL || 1), ey = sy + rr * .5 * (k.armL || 1);
+      line(g, ink, aw + rr * .05, sx, sy, ex, ey); line(g, lm.arm, aw, sx, sy, ex, ey);
+      g.fillStyle = lm.skin; g.strokeStyle = ink; g.lineWidth = rr * .03; g.beginPath(); g.arc(ex, ey, rr * .085 * (k.hand || 1), 0, 7); g.fill(); g.stroke();
+    }
+    g.restore();
+    draw(g, m, rr, look, img, col, initials);
+  }
+  /** figure() fitted into a box (x, y, w, h): as big as it fits (rr at most maxRR), shoes at the bottom of the box. */
+  function figureFit(g, x, y, w, h, look, img, col, initials, maxRR = Infinity) {
+    const b = figureBox(look), rr = Math.min(maxRR, w / (2 * b.half), h / (b.bot - b.top)), mx = x + w / 2, my = y + h - b.bot * rr;
+    g.save(); g.translate(mx, my); figure(g, 0, rr, look, img, col, initials); g.restore(); return rr;
   }
 
   // ---------- 🎲 random looks for everyone without their own /character (themed on themed maps) ----------
@@ -598,7 +708,7 @@
     let h = hash(seed + '|' + (mapId || '')); const R = n => { h = (Math.imul(h, 1103515245) + 12345) >>> 0; return (h >>> 8) % n; }, from = a => a[R(a.length)];
     const g = gender === 'm' || gender === 'f' ? gender : 'n', th = THEMES[mapId];
     // 🤪 1 in 20 is pure chaos (Derek: "wtf or funny moments", but not all the time): every part picked from everything
-    if (R(100) < CHAOS_PCT || forceChaos) return { hairaccessory: R(2) ? 1 + R(ALLN.hairaccessory.length) : 1, accessory: R(2) ? 1 + R(ALLN.accessory.length) : 1, hair: 1 + R(ALLN.hair.length), outfit: 1 + R(ALLN.outfit.length), makeup: 1 + R(ALLN.makeup.length), facialhair: 1 + R(ALLN.facialhair.length), body: R(4) * 6 + from([1, 1, 3, 2, 4]), skin: 1 + R(ALLN.skin.length), haircolor: 1 + R(ALLN.haircolor.length), col: CHAOS_COL[R(CHAOS_COL.length)], chaos: true };
+    if (R(100) < CHAOS_PCT || forceChaos) return { hairaccessory: R(2) ? 1 + R(ALLN.hairaccessory.length) : 1, accessory: R(2) ? 1 + R(ALLN.accessory.length) : 1, hair: 1 + R(ALLN.hair.length), outfit: 1 + R(ALLN.outfit.length), makeup: 1 + R(ALLN.makeup.length), facialhair: 1 + R(ALLN.facialhair.length), body: R(2) ? R(4) * 6 + from([1, 1, 3, 2, 4]) : 25 + R(BODY2.length), skin: 1 + R(ALLN.skin.length), haircolor: 1 + R(ALLN.haircolor.length), col: CHAOS_COL[R(CHAOS_COL.length)], chaos: true };
     // the other 19 in 20 make sense
     const hair = g === 'm' ? 1 + R(25) : g === 'f' ? 26 + R(25) : 1 + R(50);
     let outfit;
@@ -616,12 +726,13 @@
       outfit: th ? outfit : ver('outfit', outfit, [1, 2, 3, 4, 6, 7, 10, 11, 12, 14, 15, 16, 17, 18], 25),
       makeup: makeup > 1 ? ver('makeup', makeup, g === 'm' ? [2, 4] : [1, 2, 3, 4, 5, 9, 14], 25) : makeup,
       facialhair: facialhair > 1 ? ver('facialhair', facialhair, [1, 2, 3, 4, 5, 6, 13, 14], 30) : facialhair,
-      body: from([0, 0, 0, 0, 1, 2, 3]) * 6 + (g === 'f' ? from([3, 2, 2, 4]) : 1), /* (any build; chest sizes 1–3 only: never the big ones at random) */ skin: ver('skin', 1 + R(8), [1, 2, 3, 4, 5, 6, 7, 8], 50), haircolor: R(20) ? ver('haircolor', 1 + R(7), [1, 2, 3, 4, 5, 6, 7, 9, 12, 13], 40) : 8 + R(3), col: th?.col ? from(th.col) : undefined };
+      body: g === 'f' ? from([0, 0, 0, 0, 1, 2, 3]) * 6 + from([3, 2, 2, 4]) : R(100) < 24 ? from(MEN_BODIES) : from([0, 0, 0, 0, 1, 2, 3]) * 6 + 1, /* (any build; chest sizes 1–3 only: never the big ones at random. 🧍 1.70.0: men + non-binary sometimes get one of the new men's builds; the odd ones only in chaos looks) */ skin: ver('skin', 1 + R(8), [1, 2, 3, 4, 5, 6, 7, 8], 50), haircolor: R(20) ? ver('haircolor', 1 + R(7), [1, 2, 3, 4, 5, 6, 7, 9, 12, 13], 40) : 8 + R(3), col: th?.col ? from(th.col) : undefined };
   }
   // what "makes sense" for the random characters (the silly ones are left for chaos and for people's own /character)
   const CHAOS_PCT = 5, CHAOS_COL = ['#ff2bd6', '#2bd6ff', '#a6ff2b', '#ff8a2b', '#ffe12b', '#8a2bff', '#2bff9a'];
   const MAKEUP_F = [2, 3, 4, 5, 6, 7, 11, 12, 14, 15, 16, 18, 20, 24], MAKEUP_M = [2, 6, 20, 24];
   const BEARDS_OK = r1(2, 25).filter(n => n !== 18 && n !== 20); // (no braided or wizard beards on regular folks)
-  const EVERYDAY_COSTUMES = [53, 57, 58, 67, 69, 72, 73, 75]; // costumes that still make sense in a normal battle (superhero, pirate, ninja, sweater, onesies…)
-  window.CHAR_PARTS = { chestSize, buildOf, NAMES: ALLN, BASE, VARS, GROUPS, SKIN, HAIRC, THEMES, draw, norm, limbs, chest, auto, sp, skinCol, hairCol: hairColN };
+  const EVERYDAY_COSTUMES = [53, 57, 58, 67, 69, 72, 73, 75];
+  const MEN_BODIES = r1(25, 35); // 🧍 the men's builds (36–46 are the odd ones: chaos looks + people's own /character only) // costumes that still make sense in a normal battle (superhero, pirate, ninja, sweater, onesies…)
+  window.CHAR_PARTS = { chestSize, buildOf, bodyK, bodyW, NAMES: ALLN, BASE, VARS, GROUPS, SKIN, HAIRC, THEMES, draw, norm, limbs, chest, auto, sp, skinCol, hairCol: hairColN, figure, figureFit, figureBox, room };
 })();
