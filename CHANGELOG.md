@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.69.1
+- 🏴‍☠️ Pirate Battle celebrations: the Jolly Roger, the parrot's "WINNER! WINNER!", the island (Land Ho!) and the cannon salute sit lower, so the 🏆 WINS! banner doesn't cover them.
+
 ## 1.69.0
 - 🏴‍☠️ **New map: Pirate Battle** (characters only, Derek's idea). Pick it on the Battle tab when a battle has 🧍 characters on (it's in the 🃏 Character only part of the map menu, and never on the Card battles tab).
   - ⛵ Two pirate ships side by side with the sea between them, at sunset. Everyone is a pirate in one of two crews: 🔴 the red crew on *The Scarlet Shark* and 🔵 the blue crew on *The Blue Barracuda*. The crews are split evenly (the same on every screen).
