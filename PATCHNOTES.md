@@ -3,6 +3,23 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.70.1: What's new
+Everything since 1.68.0.
+
+- 🏴‍☠️ **New map: Pirate Battle** (characters only). Pick it on the Battle tab when a battle has 🧍 characters on (🃏 Character only part of the map menu).
+  - ⛵ Two pirate ships side by side in a ⛈️ big storm (rain, lightning, thunder, rough seas). The red ship is the *TimePeace49* and the blue ship is the *Kirbgames*, with their names in fancy gold pirate letters on the back, and each figurehead wears that channel's Twitch picture.
+  - 🏴‍☠️ Everyone is a pirate in one of two crews, split evenly: pirate clothes, the ring under their feet and their health bar frame are in their crew's colour. People's own /character keeps its face, hair and skin.
+  - ⚔️ Pirates only fight the other crew: across the gangplanks, swinging over on ropes, with the ships' cannons firing across the gap. Knocked off the side = into the sea (unless they grab a rope).
+  - 🔴🔵 It always comes down to **one pirate from each crew**. Then 🐙 **the kraken** drags the other ship under, the camera goes all the way round the last two, and they have their 🥊 **FINAL FIGHT**, with 20 pirate finishers and 10 pirate celebrations.
+  - 🌊⚡🐙 **Chat's storm powers** (channel points, only on while a Pirate Battle plays): **Big wave** (500) crashes over a ship and washes pirates overboard, **Lightning bolt** (750) strikes a pirate, **Tentacle swipe** (1,000) sends a kraken tentacle across a deck. They never change who wins. A line at the top of the game screen tells chat what they can send.
+  - 🐒 **A secret:** two little monkeys in pirate hats (red T, blue K) sword fight in a rowboat between the ships. Both die every battle: the loser goes overboard (its ghost floats up), the winner gets taken out right after it celebrates, one of 20 ways (kraken tentacle, lightning, a shark, a giant wave, a cannonball, a seagull, a banana peel, a whale, a sea serpent, a firework, the loser's ghost kicking it overboard…). Battles go through all 20 in a shuffled order before any repeats.
+  - 🐒 **Take out Time / Take out Kirb** (10,000 channel points each): chat takes out that monkey right away, the next way in the same order.
+  - Movie Royal makes all the new rewards on Twitch by itself after you sign in; change their prices in Settings → 💰 Rewards & prices.
+- 🧍 **22 new body types** for characters (/character body:25 to 46): men's builds (Muscular, Dad bod, Beer belly, Stocky, Big & tall, Lanky, Swimmer, Barrel chest, Chubby, Strongman, Wiry) and odd ones anyone can pick (Bobblehead, Pinhead, Noodle arms, Gorilla arms, Stubby legs, Stilt legs, Pear, Triangle, Egg, Long neck, Big hands & feet). The Discord picture, the parts website and profiles now show the whole character (arms and legs too). Body types only change the look, never the odds.
+- 🎥 **Calmer auto camera** in every battle: no zoom in on every knockout, no leaning toward every hit, small moves ignored and a slow zoom in. It moves about a tenth as much as before.
+- 🛠️ **Fixed:** on a slow start (a busy PC, or OBS loading the page) the battle screen could freeze until it was reloaded.
+- 🧪 Test tab → 🏴‍☠️ **Pirate Battle**: practice battles, straight to the kraken, every storm power, 🔴 Take out Time / 🔵 Take out Kirb, 🐒 watch any of the 20 monkey endings, the pirate finishers and the figurehead pictures. Test tab → 🎨 Custom characters: 🧍 All body types and 🧍 New body types battle.
+
 ## v1.68.0: What's new
 Everything since 1.67.2.
 
