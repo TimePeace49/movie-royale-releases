@@ -164,7 +164,7 @@
     if (m.phase === 'fight' && m.fightId && m.fightId !== fightId) { // a new fight
       fightId = m.fightId; destined = m.destined; R = mulberry(m.seed || 1); order = []; winner = null; sent = false;
       cam.follow = null; cam.manual = false; cam.overview = false;
-      F = makeFighters(m.fighters); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H);
+      F = makeFighters(m.fighters); parts = []; texts = []; flyers = []; weapons = []; if (PIR()) petals = []; fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H); // (🏴‍☠️ no Kung Fu Town petals left over in the storm)
       Object.assign(cine, { rot: 0, quake: 0, punch: null, hit: null, saved: null, from: null, end: null }); FIN.on = false; FIN.flash = null;
       mode = 'intro'; modeT = 0; T = 0; acc = 0; teleT = 5; weapT = 7; slowUntil = 0; weapDrops = 0; lastKO = 0; rbuf = []; replay = null; replayOn = false; showdownSaid = false; finalLeft = 0; finalPair = null;
       PACE = clamp(Number(m.pace ?? 50), 0, 100); D = clamp(Number(m.length) || (25 + F.length * 1.6), 15, 240); // ⏳ how long the fight should take, and how hard the pacer works
