@@ -2,6 +2,18 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.69.0
+- 🏴‍☠️ **New map: Pirate Battle** (characters only, Derek's idea). Pick it on the Battle tab when a battle has 🧍 characters on (it's in the 🃏 Character only part of the map menu, and never on the Card battles tab).
+  - ⛵ Two pirate ships side by side with the sea between them, at sunset. Everyone is a pirate in one of two crews: 🔴 the red crew on *The Scarlet Shark* and 🔵 the blue crew on *The Blue Barracuda*. The crews are split evenly (the same on every screen).
+  - 🏴‍☠️ Everyone wears pirate clothes in their crew's colour: pirate coats, striped shirts or tunics, with a tricorn hat, a bandana, or an eye patch and a rolled bandana. People's own /character keeps its face, hair and skin, just in pirate clothes. The ring under their feet and the frame of their health bar are their crew's colour too, so you can always tell the sides apart.
+  - ⚔️ Pirates only fight the other crew. They cross over on the two gangplanks or swing across on ropes, with cutlasses, sabers, boarding axes, belaying pins and oars. Knocked off the side = into the sea (unless they grab a rope).
+  - 💥 Each ship's cannons fire at the other crew on the other ship (a red crosshair shows where the cannonball will land). They never hurt their own crew.
+  - 🔴🔵 The crews always stay even, so it always comes down to **one pirate from each crew**. The smaller crew makes a last stand (hits harder).
+  - 🐙 Then **the kraken** comes up: its tentacles grab the ship the last two aren't on, crush it and drag it under (if the two are on different ships, one of them jumps across), and its head peeks out of the water. Then the 360° camera goes round the last two on the ship that's left, and they have their 🥊 **FINAL FIGHT**.
+  - 💀 20 pirate finishers (Walk the Plank, Shark Bait, Kraken's Snack, Cannon Blast, Barrel Roll, Keelhauled…) and 🏆 10 pirate celebrations (Treasure Shower, Jolly Roger Raise, Hornpipe Jig, Victory Swing…).
+  - 🎵 Its own sea shanty music, and cannon, kraken, cracking wood, parrot and coin sounds.
+  - 🧪 Try it on the Test tab → 🏴‍☠️ Pirate Battle (practice battle, a big one, straight to the kraken, in the Test lab, or the pirate finishers). It shows 🔴 NEW in the map menus.
+
 ## 1.68.0
 - 💨 **Fart Farm reworked** (Derek: 12 pieces sat on the last bit of ground for 15 seconds):
   - 🐄 The herds run across the ground that's left. They used to start where the field used to be, so near the end they often missed the last bit of ground.

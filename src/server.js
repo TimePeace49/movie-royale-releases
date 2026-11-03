@@ -1483,7 +1483,7 @@ app.post('/api/test/cap-join', wTry(async () => { // 🧪 the capture window sho
 }));
 // 🧪 Test tab → 🎬 Scenes: straight to the last two (kind: ball = FINAL SHOWDOWN, card = a card battle's FINAL FIGHT, chars = characters' FINAL FIGHT)
 app.post('/api/test/final', async (req, res) => {
-  const kind = String(req.body?.kind || 'ball'), map = String(req.body?.map || '');
+  const map = String(req.body?.map || ''), kind = req.body?.kind === 'card' && cards.CARD_MAPS.find(m => m.id === map)?.charOnly ? 'chars' : String(req.body?.kind || 'ball'); // (🏴‍☠️ a character-only map: with characters)
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is going: wait for it to finish (or ↺ Reset battlefield).' });
   if (kind === 'card') { try { if (wheel.W().show) wheel.setShow(false); const finals = cards.cardMaps().filter(m => m.finalFight && !m.ball).map(m => m.id); return res.json({ ok: true, ...cards.start({ test: true, n: 3, map: finals.includes(map) ? map : 'kungfu', finalNow: true }) }); } catch (e) { return res.status(400).json({ error: e.message }); } }
   const body = { count: 3, lobby: 0, game: 40, luck: false, showdownTest: true, ...(kind === 'chars' ? { chars: true, map: map || 'kungfu' } : { map: map && mapById(map) ? map : 'classic' }) };

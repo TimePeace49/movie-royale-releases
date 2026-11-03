@@ -9,7 +9,7 @@ window.SFX = (() => {
   let curMap = null;
   const CAR_MAPS = new Set(['derby', 'figure8', 'crossover', 'volcano', 'junkyard', 'bigair', 'rally']), CLEAN_RACES = new Set(['oval', 'grandprix', 'nightcity', 'icering', 'beach']); // 🚗 rock for the bumping ones, 🏁 synth for the clean races
   const lastPlay = {};    // name -> time, for rate limiting
-  const LIMIT = { wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05, crowd: .7, chair: .08, slam: .06, spell: .06, zap: .05, roar: .6, chug: 2, stretch: 2, confettiPop: .5, crowdWild: 3 };
+  const LIMIT = { cannon: .12, squawk: .3, creak: .5, coins: .2, kraken: 1, wheelTick: .03, toot: .07, pfft: .1, cushion: .12, squeak: .2, brrap: .25, rat: .15, cough: .18, clash: .08, arrows: .3, moo: .4, smack: .05, bonk: .06, crumble: .16, land: .05, pop: .05, fall: .12, out: .1, dash: .12, tick: .05, crowd: .7, chair: .08, slam: .06, spell: .06, zap: .05, roar: .6, chug: 2, stretch: 2, confettiPop: .5, crowdWild: 3 };
 
   function init() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return ac; }
@@ -180,6 +180,14 @@ window.SFX = (() => {
     tank: () => { noise({ dur: .6, v: .7, type: 'lowpass', f0: 500 }); tone({ type: 'sine', f0: 90, f1: 30, dur: .5, v: .5 }); }, // 🛞 a tank gun
     plane: () => { for (let i = 0; i < 6; i++) tone({ type: 'sawtooth', f0: 70 + i * 3, f1: 60, dur: .5, v: .05, at: i * .45 }); noise({ dur: 2.6, v: .12, type: 'lowpass', f0: 300, a: .8 }); }, // ✈️ a bomber going over
     splash: () => { noise({ dur: .9, v: .5, type: 'lowpass', f0: 1400, a: .05 }); noise({ dur: .5, v: .25, type: 'highpass', f0: 3000, at: .1 }); }, // 🌊 a big wave
+    // 🏴‍☠️ Pirate Battle
+    cannon: () => { noise({ dur: 1.1, v: .65, type: 'lowpass', f0: 900, f1: 70, a: .003 }); tone({ type: 'sine', f0: 92, f1: 30, dur: .75, v: .55 }); noise({ dur: .25, v: .22, type: 'highpass', f0: 2500, at: .02 }); }, // 💥 a ship's cannon
+    kraken: () => { tone({ type: 'sawtooth', f0: 68, f1: 36, dur: 2.4, v: .2, a: .3 }); tone({ type: 'square', f0: 47, f1: 29, dur: 2.2, v: .1, a: .4 }); noise({ dur: 2.4, v: .3, type: 'lowpass', f0: 420, f1: 110, q: 2, a: .4 }); for (let i = 0; i < 9; i++) tone({ type: 'sine', f0: 280 + Math.random() * 500, f1: 600 + Math.random() * 600, dur: .08, v: .05, at: .3 + i * .21 }); }, // 🐙 a deep growl from under the water + bubbles
+    shipbreak: () => { for (let i = 0; i < 7; i++) noise({ dur: .12, v: .42, type: 'bandpass', f0: 500 + Math.random() * 1500, q: 2, at: i * .06 }); noise({ dur: 1.5, v: .42, type: 'lowpass', f0: 700, f1: 80, at: .1 }); tone({ type: 'sine', f0: 78, f1: 28, dur: 1.1, v: .45, at: .05 }); }, // 🪵 a ship cracking apart
+    creak: () => { tone({ type: 'sawtooth', f0: 150 + Math.random() * 40, f1: 105, dur: .6, v: .06, a: .12 }); noise({ dur: .55, v: .06, type: 'bandpass', f0: 520, q: 8, a: .12 }); }, // the ship's wood creaking
+    squawk: () => { for (let i = 0; i < 2; i++) { tone({ type: 'sawtooth', f0: 1450, f1: 900, dur: .12, v: .12, at: i * .16 }); tone({ type: 'square', f0: 1850, f1: 1150, dur: .1, v: .05, at: i * .16 }); } }, // 🦜
+    coins: () => { for (let i = 0; i < 10; i++) tone({ type: 'triangle', f0: 2100 + Math.random() * 1700, dur: .12, v: .08, at: i * .05 + Math.random() * .03 }); }, // 🪙
+    chain: () => { for (let i = 0; i < 10; i++) noise({ dur: .05, v: .2, type: 'bandpass', f0: 3000 + Math.random() * 2000, q: 6, at: i * .06 }); tone({ type: 'sine', f0: 120, f1: 50, dur: .4, v: .3, at: .62 }); }, // ⚓ an anchor chain running out, then the clunk
     gobble: (o) => { for (let i = 0; i < 5; i++) tone({ type: 'sawtooth', f0: 520 - i * 30, f1: 360 - i * 30, dur: .07, v: .14 * (o.v ?? 1), at: i * .075 }); }, // 🦃 an evil turkey gobble
     gallop: () => { for (let i = 0; i < 10; i++) { tone({ type: 'sine', f0: 95, f1: 50, dur: .07, v: .28, at: i * .14 }); tone({ type: 'sine', f0: 85, f1: 45, dur: .07, v: .2, at: i * .14 + .05 }); } },
     // 🃏 card battles (kung fu)
@@ -280,6 +288,14 @@ window.SFX = (() => {
         if (i === 0) [45, 52, 57].forEach(n => tone({ type: 'sine', f0: hz(n + (bar === 2 ? -2 : bar === 3 ? 3 : 0)), dur: STEP * 16, v: .05, a: .4, at, bus: musicBus }));
         if (i % 8 === 0) tone({ type: 'sine', f0: 110, f1: 50, dur: .25, v: .35, at, bus: musicBus });
         if (i === 6 || i === 14) tone({ type: 'sine', f0: hz(88 + (step % 3) * 2), dur: .8, v: .03, at, bus: musicBus });
+      } else
+      if (curMap === 'card-pirates' && mode === 'fight') { // 🏴‍☠️ a rolling sea shanty: stomp and clap, an oom-pah bass, squeezebox chords on the off-beats and a fiddle tune (original)
+        const ch = [[50, 53, 57], [55, 59, 62], [50, 53, 57], [45, 49, 52]][bar], mel = [[62, 0, 0, 65, 69, 0, 69, 0, 67, 0, 65, 0, 64, 0, 62, 0], [67, 0, 0, 71, 74, 0, 71, 0, 69, 0, 67, 0, 65, 0, 67, 0], [69, 0, 0, 69, 74, 0, 72, 0, 69, 0, 65, 0, 62, 0, 65, 0], [64, 0, 0, 61, 64, 0, 67, 0, 69, 0, 67, 0, 64, 0, 61, 0]][bar][i];
+        if (i % 8 === 0) tone({ type: 'sine', f0: 125, f1: 46, dur: .2, v: .55, at, bus: musicBus });
+        if (i % 8 === 4) { noise({ dur: .12, v: .22, type: 'bandpass', f0: 1400, q: .8, at, bus: musicBus }); noise({ dur: .05, v: .12, type: 'highpass', f0: 4000, at, bus: musicBus }); }
+        if (i % 4 === 0) tone({ type: 'triangle', f0: hz(ch[0] - 12 + (i % 8 ? 7 : 0)), dur: STEP * 1.8, v: .13, at, bus: musicBus });
+        if (i % 4 === 2) for (const n of ch) tone({ type: 'square', f0: hz(n + 12), dur: STEP * .9, v: .02 + intensity * .008, at, bus: musicBus, detune: 7 });
+        if (mel) { tone({ type: 'sawtooth', f0: hz(mel + 12), dur: STEP * 1.6, v: .038 + intensity * .02, at, bus: musicBus, detune: 4 }); tone({ type: 'triangle', f0: hz(mel + 24), dur: STEP * .8, v: .015, at, bus: musicBus }); }
       } else
       if (curMap === 'card-ww2' && mode === 'fight') { // 🪖 a military march: snare rolls, a bass drum and a low brass line (original)
         if (i % 4 === 0) tone({ type: 'sine', f0: 110, f1: 45, dur: .16, v: .55, at, bus: musicBus });

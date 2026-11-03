@@ -354,7 +354,7 @@
     (g, x, y, r) => { g.fillStyle = '#ff4f9a'; const bx = x + r * .55, by = y - r * .88; poly(g, bx, by, bx - r * .32, by - r * .18, bx - r * .32, by + r * .18); poly(g, bx, by, bx + r * .32, by - r * .18, bx + r * .32, by + r * .18); g.fillStyle = '#c8186a'; C(g, bx, by, r * .08); },
     (g, x, y, r) => { const fx = x - r * .62, fy = y - r * .8; g.fillStyle = '#ffd1e8'; for (let k = 0; k < 5; k++) { const a = k * PI * .4; C(g, fx + Math.cos(a) * r * .1, fy + Math.sin(a) * r * .1, r * .085); } g.fillStyle = '#ffd23a'; C(g, fx, fy, r * .06); },
     (g, x, y, r) => { g.save(); g.translate(x + r * .55, y - r * .62); g.rotate(-.6); g.fillStyle = '#ffd23a'; g.fillRect(-r * .2, -r * .05, r * .4, r * .1); g.fillStyle = '#ff6a3d'; C(g, 0, 0, r * .05); g.restore(); },
-    (g, x, y, r) => { g.fillStyle = '#d8283a'; g.beginPath(); g.arc(x, y, r * 1.06, PI * 1.05, PI * 1.95); g.quadraticCurveTo(x, y - r * .5, x - r * 1.03, y - r * .3); g.fill(); g.fillStyle = '#fff'; for (const [a, b] of [[-.5, -.8], [0, -.92], [.5, -.78]]) C(g, x + r * a, y + r * b, r * .05); g.fillStyle = '#d8283a'; poly(g, x + r * .95, y - r * .35, x + r * 1.3, y - r * .15, x + r * 1.15, y - r * .05); poly(g, x + r * .95, y - r * .3, x + r * 1.25, y + r * .1, x + r * 1.05, y + r * .12); },
+    (g, x, y, r, c, hc, rc) => { const bc = rc || '#d8283a'; g.fillStyle = bc; g.beginPath(); g.arc(x, y, r * 1.06, PI * 1.05, PI * 1.95); g.quadraticCurveTo(x, y - r * .5, x - r * 1.03, y - r * .3); g.fill(); g.fillStyle = '#fff'; for (const [a, b] of [[-.5, -.8], [0, -.92], [.5, -.78]]) C(g, x + r * a, y + r * b, r * .05); g.fillStyle = bc; poly(g, x + r * .95, y - r * .35, x + r * 1.3, y - r * .15, x + r * 1.15, y - r * .05); poly(g, x + r * .95, y - r * .3, x + r * 1.25, y + r * .1, x + r * 1.05, y + r * .12); },
     (g, x, y, r) => { g.strokeStyle = '#f4f4f0'; g.lineWidth = r * .2; g.beginPath(); g.arc(x, y + r * .08, r * .98, PI * 1.14, PI * 1.86); g.stroke(); g.strokeStyle = '#d8283a'; g.lineWidth = r * .05; g.beginPath(); g.arc(x, y + r * .08, r * .98, PI * 1.14, PI * 1.86); g.stroke(); },
     (g, x, y, r) => { g.fillStyle = '#1a1a22'; E(g, x - r * .3, y - r * .82, r * .25, r * .15); E(g, x + r * .3, y - r * .82, r * .25, r * .15); line(g, '#1a1a22', r * .06, x - r * .08, y - r * .84, x + r * .08, y - r * .84); g.fillStyle = 'rgba(255,255,255,.35)'; E(g, x - r * .36, y - r * .87, r * .08, r * .04); E(g, x + r * .24, y - r * .87, r * .08, r * .04); },
     (g, x, y, r, c) => { g.strokeStyle = '#2a2a33'; g.lineWidth = r * .1; g.beginPath(); g.arc(x, y, r * 1.12, PI * 1.02, PI * 1.98); g.stroke(); for (const s of [-1, 1]) { g.fillStyle = '#3a3a48'; E(g, x + s * r * 1.04, y - r * .02, r * .2, r * .3); g.fillStyle = c; E(g, x + s * r * 1.08, y - r * .02, r * .09, r * .16); } },
@@ -378,7 +378,7 @@
     (g, x, y, r) => { hatBrim(g, x, y, r, '#3a2a8a', 1.5, .18); g.fillStyle = '#4a3aaa'; poly(g, x - r * .75, y - r * .55, x + r * .25, y - r * 2.1, x + r * .75, y - r * .55); g.fillStyle = '#ffd23a'; star(g, x, y - r * 1.05, r * .14); star(g, x + r * .25, y - r * 1.5, r * .09); },
     (g, x, y, r) => { hatBrim(g, x, y, r, '#1a1a22', 1.6, .18); g.fillStyle = '#22182e'; poly(g, x - r * .7, y - r * .55, x + r * .45, y - r * 2.0, x + r * .7, y - r * .55); g.fillStyle = '#8a3ad8'; g.fillRect(x - r * .68, y - r * .74, r * 1.36, r * .14); },
     (g, x, y, r) => { g.fillStyle = '#d8283a'; poly(g, x - r * .95, y - r * .55, x - r * .2, y - r * 1.55, x + r * 1.05, y - r * 1.0, x + r * .95, y - r * .55); g.fillStyle = '#fff'; g.fillRect(x - r * 1.0, y - r * .68, r * 2.0, r * .22); C(g, x + r * 1.08, y - r * .95, r * .16); },
-    (g, x, y, r) => { g.fillStyle = '#1a1a22'; g.beginPath(); g.moveTo(x - r * 1.3, y - r * .55); g.quadraticCurveTo(x, y - r * 1.9, x + r * 1.3, y - r * .55); g.quadraticCurveTo(x, y - r * .85, x - r * 1.3, y - r * .55); g.fill(); g.fillStyle = '#f4f4f0'; C(g, x, y - r * 1.05, r * .14); line(g, '#f4f4f0', r * .04, x - r * .14, y - r * .88, x + r * .14, y - r * .76); line(g, '#f4f4f0', r * .04, x + r * .14, y - r * .88, x - r * .14, y - r * .76); },
+    (g, x, y, r, c, hc, rc) => { g.fillStyle = '#1a1a22'; g.beginPath(); g.moveTo(x - r * 1.3, y - r * .55); g.quadraticCurveTo(x, y - r * 1.9, x + r * 1.3, y - r * .55); g.quadraticCurveTo(x, y - r * .85, x - r * 1.3, y - r * .55); g.fill(); if (rc) { g.strokeStyle = rc; g.lineWidth = r * .14; g.beginPath(); g.moveTo(x - r * 1.16, y - r * .63); g.quadraticCurveTo(x, y - r * 1.0, x + r * 1.16, y - r * .63); g.stroke(); } g.fillStyle = '#f4f4f0'; C(g, x, y - r * 1.05, r * .14); line(g, '#f4f4f0', r * .04, x - r * .14, y - r * .88, x + r * .14, y - r * .76); line(g, '#f4f4f0', r * .04, x + r * .14, y - r * .88, x - r * .14, y - r * .76); },
     (g, x, y, r) => { g.fillStyle = '#f4f4f0'; g.fillRect(x - r * .62, y - r * .95, r * 1.24, r * .45); for (const a of [-.4, 0, .4]) C(g, x + r * a, y - r * 1.2, r * .38); },
     (g, x, y, r) => { g.fillStyle = '#ffc81e'; g.beginPath(); g.arc(x, y - r * .38, r * 1.0, PI, 0); g.fill(); g.fillStyle = '#e0a800'; g.fillRect(x - r * 1.2, y - r * .48, r * 2.4, r * .14); g.fillRect(x - r * .08, y - r * 1.38, r * .16, r * .9); },
     (g, x, y, r) => { g.fillStyle = '#1a1a22'; poly(g, x - r * 1.15, y - r * .95, x, y - r * 1.3, x + r * 1.15, y - r * .95, x, y - r * .6); g.fillRect(x - r * .55, y - r * .9, r * 1.1, r * .35); line(g, '#ffd23a', r * .04, x + r * .3, y - r * .95, x + r * .9, y - r * .7, x + r * .95, y - r * .35); g.fillStyle = '#ffd23a'; C(g, x + r * .95, y - r * .32, r * .06); },
@@ -449,7 +449,7 @@
     (g, x, y, r) => { const bx = x, by = y - r * 1.05; for (let k = 0; k < 12; k++) { const a = k / 12 * 2 * PI; g.fillStyle = k % 2 ? '#ff8ac0' : '#ff6ab0'; C(g, bx + Math.cos(a) * r * .2, by + Math.sin(a) * r * .09, r * .09); } }, // 14 top scrunchie
     (g, x, y, r) => { for (const sd of [-1, 1]) for (const k of [0, 1]) { g.fillStyle = sd < 0 ? '#ff4f6d' : '#4fc3ff'; C(g, x + sd * r * (.96 + k * .02), y - r * (.3 - k * .2), r * .09); g.fillStyle = 'rgba(255,255,255,.5)'; C(g, x + sd * r * .93, y - r * (.33 - k * .2), r * .03); } }, // 15 pigtail bobbles
     (g, x, y, r) => { for (const [sd, c] of [[-1, '#7a5cff'], [1, '#3ad17a']]) { g.save(); g.translate(x + sd * r * .93, y - r * .2); g.rotate(sd * .3); g.fillStyle = c; g.fillRect(-r * .06, -r * .1, r * .12, r * .2); g.restore(); } }, // 16 hair ties
-    (g, x, y, r) => { band(g, x, y, r, .2, '#d8283a'); g.fillStyle = '#fff'; for (let k = 0; k < 7; k++) C(g, ...onArc(x, y, r, 1.18 + k * .1), r * .03); g.fillStyle = '#d8283a'; const [kx, ky] = onArc(x, y, r, 1.86); poly(g, kx, ky, kx + r * .22, ky - r * .12, kx + r * .18, ky + r * .08); poly(g, kx, ky, kx + r * .14, ky + r * .22, kx - r * .02, ky + r * .2); }, // 17 rolled bandana
+    (g, x, y, r, c, hc, rc) => { band(g, x, y, r, .2, rc || '#d8283a'); g.fillStyle = '#fff'; for (let k = 0; k < 7; k++) C(g, ...onArc(x, y, r, 1.18 + k * .1), r * .03); g.fillStyle = rc || '#d8283a'; const [kx, ky] = onArc(x, y, r, 1.86); poly(g, kx, ky, kx + r * .22, ky - r * .12, kx + r * .18, ky + r * .08); poly(g, kx, ky, kx + r * .14, ky + r * .22, kx - r * .02, ky + r * .2); }, // 17 rolled bandana
     (g, x, y, r) => { for (let k = 0; k < 13; k++) pearl(g, ...onArc(x, y, r, 1.14 + k * .06), r * .05); }, // 18 pearl headband
     (g, x, y, r) => { const cols = ['#ffd23a', '#ff4f6d', '#4fc3ff', '#3ad17a']; for (const sd of [-1, 1]) for (let k = 0; k < 5; k++) { g.fillStyle = cols[(k + (sd > 0 ? 2 : 0)) % 4]; C(g, x + sd * r * (.93 + k * .01), y - r * .35 + k * r * .14, r * .05); } }, // 19 hair beads
     (g, x, y, r) => { g.save(); g.translate(x + r * .78, y - r * .72); g.rotate(.9); g.fillStyle = '#1a8a7a'; E(g, 0, -r * .28, r * .12, r * .34); g.fillStyle = '#3a4ad8'; E(g, 0, -r * .44, r * .07, r * .09); g.fillStyle = '#ffd23a'; C(g, 0, -r * .44, r * .03); line(g, '#c8a46a', r * .025, 0, r * .05, 0, -r * .6); g.restore(); }, // 20 feather clip
@@ -522,7 +522,7 @@
     const L = norm(look), hr = rr * .58, hx = m, hy = m - rr * .4, ty = m + rr * .22, by = m + rr * .95, hairC = hairColN(L.haircolor), skin = skinCol(L.skin), out = OUT[sp('outfit', L.outfit)[0] - 1];
     const [hb, hv] = sp('hair', L.hair), hair = HAIR[hb - 1], ov = sp('outfit', L.outfit)[1], [mb, mv] = sp('makeup', L.makeup), [fb, fv] = sp('facialhair', L.facialhair);
     col = outCol(L.outfit, (look && look.col) || col || '#8a5cff');
-    const hairCol = hairC;
+    const hairCol = hairC, rc = (look && look.rc) || null; // (rc = a team colour: 🏴‍☠️ the Pirate Battle's crews. Clothes with their own colour, bandanas and the hat's band take it)
     g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
     const q = Q(g, m, ty, by, rr, col, skin), path = () => SH[out.s](g, m, ty, by, rr);
     const cs = chestSize(L.body), bld = buildOf(L.body), bw = BUILD[bld], wide = fn => { if (bw === 1) return fn(); g.save(); g.translate(m, 0); g.scale(bw, 1); g.translate(-m, 0); fn(); g.restore(); }; // (thin / fat / athletic: the body is narrower or wider, the head stays)
@@ -533,7 +533,7 @@
     if (hair.b) hairLayer(g, gg => { gg.fillStyle = hairCol; hair.b(gg, hx, hy, hr, hairCol); }, hv, hx, hy, hr, hairCol);
     // body
     wide(() => {
-    let fill = out.f;
+    let fill = rc && typeof out.f === 'string' ? null : out.f;
     if (!fill) { fill = g.createLinearGradient(m - rr * .6, ty, m + rr * .6, by); fill.addColorStop(0, shade(col, 30)); fill.addColorStop(1, shade(col, -35)); }
     else if (typeof fill === 'function') fill = fill(g, m, ty, by, rr);
     g.fillStyle = fill; path(); g.fill();
@@ -563,8 +563,8 @@
       g.fillStyle = bc; g.strokeStyle = bc; bf(g, hx, hy, hr, bc); g.restore(); if (FACC[fv] && !(fb === 1 && fv >= 15)) { g.save(); FACC[fv](g, hx, hy, hr, bc); g.restore(); } } // (version of "None" = a light shadow)
     if (hair.f) hairLayer(g, gg => { gg.fillStyle = hairCol; hair.f(gg, hx, hy, hr, hairCol); }, hv, hx, hy, hr, hairCol);
     if (HTOP[hv]) { g.save(); HTOP[hv](g, hx, hy, hr, hairCol); g.restore(); }
-    if (HAIRACC[(L.hairaccessory || 1) - 1]) { g.save(); HAIRACC[L.hairaccessory - 1](g, hx, hy, hr, col, hairCol); g.restore(); } // 🎀 (under any hat)
-    if (ACC[L.accessory - 1]) { g.save(); ACC[L.accessory - 1](g, hx, hy, hr, col, hairCol); g.restore(); } // 🎩
+    if (HAIRACC[(L.hairaccessory || 1) - 1]) { g.save(); HAIRACC[L.hairaccessory - 1](g, hx, hy, hr, col, hairCol, rc); g.restore(); } // 🎀 (under any hat)
+    if (ACC[L.accessory - 1]) { g.save(); ACC[L.accessory - 1](g, hx, hy, hr, col, hairCol, rc); g.restore(); } // 🎩
     const sh = g.createLinearGradient(0, hy - hr, 0, hy); sh.addColorStop(0, 'rgba(255,255,255,.18)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = sh; E(g, hx, hy - hr * .5, hr * .6, hr * .32);
     g.restore();
   }
@@ -573,7 +573,7 @@
   function limbs(look, col) {
     const L = norm(look), o = OUT[sp('outfit', L.outfit)[0] - 1], skin = skinCol(L.skin); col = outCol(L.outfit, (look && look.col) || col || '#8a5cff');
     const pants = o.pants === 'c' ? shade(col, -25) : o.pants || (o.legs === 'shorts' ? shade(col, -40) : '#2a3a6a');
-    const arm = o.arm === 'skin' ? skin : o.arm === 'c' ? shade(col, -20) : o.arm || (typeof o.f === 'string' ? o.f : shade(col, -20));
+    const arm = o.arm === 'skin' ? skin : o.arm === 'c' || (look && look.rc && o.arm) ? shade(col, -20) : o.arm || (typeof o.f === 'string' ? o.f : shade(col, -20));
     return { skin, legs: o.legs, pants, arm, shoe: o.shoe || (o.legs === 'bare' || o.legs === 'gown' ? '#c8102a' : '#1a1a1a') };
   }
 
@@ -590,7 +590,7 @@
     kaiju: { o: [9, 70, 53] }, donut: { o: [20] }, cyber: { o: { m: [8, 13, 17, 59], f: [31, 8, 47, 59] }, col: NEON },
     valentine: { o: EVERY, col: VAL }, stpat: { o: EVERY, col: GREEN }, july4: { o: EVERY, col: USA },
     // 🃏 the character-only maps (a battle with characters on them runs in the card fight engine)
-    kungfu: { o: [58, 58, 74] }, ring: { o: [56] }, wizard: { o: [51] }, colosseum: { o: [60, 60, 52] }, ww2: { o: [55] }
+    kungfu: { o: [58, 58, 74] }, ring: { o: [56] }, wizard: { o: [51] }, colosseum: { o: [60, 60, 52] }, ww2: { o: [55] }, pirates: { o: [57, 76, 74] } // (🏴‍☠️ the crews' colours are added by cardfight.js)
   };
   const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   /** A random look that stays the same for this piece on this map. gender 'm' | 'f' | 'n'. */

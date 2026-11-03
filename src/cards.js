@@ -30,10 +30,12 @@ export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). final
   { id: 'ring', name: 'Royal Rumble', icon: '🔔', desc: 'Every pack starts in a wrestling ring. Slams, suplexes, clotheslines and steel chairs: the only way out is over the top rope (the more hurt a pack is, the easier it goes over). Last pack in the ring wins.', modes: ['card'], finalFight: true },
   { id: 'wizard', name: 'Wizard Battle', icon: '🧙', desc: 'Wizards on a giant floating platform in the night sky. Magic bolts, fireballs, lightning and meteors crack the platform and knock parts away: fall through a hole or off the edge and you\'re out. No weapons.', modes: ['card'], finalFight: true },
   { id: 'colosseum', name: 'Colosseum', icon: '🏛️', desc: 'A gladiator battle in the arena: every pack starts with its own weapon (swords, spears, tridents, axes, maces, flails, hammers, scimitars) and keeps it. Turn on 🦁 Lions and lions come out of the tunnels.', modes: ['card'], finalFight: true },
-  { id: 'ww2', name: 'WW2 Battlefield', icon: '🪖', desc: 'A muddy WW2 battlefield. Every pack has a rifle and shoots it out (up close: rifle butts and kicks). Two tanks shell the field (a red crosshair shows where) and bombers fly over dropping bombs (shadows show where). The last two get a FINAL FIGHT: a one-on-one shootout.', modes: ['card'], finalFight: true }
+  { id: 'ww2', name: 'WW2 Battlefield', icon: '🪖', desc: 'A muddy WW2 battlefield. Every pack has a rifle and shoots it out (up close: rifle butts and kicks). Two tanks shell the field (a red crosshair shows where) and bombers fly over dropping bombs (shadows show where). The last two get a FINAL FIGHT: a one-on-one shootout.', modes: ['card'], finalFight: true },
+  // charOnly = only for battles with 🧍 characters (Battle tab), never for card packs (Card battles tab)
+  { id: 'pirates', name: 'Pirate Battle', icon: '🏴‍☠️', desc: 'Characters only. Two pirate ships side by side, a 🔴 red crew and a 🔵 blue crew in pirate clothes: they cross on the gangplanks or swing over on ropes and only fight the other crew, while the cannons fire across (a red crosshair shows where). Off the side = into the sea. It always comes down to one pirate from each crew: then the 🐙 kraken drags one ship under, and the last two have their FINAL FIGHT on the other.', modes: ['card'], finalFight: true, charOnly: true }
 ];
 // 🔴 NEW / 🔵 UPDATED for card-only maps, like the ball maps: bump a map's number here when you change it
-const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1, ww2: 1 };
+const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1, ww2: 1, pirates: 1 };
 const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev || 1) < (CARD_REV[id] || 1) ? 'updated' : null; };
 export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)
@@ -174,7 +176,7 @@ export function saveBattle(b) {
   if ('name' in b && String(b.name).trim()) x.name = String(b.name).trim().slice(0, 60);
   if ('games' in b) x.games = (Array.isArray(b.games) ? b.games : []).map(g => String(g).slice(0, 60)).slice(0, 50);
   if ('mode' in b) x.mode = b.mode === 'one' ? 'one' : 'all';
-  if ('map' in b) x.map = b.map === 'random' || cardMaps().some(m => m.id === b.map) ? b.map : 'kungfu';
+  if ('map' in b) x.map = b.map === 'random' || cardMaps().some(m => m.id === b.map && !m.charOnly) ? b.map : 'kungfu'; // (🏴‍☠️ character-only maps aren't for packs)
   if ('pace' in b) x.pace = Math.max(0, Math.min(100, Math.round(Number(b.pace) || 0))); // ⏳ elimination pacer strength (0 = off)
   if ('length' in b) x.length = Math.max(0, Math.min(240, Math.round(Number(b.length) || 0))); // how long a fight should last (0 = by how many packs)
   if (b.activate !== false) c.activeId = x.id;
@@ -237,7 +239,7 @@ export function start(opts = {}) {
   const b = activeBattle();
   let { fighters, cut } = opts.test ? { fighters: testFighters(Math.max(2, Math.min(40, Number(opts.n) || 8))), cut: 0 } : fightersFor(b);
   if (fighters.length < 2) throw new Error(C().pool.some(p => p.status === 'active' && left(p) > 0) ? 'Need at least 2 packs in this card battle (check which games it uses, or "1 of each").' : 'Add at least 2 packs in the 🃏 Card pool tab first.');
-  const pickMap = opts.map && cardMaps().some(m => m.id === opts.map) ? opts.map : b.map === 'random' ? (() => { const all = cardMaps(); return all[Math.floor(Math.random() * all.length)].id; })() : (b.map || 'kungfu');
+  const packMaps = cardMaps().filter(m => !m.charOnly), pickMap = opts.map && packMaps.some(m => m.id === opts.map) ? opts.map : b.map === 'random' || !packMaps.some(m => m.id === b.map) ? packMaps[Math.floor(Math.random() * packMaps.length)].id : b.map; // (🏴‍☠️ never a character-only map)
   live.fight = { id: uid(), battleId: b.id, name: opts.test ? '🧪 Pretend card battle' : b.name, map: pickMap, ball: isBallMap(pickMap), fighters, startedAt: Date.now(), test: !!opts.test,
     seed: Math.floor(Math.random() * 2 ** 31), destined: fighters[Math.floor(Math.random() * fighters.length)].id, finalNow: !!opts.finalNow }; // every pack has the same chance (no luck); every game screen plays the same fight from the same seed
   const mapInfo = CARD_MAPS.find(m => m.id === pickMap);

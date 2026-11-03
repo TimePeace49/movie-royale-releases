@@ -15,9 +15,9 @@
   // 🧍 a battle with characters on a character-only map: fighters are people (charparts.js) instead of packs.
   // Their own /character, else a random look for this battle (scene.lookSeed: the same on every game screen; themed by map).
   const CP = () => window.CHAR_PARTS;
-  const charLook = f => f.look || (f._lk && f._lkK === scene.lookSeed + scene.map ? f._lk : (f._lkK = scene.lookSeed + scene.map, f._lk = CP().auto(String(f.id) + (scene.lookSeed || ''), f.gender, scene.map, f.chaos)));
+  const charLook = f => { const k = scene.lookSeed + scene.map + (f.team ?? ''); if (f._lk && f._lkK === k) return f._lk; const base = f.look || CP().auto(String(f.id) + (scene.lookSeed || ''), f.gender, scene.map, f.chaos); f._lkK = k; return (f._lk = PIR() && f.team != null ? pirDress(base, f) : base); };
   function charCanvas(f) { // drawn once (again when their picture arrives): head to waist, the movie poster / Twitch picture on the chest
-    const img = imgFor(f.image), k = `${scene.lookSeed}|${scene.map}|${img ? 1 : 0}`; if (f._cc && f._ccK === k) return f._cc;
+    const img = imgFor(f.image), k = `${scene.lookSeed}|${scene.map}|${img ? 1 : 0}|${f.team ?? ''}`; if (f._cc && f._ccK === k) return f._cc;
     const c = f._cc || document.createElement('canvas'); c.width = 200; c.height = 200; const cg = c.getContext('2d'); cg.clearRect(0, 0, 200, 200);
     CP().draw(cg, 100, 62, charLook(f), img, f.color, (f.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase());
     f._cc = c; f._ccK = k; return c;
@@ -26,6 +26,16 @@
   const CHAR_SRC = [100 - 62 * .82, 100 - 62 * 1.2, 62 * 1.64, 62 * 2.2]; // the part of that canvas that fills the pack's box (x, y, w, h)
   const limbCol = f => { if (!f.char || !CP()) return { leg: '#151515', shoe: '#151515', arm: '#151515', hand: '#f2e0c4' }; const l = CP().limbs(charLook(f), f.color); return { leg: l.legs === 'pants' || l.legs === 'shorts' ? l.pants : l.skin, shoe: l.shoe, arm: l.arm, hand: l.skin }; };
   function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  // 🏴‍☠️ everyone on the Pirate Battle wears pirate clothes in their crew's colour (their own face, hair and skin stay):
+  // a pirate coat, a striped shirt or a tunic, and a tricorn hat, a bandana, or an eye patch + a rolled bandana
+  function pirDress(b, f) {
+    const r = mulberry(hash(String(f.id) + '|pirate|' + (scene.lookSeed || ''))), c = CREW[f.team] || CREW[0], o = r(), a = r();
+    const outfit = o < .45 ? 57 : o < .8 ? 76 : 74; // (57 pirate coat, 76 = T-shirt "Striped", 74 tunic)
+    let accessory = 29, hairaccessory = 1; if (a >= .42 && a < .77) accessory = 6; else if (a >= .77) { accessory = 49; hairaccessory = 17; }
+    let facialhair = b.facialhair || 1; if (f.gender === 'm' && facialhair === 1 && !f.look && r() < .6) facialhair = [8, 7, 5, 3, 18, 9, 4, 17][Math.floor(r() * 8)]; // (random men: a pirate beard more often)
+    return { ...b, outfit, accessory, hairaccessory, facialhair, col: c.col, rc: c.col };
+  }
   let R = Math.random; const rr = (a, b) => a + R() * (b - a);
   const snd = (n, o) => { if (scene.show && !replayOn) SFX.play(n, o); }; // (a fight still finishing behind another tab stays quiet)
 
@@ -49,20 +59,40 @@
   // 🗺️ the maps (Kung Fu Town = a street, Royal Rumble = a wrestling ring you can only leave over the top rope)
   const MAPINFO = { kungfu: { title: '🏯 KUNG FU TOWN', intro: 'KUNG FU TOWN', weapons: ['sword', 'staff', 'nunchaku'], drops: () => scene.wacky.weapons }, ring: { title: '🔔 ROYAL RUMBLE', intro: 'ROYAL RUMBLE', weapons: ['chair'], drops: () => true },
     wizard: { title: '🧙 WIZARD BATTLE', intro: 'WIZARD BATTLE', weapons: [], drops: () => false }, colosseum: { title: '🏛️ COLOSSEUM', intro: 'THE COLOSSEUM', weapons: [], drops: () => false, armed: true },
-    ww2: { title: '🪖 WW2 BATTLEFIELD', intro: 'WW2 BATTLEFIELD', weapons: [], drops: () => false, armed: true } };
+    ww2: { title: '🪖 WW2 BATTLEFIELD', intro: 'WW2 BATTLEFIELD', weapons: [], drops: () => false, armed: true },
+    pirates: { title: '🏴‍☠️ PIRATE BATTLE', intro: 'PIRATE BATTLE', weapons: [], drops: () => false, armed: true } };
   // 🗡️ weapons: how much harder they hit (d), how much further they reach (r), slower swings (cd), the hit word (w)
   const WSTAT = { sword: { d: 2.6, r: 30, w: 'SLASH!' }, staff: { d: 2.2, r: 40 }, nunchaku: { d: 2.4, r: 30 }, chair: { d: 2.4, r: 30, w: 'CLANG!' },
     gladius: { d: 1.6, r: 26, w: 'SLASH!', sharp: 1 }, spear: { d: 1.45, r: 62, w: 'STAB!', sharp: 1 }, trident: { d: 1.5, r: 56, w: 'STAB!', sharp: 1 }, axe: { d: 1.9, r: 30, cd: 1.25, w: 'CHOP!', sharp: 1 },
-    rifle: { d: 1.5, r: 34, w: 'BUTT STROKE!' }, mace: { d: 1.8, r: 28, cd: 1.15, w: 'BONK!' }, flail: { d: 1.75, r: 38, w: 'WHAM!' }, hammer: { d: 2, r: 32, cd: 1.3, w: 'SMASH!' }, scimitar: { d: 1.65, r: 32, w: 'SLASH!', sharp: 1 } };
-  const GLAD = ['gladius', 'spear', 'trident', 'axe', 'mace', 'flail', 'hammer', 'scimitar'];
+    rifle: { d: 1.5, r: 34, w: 'BUTT STROKE!' }, mace: { d: 1.8, r: 28, cd: 1.15, w: 'BONK!' }, flail: { d: 1.75, r: 38, w: 'WHAM!' }, hammer: { d: 2, r: 32, cd: 1.3, w: 'SMASH!' }, scimitar: { d: 1.65, r: 32, w: 'SLASH!', sharp: 1 },
+    cutlass: { d: 1.7, r: 32, w: 'SLASH!', sharp: 1 }, saber: { d: 1.6, r: 38, w: 'SLASH!', sharp: 1 }, pin: { d: 1.55, r: 24, w: 'BONK!' }, oar: { d: 1.6, r: 46, cd: 1.15, w: 'WHACK!' } };
+  const GLAD = ['gladius', 'spear', 'trident', 'axe', 'mace', 'flail', 'hammer', 'scimitar'], PWEAP = ['cutlass', 'cutlass', 'saber', 'axe', 'pin', 'oar']; // (🏴‍☠️ pirates: cutlasses, sabers, boarding axes, belaying pins, oars)
   const wReach = f => f.weapon ? (WSTAT[f.weapon]?.r ?? 30) : 0;
   const MI = () => MAPINFO[scene.map] || MAPINFO.kungfu, RUMBLE = () => scene.map === 'ring';
   const crazy = () => Object.entries(scene.wacky || {}).some(([k, v]) => v && k !== 'lions'); // a map condition is on: big cartoon physics are allowed
   const ringL = z => 430 - z * 140, ringR = z => 1490 + z * 140, OUT_Y = 58; // the ring's sides (wider toward the front); the arena floor is OUT_Y below the mat
   const gnd = f => RUMBLE() && f.out && (f.x < ringL(f.z) - 8 || f.x > ringR(f.z) + 8) ? -OUT_Y : 0;
   const edgeD = f => Math.min(f.x - ringL(f.z), ringR(f.z) - f.x), sideOf = f => f.x - ringL(f.z) < ringR(f.z) - f.x ? -1 : 1;
-  const WIZ = () => scene.map === 'wizard', COLO = () => scene.map === 'colosseum', WAR = () => scene.map === 'ww2';
-  const bounds = z => RUMBLE() ? [ringL(z) + 34, ringR(z) - 34] : WIZ() ? [platL(z) - 300, platR(z) + 300] : COLO() || WAR() ? [120, W - 120] : [90, W - 90];
+  const WIZ = () => scene.map === 'wizard', COLO = () => scene.map === 'colosseum', WAR = () => scene.map === 'ww2', PIR = () => scene.map === 'pirates';
+  const bounds = z => RUMBLE() ? [ringL(z) + 34, ringR(z) - 34] : WIZ() ? [platL(z) - 300, platR(z) + 300] : PIR() ? [20, W - 20] : COLO() || WAR() ? [120, W - 120] : [90, W - 90];
+  // 🏴‍☠️ Pirate Battle (characters only, 1.69.0, Derek): two pirate ships side by side (bows away from us, sterns at the front), a
+  // gap of sea between them. Ship 0 (left) = the 🔴 red crew, ship 1 (right) = the 🔵 blue crew. Pirates only fight the other
+  // crew, crossing on two gangplanks or swinging over on ropes; off the side = into the sea. The cannons fire across.
+  const CREW = [{ name: 'RED CREW', ship: 'THE SCARLET SHARK', col: '#d0283c', dk: '#5a0e16', lt: '#ff9aa4', dot: '🔴' }, { name: 'BLUE CREW', ship: 'THE BLUE BARRACUDA', col: '#2a66dc', dk: '#0e2a64', lt: '#9ac4ff', dot: '🔵' }];
+  const GAPX = W / 2, gapW = z => 78 + 46 * z, outerX = z => 132 + 238 * (1 - z) * (1 - z), FREE = z => 92 + 36 * z; // half the gap, the outer side of the hulls, the deck's height above the water
+  const seaY = z => zY(z) + FREE(z); // the water's surface at depth z
+  const deckLo = (s, z) => s ? GAPX + gapW(z) : outerX(z), deckHi = (s, z) => s ? W - outerX(z) : GAPX - gapW(z), deckMid = (s, z) => (deckLo(s, z) + deckHi(s, z)) / 2;
+  const PLANKS = [.3, .72], PLK = .05, PZ0 = .03, PZ1 = .97; // 🪵 the two gangplanks (their depth, half width); how far back / forward the decks go
+  let pir = null; const pirNew = () => ({ sunk: null, safe: null, planks: true, cannons: [], balls: [], cd: [3, 4.5], rings: [], debris: [], kr: null, drop: [] });
+  const pirS = () => pir || (pir = pirNew());
+  const shipOf = (x, z) => x <= GAPX - gapW(z) ? 0 : x >= GAPX + gapW(z) ? 1 : -1; // which side of the gap (−1 = over the gap)
+  const onShip = (s, x, z, m = 0) => pirS().sunk !== s && x >= deckLo(s, z) + m && x <= deckHi(s, z) - m;
+  const onPlank = (x, z) => pirS().planks && Math.abs(x - GAPX) <= gapW(z) + 4 && PLANKS.some(p => Math.abs(z - p) <= PLK);
+  const onDeck = (x, z) => z >= PZ0 - .001 && z <= PZ1 + .001 && (onShip(0, x, z) || onShip(1, x, z) || onPlank(x, z));
+  let crewC = null; const crewN = t => { if (!crewC) { crewC = [0, 0]; for (const f of F) if (f.alive && f.team != null) crewC[f.team]++; } return crewC[t]; }; // (how many of each crew are left: counted once, again after a K.O.)
+  // a pirate can't go out while its crew is the smaller one: the crews stay even, so it always comes down to one pirate from each crew (Derek)
+  const pirKeep = o => PIR() && o.team != null && crewN(o.team) < crewN(1 - o.team);
+  let pirForce = false; // (🧪 straight to the final: knocks the extras out without the crew rule)
   // 🧙 Wizard Battle: a floating platform of stone tiles; spells crack them and they fall away (fall through = out)
   const PC = 12, PR = 5, platL = z => 400 - z * 130, platR = z => 1520 + z * 130;
   let tiles = [], bolts = [], zaps = [], lions = [], meteorT = 8, crumbleT = 1, lionT = 0, tanks = [], shells = [], planes = [], bombs = [], planeT = 7;
@@ -90,17 +120,29 @@
   const grabbable = o => o.alive && !o.heldBy && !o.whip && !(o.rebound > 0) && o.h === 0 && !o.atk?.o;
 
   function makeFighters(list) {
-    tiles = newTiles(); bolts = []; zaps = []; lions = []; meteorT = 8; crumbleT = 1; lionT = 1.5; tanks = [{ x: 260, side: -1, aim: 0, cd: 3, recoil: 0 }, { x: 1660, side: 1, aim: 0, cd: 5, recoil: 0 }]; shells = []; planes = []; bombs = []; planeT = 7;
-    const n = list.length, size = baseSize(n);
+    crewC = null; tiles = newTiles(); bolts = []; zaps = []; lions = []; meteorT = 8; crumbleT = 1; lionT = 1.5; tanks = [{ x: 260, side: -1, aim: 0, cd: 3, recoil: 0 }, { x: 1660, side: 1, aim: 0, cd: 5, recoil: 0 }]; shells = []; planes = []; bombs = []; planeT = 7;
+    pir = pirNew(); for (const s of [0, 1]) for (const z of [.16, .5, .86]) pir.cannons.push({ s, z, recoil: 0, fireAt: 0 }); if (PIR()) pir.cd = [rr(3, 5), rr(4.5, 6.5)];
+    const n = list.length, size = baseSize(n) * (PIR() ? .88 : 1);
+    const team = PIR() ? pirTeams(list) : null, crew = [[], []]; if (team) for (const p of list) crew[team.get(p.id)].push(p); // 🏴‍☠️ two crews, one on each ship
     const cols = Math.ceil(Math.sqrt(n * 2.4)), rows = Math.ceil(n / cols);
     return list.map((p, i) => {
-      const c = i % cols, r = Math.floor(i / cols);
-      const z = rows === 1 ? .55 : .12 + r / Math.max(1, rows - 1) * .8 + rr(-.03, .03), [lo, hi] = RUMBLE() ? [ringL(clamp(z, 0, 1)) + 70, ringR(clamp(z, 0, 1)) - 70] : WIZ() ? [platL(clamp(z, 0, 1)) + 90, platR(clamp(z, 0, 1)) - 90] : COLO() || WAR() ? [230, 1690] : [150, 1770];
-      const x = lo + (c + .5) * ((hi - lo) / cols) + rr(-20, 20);
-      return { ...p, x, z: clamp(z, 0, 1), h: 0, vx: 0, vz: 0, vh: 0, face: x < W / 2 ? 1 : -1, hp: 100, alive: true, size: size * rr(.94, 1.06),
-        cd: rr(.3, 1.4), stun: 0, atk: null, block: 0, target: null, retarget: 0, ph: rr(0, 6), limbs: { la: 1, ra: 1, ll: 1, rl: 1 }, head: true,
-        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, down: 0, heldBy: null, lie: 0, whip: 0, whipBy: null, rebound: 0, out: false, falling: false, color: p.color || (p.char ? CHAR_COLS[[...String(p.id)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % CHAR_COLS.length] : `hsl(${Math.floor(R() * 360)},65%,48%)`), weapon: COLO() ? GLAD[Math.floor(R() * GLAD.length)] : WAR() ? 'rifle' : null };
+      let c = i % cols, r = Math.floor(i / cols), z, lo, hi, cc = cols;
+      if (team) { const t = team.get(p.id), m = crew[t], k = m.indexOf(p); cc = Math.ceil(Math.sqrt(m.length * 1.3)); const rw = Math.ceil(m.length / cc); c = k % cc; r = Math.floor(k / cc);
+        z = clamp(rw === 1 ? .55 : .14 + r / Math.max(1, rw - 1) * .72 + rr(-.03, .03), .08, .92); lo = deckLo(t, z) + 70; hi = deckHi(t, z) - 70; }
+      else { z = rows === 1 ? .55 : .12 + r / Math.max(1, rows - 1) * .8 + rr(-.03, .03); [lo, hi] = RUMBLE() ? [ringL(clamp(z, 0, 1)) + 70, ringR(clamp(z, 0, 1)) - 70] : WIZ() ? [platL(clamp(z, 0, 1)) + 90, platR(clamp(z, 0, 1)) - 90] : COLO() || WAR() ? [230, 1690] : [150, 1770]; }
+      const x = lo + (c + .5) * ((hi - lo) / cc) + rr(-20, 20), tm = team ? team.get(p.id) : null;
+      return { ...p, x, z: clamp(z, 0, 1), h: 0, vx: 0, vz: 0, vh: 0, face: tm != null ? (tm ? -1 : 1) : x < W / 2 ? 1 : -1, hp: 100, alive: true, size: size * rr(.94, 1.06),
+        cd: rr(.3, 1.4), stun: 0, atk: null, block: 0, target: null, retarget: 0, ph: rr(0, 6), limbs: { la: 1, ra: 1, ll: 1, rl: 1 }, head: true, team: tm, swing: null, route: null, routeT: 0,
+        stains: [], hurtT: 0, koT: 0, weapon: null, yell: 0, down: 0, heldBy: null, lie: 0, whip: 0, whipBy: null, rebound: 0, out: false, falling: false, color: p.color || (p.char ? CHAR_COLS[[...String(p.id)].reduce((a, ch) => a + ch.charCodeAt(0), 0) % CHAR_COLS.length] : `hsl(${Math.floor(R() * 360)},65%,48%)`), weapon: COLO() ? GLAD[Math.floor(R() * GLAD.length)] : WAR() ? 'rifle' : PIR() ? PWEAP[Math.floor(R() * PWEAP.length)] : null };
     });
+  }
+  // 🏴‍☠️ who's in which crew: the same on every screen and in the lobby (from their id + this battle's look seed), and the
+  // crews stay even (a new pirate joining moves at most one or two others over)
+  function pirTeams(list) {
+    const key = p => hash(String(p.id) + '|crew|' + (scene.lookSeed || '')), m = new Map(), c = [[], []];
+    for (const p of list) { const h = key(p); c[h & 1].push([h, p]); }
+    while (Math.abs(c[0].length - c[1].length) > 1) { const [from, to] = c[0].length > c[1].length ? [c[0], c[1]] : [c[1], c[0]]; from.sort((a, b) => a[0] - b[0]); to.push(from.pop()); }
+    c.forEach((l, t) => l.forEach(([, p]) => m.set(p.id, t))); return m;
   }
 
   // ---------- 🎬 scene messages from the server ----------
@@ -152,16 +194,18 @@
   const holders = () => F.filter(o => o.alive && o.weapon);
   const inCombat = f => f.hurtT > 0 || F.some(o => o !== f && o.alive && Math.abs(o.x - f.x) < 115 * S(f) && Math.abs(o.z - f.z) < .08); // someone is right next to it (or it just got hit)
   function pickTarget(f) {
-    const others = F.filter(o => o.alive && o !== f); if (!others.length) return null;
+    const others = F.filter(o => o.alive && o !== f && (!PIR() || (o.team !== f.team && !o.swing))); if (!others.length) return null; // (🏴‍☠️ pirates only go after the other crew)
     // (going after weapons is decided in step: only when not already fighting someone)
-    if (R() < (WIZ() ? .6 : .25)) return others[Math.floor(R() * others.length)]; // (wizards can hit anyone, from anywhere)
-    let best = null, bd = 1e9; for (const o of others) { const d = Math.abs(o.x - f.x) + Math.abs(o.z - f.z) * 900; if (d < bd) { bd = d; best = o; } } return best;
+    if (R() < (WIZ() ? .6 : PIR() ? .15 : .25)) return others[Math.floor(R() * others.length)]; // (wizards can hit anyone, from anywhere)
+    let best = null, bd = 1e9; for (const o of others) { const d = Math.abs(o.x - f.x) + Math.abs(o.z - f.z) * 900 + (PIR() && (o.id === destined || pirKeep(o)) ? 520 : 0); if (d < bd) { bd = d; best = o; } } return best; // (🏴‍☠️ rather someone who can go out right now)
   }
   function step(dt) {
+    crewC = null;
     if (mode === 'final') { for (const f of F) { f.ph += dt * 3; if (!f.alive) physics(f, dt); } return; } // (the clock stops while FINAL FIGHT shows; the last one out still lands)
     T += dt;
     const live = alive();
-    if (mode === 'fight' && scene.finalNow && T > 1.2 && live.length > 2 && !finalPair) { for (const o of live.filter(x => x.id !== destined).slice(0, live.length - 2)) ko(o, null); return; } // 🧪 Test tab → 🎬 Scenes: straight to the last two (FINAL FIGHT)
+    if (mode === 'fight' && scene.finalNow && T > 1.2 && live.length > 2 && !finalPair) { if (PIR()) pirFinalNow(live); else for (const o of live.filter(x => x.id !== destined).slice(0, live.length - 2)) ko(o, null); return; } // 🧪 Test tab → 🎬 Scenes: straight to the last two (FINAL FIGHT)
+    if (mode === 'fight' && PIR() && scene.finalFight && live.length === 2 && !showdownSaid && T > .8) { showdownSaid = true; startFinal(); return; } // (🏴‍☠️ only two pirates: straight to the kraken)
     if (mode !== 'fight') { for (const f of F) { if (FIN.on && (f === FIN.W || f === FIN.L)) continue; f.ph += dt * 3; physics(f, dt); } return; }
     if (scene.wacky.teleport && (teleT -= dt) <= 0 && live.length > 2) { // 🔀 two packs swap places
       teleT = rr(3.5, 6); const a = live[Math.floor(R() * live.length)]; let b = live[Math.floor(R() * live.length)]; if (b === a) b = live[(live.indexOf(a) + 1) % live.length];
@@ -170,12 +214,13 @@
     }
     if (MI().drops() && weapDrops < 2 && (weapT -= dt) <= 0) { weapT = rr(5, 8); weapDrops++; const ks = MI().weapons, kind = ks[Math.floor(R() * ks.length)], z = rr(.1, .9), [lo, hi] = bounds(z);
       weapons.push({ kind, x: RUMBLE() ? rr(lo + 40, hi - 40) : rr(200, 1720), z, h: RUMBLE() ? 260 : 700, vh: 0 }); if (RUMBLE()) { word('A CHAIR!', weapons[weapons.length - 1].x, zY(z) - 320, '#d6e2ee', 40); snd('crowd', { v: .6 }); } }
-    if (WIZ()) wizStep(dt, live); if (COLO()) lionStep(dt); if (WAR()) warStep(dt, live);
+    if (WIZ()) wizStep(dt, live); if (COLO()) lionStep(dt); if (WAR()) warStep(dt, live); if (PIR()) pirStep(dt, live);
     for (const w of weapons) if (w.h > 0) { w.vh -= grav() * dt; w.h = Math.max(0, w.h + w.vh * dt); if (w.h === 0) { w.vh = 0; dust(w.x, w.z, 6); snd('land', { p: 1.4 }); } }
     for (const f of F) {
       f.ph += dt * (f.atk ? 6 : Math.abs(f.vx) > 20 || Math.abs(f.vz) > .02 ? 9 : 3);
       f.hurtT = Math.max(0, f.hurtT - dt); f.yell = Math.max(0, f.yell - dt);
       if (!f.alive) { physics(f, dt); continue; }
+      if (f.swing) { pirSwing(f, dt); continue; } // 🏴‍☠️ swinging over to the other ship on a rope
       if (T > D * 1.8 && f.id !== destined) damage(null, f, 1.5 * dt * 10, 'bleed'); // (very long fights: the end comes)
       f.cd -= dt * speedK(); f.stun -= dt; f.retarget -= dt; f.block = Math.max(0, f.block - dt);
       if ((f.down > 0 || f.heldBy || f.whip || f.rebound > 0) && rumbleState(f, dt)) continue;
@@ -203,6 +248,7 @@
       if (!f.weapon && weapons.length) { const w = weapons.find(w => w.h === 0 && Math.abs(w.x - f.x) < 34 * s && Math.abs(w.z - f.z) < .06); if (w) { f.weapon = w.kind; weapons.splice(weapons.indexOf(w), 1); word('GOT IT!', f.x, zY(f.z) - 190 * s, '#ffe08a', 30); snd('clash'); } }
       if (WIZ() && !f.atk && wizAI(f, t, dx, dz, reach, dt)) { physics(f, dt); continue; }
       if (WAR() && !f.atk && warAI(f, t, dx, dz, reach, dt)) { physics(f, dt); continue; } // 🪖 keeps some distance and shoots // 🧙 keeps its distance and casts spells
+      if (PIR() && !f.atk && pirAI(f, t, dx, dz, reach, dt)) { physics(f, dt); continue; } // 🏴‍☠️ crosses over to the other ship (gangplank or rope)
       if (f.atk) { attack(f, dt); }
       else {
         const legs = f.limbs.ll + f.limbs.rl, sp = 170 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32);
@@ -221,8 +267,8 @@
       }
       physics(f, dt);
     }
-    for (let i = 0; i < F.length; i++) { const a = F[i]; if (!a.alive) continue; for (let j = i + 1; j < F.length; j++) { const b = F[j]; if (!b.alive || b.down > 0 || b.heldBy || b.whip || b.rebound > 0 || a.down > 0 || a.heldBy || a.whip || a.rebound > 0) continue; // they don't stand inside each other
-      const dz = b.z - a.z, dx = b.x - a.x, m = 40 * (S(a) + S(b)) / 2; if (Math.abs(dz) < .035 && Math.abs(dx) < m) { const k = (m - Math.abs(dx)) / 2 * (dx >= 0 ? 1 : -1); a.x -= k; b.x += k; } } }
+    for (let i = 0; i < F.length; i++) { const a = F[i]; if (!a.alive || a.swing) continue; for (let j = i + 1; j < F.length; j++) { const b = F[j]; if (!b.alive || b.swing || b.down > 0 || b.heldBy || b.whip || b.rebound > 0 || a.down > 0 || a.heldBy || a.whip || a.rebound > 0) continue; // they don't stand inside each other
+      const dz = b.z - a.z, dx = b.x - a.x, m = 40 * (S(a) + S(b)) / 2; if (Math.abs(dz) < .035 && Math.abs(dx) < m) { const k = (m - Math.abs(dx)) / 2 * (dx >= 0 ? 1 : -1); if (!PIR() || onDeck(a.x - k, a.z) || !onDeck(a.x, a.z)) a.x -= k; if (!PIR() || onDeck(b.x + k, b.z) || !onDeck(b.x, b.z)) b.x += k; } } } // (🏴‍☠️ never shoved off the side just by the crowd)
     if (finalLeft > 0 && finalPair && live.length === 2) { finalLeft -= dt; if (finalLeft <= 0) { const loser = finalPair.find(f => f.id !== destined && f.alive) || finalPair[1]; const w = finalPair.find(f => f !== loser); if (RUMBLE()) { loser.heldBy = null; ko(loser, w, false, sideOf(loser)); } else if (WIZ()) { const t = tileAt(loser.x, loser.z); if (t) { t.hp = 0; t.fallT = 0; snd('crumble'); } word('THE FLOOR GIVES WAY!', loser.x, zY(loser.z) - 240, '#d6a8ff', 44); ko(loser, w, false, 0, true); } else ko(loser, w, !!scene.wacky.gore); } } // ⏱️ time's up: the finishing blow
     if (live.length <= 1 && !winner) finish(live[0] || F.find(f => f.id === destined) || F[0]);
   }
@@ -301,6 +347,112 @@
     if ((planeT -= dt * (behind ? 1.5 : 1)) <= 0) { planeT = rr(9, 14); const dir = R() < .5 ? 1 : -1, z0 = rr(.15, .85), y = rr(120, 220); planes.push({ x: dir > 0 ? -300 : W + 300, y, vx: dir * 620, dir }); snd('plane');
       for (let i = 0; i < 5; i++) { const x = 260 + i * 350 + rr(-60, 60), bx = dir > 0 ? x : W - x, o = warTarget(); bombs.push({ x: o && Math.abs(o.x - bx) < 300 ? o.x : bx, z: o ? clamp(o.z + rr(-.05, .05), 0, 1) : clamp(z0 + rr(-.2, .2), 0, 1), t: ((dir > 0 ? bx + 300 : W + 300 - bx) / 620) + .9 }); } }
   }
+  // ---------- 🏴‍☠️ Pirate Battle: crossing over, rope swings, cannons, the sea, and the 🐙 kraken final ----------
+  function pirAI(f, t, dx, dz, reach, dt) { // gets over to the ship the pirate it's after is on (a gangplank, or a rope swing); same ship = fight normally
+    const s = S(f), close = o => o.alive && o.team !== f.team && !o.swing && !o.falling && Math.abs(o.z - f.z) < .07 && Math.abs(o.x - f.x) < 130 * s;
+    if (close(t)) return false;
+    const near = F.filter(close).sort((a, b) => ((a.id === destined || pirKeep(a)) - (b.id === destined || pirKeep(b))) || Math.abs(a.x - f.x) - Math.abs(b.x - f.x))[0];
+    if (near) { f.target = near; f.retarget = rr(1, 2); return false; } // (someone from the other crew right here: fight them)
+    const sf = shipOf(f.x, f.z), st = t.swing ? -2 : shipOf(t.x, t.z);
+    if (pir.sunk != null || sf === -1 || st === -2 || sf === st) return false; // (same ship, on a gangplank already, or after the kraken: just fight)
+    const toward = sf === 0 ? 1 : -1, legs = f.limbs.ll + f.limbs.rl, sp = 170 * speedK() * (legs === 2 ? 1 : legs === 1 ? .6 : .32), edge = sf === 0 ? deckHi(0, f.z) : deckLo(1, f.z);
+    f.face = toward;
+    if (st === -1) { // they're on a gangplank: get on it too
+      if (Math.abs(f.z - t.z) > PLK * .5) { f.vz += Math.sign(t.z - f.z) * .9 * dt * speedK(); const gx = edge - toward * 90; if (Math.abs(gx - f.x) > 30) f.vx += Math.sign(gx - f.x) * sp * 4 * dt; }
+      else { f.vz += (t.z - f.z) * 5 * dt; f.vx += toward * sp * 6 * dt; }
+      return true;
+    }
+    if (!f.route || (f.routeT -= dt) <= 0) { f.route = pir.planks && R() < .6 ? 'plank' : 'swing'; f.routeT = rr(3, 6); }
+    if (f.route === 'swing' || !pir.planks) { // 🪢 up to the rail, then swing over
+      const gx = edge - toward * 30 * s, wz = clamp(t.z, .12, .88);
+      if (Math.abs(gx - f.x) > 12) f.vx += Math.sign(gx - f.x) * sp * 6 * dt;
+      if (Math.abs(wz - f.z) > .06) f.vz += Math.sign(wz - f.z) * .5 * dt * speedK();
+      if (Math.abs(gx - f.x) < 40 && f.cd <= 0 && f.h === 0 && f.stun <= 0) startSwing(f, t);
+      return true;
+    }
+    const pz = PLANKS.reduce((a, b) => Math.abs(b - f.z) < Math.abs(a - f.z) ? b : a); // 🪵 line up with the nearest gangplank, then across
+    if (Math.abs(f.z - pz) > PLK * .5) { f.vz += Math.sign(pz - f.z) * .9 * dt * speedK(); const gx = edge - toward * 110; if (Math.abs(gx - f.x) > 30) f.vx += Math.sign(gx - f.x) * sp * 4 * dt; }
+    else { f.vz += (pz - f.z) * 5 * dt; f.vx += toward * sp * 6 * dt; }
+    return true;
+  }
+  function startSwing(f, t) { // 🪢 grabs a rope and swings over to the other ship, landing near the pirate it's after
+    const s1 = 1 - shipOf(f.x, f.z); if (s1 > 1 || pir.sunk === s1) return;
+    const z1 = clamp(t.z + rr(-.1, .1), .1, .9), x1 = s1 ? deckLo(1, z1) + rr(70, 210) : deckHi(0, z1) - rr(70, 210);
+    f.swing = { t: 0, dur: rr(.85, 1.05), x0: f.x, z0: f.z, x1, z1, ax: GAPX + (s1 ? -1 : 1) * 34 }; f.atk = null; f.vx = f.vz = f.vh = 0; f.cd = rr(.3, .6); f.face = s1 ? 1 : -1; f.route = null;
+    if (Math.random() < .4) word(pick(['YARRR!', 'SWING!', 'AHOY!', 'BOARD HER!', 'WHEEE!']), f.x, zY(f.z) - 210 * S(f), '#ffe08a', 34); snd('whoosh');
+  }
+  function pirSwing(f, dt) {
+    const w = f.swing; w.t += dt * speedK(); const u = Math.min(1, w.t / w.dur), e = u * u * (3 - 2 * u);
+    f.x = w.x0 + (w.x1 - w.x0) * e; f.z = w.z0 + (w.z1 - w.z0) * u; f.h = Math.sin(u * Math.PI) * 190;
+    if (u >= 1) { f.swing = null; f.h = 0; f.vh = 0; f.vx = f.face * 120; dust(f.x, f.z, 6); snd('land', { p: 1.1 }); if (!onDeck(f.x, f.z)) pirOver(f); }
+  }
+  const cannonX = c => c.s ? deckLo(1, c.z) + 44 : deckHi(0, c.z) - 44;
+  function pirStep(dt, live) { // 💥 each ship's cannons fire at the other crew on the other ship (a red crosshair shows where first)
+    for (const c of pir.cannons) c.recoil = Math.max(0, c.recoil - dt * 2.5);
+    for (const b of pir.balls) { b.t -= dt; if (b.t <= 0 && !b.done) { b.done = true; pirBoom(b); } } pir.balls = pir.balls.filter(b => !b.done);
+    for (const c of pir.cannons) if (c.fireAt && T >= c.fireAt) { c.fireAt = 0; c.recoil = 1; snd('cannon'); const x = cannonX(c), d = c.s ? -1 : 1, y = zY(c.z) - 26 * (.72 + c.z * .4); for (let i = 0; i < 16; i++) parts.push({ x: x + d * 50, y, vx: d * vr(60, 280), vy: vr(-90, 10), g: -30, life: vr(.6, 1.3), max: 1.3, size: vr(10, 24), color: i < 4 ? '#ffd27a' : 'rgba(225,225,225,.6)', gz: null, dust: true }); }
+    if (mode === 'fight' && Math.random() < dt / 9) snd('creak'); // (the ships creak now and then)
+    if (mode !== 'fight' || finalLeft > 0 || finalPair || pir.sunk != null) return; // (they hold fire for the final)
+    const n = live.length, behind = n > paceTarget();
+    for (const s of [0, 1]) {
+      if ((pir.cd[s] -= dt * (behind ? 1.6 : 1)) > 0) continue; pir.cd[s] = rr(5, 8);
+      const pool = live.filter(o => !o.falling && !o.swing && o.team !== s && o.id !== destined && shipOf(o.x, o.z) === 1 - s && !pirKeep(o)); // (only the other crew, on the other ship; never the fair winner)
+      if (!pool.length || n <= 2 || R() < paceHold(n)) continue;
+      const o = pool[Math.floor(R() * pool.length)], z = clamp(o.z + rr(-.04, .04), PZ0, PZ1), x = o.x + rr(-30, 30);
+      const c = pir.cannons.filter(c => c.s === s).reduce((a, b) => Math.abs(b.z - z) < Math.abs(a.z - z) ? b : a);
+      pir.balls.push({ x, z, t: 1.5, c, s }); c.fireAt = T + 1.05; snd('alert', { v: .5 });
+    }
+  }
+  function pirBoom(b) { // a cannonball lands: the other crew close by gets hurt and thrown (never its own crew), wood flies, a scorch mark
+    const { x, z } = b, r = 150;
+    if (!onDeck(x, z)) { pirSplash(x, z, 1.2); word('MISSED!', x, seaY(z) - 90, '#9fe0ff', 40); return; }
+    quake(10);
+    for (const o of F) if (o.alive && !o.falling && !o.swing && o.team !== b.s && Math.abs(o.x - x) < r && Math.abs(o.z - z) < r / 1100) { const k = 1 - Math.abs(o.x - x) / r; o.vx += Math.sign(o.x - x || 1) * 380 * (k + .3); o.vh = Math.max(o.vh, 220 * k); o.stun = .55; o.hurtT = .3; o.atk = null; damage(null, o, rr(18, 28) * (.5 + .5 * k) * paceBoost() * (T > D * 1.35 ? 2 : 1), 'boom'); }
+    for (let i = 0; i < 24; i++) parts.push({ x, y: zY(z) - 20, vx: vr(-420, 420), vy: vr(-620, -80), g: 1100, life: vr(.5, 1), max: 1, size: vr(4, 10), color: ['#8a5a2a', '#5a3818', '#ffb02a', '#ff6a1a', '#c89a5a'][Math.floor(Math.random() * 5)], gz: null });
+    for (let i = 0; i < 10; i++) parts.push({ x: x + vr(-40, 40), y: zY(z) - vr(20, 90), vx: vr(-60, 60), vy: vr(-90, -20), g: -20, life: vr(.8, 1.6), max: 1.6, size: vr(14, 28), color: 'rgba(60,56,50,.55)', gz: null, dust: true });
+    const s = .7 + z * .4; cg.fillStyle = 'rgba(30,18,8,.5)'; cg.beginPath(); cg.ellipse(x, zY(z), 50 * s, 13 * s, 0, 0, 7); cg.fill();
+    word(pick(['KABOOM!', 'BROADSIDE!', 'DIRECT HIT!', 'BOOM!']), x, zY(z) - 150, '#ffb02a', 56); snd('boom');
+  }
+  function pirOver(f) { // 🌊 off the side: into the sea (the fair winner, a pirate that can't go out yet, the last two, or one the pacer saves grabs a rope)
+    if (f.id === destined || pirKeep(f) || finalPair || R() < paceHold(alive().length)) {
+      const [x, z] = pirSafe(f); puff(f, '#bfe8ff'); Object.assign(f, { x, z, vx: 0, vz: 0, vh: 0, h: 0, stun: .6, swing: null, atk: null });
+      word(pick(['GRABS A ROPE!', 'HANGS ON!', 'NOT TODAY!']), f.x, zY(f.z) - 200 * S(f), '#9fe0ff', 34); snd('whoosh'); return;
+    }
+    ko(f, f.lastBy || null, false, 0, true);
+  }
+  function pirSafe(f) { // the closest spot back on a deck (on a ship that's still there)
+    let s = shipOf(f.x, f.z); if (s < 0 || pir.sunk === s) s = pir.sunk != null ? 1 - pir.sunk : f.x < GAPX ? 0 : 1;
+    const z = clamp(f.z, .08, .92); return [clamp(f.x, deckLo(s, z) + 50, deckHi(s, z) - 50), z];
+  }
+  function pirSplash(x, z, k = 1, quiet) { // 💦
+    const y = seaY(z); for (let i = 0; i < 26 * k; i++) parts.push({ x: x + vr(-20, 20), y, vx: vr(-260, 260) * k, vy: -vr(250, 700) * k, g: 1500, life: vr(.5, .9), max: .9, size: vr(3, 8), color: Math.random() < .5 ? '#e8f8ff' : '#8ad0f0', gz: null });
+    pirS().rings.push({ x, z, t: 0, k }); if (!quiet) snd('splash');
+  }
+  function pirSink(f, dt) { // 🌊 falls to the water, a splash, then goes under (only the part above the water is drawn)
+    f.koT += dt; const wl = -FREE(f.z);
+    if (!f.splashed) { f.vh -= grav() * dt; f.h += f.vh * dt; f.x += f.vx * dt; if (f.h <= wl) { f.splashed = true; f.h = wl; f.vh = -70; pirSplash(f.x, f.z, 1); } }
+    else if (f.h > wl - 400) f.h += f.vh * dt;
+  }
+  const KRAKEN_T = 5.5; // 🐙 seconds of the kraken scene before the FINAL FIGHT intro
+  const finIntro = () => FINAL_INTRO + (PIR() ? KRAKEN_T : 0);
+  function pirFinal(a, b) { // 🐙 the kraken takes the ship the last two AREN'T on (split up: the fair winner's ship stays); they face off on the one that's left
+    const d = a.id === destined ? a : b.id === destined ? b : a, sa = shipOf(a.x, a.z), sb = shipOf(b.x, b.z);
+    let safe = sa === sb && sa >= 0 ? sa : shipOf(d.x, d.z); if (safe < 0) safe = d.x < GAPX ? 0 : 1;
+    const doomed = 1 - safe; Object.assign(pir, { safe, sunk: doomed, planks: false, balls: [], kr: { safe, doomed, tents: pirTentacles(doomed), fired: new Set() } });
+    const z = .55, mid = deckMid(safe, z), [l, r] = a.x <= b.x ? [a, b] : [b, a];
+    for (const [f, x, face] of [[l, mid - 150, 1], [r, mid + 150, -1]]) {
+      f.pm = { x: f.x, z: f.z, h: Math.max(0, f.h), leap: shipOf(f.x, f.z) !== safe }; // (drawn getting there during the kraken scene: the one on the other ship jumps across)
+      Object.assign(f, { x, z, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, swing: null, target: f === a ? b : a, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0 });
+    }
+    for (const f of F) if (!f.alive && !f.falling && shipOf(f.x, f.z) === doomed) f.wreck = true; // (knocked-out pirates on that ship go down with it)
+    fg.save(); fg.globalCompositeOperation = 'destination-out'; pirDeckPath(fg, doomed, 30); fg.fill(); fg.restore(); // (its blood goes down with it)
+    snd('kraken'); quake(12);
+  }
+  function pirFinalNow(live) { // 🧪 straight to the last two: the fair winner + one pirate from the other crew (the rest go out)
+    const d = live.find(o => o.id === destined) || live[0], other = live.find(o => o.team !== d.team); if (!other) return;
+    pirForce = true; try { for (const o of live) if (o !== d && o !== other && o.alive) ko(o, null); } finally { pirForce = false; }
+  }
+
   // ---------- 🦁 Colosseum lions (an on/off setting; turned off = back to the tunnels) ----------
   const GATES = [330, 1590];
   function lionStep(dt) {
@@ -352,7 +504,7 @@
     const hitting = a.kind === 'jump' ? a.t > .12 && f.h > 0 : a.t >= a.hitAt && a.t < a.hitAt + .1;
     if (hitting && !a.done) {
       const s = S(f), reach = ({ punch: 70, kick: 84, jump: 70, head: 50 }[a.kind] + wReach(f)) * s;
-      for (const o of F) { if (o === f || !o.alive) continue; const dx = (o.x - f.x) * f.face; if (dx > -12 * s && dx < reach && Math.abs(o.z - f.z) < .065 && Math.abs(o.h - f.h) < 90) { a.done = true; hit(f, o, a.kind); break; } }
+      for (const o of F) { if (o === f || !o.alive || (PIR() && (o.team === f.team || o.swing))) continue; const dx = (o.x - f.x) * f.face; if (dx > -12 * s && dx < reach && Math.abs(o.z - f.z) < .065 && Math.abs(o.h - f.h) < 90) { a.done = true; hit(f, o, a.kind); break; } } // (🏴‍☠️ never your own crew)
     }
     if (a.t >= a.dur) f.atk = null;
   }
@@ -417,16 +569,18 @@
     if (f.weapon && kind !== 'clothes' && kind !== 'elbow' && kind !== 'bolt' && kind !== 'shot') dmg *= WSTAT[f.weapon]?.d || 2.4; // 🗡️ weapons (and steel chairs) hit much harder
     if (scene.wacky.rage) dmg *= 1 + (1 - f.hp / 100) * 1.2;
     dmg *= (T > D * 1.35 ? 4 : T > D ? 2 : 1) * paceBoost();
+    if (pirKeep(f)) dmg *= 1.7; // 🏴‍☠️ the smaller crew makes a last stand: hits harder
     const blocked = o.block > 0 && o.face === -f.face;
     if (blocked) { dmg *= .2; word('BLOCK!', o.x, zY(o.z) - 160 * S(o), '#9fd6ff', 30); snd('clash'); o.vx += f.face * 120; return damage(f, o, dmg, kind, true); }
     if (scene.wacky.onehit) dmg = 999;
     if (o.atk?.o) o.atk.o.heldBy = null; // (a hit breaks the hold)
     o.vx += (kind === 'bolt' || kind === 'shot' ? Math.sign(o.x - f.x) || f.face : f.face) * (160 + dmg * 14) * (scene.wacky.lowgrav ? 1.6 : 1) * (RUMBLE() && !crazy() ? .45 : 1); // (the ring keeps it real unless a wacky setting is on) if (scene.wacky.lowgrav || kind === 'jump') o.vh = Math.max(o.vh, scene.wacky.lowgrav ? 260 + dmg * 12 : 160);
-    o.stun = .22 + Math.min(.5, dmg / 60); o.atk = null; o.hurtT = .3;
+    o.stun = (.22 + Math.min(.5, dmg / 60)) * (pirKeep(o) ? .35 : 1); o.atk = null; o.hurtT = .3; // (🏴‍☠️ …and shrugs hits off quicker)
     const sx = o.x - f.face * 18 * S(o), sy = zY(o.z) - o.h - (60 + R() * 70) * S(o);
     o.lastBy = f;
     const WR = { jump: 'DROPKICK!', clothes: 'CLOTHESLINE!', elbow: 'ELBOW DROP!' }, big = kind === 'jump' || kind === 'clothes' || kind === 'elbow';
-    word(kind === 'shot' ? pick(['BANG!', 'HIT!', 'BLAM!', 'POW!']) : kind === 'bolt' ? pick(['ZAP!', 'FWOOSH!', 'ZING!']) : f.weapon && !WR[kind] ? (WSTAT[f.weapon]?.w || 'THWACK!') : RUMBLE() && WR[kind] ? WR[kind] : pickW(kind), sx, sy - 40, big ? '#ffd23a' : '#fff', big ? 46 : 36);
+    word(kind === 'shot' ? pick(['BANG!', 'HIT!', 'BLAM!', 'POW!']) : kind === 'bolt' ? pick(['ZAP!', 'FWOOSH!', 'ZING!']) : PIR() && Math.random() < .22 ? pick(['ARRR!', 'YARRR!', 'AVAST!', 'TAKE THAT!', 'SCALLYWAG!', 'BILGE RAT!']) : f.weapon && !WR[kind] ? (WSTAT[f.weapon]?.w || 'THWACK!') : RUMBLE() && WR[kind] ? WR[kind] : pickW(kind), sx, sy - 40, big ? '#ffd23a' : '#fff', big ? 46 : 36);
+    if (PIR() && onPlank(o.x, o.z) && R() < .35) o.vz += rr(-.5, .5); // (🪵 a hit on a gangplank can knock you off the side)
     sparks(sx, sy); snd(kind === 'shot' ? 'bonk' : kind === 'bolt' ? 'zap' : f.weapon && WSTAT[f.weapon]?.sharp && !WR[kind] ? 'chop' : f.weapon === 'chair' && !WR[kind] ? 'chair' : kind === 'clothes' || kind === 'elbow' ? 'slam' : kind === 'kick' || kind === 'jump' ? 'kick' : 'punch');
     if (RUMBLE() && big) snd('crowd', { v: .6 });
     if (!MI().armed && o.weapon && !f.weapon && R() < .3) { f.weapon = o.weapon; o.weapon = null; word('STOLEN!', f.x, zY(f.z) - 200 * S(f), '#ffe08a', 40); snd('clash'); } // knocked loose and grabbed
@@ -453,8 +607,9 @@
       return;
     }
     if (o.hp <= 0 && !keep && kind !== 'bleed' && R() < paceHold(alive().length)) { o.hp = rr(4, 10); if (R() < .5) word(pick(['STILL STANDING!', 'NOT YET!', 'HANGING ON!']), o.x, zY(o.z) - 210 * s, '#9fffb0', 34); } // ⏳ too many out too fast: hangs on
+    if (o.hp <= 0 && pirKeep(o)) { o.hp = rr(6, 12); if (Math.random() < .4) word(pick(['NOT TODAY!', 'STILL STANDING!', 'ARRR, NOT YET!']), o.x, zY(o.z) - 210 * s, '#9fffb0', 34); } // 🏴‍☠️ (the smaller crew hangs on: the crews stay even)
     if (o.hp <= 0) ko(o, f, gore && !keep && R() < .55);
-    else if (gore && !keep && o.hp < 25 && !soft && R() < .07) ko(o, f, true);
+    else if (gore && !keep && o.hp < 25 && !soft && R() < .07 && !pirKeep(o)) ko(o, f, true);
   }
   function loseLimb(o, f) {
     const have = Object.keys(o.limbs).filter(k => o.limbs[k]); if (!have.length) return;
@@ -465,28 +620,22 @@
     word(arm ? 'ARM OFF!' : 'LEG OFF!', o.x, zY(o.z) - 210 * s, '#ff4a4a', 40); snd('chop');
   }
   function ko(o, f, decap, over, fall) {
+    if (PIR() && !finalPair && !pirForce && (o.id === destined || pirKeep(o))) { o.hp = Math.max(o.hp, 6); return; } // 🏴‍☠️ (the crews stay even: it always comes down to one pirate from each)
     if (finCan(o)) { const w = finalPair.find(x => x !== o); if (w) return startFinisher(o, w); } // 💀 the final K.O. staggers them instead: FINISHER time
     if (o.atk?.o) o.atk.o.heldBy = null; if (o.heldBy) { o.heldBy.atk = null; o.heldBy = null; }
-    o.alive = false; o.hp = 0; o.koT = 0; o.atk = null; o.down = 0; o.whip = 0; o.rebound = 0; o.lie = 0; order.push(o.id);
+    o.alive = false; o.hp = 0; o.koT = 0; o.atk = null; o.down = 0; o.whip = 0; o.rebound = 0; o.lie = 0; o.swing = null; order.push(o.id); crewC = null;
     if (over) { o.out = true; const k = crazy() ? 2 : 1; o.vx = over * rr(260, 340) * k * (scene.wacky.lowgrav ? 1.4 : 1); o.vh = rr(440, 520) * (crazy() ? 1.25 : 1); o.h = Math.max(o.h, 30); } // ⬆️ up and over the top rope, down to the floor
     else if (fall) { o.falling = true; o.vh = Math.min(o.vh, 0); o.vx *= .3; o.vz = 0; } // 🕳️ down through the platform
     else o.vx += (f ? f.face : vr(-1, 1)) * 260;
     onKO(o); lastKO = T; if (o.weapon && !MI().armed) { weapons.push({ kind: o.weapon, x: o.x, z: o.z, h: 60, vh: 200 }); o.weapon = null; } // the weapon drops for someone else
     if (alive().length === 2 && !showdownSaid) { showdownSaid = true;
-      if (scene.finalFight) { // 🥊 FINAL FIGHT (maps that have one): the clock stops, the last two face off across the street with a weapon each, a bell, then a timed fight
-        const [a, b] = alive(); finalPair = [a, b]; mode = 'final'; modeT = 0; finalCam();
-        const kinds = MI().weapons, k1 = Math.floor(R() * Math.max(1, kinds.length));
-        if (WIZ()) { tiles.forEach(t => { t.hp = 2; t.fallT = 0; }); bolts = []; zaps = []; word('THE PLATFORM REBUILDS!', W / 2, 600, '#d6a8ff', 50); } // 🧙 a whole platform for the duel
-        cg.clearRect(0, 0, W, H); // (1.61.4, Derek: the broken ground is fixed (craters gone, fallen tiles back), the blood where the ground didn't fall stays)
-        for (const [f, x, face, k] of [[a, W * .4, 1, kinds[k1]], [b, W * .6, -1, kinds[(k1 + 1 + Math.floor(R() * 2)) % kinds.length]]]) { puff(f, '#ffd23a'); Object.assign(f, { x, z: .55, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, weapon: MI().armed ? f.weapon : k || null, target: f === a ? b : a, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0 }); puff(f, '#ffd23a'); }
-        weapons = []; bell();
-      } else { toast('🥊 FINAL SHOWDOWN!'); bell(); } }
+      if (scene.finalFight) startFinal(); else { toast('🥊 FINAL SHOWDOWN!'); bell(); } }
     const s = S(o);
     if (decap) { // 🩸 the face comes off (the top of the pack)
       o.head = false;
       flyers.push({ kind: 'head', f: o, x: o.x, y: zY(o.z) - o.h - 150 * s, gz: o.z, vx: (f ? f.face : 1) * vr(220, 480), vy: -vr(500, 800), rot: 0, vrot: vr(-10, 10), s, rest: false, blood: 2 });
       blood(o.x, zY(o.z) - o.h - 120 * s, o.z, 60, f ? f.face : 0, 2.2); word('HEADLESS!', o.x, zY(o.z) - 240 * s, '#ff3030', 58); snd('chop'); snd('splat');
-    } else if (fall) { word(pick(['FELL!', 'INTO THE VOID!', 'GONE!']), o.x, zY(o.z) - 200 * s, '#d6a8ff', 54); snd('whoosh'); }
+    } else if (fall) { word(PIR() ? pick(['OVERBOARD!', 'MAN OVERBOARD!', 'SPLASH!', 'SWIM FOR IT!']) : pick(['FELL!', 'INTO THE VOID!', 'GONE!']), o.x, zY(o.z) - 200 * s, PIR() ? '#9fe0ff' : '#d6a8ff', 54); snd('whoosh'); }
     else if (over) { word(pick(['ELIMINATED!', 'OVER THE TOP!', 'GONE!']), o.x, zY(o.z) - 220 * s, '#ff5a5a', 56); snd('crowd'); snd('whoosh'); }
     else { word(pick(['K.O.!', 'DOWN!', 'FINISHED!']), o.x, zY(o.z) - 200 * s, '#ff5a5a', 52); snd('splat'); }
     if (!over && !fall) snd('fall'); if (fall) snd('fall');
@@ -497,11 +646,21 @@
     }
     if (alive().length === 1) slowUntil = T + 1.4;
   }
+  function startFinal() { // 🥊 FINAL FIGHT (maps that have one): the clock stops, the last two face off across the street with a weapon each, a bell, then a timed fight
+    const [a, b] = alive(); finalPair = [a, b]; mode = 'final'; modeT = 0; finalCam();
+    const kinds = MI().weapons, k1 = Math.floor(R() * Math.max(1, kinds.length));
+    if (WIZ()) { tiles.forEach(t => { t.hp = 2; t.fallT = 0; }); bolts = []; zaps = []; word('THE PLATFORM REBUILDS!', W / 2, 600, '#d6a8ff', 50); } // 🧙 a whole platform for the duel
+    cg.clearRect(0, 0, W, H); // (1.61.4, Derek: the broken ground is fixed (craters gone, fallen tiles back), the blood where the ground didn't fall stays)
+    weapons = [];
+    if (PIR()) return pirFinal(a, b); // 🐙 the kraken drags one ship under, the last two face off on the other one
+    for (const [f, x, face, k] of [[a, W * .4, 1, kinds[k1]], [b, W * .6, -1, kinds[(k1 + 1 + Math.floor(R() * 2)) % kinds.length]]]) { puff(f, '#ffd23a'); Object.assign(f, { x, z: .55, h: 0, vx: 0, vz: 0, vh: 0, face, atk: null, stun: 0, block: 0, weapon: MI().armed ? f.weapon : k || null, target: f === a ? b : a, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0 }); puff(f, '#ffd23a'); }
+    bell();
+  }
   function physics(f, dt) {
     const slip = scene.wacky.slippery;
-    if (f.falling) { if (f.h > -1400) { f.vh -= grav() * dt; f.h += f.vh * dt; f.x += f.vx * dt; } f.koT += dt; return; } // 🕳️ falling away below the platform
+    if (f.falling) { if (PIR()) return pirSink(f, dt); if (f.h > -1400) { f.vh -= grav() * dt; f.h += f.vh * dt; f.x += f.vx * dt; } f.koT += dt; return; } // 🕳️ falling away below the platform
     const px = f.x, pz = f.z;
-    f.x += f.vx * dt; f.z = clamp(f.z + f.vz * dt, 0, 1);
+    f.x += f.vx * dt; f.z = clamp(f.z + f.vz * dt, PIR() ? PZ0 : 0, PIR() ? PZ1 : 1);
     const fr = f.h > 0 ? .995 : slip ? .985 : .86; f.vx *= Math.pow(fr, dt * 60); f.vz *= Math.pow(slip ? .97 : .8, dt * 60);
     const gl = gnd(f);
     if (f.h > gl || f.vh > 0) { f.h += f.vh * dt; f.vh -= grav() * dt; if (f.h <= gl) { const hard = f.vh < -450; f.h = gl; f.vh = 0; if (f.atk?.kind === 'jump' || f.atk?.kind === 'elbow') f.atk = null; dust(f.x, f.z, 5); if (hard && f.out) { snd('slam'); dust(f.x, f.z, 10); } } }
@@ -513,6 +672,10 @@
     if (WIZ() && (mode === 'fight' || mode === 'final') && f.h <= 0 && !solid(f.x, f.z)) { // 🧙 a hole or the edge: walking stops there; knocked into it (or the floor goes) = falls
       if (f.alive && !(f.stun > 0) && solid(px, pz)) { f.x = px; f.z = pz; f.vx = 0; f.vz = 0; }
       else if (f.alive) fallCheck(f); else { f.falling = true; f.vh = 0; }
+    }
+    if (PIR() && (mode === 'fight' || mode === 'final') && f.h <= 0 && !f.swing && !onDeck(f.x, f.z)) { // 🏴‍☠️ the edge of a deck: walking stops there (slides along it); knocked over it = into the sea
+      if (f.alive && !(f.stun > 0) && onDeck(px, pz)) { if (onDeck(f.x, pz)) { f.z = pz; f.vz = 0; } else if (onDeck(px, f.z)) { f.x = px; f.vx = 0; } else { f.x = px; f.z = pz; f.vx = 0; f.vz = 0; } }
+      else if (f.alive) pirOver(f); else if (!f.wreck) { f.falling = true; f.vh = 0; }
     }
     if (!f.alive) f.koT += dt;
   }
@@ -532,11 +695,13 @@
   // The server picks which one from a shuffled pile (each one once before any repeats) so every screen plays the same one.
   const FIN = { on: false };
   function finTest(m) { // 🧪 Test tab: two packs, straight to the stagger + finisher (+ celebration) of your choice
-    const map = m.map || 'kungfu'; scene = { ...scene, show: true, phase: 'fight', map, finalFight: true, fin: Number.isInteger(m.fin) ? m.fin : null, cel: Number.isInteger(m.cel) ? m.cel : null, wacky: scene.wacky || {} };
+    const map = m.map || 'kungfu', pirates = map === 'pirates'; scene = { ...scene, show: true, phase: 'fight', map, finalFight: true, fin: Number.isInteger(m.fin) ? m.fin : null, cel: Number.isInteger(m.cel) ? m.cel : null, wacky: scene.wacky || {}, ...(pirates ? { chars: true, lookSeed: scene.lookSeed || 'fin' + Math.floor(Math.random() * 1e6) } : {}) };
     layer.classList.remove('hidden'); SFX.setMap?.('card-' + map);
-    const packs = m.fighters || [{ id: 'fa', packId: 'fa', name: 'Winner Pack', game: 'Test', image: null, color: '#e8b830' }, { id: 'fb', packId: 'fb', name: 'Loser Pack', game: 'Test', image: null, color: '#5a8aff' }];
+    const packs = m.fighters || (pirates ? [{ id: 'fa', packId: 'fa', name: 'Captain Winner', game: 'Test', image: null, char: true, gender: 'm' }, { id: 'fb', packId: 'fb', name: 'Loser Pirate', game: 'Test', image: null, char: true, gender: 'f' }] // (🏴‍☠️ characters only: two pirates, one from each crew)
+      : [{ id: 'fa', packId: 'fa', name: 'Winner Pack', game: 'Test', image: null, color: '#e8b830' }, { id: 'fb', packId: 'fb', name: 'Loser Pack', game: 'Test', image: null, color: '#5a8aff' }]);
     R = Math.random; fightId = 'fintest-' + Date.now(); destined = packs[0].id; order = []; winner = null; sent = true; F = makeFighters(packs); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H);
     const [a, b] = F; Object.assign(a, { x: W * .4, z: .55, face: 1, weapon: MI().armed ? a.weapon : (MI().weapons[0] || null) }); Object.assign(b, { x: W * .6, z: .55, face: -1, hp: 5 });
+    if (PIR()) { a.team = 0; b.team = 1; a.x = deckMid(0, .55) - 150; b.x = deckMid(0, .55) + 150; Object.assign(pir, { safe: 0, sunk: 1, planks: false, kr: null }); } // (after the kraken: only the red ship is left)
     finalPair = [a, b]; showdownSaid = true; mode = 'fight'; finalLeft = 10; FIN.on = false; Object.assign(cine, { rot: 0, quake: 0, punch: null, hit: null, saved: null, from: null, end: null });
     if (!running) { running = true; requestAnimationFrame(frame); }
     startFinisher(b, a);
@@ -547,10 +712,10 @@
   function startFinisher(L, Wn) {
     const fins = finLib('fin'), cels = finLib('cel');
     const fi = Number.isInteger(scene.fin) ? scene.fin % fins.length : Math.floor(Math.random() * fins.length), ci = Number.isInteger(scene.cel) ? scene.cel % Math.max(1, cels.length) : Math.floor(Math.random() * Math.max(1, cels.length));
-    const dir = Wn.x <= L.x ? 1 : -1, cx = clamp((Wn.x + L.x) / 2, 520, W - 520);
+    const dir = Wn.x <= L.x ? 1 : -1, cx = PIR() && pir?.safe != null ? deckMid(pir.safe, .55) : clamp((Wn.x + L.x) / 2, 520, W - 520); // (🏴‍☠️ in the middle of the ship that's left)
     for (const f of [L, Wn]) Object.assign(f, { vx: 0, vz: 0, vh: 0, atk: null, stun: 0, block: 0, down: 0, heldBy: null, lie: 0, whip: 0, rebound: 0, falling: false, out: false, h: 0, z: .55, alive: true, hp: Math.max(1, f.hp) });
     Object.assign(FIN, { on: true, phase: 'stagger', t: 0, L, W: Wn, dir, fin: fins[fi], cel: cels[ci] || null, Lx0: L.x, Wx0: Wn.x, Lx: cx + dir * 135, Wx: cx - dir * 135, fired: new Set(), snap: { limbs: { ...L.limbs }, head: L.head }, camHint: null, end: null });
-    if (WIZ()) tiles.forEach(t => { t.hp = 2; t.fallT = 0; }); // (solid ground under both)
+    if (WIZ()) tiles.forEach(t => { t.hp = 2; t.fallT = 0; }); crewC = null; // (solid ground under both)
     winner = Wn; order.push(L.id); finalLeft = 0; mode = 'finisher'; modeT = 0; slowUntil = 0;
     word('💫 STAGGERED!', L.x, zY(L.z) - 260 * S(L), '#ffd23a', 50); snd('slowhit'); snd(RUMBLE() ? 'crowd' : 'gong'); quake(10);
     if (!sent && !PREVIEW_WIN) { sent = true; setTimeout(() => send({ type: 'cardResult', fightId, winnerId: Wn.id, order: [Wn.id, ...order.slice().reverse()] }), 1800); }
@@ -596,6 +761,10 @@
       prop: (t0, t1, fn, behind = false) => { if (inw(t0, t1)) (behind ? back : props).push(() => fn(u(t0, t1), g, A)); },
       emoji: (t0, t1, ch, x, y, size = 80, rot = 0, alpha = 1, behind = false) => A.prop(t0, t1, v => { g.save(); g.globalAlpha = alpha; g.translate(typeof x === 'function' ? x(v) : x, typeof y === 'function' ? y(v) : y); g.rotate(typeof rot === 'function' ? rot(v) : rot); g.fillStyle = '#000'; g.font = `${typeof size === 'function' ? size(v) : size}px 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 0, 0); g.restore(); }, behind),
       cam: (z, x, y) => { FIN.camHint = { z, x: x ?? (P.W.x + P.L.x) / 2, y: y ?? gy - 140 * s }; },
+      // 🏴‍☠️ Pirate Battle: the deck's edge past the loser, the water's height there, a splash, the two crews' colours
+      edge: PIR() ? (dir > 0 ? deckHi(pir?.safe ?? 0, L.z) : deckLo(pir?.safe ?? 0, L.z)) : dir > 0 ? W - 80 : 80, edge2: PIR() ? (dir > 0 ? deckLo(pir?.safe ?? 0, L.z) : deckHi(pir?.safe ?? 0, L.z)) : dir > 0 ? 80 : W - 80, water: gy + (PIR() ? FREE(L.z) : 120), // (edge2 = the other side, behind the winner)
+      splash: (t0, x, k = 1) => once(t0, () => { if (PIR()) pirSplash(x ?? P.L.x, L.z, k); else { A.burstNow(x ?? P.L.x, gy, 30 * k, ['#e8f8ff', '#8ad0f0'], 500, 1200, 6); snd('splash'); } }),
+      crewW: CREW[Wf.team] || CREW[0], crewL: CREW[L.team] || CREW[1],
       // 🏆 celebrations (the winner)
       dance: (t0, t1, k = 1) => { if (!inw(t0, t1)) return; P.W.walk = true; P.W.h += Math.abs(Math.sin(t * 7 * k)) * 26 * s; P.W.face = Math.sin(t * 2.2 * k) > 0 ? dir : -dir; P.W.rot += Math.sin(t * 7 * k) * .1; },
       spinW: (t0, t1, turns = 2) => { if (inw(t0, t1)) { const v = e(u(t0, t1)); P.W.sx = Math.cos(v * turns * Math.PI * 2); P.W.face = P.W.sx < 0 ? -dir : dir; P.W.sx = Math.abs(P.W.sx) * .9 + .1; } },
@@ -941,6 +1110,14 @@
       g.fillStyle = '#6a4222'; g.beginPath(); g.moveTo(-22 * s, -2 * s); g.lineTo(30 * s, -3 * s); g.lineTo(30 * s, 4 * s); g.lineTo(-8 * s, 5 * s); g.lineTo(-24 * s, 11 * s); g.closePath(); g.fill(); // stock
       g.fillStyle = '#2a2a2e'; g.fillRect(10 * s, -5 * s, 72 * s, 4 * s); g.fillRect(14 * s, -8 * s, 4 * s, 4 * s); g.fillRect(26 * s, -2 * s, 6 * s, 6 * s); // barrel, sight, bolt
     }
+    else if (kind === 'cutlass' || kind === 'saber') { // 🏴‍☠️ a curved pirate sword with a gold guard
+      const L = kind === 'saber' ? 66 : 50, bw = kind === 'saber' ? 4.5 : 7;
+      g.fillStyle = '#e2e8ee'; g.beginPath(); g.moveTo(2 * s, -bw / 2 * s); g.quadraticCurveTo(L * .6 * s, -bw * .9 * s, L * s, -bw * 2.4 * s); g.quadraticCurveTo(L * .62 * s, bw * .7 * s, 2 * s, bw / 2 * s); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1.2 * s; g.beginPath(); g.moveTo(6 * s, -bw * .2 * s); g.quadraticCurveTo(L * .55 * s, -bw * .55 * s, L * .9 * s, -bw * 1.9 * s); g.stroke();
+      g.strokeStyle = '#d4a82a'; g.lineWidth = 3 * s; g.beginPath(); g.arc(-4 * s, 2 * s, 9 * s, -Math.PI * .45, Math.PI * .6); g.stroke(); g.fillStyle = '#d4a82a'; g.fillRect(-1 * s, -8 * s, 4 * s, 16 * s); g.fillStyle = '#3a2210'; g.fillRect(-14 * s, -3 * s, 13 * s, 6 * s);
+    }
+    else if (kind === 'pin') { g.fillStyle = '#9a6a3a'; g.beginPath(); g.moveTo(-14 * s, -3 * s); g.lineTo(6 * s, -3.5 * s); g.lineTo(44 * s, -6.5 * s); g.quadraticCurveTo(50 * s, 0, 44 * s, 6.5 * s); g.lineTo(6 * s, 3.5 * s); g.lineTo(-14 * s, 3 * s); g.closePath(); g.fill(); g.fillStyle = '#6a4220'; g.fillRect(4 * s, -4.5 * s, 4 * s, 9 * s); } // 🪵 a belaying pin (a wooden club)
+    else if (kind === 'oar') { g.fillStyle = '#a8784a'; g.fillRect(-26 * s, -2.5 * s, 92 * s, 5 * s); g.beginPath(); g.moveTo(60 * s, -2.5 * s); g.quadraticCurveTo(76 * s, -11 * s, 96 * s, -9 * s); g.lineTo(96 * s, 9 * s); g.quadraticCurveTo(76 * s, 11 * s, 60 * s, 2.5 * s); g.closePath(); g.fill(); g.strokeStyle = 'rgba(60,30,10,.5)'; g.lineWidth = 1.5 * s; g.stroke(); } // 🚣 an oar
     else if (kind === 'chair') { // 🪑 a folding steel chair
       g.strokeStyle = '#3a3f46'; g.lineWidth = 3 * s; g.lineCap = 'round';
       g.beginPath(); g.moveTo(8 * s, -4 * s); g.lineTo(2 * s, 26 * s); g.moveTo(40 * s, -4 * s); g.lineTo(46 * s, 26 * s); g.moveTo(10 * s, -2 * s); g.lineTo(44 * s, 24 * s); g.stroke();
@@ -952,7 +1129,9 @@
   }
   function drawFighter(f) {
     const s = S(f), X = f.x, Y = zY(f.z), PW = 74 * s, PH = 112 * s, LL = 44 * s, AL = 40 * s, gl = gnd(f);
-    g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(X, Y - gl, PW * .62 * (1 - Math.min(.5, (f.h - gl) / 400)), 11 * s, 0, 0, 7); g.fill(); // shadow
+    const pc = PIR() && f.team != null && CREW[f.team], overSea = PIR() && (f.swing || f.falling || !onDeck(f.x, f.z));
+    if (!overSea) { g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(X, Y - gl, PW * .62 * (1 - Math.min(.5, (f.h - gl) / 400)), 11 * s, 0, 0, 7); g.fill(); } // shadow
+    if (pc && f.alive && !overSea && !FIN.on && mode !== 'won') { g.strokeStyle = pc.col; g.lineWidth = 4 * s; g.globalAlpha = .9; g.beginPath(); g.ellipse(X, Y - gl, PW * .66, 12.5 * s, 0, 0, 7); g.stroke(); g.globalAlpha = 1; } // 🏴‍☠️ a ring in their crew's colour
     g.save();
     const lieK = !f.alive ? Math.min(1, f.koT * 3) : f.heldBy ? f.lie : f.down > 0 ? 1 : 0; // knocked out, lying down, or lifted up flat
     if (lieK) { const py = Y - f.h; g.translate(X, py); g.rotate(-f.face * lieK * Math.PI / 2 * .95); g.translate(-X, -py); }
@@ -995,9 +1174,9 @@
     g.restore();
     if (f.alive && mode !== 'won' && !FIN.on) { // health bar on top
       const bw = Math.max(46, 92 * s), bx = X - bw / 2, by = top - f.h * 0 - 20 * s - 10, hp = clamp(f.hp / 100, 0, 1);
-      g.fillStyle = 'rgba(0,0,0,.7)'; g.fillRect(bx - 2, by - 2, bw + 4, 11); g.fillStyle = hp > .5 ? '#46e05a' : hp > .25 ? '#ffd23a' : '#ff3a3a'; g.fillRect(bx, by, bw * hp, 7);
+      g.fillStyle = pc ? pc.col : 'rgba(0,0,0,.7)'; g.fillRect(bx - 2, by - 2, bw + 4, 11); if (pc) { g.fillStyle = 'rgba(0,0,0,.65)'; g.fillRect(bx, by, bw, 7); } g.fillStyle = hp > .5 ? '#46e05a' : hp > .25 ? '#ffd23a' : '#ff3a3a'; g.fillRect(bx, by, bw * hp, 7); // (🏴‍☠️ the bar's frame is their crew's colour)
       g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(bx, by, bw * hp, 2);
-      if (F.length <= 24 || s > .8) { g.font = `800 ${Math.round(clamp(13 * s, 10, 18))}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,.8)'; const nm = (f.name || '').length > 22 ? f.name.slice(0, 21) + '…' : f.name; g.strokeText(nm, X, by - 3); g.fillStyle = '#fff'; g.fillText(nm, X, by - 3); }
+      if (F.length <= 24 || s > .8) { g.font = `800 ${Math.round(clamp(13 * s, 10, 18))}px Inter, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,.8)'; const nm = (f.name || '').length > 22 ? f.name.slice(0, 21) + '…' : f.name; g.strokeText(nm, X, by - 3); g.fillStyle = pc ? pc.lt : '#fff'; g.fillText(nm, X, by - 3); }
     }
   }
   function drawFlyer(o) {
@@ -1050,10 +1229,11 @@
   }
   function spinCam() { // 🥊 FINAL FIGHT (1.61.4, Derek's drawing): the camera walks a full circle around the last two, who stand still in the middle; the map is copied all the way round
     const [a, b] = finalPair, [ax, ay] = fpos(a), [bx, by] = fpos(b), px = (ax + bx) / 2, py = (ay + by) / 2 - 10;
-    const S0 = .7, S1 = FINAL_INTRO - 1.9, t = modeT, zz = clamp(1750 / (Math.abs(bx - ax) + 520), 1.2, 1.7); // (close in, both always fit)
+    const S0 = .7, S1 = FINAL_INTRO - 1.9, t = modeT - (PIR() ? KRAKEN_T : 0), zz = clamp(1750 / (Math.abs(bx - ax) + 520), 1.2, 1.7); // (close in, both always fit)
+    if (t < 0) return pirKrakenCam(modeT); // 🐙 first the kraken scene
     if (t < S0) { const k = easeIO(t / S0); cine.from ||= { x: cam.x, y: cam.y, z: cam.z }; cine.rot = 0; cine.orb = null; cam.x = cine.from.x + (px - cine.from.x) * k; cam.y = cine.from.y + (py - cine.from.y) * k; cam.z = cine.from.z + (zz - cine.from.z) * k; return; }
     if (t < S1) { if (!cine.orbit) cine.orbit = { px, yp: zY((a.z + b.z) / 2) }; cine.orb = easeIO((t - S0) / (S1 - S0)) * Math.PI * 2; cine.rot = 0; cam.x = px; cam.y = py; cam.z = zz; return; }
-    cine.orb = null; cine.orbit = null; cine.rot = 0; const sv = cine.saved, goal = sv?.manual ? sv : camGoal(), k = easeIO(Math.min(1, (t - S1) / (FINAL_INTRO - S1 - .3)));
+    cine.orb = null; cine.orbit = null; cine.rot = 0; const sv = cine.saved, goal = sv?.manual && !PIR() ? sv : camGoal(), k = easeIO(Math.min(1, (t - S1) / (FINAL_INTRO - S1 - .3))); // (🏴‍☠️ the map changed under a camera you'd moved: back to the two)
     cine.end ||= { x: cam.x, y: cam.y, z: cam.z }; cam.x = cine.end.x + (goal.x - cine.end.x) * k; cam.y = cine.end.y + (goal.y - cine.end.y) * k; cam.z = cine.end.z + (goal.z - cine.end.z) * k;
   }
   // The orbit, faked in 2D like a camera on a circular track around them (Derek's drawing): a picture of the whole stage (sky,
@@ -1063,8 +1243,16 @@
   const ORB_COPIES = 4;
   const orbitKeep = () => RUMBLE() ? [[ringL(0) - 16, GY0 - 118], [ringR(0) + 16, GY0 - 118], [ringR(1) + 150, H + 60], [ringL(1) - 150, H + 60]] // (the ring, posts and all)
     : WIZ() ? [[platL(0) - 8, GY0 - 8], [platR(0) + 8, GY0 - 8], [platR(1) + 8, GY1 + 52], [W / 2 + 60, GY1 + 190], [W / 2 - 60, GY1 + 190], [platL(1) - 8, GY1 + 52]] : null; // (the platform and the rock under it)
+  function pirOrbit(now, shift) { // 🏴‍☠️ the sea and the sky go round (copies of the background side by side), the ship they're on stays still, they stand still on it
+    const x0 = cam.x - W / 2 / cam.z - 4, x1 = cam.x + W / 2 / cam.z + 4, top = cam.y - H / 2 / cam.z - 20, s = pir.safe;
+    for (let m = Math.floor((x0 + shift) / W); m <= Math.floor((x1 + shift) / W) + 1; m++) { const sx = m * W - shift; g.drawImage(bg, 0, 0, bg.width, bg.height, sx, 0, W, H); const gr = g.createLinearGradient(sx - 120, 0, sx + 120, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(0,0,0,.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(sx - 120, Math.min(0, top), 240, H + 60); }
+    g.drawImage(pirShipImg(s), 0, 0, W, H); for (const c of pir.cannons) if (c.s === s) pirCannon(c); g.drawImage(crat, 0, 0); g.drawImage(floor, 0, 0);
+    for (const f of [...finalPair, ...MASTS[s]].sort((p, q) => p.z - q.z)) f.mast ? drawMast(f.mast, now) : drawFighter(f);
+    pirSternRail(s);
+  }
   function drawOrbit(now, k) {
     const o = cine.orbit, ang = cine.orb, hz = GY0 - 4, yp = Math.max(hz + 60, o.yp), shift = ang / (Math.PI * 2) * ORB_COPIES * W;
+    if (PIR() && pir?.safe != null) return pirOrbit(now, shift);
     if (!o.snap) { // 📸 the stage as it is now (drawn on the screen once, then kept)
       g.save(); g.setTransform(k, 0, 0, k, 0, 0); drawStage(now, false); g.restore();
       const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; c.getContext('2d').drawImage(cv, 0, 0); o.snap = c; o.sk = cv.width / W;
@@ -1175,28 +1363,234 @@
       g.beginPath(); g.moveTo(-110, -2); g.lineTo(-140, -50); g.lineTo(-120, -50); g.lineTo(-90, -4); g.fill(); g.fillStyle = 'rgba(180,220,255,.7)'; g.beginPath(); g.ellipse(90, -8, 22, 10, 0, 0, 7); g.fill();
       g.fillStyle = 'rgba(40,40,40,.5)'; for (const yy of [-70, 30]) { g.beginPath(); g.ellipse(30, yy, 4, 20 * Math.abs(Math.sin(t * 40)), 0, 0, 7); g.fill(); } g.restore(); }
   }
+  // ---------- 🏴‍☠️ Pirate Battle drawing: the sea (drawn once), the two ships (each drawn once), masts, cannons, the kraken ----------
+  const shadeC = (h, a) => { const n = parseInt(String(h).slice(1), 16), f = v => clamp(Math.round(v + a * 2.55), 0, 255); return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`; };
+  const BOW_Z = -.28, ROPE_Y = 376, HZ = 548; // the bow's point, where the swing ropes hang from, the horizon
+  const MASTS = [0, 1].map(s => [.2, .62].map((z, i) => ({ mast: { s, i, z }, alive: true, z })));
+  const pirMasts = () => [0, 1].filter(s => pirS().sunk !== s).flatMap(s => MASTS[s]);
+  const krT = () => mode === 'final' && pir?.kr ? modeT : 99; // (seconds into the kraken scene)
+  function skull(c, x, y, r, col, hole) { // ☠️ a skull and crossbones (drawn, so it looks the same on every computer)
+    c.save(); c.strokeStyle = col; c.fillStyle = col; c.lineCap = 'round'; c.lineWidth = r * .26;
+    for (const d of [-1, 1]) { c.beginPath(); c.moveTo(x - r * 1.05 * d, y + r * .05); c.lineTo(x + r * 1.05 * d, y + r * 1.05); c.stroke(); for (const [ex, ey] of [[x - r * 1.05 * d, y + r * .05], [x + r * 1.05 * d, y + r * 1.05]]) for (const k of [-1, 1]) { c.beginPath(); c.arc(ex + k * r * .1, ey - d * k * r * .1, r * .16, 0, 7); c.fill(); } }
+    c.beginPath(); c.arc(x, y - r * .12, r * .64, 0, 7); c.fill(); c.fillRect(x - r * .36, y + r * .25, r * .72, r * .38);
+    c.fillStyle = hole; for (const d of [-1, 1]) { c.beginPath(); c.ellipse(x + d * r * .25, y - r * .1, r * .17, r * .2, 0, 0, 7); c.fill(); }
+    c.beginPath(); c.moveTo(x, y + r * .08); c.lineTo(x - r * .08, y + r * .22); c.lineTo(x + r * .08, y + r * .22); c.fill(); for (const d of [-.16, 0, .16]) c.fillRect(x + d * r - r * .03, y + r * .42, r * .06, r * .2);
+    c.restore();
+  }
+  function drawBgSea(k) { // a sunset over the open sea: the sun goes down at the end of the gap between the two ships
+    const c = document.createElement('canvas'); c.width = W * k; c.height = H * k; const b = c.getContext('2d'); b.scale(k, k);
+    const sky = b.createLinearGradient(0, 0, 0, HZ); sky.addColorStop(0, '#16264e'); sky.addColorStop(.42, '#45528e'); sky.addColorStop(.76, '#d8806a'); sky.addColorStop(1, '#ffd08a'); b.fillStyle = sky; b.fillRect(0, 0, W, HZ + 2);
+    for (let i = 0; i < 70; i++) { b.fillStyle = `rgba(255,255,240,${vr(.2, .7)})`; b.fillRect(vr(0, W), vr(0, 190), 2, 2); } // the first stars
+    const sun = b.createRadialGradient(GAPX, HZ - 20, 10, GAPX, HZ - 20, 340); sun.addColorStop(0, 'rgba(255,244,200,1)'); sun.addColorStop(.16, 'rgba(255,214,140,.85)'); sun.addColorStop(.45, 'rgba(255,160,90,.3)'); sun.addColorStop(1, 'rgba(255,130,80,0)'); b.fillStyle = sun; b.fillRect(GAPX - 340, HZ - 360, 680, 362);
+    b.fillStyle = '#fff2c8'; b.beginPath(); b.arc(GAPX, HZ + 6, 62, Math.PI, 0); b.fill();
+    for (let i = 0; i < 9; i++) { const x = vr(0, W), y = vr(70, 400), w = vr(140, 320); b.fillStyle = `rgba(${Math.floor(vr(210, 255))},${Math.floor(vr(130, 180))},${Math.floor(vr(140, 180))},${vr(.22, .45)})`; for (let j = 0; j < 5; j++) { b.beginPath(); b.ellipse(x + j * w * .22 - w * .45, y + vr(-12, 12), w * vr(.18, .3), w * vr(.06, .1), 0, 0, 7); b.fill(); } } // clouds lit by the sunset
+    const isle = (x, w, h) => { b.fillStyle = 'rgba(38,36,66,.9)'; b.beginPath(); b.moveTo(x - w, HZ + 1); b.quadraticCurveTo(x - w * .5, HZ - h, x, HZ - h * .9); b.quadraticCurveTo(x + w * .5, HZ - h * 1.1, x + w, HZ + 1); b.fill(); b.strokeStyle = 'rgba(38,36,66,.9)'; b.lineWidth = 3;
+      for (const dd of [-.3, .22]) { const px = x + w * dd, py = HZ - h * .95; b.beginPath(); b.moveTo(px, py); b.quadraticCurveTo(px + 6, py - h * .7, px + 4, py - h); b.stroke(); for (let a = 0; a < 5; a++) { b.beginPath(); b.moveTo(px + 4, py - h); b.quadraticCurveTo(px + 4 + Math.cos(a * 1.25) * 22, py - h - 12, px + 4 + Math.cos(a * 1.25) * 34, py - h + 9); b.stroke(); } } }; // (with palm trees)
+    isle(230, 120, 34); isle(1720, 160, 46); isle(1390, 60, 18);
+    const sea = b.createLinearGradient(0, HZ, 0, H); sea.addColorStop(0, '#6a6aa0'); sea.addColorStop(.07, '#2e5a8a'); sea.addColorStop(.5, '#164070'); sea.addColorStop(1, '#0a2448'); b.fillStyle = sea; b.fillRect(0, HZ, W, H - HZ);
+    for (let i = 0; i < 80; i++) { const y = HZ + 4 + Math.pow(Math.random(), 1.6) * (H - HZ), q = (y - HZ) / (H - HZ), spread = 30 + (y - HZ) * .35; b.fillStyle = `rgba(255,${Math.floor(vr(200, 240))},${Math.floor(vr(140, 190))},${vr(.25, .6) * (1 - q * .6)})`; b.fillRect(GAPX + vr(-spread, spread), y, vr(10, 40) * (1 + q * 2), vr(2, 4)); } // the sun's path on the water
+    for (let i = 0; i < 260; i++) { const y = HZ + Math.pow(Math.random(), 1.4) * (H - HZ), q = (y - HZ) / (H - HZ); b.strokeStyle = `rgba(${Math.random() < .5 ? '170,210,255' : '10,30,60'},${vr(.1, .3)})`; b.lineWidth = 1 + q * 2.5; const x = vr(0, W), w = 10 + q * 60; b.beginPath(); b.moveTo(x - w, y); b.quadraticCurveTo(x, y - 3 - q * 5, x + w, y); b.stroke(); } // waves
+    return c;
+  }
+  function pirDeckPath(c, s, grow = 0) { // the deck's outline: the outer side from the bow to the stern, across the stern, the inner side back, round the bow to its point
+    const o = s ? 1 : -1, outer = z => (s ? deckHi(1, z) : deckLo(0, z)) + o * grow, inner = z => (s ? deckLo(1, z) : deckHi(0, z)) - o * grow, n = 14; c.beginPath();
+    for (let i = 0; i <= n; i++) c.lineTo(outer(i / n), zY(i / n));
+    c.lineTo(outer(1), zY(1) + grow); c.lineTo(inner(1), zY(1) + grow);
+    for (let i = n; i >= 0; i--) c.lineTo(inner(i / n), zY(i / n));
+    c.quadraticCurveTo(inner(0), zY(-.16), deckMid(s, 0), zY(BOW_Z) - grow); c.quadraticCurveTo(outer(0), zY(-.16), outer(0), zY(0)); c.closePath();
+  }
+  const shipImgs = new Map();
+  function pirShipImg(s) { // one ship's hull, deck, sides and rails, drawn once (masts, cannons and the stern rail are drawn every frame)
+    const key = s + '|' + bgScale; if (shipImgs.has(key)) return shipImgs.get(key);
+    const c = document.createElement('canvas'); c.width = W * bgScale; c.height = H * bgScale; const b = c.getContext('2d'); b.scale(bgScale, bgScale);
+    const cr = CREW[s], o = s ? 1 : -1, outer = z => s ? deckHi(1, z) : deckLo(0, z), inner = z => s ? deckLo(1, z) : deckHi(0, z), P = z => .72 + z * .4;
+    // the stern (the back of the ship, at the front of the screen) and the side facing the gap
+    const lo1 = Math.min(outer(1), inner(1)), hi1 = Math.max(outer(1), inner(1)), sy = seaY(1);
+    let gr = b.createLinearGradient(0, zY(1), 0, sy); gr.addColorStop(0, '#5a3418'); gr.addColorStop(1, '#2a160a'); b.fillStyle = gr; b.beginPath(); b.moveTo(lo1, zY(1)); b.lineTo(hi1, zY(1)); b.lineTo(hi1 - 14, sy); b.lineTo(lo1 + 14, sy); b.fill();
+    b.strokeStyle = 'rgba(0,0,0,.3)'; b.lineWidth = 2; for (let y = zY(1) + 16; y < sy; y += 14) { b.beginPath(); b.moveTo(lo1 + 4, y); b.lineTo(hi1 - 4, y); b.stroke(); }
+    b.fillStyle = cr.col; b.fillRect(lo1, zY(1), hi1 - lo1, 10); b.fillStyle = '#d4a82a'; b.fillRect(lo1, zY(1) + 10, hi1 - lo1, 3);
+    const mx = (lo1 + hi1) / 2; b.fillStyle = '#1e1008'; b.fillRect(mx - 210, zY(1) + 20, 420, 36); b.strokeStyle = '#d4a82a'; b.lineWidth = 3; b.strokeRect(mx - 210, zY(1) + 20, 420, 36);
+    b.fillStyle = '#f2c84a'; b.font = `26px ${FONT}`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText(cr.ship, mx, zY(1) + 39);
+    for (const wx of [-300, -230, 230, 300]) { const wg = b.createLinearGradient(0, zY(1) + 22, 0, zY(1) + 70); wg.addColorStop(0, '#ffe9a0'); wg.addColorStop(1, '#e8902a'); b.fillStyle = wg; b.fillRect(mx + wx - 22, zY(1) + 24, 44, 44); b.strokeStyle = '#2a160a'; b.lineWidth = 4; b.strokeRect(mx + wx - 22, zY(1) + 24, 44, 44); b.beginPath(); b.moveTo(mx + wx, zY(1) + 24); b.lineTo(mx + wx, zY(1) + 68); b.stroke(); } // stern windows
+    b.fillStyle = '#3a200e'; b.beginPath(); for (let i = 0; i <= 10; i++) b.lineTo(inner(i / 10), zY(i / 10)); for (let i = 10; i >= 0; i--) b.lineTo(inner(i / 10) - o * 16, seaY(i / 10)); b.fill(); // (the side facing the gap: seen almost edge-on)
+    b.strokeStyle = cr.col; b.lineWidth = 5; b.beginPath(); for (let i = 0; i <= 10; i++) b.lineTo(inner(i / 10) - o * 3, zY(i / 10) + 5); b.stroke();
+    // the deck: planks running from the bow to the stern
+    gr = b.createLinearGradient(0, zY(BOW_Z), 0, zY(1)); gr.addColorStop(0, '#7a522c'); gr.addColorStop(1, '#b8844a'); b.fillStyle = gr; pirDeckPath(b, s); b.fill();
+    b.save(); pirDeckPath(b, s); b.clip();
+    b.strokeStyle = 'rgba(50,28,10,.32)'; b.lineWidth = 2; for (let k = 1; k < 16; k++) { const u = k / 16; b.beginPath(); for (let i = 0; i <= 12; i++) { const z = BOW_Z + (1 - BOW_Z) * i / 12, zz = Math.max(0, z), x = outer(zz) + (inner(zz) - outer(zz)) * u; b.lineTo(z < 0 ? deckMid(s, 0) + (x - deckMid(s, 0)) * (1 - z / BOW_Z) : x, zY(z)); } b.stroke(); }
+    b.strokeStyle = 'rgba(50,28,10,.22)'; b.lineWidth = 1.5; for (let k = 0; k < 16; k++) for (let j = 0; j < 7; j++) { const z = (j + (k % 3) / 3) / 7, u0 = k / 16, u1 = (k + 1) / 16, x0 = outer(z) + (inner(z) - outer(z)) * u0, x1 = outer(z) + (inner(z) - outer(z)) * u1; b.beginPath(); b.moveTo(x0, zY(z)); b.lineTo(x1, zY(z)); b.stroke(); } // (the planks' ends)
+    for (let i = 0; i < 160; i++) { const z = vr(0, 1); b.fillStyle = `rgba(${Math.random() < .5 ? '255,230,190' : '40,22,8'},${vr(.04, .1)})`; b.fillRect(vr(Math.min(outer(z), inner(z)), Math.max(outer(z), inner(z))), zY(z), vr(4, 14), vr(1, 3)); }
+    const hz0 = .4, hz1 = .5; b.fillStyle = '#2a1608'; b.beginPath(); b.moveTo(deckMid(s, hz0) - 70, zY(hz0)); b.lineTo(deckMid(s, hz0) + 70, zY(hz0)); b.lineTo(deckMid(s, hz1) + 80, zY(hz1)); b.lineTo(deckMid(s, hz1) - 80, zY(hz1)); b.fill(); // a cargo hatch
+    b.strokeStyle = '#6a4422'; b.lineWidth = 3; for (let k = 1; k < 6; k++) { b.beginPath(); b.moveTo(deckMid(s, hz0) - 70 + k * 23.3, zY(hz0)); b.lineTo(deckMid(s, hz1) - 80 + k * 26.6, zY(hz1)); b.stroke(); } for (let k = 1; k < 3; k++) { const z = hz0 + (hz1 - hz0) * k / 3; b.beginPath(); b.moveTo(deckMid(s, z) - 75, zY(z)); b.lineTo(deckMid(s, z) + 75, zY(z)); b.stroke(); }
+    b.restore();
+    // the outer side wall (bulwark) above the deck: its inside faces us
+    b.beginPath(); for (let i = 0; i <= 14; i++) { const z = i / 14; b.lineTo(outer(z), zY(z) - 46 * P(z)); } for (let i = 14; i >= 0; i--) { const z = i / 14; b.lineTo(outer(z), zY(z)); } b.closePath();
+    gr = b.createLinearGradient(0, zY(0) - 40, 0, zY(1)); gr.addColorStop(0, '#5a361a'); gr.addColorStop(1, '#7a4a24'); b.fillStyle = gr; b.fill();
+    b.strokeStyle = 'rgba(0,0,0,.25)'; b.lineWidth = 1.5; for (const k of [.33, .66]) { b.beginPath(); for (let i = 0; i <= 14; i++) { const z = i / 14; b.lineTo(outer(z), zY(z) - 46 * P(z) * k); } b.stroke(); }
+    b.strokeStyle = cr.col; b.lineWidth = 7; b.beginPath(); for (let i = 0; i <= 14; i++) { const z = i / 14; b.lineTo(outer(z), zY(z) - 46 * P(z) + 5); } b.stroke(); // (a stripe in the crew's colour)
+    b.strokeStyle = '#3a200c'; b.lineWidth = 6; b.beginPath(); b.moveTo(deckMid(s, 0), zY(BOW_Z) - 32); b.quadraticCurveTo(outer(0), zY(-.16) - 36, outer(0), zY(0) - 33); for (let i = 0; i <= 14; i++) { const z = i / 14; b.lineTo(outer(z), zY(z) - 46 * P(z)); } b.stroke(); // its top
+    // the low rail on the gap side (open where the gangplanks go) and round the bow
+    const post = (x, y, h, w = 4) => { b.fillStyle = '#4a2a12'; b.fillRect(x - w / 2, y - h, w, h); };
+    b.strokeStyle = '#4a2a12'; b.lineWidth = 4; b.beginPath(); b.moveTo(inner(0), zY(0) - 26); b.quadraticCurveTo(inner(0), zY(-.16) - 28, deckMid(s, 0), zY(BOW_Z) - 30); b.stroke();
+    let seg = []; const flush = () => { if (seg.length > 1) { b.beginPath(); seg.forEach(([x, y], i) => i ? b.lineTo(x, y) : b.moveTo(x, y)); b.stroke(); } seg = []; };
+    for (let i = 0; i <= 40; i++) { const z = i / 40, gap = PLANKS.some(p => Math.abs(z - p) < PLK + .015); if (gap) { flush(); continue; } seg.push([inner(z), zY(z) - 30 * P(z)]); if (i % 3 === 0) post(inner(z), zY(z), 30 * P(z)); } flush();
+    // the bowsprit and its sail
+    const tx = deckMid(s, 0), ty = zY(BOW_Z); b.strokeStyle = '#3a200c'; b.lineWidth = 8; b.beginPath(); b.moveTo(tx, ty - 10); b.lineTo(tx + o * 26, ty - 120); b.stroke();
+    b.fillStyle = shadeC(cr.col, 25); b.globalAlpha = .9; b.beginPath(); b.moveTo(tx + o * 24, ty - 116); b.lineTo(deckMid(s, .2) + o * 10, 210); b.lineTo(deckMid(s, .2) + o * 4, zY(.2) - 150); b.closePath(); b.fill(); b.globalAlpha = 1;
+    // barrels and a coil of rope by the outer wall
+    const barrel = (x, z, sc) => { const y = zY(z), p = P(z) * sc; b.fillStyle = '#7a4a22'; b.beginPath(); b.ellipse(x, y - 30 * p, 22 * p, 30 * p, 0, 0, 7); b.fill(); b.strokeStyle = '#2a1608'; b.lineWidth = 3 * p; for (const d of [-14, 14]) { b.beginPath(); b.ellipse(x, y - 30 * p + d * p, 21 * p, 5 * p, 0, 0, Math.PI); b.stroke(); } b.fillStyle = '#5a3418'; b.beginPath(); b.ellipse(x, y - 58 * p, 18 * p, 6 * p, 0, 0, 7); b.fill(); };
+    barrel(outer(.08) - o * 40, .08, 1); barrel(outer(.12) - o * 78, .12, .9); barrel(outer(.94) - o * 44, .94, 1.05);
+    { const z = .3, x = outer(z) - o * 56, y = zY(z), p = P(z); b.strokeStyle = '#c8a870'; b.lineWidth = 4 * p; for (let r = 6; r < 26; r += 5) { b.beginPath(); b.ellipse(x, y - 4 * p, r * p * 1.3, r * p * .45, 0, 0, 7); b.stroke(); } } // a coil of rope
+    shipImgs.set(key, c); if (shipImgs.size > 8) shipImgs.delete(shipImgs.keys().next().value); return c;
+  }
+  function drawMast(m, now, dy = 0) { // a mast with two square sails in the crew's colour (a skull on the big one), rigging, and a black flag on top
+    const { s, i, z } = m, cr = CREW[s], p = .72 + z * .4, x = deckMid(s, z), base = zY(z) + dy, top = (i ? 64 : 92) + dy, t = now / 1000;
+    g.save(); g.strokeStyle = 'rgba(30,18,8,.45)'; g.lineWidth = 1.8 * p;
+    for (const ex of [deckLo(s, z) + 8, deckHi(s, z) - 8]) for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(x + (ex > x ? 1 : -1) * 6 * p, top + 90 * p + k * 40 * p); g.lineTo(ex + (ex > x ? -1 : 1) * k * 30 * p, base - 34 * p); g.stroke(); } // the rigging
+    const mw = 15 * p, mg = g.createLinearGradient(x - mw / 2, 0, x + mw / 2, 0); mg.addColorStop(0, '#3a2210'); mg.addColorStop(.5, '#8a5a30'); mg.addColorStop(1, '#2e1a0c'); g.fillStyle = mg; g.fillRect(x - mw / 2, top, mw, base - top);
+    const sail = (y0, hw, hh, emblem) => {
+      g.fillStyle = '#3a2210'; g.fillRect(x - hw - 16 * p, y0 - 5 * p, (hw + 16 * p) * 2, 8 * p); // the yard
+      const bil = Math.sin(t * 1.3 + i * 2 + s) * 5 * p, sg = g.createLinearGradient(x - hw, 0, x + hw, 0); sg.addColorStop(0, shadeC(cr.col, -32)); sg.addColorStop(.5, cr.col); sg.addColorStop(1, shadeC(cr.col, -32));
+      g.fillStyle = sg; g.beginPath(); g.moveTo(x - hw, y0); g.lineTo(x + hw, y0); g.quadraticCurveTo(x + hw + 9 * p, y0 + hh * .5, x + hw * .93, y0 + hh); g.quadraticCurveTo(x, y0 + hh + 24 * p + bil, x - hw * .93, y0 + hh); g.quadraticCurveTo(x - hw - 9 * p, y0 + hh * .5, x - hw, y0); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 2 * p; g.stroke(); g.strokeStyle = 'rgba(0,0,0,.12)'; g.lineWidth = 1.5 * p; for (let k = 1; k < 5; k++) { const xx = x - hw + hw * 2 * k / 5; g.beginPath(); g.moveTo(xx, y0 + 4 * p); g.lineTo(x + (xx - x) * .95, y0 + hh + 12 * p); g.stroke(); }
+      if (emblem) skull(g, x, y0 + hh * .42, hh * .24, 'rgba(250,244,228,.95)', cr.col);
+    };
+    sail(top + 40 * p, 120 * p, 140 * p, false); sail(top + 216 * p, 168 * p, 190 * p, i === 1);
+    const fw = 74 * p, fh = 48 * p, fx = x + mw / 2, fy = top - 4 * p; g.fillStyle = '#4a2a14'; g.fillRect(x - 2 * p, fy - fh - 12 * p, 4 * p, fh + 16 * p); // ☠️ the flag
+    g.fillStyle = '#141418'; g.beginPath(); const fp = []; for (let k = 0; k <= 6; k++) { const u = k / 6, wv = Math.sin(t * 6 + u * 5 + s * 2 + i) * 5 * p * u; fp.push([fx + u * fw, fy - fh + wv]); } fp.forEach(([a, bb], k) => k ? g.lineTo(a, bb) : g.moveTo(a, bb)); for (let k = 6; k >= 0; k--) { const u = k / 6, wv = Math.sin(t * 6 + u * 5 + s * 2 + i) * 5 * p * u; g.lineTo(fx + u * fw, fy + wv); } g.closePath(); g.fill();
+    skull(g, fx + fw * .48, fy - fh * .58 + Math.sin(t * 6 + 2.4 + s * 2 + i) * 2.4 * p, fh * .2, '#f4efe2', '#141418');
+    g.fillStyle = cr.col; g.beginPath(); g.moveTo(fx, fy - fh - 14 * p); for (let k = 0; k <= 5; k++) { const u = k / 5; g.lineTo(fx + u * fw * 1.1, fy - fh - 14 * p + 6 * p * u + Math.sin(t * 7 + u * 4 + s) * 4 * p * u); } g.lineTo(fx, fy - fh - 2 * p); g.closePath(); g.fill(); // (a pennant in the crew's colour)
+    g.restore();
+  }
+  function pirCannon(c) {
+    const p = .72 + c.z * .4, d = c.s ? -1 : 1, x = cannonX(c) - d * c.recoil * 14 * p, y = zY(c.z);
+    g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(x, y, 34 * p, 7 * p, 0, 0, 7); g.fill();
+    g.fillStyle = '#6a3e1c'; g.fillRect(x - 26 * p, y - 22 * p, 52 * p, 16 * p); g.fillStyle = '#2a1608'; for (const k of [-16, 16]) { g.beginPath(); g.arc(x + k * p, y - 6 * p, 7.5 * p, 0, 7); g.fill(); }
+    g.save(); g.translate(x, y - 28 * p); g.scale(d, 1); g.rotate(-.08);
+    g.fillStyle = '#1e1e22'; g.beginPath(); g.moveTo(-24 * p, -11 * p); g.lineTo(46 * p, -7 * p); g.lineTo(46 * p, 7 * p); g.lineTo(-24 * p, 11 * p); g.closePath(); g.fill(); g.beginPath(); g.arc(-24 * p, 0, 11 * p, Math.PI / 2, Math.PI * 1.5); g.fill();
+    g.fillStyle = '#3a3a42'; g.fillRect(40 * p, -9 * p, 8 * p, 18 * p); g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-20 * p, -9 * p, 60 * p, 4 * p);
+    g.restore();
+  }
+  function pirPlank(pz, dy = 0, a = 1) { // 🪵 a gangplank across the gap (rope rails on both sides)
+    const x0 = deckHi(0, pz) - 16, x1 = deckLo(1, pz) + 16, y0 = zY(pz - PLK) + dy, y1 = zY(pz + PLK) + dy; g.save(); g.globalAlpha *= a;
+    g.fillStyle = '#4a2c14'; g.fillRect(x0, y1, x1 - x0, 9); g.fillStyle = '#a8763e'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    g.strokeStyle = 'rgba(40,20,6,.45)'; g.lineWidth = 2; for (const k of [.33, .66]) { g.beginPath(); g.moveTo(x0, y0 + (y1 - y0) * k); g.lineTo(x1, y0 + (y1 - y0) * k); g.stroke(); } for (let x = x0 + 30; x < x1; x += 46) { g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke(); }
+    g.strokeStyle = '#c8a870'; g.lineWidth = 2.5; for (const y of [y0, y1]) { g.beginPath(); g.moveTo(x0, y - 34); g.quadraticCurveTo((x0 + x1) / 2, y - 18, x1, y - 34); g.stroke(); g.fillStyle = '#4a2a12'; g.fillRect(x0 - 2, y - 36, 4, 36); g.fillRect(x1 - 2, y - 36, 4, 36); }
+    g.restore();
+  }
+  function pirSternRail(s, dy = 0) { // the rail at the back of the ship: in front of everyone standing at the back
+    const lo = Math.min(deckLo(s, 1), deckHi(s, 1)), hi = Math.max(deckLo(s, 1), deckHi(s, 1)), y = zY(1) + dy, h = 42, cr = CREW[s];
+    g.fillStyle = '#4a2a12'; for (let x = lo + 6; x <= hi - 4; x += 34) g.fillRect(x - 3, y - h, 6, h);
+    g.fillStyle = '#3a200c'; g.fillRect(lo - 4, y - h - 6, hi - lo + 8, 10); g.fillStyle = cr.col; g.fillRect(lo - 4, y - h + 4, hi - lo + 8, 5); g.fillStyle = '#5a3418'; g.fillRect(lo - 4, y - 8, hi - lo + 8, 8);
+    const fl = .85 + Math.sin(performance.now() / 90 + s * 3) * .08; for (const lx of [lo + 10, hi - 10]) { g.fillStyle = '#2a1608'; g.fillRect(lx - 3, y - h - 60, 6, 60); const lg = g.createRadialGradient(lx, y - h - 72, 2, lx, y - h - 72, 60); lg.addColorStop(0, `rgba(255,220,130,${.55 * fl})`); lg.addColorStop(1, 'rgba(255,180,80,0)'); g.fillStyle = lg; g.fillRect(lx - 60, y - h - 132, 120, 120); g.fillStyle = '#ffd27a'; g.fillRect(lx - 8, y - h - 84, 16, 22); g.strokeStyle = '#2a1608'; g.lineWidth = 3; g.strokeRect(lx - 8, y - h - 84, 16, 22); } // stern lanterns
+  }
+  function pirTentacles(s) { // 🐙 where each tentacle comes up and what part of the ship it grabs (out of the gap, over the far side, and a big one at the back)
+    const d = s ? -1 : 1, inn = z => s ? deckLo(1, z) : deckHi(0, z), out = z => s ? deckHi(1, z) : deckLo(0, z);
+    return [{ bx: inn(.22) + d * 46, bz: .22, gx: inn(.25) - d * 170, gz: .25, up: 330, w: 46, at: .5, water: true },
+      { bx: inn(.66) + d * 52, bz: .66, gx: inn(.62) - d * 210, gz: .62, up: 400, w: 56, at: .75, water: true },
+      { bx: out(.4) - d * 24, by: zY(.4) - 40, bz: .4, gx: out(.45) + d * 200, gz: .45, up: 300, w: 44, at: .62 },
+      { bx: out(.85) - d * 18, by: zY(.85) - 44, bz: .85, gx: out(.8) + d * 230, gz: .8, up: 270, w: 52, at: .9 },
+      { bx: deckMid(s, 1) + d * 150, by: H + 140, bz: 1, gx: deckMid(s, .88) - d * 40, gz: .88, up: 470, w: 78, at: 1.05, front: true }];
+  }
+  function pirTentacle(tn, t, d, i) { // one tentacle: grows out of the water along an arch, grabs the deck, squeezes, then pulls it down
+    const r = clamp((t - tn.at) / 1, 0, 1); if (r <= 0) return; const grow = 1 - Math.pow(1 - r, 3), sq = clamp((t - 1.6) / .8, 0, 1), now = performance.now() / 1000;
+    const p = .72 + clamp(tn.gz, 0, 1) * .4, sink = Math.max(0, d - 132) * 1.1, by = (tn.by ?? seaY(tn.bz)) + sink, gy = zY(tn.gz) + d + 6, B = [[tn.bx, by], [tn.bx, by - tn.up], [tn.gx + (tn.bx - tn.gx) * .25, gy - tn.up * .8 + sq * 70], [tn.gx, gy]]; // (at the end they go under with the ship)
+    const at = u => { const v = 1 - u; return [v * v * v * B[0][0] + 3 * v * v * u * B[1][0] + 3 * v * u * u * B[2][0] + u * u * u * B[3][0], v * v * v * B[0][1] + 3 * v * v * u * B[1][1] + 3 * v * u * u * B[2][1] + u * u * u * B[3][1]]; };
+    const N = 30, L = [], Rr = [], mid = [];
+    for (let k = 0; k <= N; k++) { const u = k / N * grow, [x, y] = at(u), [nx2, ny2] = at(Math.min(1, u + .01)), tx2 = nx2 - x || 1e-3, ty2 = ny2 - y, len = Math.hypot(tx2, ty2) || 1, nx = -ty2 / len, ny = tx2 / len;
+      const wig = Math.sin(u * 7 + now * 4 + i) * 14 * (1 - sq * .7) * (1 - u * .3), px = x + nx * wig, py = y + ny * wig, w = tn.w * p * (1 - .84 * u / Math.max(.2, grow)) * (1 + Math.sin(now * 14) * .06 * sq) / 2;
+      L.push([px + nx * w, py + ny * w]); Rr.push([px - nx * w, py - ny * w]); mid.push([px, py, nx, ny, w]); }
+    g.fillStyle = '#7a2462'; g.strokeStyle = '#3a0a2c'; g.lineWidth = 3; g.beginPath(); [...L, ...Rr.reverse()].forEach(([x, y], k) => k ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(220,110,170,.45)'; g.lineWidth = 4; g.beginPath(); mid.forEach(([x, y, nx, ny, w], k) => { const X = x + nx * w * .45, Y = y + ny * w * .45; k ? g.lineTo(X, Y) : g.moveTo(X, Y); }); g.stroke(); // (a shine on top)
+    for (let k = 2; k < mid.length - 1; k += 3) { const [x, y, nx, ny, w] = mid[k], sx = x - nx * w * .5, sy = y - ny * w * .5, sr = Math.max(2, w * .28); g.fillStyle = '#f2b8d4'; g.beginPath(); g.ellipse(sx, sy, sr, sr * .8, 0, 0, 7); g.fill(); g.strokeStyle = '#a0406e'; g.lineWidth = 1.5; g.stroke(); } // suckers
+  }
+  function pirDrawDoomed(now) { // 🐙 the ship the kraken takes: shakes, cracks in the middle, and is pulled under (the water climbs it; the masts go last)
+    const k = pir.kr, s = k.doomed, t = krT(); if (t > 5.3) return;
+    const dd = t < 2.3 ? 0 : t < 3.2 ? 132 * easeIO((t - 2.3) / .9) : 132 + 860 * Math.pow(Math.min(1, (t - 3.2) / 2), 1.5), wob = t < 2.3 ? Math.sin(t * 11) * Math.min(1, t / 1.5) * 5 : Math.sin(t * 7) * 3;
+    const yA = zY((dd - 92) / 36), yB = seaY(1) - dd;
+    if (yB > yA) { g.save(); g.beginPath(); g.rect(-300, yA + dd, W + 600, yB - yA); g.clip(); g.translate(wob, dd); g.drawImage(pirShipImg(s), 0, 0, W, H);
+      for (const c of pir.cannons) if (c.s === s) pirCannon(c);
+      for (const f of F) if (f.wreck) drawFighter(f);
+      if (t > 2.2) { g.strokeStyle = '#140a04'; g.lineWidth = 6; g.lineJoin = 'miter'; g.beginPath(); for (let j = 0; j <= 12; j++) { const z = .45 + (j % 2 ? .035 : -.03) * (j % 3 ? 1 : .5), u = j / 12; g.lineTo(deckLo(s, z) + (deckHi(s, z) - deckLo(s, z)) * u, zY(z)); } g.stroke(); } // the crack
+      pirSternRail(s); g.restore(); }
+    for (const { mast: m } of MASTS[s]) { g.save(); g.beginPath(); g.rect(-300, -3000, W + 600, seaY(m.z) + 3000); g.clip(); g.translate(wob, 0); drawMast(m, now, dd); g.restore(); } // each mast goes under at its own waterline
+    k.tents.forEach((tn, i) => { g.save(); if (!tn.front) { g.beginPath(); g.rect(-300, -3000, W + 600, seaY(tn.bz) + 3000); g.clip(); } pirTentacle(tn, t, dd, i); g.restore(); });
+  }
+  function pirEye(t) { // 🐙 at the end the kraken's head comes up where the ship was, looks around, and sinks
+    const k = pir.kr, u = clamp((t - 4.5) / .5, 0, 1) * (1 - clamp((t - 5.15) / .35, 0, 1)); if (u <= 0) return;
+    const x = deckMid(k.doomed, .42), wy = seaY(.42), hh = 150 * u, blink = Math.abs(t - 4.95) < .07;
+    g.save(); g.beginPath(); g.rect(x - 400, wy - 600, 800, 600); g.clip();
+    g.fillStyle = '#6a1e56'; g.beginPath(); g.ellipse(x, wy + 70 - hh, 200, 130, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,150,210,.18)'; for (const [a, b2, r2] of [[-90, -50, 18], [60, -80, 14], [120, -20, 10], [-140, 10, 12]]) { g.beginPath(); g.arc(x + a, wy + 70 - hh + b2, r2, 0, 7); g.fill(); }
+    for (const d of [-1, 1]) { const ex = x + d * 72, ey = wy + 20 - hh * .95; g.fillStyle = '#ffd23a'; g.beginPath(); g.ellipse(ex, ey, 34, blink ? 4 : 28, 0, 0, 7); g.fill(); g.strokeStyle = '#3a0a2c'; g.lineWidth = 4; g.stroke(); if (!blink) { g.fillStyle = '#140008'; g.beginPath(); g.ellipse(ex + Math.sin(t * 3) * 6, ey, 22, 6, 0, 0, 7); g.fill(); } }
+    g.restore();
+    g.strokeStyle = 'rgba(230,248,255,.75)'; g.lineWidth = 4; g.beginPath(); g.ellipse(x, wy, 220 * u + 30, 22, 0, 0, 7); g.stroke();
+  }
+  function pirStage(now, orbit) { // the sea, anyone falling in, the ships, the gangplanks, the cannons (the masts stand among the pirates)
+    const P = pirS(), t = now / 1000;
+    g.strokeStyle = 'rgba(40,40,60,.75)'; g.lineWidth = 2.2; for (let i = 0; i < 4; i++) { const a = t * (.25 + i * .05) + i * 1.7, x = [420, 1500, 1180, 700][i] + Math.cos(a) * 120, y = [210, 170, 300, 120][i] + Math.sin(a * 1.3) * 30, s = [1, 1.1, .7, .8][i], fl = Math.sin(t * 8 + i) * 4 * s; g.beginPath(); g.moveTo(x - 14 * s, y - 4 * s + fl); g.quadraticCurveTo(x - 7 * s, y - 10 * s + fl, x, y); g.quadraticCurveTo(x + 7 * s, y - 10 * s + fl, x + 14 * s, y - 4 * s + fl); g.stroke(); } // seagulls
+    g.strokeStyle = 'rgba(200,230,255,.28)'; g.lineWidth = 2; for (let i = 0; i < 40; i++) { const z = -.5 + (i % 20) * .075, y = seaY(z), sp = 18 + (i % 5) * 9, x = ((i * 397 + t * sp) % (W + 200)) - 100, w = 12 + (z + .5) * 30; g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x, y - 4 - (z + .5) * 3, x + w, y); g.stroke(); } // moving waves
+    for (const s of [0, 1]) if (P.sunk !== s) { const sx = s ? 1 : -1; g.strokeStyle = 'rgba(240,250,255,.6)'; g.lineWidth = 3; g.beginPath(); for (let i = 0; i <= 18; i++) { const z = i / 18 * .86, x = (s ? deckLo(1, z) : deckHi(0, z)) - sx * 16 + Math.sin(t * 3 + i) * 3 * sx * -1; g.lineTo(x - sx * 4 * (1 + Math.sin(t * 2 + i * 1.7)), seaY(z) + Math.sin(t * 2.4 + i) * 2); } g.stroke(); } // foam where the hulls meet the water
+    for (const r of P.rings) { const a = 1 - r.t / 1.8, w = (40 + r.t * 140) * r.k * (.72 + r.z * .4); g.strokeStyle = `rgba(235,250,255,${a * .8})`; g.lineWidth = 3; g.beginPath(); g.ellipse(r.x, seaY(r.z), w, w * .22, 0, 0, 7); g.stroke(); }
+    if (P.kr?.crackAt) { const a = clamp(1 - (performance.now() - P.kr.crackAt) / 12000, 0, 1); if (a > 0) { const x = deckMid(P.kr.doomed, .45), y = seaY(.45); g.fillStyle = `rgba(230,246,255,${.35 * a})`; for (let j = 0; j < 9; j++) { g.beginPath(); g.ellipse(x + Math.sin(j * 2.3) * 260, y + Math.cos(j * 1.7) * 40, 120 + (j % 3) * 40, 22, 0, 0, 7); g.fill(); } } } // foam where it went down
+    for (const d of P.debris) { g.save(); g.translate(d.x, d.float ? seaY(d.z) - 4 + Math.sin(t * 2 + d.rot) * 3 : d.y); g.rotate(d.float ? Math.sin(t + d.rot) * .15 + d.rot : d.rot); if (d.barrel) { g.fillStyle = '#7a4a22'; g.beginPath(); g.ellipse(0, 0, 18, 24, 0, 0, 7); g.fill(); g.strokeStyle = '#2a1608'; g.lineWidth = 3; g.beginPath(); g.moveTo(-17, -8); g.lineTo(17, -8); g.moveTo(-17, 8); g.lineTo(17, 8); g.stroke(); } else { g.fillStyle = d.col; g.fillRect(-d.w / 2, -d.h / 2, d.w, d.h); } g.restore(); }
+    if (!orbit) for (const f of F) if (f.falling && f.h > -FREE(f.z) - 260) { g.save(); g.beginPath(); g.rect(-300, -3000, W + 600, seaY(f.z) + 3000); g.clip(); drawFighter(f); g.restore(); } // (overboard: behind the ships, under the water)
+    if (P.kr) { pirDrawDoomed(now); pirEye(krT()); }
+    if (P.planks || (P.kr && krT() < 3.4)) for (const pz of PLANKS) { const tt = P.kr ? krT() - 2.2 : -1, dy = tt > 0 ? 900 * tt * tt : 0; g.save(); g.beginPath(); g.rect(-300, -3000, W + 600, seaY(pz) + 3000); g.clip(); pirPlank(pz, dy); g.restore(); }
+    for (const s of [0, 1]) if (P.sunk !== s) { g.drawImage(pirShipImg(s), 0, 0, W, H); for (const c of P.cannons) if (c.s === s) pirCannon(c); }
+    if (P.planks && P.sunk == null) { g.strokeStyle = 'rgba(40,24,10,.75)'; g.lineWidth = 3; for (const [z, y0] of [[.62, 300], [.2, 336]]) { g.beginPath(); g.moveTo(deckMid(0, z), y0); g.quadraticCurveTo(GAPX, y0 + (ROPE_Y + (z === .2 ? 30 : 0) - y0) * 2, deckMid(1, z), y0); g.stroke(); } } // grappling lines between the ships (the swing ropes hang from them)
+    for (const b of P.balls) if (b.t > .45) { const y = zY(b.z), r = (40 + 30 * b.z) * (1 + Math.sin(t * 20) * .08); g.strokeStyle = 'rgba(255,60,40,.9)'; g.lineWidth = 3; g.setLineDash([10, 7]); g.beginPath(); g.ellipse(b.x, y, r * 1.6, r * .45, 0, 0, 7); g.stroke(); g.setLineDash([]); g.beginPath(); g.moveTo(b.x - r * 2, y); g.lineTo(b.x + r * 2, y); g.moveTo(b.x, y - r * .7); g.lineTo(b.x, y + r * .7); g.stroke(); } // 🎯 where a cannonball will land
+  }
+  function pirFront(now) { // in front of the pirates: the stern rails, the swing ropes, cannonballs in the air
+    const P = pirS();
+    for (const s of [0, 1]) if (P.sunk !== s) pirSternRail(s);
+    for (const f of F) if (f.swing && f.alive) { const s = S(f), hx = f.x + f.face * 8 * s, hy = zY(f.z) - f.h - 128 * s; g.strokeStyle = '#c8a870'; g.lineWidth = 3; g.beginPath(); g.moveTo(f.swing.ax, ROPE_Y); g.quadraticCurveTo((f.swing.ax + hx) / 2, (ROPE_Y + hy) / 2 + 12, hx, hy); g.stroke(); }
+    for (const b of P.balls) if (b.t <= .45) { const k = 1 - b.t / .45, p = .72 + b.c.z * .4, d = b.c.s ? -1 : 1, x0 = cannonX(b.c) + d * 50 * p, y0 = zY(b.c.z) - 30 * p, x = x0 + (b.x - x0) * k, y = y0 + (zY(b.z) - 20 - y0) * k - 230 * 4 * k * (1 - k); g.fillStyle = 'rgba(200,200,200,.35)'; for (let j = 1; j < 5; j++) { const kk = Math.max(0, k - j * .05), xx = x0 + (b.x - x0) * kk, yy = y0 + (zY(b.z) - 20 - y0) * kk - 230 * 4 * kk * (1 - kk); g.beginPath(); g.arc(xx, yy, 7 + j * 2, 0, 7); g.fill(); } g.fillStyle = '#141416'; g.beginPath(); g.arc(x, y, 11 * (.72 + b.z * .4), 0, 7); g.fill(); }
+  }
+  function pirKrakenCam(t) { // 🐙 the camera watches the ship that's going down (and the one jumping across)
+    const k = pir.kr; if (!k) return; k.cam0 ||= { x: cam.x, y: cam.y, z: cam.z }; cine.orb = null; cine.rot = 0;
+    const goal = { x: deckMid(k.doomed, .45) * .7 + GAPX * .3, y: 560, z: 1.12 }, u = easeIO(Math.min(1, t / 1.1));
+    cam.x = k.cam0.x + (goal.x - k.cam0.x) * u; cam.y = k.cam0.y + (goal.y - k.cam0.y) * u; cam.z = k.cam0.z + (goal.z - k.cam0.z) * u; camClamp();
+  }
+  function pirPmDraw(f) { // 🐙 during the kraken scene: the last two getting to their spots (the one on the other ship jumps across)
+    const p = f.pm, t = modeT, keep = { x: f.x, z: f.z, h: f.h, ph: f.ph, face: f.face };
+    if (p.leap) { const u = clamp((t - 1.25) / .9, 0, 1), e = u * u * (3 - 2 * u); f.x = p.x + (keep.x - p.x) * e; f.z = p.z + (keep.z - p.z) * e; f.h = p.h * (1 - u) + Math.sin(u * Math.PI) * 300; if (u < 1) f.face = keep.x > p.x ? 1 : -1; if (u <= 0) f.x += Math.sin(t * 11) * 4; }
+    else { const u = clamp((t - .3) / 1.4, 0, 1), e = u * u * (3 - 2 * u); f.x = p.x + (keep.x - p.x) * e; f.z = p.z + (keep.z - p.z) * e; f.h = p.h * (1 - e); if (u > 0 && u < 1) { f.ph = t * 12; f.face = keep.x > p.x ? 1 : -1; } }
+    drawFighter(f); Object.assign(f, keep);
+  }
+  function pirDebris(s, n) { for (let i = 0; i < n; i++) { const z = vr(.1, .9), x = vr(Math.min(deckLo(s, z), deckHi(s, z)), Math.max(deckLo(s, z), deckHi(s, z))); pir.debris.push({ x, y: zY(z) - vr(0, 40), z, vx: vr(-320, 320), vy: -vr(300, 820), rot: vr(0, 6), vr: vr(-8, 8), w: vr(30, 90), h: vr(8, 16), col: ['#8a5a2a', '#a8763e', '#6a4420', '#3a2410'][i % 4], barrel: Math.random() < .15, t: 0 }); } }
+  function pirTick(real) { // 🏴‍☠️ things that only look nice (splash rings, wreckage) + the kraken scene's moments
+    const P = pirS(); for (const r of P.rings) r.t += real; P.rings = P.rings.filter(r => r.t < 1.8);
+    for (const d of P.debris) { if (!d.float) { d.vy += 1300 * real; d.x += d.vx * real; d.y += d.vy * real; d.rot += d.vr * real; if (d.vy > 0 && d.y >= seaY(d.z)) { d.float = true; pirSplash(d.x, d.z, .45, true); } } else d.t += real; } P.debris = P.debris.filter(d => !d.float || d.t < 20);
+    const k = P.kr; if (!k || mode !== 'final') return; const t = modeT, once = (key, at, fn) => { if (t >= at && !k.fired.has(key)) { k.fired.add(key); fn(); } };
+    k.tents.forEach((tn, i) => once('t' + i, tn.at, () => { if (tn.bz < 1 && !tn.by) pirSplash(tn.bx, tn.bz, .9, i > 0); }));
+    for (const f of finalPair || []) if (f.pm?.leap) { once('leap', 1.25, () => { word('JUMPS FOR IT!', f.pm.x, zY(f.pm.z) - 240 * S(f), '#ffe08a', 46); snd('whoosh'); }); once('land', 2.15, () => { dust(f.x, f.z, 10); snd('land'); }); }
+    once('squeeze', 1.6, () => snd('creak')); once('crack', 2.2, () => { k.crackAt = performance.now(); snd('shipbreak'); quake(22); word('CRUNCH!', deckMid(k.doomed, .45), zY(.45) - 170, '#ffb02a', 76); pirDebris(k.doomed, 28); });
+    once('down', 2.45, () => snd('splash')); if (t > 2.4 && t < 4.7 && (k.sp = (k.sp ?? 0) - real) <= 0) { k.sp = .15; const z = vr(.05, .95); pirSplash(vr(Math.min(deckLo(k.doomed, z), deckHi(k.doomed, z)), Math.max(deckLo(k.doomed, z), deckHi(k.doomed, z))), z, .7, true); if (Math.random() < .2) quake(4); }
+    once('eye', 4.5, () => snd('kraken'));
+  }
+
   function frame(now) {
-    if (!running) return;
+    if (!running) return; crewC = null;
     if (!scene.show && mode !== 'fight' && mode !== 'intro' && mode !== 'final') { running = false; lastFrame = 0; return; } // nothing to finish behind another tab: rest
     requestAnimationFrame(frame);
     const cap = scene.show ? GFX.fps || 0 : 30; if (cap && lastFrame && now - lastFrame < 1000 / cap - 1.5) return;
     const real = Math.min(.1, (now - (lastFrame || now)) / 1000); lastFrame = now;
-    if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > FINAL_INTRO) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
+    if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > finIntro()) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
     const k = RY().scale?.() || 1; if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
-    if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : WIZ() ? drawBgWizard(bgScale) : COLO() ? drawBgColosseum(bgScale) : WAR() ? drawBgWar(bgScale) : drawBg(bgScale); }
-    modeT += real; toastT -= real; finTick(real); camStep(real);
-    if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; bell(); if (RUMBLE()) snd('crowd'); }
-    if (mode === 'final' && modeT > FINAL_INTRO) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
+    if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : WIZ() ? drawBgWizard(bgScale) : COLO() ? drawBgColosseum(bgScale) : WAR() ? drawBgWar(bgScale) : PIR() ? drawBgSea(bgScale) : drawBg(bgScale); }
+    modeT += real; toastT -= real; finTick(real); camStep(real); if (PIR()) pirTick(real);
+    if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; bell(); if (RUMBLE()) snd('crowd'); if (PIR()) snd('cannon'); }
+    if (mode === 'final' && modeT > finIntro()) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
     if (mode === 'replay') { replayOn = true; replay.t = (replay.t ?? replay.frames[0].T) + real * .45; while (replay.i < replay.frames.length - 1 && replay.frames[replay.i + 1].T <= replay.t) replay.i++; if (replay.t >= replay.frames[replay.frames.length - 1].T + .4) { mode = 'won'; modeT = 0; replayOn = false; replay = null; snd('fanfare'); } }
     else { acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; }
     if (mode === 'fight' || (mode === 'over' && modeT < 1.6)) { rbuf.push({ T, f: F.map(f => ({ x: f.x, z: f.z, h: f.h, face: f.face, ph: f.ph, atk: f.atk && { ...f.atk }, alive: f.alive, koT: f.koT, limbs: { ...f.limbs }, head: f.head, hp: f.hp, hurtT: f.hurtT, block: f.block, weapon: f.weapon, yell: f.yell, down: f.down, lie: f.lie, heldBy: !!f.heldBy, out: f.out, falling: f.falling, sn: f.stains.length, look: f.target ? Math.sign(f.target.x - f.x) : f.face })) }); if (rbuf.length > 260) rbuf.shift(); } // ⏪ the last few seconds, for the replay
     // effects move in real (slowed) time
     const vt = real * timeK();
-    for (const p of parts) { p.vy += p.g * vt; p.x += p.vx * vt; p.y += p.vy * vt; p.life -= vt; if (p.blood && p.gz != null && p.y >= zY(p.gz) && p.vy > 0) { if (WIZ() && !solid(p.x, p.gz)) { p.gz = null; continue; } stamp(p.x, zY(p.gz) - vr(0, 6), p.size * vr(.8, 1.5), Math.random() < .5 ? 'rgba(130,0,12,.75)' : 'rgba(170,10,24,.65)'); p.life = 0; } }
+    for (const p of parts) { p.vy += p.g * vt; p.x += p.vx * vt; p.y += p.vy * vt; p.life -= vt; if (p.blood && p.gz != null && p.y >= zY(p.gz) && p.vy > 0) { if ((WIZ() && !solid(p.x, p.gz)) || (PIR() && !onDeck(p.x, p.gz))) { p.gz = null; continue; } stamp(p.x, zY(p.gz) - vr(0, 6), p.size * vr(.8, 1.5), Math.random() < .5 ? 'rgba(130,0,12,.75)' : 'rgba(170,10,24,.65)'); p.life = 0; } }
     parts = parts.filter(p => p.life > 0);
     for (const o of flyers) { if (o.rest) continue; o.vy += 1500 * vt; o.x += o.vx * vt; o.y += o.vy * vt; o.rot += o.vrot * vt; if (o.blood > 0) { o.blood -= vt; if (Math.random() < .6) parts.push({ x: o.x, y: o.y, vx: vr(-60, 60), vy: vr(-60, 40), g: 1500, life: 2, max: 2, size: vr(2, 4), color: '#b0101c', gz: o.gz, blood: true }); } const gy = zY(o.gz) - 6; if (o.y > gy && o.vy > 0) { o.y = gy; o.vy *= -.35; o.vx *= .6; o.vrot *= .5; if (Math.abs(o.vy) < 60) { o.rest = true; o.vy = 0; } } }
     for (const t of texts) { t.life -= real; t.y -= 40 * real; } texts = texts.filter(t => t.life > 0);
-    if (!RUMBLE() && !WAR() && petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
+    if (!RUMBLE() && !WAR() && !PIR() && petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
     for (const p of petals) { p.x += (p.vx + Math.sin(now / 700 + p.r) * 30) * real; p.y += p.vy * real; p.r += real * 2; } petals = petals.filter(p => p.y < H + 20 && p.x < W + 40);
 
     g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = GFX.smooth !== false;
@@ -1207,10 +1601,10 @@
     drawStage(now, false);
     for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - (w.kind === 'chair' ? 28 * s : 6), 1, s, w.h > 0 ? T * 8 : 0); }
     const shown = mode === 'replay' && replay ? replay.frames[replay.i].f.map((sn, i) => ({ ...F[i], ...sn, stains: F[i].stains.slice(0, sn.sn), target: { x: F[i].x * 0 + sn.x + sn.look * 50, alive: true } })) : F;
-    const order2 = [...shown.filter(f => !f.falling), ...lions.map(L => ({ lion: L, alive: true, z: L.z }))].sort((a, b) => (a.alive - b.alive) || a.z - b.z);
-    for (const f of order2) { if (FIN.on && (f === FIN.W || f === FIN.L)) continue; f.lion ? drawLion(f.lion) : drawFighter(f); }
+    const order2 = [...shown.filter(f => !f.falling && !f.wreck), ...lions.map(L => ({ lion: L, alive: true, z: L.z })), ...(PIR() ? pirMasts() : [])].sort((a, b) => (a.alive - b.alive) || a.z - b.z);
+    for (const f of order2) { if (FIN.on && (f === FIN.W || f === FIN.L)) continue; f.lion ? drawLion(f.lion) : f.mast ? drawMast(f.mast, now) : PIR() && f.pm && mode === 'final' ? pirPmDraw(f) : drawFighter(f); } // (🏴‍☠️ the masts stand among the pirates)
     if (FIN.on) finDraw(now);
-    if (WIZ()) drawSpells(now / 1000); if (WAR()) drawWar(now / 1000);
+    if (WIZ()) drawSpells(now / 1000); if (WAR()) drawWar(now / 1000); if (PIR()) pirFront(now);
     if (RUMBLE()) drawRing(g, true); // (the front ropes are in front of everyone)
     for (const o of flyers) drawFlyer(o);
     for (const p of parts) { g.globalAlpha = p.dust ? Math.max(0, p.life / p.max) : 1; g.fillStyle = p.color; g.beginPath(); g.arc(p.x, p.y, p.size, 0, 7); g.fill(); } g.globalAlpha = 1;
@@ -1225,7 +1619,7 @@
   }
   function drawStage(now, orbit) { // the map behind the fighters (orbit = the circling FINAL FIGHT camera drew the picture itself; nobody falling)
     if (!orbit) g.drawImage(bg, 0, 0, W, H);
-    if (RUMBLE()) ringLogo(); else if (WIZ()) { if (!orbit) for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (!COLO() && !orbit) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
+    if (RUMBLE()) ringLogo(); else if (WIZ()) { if (!orbit) for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (PIR()) pirStage(now, orbit); else if (!COLO() && !orbit) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
     g.drawImage(crat, 0, 0); g.drawImage(floor, 0, 0);
     if (RUMBLE()) arenaLights(now / 1000);
   }
@@ -1234,19 +1628,22 @@
     const live = alive().length, on = Object.keys(scene.wacky).filter(k => scene.wacky[k] && !(k === 'weapons' && !MI().drops()) && !(k === 'lions' && !COLO())); // (only the ones this map uses)
     g.fillStyle = 'rgba(20,6,6,.72)'; g.fillRect(0, 0, W, 62);
     g.font = `34px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#ffd23a'; g.fillText(`${MI().title} · ${scene.battleName || 'Card battle'}`, 24, 32);
-    g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText(mode === 'lobby' ? `${F.length} ${scene.chars ? 'fighter' : 'pack'}${F.length === 1 ? '' : 's'} ready` : `${live} of ${F.length} standing`, W - 24, 32);
+    g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText(PIR() ? (mode === 'lobby' ? `${CREW[0].dot} ${F.filter(f => f.team === 0).length} vs ${F.filter(f => f.team === 1).length} ${CREW[1].dot} ready` : `${CREW[0].dot} ${crewN(0)} vs ${crewN(1)} ${CREW[1].dot} standing`) : mode === 'lobby' ? `${F.length} ${scene.chars ? 'fighter' : 'pack'}${F.length === 1 ? '' : 's'} ready` : `${live} of ${F.length} standing`, W - 24, 32);
     if (on.length) { g.font = '800 20px Inter, sans-serif'; g.textAlign = 'center'; const t = on.map(k => WN[k] || k).join('   '); const w = g.measureText(t).width + 30; g.fillStyle = 'rgba(160,20,40,.8)'; g.fillRect(W / 2 - w / 2, 66, w, 32); g.fillStyle = '#fff'; g.fillText(t, W / 2, 83); }
     if (mode === 'fight' || mode === 'final' || mode === 'intro') { // ⏱️ the fight clock (stops while FINAL FIGHT shows)
       const left = finalLeft > 0 ? finalLeft : Math.max(0, D - T), txt = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
       g.fillStyle = finalLeft > 0 ? 'rgba(200,30,30,.9)' : 'rgba(20,6,6,.8)'; g.beginPath(); g.roundRect?.(W / 2 - 90, 108, 180, 58, 14); g.fill(); g.font = `44px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(mode === 'final' ? '⏸ ' + txt : txt, W / 2, 138); }
-    if (mode === 'final' && finalPair) { const u = Math.min(1, modeT / .35); g.save(); g.translate(W / 2, 360); g.scale(.6 + .4 * u, .6 + .4 * u); g.translate(-W / 2, -360); banner('🥊 FINAL FIGHT! 🥊', 330, 120, '#ff3a2a'); g.restore();
-      g.font = `48px ${FONT}`; g.textAlign = 'center'; g.lineWidth = 8; g.strokeStyle = '#2a0808'; const vs = `${finalPair[0].name}  VS  ${finalPair[1].name}`.slice(0, 70); g.strokeText(vs, W / 2, 430); g.fillStyle = '#fff'; g.fillText(vs, W / 2, 430);
-      const left = FINAL_INTRO - .8 - modeT; // (3, 2, 1… then 🔔 FIGHT!)
+    if (mode === 'final' && finalPair && PIR() && modeT < KRAKEN_T) { const u = Math.min(1, modeT / .35), k = pir?.kr; // 🐙 the kraken scene comes first
+      if (modeT > .25) { g.save(); g.translate(W / 2, 300); g.scale(.6 + .4 * u, .6 + .4 * u); g.translate(-W / 2, -300); banner('🐙 THE KRAKEN! 🐙', 300, 120, '#c879ff'); g.restore(); }
+      if (k && modeT > .9) { g.font = `48px ${FONT}`; banner(`It's dragging ${CREW[k.doomed].ship} under!`, 400, 48, '#fff'); } }
+    else if (mode === 'final' && finalPair) { const t0 = PIR() ? KRAKEN_T : 0, u = Math.min(1, (modeT - t0) / .35); g.save(); g.translate(W / 2, 360); g.scale(.6 + .4 * u, .6 + .4 * u); g.translate(-W / 2, -360); banner('🥊 FINAL FIGHT! 🥊', 330, 120, '#ff3a2a'); g.restore();
+      g.font = `48px ${FONT}`; g.textAlign = 'center'; g.lineWidth = 8; g.strokeStyle = '#2a0808'; const vs = (PIR() ? `${CREW[finalPair[0].team]?.dot || ''} ${finalPair[0].name}  VS  ${finalPair[1].name} ${CREW[finalPair[1].team]?.dot || ''}` : `${finalPair[0].name}  VS  ${finalPair[1].name}`).slice(0, 74); g.strokeText(vs, W / 2, 430); g.fillStyle = '#fff'; g.fillText(vs, W / 2, 430);
+      const left = finIntro() - .8 - modeT; // (3, 2, 1… then 🔔 FIGHT!)
       if (left > 0 && left <= 3) { const k = 1 - (left % 1); g.save(); g.globalAlpha = Math.min(1, (1 - k) * 2 + .2); g.font = `${Math.round(150 + 60 * k)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 12; g.strokeStyle = '#2a0808'; g.strokeText(String(Math.ceil(left)), W / 2, 580); g.fillStyle = '#ffd23a'; g.fillText(String(Math.ceil(left)), W / 2, 580); g.restore(); }
       if (left <= 0) banner('🔔 FIGHT!', 520, 90, '#ffd23a'); }
     if (toastT > 0) { g.globalAlpha = Math.min(1, toastT); banner(toastText, 200, 64, '#ff8ab0'); g.globalAlpha = 1; }
-    if (mode === 'lobby') { banner(scene.chars ? '⚔️ BATTLE ROYAL' : '🃏 CARD BATTLE', 330, 110); g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(F.length >= 2 ? 'Waiting for the fight…' : scene.chars ? 'Waiting for fighters…' : 'Add packs in the 📦 Card pool tab', W / 2, 410); }
-    if (mode === 'intro') { const u = modeT; if (u < 1.4) banner(MI().intro, 360, 120 + u * 20, '#ffd23a'); else banner(RUMBLE() ? 'BELL!' : 'FIGHT!', 360, 170 + (u - 1.4) * 60, '#ff3a2a'); }
+    if (mode === 'lobby') { banner(PIR() ? '🏴‍☠️ PIRATE BATTLE' : scene.chars ? '⚔️ BATTLE ROYAL' : '🃏 CARD BATTLE', 330, 110); g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(PIR() && F.length >= 2 ? `${CREW[0].dot} ${CREW[0].ship} vs ${CREW[1].ship} ${CREW[1].dot}` : F.length >= 2 ? 'Waiting for the fight…' : scene.chars ? 'Waiting for fighters…' : 'Add packs in the 📦 Card pool tab', W / 2, 410); }
+    if (mode === 'intro') { const u = modeT; if (u < 1.4) banner(MI().intro, 360, 120 + u * 20, '#ffd23a'); else banner(RUMBLE() ? 'BELL!' : PIR() ? 'BOARD \'EM!' : 'FIGHT!', 360, 170 + (u - 1.4) * 60, '#ff3a2a'); }
     if (mode === 'replay') { g.fillStyle = '#000'; g.fillRect(0, 0, W, 70); g.fillRect(0, H - 70, W, 70); g.font = `44px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = Math.sin(now / 250) > 0 ? '#ff4a4a' : '#ffffff'; g.fillText('⏪ REPLAY', 40, H - 35); }
     if (mode === 'won' && winner) {
       const u = Math.min(1, modeT / .8); g.fillStyle = `rgba(0,0,0,${.55 * u})`; g.fillRect(0, 0, W, H);
@@ -1260,6 +1657,7 @@
         if (f.head) { const keep = { atk: f.atk, yell: f.yell, alive: f.alive, hp: f.hp, hurtT: f.hurtT }; Object.assign(f, { atk: null, yell: 1, alive: true, hp: 100, hurtT: 0 }); drawFace(f, X, top, PW, PH, sc, 0); Object.assign(f, keep); }
       }
       banner('🏆 WINNER 🏆', 210, 96); banner(winner.name || '', 860, Math.min(76, 1800 / Math.max(8, (winner.name || '').length) * 1.6), '#fff');
+      if (PIR() && CREW[winner.team]) { const c = CREW[winner.team]; banner(`${c.dot} ${c.name} WINS! ${c.dot}`, 128, 50, c.lt); } // 🏴‍☠️ which crew
       g.font = '800 30px Inter, sans-serif'; g.fillStyle = '#ffd23a'; g.textAlign = 'center'; g.fillText(scene.test ? (scene.chars ? '🧪 Practice round' : '🧪 Pretend fight') : scene.chars ? (winner.game && winner.game !== winner.name ? `🎬 ${winner.game}` : '🏆 Last one standing!') : scene.keep ? '📌 Stays in the pool' : 'Time to open it! 📦', W / 2, 930);
       if (Math.random() < .5) petals.push({ x: vr(0, W), y: -10, vx: vr(-40, 40), vy: vr(80, 160), r: 0, c: ['#ffd23a', '#ff5a7a', '#5ad6ff', '#ffffff'][Math.floor(Math.random() * 4)] });
     }
@@ -1278,5 +1676,6 @@
       });
       FIN.on = false; mode = 'lobby'; return errs; },
     state: () => ({ mode, orb: cine.orb == null ? null : +cine.orb.toFixed(2), fin: FIN.on ? { phase: FIN.phase, t: +FIN.t.toFixed(2), name: FIN.fin?.name, cel: FIN.cel?.name, errs: (FIN.errs || []).slice(-3) } : null, modeT: +modeT.toFixed(2), alive: alive().length, rot: +cine.rot.toFixed(2), z: +cam.z.toFixed(2), quake: +cine.quake.toFixed(1), punch: !!cine.punch, manual: cam.manual }), // (tests)
-    dbg: () => alive().map(f => ({ id: f.id, d: f.id === destined, x: Math.round(f.x), z: +f.z.toFixed(2), h: Math.round(f.h), hp: Math.round(f.hp), down: +f.down.toFixed(2), held: !!f.heldBy, whip: f.whip, reb: +f.rebound.toFixed(2), atk: f.atk?.kind, stun: +f.stun.toFixed(2), tgt: f.target?.id, seek: !!f.seek, w: f.weapon, cd: +f.cd.toFixed(2) })) }; // (for testing: plays the fight fast, without drawing)
+    dbg: () => alive().map(f => ({ id: f.id, d: f.id === destined, x: Math.round(f.x), z: +f.z.toFixed(2), h: Math.round(f.h), hp: Math.round(f.hp), down: +f.down.toFixed(2), held: !!f.heldBy, whip: f.whip, reb: +f.rebound.toFixed(2), atk: f.atk?.kind, stun: +f.stun.toFixed(2), tgt: f.target?.id, seek: !!f.seek, w: f.weapon, cd: +f.cd.toFixed(2), team: f.team, ship: PIR() ? shipOf(f.x, f.z) : undefined, swing: !!f.swing })),
+    pir: () => PIR() && pir ? { crews: [crewN(0), crewN(1)], all: [F.filter(f => f.team === 0).length, F.filter(f => f.team === 1).length], sunk: pir.sunk, safe: pir.safe, planks: pir.planks, balls: pir.balls.length, pair: finalPair ? finalPair.map(f => ({ id: f.id, team: f.team, ship: shipOf(f.x, f.z), onDeck: onDeck(f.x, f.z) })) : null, overboard: F.filter(f => f.falling).length, mode } : null }; // (for testing: plays the fight fast, without drawing)
 })();
