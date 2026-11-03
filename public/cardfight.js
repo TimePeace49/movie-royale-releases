@@ -78,7 +78,7 @@
   // 🏴‍☠️ Pirate Battle (characters only, 1.69.0, Derek): two pirate ships side by side (bows away from us, sterns at the front), a
   // gap of sea between them. Ship 0 (left) = the 🔴 red crew, ship 1 (right) = the 🔵 blue crew. Pirates only fight the other
   // crew, crossing on two gangplanks or swinging over on ropes; off the side = into the sea. The cannons fire across.
-  const CREW = [{ name: 'RED CREW', ship: 'THE SCARLET SHARK', col: '#d0283c', dk: '#5a0e16', lt: '#ff9aa4', dot: '🔴' }, { name: 'BLUE CREW', ship: 'THE BLUE BARRACUDA', col: '#2a66dc', dk: '#0e2a64', lt: '#9ac4ff', dot: '🔵' }];
+  const CREW = [{ name: 'RED CREW', ship: 'TimePeace49', col: '#d0283c', dk: '#5a0e16', lt: '#ff9aa4', dot: '🔴' }, { name: 'BLUE CREW', ship: 'Kirbgames', col: '#2a66dc', dk: '#0e2a64', lt: '#9ac4ff', dot: '🔵' }]; // (ship names: Derek's)
   const GAPX = W / 2, gapW = z => 78 + 46 * z, outerX = z => 132 + 238 * (1 - z) * (1 - z), FREE = z => 92 + 36 * z; // half the gap, the outer side of the hulls, the deck's height above the water
   const seaY = z => zY(z) + FREE(z); // the water's surface at depth z
   const deckLo = (s, z) => s ? GAPX + gapW(z) : outerX(z), deckHi = (s, z) => s ? W - outerX(z) : GAPX - gapW(z), deckMid = (s, z) => (deckLo(s, z) + deckHi(s, z)) / 2;
@@ -1635,7 +1635,7 @@
       g.fillStyle = finalLeft > 0 ? 'rgba(200,30,30,.9)' : 'rgba(20,6,6,.8)'; g.beginPath(); g.roundRect?.(W / 2 - 90, 108, 180, 58, 14); g.fill(); g.font = `44px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(mode === 'final' ? '⏸ ' + txt : txt, W / 2, 138); }
     if (mode === 'final' && finalPair && PIR() && modeT < KRAKEN_T) { const u = Math.min(1, modeT / .35), k = pir?.kr; // 🐙 the kraken scene comes first
       if (modeT > .25) { g.save(); g.translate(W / 2, 300); g.scale(.6 + .4 * u, .6 + .4 * u); g.translate(-W / 2, -300); banner('🐙 THE KRAKEN! 🐙', 300, 120, '#c879ff'); g.restore(); }
-      if (k && modeT > .9) { g.font = `48px ${FONT}`; banner(`It's dragging ${CREW[k.doomed].ship} under!`, 400, 48, '#fff'); } }
+      if (k && modeT > .9) { g.font = `48px ${FONT}`; banner(`It's dragging the ${CREW[k.doomed].ship} under!`, 400, 48, '#fff'); } }
     else if (mode === 'final' && finalPair) { const t0 = PIR() ? KRAKEN_T : 0, u = Math.min(1, (modeT - t0) / .35); g.save(); g.translate(W / 2, 360); g.scale(.6 + .4 * u, .6 + .4 * u); g.translate(-W / 2, -360); banner('🥊 FINAL FIGHT! 🥊', 330, 120, '#ff3a2a'); g.restore();
       g.font = `48px ${FONT}`; g.textAlign = 'center'; g.lineWidth = 8; g.strokeStyle = '#2a0808'; const vs = (PIR() ? `${CREW[finalPair[0].team]?.dot || ''} ${finalPair[0].name}  VS  ${finalPair[1].name} ${CREW[finalPair[1].team]?.dot || ''}` : `${finalPair[0].name}  VS  ${finalPair[1].name}`).slice(0, 74); g.strokeText(vs, W / 2, 430); g.fillStyle = '#fff'; g.fillText(vs, W / 2, 430);
       const left = finIntro() - .8 - modeT; // (3, 2, 1… then 🔔 FIGHT!)

@@ -35,7 +35,7 @@ export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). final
   { id: 'pirates', name: 'Pirate Battle', icon: '🏴‍☠️', desc: 'Characters only. Two pirate ships side by side, a 🔴 red crew and a 🔵 blue crew in pirate clothes: they cross on the gangplanks or swing over on ropes and only fight the other crew, while the cannons fire across (a red crosshair shows where). Off the side = into the sea. It always comes down to one pirate from each crew: then the 🐙 kraken drags one ship under, and the last two have their FINAL FIGHT on the other.', modes: ['card'], finalFight: true, charOnly: true }
 ];
 // 🔴 NEW / 🔵 UPDATED for card-only maps, like the ball maps: bump a map's number here when you change it
-const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1, ww2: 1, pirates: 1 };
+const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1, ww2: 1, pirates: 2 };
 const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev || 1) < (CARD_REV[id] || 1) ? 'updated' : null; };
 export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)

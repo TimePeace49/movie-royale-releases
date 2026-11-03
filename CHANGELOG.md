@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.69.2
+- 🏴‍☠️ Pirate Battle: the ships have new names. The red ship is the *TimePeace49* and the blue ship is the *Kirbgames* (on the back of each ship, in the lobby line and in "It's dragging the … under!" when the kraken comes).
+- 🛠️ Fixed: on a slow start (a busy PC, or OBS loading the page), the battle screen could stop moving for good until the page was reloaded. One bad picture can't stop it any more.
+
 ## 1.69.1
 - 🏴‍☠️ Pirate Battle celebrations: the Jolly Roger, the parrot's "WINNER! WINNER!", the island (Land Ho!) and the cannon salute sit lower, so the 🏆 WINS! banner doesn't cover them.
 

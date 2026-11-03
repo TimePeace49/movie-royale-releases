@@ -5049,7 +5049,7 @@ function drawHUD() {
     ctx.fillStyle = 'rgba(18,10,36,.72)'; roundRect(ctx, CX - pw / 2, 104, pw, 186, 24); ctx.fill();
     ctx.strokeStyle = 'rgba(255,201,74,.35)'; ctx.lineWidth = 2; roundRect(ctx, CX - pw / 2, 104, pw, 186, 24); ctx.stroke();
     ctx.font = "60px 'Lilita One', Impact, sans-serif"; ctx.fillStyle = '#fff';
-    const dots = '.'.repeat(1 + Math.floor(clock * 2) % 3); ctx.textAlign = 'left'; const gw = ctx.measureText('GET READY...').width;
+    const dots = '.'.repeat(1 + Math.floor(Math.max(0, clock) * 2) % 3); ctx.textAlign = 'left'; const gw = ctx.measureText('GET READY...').width;
     ctx.fillText('GET READY' + dots, CX - gw / 2, 160); ctx.textAlign = 'center';
     ctx.font = "700 24px Inter, sans-serif"; ctx.fillStyle = '#fff'; ctx.fillText(l1, CX, 220);
     ctx.fillStyle = '#ffd98a'; ctx.fillText(l2, CX, 260);
@@ -5729,9 +5729,10 @@ function runStep(dt) { // one step of a running battle
 window.__royalEvent = e => runEvent({ event: e, by: { name: 'test' }, source: 'test' }); // (tests)
 window.__royalSim = secs => { const dt = 1 / 60; for (let i = 0; i < secs * 60 && phase === 'running'; i++) { runStep(dt); updateFalling(dt); if (MAP.cars) for (const f of fighters) CARS.smoke(f, dt); for (const q of parts) q.life -= dt; for (const q of floaters) q.life -= dt; } parts = parts.filter(q => q.life > 0); floaters = floaters.filter(q => q.life > 0); return { phase, t, alive: alive().length, winner: winner?.label, destined: destined?.label, parts: parts.length }; }; // (fast test runs)
 function frame(now) {
+  requestAnimationFrame(frame); // (asked for first: one bad frame can never stop the game screen for good)
   const cap = saving() && GFX.hidden ? 30 : GFX.fps; // (the hidden game inside the app only needs 30 frames a second)
-  if (cap && last && now - last < 1000 / cap - 1.5) { requestAnimationFrame(frame); return; } // 🎨 frame rate cap / lock
-  dtReal = Math.min(.05, (now - last) / 1000); last = now; clock += dtReal;
+  if (cap && last && now - last < 1000 / cap - 1.5) return; // 🎨 frame rate cap / lock
+  dtReal = Math.max(0, Math.min(.05, (now - last) / 1000)); last = now; clock += dtReal; // (never backwards: the first frame's time can be from before the page finished loading)
   fpsN++; if (now - fpsAt >= 1000) { fpsShow = Math.round(fpsN * 1000 / (now - fpsAt || 1000)); fpsN = 0; fpsAt = now; }
   ctx.setTransform(gScale, 0, 0, gScale, 0, 0); fx.setTransform(gScale, 0, 0, gScale, 0, 0); // (everything is drawn in 1920×1080 steps, at the chosen resolution)
   const dt = dtReal;
@@ -5802,7 +5803,6 @@ function frame(now) {
   fx.clearRect(0, 0, W, H); stepParts(fxParts, fx, dt);
   if (GFX.showFps || Date.now() < GFX.fpsUntil) { const t = `${fpsShow} FPS · ${Math.round(W * gScale)}×${Math.round(H * gScale)} · ${saving() ? 'power saver' : GFX.quality}`; fx.save(); fx.globalAlpha = 1; fx.font = "800 22px Inter, sans-serif"; const tw = fx.measureText(t).width; fx.fillStyle = 'rgba(0,0,0,.65)'; roundRect(fx, 14, 14, tw + 28, 40, 12); fx.fill(); fx.fillStyle = fpsShow >= 55 ? '#7dff9b' : fpsShow >= 29 ? '#ffd24a' : '#ff6b6b'; fx.textAlign = 'left'; fx.textBaseline = 'middle'; fx.fillText(t, 28, 34); fx.restore(); }
   if (SFX.blocked()) { fx.font = "700 20px Inter, sans-serif"; fx.textAlign = 'right'; fx.fillStyle = 'rgba(18,10,36,.8)'; roundRect(fx, W - 400, H - 66, 370, 44, 22); fx.fill(); fx.fillStyle = '#fff'; fx.fillText('🔇 Click anywhere to turn on sound', W - 52, H - 37); }
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
