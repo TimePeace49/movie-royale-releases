@@ -391,6 +391,32 @@ const raceOk = (n = cliffCount()) => n <= raceMax();
 function mapSizeK() { return clampN(db.settings.mapSize, 50, 200, 100) / 100; } // 📏 map size for every ball map (Battle tab, right side): bigger cliffs + longer race tracks
 const nonRaceMap = () => { const pool = MAP_LIST.filter(m => !isRaceMap(m.id) && m.id !== db.lastMap); return pool[Math.floor(Math.random() * pool.length)].id; };
 const racePowersOn = l => !!(l?.type === 'chat' && l.fun?.racePowers && isRaceMap(currentMap()));
+// ⛈️ the Pirate Battle's storm powers (1.70.0, Derek): chat sends big waves, lightning bolts and kraken tentacle swipes with channel points while a Pirate Battle plays.
+// They never change who wins (cardfight.js: the fair winner and the smaller crew can't be knocked out by them, so it still ends one pirate from each crew).
+const STORM_INFO = { wave: { icon: '🌊', say: 'a BIG WAVE', what: '🌊 Pirate Battle: a big wave crashes over a ship' }, bolt: { icon: '⚡', say: 'a LIGHTNING BOLT', what: '⚡ Pirate Battle: lightning strikes a pirate' }, tentacle: { icon: '🐙', say: 'a KRAKEN TENTACLE', what: '🐙 Pirate Battle: a kraken tentacle swipes a deck' } };
+const STORM_PROMPTS = { wave: 'Pirate Battle: a huge wave crashes over one of the ships and washes pirates around (maybe overboard)!', bolt: 'Pirate Battle: a lightning bolt strikes one of the pirates!', tentacle: 'Pirate Battle: a kraken tentacle comes up out of the sea and swipes across a deck!' };
+const stormOn = () => live.phase === 'running' && !!live.game?.charFight && live.game.map === 'pirates' && cards.live.phase === 'fight';
+const stormTips = () => db.settings.pointsOn === false ? null : [...Object.keys(db.settings.stormRewards || {}).map(t => t.replace(/^pirates:\s*/i, '')), ...Object.keys(db.settings.monkeyRewards || {}).map(t => '🐒 ' + t)];
+const MONKEY_INFO = { T: { i: 0, name: 'Time', what: '🐒 Pirate Battle: take out the red T monkey (Time) in the rowboat', prompt: 'Pirate Battle: the little red T monkey (Time) in the rowboat between the ships gets taken out!' }, K: { i: 1, name: 'Kirb', what: '🐒 Pirate Battle: take out the blue K monkey (Kirb) in the rowboat', prompt: 'Pirate Battle: the little blue K monkey (Kirb) in the rowboat between the ships gets taken out!' } };
+function monkeyRedeem(r, who, test) { // 🐒 chat takes out Time or Kirb: the next way in the shuffled pile (cards.monkeyOut)
+  const say = t => { if (!test && twitch.canSay()) twitch.say(t).catch(() => {}); }, M = MONKEY_INFO[who]; if (!M) return 'Which monkey?';
+  if (!stormOn()) { say(`@${r.name} the monkeys are only out during a 🏴‍☠️ Pirate Battle.`); return 'Start a Pirate Battle first (🏴‍☠️ Practice battle).'; }
+  if (!cards.monkeyOut(M.i, r.name)) { say(`@${r.name} the ${M.name} monkey is already gone this battle.`); return `The ${M.name} monkey is already gone this battle.`; }
+  say(`🐒 @${r.name} took out ${M.name}!`); rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); return null;
+}
+function stormSend(kind, name) { broadcast({ type: 'cardStorm', kind, name, pick: Math.random(), ship: Math.random() < .5 ? 0 : 1, z: Math.random() }, 'overlay'); }
+function stormPowerUp(r, kind) {
+  const say = t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); };
+  if (!STORM_INFO[kind]) return;
+  if (!stormOn()) return say(`@${r.name} the storm powers only work during a 🏴‍☠️ Pirate Battle.`);
+  stormSend(kind, r.name); say(`${STORM_INFO[kind].icon} @${r.name} sent ${STORM_INFO[kind].say}!`);
+}
+async function stormSetup() { // ⛈️ make the storm power rewards on Twitch (switched off until a Pirate Battle plays)
+  const st = db.settings, made = [];
+  for (const [title, kind] of Object.entries(st.stormRewards || {})) if (await twitch.createReward({ title, cost: st.stormCosts?.[kind] || 750, prompt: STORM_PROMPTS[kind] || '', color: '#3A7BFF', queue: true })) made.push(title);
+  for (const [title, who] of Object.entries(st.monkeyRewards || {})) if (await twitch.createReward({ title, cost: st.monkeyCosts?.[who] || 10000, prompt: MONKEY_INFO[who]?.prompt || '', color: '#8A5A2A', queue: true })) made.push(title); // 🐒
+  db.stormSetup = { at: Date.now(), made }; save(); rewardKey = ''; await syncRewards(); return { made };
+}
 function racePowerUp(r, kind) {
   const l = getList(db.activeListId), say = t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); };
   if (!(l?.type === 'chat' && l.fun?.racePowers)) return say(`@${r.name} race power-ups only work during a chat battle with 🏁 race power-ups turned on.`);
@@ -422,6 +448,9 @@ function rewardWants() {
   for (const [title, kind] of Object.entries(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn || !!l?.fun?.powersOff?.[kind]; // (each power-up can be switched off on the Chat battle tab)
   const raceOn = on && !wheelUp && racePowersOn(l); // 🏁 race power-ups: a chat battle on a race map with them ticked
   for (const [title, kind] of Object.entries(st.raceRewards || {})) want[title.toLowerCase()] = !raceOn || (kind === 'nuke' && !!(live.game?.nuked && live.game.listId === l?.id && (live.phase === 'lobby' || live.phase === 'running')));
+  const stormNow = on && !wheelUp && stormOn(); // ⛈️ storm powers: only while a Pirate Battle is playing
+  for (const title of Object.keys(st.stormRewards || {})) want[title.toLowerCase()] = !stormNow;
+  for (const [title, who] of Object.entries(st.monkeyRewards || {})) want[title.toLowerCase()] = !(stormNow && MONKEY_INFO[who] && cards.monkeyIn(MONKEY_INFO[who].i)); // 🐒 (only while that monkey is still in the rowboat)
   const wh = W.wheels.find(w => w.id === W.activeId), P = { respin: true, move: true, up: true, down: true, grow: true, shrink: false, ...(wh?.opts?.points || {}) };
   const onAuto = wheel.isAutoType(W.last?.type) && W.round?.state !== 'ended' && !W.final; // ⚡ landed on an auto spot: no respins (Derek)
   for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false && !(kind === 'respin' && onAuto));
@@ -650,6 +679,10 @@ const twitchHandlers = {
     if (pw) return powerUp(r, pw[1]); // 🎉 chat battle power-up for their own ball
     const rp = Object.entries(db.settings.raceRewards || {}).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
     if (rp) return racePowerUp(r, rp[1]); // 🏁 race power-up
+    const sp = Object.entries(db.settings.stormRewards || {}).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
+    if (sp) return stormPowerUp(r, sp[1]); // ⛈️ Pirate Battle storm power
+    const mr = Object.entries(db.settings.monkeyRewards || {}).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
+    if (mr) return void monkeyRedeem(r, mr[1]); // 🐒 take out Time / Kirb
     const entry = Object.entries(db.settings.rewards).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
     if (!entry) return;
     triggerEvent(entry[1], { name: r.name, avatar: await avatarFor(r.login) }, 'points');
@@ -1003,7 +1036,7 @@ setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
 if (db.doomRestore) setTimeout(() => obs.restoreDoom().catch(() => {}), 20000); // ☠️ Doomsday turned your mic / camera off and Movie Royal closed before it could turn them back on: do it now (once the stream is over)
 // 🃏 card battles (Card pool + Card battles tabs)
-cards.initCards({ broadcast, pushState, preview: () => refreshPreview(true), charResult: (gameId, winnerId, order) => gameResult({ gameId, winnerId, order, events: [] }), mapTag: id => mapsWithTags().find(m => m.id === id)?.tag || null,
+cards.initCards({ broadcast, pushState, shipIcons: () => shipIcons(), stormTips: () => stormTips(), preview: () => refreshPreview(true), charResult: (gameId, winnerId, order) => gameResult({ gameId, winnerId, order, events: [] }), mapTag: id => mapsWithTags().find(m => m.id === id)?.tag || null,
   startBall: (fight, b) => { // ⚪🃏 a card battle on a ball map: the ball game plays it with card fighters (no luck: every pack the same odds)
     if (live.phase === 'lobby' || live.phase === 'running') return 'A ball battle is going right now. Stop it first.';
     if (![...wss.clients].some(c => c.role === 'overlay')) return "The game screen isn't open. Reload the control panel (or bring back the pop-out game window).";
@@ -1269,6 +1302,8 @@ async function pricesInfo() {
   if (st.colorReward) rewards.push(R('battle', 'color', st.colorReward, '🎨 Pick your ball color' + (st.colorMode === 'points' ? '' : ' (only used when ball colors are set to channel points)'), null));
   for (const [title, kind] of Object.entries(st.powerRewards || {})) rewards.push(R('chat', 'power:' + kind, title, ({ shield: '🛡️ Shield', mega: '💪 Mega ball', turbo: '⚡ Turbo', ghost: '👻 Ghost ball', spiky: '🦔 Spiky ball', magnet: '🧲 Magnet ball' })[kind] || kind, st.powerCosts?.[kind]));
   for (const [title, kind] of Object.entries(st.raceRewards || {})) rewards.push(R('chat', 'race:' + kind, title, ({ boost: '💨 Race: boost', shield: '🛡️ Race: shield', oil: '🛢️ Race: drop oil', rocket: '🚀 Race: rocket straight ahead', nuke: '☢️ Race: NUKE (wipes out everyone else)' })[kind] || kind, st.raceCosts?.[kind]));
+  for (const [title, kind] of Object.entries(st.stormRewards || {})) rewards.push(R('battle', 'storm:' + kind, title, STORM_INFO[kind]?.what || kind, st.stormCosts?.[kind]));
+  for (const [title, who] of Object.entries(st.monkeyRewards || {})) rewards.push(R('battle', 'monkey:' + who, title, MONKEY_INFO[who]?.what || who, st.monkeyCosts?.[who]));
   const WN = { respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down', grow: '📈 Grow a spot', shrink: '📉 Shrink a spot', double: '✌️ Double trouble', stop: '🛑 Force stop' };
   for (const [k, title] of Object.entries(W.rewards || {})) if (title) rewards.push(R('wheel', 'wheel:' + k, title, WN[k] || k, W.costs?.[k]));
   for (const [k, d] of Object.entries(VR)) rewards.push(R('viewer', 'vr:' + k, vrTitle(k), ({ hydrate: '💧 Hydrate (pop-up + chugging sound)', stretch: '🙆 Stretch (pop-up + stretching sound)', hat: '🎩 Pick a hat (they pick from your hat list in chat)', choice: "🎉 Viewer's choice (confetti, balloons, big pop-up)" })[k], db.settings.vrCosts?.[k] ?? d.cost));
@@ -1290,6 +1325,8 @@ app.post('/api/prices/reward', async (req, res) => {
       if (key.startsWith('wheel:')) { W.costs[key.slice(6)] = cost; wheelChanged(); }
       else if (key.startsWith('power:')) { (db.settings.powerCosts ||= {})[key.slice(6)] = cost; }
       else if (key.startsWith('race:')) { (db.settings.raceCosts ||= {})[key.slice(5)] = cost; }
+      else if (key.startsWith('storm:')) { (db.settings.stormCosts ||= {})[key.slice(6)] = cost; }
+      else if (key.startsWith('monkey:')) { (db.settings.monkeyCosts ||= {})[key.slice(7)] = cost; }
       else if (key === 'raid') db.settings.raidCost = cost;
       else if (key.startsWith('vr:')) (db.settings.vrCosts ||= {})[key.slice(3)] = cost;
       const t = (await twitch.listRewards().catch(() => [])).find(x => x.title.toLowerCase() === title.toLowerCase());
@@ -2288,6 +2325,19 @@ async function fillMovieInfo(max = 80) {
   return n;
 }
 setTimeout(() => fillMovieInfo().catch(() => {}), 40000); setInterval(() => fillMovieInfo().catch(() => {}), 10 * 60000);
+// 🏴‍☠️ the Pirate Battle's ships are named after these channels (Derek, 1.69.2): their figureheads wear the channels' Twitch pictures (1.70.0)
+const SHIP_LOGINS = ['timepeace49', 'kirbgames'];
+const shipIcons = () => SHIP_LOGINS.map(l => proxied(db.shipPics?.[l] || (String(db.owner?.login || '').toLowerCase() === l ? db.owner.avatar : '')) || '');
+async function refreshShipPics(force) {
+  const c = db.shipPics ||= {};
+  if (!force && c.at && Date.now() - c.at < 12 * 3600e3 && SHIP_LOGINS.every(l => c[l])) return { ok: true, cached: true, pics: shipIcons() };
+  const m = await twitch.getUsers(SHIP_LOGINS).catch(() => new Map()); let changed = false;
+  for (const l of SHIP_LOGINS) { const a = m.get(l)?.avatar; if (a && a !== c[l]) { c[l] = a; changed = true; } }
+  if (m.size) c.at = Date.now();
+  if (changed) { save(); cards.sendScene(); pushState(); }
+  return { ok: m.size > 0, found: SHIP_LOGINS.filter(l => m.get(l)?.avatar), pics: shipIcons() };
+}
+setTimeout(() => refreshShipPics().catch(() => {}), 30000); setInterval(() => refreshShipPics().catch(() => {}), 6 * 3600e3);
 // 🎞️ series locks + sequel bans: a quick check every minute (nothing to download unless a new series turns up)
 series.setHooks({ streamer: () => streamerName(), toast: t => broadcast({ type: 'toast', text: hEsc(t) }, 'control'), changed: () => { pushState(); if (cloud.enabled()) cloud.sync(true).catch?.(() => {}); webTakenSweep().catch(() => {}); } });
 setInterval(() => { if (!openLast.running) series.refresh().catch(() => {}); }, 60000);
@@ -2590,6 +2640,14 @@ app.post('/api/racepowers/rewards', async (req, res) => { // 🏁 add the race p
     rewardKey = ''; await syncRewards();
     res.json({ ok: true, made });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/stormpowers/rewards', async (req, res) => { try { res.json({ ok: true, ...(await stormSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } }); // ⛈️ add the storm power rewards to Twitch
+setInterval(() => { if (twitch.status.userId && !db.stormSetup && !stormSetup.busy) { stormSetup.busy = true; stormSetup().catch(e => console.error('[twitch] storm rewards:', e.message)).finally(() => { stormSetup.busy = false; }); } }, 30000); // (made once by itself after signing in)
+app.post('/api/test/monkey', (req, res) => { const who = String(req.body?.who || 'T').toUpperCase(), err = monkeyRedeem({ name: 'test_viewer', login: 'test_viewer' }, who, true); err ? res.status(400).json({ error: err }) : res.json({ ok: true }); }); // 🧪 a pretend Take out Time / Kirb
+app.post('/api/test/storm', (req, res) => { // 🧪 a pretend storm power in the Pirate Battle on stream
+  const kind = String(req.body?.kind || 'wave'); if (!STORM_INFO[kind]) return res.status(400).json({ error: 'Which storm power?' });
+  if (!stormOn()) return res.status(400).json({ error: 'Start a Pirate Battle first (🏴‍☠️ Practice battle).' });
+  stormSend(kind, String(req.body?.name || 'test_viewer')); res.json({ ok: true });
 });
 app.post('/api/rewards/pause-all', async (req, res) => { // the app is closing: nothing can be redeemed while it's off
   rewardBusy = false; rewardKey = ''; await Promise.all([syncRewards(true).catch(() => {}), Promise.race([backuplink.tick({ closing: true }).catch(() => {}), new Promise(r => setTimeout(r, 4000))])]); rewardKey = 'closed'; res.json({ ok: true }); // (and tell the backup bot server Movie Royal is closing)
@@ -3266,6 +3324,9 @@ app.post('/api/test/everyone-in', (req, res) => { // for testing: pretend everyo
 });
 twitch.sayListeners.add(t => broadcast({ type: 'botSay', text: t }, 'control'));
 // 🧪 Test tab: walk through tonight's pinned messages with pretend movies (nothing is pinned or counted)
+app.post('/api/test/ship-pics', async (req, res) => { // 🏴‍☠️ Test tab: look up the figureheads' Twitch pictures again
+  try { const r = await refreshShipPics(true); res.json({ ...r, logins: SHIP_LOGINS }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/test/pin-sim', (req, res) => {
   const step = String(req.body?.step || ''), who = db.settings.spotName || 'Kirb';
   const S = live.pinSim ||= { movies: 0, tonight: [], spotPending: null };
@@ -3453,6 +3514,7 @@ function startCharFight(name, test, finalNow) {
   try { cards.startChars({ gameId: g.id, map: g.map, name, fighters: charFighters(g.fighters), destined, pace: fightPacer(getList(g.listId)), length: g.secs || fightSecs(getList(g.listId)), lookSeed: live.lookSeed, test, finalNow: !!finalNow }); }
   catch (e) { live.game = null; live.phase = 'idle'; return e.message; }
   g.charFight = true; live.phase = 'running'; live.phaseAt = Date.now(); if (live.board) closeBoard();
+  if (g.map === 'pirates') { rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 400); } // (⛈️ the storm power rewards come on)
   pushState(); return null;
 }
 function stopGather(silent) { if (!live.gather) return; clearTimeout(live.gather.timer); live.gather = null; if (!silent) broadcast({ type: 'gather', endsAt: null }, 'overlay'); }

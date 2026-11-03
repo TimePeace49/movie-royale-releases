@@ -83,7 +83,8 @@
   const seaY = z => zY(z) + FREE(z); // the water's surface at depth z
   const deckLo = (s, z) => s ? GAPX + gapW(z) : outerX(z), deckHi = (s, z) => s ? W - outerX(z) : GAPX - gapW(z), deckMid = (s, z) => (deckLo(s, z) + deckHi(s, z)) / 2;
   const PLANKS = [.3, .72], PLK = .05, PZ0 = .03, PZ1 = .97; // 🪵 the two gangplanks (their depth, half width); how far back / forward the decks go
-  let pir = null; const pirNew = () => ({ sunk: null, safe: null, planks: true, cannons: [], balls: [], cd: [3, 4.5], rings: [], debris: [], kr: null, drop: [] });
+  let pir = null; const pirNew = () => ({ sunk: null, safe: null, planks: true, cannons: [], balls: [], cd: [3, 4.5], rings: [], debris: [], kr: null, drop: [], storm: { q: [], fx: [], next: 0 } }); // (storm: ⛈️ chat's waves / lightning / tentacles)
+  const WX = { drops: [], flash: 0, flashT: 3, sky: null, rumble: null }; // ⛈️ the storm's rain and lightning (only looks: never touches the fight)
   const pirS = () => pir || (pir = pirNew());
   const shipOf = (x, z) => x <= GAPX - gapW(z) ? 0 : x >= GAPX + gapW(z) ? 1 : -1; // which side of the gap (−1 = over the gap)
   const onShip = (s, x, z, m = 0) => pirS().sunk !== s && x >= deckLo(s, z) + m && x <= deckHi(s, z) - m;
@@ -149,6 +150,8 @@
   function msg(m) {
     if (m.type === 'cardWacky') { scene.wacky = m.wacky || {}; if (m.key && scene.show && (m.on || m.key === 'lions')) { toast(m.key === 'lions' && !m.on ? '🦁 Lions back to the tunnels!' : `${(WN[m.key] || m.key)}!`); snd(m.key === 'lions' ? 'roar' : 'gong'); } return; }
     if (m.type === 'finTest') return finTest(m);
+    if (m.type === 'cardStorm') return pirStorm(m); // ⛈️ a channel point storm power (Pirate Battle)
+    if (m.type === 'cardMonkey') return pirMonkeyOut(m); // 🐒 chat took out Time or Kirb (channel points)
     if (m.type !== 'cardScene') return;
     const was = scene; scene = { ...m, wacky: m.wacky || {} };
     layer.classList.toggle('hidden', !m.show); document.body.classList.toggle('charFight', !!(m.show && m.chars)); // (🧍 the claim pop-up shows on top of a characters fight)
@@ -392,6 +395,7 @@
     for (const b of pir.balls) { b.t -= dt; if (b.t <= 0 && !b.done) { b.done = true; pirBoom(b); } } pir.balls = pir.balls.filter(b => !b.done);
     for (const c of pir.cannons) if (c.fireAt && T >= c.fireAt) { c.fireAt = 0; c.recoil = 1; snd('cannon'); const x = cannonX(c), d = c.s ? -1 : 1, y = zY(c.z) - 26 * (.72 + c.z * .4); for (let i = 0; i < 16; i++) parts.push({ x: x + d * 50, y, vx: d * vr(60, 280), vy: vr(-90, 10), g: -30, life: vr(.6, 1.3), max: 1.3, size: vr(10, 24), color: i < 4 ? '#ffd27a' : 'rgba(225,225,225,.6)', gz: null, dust: true }); }
     if (mode === 'fight' && Math.random() < dt / 9) snd('creak'); // (the ships creak now and then)
+    stormStep(dt); // ⛈️ chat's waves / lightning / tentacles
     if (mode !== 'fight' || finalLeft > 0 || finalPair || pir.sunk != null) return; // (they hold fire for the final)
     const n = live.length, behind = n > paceTarget();
     for (const s of [0, 1]) {
@@ -414,7 +418,7 @@
     word(pick(['KABOOM!', 'BROADSIDE!', 'DIRECT HIT!', 'BOOM!']), x, zY(z) - 150, '#ffb02a', 56); snd('boom');
   }
   function pirOver(f) { // 🌊 off the side: into the sea (the fair winner, a pirate that can't go out yet, the last two, or one the pacer saves grabs a rope)
-    if (f.id === destined || pirKeep(f) || finalPair || R() < paceHold(alive().length)) {
+    if (f.id === destined || pirKeep(f) || finalPair || (!(f.washed > T) && R() < paceHold(alive().length))) { // (⛈️ washed over by chat's storm: the pacer doesn't save them)
       const [x, z] = pirSafe(f); puff(f, '#bfe8ff'); Object.assign(f, { x, z, vx: 0, vz: 0, vh: 0, h: 0, stun: .6, swing: null, atk: null });
       word(pick(['GRABS A ROPE!', 'HANGS ON!', 'NOT TODAY!']), f.x, zY(f.z) - 200 * S(f), '#9fe0ff', 34); snd('whoosh'); return;
     }
@@ -433,12 +437,68 @@
     if (!f.splashed) { f.vh -= grav() * dt; f.h += f.vh * dt; f.x += f.vx * dt; if (f.h <= wl) { f.splashed = true; f.h = wl; f.vh = -70; pirSplash(f.x, f.z, 1); } }
     else if (f.h > wl - 400) f.h += f.vh * dt;
   }
+  // ---------- ⛈️ the storm's chat powers (1.70.0, Derek): channel points send 🌊 big waves, ⚡ lightning bolts and 🐙 kraken tentacles ----------
+  // The server picks the ship / spot (pick, ship, z: the same on every game screen). They go off one at a time in the fight (they wait while the kraken and the
+  // FINAL FIGHT intro play). They never change who wins: the fair winner and the smaller crew can't be knocked out by them, so it still ends one pirate from each crew.
+  const STORM_WORD = { wave: '🌊 BIG WAVE!', bolt: '⚡ LIGHTNING!', tentacle: '🐙 KRAKEN TENTACLE!' };
+  function pirStorm(m) {
+    if (!PIR() || !STORM_WORD[m.kind] || mode === 'won' || mode === 'over' || mode === 'replay' || FIN.on || winner) return;
+    pirS().storm.q.push({ kind: m.kind, name: String(m.name || '').slice(0, 25), pick: clamp(Number(m.pick) || 0, 0, .9999), ship: m.ship ? 1 : 0, z: clamp(Number(m.z ?? .5), 0, 1) });
+  }
+  const outerOf = (s, z) => s ? deckHi(1, z) : deckLo(0, z), innerOf = (s, z) => s ? deckLo(1, z) : deckHi(0, z); // (outer = the open sea side, inner = the gap)
+  function stormStep(dt) {
+    const ST = pir.storm;
+    if (ST.q.length && mode === 'fight' && !winner && T >= ST.next) { const e = ST.q.shift(); ST.next = T + 1.2; stormStart(e); }
+    for (const e of ST.fx) { e.t += dt; stormTick(e); } ST.fx = ST.fx.filter(e => e.t < e.dur);
+  }
+  function stormStart(e) {
+    e.t = 0; e.s = pir.sunk === e.ship ? 1 - e.ship : e.ship; // (only a ship that's still there)
+    toast(e.name ? `${STORM_WORD[e.kind]} (${e.name})` : STORM_WORD[e.kind]);
+    if (e.kind === 'wave') { e.dur = 3; e.hitAt = 1.15; snd('bigwave'); }
+    else if (e.kind === 'tentacle') { e.dur = 2.6; e.z0 = clamp(.14 + e.z * .72, .12, .88); e.hits = new Set(); e.prev = null; snd('kraken'); }
+    else { e.dur = 1.1; e.hitAt = .1; // ⚡ who it hits: one it can knock out if there is one (the server's pick says which)
+      const all = F.filter(o => o.alive && !o.falling && !o.swing && onDeck(o.x, o.z)).sort((a, b) => String(a.id) < String(b.id) ? -1 : 1);
+      const can = all.filter(o => o.id !== destined && !pirKeep(o) && !finalPair), pool = can.length ? can : all, o = pool[Math.floor(e.pick * pool.length)];
+      if (o) { e.target = o.id; e.x = o.x; e.z = o.z; } else { e.x = 300 + e.pick * (W - 600); e.z = .2 + e.z * .6; }
+      WX.flash = Math.max(WX.flash, 1.2); snd('thunder'); }
+    pir.storm.fx.push(e);
+  }
+  function stormTick(e) {
+    const s = e.s, inward = s ? -1 : 1;
+    if (e.kind === 'wave' && !e.hit && e.t > .35 && Math.random() < .5) { const z = vr(0, 1); parts.push({ x: outerOf(s, z) - inward * vr(0, 60), y: zY(z) - (300 + 280 * z) * (.72 + z * .4) * easeIO(clamp(e.t / e.hitAt, 0, 1)), vx: inward * vr(40, 260), vy: -vr(60, 260), g: 900, life: vr(.4, .8), max: .8, size: vr(3, 7), color: 'rgba(235,248,255,.9)', gz: null }); } // (spray blowing off its top)
+    if (e.kind === 'wave' && !e.hit && e.t >= e.hitAt) { e.hit = true; quake(9); snd('splash'); snd('boom'); // 🌊 it crashes over the deck: everyone on that ship is washed toward the gap (maybe overboard)
+      for (const o of F) if (o.alive && !o.falling && !o.swing && o.h <= 40 && onShip(s, o.x, o.z)) {
+        const k = .8 + .4 * R(); o.vx += inward * 640 * k; o.vz += rr(-.3, .3); o.vh = Math.max(o.vh, 230 * k); o.h = Math.max(o.h, 2); o.stun = Math.max(o.stun || 0, 1.15); o.atk = null; o.block = 0; o.washed = T + 3; o.lastBy = null;
+        damage(null, o, rr(5, 10), 'storm', true); }
+      for (let i = 0; i < 60; i++) { const z = vr(0, 1); parts.push({ x: outerOf(s, z) + inward * vr(0, 260), y: zY(z) - vr(0, 90), vx: inward * vr(150, 700), vy: -vr(200, 700), g: 1400, life: vr(.5, 1.1), max: 1.1, size: vr(3, 9), color: Math.random() < .55 ? '#e8f8ff' : '#9ad6f2', gz: null }); }
+      word('SPLASH!', deckMid(s, .55), zY(.55) - 240, '#9fe0ff', 62);
+    }
+    if (e.kind === 'tentacle' && e.t >= .7 && e.t <= 1.45) { // 🐙 it sweeps across the deck from the open sea side: everyone in its way is flung toward the gap
+      const z = e.z0, x0 = outerOf(s, z) - inward * 40, x1 = innerOf(s, z) + inward * 70, tip = x0 + (x1 - x0) * easeIO(clamp((e.t - .7) / .75, 0, 1)), prev = e.prev ?? x0; e.prev = tip;
+      if (!e.swish) { e.swish = true; snd('whoosh'); }
+      for (const o of F) if (o.alive && !o.falling && !o.swing && !e.hits.has(o.id) && Math.abs(o.z - z) < .17 && (o.x - prev) * inward >= -12 && (o.x - tip) * inward <= 0 && onShip(s, o.x, o.z)) {
+        e.hits.add(o.id); o.vx = inward * rr(600, 820); o.vz += (o.z - z) * 2; o.vh = Math.max(o.vh, rr(280, 380)); o.h = Math.max(o.h, 4); o.stun = Math.max(o.stun || 0, 1.25); o.atk = null; o.block = 0; o.washed = T + 3; o.hurtT = .3; o.lastBy = null;
+        word(pick(['WHAM!', 'SLAPPED!', 'TENTACLED!', 'SPLAT!']), o.x, zY(o.z) - 200 * S(o), '#e08aff', 46); snd('slam'); quake(5);
+        damage(null, o, rr(16, 24) * paceBoost(), 'storm'); }
+    }
+    if (e.kind === 'bolt' && !e.hit && e.t >= e.hitAt) { e.hit = true; quake(8); snd('zap'); // ⚡ it strikes: knocked out (or badly shocked if it can't go out), people close by jump back
+      const o = e.target != null ? F.find(x => x.id === e.target) : null;
+      if (o && o.alive) { e.x = o.x; e.z = o.z; e.y = zY(o.z) - o.h - 70 * S(o);
+        for (const n of F) if (n !== o && n.alive && !n.falling && Math.abs(n.x - o.x) < 120 * S(o) && Math.abs(n.z - o.z) < .12) { n.vx += Math.sign(n.x - o.x || 1) * 280; n.stun = Math.max(n.stun || 0, .45); n.atk = null; }
+        o.charT = T; o.stun = Math.max(o.stun || 0, 1.4); o.atk = null; o.block = 0; o.vh = Math.max(o.vh, 160);
+        if (o.id !== destined && !pirKeep(o) && !finalPair) { o.zapT = T; o.hp = 0; ko(o, null, false); }
+        else { damage(null, o, rr(28, 38), 'storm'); if (o.alive) word(pick(['SHOCKED!', 'ZZZAP!', 'STILL STANDING!']), o.x, zY(o.z) - 210 * S(o), '#fff27a', 44); }
+      } else { e.y = onDeck(e.x, e.z) ? zY(e.z) : seaY(e.z); if (!onDeck(e.x, e.z)) pirSplash(e.x, e.z, 1.3, true); }
+      if (onDeck(e.x, e.z)) { const sc = .7 + e.z * .4; cg.fillStyle = 'rgba(20,14,10,.55)'; cg.beginPath(); cg.ellipse(e.x, zY(e.z), 46 * sc, 12 * sc, 0, 0, 7); cg.fill(); } // a scorch mark
+      for (let i = 0; i < 28; i++) parts.push({ x: e.x, y: e.y, vx: vr(-420, 420), vy: vr(-520, 60), g: 1200, life: vr(.25, .6), max: .6, size: vr(2, 5), color: Math.random() < .5 ? '#fff6a0' : '#9ad8ff', gz: null });
+    }
+  }
   const KRAKEN_T = 5.5; // 🐙 seconds of the kraken scene before the FINAL FIGHT intro
   const finIntro = () => FINAL_INTRO + (PIR() ? KRAKEN_T : 0);
   function pirFinal(a, b) { // 🐙 the kraken takes the ship the last two AREN'T on (split up: the fair winner's ship stays); they face off on the one that's left
     const d = a.id === destined ? a : b.id === destined ? b : a, sa = shipOf(a.x, a.z), sb = shipOf(b.x, b.z);
     let safe = sa === sb && sa >= 0 ? sa : shipOf(d.x, d.z); if (safe < 0) safe = d.x < GAPX ? 0 : 1;
-    const doomed = 1 - safe; Object.assign(pir, { safe, sunk: doomed, planks: false, balls: [], kr: { safe, doomed, tents: pirTentacles(doomed), fired: new Set() } });
+    const doomed = 1 - safe; Object.assign(pir, { safe, sunk: doomed, planks: false, balls: [], kr: { safe, doomed, tents: pirTentacles(doomed), fired: new Set() } }); pir.storm.fx = [];
     const z = .55, mid = deckMid(safe, z), [l, r] = a.x <= b.x ? [a, b] : [b, a];
     for (const [f, x, face] of [[l, mid - 150, 1], [r, mid + 150, -1]]) {
       f.pm = { x: f.x, z: f.z, h: Math.max(0, f.h), leap: shipOf(f.x, f.z) !== safe }; // (drawn getting there during the kraken scene: the one on the other ship jumps across)
@@ -606,7 +666,7 @@
       if (gore && !keep && o.hp < 25 && !soft && kind !== 'bleed' && R() < .07) ko(o, f, true);
       return;
     }
-    if (o.hp <= 0 && !keep && kind !== 'bleed' && R() < paceHold(alive().length)) { o.hp = rr(4, 10); if (R() < .5) word(pick(['STILL STANDING!', 'NOT YET!', 'HANGING ON!']), o.x, zY(o.z) - 210 * s, '#9fffb0', 34); } // ⏳ too many out too fast: hangs on
+    if (o.hp <= 0 && !keep && kind !== 'bleed' && kind !== 'storm' && R() < paceHold(alive().length)) { o.hp = rr(4, 10); if (R() < .5) word(pick(['STILL STANDING!', 'NOT YET!', 'HANGING ON!']), o.x, zY(o.z) - 210 * s, '#9fffb0', 34); } // ⏳ too many out too fast: hangs on
     if (o.hp <= 0 && pirKeep(o)) { o.hp = rr(6, 12); if (Math.random() < .4) word(pick(['NOT TODAY!', 'STILL STANDING!', 'ARRR, NOT YET!']), o.x, zY(o.z) - 210 * s, '#9fffb0', 34); } // 🏴‍☠️ (the smaller crew hangs on: the crews stay even)
     if (o.hp <= 0) ko(o, f, gore && !keep && R() < .55);
     else if (gore && !keep && o.hp < 25 && !soft && R() < .07 && !pirKeep(o)) ko(o, f, true);
@@ -637,6 +697,7 @@
       blood(o.x, zY(o.z) - o.h - 120 * s, o.z, 60, f ? f.face : 0, 2.2); word('HEADLESS!', o.x, zY(o.z) - 240 * s, '#ff3030', 58); snd('chop'); snd('splat');
     } else if (fall) { word(PIR() ? pick(['OVERBOARD!', 'MAN OVERBOARD!', 'SPLASH!', 'SWIM FOR IT!']) : pick(['FELL!', 'INTO THE VOID!', 'GONE!']), o.x, zY(o.z) - 200 * s, PIR() ? '#9fe0ff' : '#d6a8ff', 54); snd('whoosh'); }
     else if (over) { word(pick(['ELIMINATED!', 'OVER THE TOP!', 'GONE!']), o.x, zY(o.z) - 220 * s, '#ff5a5a', 56); snd('crowd'); snd('whoosh'); }
+    else if (o.zapT === T) { word(pick(['ZAPPED!', 'FRIED!', 'SHOCKING!', 'STRUCK DOWN!']), o.x, zY(o.z) - 200 * s, '#fff27a', 56); snd('zap'); } // ⚡ (chat's lightning)
     else { word(pick(['K.O.!', 'DOWN!', 'FINISHED!']), o.x, zY(o.z) - 200 * s, '#ff5a5a', 52); snd('splat'); }
     if (!over && !fall) snd('fall'); if (fall) snd('fall');
     if (scene.wacky.boom) { // 💣 it explodes
@@ -1076,7 +1137,7 @@
   function drawPackBody(f, x, top, PW, PH, s, cut) {
     if (f.char && CP()) { // 🧍 a character: their drawing fills the box (with the hurt flash / damage look like a pack)
       const c = charCanvas(f), [sx, sy, sw, sh] = CHAR_SRC, cy = cut ? sh * .42 : 0;
-      g.save(); if (f.hurtT > 0) g.filter = `brightness(${1 + f.hurtT * 1.6})`; else if (f.hp < 100) g.filter = `saturate(${.55 + .45 * Math.max(0, f.hp) / 100})`;
+      g.save(); if (f.hurtT > 0) g.filter = `brightness(${1 + f.hurtT * 1.6})`; else if (f.charT != null && (!f.alive || T - f.charT < 3)) { const c = f.alive ? 1 - (T - f.charT) / 3 : 1; g.filter = `brightness(${1 - .6 * c}) sepia(${.6 * c})`; } else if (f.hp < 100) g.filter = `saturate(${.55 + .45 * Math.max(0, f.hp) / 100})`; // (⚡ charred by chat's lightning)
       g.drawImage(c, sx, sy + cy, sw, sh - cy, x - PW * .06, top + PH * cy / sh, PW * 1.12, PH - PH * cy / sh);
       g.restore();
       if (cut) { g.fillStyle = '#b0101c'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(x + PW * (i + .5) / 6, top + PH * cy / sh + 3 * s, 6 * s, 4 * s, 0, 0, 7); g.fill(); } }
@@ -1217,6 +1278,8 @@
     if (mode === 'replay' || mode === 'over') return { x: W / 2, y: H / 2, z: 1 }; // (the replay shows everyone)
     if (cam.follow) { const f = cam.follow; if (!F.includes(f)) cam.follow = null; else { const [x, y] = fpos(f); return { x, y, z: 2.1 }; } }
     if (cam.overview || mode === 'lobby' || mode === 'intro' || mode === 'won' || !cam.auto || !F.length) return { x: W / 2, y: H / 2, z: 1 };
+    const se = PIR() && pir?.storm?.fx.find(e => e.kind === 'bolt' ? e.t < .9 : e.t < 2.3); // ⛈️ chat's storm power: pull back to show it (a wave / a tentacle: that whole ship; lightning: where it strikes)
+    if (se) { if (se.kind !== 'bolt') return { x: se.s ? W * .62 : W * .38, y: 560, z: 1.06 }; const o = se.target != null ? F.find(x => x.id === se.target) : null, [x, y] = o ? fpos(o) : [se.x, zY(se.z)]; return { x, y: y - 80, z: 1.3 }; }
     const live = mode === 'final' && finalPair ? finalPair : alive(); if (!live.length) return { x: W / 2, y: H / 2, z: 1 };
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const f of live) { const [x, y] = fpos(f); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y - 90); y1 = Math.max(y1, y + 110); }
     let z = clamp(Math.min(W / (x1 - x0 + 520), H / (y1 - y0 + 420)), 1, live.length <= 2 ? (finalLeft > 0 ? 1.95 : 1.75) : 1.45), x = (x0 + x1) / 2, y = (y0 + y1) / 2;
@@ -1246,7 +1309,7 @@
   function pirOrbit(now, shift) { // 🏴‍☠️ the sea and the sky go round (copies of the background side by side), the ship they're on stays still, they stand still on it
     const x0 = cam.x - W / 2 / cam.z - 4, x1 = cam.x + W / 2 / cam.z + 4, top = cam.y - H / 2 / cam.z - 20, s = pir.safe;
     for (let m = Math.floor((x0 + shift) / W); m <= Math.floor((x1 + shift) / W) + 1; m++) { const sx = m * W - shift; g.drawImage(bg, 0, 0, bg.width, bg.height, sx, 0, W, H); const gr = g.createLinearGradient(sx - 120, 0, sx + 120, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(0,0,0,.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(sx - 120, Math.min(0, top), 240, H + 60); }
-    g.drawImage(pirShipImg(s), 0, 0, W, H); for (const c of pir.cannons) if (c.s === s) pirCannon(c); g.drawImage(crat, 0, 0); g.drawImage(floor, 0, 0);
+    g.drawImage(pirShipImg(s), 0, 0, W, H); pirFigure(s); for (const c of pir.cannons) if (c.s === s) pirCannon(c); g.drawImage(crat, 0, 0); g.drawImage(floor, 0, 0);
     for (const f of [...finalPair, ...MASTS[s]].sort((p, q) => p.z - q.z)) f.mast ? drawMast(f.mast, now) : drawFighter(f);
     pirSternRail(s);
   }
@@ -1377,19 +1440,21 @@
     c.beginPath(); c.moveTo(x, y + r * .08); c.lineTo(x - r * .08, y + r * .22); c.lineTo(x + r * .08, y + r * .22); c.fill(); for (const d of [-.16, 0, .16]) c.fillRect(x + d * r - r * .03, y + r * .42, r * .06, r * .2);
     c.restore();
   }
-  function drawBgSea(k) { // a sunset over the open sea: the sun goes down at the end of the gap between the two ships
+  function drawBgSea(k) { // ⛈️ a big storm (1.70.0, Derek; it was a sunset): black storm clouds, grey rain far away and a rough sea (rain, lightning and big waves move on top)
     const c = document.createElement('canvas'); c.width = W * k; c.height = H * k; const b = c.getContext('2d'); b.scale(k, k);
-    const sky = b.createLinearGradient(0, 0, 0, HZ); sky.addColorStop(0, '#16264e'); sky.addColorStop(.42, '#45528e'); sky.addColorStop(.76, '#d8806a'); sky.addColorStop(1, '#ffd08a'); b.fillStyle = sky; b.fillRect(0, 0, W, HZ + 2);
-    for (let i = 0; i < 70; i++) { b.fillStyle = `rgba(255,255,240,${vr(.2, .7)})`; b.fillRect(vr(0, W), vr(0, 190), 2, 2); } // the first stars
-    const sun = b.createRadialGradient(GAPX, HZ - 20, 10, GAPX, HZ - 20, 340); sun.addColorStop(0, 'rgba(255,244,200,1)'); sun.addColorStop(.16, 'rgba(255,214,140,.85)'); sun.addColorStop(.45, 'rgba(255,160,90,.3)'); sun.addColorStop(1, 'rgba(255,130,80,0)'); b.fillStyle = sun; b.fillRect(GAPX - 340, HZ - 360, 680, 362);
-    b.fillStyle = '#fff2c8'; b.beginPath(); b.arc(GAPX, HZ + 6, 62, Math.PI, 0); b.fill();
-    for (let i = 0; i < 9; i++) { const x = vr(0, W), y = vr(70, 400), w = vr(140, 320); b.fillStyle = `rgba(${Math.floor(vr(210, 255))},${Math.floor(vr(130, 180))},${Math.floor(vr(140, 180))},${vr(.22, .45)})`; for (let j = 0; j < 5; j++) { b.beginPath(); b.ellipse(x + j * w * .22 - w * .45, y + vr(-12, 12), w * vr(.18, .3), w * vr(.06, .1), 0, 0, 7); b.fill(); } } // clouds lit by the sunset
-    const isle = (x, w, h) => { b.fillStyle = 'rgba(38,36,66,.9)'; b.beginPath(); b.moveTo(x - w, HZ + 1); b.quadraticCurveTo(x - w * .5, HZ - h, x, HZ - h * .9); b.quadraticCurveTo(x + w * .5, HZ - h * 1.1, x + w, HZ + 1); b.fill(); b.strokeStyle = 'rgba(38,36,66,.9)'; b.lineWidth = 3;
-      for (const dd of [-.3, .22]) { const px = x + w * dd, py = HZ - h * .95; b.beginPath(); b.moveTo(px, py); b.quadraticCurveTo(px + 6, py - h * .7, px + 4, py - h); b.stroke(); for (let a = 0; a < 5; a++) { b.beginPath(); b.moveTo(px + 4, py - h); b.quadraticCurveTo(px + 4 + Math.cos(a * 1.25) * 22, py - h - 12, px + 4 + Math.cos(a * 1.25) * 34, py - h + 9); b.stroke(); } } }; // (with palm trees)
+    const sky = b.createLinearGradient(0, 0, 0, HZ); sky.addColorStop(0, '#06080e'); sky.addColorStop(.45, '#141a27'); sky.addColorStop(.8, '#283142'); sky.addColorStop(1, '#45516a'); b.fillStyle = sky; b.fillRect(0, 0, W, HZ + 2);
+    const glow = b.createRadialGradient(GAPX, HZ - 30, 10, GAPX, HZ - 30, 540); glow.addColorStop(0, 'rgba(150,170,195,.32)'); glow.addColorStop(1, 'rgba(150,170,195,0)'); b.fillStyle = glow; b.fillRect(GAPX - 540, HZ - 420, 1080, 422); // (a little light far away)
+    const cloud = (x, y, w, d) => { for (let j = 0; j < 7; j++) { const cx = x + (j - 3) * w * .16 + vr(-12, 12), cy = y + vr(-14, 14) + Math.abs(j - 3) * 5, rx = w * vr(.14, .22), ry = w * vr(.07, .11);
+      const gr = b.createLinearGradient(0, cy - ry, 0, cy + ry); gr.addColorStop(0, `rgba(${d},${d + 4},${d + 12},.96)`); gr.addColorStop(1, `rgba(${d + 38},${d + 44},${d + 58},.92)`); b.fillStyle = gr; b.beginPath(); b.ellipse(cx, cy, rx, ry, 0, 0, 7); b.fill(); } };
+    for (let i = 0; i < 16; i++) cloud(vr(-100, W + 100), vr(-40, 140), vr(320, 620), Math.floor(vr(12, 26))); // (the top: almost black)
+    for (let i = 0; i < 15; i++) cloud(vr(-100, W + 100), vr(150, 390), vr(220, 460), Math.floor(vr(28, 46)));
+    for (let i = 0; i < 8; i++) { const x = vr(-80, W), w = vr(80, 230), gr = b.createLinearGradient(0, 250, 0, HZ); gr.addColorStop(0, 'rgba(120,130,150,0)'); gr.addColorStop(.5, 'rgba(120,130,150,.15)'); gr.addColorStop(1, 'rgba(120,130,150,.26)'); b.fillStyle = gr; b.beginPath(); b.moveTo(x, 250); b.lineTo(x + w, 250); b.lineTo(x + w + 80, HZ); b.lineTo(x + 80, HZ); b.fill(); } // rain curtains far away
+    const isle = (x, w, h) => { b.fillStyle = 'rgba(12,16,24,.96)'; b.beginPath(); b.moveTo(x - w, HZ + 1); b.quadraticCurveTo(x - w * .5, HZ - h, x, HZ - h * .9); b.quadraticCurveTo(x + w * .5, HZ - h * 1.1, x + w, HZ + 1); b.fill(); b.strokeStyle = 'rgba(12,16,24,.96)'; b.lineWidth = 3;
+      for (const dd of [-.3, .22]) { const px = x + w * dd, py = HZ - h * .95; b.beginPath(); b.moveTo(px, py); b.quadraticCurveTo(px + 10, py - h * .7, px + 12, py - h); b.stroke(); for (let a = 0; a < 5; a++) { b.beginPath(); b.moveTo(px + 12, py - h); b.quadraticCurveTo(px + 22 + Math.cos(a * 1.25) * 18, py - h - 8, px + 26 + Math.cos(a * 1.25) * 28, py - h + 12); b.stroke(); } } }; // (with palm trees bent by the wind)
     isle(230, 120, 34); isle(1720, 160, 46); isle(1390, 60, 18);
-    const sea = b.createLinearGradient(0, HZ, 0, H); sea.addColorStop(0, '#6a6aa0'); sea.addColorStop(.07, '#2e5a8a'); sea.addColorStop(.5, '#164070'); sea.addColorStop(1, '#0a2448'); b.fillStyle = sea; b.fillRect(0, HZ, W, H - HZ);
-    for (let i = 0; i < 80; i++) { const y = HZ + 4 + Math.pow(Math.random(), 1.6) * (H - HZ), q = (y - HZ) / (H - HZ), spread = 30 + (y - HZ) * .35; b.fillStyle = `rgba(255,${Math.floor(vr(200, 240))},${Math.floor(vr(140, 190))},${vr(.25, .6) * (1 - q * .6)})`; b.fillRect(GAPX + vr(-spread, spread), y, vr(10, 40) * (1 + q * 2), vr(2, 4)); } // the sun's path on the water
-    for (let i = 0; i < 260; i++) { const y = HZ + Math.pow(Math.random(), 1.4) * (H - HZ), q = (y - HZ) / (H - HZ); b.strokeStyle = `rgba(${Math.random() < .5 ? '170,210,255' : '10,30,60'},${vr(.1, .3)})`; b.lineWidth = 1 + q * 2.5; const x = vr(0, W), w = 10 + q * 60; b.beginPath(); b.moveTo(x - w, y); b.quadraticCurveTo(x, y - 3 - q * 5, x + w, y); b.stroke(); } // waves
+    const sea = b.createLinearGradient(0, HZ, 0, H); sea.addColorStop(0, '#3a485c'); sea.addColorStop(.08, '#213248'); sea.addColorStop(.5, '#122234'); sea.addColorStop(1, '#07121e'); b.fillStyle = sea; b.fillRect(0, HZ, W, H - HZ);
+    for (let i = 0; i < 380; i++) { const y = HZ + Math.pow(Math.random(), 1.3) * (H - HZ), q = (y - HZ) / (H - HZ); b.strokeStyle = `rgba(${Math.random() < .55 ? '150,175,200' : '3,10,20'},${vr(.12, .35)})`; b.lineWidth = 1 + q * 3; const x = vr(0, W), w = 12 + q * 80; b.beginPath(); b.moveTo(x - w, y + q * 6); b.quadraticCurveTo(x, y - 5 - q * 12, x + w, y + q * 6); b.stroke(); } // big rough waves
+    for (let i = 0; i < 130; i++) { const y = HZ + Math.pow(Math.random(), 1.2) * (H - HZ), q = (y - HZ) / (H - HZ); b.fillStyle = `rgba(228,238,248,${vr(.14, .42)})`; b.beginPath(); b.ellipse(vr(0, W), y, vr(6, 26) * (1 + q * 1.5), vr(1.5, 3.5) * (1 + q), 0, 0, 7); b.fill(); } // whitecaps
     return c;
   }
   function pirDeckPath(c, s, grow = 0) { // the deck's outline: the outer side from the bow to the stern, across the stern, the inner side back, round the bow to its point
@@ -1400,6 +1465,37 @@
     c.quadraticCurveTo(inner(0), zY(-.16), deckMid(s, 0), zY(BOW_Z) - grow); c.quadraticCurveTo(outer(0), zY(-.16), outer(0), zY(0)); c.closePath();
   }
   const shipImgs = new Map();
+  // 🖋️ the ships' names in fancy pirate letters (1.70.0, Derek): the free font Pirata One (public/fonts, works without internet). The ship pictures are drawn again once it has loaded.
+  const SHIP_FONT = "'Pirata One', 'Lilita One', Georgia, serif";
+  try { const ff = new FontFace('Pirata One', "url('/fonts/pirata-one.woff2') format('woff2')"); document.fonts.add(ff); ff.load().then(() => shipImgs.clear(), () => {}); } catch {}
+  function shipName(b, txt, x, y, maxW) { // gold letters with a dark edge and a little scroll either side
+    let px = 42; b.font = `${px}px ${SHIP_FONT}`; while (b.measureText(txt).width > maxW - 96 && px > 18) b.font = `${--px}px ${SHIP_FONT}`;
+    const w = b.measureText(txt).width; b.save(); b.textAlign = 'center'; b.textBaseline = 'middle'; b.lineJoin = 'round'; b.lineCap = 'round';
+    const gr = b.createLinearGradient(0, y - px * .5, 0, y + px * .45); gr.addColorStop(0, '#fff4c0'); gr.addColorStop(.45, '#f2c84a'); gr.addColorStop(1, '#a8741a');
+    b.lineWidth = 5; b.strokeStyle = '#2a1404'; b.strokeText(txt, x, y); b.fillStyle = gr; b.fillText(txt, x, y);
+    b.strokeStyle = '#d4a82a'; b.lineWidth = 2.5; for (const d of [-1, 1]) { const x0 = x + d * (w / 2 + 10); b.beginPath(); b.moveTo(x0, y); b.bezierCurveTo(x0 + d * 9, y - 13, x0 + d * 25, y - 9, x0 + d * 22, y + 1); b.bezierCurveTo(x0 + d * 20, y + 8, x0 + d * 12, y + 5, x0 + d * 15, y - 2); b.stroke(); b.beginPath(); b.moveTo(x0 + d * 24, y + 1); b.lineTo(x0 + d * 38, y + 1); b.stroke(); b.fillStyle = '#d4a82a'; b.beginPath(); b.arc(x0 + d * 40, y + 1, 2.6, 0, 7); b.fill(); }
+    b.restore();
+  }
+  function pirFigure(s) { // 🏴‍☠️ the figurehead on the bow (1.70.0, Derek): a carved scroll holding a gold medallion with the ship's channel's Twitch picture (no picture yet: a skull)
+    const cr = CREW[s], o = s ? 1 : -1, tx = deckMid(s, 0), ty = zY(BOW_Z), R = 36, cx = tx - o * 12, cy = ty - 32, img = imgFor(scene.shipIcons?.[s]); // (low enough that the big sail doesn't hide it)
+    g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+    g.fillStyle = '#3a200c'; g.strokeStyle = '#1e1006'; g.lineWidth = 2; g.beginPath(); g.moveTo(tx - 15, ty + 6); g.quadraticCurveTo(tx - 20, cy + R * .8, cx - 12, cy + R * .95); g.lineTo(cx + 12, cy + R * .95); g.quadraticCurveTo(tx + 20, cy + R * .8, tx + 15, ty + 6); g.closePath(); g.fill(); g.stroke(); // the carved stem it stands on
+    for (const d of [-1, 1]) { // carved gold wings
+      g.fillStyle = '#c8962a'; g.strokeStyle = '#5a3a0c'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx + d * R * .78, cy + R * .3); g.quadraticCurveTo(cx + d * R * 1.62, cy - R * .1, cx + d * R * 1.5, cy - R * .92); g.quadraticCurveTo(cx + d * R * 1.32, cy - R * .5, cx + d * R * 1.02, cy - R * .44); g.quadraticCurveTo(cx + d * R * 1.2, cy - R * .12, cx + d * R * .9, cy - R * .02); g.closePath(); g.fill(); g.stroke();
+      g.strokeStyle = 'rgba(90,58,12,.75)'; g.lineWidth = 1.5; for (const k of [.3, .55, .8]) { g.beginPath(); g.moveTo(cx + d * R * (.95 + k * .2), cy + R * (.15 - k * .25)); g.lineTo(cx + d * R * (1.15 + k * .3), cy - R * (.05 + k * .6)); g.stroke(); }
+    }
+    const rim = g.createRadialGradient(cx - R * .35, cy - R * .4, R * .15, cx, cy, R * 1.2); rim.addColorStop(0, '#fff4c0'); rim.addColorStop(.5, '#e0aa30'); rim.addColorStop(1, '#7a4c0a');
+    g.fillStyle = rim; g.beginPath(); g.arc(cx, cy, R + 8, 0, 7); g.fill(); g.strokeStyle = '#3a2206'; g.lineWidth = 2.5; g.stroke(); // gold rim
+    g.fillStyle = cr.col; g.beginPath(); g.arc(cx, cy, R + 2, 0, 7); g.fill(); // a ring in the crew's colour
+    g.save(); g.beginPath(); g.arc(cx, cy, R - 1.5, 0, 7); g.clip();
+    if (img) { const k = Math.max(2 * R / img.naturalWidth, 2 * R / img.naturalHeight); g.drawImage(img, cx - img.naturalWidth * k / 2, cy - img.naturalHeight * k / 2, img.naturalWidth * k, img.naturalHeight * k); }
+    else { g.fillStyle = cr.dk; g.fillRect(cx - R, cy - R, 2 * R, 2 * R); skull(g, cx, cy - R * .08, R * .42, '#f2e6c8', cr.dk); }
+    const sh = g.createLinearGradient(0, cy - R, 0, cy + R); sh.addColorStop(0, 'rgba(255,255,255,.24)'); sh.addColorStop(.42, 'rgba(255,255,255,0)'); g.fillStyle = sh; g.fillRect(cx - R, cy - R, 2 * R, 2 * R); // (a glassy shine)
+    g.restore();
+    g.fillStyle = '#e0aa30'; g.strokeStyle = '#3a2206'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - 15, cy - R - 5); g.lineTo(cx - 17, cy - R - 18); g.lineTo(cx - 8, cy - R - 11); g.lineTo(cx, cy - R - 21); g.lineTo(cx + 8, cy - R - 11); g.lineTo(cx + 17, cy - R - 18); g.lineTo(cx + 15, cy - R - 5); g.closePath(); g.fill(); g.stroke(); // a little gold crown
+    g.fillStyle = cr.lt; for (const d of [-1, 0, 1]) { g.beginPath(); g.arc(cx + d * 9, cy - R - 9, 2.2, 0, 7); g.fill(); }
+    g.restore();
+  }
   function pirShipImg(s) { // one ship's hull, deck, sides and rails, drawn once (masts, cannons and the stern rail are drawn every frame)
     const key = s + '|' + bgScale; if (shipImgs.has(key)) return shipImgs.get(key);
     const c = document.createElement('canvas'); c.width = W * bgScale; c.height = H * bgScale; const b = c.getContext('2d'); b.scale(bgScale, bgScale);
@@ -1409,8 +1505,8 @@
     let gr = b.createLinearGradient(0, zY(1), 0, sy); gr.addColorStop(0, '#5a3418'); gr.addColorStop(1, '#2a160a'); b.fillStyle = gr; b.beginPath(); b.moveTo(lo1, zY(1)); b.lineTo(hi1, zY(1)); b.lineTo(hi1 - 14, sy); b.lineTo(lo1 + 14, sy); b.fill();
     b.strokeStyle = 'rgba(0,0,0,.3)'; b.lineWidth = 2; for (let y = zY(1) + 16; y < sy; y += 14) { b.beginPath(); b.moveTo(lo1 + 4, y); b.lineTo(hi1 - 4, y); b.stroke(); }
     b.fillStyle = cr.col; b.fillRect(lo1, zY(1), hi1 - lo1, 10); b.fillStyle = '#d4a82a'; b.fillRect(lo1, zY(1) + 10, hi1 - lo1, 3);
-    const mx = (lo1 + hi1) / 2; b.fillStyle = '#1e1008'; b.fillRect(mx - 210, zY(1) + 20, 420, 36); b.strokeStyle = '#d4a82a'; b.lineWidth = 3; b.strokeRect(mx - 210, zY(1) + 20, 420, 36);
-    b.fillStyle = '#f2c84a'; b.font = `26px ${FONT}`; b.textAlign = 'center'; b.textBaseline = 'middle'; b.fillText(cr.ship, mx, zY(1) + 39);
+    const mx = (lo1 + hi1) / 2, py = zY(1) + 15, ph = 48; b.fillStyle = '#1e1008'; b.fillRect(mx - 205, py, 410, ph); b.strokeStyle = '#d4a82a'; b.lineWidth = 3; b.strokeRect(mx - 205, py, 410, ph); b.strokeStyle = 'rgba(212,168,42,.45)'; b.lineWidth = 1.5; b.strokeRect(mx - 199, py + 5, 398, ph - 10); // the name board
+    shipName(b, cr.ship, mx, py + ph / 2 + 1, 396);
     for (const wx of [-300, -230, 230, 300]) { const wg = b.createLinearGradient(0, zY(1) + 22, 0, zY(1) + 70); wg.addColorStop(0, '#ffe9a0'); wg.addColorStop(1, '#e8902a'); b.fillStyle = wg; b.fillRect(mx + wx - 22, zY(1) + 24, 44, 44); b.strokeStyle = '#2a160a'; b.lineWidth = 4; b.strokeRect(mx + wx - 22, zY(1) + 24, 44, 44); b.beginPath(); b.moveTo(mx + wx, zY(1) + 24); b.lineTo(mx + wx, zY(1) + 68); b.stroke(); } // stern windows
     b.fillStyle = '#3a200e'; b.beginPath(); for (let i = 0; i <= 10; i++) b.lineTo(inner(i / 10), zY(i / 10)); for (let i = 10; i >= 0; i--) b.lineTo(inner(i / 10) - o * 16, seaY(i / 10)); b.fill(); // (the side facing the gap: seen almost edge-on)
     b.strokeStyle = cr.col; b.lineWidth = 5; b.beginPath(); for (let i = 0; i <= 10; i++) b.lineTo(inner(i / 10) - o * 3, zY(i / 10) + 5); b.stroke();
@@ -1508,7 +1604,7 @@
     const k = pir.kr, s = k.doomed, t = krT(); if (t > 5.3) return;
     const dd = t < 2.3 ? 0 : t < 3.2 ? 132 * easeIO((t - 2.3) / .9) : 132 + 860 * Math.pow(Math.min(1, (t - 3.2) / 2), 1.5), wob = t < 2.3 ? Math.sin(t * 11) * Math.min(1, t / 1.5) * 5 : Math.sin(t * 7) * 3;
     const yA = zY((dd - 92) / 36), yB = seaY(1) - dd;
-    if (yB > yA) { g.save(); g.beginPath(); g.rect(-300, yA + dd, W + 600, yB - yA); g.clip(); g.translate(wob, dd); g.drawImage(pirShipImg(s), 0, 0, W, H);
+    if (yB > yA) { g.save(); g.beginPath(); g.rect(-300, yA + dd, W + 600, yB - yA); g.clip(); g.translate(wob, dd); g.drawImage(pirShipImg(s), 0, 0, W, H); pirFigure(s);
       for (const c of pir.cannons) if (c.s === s) pirCannon(c);
       for (const f of F) if (f.wreck) drawFighter(f);
       if (t > 2.2) { g.strokeStyle = '#140a04'; g.lineWidth = 6; g.lineJoin = 'miter'; g.beginPath(); for (let j = 0; j <= 12; j++) { const z = .45 + (j % 2 ? .035 : -.03) * (j % 3 ? 1 : .5), u = j / 12; g.lineTo(deckLo(s, z) + (deckHi(s, z) - deckLo(s, z)) * u, zY(z)); } g.stroke(); } // the crack
@@ -1528,7 +1624,8 @@
   function pirStage(now, orbit) { // the sea, anyone falling in, the ships, the gangplanks, the cannons (the masts stand among the pirates)
     const P = pirS(), t = now / 1000;
     g.strokeStyle = 'rgba(40,40,60,.75)'; g.lineWidth = 2.2; for (let i = 0; i < 4; i++) { const a = t * (.25 + i * .05) + i * 1.7, x = [420, 1500, 1180, 700][i] + Math.cos(a) * 120, y = [210, 170, 300, 120][i] + Math.sin(a * 1.3) * 30, s = [1, 1.1, .7, .8][i], fl = Math.sin(t * 8 + i) * 4 * s; g.beginPath(); g.moveTo(x - 14 * s, y - 4 * s + fl); g.quadraticCurveTo(x - 7 * s, y - 10 * s + fl, x, y); g.quadraticCurveTo(x + 7 * s, y - 10 * s + fl, x + 14 * s, y - 4 * s + fl); g.stroke(); } // seagulls
-    g.strokeStyle = 'rgba(200,230,255,.28)'; g.lineWidth = 2; for (let i = 0; i < 40; i++) { const z = -.5 + (i % 20) * .075, y = seaY(z), sp = 18 + (i % 5) * 9, x = ((i * 397 + t * sp) % (W + 200)) - 100, w = 12 + (z + .5) * 30; g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x, y - 4 - (z + .5) * 3, x + w, y); g.stroke(); } // moving waves
+    g.strokeStyle = 'rgba(200,225,250,.32)'; g.lineWidth = 2.6; for (let i = 0; i < 64; i++) { const z = -.5 + (i % 32) * .047, y = seaY(z) + Math.sin(t * 1.6 + i) * 4, sp = 30 + (i % 5) * 14, x = ((i * 397 + t * sp) % (W + 200)) - 100, w = 18 + (z + .5) * 46; g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x, y - 7 - (z + .5) * 6, x + w, y); g.stroke(); } // ⛈️ big moving waves
+    stormSkyBolt(); if (!orbit) pirMonkeysDraw(t); // ⚡ far-away lightning; 🐒 the boat between the ships (behind the hulls)
     for (const s of [0, 1]) if (P.sunk !== s) { const sx = s ? 1 : -1; g.strokeStyle = 'rgba(240,250,255,.6)'; g.lineWidth = 3; g.beginPath(); for (let i = 0; i <= 18; i++) { const z = i / 18 * .86, x = (s ? deckLo(1, z) : deckHi(0, z)) - sx * 16 + Math.sin(t * 3 + i) * 3 * sx * -1; g.lineTo(x - sx * 4 * (1 + Math.sin(t * 2 + i * 1.7)), seaY(z) + Math.sin(t * 2.4 + i) * 2); } g.stroke(); } // foam where the hulls meet the water
     for (const r of P.rings) { const a = 1 - r.t / 1.8, w = (40 + r.t * 140) * r.k * (.72 + r.z * .4); g.strokeStyle = `rgba(235,250,255,${a * .8})`; g.lineWidth = 3; g.beginPath(); g.ellipse(r.x, seaY(r.z), w, w * .22, 0, 0, 7); g.stroke(); }
     if (P.kr?.crackAt) { const a = clamp(1 - (performance.now() - P.kr.crackAt) / 12000, 0, 1); if (a > 0) { const x = deckMid(P.kr.doomed, .45), y = seaY(.45); g.fillStyle = `rgba(230,246,255,${.35 * a})`; for (let j = 0; j < 9; j++) { g.beginPath(); g.ellipse(x + Math.sin(j * 2.3) * 260, y + Math.cos(j * 1.7) * 40, 120 + (j % 3) * 40, 22, 0, 0, 7); g.fill(); } } } // foam where it went down
@@ -1536,12 +1633,314 @@
     if (!orbit) for (const f of F) if (f.falling && f.h > -FREE(f.z) - 260) { g.save(); g.beginPath(); g.rect(-300, -3000, W + 600, seaY(f.z) + 3000); g.clip(); drawFighter(f); g.restore(); } // (overboard: behind the ships, under the water)
     if (P.kr) { pirDrawDoomed(now); pirEye(krT()); }
     if (P.planks || (P.kr && krT() < 3.4)) for (const pz of PLANKS) { const tt = P.kr ? krT() - 2.2 : -1, dy = tt > 0 ? 900 * tt * tt : 0; g.save(); g.beginPath(); g.rect(-300, -3000, W + 600, seaY(pz) + 3000); g.clip(); pirPlank(pz, dy); g.restore(); }
-    for (const s of [0, 1]) if (P.sunk !== s) { g.drawImage(pirShipImg(s), 0, 0, W, H); for (const c of P.cannons) if (c.s === s) pirCannon(c); }
+    for (const s of [0, 1]) if (P.sunk !== s) { g.drawImage(pirShipImg(s), 0, 0, W, H); pirFigure(s); for (const c of P.cannons) if (c.s === s) pirCannon(c); }
+    for (const e of P.storm.fx) if (e.kind === 'wave') stormWaveBack(e); // 🌊 the wave rising beside the ship / water on its deck
     if (P.planks && P.sunk == null) { g.strokeStyle = 'rgba(40,24,10,.75)'; g.lineWidth = 3; for (const [z, y0] of [[.62, 300], [.2, 336]]) { g.beginPath(); g.moveTo(deckMid(0, z), y0); g.quadraticCurveTo(GAPX, y0 + (ROPE_Y + (z === .2 ? 30 : 0) - y0) * 2, deckMid(1, z), y0); g.stroke(); } } // grappling lines between the ships (the swing ropes hang from them)
     for (const b of P.balls) if (b.t > .45) { const y = zY(b.z), r = (40 + 30 * b.z) * (1 + Math.sin(t * 20) * .08); g.strokeStyle = 'rgba(255,60,40,.9)'; g.lineWidth = 3; g.setLineDash([10, 7]); g.beginPath(); g.ellipse(b.x, y, r * 1.6, r * .45, 0, 0, 7); g.stroke(); g.setLineDash([]); g.beginPath(); g.moveTo(b.x - r * 2, y); g.lineTo(b.x + r * 2, y); g.moveTo(b.x, y - r * .7); g.lineTo(b.x, y + r * .7); g.stroke(); } // 🎯 where a cannonball will land
   }
+  // ---------- ⛈️ how the storm looks (only looks: the fight side is in stormStep) ----------
+  function boltPts(x0, y0, x1, y1, n, jit) { const pts = [[x0, y0]]; for (let i = 1; i < n; i++) { const u = i / n; pts.push([x0 + (x1 - x0) * u + vr(-jit, jit), y0 + (y1 - y0) * u + vr(-jit * .3, jit * .3)]); } pts.push([x1, y1]); return pts; }
+  function boltDraw(pts, w, a) { // a jagged bolt: a blue glow with a white middle
+    g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; const line = () => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); };
+    g.globalAlpha = a * .45; g.strokeStyle = '#8ab8ff'; g.lineWidth = w * 3.2; line(); g.globalAlpha = a; g.strokeStyle = '#eef6ff'; g.lineWidth = w; line(); g.restore();
+  }
+  function stormSkyBolt() { // ⚡ far away: from the clouds down to the sea (behind the ships)
+    const k = WX.sky; if (!k) return; const now = performance.now(), a = clamp(1 - k.t / .45, 0, 1);
+    if (!k.pts || now - k.at > 70) { k.at = now; k.pts = boltPts(k.x, k.y0, k.x + vr(-70, 70), HZ - 4, 9, 34); k.br = Math.random() < .6 ? boltPts(...k.pts[3], k.pts[3][0] + vr(-130, 130), k.pts[3][1] + vr(80, 170), 4, 18) : null; }
+    const gl = g.createRadialGradient(k.x, k.y0, 10, k.x, k.y0, 280); gl.addColorStop(0, `rgba(200,215,255,${.38 * a})`); gl.addColorStop(1, 'rgba(200,215,255,0)'); g.fillStyle = gl; g.fillRect(k.x - 280, k.y0 - 280, 560, 560);
+    boltDraw(k.pts, 2.6, a); if (k.br) boltDraw(k.br, 1.6, a * .8);
+  }
+  function stormBolt(e, now) { // ⚡ chat's lightning: from the top of the screen down onto the pirate
+    if (e.kind !== 'bolt' || e.t > .5) return; const o = e.target != null && !e.hit ? F.find(x => x.id === e.target) : null;
+    const x1 = o ? o.x : e.x, y1 = o ? zY(o.z) - o.h - 70 * S(o) : e.y ?? zY(e.z) - 60, top = cam.y - H / 2 / cam.z - 80, a = clamp(1 - e.t / .5, 0, 1) * (Math.sin(now / 18) > -.4 ? 1 : .55);
+    if (!e.pts || now - (e.at || 0) > 50 || Math.abs(e.pts[e.pts.length - 1][0] - x1) > 30) { e.at = now; e.pts = boltPts(x1 + vr(-150, 150), top, x1, y1, 12, 46); e.br = [boltPts(...e.pts[4], e.pts[4][0] + vr(-170, 170), e.pts[4][1] + vr(120, 240), 5, 24), boltPts(...e.pts[7], e.pts[7][0] + vr(-120, 120), e.pts[7][1] + vr(80, 160), 4, 18)]; }
+    boltDraw(e.pts, 8, a); for (const b of e.br) boltDraw(b, 3.2, a * .85);
+    const gl = g.createRadialGradient(x1, y1, 4, x1, y1, 150); gl.addColorStop(0, `rgba(255,255,230,${.85 * a})`); gl.addColorStop(1, 'rgba(255,255,230,0)'); g.fillStyle = gl; g.fillRect(x1 - 150, y1 - 150, 300, 300);
+  }
+  function stormWaveBack(e) { // 🌊 a huge wall of water rearing up out of the sea beside the ship (behind the pirates), then the deck stays wet for a bit
+    const s = e.s, o = s ? 1 : -1, P = z => .72 + z * .4; // (o = toward the open sea)
+    if (e.t < e.hitAt + .25) { const u = easeIO(clamp(e.t / e.hitAt, 0, 1)), fall = clamp((e.t - e.hitAt) / .25, 0, 1), n = 18, top = [], base = [];
+      for (let i = 0; i <= n; i++) { const z = -.1 + i / n * 1.2, zz = clamp(z, 0, 1), p = P(zz), h = (300 + 280 * zz) * p * u * (1 - fall * .8), over = 80 * p * u * u; top.push([outerOf(s, zz) + o * 130 * (1 - u) - o * over, zY(z) - h]); base.push([outerOf(s, zz) + o * (340 + 140 * zz), seaY(z) + 14]); }
+      g.save(); const gr = g.createLinearGradient(0, 120, 0, H); gr.addColorStop(0, 'rgba(196,232,246,.97)'); gr.addColorStop(.25, 'rgba(84,150,186,.96)'); gr.addColorStop(.65, 'rgba(30,78,112,.97)'); gr.addColorStop(1, 'rgba(10,32,54,.99)'); g.fillStyle = gr;
+      g.beginPath(); top.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); for (let i = n; i >= 0; i--) g.lineTo(...base[i]); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(12,40,64,.35)'; g.beginPath(); top.forEach(([x, y], i) => i ? g.lineTo(x + o * 40, y + 60) : g.moveTo(x + o * 40, y + 60)); for (let i = n; i >= 0; i--) g.lineTo(top[i][0] + o * 120, top[i][1] + 200); g.closePath(); g.fill(); // (the dark inside of the curl)
+      g.strokeStyle = 'rgba(244,252,255,.95)'; g.lineWidth = 12; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); top.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); // the foam lip
+      g.fillStyle = 'rgba(244,252,255,.85)'; for (let i = 0; i < top.length; i++) { const [x, y] = top[i]; for (let j = 0; j < 2; j++) { g.beginPath(); g.arc(x + vr(-14, 14) - o * vr(0, 16), y + vr(-10, 8), vr(5, 14), 0, 7); g.fill(); } }
+      g.restore(); }
+    if (e.t >= e.hitAt) { const a = clamp(1 - (e.t - e.hitAt) / (e.dur - e.hitAt), 0, 1) * .42; g.save(); pirDeckPath(g, s); g.clip(); g.fillStyle = `rgba(120,185,220,${a})`; g.fillRect(0, 0, W, H); g.restore(); } // (the deck left wet)
+  }
+  function stormWaveFront(e) { // 🌊 the wave crashing across the deck (in front of the pirates)
+    const c = (e.t - e.hitAt + .12) / .7; if (c <= 0 || c >= 1) return; const s = e.s, inward = s ? -1 : 1, u = easeIO(c), a = Math.min(.85, (1 - c) * 1.1), n = 16, P = z => .72 + z * .4, crest = [];
+    for (let i = 0; i <= n; i++) { const z = i / n, x0 = outerOf(s, z), x1 = innerOf(s, z) + inward * 40; crest.push([x0 + (x1 - x0) * u, zY(z) - (170 * (1 - u) + 18) * P(z), z]); }
+    g.save(); g.fillStyle = `rgba(140,200,228,${a})`; g.beginPath(); for (let i = 0; i <= n; i++) { const z = i / n; g.lineTo(outerOf(s, z) - inward * 30, zY(z) - (120 * (1 - u) + 40) * P(z)); } for (let i = n; i >= 0; i--) g.lineTo(crest[i][0], crest[i][1] + 34 * P(crest[i][2])); g.closePath(); g.fill();
+    g.strokeStyle = `rgba(245,252,255,${Math.min(1, a * 1.3)})`; g.lineWidth = 9; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); crest.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke();
+    g.fillStyle = `rgba(245,252,255,${a})`; for (const [x, y, z] of crest) for (let j = 0; j < 2; j++) { g.beginPath(); g.arc(x + vr(-14, 14), y + vr(-10, 10), vr(7, 16) * P(z), 0, 7); g.fill(); }
+    g.restore();
+  }
+  function stormTent(e) { // 🐙 chat's tentacle: up out of the sea beside the ship, across the deck, back down
+    const s = e.s, inward = s ? -1 : 1, z = e.z0, p = .72 + z * .4, t = e.t, bx = outerOf(s, z) - inward * 95, by = seaY(z) + 14, x0 = outerOf(s, z) - inward * 40, x1 = innerOf(s, z) + inward * 70, hiY = zY(z) - 320 * p, deckY = zY(z) - 60 * p;
+    let tx, ty, a = 1;
+    if (t < .7) { const u = easeIO(t / .7); tx = bx + (x0 - bx) * u; ty = by + (hiY - by) * u; }
+    else if (t < 1.45) { const u = easeIO((t - .7) / .75); tx = x0 + (x1 - x0) * u; ty = hiY + (deckY - hiY) * Math.min(1, u * 2.2); }
+    else { const u = easeIO(clamp((t - 1.45) / 1, 0, 1)); tx = x1 + (bx - x1) * u; ty = deckY + (by + 60 - deckY) * u; a = 1 - clamp((t - 2.35) / .25, 0, 1); }
+    const cx = (bx + tx) / 2 - inward * 30, cy = Math.min(by, ty) - 230 * p, at = u => [(1 - u) * (1 - u) * bx + 2 * u * (1 - u) * cx + u * u * tx, (1 - u) * (1 - u) * by + 2 * u * (1 - u) * cy + u * u * ty]; // (it arcs up over the rail)
+    g.save(); g.globalAlpha = a; g.beginPath(); g.rect(-400, -3000, W + 800, seaY(z) + 3000); g.clip(); // (the part under the water isn't drawn)
+    const N = 40, pts = []; for (let i = 0; i <= N; i++) { const u = i / N, [x, y] = at(u), [nx, ny] = at(Math.min(1, u + .01)), [px, py] = at(Math.max(0, u - .01)), dx = nx - px, dy = ny - py, l = Math.hypot(dx, dy) || 1; pts.push({ x, y, r: (38 - 29 * u) * p, nx: -dy / l, ny: dx / l }); }
+    const side = k => pts.map(q => [q.x + q.nx * q.r * k, q.y + q.ny * q.r * k]);
+    const L = side(1), Rr = side(-1).reverse(), tip = pts[N];
+    const gr = g.createLinearGradient(pts[0].x, pts[0].y, tip.x, tip.y); gr.addColorStop(0, '#5a1a66'); gr.addColorStop(1, '#8a3a96'); g.fillStyle = gr;
+    g.beginPath(); [...L, [tip.x + (tip.x - pts[N - 1].x) * .9, tip.y + (tip.y - pts[N - 1].y) * .9], ...Rr].forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(30,6,36,.6)'; g.lineWidth = 3; g.stroke();
+    g.strokeStyle = 'rgba(255,200,255,.25)'; g.lineWidth = 5 * p; g.beginPath(); pts.forEach((q, i) => { const x = q.x + q.nx * q.r * .45, y = q.y + q.ny * q.r * .45; i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); // (a shine)
+    const under = pts[N >> 1].ny * inward > 0 ? -1 : 1; g.fillStyle = '#efc4f4'; g.strokeStyle = 'rgba(90,26,102,.7)'; g.lineWidth = 1.5;
+    for (let i = 3; i < N - 1; i += 3) { const q = pts[i], sr = q.r * .32; g.beginPath(); g.arc(q.x + q.nx * q.r * .62 * under, q.y + q.ny * q.r * .62 * under, sr, 0, 7); g.fill(); g.stroke(); } // suckers underneath
+    g.restore();
+    if (t < .25 || (t > 2.05 && t < 2.35)) { g.strokeStyle = 'rgba(235,250,255,.7)'; g.lineWidth = 4; g.beginPath(); g.ellipse(bx, seaY(z), 60 * p, 12 * p, 0, 0, 7); g.stroke(); }
+  }
+  function pirWeather(real) { // ⛈️ rain over the whole screen + the lightning flash (on top of the picture, under the top bar)
+    const n = GFX.quality === 'low' ? 60 : 150; while (WX.drops.length < n) WX.drops.push({ x: vr(-200, W), y: vr(-H, H), v: vr(1500, 2100), l: vr(20, 44), a: vr(.16, .42) }); if (WX.drops.length > n) WX.drops.length = n;
+    g.save(); g.lineCap = 'round'; g.lineWidth = 1.6;
+    for (const d of WX.drops) { d.y += d.v * real; d.x += d.v * .24 * real; if (d.y > H + 40) { d.y = vr(-120, -20); d.x = vr(-300, W); } g.strokeStyle = `rgba(200,215,235,${d.a})`; g.beginPath(); g.moveTo(d.x, d.y); g.lineTo(d.x - d.l * .24, d.y - d.l); g.stroke(); }
+    if (WX.flash > 0 && GFX.flash !== false) { g.fillStyle = `rgba(215,228,255,${Math.min(.5, WX.flash * .45) * (Math.sin(performance.now() / 22) > 0 ? 1 : .6)})`; g.fillRect(0, 0, W, H); } // (no flash when screen flashes are switched off)
+    g.restore();
+  }
+
+  // ---------- 🐒 the easter egg (1.70.0, Derek): in every Pirate Battle two little monkeys in pirate hats have a sword fight in a rowboat between the ships ----------
+  // 🔴 T (TimePeace49) vs 🔵 K (Kirbgames). Who wins is random (the same on every screen: from the battle's id); the winner always gets grabbed by a kraken tentacle. Only looks.
+  let MK = null, mkDbg = null; const MK_Z = -.3; // (just past the ships' bows: open water between them)
+  function pirMonkeys(real) {
+    const key = fightId || 'lobby|' + (scene.lookSeed || '') + '|' + F.length;
+    if (!MK || MK.key !== key) { const h = hash(key + '|monkeys'), fast = !!scene.monkeyFast, sm = fightId && scene.mk && typeof scene.mk === 'object' ? scene.mk : null; // (sm: the server's plan for a real Pirate Battle)
+      const end = Number.isInteger(sm?.end) && MK_ENDS[sm.end] ? sm.end : Number.isInteger(scene.monkey) && MK_ENDS[scene.monkey] ? scene.monkey : (h >>> 9) % MK_ENDS.length;
+      MK = { key, t: fightId && mode === 'fight' && scene.startedAt ? Math.max(0, (Date.now() - scene.startedAt) / 1000) : 0, win: sm ? (sm.win ? 1 : 0) : h & 1, start: fast ? .6 : sm?.start ?? 2.5 + (h >>> 3) % 3, duel: fast ? 2.5 : sm?.duel ?? 9 + (h >>> 5) % 7, end, said: {}, clash: -1, chat: [null, null], early: null };
+      MK.ko = MK.start + MK.duel; MK.e0 = MK.ko + 2.6;
+      for (const [w, o] of Object.entries(sm?.out || {})) if (MK_ENDS[o?.end]) { const t0 = Math.max(0, (o.at - (scene.startedAt || o.at)) / 1000); MK.chat[w === '1' ? 1 : 0] = { end: o.end, t0, name: o.name }; if (t0 < MK.ko && (MK.early == null || t0 < MK.early)) MK.early = t0; } } // (a screen that opened late: chat's takeouts so far)
+    MK.t = mode === 'lobby' ? 0 : Math.max(MK.t + real, mode === 'fight' && !finalPair ? T : 0);
+    const t = MK.t, P2 = mkPlan(t), once = (k, at, fn) => { if (t >= at && !MK.said[k]) { MK.said[k] = 1; if (t - at < 1) fn(); } };
+    if (t > MK.start && t < P2.duelEnd) { const c = Math.floor((t - MK.start) / .55); if (c !== MK.clash) { MK.clash = c; if (c % 2 === 0) { snd('clash', { v: .2 }); for (let i = 0; i < 6; i++) parts.push({ x: GAPX + vr(-6, 6), y: seaY(MK_Z) - 40, vx: vr(-140, 140), vy: vr(-200, -40), g: 900, life: vr(.15, .35), max: .35, size: vr(1.5, 3), color: '#ffe98a', gz: null }); } } } // (sword clinks + sparks)
+    once('go', MK.start, () => snd('monkey'));
+    if (P2.natural) once('ko', MK.ko, () => snd('bonk'));
+    once('yay', P2.duelEnd + .5, () => snd('monkey'));
+  }
+  function pirMonkeyOut(m) { // 🐒 chat's "Take out Time" / "Take out Kirb" (channel points): that monkey goes the next way in the server's shuffled pile, right now
+    if (!PIR() || !MK || !MK_ENDS[m.end] || !fightId) return; const i = m.who ? 1 : 0, e = mkPlan(MK.t).end[i];
+    if (e && MK.t >= e.t0) return; // (already being taken out, or gone)
+    MK.chat[i] = { end: m.end, t0: MK.t, name: m.name }; if (MK.t < MK.ko && MK.early == null) MK.early = MK.t; // (during the sword fight: the other one wins it)
+    toast(`🐒 ${m.name ? m.name + ' TOOK OUT ' : ''}${i ? 'KIRB' : 'TIME'}!`);
+  }
+  function mkPlan(t) { // 🐒 who does what: the sword fight's plan + chat's takeouts
+    const natural = MK.early == null, duelEnd = natural ? MK.ko : MK.early, end = [null, null];
+    for (const i of [0, 1]) if (MK.chat[i]) end[i] = { idx: MK.chat[i].end, t0: MK.chat[i].t0 };
+    const winner = natural ? MK.win : MK.chat[0] && MK.chat[0].t0 === MK.early ? 1 : 0; // (taken out during the fight = the other one wins it)
+    if (natural && !end[MK.win]) end[MK.win] = { idx: MK.end, t0: MK.e0 }; // (the winner's usual ending, unless chat got it first)
+    return { natural, duelEnd, end, winner };
+  }
+  function monkeyArt(x, y, f, pose, arm, rot, col, letter) { // 🐒 an original cartoon monkey (feet at x, y; f = which way it faces; arm: −1 low … 1 lunge, 2 = up)
+    g.save(); g.translate(x, y); g.rotate(rot); g.lineCap = 'round'; g.lineJoin = 'round';
+    const fur = '#7a4a26', tan = '#e0b884';
+    g.strokeStyle = fur; g.lineWidth = 4; g.beginPath(); g.moveTo(-f * 6, -16); g.bezierCurveTo(-f * 20, -18, -f * 22, -36, -f * 12, -38); g.bezierCurveTo(-f * 6, -39, -f * 6, -32, -f * 11, -32); g.stroke(); // the curly tail
+    g.lineWidth = 4.5; for (const d of [-1, 1]) { g.beginPath(); g.moveTo(d * 4, -14); g.lineTo(d * 6, 0); g.stroke(); } // legs
+    g.fillStyle = fur; g.beginPath(); g.ellipse(0, -21, 9, 11, 0, 0, 7); g.fill(); g.fillStyle = tan; g.beginPath(); g.ellipse(f * 2, -20, 5.5, 7.5, 0, 0, 7); g.fill(); // body + belly
+    g.strokeStyle = fur; g.lineWidth = 4; g.beginPath(); g.moveTo(-f * 6, -27); g.lineTo(-f * 13, pose === 'cheer' || pose === 'held' ? -40 : -18); g.stroke(); // the other arm
+    const hx = f * 2, hy = -38;
+    for (const d of [-1, 1]) { g.fillStyle = fur; g.beginPath(); g.arc(hx + d * 9, hy - 1, 3.8, 0, 7); g.fill(); g.fillStyle = tan; g.beginPath(); g.arc(hx + d * 9, hy - 1, 2, 0, 7); g.fill(); } // ears
+    g.fillStyle = fur; g.beginPath(); g.arc(hx, hy, 9, 0, 7); g.fill();
+    g.fillStyle = tan; g.beginPath(); g.ellipse(hx + f * 2.5, hy + 2.5, 6.5, 5, 0, 0, 7); g.fill(); g.beginPath(); g.arc(hx + f * 2.5 - 2.8, hy - 1.5, 3, 0, 7); g.arc(hx + f * 2.5 + 2.8, hy - 1.5, 3, 0, 7); g.fill(); // (a heart-shaped face)
+    if (pose === 'down') { g.strokeStyle = '#2a1a10'; g.lineWidth = 1.3; for (const d of [-1, 1]) { const ex = hx + f * 2.5 + d * 2.6, ey = hy - 1; g.beginPath(); g.moveTo(ex - 1.5, ey - 1.5); g.lineTo(ex + 1.5, ey + 1.5); g.moveTo(ex + 1.5, ey - 1.5); g.lineTo(ex - 1.5, ey + 1.5); g.stroke(); } } // (x x eyes)
+    else for (const d of [-1, 1]) { g.fillStyle = '#fff'; g.beginPath(); g.arc(hx + f * 2.5 + d * 2.6, hy - 1, pose === 'held' ? 2.3 : 1.9, 0, 7); g.fill(); g.fillStyle = '#1a1010'; g.beginPath(); g.arc(hx + f * 3.2 + d * 2.6, hy - .9, 1.05, 0, 7); g.fill(); }
+    g.strokeStyle = '#4a2a14'; g.lineWidth = 1.2; g.beginPath(); if (pose === 'held') g.arc(hx + f * 2.5, hy + 4, 1.6, 0, 7); else g.arc(hx + f * 2.5, hy + 3, 2.2, pose === 'cheer' ? 0 : .25, pose === 'cheer' ? Math.PI : Math.PI - .25); g.stroke(); // mouth (an "O!" when grabbed)
+    // 🏴‍☠️ a pirate hat in its crew's colour with its letter on the front (T = TimePeace49, K = Kirbgames)
+    g.fillStyle = col; g.strokeStyle = '#1a0a06'; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(hx - 16, hy - 5); g.quadraticCurveTo(hx, hy - 1, hx + 16, hy - 5); g.quadraticCurveTo(hx + 12, hy - 10, hx + 10, hy - 14); g.quadraticCurveTo(hx, hy - 26, hx - 10, hy - 14); g.quadraticCurveTo(hx - 12, hy - 10, hx - 16, hy - 5); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = '#e0aa30'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(hx - 15, hy - 5.5); g.quadraticCurveTo(hx, hy - 1.5, hx + 15, hy - 5.5); g.stroke(); // (gold trim)
+    g.font = `13px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 2.6; g.strokeStyle = '#1a0a06'; g.strokeText(letter, hx, hy - 12.5); g.fillStyle = '#fff'; g.fillText(letter, hx, hy - 12.5);
+    // the sword arm and a tiny cutlass
+    const ax = f * 6, ay = -27, ang = arm >= 2 ? -Math.PI / 2 : -.55 + arm * .45, ex2 = ax + Math.cos(ang) * 10 * f, ey2 = ay + Math.sin(ang) * 10;
+    g.strokeStyle = fur; g.lineWidth = 4; g.beginPath(); g.moveTo(ax, ay); g.lineTo(ex2, ey2); g.stroke();
+    if (pose !== 'down' && pose !== 'held' && pose !== 'sit') { const bx = ex2 + Math.cos(ang) * 17 * f, by = ey2 + Math.sin(ang) * 17; g.strokeStyle = '#dfe4ec'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(ex2, ey2); g.quadraticCurveTo((ex2 + bx) / 2 + 3, (ey2 + by) / 2 - 3, bx, by); g.stroke(); g.strokeStyle = '#e0aa30'; g.lineWidth = 3; g.beginPath(); g.moveTo(ex2 - Math.sin(ang) * 3.5, ey2 + Math.cos(ang) * 3.5); g.lineTo(ex2 + Math.sin(ang) * 3.5, ey2 - Math.cos(ang) * 3.5); g.stroke(); }
+    g.restore();
+  }
+  // 🐒 the 20 ways the winning monkey gets taken out (1.70.0, Derek). The server picks one per battle from a shuffled pile (cards.js MONKEY_ENDS:
+  // each gets used once before any repeats). ORDER MATTERS (the pile counts by position): only ADD new ones at the end and keep MONKEY_ENDS in step.
+  // Boat coordinates: x across (0 = the middle of the boat), up is −y, the water is at y ≈ 4. Only looks: never touches the fight.
+  const MKA = {
+    under(fn) { g.save(); g.beginPath(); g.rect(-900, -1400, 1800, 1404); g.clip(); fn(); g.restore(); }, // (only the part above the water)
+    fin(x, y) { g.fillStyle = '#5c6c7c'; g.beginPath(); g.moveTo(x - 9, y); g.quadraticCurveTo(x - 2, y - 14, x + 3, y - 24); g.quadraticCurveTo(x + 6, y - 10, x + 11, y); g.closePath(); g.fill(); },
+    shark(x, y, rot, open, d) { g.save(); g.translate(x, y); g.rotate(rot); g.scale(d, 1);
+      g.fillStyle = '#6a7c8e'; g.beginPath(); g.ellipse(0, 0, 44, 15, 0, 0, 7); g.fill(); g.fillStyle = '#e8eef2'; g.beginPath(); g.ellipse(4, 5, 34, 7, 0, 0, Math.PI); g.fill();
+      g.fillStyle = '#5c6c7c'; g.beginPath(); g.moveTo(-6, -12); g.lineTo(4, -32); g.lineTo(12, -12); g.fill(); g.beginPath(); g.moveTo(-40, 0); g.lineTo(-62, -18); g.lineTo(-55, 0); g.lineTo(-62, 15); g.closePath(); g.fill();
+      g.fillStyle = '#111'; g.beginPath(); g.arc(30, -5, 2.4, 0, 7); g.fill();
+      if (open) { g.fillStyle = '#5a1018'; g.beginPath(); g.moveTo(45, -3); g.lineTo(24, 3); g.lineTo(45, 10); g.closePath(); g.fill(); g.fillStyle = '#fff'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(29 + i * 3.8, 1.5); g.lineTo(30.9 + i * 3.8, -1.5); g.lineTo(32.8 + i * 3.8, 1.5); g.fill(); } }
+      else { g.strokeStyle = '#2a3440'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(27, 4); g.lineTo(43, 2); g.stroke(); }
+      g.restore(); },
+    wave(x, h, d) { if (h < 2) return; g.save(); const gr = g.createLinearGradient(0, -h, 0, 6); gr.addColorStop(0, 'rgba(200,236,250,.95)'); gr.addColorStop(1, 'rgba(28,76,110,.95)'); g.fillStyle = gr; // a wave rearing up, curling over toward d
+      g.beginPath(); g.moveTo(x - d * 90, 6); g.quadraticCurveTo(x - d * 70, -h * .8, x + d * 10, -h); g.quadraticCurveTo(x + d * 40, -h * 1.02, x + d * 46, -h * .72); g.quadraticCurveTo(x + d * 24, -h * .8, x + d * 30, 6); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(246,252,255,.95)'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - d * 60, -h * .7); g.quadraticCurveTo(x - d * 20, -h * 1.02, x + d * 46, -h * .72); g.stroke(); g.restore(); },
+    ball(x, y) { g.fillStyle = 'rgba(200,200,200,.35)'; g.beginPath(); g.arc(x - 14, y + 4, 5, 0, 7); g.arc(x - 26, y + 8, 4, 0, 7); g.fill(); g.fillStyle = '#16161a'; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(x - 2, y - 2.5, 2.2, 0, 7); g.fill(); },
+    puff(x, y, r, a) { if (a <= 0) return; g.save(); g.globalAlpha = a; for (const [dx, dy, k, c] of [[0, 0, 1, '#ffb02a'], [-r * .4, -r * .2, .7, '#ff6a1a'], [r * .45, -r * .1, .6, '#ffd27a'], [0, -r * .5, .55, '#5a5650']]) { g.fillStyle = c; g.beginPath(); g.arc(x + dx, y + dy, r * k, 0, 7); g.fill(); } g.restore(); },
+    gull(x, y, fl, d = 1) { g.save(); g.translate(x, y); g.scale(d, 1); g.fillStyle = '#f4f4f0'; g.strokeStyle = '#1e1e24'; g.lineWidth = 1.6;
+      for (const s of [-1, 1]) { g.beginPath(); g.moveTo(0, -2); g.quadraticCurveTo(s * 24, -16 - fl * 14, s * 52, -6 - fl * 22); g.quadraticCurveTo(s * 26, 2, 0, 4); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#5a5a66'; g.beginPath(); g.moveTo(s * 40, -8 - fl * 18); g.lineTo(s * 52, -6 - fl * 22); g.lineTo(s * 44, -2 - fl * 16); g.fill(); g.fillStyle = '#f4f4f0'; }
+      g.beginPath(); g.ellipse(0, 0, 18, 8, 0, 0, 7); g.fill(); g.stroke(); g.beginPath(); g.arc(16, -6, 7, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#f2b81a'; g.beginPath(); g.moveTo(22, -7); g.lineTo(31, -4); g.lineTo(22, -3); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(18, -8, 1.4, 0, 7); g.fill(); g.restore(); },
+    barrel(x, y, rot, broken) { g.save(); g.translate(x, y); g.rotate(rot); g.fillStyle = '#8a5428'; g.beginPath(); g.ellipse(0, 0, 14, 18, 0, 0, 7); g.fill(); g.strokeStyle = '#3a200c'; g.lineWidth = 3; for (const d of [-9, 9]) { g.beginPath(); g.moveTo(-13, d); g.lineTo(13, d); g.stroke(); } if (broken) { g.strokeStyle = '#2a1608'; g.lineWidth = 2; g.beginPath(); g.moveTo(-6, -16); g.lineTo(-2, -4); g.lineTo(-8, 6); g.stroke(); } g.restore(); },
+    banana(x, y, rot, peel) { g.save(); g.translate(x, y); g.rotate(rot); g.fillStyle = '#ffd83a'; g.strokeStyle = '#8a6a10'; g.lineWidth = 1.4;
+      if (peel) { for (const a of [-1.2, -.4, .4, 1.2]) { g.beginPath(); g.ellipse(Math.sin(a) * 6, -Math.cos(a) * 3, 6, 2.4, a, 0, 7); g.fill(); g.stroke(); } }
+      else { g.beginPath(); g.arc(0, 8, 12, Math.PI * 1.15, Math.PI * 1.85); g.arc(0, 8, 7, Math.PI * 1.85, Math.PI * 1.15, true); g.closePath(); g.fill(); g.stroke(); }
+      g.restore(); },
+    crab(x, y, snap) { g.save(); g.translate(x, y); g.strokeStyle = '#a01a14'; g.lineWidth = 2.4; g.lineCap = 'round'; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(s * 8, 2); g.lineTo(s * (16 + i * 3), 8 + i * 2); g.stroke(); }
+      g.fillStyle = '#e0302a'; g.beginPath(); g.ellipse(0, 0, 14, 9, 0, 0, 7); g.fill(); for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 10, -4); g.lineTo(s * 18, -14); g.stroke(); g.beginPath(); g.ellipse(s * 21, -17, 7, 5, s * .5, 0, 7); g.fill(); g.strokeStyle = '#7a0e0a'; g.beginPath(); g.moveTo(s * 25, -19); g.lineTo(s * (snap ? 19 : 29), -14); g.stroke(); g.strokeStyle = '#a01a14'; }
+      for (const s of [-1, 1]) { g.strokeStyle = '#a01a14'; g.beginPath(); g.moveTo(s * 4, -7); g.lineTo(s * 5, -13); g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(s * 5, -14, 2.6, 0, 7); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(s * 5, -14, 1.2, 0, 7); g.fill(); g.fillStyle = '#e0302a'; }
+      g.restore(); },
+    whale(x, y, k) { MKA.under(() => { g.save(); g.translate(x, y); g.fillStyle = '#3a4e6a'; g.beginPath(); g.ellipse(0, 26, 120, 40, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.ellipse(-20, 4, 70, 12, 0, Math.PI, 0); g.fill(); g.fillStyle = '#16202e'; g.beginPath(); g.ellipse(64, 6, 4, 3, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(-6, -12, 6, 2.5, 0, 0, 7); g.fill(); g.restore(); }); },
+    spout(x, y, h, a) { if (a <= 0) return; g.save(); g.globalAlpha = a; const gr = g.createLinearGradient(0, y - h, 0, y); gr.addColorStop(0, 'rgba(236,248,255,.9)'); gr.addColorStop(1, 'rgba(170,214,236,.8)'); g.fillStyle = gr; g.beginPath(); g.moveTo(x - 7, y); g.quadraticCurveTo(x - 5, y - h * .6, x - 16, y - h); g.lineTo(x + 16, y - h); g.quadraticCurveTo(x + 5, y - h * .6, x + 7, y); g.closePath(); g.fill(); g.fillStyle = 'rgba(240,250,255,.9)'; for (let i = 0; i < 8; i++) { g.beginPath(); g.arc(x + Math.cos(i * .8) * 24, y - h + Math.sin(i * 1.7) * 10, 7, 0, 7); g.fill(); } g.restore(); },
+    funnel(x, t) { g.save(); const top = -900, N = 16, Lp = [], Rp = []; // a twisting funnel of water from the clouds down to the sea
+      for (let i = 0; i <= N; i++) { const u = i / N, y = top + (4 - top) * u, w = 84 - 70 * Math.pow(u, .7), sw = Math.sin(t * 6 + u * 5) * 16 * (1 - u * .5); Lp.push([x + sw - w, y]); Rp.push([x + sw + w, y]); }
+      const gr = g.createLinearGradient(0, top, 0, 4); gr.addColorStop(0, 'rgba(110,122,140,.12)'); gr.addColorStop(.55, 'rgba(150,166,184,.55)'); gr.addColorStop(1, 'rgba(206,224,238,.75)'); g.fillStyle = gr;
+      g.beginPath(); [...Lp, ...Rp.slice().reverse()].forEach(([px, py], i) => i ? g.lineTo(px, py) : g.moveTo(px, py)); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(236,246,255,.5)'; g.lineWidth = 2; for (let j = 0; j < 6; j++) { g.beginPath(); for (let i = 0; i <= N; i++) { const u = i / N, [lx, y] = Lp[i], rx = Rp[i][0], m = (lx + rx) / 2, w = (rx - lx) / 2; g.lineTo(m + Math.sin(t * 9 + u * 14 + j * 1.05) * w, y); } g.stroke(); }
+      g.fillStyle = 'rgba(236,248,255,.8)'; for (let i = 0; i < 12; i++) { const a = t * 8 + i * .52; g.beginPath(); g.arc(Lp[N][0] + 14 + Math.cos(a) * 34, 2 - Math.abs(Math.sin(a)) * 18, 4.5, 0, 7); g.fill(); } g.restore(); },
+    line(x, y) { g.strokeStyle = 'rgba(230,230,220,.8)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x + 30, -1200); g.lineTo(x, y); g.stroke(); g.strokeStyle = '#c8ccd4'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 14); g.arc(x - 5, y + 14, 5, 0, Math.PI); g.stroke(); g.fillStyle = '#e8303a'; g.beginPath(); g.arc(x, y - 30, 4, 0, 7); g.fill(); },
+    hole(x) { g.fillStyle = '#100804'; g.beginPath(); g.moveTo(x - 16, -18); g.lineTo(x - 8, -12); g.lineTo(x - 2, -19); g.lineTo(x + 6, -12); g.lineTo(x + 16, -18); g.lineTo(x + 12, -8); g.lineTo(x - 12, -8); g.closePath(); g.fill(); },
+    swordfish(x, y, d, rot) { g.save(); g.translate(x, y); g.rotate(rot); g.scale(d, 1); g.fillStyle = '#3a6aa8'; g.beginPath(); g.ellipse(0, 0, 30, 9, 0, 0, 7); g.fill(); g.fillStyle = '#c8d8e8'; g.beginPath(); g.ellipse(4, 3, 22, 4, 0, 0, Math.PI); g.fill(); g.strokeStyle = '#a8b8c8'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(28, -1); g.lineTo(62, -3); g.stroke();
+      g.fillStyle = '#2a5a98'; g.beginPath(); g.moveTo(-10, -7); g.quadraticCurveTo(0, -30, 14, -8); g.fill(); g.beginPath(); g.moveTo(-28, 0); g.lineTo(-44, -14); g.lineTo(-38, 0); g.lineTo(-44, 13); g.closePath(); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(20, -3, 1.8, 0, 7); g.fill(); g.restore(); },
+    anchor(x, y, px, py) { g.strokeStyle = '#9a9aa6'; g.lineWidth = 3.5; g.setLineDash([5, 3]); g.beginPath(); g.moveTo(px, py); g.lineTo(x, y - 22); g.stroke(); g.setLineDash([]); // (on its chain)
+      g.save(); g.translate(x, y); g.rotate(-Math.atan2(x - px, y - py)); g.scale(1.45, 1.45); g.strokeStyle = '#8a8a96'; g.fillStyle = '#8a8a96'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, -20); g.lineTo(0, 16); g.moveTo(-10, -12); g.lineTo(10, -12); g.stroke(); g.beginPath(); g.arc(0, -24, 5, 0, 7); g.lineWidth = 3; g.stroke(); g.lineWidth = 5; g.beginPath(); g.arc(0, 4, 16, Math.PI * .15, Math.PI * .85); g.stroke(); for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 15, 10); g.lineTo(s * 20, 2); g.lineTo(s * 9, 6); g.fill(); } g.restore(); },
+    serpent(x, h, d, open) { if (h <= 0) return; MKA.under(() => { g.save(); g.lineCap = 'round'; const hx = x + d * 30, hy = 6 - h; g.strokeStyle = '#2e8a4a'; g.lineWidth = 22; g.beginPath(); g.moveTo(x - d * 30, 30); g.bezierCurveTo(x - d * 40, -h * .5, x + d * 40, -h * .8, hx, hy); g.stroke(); g.strokeStyle = '#9ae0a0'; g.lineWidth = 7; g.beginPath(); g.moveTo(x - d * 24, 30); g.bezierCurveTo(x - d * 32, -h * .5, x + d * 46, -h * .8, hx + d * 4, hy + 4); g.stroke(); // (its belly)
+      g.fillStyle = '#2e8a4a'; g.beginPath(); g.ellipse(hx + d * 12, hy, 22, 15, d * .2, 0, 7); g.fill(); g.fillStyle = '#ffe14a'; g.beginPath(); g.arc(hx + d * 8, hy - 8, 4.5, 0, 7); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.ellipse(hx + d * 8, hy - 8, 1.4, 3.6, 0, 0, 7); g.fill();
+      if (open) { g.fillStyle = '#5a1018'; g.beginPath(); g.moveTo(hx + d * 34, hy - 6); g.lineTo(hx + d * 14, hy + 2); g.lineTo(hx + d * 34, hy + 14); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(hx + d * 26, hy - 3); g.lineTo(hx + d * 28, hy + 3); g.lineTo(hx + d * 30, hy - 4); g.fill(); } g.restore(); }); },
+    rocket(x, y, rot, lit) { g.save(); g.translate(x, y); g.rotate(rot); if (lit) { g.fillStyle = '#ffb02a'; g.beginPath(); g.moveTo(-5, 14); g.lineTo(0, 30 + Math.random() * 14); g.lineTo(5, 14); g.fill(); g.fillStyle = '#fff2a0'; g.beginPath(); g.moveTo(-2.5, 14); g.lineTo(0, 22 + Math.random() * 6); g.lineTo(2.5, 14); g.fill(); }
+      g.fillStyle = '#e8303a'; g.fillRect(-5, -12, 10, 26); g.fillStyle = '#fff'; g.fillRect(-5, -4, 10, 4); g.fillRect(-5, 6, 10, 4); g.fillStyle = '#ffd23a'; g.beginPath(); g.moveTo(-6, -12); g.lineTo(0, -24); g.lineTo(6, -12); g.fill(); g.strokeStyle = '#8a5a2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(6, 10); g.lineTo(10, 40); g.stroke(); g.restore(); },
+    burst(x, y, r, a) { if (a <= 0) return; g.save(); g.globalAlpha = a; const cols = ['#ff4a6a', '#ffd23a', '#4ad8ff', '#7dff7a', '#d07aff']; for (let i = 0; i < 24; i++) { const ang = i / 24 * Math.PI * 2; g.strokeStyle = cols[i % 5]; g.lineWidth = 3; g.beginPath(); g.moveTo(x + Math.cos(ang) * r * .35, y + Math.sin(ang) * r * .35); g.lineTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r); g.stroke(); g.fillStyle = cols[(i + 2) % 5]; g.beginPath(); g.arc(x + Math.cos(ang) * r * 1.08, y + Math.sin(ang) * r * 1.08, 3, 0, 7); g.fill(); } g.restore(); },
+    parrot(x, y, fl, col, d) { g.save(); g.translate(x, y); g.scale(d, 1); g.fillStyle = col; g.beginPath(); g.ellipse(0, 0, 10, 6, -.2, 0, 7); g.fill(); g.beginPath(); g.moveTo(-2, -2); g.lineTo(-10, -14 - fl * 8); g.lineTo(6, -3); g.fill(); g.beginPath(); g.moveTo(-8, 1); g.lineTo(-20, 6); g.lineTo(-8, 4); g.fill(); g.beginPath(); g.arc(9, -4, 4.6, 0, 7); g.fill(); g.fillStyle = '#ffd23a'; g.beginPath(); g.moveTo(12, -5); g.quadraticCurveTo(17, -3, 13, 0); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(10, -5.5, 1.6, 0, 7); g.fill(); g.restore(); },
+    puffer(x, y, r) { g.save(); g.translate(x, y); g.strokeStyle = '#a8862a'; g.lineWidth = 2; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; g.beginPath(); g.moveTo(Math.cos(a) * r * .9, Math.sin(a) * r * .9); g.lineTo(Math.cos(a) * r * 1.22, Math.sin(a) * r * 1.22); g.stroke(); } g.fillStyle = '#f0c850'; g.beginPath(); g.arc(0, 0, r, 0, 7); g.fill(); g.fillStyle = '#fff4d0'; g.beginPath(); g.ellipse(0, r * .35, r * .7, r * .45, 0, 0, 7); g.fill(); for (const s of [-1, 1]) { g.fillStyle = '#fff'; g.beginPath(); g.arc(s * r * .35, -r * .25, r * .2, 0, 7); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(s * r * .35, -r * .22, r * .1, 0, 7); g.fill(); } g.fillStyle = '#c84a4a'; g.beginPath(); g.ellipse(0, r * .15, r * .12, r * .1, 0, 0, 7); g.fill(); g.restore(); },
+    bolt(x0, y0, x1, y1) { boltDraw(boltPts(x0, y0, x1, y1, 7, 10), 3, 1); }
+  };
+  const bob = (k, h = 6) => -Math.abs(Math.sin(k * 7)) * h, ease = easeIO;
+  const MK_ENDS = [
+    { name: 'Kraken tentacle', dur: 1.9, back: true, run(k, A) { const w = A.w, o = A.out, bx = w.x + o * 62, rise = ease(clamp(k / .8, 0, 1)), lift = clamp((k - .8) / .35, 0, 1), pull = clamp((k - 1.15) / .45, 0, 1);
+      const hx = w.x + (bx - w.x) * ease(lift), hy = -6 - 46 * Math.sin(lift * Math.PI / 2) + 150 * ease(pull), tipX = k < .8 ? bx + (w.x - bx) * rise * .9 : hx, tipY = k < .8 ? 14 - 80 * rise : hy - 18;
+      if (k < .8) A.mon(w.x, -6 + bob(k, 5), { pose: 'cheer' });
+      MKA.under(() => { for (let i = 0; i <= 16; i++) { const u = i / 16, x = bx + (tipX - bx) * u + Math.sin(u * 3 + k * 4) * 6 * (1 - u), y = 30 + (tipY - 30) * u - Math.sin(u * Math.PI) * 30, r = 9 - 6 * u; g.fillStyle = i % 2 ? '#7a2a86' : '#6a2276'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); if (i % 3 === 1) { g.fillStyle = '#e8b8f0'; g.beginPath(); g.arc(x, y + r * .5, r * .3, 0, 7); g.fill(); } }
+        if (k >= .8 && k < 1.65) { A.mon(hx, hy, { pose: 'held', rot: Math.sin(k * 18) * .3 }); g.strokeStyle = '#7a2a86'; g.lineWidth = 5; g.beginPath(); g.ellipse(hx, hy - 20, 12, 5, .2, 0, 7); g.stroke(); } });
+      A.once('s', 1.35, () => { A.splash(bx); A.word('GLUB!', bx); }); } },
+    { name: 'Lightning', dur: 2.2, run(k, A) { const w = A.w, o = A.out; // a bolt hits the sword it's holding up
+      if (k < .35) return A.mon(w.x, -6 + bob(k), { pose: 'cheer' });
+      A.once('z', .35, () => { A.snd('zap'); A.snd('thunder'); A.flash(); A.word('ZAP!'); });
+      if (k < .75) { MKA.bolt(w.x + 40, -520, w.x + w.f * 6, -60); A.mon(w.x, -6, { pose: 'cheer', burnt: 1, rot: Math.sin(k * 60) * .06 }); return; }
+      const u = clamp((k - 1.05) / .6, 0, 1); A.mon(w.x + o * 46 * u, -6 + 110 * u * u, { pose: 'down', rot: o * 1.5 * clamp((k - .75) / .35, 0, 1), burnt: 1, under: true });
+      A.once('s', 1.6, () => A.splash(w.x + o * 46)); } },
+    { name: 'Shark', dur: 2, run(k, A) { const w = A.w, o = A.out, u = clamp((k - .35) / .9, 0, 1), sx = w.x + o * 100 - o * 200 * u, sy = 12 - Math.sin(u * Math.PI) * 92;
+      if (u <= .45) A.mon(w.x, -6 + (k < .35 ? bob(k) : 0), { pose: k > .25 ? 'held' : 'cheer' });
+      MKA.under(() => { if (k < .35) MKA.fin(w.x + o * (120 - k * 60), 4); else if (u < 1) { MKA.shark(sx, sy, o * (u - .5) * 2, u > .3 && u < .48, -o); if (u > .45) A.mon(sx - o * 30, sy + 2, { pose: 'held', rot: o * (u - .5) * 2, scale: .85 }); } });
+      A.once('c', .35 + .9 * .45, () => { A.snd('bite'); A.word('CHOMP!'); }); A.once('s', 1.25, () => A.splash(w.x - o * 100)); } },
+    { name: 'Big wave', dur: 2, back: true, run(k, A) { const w = A.w, o = A.out, r = ease(clamp(k / .7, 0, 1)), c = clamp((k - .7) / .7, 0, 1);
+      MKA.wave(w.x - o * 30, 130 * r * (1 - c * .7), o);
+      if (k < .75) A.mon(w.x, -6, { pose: k > .4 ? 'held' : 'cheer' }); else A.mon(w.x + o * 170 * c, -6 - Math.sin(c * Math.PI) * 60 + 50 * c * c, { pose: 'held', rot: o * c * 5, under: true });
+      A.once('w', .75, () => { A.snd('splash'); A.word('SPLOOSH!'); }); A.once('s', 1.4, () => A.splash(w.x + o * 170)); } },
+    { name: 'Cannonball', dur: 2.2, run(k, A) { const w = A.w, o = A.out, u = clamp(k / .45, 0, 1), bx = w.x - o * 300 + o * 300 * u, by = -200 + 170 * u; // (a stray shot from one of the ships)
+      if (k < .45) { A.mon(w.x, -6 + bob(k), { pose: 'cheer' }); MKA.ball(bx, by); return; }
+      A.once('b', .45, () => { A.snd('boom'); A.word('BOOM!'); }); const t = k - .45, f = clamp(t / 1.2, 0, 1); MKA.puff(w.x, -30, 22 + t * 70, 1 - t / .35);
+      A.mon(w.x + o * 230 * f, -30 - Math.sin(f * Math.PI) * 130 + 60 * f * f, { pose: 'down', rot: o * f * 9, burnt: .6, under: true }); A.once('s', 1.65, () => A.splash(w.x + o * 230)); } },
+    { name: 'Seagull', dur: 2.4, run(k, A) { const w = A.w, o = A.out, u = clamp(k / .7, 0, 1), up = clamp((k - .7) / 1.5, 0, 1); // a huge gull swoops down and carries it off
+      const px = k < .7 ? w.x - o * 220 * (1 - ease(u)) : w.x + o * 300 * up * up, py = k < .7 ? -240 + 180 * ease(u) : -60 - 420 * up * up;
+      if (k < .7) A.mon(w.x, -6 + bob(k), { pose: 'cheer' }); else A.mon(px - o * 2, py + 54, { pose: 'held', rot: Math.sin(k * 9) * .25 });
+      MKA.gull(px, py, Math.sin(k * 16), o); A.once('g', .7, () => { A.snd('squawk'); A.word('SQUAWK!'); }); } },
+    { name: 'Falling barrel', dur: 2.2, run(k, A) { const w = A.w, o = A.out, u = clamp(k / .5, 0, 1); // a barrel falls off a ship onto it
+      if (k < .5) { A.mon(w.x, -6 + bob(k), { pose: 'cheer' }); MKA.barrel(w.x, -400 + 340 * u * u, k * 5); return; }
+      A.once('b', .5, () => { A.snd('bonk'); A.word('BONK!'); }); const t = k - .5, sq = clamp(t / .1, 0, 1), roll = clamp((t - .7) / .8, 0, 1);
+      A.mon(w.x + o * 90 * roll, -6 + 60 * roll * roll, { pose: 'down', sy: 1 - .7 * sq, sx: 1 + .5 * sq, under: true }); MKA.under(() => MKA.barrel(w.x + o * 100 * roll, -22 + 4 * sq + 70 * roll * roll, roll * 4, true));
+      A.once('s', 1.45, () => A.splash(w.x + o * 90)); } },
+    { name: 'Banana peel', dur: 2.3, run(k, A) { const w = A.w, o = A.out; // a snack, the peel, a slip, over the side
+      if (k < .6) { A.mon(w.x, -6, { pose: 'idle', arm: -1 }); MKA.banana(w.x + w.f * 12, -32, -.4, false); return; }
+      MKA.banana(w.x + o * 14, -9, 0, true); if (k < .9) return A.mon(w.x, -6, { pose: 'idle' });
+      A.once('w', .9, () => { A.snd('whoosh'); A.word('WHOOPS!'); }); const u = clamp((k - .9) / .9, 0, 1);
+      A.mon(w.x + o * 120 * u, -6 - Math.sin(u * Math.PI) * 70 + 70 * u * u, { pose: 'down', rot: o * u * 6, under: true }); A.once('s', 1.8, () => A.splash(w.x + o * 120)); } },
+    { name: 'Crab', dur: 2.2, run(k, A) { const w = A.w, o = A.out, u = clamp(k / .6, 0, 1); // a crab climbs in and pinches its tail
+      MKA.crab(w.x + o * (74 - 58 * u), -10 - 6 * Math.min(1, u * 2), Math.sin(k * 14) > 0);
+      if (k < .75) return A.mon(w.x, -6 + (k < .6 ? bob(k) : 0), { pose: 'cheer' });
+      A.once('p', .75, () => { A.snd('chop'); A.snd('monkey', { v: 1.4 }); A.word('YOWCH!'); }); const f = clamp((k - .75) / 1.1, 0, 1);
+      A.mon(w.x + o * 150 * f, -6 - Math.sin(f * Math.PI) * 160 + 40 * f, { pose: 'held', rot: Math.sin(k * 20) * .2, under: true }); A.once('s', 1.85, () => A.splash(w.x + o * 150)); } },
+    { name: 'Whale', dur: 2.6, back: true, run(k, A) { const w = A.w, o = A.out, r = ease(clamp(k / .6, 0, 1)), bl = clamp((k - .7) / .3, 0, 1), up = clamp((k - .75) / .9, 0, 1); // a whale comes up and blows it sky-high
+      MKA.whale(w.x + o * 30, 30 - 28 * r, r); if (k > .7 && k < 1.7) MKA.spout(w.x, -6, 60 + 300 * bl, 1 - clamp((k - 1.35) / .35, 0, 1));
+      A.mon(w.x, -6 - 640 * up * up, { pose: k > .3 ? 'held' : 'cheer', rot: up * 8 });
+      A.once('f', .75, () => { A.snd('whoosh'); A.snd('splash'); A.word('FWOOSH!'); }); A.once('s', 2.45, () => A.splash(w.x + o * 260, .35)); } },
+    { name: 'Waterspout', dur: 2.6, run(k, A) { const w = A.w, o = A.out, x = w.x + o * 230 - o * 230 * ease(clamp(k / .8, 0, 1)) + (k > 1.5 ? o * 420 * (k - 1.5) : 0), up = clamp((k - .8) / 1.2, 0, 1); // a twister of water sucks it up
+      MKA.funnel(x, k); if (k < .8) A.mon(w.x, -6, { pose: k > .4 ? 'held' : 'cheer' }); else A.mon(x + Math.sin(k * 14) * (16 + 22 * up), -20 - 360 * up, { pose: 'held', rot: k * 12, scale: 1 - .5 * up });
+      A.once('t', .8, () => { A.snd('whoosh'); A.word('WHOOOSH!'); }); } },
+    { name: 'Fishing hook', dur: 2.2, run(k, A) { const w = A.w, d = clamp(k / .6, 0, 1), up = clamp((k - .85) / 1, 0, 1), hx = w.x + 2, hy = -480 + 405 * ease(d) - 520 * up * up; // a hook from the rigging snags its hat
+      MKA.line(hx, hy); if (k >= .85) A.mon(hx, hy + 78, { pose: 'held', rot: Math.sin(k * 10) * .4 }); else A.mon(w.x, -6 + (k < .6 ? bob(k) : 0), { pose: k > .6 ? 'held' : 'cheer' });
+      A.once('y', .85, () => { A.snd('whoosh'); A.word('YOINK!'); }); } },
+    { name: 'Rotten plank', dur: 2, run(k, A) { const w = A.w; // it jumps for joy so hard the plank breaks
+      if (k < .5) return A.mon(w.x, -6 + bob(k * 1.3, 11), { pose: 'cheer' });
+      A.once('c', .5, () => { A.snd('chop'); A.word('CRACK!'); }); MKA.hole(w.x); const u = clamp((k - .55) / .5, 0, 1); A.mon(w.x, -6 + 90 * u * u, { pose: 'held', under: true }); A.once('s', .85, () => A.splash(w.x, .5)); } },
+    { name: 'Swordfish', dur: 2, back: true, run(k, A) { const w = A.w, o = A.out, u = clamp((k - .2) / .7, 0, 1), fx = w.x - o * 130 + o * 230 * u, fy = 12 - Math.sin(u * Math.PI) * 64, hit = .2 + .7 * .5; // a swordfish has a sword too
+      if (k < hit) A.mon(w.x, -6, { pose: 'fight', arm: Math.sin(k * 20) * .8, f: -o });
+      MKA.under(() => { if (u > 0 && u < 1) MKA.swordfish(fx, fy, o, (u - .5) * o * 1.4); });
+      if (k >= hit) { const f = clamp((k - hit) / .9, 0, 1); A.mon(w.x + o * 170 * f, -6 - Math.sin(f * Math.PI) * 90 + 50 * f, { pose: 'down', rot: o * f * 7, under: true }); }
+      A.once('h', hit, () => { A.snd('clash'); A.word('SHING!'); }); A.once('s', hit + .9, () => A.splash(w.x + o * 170)); } },
+    { name: 'Anchor', dur: 2.2, run(k, A) { const w = A.w, o = A.out, px = w.x - o * 150, py = -330, a = -1.15 + 2.3 * ease(clamp(k / .9, 0, 1)), ax = px + Math.sin(a) * 300 * -o * -1, ay = py + Math.cos(a) * 300; // it swings in on its chain
+      MKA.anchor(ax, ay, px, py); const hit = .45;
+      if (k < hit) return A.mon(w.x, -6 + bob(k), { pose: 'cheer' });
+      A.once('a', hit, () => { A.snd('slam'); A.word('CLONK!'); }); const f = clamp((k - hit) / 1, 0, 1); A.mon(w.x + o * 190 * f, -6 - Math.sin(f * Math.PI) * 110 + 50 * f, { pose: 'down', rot: o * f * 8, under: true }); A.once('s', hit + 1, () => A.splash(w.x + o * 190)); } },
+    { name: 'Sea serpent', dur: 2.4, back: true, run(k, A) { const w = A.w, o = A.out, r = ease(clamp(k / .7, 0, 1)), gulp = clamp((k - .9) / .25, 0, 1), down = clamp((k - 1.4) / .8, 0, 1); // a sea serpent snaps it up
+      MKA.serpent(w.x + o * 70, 210 * r - 260 * down, -o, k > .65 && k < 1.05);
+      if (k < .9) A.mon(w.x, -6, { pose: k > .5 ? 'held' : 'cheer' }); else if (gulp < 1) A.mon(w.x + o * 20 * gulp, -6 - 110 * gulp, { pose: 'held', scale: 1 - .6 * gulp });
+      A.once('g', .9, () => { A.snd('bite'); A.word('GULP!'); }); A.once('s', 2.05, () => A.splash(w.x + o * 70)); } },
+    { name: 'Firework', dur: 2.7, run(k, A) { const w = A.w, rx = w.x + w.f * 12; // it lights a victory rocket… and holds on to it
+      if (k < .6) { A.mon(w.x, -6, { pose: 'cheer' }); MKA.rocket(rx, -72, 0, k > .3); return; }
+      const u = clamp((k - .6) / 1, 0, 1), y = -72 - 330 * u * u; if (u < 1) { MKA.rocket(rx, y, Math.sin(k * 30) * .1, true); A.mon(rx, y + 66, { pose: 'held', rot: Math.sin(k * 30) * .2 }); }
+      A.once('l', .6, () => { A.snd('whoosh'); A.word('WHEEE!'); }); if (k > 1.6) MKA.burst(rx, -402, 30 + (k - 1.6) * 150, 1 - (k - 1.6)); A.once('p', 1.6, () => { A.snd('confettiPop'); A.flash(); }); } },
+    { name: 'Parrots', dur: 2.6, run(k, A) { const w = A.w, o = A.out, u = clamp(k / .7, 0, 1), up = clamp((k - .8) / 1.6, 0, 1); // a flock of parrots carries it off
+      const px = k < .8 ? w.x - o * 250 * (1 - ease(u)) : w.x + o * 320 * up, py = k < .8 ? -270 + 200 * ease(u) : -66 - 330 * up;
+      [[-16, '#e8303a'], [0, '#2ab84a'], [16, '#2a7ad8']].forEach(([dx, c], i) => MKA.parrot(px + dx, py - 10 - Math.abs(dx) * .4, Math.sin(k * 18 + i), c, o));
+      if (k < .8) A.mon(w.x, -6 + bob(k), { pose: 'cheer' }); else A.mon(px, py + 54, { pose: 'held', rot: Math.sin(k * 8) * .2 });
+      A.once('p', .8, () => { A.snd('squawk'); A.word('BYE BYE!'); }); } },
+    { name: 'Pufferfish', dur: 2.2, run(k, A) { const w = A.w, o = A.out, r = 6 + 40 * ease(clamp((k - .3) / .3, 0, 1)), f = clamp((k - .62) / 1, 0, 1); // a pufferfish puffs up right under its feet
+      if (k > .1) MKA.puffer(w.x + o * 6, -6 - r * .5, r);
+      if (k < .62) A.mon(w.x, -6 - (k > .3 ? r * 1.4 : 0), { pose: k > .3 ? 'held' : 'cheer' }); else A.mon(w.x + o * 170 * f, -6 - 60 - Math.sin(f * Math.PI) * 120 + 130 * f * f, { pose: 'held', rot: o * f * 5, under: true });
+      A.once('b', .62, () => { A.snd('bonk', { p: .7 }); A.word('BOING!'); }); A.once('s', 1.62, () => A.splash(w.x + o * 170)); } },
+    { name: 'Revenge kick', dur: 2.6, revenge: true, run(k, A) { const w = A.w, L = A.L, o = A.out; // the loser wakes up early, sneaks up and kicks the winner overboard
+      const sneak = ease(clamp((k - .3) / .65, 0, 1)), lx = L.x + (w.x - o * 16 - L.x) * sneak, kick = k > .95 && k < 1.2;
+      if (k < .3) A.mon(L.x, -14, { who: 'L', pose: 'down', rot: -L.f * 1.45 });
+      else A.mon(lx, -6 + (k < 1.35 ? bob(k * 1.6, 2) : bob(k, 8)), { who: 'L', pose: k >= 1.35 ? 'cheer' : kick ? 'fight' : 'idle', arm: kick ? 1 : k >= 1.35 ? 2 : -.7, f: k >= 1.35 ? -o : o });
+      if (k < 1) A.mon(w.x, -6 + bob(k), { pose: 'cheer', f: o }); // (not looking: cheering out at the sea)
+      else { const f = clamp((k - 1) / .9, 0, 1); A.mon(w.x + o * 160 * f, -6 - Math.sin(f * Math.PI) * 90 + 60 * f * f, { pose: 'held', rot: o * f * 6, under: true }); }
+      A.once('k', 1, () => { A.snd('bonk'); A.snd('monkey'); A.word('KICKED!'); }); A.once('s', 1.9, () => A.splash(w.x + o * 160)); } }
+  ];
+  function pirMonkeysDraw(tt) { // the rowboat in the open water between the ships' bows (drawn before the ships)
+    if (!MK) return; const t = MK.t, wy = seaY(MK_Z) + Math.sin(tt * 1.7) * 3, cx = GAPX + Math.sin(tt * .45) * 10, tilt = Math.sin(tt * 1.3) * .06, sc = 1.1;
+    const P2 = mkPlan(t), ph = (t - MK.start) * 3.3, W2 = P2.winner, L2 = 1 - W2, runs = [];
+    const m = [{ i: 0, x: -22, f: 1, col: CREW[0].col, letter: 'T' }, { i: 1, x: 22, f: -1, col: CREW[1].col, letter: 'K' }];
+    const wE = P2.end[W2], wake = !P2.natural ? Infinity : wE ? (MK_ENDS[wE.idx].revenge ? wE.t0 : wE.t0 + MK_ENDS[wE.idx].dur + .8) : Infinity; // (the knocked-out loser wakes once the winner is gone)
+    for (const o of m) { o.y = -6; o.pose = 'idle'; o.arm = -.7; o.rot = 0; o.show = true; const e = P2.end[o.i];
+      if (e && t >= e.t0) { o.show = false; const E = MK_ENDS[e.idx] || MK_ENDS[0]; if (t - e.t0 < E.dur) runs.push({ o, E, ek: t - e.t0 }); continue; } // (being taken out: its ending draws it)
+      if (t <= MK.start) o.y -= Math.abs(Math.sin(tt * 3 + o.i * 1.7)) * 2;
+      else if (t < P2.duelEnd) { const l = Math.max(0, Math.sin(ph + o.i * 2.4)); o.x += o.f * l * 12; o.arm = l > .55 ? 1 : -.4 + Math.sin(ph * 2 + o.i) * .3; o.y -= Math.abs(Math.sin(ph * 1.3 + o.i)) * 4; o.pose = 'fight'; }
+      else if (o.i === W2) { const c = t - P2.duelEnd; if (c < 2.6) { o.pose = 'cheer'; o.arm = 2; o.y -= Math.abs(Math.sin(c * 7)) * 12; } else { o.f = Math.sin(c * 1.3) > 0 ? 1 : -1; } } // (won: cheers, then looks around)
+      else if (t < wake) { o.pose = 'down'; o.rot = -o.f * Math.min(1, (t - P2.duelEnd) / .35) * 1.45; o.y = -14; } // (knocked flat, dizzy)
+      else if (wE && MK_ENDS[wE.idx].revenge && t < wake + MK_ENDS[wE.idx].dur + 2) { o.pose = 'cheer'; o.arm = 2; o.y -= Math.abs(Math.sin(t * 6)) * 6; } // (🙈 it got its revenge)
+      else { o.pose = 'sit'; o.arm = -1; o.f = Math.sin((t - wake) * 2.6) > 0 ? 1 : -1; o.y = -2; } }
+    const mystery = { i: -1, x: 0, f: 1, col: '#3a3a44', letter: '?' }; // (🙈 a revenge kick when the other monkey is already gone: a mystery monkey climbs in)
+    const mkA = r => { const w = r.o, other = m[1 - w.i], L = r.otherHere ? other : { ...mystery, x: -w.x, f: -w.f };
+      return { w, L, out: w.x < 0 ? -1 : 1,
+        mon: (x, y, o = {}) => { const mm = o.who === 'L' ? L : w, d = () => { g.save(); g.translate(x, y); const z2 = o.scale ?? 1; if (z2 !== 1 || o.sx || o.sy) g.scale(z2 * (o.sx ?? 1), z2 * (o.sy ?? 1)); if (o.burnt) g.filter = `brightness(${1 - .65 * o.burnt})`; monkeyArt(0, 0, o.f ?? mm.f, o.pose ?? 'held', o.arm ?? (o.pose === 'cheer' ? 2 : -.7), o.rot ?? 0, mm.col, mm.letter); g.restore(); }; o.under ? MKA.under(d) : d(); },
+        once: (key, at, fn) => { const kk = 'e' + w.i + key; if (r.ek >= at && !MK.said[kk]) { MK.said[kk] = 1; if (r.ek - at < 1) fn(); } },
+        splash: (x, kk = .6) => pirSplash(cx + x * sc, MK_Z, kk, false), word: (txt, x) => word(txt, cx + (x ?? w.x) * sc, wy - 100 * sc, '#ffe98a', 34),
+        snd: (n, o) => snd(n, o), flash: () => { WX.flash = Math.max(WX.flash, .9); } }; };
+    for (const r of runs) { r.otherHere = m[1 - r.o.i].show; if (r.E.revenge && r.otherHere) m[1 - r.o.i].show = false; } // (🙈 the revenge ending moves the other monkey itself)
+    g.save(); g.translate(cx, wy); g.rotate(tilt); g.scale(sc, sc);
+    for (const r of runs) if (r.E.back) r.E.run(r.ek, mkA(r)); // (things that come up behind the boat)
+    g.fillStyle = '#3a2210'; g.beginPath(); g.ellipse(0, -16, 68, 7, 0, 0, 7); g.fill(); // (the inside of the boat)
+    for (const o of m) if (o.show) { monkeyArt(o.x, o.y, o.f, o.pose, o.arm, o.rot, o.col, o.letter); if (o.pose === 'down') for (let i = 0; i < 3; i++) { const a = tt * 5 + i * 2.1; g.fillStyle = '#ffd23a'; g.beginPath(); g.arc(o.x - o.f * 26 + Math.cos(a) * 9, -30 + Math.sin(a) * 3, 2.4, 0, 7); g.fill(); } } // (dizzy stars)
+    g.fillStyle = '#5a341a'; g.beginPath(); g.moveTo(-72, -17); g.quadraticCurveTo(-66, 8, -30, 10); g.lineTo(30, 10); g.quadraticCurveTo(66, 8, 72, -17); g.closePath(); g.fill(); g.strokeStyle = '#2a1608'; g.lineWidth = 3; g.stroke();
+    g.strokeStyle = 'rgba(160,110,60,.7)'; g.lineWidth = 2; for (const y of [-9, -1]) { g.beginPath(); g.moveTo(-66 + (y + 17) * .5, y); g.lineTo(66 - (y + 17) * .5, y); g.stroke(); }
+    g.fillStyle = '#c8965a'; g.fillRect(-74, -20, 148, 5); g.strokeStyle = '#9a6a3a'; g.lineWidth = 3; g.beginPath(); g.moveTo(-44, -18); g.lineTo(-98, 6); g.moveTo(44, -18); g.lineTo(98, 6); g.stroke(); // the rim + the oars
+    g.fillStyle = 'rgba(18,40,62,.88)'; g.beginPath(); g.ellipse(0, 7, 92, 8, 0, 0, 7); g.fill(); g.strokeStyle = 'rgba(220,240,255,.45)'; g.lineWidth = 2; g.beginPath(); g.ellipse(0, 7, 92, 8, 0, Math.PI * .05, Math.PI * .95); g.stroke(); // the water round it
+    for (const r of runs) if (!r.E.back) r.E.run(r.ek, mkA(r)); // 🐒 how it gets taken out this time
+    g.restore();
+  }
   function pirFront(now) { // in front of the pirates: the stern rails, the swing ropes, cannonballs in the air
     const P = pirS();
+    for (const e of P.storm.fx) e.kind === 'wave' ? stormWaveFront(e) : e.kind === 'tentacle' ? stormTent(e) : stormBolt(e, now); // ⛈️ chat's storm powers
     for (const s of [0, 1]) if (P.sunk !== s) pirSternRail(s);
     for (const f of F) if (f.swing && f.alive) { const s = S(f), hx = f.x + f.face * 8 * s, hy = zY(f.z) - f.h - 128 * s; g.strokeStyle = '#c8a870'; g.lineWidth = 3; g.beginPath(); g.moveTo(f.swing.ax, ROPE_Y); g.quadraticCurveTo((f.swing.ax + hx) / 2, (ROPE_Y + hy) / 2 + 12, hx, hy); g.stroke(); }
     for (const b of P.balls) if (b.t <= .45) { const k = 1 - b.t / .45, p = .72 + b.c.z * .4, d = b.c.s ? -1 : 1, x0 = cannonX(b.c) + d * 50 * p, y0 = zY(b.c.z) - 30 * p, x = x0 + (b.x - x0) * k, y = y0 + (zY(b.z) - 20 - y0) * k - 230 * 4 * k * (1 - k); g.fillStyle = 'rgba(200,200,200,.35)'; for (let j = 1; j < 5; j++) { const kk = Math.max(0, k - j * .05), xx = x0 + (b.x - x0) * kk, yy = y0 + (zY(b.z) - 20 - y0) * kk - 230 * 4 * kk * (1 - kk); g.beginPath(); g.arc(xx, yy, 7 + j * 2, 0, 7); g.fill(); } g.fillStyle = '#141416'; g.beginPath(); g.arc(x, y, 11 * (.72 + b.z * .4), 0, 7); g.fill(); }
@@ -1559,7 +1958,11 @@
   }
   function pirDebris(s, n) { for (let i = 0; i < n; i++) { const z = vr(.1, .9), x = vr(Math.min(deckLo(s, z), deckHi(s, z)), Math.max(deckLo(s, z), deckHi(s, z))); pir.debris.push({ x, y: zY(z) - vr(0, 40), z, vx: vr(-320, 320), vy: -vr(300, 820), rot: vr(0, 6), vr: vr(-8, 8), w: vr(30, 90), h: vr(8, 16), col: ['#8a5a2a', '#a8763e', '#6a4420', '#3a2410'][i % 4], barrel: Math.random() < .15, t: 0 }); } }
   function pirTick(real) { // 🏴‍☠️ things that only look nice (splash rings, wreckage) + the kraken scene's moments
-    const P = pirS(); for (const r of P.rings) r.t += real; P.rings = P.rings.filter(r => r.t < 1.8);
+    const P = pirS();
+    WX.flash = Math.max(0, WX.flash - real * 3); if ((WX.flashT -= real) <= 0) { WX.flashT = vr(5, 12); WX.flash = Math.max(WX.flash, vr(.4, .75)); WX.sky = { x: vr(160, W - 160), y0: vr(110, 250), t: 0 }; WX.rumble = vr(.3, 1.4); } // ⛈️ lightning far away now and then, thunder a moment later
+    if (WX.sky && (WX.sky.t += real) > .45) WX.sky = null; if (WX.rumble != null && (WX.rumble -= real) <= 0) { WX.rumble = null; snd('rumble'); }
+    for (const f of F) if (f.charT != null && T - f.charT < (f.alive ? 2.5 : 7) && Math.random() < real * 12) parts.push({ x: f.x + vr(-14, 14), y: zY(f.z) - f.h - vr(40, 100) * S(f), vx: vr(-20, 20), vy: vr(-90, -40), g: -20, life: vr(.6, 1.2), max: 1.2, size: vr(6, 12), color: 'rgba(60,60,64,.5)', gz: null, dust: true }); // ⚡ smoke off anyone the lightning hit
+    pirMonkeys(real); // 🐒 for (const r of P.rings) r.t += real; P.rings = P.rings.filter(r => r.t < 1.8);
     for (const d of P.debris) { if (!d.float) { d.vy += 1300 * real; d.x += d.vx * real; d.y += d.vy * real; d.rot += d.vr * real; if (d.vy > 0 && d.y >= seaY(d.z)) { d.float = true; pirSplash(d.x, d.z, .45, true); } } else d.t += real; } P.debris = P.debris.filter(d => !d.float || d.t < 20);
     const k = P.kr; if (!k || mode !== 'final') return; const t = modeT, once = (key, at, fn) => { if (t >= at && !k.fired.has(key)) { k.fired.add(key); fn(); } };
     k.tents.forEach((tn, i) => once('t' + i, tn.at, () => { if (tn.bz < 1 && !tn.by) pirSplash(tn.bx, tn.bz, .9, i > 0); }));
@@ -1597,7 +2000,7 @@
     if (cine.rot) { g.fillStyle = '#000'; g.fillRect(0, 0, W, H); }
     g.save(); camApply(); // 🎥 the world (the top bar, banners and the winner screen stay put)
     if (cine.rot || cine.quake > .2) { g.drawImage(bg, -W * .75, -H * .75, W * 2.5, H * 2.5); g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(-W * .75, -H * .75, W * 2.5, H * 2.5); } // (past the edges while the camera spins / shakes)
-    if (cine.orb != null && cine.orbit && finalPair) { drawOrbit(now, k); g.restore(); hud(now); finHud(now); return; } // 🎥 the FINAL FIGHT camera circling the last two
+    if (cine.orb != null && cine.orbit && finalPair) { drawOrbit(now, k); g.restore(); if (PIR()) pirWeather(real); hud(now); finHud(now); return; } // 🎥 the FINAL FIGHT camera circling the last two
     drawStage(now, false);
     for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - (w.kind === 'chair' ? 28 * s : 6), 1, s, w.h > 0 ? T * 8 : 0); }
     const shown = mode === 'replay' && replay ? replay.frames[replay.i].f.map((sn, i) => ({ ...F[i], ...sn, stains: F[i].stains.slice(0, sn.sn), target: { x: F[i].x * 0 + sn.x + sn.look * 50, alive: true } })) : F;
@@ -1611,11 +2014,13 @@
     for (const t of texts) { const a = Math.min(1, t.life / t.max * 2), sc = 1 + (1 - t.life / t.max) * .25; g.save(); g.translate(t.x, t.y); g.rotate(t.rot); g.scale(sc, sc); g.globalAlpha = a; g.font = `${t.size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = '#1a0a08'; g.strokeText(t.t, 0, 0); g.fillStyle = t.color; g.fillText(t.t, 0, 0); g.restore(); }
     if (cam.follow?.alive && mode !== 'replay') { const f = cam.follow, s = S(f), [x, y] = fpos(f); g.strokeStyle = '#7dd3fc'; g.lineWidth = 3; g.setLineDash([8, 6]); g.beginPath(); g.ellipse(x, zY(f.z) - f.h, 60 * s, 16 * s, 0, now / 400, now / 400 + 6.3); g.stroke(); g.setLineDash([]); }
     g.restore();
+    if (PIR()) pirWeather(real); // ⛈️ rain + lightning flashes
     for (const p of petals) { g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.beginPath(); g.ellipse(0, 0, 6, 3.5, 0, 0, 7); g.fill(); g.restore(); }
     hud(now); finHud(now);
     if (cam.follow && mode !== 'replay' && mode !== 'won') { const txt = `🎥 Following ${cam.follow.name || ''}`; g.font = '800 24px Inter, sans-serif'; const tw = g.measureText(txt).width; g.fillStyle = 'rgba(10,20,40,.75)'; g.fillRect(W / 2 - tw / 2 - 16, H - 64, tw + 32, 40); g.fillStyle = '#7dd3fc'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, W / 2, H - 44); }
     const vg = g.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * .95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,6,0,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H); // old film look
     if (GFX.quality === 'high') { g.fillStyle = 'rgba(255,230,190,.05)'; for (let i = 0; i < 3; i++) g.fillRect(vr(0, W), 0, 1.5, H); }
+    if (mkDbg && MK && PIR()) { MK.end = mkDbg.end; if (mkDbg.win != null) MK.win = mkDbg.win; MK.t = mkDbg.t; MK.e0 = MK.ko + 2.6; g.setTransform(k, 0, 0, k, 0, 0); g.fillStyle = '#26364a'; g.fillRect(0, 0, W, H); g.save(); g.translate(W / 2, H * .72); g.scale(2.6, 2.6); g.translate(-GAPX, -seaY(MK_Z)); pirMonkeysDraw(now / 1000); g.restore(); } // (🧪 CARDS.mkView)
   }
   function drawStage(now, orbit) { // the map behind the fighters (orbit = the circling FINAL FIGHT camera drew the picture itself; nobody falling)
     if (!orbit) g.drawImage(bg, 0, 0, W, H);
@@ -1629,6 +2034,7 @@
     g.fillStyle = 'rgba(20,6,6,.72)'; g.fillRect(0, 0, W, 62);
     g.font = `34px ${FONT}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#ffd23a'; g.fillText(`${MI().title} · ${scene.battleName || 'Card battle'}`, 24, 32);
     g.textAlign = 'right'; g.fillStyle = '#fff'; g.fillText(PIR() ? (mode === 'lobby' ? `${CREW[0].dot} ${F.filter(f => f.team === 0).length} vs ${F.filter(f => f.team === 1).length} ${CREW[1].dot} ready` : `${CREW[0].dot} ${crewN(0)} vs ${crewN(1)} ${CREW[1].dot} standing`) : mode === 'lobby' ? `${F.length} ${scene.chars ? 'fighter' : 'pack'}${F.length === 1 ? '' : 's'} ready` : `${live} of ${F.length} standing`, W - 24, 32);
+    if (PIR() && scene.stormTips?.length && (mode === 'lobby' || mode === 'intro' || mode === 'fight')) { g.font = '800 20px Inter, sans-serif'; g.textAlign = 'left'; const t = `⛈️ Channel points: ${scene.stormTips.join('  ·  ')}`, w = g.measureText(t).width + 28; g.fillStyle = 'rgba(14,22,40,.8)'; g.fillRect(16, 68, w, 32); g.fillStyle = '#bfe4ff'; g.fillText(t, 30, 85); } // ⛈️ (what chat can send)
     if (on.length) { g.font = '800 20px Inter, sans-serif'; g.textAlign = 'center'; const t = on.map(k => WN[k] || k).join('   '); const w = g.measureText(t).width + 30; g.fillStyle = 'rgba(160,20,40,.8)'; g.fillRect(W / 2 - w / 2, 66, w, 32); g.fillStyle = '#fff'; g.fillText(t, W / 2, 83); }
     if (mode === 'fight' || mode === 'final' || mode === 'intro') { // ⏱️ the fight clock (stops while FINAL FIGHT shows)
       const left = finalLeft > 0 ? finalLeft : Math.max(0, D - T), txt = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
@@ -1677,5 +2083,6 @@
       FIN.on = false; mode = 'lobby'; return errs; },
     state: () => ({ mode, orb: cine.orb == null ? null : +cine.orb.toFixed(2), fin: FIN.on ? { phase: FIN.phase, t: +FIN.t.toFixed(2), name: FIN.fin?.name, cel: FIN.cel?.name, errs: (FIN.errs || []).slice(-3) } : null, modeT: +modeT.toFixed(2), alive: alive().length, rot: +cine.rot.toFixed(2), z: +cam.z.toFixed(2), quake: +cine.quake.toFixed(1), punch: !!cine.punch, manual: cam.manual }), // (tests)
     dbg: () => alive().map(f => ({ id: f.id, d: f.id === destined, x: Math.round(f.x), z: +f.z.toFixed(2), h: Math.round(f.h), hp: Math.round(f.hp), down: +f.down.toFixed(2), held: !!f.heldBy, whip: f.whip, reb: +f.rebound.toFixed(2), atk: f.atk?.kind, stun: +f.stun.toFixed(2), tgt: f.target?.id, seek: !!f.seek, w: f.weapon, cd: +f.cd.toFixed(2), team: f.team, ship: PIR() ? shipOf(f.x, f.z) : undefined, swing: !!f.swing })),
+    mk: () => MK && { t: MK.t, start: MK.start, ko: MK.ko, e0: MK.e0, win: MK.win, end: MK.end, chat: MK.chat, early: MK.early }, mkView: (end, t, win) => { mkDbg = end == null ? null : { end, t, win }; }, // (tests: mkView draws only the monkeys' rowboat, big, at that moment) storm: () => pir?.storm && { q: pir.storm.q.length, fx: pir.storm.fx.map(e => e.kind + ':' + e.t.toFixed(2)) }, // (tests: 🐒 the monkeys' clock, ⛈️ storm powers waiting / going)
     pir: () => PIR() && pir ? { crews: [crewN(0), crewN(1)], all: [F.filter(f => f.team === 0).length, F.filter(f => f.team === 1).length], sunk: pir.sunk, safe: pir.safe, planks: pir.planks, balls: pir.balls.length, pair: finalPair ? finalPair.map(f => ({ id: f.id, team: f.team, ship: shipOf(f.x, f.z), onDeck: onDeck(f.x, f.z) })) : null, overboard: F.filter(f => f.falling).length, mode } : null }; // (for testing: plays the fight fast, without drawing)
 })();

@@ -78,6 +78,10 @@ const defaults = () => ({
     powerCosts: { shield: 1000, mega: 1500, turbo: 750, ghost: 1000, spiky: 1000, magnet: 1200 },
     raceRewards: { 'Race: 💨 Boost': 'boost', 'Race: 🛡️ Shield': 'shield', 'Race: 🛢️ Drop oil': 'oil', 'Race: 🚀 Rocket': 'rocket', 'Race: ☢️ Nuke': 'nuke' }, // 🏁 race power-ups (chat battles on race maps, 1.60.0)
     raceCosts: { boost: 500, shield: 750, oil: 750, rocket: 1500, nuke: 20000 },
+    stormRewards: { 'Pirates: 🌊 Big wave': 'wave', 'Pirates: ⚡ Lightning bolt': 'bolt', 'Pirates: 🐙 Tentacle swipe': 'tentacle' }, // ⛈️ storm powers (Pirate Battle, 1.70.0): only on while a Pirate Battle is playing
+    stormCosts: { wave: 500, bolt: 750, tentacle: 1000 },
+    monkeyRewards: { 'Take out Time': 'T', 'Take out Kirb': 'K' }, // 🐒 the Pirate Battle's rowboat monkeys (1.70.0, Derek): T = TimePeace49's red one, K = Kirbgames' blue one
+    monkeyCosts: { T: 10000, K: 10000 },
     // bits: cheer at least this many bits -> event (highest tier reached wins)
     bits: { '100': 'random', '300': 'comet', '500': 'tornado', '1000': 'meteors', '2500': 'shockwave' }
   },

@@ -444,7 +444,7 @@ async function saveTwitch() {
 async function makeRewards(btn) { // 💥 chaos + 🎡 wheel + 🎉 power-ups + 🏁 race power-ups (only the missing ones; the viewer rewards + raid are made by themselves)
   btn.disabled = true; btn.textContent = 'Making…';
   const made = [], errs = [];
-  for (const [url, what] of [['/api/twitch/rewards', 'chaos'], ['/api/wheel/rewards', 'wheel'], ['/api/powerups/rewards', 'power-ups'], ['/api/racepowers/rewards', 'race power-ups']]) {
+  for (const [url, what] of [['/api/twitch/rewards', 'chaos'], ['/api/wheel/rewards', 'wheel'], ['/api/powerups/rewards', 'power-ups'], ['/api/racepowers/rewards', 'race power-ups'], ['/api/stormpowers/rewards', 'Pirate Battle storm powers']]) {
     try { const r = await api(url); made.push(...(r.made || [])); } catch (e) { errs.push(/affiliate|partner|forbidden|403/i.test(e.message) ? 'Twitch says your channel can\'t have custom rewards yet (needs Affiliate or Partner).' : `${what}: ${e.message}`); }
   }
   msg.rw = errs.length ? { ok: false, text: [...new Set(errs)].map(esc).join('<br>') + (made.length ? `<br>Made ${made.length}: ${made.map(esc).join(', ')}` : '') }
