@@ -5532,7 +5532,7 @@ function camFit() { // where the auto camera wants to be: the whole cliff that's
   if (!live.length || phase === 'idle' || phase === 'waiting' || phase === 'lobby') { const z = Math.min(camOpt.base, camOpt.waitFit || 9); return { z, fx: camOpt.cx, fy: camOpt.waitFit ? camOpt.waitMid - (305 + (H - 305) / 2 - CAM_Y) / z : camOpt.cy }; }
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
   for (const tl of live) { const x = sx(tl.x), y = sy(tl.y) - (tl.zo || 0); if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-  for (const f of fighters) if (f.alive && !f.falling) { const x = sx(f.x), y = sy(f.y); x0 = Math.min(x0, x - 30); x1 = Math.max(x1, x + 30); y0 = Math.min(y0, y - 60); y1 = Math.max(y1, y + 20); }
+  for (const f of fighters) if (f.alive && !f.falling && !(f.hop > 40)) { const x = sx(f.x), y = sy(f.y); x0 = Math.min(x0, x - 30); x1 = Math.max(x1, x + 30); y0 = Math.min(y0, y - 60); y1 = Math.max(y1, y + 20); } // (1.70.1: not ones hopping high in the air)
   const bw = x1 - x0 + HW * 4, bh = y1 - y0 + 160;
   const z = clamp(Math.min(W * .86 / bw, H * .6 / bh), camOpt.base, camOpt.base * 2);
   return { z, fx: (x0 + x1) / 2, fy: (y0 + y1) / 2 + 30 };
@@ -5555,10 +5555,10 @@ function updateCam(dt) {
   if (MAP.camFit && !cam.manual && !cam.overview) { const g = MAP.camFit(), k = Math.min(1, dt * 2.5); cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k; return; } // maps with their own camera (Pompeii scrolls down with the chase)
   if (cam.overview) { const k = Math.min(1, dt * 3); cam.z += (Math.min(camOpt.base, camOpt.fit) * .95 - cam.z) * k; cam.fx += (camOpt.cx - cam.fx) * k; cam.fy += (camOpt.cy - cam.fy) * k; return; }
   if (cam.manual || !camOpt.auto) { cam.sg = null; if (!cam.manual) { const pre = phase === 'idle' || phase === 'waiting' || phase === 'lobby', g = pre ? camFit() : { z: camOpt.base, fx: camOpt.cx, fy: camOpt.cy }, k = Math.min(1, dt * 3); cam.z += (g.z - cam.z) * k; cam.fx += (g.fx - cam.fx) * k; cam.fy += (g.fy - cam.fy) * k; } return; }
-  // (1.61.1, Derek: less shaky) the goal itself is smoothed first and small changes are ignored, then the camera eases to it
-  const g = camFit(), sg = cam.sg || (cam.sg = { ...g }), kg = Math.min(1, dt * .8), k = Math.min(1, dt * 1.4);
-  if (Math.abs(g.z - sg.z) / sg.z > .015) sg.z += (g.z - sg.z) * kg;
-  if (Math.hypot(g.fx - sg.fx, g.fy - sg.fy) > 18 / cam.z) { sg.fx += (g.fx - sg.fx) * kg; sg.fy += (g.fy - sg.fy) * kg; }
+  // (1.61.1 + 1.70.1, Derek: "less shaky", then "it bounces too much") the goal is smoothed with a big dead zone: zooming in is slow, zooming out a bit quicker (so nobody leaves the picture), small moves are ignored
+  const g = camFit(), sg = cam.sg || (cam.sg = { ...g }), dz = g.z - sg.z, k = Math.min(1, dt * 1.1);
+  if (dz < -.03 * sg.z) sg.z += dz * Math.min(1, dt * .9); else if (dz > .07 * sg.z) sg.z += dz * Math.min(1, dt * .3);
+  if (Math.hypot(g.fx - sg.fx, g.fy - sg.fy) > 45 / cam.z) { const kk = Math.min(1, dt * .55); sg.fx += (g.fx - sg.fx) * kk; sg.fy += (g.fy - sg.fy) * kk; }
   cam.z += (sg.z - cam.z) * k; cam.fx += (sg.fx - cam.fx) * k; cam.fy += (sg.fy - cam.fy) * k;
 }
 function applyCam() { ctx.translate(CX, CAM_Y); ctx.scale(cam.z, cam.z); ctx.translate(-cam.fx, -cam.fy); }

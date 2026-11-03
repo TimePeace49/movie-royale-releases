@@ -236,7 +236,11 @@ function fromPile(key, n) {
 }
 const monkeyPile = test => fromPile(test ? 'monkey:test' : 'monkey:pirates', MONKEY_ENDS);
 // 🐒 chat's "Take out Time" (0, the red T monkey) / "Take out Kirb" (1, the blue K monkey): only while it's still in the rowboat. The next way in the pile (Derek).
-export function monkeyIn(who) { const f = live.fight, m = f?.mk; if (!f || live.phase !== 'fight' || !m || m.out[who]) return false; const t = (Date.now() - (f.startedAt || 0)) / 1000; return !(m.early == null && who === m.win && t > m.start + m.duel + 2.6); } // (the sword fight's winner gets taken out at the end of it)
+export function monkeyIn(who) { // (both always die, 1.70.1 Derek: the loser in the sword fight, the winner 2.6 s after it ends; chat can get either one first)
+  const f = live.fight, m = f?.mk; if (!f || live.phase !== 'fight' || !m || m.out[who]) return false;
+  const t = (Date.now() - (f.startedAt || 0)) / 1000 + .3, duelEnd = m.early ?? (m.start + m.duel); if (t < duelEnd) return true; // (+ .3 s: a game screen can be a moment ahead)
+  const winner = m.early == null ? m.win : (m.out[0] ? 1 : 0); return who === winner && t < duelEnd + 2.6;
+}
 export function monkeyOut(who, name) {
   if (!monkeyIn(who)) return null; const f = live.fight, m = f.mk, t = (Date.now() - (f.startedAt || 0)) / 1000, end = monkeyPile(f.test);
   m.out[who] = { end, at: Date.now(), name: String(name || '').slice(0, 25) }; if (m.early == null && t < m.start + m.duel) m.early = t; // (during the sword fight: the other one wins it and stays)

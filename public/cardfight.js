@@ -1267,7 +1267,7 @@
   const easeIO = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
   function quake(n) { cine.quake = Math.min(13, cine.quake + n * .5); } // (1.61.1, Derek: less shaky: half the shake it had)
   function onHit(x, y, dmg) { cine.hit = { x, y, t: performance.now() }; if (dmg >= 18) quake(Math.min(6, dmg * .2)); }
-  function onKO(o) { quake(10); if (!cam.manual && !cam.follow && !cam.overview && alive().length > 2) cine.punch = { x: o.x, y: zY(o.z) - o.h - 70 * S(o), t: 0, dur: 1.4 }; }
+  function onKO(o) { quake(10); } // (1.70.1, Derek: the auto camera bounced too much: no more punch-in on every K.O.)
   function finalCam() { // remember the view from before the FINAL FIGHT spin
     cine.saved = { x: cam.x, y: cam.y, z: cam.z, manual: cam.manual, follow: cam.follow, overview: cam.overview }; cine.from = null; cine.punch = null; cam.sg = null;
     cam.follow = null; cam.overview = false; cam.manual = false; cine.end = null;
@@ -1282,14 +1282,11 @@
     if (cam.overview || mode === 'lobby' || mode === 'intro' || mode === 'won' || !cam.auto || !F.length) return { x: W / 2, y: H / 2, z: 1 };
     const se = PIR() && pir?.storm?.fx.find(e => e.kind === 'bolt' ? e.t < .9 : e.t < 2.3); // ⛈️ chat's storm power: pull back to show it (a wave / a tentacle: that whole ship; lightning: where it strikes)
     if (se) { if (se.kind !== 'bolt') return { x: se.s ? W * .62 : W * .38, y: 560, z: 1.06 }; const o = se.target != null ? F.find(x => x.id === se.target) : null, [x, y] = o ? fpos(o) : [se.x, zY(se.z)]; return { x, y: y - 80, z: 1.3 }; }
-    const live = mode === 'final' && finalPair ? finalPair : alive(); if (!live.length) return { x: W / 2, y: H / 2, z: 1 };
+    const all = mode === 'final' && finalPair ? finalPair : alive(), steady = all.filter(f => !f.swing && f.h < 90 && !f.falling), live = steady.length ? steady : all; if (!live.length) return { x: W / 2, y: H / 2, z: 1 }; // (ones flying through the air or swinging on a rope don't pull the camera around)
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const f of live) { const [x, y] = fpos(f); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y - 90); y1 = Math.max(y1, y + 110); }
     let z = clamp(Math.min(W / (x1 - x0 + 520), H / (y1 - y0 + 420)), 1, live.length <= 2 ? (finalLeft > 0 ? 1.95 : 1.75) : 1.45), x = (x0 + x1) / 2, y = (y0 + y1) / 2;
     if (cine.punch) return { x: cine.punch.x, y: cine.punch.y, z: 1.9 }; // 💥 a punch-in on a K.O.
-    const h = cine.hit, age = h ? (performance.now() - h.t) / 1000 : 9;
-    if (age < 1.6 && live.length > 2) { const k = .12 * (1 - age / 1.6); x += (h.x - x) * k; y += (h.y - y) * k; z += .04 * (1 - age / 1.6); } // leans a little toward the latest big hit
     if (finalLeft > 0 && finalLeft < 5) z += (5 - finalLeft) * .06; // the last seconds of the final fight: slowly pushes in
-    const n = performance.now() / 1000; z *= 1 + .008 * Math.sin(n / 2.6); x += 5 * Math.sin(n / 4.2); // (it breathes a tiny bit: never a dead still shot)
     return { x, y, z };
   }
   function spinCam() { // 🥊 FINAL FIGHT (1.61.4, Derek's drawing): the camera walks a full circle around the last two, who stand still in the middle; the map is copied all the way round
@@ -1348,11 +1345,12 @@
     if (cine.punch && (cine.punch.t += dt) > cine.punch.dur) cine.punch = null;
     if ((cam.manual || cam.follow || cam.overview) && camTouch && performance.now() - camTouch > CAM_IDLE) { cam.manual = false; cam.follow = null; cam.overview = false; camTouch = 0; } // 🎥 left alone: back to auto
     if (cam.follow && !cam.follow.alive) { cam.lost += dt; if (cam.lost > 1.4) { cam.follow = null; cam.lost = 0; } } else cam.lost = 0;
-    if (!cam.manual) { // (1.61.1, Derek: less shaky) the goal is smoothed and small changes ignored, then the camera eases to it
-      const g2 = camGoal(), sg = cam.sg || (cam.sg = { ...g2 }), quick = cine.punch || cam.follow || FIN.on || mode === 'over', kg = Math.min(1, dt * (quick ? 6 : 1.1)), k = Math.min(1, dt * (cine.punch ? 3.2 : cam.follow ? 3.5 : 1.5));
-      if (quick || Math.abs(g2.z - sg.z) / sg.z > .02) sg.z += (g2.z - sg.z) * kg;
-      if (quick || Math.hypot(g2.x - sg.x, g2.y - sg.y) > 22 / cam.z) { sg.x += (g2.x - sg.x) * kg; sg.y += (g2.y - sg.y) * kg; }
-      cam.z += (sg.z - cam.z) * k; cam.x += (sg.x - cam.x) * k; cam.y += (sg.y - cam.y) * k;
+    if (!cam.manual) { // (1.61.1 + 1.70.1, Derek: "less shaky", then "it bounces too much") the goal is smoothed with a big dead zone: zooming in is slow, zooming out a bit quicker (so nobody leaves the picture), small moves are ignored
+      const g2 = camGoal(), sg = cam.sg || (cam.sg = { ...g2 }), quick = cine.punch || cam.follow || FIN.on || mode === 'over', storm = PIR() && pir?.storm?.fx.length > 0, dz = g2.z - sg.z;
+      if (quick) { const kg = Math.min(1, dt * 6); sg.z += dz * kg; sg.x += (g2.x - sg.x) * kg; sg.y += (g2.y - sg.y) * kg; }
+      else { if (dz < -.03 * sg.z) sg.z += dz * Math.min(1, dt * (storm ? 2.4 : .9)); else if (dz > .07 * sg.z) sg.z += dz * Math.min(1, dt * (storm ? 2.4 : .3));
+        if (Math.hypot(g2.x - sg.x, g2.y - sg.y) > 50 / cam.z) { const kk = Math.min(1, dt * (storm ? 2.4 : .55)); sg.x += (g2.x - sg.x) * kk; sg.y += (g2.y - sg.y) * kk; } } // (⛈️ a storm power: it pulls back quicker, then drifts back slowly)
+      const k = Math.min(1, dt * (cine.punch ? 3.2 : cam.follow ? 3.5 : quick ? 3.2 : storm ? 2 : 1.1)); cam.z += (sg.z - cam.z) * k; cam.x += (sg.x - cam.x) * k; cam.y += (sg.y - cam.y) * k;
     } else cam.sg = null;
     camClamp();
   }
@@ -1730,13 +1728,15 @@
     MK.chat[i] = { end: m.end, t0: MK.t, name: m.name }; if (MK.t < MK.ko && MK.early == null) MK.early = MK.t; // (during the sword fight: the other one wins it)
     toast(`🐒 ${m.name ? m.name + ' TOOK OUT ' : ''}${i ? 'KIRB' : 'TIME'}!`);
   }
-  function mkPlan(t) { // 🐒 who does what: the sword fight's plan + chat's takeouts
+  function mkPlan(t) { // 🐒 who does what: the sword fight's plan + chat's takeouts. Both monkeys always die (1.70.1, Derek): the loser in the sword fight, the winner a moment after it (one of the 20 ways), and chat can get either one first
     const natural = MK.early == null, duelEnd = natural ? MK.ko : MK.early, end = [null, null];
     for (const i of [0, 1]) if (MK.chat[i]) end[i] = { idx: MK.chat[i].end, t0: MK.chat[i].t0 };
     const winner = natural ? MK.win : MK.chat[0] && MK.chat[0].t0 === MK.early ? 1 : 0; // (taken out during the fight = the other one wins it)
-    if (natural && !end[MK.win]) end[MK.win] = { idx: MK.end, t0: MK.e0 }; // (the winner's usual ending, unless chat got it first)
+    if (natural && !end[1 - winner]) end[1 - winner] = { duel: true, t0: duelEnd }; // (lost the sword fight: knocked overboard)
+    if (!end[winner]) end[winner] = { idx: MK.end, t0: duelEnd + 2.6 }; // (the winner celebrates, then gets taken out: always)
     return { natural, duelEnd, end, winner };
   }
+
   function monkeyArt(x, y, f, pose, arm, rot, col, letter) { // 🐒 an original cartoon monkey (feet at x, y; f = which way it faces; arm: −1 low … 1 lunge, 2 = up)
     g.save(); g.translate(x, y); g.rotate(rot); g.lineCap = 'round'; g.lineJoin = 'round';
     const fur = '#7a4a26', tan = '#e0b884';
@@ -1817,6 +1817,10 @@
     bolt(x0, y0, x1, y1) { boltDraw(boltPts(x0, y0, x1, y1, 7, 10), 3, 1); }
   };
   const bob = (k, h = 6) => -Math.abs(Math.sin(k * 7)) * h, ease = easeIO;
+  const MK_DUEL = { name: 'Lost the sword fight', dur: 2.8, run(k, A) { const w = A.w, o = A.out, f = clamp(k / .9, 0, 1); // (the sword fight's loser: the winner's last blow knocks it out of the boat; down it goes and its ghost floats up)
+    if (k < .95) A.mon(w.x + o * 150 * f, -6 - Math.sin(f * Math.PI) * 70 + 60 * f * f, { pose: 'down', rot: o * f * 6, under: true });
+    A.once('s', .9, () => { A.splash(w.x + o * 150); A.word('OVERBOARD!', w.x + o * 150); });
+    if (k > 1.15) { const u = clamp((k - 1.15) / 1.6, 0, 1); g.save(); g.globalAlpha = .75 * (1 - u * u); A.mon(w.x + o * 150 + Math.sin(k * 3) * 8, -14 - 170 * u, { pose: 'held', ghost: true }); g.restore(); } } };
   const MK_ENDS = [
     { name: 'Kraken tentacle', dur: 1.9, back: true, run(k, A) { const w = A.w, o = A.out, bx = w.x + o * 62, rise = ease(clamp(k / .8, 0, 1)), lift = clamp((k - .8) / .35, 0, 1), pull = clamp((k - 1.15) / .45, 0, 1);
       const hx = w.x + (bx - w.x) * ease(lift), hy = -6 - 46 * Math.sin(lift * Math.PI / 2) + 150 * ease(pull), tipX = k < .8 ? bx + (w.x - bx) * rise * .9 : hx, tipY = k < .8 ? 14 - 80 * rise : hy - 18;
@@ -1900,7 +1904,7 @@
       if (k > .1) MKA.puffer(w.x + o * 6, -6 - r * .5, r);
       if (k < .62) A.mon(w.x, -6 - (k > .3 ? r * 1.4 : 0), { pose: k > .3 ? 'held' : 'cheer' }); else A.mon(w.x + o * 170 * f, -6 - 60 - Math.sin(f * Math.PI) * 120 + 130 * f * f, { pose: 'held', rot: o * f * 5, under: true });
       A.once('b', .62, () => { A.snd('bonk', { p: .7 }); A.word('BOING!'); }); A.once('s', 1.62, () => A.splash(w.x + o * 170)); } },
-    { name: 'Revenge kick', dur: 2.6, revenge: true, run(k, A) { const w = A.w, L = A.L, o = A.out; // the loser wakes up early, sneaks up and kicks the winner overboard
+    { name: 'Revenge kick', dur: 2.6, revenge: true, run(k, A) { const w = A.w, L = A.L, o = A.out; // the loser (or its ghost, if it's already dead) sneaks up and kicks the winner overboard
       const sneak = ease(clamp((k - .3) / .65, 0, 1)), lx = L.x + (w.x - o * 16 - L.x) * sneak, kick = k > .95 && k < 1.2;
       if (k < .3) A.mon(L.x, -14, { who: 'L', pose: 'down', rot: -L.f * 1.45 });
       else A.mon(lx, -6 + (k < 1.35 ? bob(k * 1.6, 2) : bob(k, 8)), { who: 'L', pose: k >= 1.35 ? 'cheer' : kick ? 'fight' : 'idle', arm: kick ? 1 : k >= 1.35 ? 2 : -.7, f: k >= 1.35 ? -o : o });
@@ -1910,21 +1914,16 @@
   ];
   function pirMonkeysDraw(tt) { // the rowboat in the open water between the ships' bows (drawn before the ships)
     if (!MK) return; const t = MK.t, wy = seaY(MK_Z) + Math.sin(tt * 1.7) * 3, cx = GAPX + Math.sin(tt * .45) * 10, tilt = Math.sin(tt * 1.3) * .06, sc = 1.1;
-    const P2 = mkPlan(t), ph = (t - MK.start) * 3.3, W2 = P2.winner, L2 = 1 - W2, runs = [];
+    const P2 = mkPlan(t), ph = (t - MK.start) * 3.3, runs = [];
     const m = [{ i: 0, x: -22, f: 1, col: CREW[0].col, letter: 'T' }, { i: 1, x: 22, f: -1, col: CREW[1].col, letter: 'K' }];
-    const wE = P2.end[W2], wake = !P2.natural ? Infinity : wE ? (MK_ENDS[wE.idx].revenge ? wE.t0 : wE.t0 + MK_ENDS[wE.idx].dur + .8) : Infinity; // (the knocked-out loser wakes once the winner is gone)
     for (const o of m) { o.y = -6; o.pose = 'idle'; o.arm = -.7; o.rot = 0; o.show = true; const e = P2.end[o.i];
-      if (e && t >= e.t0) { o.show = false; const E = MK_ENDS[e.idx] || MK_ENDS[0]; if (t - e.t0 < E.dur) runs.push({ o, E, ek: t - e.t0 }); continue; } // (being taken out: its ending draws it)
+      if (e && t >= e.t0) { o.show = false; const E = e.duel ? MK_DUEL : MK_ENDS[e.idx] || MK_ENDS[0]; if (t - e.t0 < E.dur) runs.push({ o, E, ek: t - e.t0 }); continue; } // (dying: its ending draws it; after that it's gone)
       if (t <= MK.start) o.y -= Math.abs(Math.sin(tt * 3 + o.i * 1.7)) * 2;
       else if (t < P2.duelEnd) { const l = Math.max(0, Math.sin(ph + o.i * 2.4)); o.x += o.f * l * 12; o.arm = l > .55 ? 1 : -.4 + Math.sin(ph * 2 + o.i) * .3; o.y -= Math.abs(Math.sin(ph * 1.3 + o.i)) * 4; o.pose = 'fight'; }
-      else if (o.i === W2) { const c = t - P2.duelEnd; if (c < 2.6) { o.pose = 'cheer'; o.arm = 2; o.y -= Math.abs(Math.sin(c * 7)) * 12; } else { o.f = Math.sin(c * 1.3) > 0 ? 1 : -1; } } // (won: cheers, then looks around)
-      else if (t < wake) { o.pose = 'down'; o.rot = -o.f * Math.min(1, (t - P2.duelEnd) / .35) * 1.45; o.y = -14; } // (knocked flat, dizzy)
-      else if (wE && MK_ENDS[wE.idx].revenge && t < wake + MK_ENDS[wE.idx].dur + 2) { o.pose = 'cheer'; o.arm = 2; o.y -= Math.abs(Math.sin(t * 6)) * 6; } // (🙈 it got its revenge)
-      else { o.pose = 'sit'; o.arm = -1; o.f = Math.sin((t - wake) * 2.6) > 0 ? 1 : -1; o.y = -2; } }
-    const mystery = { i: -1, x: 0, f: 1, col: '#3a3a44', letter: '?' }; // (🙈 a revenge kick when the other monkey is already gone: a mystery monkey climbs in)
-    const mkA = r => { const w = r.o, other = m[1 - w.i], L = r.otherHere ? other : { ...mystery, x: -w.x, f: -w.f };
+      else { const c = t - P2.duelEnd; o.pose = 'cheer'; o.arm = 2; o.y -= Math.abs(Math.sin(c * 7)) * (c < 2 ? 12 : 6); } } // (won the sword fight: it celebrates until it gets taken out)
+    const mkA = r => { const w = r.o, other = m[1 - w.i], L = r.otherHere ? other : { ...other, ghost: true }; // (🙈 already dead: its ghost does the kicking)
       return { w, L, out: w.x < 0 ? -1 : 1,
-        mon: (x, y, o = {}) => { const mm = o.who === 'L' ? L : w, d = () => { g.save(); g.translate(x, y); const z2 = o.scale ?? 1; if (z2 !== 1 || o.sx || o.sy) g.scale(z2 * (o.sx ?? 1), z2 * (o.sy ?? 1)); if (o.burnt) g.filter = `brightness(${1 - .65 * o.burnt})`; monkeyArt(0, 0, o.f ?? mm.f, o.pose ?? 'held', o.arm ?? (o.pose === 'cheer' ? 2 : -.7), o.rot ?? 0, mm.col, mm.letter); g.restore(); }; o.under ? MKA.under(d) : d(); },
+        mon: (x, y, o = {}) => { const mm = o.who === 'L' ? L : w, gh = o.ghost || mm.ghost, d = () => { g.save(); g.translate(x, y); const z2 = o.scale ?? 1; if (z2 !== 1 || o.sx || o.sy) g.scale(z2 * (o.sx ?? 1), z2 * (o.sy ?? 1)); if (o.burnt) g.filter = `brightness(${1 - .65 * o.burnt})`; if (gh) { g.globalAlpha *= .6; g.filter = 'grayscale(1) brightness(1.9)'; } monkeyArt(0, 0, o.f ?? mm.f, o.pose ?? 'held', o.arm ?? (o.pose === 'cheer' ? 2 : -.7), o.rot ?? 0, mm.col, mm.letter); if (gh) { g.filter = 'none'; g.strokeStyle = '#ffe14a'; g.lineWidth = 2.5; g.beginPath(); g.ellipse(2, -70, 10, 3.5, 0, 0, 7); g.stroke(); } g.restore(); }; o.under ? MKA.under(d) : d(); }, // (👻 a ghost has a halo)
         once: (key, at, fn) => { const kk = 'e' + w.i + key; if (r.ek >= at && !MK.said[kk]) { MK.said[kk] = 1; if (r.ek - at < 1) fn(); } },
         splash: (x, kk = .6) => pirSplash(cx + x * sc, MK_Z, kk, false), word: (txt, x) => word(txt, cx + (x ?? w.x) * sc, wy - 100 * sc, '#ffe98a', 34),
         snd: (n, o) => snd(n, o), flash: () => { WX.flash = Math.max(WX.flash, .9); } }; };

@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.70.1
+- 🎥 Calmer auto camera in battles (Derek: it bounced too much). It no longer zooms in on every knockout and back out, doesn't lean toward every hit, ignores small moves, and zooms in slowly (it still zooms out quickly enough that nobody leaves the picture). In a test Pirate Battle it moved about a tenth as much. Ball battles got the same calmer camera.
+- 🐒 Both monkeys die in every Pirate Battle now: the loser goes overboard in the sword fight (its ghost floats up), and the winner always gets taken out right after it celebrates, one of the 20 ways. Chat can still take either one out first with Take out Time / Take out Kirb; if that happens during the sword fight, the other one wins it and still gets taken out a moment later. (In the 🙈 revenge kick, the loser's ghost does the kicking.)
+
 ## 1.70.0
 - ⛈️ The 🏴‍☠️ Pirate Battle now happens in a big storm: black storm clouds, rain blowing across the screen, lightning flashing in the distance with thunder, and a rough sea.
 - 🌊⚡🐙 Chat's storm powers (channel points, only on while a Pirate Battle plays): **Pirates: 🌊 Big wave** (500) crashes a huge wave over one of the ships and washes pirates toward the gap (some go overboard), **Pirates: ⚡ Lightning bolt** (750) strikes a pirate, **Pirates: 🐙 Tentacle swipe** (1,000) sends a kraken tentacle across a deck. They never change who wins: the winner picked before the battle is safe, and it still always ends one pirate from each crew. The camera pulls back to show them, and a line at the top of the game screen tells chat what they can send. Movie Royal makes the rewards on Twitch by itself after you sign in; change the prices in Settings → 💰 Rewards & prices.
