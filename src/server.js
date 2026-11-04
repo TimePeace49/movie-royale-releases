@@ -3722,7 +3722,7 @@ app.post('/api/co/leave', async (req, res) => {
 });
 app.post('/api/co/settings', async (req, res) => {
   const c = costream.cfg(), b = req.body || {}, was = { q: c.quality, video: c.video, scene: c.scene, cam: c.showCam };
-  for (const k of ['chaos', 'showBattle', 'showCam', 'video']) if (typeof b[k] === 'boolean') c[k] = b[k];
+  for (const k of ['chaos', 'showBattle', 'showCam', 'video', 'obsTipDone']) if (typeof b[k] === 'boolean') c[k] = b[k]; // (obsTipDone: ✅ hid the one-time OBS box, 1.71.1)
   if (['low', 'normal', 'high'].includes(b.quality)) c.quality = b.quality;
   if (typeof b.scene === 'string') c.scene = b.scene.slice(0, 200);
   if (b.camSide === 'left' || b.camSide === 'right') { c.camSide = b.camSide; costream.nudge(); } // (your partner's app moves your camera piece to that side)

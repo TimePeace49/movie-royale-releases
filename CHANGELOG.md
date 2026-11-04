@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.71.1
+- ⏭️ Co-stream setup can be skipped (Derek): **⏭️ Skip cameras** in the Co-stream tab (co-stream with only chaos linked, nothing sent or added to OBS; turn cameras back on any time), **✅ I did it, hide this** on the one-time OBS reminder (📌 brings it back), and **⏭️ Skip co-streaming** on its Setup guide page (it won't pop up again). The start-up pop-up already had Don't show again / Later.
+
 ## 1.71.0
 - 🤝 **Co-stream with a friend** (Settings → 🤝 Co-stream, Derek + Kirb): two Movie Royals linked for a shared stream. One of you presses **🎟️ Make an invite code** (your ☁️ 24/7 bot hosts a private room), the other pastes it and presses **🤝 Join**. After that it reconnects by itself whenever Movie Royal is open.
 - 📷 Cameras: each side sends its camera + game screen (OBS's Virtual Camera shows a new **🤝 Co-stream share** scene, a hidden window sends it with VDO.Ninja, about 2.5 Mbps, no sound). Your friend's picture shows up in your OBS by itself as **two pieces**: their camera (on their side, move it anywhere) and their battle.

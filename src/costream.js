@@ -134,7 +134,7 @@ export function info() {
     linked: linked(), role: c.role || '', state: status.state, error: status.error, since: status.since, code: c.role === 'host' ? c.code || '' : '',
     partner: status.pretend ? { who: status.pretend.who, pretend: true, state: ps, got: status.pretend.got.slice(-5) } : p ? { who: p.who, state: ps } : null,
     partnerName: partnerName(), partnerBattle: partnerBattle(), chaos: c.chaos !== false, showBattle: c.showBattle !== false, showCam: c.showCam !== false,
-    video: c.video !== false, quality: c.quality, camSide: mySide(), partnerSide: ps?.camSide || (mySide() === 'left' ? 'right' : 'left'), scene: c.scene || '', videoStatus: { ...status.video, layout: undefined }, obsItems: !!c.obs?.input,
+    video: c.video !== false, obsTipDone: !!c.obsTipDone, quality: c.quality, camSide: mySide(), partnerSide: ps?.camSide || (mySide() === 'left' ? 'right' : 'left'), scene: c.scene || '', videoStatus: { ...status.video, layout: undefined }, obsItems: !!c.obs?.input,
     myId: c.room ? streamId(c.room, (hooks.local() || {}).login || (hooks.local() || {}).name) : ''
   };
 }

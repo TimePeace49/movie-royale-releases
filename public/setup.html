@@ -372,7 +372,8 @@ const PAGES = {
       <li><b>One time in OBS, both of you:</b> next to <b>Start Virtual Camera</b> press the ⚙ gear → <b>Output type: Scene</b> → <b>🤝 Co-stream share</b> → OK. (Movie Royal makes that scene and starts the Virtual Camera itself; this is the one setting OBS won't let an app change.)</li>
       <li>Done. Your friend's camera shows up in your OBS on its own: move and resize it like any source.</li>
     </ol>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="location.href='/control.html?settings=costream'">🤝 Open the Co-stream settings</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="location.href='/control.html?settings=costream'">🤝 Open the Co-stream settings</button><button onclick="api('/api/setup/seen',{ids:['costream']}).catch(()=>{}).finally(()=>location.href='/control.html')" title="Not co-streaming? Skip it: it won't pop up again. It stays here in the Setup guide">⏭️ Skip co-streaming</button></div>
+    <p class="help">Only want chaos across chats, no cameras? Join anyway, then press <b>⏭️ Skip cameras</b> in the Co-stream tab.</p>
     <p class="help">Worried about lag? Settings → 🤝 Co-stream → 🩺 Lag check shows whether it's the internet or the PC, and 📶 quality Low sends less.</p>
     ${nav()}`;
   },

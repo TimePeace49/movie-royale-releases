@@ -3,6 +3,20 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.71.1: What's new
+Everything since 1.70.1.
+
+- 🤝 **Co-stream with a friend** (Settings → 🤝 Co-stream): stream together with someone else who has Movie Royal. Voices and watching videos stay on Discord; Movie Royal does the rest.
+  - 🎟️ One of you presses **Make an invite code** (your ☁️ 24/7 Discord bot hosts a private room) and sends it in Discord; the other pastes it and presses **Join**. After that it reconnects by itself whenever Movie Royal is open.
+  - 📷 **Cameras:** your friend's camera shows up in your OBS by itself, on their side (one of you left, the other right, on both streams). Move and resize it like any source.
+  - ⚔️ **Their battle on your stream:** while their battle runs it pops up on your stream and hides when it's over. It's their real game screen, so both streams show the exact same fight.
+  - ⚡ **Chaos across chats:** while your battle isn't running and theirs is, your viewers' channel point / bits chaos goes into their battle ("sent a Comet into …'s battle!"), and theirs into yours.
+  - 🩺 **Lag check** shows whether it's the internet or the PC, and 📶 picture quality goes down to Low (about 1.2 Mbps).
+  - ⏭️ **Every part can be skipped:** Skip cameras (just chaos), hide the one-time OBS reminder, or skip the Setup guide step.
+  - 📌 One thing to set by hand, once, in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.
+  - ☁️ Only the one who invites needs to update their 24/7 Discord bot (there's a box for it right in the Co-stream tab). A friend who only joins isn't asked.
+- 🧪 Test tab → 🤝 **Co-stream (pretend partner)**: try it alone, nothing is sent anywhere.
+
 ## v1.70.1: What's new
 Everything since 1.68.0.
 
