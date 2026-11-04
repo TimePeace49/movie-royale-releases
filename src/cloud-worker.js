@@ -11,12 +11,14 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 16;
+export const WORKER_V = 17;
+export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     try {
+      if (url.pathname.startsWith('/co/')) return await coRoom(req, env, url); // 🤝 co-stream room (17): two streamers' Movie Royals linked
       if (url.pathname === '/sync') return await sync(req, env);
       if (url.pathname === '/sync/pic') return await putPic(req, env, url); // 🎨 the app uploads the /character picture sheets from the streamer's PC
       if (url.pathname === '/characters' || url.pathname === '/characters/' || url.pathname === '/characters.html') { const b = await env.KV.get('pic:sitehtml'); return new Response(b || 'The parts website is not uploaded yet: the streamer opens Movie Royal once.', { status: b ? 200 : 404, headers: { 'content-type': b ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'public, max-age=300' } }); } // 🌐 the parts website (uploaded from the streamer's PC)
@@ -407,4 +409,51 @@ async function doSwap(env, s, user, oldId, value, ch) {
   const msg = `🔁 ${user.name} swapped **${old.label}${old.sub ? ` (${old.sub})` : ''}** for **${m.title}${m.year ? ` (${m.year})` : ''}**.`;
   await post(s.cfg, ch, msg);
   return 'Done! ' + msg;
+}
+
+
+// 🤝 Co-stream room (WORKER_V 17): the streamer who invites hosts the room here; both Movie Royals connect to it with a WebSocket.
+// It only passes messages along (battle state + chat chaos) and remembers each side's last state for whoever joins next.
+// The room name is a long random code from the invite, so nobody can guess it. Uses a free Durable Object (SQLite) called CO.
+async function coRoom(req, env, url) {
+  const room = url.pathname.slice(4).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  if (room.length < 16) return json({ ok: false, error: 'bad room' }, 400);
+  if (!env.CO) return json({ ok: false, error: 'This 24/7 bot was put on Cloudflare before co-streaming existed: update it in Movie Royal.' }, 501);
+  if ((req.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') return json({ ok: true, room: true, v: WORKER_V });
+  return env.CO.get(env.CO.idFromName(room)).fetch(req);
+}
+export class CoRoom {
+  constructor(ctx, env) {
+    this.ctx = ctx;
+    try { ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong')); } catch {} // (keep-alives don't wake the room up: cheaper)
+  }
+  async fetch(req) {
+    const url = new URL(req.url), clean = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, '').slice(0, n);
+    const id = clean(url.searchParams.get('id'), 40) || crypto.randomUUID(), who = clean(url.searchParams.get('who'), 40) || 'someone';
+    for (const old of this.ctx.getWebSockets(id)) { try { old.close(4000, 'replaced'); } catch {} } // the same app reconnecting
+    if (this.ctx.getWebSockets().filter(w => (w.deserializeAttachment() || {}).id !== id).length >= 6) return new Response('room full', { status: 429 });
+    const pair = new WebSocketPair(), [client, server] = Object.values(pair);
+    this.ctx.acceptWebSocket(server, [id]);
+    server.serializeAttachment({ id, who, state: null });
+    const here = this.ctx.getWebSockets().filter(w => w !== server).map(w => w.deserializeAttachment()).filter(a => a && a.id !== id);
+    server.send(JSON.stringify({ t: 'room', you: id, here }));
+    this.cast(server, { t: 'join', from: id, who });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  cast(from, msg) { const s = JSON.stringify(msg); for (const w of this.ctx.getWebSockets()) if (w !== from) { try { w.send(s); } catch {} } }
+  async webSocketMessage(ws, raw) {
+    if (typeof raw !== 'string' || raw.length > 16000) return;
+    let m; try { m = JSON.parse(raw); } catch { return; }
+    if (!m || typeof m.t !== 'string') return;
+    const a = ws.deserializeAttachment() || {};
+    if (m.t === 'state') { a.state = m.state ?? null; ws.serializeAttachment(a); }
+    this.cast(ws, { ...m, from: a.id, who: a.who });
+  }
+  gone(ws) {
+    const a = ws.deserializeAttachment() || {};
+    if (this.ctx.getWebSockets(a.id).some(w => w !== ws)) return; // (it reconnected already: not gone)
+    this.cast(ws, { t: 'leave', from: a.id, who: a.who });
+  }
+  async webSocketClose(ws, code) { this.gone(ws); try { ws.close(code === 1000 || (code >= 3000 && code < 5000) ? code : 1000, 'bye'); } catch {} }
+  async webSocketError(ws) { this.gone(ws); }
 }

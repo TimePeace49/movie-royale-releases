@@ -31,6 +31,7 @@ import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
+import * as costream from './costream.js';
 import * as cards from './cards.js';
 import * as chatlog from './chat.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
@@ -222,6 +223,7 @@ function publicState() { applyCharsDefault();
   const st = db.settings;
   return {
     cloud: { enabled: cloud.enabled(), url: st.cloud?.url || '', ...cloud.status },
+    costream: { ...costream.info(), obsError: costream.cfg().obsError || null },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -443,7 +445,9 @@ function rewardWants() {
   const inUse = !!db.live || live.phase === 'lobby' || live.phase === 'running'; // not streaming = nothing can be redeemed
   const st = db.settings, on = st.pointsOn !== false && inUse, map = mapById(currentMap()), l = getList(db.activeListId), W = wheel.W(), wheelUp = !!W.show;
   const want = {}; // title → should it be paused?
-  for (const [title, ev] of Object.entries(st.rewards || {})) want[title.toLowerCase()] = !on || wheelUp || (!!map?.solid && GROUND_EVENTS.includes(ev));
+  const mineUp = (live.phase === 'lobby' || live.phase === 'running') && !live.game?.cards, toPartner = !mineUp && costream.partnerBattle() && costream.cfg().chaos !== false; // 🤝 chaos goes into your co-streamer's battle right now
+  const solidNow = toPartner ? !!costream.status.partner?.state?.solid : !!map?.solid;
+  for (const [title, ev] of Object.entries(st.rewards || {})) want[title.toLowerCase()] = !on || wheelUp || (solidNow && GROUND_EVENTS.includes(ev));
   const powersOn = on && !wheelUp && l?.type === 'chat' && !!l.fun?.powerups;
   for (const [title, kind] of Object.entries(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn || !!l?.fun?.powersOff?.[kind]; // (each power-up can be switched off on the Chat battle tab)
   const raceOn = on && !wheelUp && racePowersOn(l); // 🏁 race power-ups: a chat battle on a race map with them ticked
@@ -488,10 +492,84 @@ setTimeout(() => { rewardKey = ''; syncRewards().catch(() => {}); }, 8000);
 function triggerEvent(event, by, source) {
   if (!EVENTS[event]) return;
   const fx = { id: uid(), event, by, source, at: Date.now() };
-  if ((live.phase === 'lobby' || live.phase === 'running') && !live.game?.cards) broadcast({ type: 'effect', effect: fx }, 'overlay');
+  const mine = (live.phase === 'lobby' || live.phase === 'running') && !live.game?.cards;
+  if (!mine && (source === 'points' || source === 'bits') && costream.wantsChaos(event, GROUND_EVENTS) && coSendChaos(fx)) return pushState(); // 🤝 your battle isn't on, your co-streamer's is: it goes into theirs
+  if (mine) broadcast({ type: 'effect', effect: fx }, 'overlay');
   else { db.pendingEffects.push(fx); db.pendingEffects = db.pendingEffects.slice(-25); save(); broadcast({ type: 'queued', effect: fx }, 'overlay'); }
   pushState();
 }
+
+// ---------- 🤝 co-stream (1.71.0): linked with a friend's Movie Royal (src/costream.js) ----------
+const coOn = () => costream.linked() || !!costream.status.pretend;
+function coSendChaos(fx) {
+  const by = { name: fx.by?.name || 'someone', avatar: /^\/img\?u=/.test(fx.by?.avatar || '') ? fx.by.avatar : null, ...(fx.by?.bits ? { bits: fx.by.bits } : {}) };
+  if (!costream.sendChaos({ ...fx, by })) return false; // (not connected right now: it stays with your own battle, like before)
+  const e = EVENTS[fx.event], who = costream.partnerName();
+  if (twitch.canSay() && !costream.status.pretend) twitch.say(`${e.icon} @${by.name} sent ${e.name} into ${who}'s battle! 🤝`).catch(() => {});
+  broadcast({ type: 'toast', text: hEsc(`🤝 ${e.icon} ${by.name} sent ${e.name} into ${who}'s battle`) }, 'control');
+  return true;
+}
+function coChaosIn(m) { // chaos from your co-streamer's chat → your battle
+  const e = EVENTS[m.event]; if (!e) return;
+  if (costream.cfg().chaos === false) return;
+  if (m.source === 'bits' ? db.settings.bitsOn === false : db.settings.pointsOn === false) return;
+  const name = String(m.by?.name || 'someone').slice(0, 40), from = String(m.who || costream.partnerName()).slice(0, 40);
+  triggerEvent(m.event, { name: `${name} (${from}'s chat)`, avatar: /^\/img\?u=/.test(m.by?.avatar || '') ? m.by.avatar : null, ...(m.by?.bits ? { bits: Number(m.by.bits) || 0 } : {}) }, 'co');
+  if (twitch.canSay()) twitch.say(`${e.icon} ${name} from ${from}'s chat sent ${e.name} into the battle! 🤝`).catch(() => {});
+}
+// 📷 your camera + battle → your partner (OBS Virtual Camera + a hidden VDO.Ninja window), their picture → your OBS
+const CO_Q = { low: 1200, normal: 2500, high: 4000 };
+const vdoPush = (id, q) => `https://vdo.ninja/?push=${id}&webcam&autostart&videodevice=OBS_Virtual_Camera&audiodevice=0&quality=${q === 'high' ? 0 : 1}&label=${encodeURIComponent(streamerName().slice(0, 30))}`;
+const vdoView = (id, q) => `https://vdo.ninja/?view=${id}&noaudio&cleanoutput&bitrate=${CO_Q[q] || CO_Q.normal}`;
+const co = { viewerKey: '', battleShown: null, busy: false, failAt: 0, vBusy: false, started: false };
+async function coVideo(on) {
+  const c = costream.cfg(), D = globalThis.__desktop;
+  if (!on || !costream.linked()) {
+    D?.coSender?.(null);
+    if (co.started) { co.started = false; await obs.coShareStop().catch(() => {}); }
+    costream.status.video = { state: 'off', error: null }; costream.nudge(); pushState(); return costream.status.video;
+  }
+  if (!D?.coSender) { costream.status.video = { state: 'error', error: 'Sending your camera only works in the Movie Royal app.' }; pushState(); return costream.status.video; }
+  if (co.vBusy) return costream.status.video; co.vBusy = true;
+  costream.status.video = { ...costream.status.video, state: 'starting', error: null }; pushState();
+  try {
+    const r = await obs.coShare();
+    if (r.started) co.started = true;
+    D.coSender(vdoPush(costream.streamId(c.room, db.owner?.login || streamerName()), c.quality));
+    costream.status.video = { state: 'on', error: null, layout: r.layout, cam: r.cam, game: r.game, at: Date.now(), noCam: !r.cam };
+  } catch (e) { costream.status.video = { state: 'error', error: e.message, at: Date.now() }; }
+  finally { co.vBusy = false; }
+  costream.nudge(); pushState();
+  return costream.status.video;
+}
+async function coViewerSync(force) { // your partner's picture in your OBS (made / fixed when it changes, battle piece shown while their battle runs)
+  const c = costream.cfg(), v = costream.status.partner?.state?.video;
+  if (!costream.linked() || !v?.id) return;
+  const side = costream.status.partner?.state?.camSide || (costream.mySide() === 'left' ? 'right' : 'left'), url = vdoView(v.id, v.q), key = JSON.stringify([url, v.layout, c.scene || '', c.showCam !== false, costream.partnerName(), side]), battleOn = costream.partnerBattle();
+  if (!force && key === co.viewerKey) {
+    if (c.showBattle !== false && battleOn !== co.battleShown) { co.battleShown = battleOn; obs.coBattleShow(c.obs, battleOn).catch(() => { co.battleShown = null; }); }
+    return;
+  }
+  if (co.busy || (!force && Date.now() - co.failAt < 20000)) return; co.busy = true;
+  try { c.obs = await obs.coViewer({ url, name: costream.partnerName(), layout: v.layout, scene: c.scene, battleOn, autoBattle: c.showBattle !== false, camOn: c.showCam !== false, camSide: side }, c.obs || {}); co.viewerKey = key; co.battleShown = battleOn; c.obsError = null; save(); }
+  catch (e) { co.failAt = Date.now(); c.obsError = e.message; }
+  finally { co.busy = false; pushState(); }
+}
+function coWantVideo() { const c = costream.cfg(); return costream.linked() && c.video !== false; }
+setInterval(() => { // keeps the picture going: OBS opened later, the hidden window crashed…
+  if (!coWantVideo() || co.vBusy) return;
+  const v = costream.status.video, D = globalThis.__desktop;
+  if (v.state === 'off' || (v.state === 'error' && Date.now() - (v.at || 0) > 60000) || (v.state === 'on' && D?.coSending && !D.coSending())) coVideo(true).catch(() => {});
+}, 10000);
+setInterval(() => coViewerSync(false).catch(() => {}), 3000);
+costream.setHooks({
+  local: () => { const m = live.map || currentMap(), mp = mapById(m); return { name: streamerName(), login: db.owner?.login || '', phase: live.phase, cards: !!(live.game?.cards || live.game?.charFight), map: m, mapName: mp?.name || m, solid: !!mp?.solid, chaosIn: db.settings.pointsOn !== false || db.settings.bitsOn !== false }; },
+  chaos: coChaosIn,
+  changed: () => pushState(),
+  partnerChanged: () => { rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 200); coViewerSync(false).catch(() => {}); },
+  log: m => console.error(m)
+});
+setTimeout(() => { if (costream.linked()) { costream.connect(); if (coWantVideo()) setTimeout(() => coVideo(true).catch(() => {}), 8000); } }, 3000);
 
 async function avatarFor(login) { if (!login) return null; const u = (await twitch.getUsers([login])).get(login.toLowerCase()); return proxied(u?.avatar); }
 
@@ -1806,6 +1884,7 @@ const GUIDE_STEPS = [
   { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
   { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   { id: 'rollcall', since: '1.61.0', title: '📣 Roll call in OBS', why: 'Roll call can show in any OBS scene, even ones without the game screen (like your camera scene).', how: ['Connect OBS first (🎥 OBS control step).', 'Press 🧭 Set it up and tick the scenes, or add a Browser source with the address shown there.'], done: () => !!db.settings.rollObs },
+  { id: 'costream', since: '1.71.0', title: '🤝 Co-stream with a friend', why: 'Stream together with a friend who also has Movie Royal: cameras in each other\'s OBS, their battle on your stream while it runs, and chaos across both chats.', how: ['Do the 🎥 OBS control step first.', 'One of you: Settings → 🤝 Co-stream → 🎟️ Make an invite code, and send it in Discord. The other: paste it and press 🤝 Join.', 'One time in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.'], done: () => costream.linked() },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
   { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', how: ['Make a second Twitch account for the bot, like MoviesRoyalBot (Twitch names can\'t have spaces).', 'Open the sign-in link below in a private (incognito) browser window, log in there as the BOT, and press Authorize. (Or press 🔑 Sign in as the bot: if Twitch shows your own account, press "Not you?" and log in as the bot.)', 'In your Twitch chat, type /mod and the bot\'s name (like /mod MoviesRoyalBot).'], done: () => !!db.twitchBot },
   { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', how: ['Press 🧭 Set it up and answer the two questions (men and women characters, character creation).', 'Or later: Settings → ⚔️ Game → 🧍 Characters.'], done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
@@ -3607,6 +3686,84 @@ app.get('/assets/sounds/:f', (req, res, next) => { // your own sounds (data fold
 });
 app.post('/api/camera', (req, res) => { const a = String(req.body?.action || ''); if (['in', 'out', 'reset', 'auto', 'left', 'right', 'up', 'down', 'skip', 'next', 'prev', 'overview'].includes(a)) broadcast({ type: 'camera', action: a }, 'overlay'); res.json({ ok: true }); });
 app.post('/api/sound-test', (req, res) => { broadcast({ type: 'soundTest', name: req.body?.name || 'fanfare', map: req.body?.map || null }, 'overlay'); res.json({ ok: true }); });
+// ---------- 🤝 co-stream routes (1.71.0) ----------
+async function coRoomCheck(url, room) { // is the inviter's 24/7 bot new enough to host the room?
+  let r; try { r = await fetch(`${url}/co/${room}`, { signal: AbortSignal.timeout(10000) }); } catch { throw new Error("Couldn't reach the room. Check your internet and try again."); }
+  if (r.status === 404) throw new Error('That 24/7 bot is older than co-streaming. The person who invited you needs to update their 24/7 bot (Movie Royal shows an "Update your 24/7 bot" pop-up), then try again.');
+  const j = await r.json().catch(() => ({})); if (!r.ok || !j.room) throw new Error(j.error || 'That 24/7 bot is older than co-streaming. The person who invited you needs to update their 24/7 bot (Movie Royal shows an "Update your 24/7 bot" pop-up), then try again.');
+}
+app.get('/api/co', (req, res) => res.json({ ...costream.info(), obsError: costream.cfg().obsError || null }));
+app.post('/api/co/invite', async (req, res) => {
+  try {
+    if (!cloud.enabled()) throw new Error('Co-streaming uses your 24/7 Discord bot to host the room. Turn it on first: Settings → 🤖 Discord & picks → ☁️ 24/7 mode.');
+    const c = costream.cfg(), url = String(db.settings.cloud.url).replace(/\/+$/, '');
+    const room = c.role === 'host' && c.room && !req.body?.fresh ? c.room : crypto.randomBytes(18).toString('base64url');
+    await coRoomCheck(url, room);
+    Object.assign(c, { role: 'host', room, url, code: costream.makeCode({ url, room, name: streamerName() }), at: Date.now() }); save();
+    costream.connect(); if (coWantVideo()) coVideo(true).catch(() => {});
+    pushState(); res.json({ ok: true, code: c.code });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/co/join', async (req, res) => {
+  try {
+    const j = costream.readCode(req.body?.code);
+    await coRoomCheck(j.url, j.room);
+    const c = costream.cfg(); Object.assign(c, { role: 'guest', room: j.room, url: j.url, code: '', partnerName: j.name, at: Date.now() }); save();
+    costream.connect(); if (coWantVideo()) coVideo(true).catch(() => {});
+    pushState(); res.json({ ok: true, partner: j.name });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/co/leave', async (req, res) => {
+  const c = costream.cfg();
+  await coVideo(false).catch(() => {});
+  if (req.body?.keepObs !== true && c.obs) await obs.coViewerRemove(c.obs).catch(() => {});
+  c.obs = null; c.obsError = null; co.viewerKey = ''; co.battleShown = null;
+  costream.disconnect(); rewardKey = ''; syncRewards().catch(() => {}); pushState(); res.json({ ok: true });
+});
+app.post('/api/co/settings', async (req, res) => {
+  const c = costream.cfg(), b = req.body || {}, was = { q: c.quality, video: c.video, scene: c.scene, cam: c.showCam };
+  for (const k of ['chaos', 'showBattle', 'showCam', 'video']) if (typeof b[k] === 'boolean') c[k] = b[k];
+  if (['low', 'normal', 'high'].includes(b.quality)) c.quality = b.quality;
+  if (typeof b.scene === 'string') c.scene = b.scene.slice(0, 200);
+  if (b.camSide === 'left' || b.camSide === 'right') { c.camSide = b.camSide; costream.nudge(); } // (your partner's app moves your camera piece to that side)
+  save();
+  if (c.video !== was.video) await coVideo(c.video !== false);
+  else if (c.quality !== was.q && costream.status.video.state === 'on') { globalThis.__desktop?.coSender?.(null); await coVideo(true); }
+  if (c.scene !== was.scene || c.showCam !== was.cam) { co.viewerKey = ''; coViewerSync(true).catch(() => {}); }
+  if ('chaos' in b) { rewardKey = ''; syncRewards().catch(() => {}); }
+  pushState(); res.json({ ok: true, ...costream.info() });
+});
+app.post('/api/co/obs', async (req, res) => { // 🔧 set OBS up again (both your share scene and your partner's picture)
+  const out = {};
+  if (coWantVideo()) { globalThis.__desktop?.coSender?.(null); out.video = await coVideo(true); }
+  co.viewerKey = ''; co.failAt = 0; await coViewerSync(true).catch(() => {});
+  out.viewer = costream.cfg().obsError || (costream.cfg().obs ? 'ok' : costream.status.partner?.state?.video ? 'not yet' : 'partner not sharing yet');
+  res.json(out);
+});
+app.post('/api/co/preview', (req, res) => { // 👀 see a picture in its own window: yours (what your partner gets) or theirs
+  const D = globalThis.__desktop, c = costream.cfg(), who = req.body?.who === 'partner' ? 'partner' : 'me';
+  const v = who === 'partner' ? costream.status.partner?.state?.video : costream.status.video.state === 'on' ? { id: costream.streamId(c.room, db.owner?.login || streamerName()), q: c.quality } : null;
+  if (!v?.id) return res.status(400).json({ error: who === 'partner' ? `${costream.partnerName()} isn't sending a picture right now.` : "You aren't sending a picture right now: turn on 📷 Send my camera + battle first." });
+  const url = vdoView(v.id, v.q);
+  if (!D?.coPreview) return res.json({ ok: true, url });
+  D.coPreview(url, who === 'partner' ? `${costream.partnerName()}'s picture` : 'What your co-streamer sees'); res.json({ ok: true });
+});
+app.get('/api/co/stats', async (req, res) => { try { res.json({ ok: true, ...(await obs.coStats()), sending: !!globalThis.__desktop?.coSending?.() }); } catch (e) { res.json({ ok: false, error: e.message }); } });
+// 🧪 pretend partner (Test tab): no second PC needed
+app.post('/api/test/co', (req, res) => {
+  const a = String(req.body?.action || '');
+  if (a === 'pretend') { costream.pretend(req.body?.on !== false, { phase: req.body?.phase || 'running', name: req.body?.name }); rewardKey = ''; syncRewards().catch(() => {}); return res.json({ ok: true, ...costream.info() }); }
+  if (a === 'phase') { if (!costream.status.pretend) return res.status(400).json({ error: 'Turn on the pretend partner first.' }); costream.status.pretend.state.phase = req.body?.phase === 'idle' ? 'idle' : 'running'; costream.status.pretend.until = Date.now() + 10 * 60000; rewardKey = ''; pushState(); return res.json({ ok: true, ...costream.info() }); }
+  if (a === 'send') { // a pretend viewer of yours redeems chaos: where does it go?
+    const before = costream.status.pretend?.got.length || 0;
+    triggerEvent(req.body?.event || 'comet', { name: 'test_viewer', avatar: null }, 'points');
+    const went = (costream.status.pretend?.got.length || 0) > before;
+    return res.json({ ok: true, went: went ? 'partner' : (live.phase === 'lobby' || live.phase === 'running') ? 'yours' : 'queued for your next battle', ...costream.info() });
+  }
+  if (a === 'incoming') { coChaosIn({ event: req.body?.event || 'comet', by: { name: 'their_viewer' }, who: costream.partnerName(), source: 'points' }); return res.json({ ok: true, phase: live.phase }); }
+  if (a === 'code') { try { return res.json({ ok: true, read: costream.readCode(costream.makeCode({ url: 'https://movie-royal-bot.example.workers.dev', room: 'testroomtestroom1234', name: streamerName() })) }); } catch (e) { return res.status(400).json({ error: e.message }); } }
+  res.status(400).json({ error: 'action?' });
+});
 app.post('/api/effect', (req, res) => { triggerEvent(req.body.event, { name: streamerName(), avatar: proxied(db.owner?.avatar) }, 'panel'); res.json({ ok: true }); });
 
 app.post('/api/winner/undo', (req, res) => { // movie winner didn't get watched after all: put it back

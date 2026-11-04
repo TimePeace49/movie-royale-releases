@@ -8,6 +8,35 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx: Array.isArray(ctx) ? new RegExp(ctx.join('|'), 'i') : ctx, // (a list like ['test'] = only on those tabs)
   sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
+// ───────── 🤝 Co-stream (Settings → 🤝 Co-stream, 1.71.0) ─────────
+SECTION('🤝 Co-stream with a friend');
+H(/make an invite code/i, '🎟️ Make an invite code', 'Makes a private room on your ☁️ 24/7 Discord bot and a code for it. Send the code to your friend (a Discord DM is fine). Pressing it again gives the same code until you stop co-streaming.', /co-stream/i);
+H(/^🤝 join$|^join$/i, '🤝 Join', 'Joins your friend\'s room with the code they sent you. After that Movie Royal reconnects by itself every time it opens, until you press 🚪 Stop co-streaming.', /co-stream/i);
+H(/^mrco1|^#cocode$/i, 'Invite code box', 'Paste the code your friend sent you here (it starts with MRCO1-), then press 🤝 Join.', /co-stream/i);
+H(/^tip:read the scene list from obs/i, '🔄 Read my scenes', 'Asks OBS for your scene list, so you can pick which scene gets your friend\'s picture.', /co-stream/i);
+H(/^your invite code$|^tip:your invite code/i, 'Your invite code', 'The code your friend pastes into their Movie Royal (Settings → 🤝 Co-stream → Join). Click it to select it, or press 📋 Copy.', /co-stream/i);
+H(/scene showing when it's first added|^#coscene$/i, '🎬 Scene for their picture', 'Which of your OBS scenes gets your friend\'s camera and battle. Empty = the scene that was showing when it was first added. 🔄 reads your scene list from OBS.', /co-stream/i);
+H(/copy invite code/i, '📋 Copy invite code', 'Copies your code so you can paste it to your friend in Discord.', /co-stream/i);
+H(/chaos across chats/i, '⚡ Chaos across chats', 'While YOUR battle isn\'t running and your friend\'s is, your viewers\' channel point and bits chaos (comets, earthquakes…) goes into their battle, and your chat sees "sent a Comet into …\'s battle!". Theirs comes into yours the same way. While your own battle runs, your chaos stays in yours. Off = each chat only hits its own streamer\'s battles. Both of you have to leave it on for chaos to cross.', /co-stream/i);
+H(/battle on my stream by itself/i, '⚔️ Show their battle by itself', 'Their battle shows on your stream (in OBS) while it runs, and hides again when it ends. Off = it stays however you set it in OBS (the piece is called "🤝 their name (co-stream)").', /co-stream/i);
+H(/camera on my stream/i, '📷 Show their camera', 'Shows or hides your friend\'s camera piece in your OBS. Move and resize it in OBS like any source: Movie Royal won\'t move it back.', /co-stream/i);
+H(/send my camera \+ battle/i, '📤 Send my camera + battle', 'Sends your camera and your game screen to your friend: OBS\'s Virtual Camera shows the "🤝 Co-stream share" scene, and a hidden window sends it (VDO.Ninja, free, about a quarter second behind). It\'s the real game screen from your OBS, so they see the exact same fight. No sound is sent: voices stay on Discord.', /co-stream/i);
+H(/my camera's side|^⬅️ left|^➡️ right/i, '↔️ My camera\'s side', 'Which side of BOTH streams your camera is on. Your friend\'s camera goes on the other side: Movie Royal puts it there in your OBS, and puts yours on your side in theirs. Put your own camera on your side in your own OBS. The one who invites starts on the right, the one who joins on the left.', /co-stream/i);
+H(/picture quality i send/i, '📶 Picture quality', 'How sharp the picture you send is. Low ≈ 1.2 Mbps of upload (slow internet), Normal ≈ 2.5, High ≈ 4. If 🩺 Lag check shows dropped frames, pick Low.', /co-stream/i);
+H(/obs scene for/i, '🎬 Scene for their picture', 'Which of your OBS scenes gets your friend\'s camera and battle. Empty = the scene that was showing when it was first added. 🔄 reads your scene list from OBS. To have them in more scenes: in OBS, copy the piece and Paste (Reference).', /co-stream/i);
+H(/what my partner sees/i, '👀 What my partner sees', 'Opens a window with your own picture as your friend gets it. If it\'s your whole stream instead of your camera + battle, set OBS\'s Virtual Camera to Output type: Scene → 🤝 Co-stream share (the ⚙ next to Start Virtual Camera).', /co-stream/i);
+H(/'s picture$|^👀 their picture/i, '👀 Their picture', 'Opens a window with your friend\'s picture (their camera + battle), to check it\'s coming through.', /co-stream/i);
+H(/set obs up again/i, '🔧 Set OBS up again', 'Fixes everything in OBS again: your share scene (camera + game screen), the Virtual Camera, and your friend\'s picture with its two pieces. Use it after you change your camera or game screen in OBS.', /co-stream/i);
+H(/lag check/i, '🩺 Lag check', 'For 30 seconds shows what OBS sees: 🌐 dropped frames = the internet can\'t keep up (pick 📶 Low, or have whoever shares the Discord video share in 720p), 🖥️ skipped frames = the PC can\'t keep up (OBS → Settings → Output: use the hardware encoder NVENC / AMF / QuickSync). Green = fine.', /co-stream/i);
+H(/stop co-streaming/i, '🚪 Stop co-streaming', 'Leaves the room, stops sending your picture (and the Virtual Camera, if Movie Royal started it) and takes your friend\'s picture out of your OBS. Join again with a code any time.', /co-stream/i);
+H(/update the bot/i, '🔄 Update the bot', 'Puts the newest 24/7 Discord bot on Cloudflare (it hosts the co-stream room). Paste your Cloudflare API token first.', /co-stream/i);
+H(/pretend partner/i, '🤝 Pretend partner', 'A pretend co-streamer for 10 minutes, so you can try co-streaming alone: with their battle "running" and yours not, your viewers\' chaos goes to them. Nothing is sent anywhere.', ['test']);
+H(/their battle ends|their battle starts/i, '⏸ / ▶ Their battle', 'Makes the pretend partner\'s battle stop or start, to see where chaos goes.', ['test']);
+H(/my viewer redeems a comet/i, '☄️ My viewer redeems a comet', 'A pretend viewer of yours redeems Comet: it says where it went (your battle, the pretend partner\'s battle, or waiting for your next battle).', ['test']);
+H(/chaos from their chat/i, '☄️ Chaos from their chat', 'A comet from the partner\'s chat lands in YOUR battle (start a test battle first to see it).', ['test']);
+H(/check invite codes/i, '🎟️ Check invite codes', 'Makes a pretend invite code and reads it back, to check codes work.', ['test']);
+SECTION(null);
+
 // ───────── top bar ─────────
 H(/^tip:how long this battle lasts/i, '⏱️ This battle\'s timer', 'How long this battle lasts. All the way left (🌐) = it uses the timer for all battles. 🏁 On race maps it\'s the race time. Saves right away.');
 H(/^tip:how hard the knockouts are spread over this battle/i, '⏳ This battle\'s pacer', 'How hard the knockouts are spread over this battle\'s timer (0 = off: pieces go out whenever they go out). All the way left (🌐) = it uses the pacer for all battles. Saves right away.');

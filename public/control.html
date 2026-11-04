@@ -1080,6 +1080,12 @@
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMmWho" style="width:auto" title="Whose movies to show"><option value="">(the first person with movies)</option></select><button class="primary" onclick="mmTest()">🍀 Show the answers</button><button onclick="mmProfile()" title="Opens this person's profile: the 🎬 Movies part shows each movie's luck">👤 Open their profile</button></div>
     <div id="tMmOut"></div>
   </div>
+  <div class="card" id="coTestCard">
+    <h3>🤝 Co-stream (pretend partner)</h3>
+    <p class="help">Try co-streaming without a second PC: a <b>pretend partner</b> shows up for 10 minutes. With their battle running and yours not, your viewers' chaos goes into <b>their</b> battle (nothing is sent anywhere, no chat messages). "Chaos from their chat" drops a comet into <b>your</b> battle, the way your partner's viewers would (start a test battle first to see it).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><button class="primary" onclick="coTest('pretend')">🤝 Pretend partner (their battle running)</button><button onclick="coTest('phase-idle')">⏸ Their battle ends</button><button onclick="coTest('phase-run')">▶ Their battle starts</button><button onclick="coTest('send')">☄️ My viewer redeems a comet</button><button onclick="coTest('incoming')">☄️ Chaos from their chat</button><button onclick="coTest('code')">🎟️ Check invite codes</button><button class="ghost" onclick="coTest('off')">✕ Pretend partner off</button></div>
+    <div id="coTestOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card">
     <h3>🎁 Mystery spot (hidden reveal)</h3>
     <p class="help">A wheel spot nobody knows until it lands: a card pack pops up (here and on stream), you click it, the top tears off and a card shows the hidden words / picture. Set one up: 🎡 Wheel → ⚙ on a spot → 🎁 Hidden reveal. A mystery spot is an ⚡ auto spot: <b>🎡 Land on my mystery spot</b> shows the round timer pause and chat's respins get saved for later (try 🔁 Respin in 💬 Test chat), until you press 🎡 SPIN. With a holiday app style on, the pack and card dress up for it.</p>
@@ -1183,6 +1189,7 @@
     <button data-s="gfx">🎨 Graphics</button>
     <button data-s="prices">💰 Rewards &amp; prices</button>
     <button data-s="obs">🎥 OBS</button>
+    <button data-s="costream">🤝 Co-stream</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
     <button data-s="sounds">🔊 Sounds</button>
@@ -1745,7 +1752,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2166,7 +2173,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -2268,7 +2275,82 @@ function goFullscreen() {
 }
 
 // ---------- render ----------
-function render() { applyStyle(); holTestInit(); sceneInit(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+// ---------- 🤝 Co-stream (1.71.0) ----------
+let coScenes = null, coStatsTimer = null, coLastKey = '';
+function coDraw(full) {
+  const box = $('coBody'); if (!box) return;
+  const c = S.costream || {}, key = JSON.stringify([c, coScenes]);
+  if (!full && key === coLastKey) return; coLastKey = key;
+  if (box.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName) && !full) return; // (don't redraw under your typing)
+  const p = c.partner, ps = p?.state, v = c.videoStatus || {}, who = esc(c.partnerName || 'your co-streamer');
+  if (!c.linked && !p?.pretend) {
+    box.innerHTML = `<div class="grid2" style="align-items:start">
+      <div class="card soft"><h4 style="margin-top:0">🎟️ You invite</h4><p class="help">Makes a private room on your ☁️ 24/7 Discord bot and gives you a code. Send the code to your friend (Discord DM is fine).</p>
+        ${!S.cloud?.enabled ? '<p class="help" style="color:var(--gold)">Needs your ☁️ 24/7 Discord bot (Settings → 🤖 Discord &amp; picks). Or let your friend invite you.</p><button class="primary" onclick="coInvite(this)">🎟️ Make an invite code</button>'
+          : S.cloud?.behind && (S.cloud?.botV || 0) < 17 ? `<p class="help" style="color:var(--gold)">Your ☁️ 24/7 bot needs a quick update first (it hosts the room). Paste your Cloudflare API token and press Update, then make the code.</p><div class="row" style="gap:6px"><input class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&setTimeout(()=>coDraw(true),300))">🔄 Update the bot</button></div><p class="help">No token? <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → Create Token → <b>Edit Cloudflare Workers</b> template → Create → Copy.</p>`
+          : '<button class="primary" onclick="coInvite(this)">🎟️ Make an invite code</button>'}</div>
+      <div class="card soft"><h4 style="margin-top:0">🤝 Your friend invited you</h4><p class="help">Paste the code they sent you and press Join. That's it.</p>
+        <div class="row" style="gap:6px"><input id="coCode" class="grow" placeholder="${esc('MRCO1-…')}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter') coJoin(this)"><button class="primary" onclick="coJoin(this)">🤝 Join</button></div></div></div>`;
+    return;
+  }
+  const dot = s => s === 'online' ? '🟢' : s === 'connecting' || s === 'waiting' ? '🟡' : '🔴';
+  const conn = p?.pretend ? '🧪 Pretend partner (Test tab)' : c.state === 'online' ? '🟢 Connected to the room' : c.state === 'connecting' ? '🟡 Connecting…' : `🟡 Trying again…${c.error ? ` <span class="muted">(${esc(c.error)})</span>` : ''}`;
+  const partner = p ? `🟢 <b>${esc(p.who || c.partnerName)}</b> is here` : `⚪ Waiting for <b>${who}</b> to open Movie Royal`;
+  const battle = !p ? '' : c.partnerBattle ? `⚔️ <b>${who}'s battle is running</b>${c.chaos ? ': your chat\'s chaos goes into it' : ''}` : ps?.phase === 'running' && ps?.cards ? `🃏 ${who} is in a card / character fight (no chaos there)` : `💤 ${who}'s battle isn't running`;
+  const vid = !c.video ? '⚪ Not sending your camera + battle' : v.state === 'on' ? `📷 Sending your camera + battle${v.noCam ? ' <span style="color:var(--gold)">(no camera found in OBS: only the battle)</span>' : ''}` : v.state === 'starting' ? '📷 Starting your camera + battle…' : v.state === 'error' ? `🔴 Your camera + battle: ${esc(v.error)}` : '⚪ Your camera + battle start in a moment';
+  const theirs = !p ? '' : ps?.video ? (c.obsError ? `🔴 Their picture in your OBS: ${esc(c.obsError)}` : c.obsItems ? `✅ Their picture is in your OBS: <b>${esc(c.scene || 'your scene')}</b> (two pieces: camera + battle)` : '⏳ Adding their picture to your OBS…') : `⚪ ${who} isn't sending a picture yet`;
+  const scOpts = coScenes ? [`<option value="">(the scene showing when it's first added)</option>`, ...coScenes.map(n => `<option ${n === c.scene ? 'selected' : ''}>${esc(n)}</option>`)].join('') : `<option value="">${esc(c.scene || "(the scene showing when it's first added)")}</option>`;
+  box.innerHTML = `<div class="card soft" style="margin:6px 0">
+      <div>${conn}</div><div>${partner}</div>${battle ? `<div>${battle}</div>` : ''}<div>${vid}</div>${theirs ? `<div>${theirs}</div>` : ''}
+      ${c.role === 'host' && c.code ? `<div class="row" style="gap:6px;margin-top:8px"><input readonly value="${esc(c.code)}" class="grow" onclick="this.select()" title="Your invite code"><button onclick="coCopy()">📋 Copy invite code</button></div>` : ''}
+    </div>
+    <div class="card soft" style="margin:6px 0;border-color:var(--gold)"><b>📌 One time in OBS (both of you):</b> next to <b>Start Virtual Camera</b>, press the ⚙ gear → <b>Output type: Scene</b> → <b>🤝 Co-stream share</b> → OK. Movie Royal makes that scene and starts the Virtual Camera for you; this one setting is the only thing OBS won't let an app change. Press <b>👀 What my partner sees</b> to check it.</div>
+    <h4>⚙️ Options</h4>
+    <label class="ck"><input type="checkbox" ${c.chaos ? 'checked' : ''} onchange="coSet({chaos:this.checked})"> <span>⚡ Chaos across chats: while my battle isn't running and ${who}'s is, my viewers' channel points / bits chaos goes into theirs (and theirs into mine)</span></label>
+    <label class="ck"><input type="checkbox" ${c.showBattle ? 'checked' : ''} onchange="coSet({showBattle:this.checked})"> <span>⚔️ Show ${who}'s battle on my stream by itself while it runs (off = you show / hide it in OBS)</span></label>
+    <label class="ck"><input type="checkbox" ${c.showCam ? 'checked' : ''} onchange="coSet({showCam:this.checked})"> <span>📷 Show ${who}'s camera on my stream</span></label>
+    <label class="ck"><input type="checkbox" ${c.video ? 'checked' : ''} onchange="coSet({video:this.checked})"> <span>📤 Send my camera + battle to ${who}</span></label>
+    <div class="grid2"><div><label>↔️ My camera's side, on both streams</label><select onchange="coSet({camSide:this.value})"><option value="left" ${c.camSide === 'left' ? 'selected' : ''}>⬅️ Left (${who} goes on the right)</option><option value="right" ${c.camSide !== 'left' ? 'selected' : ''}>➡️ Right (${who} goes on the left)</option></select><p class="help" style="margin:4px 0 0">Movie Royal puts ${who}'s camera on their side in your OBS (and yours on your side in theirs). Put your own camera on your side in your OBS.</p></div><div></div></div>
+    <div class="grid2"><div><label>📶 Picture quality I send (lower = less internet)</label><select onchange="coSet({quality:this.value})">${[['low', 'Low: about 1.2 Mbps (slow internet)'], ['normal', 'Normal: about 2.5 Mbps'], ['high', 'High: about 4 Mbps, sharper']].map(([k, t]) => `<option value="${k}" ${c.quality === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div><label>🎬 OBS scene for ${who}'s picture</label><div class="row" style="gap:6px"><select class="grow" id="coScene" onchange="coSet({scene:this.value})">${scOpts}</select><button onclick="coLoadScenes(this)" title="Read the scene list from OBS">🔄</button></div></div></div>
+    <h4>🧰 Tools</h4>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="coPreview('me')">👀 What my partner sees</button><button onclick="coPreview('partner')">👀 ${c.partnerName && c.partnerName !== 'your co-streamer' ? who + '’s' : 'Their'} picture</button><button onclick="coObs(this)">🔧 Set OBS up again</button><button onclick="coLag(this)">🩺 Lag check</button><button class="ghost danger" onclick="coLeave()">🚪 Stop co-streaming</button></div>
+    <div id="coLag" class="help" style="margin-top:8px"></div>`;
+}
+async function coInvite(b) { b.disabled = true; try { const r = await api('/api/co/invite', {}); toast('🎟️ Invite code made: press 📋 Copy and send it to your friend'); coDraw(true); } catch (e) { toast('⚠️ ' + e.message, 12000); } finally { b.disabled = false; } }
+async function coJoin(b) { const code = $('coCode')?.value.trim(); if (!code) return toast('Paste the code your friend sent you first'); b.disabled = true; try { const r = await api('/api/co/join', { code }); toast(`🤝 Joined${r.partner ? ' ' + r.partner + "'s" : ' the'} room`); coDraw(true); } catch (e) { toast('⚠️ ' + e.message, 12000); } finally { b.disabled = false; } }
+function coCopy() { const t = S.costream?.code || ''; (navigator.clipboard?.writeText(t) || Promise.reject()).then(() => toast('📋 Copied: send it to your friend')).catch(() => ask('Copy this code and send it to your friend:', t)); }
+async function coSet(o) { try { await api('/api/co/settings', o); toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
+async function coLoadScenes(b) { b.disabled = true; try { const r = await api('/api/vr/scenes?for=co', null, 'GET'); coScenes = r.scenes || []; coDraw(true); } catch (e) { toast('⚠️ ' + e.message); } finally { b.disabled = false; } }
+async function coPreview(who) { try { const r = await api('/api/co/preview', { who }); if (r.url) window.open(r.url, '_blank'); } catch (e) { toast('⚠️ ' + e.message, 10000); } }
+async function coObs(b) { b.disabled = true; try { const r = await api('/api/co/obs', {}); toast(r.video?.state === 'error' ? '⚠️ ' + r.video.error : `🔧 Done. Your share scene: ${r.video?.state === 'on' ? '✅' : r.video?.state || 'off'} · Their picture: ${r.viewer}`, 12000); } catch (e) { toast('⚠️ ' + e.message); } finally { b.disabled = false; } }
+async function coLeave() { if (!confirm('Stop co-streaming? Your partner\'s picture is taken out of your OBS. You can join again with a code any time.')) return; await api('/api/co/leave', {}); coScenes = null; toast('🚪 Stopped co-streaming'); coDraw(true); }
+async function coLag(b) { // 🩺 for 30 seconds: OBS's dropped frames (internet) and skipped frames (PC)
+  clearInterval(coStatsTimer); let n = 0;
+  const show = async () => {
+    const out = $('coLag'); if (!out || ++n > 15) return clearInterval(coStatsTimer);
+    const r = await api('/api/co/stats', null, 'GET').catch(e => ({ ok: false, error: e.message }));
+    if (!r.ok) { out.innerHTML = `🔴 Couldn't ask OBS: ${esc(r.error || '')}`; return; }
+    const bad = (x, warn, worse) => x >= worse ? '🔴' : x >= warn ? '🟡' : '🟢';
+    out.innerHTML = `<b>🩺 Lag check</b> (updates every 2 seconds for 30 seconds)<br>
+      ${r.live ? `${bad(r.net, .5, 2)} Internet: ${r.net}% of frames dropped${r.congestion ? `, ${r.congestion}% congested` : ''}${r.net >= .5 ? ' → set 📶 quality to Low, or ask whoever shares the video in Discord to share in 720p' : ''}` : '⚪ Internet: you are not streaming right now (start the stream to measure it)'}<br>
+      ${bad(r.encode, .5, 2)} PC (encoding): ${r.encode}% of frames skipped${r.encode >= .5 ? " → OBS → Settings → Output: use the hardware encoder (NVENC / AMF / QuickSync), not x264" : ''}<br>
+      ${bad(r.render, .5, 2)} PC (drawing): ${r.render}% skipped · ${r.fps} FPS · OBS uses ${r.cpu}% CPU<br>
+      ${r.vcam ? '🟢' : '⚪'} Virtual Camera ${r.vcam ? 'on' : 'off'} · ${r.sending ? '🟢 sending your picture' : '⚪ not sending your picture'}`;
+  };
+  b.disabled = true; setTimeout(() => b.disabled = false, 30000); show(); coStatsTimer = setInterval(show, 2000);
+}
+async function coTest(a) { // 🧪 Test tab: pretend partner
+  const out = $('coTestOut'), m = { pretend: ['pretend', { on: true, phase: 'running' }], 'phase-idle': ['phase', { phase: 'idle' }], 'phase-run': ['phase', { phase: 'running' }], send: ['send', { event: 'comet' }], incoming: ['incoming', { event: 'comet' }], code: ['code', {}], off: ['pretend', { on: false }] }[a];
+  try {
+    const r = await api('/api/test/co', { action: m[0], ...m[1] });
+    out.innerHTML = a === 'send' ? `☄️ The comet went: <b>${esc(r.went === 'partner' ? 'into the pretend partner\'s battle ✅' : r.went)}</b>` + (r.partner?.got?.length ? `<br>The pretend partner got: ${r.partner.got.map(g => esc(g.event + ' from ' + g.by?.name)).join(', ')}` : '')
+      : a === 'incoming' ? (r.phase === 'running' || r.phase === 'lobby' ? '☄️ A comet from their chat hit your battle ✅' : '☄️ Your battle isn\'t running, so the comet waits for your next battle (like any chaos). Start a test battle and try again.')
+      : a === 'code' ? `🎟️ Invite codes work ✅ (read back: ${esc(r.read?.name || '')}, ${esc(r.read?.url || '')})`
+      : r.partner ? `🤝 Pretend partner: <b>${esc(r.partner.who)}</b>, their battle ${r.partnerBattle ? '<b>running</b>' : 'not running'}. Settings → 🤝 Co-stream shows it too.` : '✕ Pretend partner gone.';
+  } catch (e) { out.textContent = '⚠️ ' + e.message; }
+}
+function render() { applyStyle(); holTestInit(); sceneInit(); if (view === 'settings' && sub === 'costream') coDraw(false); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); luckBattlesSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -4603,6 +4685,9 @@ function openSettings(force) {
       ${ck('gfxAppSaver', '🔋 Power saver for the game inside Movie Royal: it draws lighter while it is hidden (other tabs) or small (the preview window). The stream is not affected.')}
       <p class="help">Tip: OBS records at its own resolution and frame rate (OBS → Settings → Video). Match them here (for example 1080p + 60 FPS lock) so nothing is drawn that OBS throws away. In the OBS browser source, set Width 1920, Height 1080, and tick "Use custom frame rate" with the same FPS.</p>
       <div class="row" style="gap:6px"><button onclick="gfxTest()">📈 Show the FPS counter for 15 seconds</button></div>`,
+    costream: `<h3>🤝 Co-stream</h3>
+      <p class="help">Stream together with a friend who also has Movie Royal. Your cameras show up in each other's OBS (you move and resize them like any source), their battle pops up on your stream while it runs (the exact same fight, about a quarter second behind), and <b>your chat's chaos goes into their battle</b> while yours isn't running (theirs into yours too). Voices and watching videos stay on Discord.</p>
+      <div id="coBody"></div>`,
     keys: `<h3>⌨️ Key binds</h3><div id="kbBody"></div>`,
     notes: `<h3>📝 Patch notes</h3><p class="help">What changed in each latest release. You're on v${esc(S.version || '')}.</p><div id="notesBody" class="help">Loading…</div>`,
     names: `<h3>✏️ Name changes</h3>
@@ -5208,6 +5293,7 @@ function holStyleHTML() {
     <label class="ck"><input type="checkbox" ${S.settings.holFx !== false ? 'checked' : ''} onchange="api('/api/settings',{holFx:this.checked}).then(()=>{holOn=undefined;applyStyle()})"> <span>Little falling decorations (bats, snowflakes, hearts…) with the holiday styles</span></label>
     <label class="ck"><input type="checkbox" ${S.settings.revealThemed !== false ? 'checked' : ''} onchange="S.settings.revealThemed=this.checked;api('/api/settings',{revealThemed:this.checked}).then(()=>toast('Saved'))"> <span>🎁 The wheel's mystery card packs get the holiday look too (when a holiday style is on)</span></label>`;
 }
+{ const go = new URLSearchParams(location.search).get('settings'); if (go && /^[a-z]+$/.test(go)) { history.replaceState(null, '', '/control.html'); setTimeout(() => { setView('settings'); setTimeout(() => setSub(go), 50); }, 900); } } // (?settings=costream: the Setup guide's "Open it" buttons, 1.71.0)
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
 if (PC_ONLY) { document.body.classList.add('pcOnly'); document.title = '💬 Pretend chat · Movie Royal'; }
 fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });

@@ -95,7 +95,8 @@ const STEPS = [
   { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup },
   { id: 'obs', title: 'OBS control', sub: 'Doomsday, capture window, confetti', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
   { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs },
-  { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs }
+  { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs },
+  { id: 'costream', title: 'Co-stream with a friend', sub: 'Cameras, battles + chaos shared (optional)', done: () => !!S.costream?.linked }
 ];
 
 async function load() {
@@ -357,6 +358,22 @@ const PAGES = {
     ${note('obs')}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="saveObs(this)">Connect &amp; save</button></div>
     <p class="help">Connecting never changes anything in OBS. You can change this later in Settings → 🎥 OBS.</p>
+    ${nav()}`;
+  },
+  costream() {
+    const c = S.costream || {};
+    return `<h2>🤝 Co-stream with a friend (optional)</h2><p class="why">Stream together with a friend who also has Movie Royal: your cameras show up in each other's OBS, their battle pops up on your stream while it runs (the exact same fight), and your chat's chaos goes into their battle while yours isn't running. Voices and watching videos stay on Discord.</p>
+    ${status(!!c.linked, `You're linked${c.partnerName && c.partnerName !== 'your co-streamer' ? ' with <b>' + esc(c.partnerName) + '</b>' : ''}. Everything else is in Settings → 🤝 Co-stream.`)}
+    ${note('costream')}
+    <ol class="steps">
+      <li>Do the <b>OBS control</b> step first (Movie Royal needs to talk to OBS), with OBS open and Movie Royal's game screen in a scene.</li>
+      <li><b>One of you invites:</b> Settings → 🤝 Co-stream → <b>🎟️ Make an invite code</b> (needs the ☁️ 24/7 Discord bot) → <b>📋 Copy</b> → send it in Discord.</li>
+      <li><b>The other joins:</b> Settings → 🤝 Co-stream → paste the code → <b>🤝 Join</b>.</li>
+      <li><b>One time in OBS, both of you:</b> next to <b>Start Virtual Camera</b> press the ⚙ gear → <b>Output type: Scene</b> → <b>🤝 Co-stream share</b> → OK. (Movie Royal makes that scene and starts the Virtual Camera itself; this is the one setting OBS won't let an app change.)</li>
+      <li>Done. Your friend's camera shows up in your OBS on its own: move and resize it like any source.</li>
+    </ol>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="location.href='/control.html?settings=costream'">🤝 Open the Co-stream settings</button></div>
+    <p class="help">Worried about lag? Settings → 🤝 Co-stream → 🩺 Lag check shows whether it's the internet or the PC, and 📶 quality Low sends less.</p>
     ${nav()}`;
   },
   rollcall() {

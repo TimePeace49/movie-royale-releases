@@ -28,7 +28,7 @@ process.env.MR_VERSION = app.getVersion();
 
 const ICON = path.join(__dirname, 'icon.png');
 const BASE = 'http://localhost:3737';
-let win = null, readyUrl = null, tray = null, quitting = false;
+let win = null, readyUrl = null, tray = null, quitting = false, coWin = null, coLost = 0; // (coWin: 🤝 the hidden co-stream sender)
 const prefs = { runInBackground: false, startWithWindows: false };
 const startHidden = process.argv.includes('--hidden');
 
@@ -238,6 +238,22 @@ app.whenReady().then(async () => {
       w.loadURL(url).then(() => { if (!w.isDestroyed()) { w.showInactive(); w.webContents.setAudioMuted(false); } }).catch(() => {});
       setTimeout(() => { if (!w.isDestroyed()) w.destroy(); }, 11500);
     },
+    // 🤝 co-stream (1.71.0): a hidden window sends OBS's Virtual Camera to your co-streamer with VDO.Ninja (camera only, no sound).
+    // Its own session lets just that page use the camera, without asking. url null = stop.
+    coSender: url => {
+      if (coWin && !coWin.isDestroyed()) { if (url && coWin.__url === url) return { ok: true, same: true }; coWin.destroy(); }
+      coWin = null; if (!url) return { ok: true, stopped: true };
+      const ses = require('electron').session.fromPartition('mr-costream');
+      if (!ses.__coOk) { ses.__coOk = true; ses.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'mediaKeySystem', 'fullscreen'].includes(perm))); ses.setPermissionCheckHandler((wc, perm) => ['media', 'mediaKeySystem'].includes(perm)); }
+      const w = new BrowserWindow({ show: false, width: 1280, height: 720, webPreferences: { backgroundThrottling: false, session: ses, autoplayPolicy: 'no-user-gesture-required' } });
+      w.__url = url; w.__celebrate = true; w.webContents.setAudioMuted(true); w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+      w.webContents.on('render-process-gone', () => { if (coWin === w) { coWin = null; coLost = Date.now(); } });
+      w.loadURL(url).catch(() => {}); coWin = w; return { ok: true };
+    },
+    coSending: () => !!(coWin && !coWin.isDestroyed()),
+    coSenderLost: () => coLost,
+    // 👀 what your partner sees (your own picture, back from VDO.Ninja) or their picture, in a normal window
+    coPreview: (url, title) => { const w = new BrowserWindow({ width: 960, height: 560, title: title || 'Co-stream picture', icon: ICON, autoHideMenuBar: true, backgroundColor: '#000000', webPreferences: { backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' } }); w.webContents.setAudioMuted(true); w.loadURL(url).catch(() => {}); return { ok: true }; },
     fatal: msg => { dialog.showErrorBox('Movie Royal', msg); app.quit(); },
     ready: url => { if (started) return; started = true; readyUrl = url; makeTray(); createWindow(); reopenBackup(); }
   };

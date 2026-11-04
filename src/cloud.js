@@ -15,13 +15,15 @@ const SCRIPT = 'movie-royal-bot';
 export const status = { lastSync: null, lastPush: null, lastError: null, pulled: 0, rejected: [], outdated: false };
 // the version of the 24/7 bot that comes with this copy of Movie Royal (the bot on Cloudflare only changes when you update it)
 const BOT_V = (() => { try { return Number((fs.readFileSync(path.join(ROOT, 'src', 'cloud-worker.js'), 'utf8').match(/WORKER_V = (\d+)/) || [])[1]) || 1; } catch { return 1; } })();
+const NEED_V = (() => { try { return Number((fs.readFileSync(path.join(ROOT, 'src', 'cloud-worker.js'), 'utf8').match(/WORKER_NEED = (\d+)/) || [])[1]) || BOT_V; } catch { return BOT_V; } })(); // (1.71.0) only asks to update below this
+export const CO_V = 17; // 🤝 the co-stream room
 let checkedV = false;
 /** Is the bot on Cloudflare older than the one that comes with this version? (checks once) */
 export const botVersion = () => BOT_V;
 export const versionKnown = () => checkedV; // (false = couldn't ask the bot on Cloudflare yet, e.g. no internet)
 export async function botOutdated() { if (!enabled()) return false; if (!checkedV) await checkVersion(); return !!status.outdated; }
 async function checkVersion() {
-  try { const r = await fetch(cloud().url + '/health', { signal: AbortSignal.timeout(10000) }); const j = await r.json(); status.botV = Number(j.v) || 1; status.outdated = status.botV < BOT_V; checkedV = true; } catch {}
+  try { const r = await fetch(cloud().url + '/health', { signal: AbortSignal.timeout(10000) }); const j = await r.json(); status.botV = Number(j.v) || 1; status.outdated = status.botV < NEED_V; status.behind = status.botV < BOT_V; checkedV = true; } catch {}
 }
 let onChange = () => {}, timer = null, lastHash = '', busy = false;
 
@@ -209,10 +211,17 @@ export async function enable(cfToken) {
   steps.push('storage');
   const syncKey = cloud().syncKey || crypto.randomBytes(24).toString('hex');
   const code = fs.readFileSync(path.join(ROOT, 'src', 'cloud-worker.js'), 'utf8');
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify({ main_module: 'worker.js', compatibility_date: '2024-09-23', bindings: [{ type: 'kv_namespace', name: 'KV', namespace_id: kv.id }, { type: 'secret_text', name: 'SYNC_KEY', text: syncKey }] })], { type: 'application/json' }));
-  form.append('worker.js', new Blob([code], { type: 'application/javascript+module' }), 'worker.js');
-  await cf(cfToken, 'PUT', `/accounts/${accountId}/workers/scripts/${SCRIPT}`, form, true);
+  // 🤝 (1.71.0) the co-stream room = a free Durable Object (SQLite) called CO. Cloudflare only wants the "make the room class"
+  // step the first time; on later updates it's already there, so if it complains about that step we upload again without it.
+  const upload = migrate => {
+    const form = new FormData();
+    const bindings = [{ type: 'kv_namespace', name: 'KV', namespace_id: kv.id }, { type: 'secret_text', name: 'SYNC_KEY', text: syncKey }, { type: 'durable_object_namespace', name: 'CO', class_name: 'CoRoom' }];
+    form.append('metadata', new Blob([JSON.stringify({ main_module: 'worker.js', compatibility_date: '2024-09-23', bindings, ...(migrate ? { migrations: { new_tag: 'co1', new_sqlite_classes: ['CoRoom'] } } : {}) })], { type: 'application/json' }));
+    form.append('worker.js', new Blob([code], { type: 'application/javascript+module' }), 'worker.js');
+    return cf(cfToken, 'PUT', `/accounts/${accountId}/workers/scripts/${SCRIPT}`, form, true);
+  };
+  try { await upload(true); }
+  catch (e) { if (!/migration|tag|class|durable/i.test(e.message)) throw e; await upload(false); }
   steps.push('bot uploaded');
   let sub;
   try { sub = (await cf(cfToken, 'GET', `/accounts/${accountId}/workers/subdomain`))?.subdomain; } catch {}
@@ -232,7 +241,7 @@ export async function enable(cfToken) {
   if (!linked) { status.linked = false; status.linkError = lastErr?.message; throw new Error(`Couldn't connect Discord to the 24/7 bot: ${lastErr?.message}. Movie Royal will keep trying by itself; you can also press Turn on again.`); }
   status.linked = true;
   steps.push('Discord connected');
-  checkedV = false; status.outdated = false;
+  checkedV = false; status.outdated = false; status.behind = false; status.botV = BOT_V;
   start();
   return { url, steps };
 }

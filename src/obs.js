@@ -212,3 +212,95 @@ async function browserSource(name, on, mkSettings, pick = null) {
     return { on: true, scenes: target.length, sceneNames: target, added, removed };
   });
 }
+
+// ---------- 🤝 co-stream (1.71.0) ----------
+// Your side: a small scene "🤝 Co-stream share" = your camera + your game screen (the SAME sources as on your stream, not copies,
+// so it's the exact same fight), shown by OBS's Virtual Camera. A hidden window sends that picture to your partner (VDO.Ninja).
+// Their side: one browser source with your picture, added twice to their scene: once cut to your camera, once cut to your battle.
+export const CO_SCENE = '🤝 Co-stream share';
+const GAME_URL = /(localhost|127\.0\.0\.1):\d+\/game\.html/i;
+async function findGame(call, inputs) { // your game screen in OBS: Movie Royal's browser source (not a preview), else the capture window
+  const want = String(db.settings.obsGame || '').trim();
+  if (want) { const hit = inputs.find(i => i.inputName.toLowerCase() === want.toLowerCase()); if (hit) return hit.inputName; }
+  for (const i of inputs.filter(i => /browser_source/.test(i.inputKind || ''))) {
+    try { const { inputSettings: s } = await call('GetInputSettings', { inputName: i.inputName }); if (GAME_URL.test(s.url || '') && !/preview=1|side=1|lab=1/.test(s.url || '')) return i.inputName; } catch {}
+  }
+  return inputs.find(i => i.inputName === CAP_NAME)?.inputName || null;
+}
+async function ensureItem(call, sceneName, sourceName) {
+  try { return (await call('GetSceneItemId', { sceneName, sourceName })).sceneItemId; }
+  catch { return (await call('CreateSceneItem', { sceneName, sourceName, sceneItemEnabled: true })).sceneItemId; }
+}
+/** Make / fix your share scene and start the Virtual Camera. Returns the layout your partner needs to cut the picture. */
+export async function coShare() {
+  return session(async call => {
+    const vs = await call('GetVideoSettings'), W = vs.baseWidth || 1920, H = vs.baseHeight || 1080;
+    const inputs = (await call('GetInputList')).inputs || [];
+    const game = await findGame(call, inputs), cams = (await findSources(call)).cams, cam = cams[0] || null;
+    if (!game) throw new Error("couldn't find Movie Royal's game screen in OBS. Add it first (🧭 Setup guide → OBS), then try again.");
+    const scenes = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName);
+    if (!scenes.includes(CO_SCENE)) await call('CreateScene', { sceneName: CO_SCENE });
+    // battle = the top-left ¾, camera = the top-right corner (the rest stays black, which costs almost nothing to send)
+    const layout = { W, H, battle: [0, 0, Math.round(W * .75), Math.round(H * .75)], cam: cam ? [Math.round(W * .75), 0, W - Math.round(W * .75), Math.round(H * .25)] : null };
+    const place = async (src, [x, y, w, h]) => {
+      const id = await ensureItem(call, CO_SCENE, src);
+      await call('SetSceneItemTransform', { sceneName: CO_SCENE, sceneItemId: id, sceneItemTransform: { positionX: x, positionY: y, alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: w, boundsHeight: h, cropLeft: 0, cropTop: 0, cropRight: 0, cropBottom: 0 } });
+      await call('SetSceneItemEnabled', { sceneName: CO_SCENE, sceneItemId: id, sceneItemEnabled: true });
+    };
+    await place(game, layout.battle);
+    if (cam) await place(cam, layout.cam);
+    let started = false;
+    try { if (!(await call('GetVirtualCamStatus')).outputActive) { await call('StartVirtualCam'); started = true; } } catch (e) { throw new Error("couldn't start OBS's Virtual Camera: " + e.message); }
+    return { layout, game, cam, started };
+  });
+}
+export async function coShareStop() { return session(async call => { try { if ((await call('GetVirtualCamStatus')).outputActive) await call('StopVirtualCam'); } catch {} return true; }); }
+
+/** Your partner's picture in your OBS: one browser source, two pieces (their camera + their battle). Keeps where you moved them. */
+export async function coViewer({ url, name, layout, scene, battleOn, autoBattle, camOn, camSide = 'right' }, saved = {}) {
+  return session(async call => {
+    const vs = await call('GetVideoSettings'), MW = vs.baseWidth || 1920, MH = vs.baseHeight || 1080;
+    const inputs = (await call('GetInputList')).inputs || [], scenes = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName);
+    const sceneName = scene && scenes.includes(scene) ? scene : (saved.scene && scenes.includes(saved.scene) ? saved.scene : (await call('GetCurrentProgramScene')).currentProgramSceneName);
+    const W = layout?.W || 1920, H = layout?.H || 1080, inputName = saved.input && inputs.some(i => i.inputName === saved.input) ? saved.input : `🤝 ${String(name || 'Co-streamer').slice(0, 30)} (co-stream)`;
+    const settings = { url, width: W, height: H, reroute_audio: false, shutdown: false, restart_when_active: false, fps_custom: false };
+    const out = { ...saved, scene: sceneName, input: inputName }, fresh = !inputs.some(i => i.inputName === inputName) || saved.scene !== sceneName;
+    if (!inputs.some(i => i.inputName === inputName)) out.battleItem = (await call('CreateInput', { sceneName, inputName, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: false })).sceneItemId;
+    else { await call('SetInputSettings', { inputName, inputSettings: settings, overlay: true }); out.battleItem = await ensureItem(call, sceneName, inputName); }
+    // the second piece (camera): the same source again (one connection, two cut-outs)
+    const items = ((await call('GetSceneItemList', { sceneName })).sceneItems || []).filter(i => i.sourceName === inputName).map(i => i.sceneItemId);
+    out.camItem = items.find(id => id !== out.battleItem) ?? (await call('CreateSceneItem', { sceneName, sourceName: inputName, sceneItemEnabled: true })).sceneItemId;
+    const crop = ([x, y, w, h]) => ({ cropLeft: x, cropTop: y, cropRight: Math.max(0, W - x - w), cropBottom: Math.max(0, H - y - h) });
+    const key = JSON.stringify(layout || null);
+    if (layout && (fresh || out.layoutKey !== key)) {
+      const b = layout.battle, bt = { ...crop(b), alignment: 5, boundsType: 'OBS_BOUNDS_NONE' };
+      if (fresh || !out.layoutKey) Object.assign(bt, { positionX: 0, positionY: 0, scaleX: MW / b[2], scaleY: MH / b[3] }); // first time: their battle fills your screen
+      await call('SetSceneItemTransform', { sceneName, sceneItemId: out.battleItem, sceneItemTransform: bt });
+      if (layout.cam) await call('SetSceneItemTransform', { sceneName, sceneItemId: out.camItem, sceneItemTransform: { ...crop(layout.cam), alignment: 5, boundsType: 'OBS_BOUNDS_NONE' } });
+      out.layoutKey = key;
+    }
+    if (layout?.cam && (fresh || out.camSide !== camSide)) { // their camera on THEIR side (Derek: Kirb left, Derek right, on both streams); after that you can move it
+      const c = layout.cam, k = MW * .24 / c[2], x = camSide === 'left' ? Math.round(MW * .015) : Math.round(MW - c[2] * k - MW * .015);
+      await call('SetSceneItemTransform', { sceneName, sceneItemId: out.camItem, sceneItemTransform: { positionX: x, positionY: Math.round(MH * .03), scaleX: k, scaleY: k } });
+      out.camSide = camSide;
+    }
+    try { await call('SetSceneItemIndex', { sceneName, sceneItemId: out.camItem, sceneItemIndex: ((await call('GetSceneItemList', { sceneName })).sceneItems || []).length - 1 }); } catch {} // camera on top of the battle
+    if (autoBattle) await call('SetSceneItemEnabled', { sceneName, sceneItemId: out.battleItem, sceneItemEnabled: !!battleOn });
+    if (camOn != null) await call('SetSceneItemEnabled', { sceneName, sceneItemId: out.camItem, sceneItemEnabled: !!camOn && !!layout?.cam });
+    return out;
+  });
+}
+export async function coBattleShow(saved, on) {
+  if (!saved?.scene || saved.battleItem == null) return false;
+  return session(async call => { await call('SetSceneItemEnabled', { sceneName: saved.scene, sceneItemId: saved.battleItem, sceneItemEnabled: !!on }); return true; });
+}
+export async function coViewerRemove(saved) { if (!saved?.input) return true; return session(async call => { try { await call('RemoveInput', { inputName: saved.input }); } catch {} return true; }); }
+
+/** 🩺 Lag check: is it the internet (dropped frames) or the PC (skipped frames)? */
+export async function coStats() {
+  return session(async call => {
+    const st = await call('GetStats'), ss = await call('GetStreamStatus').catch(() => ({})), vc = await call('GetVirtualCamStatus').catch(() => ({}));
+    const pct = (a, b) => b > 0 ? Math.round(1000 * a / b) / 10 : 0;
+    return { at: Date.now(), cpu: Math.round(st.cpuUsage || 0), fps: Math.round(st.activeFps || 0), render: pct(st.renderSkippedFrames || 0, st.renderTotalFrames || 0), encode: pct(st.outputSkippedFrames || 0, st.outputTotalFrames || 0), live: !!ss.outputActive, net: pct(ss.outputSkippedFrames || 0, ss.outputTotalFrames || 0), congestion: Math.round((ss.outputCongestion || 0) * 100), vcam: !!vc.outputActive };
+  });
+}

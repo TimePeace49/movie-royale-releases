@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.71.0
+- 🤝 **Co-stream with a friend** (Settings → 🤝 Co-stream, Derek + Kirb): two Movie Royals linked for a shared stream. One of you presses **🎟️ Make an invite code** (your ☁️ 24/7 bot hosts a private room), the other pastes it and presses **🤝 Join**. After that it reconnects by itself whenever Movie Royal is open.
+- 📷 Cameras: each side sends its camera + game screen (OBS's Virtual Camera shows a new **🤝 Co-stream share** scene, a hidden window sends it with VDO.Ninja, about 2.5 Mbps, no sound). Your friend's picture shows up in your OBS by itself as **two pieces**: their camera (on their side, move it anywhere) and their battle.
+- ↔️ Camera sides (Derek: Kirb on the left, Derek on the right, on both streams): **↔️ My camera's side** in the Co-stream tab. Your friend's camera is put on their side in your OBS and yours on your side in theirs. The one who invites starts on the right, the one who joins on the left.
+- ⚔️ Their battle pops up on your stream by itself while it runs and hides when it's over. It's the real game screen from their OBS, so both streams show the exact same fight (about a quarter second behind).
+- ⚡ Chaos across chats: while your battle isn't running and your friend's is, your viewers' channel point / bits chaos goes into **their** battle ("@viewer sent Comet into Kirbgames' battle! 🤝"), and theirs into yours. While your own battle runs, chaos stays in yours. Either of you can switch it off.
+- 🩺 **Lag check**: shows whether trouble is the internet (dropped frames → 📶 quality Low, about 1.2 Mbps) or the PC (skipped frames → OBS's hardware encoder). 📶 quality: Low / Normal / High.
+- 📌 One thing you set by hand, once, in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share. **👀 What my partner sees** checks it.
+- ☁️ 24/7 bot v17 hosts the co-stream room. Only the one who **invites** needs it (an update box shows right in the Co-stream tab); the "Update your 24/7 bot" start-up pop-up no longer asks just for this, so a friend who only joins isn't nagged.
+- 🧭 Setup guide: new 🤝 Co-stream step. 🧪 Test tab → 🤝 Co-stream (pretend partner): try it alone, nothing is sent anywhere.
+
 ## 1.70.1
 - 🎥 Calmer auto camera in battles (Derek: it bounced too much). It no longer zooms in on every knockout and back out, doesn't lean toward every hit, ignores small moves, and zooms in slowly (it still zooms out quickly enough that nobody leaves the picture). In a test Pirate Battle it moved about a tenth as much. Ball battles got the same calmer camera.
 - 🐒 Both monkeys die in every Pirate Battle now: the loser goes overboard in the sword fight (its ghost floats up), and the winner always gets taken out right after it celebrates, one of the 20 ways. Chat can still take either one out first with Take out Time / Take out Kirb; if that happens during the sword fight, the other one wins it and still gets taken out a moment later. (In the 🙈 revenge kick, the loser's ghost does the kicking.)
