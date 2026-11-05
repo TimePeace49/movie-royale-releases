@@ -159,6 +159,23 @@ if (!db.settings.madeWorseMovies) {
     db.lists.push(l); save();
   }
 }
+// 🏃 Marathon Battle (1.73.1, Derek: the GTA 6 marathon sub battles): what Derek eats or does, made once. Odds = how likely each one wins
+// (gross / hard ones are rarer). Delete it and it stays deleted.
+if (!db.settings.madeMarathon) {
+  db.settings.madeMarathon = true;
+  if (!db.lists.some(l => /marathon battle/i.test(l.name))) {
+    const M = [
+      ['Vlasic Pickle Balls', 'a handful', 8], ['Ketchup candy cane', '5 licks', 8], ['Hot Dog candy', '1 piece', 8],
+      ['Toxic Waste', "hold it till the sour's gone", 6], ['BeanBoozled spinner', '1 spin', 6], ['Fazer Salmiakki', '2 pieces', 5],
+      ['Heksehyl Zout salt stick', '1 stick', 4], ['Durian candy', '1 piece', 4], ['Octopus in garlic sauce', '1 bite', 3], ['Toxic Waste x3', 'all at once', 2],
+      ['10 push-ups', '', 8], ['20 sit-ups', '', 8], ['20 squats', '', 8], ['30 jumping jacks', '', 6], ['45-second plank', '', 6], ['1-minute wall sit', '', 5], ['10 burpees', '', 3],
+      ['Shock lie detector', '3 questions from chat', 3], ['MERCY', 'nothing happens', 5], ["CHAT'S CHOICE", 'chat picks any of these', 2], ['DOUBLE', 'the top 2 both happen', 2]
+    ];
+    const l = { id: uid(), name: '🏃 Marathon Battle', type: 'text', entries: [], joinOpen: false };
+    for (const [label, sub, weight] of M) l.entries.push({ id: uid(), label, sub, weight, status: 'active', addedAt: Date.now() });
+    db.lists.push(l); save();
+  }
+}
 export const norm = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
 
 /** Your name everywhere in the app: the name in Settings if you typed one, otherwise your Twitch name. */

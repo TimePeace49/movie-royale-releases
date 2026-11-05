@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.73.1
+- 🏃 **Marathon Battle** (Derek): a ready-made battle on the Battle tab for the GTA 6 marathon sub battles: 21 things to eat or do (Pickle Balls, Toxic Waste, salt licorice, durian candy, octopus, push-ups, squats, burpees, the shock lie detector, plus MERCY, CHAT'S CHOICE and DOUBLE). The nasty ones have lower odds, so they win less often. Change any odds or add more like any battle. Made once: delete it and it stays deleted.
+
 ## 1.73.0
 - 🏴‍☠️ **Pirate Battle in card battles** (Derek): the Pirate Battle map is on the 🃏 Card battles tab now too (and 🎲 Random can pick it). Your packs are split into two even crews, a 🔴 red crew on the *TimePeace49* and a 🔵 blue crew on the *Kirbgames*, and each pack wears a pirate hat or a bandana in its crew's colour (some get an eye patch, some hats have a little skull and crossbones). Everything else works like it does with characters: packs only fight the other crew (across the gangplanks, swinging over on ropes, with the cannons firing across), off the side = into the sea, it always comes down to one pack from each crew, then the 🐙 kraken, the 360° camera and the 🥊 FINAL FIGHT with a pirate finisher and celebration. The crews are mixed again for every fight. Every pack still has the same chance, and the winner comes off your Card pool like any card battle.
 - ⛈️🐒 Chat's storm powers (Big wave, Lightning bolt, Tentacle swipe) and Take out Time / Take out Kirb work during a card Pirate Battle too: the rewards come on by themselves when it starts and go away when it's over. They never change who wins.
