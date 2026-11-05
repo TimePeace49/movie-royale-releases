@@ -3,6 +3,22 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.72.0: What's new
+Everything since 1.71.1.
+
+- ⏪ **Undo goes all the way back:** ⏪ Undo and ⏪ Go back… under the wheel now go back every step, all the way to the start of the wheel (right before its first spin since the last ↺ Reset). **⏮️ All the way back to the start** does it in one go. The steps are saved, so closing Movie Royal doesn't lose them.
+  - Going back puts back the wheel, its spot sizes and the round timer (it waits for you to start it again), plus any other wheel that changed since then (like one a 🔀 linked spot spun).
+  - Saved respins and streamer respins that the taken-back spins used come back. Saved spins someone got another way (like from a sub) stay.
+- 🍀 **Luck in your own battles** (off by default): battles of words, pictures or movies that you fill yourself (like a battle of stuff for you to do) can have the Discord battle's luck.
+  - Every battle, everything that loses gets a little luckier (+1% by default, change it per battle in Settings → 🍀 Luck), so things that keep losing get more and more likely to win.
+  - A winner **stays in** (only you take things out) and only its luck starts over. Chat can't join these battles.
+  - Turn it on with **🍀 Luck** above the list on the Battle tab, in Settings → 🍀 Luck, or with the 🍀 box when you make a new battle.
+- 🧾 **History → 🧾 Everything:** a complete history with a line for everything that happens, newest first, kept for good: wheel spins and where they landed, the round timer, grows, voids and undos; every battle (with everyone's chance and luck) and who won it; claims and passes; luck earned, lost and started over; card packs that won; free spins given and used; channel point redeems; subs, gift subs, bits and tips; chat joins, raids and follows; Discord picks and swaps; going live; and changes you make to a battle.
+  - Pick the kinds you want, search it, hide practice battles and tests, and ⬇️ download it as a spreadsheet file. New lines show up as they happen, and nothing is ever taken out of it (even an undo gets its own line).
+  - It starts with what the older history lists already had (wheel spins, battle wins, card packs, free spins, alerts).
+- 🛠️ **Fixed:** growing, shrinking or doubling a spot on a wheel other than the one spun last, then pressing ⏪ Undo, now takes back the right wheel.
+- 🧪 Test tab: ⏪ **Undo all the way back** (tries it on a pretend wheel nobody sees), 🍀 **Luck in your own battles** (6 pretend battles) and 🧾 **Complete history**. 🤖 Test all checks all three too.
+
 ## v1.71.1: What's new
 Everything since 1.70.1.
 
