@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.73.2
+- 🏃 The ready-made Marathon Battle is out of the app again (Derek: he'd rather import it). It's a battle file now: Movie Pool → 📥 Import → drop the file. If 1.73.1 already made one for you, it stays until you delete it.
+
 ## 1.73.1
 - 🏃 **Marathon Battle** (Derek): a ready-made battle on the Battle tab for the GTA 6 marathon sub battles: 21 things to eat or do (Pickle Balls, Toxic Waste, salt licorice, durian candy, octopus, push-ups, squats, burpees, the shock lie detector, plus MERCY, CHAT'S CHOICE and DOUBLE). The nasty ones have lower odds, so they win less often. Change any odds or add more like any battle. Made once: delete it and it stays deleted.
 
