@@ -320,7 +320,7 @@
   cel(WW, 'Chow Time', 5, (t, A) => { A.emoji(.2, 5, '🥫', () => handW(A)[0], () => handW(A)[1], 60); A.pose(.4, 5, (k, Wp) => { Wp.atk = { kind: 'cast', t: (A.t * 2) % .4, dur: .4 }; }); A.say(.6, 'NOM NOM', '#fff', 56, A.P.W.x); A.snd(.8, 'chug'); A.snd(2, 'chug'); A.say(3, 'VICTORY TASTES GOOD!', '#ffd23a', 50, A.P.W.x); });
 
   // ======================================================================================================
-  // 🏴‍☠️ PIRATE BATTLE (characters only: on the ship that's left after the kraken; A.edge = the deck's edge past the
+  // 🏴‍☠️ PIRATE BATTLE (characters or card packs: on the ship that's left after the kraken; A.edge = the deck's edge past the
   // loser, A.water = the water's height there, A.splash = a splash on the water)
   // ======================================================================================================
   const PI2 = 'pirates';

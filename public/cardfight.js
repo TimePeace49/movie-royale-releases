@@ -77,7 +77,7 @@
   const edgeD = f => Math.min(f.x - ringL(f.z), ringR(f.z) - f.x), sideOf = f => f.x - ringL(f.z) < ringR(f.z) - f.x ? -1 : 1;
   const WIZ = () => scene.map === 'wizard', COLO = () => scene.map === 'colosseum', WAR = () => scene.map === 'ww2', PIR = () => scene.map === 'pirates';
   const bounds = z => RUMBLE() ? [ringL(z) + 34, ringR(z) - 34] : WIZ() ? [platL(z) - 300, platR(z) + 300] : PIR() ? [20, W - 20] : COLO() || WAR() ? [120, W - 120] : [90, W - 90];
-  // 🏴‍☠️ Pirate Battle (characters only, 1.69.0, Derek): two pirate ships side by side (bows away from us, sterns at the front), a
+  // 🏴‍☠️ Pirate Battle (1.69.0, Derek; 🧍 characters on the Battle tab, and 📦 card packs on the Card battles tab since 1.73.0): two pirate ships side by side (bows away from us, sterns at the front), a
   // gap of sea between them. Ship 0 (left) = the 🔴 red crew, ship 1 (right) = the 🔵 blue crew. Pirates only fight the other
   // crew, crossing on two gangplanks or swinging over on ropes; off the side = into the sea. The cannons fire across.
   const CREW = [{ name: 'RED CREW', ship: 'TimePeace49', col: '#d0283c', dk: '#5a0e16', lt: '#ff9aa4', dot: '🔴' }, { name: 'BLUE CREW', ship: 'Kirbgames', col: '#2a66dc', dk: '#0e2a64', lt: '#9ac4ff', dot: '🔵' }]; // (ship names: Derek's)
@@ -176,7 +176,7 @@
       else bell();
       if (m.show) SFX.music?.('fight');
     } else if (m.phase !== 'fight' && m.phase !== 'ended') { // lobby: the packs lined up and waiting
-      if (mode !== 'lobby' || was.map !== m.map || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { /* (a new map: line them up again for it) */ R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; petals = []; }
+      if (mode !== 'lobby' || was.map !== m.map || (was.lookSeed || '') !== (m.lookSeed || '') || F.length !== m.fighters.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { /* (a new map, or 🏴‍☠️ new crews: line them up again) */ R = Math.random; F = makeFighters(m.fighters); fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H); parts = []; flyers = []; weapons = []; petals = []; }
       mode = 'lobby'; fightId = null; winner = null; replay = null; FIN.on = false; if (m.show) SFX.music?.('lobby');
     } else if (m.phase === 'ended' && m.last && mode !== 'won' && mode !== 'replay' && mode !== 'over' && !winner) { // (a screen that joined late: show the winner)
       if (!F.length || F.some((f, i) => f.id !== m.fighters[i]?.id)) { R = Math.random; F = makeFighters(m.fighters); fightId = m.fightId; }
@@ -213,9 +213,10 @@
     if (mode === 'fight' && PIR() && scene.finalFight && live.length === 2 && !showdownSaid && T > .8) { showdownSaid = true; startFinal(); return; } // (🏴‍☠️ only two pirates: straight to the kraken)
     if (mode !== 'fight') { for (const f of F) { if (FIN.on && (f === FIN.W || f === FIN.L)) continue; f.ph += dt * 3; physics(f, dt); } return; }
     if (scene.wacky.teleport && (teleT -= dt) <= 0 && live.length > 2) { // 🔀 two packs swap places
-      teleT = rr(3.5, 6); const a = live[Math.floor(R() * live.length)]; let b = live[Math.floor(R() * live.length)]; if (b === a) b = live[(live.indexOf(a) + 1) % live.length];
-      for (const f of [a, b]) puff(f, '#c88cff'); [a.x, b.x] = [b.x, a.x]; [a.z, b.z] = [b.z, a.z]; for (const f of [a, b]) puff(f, '#c88cff');
-      word('SWITCH!', (a.x + b.x) / 2, zY((a.z + b.z) / 2) - 200, '#d6a8ff', 54); snd('swap');
+      teleT = rr(3.5, 6); const pool = PIR() ? live.filter(f => !f.swing && !f.falling && !f.heldBy && onDeck(f.x, f.z)) : live; // (🏴‍☠️ never someone on a rope or in the sea)
+      if (pool.length >= 2) { const a = pool[Math.floor(R() * pool.length)]; let b = pool[Math.floor(R() * pool.length)]; if (b === a) b = pool[(pool.indexOf(a) + 1) % pool.length];
+        for (const f of [a, b]) puff(f, '#c88cff'); [a.x, b.x] = [b.x, a.x]; [a.z, b.z] = [b.z, a.z]; for (const f of [a, b]) puff(f, '#c88cff');
+        word('SWITCH!', (a.x + b.x) / 2, zY((a.z + b.z) / 2) - 200, '#d6a8ff', 54); snd('swap'); }
     }
     if (MI().drops() && weapDrops < 2 && (weapT -= dt) <= 0) { weapT = rr(5, 8); weapDrops++; const ks = MI().weapons, kind = ks[Math.floor(R() * ks.length)], z = rr(.1, .9), [lo, hi] = bounds(z);
       weapons.push({ kind, x: RUMBLE() ? rr(lo + 40, hi - 40) : rr(200, 1720), z, h: RUMBLE() ? 260 : 700, vh: 0 }); if (RUMBLE()) { word('A CHAIR!', weapons[weapons.length - 1].x, zY(z) - 320, '#d6e2ee', 40); snd('crowd', { v: .6 }); } }
@@ -758,9 +759,10 @@
   // The server picks which one from a shuffled pile (each one once before any repeats) so every screen plays the same one.
   const FIN = { on: false };
   function finTest(m) { // 🧪 Test tab: two packs, straight to the stagger + finisher (+ celebration) of your choice
-    const map = m.map || 'kungfu', pirates = map === 'pirates'; scene = { ...scene, show: true, phase: 'fight', map, finalFight: true, fin: Number.isInteger(m.fin) ? m.fin : null, cel: Number.isInteger(m.cel) ? m.cel : null, wacky: scene.wacky || {}, ...(pirates ? { chars: true, lookSeed: scene.lookSeed || 'fin' + Math.floor(Math.random() * 1e6) } : {}) };
+    const map = m.map || 'kungfu', pirates = map === 'pirates', chars = m.who ? m.who === 'chars' : pirates; // (who: 'chars' = two 🧍 characters, 'packs' = two card packs; the Pirate Battle has characters unless asked)
+    scene = { ...scene, show: true, phase: 'fight', map, finalFight: true, fin: Number.isInteger(m.fin) ? m.fin : null, cel: Number.isInteger(m.cel) ? m.cel : null, wacky: scene.wacky || {}, chars, lookSeed: scene.lookSeed || 'fin' + Math.floor(Math.random() * 1e6) };
     layer.classList.remove('hidden'); SFX.setMap?.('card-' + map);
-    const packs = m.fighters || (pirates ? [{ id: 'fa', packId: 'fa', name: 'Captain Winner', game: 'Test', image: null, char: true, gender: 'm' }, { id: 'fb', packId: 'fb', name: 'Loser Pirate', game: 'Test', image: null, char: true, gender: 'f' }] // (🏴‍☠️ characters only: two pirates, one from each crew)
+    const packs = m.fighters || (chars ? [{ id: 'fa', packId: 'fa', name: pirates ? 'Captain Winner' : 'Winner', game: 'Test', image: null, char: true, gender: 'm' }, { id: 'fb', packId: 'fb', name: pirates ? 'Loser Pirate' : 'Loser', game: 'Test', image: null, char: true, gender: 'f' }] // (🏴‍☠️ on the pirate ships: one from each crew)
       : [{ id: 'fa', packId: 'fa', name: 'Winner Pack', game: 'Test', image: null, color: '#e8b830' }, { id: 'fb', packId: 'fb', name: 'Loser Pack', game: 'Test', image: null, color: '#5a8aff' }]);
     R = Math.random; fightId = 'fintest-' + Date.now(); destined = packs[0].id; order = []; winner = null; sent = true; F = makeFighters(packs); parts = []; texts = []; flyers = []; weapons = []; fg.clearRect(0, 0, W, H); cg.clearRect(0, 0, W, H);
     const [a, b] = F; Object.assign(a, { x: W * .4, z: .55, face: 1, weapon: MI().armed ? a.weapon : (MI().weapons[0] || null) }); Object.assign(b, { x: W * .6, z: .55, face: -1, hp: 5 });
@@ -1105,9 +1107,34 @@
     if (!cut) for (let i = 0; i <= teeth; i++) g.lineTo(x + w * i / teeth, top + (i % 2 ? tz : 0)); else for (let i = 0; i <= 10; i++) g.lineTo(x + w * i / 10, top + (i % 2 ? 7 : -5) * s); // a ragged cut
     g.lineTo(x + w, y + h); for (let i = teeth; i >= 0; i--) g.lineTo(x + w * i / teeth, y + h - (i % 2 ? tz : 0)); g.closePath();
   }
+  // 🏴‍☠️ card packs on the pirate ships (1.73.0): a tricorn hat with their crew's colour on the brim (sometimes a little skull and
+  // crossbones) or a bandana in their crew's colour knotted at the back, and sometimes an eye patch. The same on every screen.
+  const pirLookP = f => { const k = scene.lookSeed || ''; if (f._ph && f._phK === k) return f._ph; let h = hash(String(f.id) + '|pirhat|' + k); h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0; h = (h ^ (h >>> 16)) >>> 0; f._phK = k; // (mixed: the plain hash's lowest bit matches the crew's)
+    return (f._ph = { hat: h % 2, skull: (h >>> 3) % 2 === 0, patch: (h >>> 5) % 3 === 0 ? ((h >>> 9) % 2 ? 1 : -1) : 0 }); };
+  function pirHat(f, cx, top, PW, PH, s) {
+    const c = CREW[f.team] || CREW[0], L = pirLookP(f); g.lineJoin = 'round'; g.lineCap = 'round';
+    if (L.hat === 0) { // a tricorn
+      const hb = top + PH * .06, w = PW * .68;
+      g.fillStyle = '#20150e'; g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 2 * s;
+      g.beginPath(); g.ellipse(cx, hb - 8 * s, PW * .36, 20 * s, 0, Math.PI, 0); g.closePath(); g.fill(); g.stroke(); // (the crown)
+      g.beginPath(); g.moveTo(cx - w, hb - 16 * s); g.quadraticCurveTo(cx - w * .45, hb + 8 * s, cx, hb + 9 * s); g.quadraticCurveTo(cx + w * .45, hb + 8 * s, cx + w, hb - 16 * s);
+      g.quadraticCurveTo(cx + w * .5, hb - 22 * s, cx, hb - 30 * s); g.quadraticCurveTo(cx - w * .5, hb - 22 * s, cx - w, hb - 16 * s); g.closePath(); g.fill(); g.stroke(); // (the three-cornered brim)
+      g.strokeStyle = c.col; g.lineWidth = 3.2 * s; g.beginPath(); g.moveTo(cx - w * .94, hb - 14 * s); g.quadraticCurveTo(cx - w * .45, hb + 6 * s, cx, hb + 7 * s); g.quadraticCurveTo(cx + w * .45, hb + 6 * s, cx + w * .94, hb - 14 * s); g.stroke(); // (the crew's colour)
+      if (L.skull) { const sy = hb - 10 * s; g.strokeStyle = '#f2ead8'; g.lineWidth = 1.8 * s; g.beginPath(); g.moveTo(cx - 8 * s, sy + 9 * s); g.lineTo(cx + 8 * s, sy + 2 * s); g.moveTo(cx + 8 * s, sy + 9 * s); g.lineTo(cx - 8 * s, sy + 2 * s); g.stroke();
+        g.fillStyle = '#f2ead8'; g.beginPath(); g.arc(cx, sy, 5.2 * s, 0, 7); g.fill(); g.fillRect(cx - 3 * s, sy + 2.5 * s, 6 * s, 4 * s); g.fillStyle = '#111'; g.beginPath(); g.arc(cx - 2 * s, sy - .5 * s, 1.4 * s, 0, 7); g.arc(cx + 2 * s, sy - .5 * s, 1.4 * s, 0, 7); g.fill(); } // (a little skull and crossbones)
+    } else { // a bandana in the crew's colour, knotted at the back
+      const y0 = top + PH * .17;
+      g.fillStyle = c.col; g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 2 * s;
+      g.beginPath(); g.moveTo(cx - PW * .53, y0); g.quadraticCurveTo(cx - PW * .52, top - PH * .07, cx, top - PH * .08); g.quadraticCurveTo(cx + PW * .52, top - PH * .07, cx + PW * .53, y0); g.quadraticCurveTo(cx, y0 - PH * .05, cx - PW * .53, y0); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.85)'; for (const [dx, dy] of [[-.3, .03], [0, -.02], [.3, .03], [-.15, .1], [.15, .1]]) { g.beginPath(); g.arc(cx + dx * PW, top + dy * PH, 2.2 * s, 0, 7); g.fill(); } // (white dots)
+      const bx = cx - f.face * PW * .5, by = top + PH * .1, tw = Math.sin(T * 9 + f.ph) * 6 * s;
+      g.strokeStyle = c.col; g.lineWidth = 5 * s; for (const k of [0, 1]) { g.beginPath(); g.moveTo(bx, by); g.quadraticCurveTo(bx - f.face * 14 * s, by + 6 * s + (k ? -tw : tw), bx - f.face * (26 + k * 6) * s, by + (10 + k * 10) * s - tw * .5); g.stroke(); } // (the ends flap)
+      g.fillStyle = c.col; g.beginPath(); g.arc(bx, by, 5 * s, 0, 7); g.fill(); g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 1.5 * s; g.stroke(); // (the knot)
+    }
+  }
   function drawFace(f, cx, top, PW, PH, s, look) {
     if (f.char) return; // (🧍 characters have their own faces)
-    const ey = top + PH * .3, ex = PW * .18, ko = !f.alive, hurt = f.hurtT > 0;
+    const ey = top + PH * .3, ex = PW * .18, ko = !f.alive, hurt = f.hurtT > 0, patch = PIR() ? pirLookP(f).patch : 0; // (🏴‍☠️ patch: which eye has an eye patch, 0 = none)
     // headband
     if (WIZ()) { // 🧙 a pointy wizard hat
       const hb = top + PH * .06, col = f.color || '#5a2a9a'; g.fillStyle = col; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 2 * s;
@@ -1119,11 +1146,13 @@
     } else if (COLO()) { // 🏛️ a gladiator helmet with a red crest
       const hb = top + PH * .16; g.fillStyle = '#9aa2aa'; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 2 * s; g.beginPath(); g.arc(cx, hb, PW * .46, Math.PI, 0); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#c8ced4'; g.fillRect(cx - PW * .5, hb - 3 * s, PW, 6 * s);
       g.fillStyle = '#c81e2a'; g.beginPath(); for (let i = 0; i <= 8; i++) { const a = Math.PI + i / 8 * Math.PI, r = PW * .46 + 16 * s + (i % 2) * 4 * s; g.lineTo(cx + Math.cos(a) * r * .9, hb + Math.sin(a) * r); } for (let i = 8; i >= 0; i--) { const a = Math.PI + i / 8 * Math.PI; g.lineTo(cx + Math.cos(a) * PW * .42, hb + Math.sin(a) * PW * .44); } g.fill();
-    } else if (!RUMBLE()) { g.fillStyle = '#d82020'; g.fillRect(cx - PW / 2, top + PH * .12, PW, PH * .07); }
-    const tx = RUMBLE() || WIZ() || COLO() || WAR() ? -9999 : cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
+    } else if (PIR()) pirHat(f, cx, top, PW, PH, s); // 🏴‍☠️ a pirate hat or bandana in their crew's colour
+    else if (!RUMBLE()) { g.fillStyle = '#d82020'; g.fillRect(cx - PW / 2, top + PH * .12, PW, PH * .07); }
+    const tx = RUMBLE() || WIZ() || COLO() || WAR() || PIR() ? -9999 : cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
     for (const side of [-1, 1]) {
       const x = cx + side * ex + f.face * 3 * s;
       g.lineWidth = 2.4 * s; g.strokeStyle = '#111';
+      if (patch === side) { g.lineWidth = 2 * s; g.beginPath(); g.moveTo(cx - side * PW * .5, top + PH * .12); g.lineTo(x, ey); g.lineTo(cx + side * PW * .5, ey - 3 * s); g.stroke(); g.fillStyle = '#111'; g.beginPath(); g.ellipse(x, ey + 1 * s, 10 * s, 9 * s, 0, 0, 7); g.fill(); continue; } // 🏴‍☠️ an eye patch (and its strap)
       if (ko) { g.beginPath(); g.moveTo(x - 7 * s, ey - 7 * s); g.lineTo(x + 7 * s, ey + 7 * s); g.moveTo(x + 7 * s, ey - 7 * s); g.lineTo(x - 7 * s, ey + 7 * s); g.stroke(); continue; }
       if (hurt) { g.beginPath(); g.moveTo(x - 8 * s, ey - 5 * s * side * -1); g.lineTo(x + 2 * s * side, ey); g.lineTo(x - 8 * s, ey + 5 * s * side * -1); g.stroke(); continue; }
       g.fillStyle = '#fff'; g.beginPath(); g.ellipse(x, ey, 9 * s, 10 * s, 0, 0, 7); g.fill(); g.stroke();
@@ -2072,9 +2101,9 @@
   window.CARDS = { msg, on: () => !layer.classList.contains('hidden'), cam: a => camCmd(a), camAuto: on => { cam.auto = !!on; }, camState: () => ({ ...cam, follow: cam.follow?.name || null }), state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }),
     sim: secs => { const out = []; let last = alive().length; if (mode === 'intro') mode = 'fight'; for (let i = 0; i < secs * 60 && !winner; i++) { if (mode === 'final') { mode = 'fight'; finalLeft = 20; } step(DT); const n = alive().length; if (n !== last) { out.push([+T.toFixed(1), n]); last = n; } } return { out, T, winner: winner?.id || null, destined, falls: F.filter(f => f.falling).length, lions: lions.length }; },
     finList: map => ({ fin: finLib('fin', map).map(f => `${f.tone === 'funny' ? '🤪' : '☠️'} ${f.name}`), cel: finLib('cel', map).map(c => c.name) }),
-    finCheck: (map, fps = 15) => { // (tests) run every finisher + celebration of a map through every frame, drawing it: returns any errors
+    finCheck: (map, fps = 15, who) => { // (tests) run every finisher + celebration of a map through every frame, drawing it: returns any errors (who: 'chars' / 'packs', else the map's usual)
       const errs = []; const lib = window.ROYAL_FINISHERS?.[map]; if (!lib) return ['no finishers for ' + map];
-      finTest({ map }); const keep = { ...FIN };
+      finTest({ map, who }); const keep = { ...FIN };
       for (const [kind, list] of [['fin', lib.fin], ['cel', lib.cel]]) list.forEach((it, i) => {
         FIN.errs = []; Object.assign(FIN, keep, { fin: kind === 'fin' ? it : lib.fin[0], cel: kind === 'cel' ? it : lib.cel[0], fired: new Set(), celFired: new Set(), errs: [] });
         for (const ph of kind === 'fin' ? ['act', 'name', 'replay'] : ['cel', 'done']) { FIN.phase = ph; const d = ph === 'replay' ? (it.dur || 5) / REPLAY_K : it.dur || 5; FIN.fired = new Set(); FIN.celFired = new Set(); for (let t = 0; t <= d + .01; t += 1 / fps) { FIN.t = t; try { g.save(); finDraw(performance.now()); g.restore(); } catch (e) { FIN.errs.push(e.message); g.restore(); } } }
