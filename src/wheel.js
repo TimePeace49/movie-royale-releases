@@ -5,9 +5,13 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { db, save, uid, norm, streamerName, UPLOADS } from './store.js';
+import zlib from 'zlib';
+import { db, save, uid, norm, streamerName, UPLOADS, DATA } from './store.js';
 import { importLink } from './importer.js';
+import { act as actLog, plural, pctW } from './activity.js';
 
+let quiet = false; // (🧪 the undo self-test on a pretend wheel writes nothing in the complete history)
+const act = (c, t, x) => quiet ? null : actLog(c, t, x);
 const TAU = Math.PI * 2;
 const VX = '🕳️'; // the VOID (and "bring back a voided spot")
 const RX = '🔁'; // a respin
@@ -108,42 +112,179 @@ export const view = w => w && ({ id: w.id, name: w.name, title: w.title, rot: w.
 
 let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {}, openBattle: () => 'not ready', openCards: () => 'not ready', goView: () => {}, theme: () => null };
 let busyUntil = 0, spinning = null; const queue = []; let qTimer = null;
-export function initWheel(h) { hooks = { ...hooks, ...h }; W(); const st = W(); st.reveal = null; if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } }
+export function initWheel(h) { hooks = { ...hooks, ...h }; W(); const st = W(); st.reveal = null; if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } undoLoad(); }
 export function wheelMsg() { const w = W(), a = active(); return { type: 'wheel', show: w.show, wheel: view(a), last: w.last && w.last.wheelId === a?.id ? w.last : null, final: w.final && w.final.wheelId === a?.id ? w.final : null, round: roundView() }; }
 export function setShow(on) { W().show = !!on; save(); hooks.broadcast(wheelMsg()); hooks.pushState(); }
 const bump = () => { const st = W(); st.ver = (st.ver || 0) + 1; };
 const note = text => hooks.broadcast({ type: 'toast', text: '🎡 ' + text }, 'control');
-function log(rec) { const st = W(); st.history.push({ id: uid(), at: Date.now(), ...rec }); if (st.history.length > 50000) st.history = st.history.slice(-50000); }
+function log(rec) { const st = W(), r = { id: uid(), at: Date.now(), ...rec }; st.history.push(r); if (st.history.length > 50000) st.history = st.history.slice(-50000); wheelAct(r); }
+// 🧾 the complete history (History → Everything): one line for each thing the wheel's own history keeps
+const whoOf = by => by?.source === 'you' ? streamerName() : by?.name || '';
+function wheelLine(r) { // → [words, extra] for one line of the wheel's history (null = nothing to add)
+  const who = whoOf(r.by), W0 = { wheel: r.wheelName, kind: r.kind, who };
+  if (['spin', 'respin', 'up', 'down'].includes(r.kind)) return landLine(r.wheelName, r);
+  if (r.kind === 'final') return [`Time ran out on “${r.wheelName}”: “${r.text}” won${r.pct ? ` (${pctW(r.pct)} of the wheel)` : ''}`, { ...W0, icon: '🏆', who: '' }];
+  if (r.kind === 'redeem') return ['spin', 'respin', 'up', 'down'].includes(r.result) ? null : [`redeemed “${r.text}”${r.input ? ` (typed “${r.input}”)` : ''}: ${r.result}`, { ...W0, icon: '💜' }];
+  if (r.kind === 'void') return [`The void ate “${r.text}”: it's off “${r.wheelName}” for the rest of the stream`, { ...W0, icon: '🕳️', who: '' }];
+  if (r.kind === 'voidgrow') return [`The void landed on itself and grew to ${pctW(r.pct)} of “${r.wheelName}” (${r.hits}/${r.of})`, { ...W0, icon: '🕳️', who: '' }];
+  if (r.kind === 'doomsday') return [`Doomsday: ${r.text}`, { ...W0, icon: '☠️', who: '' }];
+  if (r.kind === 'unvoid') return [`brought “${r.text}” back from the void${r.reason ? ` (${r.reason})` : ''}`, { ...W0, icon: '🕳️' }];
+  if (r.kind === 'grow') return [`${r.amount < 0 ? 'shrank' : 'grew'} “${r.text}”: ${pctW(r.before)} → ${pctW(r.after)} of the wheel${r.reason ? ` (${r.reason})` : ''}`, { ...W0, icon: r.reason === 'double trouble' ? '✌️' : r.amount < 0 ? '📉' : '📈' }];
+  if (r.kind === 'knock') return [`${r.amount < 0 ? 'knocked one off' : 'put one back on'} “${r.text}” (${r.countLeft} left)`, { ...W0, icon: '🔢' }];
+  if (r.kind === 'collide') return [`asked for a respin at the same time as someone else: it's saved for later`, { ...W0, icon: '🎟️' }];
+  if (r.kind === 'undo') return [`went back to before: ${String(r.text || '').replace(/^Went back to before: /, '')} (${plural(r.steps || 1, 'step')})${r.others?.length ? ` · also put back: ${r.others.join(', ')}` : ''}`, { ...W0, icon: '⏪' }];
+  if (r.kind === 'reset') return [r.text === 'Every spot the same size' ? `made every spot on “${r.wheelName}” the same size` : `reset “${r.wheelName}” back to how it was set up (before its first spin)`, { ...W0, icon: r.text === 'Every spot the same size' ? '⚖️' : '↺' }];
+  return [r.text || r.kind, { ...W0, icon: '🎡' }];
+}
+function wheelAct(r) { if (['spin', 'respin', 'up', 'down'].includes(r.kind)) return; const L = wheelLine(r); if (L) act('wheel', L[0], L[1]); } // (spins get their line when they land)
+const SRC_W = { points: ' with channel points', bank: ' with a saved respin', mine: ' with a streamer respin', link: ' (a 🔀 linked spot sent it here)', mod: '' };
+function landLine(wheelName, rec, extra = '') {
+  const v = { spin: 'spun', respin: 'respun', up: 'moved it ⬆️ up', down: 'moved it ⬇️ down' }[rec.kind] || rec.kind, src = SRC_W[rec.by?.source] ?? '';
+  const bits = [rec.type === 'void' ? 'the 🕳️ VOID: it spins again' : `“${rec.text}” (${pctW(rec.pct)})`];
+  if (rec.from && rec.kind !== 'spin') bits.push(`was “${rec.from.text}”`);
+  if (rec.countLeft != null) bits.push(`🔢 ${rec.countLeft} left`);
+  if (rec.by?.source === 'void' && rec.type !== 'void') bits.push('the void eats it');
+  if (isAutoType(rec.type) && rec.type !== 'void') bits.push('⚡ auto spot');
+  if (rec.mystery) bits.push('🎁 mystery spot');
+  return [`${v} “${wheelName}”${src} → landed on ${bits[0]}${bits.length > 1 ? ' · ' + bits.slice(1).join(' · ') : ''}${extra}`, { icon: { spin: '🎡', respin: '🔁', up: '⬆️', down: '⬇️' }[rec.kind] || '🎡', who: whoOf(rec.by), wheel: wheelName, kind: rec.kind }];
+}
+function landAct(w, rec, extra = '') { const L = landLine(w.name, rec, extra); act('wheel', L[0], L[1]); }
+/** 🧾 once, for the complete history: the wheel's own older history as lines (the same words as live ones) */
+export function oldLines() {
+  const st = W(), out = [];
+  for (const r of st.history || []) { try { const L = wheelLine(r); if (L) out.push({ at: r.at, cat: 'wheel', text: L[0], ...L[1] }); } catch {} }
+  for (const g of st.grants || []) if (g.amount) out.push({ at: g.at, cat: 'spins', text: `${g.amount > 0 ? 'got' : 'lost'} ${plural(Math.abs(g.amount), 'saved respin')}${g.reason ? ` (${g.reason})` : ''}${g.by && g.by !== 'auto' ? ` · from ${g.by}` : ''}`, icon: g.amount > 0 ? '🎁' : '➖', who: g.name, kind: g.amount > 0 ? 'given' : 'taken' });
+  for (const x of st.spinLog || []) { const [icon, verb] = SPIN_W[x.kind] || ['🎟️', x.kind]; out.push({ at: x.at, cat: 'spins', text: `${verb} ${plural(x.n || 1, 'saved respin')}${x.reason ? ` (${x.reason})` : ''}${x.wheel ? ` on “${x.wheel}”` : ''}${x.left != null ? ` · ${x.left} left` : ''}`, icon, who: x.name, kind: x.kind }); }
+  return out;
+}
+const mmss = ms => { const s = Math.max(0, Math.round((ms || 0) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const lastEntry = () => { const st = W(); if (!st.last) return null; return getWheel(st.last.wheelId)?.entries.find(e => e.id === st.last.entryId) || null; };
 const lastWheel = () => { const st = W(); return (st.last && getWheel(st.last.wheelId)) || active(); };
 const say = t => hooks.say(t).catch(() => {});
 const sayW = (w, t) => { if (w?.opts?.chat !== false) say(t); };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const banner = (html, extra = {}) => hooks.broadcast({ type: 'wheelBanner', html, ...extra }, 'overlay');
+const banner = (html, extra = {}) => { if (!quiet) hooks.broadcast({ type: 'wheelBanner', html, ...extra }, 'overlay'); }; // (🧪 never during the pretend-wheel test)
 const refresh = () => { bump(); save(); hooks.broadcast(wheelMsg()); hooks.pushState(); };
 
-// ---------- ⏪ undo: every change to the wheel can be taken back, step by step ----------
-const undo = [];
-function snap(label) {
-  const st = W(), w = lastWheel();
-  undo.push({ id: uid(), at: Date.now(), label, wheelId: w?.id, entries: JSON.stringify(w?.entries || []), rot: w?.rot || 0, last: st.last ? JSON.stringify(st.last) : null, final: st.final ? JSON.stringify(st.final) : null,
-    round: st.round ? JSON.stringify(roundSave()) : null, bank: JSON.stringify(st.bank), mine: st.mine.left, hist: st.history.length, voidHits: JSON.stringify(st.voidHits) });
-  if (undo.length > 60) undo.shift();
+// ---------- ⏪ undo: every change to the wheel can be taken back, step by step, all the way back to the start ----------
+// (1.72.0, Derek: "make the undo button work all the way back to the beginning of the wheel"): the steps are saved on disk
+// (data/wheel-undo.jsonl, one line each, packed small), so closing the app keeps them, and there's no 60-step limit any more
+// (only the oldest of 10,000 steps fall off). One timeline for every wheel: going back to a step puts back EVERY wheel that
+// changed since then (a linked spot's wheel too), the round timer, saved spins and streamer respins, as they were.
+const UNDO_FILE = path.join(DATA, 'wheel-undo.jsonl'), UNDO_MAX = 10000;
+const undo = []; // { id, at, label, kind, wheelId, wheelName, z } oldest first (z = the state, packed)
+const pack = o => zlib.deflateRawSync(Buffer.from(JSON.stringify(o))).toString('base64');
+const unpack = z => JSON.parse(zlib.inflateRawSync(Buffer.from(z, 'base64')).toString());
+let undoErrAt = 0;
+const undoErr = e => { if (Date.now() - undoErrAt > 60000) { undoErrAt = Date.now(); console.error('[wheel] couldn\'t save the undo steps:', e.message); } };
+function undoLoad() {
+  undo.length = 0;
+  let t = ''; try { t = fs.readFileSync(UNDO_FILE, 'utf8'); } catch { return; }
+  for (const line of t.split('\n')) { if (!line) continue; try { const u = JSON.parse(line); if (u?.id && u.z) undo.push(u); } catch {} }
+  if (undo.length > UNDO_MAX) { undo.splice(0, undo.length - UNDO_MAX); undoWrite(); }
 }
-export const undoList = () => undo.slice().reverse().map(u => ({ id: u.id, at: u.at, label: u.label }));
+function undoWrite() { // (rewrites the file: after going back, or when the oldest steps fall off)
+  const txt = undo.map(u => JSON.stringify(u)).join('\n') + (undo.length ? '\n' : ''), tmp = UNDO_FILE + '.tmp';
+  try { fs.writeFileSync(tmp, txt); fs.renameSync(tmp, UNDO_FILE); } catch { try { fs.writeFileSync(UNDO_FILE, txt); } catch (e) { undoErr(e); } }
+}
+const bankNums = bank => Object.fromEntries(Object.entries(bank || {}).map(([k, b]) => [k, [b.spins || 0, b.got || 0, b.used || 0, b.name || '', b.login || '']]));
+/** Remember how things are right BEFORE a change (w = the wheel that's about to change). use = a saved respin ({ bank: key }) or a
+ * streamer respin ({ mine: 1 }) this step used up: going back gives it back. (Saved spins someone got some other way, like a sub, stay.) */
+function snap(label, w = lastWheel(), kind = '', use = null) {
+  const st = W(); if (!w) return;
+  const h = st.history[st.history.length - 1];
+  const state = { entries: w.entries, rot: w.rot || 0, setup: w.setup || null, last: st.last || null, final: st.final || null, round: st.round ? roundSave() : null, voidHits: st.voidHits || {}, chain: st.chain || [], activeId: st.activeId, histId: h?.id || null };
+  let z; try { z = pack(state); } catch (e) { undoErr(e); return; }
+  const u = { id: uid(), at: Date.now(), label: String(label || '').slice(0, 120), kind, wheelId: w.id, wheelName: w.name, ...(use ? { use } : {}), z };
+  undo.push(u);
+  try { fs.appendFileSync(UNDO_FILE, JSON.stringify(u) + '\n'); } catch (e) { undoErr(e); }
+  if (undo.length > UNDO_MAX + 500) { undo.splice(0, undo.length - UNDO_MAX); undoWrite(); }
+}
+// ⏮️ the start of a wheel = its first step since its last ↺ Reset (going back to it = the wheel before its first spin)
+function startOf(wheelId) {
+  let i0 = -1;
+  for (let i = undo.length - 1; i >= 0; i--) { const u = undo[i]; if (u.wheelId !== wheelId) continue; if (u.kind === 'reset' || u.label === 'reset the wheel') break; i0 = i; }
+  if (i0 < 0) return null;
+  const others = new Set(undo.slice(i0).filter(u => u.wheelId !== wheelId).map(u => u.wheelName || ''));
+  return { id: undo[i0].id, at: undo[i0].at, n: undo.length - i0, others: [...others].filter(Boolean) };
+}
+/** The ⏪ Go back… list: newest first, `n` = how many steps back. before = a step id (the next page starts after it). */
+export function undoList({ limit = 60, before = null, wheelId = null } = {}) {
+  let i = undo.length - 1; if (before) { const k = undo.findIndex(u => u.id === before); if (k >= 0) i = k - 1; }
+  const rows = []; for (; i >= 0 && rows.length < limit; i--) { const u = undo[i]; rows.push({ id: u.id, at: u.at, label: u.label, kind: u.kind || '', wheelId: u.wheelId, wheelName: u.wheelName, n: undo.length - i }); }
+  const wid = wheelId || W().activeId;
+  return { rows, more: i >= 0, total: undo.length, start: startOf(wid), first: undo[0]?.at || null };
+}
+export const undoCount = () => undo.length;
+function giveBackUses(steps, label) { // the saved respins / streamer respins the taken-back spins used come back (the 🎟️ Free spins log says so)
+  const st = W(), per = new Map(); let mine = 0;
+  for (const u of steps) { if (u.use?.bank) per.set(u.use.bank, (per.get(u.use.bank) || 0) + 1); if (u.use?.mine) mine++; }
+  for (const [k, n] of per) { const b = st.bank[k]; if (!b) continue; b.spins = (b.spins || 0) + n; b.used = Math.max(0, (b.used || 0) - n); spinLog({ kind: 'back', name: b.name, login: b.login, n, reason: '⏪ undo took back the respin it was used for', left: b.spins }); }
+  if (mine) { st.mine.left = (st.mine.left || 0) + mine; act('spins', `got ${plural(mine, 'streamer respin')} back from ⏪ undo (${st.mine.left} left this stream)`, { icon: '↩️', who: streamerName(), kind: 'mine' }); }
+}
 export function undoTo(id) {
-  const i = id ? undo.findIndex(u => u.id === id) : undo.length - 1; if (i < 0) throw new Error('Nothing to go back to.');
-  const u = undo[i], st = W(), w = getWheel(u.wheelId);
+  const i = id ? undo.findIndex(u => u.id === id) : undo.length - 1; if (i < 0) throw new Error(id ? 'That step is gone (it was already taken back).' : 'Nothing to go back to.');
+  const st = W(), u = undo[i];
+  let s; try { s = unpack(u.z); } catch { throw new Error("That step couldn't be read, so nothing changed."); }
   if (st.reveal) revealClose(true); // (🎁 an open card pack goes away)
-  queue.length = 0; clearTimeout(qTimer); clearTimeout(roundT); for (const t of voidTimers) clearTimeout(t); voidTimers.length = 0; busyUntil = 0; spinning = null;
-  if (w) { w.entries = JSON.parse(u.entries); w.rot = u.rot; }
-  st.last = u.last ? JSON.parse(u.last) : null; st.final = u.final ? JSON.parse(u.final) : null; st.bank = JSON.parse(u.bank); st.mine.left = u.mine; st.voidHits = JSON.parse(u.voidHits);
-  st.round = u.round ? JSON.parse(u.round) : null; if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } // back in time: the timer waits for you
-  const gone = st.history.length - u.hist; st.history.length = u.hist;
-  undo.length = i;
-  log({ kind: 'undo', wheelId: w?.id, wheelName: w?.name, text: `Went back to before: ${u.label}`, steps: gone, by: { name: streamerName(), source: 'you' } });
+  queue.length = 0; clearTimeout(qTimer); clearTimeout(roundT); clearTimeout(linkT); for (const t of voidTimers) clearTimeout(t); voidTimers.length = 0; busyUntil = 0; spinning = null;
+  // every wheel that changed since then goes back too: the first step after this one for each wheel = how it was then
+  const done = new Set(), wheels = [];
+  for (let j = i; j < undo.length; j++) {
+    const x = undo[j]; if (done.has(x.wheelId)) continue; done.add(x.wheelId);
+    const w = getWheel(x.wheelId); if (!w) continue;
+    let o; try { o = j === i ? s : unpack(x.z); } catch { continue; }
+    w.entries = o.entries || w.entries; w.rot = o.rot || 0; if ('setup' in o) w.setup = o.setup || null; delete w.resetBackup; delete w.sizeBackup;
+    wheels.push(w.name);
+  }
+  st.last = s.last || null; st.final = s.final || null;
+  giveBackUses(undo.slice(i), u.label);
+  st.voidHits = s.voidHits || {}; st.chain = s.chain || [];
+  if (s.activeId && getWheel(s.activeId)) st.activeId = s.activeId;
+  st.round = s.round || null; if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } // back in time: the timer waits for you
+  // the wheel's history loses what got taken back (its stats shouldn't count it); 🧾 History → Everything keeps it, plus this undo
+  if (s.histId) { const k = st.history.findLastIndex(h => h.id === s.histId); if (k >= 0) st.history.length = k + 1; else st.history = st.history.filter(h => h.at < u.at); }
+  else st.history.length = 0;
+  const steps = undo.length - i;
+  undo.length = i; undoWrite();
+  log({ kind: 'undo', wheelId: u.wheelId, wheelName: u.wheelName, text: `Went back to before: ${u.label}`, steps, others: wheels.filter(n => n !== u.wheelName), by: { name: streamerName(), source: 'you' } });
   refresh(); hooks.broadcast({ type: 'wheelUndo' }, 'overlay');
-  return { label: u.label };
+  return { label: u.label, steps, wheels };
+}
+/** 🧪 Test tab: ⏮️ all the way back, on a pretend wheel nobody sees (nothing goes on stream): it gets grown, shrunk, counted down,
+ * voided and brought back, made the same size… then back to its start. Is it exactly how it began, and is everything else untouched? */
+export function undoSelfTest(n = 14) {
+  const st = W();
+  if (spinning || queue.length || Date.now() < busyUntil) throw new Error('The wheel is busy right now: try again when it stops spinning.');
+  if (st.round?.state === 'running') throw new Error('The round timer is running: try it when the round is over (or pause the timer first).');
+  const keep = () => JSON.stringify({ active: st.activeId, last: st.last || null, final: st.final || null, round: st.round || null, bank: bankNums(st.bank), mine: st.mine.left, hist: st.history.length, steps: undo.length, chain: st.chain || [] });
+  const before = keep(), w = newWheel('🧪 Undo test wheel', [{ text: 'Pizza', weight: 2 }, { text: 'Tacos' }, { text: 'Countdown', type: 'countdown', countStart: 3 }, { text: 'Sushi' }, { text: 'Burgers', weight: 3 }]);
+  st.wheels.push(w);
+  const want = JSON.stringify(w.entries), done = [];
+  let ok = false, why = '', start = null, back = null;
+  quiet = true;
+  try {
+    const E = w.entries, pick = i => E[i % E.length];
+    for (let i = 0; i < n; i++) {
+      const e = pick(i * 3 + 1), k = i % 5;
+      if (k === 0) { grow(e.id, 1, {}, 'test', w.id); done.push(`grew ${e.text}`); }
+      else if (k === 1) { grow(e.id, -1, {}, 'test', w.id); done.push(`shrank ${e.text}`); }
+      else if (k === 2) { e.voided = 'test'; unvoid(e.id, { name: 'test', source: 'auto' }, 'test', w.id); done.push(`voided + brought back ${e.text}`); }
+      else if (k === 3) { const c = E[2]; snap(`knocked one off ${c.text}`, w, 'knock'); keepSetup(w); c.count = Math.max(0, c.count - 1); done.push(`knocked one off ${c.text}`); }
+      else { resetSizes(w.id); done.push('every spot the same size'); }
+    }
+    const changed = JSON.stringify(w.entries) !== want;
+    start = startOf(w.id);
+    if (!start) why = 'no start step for the pretend wheel';
+    else { back = undoTo(start.id); st.history.pop(); } // (the undo's own line in the wheel's history: the pretend wheel is going away)
+    const got = JSON.stringify(w.entries), after = keep();
+    ok = !!start && changed && got === want && after === before;
+    if (!why && !changed) why = 'the pretend changes didn\'t change the wheel';
+    else if (!why && got !== want) why = 'the spots didn\'t come back exactly';
+    else if (!why && after !== before) why = 'something outside the pretend wheel changed';
+  } catch (e) { why = e.message; }
+  finally { quiet = false; st.wheels = st.wheels.filter(x => x !== w); if (st.activeId === w.id) st.activeId = st.wheels[0]?.id; bump(); save(); }
+  return { ok, why, changes: done.length, stepsBack: back?.steps || 0, start: !!start, done: done.slice(0, 20), steps: undo.length };
 }
 
 // ---------- ⏱️ the round timer ----------
@@ -159,13 +300,14 @@ function sendRound(extra = {}) { bump(); save(); hooks.broadcast({ type: 'wheelR
 function armRound() { clearTimeout(roundT); const r = W().round; if (!r || r.state !== 'running') return; roundT = setTimeout(roundOut, Math.max(0, r.endsAt - Date.now()) + 30); }
 function roundRun() { const r = W().round; r.endsAt = Date.now() + r.left; r.state = 'running'; r.why = ''; armRound(); }
 function roundPause(why) { const r = W().round; if (!r || r.state !== 'running') return; r.left = Math.max(0, r.endsAt - Date.now()); r.state = 'paused'; r.why = why; clearTimeout(roundT); }
-export function roundCmd(cmd, secs) {
+export function roundCmd(cmd, secs, by = null) {
   const st = W(), r = st.round; if (!r || r.state === 'ended') throw new Error('No round timer going. It starts when the first spin lands.');
-  if (cmd === 'pause') roundPause('you');
-  else if (cmd === 'start' || cmd === 'resume') { if (r.state === 'paused' || r.state === 'armed') { if (r.state === 'armed') r.left = r.total; roundRun(); } }
-  else if (cmd === 'add') { const ms = (Number(secs) || 30) * 1000; r.total = Math.max(5000, r.total + ms); if (r.state === 'running') { r.endsAt = Math.max(Date.now() + 1000, r.endsAt + ms); armRound(); } else r.left = Math.max(1000, r.left + ms); }
-  else if (cmd === 'end') { if (r.state === 'running') r.left = 0; roundOut(true); return; }
-  else if (cmd === 'cancel') { clearTimeout(roundT); st.round = null; sendRound(); return; }
+  const who = by?.name || streamerName(), wn = getWheel(r.wheelId)?.name || '', A = (t, icon) => act('wheel', t, { icon, who, wheel: wn, kind: 'timer' }); // 🧾
+  if (cmd === 'pause') { const was = r.state; roundPause('you'); if (was === 'running') A(`paused the round timer on “${wn}” (${mmss(r.left)} left)`, '⏸️'); }
+  else if (cmd === 'start' || cmd === 'resume') { if (r.state === 'paused' || r.state === 'armed') { if (r.state === 'armed') r.left = r.total; roundRun(); A(`started the round timer on “${wn}” again (${mmss(r.left)} left)`, '▶️'); } }
+  else if (cmd === 'add') { const ms = (Number(secs) || 30) * 1000; r.total = Math.max(5000, r.total + ms); if (r.state === 'running') { r.endsAt = Math.max(Date.now() + 1000, r.endsAt + ms); armRound(); } else r.left = Math.max(1000, r.left + ms); A(`added ${Math.round(ms / 1000)} seconds to the round timer on “${wn}”`, '➕'); }
+  else if (cmd === 'end') { if (!by) A(`ended the round on “${wn}” right now`, '⏹'); if (r.state === 'running') r.left = 0; roundOut(true); return; }
+  else if (cmd === 'cancel') { A(`cancelled the round on “${wn}” (no winner)`, '✕'); clearTimeout(roundT); st.round = null; sendRound(); return; }
   sendRound();
 }
 function roundOut(force) { // time's up!
@@ -177,7 +319,7 @@ function roundOut(force) { // time's up!
 }
 function finalize() {
   const st = W(), r = st.round, rec = st.last; if (!r) return;
-  snap('the timer ran out');
+  snap('the timer ran out', getWheel(rec?.wheelId) || lastWheel(), 'final');
   r.state = 'ended'; r.left = 0; clearTimeout(roundT);
   if (!rec) { sendRound(); return; }
   st.final = { ...rec, at: Date.now() };
@@ -200,7 +342,7 @@ function followLink(w, rec, mid = false) {
   if (go && !rec.voided && st.chain.length < 6) {
     if (go.kind === 'wheel') {
       const to = getWheel(go.id); if (!to || to.id === w.id) return note(`“${e.text}” links to a wheel that isn't there any more.`);
-      st.chain.push({ from: w.id, to: to.id, keep }); save();
+      st.chain.push({ from: w.id, to: to.id, keep }); save(); act('wheel', `“${e.text}” on “${w.name}” sent it to the wheel “${to.name}”`, { icon: '🔀', wheel: w.name, kind: 'link' });
       linkT = setTimeout(() => {
         st.activeId = to.id; st.show = true; refresh(); hooks.goView('wheel');
         banner(`🔀 ${esc(e.text)}<small>Off to ${esc(to.name)}!</small>`);
@@ -210,7 +352,7 @@ function followLink(w, rec, mid = false) {
       return;
     }
     if (go.kind === 'cards') { // 🃏 a card battle, then back
-      st.chain.push({ from: w.id, cards: go.id, keep }); save();
+      st.chain.push({ from: w.id, cards: go.id, keep }); save(); act('wheel', `“${e.text}” on “${w.name}” sent it to a card battle`, { icon: '🔀', wheel: w.name, kind: 'link' });
       linkT = setTimeout(() => {
         banner(`🔀 ${esc(e.text)}<small>Card battle time!</small>`);
         sayW(w, `🔀 ${e.text} → card battle time!`);
@@ -220,7 +362,7 @@ function followLink(w, rec, mid = false) {
       return;
     }
     if (go.kind === 'battle') {
-      st.chain.push({ from: w.id, battle: go.id, keep }); save();
+      st.chain.push({ from: w.id, battle: go.id, keep }); save(); act('wheel', `“${e.text}” on “${w.name}” sent it to a battle`, { icon: '🔀', wheel: w.name, kind: 'link' });
       linkT = setTimeout(() => {
         banner(`🔀 ${esc(e.text)}<small>Battle time!</small>`);
         sayW(w, `🔀 ${e.text} → battle time!`);
@@ -243,6 +385,7 @@ export function linkBack() {
     clearTimeout(roundT); st.round = top.keep.round; st.last = top.keep.last; st.final = null; save(); sendRound();
   }
   st.activeId = from.id; st.show = true; refresh(); hooks.goView('wheel');
+  act('wheel', `Back to the wheel “${from.name}”`, { icon: '↩️', wheel: from.name, kind: 'link' }); // 🧾
   banner(`↩️ Back to ${esc(from.name)}`);
   return true;
 }
@@ -253,6 +396,7 @@ export function linkClear() { W().chain = []; clearTimeout(linkT); save(); }
 function landed(w, rec) {
   if (spinning?.kind === 'respin') respinLandAt = Date.now();
   spinning = null;
+  { const r0 = W().round; landAct(w, rec, roundOn(w) && r0?.state === 'armed' && r0.wheelId === w.id && !isAutoType(rec.type) && rec.type !== 'countdown' ? ` · ⏱️ the round timer started (${mmss(r0.total)})` : ''); } // 🧾 where it landed
   if (rec.mystery && W().last?.id === rec.id) revealPack(w, rec);
   const st = W(); let r = st.round;
   if (!roundOn(w)) { if (!queue.length && rec.by?.source !== 'void' && rec.type !== 'void') followLink(w, rec); return; } // no round timer: where it stops is the win
@@ -290,6 +434,7 @@ export function revealOpen(id) {
   if (st.last?.id === R.id) st.last.revealed = hidden;
   if (st.final?.id === R.id || (st.final && st.final.entryId === R.entryId && !st.final.revealed)) st.final.revealed = hidden;
   bump(); save();
+  act('wheel', `opened the 🎁 mystery card on “${R.cover?.text || ''}”: ${hidden.text || '(a picture)'}`, { icon: '🎁', who: streamerName(), wheel: w?.name, kind: 'reveal' }); // 🧾
   hooks.broadcast(revealMsg({ stage: 'open', id: R.id, cover: R.cover, hidden, color: rec?.color }));
   hooks.broadcast(wheelMsg()); hooks.pushState();
   if (hidden.text && w) setTimeout(() => sayW(w, `🎁 The mystery spot “${R.cover.text}” was… ${hidden.text}!`), 1800);
@@ -343,8 +488,8 @@ function pump() {
   if (!queue.length) return;
   const wait = busyUntil - Date.now();
   if (wait > 0) { qTimer = setTimeout(pump, wait + 50); return; }
-  const job = queue.shift();
-  try { run(job); } catch (e) { note(e.message); if (job.by.source === 'bank') refundBank(job.by); if (job.by.source === 'mine') { W().mine.left++; save(); } }
+  const job = queue.shift(), n0 = undo.length;
+  try { run(job); } catch (e) { if (undo.length > n0) { undo.length = n0; undoWrite(); } /* (a spin that couldn't happen leaves no ⏪ step) */ note(e.message); if (job.by.source === 'bank') refundBank(job.by); if (job.by.source === 'mine') { W().mine.left++; save(); } }
   if (queue.length) qTimer = setTimeout(pump, Math.max(200, busyUntil - Date.now() + 50));
 }
 const voidTimers = [];
@@ -358,8 +503,8 @@ function run({ kind, by, wheelId, force }) { // force = a spot id to land on (Te
   if (kind === 'spin' && live && roundOn(w) && st.last) kind = 'respin';
   // a respin gets the timer going again after an auto / countdown spot (if you paused it yourself, only you can restart it)
   if (kind === 'respin' && live && roundOn(w) && r.state === 'paused' && (r.why !== 'you' || by.source === 'you')) roundRun();
+  snap(kind === 'spin' ? `a new spin of “${w.name}”` : kind === 'respin' ? `${by.name}'s respin${by.source === 'bank' ? ' (a saved respin)' : by.source === 'mine' ? ' (a streamer respin)' : ''}` : `${by.name} moved it ${kind}`, w, kind, by.source === 'bank' ? { bank: bkey(by.login || by.name) } : by.source === 'mine' ? { mine: 1 } : null);
   keepSetup(w); // (↺ the wheel as you set it up: remembered right before the first spin since the last reset)
-  snap(kind === 'spin' ? 'a new spin' : kind === 'respin' ? `${by.name}'s respin` : `${by.name} moved it ${kind}`);
   if (kind === 'spin') { // a fresh spin: last winner leaves (if set), finished countdowns leave, a new round timer gets ready
     const sl0 = layout(w);
     if (w.removeWinner && st.last?.wheelId === w.id) { const e = w.entries.find(x => x.id === st.last.entryId); if (e && sl0.length > 1) e.on = false; }
@@ -461,7 +606,7 @@ function doomsday(w) {
 // ---------- after it lands: knock one off ----------
 export function knock(delta = -1) {
   const st = W(), e = lastEntry(); if (!e || (e.type !== 'countdown' && e.type !== 'autocount')) throw new Error('The last spot is not a countdown spot.');
-  keepSetup(lastWheel()); snap(delta < 0 ? `knocked one off ${e.text}` : `put one back on ${e.text}`);
+  snap(delta < 0 ? `knocked one off ${e.text}` : `put one back on ${e.text}`, lastWheel(), 'knock'); keepSetup(lastWheel());
   e.count = Math.max(0, Math.min(e.countStart, e.count + delta)); st.last.countLeft = e.count;
   if (delta < 0) st.last.knocked = true;
   log({ kind: 'knock', wheelId: st.last.wheelId, wheelName: st.last.wheelName, entryId: e.id, text: e.text, amount: delta, countLeft: e.count, by: { name: streamerName(), source: 'you' } });
@@ -479,20 +624,31 @@ export function giveSpins(who, n, reason = '', by = {}) {
   b.spins = Math.max(0, b.spins + n); if (n > 0) b.got += n;
   b.log ||= []; b.log.unshift({ at: Date.now(), n, reason: String(reason || '').slice(0, 120) }); b.log = b.log.slice(0, 50);
   st.grants.push({ id: uid(), at: Date.now(), login: b.login, name: b.name, amount: n, reason: String(reason || '').slice(0, 120), by: by.name || streamerName() }); if (st.grants.length > 20000) st.grants = st.grants.slice(-20000);
+  act('spins', `${n > 0 ? 'got' : 'lost'} ${plural(Math.abs(n), 'saved respin')}${reason ? ` (${String(reason).slice(0, 120)})` : ''}${by.name && by.name !== 'auto' ? ` · from ${by.name}` : ''} · has ${b.spins}`, { icon: n > 0 ? '🎁' : '➖', who: b.name, kind: n > 0 ? 'given' : 'taken' }); // 🧾
   bump(); save(); hooks.pushState();
   return b.spins;
 }
 // 🎟️ the free-spins log (History → 🎟️ Free spins): every saved spin used, and every one given back (given ones are in st.grants)
-export function spinLog(rec) { const st = W(); (st.spinLog ||= []).push({ id: uid(), at: Date.now(), ...rec }); if (st.spinLog.length > 20000) st.spinLog = st.spinLog.slice(-20000); }
+const SPIN_W = { used: ['🔁', 'used'], back: ['↩️', 'got back'], taken: ['➖', 'lost'] };
+export function spinLog(rec) {
+  const st = W(); (st.spinLog ||= []).push({ id: uid(), at: Date.now(), ...rec }); if (st.spinLog.length > 20000) st.spinLog = st.spinLog.slice(-20000);
+  const [icon, verb] = SPIN_W[rec.kind] || ['🎟️', rec.kind]; act('spins', `${verb} ${plural(rec.n || 1, 'saved respin')}${rec.reason ? ` (${rec.reason})` : ''}${rec.wheel ? ` on “${rec.wheel}”` : ''}${rec.left != null ? ` · ${rec.left} left` : ''}`, { icon, who: rec.name, kind: rec.kind }); // 🧾
+}
 function refundBank(by) { const b = W().bank[bkey(by.login || by.name)]; if (b) { b.spins++; b.used = Math.max(0, b.used - 1); spinLog({ kind: 'back', name: b.name, login: b.login, n: 1, reason: 'the respin couldn\'t spin, so it went back', left: b.spins }); save(); } }
 export function useMine() { // the streamer's own respins: a few per stream (3 by default), they come back when a new stream starts
   const st = W(); if (!st.last) throw new Error('Spin the wheel first.');
   if ((st.mine.left || 0) <= 0) throw new Error(`No streamer respins left this stream (you get ${st.mine.perStream} each stream).`);
   st.mine.left--; save();
-  try { return { ...request('respin', { name: streamerName(), source: 'mine' }), left: st.mine.left }; } catch (e) { st.mine.left++; save(); throw e; }
+  try { const r = request('respin', { name: streamerName(), source: 'mine' }); act('spins', `used a 🎟️ streamer respin (${st.mine.left} left this stream)`, { icon: '🎟️', who: streamerName(), kind: 'mine' }); return { ...r, left: st.mine.left }; } catch (e) { st.mine.left++; save(); throw e; }
 }
 const streamKey = () => db.stream?.startedAt || W().streamAt || (W().streamAt = Date.now());
-export function newStream() { const st = W(); st.mine.left = st.mine.perStream; st.streamAt = Date.now(); st.voidHits = {}; for (const w of st.wheels) for (const e of w.entries) { e.voided = null; if (e.type === 'timermax') { e.wins = 0; if (e.maxedOff) { e.on = true; e.maxedOff = false; } } } refresh(); }
+export function newStream() {
+  const st = W(); let voided = 0, maxed = 0;
+  st.mine.left = st.mine.perStream; st.streamAt = Date.now(); st.voidHits = {};
+  for (const w of st.wheels) for (const e of w.entries) { if (e.voided) voided++; e.voided = null; if (e.type === 'timermax') { if (e.wins) maxed++; e.wins = 0; if (e.maxedOff) { e.on = true; e.maxedOff = false; } } }
+  act('stream', `New stream on the wheels: ${st.mine.perStream} streamer respins back${voided ? `, ${plural(voided, 'voided spot')} back on` : ''}${maxed ? `, max wins counted from 0 again on ${plural(maxed, 'spot')}` : ''}`, { icon: '🎡', kind: 'newstream' }); // 🧾
+  refresh();
+}
 const monthKey = () => new Date().toISOString().slice(0, 7);
 /** bring a voided spot back. by.source 'you' = you did it yourself (1 per month if that's on); money pop-ups don't count */
 export function unvoid(entryId, by = {}, reason = '', wheelId, force) {
@@ -505,7 +661,7 @@ export function unvoid(entryId, by = {}, reason = '', wheelId, force) {
     if (st.bringBack.used >= 1) { if (!force) return { needOverride: true, text: e.text }; broke = true; }
     st.bringBack.used++;
   }
-  keepSetup(w); snap(`brought back ${e.text}`);
+  snap(`brought back ${e.text}`, w, 'unvoid'); keepSetup(w);
   e.voided = null;
   log({ kind: 'unvoid', wheelId: w.id, wheelName: w.name, entryId: e.id, text: e.text, reason: String(reason || '').slice(0, 120), broke, by: { name: by.name || streamerName(), login: by.login || '', source: by.source || 'you' } });
   refresh();
@@ -521,7 +677,7 @@ function doubleSpot(w, e, by) {
   if (e.type === 'void') throw new Error("channel points can't change the void.");
   if (e.voided) throw new Error(`“${e.text}” is voided tonight.`);
   if (e.on === false || !(e.weight > 0)) throw new Error(`“${e.text}” isn't on the wheel right now.`);
-  keepSetup(w); snap(`doubled ${e.text}`);
+  snap(`doubled ${e.text}`, w, 'double'); keepSetup(w);
   const before = pctOf(w, e), voidE = w.entries.find(x => x.type === 'void' && x.on !== false && !x.voided);
   setShare(w, e, Math.min(.9, before / 100 * 2), voidE && voidE !== e ? [voidE] : []);
   const after = pctOf(w, e);
@@ -630,9 +786,8 @@ export function grow(entryId, amount = 1, by = {}, reason = '', wheelId, money) 
   const e = w?.entries.find(x => x.id === entryId); if (!e) throw new Error('No such spot.');
   if (e.voided) throw new Error(`“${e.text}” is voided. Bring it back first.`);
   if (e.type === 'void' && !money && by.source && !['you', 'mod'].includes(by.source)) throw new Error('Only money (subs, gift subs, bits, donations) or the streamer can grow or shrink the VOID.');
-  keepSetup(w);
+  snap(`${amount > 0 ? 'grew' : 'shrank'} ${e.text}`, w, 'grow'); keepSetup(w); // (⏪ remembered before anything changes, even a hidden spot coming back on)
   if (!e.on || !(e.weight > 0)) { e.on = true; e.weight = e.weight > 0 ? e.weight : 1; }
-  snap(`${amount > 0 ? 'grew' : 'shrank'} ${e.text}`);
   const before = pctOf(w, e), step = (Number(w.opts.growPct) || 10) / 100;
   const voidE = w.entries.find(x => x.type === 'void' && x.on !== false && !x.voided);
   setShare(w, e, before / 100 + amount * step, voidE && voidE !== e ? [voidE] : []);
@@ -670,7 +825,7 @@ export function setupDiff(wheelId) {
 /** ↺ Reset wheel: every spot back to how it was right before the first spin (sizes, counts, wins, on/off, voided spots back) */
 export function resetWheel(wheelId) {
   const st = W(), w = getWheel(wheelId) || active(); if (!w?.setup) throw new Error('Nothing to reset: the wheel is just how you set it up (it hasn\'t been spun since the last reset).');
-  const d = setupDiff(w.id).rows.length; snap('reset the wheel');
+  const d = setupDiff(w.id).rows.length; snap('reset the wheel', w, 'reset');
   w.resetBackup = { at: Date.now(), e: Object.fromEntries(w.entries.map(e => [e.id, setupOf(e)])), last: st.last?.wheelId === w.id ? st.last : null };
   for (const e of w.entries) { const s = w.setup.e[e.id]; if (s) putBack(e, s); }
   w.setup = null; delete w.sizeBackup;
@@ -692,7 +847,7 @@ export function resetSelfTest() {
 /** ⚖️ every spot the same size: you changing your setup (↩️ Undo puts the sizes back) */
 export function resetSizes(wheelId) {
   const w = getWheel(wheelId) || active(); const before = w.entries.map(e => ({ id: e.id, weight: e.weight }));
-  snap('every spot the same size');
+  snap('every spot the same size', w, 'sizes');
   for (const e of w.entries) e.weight = e.type === 'void' ? (w.opts.void.weight || 1) : 1;
   if (w.setup) for (const e of w.entries) if (w.setup.e[e.id]) w.setup.e[e.id].weight = e.weight; // (your setup is all the same size now too)
   w.sizeBackup = { at: Date.now(), before }; delete w.resetBackup;
@@ -745,7 +900,7 @@ export function wheelRedeem(r) {
     const what = st.last.text; logIt(`force stopped the round on “${what}”`);
     banner(`🛑 FORCE STOP!<small>${esc(r.name)} stopped the round: ${esc(what)} has to be done!</small>`);
     sayW(wh, `🛑 FORCE STOP! @${r.name} ended the round: “${what}” has to be done!`);
-    roundCmd('end'); return true;
+    roundCmd('end', 0, { name: r.name, source: 'points' }); return true;
   }
   if ((kind === 'up' || kind === 'down' || kind === 'move') && !st.last) { giveBack(`${r.name} redeemed "${r.title}" but nothing has been spun yet.`); return true; }
   if (kind === 'move') { // they type "up" or "down" in chat

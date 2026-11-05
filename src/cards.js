@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { db, save, uid, UPLOADS } from './store.js';
 import { MAP_LIST } from './maps.js';
+import { act } from './activity.js';
 
 let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, linkDone: () => {}, goView: () => {}, startBall: () => 'not ready', stopBall: () => {}, preview: () => {} };
 export function initCards(h) { hooks = { ...hooks, ...h }; C(); }
@@ -263,6 +264,7 @@ export function start(opts = {}) {
   }
   if (live.fight.ball) { const err = hooks.startBall(live.fight, b); if (err) { live.fight = null; throw new Error(err); } } // ⚪ a ball map: the ball game plays it, with card fighters
   live.phase = 'fight'; live.show = true; live.last = null;
+  { const mi = cardMaps().find(m => m.id === pickMap); act('cards', `${opts.test ? 'Practice card battle' : 'Card battle'} started: “${live.fight.name}” on ${mi ? `${mi.icon || '🗺️'} ${mi.name}` : pickMap} with ${fighters.length} packs${cut ? ` (${cut} didn't fit)` : ''}`, { icon: opts.test ? '🧪' : '🃏', kind: 'start', list: live.fight.name, test: !!opts.test, items: fighters.map(x => `${x.name}${x.game ? ` · ${x.game}` : ''}`) }); } // 🧾
   hooks.goView('cards');
   sendScene(); hooks.pushState();
   return { n: fighters.length, cut };
@@ -284,6 +286,7 @@ export function result(m) {
     if (db.settings.announceWinner !== false) hooks.say(`🃏 Card battle winner: ${w.name}!${rec.kept ? ' 🎉' : ' Time to open it 🎉'}`).catch(() => {});
   }
   live.last = { ...rec, test: f.test };
+  act('cards', `“${w.name}”${w.game ? ` (${w.game})` : ''} won the card battle “${f.name}” out of ${f.fighters.length}${f.test ? ' · practice: nothing changed' : rec.kept ? ' · 📌 kept in your Card pool (nothing comes off)' : rec.leftAfter != null ? ` · time to open it! ${rec.leftAfter} left in your Card pool` : ''}`, { icon: f.test ? '🧪' : '🏆', kind: 'win', list: f.name, test: !!f.test }); // 🧾
   save(); sendScene(); hooks.pushState();
   hooks.broadcast({ type: 'toast', text: `🃏 ${w.name} won the card battle!${f.test ? ' (pretend: nothing changed)' : rec.kept ? ' (kept in your Card pool)' : ' One comes off its count in the Card pool.'}` }, 'control');
   if (live.wheelLink) { live.wheelLink = null; setTimeout(() => hooks.linkDone(), CARD_MAPS.find(m => m.id === f.map)?.finalFight ? 34000 : 12000); } // (💀 finisher + replay + celebration first) // 🔀 a wheel spot sent us here: back to the wheel

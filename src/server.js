@@ -40,6 +40,8 @@ import { blockReason, banMovie, unbanMovie, unapprove, autoBan, isBanned as isBa
 import { suggest, sweepWatched, picksUsed, addSpots, resetSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey } from './movies.js';
 
 import * as errlog from './errlog.js';
+import * as activity from './activity.js';
+import { act, pctW } from './activity.js';
 
 // ⚠️ every error anywhere in the app also goes in the error history (Test tab → ⚠️ Errors)
 {
@@ -59,6 +61,7 @@ const PORT = Number(process.env.PORT) || 3737;
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
+activity.onLine(r => broadcast({ type: 'activity', row: r }, 'control')); // 🧾 History → Everything shows new lines as they happen
 
 // ---------- live state ----------
 const live = {
@@ -91,6 +94,33 @@ function leaveEnded(keepMap) {
   live.phase = 'idle'; live.game = null; cards.endChars();
   broadcast({ type: 'reset' }, 'overlay');
 }
+// 🍀 Luck in your own battles (1.72.0, Derek: "basically a discord battle but instead of movies it will be stuff for me to do…
+// all entries stay on and not removed unless I remove it, chat won't be able to enter" + he picked the Discord battle's luck):
+// a switch per battle (l.luckOn, off by default) for word / picture / movie lists you fill yourself. Every battle, the ones on the
+// cliff that lost get a little luckier (l.luckPer %, default = Settings → 🍀 Luck's amount); the winner stays in and only its luck starts over.
+const OWN_LUCK = ['text', 'pics', 'films'];
+const ownLuckOk = l => !!l && OWN_LUCK.includes(l.type) && !l.giveaway;
+const ownLuck = l => ownLuckOk(l) && !!l.luckOn;
+const ownLuckPer = l => Math.round(clampN(l?.luckPer ?? db.settings.luckPerBattle ?? 1, 0, 100, 1) * 100) / 100;
+function ownLuckAfter(list, winnerId, fighters, quiet) {
+  const per = ownLuckPer(list), ids = new Set(fighters.map(x => x.id)), items = [];
+  for (const e of list.entries) {
+    if (!ids.has(e.id) || e.id === winnerId || e.status !== 'active' || !per) continue;
+    const was = e.luckPct || 0; e.luckPct = Math.round((was + per) * 10000) / 10000; items.push(`${e.label}: ${pctW(was)} → ${pctW(e.luckPct)}`);
+  }
+  const w = list.entries.find(e => e.id === winnerId), had = w?.luckPct || 0; if (w) w.luckPct = 0;
+  if (quiet) return { per, up: items.length, had };
+  if (items.length) act('luck', `${items.length === 1 ? '1 entry' : items.length + ' entries'} that lost in “${list.name}” got luckier (+${pctW(per)} each)${had ? '' : ` · the winner “${w?.label || '?'}” stays in`}`, { icon: '🍀', kind: 'earned', list: list.name, items });
+  if (had) act('luck', `“${w?.label || '?'}” won, so its luck starts over (${pctW(had)} → 0%). It stays in “${list.name}”`, { icon: '🍀', kind: 'reset', list: list.name });
+  return { per, up: items.length, had };
+}
+const mapLabel = id => { const m = mapById(id) || cards.cardMaps().find(x => x.id === id); return m ? `${m.icon || '🗺️'} ${m.name}` : String(id || 'a map'); };
+const chanceOf = (f, tot) => { const p = (f.weight || 1) / (tot || 1) * 100; return `${p < 10 ? Math.round(p * 10) / 10 : Math.round(p)}%`; };
+function winLine(f, list, totalW, series) {
+  const who = !f.owner ? '' : list?.type === 'movies' ? (f.spot ? '' : ` (${f.owner}'s pick)`) : f.showOwner && f.owner !== f.label ? ` (${f.owner})` : '';
+  return `“${f.label}${f.sub ? ` (${f.sub})` : ''}” won “${list?.name || 'the battle'}”${who}${series ? ` · best of ${series.bestOf}` : ''} · had a ${chanceOf(f, totalW)} chance${f.luck ? ` with ${pctW(f.luck)} luck` : ''}`;
+}
+const fighterLine = (f, tot) => `${f.label}${f.sub ? ` (${f.sub})` : ''}${f.owner && f.showOwner && f.owner !== f.label ? ` · ${f.owner}` : ''} · ${chanceOf(f, tot)} chance${f.luck ? ` · 🍀 ${pctW(f.luck)}` : ''}`;
 /** A battle has its winner: the game screen (ball maps) or the card fight engine (🧍 characters on a character-only map) says who. */
 function gameResult(m) {
   if (!(live.game && m.gameId === live.game.id && !live.game.done)) return;
@@ -100,7 +130,7 @@ function gameResult(m) {
       const f = live.game.fighters.find(x => x.id === m.winnerId);
       if (!f) return;
       if (live.game.cards) { live.lastWinner = { ...f, at: Date.now(), cards: true, gameId: live.game.id, listName: live.game.testName || '🃏 Card battle' }; try { markMapRun(live.game.map); } catch {} cards.result({ fightId: live.game.cards, winnerId: f.id, order: m.order }); save(); pushState(); return; } // 🃏 a card battle on a ball map
-      if (live.game.test) { try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; if (live.game.nudeTest) { live.lastWinner.nudity = fakeNudity(f.details?.runtime); nudeToStream(f, live.lastWinner.nudity); } pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history (🔞 nudeTest: a pretend nudity result for the winner)
+      if (live.game.test) { act('battle', `Practice battle: “${f.label}” won${live.game.testName ? ` (${live.game.testName.replace(/^🧪 Test: /, '')})` : ''} · nothing changed`, { icon: '🧪', kind: 'win', test: true, list: live.game.testName || 'Practice round' }); try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; if (live.game.nudeTest) { live.lastWinner.nudity = fakeNudity(f.details?.runtime); nudeToStream(f, live.lastWinner.nudity); } pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history (🔞 nudeTest: a pretend nudity result for the winner)
       const list = getList(live.game.listId);
       try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
       markMapRun(live.game.map); // full results + lifetime stats (every round, series rounds too)
@@ -114,6 +144,7 @@ function gameResult(m) {
         seriesInfo = { round: sr.round, bestOf: bo, need, tally, done: sr.wins[f.id] >= need };
         broadcast({ type: 'series', gameId: live.game.id, series: seriesInfo, winnerId: f.id }, 'overlay');
         if (!seriesInfo.done) {
+          act('battle', `Round ${sr.round} of best of ${bo} in “${list.name}”: “${f.label}” won it (${tally.slice(0, 4).map(x => `${x.label} ${x.n}`).join(', ')} · first to ${need})`, { icon: '🥊', kind: 'round', list: list.name });
           live.lastWinner = { ...f, listId: list.id, listName: list.name, at: Date.now(), series: seriesInfo, interim: true, gameId: live.game.id };
           if (twitch.canSay() && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
           if (db.settings.seriesAuto === true) setTimeout(nextSeriesRound, (db.settings.replayOn !== false ? 19 : 8) * 1000);
@@ -134,10 +165,11 @@ function gameResult(m) {
         claimed: null, outcome: null, gameId: live.game.id, map: live.game.map, rounds: live.series?.listId === list?.id && live.series?.games?.length > 1 ? live.series.games.slice() : undefined
       };
       db.history.push(rec); db.history = db.history.slice(-1000); historyVersion++;
+      act('battle', winLine(f, list, totalW, seriesInfo), { icon: '🏆', kind: 'win', list: list?.name, items: order.slice(0, 10).map((id, i) => `${i + 1}. ${byId.get(id)?.label || ''}`) }); // 🧾
       live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id, gameId: live.game.id };
       battleDoneForWheel();
       if (seriesInfo) { live.lastWinner.series = seriesInfo; rec.series = seriesInfo; f.series = seriesInfo; }
-      if (list?.giveaway) { db.giveawayWinners ||= []; db.giveawayWinners.push({ login: f.ownerLogin || norm(f.label), name: f.label, prize: giveawaySettings().prize || giveawaySettings().title, at: Date.now() }); db.giveawayWinners = db.giveawayWinners.slice(-500); if (giveawaySettings().removeWinner) { const we = list.entries.find(x => x.id === f.id); if (we) we.status = 'out'; } }
+      if (list?.giveaway) { db.giveawayWinners ||= []; db.giveawayWinners.push({ login: f.ownerLogin || norm(f.label), name: f.label, prize: giveawaySettings().prize || giveawaySettings().title, at: Date.now() }); db.giveawayWinners = db.giveawayWinners.slice(-500); if (giveawaySettings().removeWinner) { const we = list.entries.find(x => x.id === f.id); if (we) { we.status = 'out'; act('battle', `“${f.label}” is out of the giveaway entries now (winners leave)`, { icon: '🚪', kind: 'out', list: list.name }); } } }
       if (list?.type === 'chat') for (const x of list.entries) delete x.powers; // power-ups last one battle
       announceWinner(f, list);
       { const c = resolveCalls(f, list); if (c) { live.lastWinner.calls = { total: c.total, right: c.right.length, names: c.right.slice(0, 8).map(o => o.name) }; rec.calls = live.lastWinner.calls; } }
@@ -152,9 +184,12 @@ function gameResult(m) {
         f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
         if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
       }
+      if (ownLuck(list)) ownLuckAfter(list, f.id, live.game.fighters); // 🍀 your own battle with luck: the ones that lost get luckier, the winner's luck starts over (it stays in)
       if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`, !!db.live || !!live.fakeLive); // everyone who lost gets a little luckier (🎟️ wild spots: once a night while live, see Settings → 🍀 Luck)
       if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) { fetchWinnerRatings(f, rec, live.game.id); fetchWinnerNudity(f, rec); }
-      if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched'; }
+      if (list?.type === 'movies') { const r = afterMovieWin(f.id); live.lastWinner.benched = r.benched; live.lastWinner.spotsRemoved = r.spotsRemoved; rec.benched = r.benched; rec.spotsRemoved = r.spotsRemoved; if (!f.spot) rec.outcome = 'watched';
+        if (r.benched) act('battle', `${r.person || 'Their'}'s ${r.benched === 1 ? 'other movie sits' : r.benched + ' other movies sit'} out until ${backOn()} (one of theirs won this week)`, { icon: '💤', kind: 'bench', list: list.name });
+        if (f.spot) act('battle', `Every wild spot sits out for the rest of the week (one of them won)`, { icon: '🎟️', kind: 'bench', list: list.name }); }
       save(); pushState();
 }
 // 📋 Who's really in the battle (1.61.0, Derek: the list under the battle shows who entered, not everyone in the pool):
@@ -327,9 +362,9 @@ async function buildFighters(list, keepIds = null) {
       const gender = list.chars ? genderOf(list, ownerLogin) : undefined; // 🧍 characters: man / woman / non-binary
       const lk = !list.chars ? undefined : list.type === 'movies' && isSpot(e) && spotLooks.length ? looks.check(spotLooks[Math.max(0, spotOrder.indexOf(e.id)) % spotLooks.length]).look : looks.lookFor({ discordId: list.type === 'movies' && !isSpot(e) ? e.backers?.[0]?.discordId : null, login: ownerLogin, gender }); // 🎨 wild spots: your wild spot characters; everyone else: their own /character (wins over !id)
       return {
-        id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : 1) * (1 + wl / 100) * 10000) / 10000, luck: Math.min(100, (list.type === 'movies' && luckOn() ? (e.luckPct || 0) : 0) + wl), watchLuck: wl || undefined,
+        id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : ownLuck(list) ? 1 + Math.max(0, Number(e.luckPct) || 0) / 100 : 1) * (1 + wl / 100) * 10000) / 10000, luck: Math.min(100, ((list.type === 'movies' && luckOn()) || ownLuck(list) ? (e.luckPct || 0) : 0) + wl), watchLuck: wl || undefined, // (🍀 your own battles with luck on work like the Discord battle)
         // the glow + flames show on every battle type and every map: movies use their luck, custom/chat/giveaway lists use their extra odds (x2 = 10%, x6 = 50% flames)
-        glow: Math.min(100, (e.luckPct > 0 ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl),
+        glow: Math.min(100, (e.luckPct > 0 && (list.type === 'movies' || ownLuck(list)) ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
         showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
         backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null, gender, look: lk
@@ -375,6 +410,7 @@ function powerUp(r, kind) {
   if ((live.phase === 'lobby' || live.phase === 'running') && live.game?.listId === l.id) broadcast({ type: 'power', id: e.id, power: kind, name: r.name }, 'overlay');
   else refreshPreview();
   say(`${POWER_INFO[kind]?.icon || '✨'} @${r.name} powered up their ball with ${POWER_INFO[kind]?.say || kind}!`);
+  act('battle', `powered up their ball with ${POWER_INFO[kind]?.say || kind}`, { icon: POWER_INFO[kind]?.icon || '✨', who: r.name, kind: 'power', list: l.name }); // 🧾
   pushState();
 }
 // ---------- 🏁 race power-ups (1.60.0, Derek): in a chat battle on a race map with 🏁 race power-ups ticked, chatters boost / shield / drop oil / fire a rocket / ☢️ nuke ----------
@@ -404,7 +440,7 @@ function monkeyRedeem(r, who, test) { // 🐒 chat takes out Time or Kirb: the n
   const say = t => { if (!test && twitch.canSay()) twitch.say(t).catch(() => {}); }, M = MONKEY_INFO[who]; if (!M) return 'Which monkey?';
   if (!stormOn()) { say(`@${r.name} the monkeys are only out during a 🏴‍☠️ Pirate Battle.`); return 'Start a Pirate Battle first (🏴‍☠️ Practice battle).'; }
   if (!cards.monkeyOut(M.i, r.name)) { say(`@${r.name} the ${M.name} monkey is already gone this battle.`); return `The ${M.name} monkey is already gone this battle.`; }
-  say(`🐒 @${r.name} took out ${M.name}!`); rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); return null;
+  say(`🐒 @${r.name} took out ${M.name}!`); act('battle', `took out the ${M.name} monkey in the Pirate Battle`, { icon: '🐒', who: r.name, kind: 'monkey', test: !!test }); rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); return null;
 }
 function stormSend(kind, name) { broadcast({ type: 'cardStorm', kind, name, pick: Math.random(), ship: Math.random() < .5 ? 0 : 1, z: Math.random() }, 'overlay'); }
 function stormPowerUp(r, kind) {
@@ -412,6 +448,7 @@ function stormPowerUp(r, kind) {
   if (!STORM_INFO[kind]) return;
   if (!stormOn()) return say(`@${r.name} the storm powers only work during a 🏴‍☠️ Pirate Battle.`);
   stormSend(kind, r.name); say(`${STORM_INFO[kind].icon} @${r.name} sent ${STORM_INFO[kind].say}!`);
+  act('battle', `sent ${STORM_INFO[kind].say} into the Pirate Battle`, { icon: STORM_INFO[kind].icon, who: r.name, kind: 'storm' }); // 🧾
 }
 async function stormSetup() { // ⛈️ make the storm power rewards on Twitch (switched off until a Pirate Battle plays)
   const st = db.settings, made = [];
@@ -430,6 +467,7 @@ function racePowerUp(r, kind) {
   if (running) broadcast({ type: 'racePower', id: e.id, kind, name: r.name }, 'overlay');
   else { (e.racePend ||= []).push({ kind, name: r.name }); e.racePend = e.racePend.slice(-5); save(); } // (before the race: it goes off right after the green flag)
   say(`${RACE_INFO[kind]?.icon || '✨'} @${r.name} used ${RACE_INFO[kind]?.say || kind}!${running ? '' : ' (it goes off right after the green flag)'}`);
+  act('battle', `used ${RACE_INFO[kind]?.say || kind}${running ? '' : ' (goes off at the green flag)'}`, { icon: RACE_INFO[kind]?.icon || '🏁', who: r.name, kind: 'power', list: l.name }); // 🧾
   if (kind === 'nuke') { rewardKey = ''; syncRewards().catch(() => {}); }
   pushState();
 }
@@ -493,7 +531,9 @@ function triggerEvent(event, by, source) {
   if (!EVENTS[event]) return;
   const fx = { id: uid(), event, by, source, at: Date.now() };
   const mine = (live.phase === 'lobby' || live.phase === 'running') && !live.game?.cards;
-  if (!mine && (source === 'points' || source === 'bits') && costream.wantsChaos(event, GROUND_EVENTS) && coSendChaos(fx)) return pushState(); // 🤝 your battle isn't on, your co-streamer's is: it goes into theirs
+  const how = source === 'points' ? ' with channel points' : source === 'bits' ? ` with ${by?.bits || ''} bits` : source === 'co' ? " (from your co-streamer's chat)" : '';
+  if (!mine && (source === 'points' || source === 'bits') && costream.wantsChaos(event, GROUND_EVENTS) && coSendChaos(fx)) { act('battle', `sent ${EVENTS[event].icon} ${EVENTS[event].name}${how} into your co-streamer's battle`, { icon: '🤝', who: by?.name || '', kind: 'chaos' }); return pushState(); } // 🤝 your battle isn't on, your co-streamer's is: it goes into theirs
+  act('battle', `sent ${EVENTS[event].icon} ${EVENTS[event].name}${how}${mine ? '' : ' (saved for the next battle)'}`, { icon: '⚡', who: source === 'panel' ? streamerName() : by?.name || '', kind: 'chaos' }); // 🧾
   if (mine) broadcast({ type: 'effect', effect: fx }, 'overlay');
   else { db.pendingEffects.push(fx); db.pendingEffects = db.pendingEffects.slice(-25); save(); broadcast({ type: 'queued', effect: fx }, 'overlay'); }
   pushState();
@@ -657,6 +697,7 @@ function sitOutPerson(p, out) { // 🛌 out = their movies skip tonight's battle
     if (!out && e.status === 'away') { e.status = 'active'; delete e.awayDay; delete e.satOut; n++; }
   }
   if (!out) { const st = stream(); if (!st.active.includes(p.discordId)) st.active.push(p.discordId); }
+  act('chat', out ? `is sitting out tonight (${n === 1 ? '1 movie' : n + ' movies'} off the cliff)` : `is back in (${n === 1 ? '1 movie' : n + ' movies'})`, { icon: out ? '🛌' : '🙋', who: p.name, kind: 'sitout' }); // 🧾
   save(); pushState(); refreshPreview();
   broadcast({ type: 'toast', text: out ? `🛌 ${hEsc(p.name)} sat out tonight (${n} movie${n === 1 ? '' : 's'} off the cliff)` : `🙋 ${hEsc(p.name)} is back in (${n} movie${n === 1 ? '' : 's'})` }, 'control');
   return n;
@@ -706,6 +747,7 @@ function skipChat(m) {
   const lbl = `${e.label}${e.sub ? ` (${e.sub})` : ''}`, n = mine.indexOf(e) + 1;
   if (e.skipNext) { delete e.skipNext; say(`🙋 ${lbl} is back in the next battle.`); }
   else { e.skipNext = true; say(`⏭️ ${lbl} sits out the next battle, then it's back in. (Changed your mind? ${skipCmd()} ${n} again.)`); }
+  act('chat', e.skipNext ? `skips the next battle with “${lbl}” (${skipCmd()})` : `put “${lbl}” back in the next battle`, { icon: e.skipNext ? '⏭️' : '🙋', who: p.name, kind: 'skip' }); // 🧾
   save(); pushState(); if (live.phase === 'idle' || live.phase === 'ended') refreshPreview();
   broadcast({ type: 'toast', text: e.skipNext ? `⏭️ ${hEsc(p.name)}: ${hEsc(lbl)} sits out the next battle` : `🙋 ${hEsc(p.name)}: ${hEsc(lbl)} is back in the next battle` }, 'control');
   return true;
@@ -728,11 +770,33 @@ async function moviesChatCommand(m) {
   }
   try { await twitch.say(text); } catch (e) { console.error('[twitch say]', e.message); broadcast({ type: 'toast', text: `Couldn't reply in Twitch chat: ${e.message}` }, 'control'); }
 }
+// 🧾 subs, gift subs, bits, tips, raids, follows and watch streaks go in the complete history (redeems: the redeem handler does those)
+function alertLine(a) { // → [kind of thing, words, extra] (null = not one for the history)
+  const k = a?.kind; if (!k || k === 'redeem' || k === 'announce') return null;
+  const icon = { sub: '⭐', gift: '🎁', bits: '💎', tip: '💵', raid: '🚀', follow: '💙', streak: '🔥' }[k] || '🔔';
+  const text = k === 'tip' && a.amount != null && !/^donated/.test(a.text || '') ? `donated ${a.currency && a.currency !== 'USD' ? `${a.amount} ${a.currency}` : '$' + a.amount}${a.text ? `: “${String(a.text).slice(0, 120)}”` : ''}` : String(a.text || k);
+  return [['sub', 'gift', 'bits', 'tip'].includes(k) ? 'money' : 'chat', text, { icon, who: a.name || '', kind: k }];
+}
+function alertAct(a) { const L = alertLine(a); if (L) act(L[0], L[1], L[2]); }
+// 🧾 once (1.72.0): the complete history starts with what Movie Royal already kept: wheel spins, battle wins, card pack wins, free spins, alerts
+function activityBackfill() {
+  if (db.activityFilled) return;
+  const rows = [], C = { true: ' · ✅ claimed', instant: ' · ⚡ claimed right away', false: ' · ⏰ nobody claimed it', passed: ' · ⏭️ passed' };
+  try { rows.push(...wheel.oldLines()); } catch (e) { console.error('[history] older wheel history:', e.message); }
+  for (const h of db.history || []) { try { const w = h.winner || {};
+    rows.push({ at: h.at, cat: 'battle', icon: '🏆', kind: 'win', list: h.listName, text: `“${w.label}${w.sub ? ` (${w.sub})` : ''}” won “${h.listName || 'a battle'}”${w.owner && w.owner !== w.label ? ` (${w.owner})` : ''}${h.entrants ? ` out of ${h.entrants}` : ''}${w.odds ? ` · had a ${Math.round(w.odds * 1000) / 10}% chance` : ''}${w.luck ? ` with ${pctW(w.luck)} luck` : ''}${C[String(h.claimed)] || ''}${h.outcome === 'put back' ? ' · ↩️ put back' : h.outcome === 'out' ? ' · 🚪 taken out' : ''}`, items: [...(h.top || []).map((t, i) => `${i + 1}. ${t.label}`), ...(h.events || []).map(e => `⚡ ${EVENTS[e.event]?.name || e.event}${e.by ? ` by ${e.by}` : ''}`)] }); } catch {} }
+  for (const h of db.cards?.history || []) rows.push({ at: h.at, cat: 'cards', icon: '🏆', kind: 'win', list: h.battle, text: `“${h.name}”${h.game ? ` (${h.game})` : ''} won the card battle “${h.battle || ''}”${h.fighters ? ` out of ${h.fighters}` : ''}${h.kept ? ' · 📌 kept in your Card pool' : h.leftAfter != null ? ` · ${h.leftAfter} left after` : ''}` });
+  for (const a of db.alerts || []) { const L = alertLine(a); if (L) rows.push({ at: a.at, cat: L[0], text: L[1], ...L[2] }); }
+  const n = activity.importOld(rows);
+  db.activityFilled = { at: Date.now(), n }; save(); broadcast({ type: 'activityFilled' }, 'control');
+  console.log(`[history] the complete history starts with ${n} lines from the older history lists`);
+}
 const twitchHandlers = {
   change: pushState,
   live(isLive) {
     if (!!db.live === !!isLive) return;
     if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
+    act('stream', isLive ? 'You went live 🔴' : 'The stream ended ⚫', { icon: isLive ? '🔴' : '⚫', kind: isLive ? 'live' : 'offline' }); // 🧾
     db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
@@ -742,6 +806,7 @@ const twitchHandlers = {
   },
   async redeem(r) {
     const mode = (db.rewardModes || {})[String(r.title || '').toLowerCase()];
+    act('points', `redeemed “${r.title}”${r.cost ? ` (${Number(r.cost).toLocaleString('en-US')} points)` : ''}${r.input ? `: “${String(r.input).slice(0, 120)}”` : ''}${mode === 'off' ? ' · it\'s switched off in Movie Royal, so nothing happened' : ''}`, { icon: '💜', who: r.name, kind: 'redeem' }); // 🧾 (every redeem, ours or not)
     if (mode === 'off') return; // ⏸ paused by you (it's hidden on Twitch too)
     if (mode === 'once') { db.rewardModes[r.title.toLowerCase()] = 'off'; save(); rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); pushState(); } // used once: off until you turn it on again
     if (mode === 'count') { const t = r.title.toLowerCase(); if (countLeft(t) <= 0) return; const st = stream(); (st.rewardUses ||= {})[t] = (st.rewardUses[t] || 0) + 1; save(); if (countLeft(t) <= 0) { rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 300); } pushState(); } // 🔢 one less this stream (none left = off until the next stream)
@@ -773,7 +838,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); },
   clear(c) { try { chatlog.onClear(c); } catch {} },
   async chat(m) {
     if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
@@ -807,6 +872,7 @@ const twitchHandlers = {
     if (list?.type === 'chat' && !list.giveaway && list.joinOpen && m.text.toLowerCase().split(/\s+/)[0] === cmd) {
       if (list.entries.some(e => e.status === 'active' && e.twitch === m.login)) return;
       const e = addEntry(list, { label: m.name, twitch: m.login }); e.joined = true; // came from chat, so the winner screen shows their name
+      act('chat', `joined “${list.name}” (${cmd})`, { icon: '👋', who: m.name, kind: 'join', list: list.name }); // 🧾
       save(); pushState();
       fillTwitchAvatars(list);
       broadcast({ type: 'joined', name: e.label }, 'overlay');
@@ -967,6 +1033,7 @@ function finishClaim(claimed, text) {
   live.claim.claimed = claimed;
   live.claim.done = true; delete live.claim.waiting;
   if (claimed) pinWinner(live.claim.winner);
+  { const w = live.claim.winner || {}; act('battle', claimed ? `claimed “${w.label}”${text ? `: “${String(text).slice(0, 120)}”` : ''}` : `Nobody claimed “${w.label}” in time`, { icon: claimed ? '✅' : '⏰', who: claimed ? w.owner || '' : '', kind: 'claim', list: w.listName, test: !!w.test }); } // 🧾
   const h = findHistory(live.claim.winner?.historyId); if (h) { h.claimed = claimed; historyVersion++; save(); }
   if (live.claim.winner?.kind === 'movies' && !live.claim.winner.test) db.noShowStreak = claimed ? 0 : (db.noShowStreak || 0) + 1;
   save();
@@ -1108,7 +1175,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
@@ -1441,7 +1508,7 @@ app.get('/api/wheel/spin-log', (req, res) => { // 🎟️ History → Free spins
   for (const u of st.spinLog || []) out.push({ at: u.at, kind: u.kind, name: u.name, n: u.n || 1, reason: u.reason || '', wheel: u.wheel || '', left: u.left });
   out.sort((a, b) => b.at - a.at); res.json({ rows: out.slice(0, Math.min(5000, Number(req.query.limit) || 2000)), bank: Object.values(st.bank || {}).map(b => ({ name: b.name, spins: b.spins, got: b.got || 0, used: b.used || 0 })).sort((a, b) => b.spins - a.spins) });
 });
-app.get('/api/wheel', (req, res) => { const w = wheel.W(); res.json({ wheels: w.wheels, activeId: w.activeId, show: w.show, last: w.last || null, reveal: wheel.revealState(), rewards: w.rewards, costs: w.costs, pointsOn: w.pointsOn !== false, chatOn: w.chatOn !== false, ver: w.ver || 0, historyCount: w.history.length, palette: wheel.PAL, canPoints: !!twitch.status.userId, types: wheel.TYPES, mine: { ...w.mine, name: `${streamerName()}'s spins` }, bank: Object.values(w.bank).sort((a, b) => b.spins - a.spins || a.name.localeCompare(b.name)), grants: w.grants.slice(-300).reverse(), boosts: w.boosts, auto: w.auto, redeemLog: w.redeemLog, donations: { ...donations.status, se: !!db.settings.seJwt, sl: !!db.settings.slToken, seState: donations.status.se, slState: donations.status.sl }, cmd: w.cmd, streamer: streamerName(), round: wheel.getRound(), undo: wheel.undoList(), folders: w.folders, final: w.final || null, bringBack: w.bringBack, live: !!db.live, obs: { set: !!(db.settings.obsMic || db.settings.obsCam || db.settings.obsPassword), ...obs.status } }); });
+app.get('/api/wheel', (req, res) => { const w = wheel.W(); res.json({ wheels: w.wheels, activeId: w.activeId, show: w.show, last: w.last || null, reveal: wheel.revealState(), rewards: w.rewards, costs: w.costs, pointsOn: w.pointsOn !== false, chatOn: w.chatOn !== false, ver: w.ver || 0, historyCount: w.history.length, palette: wheel.PAL, canPoints: !!twitch.status.userId, types: wheel.TYPES, mine: { ...w.mine, name: `${streamerName()}'s spins` }, bank: Object.values(w.bank).sort((a, b) => b.spins - a.spins || a.name.localeCompare(b.name)), grants: w.grants.slice(-300).reverse(), boosts: w.boosts, auto: w.auto, redeemLog: w.redeemLog, donations: { ...donations.status, se: !!db.settings.seJwt, sl: !!db.settings.slToken, seState: donations.status.se, slState: donations.status.sl }, cmd: w.cmd, streamer: streamerName(), round: wheel.getRound(), undoN: wheel.undoCount(), folders: w.folders, final: w.final || null, bringBack: w.bringBack, live: !!db.live, obs: { set: !!(db.settings.obsMic || db.settings.obsCam || db.settings.obsPassword), ...obs.status } }); });
 app.post('/api/wheel', (req, res) => { const w = wheel.newWheel(req.body?.name || 'New wheel', Array.isArray(req.body?.entries) ? req.body.entries : []); wheel.W().wheels.push(w); wheel.W().activeId = w.id; wheelChanged(); res.json({ ok: true, id: w.id }); });
 app.put('/api/wheel/:id', (req, res) => {
   const w = wheel.getWheel(req.params.id); if (!w) return res.status(404).json({ error: 'No such wheel' });
@@ -1628,7 +1695,7 @@ app.post('/api/test/reveal', wTry(b => { if (!wheel.W().show) wheel.setShow(true
 app.post('/api/app-style', (req, res) => { const id = String(req.body?.id || '').replace(/[^\w-]/g, '').slice(0, 20); live.appStyle = id || null; res.json({ ok: true }); }); // 🎨 the control panel says which holiday style it shows (🎁 mystery packs match it)
 app.post('/api/wheel/knock', wTry(b => ({ left: wheel.knock(Number(b.delta) || -1) })));
 app.post('/api/wheel/timer', wTry(b => { wheel.roundCmd(b.cmd, b.secs); return { round: wheel.getRound() }; }));
-app.get('/api/wheel/undo', (req, res) => res.json(wheel.undoList()));
+app.get('/api/wheel/undo', (req, res) => res.json(wheel.undoList({ limit: Math.max(1, Math.min(500, Number(req.query.limit) || 60)), before: req.query.before ? String(req.query.before) : null, wheelId: req.query.wheelId ? String(req.query.wheelId) : null }))); // ⏪ newest first, a page at a time (+ ⏮️ where this wheel started)
 app.post('/api/wheel/undo', wTry(b => wheel.undoTo(b.id)));
 app.post('/api/wheel/folders', wTry(b => { const W0 = wheel.W(), n = String(b.name || '').trim().slice(0, 60); if (b.remove) { W0.folders = W0.folders.filter(f => f !== n); for (const x of W0.wheels) if (x.folder === n) x.folder = ''; } else if (n && !W0.folders.includes(n)) W0.folders.push(n); wheelChanged(); return { folders: W0.folders }; }));
 app.post('/api/obs/test', wTry(async () => obs.test()));
@@ -1696,11 +1763,40 @@ app.get('/api/history', (req, res) => {
   const rows = db.history.map(normHist).filter(h => !id || id === 'all' || h.listId === id || (!h.listId && getList(id)?.name === h.listName));
   res.json({ rows: rows.reverse(), lists });
 });
-app.delete('/api/history/:id', (req, res) => { db.history = db.history.filter(h => normHist(h).id !== req.params.id); historyVersion++; save(); pushState(); res.json({ ok: true }); });
+app.delete('/api/history/:id', (req, res) => { const h0 = db.history.find(h => normHist(h).id === req.params.id); if (h0) act('battle', `deleted the round “${h0.winner?.label || '?'}” won from the 📜 Every round list (it stays in 🧾 Everything)`, { icon: '🗑️', who: streamerName(), kind: 'history', list: h0.listName }); db.history = db.history.filter(h => normHist(h).id !== req.params.id); historyVersion++; save(); pushState(); res.json({ ok: true }); });
 app.post('/api/history/clear', (req, res) => {
   const id = req.body?.listId, name = getList(id)?.name;
+  act('battle', `cleared the 📜 Every round list for “${name || id}” (🧾 Everything keeps all of it)`, { icon: '🗑️', who: streamerName(), kind: 'history', list: name });
   db.history = db.history.filter(h => !(h.listId === id || (!h.listId && h.listName === name)));
   historyVersion++; save(); pushState(); res.json({ ok: true });
+});
+// 🧾 History → Everything (the complete history, src/activity.js): newest first, a page at a time; never cleared
+const actCats = v => String(v || '').split(',').map(x => x.trim()).filter(x => activity.CATS[x]);
+app.get('/api/activity', (req, res) => {
+  const r = activity.read({ before: Number(req.query.before) || Infinity, beforeSeq: req.query.before ? Number(req.query.seq) || 0 : Infinity, limit: Math.max(1, Math.min(1000, Number(req.query.limit) || 300)), cats: actCats(req.query.cats), q: String(req.query.q || '').slice(0, 80), tests: req.query.tests !== '0' });
+  res.json({ ...r, cats: activity.CATS, days: activity.days().length });
+});
+app.get('/api/activity/export', (req, res) => { // ⬇️ a spreadsheet file (CSV) of everything (or the last N days)
+  const days = Math.max(0, Number(req.query.days) || 0), from = days ? Date.now() - days * 864e5 : 0;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Content-Disposition', `attachment; filename="movie-royal-history-${activity.dayOf(Date.now())}.csv"`);
+  res.send(activity.csv({ from, cats: actCats(req.query.cats), q: String(req.query.q || '').slice(0, 80), tests: req.query.tests !== '0' }));
+});
+app.post('/api/test/undo-start', (req, res) => { try { res.json(wheel.undoSelfTest(Number(req.body?.n) || 14)); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🧪 ⏮️ all the way back, on a pretend wheel nobody sees
+app.post('/api/test/own-luck', (req, res) => { // 🧪 🍀 6 pretend battles of a pretend "stuff to do" battle with luck: who wins and everyone's luck after each one (nothing real changes)
+  const real = getList(req.body?.listId), per = Number(req.body?.per) > 0 ? Math.min(100, Number(req.body.per)) : ownLuckPer(real);
+  const things = ownLuckOk(real) && real.entries.filter(e => e.status === 'active').length >= 2 ? real.entries.filter(e => e.status === 'active').slice(0, 12).map(e => e.label) : ['Do 20 push-ups', 'Sing a song', 'Talk in an accent for 10 minutes', 'Play a horror game', 'Eat something spicy', 'Draw what chat says'];
+  const l = { id: 'test-luck', name: '🧪 Stuff to do', type: 'text', luckOn: true, luckPer: per, entries: things.map((t, i) => ({ id: 't' + i, label: t, weight: 1, status: 'active', luckPct: 0 })) }, rounds = [];
+  for (let b = 1; b <= Math.max(1, Math.min(20, Number(req.body?.battles) || 6)); b++) {
+    const fighters = l.entries.map(e => ({ id: e.id, label: e.label, weight: Math.round((e.weight || 1) * (1 + (e.luckPct || 0) / 100) * 10000) / 10000 })), tot = fighters.reduce((a, f) => a + f.weight, 0);
+    const win = weightedPick(fighters), chance = Object.fromEntries(fighters.map(f => [f.id, Math.round(f.weight / tot * 1000) / 10]));
+    ownLuckAfter(l, win.id, fighters, true); // (the same rule a real battle uses)
+    rounds.push({ n: b, winner: win.label, chance: chance[win.id], luck: l.entries.map(e => ({ label: e.label, luck: e.luckPct, chance: chance[e.id] })) });
+  }
+  res.json({ ok: true, per, name: ownLuckOk(real) ? real.name : null, rounds });
+});
+app.post('/api/test/activity', (req, res) => { // 🧪 Test tab: one pretend line, so you can see it show up (it's marked 🧪 and the 🧪 switch hides it)
+  const r = act('test', String(req.body?.text || 'This is a test line from the 🧪 Test tab. Nothing else happened.').slice(0, 200), { icon: '🧪', who: streamerName(), kind: 'test', test: true });
+  res.json({ ok: !!r, row: r, info: activity.info() });
 });
 
 // discord people: reset picks, fix Twitch links, remove a backer
@@ -2026,6 +2122,8 @@ app.post('/api/lists', (req, res) => {
   const { name, type } = req.body;
   if (!['text', 'pics', 'chat', 'films'].includes(type)) return res.status(400).json({ error: 'bad type' });
   const l = { id: uid(), name: (name || 'New list').slice(0, 60), type, entries: [], joinOpen: false };
+  if (req.body.luckOn && ownLuckOk(l)) l.luckOn = true; // 🍀 (made with luck on: a "stuff to do" battle)
+  act('battle', `made a new battle: “${l.name}”${l.luckOn ? ' (with 🍀 luck)' : ''}`, { icon: '🆕', who: streamerName(), kind: 'list', list: l.name });
   db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); pushState(); refreshPreview(true); res.json(l);
 });
 app.patch('/api/lists/:id', (req, res) => {
@@ -2045,6 +2143,14 @@ app.patch('/api/lists/:id', (req, res) => {
     if (w.restart) snap();
     refreshPreview();
   }
+  if ((req.body.luckOn != null || req.body.luckPer != null) && ownLuckOk(l)) { // 🍀 luck like the Discord battle (your own battles, off by default)
+    const was = !!l.luckOn, wasPer = ownLuckPer(l);
+    if (req.body.luckOn != null) l.luckOn = !!req.body.luckOn;
+    if (req.body.luckPer != null) { const v = Number(req.body.luckPer); if (Number.isFinite(v) && v >= 0) l.luckPer = Math.round(Math.min(100, v) * 100) / 100; }
+    if (was !== !!l.luckOn) act('luck', `turned 🍀 luck ${l.luckOn ? 'on' : 'off'} for “${l.name}”${l.luckOn ? ` (+${pctW(ownLuckPer(l))} every battle an entry loses)` : ''}`, { icon: '🍀', who: streamerName(), kind: 'setting', list: l.name });
+    else if (wasPer !== ownLuckPer(l)) act('luck', `changed the 🍀 luck in “${l.name}” to +${pctW(ownLuckPer(l))} a battle`, { icon: '🍀', who: streamerName(), kind: 'setting', list: l.name });
+    refreshPreview();
+  }
   if (req.body.bestOf != null && l.type !== 'movies') { l.bestOf = [1, 3, 5, 7, 9].includes(Number(req.body.bestOf)) ? Number(req.body.bestOf) : 1; if (live.series?.listId === l.id) live.series = null; if (l.giveaway) giveawaySettings().bestOf = l.bestOf; }
   if (req.body.screenTitle != null) { l.screenTitle = String(req.body.screenTitle).slice(0, 60); refreshPreview(); }
   if (req.body.fun && typeof req.body.fun === 'object' && l.type === 'chat') { // 🎉 fun mode for chat battles
@@ -2059,6 +2165,7 @@ app.patch('/api/lists/:id', (req, res) => {
 });
 app.delete('/api/lists/:id', (req, res) => {
   if (req.params.id === 'movies') return res.status(400).json({ error: "The Discord movie list can't be deleted" });
+  { const l0 = getList(req.params.id); if (l0) act('battle', `deleted the battle “${l0.name}”`, { icon: '🗑️', who: streamerName(), kind: 'list', list: l0.name }); }
   db.lists = db.lists.filter(l => l.id !== req.params.id);
   if (db.activeListId === req.params.id) db.activeListId = 'movies';
   save(); pushState(); res.json({ ok: true });
@@ -2088,6 +2195,7 @@ app.post('/api/lists/:id/bulk', async (req, res) => {
     }
     if (l.type === 'chat') fillTwitchAvatars(l);
   }
+  if (report.added) act('battle', `added ${report.added === 1 ? '1 entry' : report.added + ' entries'} to “${l.name}”${report.failed.length ? ` (${report.failed.length} couldn't be added)` : ''}`, { icon: '➕', who: streamerName(), kind: 'add', list: l.name, items: items.slice(0, 40).map(it => it.label) }); // 🧾
   save(); pushState(); res.json(report);
 });
 
@@ -2098,19 +2206,20 @@ app.post('/api/lists/:id/upload', express.raw({ type: '*/*', limit: '15mb' }), (
   const file = uid() + '.' + ext;
   fs.writeFileSync(path.join(UPLOADS, file), req.body);
   const label = name.replace(/\.\w+$/, '').replace(/[-_]+/g, ' ').trim().slice(0, 80) || 'Picture';
-  addEntry(l, { label, image: '/uploads/' + file });
+  addEntry(l, { label, image: '/uploads/' + file }); act('battle', `added the picture “${label}” to “${l.name}”`, { icon: '🖼️', who: streamerName(), kind: 'add', list: l.name });
   save(); pushState(); res.json({ ok: true });
 });
 
 app.patch('/api/lists/:id/entries/:eid', (req, res) => {
   const l = getList(req.params.id); const e = l?.entries.find(x => x.id === req.params.eid);
   if (!e) return res.sendStatus(404);
-  if (req.body.weight != null) e.weight = Math.max(0.1, Math.min(1000, Math.round(Number(req.body.weight) * 10) / 10 || 1));
+  if (req.body.weight != null) { const was = e.weight || 1; e.weight = Math.max(0.1, Math.min(1000, Math.round(Number(req.body.weight) * 10) / 10 || 1)); if (e.weight !== was) act('battle', `changed the odds of “${e.label}” in “${l.name}”: ${was} → ${e.weight}`, { icon: '🎲', who: streamerName(), kind: 'odds', list: l.name }); }
   if (req.body.label != null && l.type !== 'movies') { e.label = String(req.body.label).slice(0, 80); setTimeout(() => refreshPreview(), 0); }
   if (req.body.status) setTimeout(() => refreshPreview(), 0);
   if (req.body.status) {
-    if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched' && e.backers?.[0]) e.luckSnap = resetLuckFor(e.backers[0].discordId); // watched: that person's luck starts over
-    if (l.type === 'movies' && req.body.status !== 'watched' && e.status === 'watched' && e.luckSnap) { giveLuckBack(e.luckSnap); delete e.luckSnap; }
+    if (req.body.status !== e.status) act('battle', `${{ active: 'put', paused: 'paused', removed: 'took', watched: 'marked', away: 'set' }[req.body.status] || 'changed'} “${e.label}”${{ active: ' back in', paused: ' (off the cliff for now)', removed: ' out', watched: ' as watched', away: ' as out tonight' }[req.body.status] || ''} in “${l.name}”`, { icon: { active: '▶', paused: '⏸️', removed: '✕', watched: '✅', away: '🛌' }[req.body.status] || '✏️', who: streamerName(), kind: 'entry', list: l.name }); // 🧾
+    if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched' && e.backers?.[0]) e.luckSnap = resetLuckFor(e.backers[0].discordId, `you marked “${e.label}” as watched`); // watched: that person's luck starts over
+    if (l.type === 'movies' && req.body.status !== 'watched' && e.status === 'watched' && e.luckSnap) { giveLuckBack(e.luckSnap, `“${e.label}” is back in the pool`); delete e.luckSnap; }
     if (l.type === 'movies' && req.body.status === 'watched' && e.status !== 'watched') setTimeout(() => watchedElsewhere(e), 0); // watched outside a battle: they get a free replacement pick
     if (l.type === 'movies' && req.body.status !== 'watched' && e.status === 'watched') unwatchedElsewhere(e);
     if (l.type === 'movies' && e.tmdbId) { if (req.body.status === 'watched') lb.markWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); else if (e.status === 'watched') lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); }
@@ -2123,6 +2232,7 @@ app.patch('/api/lists/:id/entries/:eid', (req, res) => {
 app.post('/api/lists/:id/resume-all', (req, res) => { // bring every paused item back
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   let n = 0; for (const e of l.entries) if (e.status === 'paused') { e.status = 'active'; n++; }
+  if (n) act('battle', `brought back every paused entry in “${l.name}” (${n})`, { icon: '▶', who: streamerName(), kind: 'entry', list: l.name });
   save(); pushState(); refreshPreview(); res.json({ back: n });
 });
 app.post('/api/lists/:id/reset-entries', (req, res) => { // ↺ Reset entries (Battle tab): empty the battle so its list starts over
@@ -2131,22 +2241,26 @@ app.post('/api/lists/:id/reset-entries', (req, res) => { // ↺ Reset entries (B
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is going. Reset entries once it ends.' });
   let n = 0;
   for (const e of l.entries) if (e.status === 'active') { e.status = 'paused'; n++; } // everything is paused, nothing deleted: it stays in the pool list, darker (▶ brings one back)
+  act('battle', `reset the entries of “${l.name}” (${n} paused)`, { icon: '↺', who: streamerName(), kind: 'entry', list: l.name });
   save(); pushState(); refreshPreview(true); res.json({ ok: true, n, type: l.type });
 });
 app.post('/api/lists/:id/reset-odds', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   for (const e of l.entries) e.weight = l.type === 'movies' ? Math.max(1, e.backers?.length || 1) : 1;
+  act('battle', `set every entry's odds in “${l.name}” back to the same`, { icon: '🎲', who: streamerName(), kind: 'odds', list: l.name });
   save(); pushState(); res.json({ ok: true });
 });
 app.post('/api/lists/:id/clear', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   l.entries.forEach(e => { if (e.status === 'active') e.status = 'paused'; }); // paused, never deleted: they stay in the pool list, darker
+  act('battle', `cleared “${l.name}” (everything paused)`, { icon: '⏸️', who: streamerName(), kind: 'entry', list: l.name });
   save(); pushState(); res.json({ ok: true });
 });
 app.post('/api/lists/:id/restore', (req, res) => { // bring back everything taken out
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (l.type !== 'movies') l.entries.forEach(e => { e.status = 'active'; });
   else l.entries.forEach(e => { if (e.status === 'removed' || e.status === 'paused') e.status = 'active'; }); // Discord movies: only the ones you paused or took out (watched ones stay watched)
+  act('battle', `brought back everything that was taken out of “${l.name}”`, { icon: '▶', who: streamerName(), kind: 'entry', list: l.name });
   save(); pushState(); refreshPreview(true); res.json({ ok: true });
 });
 
@@ -2549,6 +2663,7 @@ app.post('/api/bans/import', express.text({ type: '*/*', limit: '5mb' }), (req, 
   if (!list.length) return res.status(400).json({ error: 'No movies found in that file (it needs a tmdbId column).' });
   let added = 0, had = 0;
   for (const b of list) { if (isBannedId(b.tmdbId) || (db.bans || []).some(x => String(x.tmdbId) === String(b.tmdbId))) { had++; continue; } if (banMovie({ id: Number(b.tmdbId), title: b.title || `TMDB ${b.tmdbId}`, year: b.year || null }, b.reason)) added++; }
+  if (added) act('discord', `added ${added} bans from a bans file`, { icon: '⬆️', who: streamerName(), kind: 'ban' }); // 🧾
   save(); pushState(); refreshPreview(); if (cloud.enabled()) cloud.sync(true).catch?.(() => {});
   res.json({ ok: true, found: list.length, added, had });
 });
@@ -2563,10 +2678,11 @@ app.post('/api/bans', async (req, res) => {
     if (!/^\d+$/.test(id)) { const r = await searchMovies(String(req.body?.query || '')); if (!r.length) return res.status(400).json({ error: 'Movie not found' }); id = String(r[0].id); }
     const m = await tmdbMovie(id);
     const added = banMovie({ id: m.id, title: m.title, year: m.year, poster: m.poster }, req.body?.reason);
+    if (added) act('discord', `banned “${m.title}${m.year ? ` (${m.year})` : ''}”${req.body?.reason ? `: ${String(req.body.reason).slice(0, 100)}` : ''}`, { icon: '🚫', who: streamerName(), kind: 'ban' }); // 🧾
     pushState(); refreshPreview(); res.json({ ok: true, msg: added ? `Banned ${m.title} (${m.year})` : `${m.title} was already banned` });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.delete('/api/bans/:id', (req, res) => { unbanMovie(req.params.id); pushState(); res.json({ ok: true }); });
+app.delete('/api/bans/:id', (req, res) => { const b0 = (db.bans || []).find(x => String(x.tmdbId) === String(req.params.id)); unbanMovie(req.params.id); if (b0) act('discord', `unbanned “${b0.title}${b0.year ? ` (${b0.year})` : ''}”`, { icon: '✅', who: streamerName(), kind: 'unban' }); pushState(); res.json({ ok: true }); });
 // 🎞️ series in order + 🔒 series locks (🚫 Banned Movies → 🎞️ Series)
 app.get('/api/series', (req, res) => res.json({ series: series.list(), log: series.recent().map(l => ({ ...l, text: series.eventText(l) })), state: series.state, openLast, people: discordPeople().map(p => ({ id: p.discordId, name: p.name })).sort((a, b) => a.name.localeCompare(b.name)) }));
 app.post('/api/series/lock', async (req, res) => { // by hand: lock a series for someone (or open it for everyone)
@@ -2729,6 +2845,7 @@ app.post('/api/test/storm', (req, res) => { // 🧪 a pretend storm power in the
   stormSend(kind, String(req.body?.name || 'test_viewer')); res.json({ ok: true });
 });
 app.post('/api/rewards/pause-all', async (req, res) => { // the app is closing: nothing can be redeemed while it's off
+  activity.flush(); // (🧾 the last lines of the complete history are saved right away)
   rewardBusy = false; rewardKey = ''; await Promise.all([syncRewards(true).catch(() => {}), Promise.race([backuplink.tick({ closing: true }).catch(() => {}), new Promise(r => setTimeout(r, 4000))])]); rewardKey = 'closed'; res.json({ ok: true }); // (and tell the backup bot server Movie Royal is closing)
 });
 app.post('/api/chaos-toggle', async (req, res) => {
@@ -2812,6 +2929,7 @@ async function giveawayChat(m) {
   w = Math.max(.1, Math.round(w * 100) / 100);
   if (l.entries.some(e => e.status === 'active' && e.twitch === login)) return; // (checked again after the follower lookup)
   const e = addEntry(l, { label: m.name, twitch: login, weight: w }); e.joined = true;
+  act('chat', `entered the giveaway${w !== 1 ? ` (×${w} odds)` : ''}`, { icon: '🎁', who: m.name, kind: 'join', list: l.name }); // 🧾
   e.badges = { sub: !!b.sub, tier: b.tier || 0, months: b.months || 0, vip: !!b.vip, mod: !!b.mod, follows };
   save(); pushState(); fillTwitchAvatars(l);
   broadcast({ type: 'joined', name: e.label }, 'overlay');
@@ -2940,7 +3058,7 @@ function resolveCalls(f, list) {
   if (!live.calls.size || list?.type !== 'movies') { live.calls.clear(); return null; }
   const right = [...live.calls.entries()].filter(([, v]) => v.spot ? f.spot : v.id === f.id);
   const total = live.calls.size; live.calls.clear();
-  if (!right.length) return { total, right: [] };
+  if (!right.length) { act('luck', `Nobody in chat called it (${total} ${total === 1 ? 'call' : 'calls'})`, { icon: '🔮', kind: 'calls', list: list?.name }); return { total, right: [] }; }
   const amt = Math.max(0, Number(db.settings.callLuck ?? 1));
   const byLogin = new Map(Object.entries(db.links || {}).map(([pid, login]) => [String(login).toLowerCase(), pid]));
   const out = [];
@@ -2949,6 +3067,7 @@ function resolveCalls(f, list) {
     if (pid && amt && !wonThisWeek(pid)) for (const e of list.entries) if (e.kind !== 'spot' && ['active', 'paused', 'away'].includes(e.status) && e.backers?.[0]?.discordId === pid && e.id !== f.id) { e.luckPct = (e.luckPct || 0) + amt; boosted++; }
     out.push({ login, name: v.name, boosted });
   }
+  act('luck', `${out.length} of ${total} in chat called it right${out.some(o => o.boosted) ? `: +${pctW(amt)} luck on their movies` : ''}`, { icon: '🔮', kind: 'calls', list: list?.name, items: out.map(o => `${o.name}${o.boosted ? ` · +${pctW(amt)} on ${o.boosted === 1 ? '1 movie' : o.boosted + ' movies'}` : ''}`) }); // 🧾
   if (twitch.canSay()) {
     const names = out.slice(0, 12).map(o => '@' + o.login).join(' ') + (out.length > 12 ? ` +${out.length - 12} more` : '');
     const lucky = out.some(o => o.boosted) ? ` +${amt}% luck on your movies 🍀` : '';
@@ -3049,7 +3168,7 @@ app.post('/api/swaps/lock', (req, res) => { db.swapLock = !!req.body?.locked; sa
 
 // ---------- luck saves: save everyone's luck, reset it for some battles, bring it back later ----------
 // movies keep LUCK; custom battles keep their ODDS (e.g. everyone at 1 for a week, then bring everyone's odds back)
-const isLuckList = l => l?.type === 'movies';
+const isLuckList = l => l?.type === 'movies' || ownLuck(l); // (🍀 your own battles with luck on: their luck tools save / reset luck, not odds)
 const luckSnap = l => isLuckList(l) ? Object.fromEntries(l.entries.filter(e => e.luckPct > 0).map(e => [e.id, e.luckPct])) : Object.fromEntries(l.entries.filter(e => e.status !== 'removed').map(e => [e.id, e.weight || 1]));
 function saveLuck(name, listId = 'movies') {
   const l = getList(listId) || getList('movies'), luck = luckSnap(l);
@@ -3064,6 +3183,7 @@ app.post('/api/luck/reset', (req, res) => {
   saveLuck(`Before reset · ${when()}`, l.id); autoBackup(isLuckList(l) ? 'luck-reset' : 'odds-reset'); // always kept, just in case
   const to = isLuckList(l) ? 0 : Math.max(.1, Number(req.body?.to) || 1);
   for (const e of l.entries) { if (isLuckList(l)) e.luckPct = 0; else e.weight = to; }
+  act('luck', isLuckList(l) ? `reset everyone's luck in “${l.name}” to 0% (saved first, so it can come back)` : `set everyone's odds in “${l.name}” to ${to} (saved first)`, { icon: '↺', who: streamerName(), kind: 'reset', list: l.name }); // 🧾
   save(); pushState(); refreshPreview(); res.json({ ok: true });
 });
 app.post('/api/luck/restore', (req, res) => {
@@ -3072,6 +3192,7 @@ app.post('/api/luck/restore', (req, res) => {
   saveLuck(`Before bringing back “${s.name}” · ${when()}`, l.id);
   autoBackup(isLuckList(l) ? 'luck-restore' : 'odds-restore');
   for (const e of l.entries) { if (isLuckList(l)) e.luckPct = s.luck[e.id] || 0; else if (e.id in s.luck) e.weight = s.luck[e.id]; }
+  act('luck', `brought back the saved ${isLuckList(l) ? 'luck' : 'odds'} “${s.name}” in “${l.name}”`, { icon: '📂', who: streamerName(), kind: 'restore', list: l.name }); // 🧾
   save(); pushState(); refreshPreview(); res.json({ ok: true, name: s.name });
 });
 app.delete('/api/luck/saves/:id', (req, res) => { db.luckSaves = (db.luckSaves || []).filter(x => x.id !== req.params.id); save(); pushState(); res.json({ ok: true }); });
@@ -3080,7 +3201,9 @@ app.delete('/api/luck/saves/:id', (req, res) => { db.luckSaves = (db.luckSaves |
 app.post('/api/luck', (req, res) => {
   const l = getList(req.body?.listId || 'movies'), e = l?.entries.find(x => x.id === req.body?.id);
   if (!e) return res.sendStatus(404);
-  e.luckPct = Math.max(0, Math.min(1000, Number(req.body.luckPct) || 0)); save(); pushState(); refreshPreview(); res.json({ ok: true });
+  const was = e.luckPct || 0; e.luckPct = Math.max(0, Math.min(1000, Number(req.body.luckPct) || 0));
+  if (e.luckPct !== was) act('luck', `set the luck of “${e.label}” in “${l.name}”: ${pctW(was)} → ${pctW(e.luckPct)}`, { icon: '🍀', who: streamerName(), kind: 'set', list: l.name }); // 🧾
+  save(); pushState(); refreshPreview(); res.json({ ok: true });
 });
 
 // ---------- channel point rewards (edit price, name, on/off) ----------
@@ -3359,6 +3482,17 @@ const SELF_CHECKS = {
     const good = imdb.length === 3 && imdb.map(x => x.rating).join() === '1.9,2.2,1.8' && rt.length === 1 && rt[0].rt === 0 && rt[0].year === 2002;
     return good ? { ok: true, note: 'IMDb (with ratings) and Rotten Tomatoes (with 🍅 %) sample pages read right' } : { ok: false, note: `IMDb: ${imdb.map(x => `${x.title} ${x.rating}`).join(', ')} · RT: ${rt.map(x => `${x.title} ${x.rt}`).join(', ')}` };
   },
+  async undoBack() { let r; try { r = wheel.undoSelfTest(); } catch (e) { return { ok: null, note: e.message }; } return r.ok ? { ok: true, note: `a pretend wheel had ${r.changes} changes, then ⏮️ went back to its start: exactly how it began, nothing else changed (${r.steps.toLocaleString()} real steps saved)` } : { ok: false, note: `⏪ undo all the way back: ${r.why}` }; },
+  async ownLuck() { // 🍀 the own-battle luck rule on a pretend list: losers +x%, the winner stays in at 0%
+    const l = { name: 'pretend', type: 'text', luckOn: true, luckPer: 1, entries: ['a', 'b', 'c'].map(id => ({ id, label: id, status: 'active', weight: 1, luckPct: id === 'b' ? 5 : 0 })) };
+    ownLuckAfter(l, 'b', l.entries, true); const L = Object.fromEntries(l.entries.map(e => [e.id, e.luckPct]));
+    return L.a === 1 && L.c === 1 && L.b === 0 && l.entries.every(e => e.status === 'active') ? { ok: true, note: 'in a pretend battle the two that lost got +1%, and the winner stayed in with its luck back to 0%' } : { ok: false, note: `🍀 own battle luck went wrong: ${JSON.stringify(L)}` };
+  },
+  async history() { // 🧾 the complete history can be written and read back
+    try { fs.accessSync(activity.DIR, fs.constants.W_OK); } catch (e) { return { ok: false, note: `🧾 the complete history's folder can't be written: ${e.message}` }; }
+    const i = activity.info(), r = activity.read({ limit: 1 });
+    return { ok: true, note: `${i.days} day${i.days === 1 ? '' : 's'} kept${i.first ? ` (since ${i.first})` : ''}, ${i.todayLines} line${i.todayLines === 1 ? '' : 's'} today${r.rows[0] ? `; newest: ${r.rows[0].text.slice(0, 60)}` : ''}` };
+  },
   async wheelReset() { const r = wheel.resetSelfTest(); return r.ok ? { ok: true, note: 'a pretend wheel (grown, voided, counted down, maxed out, one spot changed by you) went back to exactly how it was set up' } : { ok: false, note: 'the pretend wheel didn\'t come back the same' }; },
   async banExport() { const csv = bansCsv(), back = bansFromFile(csv), mine = myBans(); const same = back.length === mine.length && back.every((b, i) => String(b.tmdbId) === String(mine[i].tmdbId) && b.title === mine[i].title); return same ? { ok: true, note: mine.length ? `${plural(mine.length, 'movie')} you banned: the file reads back the same` : "you haven't banned any movies yourself yet (the file works)" } : { ok: false, note: `${mine.length} banned, ${back.length} read back` }; },
   async myMovies() {
@@ -3574,6 +3708,7 @@ async function startRound(opts = {}) {
   { const m0 = currentMap(); if (isRaceMap(m0) && fighters.length > raceMax()) { live.raceSkip = m0; live.map = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(live.map)?.name || live.map)} instead.` }, 'control'); } }
   live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test;
   live.phase = 'lobby'; live.claim = null;
+  { const tw = fighters.reduce((a, x) => a + (x.weight || 1), 0); act('battle', `${opts.test ? 'Practice battle' : 'Battle'} started: “${list.name}” on ${mapLabel(live.game.map)} with ${fighters.length} ${list.type === 'chat' ? 'people' : 'pieces'}${total > fighters.length ? ` (of ${total})` : ''}`, { icon: opts.test ? '🧪' : '⚔️', kind: 'start', list: list.name, test: !!opts.test, items: [...fighters].sort((a, b) => (b.weight || 1) - (a.weight || 1)).map(x => fighterLine(x, tw)) }); } // 🧾 (with everyone's chance + luck)
   if (isCharMap(live.game.map)) return startCharFight(list.screenTitle || list.name, !!opts.test); // 🧍 a character-only map: the card fight engine plays it
   const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
@@ -3769,7 +3904,8 @@ app.post('/api/effect', (req, res) => { triggerEvent(req.body.event, { name: str
 app.post('/api/winner/undo', (req, res) => { // movie winner didn't get watched after all: put it back
   const w = live.lastWinner; if (!w) return res.sendStatus(404);
   const e = getList(w.listId)?.entries.find(x => x.id === w.id);
-  if (e && e.status === 'watched') { e.status = 'active'; lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); if (e.luckSnap) { giveLuckBack(e.luckSnap); delete e.luckSnap; } }
+  if (e && e.status === 'watched') { e.status = 'active'; lb.unmarkWatched({ title: e.label, year: e.sub, tmdbId: e.tmdbId }); if (e.luckSnap) { giveLuckBack(e.luckSnap, `you put “${e.label}” back in the pool`); delete e.luckSnap; } }
+  act('battle', `put “${w.label}” back in the pool (not watching it after all)`, { icon: '↩️', who: streamerName(), kind: 'putback', list: w.listName }); // 🧾
   const h = findHistory(w.historyId); if (h) { h.outcome = 'put back'; historyVersion++; }
   live.lastWinner.undone = true; save(); pushState(); refreshPreview(); res.json({ ok: true });
 });
@@ -3777,6 +3913,7 @@ app.post('/api/winner/out', (req, res) => { // take winner out of the pool (movi
   const w = live.lastWinner; if (!w) return res.sendStatus(404);
   const l = getList(w.listId); const e = l?.entries.find(x => x.id === w.id);
   if (e) e.status = l.type === 'movies' ? 'watched' : 'out';
+  act('battle', `took the winner “${w.label}” out of “${l?.name || w.listName}”`, { icon: '🚪', who: streamerName(), kind: 'out', list: l?.name || w.listName }); // 🧾
   const h = findHistory(w.historyId); if (h) { h.outcome = l?.type === 'movies' ? 'watched' : 'out'; historyVersion++; }
   save(); pushState(); res.json({ ok: true });
 });
@@ -3801,7 +3938,7 @@ app.post('/api/claim/confirm', (req, res) => { finishClaim(true); res.json({ ok:
 function acceptClaim(by = 'you') {
   const c = live.claim; if (!c || c.done) return 'Nothing to accept.';
   const text = c.waiting?.text || '';
-  if (c.instant) { pinWinner(c.winner); c.claimed = true; c.done = true; delete c.waiting; const h = findHistory(c.winner?.historyId); if (h) { h.claimed = 'instant'; historyVersion++; } db.noShowStreak = 0; save(); broadcast({ type: 'claimedDirect', winner: c.winner, text }, 'overlay'); pushState(); }
+  if (c.instant) { act('battle', `accepted: “${c.winner?.label}” is tonight's pick`, { icon: '✅', who: by === 'you' ? streamerName() : by, kind: 'claim', list: c.winner?.listName, test: !!c.winner?.test }); pinWinner(c.winner); c.claimed = true; c.done = true; delete c.waiting; const h = findHistory(c.winner?.historyId); if (h) { h.claimed = 'instant'; historyVersion++; } db.noShowStreak = 0; save(); broadcast({ type: 'claimedDirect', winner: c.winner, text }, 'overlay'); pushState(); }
   else finishClaim(true, text);
   if (by !== 'you') broadcast({ type: 'toast', text: `✅ ${by} accepted: their movie is tonight's pick!` }, 'control');
   return null;
@@ -3814,6 +3951,7 @@ function passClaim(by = 'you') {
   else if (!w.test && w.spot && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); delete stream().spotPending; discord.refreshPinned?.(); }
   else if (!w.test && getList(w.listId)?.type === 'movies') { undoMovieWin(w.id); if (!w.passed && stream().movies > 0) stream().movies--; const t = stream().tonight || [], i = t.map(x => x.id).lastIndexOf(w.id); if (i >= 0) t.splice(i, 1); discord.refreshPinned?.(); } // not watched: it doesn't count as tonight's movie
   const h = findHistory(w.historyId); if (h) { h.claimed = 'passed'; h.outcome = 'passed'; historyVersion++; }
+  act('battle', `passed on “${w.label}”: it goes back in the pool${getList(w.listId)?.type === 'movies' ? ' and keeps its luck' : ''}`, { icon: '⏭️', who: by === 'you' ? streamerName() : by, kind: 'pass', list: w.listName, test: !!w.test }); // 🧾
   live.lastWinner.passed = true; save();
   broadcast({ type: 'claimPassed', winner: w }, 'overlay'); pushState(); refreshPreview();
   if (by !== 'you') broadcast({ type: 'toast', text: `⏭️ ${by} passed: their movie goes back in and keeps its luck.` }, 'control');
@@ -3907,6 +4045,7 @@ server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
   twitch.start(twitchHandlers);
   if (rollWeek()) console.log('  New week: benched movies are back, spots refilled');
   restoreAway(true);
+  setTimeout(() => { try { activityBackfill(); } catch (e) { console.error('[history] filling in the older history:', e.message); } }, 6000); // 🧾 (once)
   setInterval(() => discord.keepPinsOnTop().catch?.(() => {}), 30 * 60 * 1000); // 📌 Movie Royal's pinned messages stay on top
   setInterval(() => { const a = rollWeek(), b = restoreAway(true); if (a || b) { pushState(); refreshPreview(); } }, 5 * 60 * 1000);
   const tick = async () => { await lb.refreshRss(db.settings.letterboxdUser); sweepWatched(); pushState(); };

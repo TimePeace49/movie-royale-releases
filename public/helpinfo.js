@@ -8,8 +8,39 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx: Array.isArray(ctx) ? new RegExp(ctx.join('|'), 'i') : ctx, // (a list like ['test'] = only on those tabs)
   sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
+// ───────── 1.72.0: ⏪ undo all the way back · 🍀 luck in your own battles · 🧾 History → Everything ─────────
+SECTION('The Wheel');
+H(/^tip:take back everything since this wheel's first spin|all the way back to the start$/i, '⏮️ All the way back to the start', 'Takes this wheel back to right before its first spin (since its last ↺ Reset): every spin, grow, void, round timer and saved spin since then is taken back, one big undo. It asks first and says if another wheel changed since then (that one goes back too). 🧾 History → Everything still lists everything that was taken back.');
+H(/^tip:put everything back the way it was right before this|^⏪ [\d,]+ steps?$/i, '⏪ Go back this many steps', 'Puts everything back the way it was right before this step: the wheel (and any other wheel that changed since), spot sizes, the round timer, saved spins and streamer respins. The timer waits for you after going back.');
+H(/^show older steps…$/i, 'Show older steps…', 'Shows the next older steps in the ⏪ Go back… list. Every step is kept (the newest 10,000), even after you close Movie Royal.');
+H(/^⏪ go back…$|^tip:go back several steps$/i, '⏪ Go back…', 'Lists every step you can take back, newest first, all the way to the start of the wheel (even after closing the app). Pick how far to go back, or ⏮️ all the way back to the start.');
+SECTION('History & who won what');
+H(/^tip:the complete history: everything that happens|^🧾 everything$/i, '🧾 Everything', 'The complete history: a line for everything that happens in Movie Royal, newest first, kept for good. Every spin and where it landed, every battle and who won (with everyone\'s chance and luck), luck earned, lost and started over, card packs that won, free spins, channel points, subs, bits, tips, chat joins, Discord picks and more. Nothing is ever taken out of it, not even by ⏪ undo (that\'s added as its own line).');
+H(/^tip:every kind of thing$|^📋 all kinds$/i, '📋 All kinds', 'Shows every kind of line in 🧾 Everything (no kinds picked).');
+H(/^tip:only .* \(click more than one to see several\)$/i, 'Kinds of things', 'Shows only that kind of line (🎡 wheel, ⚔️ battles, 🍀 luck, 🃏 card battles, 🎟️ free spins, 💜 channel points, 💵 subs/bits/tips, 💬 chat, 🎬 Discord picks, 📺 stream). Click more than one to see several at once; 📋 Everything shows them all again.');
+H(/^tip:show practice battles, pretend tests|^🧪 practice & tests$/i, '🧪 Practice & tests', 'Ticked = practice battles, pretend tests and other 🧪 test lines show up in 🧾 Everything too (a bit faded). Untick it to see only the real things.');
+H(/^tip:download the complete history/i, '⬇️ Download', 'Downloads the complete history as a spreadsheet file (.csv) you can open in Excel or Google Sheets, with the kinds and search you picked.');
+H(/^show older…$/i, 'Show older…', 'Loads the next older lines of 🧾 Everything (300 at a time).');
+H(/^\d+ more$/i, 'more', 'Opens the details of this line: everyone in a battle with their chance and luck, the finishing order, who got luck and how much, and so on.');
+H(/search everything: a name/i, '🔎 Search', 'Finds lines in 🧾 Everything with these words: a name, a spot, a movie, a battle… It searches every day, not just the ones showing.');
+SECTION('Luck');
+H(/^tip:🍀 luck like the discord battle: everything that loses|^🍀 luck (on|off)/i, '🍀 Luck (this battle)', 'Your own battles can have the Discord battle\'s luck (off by default): every battle, everything that loses gets a little luckier, and a winner stays in with its luck starting over. Only you take things out. Click to turn it on or off for this battle; how much is in Settings → 🍀 Luck.');
+H(/^tip:luck like the discord battle for this battle|^🍀 luck like the discord battle (on|off)$/i, '🍀 Luck like the Discord battle', 'Turns luck on or off for this one battle (off by default), saved right away. Every battle it loses, an entry gets the % in the box; when it wins it stays in and its luck goes back to 0%. Turning it off keeps the luck they have, it just doesn\'t count.');
+H(/^tip:how much luck everything that loses a battle gets/i, '🍀 How much luck', 'How much luck (%) everything that loses one battle gets in this battle. 1% by default (the same as the Discord battle).');
+H(/^tip:like the discord battle: everything that loses gets a little luckier|^🍀 luck like the discord battle: what loses/i, '🍀 Luck like the Discord battle', 'Makes the new battle with luck on: everything that loses gets a little luckier every battle, and a winner stays in with its luck starting over. You can turn it off later.');
+H(/^tip:luck: it grows every battle it loses|^tip:luck: extra % chance \(it grows/i, '🍀 Luck', 'This entry\'s luck: it grows every battle it loses and starts over when it wins. You can type a new number to change it.');
+SECTION('Testing features');
+H(/^tip:a pretend wheel gets changed, then goes all the way back|^🤖 check it \(pretend wheel\)$/i, '🤖 Check undo (pretend wheel)', 'A pretend wheel nobody sees gets grown, shrunk, voided and brought back, counted down and made the same size, then goes ⏮️ all the way back to its start. It checks the wheel is exactly how it began and that nothing else changed. Your real wheels aren\'t touched.', ['test']);
+H(/^tip:the real ⏪ go back… list|^⏪ open go back…$/i, '⏪ Open Go back…', 'Opens the 🎡 Wheel tab with its ⏪ Go back… list for the wheel you have picked.', ['test']);
+H(/^tip:which battle's entries and luck amount to use/i, '🍀 Which battle', 'Pick one of your own battles to use its entries and its luck amount, or the made-up “stuff to do” list.', ['test']);
+H(/^🍀 6 pretend battles$/i, '🍀 6 pretend battles', 'Plays 6 pretend battles with 🍀 luck on and shows who won each one (with its chance) and everyone\'s luck after it. Nothing real changes.', ['test']);
+H(/^tip:adds one 🧪 test line|^➕ add a test line$/i, '➕ Add a test line', 'Adds one 🧪 test line to History → 🧾 Everything so you can see it show up. The 🧪 Practice & tests switch there hides it.', ['test']);
+H(/^tip:a practice battle: its start and winner show up in history/i, '⚔️ Practice battle', 'A practice battle with 6 made-up pieces: its start (with everyone\'s chance) and its winner show up in History → 🧾 Everything as 🧪 practice lines. Nothing real changes.', ['test']);
+H(/^tip:opens history → 🧾 everything|^🧾 open it$/i, '🧾 Open it', 'Opens History → 🧾 Everything.', ['test']);
+
 // ───────── 🤝 Co-stream (Settings → 🤝 Co-stream, 1.71.0) ─────────
 SECTION('🤝 Co-stream with a friend');
+H(/^🤝 co-stream$/i, '🤝 Co-stream', 'Settings for co-streaming with a friend: link your two Movie Royals with an invite code, send each other your camera and battle, and send chat\'s chaos into each other\'s battles.');
 H(/make an invite code/i, '🎟️ Make an invite code', 'Makes a private room on your ☁️ 24/7 Discord bot and a code for it. Send the code to your friend (a Discord DM is fine). Pressing it again gives the same code until you stop co-streaming.', /co-stream/i);
 H(/^🤝 join$|^join$/i, '🤝 Join', 'Joins your friend\'s room with the code they sent you. After that Movie Royal reconnects by itself every time it opens, until you press 🚪 Stop co-streaming.', /co-stream/i);
 H(/^mrco1|^#cocode$/i, 'Invite code box', 'Paste the code your friend sent you here (it starts with MRCO1-), then press 🤝 Join.', /co-stream/i);
@@ -367,7 +398,7 @@ H(/add the spots automatically/i, 'Add spots every week', 'Wild spots are added 
 H(/^🗓️ new week$/i, '🗓️ New week', 'Starts a new week now instead of waiting for it: benched movies (people whose movie won) come back and the wild spots refill. It happens by itself on the day set in Settings → Discord & picks.');
 H(/kirb spots|🎟️ spots|wild spots \(/i, '🎟️ Wild (Kirb) spots', 'Adds this week\'s wildcard spots to the pool by hand. If a wild spot wins, the others hide until the new week. The numbers show how many are in out of how many there should be. Rename them and change how many in Settings → Discord & picks.');
 H(/lucy_tv|import everyone from your old wheel/i, 'Import everyone', 'Brings over your old wheel in one go: one person per line, like  lucy_tv: Heat, Coco, Jaws (1975). New people are made for you, and if they later use /suggest or /linktwitch in Discord it all joins up with their account.');
-H(/commas or new lines|the thing 1982|paste a big list/i, 'Add a list', 'Paste or type a list, separated by commas or new lines, then press Add all. Add x2, x3… after something to give it double, triple odds.');
+H(/commas or new lines|the thing 1982|paste a big list|^#bulk$/i, 'Add a list', 'Paste or type a list, separated by commas or new lines, then press Add all. Add x2, x3… after something to give it double, triple odds.');
 H(/^add all$/i, 'Add all', 'Adds everything in the box above to this battle.');
 H(/export this battle|^📤 export$/i, '📤 Export', 'Saves this battle (or wheel) as a file you can send to another streamer, pictures included. They open it with 📥 Import and get their own copy.');
 H(/wheel of names share link|wheel of names link/i, 'Import a link', 'Paste a Wheel of Names share link (or a link to a list) and press Import link (or Get list) to bring every entry in, with odds if it has them. Trick that always works: on Wheel of Names click the entries box, press Ctrl+A, Ctrl+C and paste it in the list box instead.');
@@ -462,6 +493,7 @@ H(/^color$/i, 'Color', 'This spot\'s color on the wheel.');
 H(/^⚙$/, '⚙ Spot settings', 'This spot\'s own settings: its type (timer, auto, countdown…), a link, words shown on stream when it lands, a picture, a sound, and whether respins are blocked on it.');
 H(/^🎡 spin$/i, '🎡 SPIN', 'Spins the wheel (and puts it on stream). With rules on, the first landing starts the round timer.');
 H(/^🔁 respin$/i, '🔁 Respin', 'Spins again during the round. The round timer keeps going.', /wheel|test/i);
+H(/^🔁 .+ respin$/i, '🔁 Respin', 'Spins the wheel again from where it landed (your respin): the round timer keeps going.', /wheel|test/i);
 H(/streamer respin/i, '🎟️ Streamer respin', 'Your own respins: a set number each stream (3 by default, change it in 🌐 All wheels). It turns gray when they\'re used up and refills when you go live.');
 H(/^⬆️ up$/i, '⬆️ Up', 'Moves the wheel\'s pick to the spot above it in your list.');
 H(/^⬇️ down$/i, '⬇️ Down', 'Moves the wheel\'s pick to the spot below it in your list.');

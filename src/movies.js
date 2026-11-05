@@ -3,6 +3,7 @@ import { db, save, getList, streamerName } from './store.js';
 import * as lb from './letterboxd.js';
 import { getMovie, searchMovies } from './tmdb.js';
 import { ruleBan } from './banrules.js';
+import { act, pctW, plural } from './activity.js';
 
 export const moviesList = () => getList('movies');
 
@@ -123,6 +124,7 @@ export async function suggest(value, user, opts = {}) { // opts.force: streamer 
   const entry = makeEntry(movie, user, existing);
   if (!existing) moviesList().entries.push(entry);
   save(); try { seriesHook.picked(entry); } catch {}
+  act('discord', `picked “${label}”${opts.force && user ? ' (you added it for them)' : ''}${free ? ' (a free replacement pick)' : ''}${entry.status === 'benched' ? ` · it sits out until ${backOn()} (their movie already won this week)` : ''}`, { icon: '🎬', who: user?.name || streamerName(), kind: 'pick' }); // 🧾
   const left = user ? db.settings.maxPerUser - picksUsed(user.discordId) : 0;
   if (free) { const r = { ok: true, public: entry.status !== 'benched', picksLeft: left, msg: `🎬 **${label}** joined the battle royal${user ? `, suggested by <@${user.discordId}>` : ''}! (free replacement pick)`, entry }; if (entry.status === 'benched') r.msg = `🎬 **${label}** is saved (free replacement pick)! Your movie already won this week, so it sits out until **${backOn()}**.`; return r; }
   if (entry.status === 'benched') return { ok: true, public: false, picksLeft: left, msg: `🎬 **${label}** is saved! Your movie already won this week, so it sits out until **${backOn()}**, then it jumps into the battle royal.`, entry };
@@ -172,6 +174,7 @@ export async function swapMovie(user, oldEntryId, newValue, force = false) {
   if (old.status === 'benched') entry.status = 'benched';
   if (!existing) l.entries.push(entry);
   save(); try { seriesHook.picked(entry); seriesHook.picked(old); } catch {}
+  act('discord', `swapped “${old.label}${old.sub ? ` (${old.sub})` : ''}” for “${movie.title}${movie.year ? ` (${movie.year})` : ''}”${luck ? ` (its ${pctW(luck)} luck came along)` : ''}`, { icon: '🔁', who: user.name, kind: 'swap' }); // 🧾
   return { ok: true, public: true, msg: `🔁 <@${user.discordId}> swapped **${old.label}${old.sub ? ` (${old.sub})` : ''}** for **${movie.title}${movie.year ? ` (${movie.year})` : ''}**.`, entry };
 }
 
@@ -198,28 +201,34 @@ export function spotLuckGain(e, streamKey, isLive, mode = spotLuckMode()) { // h
 }
 export function addLuck(entryIds, streamKey = '', isLive = false) {
   if (!luckOn()) return;
-  const per = Math.max(0, Number(db.settings.luckPerBattle ?? 0.01));
+  const per = Math.max(0, Number(db.settings.luckPerBattle ?? 0.01)), items = [], adds = new Set();
   for (const e of moviesList().entries) {
     if (!entryIds.includes(e.id)) continue;
     if (e.status === 'benched' || (e.backers?.[0] && wonThisWeek(e.backers[0].discordId))) continue; // on cooldown after their movie got watched: no luck
     const add = e.kind === 'spot' ? spotLuckGain(e, streamKey, isLive) : per; // wildcard spots: see spotLuckMode
-    if (add) e.luckPct = Math.round(((e.luckPct || 0) + add) * 10000) / 10000;
+    if (add) { const was = e.luckPct || 0; e.luckPct = Math.round((was + add) * 10000) / 10000; adds.add(add); items.push(`${e.label}${e.backers?.[0] ? ` (${e.backers[0].name})` : e.kind === 'spot' ? ' (wild spot)' : ''}: ${pctW(was)} → ${pctW(e.luckPct)}`); }
   }
+  if (items.length) act('luck', `${plural(items.length, 'movie')} that lost got luckier${adds.size === 1 ? ` (+${pctW([...adds][0])} each)` : ''}`, { icon: '🍀', list: moviesList().name, kind: 'earned', items }); // 🧾
   save();
 }
 // luck only starts over when one of your movies actually gets WATCHED (winning = watching; "put it back" gives the luck back)
-export function resetLuckFor(discordId) {
-  const snap = {};
-  for (const e of moviesList().entries) if (e.backers?.[0]?.discordId === discordId && e.luckPct) { snap[e.id] = e.luckPct; e.luckPct = 0; }
+export function resetLuckFor(discordId, why = '') {
+  const snap = {}, items = []; let name = '';
+  for (const e of moviesList().entries) if (e.backers?.[0]?.discordId === discordId && e.luckPct) { snap[e.id] = e.luckPct; items.push(`${e.label}: ${pctW(e.luckPct)} → 0%`); name ||= e.backers[0].name; e.luckPct = 0; }
+  if (items.length) act('luck', `${name ? name + '\'s' : 'Their'} luck starts over${why ? ': ' + why : ''}`, { icon: '🍀', list: moviesList().name, kind: 'reset', items }); // 🧾
   return snap;
 }
-export function giveLuckBack(snap) { for (const e of moviesList().entries) if (snap?.[e.id]) e.luckPct = Math.max(e.luckPct || 0, snap[e.id]); }
+export function giveLuckBack(snap, why = '') {
+  const items = []; let name = '';
+  for (const e of moviesList().entries) if (snap?.[e.id]) { const was = e.luckPct || 0; e.luckPct = Math.max(was, snap[e.id]); if (e.luckPct !== was) { items.push(`${e.label}: ${pctW(was)} → ${pctW(e.luckPct)}`); name ||= e.backers?.[0]?.name || ''; } }
+  if (items.length) act('luck', `${name ? name + '\'s' : 'The'} luck came back${why ? ': ' + why : ''}`, { icon: '🍀', list: moviesList().name, kind: 'back', items }); // 🧾
+}
 
 /** After Letterboxd refreshes, retire any pooled movie you've since watched. */
 export function sweepWatched() {
   let n = 0;
   for (const e of moviesList().entries) {
-    if (e.status === 'active' && lb.lookup({ title: e.label, year: e.sub, tmdbId: e.tmdbId })) { e.status = 'watched'; n++; if (e.backers?.[0]) resetLuckFor(e.backers[0].discordId); watchedElsewhere(e); }
+    if (e.status === 'active' && lb.lookup({ title: e.label, year: e.sub, tmdbId: e.tmdbId })) { e.status = 'watched'; n++; act('discord', `“${e.label}${e.sub ? ` (${e.sub})` : ''}” left the pool: it was watched on Letterboxd`, { icon: '🎬', who: '', kind: 'watched' }); if (e.backers?.[0]) resetLuckFor(e.backers[0].discordId, `“${e.label}” was watched on Letterboxd`); watchedElsewhere(e); }
   }
   if (n) save();
   return n;
@@ -251,6 +260,7 @@ export function rollWeek(force = false) {
   for (const e of l.entries) { delete e.forceIn; if (e.status === 'benched') { e.status = 'active'; if (!isSpot(e)) back++; } }
   db.week = { key: k, winners: [], spotWon: false };
   const spots = db.settings.autoSpots !== false || force ? addSpots() : 0;
+  act('stream', `New week (from ${k})${force ? ' (you pressed New week)' : ''}: ${back === 1 ? '1 movie' : back + ' movies'} back from their break${spots ? `, ${spots} new wild ${spots === 1 ? 'spot' : 'spots'}` : ''}`, { icon: '🗓️', kind: 'week' }); // 🧾
   save();
   return { back, spots, week: k };
 }
@@ -280,7 +290,7 @@ export function afterMovieWin(winnerId) {
     const who = w.backers[0].discordId;
     w.winAdded = !week().winners.includes(who);
     if (!week().winners.includes(who)) week().winners.push(who);
-    w.luckSnap = resetLuckFor(who); // their movie gets watched: their luck starts over (kept so 'put it back' can undo it)
+    w.luckSnap = resetLuckFor(who, `their movie “${w.label}” won`); // their movie gets watched: their luck starts over (kept so 'put it back' can undo it)
     w.status = 'watched'; w.wonAt = Date.now(); // landed on = picked: it leaves the pool and counts toward their picks
     lb.markWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId });
     w.benchedIds = [];
@@ -300,7 +310,7 @@ export function resetCooldowns() {
 export function undoMovieWin(winnerId) {
   const l = moviesList(), w = l.entries.find(e => e.id === winnerId); if (!w) return false;
   if (w.status === 'watched') { w.status = 'active'; delete w.wonAt; lb.unmarkWatched({ title: w.label, year: w.sub, tmdbId: w.tmdbId }); }
-  if (w.luckSnap) { giveLuckBack(w.luckSnap); delete w.luckSnap; }
+  if (w.luckSnap) { giveLuckBack(w.luckSnap, `“${w.label}” was passed on, so it's back in the pool`); delete w.luckSnap; }
   const who = w.backers?.[0]?.discordId;
   if (who && w.winAdded) week().winners = week().winners.filter(x => x !== who);
   for (const id of w.benchedIds || []) { const e = l.entries.find(x => x.id === id); if (e && e.status === 'benched') e.status = 'active'; }

@@ -242,6 +242,18 @@
   #v-people .pane, #v-history .pane { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; }
   .person td { vertical-align:top; }
   .person .tw { width:140px; padding:5px 8px; }
+  /* 🧾 History → Everything */
+  .acBar { gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0 6px; }
+  .acCats { flex-wrap:wrap; }
+  .acDay { position:sticky; top:52px; z-index:2; margin:14px 0 4px; padding:6px 10px; border-radius:10px; background:var(--panel2); border:1px solid var(--line); font-weight:800; color:var(--gold); }
+  .acRow { display:grid; grid-template-columns:96px 26px minmax(0,1fr); gap:8px; padding:6px 4px; border-bottom:1px solid rgba(58,42,102,.45); align-items:start; }
+  .acRow .acT { color:var(--dim); font-size:12.5px; padding-top:2px; white-space:nowrap; }
+  .acRow .acI { text-align:center; }
+  .acRow .acX { min-width:0; overflow-wrap:anywhere; }
+  .acRow.acTest { opacity:.72; }
+  .acMore { margin-top:3px; }
+  .acMore summary { cursor:pointer; color:var(--dim); font-size:12.5px; }
+  .acMore > div { margin-top:4px; padding:6px 10px; border-left:2px solid var(--line); color:var(--dim); font-size:13px; max-height:260px; overflow:auto; }
   .round { display:grid; grid-template-columns:60px 1fr auto; gap:14px; padding:12px 0; border-bottom:1px solid rgba(58,42,102,.6); align-items:start; }
   .round .pic { width:60px; height:60px; border-radius:50%; object-fit:cover; background:var(--panel2); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:22px; }
   .round .pic.poster { height:88px; border-radius:8px; }
@@ -317,7 +329,10 @@
   #wRound .btns { display:grid; grid-template-columns:1fr 1fr; gap:6px; } #wRound .btns button { padding:10px 6px; font-weight:700; }
   @keyframes wrPulse { 50% { box-shadow:0 0 0 6px #ff4f6d55, 0 16px 50px #000c; } }
   .wfinal { border-left-color:#7dffb0 !important; background:linear-gradient(90deg,#1d3a2a,var(--panel2)) !important; }
-  #wUndoList { margin-top:8px; max-height:260px; overflow:auto; }
+  #wUndoList { margin-top:8px; max-height:360px; overflow:auto; }
+  .undoDay { margin:10px 0 2px; font-weight:800; color:var(--gold); font-size:12.5px; }
+  .undoRow { gap:8px; margin-top:5px; align-items:center; }
+  .undoStart { gap:8px; margin:8px 0 4px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; align-items:center; flex-wrap:wrap; }
   .night { margin:14px 0 6px; font-weight:800; color:var(--gold,#ffc94a); }
   #v-giveaway .pane { display:flex; flex-direction:column; gap:14px; }
   .badgeS { font-size:11px; font-weight:800; padding:1px 5px; border-radius:6px; background:#ffffff1a; margin-left:3px; }
@@ -1048,6 +1063,21 @@
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="wResetPeek()" title="What Reset wheel would bring back (nothing changes)">↺ What would Reset bring back?</button></div><div id="tResetOut"></div>
   </div>
   <div class="card">
+    <h3>⏪ Undo all the way back</h3>
+    <p class="help">⏪ Undo and ⏪ Go back… (under the wheel) go back one step at a time or many at once, <b>all the way to the start of the wheel</b> (right before its first spin since the last ↺ Reset), even after you close the app. <b>🤖 Check it</b> plays a pretend wheel nobody sees (grows, shrinks, a void and a bring-back, a countdown, all the same size…), goes ⏮️ all the way back to its start, and checks it's exactly how it began and that nothing else changed (your wheels, saved spins, timer and history stay the same). <b>⏪ Open Go back…</b> opens the real list on the 🎡 Wheel tab.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="undoTest()" title="A pretend wheel gets changed, then goes all the way back to its start (nothing real changes)">🤖 Check it (pretend wheel)</button><button onclick="setView('wheel');setTimeout(()=>{$('wUndoList').innerHTML='';wUndoMenu()},300)" title="The real ⏪ Go back… list for the wheel you have picked">⏪ Open Go back…</button></div><div id="tUndoOut"></div>
+  </div>
+  <div class="card">
+    <h3>🍀 Luck in your own battles</h3>
+    <p class="help">Your own battles (words, pictures or movies you add yourself) can have the Discord battle's luck: everything that loses gets a little luckier every battle, and a winner <b>stays in</b> (only you take things out) with its luck starting over. Great for a battle of stuff for you to do. Chat can't join these battles. Turn it on with <b>🍀 Luck</b> on the Battle tab, in Settings → 🍀 Luck (with how much), or when you make a new battle. This plays 6 pretend battles and shows who won and everyone's luck after each one. Nothing real changes.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tOlList" style="width:auto" title="Which battle's entries and luck amount to use" onfocus="olFill(this)" onmousedown="olFill(this)"><option value="">(made-up stuff to do)</option></select><button class="primary" onclick="olTest()">🍀 6 pretend battles</button></div><div id="tOlOut"></div>
+  </div>
+  <div class="card">
+    <h3>🧾 Complete history</h3>
+    <p class="help">History → <b>🧾 Everything</b> keeps a line for everything that happens: spins and where they landed, wins, luck earned and started over, card pack wins, free spins, channel points, subs, bits and more. <b>➕ Add a test line</b> adds one 🧪 test line so you can watch it show up (the 🧪 switch there hides test lines). <b>⚔️ Practice battle</b> runs one: its start (with everyone's chance) and its winner show up as 🧪 practice lines.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="actTest()" title="Adds one 🧪 test line to History → Everything">➕ Add a test line</button><button onclick="testBattle({count:6})" title="A practice battle: its start and winner show up in History → Everything as 🧪 lines">⚔️ Practice battle</button><button onclick="histMode='all';setView('history')" title="Opens History → 🧾 Everything">🧾 Open it</button></div><div id="tActOut"></div>
+  </div>
+  <div class="card">
     <h3>🔞 Nudity heads-up</h3>
     <p class="help">What the red warning on the Winner card looks like when a movie with nudity wins: every scene from the IMDb Parents Guide with about when it is in the movie. <b>🧪 Pretend one</b> = a made-up movie (no internet). <b>🔍 Check a movie</b> = the real check for any movie you type (needs your TMDB key; IMDb is read like a browser does). <b>⚔️ Practice battle</b> = a practice round whose winner gets a pretend nudity result: see the Winner card (every scene, with about when) and the red “This movie has nudity” line on the winner pop-up on stream. It's never typed in chat.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="nudeTest(true)">🧪 Pretend one</button><button onclick="testBattle({nudity:true, count:6})" title="A practice round whose winner gets a pretend nudity result (Winner card + the pop-up on stream)">⚔️ Practice battle</button><input id="tNudeQ" class="grow" style="min-width:160px" placeholder="A movie name, like Titanic" onkeydown="if(event.key==='Enter')nudeTest(false)"><button onclick="nudeTest(false)" title="Look this movie up for real: IMDb Parents Guide + TMDB">🔍 Check a movie</button></div><div id="tNudeOut" style="margin-top:6px"></div>
@@ -1220,6 +1250,7 @@
     <label class="ck"><input type="checkbox" id="nlWebW" checked> <span>✅ Skip movies I've watched / rated (from Letterboxd)</span></label>
     <p class="help">Skipped movies don't count: it keeps reading further down the lists until it has the full amount. 🎬 Movies someone picked in Discord never go on it, and if someone picks one later, it leaves and the next movie on the list takes its place.</p>
   </div>
+  <label class="ck" id="nlLuckRow" style="margin-top:8px" title="Like the Discord battle: everything that loses gets a little luckier every battle; a winner stays in (only you take things out) and its luck starts over"><input type="checkbox" id="nlLuck"> <span>🍀 Luck like the Discord battle: what loses gets luckier every battle, a winner stays in and starts over (great for a battle of stuff to do)</span></label>
   <div id="nlAdd"><label>Add stuff now (optional) — separate with commas or new lines</label>
   <textarea id="nlItems" style="min-height:90px" placeholder="Heat, Jaws, The Thing x2&#10;Alien"></textarea>
   <div class="row" style="margin-top:6px"><input id="nlUrl" class="grow" placeholder="…or a Wheel of Names link"><button onclick="nlImportLink()">Get list</button><button onclick="$('nlFile').click()">📄 File</button><input type="file" id="nlFile" accept=".wheel,.json,.csv,.tsv,.txt,text/*,application/json" hidden multiple onchange="nlImportFile(this.files)"></div>
@@ -1752,7 +1783,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -1935,7 +1966,7 @@ function taList() {
     sv('banRules', 'movies', '🚫 Ban rules (not in English, religious, documentaries, dubbed) give the right answers', 'banRules'), sv('botRules', 'movies', '☁️ The 24/7 bot\'s copy of the ban + series rules gives the same answers'),
     sv('series', 'movies', '🎞️ Series in order + 🔒 series locks (a pretend series)'), sv('spotLuck', 'movies', '🎟️ Wild spot luck: once a night'), sv('myMovies', 'movies', '🍀 !mymovies answers in Twitch chat, Discord and the 24/7 bot'),
     sv('lists', 'movies', '🌐 IMDb / Rotten Tomatoes pages are read right (ratings too)'), sv('nudity', 'movies', '🔞 The nudity check reads a Parents Guide page right'), sv('banExport', 'movies', '⬇️ The export file of your bans reads back the same'),
-    sv('wheelReset', 'app', '↺ Reset wheel puts a (pretend) wheel back exactly how it was set up'), sv('data', 'app', '💾 Your data saves fine (and a backup in the last month)'), sv('files', 'app', '🖼️ The pictures you added are all there'), sv('errors', 'app', '⚠️ No new errors in the last day'),
+    sv('wheelReset', 'app', '↺ Reset wheel puts a (pretend) wheel back exactly how it was set up'), sv('undoBack', 'app', '⏪ Undo goes all the way back to the start of a (pretend) wheel'), sv('ownLuck', 'battles', '🍀 Luck in your own battles: losers get luckier, the winner stays in'), sv('history', 'app', '🧾 The complete history (History → Everything) saves and reads back'), sv('data', 'app', '💾 Your data saves fine (and a backup in the last month)'), sv('files', 'app', '🖼️ The pictures you added are all there'), sv('errors', 'app', '⚠️ No new errors in the last day'),
     { id: 'help', cat: 'app', label: '❓ Help mode has a note for every button and box', ck: 'helpMode', run: taHelp }, { id: 'keys', cat: 'app', label: '⌨️ No two key binds on the same key', run: taKeys }
   ];
 }
@@ -2126,6 +2157,14 @@ async function api(url, body, method = 'POST') {
   return j;
 }
 const list = () => S.lists.find(l => l.id === S.activeListId) || S.lists[0];
+// 🍀 luck: the Discord battle's (Settings → 🍀 Luck) or your own battle's (1.72.0: word / picture / movie battles you fill yourself, off by default)
+const ownLuckOk = l => !!l && ['text', 'pics', 'films'].includes(l.type) && !l.giveaway;
+const listLuck = l => l?.type === 'movies' ? !!S.luckOn : ownLuckOk(l) && !!l.luckOn;
+const ownLuckPer = l => +(l?.luckPer ?? S.settings?.luckPerBattle ?? 1);
+async function olToggle(lid, ch) { // 🍀 luck on / off (or how much) for one of your own battles, saved right away
+  try { await api('/api/lists/' + lid, ch, 'PATCH'); const l = S.lists.find(x => x.id === lid) || {}, on = 'luckOn' in ch ? ch.luckOn : l.luckOn, per = 'luckPer' in ch ? ch.luckPer : ownLuckPer(l);
+    toast('luckOn' in ch ? (on ? `🍀 Luck is on for ${esc(l.name || 'this battle')}: everything that loses gets +${per}% every battle, and a winner stays in with its luck starting over.` : `🍀 Luck is off for ${esc(l.name || 'this battle')} (the luck they have is kept, it just doesn't count).`) : 'Saved', 'luckOn' in ch ? 6000 : 1500); } catch {}
+}
 
 function connect() {
   sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=control`);
@@ -2142,6 +2181,8 @@ function connect() {
     if (m.type === 'errorLogged') { clearTimeout(window.errT); window.errT = setTimeout(loadErrors, 800); }
     if (m.type === 'wheelRound' && WD) { WD.round = m.round; if (m.final) { WD.final = m.final; toast('⏱️ TIME! The wheel has spoken: 🏆 ' + esc(m.final.text), 6000); } drawRound(); if (view === 'wheel') drawWheelResult(); }
     if (m.type === 'wheelBoosts') drawBoosts(m.boosts);
+    if (m.type === 'activity') acLive(m.row); // 🧾 History → Everything
+    if (m.type === 'activityFilled') { AC.stale = true; if (view === 'history' && histMode === 'all') drawActivity(); } // (the older history lists were just added to it)
     if (m.type === 'wheelReveal') ctlReveal(m);
     if (m.type === 'cliff' && S) { S.cliff = m.cliff; if (view === 'battle') renderBattleList(); } // 📋 who's really in the battle changed
     if (m.type === 'state') {
@@ -2377,7 +2418,9 @@ function renderBackupNag() {
 function luckBattlesHTML() { // Settings → 🍀 Luck: every battle's watch luck (on/off + how much) + save / reset / bring back
   return S.lists.map(l => { const w = l.watchLuck || {}, id = esc(l.id); return `<div class="lkRow"><div class="tmName"><b>${esc(l.name)}</b><small class="muted">${esc(TYPE[l.type] || '')}</small></div>${luckTools(l.id, true)}
     <div class="wlLine"><label class="ck" style="margin:0" title="Turn watch luck on or off for this battle"><input type="checkbox" ${w.on ? 'checked' : ''} onchange="wlToggle('${id}', {on:this.checked})"> <span>👀 Watch luck ${w.on ? '<b style="color:var(--good)">on</b>' : '<span class="muted">off</span>'}</span></label>
-      <span class="wlHow"><span class="muted">every</span><input type="number" min="1" max="500" value="${w.hours || 10}" title="How many hours someone has to watch to get one step of watch luck" onchange="wlToggle('${id}', {hours:Number(this.value)})"><span class="muted">hours watched = +</span><input type="number" min="1" max="100" value="${w.amount || 1}" title="How much luck each step of watch luck gives (%)" onchange="wlToggle('${id}', {amount:Number(this.value)})"><span class="muted">% luck</span></span></div></div>`; }).join('');
+      <span class="wlHow"><span class="muted">every</span><input type="number" min="1" max="500" value="${w.hours || 10}" title="How many hours someone has to watch to get one step of watch luck" onchange="wlToggle('${id}', {hours:Number(this.value)})"><span class="muted">hours watched = +</span><input type="number" min="1" max="100" value="${w.amount || 1}" title="How much luck each step of watch luck gives (%)" onchange="wlToggle('${id}', {amount:Number(this.value)})"><span class="muted">% luck</span></span></div>${ownLuckOk(l) ? `
+    <div class="wlLine"><label class="ck" style="margin:0" title="Luck like the Discord battle for this battle (off by default)"><input type="checkbox" ${l.luckOn ? 'checked' : ''} onchange="olToggle('${id}', {luckOn:this.checked})"> <span>🍀 Luck like the Discord battle ${l.luckOn ? '<b style="color:var(--good)">on</b>' : '<span class="muted">off</span>'}</span></label>
+      <span class="wlHow"><span class="muted">+</span><input type="number" min="0" max="100" step="0.5" value="${ownLuckPer(l)}" title="How much luck everything that loses a battle gets (%)" onchange="olToggle('${id}', {luckPer:Number(this.value)})"><span class="muted">% every battle it loses · a winner stays in and its luck starts over</span></span></div>` : ''}</div>`; }).join('');
 }
 async function wlToggle(lid, ch) { // 👀 watch luck on/off (or how much) for one battle, saved right away
   try { await api('/api/lists/' + lid, { watchLuck: ch }, 'PATCH'); const l = S.lists.find(x => x.id === lid), w = { hours: 10, amount: 1, ...(l?.watchLuck || {}), ...ch };
@@ -2387,10 +2430,10 @@ let luckBattlesKey = '';
 function luckBattlesSync() { const el = $('setLuckBattles'); if (!el) return; const h = luckBattlesHTML(); if (h !== luckBattlesKey) { luckBattlesKey = h; el.innerHTML = h; } }
 let luckFor = 'movies';
 function luckTools(lid = 'movies', inLuckTab) {
-  const l = S.lists.find(x => x.id === lid) || list(), odds = l.type !== 'movies', n = (S.luckSaves || []).filter(x => x.listId === l.id).length, w = odds ? 'odds' : 'luck';
+  const l = S.lists.find(x => x.id === lid) || list(), odds = l.type !== 'movies' && !listLuck(l), n = (S.luckSaves || []).filter(x => x.listId === l.id).length, w = odds ? 'odds' : 'luck';
   return `<span class="luckTools"><button class="ghost" title="Watch luck: people who watch your streams get luck in this battle" onclick="wlOpen('${l.id}')">${inLuckTab ? '👀 Who has watch luck' : `👀 Watch luck${l.watchLuck?.on ? ' ✅' : ''}`}</button><button class="ghost" title="Save everyone's ${w} so you can bring it back later" onclick="luckSave('${l.id}')">💾 Save ${w}</button><button class="ghost" title="${odds ? 'Set everyone to the same odds' : 'Set all luck to 0'} (saved first, so you can bring it back)" onclick="luckReset('${l.id}')">↺ ${odds ? 'Everyone' : 'Reset luck'}${odds ? ' to 1' : ''}</button><button class="ghost" onclick="luckOpen('${l.id}')">📂 Saved ${w}${n ? ` (${n})` : ''}</button></span>`;
 }
-const luckWord = lid => (S.lists.find(x => x.id === lid)?.type || 'movies') === 'movies' ? 'luck' : 'odds';
+const luckWord = lid => { const l = S.lists.find(x => x.id === lid); return !l || l.type === 'movies' || listLuck(l) ? 'luck' : 'odds'; }; // (🍀 your own battles with luck on: the tools save / reset luck)
 async function luckSave(lid = 'movies') { await api('/api/luck/save', { listId: lid }); toast(`💾 Saved. Bring it back any time from 📂 Saved ${luckWord(lid)}.`); }
 async function luckReset(lid = 'movies') {
   const w = luckWord(lid);
@@ -2662,7 +2705,7 @@ function renderView() {
   else if (view === 'giveaway') renderGiveaway();
   else if (view === 'wheel') renderWheel(true);
   else if (view === 'people') renderPeople();
-  else if (view === 'history') { if (histVer !== S.historyVersion || !hist) loadHistory(); }
+  else if (view === 'history') { if (histVer !== S.historyVersion || !hist) loadHistory(); else if ($('histBody')?.dataset.mode !== histMode) drawHistory(); } // (a button picked another History tab)
   else if (view === 'settings' && sub === 'bans') renderBanSide();
   else if (view === 'settings' && sub === 'sounds') renderSound(); // 🔊 Sounds lives inside Settings
 }
@@ -2845,7 +2888,7 @@ function renderBattleList() {
     else add = `<p class="help" style="margin:0">Add pictures in the 📋 Pool tab.</p>`;
     box.innerHTML = `<div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0" id="blTitle"></h3><span id="blLuck"></span></div><div class="row blSearch" style="margin-bottom:8px"><input id="blSearch" class="grow" type="search" placeholder="🔎 Search a person or movie…" value="${esc(blFilter)}" oninput="blFilter=this.value.toLowerCase().trim();renderBattleList()"><button class="ghost" id="blMoreBtn" onclick="blMore=!blMore;renderBattleList()"></button></div>${add}<div id="blTable" style="margin-top:10px"></div><p class="scrollhint">Edit more in the 📋 Pool and 👥 People tabs.</p>`;
   }
-  if ($('blLuck')) $('blLuck').innerHTML = l.type === 'movies' ? (S.luckOn ? luckTools('movies') : '') : (document.activeElement?.closest?.('#blLuck') ? $('blLuck').innerHTML : `${luckTools(l.id)}<span class="help" style="margin:0 6px 0 10px">Rounds</span>${boSel(l.bestOf, `api('/api/lists/${l.id}',{bestOf:this.value},'PATCH').then(()=>toast('Saved'))`)}`);
+  if ($('blLuck')) $('blLuck').innerHTML = l.type === 'movies' ? (S.luckOn ? luckTools('movies') : '') : (document.activeElement?.closest?.('#blLuck') ? $('blLuck').innerHTML : `${ownLuckOk(l) ? `<button class="ghost" title="🍀 Luck like the Discord battle: everything that loses gets a little luckier every battle; a winner stays in and its luck starts over (Settings → 🍀 Luck has how much)" onclick="olToggle('${l.id}',{luckOn:${!l.luckOn}})">🍀 Luck ${l.luckOn ? 'on ✅' : 'off'}</button>` : ''}${luckTools(l.id)}<span class="help" style="margin:0 6px 0 10px">Rounds</span>${boSel(l.bestOf, `api('/api/lists/${l.id}',{bestOf:this.value},'PATCH').then(()=>toast('Saved'))`)}`);
   renderLuckDlg();
   if ($('qaPeople')) $('qaPeople').innerHTML = S.people.map(p => `<option value="${esc(p.name)}">${p.twitch ? esc(p.twitch) : ''}</option>`).join('');
   // 📋 1.61.0 (Derek): the list shows who's REALLY in the battle first (the pieces on the cliff / in the running battle),
@@ -2855,7 +2898,7 @@ function renderBattleList() {
   const all = l.entries.filter(e => ['active', 'paused', 'benched', 'away'].includes(e.status));
   const notIn = all.filter(e => !isIn(e));
   const show = all.filter(e => hit(e) && (isIn(e) || blMore || q));
-  const act = l.entries.filter(e => e.status === 'active'), luckOnNow = l.type === 'movies' && S.luckOn;
+  const act = l.entries.filter(e => e.status === 'active'), luckOnNow = listLuck(l), luckCol = l.type === 'movies' || luckOnNow;
   const total = act.filter(isIn).reduce((s, e) => s + (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1), 0) || 1;
   const inN = all.filter(isIn).length, running = !!S.cliff?.running && S.cliff.listId === l.id;
   $('blTitle').innerHTML = `📋 ${esc(l.name)} <span class="pill" style="border-color:var(--good)" title="${running ? 'In the battle that is running now' : 'Waiting on the cliff: these are the ones in the next battle'}">✅ ${inN} ${running ? 'fighting' : 'in the battle'}</span>${notIn.length ? ` <span class="pill" title="In the pool but not in this battle (sitting out, haven't chatted, or didn't fit)">${notIn.length} not in</span>` : ''}`;
@@ -2864,19 +2907,19 @@ function renderBattleList() {
   let lastIn = null;
   const rows = show.sort((a, b) => (isIn(a) ? 0 : 1) - (isIn(b) ? 0 : 1) || (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || (b.weight - a.weight) || a.label.localeCompare(b.label)).slice(0, 600).map(e => {
     const spot = e.kind === 'spot', on = e.status === 'active', inNow = isIn(e), pct = on && inNow ? (e.weight || 1) * (luckOnNow ? 1 + (e.luckPct || 0) / 100 : 1) / total * 100 : 0;
-    const head = lastIn !== inNow ? `<tr class="blHead"><td colspan="${l.type === 'movies' ? 6 : 5}">${inNow ? `✅ In this battle (${all.filter(isIn).filter(hit).length})` : `💤 Not in this battle (${all.filter(x => !isIn(x)).filter(hit).length}) <small class="muted">sitting out, hasn't chatted yet, or didn't fit on the cliff</small>`}</td></tr>` : ''; lastIn = inNow;
+    const head = lastIn !== inNow ? `<tr class="blHead"><td colspan="${luckCol ? 6 : 5}">${inNow ? `✅ In this battle (${all.filter(isIn).filter(hit).length})` : `💤 Not in this battle (${all.filter(x => !isIn(x)).filter(hit).length}) <small class="muted">sitting out, hasn't chatted yet, or didn't fit on the cliff</small>`}</td></tr>` : ''; lastIn = inNow;
     const why = !inNow && on && e.skipNext ? '<span class="tag b" title="Its picker typed !skip: it sits out the next battle, then it\'s back">⏭️ skips the next battle</span>' : !inNow && on && S.redoSkip?.id === e.id ? '<span class="tag b" title="Passed: the redo battle leaves it out once">🔁 left out of the redo</span>' : !inNow && on ? (l.type === 'movies' && S.settings.chatGate !== false && e.backers?.length && !S.chatters?.includes(e.backers[0].discordId) && !e.forceIn ? '<span class="tag b" title="Their picker hasn\'t typed in Twitch chat tonight (chat check)">💬 hasn\'t chatted</span>' : '<span class="tag b" title="More entries than fit on the cliff (Most pieces on the cliff); it can still get picked next time">🎲 didn\'t fit</span>') : '';
     const rt = l.type === 'movies' || l.type === 'films' || l.type === 'web' ? blRun(e.details?.runtime) : '', rate = rateTxt(e, l);
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const who = l.type === 'movies' ? (spot ? 'Wildcard' : e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you') : '';
     return `${head}<tr style="${on && inNow ? '' : 'opacity:.55'}"><td class="thumb">${img}</td><td><b>${esc(e.label)}</b> ${spot && e.status === 'benched' ? spotTag : tag[e.status] || ''}${why}${on && e.forceIn ? ' <span class="tag w" title="You put it back yourself: no cooldown, no chat check">▶ put back by you</span>' : ''}<br><small class="muted">${[esc(e.sub || ''), rt ? '⏱️ ' + rt : '', rate, who].filter(Boolean).join(' · ')}</small></td>
-      ${l.type === 'movies' ? `<td class="luck" title="Luck: extra % chance">${S.luckOn ? `🍀 <input type="number" step="0.5" min="0" value="${+(e.luckPct || 0).toFixed(2)}" style="width:62px;padding:2px 4px" onchange="api('/api/luck',{listId:'${l.id}',id:'${e.id}',luckPct:this.value})">%` : '<span class="muted">luck off</span>'}</td>` : ''}
+      ${luckCol ? `<td class="luck" title="Luck: extra % chance${l.type !== 'movies' ? ' (it grows every battle it loses; starts over when it wins)' : ''}">${luckOnNow ? `🍀 <input type="number" step="0.5" min="0" value="${+(e.luckPct || 0).toFixed(2)}" style="width:62px;padding:2px 4px" onchange="api('/api/luck',{listId:'${l.id}',id:'${e.id}',luckPct:this.value})">%` : '<span class="muted">luck off</span>'}</td>` : ''}
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div></td>
       <td style="white-space:nowrap">${on && inNow ? `<div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small>` : ''}</td>
       <td style="white-space:nowrap;text-align:right">${l.type === 'movies' && !spot ? `<button class="ghost" title="Change who picked it" onclick="ownerOpen('${e.id}')">👤</button>` : ''}${l.type === 'movies' && !spot ? `<button class="ghost" title="Mark as watched" onclick="setStatus('${e.id}','watched')">✅</button>` : ''}${on ? `<button class="ghost" title="Disable for now (pause)" onclick="setStatus('${e.id}','paused')">⏸️</button>` : `<button class="ghost" title="Put it back in the battle now (skips the cooldown and the chat check)" onclick="setStatus('${e.id}','active')">▶</button>`}<button class="ghost danger" title="Delete" onclick="if(confirm('Delete ${esc(e.label).replace(/'/g, '')}?')) setStatus('${e.id}','removed')">✕</button></td></tr>`;
   }).join('');
   if (document.activeElement?.matches?.('#blTable input, #blTable select, #blTable textarea')) return; // don't redraw under your cursor while typing in it
-  $('blTable').innerHTML = show.length ? `<table><tr><th></th><th>Entry</th>${l.type === 'movies' ? '<th>Luck</th>' : ''}<th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>` : q ? `<div class="empty">Nobody or nothing matches “${esc(blFilter)}”.</div>` : all.length ? `<div class="empty">Nobody is in this battle yet${l.type === 'movies' && S.settings.chatGate !== false ? ': people show up here once they type in Twitch chat' : ''}. ${notIn.length ? '👀 shows the rest.' : ''}</div>` : '<div class="empty">Nothing in this battle yet — add some above.</div>';
+  $('blTable').innerHTML = show.length ? `<table><tr><th></th><th>Entry</th>${luckCol ? '<th>Luck</th>' : ''}<th>Odds</th><th>Chance</th><th></th></tr>${rows}</table>` : q ? `<div class="empty">Nobody or nothing matches “${esc(blFilter)}”.</div>` : all.length ? `<div class="empty">Nobody is in this battle yet${l.type === 'movies' && S.settings.chatGate !== false ? ': people show up here once they type in Twitch chat' : ''}. ${notIn.length ? '👀 shows the rest.' : ''}</div>` : '<div class="empty">Nothing in this battle yet — add some above.</div>';
 }
 // who's really in the battle: the server's cliff (or the running battle); if it hasn't said yet, work it out the same way the server does
 // 🏁 Laps box on the Battle tab's right side (1.61.0, Derek): shows when the next battle is on a race map (not survival-only ones)
@@ -3092,7 +3135,7 @@ function renderPool() {
   const l = list();
   $('lists').innerHTML = S.lists.map(x => `<button class="${x.id === S.activeListId ? 'active' : ''}" onclick="setActive('${x.id}')"><span>${esc(x.name)}<br><small>${TYPE[x.type]}</small></span><span class="pill">${x.entries.filter(e => e.status === 'active').length}</span></button>`).join('');
   const active = l.entries.filter(e => e.status === 'active');
-  const total = active.reduce((s, e) => s + (e.weight || 1) * (l.type === 'movies' && S.luckOn ? 1 + (e.luckPct || 0) / 100 : 1), 0) || 1;
+  const total = active.reduce((s, e) => s + (e.weight || 1) * (listLuck(l) ? 1 + (e.luckPct || 0) / 100 : 1), 0) || 1;
   const keepFocus = document.activeElement?.id, keepVal = { bulk: $('bulk')?.value, msearch: $('msearch')?.value }, keepOpen = !!document.querySelector('#poolMain details:not(#impBox)')?.open, keepImp = !!$('impBox')?.open, keepUrl = $('impUrl')?.value, keepList = renderPool.last === l.id;
   renderPool.last = l.id;
   if (document.activeElement?.closest?.('#poolMain .results')) return;
@@ -3129,14 +3172,14 @@ function renderPool() {
   const hidden = l.entries.filter(e => (e.status === 'paused' || e.status === 'removed') && e.kind !== 'spot' && (!filter || e.label.toLowerCase().includes(filter))); // ⏸ paused / taken out (✕, Clear, Reset entries): never deleted, they stay in the list below, darker
   const rows = active.filter(e => !filter || e.label.toLowerCase().includes(filter)).sort((a, b) => b.weight - a.weight || a.label.localeCompare(b.label, undefined, { numeric: true })).slice(0, 500).map(e => {
     const spot = e.kind === 'spot';
-    const luckM = l.type === 'movies' && S.luckOn ? 1 + (e.luckPct || 0) / 100 : 1;
+    const luckM = listLuck(l) ? 1 + (e.luckPct || 0) / 100 : 1;
     const pct = (e.weight || 1) * luckM / total * 100;
     const img = spot ? '<span>🎟️</span>' : e.poster ? `<img class="poster" src="${esc(proxy(e.poster))}">` : e.image ? `<img src="${esc(proxy(e.image))}">` : `<span>${esc((e.label[0] || '?').toUpperCase())}</span>`;
     const waiting = l.type === 'movies' && S.settings.chatGate !== false && !spot && e.backers?.length && !S.chatters.includes(e.backers[0].discordId);
     const series = e.details?.collection ? ` · 🎞️ ${esc(e.details.collection.name)}` : '';
     const info = movieInfo(e, l);
     const sub = (spot ? `Wildcard · if one wins, all ${esc(S.settings.spotName)} spots leave for the week` : l.type === 'movies' ? `${esc(e.sub)}${info} · ${e.backers?.length ? esc(e.backers.map(b => b.name).join(', ')) : 'added by you'}${series}` : l.type === 'films' && !e.tmdbId ? '📝 plain text (not a movie)' : esc(e.sub || '') + info) + (waiting ? ` · <span style="color:var(--gold)">💬 joins once ${esc(e.backers[0].name)} chats</span>` : '');
-    const luck = l.type === 'movies' && S.luckOn ? (spot ? `<div class="luck" title="Wildcard spots only get luck you give them">🍀 <input type="number" step="0.01" min="0" value="${e.luckPct || 0}" style="width:64px;padding:2px 4px" onchange="api('/api/luck',{id:'${e.id}',luckPct:this.value})">%</div>` : e.luckPct ? `<div class="luck" title="Built up from battles it lost">🍀 +${(+e.luckPct).toFixed(2)}%</div>` : '') : '';
+    const luck = l.type !== 'movies' && listLuck(l) ? `<div class="luck" title="Luck: it grows every battle it loses and starts over when it wins (you can change it)">🍀 <input type="number" step="0.5" min="0" value="${+(e.luckPct || 0).toFixed(2)}" style="width:64px;padding:2px 4px" onchange="api('/api/luck',{listId:'${l.id}',id:'${e.id}',luckPct:this.value})">%</div>` : l.type === 'movies' && S.luckOn ? (spot ? `<div class="luck" title="Wildcard spots only get luck you give them">🍀 <input type="number" step="0.01" min="0" value="${e.luckPct || 0}" style="width:64px;padding:2px 4px" onchange="api('/api/luck',{id:'${e.id}',luckPct:this.value})">%</div>` : e.luckPct ? `<div class="luck" title="Built up from battles it lost">🍀 +${(+e.luckPct).toFixed(2)}%</div>` : '') : '';
     return `<tr style="${waiting ? 'opacity:.5' : ''}"><td class="thumb">${img}</td><td>${l.type === 'text' || l.type === 'pics' || (l.type === 'films' && !e.tmdbId) ? `<input value="${esc(e.label)}" style="font-weight:700;max-width:260px" title="Click to change it" onchange="api('/api/lists/${l.id}/entries/${e.id}',{label:this.value},'PATCH')">` : `<b>${esc(e.label)}</b>`}<br><small class="muted">${sub}</small></td>
       <td><div class="odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} - 1)">−</button><input value="${e.weight || 1}" onchange="odds('${e.id}', this.value)" title="Odds"><button onclick="odds('${e.id}', ${(e.weight || 1)} + 1)">+</button></div>${luck}</td>
       <td><div class="bar"><i style="width:${Math.min(100, pct * 3)}%"></i></div><small class="muted">${pct.toFixed(pct < 10 ? 1 : 0)}%</small></td>
@@ -3419,11 +3462,18 @@ async function loadHistory(force) {
   const r = await fetch('/api/history?listId=' + encodeURIComponent(want)).then(r => r.json());
   hist = r; histFor = want; histVer = S.historyVersion; drawHistory();
 }
-let histMode = 'rounds', histQ = '';
+let histMode = (() => { try { return localStorage.histMode || 'rounds'; } catch { return 'rounds'; } })(), histQ = ''; // (the History tab you were on last time)
 const hl = t => { const x = esc(t); if (!histQ) return x; const re = new RegExp('(' + histQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'); return x.replace(re, '<mark>$1</mark>'); };
-function histSearch(v) { histQ = v.trim(); drawHistory(); const el = $('histQ'); el.focus(); caretEnd(el); }
+function histSearch(v) { histQ = v.trim(); if (histMode === 'all') return acSearch(); drawHistory(); const el = $('histQ'); el.focus(); caretEnd(el); }
+// the History tab's tabs (one list, so every view shows the same row of them)
+const HIST_TABS = [['rounds', '📜 Every round'], ['people', '👑 Who won what'], ['results', '📋 Results'], ['stats', '📊 Stats'], ['spins', '🎟️ Free spins', 'Every free (saved) wheel spin given out, used or given back'], ['all', '🧾 Everything', 'The complete history: everything that happens in Movie Royal, newest first. Every spin and where it landed, every battle and who won, luck earned, lost and started over, card packs that won, free spins, channel points, subs, bits, tips and more']];
+const histTabs = () => `<div class="seg">${HIST_TABS.map(([k, n, t]) => `<button class="${histMode === k ? 'on' : ''}"${t ? ` title="${esc(t)}"` : ''} onclick="histMode='${k}';drawHistory()">${n}</button>`).join('')}</div>`;
 function drawHistory() {
-  const box = $('histBody'); if (!box || !hist) return;
+  const box = $('histBody'); if (!box) return;
+  try { localStorage.histMode = histMode; } catch {}
+  box.dataset.mode = histMode;
+  if (histMode === 'all') return drawActivity();
+  if (!hist) return;
   if (histMode === 'stats') return drawStats();
   if (histMode === 'results') return drawResultsList();
   if (histMode === 'spins') return drawSpinLog();
@@ -3437,7 +3487,7 @@ function drawHistory() {
   const counts = {}; for (const h of rows) { const k = h.winner.owner; if (k) counts[k] = (counts[k] || 0) + 1; }
   const topOwner = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   box.innerHTML = `
-    <div class="row stickybar"><div class="seg"><button class="${histMode === 'rounds' ? 'on' : ''}" onclick="histMode='rounds';drawHistory()">📜 Every round</button><button class="${histMode === 'people' ? 'on' : ''}" onclick="histMode='people';drawHistory()">👑 Who won what</button><button class="${histMode === 'results' ? 'on' : ''}" onclick="histMode='results';drawHistory()">📋 Results</button><button class="${histMode === 'stats' ? 'on' : ''}" onclick="histMode='stats';drawHistory()">📊 Stats</button><button class="${histMode === 'spins' ? 'on' : ''}" onclick="histMode='spins';drawHistory()" title="Every free (saved) wheel spin given out, used or given back">🎟️ Free spins</button></div>
+    <div class="row stickybar">${histTabs()}
       <input id="histQ" style="width:260px" placeholder="🔎 Search a movie or a name…" value="${esc(histQ)}" oninput="histSearch(this.value)">
       <span class="muted">in</span><select style="width:auto" onchange="histList=this.value;loadHistory(true)">${opts}</select>
       <span class="grow"></span>${want !== 'all' && rows.length ? `<button class="ghost danger" onclick="if(confirm('Delete all history for this battle?')) api('/api/history/clear',{listId:'${esc(want)}'}).then(()=>loadHistory(true))">Clear history</button>` : ''}</div>
@@ -3577,12 +3627,33 @@ async function wUnvoid(entryId, wheelId) {
   await loadWheel(); renderWheel();
 }
 async function wUndo() { try { const r = await api('/api/wheel/undo', {}); toast(`⏪ Went back to before ${esc(r.label)}.`); await loadWheel(); renderWheel(); drawWheelResult(); } catch {} }
-async function wUndoMenu() {
-  const box = $('wUndoList'); if (box.innerHTML) { box.innerHTML = ''; return; }
-  const l = await fetch('/api/wheel/undo').then(r => r.json());
-  box.innerHTML = `<div class="wres" style="margin-top:0"><div class="row" style="justify-content:space-between"><b>⏪ Go back to before…</b><button class="ghost" onclick="$('wUndoList').innerHTML=''">✕</button></div>${l.length ? l.map((u, i) => `<div class="row" style="gap:8px;margin-top:6px;align-items:center"><span class="muted" style="width:80px">${esc(new Date(u.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }))}</span><span class="grow">${esc(u.label)}</span><button class="ghost" onclick="wUndoTo('${u.id}',${i + 1})">⏪ ${i ? `${i + 1} steps` : '1 step'}</button></div>`).join('') : '<p class="help">Nothing to go back to yet.</p>'}<p class="help">Puts the wheel, spot sizes, the round timer and saved spins back the way they were. The timer waits for you after going back.</p></div>`;
+// ⏪ Go back… (1.72.0, Derek: "make the undo button work all the way back to the beginning of the wheel"): every step is kept
+// (even after closing the app), a page at a time, newest first, with ⏮️ all the way back to the start of the wheel you're on
+let WU = null;
+async function wUndoMenu(more) {
+  const box = $('wUndoList'); if (!more && box.innerHTML) { box.innerHTML = ''; WU = null; return; }
+  const w = wCur(), last = more && WU?.rows.length ? WU.rows[WU.rows.length - 1] : null;
+  const d = await fetch(`/api/wheel/undo?limit=60&wheelId=${encodeURIComponent(w?.id || '')}${last ? '&before=' + encodeURIComponent(last.id) : ''}`).then(r => r.json()).catch(() => null); if (!d) return;
+  WU = more && WU ? { ...d, rows: [...WU.rows, ...d.rows] } : d; drawUndoList();
 }
-async function wUndoTo(id, n) { if (n > 1 && !confirm(`Go back ${n} steps?`)) return; try { await api('/api/wheel/undo', { id }); toast(`⏪ Went back ${n} step${n === 1 ? '' : 's'}.`); $('wUndoList').innerHTML = ''; await loadWheel(); renderWheel(); drawWheelResult(); } catch {} }
+function drawUndoList() {
+  const d = WU, box = $('wUndoList'); if (!d || !box) return;
+  const w = wCur(), tm = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }), st = d.start;
+  let day = '';
+  const rows = d.rows.map(u => { const dd = new Date(u.at).toDateString(), head = dd !== day ? `<div class="undoDay">${esc(acDayName(u.at))}</div>` : ''; day = dd;
+    return head + `<div class="row undoRow"><span class="muted" style="width:92px;flex:none">${esc(tm(u.at))}</span><span class="grow">${esc(u.label)}${u.wheelId !== w?.id ? ` <small class="muted">· 🎡 ${esc(u.wheelName || '')}</small>` : ''}</span><button class="ghost" title="Put everything back the way it was right before this" onclick="wUndoTo('${u.id}',${u.n})">⏪ ${u.n === 1 ? '1 step' : u.n.toLocaleString() + ' steps'}</button></div>`; }).join('');
+  box.innerHTML = `<div class="wres" style="margin-top:0"><div class="row" style="gap:8px;align-items:center"><b>⏪ Go back to before…</b><span class="muted grow">${d.total.toLocaleString()} step${d.total === 1 ? '' : 's'} saved${d.first ? `, back to ${esc(new Date(d.first).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))}` : ''}</span><button class="ghost" onclick="$('wUndoList').innerHTML='';WU=null">✕</button></div>
+    ${st ? `<div class="row undoStart"><span class="grow">⏮️ <b>The start of “${esc(w?.name || '')}”</b> <small class="muted">right before its first spin${st.at ? ` (${esc(new Date(st.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))})` : ''} · ${st.n.toLocaleString()} step${st.n === 1 ? '' : 's'} back${st.others?.length ? ` · also puts back ${esc(st.others.join(', '))}` : ''}</small></span><button class="primary" title="Take back everything since this wheel's first spin (since its last ↺ Reset)" onclick="wUndoTo('${st.id}',${st.n},true)">⏮️ All the way back to the start</button></div>` : `<p class="help" style="margin:6px 0">“${esc(w?.name || 'This wheel')}” hasn't changed since its last reset, so it's already at its start.</p>`}
+    ${rows || '<p class="help">Nothing to go back to yet.</p>'}
+    ${d.more ? `<div class="row" style="justify-content:center;margin-top:8px"><button class="ghost" onclick="wUndoMenu(true)">Show older steps…</button></div>` : ''}
+    <p class="help">Puts the wheel (and any other wheel that changed since then), the spot sizes, the round timer, saved spins and streamer respins back the way they were. The timer waits for you after going back. The steps stay saved when you close the app. 🧾 History → Everything still lists what you took back.</p></div>`;
+}
+async function wUndoTo(id, n, start) {
+  const w = wCur(), st = WU?.start;
+  if (start) { if (!confirm(`Go all the way back to the start of “${w?.name}”, right before its first spin?\n\nThat takes back ${n} step${n === 1 ? '' : 's'}: every spin, grow, void, round timer and saved spin since then.${st?.others?.length ? `\n\nThese wheels changed since then too, so they go back as well: ${st.others.join(', ')}.` : ''}`)) return; }
+  else if (n > 1 && !confirm(`Go back ${n} steps?`)) return;
+  try { const r = await api('/api/wheel/undo', { id }); const also = (r.wheels || []).filter(x => x !== w?.name); toast(`⏪ Went back ${n} step${n === 1 ? '' : 's'}${start ? `: “${esc(w?.name || '')}” is back at its start` : ''}.${also.length ? ` Also put back: ${esc(also.join(', '))}.` : ''}`); $('wUndoList').innerHTML = ''; WU = null; await loadWheel(); renderWheel(); drawWheelResult(); } catch {}
+}
 function wPic(cb) { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,video/mp4,video/webm'; inp.onchange = async () => { const f = inp.files[0]; if (!f) return; const r = await fetch('/api/wheel/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }).then(r => r.json()); if (r.url) cb(r.url); }; inp.click(); }
 function wPut(body, now) { const w = wCur(); Object.assign(w, body); drawWheelPreview(); clearTimeout(wSaveT); wSaveT = setTimeout(async () => { wSaveT = null; await api('/api/wheel/' + w.id, { name: w.name, title: w.title, entries: w.entries, spinSecs: w.spinSecs, removeWinner: w.removeWinner, palette: w.palette, look: w.look, folder: w.folder || '' }, 'PUT'); wVer = -1; }, now ? 0 : 400); }
 // ↺ Reset wheel (1.67.2, Derek): back to how you set it up, before the first spin (asks first, with what changes)
@@ -3592,6 +3663,23 @@ async function wReset() {
   if (!confirm(`Reset “${w.name}” to how you set it up, before its first spin${d.at ? ` (${new Date(d.at).toLocaleString()})` : ''}?\n\n${d.rows.length ? list : 'No spot changed size, but the round and the last result are cleared.'}\n\nYou can undo it.`)) return;
   try { const r = await api('/api/wheel/reset', { wheelId: w.id }); toast(`↺ “${esc(w.name)}” is back to how you set it up${r.changed ? ` (${r.changed} spot${r.changed === 1 ? '' : 's'} changed back)` : ''}`); } catch {}
   await loadWheel(); renderWheel();
+}
+async function undoTest() { // 🧪 ⏪ all the way back, on a pretend wheel nobody sees
+  const o = $('tUndoOut'); o.innerHTML = '<p class="help">Checking…</p>';
+  try { const r = await api('/api/test/undo-start', {});
+    o.innerHTML = `<p class="help" style="color:${r.ok ? 'var(--good)' : 'var(--bad)'}">${r.ok ? `✅ It works: the pretend wheel had ${r.changes} changes, then ⏮️ went ${r.stepsBack} steps back to its start, exactly how it began. Nothing else changed. (${r.steps.toLocaleString()} real steps are saved for your wheels.)` : `⚠️ ${esc(r.why || "It didn't come back right.")}`}</p>${r.done?.length ? `<details><summary class="help">What the pretend wheel did</summary><p class="help">${r.done.map(esc).join('<br>')}</p></details>` : ''}`; }
+  catch (e) { o.innerHTML = `<p class="help" style="color:var(--bad)">⚠️ ${esc(e.message)}</p>`; }
+}
+function olFill(sel) { const v = sel.value, own = S.lists.filter(ownLuckOk); sel.innerHTML = `<option value="">(made-up stuff to do)</option>` + own.map(l => `<option value="${esc(l.id)}">${esc(l.name)}${l.luckOn ? ' 🍀' : ''}</option>`).join(''); sel.value = own.some(l => l.id === v) ? v : ''; }
+async function olTest() { // 🧪 🍀 6 pretend battles of a battle with luck: who wins + everyone's luck after each one
+  const o = $('tOlOut'); o.innerHTML = '<p class="help">Playing…</p>';
+  try { const r = await api('/api/test/own-luck', { listId: $('tOlList').value || null, battles: 6 }), names = r.rounds[0]?.luck.map(x => x.label) || [];
+    o.innerHTML = `<p class="help">${r.name ? `Using “${esc(r.name)}”: ` : ''}every battle, the ones that lose get <b>+${r.per}%</b> luck, and the winner stays in with its luck back to 0%. The numbers are each one's 🍀 luck after battle #1, #2…; 🏆 = it won that battle (with the chance it had) and went back to 0%.</p>
+      <table class="st" style="width:100%;table-layout:fixed"><thead><tr><th class="l" style="width:34%">Entry</th>${r.rounds.map(x => `<th>#${x.n}</th>`).join('')}</tr></thead><tbody>${names.map((nm, i) => `<tr><td class="l" style="overflow-wrap:anywhere">${esc(nm)}</td>${r.rounds.map(x => x.winner === nm && x.luck[i].luck === 0 ? `<td style="color:var(--gold)" title="Won battle #${x.n} with a ${x.luck[i].chance}% chance">🏆<br><small>${x.luck[i].chance}%</small></td>` : `<td>${+x.luck[i].luck.toFixed(2)}%</td>`).join('')}</tr>`).join('')}</tbody></table>`; }
+  catch (e) { o.innerHTML = `<p class="help" style="color:var(--bad)">⚠️ ${esc(e.message)}</p>`; }
+}
+async function actTest() { // 🧪 one test line in History → Everything
+  try { const r = await api('/api/test/activity', {}); $('tActOut').innerHTML = `<p class="help" style="color:var(--good)">✅ Added a 🧪 test line. The complete history has ${r.info.days} day${r.info.days === 1 ? '' : 's'} so far (${r.info.todayLines} line${r.info.todayLines === 1 ? '' : 's'} today). <a href="#" onclick="histMode='all';setView('history');return false">Open it</a></p>`; } catch {}
 }
 async function wResetPeek() { // 🧪 what Reset wheel would bring back (nothing changes)
   await loadWheel().catch(() => {}); const w = wCur(); if (!w) return toast('Pick a wheel on the 🎡 Wheel tab first');
@@ -4175,8 +4263,66 @@ async function drawSpinLog() {
 }
 // the shared top bar of the history tab (tabs + search)
 function histHead() {
-  return `<div class="row stickybar"><div class="seg"><button onclick="histMode='rounds';drawHistory()">📜 Every round</button><button onclick="histMode='people';drawHistory()">👑 Who won what</button><button class="${histMode === 'results' ? 'on' : ''}" onclick="histMode='results';drawHistory()">📋 Results</button><button class="${histMode === 'stats' ? 'on' : ''}" onclick="histMode='stats';drawHistory()">📊 Stats</button><button class="${histMode === 'spins' ? 'on' : ''}" onclick="histMode='spins';drawHistory()" title="Every free (saved) wheel spin given out, used or given back">🎟️ Free spins</button></div>
-    <input id="histQ" style="width:260px" placeholder="🔎 Search a name…" value="${esc(histQ)}" oninput="histSearch(this.value)"></div>`;
+  return `<div class="row stickybar">${histTabs()}
+    <input id="histQ" style="width:${histMode === 'all' ? 330 : 260}px" placeholder="${histMode === 'all' ? '🔎 Search everything: a name, spot, movie…' : '🔎 Search a name…'}" value="${esc(histQ)}" oninput="histSearch(this.value)"></div>`;
+}
+
+// ---------- 🧾 History → Everything (1.72.0, Derek: "a history for everything that is done… this is a complete history") ----------
+// Newest first, kept for good (src/activity.js: a file a day). New lines show up as they happen. Nothing is ever taken out of it.
+const AC = { rows: [], more: false, key: '', cats: [], tests: true, info: null, busy: false, stale: true, seq: 0 };
+try { const f = JSON.parse(localStorage.acF || '{}'); if (Array.isArray(f.cats)) AC.cats = f.cats; if (f.tests === false) AC.tests = false; } catch {}
+const acSave = () => { try { localStorage.acF = JSON.stringify({ cats: AC.cats, tests: AC.tests }); } catch {} };
+function acDayName(t) {
+  const d = new Date(t), today = new Date(), y = new Date(Date.now() - 864e5), long = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}) });
+  return d.toDateString() === today.toDateString() ? `Today · ${long}` : d.toDateString() === y.toDateString() ? `Yesterday · ${long}` : long;
+}
+const acMatch = r => (!AC.cats.length || AC.cats.includes(r.cat)) && (AC.tests || !r.test) && (!histQ || [r.text, r.who, r.list, r.wheel, ...(r.items || [])].some(v => v && String(v).toLowerCase().includes(histQ.toLowerCase())));
+const acQs = last => `limit=300&cats=${encodeURIComponent(AC.cats.join(','))}&q=${encodeURIComponent(histQ)}&tests=${AC.tests ? 1 : 0}${last ? `&before=${last.at}&seq=${last.seq || 0}` : ''}`;
+async function drawActivity(more) {
+  if (!$('acList')) acFrame();
+  const key = JSON.stringify([AC.cats, histQ, AC.tests]);
+  if (!more && AC.key === key && !AC.stale) return acList();
+  const my = ++AC.seq, last = more ? AC.rows[AC.rows.length - 1] : null;
+  AC.busy = true; if (!more && AC.key !== key) { AC.rows = []; acList(); }
+  const d = await fetch('/api/activity?' + acQs(last)).then(r => r.json()).catch(() => null);
+  if (my !== AC.seq) return; // (a newer search already went)
+  AC.busy = false; if (!d) return;
+  if (AC.info !== d.cats) { const had = !!AC.info; AC.info = d.cats; if (!had && histMode === 'all') acFrame(); }
+  AC.key = key; AC.stale = false; AC.rows = more ? [...AC.rows, ...d.rows] : d.rows; AC.more = d.more;
+  if (histMode === 'all') acList();
+}
+let acSearchT = null;
+function acSearch() { clearTimeout(acSearchT); acSearchT = setTimeout(() => drawActivity(), 250); }
+function acCat(k) { if (!k) AC.cats = []; else AC.cats = AC.cats.includes(k) ? AC.cats.filter(x => x !== k) : [...AC.cats, k]; acSave(); acFrame(); drawActivity(); }
+function acFrame() { // the tabs + filters (drawn once; the list below them updates by itself)
+  const box = $('histBody'); if (!box || histMode !== 'all') return;
+  const C = AC.info || {}, chips = [['', '📋 All kinds'], ...Object.entries(C).filter(([k]) => k !== 'test').map(([k, [i, n]]) => [k, `${i} ${n}`])];
+  box.innerHTML = histHead() + `<p class="help">🧾 Everything that happens in Movie Royal, newest first, kept for good: every spin and where it landed, every battle and who won (with everyone's chance and luck), luck earned, lost and started over, card packs that won, free spins, channel points, subs, bits, tips, chat joins and more. Nothing is ever taken out of it: even ⏪ undo is added as its own line. Click <b>more</b> on a line for the details.</p>
+    <div class="row acBar"><div class="seg acCats">${chips.map(([k, n]) => `<button class="${k ? (AC.cats.includes(k) ? 'on' : '') : (!AC.cats.length ? 'on' : '')}" title="${k ? `Only ${esc(n)} (click more than one to see several)` : 'Every kind of thing'}" onclick="acCat('${k}')">${esc(n)}</button>`).join('')}</div>
+      <label class="ck" style="margin:0" title="Show practice battles, pretend tests and other 🧪 test lines too"><input type="checkbox" ${AC.tests ? 'checked' : ''} onchange="AC.tests=this.checked;acSave();drawActivity()"> <span>🧪 Practice &amp; tests</span></label><span class="grow"></span>
+      <button class="ghost" title="Download the complete history as a spreadsheet file (.csv), with the kinds and search you picked" onclick="location.href='/api/activity/export?'+acQs(null).replace(/^limit=300&/, '')">⬇️ Download</button></div>
+    <div id="acList"></div><div id="acMore"></div>`;
+  acList();
+}
+function acRow(r) {
+  const t = new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }), C = AC.info || {};
+  const items = r.items?.length ? `<details class="acMore"><summary>${r.items.length} more</summary><div>${r.items.map(x => `<div>${hl(x)}</div>`).join('')}</div></details>` : '';
+  return `<div class="acRow${r.test ? ' acTest' : ''}"><span class="acT">${esc(t)}</span><span class="acI" title="${esc(C[r.cat]?.[1] || '')}">${esc(r.icon || C[r.cat]?.[0] || '•')}</span><div class="acX">${r.who ? `<b>${hl(r.who)}</b> ` : ''}${hl(r.text)}${r.test ? ' <span class="tag b">🧪 test</span>' : ''}${items}</div></div>`;
+}
+function acList() {
+  const box = $('acList'); if (!box || histMode !== 'all') return;
+  const open = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.k));
+  let day = '', html = '';
+  for (const r of AC.rows) { const d = new Date(r.at).toDateString(); if (d !== day) { day = d; html += `<div class="acDay">${esc(acDayName(r.at))}</div>`; } html += acRow(r).replace('<details class="acMore">', `<details class="acMore" data-k="${esc(r.id)}"${open.has(r.id) ? ' open' : ''}>`); }
+  box.innerHTML = html || `<div class="empty">${AC.busy ? 'Loading…' : histQ || AC.cats.length ? `Nothing matches${histQ ? ` “${esc(histQ)}”` : ''}${AC.cats.length ? ' in the kinds you picked' : ''}.` : 'Nothing here yet. From now on, everything that happens shows up here.'}</div>`;
+  const old = AC.rows.length && AC.rows[AC.rows.length - 1].old;
+  $('acMore').innerHTML = (AC.more ? `<div class="row" style="justify-content:center;margin:10px 0"><button onclick="drawActivity(true)">Show older…</button></div>` : '') + (old && !AC.more ? `<p class="help" style="text-align:center">That's everything. Lines from before version 1.72.0 came from the older history lists, so they don't have as much detail (like luck).</p>` : '');
+}
+let acLiveT = null;
+function acLive(r) { // a new line just happened
+  if (!r || !acMatch(r) || AC.stale) return;
+  AC.rows.unshift(r); if (AC.rows.length > 3000) { AC.rows.length = 3000; AC.more = true; }
+  if (view === 'history' && histMode === 'all') { clearTimeout(acLiveT); acLiveT = setTimeout(acList, 300); }
 }
 
 // ---------- 📊 lifetime stats ----------
@@ -4345,8 +4491,8 @@ async function practice() { const n = Math.max(2, Math.min(1000, Number($('pracN
 // ---------- new battle dialog ----------
 let nlType = 'films';
 const NL_HELP = { numbers: 'Every ball is a number (pick a number from 1 to whatever, up to 1,000). The last one standing is the number. You can change the numbers later in the 🎬 Movie Pool tab.', films: 'Search and paste movie titles yourself. The winner gets the full movie winner screen (poster, genre, ratings). Great for theme nights.', text: 'Paste words or names — one per line. Great for games, snacks, challenges, anything.', pics: 'Drag in a bunch of pictures. Each picture becomes a piece on the cliff.', chat: 'Viewers type !join in Twitch chat and their profile picture becomes their piece. Perfect for giveaways.', web: 'Movies from IMDb and/or Rotten Tomatoes lists, like the 500 worst movies. Pick the lists (or paste links) and how many: it skips the ones you pick and keeps going until it has that many.' };
-function newList() { $('nlName').value = ''; $('nlItems').value = ''; selType('films'); newlist.showModal(); $('nlName').focus(); }
-function selType(t) { nlType = t; [...$('nlType').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('nlHelp').textContent = NL_HELP[t] || ''; $('nlNums').style.display = t === 'numbers' ? 'flex' : 'none'; $('nlAdd').style.display = t === 'numbers' || t === 'web' ? 'none' : ''; $('nlWeb').style.display = t === 'web' ? '' : 'none'; if (t === 'web') webPresets(); }
+function newList() { $('nlName').value = ''; $('nlItems').value = ''; $('nlLuck').checked = false; selType('films'); newlist.showModal(); $('nlName').focus(); }
+function selType(t) { nlType = t; [...$('nlType').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); $('nlHelp').textContent = NL_HELP[t] || ''; $('nlNums').style.display = t === 'numbers' ? 'flex' : 'none'; $('nlAdd').style.display = t === 'numbers' || t === 'web' ? 'none' : ''; $('nlWeb').style.display = t === 'web' ? '' : 'none'; if (t === 'web') webPresets(); $('nlLuckRow').style.display = ['films', 'text', 'pics'].includes(t) ? '' : 'none'; }
 $('nlType').onclick = e => e.target.dataset.t && selType(e.target.dataset.t);
 async function numbersBattle() { try { const r = await api('/api/lists/numbers', { from: $('nlFrom').value, to: $('nlTo').value }); newlist.close(); toast(`🔢 Made a battle with ${r.count} numbers. Press START ROYAL!`); setView('battle'); } catch {} }
 async function lbWorst(url) { const r = await api('/api/lists/letterboxd', url ? { url, name: '🎞️ Letterboxd battle' } : {}); toast('🎞️ Getting the films from Letterboxd… (about a minute)', 5000); setView('pool'); }
@@ -4378,7 +4524,7 @@ async function createList() {
     if (!urls.length) return toast('Pick a list or paste a link.');
     try { await api('/api/lists/web', { name: $('nlName').value.trim() || '💩 The 500 worst movies', urls, max: $('nlWebMax').value, english: $('nlWebEn').checked, skipSequels: $('nlWebSeq').checked, skipWatched: $('nlWebW').checked }); newlist.close(); toast('🌐 Getting the movies… (a few minutes for 500; the Movie Pool shows how far it is)', 6000); setView('pool'); } catch {} return; }
   if (nlType === 'numbers') { try { const r = await api('/api/lists/numbers', { from: $('nlFrom').value, to: $('nlTo').value, ...($('nlName').value.trim() ? { name: $('nlName').value.trim() } : {}) }); newlist.close(); toast(`🔢 Made a battle with ${r.count} numbers. Press START ROYAL!`); setView('battle'); } catch {} return; }
-  const r = await api('/api/lists', { name: $('nlName').value || 'New battle', type: nlType }), items = $('nlItems').value.trim();
+  const r = await api('/api/lists', { name: $('nlName').value || 'New battle', type: nlType, luckOn: ['films', 'text', 'pics'].includes(nlType) && $('nlLuck').checked }), items = $('nlItems').value.trim();
   newlist.close(); $('nlItems').value = ''; setView('pool');
   if (items && r.id) { toast('Adding…'); const b = await api(`/api/lists/${r.id}/bulk`, { text: items }); toast(`Added ${b.added}${b.failed.length ? `<br><small>Skipped:<br>${b.failed.slice(0, 8).map(esc).join('<br>')}</small>` : ''}`, b.failed.length ? 8000 : 3000); }
 }
