@@ -2,7 +2,8 @@
 import WebSocket from 'ws';
 import { db, save } from './store.js';
 
-export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids'];
+export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads'];
+export const OPTIONAL_SCOPES = ['channel:read:ads']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
 
 let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {} };
@@ -154,6 +155,7 @@ function connectEventSub(url, subscribe) {
         const sid = m.payload.session.id;
         const cond = { broadcaster_user_id: status.userId };
         const subs = [['channel.channel_points_custom_reward_redemption.add', '1'], ['channel.cheer', '1'], ['stream.online', '1'], ['stream.offline', '1'], ['channel.raid', '1', { to_broadcaster_user_id: status.userId }], ['channel.follow', '2', { broadcaster_user_id: status.userId, moderator_user_id: status.userId }]];
+        if ((status.scopes || []).includes('channel:read:ads')) subs.push(['channel.ad_break.begin', '1']); // 📺 ad warnings (only with that permission)
         const errs = [];
         for (const [t, v, c2] of subs) {
           try { await helix('eventsub/subscriptions', { method: 'POST', body: JSON.stringify({ type: t, version: v, condition: c2 || cond, transport: { method: 'websocket', session_id: sid } }) }); }
@@ -173,6 +175,7 @@ function connectEventSub(url, subscribe) {
       if (t === 'channel.cheer') handlers.alert({ kind: 'bits', login: e.user_login, name: e.is_anonymous ? 'Anonymous' : e.user_name, amount: e.bits, text: `cheered ${e.bits} bits${e.message ? ': ' + e.message : ''}` });
       if (t === 'channel.channel_points_custom_reward_redemption.add')
         handlers.redeem({ title: e.reward.title, login: e.user_login, name: e.user_name, input: e.user_input, id: e.id, rewardId: e.reward.id, cost: e.reward.cost });
+      else if (t === 'channel.ad_break.begin') handlers.adBreak?.({ secs: Number(e.duration_seconds) || 0, at: Date.parse(e.started_at) || Date.now(), auto: !!e.is_automatic });
       else if (t === 'stream.online') handlers.live(true);
       else if (t === 'stream.offline') handlers.live(false);
       else if (t === 'channel.cheer')
@@ -323,6 +326,13 @@ export async function listRewards() {
   return (j.data || []).map(r => ({ id: r.id, title: r.title, cost: r.cost, enabled: r.is_enabled, paused: r.is_paused, color: r.background_color, cooldown: r.global_cooldown_setting?.is_enabled ? r.global_cooldown_setting.global_cooldown_seconds : 0 }));
 }
 /** 🤖 Test all: is your Twitch sign-in still good? (reads your own name; changes nothing) */
+/** 📺 (1.76.0) Twitch's ad schedule: { next (ms, 0 = none), secs, last } (needs channel:read:ads) */
+export async function adSchedule() {
+  if (!status.userId || !(status.scopes || []).includes('channel:read:ads')) return null;
+  const d = (await helix(`channels/ads?broadcaster_id=${status.userId}`)).data?.[0]; if (!d) return null;
+  const t = v => { if (v === '' || v == null) return 0; const n = Number(v); return Number.isFinite(n) ? (n < 1e12 ? n * 1000 : n) : Date.parse(v) || 0; };
+  return { next: t(d.next_ad_at), secs: Number(d.duration) || 0, last: t(d.last_ad_at) };
+}
 /** ▶ (1.75.0) the stream that's live right now: { id, startedAt } (null = offline / not signed in) */
 export async function streamInfo() { if (!status.userId) return null; const j = await helix(`streams?user_id=${status.userId}`); const d = j.data?.[0]; return d ? { id: String(d.id), startedAt: Date.parse(d.started_at) } : null; }
 /** ▶ the VOD ("past broadcast") of a stream, found by its stream id (null = not there: past broadcasts off, or deleted) */

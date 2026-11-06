@@ -1,0 +1,118 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal marathon</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+/* 🏃 Marathon overlay (1.76.0): an OBS browser source, 1920×1080, see-through. "Battles owed" counter in a corner + the pop-up
+   when someone gets a battle (numbered maps + things to give 🍀 luck to). Only OBS shows it, not Movie Royal. ?demo=1 = a pretend one. */
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: Nunito, 'Segoe UI', sans-serif; color: #fff; }
+.count { position: absolute; display: flex; align-items: center; gap: 16px; padding: 14px 24px 14px 18px; border-radius: 22px; background: linear-gradient(135deg, rgba(30,14,52,.92), rgba(70,20,70,.92)); border: 3px solid #ffcf4a; box-shadow: 0 8px 30px rgba(0,0,0,.5), 0 0 24px rgba(255,207,74,.35); transition: transform .4s cubic-bezier(.2,1.6,.4,1), opacity .4s; }
+.count.tl { left: 30px; top: 30px; } .count.tr { right: 30px; top: 30px; } .count.bl { left: 30px; bottom: 30px; } .count.br { right: 30px; bottom: 30px; }
+.count .n { font: 400 64px/1 'Lilita One', sans-serif; color: #ffcf4a; text-shadow: 0 3px 0 #7a3c00; min-width: 48px; text-align: center; }
+.count .t { font-weight: 900; font-size: 22px; letter-spacing: 2px; text-transform: uppercase; line-height: 1.1; }
+.count .nx { font-weight: 700; font-size: 17px; color: #e8dcff; letter-spacing: 0; text-transform: none; margin-top: 3px; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.count.bump { transform: scale(1.15); }
+.count.off { opacity: 0; transform: scale(.8); }
+.pop { position: absolute; left: 50%; top: 50%; width: 1700px; max-height: 1000px; transform: translate(-50%, -50%) scale(.6); opacity: 0; border-radius: 30px; padding: 26px 34px 20px; box-sizing: border-box;
+  background: linear-gradient(160deg, rgba(24,10,44,.96), rgba(56,14,62,.96)); border: 4px solid #ffcf4a; box-shadow: 0 20px 80px rgba(0,0,0,.6), 0 0 60px rgba(255,79,154,.35); transition: transform .45s cubic-bezier(.2,1.5,.4,1), opacity .35s; }
+.pop.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.pop h1 { margin: 0; font: 400 66px/1.05 'Lilita One', sans-serif; text-align: center; color: #fff; text-shadow: 0 4px 0 #a01a5c, 0 0 30px rgba(255,79,154,.6); }
+.pop h1 b { color: #ffcf4a; font-weight: 400; }
+.pop .what { text-align: center; font-size: 24px; font-weight: 800; color: #ffd9f0; margin-top: 4px; }
+.pop .how { margin: 14px auto 14px; text-align: center; font-size: 27px; font-weight: 900; padding: 10px 18px; border-radius: 14px; background: rgba(47,224,200,.14); border: 2px solid rgba(47,224,200,.6); }
+.pop .how code { font-family: 'Lilita One', sans-serif; font-weight: 400; color: #2fe0c8; font-size: 30px; padding: 0 6px; }
+.pop .how .site { color: #ffcf4a; }
+.cols { display: grid; grid-template-columns: 1.55fr 1fr; gap: 26px; }
+.col h2 { margin: 0 0 8px; font: 400 32px 'Lilita One', sans-serif; color: #ffcf4a; }
+.grid { display: grid; gap: 3px 14px; font-size: 19px; font-weight: 800; }
+.grid div { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 8px; border-radius: 7px; background: rgba(255,255,255,.06); }
+.grid i { font-style: normal; color: #ffcf4a; min-width: 30px; text-align: right; font-family: 'Lilita One', sans-serif; font-weight: 400; }
+.grid span { overflow: hidden; text-overflow: ellipsis; }
+.grid em { margin-left: auto; font-style: normal; color: #7dffa5; font-size: 16px; }
+.bar { height: 8px; border-radius: 6px; background: rgba(255,255,255,.12); margin-top: 16px; overflow: hidden; }
+.bar div { height: 100%; width: 100%; background: linear-gradient(90deg, #ffcf4a, #ff4f9a); transform-origin: left; }
+.anon .how, .anon .cols { display: none; }
+.guess { position: absolute; right: 30px; top: 50%; width: 520px; max-height: 1000px; transform: translate(560px, -50%); transition: transform .5s cubic-bezier(.2,1.3,.4,1); border-radius: 26px; padding: 18px 20px; box-sizing: border-box;
+  background: linear-gradient(170deg, rgba(10,30,44,.95), rgba(30,14,52,.95)); border: 4px solid #2fe0c8; box-shadow: 0 16px 60px rgba(0,0,0,.6), 0 0 40px rgba(47,224,200,.35); }
+.guess.on { transform: translate(0, -50%); }
+.guess h1 { margin: 0; white-space: nowrap; font: 400 38px/1 'Lilita One', sans-serif; text-align: center; color: #2fe0c8; text-shadow: 0 3px 0 #04574d; }
+.guess .gt { text-align: center; font: 400 74px/1 'Lilita One', sans-serif; color: #ffcf4a; margin: 6px 0 2px; text-shadow: 0 3px 0 #7a3c00; }
+.guess .gh { text-align: center; font-size: 21px; font-weight: 900; margin-bottom: 10px; }
+.guess .gh b { color: #2fe0c8; }
+.guess .grid { font-size: 21px; gap: 2px 10px; } .guess .grid div { padding: 1px 8px; }
+.guess .gn { text-align: center; font-size: 19px; font-weight: 800; margin-top: 10px; color: #e8dcff; }
+.win { position: absolute; left: 50%; top: 40px; transform: translate(-50%, -220px); transition: transform .5s cubic-bezier(.2,1.4,.4,1); max-width: 1500px; padding: 18px 34px; border-radius: 22px; text-align: center;
+  background: linear-gradient(135deg, rgba(10,40,30,.95), rgba(20,60,50,.95)); border: 4px solid #7dffa5; box-shadow: 0 12px 50px rgba(0,0,0,.6); }
+.win.on { transform: translate(-50%, 0); }
+.win h1 { margin: 0; font: 400 50px/1.1 'Lilita One', sans-serif; color: #7dffa5; }
+.win div { font-size: 26px; font-weight: 900; margin-top: 4px; }
+
+</style></head>
+<body>
+<div class="count off" id="count"><div class="n" id="cn">0</div><div class="t"><div id="ct">battles owed</div><div class="nx" id="cx"></div></div></div>
+<div class="pop" id="pop"></div>
+<div class="guess" id="guess"></div>
+<div class="win" id="win"></div>
+<script src="/sfx.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DEMO = /[?&]demo/.test(location.search), Q = []; let showing = false, last = null, audio = { on: true, sfx: .7 };
+function count(m) {
+  const c = $('count'); c.className = 'count ' + (m.corner || 'bl') + (m.on ? '' : ' off');
+  if (last != null && m.owed > last) { c.classList.add('bump'); setTimeout(() => c.classList.remove('bump'), 450); }
+  last = m.owed; $('cn').textContent = m.owed; $('ct').textContent = m.owed === 1 ? 'battle owed' : 'battles owed';
+  $('cx').textContent = m.next?.length ? 'Next: ' + m.next.join(', ') : 'Sub, gift, $5 or 500 bits = a battle';
+}
+function cols(arr, max) { return Math.max(1, Math.min(max, Math.ceil(arr.length / 17))); }
+function pop(m) { Q.push(m); if (!showing) next(); }
+function next() {
+  const m = Q.shift(); if (!m) { showing = false; return; } showing = true;
+  const p = $('pop'), luck = (Math.round(m.luckPer * 100) / 100) + '%', mc = cols(m.maps, 3), ic = cols(m.items, 2);
+  p.className = 'pop' + (m.anon ? ' anon' : '');
+  p.innerHTML = `<h1>⚔️ <b>${esc(m.who)}</b> got ${m.n === 1 ? 'a battle' : m.n + ' battles'}!</h1><div class="what">${esc(m.what)}${m.owed ? ` · 🎟️ ${m.owed} owed` : ''}</div>
+    <div class="how">Pick a map: <code>map #</code> · give 🍀 +${luck} luck to one thing: <code>luck #</code>${m.site ? ` · or pick at <span class="site">${esc(m.site)}</span>` : ''}</div>
+    <div class="cols"><div class="col"><h2>🗺️ Maps</h2><div class="grid" style="grid-template-columns:repeat(${mc},minmax(0,1fr))">${m.maps.map(x => `<div><i>${x.n}</i><span>${esc(x.icon)} ${esc(x.name)}</span></div>`).join('')}</div></div>
+    <div class="col"><h2>🍀 Give luck to one</h2><div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div></div></div>
+    <div class="bar"><div id="pbar"></div></div>`;
+  // (shrink the lists to fit when there are a lot of maps / things)
+  requestAnimationFrame(() => { let f = 19; while (p.scrollHeight > 1000 && f > 11) { f--; p.querySelectorAll('.grid').forEach(g => g.style.fontSize = f + 'px'); } p.classList.add('on'); });
+  try { if (audio.on && window.SFX) { SFX.init(); SFX.setVolume({ on: true, sfx: audio.sfx, music: 0 }); SFX.play('ding'); setTimeout(() => SFX.play('confettiPop'), 250); } } catch {}
+  const secs = m.secs || 40, bar = $('pbar'); bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)';
+  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${secs}s linear`; bar.style.transform = 'scaleX(0)'; }));
+  setTimeout(() => { p.classList.remove('on'); setTimeout(next, 600); }, secs * 1000);
+}
+let gT = null, gEnd = 0;
+function guess(m) {
+  const g = $('guess'); clearInterval(gT);
+  if (!m.on) { g.classList.remove('on'); return; }
+  gEnd = m.endsAt; const ic = m.items.length > 36 ? 2 : 1;
+  g.innerHTML = `<h1>🎯 GUESS THE WINNER</h1><div class="gt" id="gt"></div><div class="gh">Type the <b>number</b> in chat. Right = <b>you win a battle!</b></div>
+    <div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div>
+    <div class="gn" id="gn"></div>`;
+  gn(m); requestAnimationFrame(() => { let f = ic === 2 ? 17 : 21; while (g.scrollHeight > 960 && f > 11) { f--; g.querySelector('.grid').style.fontSize = f + 'px'; } g.classList.add('on'); });
+  const tick = () => { const s = Math.max(0, Math.ceil((gEnd - Date.now()) / 1000)); $('gt').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  tick(); gT = setInterval(tick, 250);
+  try { if (audio.on && window.SFX) { SFX.init(); SFX.setVolume({ on: true, sfx: audio.sfx, music: 0 }); SFX.play('ding'); } } catch {}
+}
+function gn(m) { const el = $('gn'); if (el) el.textContent = m.count ? `${m.count} guess${m.count === 1 ? '' : 'es'}${m.last?.length ? ': ' + m.last.join(', ') : ''}` : 'No guesses yet: be the first!'; }
+function win(m) {
+  const w = $('win'); if (!m.total) return;
+  w.innerHTML = `<h1>🎯 #${m.n} ${esc(m.label)} won!</h1><div>${m.names.length ? `${esc(m.names.join(', '))} called it: ${m.names.length === 1 ? 'a battle for you!' : 'a battle each!'}` : `Nobody called it (${m.total} guess${m.total === 1 ? '' : 'es'})`}</div>`;
+  w.classList.add('on'); try { if (audio.on && m.names.length && window.SFX) SFX.play('confettiPop'); } catch {}
+  setTimeout(() => w.classList.remove('on'), 9000);
+}
+function connect() {
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=mara`);
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'maraCount') count(m); else if (m.type === 'maraPop') pop(m); else if (m.type === 'maraGuess') guess(m); else if (m.type === 'maraGuessN') gn(m); else if (m.type === 'maraGuessWin') win(m); else if (m.type === 'audio') audio = { on: m.on, sfx: m.sfx }; };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+if (DEMO) {
+  document.body.style.background = '#2a2f3a';
+  const maps = ['Crumbling Cliff', 'Deep Space', 'Lava Lake', 'Sweet Donut', 'Pirate Battle', 'Santa\'s Workshop', 'Turkey Trouble', 'Zombie Horde', 'Pompeii', 'Fart Farm', 'Grand Prix', 'Monster Mash'].map((n, i) => ({ n: i + 1, name: n, icon: '🗺️' }));
+  const items = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Durian candy', 'Octopus', '10 push-ups', '20 squats', 'MERCY'].map((n, i) => ({ n: i + 1, label: n, luck: i === 3 ? 3 : 0 }));
+  count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' });
+  if (/guess/.test(location.search)) { guess({ on: true, endsAt: Date.now() + 60000, items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 2000); }
+  else pop({ who: 'SpicyPanda', n: 1, what: 'a $5 tip', owed: 4, luckPer: 1, secs: 600, site: 'movie-royal.example.workers.dev/live', maps, items });
+} else connect();
+</script>
+</body></html>

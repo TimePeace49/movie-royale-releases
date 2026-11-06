@@ -8,6 +8,59 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx: Array.isArray(ctx) ? new RegExp(ctx.join('|'), 'i') : ctx, // (a list like ['test'] = only on those tabs)
   sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
+// ───────── 1.76.0: 🛠️ dev mode · 🏃 marathon battles ─────────
+SECTION('🏃 Marathon battles (dev mode)');
+H(/dev mode/i, '🛠️ Dev mode', 'Installs test builds (pre-releases) too, and shows features that are still being tried, like the 🏃 Marathon and Marathon pool tabs. Off = only latest releases and none of those tabs (what your friends see).');
+H(/^🏃 marathon$/i, '🏃 Marathon tab', 'The battles people paid for (subs, gift subs, $5 tips, 500 bits) wait in a line under the battle screen. Run them whenever that person is here. Dev mode only.');
+H(/^🏃 marathon pool$/i, '🏃 Marathon pool', 'The things in your marathon battle with their numbers (what chat types), the 🍀 luck chat gave them, wins and pictures.');
+H(/^▶ run next/i, '▶ Run next', 'Starts the first battle in the line with that person\'s 🗺️ map (random if they didn\'t pick) and gives their 🍀 luck. It comes off the line.');
+H(/^▶ run$/i, '▶ Run', 'Starts this person\'s battle now (anyone in the line, so you can run the ones whose people are here: 👀 here = chatted in the last 20 minutes).');
+H(/^tip:show their pick pop-up on stream again/i, '📣 Pop-up again', 'Shows this person\'s pick pop-up on stream again (numbered maps and things), in OBS.');
+H(/^tip:the map they picked/i, '🗺️ Their map', 'The map they picked (💬 in chat, 🌐 on the website, ✋ by you). Change it if you want. 🎲 Random = a random map when it runs.');
+H(/^tip:the thing they give 🍀 luck to/i, '🍀 Their luck', 'The thing that gets their +1% luck when this battle starts. It stays on it until it wins. No pick = they keep their luck to give later (luck # in chat or on the website).');
+H(/^tip:add a battle to the line by hand/i, '➕ Add by hand', 'Adds a battle for someone yourself (cash, a tip Movie Royal didn\'t hear about…).');
+H(/put (the counter \+ pop-up|it) in obs/i, '🎬 Put it in OBS', 'Adds the browser source “Movie Royal marathon” on top of the OBS scenes you tick: the 🎟️ battles owed counter and the pick pop-up. Only OBS shows them (not Movie Royal).');
+H(/^🎬 (obs )?scenes…$/i, '🎬 Scenes', 'Change which OBS scenes show the marathon counter + pop-up.');
+H(/^⏸ take it out( of obs)?$/i, '⏸ Take it out', 'Takes the marathon counter + pop-up out of OBS.');
+H(/^tip:see what the counter \+ pop-up look like/i, '👀 Preview', 'Opens a pretend counter + pop-up in a window so you can see how they look.');
+H(/^⚙ settings$/i, '⚙ Settings', 'Paid battle amounts, luck per pick, the pop-up and the counter (Settings → 💰 Rewards & prices).', /marathon/i);
+H(/^🌐 website$/i, '🌐 Website', 'Opens your viewer website: people can pick their map and luck there too (with map screenshots).');
+H(/^tip:which battle is the marathon battle/i, '⚔️ The marathon battle', 'Which battle paid battles use (import your Marathon Battle in 🎬 Movie Pool → 📥 Import).');
+H(/^tip:its name \(chat sees it/i, '✏️ Name', 'Its name: chat sees it on the pick pop-up and the website.');
+H(/^tip:the small line under its name/i, '✏️ Small line', 'The small line under its name (how much, how many…).');
+H(/^tip:add or change its picture/i, '🖼️ Picture', 'Adds or changes its picture (shows on the website\'s luck picker).');
+H(/^tip:take the chat-given 🍀 luck off this one/i, '↺ Reset luck', 'Takes the luck chat gave this one off (back to 0%).');
+H(/^tip:take it out of the battle \(hidden/i, '🙈 Take out', 'Takes it out of the marathon battle (hidden, never deleted: ▶ puts it back). The numbers of the rest move up.');
+H(/^tip:put it back in the battle/i, '▶ Put back', 'Puts it back in the marathon battle.');
+H(/^tip:things to add to the marathon battle/i, '➕ Things to add', 'Type things to add to the marathon battle, one per line.');
+H(/^tip:add these things to the marathon battle/i, '➕ Add', 'Adds what you typed to the marathon battle.');
+H(/^tip:take the chat-given luck off everything/i, '↺ Reset all chat luck', 'Takes the luck chat gave off everything in the marathon battle.');
+H(/guess countdown/i, '🎯 Guess countdown', 'When you press ▶ Run on a marathon battle, chat gets this many seconds to type the number of the thing they think wins (one guess each). Everyone who is right wins a battle, added to the line in the order they guessed. 0 = no countdown.');
+H(/^tip:stop the guessing and start the battle now/i, '▶ Start now', 'Ends the guessing early and starts the battle.');
+H(/^tip:stop the guessing: the battle goes back/i, '✕ Cancel', 'Stops the guessing; the battle goes back to the front of the line.');
+H(/^🎯 guess #1$/i, '🧪 Pretend guess', 'A pretend chatter guesses #1 while chat is guessing (press ▶ Run on a battle first).', ['test']);
+H(/warn chat 1 minute before ads/i, '📺 Ad warnings', 'Off by default. On: the bot says in chat about a minute before an ad break (Twitch\'s ad schedule) and again when it ends, and Movie Royal pops up a note with a ding so you know too. Needs one extra Twitch permission: sign in with Twitch again once.');
+H(/^tip:what the bot says in chat a minute before an ad/i, '⏰ The 1-minute warning', 'What the bot says in chat about a minute before an ad break. Empty = the usual message.');
+H(/^tip:what the bot says in chat when the ad break is over/i, '✅ When the ads end', 'What the bot says in chat when the ad break is over. Empty = the usual message.');
+H(/^tip:try the ad warnings in the test tab/i, '🧪 Try it', 'Opens the Test tab card for ad warnings (a pretend ad break).');
+H(/^📺 pretend ad break$/i, '🧪 Pretend ad break', 'The warning goes to chat now and the "ads are over" message 20 seconds later (pretend chat shows them when you\'re not signed in). Movie Royal pops up a note with a ding both times.', ['test']);
+H(/^🔄 set it up again$/i, '🔄 Set it up again', 'Uploads your ☁️ 24/7 Discord bot to Cloudflare again (paste your Cloudflare token): use it when the bot needs an update or something looks broken.');
+H(/^🔄 sync now$/i, '🔄 Sync now', 'Sends your 24/7 bot everything again right now (movies, bans, settings). It normally does this by itself.');
+H(/check it works when i'm closed/i, '🔍 Check it works', 'Asks your 24/7 bot whether it can answer Discord by itself, like when Movie Royal is closed.');
+H(/^turn off$/i, 'Turn off 24/7 mode', 'Turns the 24/7 bot off: Discord commands only work while Movie Royal is open.');
+H(/^💬 test chat$/i, '💬 Test chat', 'Opens the pretend chat window, where you see what the bot would say in chat (and can type as a pretend viewer).', ['test']);
+H(/luck per pick/i, '🍀 Luck per pick', 'How much luck one paid battle gives the thing they pick (1% by default). It stays until that thing wins, then starts over.');
+H(/pop-up seconds/i, '📣 Pop-up seconds', 'How long the pick pop-up stays on stream when someone gets a battle.');
+H(/counter corner/i, '🎟️ Counter corner', 'Which corner of the stream the “battles owed” counter sits in.');
+H(/show the pick pop-up on stream/i, '📣 Pick pop-up', 'When someone gets a battle, a pop-up shows on stream (OBS only): who got it, the numbered maps and things, and how to pick (map # / luck # in chat, or the website).');
+H(/show the “battles owed” counter/i, '🎟️ Battles owed counter', 'A counter on stream (OBS only) with how many paid battles are waiting and who\'s next.');
+H(/^🎁 5 gift subs$/i, '🧪 5 gift subs', 'Pretend Test_Viewer gifts 5 subs: 5 battles, one pop-up and one chat line for all of them.', ['test']);
+H(/^💬 (map|luck) \d+$/i, '🧪 Pretend chat pick', 'Pretend Test_Viewer types this in chat for their battle in the line.', ['test']);
+H(/^🌐 website: luck 1$/i, '🧪 Pretend website pick', 'Pretend Test_Viewer picks on the website: after that, their chat can\'t change that pick.', ['test']);
+H(/^📣 pop-up on stream$/i, '🧪 Pop-up on stream', 'Sends a pretend pick pop-up to the OBS overlay.', ['test']);
+H(/^🖥️ open the overlay$/i, '🧪 Open the overlay', 'Opens the real marathon overlay page in a window (what OBS shows).', ['test']);
+H(/^🏃 marathon tab$/i, '🏃 Marathon tab', 'Goes to the 🏃 Marathon tab.', ['test']);
+
 // ───────── 1.74.0: 🌐 viewer website · 🎟️ paid battles · 👀 watch your partner's battle ─────────
 SECTION('🌐 Viewer website & paid battles');
 H(/^tip:the viewer website's address$/i, '🌐 The website address', 'Your viewer website\'s address. Click it to select it. It\'s what the chat command sends.');
@@ -47,7 +100,7 @@ H(/the battle they get/i, '⚔️ The battle they get', 'Which battle a paid bat
 H(/\$ per battle/i, '💵 $ per battle', 'How many dollars of tips buy one battle. Leftovers carry over per person: two $3 tips = one battle, a $12 tip = two battles with $2 waiting. 0 = tips don\'t count.');
 H(/bits per battle/i, '💎 Bits per battle', 'How many bits buy one battle (leftovers carry over per person). 0 = bits don\'t count.');
 H(/subs per battle/i, '⭐ Subs per battle', 'How many subs buy one battle. Gift subs count one each, so a 5-gift bomb with 1 = 5 battles. 0 = subs don\'t count.');
-H(/say it in chat \(“@name unlocked/i, '💬 Say it in chat', 'Chat hears “@name unlocked a battle!” when one is added, and “This battle is for @name” when you start it.');
+H(/say it in chat \(“@name/i, '💬 Say it in chat', 'Chat hears “@name unlocked a battle!” when one is added, and “This battle is for @name” when you start it.');
 H(/^💵 \$\d+ tip$|^💎 500 bits$|^⭐ a sub$|^🎁 a gift sub$/i, '🧪 Pretend money', 'Pretends a viewer paid that, to see a battle get added to the line on the Battle tab (works even with 🎟️ Paid battles off; test ones show 🧪). Leftovers carry over like the real thing.', ['test']);
 H(/take the test ones out/i, '✕ Take the test ones out', 'Takes the 🧪 test battles out of the paid line (real ones stay).', ['test']);
 H(/^🧪 demo page$/i, '🧪 Demo page', 'Opens the viewer website with pretend battles, guesses and a poll, so you can see it without your 24/7 bot. Nothing is sent anywhere. Press “Sign in with Twitch” there to try guessing and voting.', ['test']);

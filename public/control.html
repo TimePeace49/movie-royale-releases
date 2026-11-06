@@ -482,6 +482,20 @@
   .coWatch .cwHead button { padding: 1px 8px; }
   .coWatch .cwBody { position: relative; overflow: hidden; background: #000; }
   .coWatch .cwIdle { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; background: rgba(0,0,0,.7); font-size: 12px; text-align: center; }
+  body:not(.dev) .devOnly { display: none !important; }
+  .mQueue { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px 12px; }
+  .mRow { display: grid; grid-template-columns: 34px minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 6px 4px; border-top: 1px solid rgba(255,255,255,.07); }
+  .mRow:first-of-type { border-top: 0; }
+  .mRow .mN { font-weight: 800; color: var(--gold, #ffcf4a); text-align: right; }
+  .mRow .mWho b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mRow .mWho small { color: var(--muted, #999); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mRow select { width: 100%; min-width: 0; font-size: 12.5px; padding: 4px 6px; }
+  .mRow .mBtns { display: flex; gap: 4px; } .mRow .mBtns button { padding: 3px 9px; }
+  .mHere { color: #46d68c; font-weight: 700; } .mAway { color: var(--muted, #999); }
+  .mVia { font-size: 11px; color: #2fe0c8; }
+  .mpTable { width: 100%; border-collapse: collapse; } .mpTable td, .mpTable th { padding: 5px 6px; border-top: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: middle; }
+  .mpTable input { width: 100%; min-width: 0; } .mpTable img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; display: block; }
+  @container (max-width: 760px) { .mRow { grid-template-columns: 30px minmax(0,1fr) auto; } .mRow select { grid-column: 2 / -1; } }
 </style>
 </head>
 <body>
@@ -501,6 +515,8 @@
     <button data-v="pool">🎬 Movie Pool</button>
     <button data-v="cards">🃏 Card battles</button>
     <button data-v="cardpool">📦 Card pool</button>
+    <button data-v="mara" class="devOnly" title="🛠️ Dev mode: battles people paid for (subs, gifts, tips, bits)">🏃 Marathon</button>
+    <button data-v="marapool" class="devOnly" title="🛠️ Dev mode: the things in the marathon battle">🏃 Marathon pool</button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
@@ -687,6 +703,20 @@
   </div>
  </div>
 </section>
+
+<!-- 🏃 MARATHON (1.76.0, dev mode): battles people paid for, the line under the battle screen -->
+<section class="view" id="v-mara">
+ <div class="battleTop">
+  <div id="mStageSlot" style="min-height:0;min-width:0;display:flex;flex-direction:column;gap:10px;container-type:inline-size">
+    <div style="flex:1;min-height:120px;display:flex;align-items:flex-start;justify-content:center"><div id="mStageSize" style="width:100%;aspect-ratio:16/9;max-height:100%"></div></div>
+    <div class="under" style="row-gap:6px"><span class="muted">🗺️ On the cliff</span> <b id="mMapNow"></b><span class="grow"></span><button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button><button onclick="api('/api/reset',{})" title="Clear the battlefield: the pieces line up again, waiting for the next battle">↺ Reset battlefield</button></div>
+    <div class="card mQueue" id="mQueue"></div>
+  </div>
+  <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
+  <div class="side" id="mSide"></div>
+ </div>
+</section>
+<section class="view" id="v-marapool"><div class="card" id="mpBody" style="max-width:1250px;margin:0 auto"></div></section>
 
 <!-- 📦 CARD POOL (laid out like the 🎬 Movie Pool) -->
 <section class="view" id="v-cardpool">
@@ -1128,11 +1158,20 @@
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMmWho" style="width:auto" title="Whose movies to show"><option value="">(the first person with movies)</option></select><button class="primary" onclick="mmTest()">🍀 Show the answers</button><button onclick="mmProfile()" title="Opens this person's profile: the 🎬 Movies part shows each movie's luck">👤 Open their profile</button></div>
     <div id="tMmOut"></div>
   </div>
+  <div class="card" id="adTestCard">
+    <h3>📺 Ad warnings</h3>
+    <p class="help">A pretend ad break: the bot says the 1-minute warning in chat now (💬 Test chat shows it when you're not signed in) and Movie Royal pops up a note with a ding; 20 seconds later it says the ads are over. Works even while 📺 Ad warnings is off (Settings → 💜 Twitch &amp; channel points).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="api('/api/test/ad',{}).then(()=>toast('📺 Pretend ad break: the end message comes in 20 seconds'))">📺 Pretend ad break</button><button class="ghost" onclick="pchat(true)">💬 Test chat</button></div>
+  </div>
   <div class="card" id="paidTestCard">
     <h3>🎟️ Paid battles</h3>
     <p class="help">Pretend money comes in: each one adds a battle with that person's name to the line on the Battle tab (works even while 🎟️ Paid battles is off; test ones are marked 🧪). Leftovers carry over: two $3 tips = one battle. Press <b>▶ Start next</b> on the Battle tab to start it: the history (and the 🌐 viewer website) show who paid.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="paidTest('tip',5)">💵 $5 tip</button><button onclick="paidTest('tip',3)">💵 $3 tip</button><button onclick="paidTest('tip',12)">💵 $12 tip</button><button onclick="paidTest('bits',500)">💎 500 bits</button><button onclick="paidTest('sub')">⭐ A sub</button><button onclick="paidTest('gift')">🎁 A gift sub</button><button class="ghost" onclick="paidTest('clear')">✕ Take the test ones out</button></div>
     <div id="paidTestOut" class="help" style="margin-top:8px"></div>
+    <div class="devOnly"><h4 style="margin:10px 0 4px">🏃 Marathon picks (dev mode)</h4>
+    <p class="help">Test_Viewer's battles in the line: pretend they type in chat or pick on the website. A pick made on the website can't be changed from chat (try 🌐 then 💬 luck 3). The pop-up and counter only show in OBS: 🖥️ opens the same page here.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="maraTest('gift5')">🎁 5 gift subs</button><button onclick="maraTest('map', 3)">💬 map 3</button><button onclick="maraTest('luck', 2)">💬 luck 2</button><button onclick="maraTest('site', 1)">🌐 Website: luck 1</button><button onclick="maraTest('luck', 3)">💬 luck 3</button><button onclick="maraTest('guess')">🎯 Guess #1</button><button onclick="maraTest('pop')">📣 Pop-up on stream</button><button onclick="maraTest('overlay')">🖥️ Open the overlay</button><button class="ghost" onclick="setView('mara')">🏃 Marathon tab</button></div>
+    <div id="maraTestOut" class="help" style="margin-top:8px"></div></div>
   </div>
   <div class="card" id="siteTestCard">
     <h3>🌐 Viewer website</h3>
@@ -1822,7 +1861,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/paid battles|viewer website|watch .*battle/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/paid battles|viewer website|watch .*battle|ad warnings/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2212,10 +2251,11 @@ function connect() {
   sock.onmessage = e => {
     const m = JSON.parse(e.data);
     if (m.type === 'banScan') banScanShow(m.scan);
-    if (m.type === 'toast') toast(esc(m.text));
+    if (m.type === 'toast') toast(esc(m.text), m.ms);
+    if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
-    if (m.type === 'goView' && (view === 'wheel' || view === 'battle' || view === 'cards') && view !== m.view) setView(m.view); // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
+    if (m.type === 'goView' && (view === 'wheel' || view === 'battle' || view === 'cards') && view !== m.view) setView(m.view); else if (m.type === 'goView' && view === 'mara') { /* (🏃 a paid battle started from the Marathon tab: stay here) */ } // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
     if (m.type === 'botSay') pcLog('bot', 'Movie Royal', m.text);
     if (m.type === 'raidPicked') raidPop({ ...m.raid, by: m.raid.name || m.raid.by });
     if (m.type === 'vrPop') vrPop(m);
@@ -2242,7 +2282,7 @@ function setView(v) {
   if (v !== 'test') ckLeave();
   if (v !== view) peekOn = false; // a new tab: the preview window closes (it only pops up when you run a test that changes the stream screen)
   view = v; fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ view: v }) }).catch(() => {}); // (the chat message posts for the tab you're on)
-  if (S && v === 'battle' && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); // Battle tab = the battle on stream
+  if (S && (v === 'battle' || v === 'mara') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); // Battle tab = the battle on stream
   if (S && v === 'wheel' && !S.wheelShow) api('/api/wheel/show', { show: true }).catch(() => {}); // Wheel tab = the wheel on stream
   if (v === 'wheel') peekOn = false; // the Wheel tab shows the wheel itself: no preview window (💬 Pretend chat stays open)
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
@@ -2265,8 +2305,8 @@ function gfxTell(state, force) { if (state === gfxState && !force) return; gfxSt
 function placeStage() {
   const st = $('stage');
   if (document.fullscreenElement === st) return gfxTell('full');
-  if (view === 'battle' || view === 'cards') {
-    const r = $(view === 'cards' ? 'cStageSize' : 'stageSize').getBoundingClientRect();
+  if (view === 'battle' || view === 'cards' || view === 'mara') {
+    const r = $(view === 'cards' ? 'cStageSize' : view === 'mara' ? 'mStageSize' : 'stageSize').getBoundingClientRect();
     st.classList.remove('mini', 'hide');
     Object.assign(st.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', right: '', bottom: '' });
   } else if (peekOn && !(view === 'wheel' && S?.wheelShow)) { // the pop-up window that shows the stream screen while you test things (not on the Wheel tab while the wheel is on stream: you can see it there)
@@ -2279,8 +2319,8 @@ function placeStage() {
     st.classList.add('mini', 'hide'); // no little preview window on other tabs
     Object.assign(st.style, { left: '', top: '', width: '', height: '' });
   }
-  if (view === 'battle' || view === 'cards' || !peekOn) st.classList.remove('peek');
-  gfxTell(view === 'battle' || view === 'cards' ? 'full' : st.classList.contains('hide') ? 'hidden' : 'small');
+  if (view === 'battle' || view === 'cards' || view === 'mara' || !peekOn) st.classList.remove('peek');
+  gfxTell(view === 'battle' || view === 'cards' || view === 'mara' ? 'full' : st.classList.contains('hide') ? 'hidden' : 'small');
 }
 $('game').addEventListener('load', () => gfxTell(gfxState || 'full', true));
 let peekOn = false;
@@ -2464,26 +2504,105 @@ async function coWatchTest() { try { await api('/api/test/co', { action: 'preten
 function renderPaid() {
   const box = $('paidBox'); if (!box) return;
   const P = S.paid || {}, q = P.queue || [], busy = S.phase === 'lobby' || S.phase === 'running', ic = { tip: '💵', bits: '💎', sub: '⭐', gift: '🎁', hand: '✍️' };
-  const h = !P.on && !q.length ? '' : `<div class="paidBox">
+  const h = !P.on && !q.length || S.settings?.betaUpdates ? '' : `<div class="paidBox">
     <div class="paidHead"><b>🎟️ Paid battles</b><span class="muted">${q.length ? q.length + ' waiting' : 'nobody waiting'}</span><span class="grow"></span><button class="ghost" style="padding:2px 9px" onclick="paidAdd()" title="Add one by hand (cash, or a tip Movie Royal didn't hear about)">➕</button></div>
     ${q.length ? `<button class="primary" style="width:100%" ${busy ? 'disabled title="A battle is going: start the next one when it ends"' : ''} onclick="paidStart()">▶ Start next: ${esc(q[0].who)}'s battle</button>` : ''}
     ${q.slice(0, 8).map((x, i) => `<div class="paidRow" title="${esc(x.who + ': ' + x.what)}">${ic[x.kind] || '🎟️'} <b>${esc(x.who)}</b> <span class="muted">${esc(x.what)}${x.test ? ' 🧪' : ''}</span><span class="grow"></span>${i ? `<button class="ghost" title="Start this one now" onclick="paidStart('${x.id}')" ${busy ? 'disabled' : ''}>▶</button><button class="ghost" title="Move up the line" onclick="paidMove('${x.id}',-1)">↑</button>` : ''}<button class="ghost" title="Take it out of the line (nothing is refunded)" onclick="paidRemove('${x.id}')">✕</button></div>`).join('')}${q.length > 8 ? `<div class="muted" style="font-size:12px">+ ${q.length - 8} more</div>` : ''}
     ${!P.on ? '<div class="help" style="margin:4px 0 0">Off: new money doesn\'t add battles (Settings → 💰 Rewards &amp; prices).</div>' : ''}</div>`;
   if (box.dataset.k !== h) { box.dataset.k = h; box.innerHTML = h; }
 }
-async function paidStart(id) { try { const r = await api('/api/paid/start', { id }); toast(`⚔️ ${esc(r.item.who)}'s battle is on (${esc(r.item.what)})`); } catch (e) { toast('⚠️ ' + e.message, 10000); } }
+async function paidStart(id) { try { const r = await api('/api/paid/start', { id }); toast(r.guessing ? `🎯 Chat is guessing the winner (${r.guessing} s), then ${esc(r.item.who)}'s battle starts` : `⚔️ ${esc(r.item.who)}'s battle is on (${esc(r.item.what)})`); } catch (e) { toast('⚠️ ' + e.message, 10000); } }
 async function paidRemove(id) { const it = (S.paid?.queue || []).find(x => x.id === id); if (it && !confirm(`Take ${it.who}'s battle (${it.what}) out of the line? Nothing is refunded.`)) return; try { await api('/api/paid/remove', { id }); } catch (e) { toast('⚠️ ' + e.message); } }
 async function paidMove(id, dir) { try { await api('/api/paid/move', { id, dir }); } catch (e) { toast('⚠️ ' + e.message); } }
 async function paidAdd() { const who = await ask('Who is this battle for? (their Twitch name)', ''); if (!who) return; const what = await ask('For what? (shows in the history, e.g. "$5 cash")', 'added by hand'); if (what === null) return; try { await api('/api/paid/add', { who, what }); toast(`🎟️ Added a battle for ${esc(who)}`); } catch (e) { toast('⚠️ ' + e.message); } }
 let paidSetKey = '';
 function paidSetDraw(full) {
-  const box = $('paidSet'); if (!box) return; const P = S.paid || {}, key = JSON.stringify([P.on, P.listId, P.tip, P.bits, P.subs, P.say, (S.lists || []).map(l => l.id + l.name)]);
+  const box = $('paidSet'); if (!box) return; const P = S.paid || {}, M = S.mara?.cfg || {}, key = JSON.stringify([P.on, P.listId, P.tip, P.bits, P.subs, P.say, M, S.mara?.obs, (S.lists || []).map(l => l.id + l.name)]);
   if (!full && (key === paidSetKey || box.contains(document.activeElement))) return; paidSetKey = key;
   box.innerHTML = `<p class="help">Every <b>$${esc(P.tip)}</b> tip, <b>${esc(P.bits)}</b> bits or <b>${esc(P.subs)}</b> sub${Number(P.subs) === 1 ? '' : 's'} adds a battle with that person's name to a line on the Battle tab (gift subs count one each). You press <b>▶ Start next</b> when you're ready; the battle is logged with who paid (🧾 History and the 🌐 viewer website, with a ▶ link to that moment in your VOD). Leftovers carry over per person: two $3 tips = one battle. 0 = that kind doesn't count. Nothing is ever refunded.</p>
     <label class="ck"><input type="checkbox" ${P.on ? 'checked' : ''} onchange="paidSet({on:this.checked})"> <span>🎟️ Money adds battles to the line</span></label>
     <div class="grid2"><div><label>⚔️ The battle they get</label><select onchange="paidSet({listId:this.value})"><option value="">(whatever battle is picked on the Battle tab)</option>${(S.lists || []).map(l => `<option value="${esc(l.id)}" ${l.id === P.listId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
       <div class="row" style="gap:8px;align-items:flex-end"><div><label>💵 $ per battle</label><input type="number" min="0" step="0.5" style="width:90px" value="${esc(P.tip)}" onchange="paidSet({tip:this.value})"></div><div><label>💎 Bits per battle</label><input type="number" min="0" step="50" style="width:100px" value="${esc(P.bits)}" onchange="paidSet({bits:this.value})"></div><div><label>⭐ Subs per battle</label><input type="number" min="0" step="1" style="width:80px" value="${esc(P.subs)}" onchange="paidSet({subs:this.value})"></div></div></div>
-    <label class="ck"><input type="checkbox" ${P.say !== false ? 'checked' : ''} onchange="paidSet({say:this.checked})"> <span>💬 Say it in chat (“@name unlocked a battle!” and “This battle is for @name”)</span></label>`;
+    <label class="ck"><input type="checkbox" ${P.say !== false ? 'checked' : ''} onchange="paidSet({say:this.checked})"> <span>💬 Say it in chat (“@name got a battle!” with how to pick, and “This battle is for @name”)</span></label>
+    <h4 style="margin-top:12px">🏃 Picks: map + 🍀 luck</h4>
+    <p class="help">Whoever gets a battle picks its map (<b>map #</b>) and one thing to give luck to (<b>luck #</b>) in chat or on the 🌐 viewer website, until you press ▶ Run. No map = a random one. The luck is given when their battle starts and stays on that thing until it wins; no pick = they keep their 🍀 to give later.</p>
+    <div class="row" style="gap:10px;align-items:flex-end;flex-wrap:wrap"><div><label>🍀 Luck per pick (%)</label><input type="number" min="0.1" max="50" step="0.5" style="width:90px" value="${esc(M.luckPer ?? 1)}" onchange="maraCfg({luckPer:this.value})"></div><div><label>🎯 Guess countdown (seconds, 0 = off)</label><input type="number" min="0" max="300" step="5" style="width:90px" value="${esc(M.guessSecs ?? 60)}" onchange="maraCfg({guessSecs:this.value})"></div><div><label>📣 Pop-up seconds</label><input type="number" min="10" max="120" step="5" style="width:90px" value="${esc(M.popSecs ?? 40)}" onchange="maraCfg({popSecs:this.value})"></div><div><label>🎟️ Counter corner</label><select style="width:auto" onchange="maraCfg({corner:this.value})">${[['tl', '↖ Top left'], ['tr', '↗ Top right'], ['bl', '↙ Bottom left'], ['br', '↘ Bottom right']].map(([k, t]) => `<option value="${k}" ${(M.corner || 'bl') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+    <label class="ck"><input type="checkbox" ${M.popup !== false ? 'checked' : ''} onchange="maraCfg({popup:this.checked})"> <span>📣 Show the pick pop-up on stream when someone gets a battle (numbered maps + things, and the website link)</span></label>
+    <label class="ck"><input type="checkbox" ${M.counter !== false ? 'checked' : ''} onchange="maraCfg({counter:this.checked})"> <span>🎟️ Show the “battles owed” counter on stream</span></label>
+    <div class="row" style="gap:6px;margin-top:4px">${S.mara?.obs ? '<button onclick="scenePick(\'mara\')" title="Change which OBS scenes show the marathon counter + pop-up">🎬 OBS scenes…</button><button class="ghost" onclick="maraObs(false)" title="Take the marathon counter + pop-up out of OBS">⏸ Take it out of OBS</button>' : '<button class="primary" onclick="scenePick(\'mara\')" title="Put the marathon counter + pop-up in OBS (pick the scenes)">🎬 Put the counter + pop-up in OBS</button>'}<button class="ghost" onclick="window.open('/marathon.html?demo=1','_blank','width=960,height=560')" title="See what the counter + pop-up look like (a pretend one)">👀 Preview</button></div>`;
+}
+async function maraCfg(o) { try { await api('/api/mara/settings', o); toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
+// ---------- 🏃 Marathon tab (1.76.0, dev mode): the line of paid battles under the battle screen ----------
+const MK_IC = { tip: '💵', bits: '💎', sub: '⭐', gift: '🎁', hand: '✍️' };
+function ago(t) { const s = Math.max(0, (Date.now() - t) / 1000); return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; }
+const mkNorm = x => String(x || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+function renderMara() {
+  const P = S.paid || {}, M = S.mara || {}, q = P.queue || [], busy = S.phase === 'lobby' || S.phase === 'running', l = (S.lists || []).find(x => x.id === M.listId), G = M.guess;
+  const mapOpts = cur => `<option value="">🎲 Random map</option>` + (M.maps || []).map(m => `<option value="${esc(m.id)}" ${m.id === cur ? 'selected' : ''}>${m.n}. ${esc(m.icon)} ${esc(m.name)}</option>`).join('');
+  const itOpts = cur => `<option value="">🍀 No luck picked</option>` + (M.items || []).map(x => `<option value="${esc(x.id)}" ${x.id === cur ? 'selected' : ''}>${x.n}. ${esc(x.label)}${x.luck ? ` (🍀${x.luck}%)` : ''}</option>`).join('');
+  const via = v => v === 'site' ? '<span class="mVia" title="Picked on the 🌐 viewer website">🌐</span>' : v === 'chat' ? '<span class="mVia" title="Picked in chat">💬</span>' : v === 'you' ? '<span class="mVia" title="You picked it">✋</span>' : '';
+  const seen = x => { const t = (M.seen || {})[mkNorm(x.login || x.who)]; return t && Date.now() - t < 20 * 60000 ? `<span class="mHere" title="Chatted ${ago(t)}">👀 here</span>` : t ? `<span class="mAway" title="Last chatted ${ago(t)}">💤 ${ago(t)}</span>` : '<span class="mAway">💤 not seen</span>'; };
+  const qh = !l ? `<div class="help">Pick which battle is the marathon battle first: Settings → 💰 Rewards &amp; prices → 🎟️ Paid battles → ⚔️ The battle they get (import your Marathon Battle in 🎬 Movie Pool → 📥 Import). <button onclick="setView('settings');setTimeout(()=>{setSub('prices')},50)">⚙ Go there</button></div>`
+    : `<div class="row" style="align-items:center;gap:8px;margin-bottom:4px"><b>🎟️ Battles owed: ${q.length}</b><span class="muted" style="font-size:12.5px">${P.on ? 'Every sub, gift sub, $' + esc(P.tip) + ' tip or ' + esc(P.bits) + ' bits adds one.' : '<span style="color:var(--gold)">⏸ Money isn\'t adding battles (Settings → 💰 Rewards &amp; prices)</span>'} Run them whenever the person is here.</span><span class="grow"></span><button class="ghost" style="padding:3px 10px" onclick="paidAdd()" title="Add a battle to the line by hand (cash, or a tip Movie Royal didn't hear about)">➕ Add</button></div>`
+      + (q.length ? q.map((x, i) => `<div class="mRow"><div class="mN">${i + 1}</div><div class="mWho"><b>${MK_IC[x.kind] || '🎟️'} ${esc(x.who)}${x.test ? ' 🧪' : ''}</b><small>${esc(x.what)} · ${ago(x.at)} · ${seen(x)}</small></div>
+          <div><select title="The map they picked (you can change it)" onchange="maraSet('${x.id}',{map:this.value})">${mapOpts(x.map)}</select>${via(x.mapVia)}</div>
+          <div><select title="The thing they give 🍀 luck to when this battle starts (you can change it)" onchange="maraSet('${x.id}',{luck:this.value})">${itOpts(x.luck)}</select>${via(x.luckVia)}</div>
+          <div class="mBtns"><button class="primary" ${busy || !l || G ? 'disabled' : ''} onclick="paidStart('${x.id}')" title="Run this person's battle: chat guesses the winner first (🎯 countdown), then it starts. It comes off the line.">▶ Run</button><button class="ghost" onclick="api('/api/mara/pop-again',{id:'${x.id}'}).then(()=>toast('📣 Pop-up shown again in OBS'))" title="Show their pick pop-up on stream again (OBS)">📣</button><button class="ghost" title="Take it out of the line (nothing is refunded)" onclick="paidRemove('${x.id}')">✕</button></div></div>`).join('')
+      : '<div class="help" style="margin:6px 0 0">Nobody is waiting. 🎉</div>');
+  const gh = G ? `<div class="card" style="border:2px solid #2fe0c8;margin:0 0 8px;padding:8px 12px"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>🎯 Chat is guessing the winner for ${esc(G.who)}'s battle:</b><b id="mGuessT" style="font-size:18px;color:#2fe0c8"></b><span class="muted">${G.count} guess${G.count === 1 ? '' : 'es'}${G.last?.length ? ': ' + esc(G.last.join(', ')) : ''}</span><span class="grow"></span><button class="primary" onclick="api('/api/mara/guess/now',{}).catch(e=>toast('⚠️ '+e.message))" title="Stop the guessing and start the battle now">▶ Start now</button><button class="ghost" onclick="api('/api/mara/guess/cancel',{}).catch(e=>toast('⚠️ '+e.message))" title="Stop the guessing: the battle goes back in the line">✕ Cancel</button></div></div>` : '';
+  const qAll = gh + qh;
+  if ($('mQueue').dataset.k !== qAll && !$('mQueue').contains(document.activeElement)) { $('mQueue').dataset.k = qAll; $('mQueue').innerHTML = qAll; }
+  mGuessTick();
+  { const t = mapName(S.mapNow); if ($('mMapNow').textContent !== t) $('mMapNow').textContent = t; }
+  const tk = M.tokens || [], lw = S.lastWinner && !S.lastWinner.test ? S.lastWinner : null, top = (M.items || []).filter(x => x.luck).sort((a, b) => b.luck - a.luck).slice(0, 8);
+  const sh = `<button class="primary big" ${busy || !q.length || !l || M.guess ? 'disabled' : ''} onclick="paidStart()" title="Start the first battle in the line (or press ▶ Run on anyone's)">${q.length ? `▶ Run next: ${esc(q[0].who)}` : '🎟️ Nobody waiting'}</button>
+    <div class="card"><h2 style="margin:0 0 4px">🎟️ ${q.length} owed</h2><div class="help" style="margin:0">${l ? `Battle: <b>${esc(l.name)}</b> · ` : ''}${tk.length ? `🍀 ${tk.length} luck still to give (${esc([...new Set(tk.map(t => t.who))].slice(0, 6).join(', '))}): they type <b>luck #</b> or use the website` : 'Everyone has given their 🍀.'}</div></div>
+    ${lw ? `<div class="card"><h2 style="margin:0 0 4px">🏆 Last winner</h2><b>${esc(lw.label)}</b>${lw.sub ? ` <span class="muted">${esc(lw.sub)}</span>` : ''}</div>` : ''}
+    <div class="card"><h2 style="margin:0 0 6px">🍀 Luck from chat</h2>${top.length ? top.map(x => `<div class="row" style="gap:6px"><span class="grow">${x.n}. ${esc(x.label)}</span><b>${x.luck}%</b></div>`).join('') : '<div class="help" style="margin:0">Nothing has luck yet.</div>'}<div class="help" style="margin:6px 0 0">It stays on a thing until it wins, then starts over. 🏃 Marathon pool has all of them.</div></div>
+    <div class="card"><h2 style="margin:0 0 6px">📺 On stream (OBS)</h2><div class="help" style="margin:0 0 6px">The <b>battles owed</b> counter and the pick pop-up show only in OBS (not here), on top of the scenes you pick.</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${M.obs ? '<button onclick="scenePick(\'mara\')" title="Change which OBS scenes show the marathon counter + pop-up">🎬 Scenes…</button><button class="ghost" onclick="maraObs(false)" title="Take the marathon counter + pop-up out of OBS">⏸ Take it out</button>' : '<button class="primary" onclick="scenePick(\'mara\')" title="Put the marathon counter + pop-up in OBS (pick the scenes)">🎬 Put it in OBS</button>'}<button class="ghost" onclick="window.open('/marathon.html?demo=1','_blank','width=960,height=560')" title="See what the counter + pop-up look like (a pretend one)">👀 Preview</button></div></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="ghost" onclick="setView('marapool')" title="The things in the marathon battle, their 🍀 luck and pictures">🏃 Marathon pool</button><button class="ghost" onclick="setView('settings');setTimeout(()=>setSub('prices'),50)" title="Paid battle amounts, the luck per pick, the pop-up and counter">⚙ Settings</button>${S.site?.on ? '<button class="ghost" onclick="window.open(S.site.url,\'_blank\')" title="Your viewer website (people can pick there too)">🌐 Website</button>' : ''}</div>`;
+  if ($('mSide').dataset.k !== sh) { $('mSide').dataset.k = sh; $('mSide').innerHTML = sh; }
+}
+setInterval(() => { if (view === 'mara' && S) { $('mQueue').dataset.k = ''; renderMara(); } }, 30000); // (the "x min ago" times)
+function mGuessTick() { const el = $('mGuessT'), G = S?.mara?.guess; if (!el || !G) return; const t = Math.max(0, Math.ceil((G.endsAt - Date.now()) / 1000)); el.textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
+setInterval(() => { if (view === 'mara') mGuessTick(); }, 500);
+async function maraSet(id, o) { try { await api('/api/mara/set', { id, ...o }); } catch (e) { toast('⚠️ ' + e.message); } }
+async function maraObs(on) { try { await api('/api/obs/mara-source', { on }); toast(on ? '🏃 The marathon counter + pop-up are in OBS' : '⏸ Took the marathon counter + pop-up out of OBS', 6000); } catch {} }
+// ---------- 🏃 Marathon pool tab: the things in the marathon battle ----------
+function renderMaraPool() {
+  const M = S.mara || {}, l = (S.lists || []).find(x => x.id === M.listId), box = $('mpBody');
+  const pick = `<label>⚔️ The marathon battle</label><select title="Which battle is the marathon battle" onchange="paidSet({listId:this.value})"><option value="">(pick one)</option>${(S.lists || []).filter(x => x.type !== 'movies').map(x => `<option value="${esc(x.id)}" ${x.id === M.listId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
+  let h;
+  if (!l) h = `<h2>🏃 Marathon pool</h2><p class="help">Which battle is your marathon battle? (Import yours first in 🎬 Movie Pool → 📥 Import.)</p><div style="max-width:420px">${pick}</div>`;
+  else {
+    const on = l.entries.filter(e => e.status === 'active'), off = l.entries.filter(e => e.status !== 'active'), num = new Map(on.map((e, i) => [e.id, i + 1]));
+    const row = e => `<tr><td class="mN" style="font-weight:800;color:var(--gold)">${num.get(e.id) || ''}</td><td>${e.image ? `<img src="${esc(e.image)}" alt="">` : '<span class="muted">—</span>'}</td>
+      <td><input value="${esc(e.label)}" title="Its name (chat sees it on the pick pop-up)" onchange="mpEdit('${e.id}',{label:this.value})"></td><td><input value="${esc(e.sub || '')}" placeholder="small line (how much…)" title="The small line under its name" onchange="mpEdit('${e.id}',{sub:this.value})"></td>
+      <td style="white-space:nowrap"><b>${Math.round((e.vLuck || 0) * 100) / 100}%</b>${e.vLuckBy?.length ? ` <span class="muted" title="${esc(e.vLuckBy.map(b => b.who).join(', '))}">(${e.vLuckBy.length})</span>` : ''}</td><td>${e.vWins || 0}</td>
+      <td style="white-space:nowrap"><div style="display:flex;gap:4px;align-items:center"><label title="Add or change its picture (shows on the website)" style="margin:0;cursor:pointer"><input type="file" accept="image/*" hidden onchange="mpPic('${e.id}', this.files[0])"><span class="ghost" style="display:inline-block;padding:3px 8px;border:1px solid rgba(255,255,255,.18);border-radius:8px">🖼️</span></label>${e.vLuck ? `<button class="ghost" style="padding:3px 8px" title="Take the chat-given 🍀 luck off this one" onclick="mpLuck('${e.id}')">↺</button>` : ''}${e.status === 'active' ? `<button class="ghost" style="padding:3px 8px" title="Take it out of the battle (hidden, not deleted)" onclick="mpEdit('${e.id}',{status:'removed'})">🙈</button>` : `<button class="ghost" style="padding:3px 8px" title="Put it back in the battle" onclick="mpEdit('${e.id}',{status:'active'})">▶</button>`}</div></td></tr>`;
+    h = `<div class="row" style="align-items:flex-end;gap:12px;flex-wrap:wrap"><div class="grow"><h2 style="margin:0">🏃 Marathon pool</h2><p class="help" style="margin:4px 0 0">The numbers are what chat types (<b>luck 12</b>). 🍀 = luck chat gave it with their paid battles: it stays until that thing wins, then starts over.</p></div><div style="min-width:260px">${pick}</div></div>
+      <table class="mpTable" style="margin-top:10px"><tr><th>#</th><th>🖼️</th><th>Name</th><th>Small line</th><th>🍀 Chat luck</th><th>🏆 Wins</th><th></th></tr>${on.map(row).join('')}</table>
+      ${off.length ? `<details style="margin-top:10px"><summary>🙈 Taken out (${off.length})</summary><table class="mpTable">${off.map(row).join('')}</table></details>` : ''}
+      <h3 style="margin-top:14px">➕ Add things</h3><textarea id="mpAdd" rows="3" placeholder="One per line, like: Pickle Balls" title="Things to add to the marathon battle, one per line"></textarea>
+      <div class="row" style="gap:6px;margin-top:6px"><button class="primary" onclick="mpAddGo()" title="Add these things to the marathon battle">➕ Add</button><span class="grow"></span><button class="ghost" onclick="if(confirm('Take the chat-given 🍀 luck off everything in the marathon battle?')) mpLuck()" title="Take the chat-given luck off everything in the marathon battle">↺ Reset all chat luck</button></div>`;
+  }
+  if (box.dataset.k !== h && !box.contains(document.activeElement)) { box.dataset.k = h; box.innerHTML = h; }
+}
+async function mpEdit(eid, o) { try { await api(`/api/lists/${S.mara.listId}/entries/${eid}`, o, 'PATCH'); } catch (e) { toast('⚠️ ' + e.message); } }
+async function mpLuck(id) { try { const r = await api('/api/mara/luck-reset', { id }); toast(`↺ Reset 🍀 on ${r.reset}`); } catch (e) { toast('⚠️ ' + e.message); } }
+async function mpPic(eid, f) { if (!f) return; try { const r = await fetch(`/api/lists/${S.mara.listId}/entries/${eid}/picture?name=${encodeURIComponent(f.name)}`, { method: 'POST', body: f }); if (!r.ok) throw new Error('upload failed'); toast('🖼️ Picture saved'); } catch (e) { toast('⚠️ ' + e.message); } }
+async function mpAddGo() { const t = $('mpAdd').value.trim(); if (!t) return; try { const r = await api(`/api/lists/${S.mara.listId}/bulk`, { text: t, plain: true }); $('mpAdd').value = ''; toast(`➕ Added ${r.added}`); } catch (e) { toast('⚠️ ' + e.message); } }
+async function maraTest(a, v) {
+  const out = $('maraTestOut');
+  try {
+    if (a === 'gift5') { for (let i = 0; i < 5; i++) await api('/api/test/paid', { kind: 'gift' }); out.textContent = '🎁 5 pretend gift subs: one pop-up + one chat line for all 5 (in 2–3 seconds).'; return; }
+    if (a === 'guess') { const r = await api('/api/test/mara-guess', { n: 1, name: 'Test_Guesser' + Math.floor(Math.random() * 90 + 10) }); out.textContent = `🎯 A pretend chatter guessed #1 (${r.count} guess${r.count === 1 ? '' : 'es'} so far). If #1 wins, they get a battle.`; return; }
+    if (a === 'pop') { const r = await api('/api/test/mara-pop', {}); out.textContent = `📣 Pop-up sent to the OBS overlay (${r.maps} maps, ${r.items} things). Open 👀 the overlay to see it.`; return; }
+    if (a === 'overlay') { window.open('/marathon.html', 'mara-overlay', 'width=960,height=560'); out.textContent = 'The real overlay opened in a window (what OBS shows). Press 📣 or add a pretend battle to see the pop-up.'; return; }
+    const r = await api('/api/test/mara-chat', { kind: a, value: v, via: a === 'site' ? 'site' : 'chat', ...(a === 'site' ? { kind: 'luck' } : {}) });
+    out.innerHTML = r.ok ? `✅ ${esc(r.text)}` : `⚠️ ${esc(r.error)}`;
+  } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
 async function paidSet(o) { try { await api('/api/paid/settings', o); toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
 async function paidTest(kind, amount) { const out = $('paidTestOut'); try { if (kind === 'clear') { await api('/api/test/paid-clear', {}); out.textContent = '✕ The 🧪 test battles are out of the line.'; return; } const r = await api('/api/test/paid', { kind, amount }); out.innerHTML = `${r.added ? `✅ Added ${r.added === 1 ? 'a battle' : r.added + ' battles'}` : '⏳ Not enough for a battle yet: it carries over (try it again)'} · <b>${r.waiting}</b> waiting on the Battle tab${r.on ? '' : ' <span style="color:var(--gold)">(🎟️ Paid battles is off: real money won\'t add battles until you turn it on in Settings → 💰 Rewards &amp; prices)</span>'}`; } catch (e) { out.textContent = '⚠️ ' + e.message; } }
@@ -2875,9 +2994,12 @@ function renderView() {
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
+  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool')) return setView('battle'); // 🛠️ dev mode shows the features still being tried
   if (view === 'pool') renderPool();
   else if (view === 'cards') renderCards();
   else if (view === 'cardpool') renderCardPool();
+  else if (view === 'mara') renderMara();
+  else if (view === 'marapool') renderMaraPool();
   else if (view === 'chat') renderChat();
   else if (view === 'giveaway') renderGiveaway();
   else if (view === 'wheel') renderWheel(true);
@@ -3159,7 +3281,7 @@ function cam(action) { api('/api/camera', { action }); }
 let camBarT = 0;
 function camBarPing() {
   const bar = $('camBar'); if (!bar) return;
-  const ok = document.fullscreenElement === $('stage') || view === 'battle' || view === 'cards'; if (!ok || $('stage').classList.contains('peek')) return bar.classList.remove('show');
+  const ok = document.fullscreenElement === $('stage') || view === 'battle' || view === 'cards' || view === 'mara'; if (!ok || $('stage').classList.contains('peek')) return bar.classList.remove('show');
   bar.classList.add('show'); clearTimeout(camBarT); camBarT = setTimeout(() => { if (!bar.matches(':hover')) bar.classList.remove('show'); else camBarPing(); }, 2500);
 }
 addEventListener('message', e => { if (e.data?.royalMouse) camBarPing(); });
@@ -4878,6 +5000,13 @@ function openSettings(force) {
         <li>Easiest: press <b>📋 Copy the sign-in link</b>, paste it in a <b>private (incognito) browser window</b>, log in as the bot and click <b>Authorize</b>. Or press <b>🔑 Sign in as the bot</b>: if Twitch shows your own account, press <b>Not you?</b> and log in as the bot.</li>
         <li>In your Twitch chat type <code>/mod MoviesRoyalBot</code> so it never gets slowed down.</li></ol>
         <div class="row" style="gap:6px"><button class="primary" onclick="location.href='/auth/twitch-bot'">🔑 Sign in as the bot</button><button class="ghost" onclick="copyText(location.origin + '/auth/twitch-bot').then(ok=>ok&&toast('📋 Copied: open it in a private window and log in as the bot'))">📋 Copy the sign-in link</button></div>`}
+      <h3 style="margin-top:18px">📺 Ad warnings</h3>
+      <p class="help">The bot tells chat about a minute before an ad break starts, and again when it's over. It's mostly so <b>you</b> know: Movie Royal pops up a note (with a ding) at the same times. Off until you turn it on.</p>
+      ${cki('adBot', '📺 Warn chat 1 minute before ads, and say when they end', false, "setTimeout(()=>openSettings(true),300)")}
+      ${S.settings.adBot && S.ads && S.ads.signedIn && !S.ads.scope ? '<p class="help" style="color:var(--gold)">⚠️ Twitch needs one more permission for this: sign in with Twitch again (top right → your name → Sign in again), then it works.</p>' : ''}
+      <div class="grid2"><div><label>⏰ The 1-minute warning</label><input id="adWarnText" placeholder="📺 Heads up chat: ads start in about 1 minute! Grab a drink, stretch, I'll be right here." value="${esc(S.settings.adWarnText || '')}" onchange="api('/api/settings',{adWarnText:this.value}).then(()=>toast('Saved'))" title="What the bot says in chat a minute before an ad break (empty = the usual message)"></div>
+      <div><label>✅ When the ads end</label><input id="adEndText" placeholder="✅ Ads are over, welcome back!" value="${esc(S.settings.adEndText || '')}" onchange="api('/api/settings',{adEndText:this.value}).then(()=>toast('Saved'))" title="What the bot says in chat when the ad break is over (empty = the usual message)"></div></div>
+      <div class="row" style="gap:6px;margin-top:6px"><button class="ghost" onclick="testGo('adTestCard')" title="Try the ad warnings in the Test tab (a pretend ad break)">🧪 Try it</button></div>
       <h3 style="margin-top:18px">🎨 Ball colors</h3>
       ${colorHTML(s)}
       ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
@@ -4970,8 +5099,8 @@ function openSettings(force) {
     sounds: `<div id="soundsSlot"></div>`,
     prices: `<h3>💰 Rewards &amp; prices</h3>
       <p class="help">Every channel point reward, bits amount and donation amount lives here, sorted by tab. Prices and "when it's on" save right away.</p>
-      <h3 style="margin-top:14px">🎟️ Paid battles</h3>
-      <div id="paidSet"></div>
+      <h3 style="margin-top:14px" class="devOnly">🎟️ Paid battles (🏃 Marathon)</h3>
+      <div id="paidSet" class="devOnly"></div>
       <h3 style="margin-top:18px">🚀 Raid reward</h3>
       ${ck('raidOn', '🚀 Raid reward: a viewer redeems it, types who we raid in chat, and a box at the top of the app starts the raid when you click it (press Save). Movie Royal makes the reward (a raid reward you already have keeps its price, 1500 if there is none) and hides it for the rest of the stream once it is used.', false)}
       <div class="grid2">${f('raidTitle', 'Raid reward name on Twitch', '🚀 Pick who we raid!')}<div style="display:flex;align-items:flex-end"><button onclick="raidSetupClick(this)">🚀 Make / fix the raid reward now</button></div></div>
@@ -5104,12 +5233,14 @@ function scenePick(kind) { sceneFor = kind; return choicePick(); }
 async function rollObs(on) { try { await api('/api/obs/roll-source', { on }); toast(on ? '📣 Roll call is in OBS' : '⏸ Took the roll call source out of OBS', 6000); } catch {} setTimeout(() => { if (sub === 'obs') openSettings(true); }, 400); }
 // 🎬 pick which OBS scenes get the viewer's choice celebration (1.58.1, Derek: not every scene)
 async function choicePick() {
-  const roll = sceneFor === 'roll'; sceneFor = 'choice'; $('choiceDlg').dataset.for = roll ? 'roll' : 'choice';
+  const mara = sceneFor === 'mara', roll = sceneFor === 'roll'; sceneFor = 'choice'; $('choiceDlg').dataset.for = mara ? 'mara' : roll ? 'roll' : 'choice';
   $('choiceDlgT').textContent = roll ? '🎬 Which OBS scenes get the roll call?' : '🎬 Which OBS scenes get the celebration?';
+  if (mara) { $('choiceDlgT').textContent = '🎬 Which OBS scenes get the marathon counter + pop-up?'; }
   $('choiceDlgH').innerHTML = roll ? 'Tick the scenes where 📣 roll call should show. Movie Royal puts the browser source <b>Movie Royal roll call</b> on top of those scenes only (and takes it out of the ones you don\'t tick). It\'s see-through until a roll call starts.' : 'Tick the scenes where the 🎉 Viewer\'s choice confetti should show. Movie Royal puts the source <b>Movie Royal celebration</b> on top of those scenes only (and takes it out of the ones you don\'t tick).';
+  if (mara) $('choiceDlgH').innerHTML = 'Tick the scenes where the 🏃 <b>battles owed</b> counter and the pick pop-up should show (your game, sleeping, cooking… scenes). Movie Royal puts the browser source <b>Movie Royal marathon</b> on top of those scenes only. It\'s see-through except for the counter and the pop-up.';
   $('choiceList').innerHTML = '<p class="help">Asking OBS for your scenes…</p>'; $('choiceGoBtn').disabled = true; $('choiceDlg').showModal();
   try {
-    const r = await fetch('/api/vr/scenes' + (roll ? '?for=roll' : '')).then(x => x.json()); if (r.error) throw new Error(r.error);
+    const r = await fetch('/api/vr/scenes' + (mara ? '?for=mara' : roll ? '?for=roll' : '')).then(x => x.json()); if (r.error) throw new Error(r.error);
     if (!r.scenes?.length) throw new Error('OBS has no scenes.');
     const on = new Set(r.picked?.length ? r.picked : r.has?.length ? r.has : [r.current].filter(Boolean));
     $('choiceList').innerHTML = r.scenes.map(sc => `<label class="ck"><input type="checkbox" value="${esc(sc)}" ${on.has(sc) ? 'checked' : ''}> <span>${esc(sc)}${sc === r.current ? ' <small class="muted">(on stream now)</small>' : ''}${r.has?.includes(sc) ? ' <small class="muted">· has it</small>' : ''}</span></label>`).join('');
@@ -5120,6 +5251,7 @@ async function choiceGo() {
   const scenes = [...document.querySelectorAll('#choiceList input:checked')].map(i => i.value);
   if (!scenes.length) return toast('Tick at least one scene');
   $('choiceGoBtn').disabled = true;
+  if ($('choiceDlg').dataset.for === 'mara') { try { const r = await api('/api/obs/mara-source', { on: true, scenes }); $('choiceDlg').close(); toast(`🏃 “Movie Royal marathon” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}`, 6000); } catch {} $('choiceGoBtn').disabled = false; return; }
   if ($('choiceDlg').dataset.for === 'roll') { try { const r = await api('/api/obs/roll-source', { on: true, scenes }); $('choiceDlg').close(); toast(`📣 “Movie Royal roll call” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}`, 6000); } catch {} $('choiceGoBtn').disabled = false; setTimeout(() => { if (sub === 'obs') openSettings(true); }, 400); return; }
   try { const r = await api('/api/vr/source', { on: true, scenes }); $('choiceDlg').close(); toast(`📺 “Movie Royal celebration” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}${r.note ? '. ⚠️ ' + esc(r.note) : ''}`, r.note ? 12000 : 6000); } catch {} finally { $('choiceGoBtn').disabled = false; }
   setTimeout(() => { if (sub === 'prices' || sub === 'obs') openSettings(true); }, 400);
@@ -5326,7 +5458,7 @@ async function fillAppBox() {
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
     <p class="help">When a new <b>latest</b> release is posted there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>
     <label class="ck"><input type="checkbox" ${S.settings.updAsk !== false ? 'checked' : ''} onchange="api('/api/settings',{updAsk:this.checked}).then(()=>{S.settings.updAsk=this.checked;toast('Saved')})"> <span>🔔 Pop up when a new version is out (when Movie Royal opens)</span></label>
-    <label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;toast(this.checked ? '🧪 You will also get test builds (pre-releases).' : 'Only latest releases from now on.')})"> <span>🧪 Also install <b>test builds</b> (pre-releases). Leave this off unless you're testing new stuff.</span></label>
+    <label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;render();toast(this.checked ? '🛠️ Dev mode on: test builds (pre-releases) install too, and features still being tried show up (🏃 Marathon tabs).' : 'Dev mode off: only latest releases, and the features still being tried are hidden.')})"> <span>🛠️ <b>Dev mode</b>: also install <b>test builds</b> (pre-releases) and show features that are still being tried (🏃 Marathon + Marathon pool tabs). Leave this off unless you're testing new stuff.</span></label>
     ${a.desktop ? `<details style="margin-top:10px" ontoggle="if(this.open) loadPastReleases()"><summary>🕰️ Run an older version</summary><div id="pastRel" class="help">Loading…</div></details>` : ''}`;
 }
 async function loadPastReleases() {

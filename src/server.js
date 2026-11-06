@@ -34,6 +34,7 @@ import * as obs from './obs.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
+import * as marathon from './marathon.js';
 import * as cards from './cards.js';
 import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
@@ -189,6 +190,7 @@ function gameResult(m) {
         f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
         if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
       }
+      if (list && !live.game.test) { marathon.won(list.id, f.id); maraGuessResult(live.game, f.id); } // 🏃 (+ 🎯 the guessers who called it win a battle) the chat-given 🍀 on the winner starts over
       if (ownLuck(list)) ownLuckAfter(list, f.id, live.game.fighters); // 🍀 your own battle with luck: the ones that lost get luckier, the winner's luck starts over (it stays in)
       if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`, !!db.live || !!live.fakeLive); // everyone who lost gets a little luckier (🎟️ wild spots: once a night while live, see Settings → 🍀 Luck)
       if ((list?.type === 'movies' || list?.type === 'films') && f.tmdbId && !f.spot) { fetchWinnerRatings(f, rec, live.game.id); fetchWinnerNudity(f, rec); }
@@ -266,6 +268,8 @@ function publicState() { applyCharsDefault();
     costream: { ...costream.info(), obsError: costream.cfg().obsError || null, partnerView: (() => { const v = costream.status.partner?.state?.video; return v?.id ? { url: vdoView(v.id, v.q), layout: v.layout || null } : null; })() }, // (👀 watch their battle inside the app, 1.74.0)
     site: { ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
+    ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -369,9 +373,9 @@ async function buildFighters(list, keepIds = null) {
       const gender = list.chars ? genderOf(list, ownerLogin) : undefined; // 🧍 characters: man / woman / non-binary
       const lk = !list.chars ? undefined : list.type === 'movies' && isSpot(e) && spotLooks.length ? looks.check(spotLooks[Math.max(0, spotOrder.indexOf(e.id)) % spotLooks.length]).look : looks.lookFor({ discordId: list.type === 'movies' && !isSpot(e) ? e.backers?.[0]?.discordId : null, login: ownerLogin, gender }); // 🎨 wild spots: your wild spot characters; everyone else: their own /character (wins over !id)
       return {
-        id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : ownLuck(list) ? 1 + Math.max(0, Number(e.luckPct) || 0) / 100 : 1) * (1 + wl / 100) * 10000) / 10000, luck: Math.min(100, ((list.type === 'movies' && luckOn()) || ownLuck(list) ? (e.luckPct || 0) : 0) + wl), watchLuck: wl || undefined, // (🍀 your own battles with luck on work like the Discord battle)
+        id: e.id, label: e.label, sub: e.sub || '', weight: Math.round((e.weight || 1) * (list.type === 'movies' ? luckMultiplier(e) : ownLuck(list) ? 1 + Math.max(0, Number(e.luckPct) || 0) / 100 : 1) * (1 + wl / 100) * (1 + Math.max(0, Number(e.vLuck) || 0) / 100) * 10000) / 10000, luck: Math.min(100, ((list.type === 'movies' && luckOn()) || ownLuck(list) ? (e.luckPct || 0) : 0) + wl + (Number(e.vLuck) || 0)), vLuck: e.vLuck || undefined, // (🍀 vLuck = luck chat gave it with 🏃 marathon picks, 1.76.0) watchLuck: wl || undefined, // (🍀 your own battles with luck on work like the Discord battle)
         // the glow + flames show on every battle type and every map: movies use their luck, custom/chat/giveaway lists use their extra odds (x2 = 10%, x6 = 50% flames)
-        glow: Math.min(100, (e.luckPct > 0 && (list.type === 'movies' || ownLuck(list)) ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl),
+        glow: Math.min(100, (e.luckPct > 0 && (list.type === 'movies' || ownLuck(list)) ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl + (Number(e.vLuck) || 0)),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
         showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
         backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null, gender, look: lk
@@ -622,7 +626,68 @@ setTimeout(() => { if (costream.linked()) { costream.connect(); if (coWantVideo(
 let sitePid = uid(); // 🔮 the guess round the viewer website is on (the battle that's waiting / starting)
 const pubImg = u => /^https:\/\//.test(String(u || '')) ? String(u) : null;
 const paidSay = t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); };
-paid.setHooks({ act: (text, x) => act('money', text, { icon: '🎟️', who: x.who, kind: 'paid', test: !!x.test }), say: paidSay, changed: () => pushState() });
+paid.setHooks({ act: (text, x) => act('money', text, { icon: '🎟️', who: x.who, kind: 'paid', test: !!x.test }), say: paidSay, changed: () => { pushState(); maraCount(); }, added: (items, info) => marathon.announce(items, info) });
+// 📺 Ad warnings (1.76.0, Derek: "a 1 min warning in chat of incoming ad and when the ad ends… more so I know when ads are
+// playing", off by default): Twitch's ad schedule every 15 s while live → chat + a pop-up in Movie Royal a minute before, and when it ends.
+const AD_WARN = '📺 Heads up chat: ads start in about 1 minute! Grab a drink, stretch, I\'ll be right here.', AD_END = '✅ Ads are over, welcome back!';
+const ad = { warned: 0, endAt: 0, endT: null, on: null };
+const adOk = () => !!db.settings.adBot && (twitch.status.scopes || []).includes('channel:read:ads');
+function adToast(text) { broadcast({ type: 'toast', text, ms: 15000 }, 'control'); broadcast({ type: 'adAlert', text }, 'control'); }
+function adEndAt(t, test) {
+  if (ad.endT && Math.abs(ad.endAt - t) < 15000) return; clearTimeout(ad.endT); ad.endAt = t;
+  ad.endT = setTimeout(() => { ad.endT = null; ad.on = null; pushState(); paidSay(db.settings.adEndText || AD_END); adToast('✅ The ad break is over: you\'re back on.'); act('stream', 'The ad break ended', { icon: '📺', kind: 'ad', test }); }, Math.max(0, t - Date.now()));
+}
+async function adTick() {
+  if (!adOk() || !db.live) return;
+  let sch; try { sch = await twitch.adSchedule(); } catch (e) { return; } if (!sch?.next) return;
+  const left = sch.next - Date.now();
+  if (left > 0 && left <= 75000 && Math.abs(ad.warned - sch.next) > 30000) {
+    ad.warned = sch.next; ad.on = { at: sch.next, secs: sch.secs }; pushState();
+    paidSay(db.settings.adWarnText || AD_WARN); adToast(`📺 An ad break (${sch.secs || '?'} s) starts in about ${Math.round(left / 1000)} seconds.`);
+    act('stream', `Warned chat: an ad break (${sch.secs} s) starts in about a minute`, { icon: '📺', kind: 'ad' });
+    if (sch.secs) adEndAt(sch.next + sch.secs * 1000 + 2000);
+  }
+}
+setInterval(adTick, 15000);
+function adBreakIn({ secs, at, auto }) { // (an ad started: also ones you ran yourself, which have no warning)
+  if (!db.settings.adBot) return;
+  ad.on = { at, secs }; pushState(); adToast(`📺 Ads are playing now (${secs} s${auto ? '' : ', you started them'}).`);
+  act('stream', `An ad break started (${secs} s${auto ? ', scheduled' : ''})`, { icon: '📺', kind: 'ad' });
+  if (secs) adEndAt(at + secs * 1000 + 2000);
+}
+app.post('/api/test/ad', (req, res) => { // 🧪 pretend: the warning (then the end 20 s later) — goes to chat like the real thing (pretend chat when not signed in)
+  ad.on = { at: Date.now() + 5000, secs: 15 }; pushState();
+  paidSay(db.settings.adWarnText || AD_WARN); adToast('📺 (test) An ad break starts in about a minute.');
+  adEndAt(Date.now() + 20000, true); res.json({ endsIn: 20 });
+});
+
+// 🏃 Marathon battles (1.76.0): the maps chat can pick (A–Z, numbered), the pop-up + "battles owed" counter in OBS (/marathon.html)
+function maraSeen() { // 👀 when the people with a battle waiting last chatted (so you can run the battles of people who are here)
+  const want = new Set(paid.queue().map(x => marathon.norm(x.login || x.who))), out = {};
+  for (const m of live.chatLog) for (const k of [marathon.norm(m.login), marathon.norm(m.name)]) if (want.has(k)) out[k] = Math.max(out[k] || 0, m.at || 0);
+  return out;
+}
+function maraMapList() {
+  const l = marathon.list(), n = l ? l.entries.filter(e => e.status === 'active').length : 0, big = n > raceMax();
+  return [...MAP_LIST.filter(m => !(big && isRaceMap(m.id))), ...(l?.chars ? cards.CARD_MAPS : [])].map(m => ({ id: m.id, name: m.name, icon: m.icon })).sort((a, b) => a.name.localeCompare(b.name));
+}
+const maraRandomMap = () => { const ms = marathon.maps().filter(m => m.id !== db.lastMap); return ms.length ? ms[Math.floor(Math.random() * ms.length)].id : currentMap(); };
+let maraCountKey = '';
+function maraCount(force) { const c = marathon.counter(), k = JSON.stringify(c); if (!force && k === maraCountKey) return; maraCountKey = k; broadcast({ type: 'maraCount', ...c }, 'mara'); }
+function maraPopMsg(p) {
+  const site2 = site.on() ? site.url() : '';
+  return { type: 'maraPop', id: uid(), who: p.who, n: p.n, what: p.what, anon: !!p.anon, test: !!p.test, owed: paid.queue().length, luckPer: marathon.cfg().luckPer, secs: Math.max(10, Math.min(120, Number(marathon.cfg().popSecs) || 40)), site: site2.replace(/^https?:\/\//, ''),
+    maps: marathon.maps().map(m => ({ n: m.n, name: m.name, icon: m.icon })), items: marathon.items().map(x => ({ n: x.n, label: x.label, luck: x.luck })) };
+}
+marathon.setHooks({
+  list: () => { const id = paid.cfg().listId; return id ? getList(id) : null; },
+  maps: maraMapList, say: paidSay, siteUrl: () => site.on() ? site.url() : '',
+  act: (text, x) => act(x.luck ? 'luck' : 'money', text, { icon: x.luck ? '🍀' : '🎟️', who: x.who, kind: x.reset ? 'reset' : 'pick' }),
+  popup: p => { if (marathon.cfg().popup !== false) broadcast(maraPopMsg(p), 'mara'); maraCount(); },
+  changed: () => { pushState(); maraCount(); }
+});
+setInterval(() => maraCount(), 3000);
+
 const pctOf = (f, tot) => Math.round((f.weight || 1) / (tot || 1) * 1000) / 10;
 function siteLive() {
   const st = db.settings, q = paid.queue(), view = wheel.W().show ? 'wheel' : cards.live.show || cards.live.phase === 'fight' ? 'cards' : 'battle';
@@ -683,7 +748,19 @@ async function siteProfile(login) { // 👤 what a signed-in viewer sees about t
     spins: bank?.spins || 0, id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null, linked: !!dp
   };
 }
+function siteMara() { // 🏃 what the website needs to pick a map / give 🍀 luck (1.76.0)
+  const l = marathon.list(); if (!l || !paid.cfg().on) return null;
+  const tk = new Map(); for (const t of marathon.tokens()) { if (t.test) continue; const k = marathon.norm(t.login || t.who); const o = tk.get(k) || { who: t.who, login: t.login || null, n: 0 }; o.n++; tk.set(k, o); }
+  return {
+    list: l.screenTitle || l.name, luckPer: marathon.cfg().luckPer, owed: paid.queue().length,
+    maps: marathon.maps().map(m => ({ ...m, img: site.img(path.join(ROOT, 'public', 'maps', m.id + '.jpg')) })),
+    items: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, sub: x.sub, luck: x.luck, wins: x.wins, img: pubImg(x.image) || (/^\/uploads\//.test(x.image || '') ? site.img(path.join(UPLOADS, path.basename(x.image))) : null) })),
+    queue: paid.queue().slice(0, 300).map(x => ({ id: x.id, who: x.who, login: x.login, what: x.what, map: x.map || null, luck: x.luck || null, mapVia: x.mapVia || null, luckVia: x.luckVia || null })),
+    tokens: [...tk.values()]
+  };
+}
 site.setHooks({
+  mara: siteMara, pick: m => marathon.pick({ login: m.login, name: m.name, qid: m.qid, map: m.map, luck: m.luck, via: 'site' }),
   info: siteInfo, live: siteLive, stats: siteStats, rows: siteRows, profile: login => siteProfile(login).catch(() => null), changed: () => pushState(),
   predDone: m => { if (m.total && db.settings.sitePredSay !== false) paidSay(`🔮 ${m.nRight} of ${m.total} on the website called it: ${m.winner}${m.nRight ? ` (+${m.pts} pts${m.nRight <= 3 ? ': ' + m.right.join(', ') : ''})` : ''}. Guess the next one: ${db.settings.siteCommand || '!site'}`); if (m.total) act('chat', `${m.nRight} of ${m.total} called “${m.winner}” on the viewer website (+${m.pts} points each)`, { icon: '🔮', kind: 'guess' }); },
   pollResult: m => { const tot = m.counts.reduce((a, b) => a + b, 0), top = Math.max(...m.counts), wins = m.opts.filter((_, i) => m.counts[i] === top && top > 0); if (db.sitePoll?.id === m.id) { db.sitePoll.ended = Date.now(); db.sitePoll.counts = m.counts; save(); } paidSay(tot ? `🗳️ “${m.q}”: ${wins.join(' & ')} ${wins.length > 1 ? 'tie' : 'wins'} (${top} of ${tot} votes)` : `🗳️ “${m.q}”: nobody voted`); act('chat', `Poll “${m.q}”: ${m.opts.map((o, i) => `${o} ${m.counts[i]}`).join(' · ')}`, { icon: '🗳️', kind: 'poll' }); broadcast({ type: 'toast', text: `🗳️ Poll over: ${tot ? hEsc(wins.join(' & ')) + ` (${top} of ${tot} votes)` : 'nobody voted'}` }, 'control'); }
@@ -879,6 +956,7 @@ function activityBackfill() {
   console.log(`[history] the complete history starts with ${n} lines from the older history lists`);
 }
 const twitchHandlers = {
+  adBreak: x => adBreakIn(x), // 📺 ad warnings
   change: pushState,
   live(isLive) {
     if (!!db.live === !!isLive) return;
@@ -939,6 +1017,8 @@ const twitchHandlers = {
     wheel.wheelChat(m); // 🎡 !respin / !spins
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
     if (skipChat(m)) return; // ⏭️ !skip <movie>: sits out the next battle
+    if (maraGuessChat(m)) return; // 🎯 a number while chat guesses the marathon battle's winner
+    if (marathon.chat(m)) return; // 🏃 map 3 / luck 12 from someone with a paid battle waiting
     moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); if (!boardVote(m)) chatCall(m); helpChatCommand(m); siteChat(m); giveawayChat(m);
     if (newFace) pushState(); // keeps "Recent chatters" in the control panel up to date
     if (live.rollcall && !live.rollcall.done) {
@@ -1135,6 +1215,7 @@ wss.on('connection', (ws, req) => {
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
+  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg())); // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
@@ -1347,6 +1428,11 @@ async function announceNow() {
 }
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
   const v = String(req.body?.view || ''); if (v !== live.view) helpCd = 0; live.view = v; // (a new tab = !moviesroyal can list its commands right away)
+  if (v === 'mara') { // 🏃 Marathon tab = the marathon battle on stream (when nothing is running)
+    if (wheel.W().show) wheel.setShow(false); cards.setShow(false);
+    const ml = marathon.list(); if (ml && db.activeListId !== ml.id && live.phase !== 'lobby' && live.phase !== 'running' && !live.gather) { leaveEnded(); db.activeListId = ml.id; previewIds = null; save(); }
+    refreshPreview(true); live.lastGameView = 'battle'; pushState(); return res.json({ ok: true, kind: annKind() });
+  }
   if (v === 'cards' || v === 'battle') { if (live.phase === 'ended' && (v === 'cards') !== !!live.game?.cards) { leaveEnded(true); } } // (each tab shows its own battle)
   if (v === 'cards') { if (wheel.W().show) wheel.setShow(false); cards.setShow(true); } else if (v === 'battle' || v === 'wheel') cards.setShow(false);
   if (v === 'cards' || v === 'battle') refreshPreview(true); // 🃏 Card battles tab = the card battle on stream
@@ -1499,7 +1585,7 @@ async function choiceSource(on, scenes) {
   pushState(); return { ...r, note };
 }
 setInterval(() => { if (db.settings.choiceObs && obsOk() && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); }, 10 * 60000); // (keeps it in the scenes you picked, and a new reward or channel is written in)
-app.get('/api/vr/scenes', async (req, res) => { const roll = req.query.for === 'roll'; try { res.json({ ok: true, ...(await obs.sceneList(roll ? obs.ROLL_NAME : undefined)), picked: (roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
+app.get('/api/vr/scenes', async (req, res) => { const roll = req.query.for === 'roll', mara = req.query.for === 'mara'; try { res.json({ ok: true, ...(await obs.sceneList(mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
 app.get('/api/vr/obs-file', (req, res) => res.download(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'viewers-choice.html')); // ⬇️ the file for OBS (it sets itself up when you open it)
 app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 📣 roll call browser source in OBS (1.61.0): Movie Royal adds /rollcall.html to the scenes you pick (or you add it by hand: the address is in Settings → 🎥 OBS)
@@ -1993,7 +2079,7 @@ app.get('/api/app', (req, res) => {
   const seen = db.settings.setupSeen ? guideSeen() : null, sc = twitch.status.scopes || [];
   res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [],
     guideNew: seen ? GUIDE_STEPS.filter(x => !seen.has(x.id)).map(x => x.id) : [], // 🆕 steps you haven't seen in the Setup guide yet
-    twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x)) : [] }); // signed in before a newer permission was added: sign in again
+    twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x) && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot)) : [] }); // signed in before a newer permission was added: sign in again
 });
 app.get('/api/close-check', async (req, res) => { // the Discord bot stops when the app closes (unless the 24/7 bot really has Discord)
   if (DESKTOP && db.settings.discordToken && cloud.enabled()) { await Promise.race([cloud.checkLink(true), new Promise(r => setTimeout(r, 6000))]); }
@@ -2333,11 +2419,18 @@ app.post('/api/lists/:id/upload', express.raw({ type: '*/*', limit: '15mb' }), (
   save(); pushState(); res.json({ ok: true });
 });
 
+app.post('/api/lists/:id/entries/:eid/picture', express.raw({ type: '*/*', limit: '15mb' }), (req, res) => { // 🖼️ a picture for one entry (🏃 Marathon pool)
+  const l = getList(req.params.id), e = l?.entries.find(x => x.id === req.params.eid); if (!e) return res.sendStatus(404);
+  if (!req.body?.length) { delete e.image; save(); pushState(); refreshPreview(); return res.json({ ok: true }); }
+  const ext = (String(req.query.name || '').match(/\.(png|jpe?g|gif|webp)$/i) || [, 'png'])[1].toLowerCase(), file = uid() + '.' + ext;
+  fs.writeFileSync(path.join(UPLOADS, file), req.body); e.image = '/uploads/' + file; save(); pushState(); refreshPreview(); res.json({ ok: true, image: e.image });
+});
 app.patch('/api/lists/:id/entries/:eid', (req, res) => {
   const l = getList(req.params.id); const e = l?.entries.find(x => x.id === req.params.eid);
   if (!e) return res.sendStatus(404);
   if (req.body.weight != null) { const was = e.weight || 1; e.weight = Math.max(0.1, Math.min(1000, Math.round(Number(req.body.weight) * 10) / 10 || 1)); if (e.weight !== was) act('battle', `changed the odds of “${e.label}” in “${l.name}”: ${was} → ${e.weight}`, { icon: '🎲', who: streamerName(), kind: 'odds', list: l.name }); }
   if (req.body.label != null && l.type !== 'movies') { e.label = String(req.body.label).slice(0, 80); setTimeout(() => refreshPreview(), 0); }
+  if (req.body.sub != null && l.type !== 'movies') { e.sub = String(req.body.sub).slice(0, 80); setTimeout(() => refreshPreview(), 0); } // (🏃 Marathon pool: the small line under a name)
   if (req.body.status) setTimeout(() => refreshPreview(), 0);
   if (req.body.status) {
     if (req.body.status !== e.status) act('battle', `${{ active: 'put', paused: 'paused', removed: 'took', watched: 'marked', away: 'set' }[req.body.status] || 'changed'} “${e.label}”${{ active: ' back in', paused: ' (off the cliff for now)', removed: ' out', watched: ' as watched', away: ' as out tonight' }[req.body.status] || ''} in “${l.name}”`, { icon: { active: '▶', paused: '⏸️', removed: '✕', watched: '✅', away: '🛌' }[req.body.status] || '✏️', who: streamerName(), kind: 'entry', list: l.name }); // 🧾
@@ -3477,7 +3570,7 @@ const SELF_CHECKS = {
   },
   async twitchPerms() {
     if (!twitch.status.userId) return { ok: null, note: 'not signed in' };
-    const sc = twitch.status.scopes || [], miss = twitch.SCOPES.filter(x => !sc.includes(x));
+    const sc = twitch.status.scopes || [], miss = twitch.SCOPES.filter(x => !sc.includes(x) && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot));
     return miss.length ? { ok: false, note: `sign in again so Movie Royal gets ${plural(miss.length, 'new permission')} (Settings → 💜 Twitch)` } : { ok: true, note: `all ${sc.length} there` };
   },
   async twitchChat() { if (!twitch.status.userId) return { ok: null, note: 'not signed in' }; const c = String(twitch.status.chat || 'off'); return /^reading/.test(c) ? { ok: true, note: c } : { ok: false, note: `chat: ${c}` }; },
@@ -4010,8 +4103,9 @@ app.post('/api/co/preview', (req, res) => { // 👀 see a picture in its own win
 // 🎟️ Paid battles (1.75.0)
 app.get('/api/paid', (req, res) => res.json(paid.info()));
 app.post('/api/paid/settings', wTry(b => { const c = { ...paid.cfg() }; if (typeof b.on === 'boolean') c.on = b.on; if (typeof b.say === 'boolean') c.say = b.say; if (typeof b.listId === 'string') c.listId = b.listId; for (const k of ['tip', 'bits', 'subs']) if (b[k] !== undefined) c[k] = Math.max(0, Number(b[k]) || 0); db.settings.paidBattles = c; save(); pushState(); return paid.info(); }));
-app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (or a picked one): its battle goes on, logged with who paid
+app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (or a picked one): 🎯 a guess countdown first (marathon), then its battle goes on, logged with who paid
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going. Start the next one when it ends.' });
+  if (live.maraGuess) return res.status(400).json({ error: 'Chat is still guessing for the next battle: ▶ Start now or ✕ Cancel it first.' });
   const it = paid.take(req.body?.id); if (!it) return res.status(400).json({ error: 'Nobody is waiting for a battle.' });
   const c = paid.cfg(), l = c.listId && getList(c.listId);
   if (c.listId && !l) { paid.putBack(it); return res.status(400).json({ error: "The battle picked for paid battles isn't there any more: pick one in Settings → 💰 Rewards & prices." }); }
@@ -4019,11 +4113,79 @@ app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (o
   if (live.phase === 'ended' || live.claim) { if (live.claim) clearTimeout(live.claim.timer); live.claim = null; live.phase = 'idle'; live.game = null; broadcast({ type: 'reset' }, 'overlay'); }
   stopGather(true);
   if (l && db.activeListId !== l.id) { leaveEnded(); db.activeListId = l.id; previewIds = null; save(); }
-  const err = await startRound({ paid: { who: it.who, login: it.login, kind: it.kind, what: it.what, at: it.at, test: it.test || undefined } });
+  const map = it.map && marathon.maps().some(m => m.id === it.map) ? it.map : maraRandomMap(); // (their 🗺️ map, else a random one: it shows on the cliff while chat guesses)
+  const secs = Number(marathon.cfg().guessSecs ?? 60);
+  broadcast({ type: 'goView', view: 'battle' }, 'control');
+  if (secs > 0 && !req.body?.now && l) { maraGuessBegin(it, map, secs); return res.json({ ok: true, item: it, guessing: secs }); }
+  const err = await paidRun(it, map, null);
   if (err) { paid.putBack(it); return res.status(400).json({ error: err }); }
-  if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})!${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
-  broadcast({ type: 'goView', view: 'battle' }, 'control'); res.json({ ok: true, item: it });
+  res.json({ ok: true, item: it });
 });
+/** The paid battle goes on: their 🍀 luck (else a token for later), the map, the battle. Returns an error text, or nothing. */
+async function paidRun(it, map, guess) {
+  const st = marathon.atStart(it, () => map), mapWas = live.map; // 🏃 their 🗺️ map + their 🍀 luck (else they keep a luck token for later)
+  live.map = st.map; live.mapUsed = false; live.raceSkip = null;
+  const err = await startRound({ paid: { who: it.who, login: it.login, kind: it.kind, what: it.what, at: it.at, test: it.test || undefined, map: st.map, mapPicked: st.mapPicked || undefined, luck: st.gave ? st.gave.e.label : undefined } });
+  if (err) { st.undo(); live.map = mapWas; return err; }
+  if (guess && live.game) live.game.maraGuess = guess; // 🎯 who guessed what (paid out at the result)
+  if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})! 🗺️ ${mapLabel(st.map)}${st.mapPicked ? '' : ' (random)'}${st.gave ? ` · 🍀 ${st.gave.e.label} is at ${Math.round(st.gave.e.vLuck * 100) / 100}%` : st.tok ? ' · 🍀 they can still give their luck later' : ''}.${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
+  return null;
+}
+// 🎯 Guess the winner (1.76.0, Derek: "a 1 min countdown before battle to let chat guess the winner. Number them, they type in chat
+// what number wins. If that number wins they win a battle. They pick map and luck in the order they typed"):
+// ▶ Run → the battle waits on the cliff for guessSecs; chat types a number (one guess each, the first one counts); then it starts.
+// Everyone who typed the winner's number gets a battle, added to the line in the order they guessed.
+function maraGuessMsg() { const g = live.maraGuess; return g ? { type: 'maraGuess', on: true, endsAt: g.endsAt, who: g.item.who, map: mapLabel(g.map), items: g.nums.map(x => ({ n: x.n, label: x.label, luck: x.luck })), count: g.guesses.length, last: g.guesses.slice(-6).map(x => x.name) } : { type: 'maraGuess', on: false }; }
+function maraGuessBegin(it, map, secs) {
+  live.map = map; live.mapUsed = false; live.raceSkip = null; refreshPreview(true);
+  live.maraGuess = { item: it, map, endsAt: Date.now() + secs * 1000, nums: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, luck: x.luck })), guesses: [], timer: setTimeout(() => maraGuessEnd(), secs * 1000) };
+  broadcast(maraGuessMsg(), 'mara'); pushState();
+  paidSay(`🎯 GUESS THE WINNER! Type the number of the thing you think wins (one guess each, numbers are on screen). Right = you win a battle! ${secs} seconds. This one is for ${it.login ? '@' + it.login : it.who}.`);
+  act('battle', `Chat is guessing the winner for ${it.who}'s battle (${secs} s)`, { icon: '🎯', kind: 'guess' });
+}
+async function maraGuessEnd(cancel) {
+  const g = live.maraGuess; if (!g) return; clearTimeout(g.timer); live.maraGuess = null; broadcast({ type: 'maraGuess', on: false }, 'mara');
+  if (cancel) { paid.putBack(g.item); pushState(); return; }
+  const err = await paidRun(g.item, g.map, { nums: g.nums.map(x => ({ n: x.n, id: x.id })), guesses: g.guesses });
+  if (err) { paid.putBack(g.item); broadcast({ type: 'toast', text: `⚠️ ${hEsc(err)}` }, 'control'); }
+  pushState();
+}
+function maraGuessChat(m) { // a number while chat is guessing (one guess each; the first one counts)
+  const g = live.maraGuess; if (!g) return false;
+  const mm = String(m.text || '').trim().match(/^(?:!?guess\s*)?#?\s*(\d{1,3})$/i); if (!mm) return false;
+  const n = Number(mm[1]); if (!g.nums.some(x => x.n === n)) return true;
+  const k = marathon.norm(m.login); if (g.guesses.some(x => x.k === k)) return true;
+  g.guesses.push({ k, login: m.login, name: m.name || m.login, n, at: Date.now() });
+  broadcast({ type: 'maraGuessN', count: g.guesses.length, last: g.guesses.slice(-6).map(x => x.name) }, 'mara'); pushState();
+  return true;
+}
+function maraGuessResult(game, winnerId) { // 🎯 everyone who called it gets a battle, in the order they guessed
+  const G = game.maraGuess; if (!G) return;
+  const n = G.nums.find(x => x.id === winnerId)?.n, right = n ? G.guesses.filter(x => x.n === n) : [];
+  for (const x of right) paid.award({ who: x.name, login: x.login, what: `guessing #${n} right`, kind: 'guess', test: !!game.paid?.test });
+  const label = game.fighters.find(f => f.id === winnerId)?.label || '?';
+  broadcast({ type: 'maraGuessWin', n, label, names: right.map(x => x.name), total: G.guesses.length }, 'mara');
+  if (G.guesses.length) paidSay(right.length ? `🎯 #${n} ${label} won! ${right.map(x => '@' + x.login).join(', ')} called it: ${right.length === 1 ? 'you win a battle' : 'you each win a battle'} (in the order you guessed)!` : `🎯 #${n} ${label} won! Nobody called it (${G.guesses.length} guess${G.guesses.length === 1 ? '' : 'es'}).`);
+  act('battle', `${right.length} of ${G.guesses.length} guessed #${n} ${label}${right.length ? ': ' + right.map(x => x.name).join(', ') + ' won a battle' : ''}`, { icon: '🎯', kind: 'guess' });
+}
+app.post('/api/mara/guess/now', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(); return {}; }));
+app.post('/api/mara/guess/cancel', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(true); return {}; }));
+app.post('/api/test/mara-guess', wTry(b => { if (!live.maraGuess) throw new Error('Press ▶ Run on a battle first (chat guesses before it starts).'); const n = Number(b.n) || 1, name = String(b.name || 'Test_Guesser'); return { took: maraGuessChat({ login: name.toLowerCase(), name, text: String(n) }), count: live.maraGuess.guesses.length }; }));
+// 🏃 Marathon (1.76.0)
+app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; db.settings.marathon = c; save(); pushState(); maraCount(true); return marathon.cfg(); }));
+app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
+  const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');
+  if (b.map !== undefined) { if (!b.map) { it.map = null; it.mapVia = null; } else { const m = marathon.findMap(b.map); if (m.error) throw new Error(m.error); it.map = m.id; it.mapVia = 'you'; } }
+  if (b.luck !== undefined) { if (!b.luck) { it.luck = null; it.luckVia = null; } else { const x = marathon.items().find(i => i.id === b.luck); if (!x) throw new Error('That thing is not in the marathon battle.'); it.luck = x.id; it.luckVia = 'you'; } }
+  save(); pushState(); return paid.info();
+}));
+app.post('/api/mara/luck-reset', wTry(b => { const n = marathon.resetLuck(b.id || null); if (n) act('luck', b.id ? 'reset the chat-given 🍀 luck on one thing in the marathon battle' : `reset all the chat-given 🍀 luck in the marathon battle (${n})`, { icon: '🍀', who: streamerName(), kind: 'reset' }); refreshPreview(); return { reset: n }; }));
+app.post('/api/mara/token-remove', wTry(b => { db.paidTokens = marathon.tokens().filter((t, i) => i !== Number(b.i)); save(); pushState(); return {}; }));
+app.post('/api/mara/pop-again', wTry(b => { const it = paid.queue().find(x => x.id === b.id) || paid.queue()[0]; if (!it) throw new Error('Nobody is waiting.'); broadcast(maraPopMsg({ who: it.who, n: paid.queue().filter(x => marathon.norm(x.who) === marathon.norm(it.who)).length, what: it.what, test: it.test }), 'mara'); return {}; }));
+const maraUrl = () => `http://localhost:${PORT}/marathon.html`;
+app.post('/api/obs/mara-source', async (req, res) => { try { const on = !!req.body?.on, sc = req.body?.scenes; const c = { ...(db.settings.marathon || {}) }; if (on && Array.isArray(sc)) { if (!sc.length) throw new Error('Pick at least one OBS scene for it.'); c.scenes = sc.map(String).slice(0, 200); } const pick = Array.isArray(c.scenes) && c.scenes.length ? c.scenes : null; const r = await obs.maraSource(on, maraUrl(), pick); c.obs = on; db.settings.marathon = c; save(); pushState(); res.json({ ok: true, url: maraUrl(), ...r }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
+app.post('/api/test/mara-chat', wTry(b => { const name = String(b.name || 'Test_Viewer'); return marathon.pick({ login: name.toLowerCase(), name, [b.kind === 'map' ? 'map' : 'luck']: b.value, via: b.via === 'site' ? 'site' : 'chat' }); })); // 🧪 pretend Test_Viewer types map # / luck # (or picks on the website)
+app.post('/api/test/mara-pop', wTry(b => { broadcast(maraPopMsg({ who: String(b.name || 'Test_Viewer'), n: Number(b.n) || 1, what: String(b.what || 'a $5 tip'), test: true }), 'mara'); return { maps: marathon.maps().length, items: marathon.items().length }; }));
 app.post('/api/paid/remove', wTry(b => { paid.remove(b.id); return paid.info(); }));
 app.post('/api/paid/move', wTry(b => { paid.move(b.id, Number(b.dir)); return paid.info(); }));
 app.post('/api/paid/add', wTry(b => { paid.byHand(b.who, b.what, b.n); return paid.info(); }));

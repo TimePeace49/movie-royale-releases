@@ -48,7 +48,8 @@ const defaults = () => ({
     twitchMoviesCommand: '!mymovies', twitchCooldown: 30, discordChannelName: 'movies-royal',
     pointsOn: true, bitsOn: true, cloud: {}, map: 'random', voteSeconds: 120, colorsOn: true, colorMode: 'free', colorCommand: '!color', colorReward: 'Royal: Ball color',
     ideasDoc: 'https://docs.google.com/document/d/1bcgwJP3jX2ixkwlaRS19mUdGvotVIDAppZ6AkFOTRck/edit?usp=sharing', // 💡 linked in the pinned Discord message
-    betaUpdates: false, lastSeenVersion: '', // also install pre-releases (test builds)
+    betaUpdates: false, lastSeenVersion: '', // also install pre-releases (test builds) = 🛠️ dev mode (1.76.0: also shows the features still being tried)
+    adBot: false, adWarnText: '', adEndText: '', // 📺 ad warnings in chat (1.76.0, off by default)
     seJwt: '', slToken: '', // 💵 StreamElements / Streamlabs donations
     obsUrl: 'ws://127.0.0.1:4455', obsPassword: '', obsMic: '', obsCam: '', // 🎥 OBS (the wheel's Doomsday)
     botRemind: true, // (unused since 1.60.1: the "Update your 24/7 Discord bot" step always shows until the bot is updated, Derek)

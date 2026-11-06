@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 18;
+export const WORKER_V = 19;
 export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
@@ -478,6 +478,17 @@ async function siteRoute(req, env, url) {
     const body = await req.text(); if (!body || body.length > 2e6) return json({ error: 'bad size' }, 400);
     await env.KV.put('site:page', body); await env.KV.put('site:pagev', String(url.searchParams.get('v') || '')); return json({ ok: true });
   }
+  if (p.startsWith('/site/img/')) { // 🖼️ map screenshots + battle pictures for the website (19), uploaded once each by the PC
+    const h = p.slice(10).replace(/[^a-f0-9]/g, '').slice(0, 40), v = h && await env.KV.getWithMetadata('site:img:' + h, { type: 'arrayBuffer' });
+    if (!v?.value) return new Response('no picture', { status: 404 });
+    return new Response(v.value, { headers: { 'content-type': v.metadata?.type || 'image/jpeg', 'cache-control': 'public, max-age=31536000, immutable' } });
+  }
+  if (p === '/site/img' && req.method === 'PUT') {
+    if (!authed) return json({ error: 'bad key' }, 401);
+    const h = String(url.searchParams.get('h') || '').replace(/[^a-f0-9]/g, '').slice(0, 40), body = await req.arrayBuffer();
+    if (!h || !body.byteLength || body.byteLength > 3e6) return json({ error: 'bad picture' }, 400);
+    await env.KV.put('site:img:' + h, body, { metadata: { type: String(req.headers.get('content-type') || 'image/jpeg').slice(0, 40) } }); return json({ ok: true });
+  }
   if (!env.CO) return json({ error: 'This 24/7 bot needs an update in Movie Royal.' }, 501);
   if (p === '/site/app' && !authed) return json({ error: 'bad key' }, 401);
   const r = new Request(req); r.headers.set('x-mr-app', p === '/site/app' && authed ? '1' : '0');
@@ -543,7 +554,7 @@ const SITE = {
       const pair = new WebSocketPair(), [client, server] = Object.values(pair);
       this.ctx.acceptWebSocket(server, ['viewer']); server.serializeAttachment({ site: true, viewer: true, uid: u?.uid || null, login: u?.login || null, name: u?.name || null });
       const live = this.sGet('live');
-      server.send(JSON.stringify({ t: 'hello', info: this.sGet('info'), live, stats: this.sGet('stats'), poll: this.sPollOut(this.sGet('poll'), u?.uid), pred: this.sPredOut(live?.pid, u?.uid), lastPred: this.sGet('lastPred'), me: u ? { login: u.login, name: u.name, avatar: u.avatar } : null, appOnline: !!this.sApp() }));
+      server.send(JSON.stringify({ t: 'hello', info: this.sGet('info'), live, stats: this.sGet('stats'), mara: this.sGet('mara'), poll: this.sPollOut(this.sGet('poll'), u?.uid), pred: this.sPredOut(live?.pid, u?.uid), lastPred: this.sGet('lastPred'), me: u ? { login: u.login, name: u.name, avatar: u.avatar } : null, appOnline: !!this.sApp() }));
       this.sLater('vc', 3000, () => this.sToApp({ t: 'viewers', n: this.sViewers().length }));
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -584,6 +595,8 @@ const SITE = {
         this.sCast({ t: 'live', live: m.live, ...(m.live?.pid && m.live.pid !== before?.pid ? { pred: { pid: m.live.pid, counts: {}, mine: null } } : {}) });
       }
       else if (m.t === 'stats') { this.sPut('stats', m.stats); this.sCast({ t: 'stats', stats: m.stats }); }
+      else if (m.t === 'mara') { this.sPut('mara', m.mara); this.sCast({ t: 'mara', mara: m.mara }); } // 🏃 (19) maps + things + luck for picking
+      else if (m.t === 'toUser') { const s2 = JSON.stringify(m.msg || {}); for (const w of this.sViewers()) if ((w.deserializeAttachment() || {}).login === m.login) { try { w.send(s2); } catch {} } }
       else if (m.t === 'hist') { for (const r of (m.rows || []).slice(0, 500)) if (r?.id) q.exec(`INSERT INTO hist (id, at, j) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET at = excluded.at, j = excluded.j`, String(r.id), Number(r.at) || 0, JSON.stringify(r)); if (m.rows?.length) this.sCast({ t: 'hist', rows: m.rows.slice(0, 20) }); }
       else if (m.t === 'histDel') { for (const id of m.ids || []) q.exec(`DELETE FROM hist WHERE id = ?`, String(id)); this.sCast({ t: 'histDel', ids: m.ids || [] }); }
       else if (m.t === 'profile') { if (m.login) { q.exec(`INSERT INTO prof (login, at, j) VALUES (?, ?, ?) ON CONFLICT(login) DO UPDATE SET at = excluded.at, j = excluded.j`, String(m.login), Date.now(), JSON.stringify(m.profile || {})); for (const w of this.sViewers()) if ((w.deserializeAttachment() || {}).login === m.login) { try { w.send(JSON.stringify({ t: 'profile', profile: m.profile })); } catch {} } } }
@@ -610,6 +623,7 @@ const SITE = {
     // ---- from a viewer ----
     if (m.t === 'ping') return void ws.send('{"t":"pong"}');
     if (!a.uid) return void ws.send(JSON.stringify({ t: 'err', error: 'Sign in with Twitch first.' }));
+    if (m.t === 'pick') { if (!this.sApp()) return void ws.send(JSON.stringify({ t: 'pickRes', ok: false, error: "The stream app isn't on right now: try again later." })); return this.sToApp({ t: 'pick', uid: a.uid, login: a.login, name: a.name, qid: m.qid ? String(m.qid).slice(0, 40) : null, map: m.map != null ? String(m.map).slice(0, 60) : null, luck: m.luck != null ? String(m.luck).slice(0, 60) : null }); } // 🏃 (19) a map / 🍀 pick for their paid battle (Movie Royal checks it's theirs)
     if (m.t === 'predict') {
       const live = this.sGet('live');
       if (!live?.pid || live.pid !== m.pid || !live.predictOpen) return void ws.send(JSON.stringify({ t: 'err', error: 'Guesses are closed for this battle.' }));

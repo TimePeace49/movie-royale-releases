@@ -85,6 +85,26 @@ nav button.on { background: var(--ink); color: var(--bg); border-color: var(--in
 .group { margin-bottom: 14px; }
 .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--purple); padding: 10px 16px; border-radius: 12px; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: calc(100% - 32px); }
 .empty { padding: 26px; text-align: center; color: var(--mute); }
+.mine2 { border: 2px solid var(--teal); }
+.picks { display: flex; flex-direction: column; gap: 8px; }
+.pk { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 10px; align-items: center; padding: 10px 12px; border-radius: 11px; background: var(--panel2); border: 2px solid transparent; cursor: pointer; }
+.pk.sel { border-color: var(--teal); background: rgba(47,224,200,.08); }
+.pk .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.chip { font-size: 13px; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.07); }
+.chip.set { background: rgba(255,207,74,.16); color: var(--gold); font-weight: 800; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.mc { position: relative; border-radius: 12px; overflow: hidden; background: var(--panel2); border: 2px solid transparent; cursor: default; }
+.mc.can { cursor: pointer; } .mc.can:hover { border-color: var(--purple); }
+.mc.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+.mc .pic { aspect-ratio: 16/9; background: #000 center/cover; display: flex; align-items: center; justify-content: center; font-size: 34px; }
+.mc .pic.sq { aspect-ratio: 4/3; }
+.mc .cap { padding: 6px 9px; font-weight: 800; font-size: 14px; display: flex; gap: 6px; align-items: baseline; }
+.mc .cap i { font-style: normal; color: var(--gold); font-family: 'Lilita One', Nunito, sans-serif; }
+.mc .cap span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc .lk { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.7); color: #7dffa5; font-weight: 800; font-size: 13px; padding: 2px 8px; border-radius: 999px; }
+.mc .sub2 { padding: 0 9px 7px; color: var(--mute); font-size: 12.5px; margin-top: -4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cards.slim { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; } .cards.slim .mc .cap { padding-right: 64px; }
+.stick { position: sticky; top: 0; z-index: 5; background: var(--panel); padding: 8px 0; }
 .demo { background: var(--gold); color: #000; text-align: center; font-weight: 800; padding: 6px; font-size: 13px; }
 @media (max-width: 980px) { .watch { grid-template-columns: minmax(0, 1fr); } .big4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cols { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr) auto; } .row .when { grid-column: 1 / -1; } .brand { font-size: 21px; } }
@@ -101,6 +121,7 @@ nav button.on { background: var(--ink); color: var(--bg); border-color: var(--in
   </header>
   <nav id="nav">
     <button data-t="watch" class="on">📺 Watch</button>
+    <button data-t="battles" id="navBattles" style="display:none">🎟️ Battles owed</button>
     <button data-t="history">🧾 History</button>
     <button data-t="tried">🍽️ Everything tried</button>
     <button data-t="stats">📊 Stats</button>
@@ -121,6 +142,11 @@ nav button.on { background: var(--ink); color: var(--bg); border-color: var(--in
         <div class="card" id="line" style="display:none"></div>
       </div>
     </div>
+  </section>
+
+  <section class="tab" id="t-battles">
+    <div class="card" id="btTop"></div>
+    <div class="card" id="btPick" style="margin-top:14px"></div>
   </section>
 
   <section class="tab" id="t-history">
@@ -158,7 +184,7 @@ function toast(t, ms = 4000) { const d = document.createElement('div'); d.classN
 
 // ---------- tabs ----------
 $('nav').onclick = e => { const b = e.target.closest('button[data-t]'); if (b) go(b.dataset.t); };
-function go(t) { tab = t; for (const b of $('nav').children) b.classList.toggle('on', b.dataset.t === t); for (const s of document.querySelectorAll('.tab')) s.classList.toggle('on', s.id === 't-' + t); try { history.replaceState(null, '', location.pathname + location.search + '#' + t); } catch {} if (t === 'history') loadHist(true); if (t === 'top') loadTop(); if (t === 'mine') loadMe(); if (t === 'stats') drawStats(); if (t === 'tried') drawTried(); }
+function go(t) { tab = t; for (const b of $('nav').children) b.classList.toggle('on', b.dataset.t === t); for (const s of document.querySelectorAll('.tab')) s.classList.toggle('on', s.id === 't-' + t); try { history.replaceState(null, '', location.pathname + location.search + '#' + t); } catch {} if (t === 'history') loadHist(true); if (t === 'top') loadTop(); if (t === 'mine') loadMe(); if (t === 'stats') drawStats(); if (t === 'battles') drawBattles(); if (t === 'tried') drawTried(); }
 
 // ---------- sign in with Twitch ----------
 function signIn() {
@@ -194,7 +220,7 @@ function connect() {
 }
 const sendWs = m => { if (DEMO) return demoSend(m); if (ws?.readyState === 1) ws.send(JSON.stringify(m)); else toast('Reconnecting… try again in a second.'); };
 function onMsg(m) {
-  if (m.t === 'hello') { Object.assign(S, { info: m.info || {}, live: m.live, stats: m.stats, poll: m.poll, pred: m.pred, lastPred: m.lastPred, appOnline: m.appOnline }); if (m.me) { S.me = m.me; } else if (sess && !DEMO) { sess = null; S.me = null; try { delete localStorage.mrSiteSess; } catch {} } drawAll(); }
+  if (m.t === 'hello') { Object.assign(S, { got: true, mara: m.mara || null, info: m.info || {}, live: m.live, stats: m.stats, poll: m.poll, pred: m.pred, lastPred: m.lastPred, appOnline: m.appOnline }); if (m.me) { S.me = m.me; } else if (sess && !DEMO) { sess = null; S.me = null; try { delete localStorage.mrSiteSess; } catch {} } drawAll(); }
   else if (m.t === 'info') { S.info = m.info || {}; drawHead(); }
   else if (m.t === 'live') { S.live = m.live; if (m.pred) S.pred = m.pred; drawNow(); drawLine(); }
   else if (m.t === 'stats') { S.stats = m.stats; if (tab === 'stats') drawStats(); if (tab === 'tried') drawTried(); }
@@ -206,6 +232,8 @@ function onMsg(m) {
   else if (m.t === 'hist') { for (const r of m.rows || []) { const i = S.hist.findIndex(x => x.id === r.id); if (i >= 0) S.hist[i] = r; else if (!$('hq').value) S.hist.unshift(r); } S.hist.sort((a, b) => b.at - a.at); if (tab === 'history') drawHist(); }
   else if (m.t === 'histReset') { S.hist = []; if (tab === 'history') loadHist(true); }
   else if (m.t === 'profile') { S.myProf = m.profile; if (tab === 'mine' && S.myMe) drawMine(); }
+  else if (m.t === 'mara') { S.mara = m.mara; drawBattlesNav(); if (tab === 'battles') drawBattles(); }
+  else if (m.t === 'pickRes') { toast(m.ok ? '✅ ' + esc(m.text) : '⚠️ ' + esc(m.error), 6000); }
   else if (m.t === 'app') { S.appOnline = !!m.on; drawNow(); }
   else if (m.t === 'err') toast('⚠️ ' + esc(m.error));
 }
@@ -306,7 +334,37 @@ function drawMine() {
         <p class="note">${p.watchHours ? `⏱️ ${p.watchHours} hours watched · ` : ''}${p.streams ? `${p.streams} streams · ` : ''}${p.spins ? `🎡 ${p.spins} saved respins` : ''}</p></div></div>`}`;
 }
 
-function drawAll() { drawHead(); drawMe(); drawNow(); drawPoll(); drawLine(); if (tab === 'stats') drawStats(); if (tab === 'tried') drawTried(); if (tab === 'history') loadHist(true); if (tab === 'top') loadTop(); if (tab === 'mine') loadMe(); }
+// ---------- 🎟️ Battles owed: pick a map + who gets your 🍀 (1.76.0) ----------
+const nm = x => String(x || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+const isMine = x => !!S.me && x.who !== 'Anonymous' && ((x.login && nm(x.login) === nm(S.me.login)) || (!x.login && (nm(x.who) === nm(S.me.login) || nm(x.who) === nm(S.me.name))));
+let pickFor = null; // (the battle you're picking for; null = your 🍀 to give)
+function drawBattlesNav() { const M = S.mara, b = $('navBattles'); if (!b) return; b.style.display = M ? '' : 'none'; if (M) { const mine = (M.queue || []).filter(isMine).length; b.textContent = `🎟️ Battles owed (${M.owed})${mine ? ' · yours: ' + mine : ''}`; } if (!M && tab === 'battles' && S.got) go('watch'); }
+function drawBattles() {
+  const M = S.mara; if (!M) { $('btTop').innerHTML = '<div class="empty">No paid battles right now.</div>'; $('btPick').innerHTML = ''; return; }
+  const mapN = id => M.maps.find(m => m.id === id), itN = id => M.items.find(x => x.id === id), luck = (Math.round((M.luckPer || 1) * 100) / 100) + '%';
+  const mine = (M.queue || []).filter(isMine), tok = S.me ? (M.tokens || []).filter(t => isMine(t)).reduce((a, t) => a + t.n, 0) : 0;
+  if (pickFor && !mine.some(x => x.id === pickFor)) pickFor = null; if (!pickFor && mine.length) pickFor = mine[0].id;
+  $('btTop').innerHTML = `<h2>🎟️ ${M.owed} battle${M.owed === 1 ? '' : 's'} owed</h2><p class="muted" style="margin-top:0">Every sub, gift sub, $5 tip or 500 bits = a battle in <b>${esc(M.list)}</b>. Whoever gets one picks its 🗺️ map and gives 🍀 +${luck} luck to one thing (it stays until that thing wins). Chat works too: <b>map #</b> and <b>luck #</b>.</p>
+    ${M.queue.length ? `<div class="rows">${M.queue.slice(0, 60).map((x, i) => `<div class="row${isMine(x) ? ' mine2' : ''}"><div class="when">#${i + 1}</div><div class="what"><b>${esc(x.who)}</b> <span class="sub">${esc(x.what)}</span><div class="tags">${x.map ? `<span class="tag paid">🗺️ ${esc(mapN(x.map)?.name || '?')}</span>` : '<span class="tag">🗺️ random map</span>'}${x.luck ? `<span class="tag paid">🍀 ${esc(itN(x.luck)?.label || '?')}</span>` : ''}</div></div><span></span></div>`).join('')}${M.queue.length > 60 ? `<div class="muted">+ ${M.queue.length - 60} more</div>` : ''}</div>` : '<div class="empty">Nobody is waiting right now.</div>'}`;
+  const can = !!S.me && (mine.length || tok);
+  const sel = mine.find(x => x.id === pickFor) || null;
+  const head = !S.me ? `<p>🔑 <a href="#" onclick="signIn();return false">Sign in with Twitch</a> to pick for your battles here.</p>`
+    : !mine.length && !tok ? `<p class="muted">You don't have a battle waiting. Sub, gift a sub, tip $5 or cheer 500 bits to get one!</p>`
+    : `<div class="stick"><h2 style="margin-bottom:6px">✋ Your picks</h2><div class="picks">${mine.map((x, i) => `<div class="pk${x.id === pickFor ? ' sel' : ''}" data-for="${esc(x.id)}"><b>#${M.queue.indexOf(x) + 1}</b><div><b>${esc(x.what)}</b><div class="chips"><span class="chip${x.map ? ' set' : ''}">🗺️ ${x.map ? esc(mapN(x.map)?.name || '?') : 'pick a map (random if you don’t)'}</span><span class="chip${x.luck ? ' set' : ''}">🍀 ${x.luck ? esc(itN(x.luck)?.label || '?') : 'pick who gets your luck'}</span></div></div></div>`).join('')}
+        ${tok ? `<div class="pk${!pickFor ? ' sel' : ''}" data-for=""><b>🍀</b><div><b>You have ${tok} luck to give</b> <span class="muted">(from a battle that already ran). Tap a thing below to give it +${luck} now.</span></div></div>` : ''}</div>
+        <p class="note">${sel ? `Picking for battle #${M.queue.indexOf(sel) + 1}: tap a map, then a thing to give your 🍀 to. You can change them until the streamer starts it.` : `Tap a thing below to give it your 🍀.`} Picks made here can't be changed from chat (so a stray chat message doesn't undo them).</p></div>`;
+  $('btPick').innerHTML = `${head}
+    <h3>🗺️ ${sel ? 'Pick a map' : 'Maps'}</h3><div class="cards">${M.maps.map(m => `<div class="mc${sel ? ' can' : ''}${sel?.map === m.id ? ' on' : ''}" ${sel ? `data-map="${m.n}"` : ''}><div class="pic" ${m.img ? `style="background-image:url('${esc(m.img)}')"` : ''}>${m.img ? '' : esc(m.icon)}</div><div class="cap"><i>${m.n}</i><span>${esc(m.icon)} ${esc(m.name)}</span></div></div>`).join('')}</div>
+    <h3>🍀 Give luck to one thing</h3><div class="cards${M.items.some(x => x.img) ? '' : ' slim'}">${M.items.map(x => `<div class="mc${can ? ' can' : ''}${sel?.luck === x.id ? ' on' : ''}" ${can ? `data-luck="${x.n}"` : ''}>${x.img ? `<div class="pic sq" style="background-image:url('${esc(x.img)}')"></div>` : ''}${x.luck ? `<span class="lk">🍀 ${x.luck}%</span>` : ''}<div class="cap"><i>${x.n}</i><span>${esc(x.label)}</span></div>${x.sub || x.wins ? `<div class="sub2">${esc(x.sub || '')}${x.wins ? ` · 🏆 ${x.wins}` : ''}</div>` : ''}</div>`).join('')}</div>`;
+}
+$('t-battles').addEventListener('click', e => {
+  const f = e.target.closest('[data-for]'); if (f) { pickFor = f.dataset.for || null; drawBattles(); return; }
+  const m = e.target.closest('[data-map]'), l = e.target.closest('[data-luck]');
+  if (m && pickFor) sendWs({ t: 'pick', qid: pickFor, map: m.dataset.map });
+  if (l) sendWs({ t: 'pick', qid: pickFor || null, luck: l.dataset.luck });
+});
+
+function drawAll() { drawBattlesNav(); if (tab === 'battles') drawBattles(); drawHead(); drawMe(); drawNow(); drawPoll(); drawLine(); if (tab === 'stats') drawStats(); if (tab === 'tried') drawTried(); if (tab === 'history') loadHist(true); if (tab === 'top') loadTop(); if (tab === 'mine') loadMe(); }
 
 // ---------- 🧪 demo (no server) ----------
 const DF = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Salt licorice', 'Durian candy', 'Octopus', '10 push-ups', '20 squats', '30 jumping jacks', 'MERCY'];
@@ -318,6 +376,7 @@ function demoLive(phase) { const fs = DF.map((l, i) => ({ id: 'f' + i, label: l,
 function demoSend(m) {
   if (!S.me) return toast('Sign in first.');
   if (m.t === 'predict') { if (!S.live.predictOpen) return toast('Guesses are closed.'); S.pred = { pid: S.live.pid, counts: { ...(S.pred?.counts || {}), [m.pick]: ((S.pred?.counts || {})[m.pick] || 0) + 1 }, mine: m.pick }; drawNow(); }
+  if (m.t === 'pick') { const q = S.mara.queue.find(x => x.id === m.qid); if (q && m.map) { q.map = S.mara.maps[m.map - 1].id; q.mapVia = 'site'; } if (q && m.luck) { q.luck = S.mara.items[m.luck - 1].id; q.luckVia = 'site'; } if (!q && m.luck) { S.mara.items[m.luck - 1].luck += 1; S.mara.tokens = []; } toast('✅ Picked (demo)'); drawBattles(); return; }
   if (m.t === 'vote') { const c = S.poll.counts.slice(); if (S.poll.mine != null) c[S.poll.mine]--; c[m.opt]++; S.poll = { ...S.poll, counts: c, mine: m.opt }; drawPoll(); }
 }
 function demoStart() {
@@ -327,6 +386,8 @@ function demoStart() {
   S.poll = { id: 'p1', q: 'What should I cook tonight?', opts: ['Tacos', 'Ramen', 'Breakfast for dinner'], counts: [4, 7, 2], mine: null, endsAt: Date.now() + 120000, open: true };
   S.stats = { battles: 64, today: 11, paid: 38, waiting: 2, paidKinds: { tip: 14, bits: 9, sub: 10, gift: 5 }, supporters: [{ who: 'SpicyPanda', n: 7 }, { who: 'NightOwl_44', n: 5 }, { who: 'Kirbgames', n: 4 }], lists: [{ list: '🏃 Marathon Battle', n: 52 }, { list: '🍿 Movie night', n: 12 }], movies: [{ label: 'The Thing', sub: '1982', owner: 'mx_rae', at: Date.now() - 3e6, vod: 'https://www.twitch.tv/videos/1' }], tried: demoHist().filter(r => r.list !== '🍿 Movie night').map(r => ({ label: r.label, list: r.list, n: 1 + r.pct % 3, last: r.at, vod: r.vod, who: r.paid?.who })) };
   S.lastPred = { nRight: 4, total: 13, winner: 'Toxic Waste', pts: 9 };
+  S.mara = { list: '🏃 Marathon Battle', luckPer: 1, owed: 3, maps: ['Crumbling Cliff', 'Deep Space', 'Lava Lake', 'Sweet Donut', 'Zombie Horde', 'Pompeii', 'Fart Farm', 'Grand Prix'].map((n, i) => ({ n: i + 1, id: 'm' + i, name: n, icon: '🗺️', img: null })), items: DF.map((l, i) => ({ n: i + 1, id: 'f' + i, label: l, sub: '', luck: i === 3 ? 3 : i === 6 ? 1 : 0, wins: i % 4 === 0 ? 1 : 0, img: null })),
+    queue: [{ id: 'q1', who: 'SpicyPanda', login: 'spicypanda', what: '500 bits', map: 'm3', luck: 'f3', luckVia: 'site' }, { id: 'q2', who: 'Demo_Viewer', login: 'demo_viewer', what: 'a sub' }, { id: 'q3', who: 'mx_rae', login: 'mx_rae', what: 'a $5 tip', map: 'm1' }], tokens: [{ who: 'Demo_Viewer', login: 'demo_viewer', n: 1 }] };
   drawAll();
   const steps = [['lobby', 9000], ['running', 6000], ['ended', 8000], ['ready', 20000]]; let i = 0;
   const next = () => { const [ph, ms] = steps[i++ % steps.length]; if (ph === 'ready') { demoT++; S.pred = { pid: 'demo' + demoT, counts: {}, mine: null }; } S.live = demoLive(ph); S.live.pid = 'demo' + demoT; if (ph === 'ended' && S.pred?.mine) onMsg({ t: 'predResult', res: { pid: S.live.pid, winnerId: 'f6', winner: 'Durian candy', pts: 9, nRight: 2, total: 9 }, top: demoTop() }); drawNow(); setTimeout(next, ms); };
@@ -336,7 +397,7 @@ function demoStart() {
 (async () => {
   const back = DEMO ? false : await finishSignIn();
   drawMe();
-  const h = back || location.hash.slice(1); if (['history', 'tried', 'stats', 'top', 'mine'].includes(h)) go(h);
+  const h = back || location.hash.slice(1); if (['history', 'tried', 'stats', 'top', 'mine', 'battles'].includes(h)) go(h);
   if (DEMO) return demoStart();
   drawAll(); connect();
 })();

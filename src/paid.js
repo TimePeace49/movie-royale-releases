@@ -8,7 +8,7 @@ import { db, save } from './store.js';
 const DEF = { on: false, listId: '', tip: 5, bits: 500, subs: 1, say: true };
 export const cfg = () => ({ ...DEF, ...(db.settings.paidBattles || {}) });
 export const queue = () => (db.paidQueue ||= []);
-let hooks = { act: () => {}, say: () => {}, changed: () => {} };
+let hooks = { act: () => {}, say: () => {}, changed: () => {}, added: () => false };
 export function setHooks(h) { hooks = { ...hooks, ...h }; }
 const uid = () => crypto.randomBytes(6).toString('hex');
 const money = n => '$' + (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0);
@@ -22,7 +22,7 @@ function add({ who, login, kind, what, n = 1, test }) {
   queue().push(...items); db.paidQueue = queue().slice(-500); save();
   const pos = queue().length;
   hooks.act(`paid for ${n === 1 ? 'a battle' : n + ' battles'} (${what}) · ${pos} waiting`, { who, test });
-  if (cfg().say) hooks.say(`⚔️ ${login ? '@' + login : who} unlocked ${n === 1 ? 'a battle' : n + ' battles'} with ${what}! ${pos === 1 ? "It's up next." : `${pos} battles waiting.`}`);
+  if (!hooks.added(items, { who, login, what, n, test }) && cfg().say) hooks.say(`⚔️ ${login ? '@' + login : who} unlocked ${n === 1 ? 'a battle' : n + ' battles'} with ${what}! ${pos === 1 ? "It's up next." : `${pos} battles waiting.`}`); // (🏃 the marathon side batches gift bombs into one pop-up + one chat line)
   hooks.changed();
   return items;
 }
@@ -48,6 +48,8 @@ export function onSub({ kind, login, name, recipient, test }) {
   const gift = kind === 'gift', who = name || (gift ? 'Anonymous' : login), n = count(keyOf(login, who), 'subs', 1, Number(c.subs));
   return n ? add({ who, login, kind: gift ? 'gift' : 'sub', what: gift ? `a gift sub${recipient ? ' to ' + recipient : ''}` : kind === 'resub' ? 'a resub' : 'a sub', n, test }) : [];
 }
+/** 🎯 a battle won some other way (guessing the winner): goes in the line like a paid one. */
+export function award({ who, login, what, kind = 'guess', test }) { return add({ who, login, kind, what, n: 1, test }); }
 /** ➕ Add one by hand (cash, a tip Movie Royal didn't hear about…). */
 export function byHand(who, what, n = 1) { return add({ who: String(who || '').trim() || 'Someone', login: /^[a-z0-9_]{3,25}$/i.test(String(who || '').trim()) ? String(who).trim() : null, kind: 'hand', what: String(what || '').trim() || 'added by hand', n: Math.max(1, Math.min(50, Number(n) || 1)) }); }
 /** Take a battle out of the line (the first one, or a picked one). */

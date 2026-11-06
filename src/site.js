@@ -11,9 +11,9 @@ import WebSocket from 'ws';
 import { db, save, ROOT } from './store.js';
 
 export const status = { state: 'off', error: null, since: 0, viewers: 0, page: null, predCounts: null, pollCounts: null, lastPred: null };
-let hooks = { info: () => ({}), live: () => ({}), stats: () => ({}), rows: () => [], profile: async () => null, predDone: () => {}, pollResult: () => {}, changed: () => {} };
+let hooks = { info: () => ({}), live: () => ({}), stats: () => ({}), mara: () => null, pick: () => ({ ok: false }), rows: () => [], profile: async () => null, predDone: () => {}, pollResult: () => {}, changed: () => {} };
 export function setHooks(h) { hooks = { ...hooks, ...h }; }
-export const SITE_V = 18; // the 24/7 bot version that has the website
+export const SITE_V = 19; // the 24/7 bot version that has the website
 const cloud = () => db.settings.cloud || {};
 export const canRun = () => !!cloud().enabled && !!cloud().url && !!cloud().syncKey;
 export const on = () => db.settings.siteOn === true && canRun();
@@ -51,6 +51,7 @@ async function onMsg(m) {
   if (m.t === 'have') { haveLast = m.last || 0; sent = {}; rowHash.clear(); lastRowsV = -1; status.viewers = m.viewers || 0; tick(true); return; }
   if (m.t === 'viewers') { status.viewers = m.n || 0; hooks.changed(); return; }
   if (m.t === 'want') { const p = await hooks.profile(m.login, m); if (p) send({ t: 'profile', login: m.login, profile: p }); return; }
+  if (m.t === 'pick') { let r; try { r = await hooks.pick(m); } catch (e) { r = { ok: false, error: e.message }; } send({ t: 'toUser', login: m.login, msg: { t: 'pickRes', ok: !!r.ok, text: r.text || '', error: r.error || '' } }); return; } // 🏃 a pick from the website
   if (m.t === 'predCounts') { status.predCounts = { pid: m.pid, counts: m.counts }; hooks.changed(); return; }
   if (m.t === 'predDone') { status.lastPred = m; hooks.predDone(m); hooks.changed(); return; }
   if (m.t === 'pollCounts') { status.pollCounts = { id: m.id, counts: m.counts }; hooks.changed(); return; }
@@ -59,7 +60,7 @@ async function onMsg(m) {
 /** Send what changed (live every ~1.5 s, stats/history when they change). */
 function tick(all) {
   if (!online()) return;
-  for (const [k, fn] of [['info', hooks.info], ['live', hooks.live], ['stats', hooks.stats]]) {
+  for (const [k, fn] of [['info', hooks.info], ['live', hooks.live], ['stats', hooks.stats], ['mara', hooks.mara]]) {
     if (k === 'stats' && !all && Date.now() - (sent.statsAt || 0) < 20000) continue;
     let v; try { v = fn(); } catch (e) { console.error('[viewer site] ' + k, e.message); continue; }
     const j = JSON.stringify(v); if (j === sent[k]) continue;
@@ -81,6 +82,23 @@ async function uploadPage() {
   if (!r.ok) throw new Error('page upload ' + r.status);
   status.page = v; hooks.changed();
 }
+
+// ---------- 🖼️ pictures for the website (map screenshots, battle pictures): uploaded once each, by their content ----------
+const imgCache = new Map(); let imgBusy = false; const imgQ = [];
+/** The website address of a picture on this PC (null until it's known). Uploads it in the background the first time. */
+export function img(file) {
+  if (!file || !canRun()) return null;
+  let st; try { st = fs.statSync(file); } catch { return null; }
+  const key = file + ':' + st.mtimeMs, c = imgCache.get(key); if (c) return c.url;
+  const h = crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex').slice(0, 32), url = '/site/img/' + h;
+  imgCache.set(key, { url }); if (!(db.siteImgs ||= {})[h]) { imgQ.push({ file, h }); pumpImgs(); }
+  return url;
+}
+async function pumpImgs() {
+  if (imgBusy || !online()) return; imgBusy = true;
+  try { while (imgQ.length && online()) { const { file, h } = imgQ.shift(); if (db.siteImgs[h]) continue; const ext = path.extname(file).slice(1).toLowerCase(); const r = await fetch(cloud().url.replace(/\/+$/, '') + '/site/img?h=' + h, { method: 'PUT', headers: { Authorization: `Bearer ${cloud().syncKey}`, 'content-type': ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg' }, body: fs.readFileSync(file), signal: AbortSignal.timeout(30000) }).catch(() => null); if (r?.ok) { db.siteImgs[h] = 1; save(); } } } finally { imgBusy = false; }
+}
+setInterval(pumpImgs, 30000);
 
 // ---------- 🗳️ polls + 🔮 guesses ----------
 export function pollStart({ q, opts, mins }) {
