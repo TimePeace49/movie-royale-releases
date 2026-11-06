@@ -27,6 +27,12 @@ H(/^⚙ settings$/i, '⚙ Settings', 'Paid battle amounts, luck per pick, the po
 H(/^🌐 website$/i, '🌐 Website', 'Opens your viewer website: people can pick their map and luck there too (with map screenshots).');
 H(/^tip:which battle is the marathon battle/i, '⚔️ The marathon battle', 'Which battle paid battles use (import your Marathon Battle in 🎬 Movie Pool → 📥 Import).');
 H(/^tip:its name \(chat sees it/i, '✏️ Name', 'Its name: chat sees it on the pick pop-up and the website.');
+H(/let viewers sign in with twitch/i, '🔑 Let viewers sign in', 'One time: tell your Twitch app your viewer website\'s address, so viewers can sign in there (for guesses, polls and My page). 1 copy the address, 2 open dev.twitch.tv and press Manage on your Movie Royal app, 3 paste it under OAuth Redirect URLs and Save, 4 ✅ Check it.');
+H(/^tip:your viewer website's address: this is what you paste/i, '📋 Your website\'s address', 'Your viewer website\'s address. It\'s made for you by your 24/7 bot. This is what you paste into your Twitch app under OAuth Redirect URLs.');
+H(/^tip:open your apps on dev\.twitch\.tv/i, '🟣 Open dev.twitch.tv', 'Opens the page with your Twitch apps in your browser. Press Manage next to the app you made for Movie Royal.');
+H(/^tip:ask twitch (for real )?if it knows your website/i, '✅ Check it', 'Asks Twitch if your website\'s address is in your Twitch app yet (nobody gets signed in). ✅ = viewers can sign in.');
+H(/^tip:open your viewer website and press/i, '🔑 Try signing in on the site', 'Opens your viewer website: press 🔑 Sign in with Twitch like a viewer would. A Twitch sign-in page = it works; an error about redirect = the address isn\'t in your Twitch app yet.');
+H(/^tip:pretend (twitch knows|the website's address isn't|the client id is wrong)/i, '🧪 Pretend Twitch answers', 'Shows what ✅ Check it says for each answer Twitch can give. Nothing is asked of Twitch.');
 H(/^tip:its number \(what chat types\)/i, '# Its number', 'The number chat types for it (luck 12). Type a new number to move it there: the others shift along.');
 H(/^tip:move it (up|down) one/i, '▲ ▼ Move it', 'Moves it up or down one in the marathon battle. The numbers are what chat types, so they change with it.');
 H(/^tip:🎲 odds: how likely/i, '🎲 Odds', 'How likely it is to win a battle: bigger = more likely (8 is twice as likely as 4). The ≈% next to it is its chance right now, with the luck chat gave it counted in.');

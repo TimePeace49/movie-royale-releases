@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.80.1
+- 🔑 The viewer website's Twitch step is easier: Settings → 🌐 Viewer site → 🔑 Let viewers sign in is now 4 numbered steps: 📋 your website's address with a Copy button right there, 🟣 a button that opens dev.twitch.tv (and the end of your Client ID, so you know which app to press Manage on), exactly where to paste it, and ✅ Check it, which asks Twitch if it knows the address yet (✅ Done / ⚠️ Not done yet). 🔑 Try signing in on the site opens it like a viewer.
+- The website always sends viewers back to the same address after signing in (a / at the end of the address used to make Twitch say no).
+- 🧪 Test tab → 🌐 Viewer website: what ✅ Check it says for each answer Twitch can give.
+
 ## 1.80.0
 - 🏃 Your Marathon Battle is built into the app now (🛠️ dev mode only): every eat, workout and wild card with its odds. It's added once, the first time the app opens in dev mode, and becomes the marathon battle if none is picked (if you already imported it, that one is used instead). Marathon pool → ➕ Add a fresh copy brings a new copy back.
 - ✏️ Edit the pool in the 🏃 Marathon pool tab: 🎲 odds for each thing (with its ≈% chance to win right now), move things with ▲ ▼ or by typing a new number (the numbers chat types), and change the battle's name and its title on screen. (Name, small line, pictures, 🥫/🏋️, ⏱️ and 🙈 were already there.)

@@ -191,7 +191,7 @@ function signIn() {
   if (DEMO) { S.me = { login: 'demo_viewer', name: 'Demo_Viewer', avatar: '' }; sess = 'demo'; drawMe(); drawNow(); drawPoll(); toast('🧪 Signed in as Demo_Viewer'); return; }
   if (!S.info.clientId) return toast("Sign-in isn't set up yet: the streamer turns it on in Movie Royal.");
   const st = Math.random().toString(36).slice(2); try { sessionStorage.mrState = st; sessionStorage.mrBack = tab; } catch {}
-  location.href = `https://id.twitch.tv/oauth2/authorize?client_id=${encodeURIComponent(S.info.clientId)}&redirect_uri=${encodeURIComponent(location.origin + location.pathname)}&response_type=token&scope=&state=${st}`;
+  location.href = `https://id.twitch.tv/oauth2/authorize?client_id=${encodeURIComponent(S.info.clientId)}&redirect_uri=${encodeURIComponent(/^\/live\/?$/.test(location.pathname) ? location.origin + '/live' : location.origin + location.pathname)}&response_type=token&scope=&state=${st}`;
 }
 function signOut() { sess = null; S.me = null; try { delete localStorage.mrSiteSess; delete localStorage.mrSiteMe; } catch {} connect(); drawMe(); drawNow(); drawPoll(); if (tab === 'mine') loadMe(); }
 async function finishSignIn() {

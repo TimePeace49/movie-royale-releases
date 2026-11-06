@@ -268,7 +268,7 @@ function publicState() { applyCharsDefault();
   return {
     cloud: { enabled: cloud.enabled(), url: st.cloud?.url || '', ...cloud.status },
     costream: { ...costream.info(), obsError: costream.cfg().obsError || null, partnerView: (() => { const v = costream.status.partner?.state?.video; return v?.id ? { url: vdoView(v.id, v.q), layout: v.layout || null } : null; })() }, // (👀 watch their battle inside the app, 1.74.0)
-    site: { ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
+    site: { ...site.info(), signin: db.siteSignin && db.siteSignin.url === site.url() ? db.siteSignin : null, clientTail: String(db.settings.twitchClientId || '').slice(-6), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg() },
@@ -2161,7 +2161,7 @@ const GUIDE_STEPS = [
   { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   { id: 'rollcall', since: '1.61.0', title: '📣 Roll call in OBS', why: 'Roll call can show in any OBS scene, even ones without the game screen (like your camera scene).', how: ['Connect OBS first (🎥 OBS control step).', 'Press 🧭 Set it up and tick the scenes, or add a Browser source with the address shown there.'], done: () => !!db.settings.rollObs },
   { id: 'costream', since: '1.71.0', title: '🤝 Co-stream with a friend', why: 'Stream together with a friend who also has Movie Royal: cameras in each other\'s OBS, their battle on your stream while it runs, and chaos across both chats.', how: ['Do the 🎥 OBS control step first.', 'One of you: Settings → 🤝 Co-stream → 🎟️ Make an invite code, and send it in Discord. The other: paste it and press 🤝 Join.', 'One time in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.'], done: () => costream.linked() },
-  { id: 'site', since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch: dev.twitch.tv/console/apps → Manage → OAuth Redirect URLs → Add the website address → Save.'], done: () => site.on() },
+  { id: 'site', since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch (Settings → 🌐 Viewer site → 🔑 Let viewers sign in): 📋 copy your website\'s address, 🟣 open dev.twitch.tv → Manage on your Movie Royal app, paste it under OAuth Redirect URLs → Add → Save, then ✅ Check it.'], done: () => site.on() },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
   { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', how: ['Make a second Twitch account for the bot, like MoviesRoyalBot (Twitch names can\'t have spaces).', 'Open the sign-in link below in a private (incognito) browser window, log in there as the BOT, and press Authorize. (Or press 🔑 Sign in as the bot: if Twitch shows your own account, press "Not you?" and log in as the bot.)', 'In your Twitch chat, type /mod and the bot\'s name (like /mod MoviesRoyalBot).'], done: () => !!db.twitchBot },
   { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', how: ['Press 🧭 Set it up and answer the two questions (men and women characters, character creation).', 'Or later: Settings → ⚔️ Game → 🧍 Characters.'], done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
@@ -4380,6 +4380,29 @@ app.post('/api/test/paid', wTry(b => { const name = String(b.name || 'Test_Viewe
 app.post('/api/test/paid-clear', wTry(() => { paid.clearTests(); return paid.info(); }));
 // 🌐 Viewer website (1.75.0)
 app.get('/api/site', (req, res) => res.json({ ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false }));
+// 🔑 (1.80.1, Derek: stuck on the Twitch step) does Twitch know the website's address yet? Ask Twitch's sign-in page with that
+// address as the "send them back to" address, without signing anyone in: Twitch answers "redirect_uri does not match" when it
+// isn't in the app's OAuth Redirect URLs. (Couldn't reach Twitch from the cloud test machine: only tested with pretend answers.)
+function signinVerdict(status, text) {
+  const t = String(text || '');
+  if (/redirect_mismatch|redirect_uri does not match|does not match (the )?registered|redirect uri.{0,40}(mismatch|not match)/i.test(t)) return { ok: false, why: 'missing' };
+  if (/invalid[ _]client|client[_ ]id.{0,30}invalid|invalid.{0,20}client[_ ]id/i.test(t)) return { ok: false, why: 'client' };
+  if (status >= 200 && status < 400) return { ok: true };
+  return { ok: null, why: 'other', note: `Twitch answered ${status}${t ? ': ' + t.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160) : ''}` };
+}
+async function siteSigninCheck() {
+  const url = site.url(), id = String(db.settings.twitchClientId || '').trim();
+  if (!url) return { ok: false, why: 'nosite' };
+  if (!id) return { ok: false, why: 'noclient' };
+  const q = `https://id.twitch.tv/oauth2/authorize?client_id=${encodeURIComponent(id)}&redirect_uri=${encodeURIComponent(url)}&response_type=token&scope=`;
+  let r; try { r = await fetch(q, { redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Movie Royal', Accept: 'text/html,application/json' }, signal: AbortSignal.timeout(15000) }); }
+  catch (e) { return { ok: null, why: 'offline', note: e.message }; }
+  const v = signinVerdict(r.status, await r.text().catch(() => ''));
+  db.siteSignin = { ok: v.ok, at: Date.now(), url }; save(); pushState();
+  return { ...v, url };
+}
+app.post('/api/site/check-signin', wTry(() => siteSigninCheck()));
+app.post('/api/test/site-signin', wTry(b => ({ ...signinVerdict(Number(b.status) || 400, String(b.text || '')), pretend: true }))); // 🧪 how a Twitch answer is read
 app.post('/api/site/settings', wTry(b => { const st = db.settings; for (const k of ['siteOn', 'sitePredict', 'sitePredSay']) if (typeof b[k] === 'boolean') st[k] = b[k]; if (typeof b.siteCommand === 'string') st.siteCommand = b.siteCommand.trim().slice(0, 30) || '!site'; if (typeof b.siteTitle === 'string') st.siteTitle = b.siteTitle.trim().slice(0, 80); save(); site.connect(); pushState(); return site.info(); }));
 app.post('/api/site/poll', wTry(b => { const p = site.pollStart(b); paidSay(`🗳️ Poll on the website: “${p.q}” (${p.opts.join(' / ')}). Vote: ${site.url()}`); act('chat', `Poll started on the viewer website: “${p.q}” (${p.opts.join(' / ')})`, { icon: '🗳️', kind: 'poll' }); return site.info(); }));
 app.post('/api/site/poll/end', wTry(() => { site.pollEnd(); return site.info(); }));
