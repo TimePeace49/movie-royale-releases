@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.81.0
+- 🗺️ Marathon battles only use character maps now: no ball or car maps (the map list chat picks from, random picks and the battle on screen). Any battle in the line that had a ball map gets a character map instead.
+- 🗺️ Pick the map yourself: the new 🗺️ Map box on the 🏃 Marathon tab sets the map for battles where nobody picked one (🎲 Random each battle, or always the one you pick). A map chat picked, or the menu on a battle in the line, still comes first.
+- 🧪 Test tab → 🏃 Marathon: 🗺️ Marathon maps shows the maps and which ones the next battles would get.
+
 ## 1.80.3
 - 👀 Preview the viewer page right inside Movie Royal: 🧪 Test tab → 🎬 Scenes → 🌐 Viewer website → 👀 Preview the viewer page (also 👀 Preview in Settings → 🌐 Viewer site). A pretend page (made-up battles, guesses, a poll; works without the 24/7 bot) or your real site, at 💻 computer or 📱 phone size.
 

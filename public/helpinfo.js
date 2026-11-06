@@ -27,6 +27,8 @@ H(/^⚙ settings$/i, '⚙ Settings', 'Paid battle amounts, luck per pick, the po
 H(/^🌐 website$/i, '🌐 Website', 'Opens your viewer website: people can pick their map and luck there too (with map screenshots).');
 H(/^tip:which battle is the marathon battle/i, '⚔️ The marathon battle', 'Which battle paid battles use (import your Marathon Battle in 🎬 Movie Pool → 📥 Import).');
 H(/^tip:its name \(chat sees it/i, '✏️ Name', 'Its name: chat sees it on the pick pop-up and the website.');
+H(/^tip:the map for battles where nobody picked one/i, '🗺️ Marathon map', 'The map for marathon battles where nobody picked one: 🎲 Random = a different character map each battle, or pick one to always use it. A map chat picked (map #) or the menu on a battle in the line comes first. Marathon battles only use character maps (no ball or car maps).');
+H(/^tip:which maps the marathon battle can use/i, '🗺️ Marathon maps', 'Shows the maps marathon battles can use (character maps only) and which map the next battles would get. Nothing changes.');
 H(/^tip:see the viewer page right here/i, '👀 Preview the viewer page', 'Shows your viewer website inside Movie Royal: 🧪 a pretend one (pretend battles, guesses and a poll, works without the 24/7 bot) or 🌐 your real one, at 💻 computer or 📱 phone size.');
 H(/^tip:see it the size it is on a (computer|phone)/i, '💻 / 📱 Size', 'Shows the viewer page the size it is on a computer or on a phone.');
 H(/^tip:show (the pretend viewer page instead|your real viewer website here)/i, '🧪 / 🌐 Pretend or real', 'Switches between the pretend viewer page (made-up battles) and your real website.');

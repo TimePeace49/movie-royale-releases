@@ -670,12 +670,12 @@ function maraSeen() { // 👀 when the people with a battle waiting last chatted
   for (const m of live.chatLog) for (const k of [marathon.norm(m.login), marathon.norm(m.name)]) if (want.has(k)) out[k] = Math.max(out[k] || 0, m.at || 0);
   return out;
 }
-function maraMapList() {
-  const l = marathon.list(), n = l ? l.entries.filter(e => e.status === 'active').length : 0, big = n > raceMax();
-  if (itemLook(l)) return cards.cardMaps(true).filter(m => !(big && isRaceMap(m.id))).map(m => ({ id: m.id, name: m.name, icon: m.icon, only: !!m.maraOnly })).sort((a, b) => (b.only - a.only) || a.name.localeCompare(b.name)); // 🏃 (Derek, 1.77.0) every character + card battle map (the marathon's own map first)
-  return [...MAP_LIST.filter(m => !(big && isRaceMap(m.id))), ...(l?.chars ? cards.CARD_MAPS : [])].map(m => ({ id: m.id, name: m.name, icon: m.icon })).sort((a, b) => a.name.localeCompare(b.name));
+function maraMapList() { // 🏃 (1.81.0, Derek: "no car/ball maps should be on marathon battles") only the character maps (the marathon's own map first)
+  return cards.CARD_MAPS.map(m => ({ id: m.id, name: m.name, icon: m.icon, only: !!m.maraOnly })).sort((a, b) => (b.only - a.only) || a.name.localeCompare(b.name));
 }
-const maraRandomMap = () => { const ms = marathon.maps().filter(m => m.id !== db.lastMap); return ms.length ? ms[Math.floor(Math.random() * ms.length)].id : currentMap(); };
+// 🗺️ (1.81.0, Derek: "give me an option to pick a map if I want") the map for battles where nobody picked one: '' = 🎲 random
+const maraDefMap = () => { const id = marathon.cfg().defMap || ''; return id && marathon.maps().some(m => m.id === id) ? id : ''; };
+const maraRandomMap = () => { const d = maraDefMap(); if (d) return d; const ms = marathon.maps().filter(m => m.id !== db.lastMap); const all = ms.length ? ms : marathon.maps(); return all.length ? all[Math.floor(Math.random() * all.length)].id : 'kungfu'; };
 let maraCountKey = '';
 function maraCount(force) { const c = marathon.counter(), k = JSON.stringify(c); if (!force && k === maraCountKey) return; maraCountKey = k; broadcast({ type: 'maraCount', ...c }, 'mara'); }
 function maraPopMsg(p) {
@@ -3206,11 +3206,13 @@ app.post('/api/maps/reset-tags', (req, res) => { // ↺ the 🔴 NEW / 🔵 UPDA
 function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; mapRuns()[id] = { rev: m.rev || 1, at: Date.now() }; } // only battles while you're live count
 // 🧍 character-only maps (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2): battles with characters on can use them
 const isCharMap = id => cards.CARD_MAPS.some(m => m.id === id);
-const charsOn = () => { const l = getList(db.activeListId); return !!l?.chars || itemLook(l); }; // (🏃 the marathon's things can use the character maps too)
+const charsOn = () => { const l = getList(db.activeListId); return !!l?.chars || itemLook(l) || maraCharList(l); };
+const maraCharList = l => paid.dev() && !!l && l.id === paid.cfg().listId; // 🏃 (1.81.0) the marathon battle only uses character maps, so it always fights with characters / things // (🏃 the marathon's things can use the character maps too)
 /** 🏃 (1.77.0) the marathon battle's pieces are the things themselves (Settings → 💰 → 🏃 Marathon picks: "things look like themselves") */
 function itemLook(l) { return paid.dev() && !!l && l.id === paid.cfg().listId && marathon.cfg().itemLook !== false; } // (🛠️ dev mode only)
 const charFighters = fighters => fighters.map(f => ({ id: f.id, packId: f.id, name: f.label, tag: '', game: f.owner || '', image: f.image || f.poster || null, color: f.color || null, char: !f.item, item: f.item || undefined, gym: f.gym || undefined, sign: f.sign || undefined, look: f.look || null, gender: f.gender || 'n', chaos: f.chaos || undefined }));
 function currentMap() {
+  { const l = getList(db.activeListId); if (maraCharList(l) && live.phase !== 'lobby' && live.phase !== 'running' && (!live.map || !marathon.maps().some(m => m.id === live.map) || (!live.mapPick && maraDefMap() && live.map !== maraDefMap()))) { live.map = maraRandomMap(); live.mapPick = false; } } // 🏃 marathon battle: never a ball / car map
   if (live.map && isCharMap(live.map) && !charsOn()) live.map = null; // (characters turned off: back to a ball map)
   { const want = db.settings.map; if (isCharMap(want) && charsOn() && !live.mapPick && live.map !== want && live.phase !== 'lobby' && live.phase !== 'running') live.map = want; } // (🏃 mapPick: a marathon battle's picked map stays) // (characters turned on with a character-only map picked)
   const idle = live.phase !== 'lobby' && live.phase !== 'running';
@@ -4139,7 +4141,7 @@ async function paidRun(it, map, guess) {
   const err = await startRound({ paid: { who: it.who, login: it.login, kind: it.kind, what: it.what, at: it.at, test: it.test || undefined, map: st.map, mapPicked: st.mapPicked || undefined, luck: st.gave ? st.gave.e.label : undefined } });
   if (err) { st.undo(); live.map = mapWas; live.mapPick = false; return err; }
   if (guess && live.game) live.game.maraGuess = guess; // 🎯 who guessed what (paid out at the result)
-  if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})! 🗺️ ${mapLabel(st.map)}${st.mapPicked ? '' : ' (random)'}${st.gave ? ` · 🍀 ${st.gave.e.label} is at ${Math.round(st.gave.e.vLuck * 100) / 100}%` : st.tok ? ' · 🍀 they can still give their luck later' : ''}.${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
+  if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})! 🗺️ ${mapLabel(st.map)}${st.mapPicked ? '' : maraDefMap() === st.map ? '' : ' (random)'}${st.gave ? ` · 🍀 ${st.gave.e.label} is at ${Math.round(st.gave.e.vLuck * 100) / 100}%` : st.tok ? ' · 🍀 they can still give their luck later' : ''}.${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
   return null;
 }
 // 🎯 Guess the winner (1.76.0, Derek: "a 1 min countdown before battle to let chat guess the winner. Number them, they type in chat
@@ -4290,13 +4292,17 @@ app.post('/api/mara/guess/now', wTry(async () => { if (!live.maraGuess) throw ne
 app.post('/api/mara/guess/cancel', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(true); return {}; }));
 app.post('/api/test/mara-guess', wTry(b => { if (!live.maraGuess) throw new Error('Press ▶ Run on a battle first (chat guesses before it starts).'); const n = Number(b.n) || 1, name = String(b.name || 'Test_Guesser'); return { took: maraGuessChat({ login: name.toLowerCase(), name, text: String(n) }), count: live.maraGuess.guesses.length }; }));
 // 🏃 Marathon (1.76.0)
-app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
+app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; if (typeof b.defMap === 'string') { if (b.defMap && !marathon.maps().some(m => m.id === b.defMap)) throw new Error('That map isn\'t one of the marathon\'s maps.'); c.defMap = b.defMap; if (live.phase !== 'lobby' && live.phase !== 'running' && maraCharList(getList(db.activeListId)) && !live.maraGuess) { live.map = null; live.mapPick = false; setTimeout(() => refreshPreview(true), 0); } act('battle', b.defMap ? `set the marathon map to ${mapLabel(b.defMap)} (for battles where nobody picked one)` : 'set the marathon map back to 🎲 random', { icon: '🗺️', who: streamerName(), kind: 'setting' }); } db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
 app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
   const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');
   if (b.map !== undefined) { if (!b.map) { it.map = null; it.mapVia = null; } else { const m = marathon.findMap(b.map); if (m.error) throw new Error(m.error); it.map = m.id; it.mapVia = 'you'; } }
   if (b.luck !== undefined) { if (!b.luck) { it.luck = null; it.luckVia = null; } else { const x = marathon.items().find(i => i.id === b.luck); if (!x) throw new Error('That thing is not in the marathon battle.'); it.luck = x.id; it.luckVia = 'you'; } }
   save(); pushState(); return paid.info();
 }));
+app.get('/api/test/mara-maps', (req, res) => { // 🧪 (1.81.0) the marathon's maps: character maps only + what the next battles would get (nothing changes)
+  const maps = marathon.maps(), def = maraDefMap(), next = Array.from({ length: 5 }, () => maraRandomMap()), bad = maps.filter(m => !isCharMap(m.id)).map(m => m.name);
+  res.json({ maps, def, defName: def ? mapLabel(def) : '', next: next.map(mapLabel), bad: bad.length ? `Not character maps: ${bad.join(', ')}` : '' });
+});
 app.post('/api/mara/luck-reset', wTry(b => { const n = marathon.resetLuck(b.id || null); if (n) act('luck', b.id ? 'reset the chat-given 🍀 luck on one thing in the marathon battle' : `reset all the chat-given 🍀 luck in the marathon battle (${n})`, { icon: '🍀', who: streamerName(), kind: 'reset' }); refreshPreview(); return { reset: n }; }));
 app.post('/api/mara/token-remove', wTry(b => { db.paidTokens = marathon.tokens().filter((t, i) => i !== Number(b.i)); save(); pushState(); return {}; }));
 app.post('/api/mara/pop-again', wTry(b => { const it = paid.queue().find(x => x.id === b.id) || paid.queue()[0]; if (!it) throw new Error('Nobody is waiting.'); broadcast(maraPopMsg({ who: it.who, n: paid.queue().filter(x => marathon.norm(x.who) === marathon.norm(it.who)).length, what: it.what, test: it.test }), 'mara'); return {}; }));
