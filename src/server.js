@@ -271,7 +271,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()) },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() } },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -1220,7 +1220,8 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
-  if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg())); // (a roll call browser source opened late: it joins in)
+  if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
+  if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
@@ -4260,6 +4261,32 @@ app.post('/api/mara/luck-reset', wTry(b => { const n = marathon.resetLuck(b.id |
 app.post('/api/mara/token-remove', wTry(b => { db.paidTokens = marathon.tokens().filter((t, i) => i !== Number(b.i)); save(); pushState(); return {}; }));
 app.post('/api/mara/pop-again', wTry(b => { const it = paid.queue().find(x => x.id === b.id) || paid.queue()[0]; if (!it) throw new Error('Nobody is waiting.'); broadcast(maraPopMsg({ who: it.who, n: paid.queue().filter(x => marathon.norm(x.who) === marathon.norm(it.who)).length, what: it.what, test: it.test }), 'mara'); return {}; }));
 const maraUrl = () => `http://localhost:${PORT}/marathon.html`;
+// 📜 (1.78.0, Derek) "battles are paused" message for OBS: one line of white text scrolling right to left (public/ticker.html).
+// Marathon tab → 📜 Paused message: ▶ Show / ⏸ Hide in the scene you're in; ✏️ the words, speed, size, top or bottom.
+const TICKER_TEXT = "⏸️ Battles are paused right now, but don't worry: every battle is added to the queue, and we'll run them as soon as they're back on! Can't stick around? No worries, come say hi any other time during the stream to redeem your battles. If you can't make it back, they'll be run in the last part of the stream, and the VOD will be up to watch later. 🎟️";
+const tickerCfg = () => { const t = db.settings.marathon?.ticker || {}; return { text: String(t.text || '').trim() || TICKER_TEXT, own: !!String(t.text || '').trim(), speed: Math.max(40, Math.min(400, Number(t.speed) || 140)), size: Math.max(20, Math.min(90, Number(t.size) || 44)), pos: t.pos === 'top' ? 'top' : 'bottom', band: !!t.band }; };
+const tickerMsg = () => ({ type: 'ticker', ...tickerCfg() });
+const tickerUrl = () => `http://localhost:${PORT}/ticker.html`;
+live.ticker = { on: false, scene: '', checkedAt: 0 };
+async function tickerShow(on) {
+  const r = await obs.tickerSource(on, tickerUrl()); live.ticker = { on: !!r.on, scene: r.scene || '', checkedAt: Date.now() };
+  act('stream', on ? `📜 Showed the “battles are paused” message on stream (${r.scene})` : '📜 Took the “battles are paused” message off stream', { icon: '📜', kind: 'ticker' });
+  pushState(); return { ...r, ticker: live.ticker };
+}
+app.get('/api/mara/ticker', async (req, res) => { // (checks OBS: is it showing in the scene you're in?)
+  try { const r = await obs.tickerState(); live.ticker = { on: r.on, scene: r.scene, checkedAt: Date.now() }; } catch (e) { live.ticker = { ...live.ticker, err: e.message, checkedAt: Date.now() }; }
+  res.json({ ...live.ticker, cfg: tickerCfg() });
+});
+app.post('/api/mara/ticker/show', wTry(async b => tickerShow(b.on === 'toggle' ? !(await obs.tickerState().then(r => r.on).catch(() => live.ticker.on)) : !!b.on)));
+app.post('/api/mara/ticker', wTry(b => { // ✏️ words + look (saved right away, the OBS page changes live)
+  const c = { ...(db.settings.marathon || {}) }, t = { ...(c.ticker || {}) };
+  if ('text' in b) { const v = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 600); if (v && v !== TICKER_TEXT) t.text = v; else delete t.text; }
+  if (b.speed != null) t.speed = Math.max(40, Math.min(400, Number(b.speed) || 140));
+  if (b.size != null) t.size = Math.max(20, Math.min(90, Number(b.size) || 44));
+  if (b.pos === 'top' || b.pos === 'bottom') t.pos = b.pos;
+  if (typeof b.band === 'boolean') t.band = b.band;
+  c.ticker = t; db.settings.marathon = c; save(); broadcast(tickerMsg(), 'ticker'); pushState(); return tickerCfg();
+}));
 app.post('/api/obs/mara-source', async (req, res) => { try { const on = !!req.body?.on, sc = req.body?.scenes; const c = { ...(db.settings.marathon || {}) }; if (on && Array.isArray(sc)) { if (!sc.length) throw new Error('Pick at least one OBS scene for it.'); c.scenes = sc.map(String).slice(0, 200); } const pick = Array.isArray(c.scenes) && c.scenes.length ? c.scenes : null; const r = await obs.maraSource(on, maraUrl(), pick); c.obs = on; db.settings.marathon = c; save(); pushState(); res.json({ ok: true, url: maraUrl(), ...r }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/test/mara-chat', wTry(b => { const name = String(b.name || 'Test_Viewer'); return marathon.pick({ login: name.toLowerCase(), name, [b.kind === 'map' ? 'map' : 'luck']: b.value, via: b.via === 'site' ? 'site' : 'chat' }); })); // 🧪 pretend Test_Viewer types map # / luck # (or picks on the website)
 app.post('/api/test/mara-pop', wTry(b => { broadcast(maraPopMsg({ who: String(b.name || 'Test_Viewer'), n: Number(b.n) || 1, what: String(b.what || 'a $5 tip'), test: true }), 'mara'); return { maps: marathon.maps().length, items: marathon.items().length }; }));

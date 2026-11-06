@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.78.0
+- 📜 **Paused message** (Derek): on the 🏃 Marathon tab, **▶ Show it** puts a line of white text scrolling right to left across the stream, in the OBS scene you're in right now. It says battles are paused, every battle is safe in the line and will run when they're back on, people who can't stick around can come say hi any other time during the stream, any left at the end get run in the last part of the stream, and the VOD will be up to watch later. **⏸ Hide it** takes it off in every scene (key: **P** on the Marathon tab). ✏️ Words & look… changes the words, speed, size, top or bottom, and an optional dark strip behind it; changes show on stream right away. Test tab → 🏃 Marathon fighters → 👀 Paused message shows it in a window.
+
 ## 1.77.0
 - 🥫 **Marathon things fight as themselves** (Derek: "if it's a can it will be that can… if it's a bag of chips then that bag of chips"): Movie Royal finds a picture of each thing in the marathon battle on the internet by itself, cuts the background away and gives it googly eyes, arms and legs. 🔄 in the Marathon pool tries the next picture; 🖼️ still uploads your own. Things with no picture yet fight as a coloured block with their name.
 - 🏋️ **Workouts fight as characters in gym clothes holding a sign** with the exercise on it (push-ups, sit-ups, squats, plank, wall sit, burpees…). The new 🥫/🏋️ menu in the Marathon pool changes it if it guessed wrong.

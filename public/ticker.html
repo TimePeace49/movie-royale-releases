@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal paused message</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap" rel="stylesheet">
+<style>
+/* 📜 "Battles are paused" message (1.78.0, Derek): an OBS browser source, 1920×1080, see-through. One line of white text
+   scrolling right to left, at the bottom (or top) of the screen. Movie Royal sends the words + look (Marathon tab → 📜).
+   ?demo=1 = a pretend one on a dark background. */
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+#band { position: absolute; left: 0; right: 0; height: 80px; bottom: 30px; overflow: hidden; }
+#band.top { bottom: auto; top: 30px; }
+#band.bg { background: linear-gradient(90deg, rgba(10,6,20,0), rgba(10,6,20,.62) 6%, rgba(10,6,20,.62) 94%, rgba(10,6,20,0)); }
+#line { position: absolute; top: 50%; left: 0; white-space: nowrap; color: #fff; font: 900 44px/1 Nunito, 'Segoe UI', Arial, sans-serif; letter-spacing: .3px; will-change: transform;
+  text-shadow: 0 0 2px #000, 0 0 2px #000, 2px 2px 0 rgba(0,0,0,.85), -2px 2px 0 rgba(0,0,0,.85), 2px -2px 0 rgba(0,0,0,.85), -2px -2px 0 rgba(0,0,0,.85), 0 4px 12px rgba(0,0,0,.6); }
+</style></head>
+<body>
+<div id="band"><div id="line"></div></div>
+<script>
+'use strict';
+const DEMO = /[?&]demo/.test(location.search), band = document.getElementById('band'), line = document.getElementById('line');
+let cfg = { text: "⏸️ Battles are paused right now, but don't worry: every battle is added to the queue, and we'll run them as soon as they're back on! Can't stick around? No worries, come say hi any other time during the stream to redeem your battles. If you can't make it back, they'll be run in the last part of the stream, and the VOD will be up to watch later. 🎟️", speed: 140, size: 44, pos: 'bottom', band: false };
+let x = 1920, w = 0, last = 0;
+function apply(c) {
+  const textChanged = c.text !== cfg.text; cfg = { ...cfg, ...c };
+  line.textContent = cfg.text; line.style.fontSize = cfg.size + 'px';
+  band.style.height = Math.round(cfg.size * 1.8) + 'px'; band.className = (cfg.pos === 'top' ? 'top' : '') + (cfg.band ? ' bg' : '');
+  w = line.offsetWidth; if (textChanged) x = 1920; // (new words start from the right again)
+}
+function frame(t) {
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(.1, (t - last) / 1000) : 0; last = t;
+  x -= cfg.speed * dt; if (x < -w) x = 1920; // (once it's all gone off the left, it comes back in on the right)
+  line.style.transform = `translate(${x.toFixed(1)}px, -50%)`;
+}
+function connect() {
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=ticker`);
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'ticker') apply(m); };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+apply(cfg); (document.fonts?.ready || Promise.resolve()).then(() => { w = line.offsetWidth; });
+requestAnimationFrame(frame);
+if (DEMO) { document.body.style.background = '#2a2f3a'; const p = new URLSearchParams(location.search); apply({ ...(p.get('size') ? { size: +p.get('size') } : {}), ...(p.get('pos') ? { pos: p.get('pos') } : {}), band: p.get('band') === '1' }); if (p.get('live') === '1') connect(); }
+else connect();
+</script>
+</body></html>

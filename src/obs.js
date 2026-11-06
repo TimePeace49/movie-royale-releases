@@ -187,6 +187,39 @@ export const MARA_NAME = 'Movie Royal marathon';
 export async function maraSource(on, url, pick = null) {
   return browserSource(MARA_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick);
 }
+// 📜 (1.78.0, Derek) "battles are paused" message: one line of white text scrolling right to left. ▶ Show puts it on (on top)
+// in the scene you're in right now; ⏸ Hide turns it off in every scene (the source stays in OBS, so wherever you moved it stays).
+export const TICKER_NAME = 'Movie Royal paused message';
+export async function tickerSource(on, url) {
+  return session(async call => {
+    const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === TICKER_NAME);
+    const all = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName);
+    const inScene = async sc => call('GetSceneItemId', { sceneName: sc, sourceName: TICKER_NAME }).then(r => r.sceneItemId).catch(() => null);
+    if (!on) { let n = 0; if (have) for (const sc of all) { const id = await inScene(sc); if (id != null) { await call('SetSceneItemEnabled', { sceneName: sc, sceneItemId: id, sceneItemEnabled: false }).catch(() => {}); n++; } } return { on: false, hidden: n }; }
+    const cur = await call('GetCurrentProgramScene'), scene = cur.currentProgramSceneName || cur.sceneName; if (!scene) throw new Error('OBS has no scene showing.');
+    const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080;
+    const settings = { is_local_file: false, url, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' };
+    let id = null, fresh = false;
+    if (!have) { id = (await call('CreateInput', { sceneName: scene, inputName: TICKER_NAME, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true })).sceneItemId; fresh = true; }
+    else { const cs = (await call('GetInputSettings', { inputName: TICKER_NAME }).catch(() => ({}))).inputSettings || {}; if (cs.url !== url) await call('SetInputSettings', { inputName: TICKER_NAME, inputSettings: settings, overlay: true }); id = await inScene(scene); if (id == null) { id = (await call('CreateSceneItem', { sceneName: scene, sourceName: TICKER_NAME, sceneItemEnabled: true })).sceneItemId; fresh = true; } }
+    if (fresh) {
+      await call('SetSceneItemTransform', { sceneName: scene, sceneItemId: id, sceneItemTransform: { positionX: 0, positionY: 0, alignment: 5, boundsType: 'OBS_BOUNDS_STRETCH', boundsAlignment: 0, boundsWidth: W, boundsHeight: H, rotation: 0 } }).catch(() => {});
+      const n = ((await call('GetSceneItemList', { sceneName: scene })).sceneItems || []).length;
+      await call('SetSceneItemIndex', { sceneName: scene, sceneItemId: id, sceneItemIndex: Math.max(0, n - 1) }).catch(() => {}); // on top of everything
+    }
+    await call('SetSceneItemEnabled', { sceneName: scene, sceneItemId: id, sceneItemEnabled: true });
+    return { on: true, scene };
+  });
+}
+/** Is the paused message showing in the scene you're in right now? */
+export async function tickerState() {
+  return session(async call => {
+    const cur = await call('GetCurrentProgramScene'), scene = cur.currentProgramSceneName || cur.sceneName;
+    const id = await call('GetSceneItemId', { sceneName: scene, sourceName: TICKER_NAME }).then(r => r.sceneItemId).catch(() => null);
+    const on = id != null && !!(await call('GetSceneItemEnabled', { sceneName: scene, sceneItemId: id }).catch(() => ({}))).sceneItemEnabled;
+    return { on, scene };
+  });
+}
 /** A browser source on top of the scenes you picked (taken out of the others); off = removed from OBS. */
 async function browserSource(name, on, mkSettings, pick = null) {
   return session(async call => {

@@ -1186,7 +1186,7 @@
     <h3>🏃 Marathon fighters, ⏱️ timer + 🌴 Neon Beach</h3>
     <p class="help">Pretend marathon battles with made-up things (pictures on a white background that get cut out on the screen) and 🏋️ workout characters holding signs. The ⏱️ timer covers this whole window: click anywhere (any mouse button, or Space) to start it; the alarm rings when it's done (the countdown shows on stream in the marathon overlay too).</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="api('/api/test/battle',{items:true,count:9,map:'classic'})">🥫 On a ball map</button><button onclick="api('/api/test/battle',{items:true,count:9,map:'neon'})">🌴 On Neon Beach</button><button onclick="api('/api/test/battle',{items:true,count:9,map:'kungfu'})">🏯 On Kung Fu Town</button><button class="ghost" onclick="labTry('neon','card','chars')" title="Neon Beach in the 🧪 Quick test lab (only in this window)">🧪 Neon Beach in the lab</button></div>
-    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="mtTest(10)">⏱️ 10-second timer</button><button onclick="mtTest(45)">⏱️ 45-second timer</button><button class="ghost" onclick="window.open('/marathon.html?demo=1&timer=1','mara-overlay','width=960,height=560')" title="What the timer looks like on stream">👀 Timer on stream</button><button class="ghost" onclick="window.open('/marathon.html?demo=1&guess=1','mara-overlay','width=960,height=560')" title="The big guess pop-up, then it slides to the side">👀 Big guess pop-up</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="mtTest(10)">⏱️ 10-second timer</button><button onclick="mtTest(45)">⏱️ 45-second timer</button><button class="ghost" onclick="window.open('/marathon.html?demo=1&timer=1','mara-overlay','width=960,height=560')" title="What the timer looks like on stream">👀 Timer on stream</button><button class="ghost" onclick="window.open('/marathon.html?demo=1&guess=1','mara-overlay','width=960,height=560')" title="The big guess pop-up, then it slides to the side">👀 Big guess pop-up</button><button class="ghost" onclick="window.open('/ticker.html?demo=1&live=1','mr-ticker','width=960,height=560')" title="The scrolling “battles are paused” message (Marathon tab → 📜 Paused message)">👀 Paused message</button></div>
     <div class="row" style="gap:6px;align-items:center;margin-top:6px"><input id="mtSecsIn" placeholder="Type a name, like: 1 minute wall sit" style="max-width:320px" onkeydown="if(event.key==='Enter')mtSecsTry()" title="Check what a name fights as and its timer"><button onclick="mtSecsTry()">🔎 Check a name</button></div>
     <div id="mtTestOut" class="help" style="margin-top:8px"></div>
   </div>
@@ -1493,11 +1493,12 @@ function kbClick(scope, re, why) { // press the visible button in that part of t
 }
 function kbFocus(scope, re) { const i = [...document.querySelectorAll(`${scope} input, ${scope} textarea`)].find(x => kbVis(x) && re.test(x.placeholder || '')); if (i) { i.focus(); i.select?.(); } else toast('⌨️ No box to type in here right now'); }
 const kbPower = i => { const b = [...document.querySelectorAll('#events button')].filter(kbVis)[i]; if (b) { b.click(); toast('⚡ ' + esc(b.textContent.trim())); } };
-const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings' };
+const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings', mara: '🏃 Marathon' };
 const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typing?]
   ['help', 'any', '❓ Help mode on / off', 'Ctrl+H', () => helpMode(!hmOn()), true],
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
   ['b-start', 'battle', '▶ START ROYAL', 'G', () => kbClick('#v-battle', /START ROYAL/, 'START ROYAL')],
+  ['m-ticker', 'mara', '📜 Paused message on / off', 'P', () => tickerToggle()],
   ['b-timer', 'battle', '⏱️ 2-min chat timer, then start', 'T', () => kbClick('#v-battle', /chat timer|join timer/i, 'The chat timer')],
   ['b-vote', 'battle', '🗳️ Chat vote on the map', 'V', () => kbClick('#v-battle', /Chat vote|End vote now/, 'Chat vote')],
   ['b-shuffle', 'battle', '🔀 Shuffle the pieces', 'X', () => kbClick('#v-battle', /^🔀 Shuffle$/, 'Shuffle')],
@@ -2581,12 +2582,43 @@ function renderMara() {
     <div class="card"><h2 style="margin:0 0 4px">🎟️ ${q.length} owed</h2><div class="help" style="margin:0">${l ? `Battle: <b>${esc(l.name)}</b> · ` : ''}${tk.length ? `🍀 ${tk.length} luck still to give (${esc([...new Set(tk.map(t => t.who))].slice(0, 6).join(', '))}): they type <b>luck #</b> or use the website` : 'Everyone has given their 🍀.'}</div></div>
     ${lw ? `<div class="card"><h2 style="margin:0 0 4px">🏆 Last winner</h2><b>${esc(lw.label)}</b>${lw.sub ? ` <span class="muted">${esc(lw.sub)}</span>` : ''}</div>` : ''}
     <div class="card"><h2 style="margin:0 0 6px">🍀 Luck from chat</h2>${top.length ? top.map(x => `<div class="row" style="gap:6px"><span class="grow">${x.n}. ${esc(x.label)}</span><b>${x.luck}%</b></div>`).join('') : '<div class="help" style="margin:0">Nothing has luck yet.</div>'}<div class="help" style="margin:6px 0 0">It stays on a thing until it wins, then starts over. 🏃 Marathon pool has all of them.</div></div>
+    ${tickerCard(M.ticker || {})}
     <div class="card"><h2 style="margin:0 0 6px">📺 On stream (OBS)</h2><div class="help" style="margin:0 0 6px">The <b>battles owed</b> counter and the pick pop-up show only in OBS (not here), on top of the scenes you pick.</div>
       <div class="row" style="gap:6px;flex-wrap:wrap">${M.obs ? '<button onclick="scenePick(\'mara\')" title="Change which OBS scenes show the marathon counter + pop-up">🎬 Scenes…</button><button class="ghost" onclick="maraObs(false)" title="Take the marathon counter + pop-up out of OBS">⏸ Take it out</button>' : '<button class="primary" onclick="scenePick(\'mara\')" title="Put the marathon counter + pop-up in OBS (pick the scenes)">🎬 Put it in OBS</button>'}<button class="ghost" onclick="window.open('/marathon.html?demo=1','_blank','width=960,height=560')" title="See what the counter + pop-up look like (a pretend one)">👀 Preview</button></div></div>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="ghost" onclick="setView('marapool')" title="The things in the marathon battle, their 🍀 luck and pictures">🏃 Marathon pool</button><button class="ghost" onclick="setView('settings');setTimeout(()=>setSub('prices'),50)" title="Paid battle amounts, the luck per pick, the pop-up and counter">⚙ Settings</button>${S.site?.on ? '<button class="ghost" onclick="window.open(S.site.url,\'_blank\')" title="Your viewer website (people can pick there too)">🌐 Website</button>' : ''}</div>`;
   if ($('mSide').dataset.k !== sh) { $('mSide').dataset.k = sh; $('mSide').innerHTML = sh; }
 }
 setInterval(() => { if (view === 'mara' && S) { $('mQueue').dataset.k = ''; renderMara(); } }, 30000); // (the "x min ago" times)
+// 📜 (1.78.0, Derek) "battles are paused" message: one line of white text scrolling across the stream (OBS browser source,
+// public/ticker.html). ▶ Show = on in the OBS scene you're in now; ⏸ Hide = off in every scene.
+function tickerCard(T) {
+  return `<div class="card"><h2 style="margin:0 0 4px">📜 Paused message</h2><div class="help" style="margin:0 0 6px">A line of white text scrolling across the stream: battles are paused, theirs are safe in the line, come back any time (or they run near the end, and the VOD stays up).</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${T.on ? '' : 'primary'}" id="tkBtn" onclick="tickerToggle()" title="${T.on ? 'Take the paused message off stream (every scene)' : 'Show the paused message in the OBS scene you are in right now'}">${T.on ? '⏸ Hide it' : '▶ Show it'}</button><button class="ghost" onclick="tickerEdit()" title="Change the paused message's words, speed, size and spot">✏️ Words &amp; look…</button><button class="ghost" onclick="window.open('/ticker.html?demo=1&live=1','mr-ticker','width=960,height=560')" title="See the paused message in a window (a pretend one)">👀 Preview</button></div>
+    <div class="help" style="margin:6px 0 0">${T.on ? `🟢 Showing in <b>${esc(T.scene || 'this scene')}</b>` : '⚪ Not showing in the scene you\'re in'}${T.err && !T.on ? ` · <span class="muted">OBS: ${esc(T.err)}</span>` : ''}</div></div>`;
+}
+let tkBusy = false;
+async function tickerToggle() {
+  if (tkBusy) return; tkBusy = true; const b = $('tkBtn'); if (b) b.disabled = true;
+  try { const r = await api('/api/mara/ticker/show', { on: 'toggle' }); toast(r.on ? `📜 Paused message is on in “${esc(r.scene || 'your scene')}”` : '📜 Paused message is off'); if (S?.mara) S.mara.ticker = { ...(S.mara.ticker || {}), ...r.ticker }; renderMara(); }
+  catch (e) { toast('⚠️ ' + e.message); } finally { tkBusy = false; if ($('tkBtn')) $('tkBtn').disabled = false; }
+}
+async function tickerCheck() { try { const r = await api('/api/mara/ticker'); if (S?.mara) { S.mara.ticker = r; renderMara(); } } catch {} }
+setInterval(() => { if (view === 'mara' && S && !document.hidden) tickerCheck(); }, 15000);
+function tickerEdit() {
+  const C = S?.mara?.ticker?.cfg || {}; let d = $('tkDlg');
+  if (!d) { d = document.createElement('dialog'); d.id = 'tkDlg'; document.body.appendChild(d); }
+  d.innerHTML = `<div class="inner" style="max-width:560px"><h2 style="margin-top:0">📜 Paused message</h2>
+    <label>✏️ The words (one line on stream)</label><textarea id="tkText" rows="5" style="width:100%" title="The paused message's words" onchange="tickerSet({text:this.value})">${esc(C.text || '')}</textarea>
+    <div class="row" style="gap:6px;margin:4px 0 10px"><button class="ghost" onclick="$('tkText').value='';tickerSet({text:''}).then(()=>tickerEdit())" title="Put the paused message's words back to the ones it came with">↺ Back to the first words</button></div>
+    <div class="grid2"><div><label>🏃 Speed: <b id="tkSpV">${C.speed || 140}</b></label><input type="range" min="40" max="400" step="10" value="${C.speed || 140}" title="How fast the paused message scrolls" oninput="$('tkSpV').textContent=this.value" onchange="tickerSet({speed:+this.value})"></div>
+      <div><label>🔠 Size: <b id="tkSzV">${C.size || 44}</b></label><input type="range" min="20" max="90" step="2" value="${C.size || 44}" title="How big the paused message's letters are" oninput="$('tkSzV').textContent=this.value" onchange="tickerSet({size:+this.value})"></div></div>
+    <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px"><label style="margin:0">📍 Where</label><select style="width:auto" title="Top or bottom of the screen" onchange="tickerSet({pos:this.value})"><option value="bottom" ${C.pos !== 'top' ? 'selected' : ''}>⬇️ Bottom</option><option value="top" ${C.pos === 'top' ? 'selected' : ''}>⬆️ Top</option></select>
+      <label class="ck" style="margin:0"><input type="checkbox" ${C.band ? 'checked' : ''} onchange="tickerSet({band:this.checked})"> <span>Dark strip behind the words</span></label></div>
+    <p class="help">Changes show on stream right away. 👀 Preview shows it in a window.</p>
+    <div class="row" style="gap:6px;justify-content:flex-end"><button class="ghost" onclick="window.open('/ticker.html?demo=1&live=1','mr-ticker','width=960,height=560')" title="See the paused message in a window (a pretend one)">👀 Preview</button><button class="primary" onclick="$('tkDlg').close()">Done</button></div></div>`;
+  if (!d.open) d.showModal();
+}
+async function tickerSet(o) { try { const c = await api('/api/mara/ticker', o); if (S?.mara?.ticker) S.mara.ticker.cfg = c; toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
 function mGuessTick() { const el = $('mGuessT'), G = S?.mara?.guess; if (!el || !G) return; const t = Math.max(0, Math.ceil((G.endsAt - Date.now()) / 1000)); el.textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 setInterval(() => { if (view === 'mara') mGuessTick(); }, 500);
 async function maraSet(id, o) { try { await api('/api/mara/set', { id, ...o }); } catch (e) { toast('⚠️ ' + e.message); } }

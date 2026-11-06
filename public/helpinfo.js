@@ -36,6 +36,17 @@ H(/^tip:things to add to the marathon battle/i, '➕ Things to add', 'Type thing
 H(/^tip:add these things to the marathon battle/i, '➕ Add', 'Adds what you typed to the marathon battle.');
 H(/^tip:take the chat-given luck off everything/i, '↺ Reset all chat luck', 'Takes the luck chat gave off everything in the marathon battle.');
 H(/guess countdown/i, '🎯 Guess countdown', 'When you press ▶ Run on a marathon battle, chat gets this many seconds to type the number of the thing they think wins (one guess each). Everyone who is right wins a battle, added to the line in the order they guessed. 0 = no countdown.');
+H(/^tip:show the paused message in the obs scene/i, '▶ Show the paused message', 'Puts a line of white text scrolling right to left across the stream, in the OBS scene you are in right now: battles are paused, theirs are safe in the line, come say hi any time to have them run (or they run near the end of the stream, and the VOD stays up). Key: P on the Marathon tab.');
+H(/^tip:take the paused message off stream/i, '⏸ Hide the paused message', 'Takes the scrolling paused message off stream in every scene (it stays in OBS, so where you put it is kept for next time). Key: P on the Marathon tab.');
+H(/^tip:change the paused message/i, '✏️ Words & look', 'Change the paused message: its words, how fast it scrolls, how big the letters are, top or bottom, and a dark strip behind it. Changes show on stream right away.');
+H(/^tip:see the paused message in a window/i, '👀 Preview', 'Shows the paused message in a window so you can see how it looks.');
+H(/^tip:the paused message's words/i, '✏️ The words', 'What the paused message says (one line, it scrolls right to left).');
+H(/^tip:put the paused message's words back/i, '↺ Back to the first words', 'Puts the paused message back to the words it came with.');
+H(/^tip:how fast the paused message scrolls/i, '🏃 Speed', 'How fast the paused message scrolls across the screen.');
+H(/^tip:how big the paused message's letters/i, '🔠 Size', 'How big the paused message\'s letters are (44 = the start size, readable but not huge).');
+H(/^tip:top or bottom of the screen/i, '📍 Where', 'Shows the paused message at the bottom or the top of the screen.');
+H(/dark strip behind the words/i, '▬ Dark strip', 'A see-through dark strip behind the paused message, so it\'s easy to read over bright things.');
+H(/^👀 paused message$/i, '👀 Paused message', 'Shows the scrolling paused message in a window (a pretend one).');
 H(/^tip:fights as: the thing itself/i, '🥫/🏋️ Fights as', 'How it fights in the marathon battle: 🥫 Thing = its picture, cut out of its background, with googly eyes, arms and legs. 🏋️ Workout = a character in gym clothes holding a sign with its name. Auto = guessed from the name (push-ups, plank, wall sit, squats… = workout).');
 H(/^tip:⏱️ timer seconds when it wins/i, '⏱️ Timer seconds', 'How long its timer is when it wins. Empty = read from its name (“45-second plank”, “1 minute wall sit”, “1:30”). 0 = no timer.');
 H(/^tip:🌐 another picture from the internet/i, '🔄 Another picture', 'Swaps its picture for the next one found on the internet for its name (keep pressing until it\'s the right one). 🖼️ uploads your own instead.');
