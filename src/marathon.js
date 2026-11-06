@@ -12,7 +12,22 @@ import * as paid from './paid.js';
 
 let H = { list: () => null, maps: () => [], say: () => {}, act: () => {}, popup: () => {}, changed: () => {}, siteUrl: () => '' };
 export function setHooks(h) { H = { ...H, ...h }; }
-export const cfg = () => ({ luckPer: 1, popSecs: 40, guessSecs: 60, counter: true, corner: 'bl', popup: true, ...(db.settings.marathon || {}) });
+export const cfg = () => ({ luckPer: 1, popSecs: 40, guessSecs: 60, counter: true, corner: 'bl', popup: true, itemLook: true, timerOn: true, alarmSecs: 5, ...(db.settings.marathon || {}) });
+
+// 🏋️ (1.77.0, Derek) a workout fights as a character in gym clothes holding a sign; everything else fights as the thing itself.
+// The pool can say which by hand (entry.mk 'thing' | 'workout'); otherwise it's guessed from the words.
+const WORKOUT = /\b(push[- ]?ups?|press[- ]?ups?|sit[- ]?ups?|squats?|jumping[- ]?jacks?|star[- ]?jumps?|planks?|wall[- ]?sits?|burpees?|lunges?|crunch(es)?|pull[- ]?ups?|chin[- ]?ups?|jog(ging)?|run(ning)?|sprints?|high[- ]?knees|mountain[- ]?climbers?|leg[- ]?raises?|calf[- ]?raises?|dips|bear[- ]?crawls?|jump(ing)?[- ]?rope|skipping|stretch(es|ing)?|yoga|toe[- ]?touch(es)?|exercises?|workout|work[- ]?out|reps)\b/i;
+export const kindOf = e => e?.mk === 'thing' || e?.mk === 'workout' ? e.mk : WORKOUT.test(`${e?.label || ''} ${e?.sub || ''}`) ? 'workout' : 'thing';
+/** ⏱️ how long a timed one lasts, in seconds (entry.mSecs by hand, else read from the words: "45-second plank", "1 minute wall sit",
+ *  "1:30 plank", "2 mins", "30s"). 0 = not timed. */
+export function secsOf(e) {
+  if (e?.mSecs != null && e.mSecs !== '') return Math.max(0, Math.min(7200, Number(e.mSecs) || 0));
+  const t = `${e?.label || ''} ${e?.sub || ''}`.toLowerCase();
+  let m = t.match(/\b(\d{1,2}):([0-5]\d)\b/); if (m) return Number(m[1]) * 60 + Number(m[2]);
+  let n = 0; const re = /(\d+(?:\.\d+)?|a|an|one|two|three|four|five|half an?)\s*[- ]?\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?|s)\b/g, W = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5 };
+  while ((m = re.exec(t))) { const v = /^half/.test(m[1]) ? .5 : W[m[1]] ?? Number(m[1]), u = m[2]; if (!(v > 0)) continue; if (u === 's' && !/\d$/.test(m[1])) continue; n += v * (/^h/.test(u) ? 3600 : /^m/.test(u) ? 60 : 1); }
+  return Math.round(Math.min(7200, n));
+}
 export const list = () => H.list();
 export const tokens = () => (db.paidTokens ||= []);
 const uid = () => crypto.randomBytes(6).toString('hex');
@@ -27,7 +42,7 @@ export function maps() { return H.maps().map((m, i) => ({ n: i + 1, id: m.id, na
 /** The things in the marathon battle, numbered in the pool's order (only the ones that are in). */
 export function items() {
   const l = list(); if (!l) return [];
-  return l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, id: e.id, label: e.label, sub: e.sub || '', image: e.image || null, luck: r2(e.vLuck), wins: e.vWins || 0 }));
+  return l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, id: e.id, label: e.label, sub: e.sub || '', image: e.image || null, luck: r2(e.vLuck), wins: e.vWins || 0, kind: kindOf(e), secs: secsOf(e), mk: e.mk || null, mSecs: e.mSecs ?? null }));
 }
 function find(arr, v, what) {
   const s = String(v ?? '').trim().replace(/^#/, ''); if (!s) return { error: `Which ${what}? Type its number.` };

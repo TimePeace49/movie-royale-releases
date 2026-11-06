@@ -45,12 +45,32 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .win.on { transform: translate(-50%, 0); }
 .win h1 { margin: 0; font: 400 50px/1.1 'Lilita One', sans-serif; color: #7dffa5; }
 .win div { font-size: 26px; font-weight: 900; margin-top: 4px; }
+/* 🎯 (1.77.0) the big guess pop-up in the middle when guessing starts, then it slides over to the side panel */
+.gbig { position: absolute; left: 50%; top: 50%; width: 1600px; max-height: 1010px; box-sizing: border-box; padding: 26px 36px 22px; border-radius: 30px; transform: translate(-50%, -50%) scale(.6); opacity: 0;
+  background: linear-gradient(165deg, rgba(10,30,44,.97), rgba(30,14,52,.97)); border: 5px solid #2fe0c8; box-shadow: 0 20px 80px rgba(0,0,0,.6), 0 0 60px rgba(47,224,200,.4); transition: transform .5s cubic-bezier(.2,1.4,.4,1), opacity .4s; }
+.gbig.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.gbig.away { opacity: 0; transform: translate(10%, -50%) scale(.32); transition: transform .7s cubic-bezier(.5,0,.3,1), opacity .7s ease-in; }
+.gbig h1 { margin: 0; text-align: center; font: 400 84px/1 'Lilita One', sans-serif; color: #2fe0c8; text-shadow: 0 5px 0 #04574d, 0 0 40px rgba(47,224,200,.5); }
+.gbig .gb2 { display: flex; align-items: center; justify-content: center; gap: 30px; margin: 10px 0 6px; }
+.gbig .gt { font: 400 110px/1 'Lilita One', sans-serif; color: #ffcf4a; text-shadow: 0 4px 0 #7a3c00; }
+.gbig .gh { font-size: 30px; font-weight: 900; line-height: 1.25; } .gbig .gh b { color: #2fe0c8; } .gbig .gh .for { color: #ffd9f0; font-size: 24px; }
+.gbig .grid { font-size: 28px; gap: 4px 16px; margin-top: 10px; } .gbig .grid div { padding: 3px 10px; }
+/* ⏱️ (1.77.0) the exercise timer */
+.mt { position: absolute; left: 50%; bottom: 40px; transform: translate(-50%, 260px); transition: transform .5s cubic-bezier(.2,1.4,.4,1); min-width: 640px; max-width: 1400px; padding: 16px 40px 18px; border-radius: 26px; text-align: center; box-sizing: border-box;
+  background: linear-gradient(135deg, rgba(30,14,52,.95), rgba(70,20,70,.95)); border: 4px solid #ffcf4a; box-shadow: 0 14px 60px rgba(0,0,0,.6); }
+.mt.on { transform: translate(-50%, 0); }
+.mt .mw { font: 400 44px/1.1 'Lilita One', sans-serif; color: #ffcf4a; } .mt .mb { font: 400 150px/1 'Lilita One', sans-serif; font-variant-numeric: tabular-nums; text-shadow: 0 5px 0 #7a3c00; } .mt .mh { font-size: 26px; font-weight: 900; color: #e8dcff; }
+.mt .mbar { height: 14px; border-radius: 8px; background: rgba(255,255,255,.14); overflow: hidden; margin-top: 10px; } .mt .mbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #46e05a, #ffd23a, #ff3a3a); }
+.mt.low .mb { color: #ff5a5a; } .mt.done { border-color: #ff3a3a; animation: mtF .5s steps(2) infinite; } .mt.done .mb { font-size: 120px; color: #ff5a5a; }
+@keyframes mtF { 50% { background: linear-gradient(135deg, rgba(160,10,20,.96), rgba(220,40,40,.96)); } }
 
 </style></head>
 <body>
 <div class="count off" id="count"><div class="n" id="cn">0</div><div class="t"><div id="ct">battles owed</div><div class="nx" id="cx"></div></div></div>
 <div class="pop" id="pop"></div>
 <div class="guess" id="guess"></div>
+<div class="gbig" id="gbig"></div>
+<div class="mt" id="mt"></div>
 <div class="win" id="win"></div>
 <script src="/sfx.js"></script>
 <script>
@@ -81,16 +101,26 @@ function next() {
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${secs}s linear`; bar.style.transform = 'scaleX(0)'; }));
   setTimeout(() => { p.classList.remove('on'); setTimeout(next, 600); }, secs * 1000);
 }
-let gT = null, gEnd = 0;
+let gT = null, gEnd = 0, gBigT = null, gBigOn = false;
+const BIG_SECS = 14; // (how long the big pop-up stays in the middle before it slides to the side)
 function guess(m) {
-  const g = $('guess'); clearInterval(gT);
-  if (!m.on) { g.classList.remove('on'); return; }
+  const g = $('guess'), B = $('gbig'); clearInterval(gT); clearTimeout(gBigT);
+  if (!m.on) { g.classList.remove('on'); B.className = 'gbig'; gBigOn = false; return; }
+  const fresh = !m.at || Date.now() - m.at < (BIG_SECS - 2) * 1000; // (a page that opens late goes straight to the side panel)
+  if (fresh && m.items?.length) {
+    const ic = m.items.length > 40 ? 4 : m.items.length > 20 ? 3 : m.items.length > 8 ? 2 : 1;
+    B.innerHTML = `<h1>🎯 GUESS THE WINNER!</h1><div class="gb2"><div class="gt" id="gtb"></div><div class="gh">Type the <b>number</b> of the one you think wins in chat.<br>Right = <b>you win a battle!</b> (one guess each)<div class="for">⚔️ This battle is for ${esc(m.who || '')}${m.map ? ` · 🗺️ ${esc(m.map)}` : ''}</div></div></div>
+      <div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div>`;
+    B.className = 'gbig'; gBigOn = true; g.classList.remove('on');
+    requestAnimationFrame(() => { let f = 28; while (B.scrollHeight > 1010 && f > 12) { f--; B.querySelector('.grid').style.fontSize = f + 'px'; } B.classList.add('on'); });
+    gBigT = setTimeout(() => { gBigOn = false; B.classList.add('away'); g.classList.add('on'); setTimeout(() => { if (!gBigOn) B.className = 'gbig'; }, 800); }, Math.max(3, BIG_SECS - (m.at ? (Date.now() - m.at) / 1000 : 0)) * 1000);
+  }
   gEnd = m.endsAt; const ic = m.items.length > 36 ? 2 : 1;
   g.innerHTML = `<h1>🎯 GUESS THE WINNER</h1><div class="gt" id="gt"></div><div class="gh">Type the <b>number</b> in chat. Right = <b>you win a battle!</b></div>
     <div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div>
     <div class="gn" id="gn"></div>`;
-  gn(m); requestAnimationFrame(() => { let f = ic === 2 ? 17 : 21; while (g.scrollHeight > 960 && f > 11) { f--; g.querySelector('.grid').style.fontSize = f + 'px'; } g.classList.add('on'); });
-  const tick = () => { const s = Math.max(0, Math.ceil((gEnd - Date.now()) / 1000)); $('gt').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  gn(m); requestAnimationFrame(() => { let f = ic === 2 ? 17 : 21; while (g.scrollHeight > 960 && f > 11) { f--; g.querySelector('.grid').style.fontSize = f + 'px'; } if (!gBigOn) g.classList.add('on'); });
+  const tick = () => { const s = Math.max(0, Math.ceil((gEnd - Date.now()) / 1000)), t = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); $('gt').textContent = t; if ($('gtb')) $('gtb').textContent = t; };
   tick(); gT = setInterval(tick, 250);
   try { if (audio.on && window.SFX) { SFX.init(); SFX.setVolume({ on: true, sfx: audio.sfx, music: 0 }); SFX.play('ding'); } } catch {}
 }
@@ -101,9 +131,21 @@ function win(m) {
   w.classList.add('on'); try { if (audio.on && m.names.length && window.SFX) SFX.play('confettiPop'); } catch {}
   setTimeout(() => w.classList.remove('on'), 9000);
 }
+// ⏱️ the exercise timer (Movie Royal says when it starts; the alarm rings here too so stream hears it)
+let MT = null, mtOff = 0, mtI = null, mtRang = '';
+const mtFmt = s => { s = Math.max(0, Math.ceil(s)); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : String(s); };
+function timer(m) {
+  MT = m.t; mtOff = (m.now || Date.now()) - Date.now(); clearInterval(mtI); const el = $('mt');
+  if (!MT) { el.className = 'mt'; return; }
+  const left = () => MT.state === 'running' ? (MT.endsAt - (Date.now() + mtOff)) / 1000 : MT.state === 'paused' ? MT.left : MT.state === 'done' ? 0 : MT.secs;
+  el.innerHTML = `<div class="mw">🏋️ ${esc(MT.label)}</div><div class="mb" id="mtb"></div><div class="mh" id="mth"></div><div class="mbar"><i id="mtbar"></i></div>`;
+  const paint = () => { const L = left(); $('mtb').textContent = MT.state === 'done' ? "⏰ TIME'S UP!" : mtFmt(L); $('mth').textContent = MT.state === 'ready' ? 'Get ready…' : MT.state === 'paused' ? '⏸ Paused' : MT.state === 'done' ? 'Done! 💪' : `${MT.who ? `For ${MT.who} · ` : ''}keep going!`; $('mtbar').style.width = Math.max(0, Math.min(100, (1 - L / MT.secs) * 100)) + '%'; el.className = 'mt on' + (MT.state === 'done' ? ' done' : MT.state === 'running' && L <= 10 ? ' low' : ''); };
+  paint(); if (MT.state === 'running') mtI = setInterval(paint, 100);
+  if (MT.state === 'done' && mtRang !== MT.id) { mtRang = MT.id; try { if (audio.on && window.SFX) { SFX.init(); SFX.setVolume({ on: true, sfx: audio.sfx, music: 0 }); SFX.play('alarm', { secs: MT.alarmSecs || 5 }); } } catch {} }
+}
 function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=mara`);
-  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'maraCount') count(m); else if (m.type === 'maraPop') pop(m); else if (m.type === 'maraGuess') guess(m); else if (m.type === 'maraGuessN') gn(m); else if (m.type === 'maraGuessWin') win(m); else if (m.type === 'audio') audio = { on: m.on, sfx: m.sfx }; };
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'maraCount') count(m); else if (m.type === 'maraPop') pop(m); else if (m.type === 'maraGuess') guess(m); else if (m.type === 'maraGuessN') gn(m); else if (m.type === 'maraGuessWin') win(m); else if (m.type === 'maraTimer') timer(m); else if (m.type === 'audio') audio = { on: m.on, sfx: m.sfx }; };
   ws.onclose = () => setTimeout(connect, 2000);
 }
 if (DEMO) {
@@ -111,7 +153,8 @@ if (DEMO) {
   const maps = ['Crumbling Cliff', 'Deep Space', 'Lava Lake', 'Sweet Donut', 'Pirate Battle', 'Santa\'s Workshop', 'Turkey Trouble', 'Zombie Horde', 'Pompeii', 'Fart Farm', 'Grand Prix', 'Monster Mash'].map((n, i) => ({ n: i + 1, name: n, icon: '🗺️' }));
   const items = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Durian candy', 'Octopus', '10 push-ups', '20 squats', 'MERCY'].map((n, i) => ({ n: i + 1, label: n, luck: i === 3 ? 3 : 0 }));
   count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' });
-  if (/guess/.test(location.search)) { guess({ on: true, endsAt: Date.now() + 60000, items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 2000); }
+  if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 60000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
+  else if (/timer/.test(location.search)) timer({ t: { id: 'd', label: '45-second plank', secs: 45, state: 'running', endsAt: Date.now() + 45000, who: 'SpicyPanda', alarmSecs: 5 }, now: Date.now() });
   else pop({ who: 'SpicyPanda', n: 1, what: 'a $5 tip', owed: 4, luckPer: 1, secs: 600, site: 'movie-royal.example.workers.dev/live', maps, items });
 } else connect();
 </script>

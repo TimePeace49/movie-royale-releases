@@ -126,6 +126,8 @@ window.SFX = (() => {
       for (let i = 0; i < 14; i++) noise({ dur: .1, v: .12, type: 'bandpass', f0: 1500 + Math.random() * 2500, q: 3, at: .2 + Math.random() * 2.2 }); // confetti pops
       noise({ dur: 2.5, v: .12, type: 'bandpass', f0: 1200, q: .5, a: .4, at: .3 }); // crowd-ish cheer
     },
+    // ⏰ (1.77.0) the marathon exercise timer is done: a loud alarm clock (beep-beep-beep-beep, pause) for o.secs seconds (5)
+    alarm: (o = {}) => { const secs = Math.max(1, Math.min(30, o.secs || 5)); for (let t = 0; t < secs - .05; t += 1) for (let k = 0; k < 4; k++) { const at = t + k * .13; if (at < secs) { tone({ type: 'square', f0: 1760, dur: .09, v: .16, at }); tone({ type: 'square', f0: 880, dur: .09, v: .08, at }); } } },
     buzzer: () => { tone({ type: 'sawtooth', f0: 110, dur: .8, v: .22 }); tone({ type: 'square', f0: 116, dur: .8, v: .12 }); },
     queued: () => notes([79, 84], .08, (n, at) => tone({ type: 'square', f0: hz(n), dur: .07, v: .08, at })),
     joined: () => tone({ type: 'triangle', f0: hz(84), f1: hz(91), dur: .12, v: .12 }),
@@ -300,6 +302,15 @@ window.SFX = (() => {
         if (i % 4 === 2) for (const n of ch) tone({ type: 'square', f0: hz(n + 12), dur: STEP * .9, v: .02 + intensity * .008, at, bus: musicBus, detune: 7 });
         if (mel) { tone({ type: 'sawtooth', f0: hz(mel + 12), dur: STEP * 1.6, v: .038 + intensity * .02, at, bus: musicBus, detune: 4 }); tone({ type: 'triangle', f0: hz(mel + 24), dur: STEP * .8, v: .015, at, bus: musicBus }); }
         if (i % 8 === 0) { noise({ dur: STEP * 8.4, v: .045, type: 'highpass', f0: 2600, a: STEP, at, bus: musicBus }); noise({ dur: STEP * 8.4, v: .035, type: 'bandpass', f0: 380 + Math.sin(step * .7) * 120, q: .6, a: STEP * 3, at, bus: musicBus }); } // ⛈️ rain + wind under it (1.70.0: the battle is in a storm)
+      } else
+      if (curMap === 'card-neon' && mode === 'fight') { // 🌴 (1.77.0) an 80s synthwave night drive: driving octave bass, big gated snare, warm pads and a bright arpeggio (original)
+        const roots = [45, 41, 48, 43], r = roots[bar], ch = [[57, 60, 64], [53, 57, 60], [55, 60, 64], [55, 59, 62]][bar];
+        tone({ type: 'sawtooth', f0: hz(r - 12 + (i % 2 ? 12 : 0)), dur: STEP * .8, v: .06 + intensity * .02, at, bus: musicBus, detune: 5 });
+        if (i % 8 === 0) tone({ type: 'sine', f0: 130, f1: 42, dur: .22, v: .6, at, bus: musicBus });
+        if (i % 8 === 4) { noise({ dur: .32, v: .22 + intensity * .05, type: 'bandpass', f0: 1800, q: .5, at, bus: musicBus }); noise({ dur: .5, v: .06, type: 'highpass', f0: 3000, a: .01, at, bus: musicBus }); }
+        if (i % 2 === 0) noise({ dur: .03, v: .05, type: 'highpass', f0: 9000, at, bus: musicBus });
+        if (i === 0) ch.forEach(n => tone({ type: 'sawtooth', f0: hz(n), dur: STEP * 16, v: .022, a: .25, at, bus: musicBus, detune: 9 }));
+        const arp = ch.concat([ch[0] + 12])[i % 4] + 12; if (intensity > .2 || i % 2 === 0) tone({ type: 'square', f0: hz(arp), dur: STEP * .7, v: .022 + intensity * .012, at, bus: musicBus });
       } else
       if (curMap === 'card-ww2' && mode === 'fight') { // 🪖 a military march: snare rolls, a bass drum and a low brass line (original)
         if (i % 4 === 0) tone({ type: 'sine', f0: 110, f1: 45, dur: .16, v: .55, at, bus: musicBus });

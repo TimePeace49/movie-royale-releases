@@ -34,15 +34,18 @@ export const CARD_MAPS = [ // 🃏 card-only maps (drawn by cardfight.js). final
   { id: 'ww2', name: 'WW2 Battlefield', icon: '🪖', desc: 'A muddy WW2 battlefield. Every pack has a rifle and shoots it out (up close: rifle butts and kicks). Two tanks shell the field (a red crosshair shows where) and bombers fly over dropping bombs (shadows show where). The last two get a FINAL FIGHT: a one-on-one shootout.', modes: ['card'], finalFight: true },
   // (a map with charOnly: true would only be for battles with 🧍 characters (Battle tab), never for card packs. None right now:
   // the 🏴‍☠️ Pirate Battle was one until 1.73.0, when Derek asked for it in card battles too)
-  { id: 'pirates', name: 'Pirate Battle', icon: '🏴‍☠️', desc: 'Two pirate ships side by side, a 🔴 red crew and a 🔵 blue crew (characters in pirate clothes, card packs in pirate hats): they cross on the gangplanks or swing over on ropes and only fight the other crew, while the cannons fire across (a red crosshair shows where). Off the side = into the sea. It always comes down to one pirate from each crew: then the 🐙 kraken drags one ship under, and the last two have their FINAL FIGHT on the other.', modes: ['card'], finalFight: true }
+  { id: 'pirates', name: 'Pirate Battle', icon: '🏴‍☠️', desc: 'Two pirate ships side by side, a 🔴 red crew and a 🔵 blue crew (characters in pirate clothes, card packs in pirate hats): they cross on the gangplanks or swing over on ropes and only fight the other crew, while the cannons fire across (a red crosshair shows where). Off the side = into the sea. It always comes down to one pirate from each crew: then the 🐙 kraken drags one ship under, and the last two have their FINAL FIGHT on the other.', modes: ['card'], finalFight: true },
+  // 🌴 (1.77.0, Derek: "an exclusive map for just these battles… vice city themed": an original 80s beach city, no real names
+  // or logos). maraOnly = only in the 🏃 marathon battle's map list (not in the card battle / character map menus or Random).
+  { id: 'neon', name: 'Neon Beach', icon: '🌴', desc: 'An 80s beach city at sunset: a striped sun over the sea, pastel hotels with buzzing neon signs and palm trees. Pastel convertibles come speeding down the beach drive (headlights and a ⚠️ first) and send anyone in the way flying. Only for the marathon battle.', modes: ['card'], finalFight: true, maraOnly: true }
 ];
 // 🔴 NEW / 🔵 UPDATED for card-only maps, like the ball maps: bump a map's number here when you change it
-const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1, ww2: 1, pirates: 4 };
+const CARD_REV = { kungfu: 1, ring: 1, wizard: 1, colosseum: 1, ww2: 1, pirates: 4, neon: 1 };
 const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev || 1) < (CARD_REV[id] || 1) ? 'updated' : null; };
 export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
-export const cardMaps = () => [...CARD_MAPS.map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, holiday: !!m.holiday, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
+export const cardMaps = (withMara = false) => [...CARD_MAPS.filter(m => withMara || !m.maraOnly).map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, holiday: !!m.holiday, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
 export const isBallMap = id => !CARD_MAPS.some(m => m.id === id) && MAP_LIST.some(m => m.id === id);
 const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu', length: 60 }); // ⏱️ fights last 1 minute by default (Derek, 1.51.0)
 export function C() {
@@ -231,7 +234,9 @@ export function setWacky(key, on) {
 export function wackyOff() { for (const k of Object.keys(C().wacky)) C().wacky[k] = false; save(); hooks.broadcast({ type: 'cardWacky', wacky: wackyOn() }, 'overlay'); hooks.pushState(); return {}; }
 // 💀 finishers + 🏆 celebrations (public/finishers.js): how many each FINAL FIGHT map has (keep in step with that file).
 // A shuffled pile per map: each one comes up once before any repeats, then the pile is refilled and shuffled again (Derek).
-export const FIN_COUNT = 20, CEL_COUNT = 10, MONKEY_ENDS = 20; // (MONKEY_ENDS: 🐒 the Pirate Battle monkeys' endings, cardfight.js MK_ENDS: keep in step)
+export const FIN_COUNT = 20, CEL_COUNT = 10, MONKEY_ENDS = 20;
+const FIN_N = { neon: [8, 5] }; // (🌴 maps with fewer finishers / celebrations than 20 / 10: finishers.js has exactly these many)
+const finN = m => FIN_N[m]?.[0] || FIN_COUNT, celN = m => FIN_N[m]?.[1] || CEL_COUNT; // (MONKEY_ENDS: 🐒 the Pirate Battle monkeys' endings, cardfight.js MK_ENDS: keep in step)
 function fromPile(key, n) {
   const c = C(); c.piles ||= {}; let p = c.piles[key];
   if (!Array.isArray(p) || !p.length || p.some(i => i >= n)) { const last = c.pileLast?.[key]; p = Array.from({ length: n }, (_, i) => i); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; } if (n > 1 && p[p.length - 1] === last) [p[0], p[p.length - 1]] = [p[p.length - 1], p[0]]; } // (never the same one twice in a row across a refill)
@@ -264,8 +269,8 @@ export function start(opts = {}) {
   if (pickMap === 'pirates') live.fight.mk = monkeyPlan(opts.test); // 🐒 (🏴‍☠️ card packs on the pirate ships, 1.73.0: the monkeys are in the rowboat too)
   const mapInfo = CARD_MAPS.find(m => m.id === pickMap);
   if (mapInfo?.finalFight) { // (test fights pick at random, so they don't use up the pile for the stream)
-    live.fight.fin = opts.test ? Math.floor(Math.random() * FIN_COUNT) : fromPile('fin:' + pickMap, FIN_COUNT);
-    live.fight.cel = opts.test ? Math.floor(Math.random() * CEL_COUNT) : fromPile('cel:' + pickMap, CEL_COUNT);
+    live.fight.fin = opts.test ? Math.floor(Math.random() * finN(pickMap)) : fromPile('fin:' + pickMap, finN(pickMap));
+    live.fight.cel = opts.test ? Math.floor(Math.random() * celN(pickMap)) : fromPile('cel:' + pickMap, celN(pickMap));
   }
   if (live.fight.ball) { const err = hooks.startBall(live.fight, b); if (err) { live.fight = null; throw new Error(err); } } // ⚪ a ball map: the ball game plays it, with card fighters
   live.phase = 'fight'; live.show = true; live.last = null; hooks.rewardsNow?.(); // (⛈️ the storm power + monkey rewards come on for a Pirate Battle)
@@ -303,7 +308,7 @@ export function startChars(o) {
   if (live.phase === 'fight' && !live.fight?.chars) throw new Error('A card battle is going right now. Stop it first.');
   const mapInfo = CARD_MAPS.find(m => m.id === o.map);
   live.fight = { id: uid(), chars: true, gameId: o.gameId, name: o.name, map: o.map, ball: false, fighters: o.fighters, startedAt: Date.now(), test: !!o.test, finalNow: !!o.finalNow, seed: Math.floor(Math.random() * 2 ** 31), destined: o.destined, pace: o.pace ?? 50, length: o.length || 0, lookSeed: o.lookSeed || '' };
-  if (mapInfo?.finalFight) { live.fight.fin = o.test ? Math.floor(Math.random() * FIN_COUNT) : fromPile('fin:' + o.map, FIN_COUNT); live.fight.cel = o.test ? Math.floor(Math.random() * CEL_COUNT) : fromPile('cel:' + o.map, CEL_COUNT); }
+  if (mapInfo?.finalFight) { live.fight.fin = o.test ? Math.floor(Math.random() * finN(o.map)) : fromPile('fin:' + o.map, finN(o.map)); live.fight.cel = o.test ? Math.floor(Math.random() * celN(o.map)) : fromPile('cel:' + o.map, celN(o.map)); }
   if (o.map === 'pirates') live.fight.mk = monkeyPlan(o.test); // 🐒
   live.phase = 'fight'; live.last = null; live.charPreview = null;
   sendScene(); hooks.pushState(); return live.fight.id;
@@ -323,6 +328,6 @@ export function openFromWheel(id, auto, why) {
 }
 export function stateFor() {
   const c = C(), b = activeBattle(), { fighters, cut } = fightersFor(b);
-  return { keepWinner: !!c.keepWinner, mapNow: live.fight?.map || b.map, ringLogo: ringLogo(), shipIcons: shipIcons(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), history: c.history.slice(-30).reverse(),
+  return { keepWinner: !!c.keepWinner, mapNow: live.fight?.map || b.map, ringLogo: ringLogo(), shipIcons: shipIcons(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), maraMaps: cardMaps(true).filter(m => m.maraOnly), history: c.history.slice(-30).reverse(),
     live: { show: live.show, phase: live.phase, fightId: live.fight?.id || null, n: live.fight?.fighters.length || 0, startedAt: live.fight?.startedAt || 0, test: !!live.fight?.test, last: live.last, link: !!live.wheelLink }, inBattle: fighters.length, cut };
 }

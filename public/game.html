@@ -212,6 +212,7 @@
 <script src="ask.js"></script>
 <script src="chat.js"></script>
 <script src="charparts.js"></script>
+<script src="cutout.js"></script>
 <script src="finishers.js"></script>
 <script src="cardfight.js"></script>
 <script>
@@ -2106,7 +2107,7 @@ const MAPS = {
     clouds: '#2a2e3a', fog: ['rgba(120,160,110,.07)', 'rgba(8,10,14,.55)'],
     canGo: (f, tl) => !tl.bld,
     spawnAt: tl => !tl.bld,
-    koText: () => SKIN === 'cards' ? 'GRRAAH!' : pick(['EATEN!', '🧟 BRAINS!', 'CHOMPED!']),
+    koText: () => cardish() ? 'GRRAAH!' : pick(['EATEN!', '🧟 BRAINS!', 'CHOMPED!']),
     afterBuild(R) {
       const A = this.A = R * S * SQ3, B = this.B = A * .56, cell = S * 12;
       const cols = Math.max(3, Math.round(A * 2 / cell)), rows = Math.max(2, Math.round(B * 2 / cell)), cw = A * 2 / cols, ch = B * 2 / rows, st = S * 2.3; // st = half a street
@@ -2191,7 +2192,7 @@ const MAPS = {
     },
     // 🃏 a card that gets bitten (or knocked out) is INFECTED: out of the battle, but it stays on the map as a zombie
     zombify(f) {
-      if (SKIN !== 'cards' || !f.alive || f.zombie) return false;
+      if (!cardish() || !f.alive || f.zombie) return false;
       f.alive = false; f.zombie = true; f.zt = t; f.vx *= .3; f.vy *= .3; elim.push(f.id); elimT.push(Math.round(t * 100) / 100);
       const left = alive().length;
       feed = feed.filter(e => e.id !== f.id); feed.unshift({ id: f.id, text: f.label, place: left + 1, life: 6, color: f.color }); feed = feed.slice(0, 9);
@@ -2208,7 +2209,7 @@ const MAPS = {
       SFX.play('bite', { v: .7 });
       if (n < 60) floaters.push({ text: pick(['CHOMP!', 'BITTEN!', 'GRRAAH!', 'NOM!']), x: sx(f.x), y: sy(f.y) - f.r * 2 - 18, life: .8, color: '#ff6a5a' });
       for (let j = 0; j < 8; j++) { const a = rnd(6.3), v = rnd(40, 160); parts.push({ x: sx(f.x), y: sy(f.y) - f.r * .8, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 300, life: rnd(.3, .6), max: .6, size: rnd(2, 5), color: pick(['#c8202a', '#8a1a1a', '#7ac83a']) }); }
-      if (SKIN === 'cards') { // cards: infected (unless it's the drawn winner, a shield, or the pacer says not yet)
+      if (cardish()) { // cards: infected (unless it's the drawn winner, a shield, or the pacer says not yet)
         if ((cfg.fair && f === destined) || n <= 1) { hurt(f, 6); return; }
         if (useShield(f)) return;
         if (Math.random() < paceHold(n) || (n <= 2 && t < cfg.game - 2.5)) { hurt(f, 6); return; }
@@ -4214,7 +4215,7 @@ function setMap(id) {
   if (!MAPS[id]) id = 'classic';
   if (id === mapId && MAP._tops) return false;
   mapId = id; MAP = MAPS[id]; SFX.setMap?.(id); K = MAP.K || 0.55;
-  try { if (SKIN === 'chars') for (const f of fighters) f._dirty = true; } catch {} // 🎨 themed maps dress the characters
+  try { if (SKIN === 'chars' || SKIN === 'items') for (const f of fighters) f._dirty = true; } catch {} // 🎨 themed maps dress the characters
   MAP._tops ||= MAP.tops();
   const g = bg.getContext('2d'); g.clearRect(0, 0, W, H); g.save(); MAP.sky(g); g.restore();
   for (const c of clouds) c.col = MAP.clouds;
@@ -4226,17 +4227,23 @@ setMap('classic');
 // ================= fighters =================
 // 🃏 card battles on a ball map: the pieces are card packs with stick arms + legs and a face (SKIN 'cards')
 let SKIN = 'balls';
-function setSkin(k) { k = k === 'cards' || k === 'chars' ? k : 'balls'; if (k === SKIN) return; SKIN = k; for (const f of fighters) f._dirty = true; if (fighters.length) sizeAll(); }
+// 🏃 (1.77.0) SKIN 'items' = the marathon battle: each piece is the THING itself (its picture cut out of its background, with
+// googly eyes + stick arms and legs), or for a workout (f.gym) a 🧍 character in gym clothes holding a sign with the exercise.
+const cardish = () => SKIN === 'cards' || SKIN === 'items'; // (packs + things: health bars, they bleed, zombies infect them)
+const charish = f => SKIN === 'chars' || (SKIN === 'items' && !!f?.gym);
+let cutT = 0; addEventListener('cutout', () => { if (SKIN !== 'items' || cutT) return; cutT = setTimeout(() => { cutT = 0; for (const f of fighters) if (!f.gym) f._dirty = true; if (fighters.length) sizeAll(); }, 60); }); // (a picture finished cutting out: redraw the pieces)
+function setSkin(k) { k = k === 'cards' || k === 'chars' || k === 'items' ? k : 'balls'; if (k === SKIN) return; SKIN = k; for (const f of fighters) f._dirty = true; if (fighters.length) sizeAll(); }
 function initials(s) { if (/^-?\d{1,4}$/.test(String(s).trim())) return String(s).trim(); /* 🔢 a number shows whole (10, not 1) */ return String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => [...w][0]).join('').toUpperCase(); }
 function makeToken(f) {
   // a picture that was already loaded (Twitch avatars after the first battle) calls this before the piece has a size yet:
   // that used to crash and leave the cliff empty. sizeAll() draws it as soon as the size is known.
   if (!(f.r > 0) || !Number.isFinite(f.r)) { f._dirty = true; return; }
-  const up = SKIN === 'chars' && window.CHAR_PARTS?.room ? CHAR_PARTS.room(charLook(f)) : 0, D = Math.ceil((f.r * (1 + (up > .03 ? up : 0)) + 6) * 2 * 2); // 2x for crispness (🧍 1.70.0: more room for a bobblehead or a long neck)
+  const up = charish(f) && window.CHAR_PARTS?.room ? CHAR_PARTS.room(charLook(f)) : 0, D = Math.ceil((f.r * (1 + (up > .03 ? up : 0)) + 6) * 2 * 2); // 2x for crispness (🧍 1.70.0: more room for a bobblehead or a long neck)
   const c = document.createElement('canvas'); c.width = c.height = D;
   const g = c.getContext('2d'), m = D / 2, rr = f.r * 2;
   if (SKIN === 'cards') { cardToken(f, c, g, m, rr); f.token = c; return; }
   if (SKIN === 'chars') { charToken(f, c, g, m, rr); f.token = c; return; }
+  if (SKIN === 'items') { if (f.gym) { charToken(f, c, g, m, rr); if (window.CHAR_PARTS?.sign) CHAR_PARTS.sign(g, m, rr, f.sign || f.label); } else itemToken(f, c, g, m, rr); f.token = c; return; }
   const ring = g.createLinearGradient(0, 0, D, D); ring.addColorStop(0, '#fff'); ring.addColorStop(.25, f.color); ring.addColorStop(1, shade(f.color, -40));
   g.fillStyle = ring; g.beginPath(); g.arc(m, m, rr + 8, 0, 7); g.fill();
   g.save(); g.beginPath(); g.arc(m, m, rr, 0, 7); g.clip();
@@ -4267,6 +4274,23 @@ function cardToken(f, c, g, m, rr) { // a card pack (portrait, crimped top + bot
   for (const side of [-1, 1]) { const ex = m + side * w * .2; g.fillStyle = '#fff'; g.beginPath(); g.ellipse(ex, ey, 9 * s, 10 * s, 0, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#111'; g.beginPath(); g.arc(ex + 2 * s, ey + 2 * s, 4 * s, 0, 7); g.fill(); g.lineWidth = 3.4 * s; g.beginPath(); g.moveTo(ex - side * 11 * s, ey - 17 * s); g.lineTo(ex + side * 7 * s, ey - 10 * s); g.stroke(); g.lineWidth = 2.4 * s; }
   const my = y + h * .47; g.fillStyle = '#fff'; g.fillRect(m - 9 * s, my - 4 * s, 18 * s, 8 * s); g.strokeRect(m - 9 * s, my - 4 * s, 18 * s, 8 * s);
 }
+function itemToken(f, c, g, m, rr) { // 🏃 the thing itself: its picture cut out (cutout.js), standing on stick legs, with googly eyes
+  const pic = (window.CUTOUT && f.image && CUTOUT.get(f.image)) || (ok(f.img) ? f.img : null);
+  const bw = rr * 1.55, bh = rr * 1.95, top = m - rr * 1.12;
+  let x, y, w, h;
+  if (pic) {
+    const pw = pic.naturalWidth || pic.width, ph = pic.naturalHeight || pic.height, k = Math.min(bw / pw, bh / ph); w = pw * k; h = ph * k; x = m - w / 2; y = top + bh - h;
+    g.save(); g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = rr * .08; g.shadowOffsetY = rr * .03; g.drawImage(pic, x, y, w, h); g.restore();
+  } else { // no picture yet: a coloured block with the name on it
+    w = bw * .8; h = bh * .85; x = m - w / 2; y = top + bh - h;
+    const gr = g.createLinearGradient(x, y, x + w, y + h); gr.addColorStop(0, shade(f.color, 35)); gr.addColorStop(1, shade(f.color, -45));
+    g.fillStyle = gr; g.strokeStyle = 'rgba(20,10,20,.9)'; g.lineWidth = rr * .05; roundRect(g, x, y, w, h, rr * .18); g.fill(); g.stroke();
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; const ini = initials(f.label) || '?'; g.font = `${Math.round(rr * ([...ini].length <= 2 ? .55 : .4))}px 'Lilita One', Impact, sans-serif`; g.fillText(ini, m, y + h * .66);
+  }
+  f._itemBox = { x: (x - m) / rr, y: (y - m) / rr, w: w / rr, h: h / rr }; // (where its arms + legs join it)
+  const s = rr / 40, ey = y + Math.min(h * .3, rr * .55), ew = Math.min(w * .2, rr * .3);
+  for (const side of [-1, 1]) { const ex = m + side * ew * .62; g.fillStyle = '#fff'; g.strokeStyle = '#111'; g.lineWidth = 2.2 * s; g.beginPath(); g.ellipse(ex, ey, ew * .5, ew * .56, 0, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#111'; g.beginPath(); g.arc(ex + ew * .12, ey + ew * .14, ew * .24, 0, 7); g.fill(); g.lineWidth = 3 * s; g.beginPath(); g.moveTo(ex - side * ew * .55, ey - ew * .95); g.lineTo(ex + side * ew * .4, ey - ew * .6); g.stroke(); }
+}
 // 🧍 CHARACTERS instead of balls (Derek, 1.53.0): a little person whose head is the piece's picture (movie poster, your
 // picture, the chatter's Twitch picture) or its text. Man / woman / non-binary from chat's !id (server sends f.gender),
 // with random hair, outfits and colors (the same every time for the same piece). Arms + legs move like the card packs.
@@ -4287,7 +4311,10 @@ function charStyle(f) { // picked once per piece from its id (so a piece looks t
 // look is never someone's default; a new battle = new piece objects = new looks). It stays the same through the countdown, fight and win.
 let lookSeed = '';
 function charLook(f) {
-  if (f.look) return f.look;
+  if (f.gym && window.CHAR_PARTS?.gym) { const b = f.look || autoLook(f); if (f._gymB !== b) { f._gymB = b; f._gym = CHAR_PARTS.gym(b, f.id); } return f._gym; } // 🏋️ workout: gym clothes
+  return f.look || autoLook(f);
+}
+function autoLook(f) {
   f._seed ||= Math.random().toString(36).slice(2); const sd = lookSeed || f._seed; // (lookSeed: from the app, the same on every game screen)
   const k = `${f.id}|${f.gender || 'n'}|${mapId}|${f.chaos ? 1 : 0}|${sd}`; // (f.chaos: the Test tab's all-chaos battle)
   if (f._autoK !== k) { f._autoK = k; f._auto = CHAR_PARTS.auto(String(f.id) + sd, f.gender, mapId, f.chaos); }
@@ -4432,7 +4459,7 @@ function hurt(f, dmg) {
   if (f.hp == null) f.hp = MAP.cars ? CARS.hpMax(f) : 100 * Math.pow(f.mass || 1, .4);
   const keep = cfg.fair && f === destined;
   f.hp -= keep ? dmg * .3 : dmg; f.hurtAt = t;
-  if (SKIN === 'cards') sparkle(sx(f.x), sy(f.y) - f.r * 1.4, Math.random() < .5 ? '#c8102a' : '#8a0010', Math.min(18, 4 + Math.round(dmg / 3))); // 🃏 card fighters bleed
+  if (cardish()) sparkle(sx(f.x), sy(f.y) - f.r * 1.4, Math.random() < .5 ? '#c8102a' : '#8a0010', Math.min(18, 4 + Math.round(dmg / 3))); // 🃏 card fighters bleed
   if (f.hp > 0) return;
   if (keep) { f.hp = 1; return; }
   f.hp = MAP.cars ? CARS.hpMax(f) * .3 : null; // (back to full if it dodges; a bus keeps its dents)
@@ -4692,11 +4719,11 @@ function drawFighter(f, lobby) {
   const x = sx(f.x), gy = sy(f.y) - (f.zo || 0), D = f.token.width / 2;
   const lift = lobby ? f.h : f.hop || 0;
   const bob = f.alive ? Math.sin(clock * 6 + f.wob) * 1.5 : 0;
-  const cy = gy - f.r - 6 - lift + bob + (f.falling ? f.fz : 0) - (SKIN === 'chars' && !f.falling ? f.legUp || 0 : 0);
+  const cy = gy - f.r - 6 - lift + bob + (f.falling ? f.fz : 0) - (charish(f) && !f.falling ? f.legUp || 0 : 0);
   if (!f.falling && !(f.dashing > 0) && cam.follow !== f && winner !== f && !(f.squash > t) && !f.eaten) { // fast path: no save/restore
     ctx.fillStyle = lobby ? `rgba(20,10,30,${clamp(.4 - f.h / 2500, .05, .4)})` : 'rgba(20,10,30,.38)'; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill();
     if ((f.glow ?? f.luck) >= 5) drawLuckFx(f, x, cy);
-    if (SKIN === 'cards') cardLimbs(f, x, cy, gy - lift); else if (SKIN === 'chars') charLimbs(f, x, cy, gy - lift);
+    if (charish(f)) charLimbs(f, x, cy, gy - lift); else if (cardish()) cardLimbs(f, x, cy, gy - lift);
     ctx.drawImage(f.token, x - D / 2, cy - D / 2, D, D);
     if (f.hurtAt != null && t - f.hurtAt < .25 && phase === 'running') { ctx.fillStyle = `rgba(255,60,80,${.5 * (1 - (t - f.hurtAt) / .25)})`; ctx.beginPath(); ctx.arc(x, cy, f.r, 0, 7); ctx.fill(); } // ouch
     if (hasFx(f)) drawPowerFx(f, x, cy);
@@ -4707,7 +4734,7 @@ function drawFighter(f, lobby) {
   if (!f.falling) { ctx.fillStyle = `rgba(20,10,30,${lobby ? clamp(.4 - f.h / 2500, .05, .4) : .38})`; ctx.beginPath(); ctx.ellipse(x, gy, f.r * .95, f.r * .38, 0, 0, 7); ctx.fill(); }
   if ((f.glow ?? f.luck) >= 5 && !f.falling) drawLuckFx(f, x, cy);
   if (f.dashing > 0) { ctx.globalAlpha *= .4; ctx.drawImage(f.token, x - D / 2 - f.vx * .04, cy - D / 2 - f.vy * .04 * K, D, D); ctx.globalAlpha = f.falling ? clamp(1 - f.fz / 900, 0, 1) : 1; }
-  if (SKIN === 'cards' && !f.falling) cardLimbs(f, x, cy, gy - lift); else if (SKIN === 'chars' && !f.falling) charLimbs(f, x, cy, gy - lift);
+  if (!f.falling) { if (charish(f)) charLimbs(f, x, cy, gy - lift); else if (cardish()) cardLimbs(f, x, cy, gy - lift); }
   ctx.translate(x, cy); if (f.falling) ctx.rotate(f.fz * .006 * (f.vx > 0 ? 1 : -1));
   if (f.squash > t) ctx.scale(1.4, .55); // trampled flat
   if (f.eaten) { const k = clamp(lift / ((f.eaten.h || 260) * .92), 0, 1); ctx.rotate(f.spinA || 0); ctx.scale(1 - k * .55, 1 - k * .55); } // spinning up into the saucer
@@ -4741,7 +4768,7 @@ function drawLabel(f, cy, lobby) {
   const tw = ctx.measureText(text).width, y = cy - f.r / ls - 14;
   ctx.fillStyle = 'rgba(15,8,30,.72)'; roundRect(ctx, x - tw / 2 - 7, y - 10, tw + 14, 20, 10); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y + 1);
-  if (SKIN === 'cards' && !lobby) { const mx = 100 * Math.pow(f.mass || 1, .4), hp = clamp((f.hp ?? mx) / mx, 0, 1), bw = Math.max(40, tw + 6); ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(x - bw / 2 - 1, y + 11, bw + 2, 7); ctx.fillStyle = hp > .5 ? '#46e05a' : hp > .25 ? '#ffd23a' : '#ff3a3a'; ctx.fillRect(x - bw / 2, y + 12, bw * hp, 5); } // 🃏 health bar
+  if (cardish() && !lobby) { const mx = 100 * Math.pow(f.mass || 1, .4), hp = clamp((f.hp ?? mx) / mx, 0, 1), bw = Math.max(40, tw + 6); ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(x - bw / 2 - 1, y + 11, bw + 2, 7); ctx.fillStyle = hp > .5 ? '#46e05a' : hp > .25 ? '#ffd23a' : '#ff3a3a'; ctx.fillRect(x - bw / 2, y + 12, bw * hp, 5); } // 🃏 health bar
   if (lobby) {
     const o = (f.odds * 100).toFixed(f.odds < .1 ? 1 : 0) + '%';
     ctx.font = "800 12px Inter, sans-serif"; const ow = ctx.measureText(o).width;

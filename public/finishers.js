@@ -459,5 +459,41 @@
   cel(PI2, 'Victory Swing', 5.5, (t, A) => { A.prop(.2, 5.5, () => { A.g.strokeStyle = '#c8a870'; A.g.lineWidth = 4; A.g.beginPath(); A.g.moveTo(A.Wx, A.gy - 900); A.g.lineTo(A.P.W.x, A.gy - A.P.W.h - 125 * A.s); A.g.stroke(); });
     A.pose(.2, 5.5, (k, Wp) => { const a = Math.sin((A.t - .2) * 2.4) * 1.1; Wp.x = A.Wx + Math.sin(a) * 380; Wp.h += (1 - Math.cos(a)) * 360 + 60; Wp.atk = { kind: 'hold', o: true, t: 0, dur: 1 }; Wp.face = Math.cos((A.t - .2) * 2.4) > 0 ? 1 : -1; }); A.say(.6, 'YO HO HO!', '#ffd23a', 66, A.Wx); A.snd(.6, 'whoosh'); A.snd(1.9, 'whoosh'); A.snd(3.2, 'whoosh'); A.snd(1, 'crowdWild'); });
 
+  // ======================================================================================================
+  // 🌴 NEON BEACH (1.77.0, the 🏃 marathon battle's own map: an original 80s beach city). 8 finishers + 5 celebrations
+  // (src/cards.js FIN_N.neon = [8, 5]: keep in step, add new ones at the END)
+  // ======================================================================================================
+  const NB = 'neon';
+  function coupe(g, x, y, s, face, col = '#ff5ab4') { // a pastel convertible (same look as the ones on the map)
+    g.save(); g.translate(x, y); g.scale(face * s, s); g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(0, 4, 170, 20, 0, 0, 7); g.fill();
+    g.fillStyle = col; g.strokeStyle = 'rgba(20,10,30,.8)'; g.lineWidth = 4; g.beginPath(); g.moveTo(-170, -22); g.lineTo(-176, -62); g.lineTo(-120, -50); g.lineTo(-40, -52); g.lineTo(10, -62); g.lineTo(120, -56); g.quadraticCurveTo(168, -50, 172, -26); g.lineTo(168, -8); g.lineTo(-168, -8); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-150, -46, 290, 6); g.strokeStyle = 'rgba(200,240,255,.85)'; g.lineWidth = 5; g.beginPath(); g.moveTo(10, -62); g.lineTo(-6, -98); g.stroke();
+    g.fillStyle = '#fffbe0'; g.beginPath(); g.ellipse(166, -36, 7, 9, 0, 0, 7); g.fill();
+    for (const wx of [-108, 108]) { g.fillStyle = '#111'; g.beginPath(); g.arc(wx, -8, 28, 0, 7); g.fill(); g.fillStyle = '#d8dde6'; g.beginPath(); g.arc(wx, -8, 12, 0, 7); g.fill(); }
+    g.restore();
+  }
+  function neonText(g, txt, x, y, col, size = 70, a = 1) { g.save(); g.globalAlpha *= a; g.font = `${size}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = col; g.shadowBlur = 28; g.lineWidth = 5; g.strokeStyle = col; g.strokeText(txt, x, y); g.fillStyle = '#fff'; g.fillText(txt, x, y); g.restore(); }
+  const NEONS = ['#ff4fd8', '#3ef0ff', '#ffe14a', '#7dffb0', '#b07aff'];
+  fin(NB, 'Beach Drive Hit-and-Run', 'brutal', 4.5, (t, A) => { const cx = v => A.Lx - A.dir * 1300 + A.dir * 2600 * v; A.prop(.4, 1.6, v => coupe(A.g, cx(v), A.gy + 6, .95 * A.s, A.dir, '#38e8e0')); A.snd(.3, 'horn'); A.say(.4, 'BEEP BEEP!', '#3ef0ff', 60, A.Lx - A.dir * 300);
+    A.snd(.98, 'crash'); A.quake(1, 16); A.blood(1, 40); B.launch(A, 1, 2.2, A.dir * 1100, 520, 3); A.say(1.3, 'HIT AND RUN!', '#ff4fd8', 70); A.cam(1.05); });
+  fin(NB, 'Palm Tree Timber', 'brutal', 4.5, (t, A) => { A.walk(0, .4, 160); A.strike(.5, 'kick', .35, 'none'); A.snd(.7, 'smack'); A.say(.8, 'TIMBERRR!', '#7dffb0', 64, A.Wx); B.drop(A, 1, '🌴', 360, .55, true, 'crash'); A.blood(1.55, 40); A.say(1.8, 'COCONUT CRUSHED!', '#ffe14a', 56); });
+  fin(NB, 'Neon Sign Short Circuit', 'brutal', 5, (t, A) => { const sy = v => A.gy - 1000 + Math.min(1, v * 3.2) * (860 - 200 * A.s); A.prop(.3, 5, v => { neonText(A.g, 'OPEN 24/7', A.Lx, sy(v), '#ff4fd8', 90, A.t > 3.2 ? .3 : 1); }); A.snd(.3, 'whoosh'); A.snd(.6, 'crash'); A.quake(.6, 14);
+    B.zap(A, .8, '#ff4fd8'); B.zap(A, 1.4, '#3ef0ff'); B.zap(A, 2, '#ff4fd8'); B.shake(A, .8, 2.6, 12); A.say(1.2, 'BZZZZT!', '#3ef0ff', 66); B.ash(A, 2.6); A.say(3.4, 'LIGHTS OUT.', '#fff', 56); });
+  fin(NB, 'Boombox Bass Drop', 'funny', 5, (t, A) => { A.emoji(.2, 5, '📻', A.Wx + A.dir * 60, A.gy - 40, 110); A.say(.4, 'DROP THE BASS!', '#ffe14a', 56, A.Wx);
+    for (let i = 0; i < 6; i++) A.prop(.8 + i * .3, 1.6 + i * .3, v => { A.g.save(); A.g.strokeStyle = NEONS[i % NEONS.length]; A.g.globalAlpha = 1 - v; A.g.lineWidth = 10; A.g.shadowColor = NEONS[i % NEONS.length]; A.g.shadowBlur = 20; A.g.beginPath(); A.g.ellipse(A.Wx + A.dir * 60, A.gy - 40, 60 + v * 700, (60 + v * 700) * .35, 0, 0, 7); A.g.stroke(); A.g.restore(); });
+    for (let i = 0; i < 6; i++) A.snd(.8 + i * .3, 'boom'); B.shake(A, .9, 2.6, 14); B.size(A, 1.2, 2.6, 1.6); A.poof(2.7, '#ff4fd8'); A.emoji(2.7, 5, '📼', A.Lx, A.gy - 30, 70); A.say(2.9, 'BLOWN AWAY!', '#ff4fd8', 62); });
+  fin(NB, 'Roller Skate Rush', 'funny', 4.5, (t, A) => { A.pose(0, .7, (k, Wp) => { Wp.x = A.Wx - A.dir * 260 * k; }); A.emoji(0, 4.5, '🛼', () => A.P.W.x, () => A.gy - 14, 60); A.pose(.7, 1.2, (k, Wp) => { Wp.x = A.Wx - A.dir * 260 + A.dir * (A.Lx - A.Wx + 140) * k; Wp.rot += A.dir * .2; });
+    A.walk(1.2, 1.25, 80); A.combo(1.25, 2.2, .14, ['punch', 'kick'], 'star'); B.launch(A, 2.3, 3.3, A.dir * 700, 380, 4); A.say(1.4, 'SKATE OR DIE!', '#3ef0ff', 58, A.Wx); A.snd(.2, 'whoosh'); });
+  fin(NB, 'Pier Toss', 'brutal', 4.5, (t, A) => { A.walk(0, .4, 90); A.hold(.5, 1.4); A.say(.6, 'SWIM WITH THE FISHES!', '#3ef0ff', 52); A.pose(1.4, 2.6, (k, Wp, Lp) => { Lp.dazed = false; Lp.x = A.Lx; }); A.fly('L', 1.4, 2.6, -A.dir * 200, 700, 3, 420); A.pose(1.4, 2.6, (k, Wp, Lp) => { Lp.sx *= 1 - k * .6; Lp.sy *= 1 - k * .6; }); A.hide(2.6); A.snd(1.4, 'whoosh'); A.snd(2.6, 'splash');
+    A.emoji(2.6, 4.5, '💦', A.Lx - A.dir * 200, A.gy - 700, v => 60 + v * 80, 0, v => 1 - v); A.emoji(3, 4.5, '🦈', v => A.Lx - A.dir * (200 - v * 260), A.gy - 640, 70); A.say(3, 'SPLASH!', '#3ef0ff', 60, A.Lx - A.dir * 200, A.gy - 760); });
+  fin(NB, 'Flamingo Flock', 'funny', 4.5, (t, A) => { A.say(.2, 'FLAMINGO FRENZY!', '#ff4fd8', 60); A.snd(.3, 'squawk'); B.pile(A, .5, '🦩', 12, 90); B.squash(A, 1.4, .1); A.snd(1.4, 'crash'); A.snd(1.9, 'squawk'); A.say(2.4, 'PINKED OUT!', '#ff4fd8', 56); });
+  fin(NB, 'Sunset Uppercut', 'brutal', 4.5, (t, A) => { A.walk(0, .4, 100); A.pose(.4, .9, (k, Wp) => { Wp.h -= 30 * k; }); A.strike(.9, 'punch', .3, 'big'); A.flash(1.05, '#ffb04a', .6); A.say(1.1, 'SUNSET!', '#ffb04a', 74); B.launch(A, 1.05, 2.4, A.dir * 120, 1100, 2); A.cam(1.05); A.snd(.95, 'slam'); });
+  cel(NB, 'Shades On', 5, (t, A) => { A.emoji(.3, 5, '🕶️', () => A.P.W.x, v => { const k = Math.min(1, v * 5 / 1.1); return A.gy - 900 + (900 - 138 * A.s) * k * k; }, 70); A.snd(1.4, 'ding'); A.say(1.6, 'TOO COOL.', '#3ef0ff', 66, A.P.W.x); A.pose(1.6, 2.2, (k, Wp) => { Wp.rot -= A.dir * .15 * k; }); });
+  cel(NB, 'Synth Solo', 5, (t, A) => { A.emoji(.2, 5, '🎹', () => A.P.W.x + A.dir * 90, A.gy - 70, 110); A.dance(.4, 4.8, 1.3); for (let i = 0; i < 8; i++) A.emoji(.5 + i * .5, 2 + i * .5, i % 2 ? '🎵' : '🎶', A.Wx + A.dir * 90 + (i % 3 - 1) * 60, v => A.gy - 160 - v * 340, 56, 0, v => 1 - v); A.say(.8, 'FEEL THE SYNTH!', '#b07aff', 58, A.P.W.x); });
+  cel(NB, 'Cruise Into the Sunset', 5.5, (t, A) => { A.prop(.3, 5.5, v => coupe(A.g, A.Wx - A.dir * 900 + A.dir * Math.min(1, v * 2.2) * 900 + A.dir * Math.max(0, v - .55) * 2400, A.gy + 8, .95 * A.s, A.dir, '#ff5ab4')); A.snd(.3, 'horn');
+    A.pose(2.2, 2.6, (k, Wp) => { Wp.h += 60 * Math.sin(k * Math.PI); }); A.pose(2.6, 5.5, (k, Wp) => { Wp.x = A.Wx + A.dir * Math.max(0, (A.t - 2.6) / 2.9 - .0) * 2400 * Math.max(0, (A.t - 2.6) / 2.9); Wp.h += 30; }); A.snd(2.7, 'rev'); A.say(1.4, 'HOP IN!', '#ffe14a', 60, A.Wx); });
+  cel(NB, 'Neon Dance Party', 5, (t, A) => { A.dance(.2, 5, 1.6); for (let i = 0; i < 5; i++) A.confetti(.4 + i * .8, A.P.W.x + (i - 2) * 160, A.gy - 520 * A.s, 50); A.prop(0, 5, () => { const c = NEONS[Math.floor(A.t * 4) % NEONS.length]; A.g.save(); A.g.globalAlpha = .18; A.g.fillStyle = c; A.g.fillRect(0, 0, A.W, A.H); A.g.restore(); }); A.say(.6, 'PARTY!', '#ff4fd8', 72, A.P.W.x); });
+  cel(NB, 'Paradise', 5, (t, A) => { A.emoji(.3, 5, '🥥', () => A.P.W.x + A.dir * 70, () => A.gy - A.P.W.h - 110 * A.s, 60); A.hop(.6, 1.3, 160); A.emoji(1.3, 5, '🌺', A.Wx - 120, A.gy - 360 * A.s, 60, v => v * 3); A.emoji(1.5, 5, '🌺', A.Wx + 120, A.gy - 400 * A.s, 60, v => -v * 3); A.say(1.4, 'PARADISE!', '#7dffb0', 66, A.P.W.x); A.snd(1.4, 'ding'); });
+
   function pick2(a, i) { return a[i % a.length]; }
 })();

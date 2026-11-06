@@ -182,6 +182,8 @@ app.whenReady().then(async () => {
   globalThis.__desktop = {
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
     refocus: () => { const w = BrowserWindow.getFocusedWindow() || win; if (w && !w.isDestroyed()) { w.blur(); setTimeout(() => !w.isDestroyed() && w.focus(), 30); } },
+    // ⏱️ (1.77.0) a timed marathon thing won: bring Movie Royal to the front so a click of your (wireless) mouse starts the timer
+    front: () => { try { if (!win || win.isDestroyed()) return false; if (win.isMinimized()) win.restore(); win.setAlwaysOnTop(true); win.show(); win.moveTop(); win.focus(); win.flashFrame(true); setTimeout(() => { if (!win.isDestroyed()) { win.setAlwaysOnTop(false); win.flashFrame(false); } }, 2500); return true; } catch { return false; } },
     quit: () => { closeOk = true; quitting = true; app.quit(); }, // no questions (updates, or after you answered)
     copy: t => { clipboard.writeText(String(t)); return true; }, // copying from the page can fail after a pop-up: Windows' own clipboard always works
     // read a web page like a real browser does (some sites, like Letterboxd's film pages, turn away plain requests)

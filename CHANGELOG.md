@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.77.0
+- 🥫 **Marathon things fight as themselves** (Derek: "if it's a can it will be that can… if it's a bag of chips then that bag of chips"): Movie Royal finds a picture of each thing in the marathon battle on the internet by itself, cuts the background away and gives it googly eyes, arms and legs. 🔄 in the Marathon pool tries the next picture; 🖼️ still uploads your own. Things with no picture yet fight as a coloured block with their name.
+- 🏋️ **Workouts fight as characters in gym clothes holding a sign** with the exercise on it (push-ups, sit-ups, squats, plank, wall sit, burpees…). The new 🥫/🏋️ menu in the Marathon pool changes it if it guessed wrong.
+- 🗺️ The maps chat can pick for a marathon battle are now **every character and card battle map** (they're numbered again on the pop-up, in chat and on the website).
+- 🌴 **Neon Beach** (Derek: a map just for these battles): an 80s beach city at sunset, all our own design: a striped sun over the sea, pastel hotels with buzzing neon signs, palm trees, synthwave music, and pastel convertibles that come speeding down the beach drive (headlights and a ⚠️ first) and send anyone in the way flying. It has its own FINAL FIGHT finishers and celebrations. It's only in the marathon battle's map list.
+- ⏱️ **Exercise timer** (Derek: "I have a wireless mouse to start the timer, but have an alarm go off for 5 seconds"): when a timed one wins (“45-second plank”, “1 minute wall sit”, “1:30”…, or the ⏱️ seconds you set in the Marathon pool), Movie Royal jumps to the front and the whole window becomes a "click anywhere to start" button: any mouse button or Space. The countdown shows on stream in the marathon overlay, and an alarm rings for 5 seconds at 0 (Settings → 💰 → 🥫 Fighters + ⏱️ timers).
+- 🎯 **Guessing pop-ups**: when chat starts guessing, a big pop-up fills the middle of the stream (every thing numbered + the countdown), then slides to the side so the battle can be seen. Everyone who guesses right gets their own "got a battle" pop-up.
+- 🧪 Test tab → 🏃 Marathon fighters, ⏱️ timer + 🌴 Neon Beach: pretend marathon battles (ball map, Neon Beach, a character map), pretend timers, the stream timer and big guess pop-up, and a name checker.
+
 ## 1.76.0
 - 🛠️ **Dev mode** (Derek): the old "Also install test builds" checkbox is now **Dev mode** (Settings → 👤 Account & updates). It still installs test builds, and it shows features that are still being tried, like the new 🏃 tabs. Friends who leave it off don't see them.
 - 🏃 **Marathon + Marathon pool tabs** (dev mode): every sub, gift sub (one battle each, so 5 gifts = 5 battles), $5 tip or 500 bits adds a battle with that person's name to a line **under the battle screen**. Run anyone's battle whenever they're around (👀 here = they chatted in the last 20 minutes); whatever's left at the end of the stream stays in the line for next time.

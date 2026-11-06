@@ -493,8 +493,17 @@
   .mRow .mBtns { display: flex; gap: 4px; } .mRow .mBtns button { padding: 3px 9px; }
   .mHere { color: #46d68c; font-weight: 700; } .mAway { color: var(--muted, #999); }
   .mVia { font-size: 11px; color: #2fe0c8; }
+  /* ⏱️ marathon exercise timer (1.77.0): covers the whole window so any mouse click starts it */
+  #mtBox { position: fixed; inset: 0; z-index: 2147483000; display: none; place-items: center; background: rgba(8,4,18,.93); color: #fff; text-align: center; user-select: none; cursor: pointer; }
+  #mtBox.on { display: grid; } #mtBox .mtIn { max-width: 900px; padding: 20px; }
+  #mtBox .mtWhat { font: 800 clamp(28px,5vw,60px)/1.1 'Lilita One', Impact, sans-serif; color: var(--gold); }
+  #mtBox .mtBig { font: 800 clamp(90px,22vw,260px)/1 'Lilita One', Impact, sans-serif; font-variant-numeric: tabular-nums; margin: 10px 0; }
+  #mtBox .mtHint { font-size: clamp(18px,2.6vw,30px); font-weight: 800; }
+  #mtBox .mtBtns { margin-top: 26px; display: flex; gap: 10px; justify-content: center; } #mtBox .mtBtns button { cursor: pointer; font-size: 16px; }
+  #mtBox .mtBar { height: 14px; border-radius: 8px; background: rgba(255,255,255,.12); overflow: hidden; margin: 10px auto 0; width: min(700px, 80vw); } #mtBox .mtBar i { display: block; height: 100%; background: linear-gradient(90deg,#46e05a,#ffd23a,#ff3a3a); }
+  #mtBox.done { animation: mtFlash .5s steps(2) infinite; } @keyframes mtFlash { 50% { background: rgba(200,20,30,.93); } }
   .mpTable { width: 100%; border-collapse: collapse; } .mpTable td, .mpTable th { padding: 5px 6px; border-top: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: middle; }
-  .mpTable input { width: 100%; min-width: 0; } .mpTable img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; display: block; }
+  .mpTable input { width: 100%; min-width: 0; } .mpTable img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; display: block; } .mpTable .mpSecs { width: 70px; } .mpTable .mpKind { width: auto; max-width: 130px; } .mpTable img { object-fit: contain; background: rgba(255,255,255,.06); }
   @container (max-width: 760px) { .mRow { grid-template-columns: 30px minmax(0,1fr) auto; } .mRow select { grid-column: 2 / -1; } }
 </style>
 </head>
@@ -1173,6 +1182,14 @@
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="maraTest('gift5')">🎁 5 gift subs</button><button onclick="maraTest('map', 3)">💬 map 3</button><button onclick="maraTest('luck', 2)">💬 luck 2</button><button onclick="maraTest('site', 1)">🌐 Website: luck 1</button><button onclick="maraTest('luck', 3)">💬 luck 3</button><button onclick="maraTest('guess')">🎯 Guess #1</button><button onclick="maraTest('pop')">📣 Pop-up on stream</button><button onclick="maraTest('overlay')">🖥️ Open the overlay</button><button class="ghost" onclick="setView('mara')">🏃 Marathon tab</button></div>
     <div id="maraTestOut" class="help" style="margin-top:8px"></div></div>
   </div>
+  <div class="card devOnly" id="mtTestCard">
+    <h3>🏃 Marathon fighters, ⏱️ timer + 🌴 Neon Beach</h3>
+    <p class="help">Pretend marathon battles with made-up things (pictures on a white background that get cut out on the screen) and 🏋️ workout characters holding signs. The ⏱️ timer covers this whole window: click anywhere (any mouse button, or Space) to start it; the alarm rings when it's done (the countdown shows on stream in the marathon overlay too).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="api('/api/test/battle',{items:true,count:9,map:'classic'})">🥫 On a ball map</button><button onclick="api('/api/test/battle',{items:true,count:9,map:'neon'})">🌴 On Neon Beach</button><button onclick="api('/api/test/battle',{items:true,count:9,map:'kungfu'})">🏯 On Kung Fu Town</button><button class="ghost" onclick="labTry('neon','card','chars')" title="Neon Beach in the 🧪 Quick test lab (only in this window)">🧪 Neon Beach in the lab</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="mtTest(10)">⏱️ 10-second timer</button><button onclick="mtTest(45)">⏱️ 45-second timer</button><button class="ghost" onclick="window.open('/marathon.html?demo=1&timer=1','mara-overlay','width=960,height=560')" title="What the timer looks like on stream">👀 Timer on stream</button><button class="ghost" onclick="window.open('/marathon.html?demo=1&guess=1','mara-overlay','width=960,height=560')" title="The big guess pop-up, then it slides to the side">👀 Big guess pop-up</button></div>
+    <div class="row" style="gap:6px;align-items:center;margin-top:6px"><input id="mtSecsIn" placeholder="Type a name, like: 1 minute wall sit" style="max-width:320px" onkeydown="if(event.key==='Enter')mtSecsTry()" title="Check what a name fights as and its timer"><button onclick="mtSecsTry()">🔎 Check a name</button></div>
+    <div id="mtTestOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card" id="siteTestCard">
     <h3>🌐 Viewer website</h3>
     <p class="help">See the viewer website without your 24/7 bot: <b>🧪 Demo page</b> opens it with pretend battles, guesses and a poll (nothing is sent anywhere). <b>📦 What the site gets</b> shows what Movie Royal would send it right now (the battle on now, the newest history rows with who paid + ▶ VOD links, stats). The real one is in Settings → 🌐 Viewer site.</p>
@@ -1762,7 +1779,7 @@ async function labRun() {
   const card = labSet.type === 'card', id = 'lab-' + Date.now(), pacer = labNum(labSet.pacer, 50, 0, 100);
   const colors = ['#d8402a', '#2a7ad8', '#e8b020', '#3aa84a', '#9a4ad8', '#e8702a', '#2ab8c8', '#5a5a6a'];
   if (card) {
-    const n = labNum(labSet.cn, 12, 2, 40), all = S.cards?.maps || [], packMaps = all.filter(m => !m.charOnly); let map = labSet.cmap || 'random'; if (map === 'random' || !all.some(m => m.id === map)) map = packMaps[Math.floor(Math.random() * packMaps.length)]?.id || 'kungfu';
+    const n = labNum(labSet.cn, 12, 2, 40), all = [...(S.cards?.maps || []), ...(S.cards?.maraMaps || [])], packMaps = (S.cards?.maps || []).filter(m => !m.charOnly); let map = labSet.cmap || 'random'; if (map === 'random' || !all.some(m => m.id === map)) map = packMaps[Math.floor(Math.random() * packMaps.length)]?.id || 'kungfu';
     const names = ['Blaze Booster', 'Tidal Pack', 'Thunder Pack', 'Forest Booster', 'Mystic Pack', 'Ember Booster', 'Frost Pack', 'Shadow Booster'];
     const mi = all.find(m => m.id === map) || {}, len = labNum(labSet.cgame, 60, 0, 600), chars = labChars(mi); // (card fights: 1 minute unless you type a length; 🧍 characters when "Who fights" says so)
     const packs = Array.from({ length: n }, (_, i) => chars ? { id: 'lab-' + i, packId: 'lab-' + i, name: TA_MOVIES[i % TA_MOVIES.length] + (i >= TA_MOVIES.length ? ' ' + (Math.floor(i / TA_MOVIES.length) + 1) : ''), tag: '', game: 'Test lab', image: null, color: null, char: true, look: null, gender: ['m', 'f', 'n'][i % 3] } : { id: 'lab-' + i, packId: 'lab-' + i, name: names[i % 8] + (i >= 8 ? ' ' + (Math.floor(i / 8) + 1) : ''), tag: '', game: '🧪 Test', image: '', color: colors[i % 8], test: true });
@@ -1861,7 +1878,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/paid battles|viewer website|watch .*battle|ad warnings/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2252,6 +2269,7 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.type === 'banScan') banScanShow(m.scan);
     if (m.type === 'toast') toast(esc(m.text), m.ms);
+    if (m.type === 'maraTimer') mtShow(m);
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
@@ -2529,6 +2547,10 @@ function paidSetDraw(full) {
     <div class="row" style="gap:10px;align-items:flex-end;flex-wrap:wrap"><div><label>🍀 Luck per pick (%)</label><input type="number" min="0.1" max="50" step="0.5" style="width:90px" value="${esc(M.luckPer ?? 1)}" onchange="maraCfg({luckPer:this.value})"></div><div><label>🎯 Guess countdown (seconds, 0 = off)</label><input type="number" min="0" max="300" step="5" style="width:90px" value="${esc(M.guessSecs ?? 60)}" onchange="maraCfg({guessSecs:this.value})"></div><div><label>📣 Pop-up seconds</label><input type="number" min="10" max="120" step="5" style="width:90px" value="${esc(M.popSecs ?? 40)}" onchange="maraCfg({popSecs:this.value})"></div><div><label>🎟️ Counter corner</label><select style="width:auto" onchange="maraCfg({corner:this.value})">${[['tl', '↖ Top left'], ['tr', '↗ Top right'], ['bl', '↙ Bottom left'], ['br', '↘ Bottom right']].map(([k, t]) => `<option value="${k}" ${(M.corner || 'bl') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
     <label class="ck"><input type="checkbox" ${M.popup !== false ? 'checked' : ''} onchange="maraCfg({popup:this.checked})"> <span>📣 Show the pick pop-up on stream when someone gets a battle (numbered maps + things, and the website link)</span></label>
     <label class="ck"><input type="checkbox" ${M.counter !== false ? 'checked' : ''} onchange="maraCfg({counter:this.checked})"> <span>🎟️ Show the “battles owed” counter on stream</span></label>
+    <h4 style="margin-top:12px">🥫 Fighters + ⏱️ timers</h4>
+    <label class="ck"><input type="checkbox" ${M.itemLook !== false ? 'checked' : ''} onchange="maraCfg({itemLook:this.checked})"> <span>🥫 Things fight as themselves (a picture of it from the internet, cut out) and 🏋️ workouts as characters in gym clothes holding a sign. The maps are every character + card battle map.</span></label>
+    <label class="ck"><input type="checkbox" ${M.timerOn !== false ? 'checked' : ''} onchange="maraCfg({timerOn:this.checked})"> <span>⏱️ When a timed one wins (“45-second plank”, “1 minute wall sit”), Movie Royal pops up front: click any mouse button to start the timer (on stream too)</span></label>
+    <div class="row" style="gap:10px;align-items:flex-end"><div><label>⏰ Alarm seconds</label><input type="number" min="1" max="30" step="1" style="width:90px" value="${esc(M.alarmSecs ?? 5)}" onchange="maraCfg({alarmSecs:this.value})" title="How long the alarm rings when the timer is done"></div><button class="ghost" onclick="testGo('mtTestCard')" title="Try the timer on the Test tab">🧪 Try the timer</button></div>
     <div class="row" style="gap:6px;margin-top:4px">${S.mara?.obs ? '<button onclick="scenePick(\'mara\')" title="Change which OBS scenes show the marathon counter + pop-up">🎬 OBS scenes…</button><button class="ghost" onclick="maraObs(false)" title="Take the marathon counter + pop-up out of OBS">⏸ Take it out of OBS</button>' : '<button class="primary" onclick="scenePick(\'mara\')" title="Put the marathon counter + pop-up in OBS (pick the scenes)">🎬 Put the counter + pop-up in OBS</button>'}<button class="ghost" onclick="window.open('/marathon.html?demo=1','_blank','width=960,height=560')" title="See what the counter + pop-up look like (a pretend one)">👀 Preview</button></div>`;
 }
 async function maraCfg(o) { try { await api('/api/mara/settings', o); toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
@@ -2576,13 +2598,17 @@ function renderMaraPool() {
   let h;
   if (!l) h = `<h2>🏃 Marathon pool</h2><p class="help">Which battle is your marathon battle? (Import yours first in 🎬 Movie Pool → 📥 Import.)</p><div style="max-width:420px">${pick}</div>`;
   else {
-    const on = l.entries.filter(e => e.status === 'active'), off = l.entries.filter(e => e.status !== 'active'), num = new Map(on.map((e, i) => [e.id, i + 1]));
+    const on = l.entries.filter(e => e.status === 'active'), off = l.entries.filter(e => e.status !== 'active'), num = new Map(on.map((e, i) => [e.id, i + 1])), inf = new Map((M.items || []).map(x => [x.id, x]));
+    const kindTd = e => { const x = inf.get(e.id); if (!x) return '<td></td><td></td>'; const auto = x.mk ? '' : ` (${x.kind === 'workout' ? '🏋️' : '🥫'})`;
+      return `<td><select class="mpKind" title="Fights as: the thing itself (its picture, cut out) or a 🏋️ workout character holding a sign. Auto = guessed from the name" onchange="mpEntry('${e.id}',{mk:this.value})"><option value="" ${!x.mk ? 'selected' : ''}>Auto${auto}</option><option value="thing" ${x.mk === 'thing' ? 'selected' : ''}>🥫 Thing</option><option value="workout" ${x.mk === 'workout' ? 'selected' : ''}>🏋️ Workout</option></select></td>
+      <td><input class="mpSecs" type="number" min="0" max="7200" value="${x.mSecs ?? ''}" placeholder="${x.secs || '—'}" title="⏱️ Timer seconds when it wins (empty = read from its name, like “45-second plank”; 0 = no timer)" onchange="mpEntry('${e.id}',{mSecs:this.value})"></td>`; };
     const row = e => `<tr><td class="mN" style="font-weight:800;color:var(--gold)">${num.get(e.id) || ''}</td><td>${e.image ? `<img src="${esc(e.image)}" alt="">` : '<span class="muted">—</span>'}</td>
       <td><input value="${esc(e.label)}" title="Its name (chat sees it on the pick pop-up)" onchange="mpEdit('${e.id}',{label:this.value})"></td><td><input value="${esc(e.sub || '')}" placeholder="small line (how much…)" title="The small line under its name" onchange="mpEdit('${e.id}',{sub:this.value})"></td>
-      <td style="white-space:nowrap"><b>${Math.round((e.vLuck || 0) * 100) / 100}%</b>${e.vLuckBy?.length ? ` <span class="muted" title="${esc(e.vLuckBy.map(b => b.who).join(', '))}">(${e.vLuckBy.length})</span>` : ''}</td><td>${e.vWins || 0}</td>
-      <td style="white-space:nowrap"><div style="display:flex;gap:4px;align-items:center"><label title="Add or change its picture (shows on the website)" style="margin:0;cursor:pointer"><input type="file" accept="image/*" hidden onchange="mpPic('${e.id}', this.files[0])"><span class="ghost" style="display:inline-block;padding:3px 8px;border:1px solid rgba(255,255,255,.18);border-radius:8px">🖼️</span></label>${e.vLuck ? `<button class="ghost" style="padding:3px 8px" title="Take the chat-given 🍀 luck off this one" onclick="mpLuck('${e.id}')">↺</button>` : ''}${e.status === 'active' ? `<button class="ghost" style="padding:3px 8px" title="Take it out of the battle (hidden, not deleted)" onclick="mpEdit('${e.id}',{status:'removed'})">🙈</button>` : `<button class="ghost" style="padding:3px 8px" title="Put it back in the battle" onclick="mpEdit('${e.id}',{status:'active'})">▶</button>`}</div></td></tr>`;
+      ${kindTd(e)}<td style="white-space:nowrap"><b>${Math.round((e.vLuck || 0) * 100) / 100}%</b>${e.vLuckBy?.length ? ` <span class="muted" title="${esc(e.vLuckBy.map(b => b.who).join(', '))}">(${e.vLuckBy.length})</span>` : ''}</td><td>${e.vWins || 0}</td>
+      <td style="white-space:nowrap"><div style="display:flex;gap:4px;align-items:center"><label title="Add or change its picture (shows on the website)" style="margin:0;cursor:pointer"><input type="file" accept="image/*" hidden onchange="mpPic('${e.id}', this.files[0])"><span class="ghost" style="display:inline-block;padding:3px 8px;border:1px solid rgba(255,255,255,.18);border-radius:8px">🖼️</span></label>${e.status === 'active' && inf.get(e.id)?.kind !== 'workout' ? `<button class="ghost" style="padding:3px 8px" title="🌐 Another picture from the internet for it" onclick="mpWebPic('${e.id}', ${e.image ? 'true' : 'false'}, this)">🔄</button>` : ''}${e.vLuck ? `<button class="ghost" style="padding:3px 8px" title="Take the chat-given 🍀 luck off this one" onclick="mpLuck('${e.id}')">↺</button>` : ''}${e.status === 'active' ? `<button class="ghost" style="padding:3px 8px" title="Take it out of the battle (hidden, not deleted)" onclick="mpEdit('${e.id}',{status:'removed'})">🙈</button>` : `<button class="ghost" style="padding:3px 8px" title="Put it back in the battle" onclick="mpEdit('${e.id}',{status:'active'})">▶</button>`}</div></td></tr>`;
     h = `<div class="row" style="align-items:flex-end;gap:12px;flex-wrap:wrap"><div class="grow"><h2 style="margin:0">🏃 Marathon pool</h2><p class="help" style="margin:4px 0 0">The numbers are what chat types (<b>luck 12</b>). 🍀 = luck chat gave it with their paid battles: it stays until that thing wins, then starts over.</p></div><div style="min-width:260px">${pick}</div></div>
-      <table class="mpTable" style="margin-top:10px"><tr><th>#</th><th>🖼️</th><th>Name</th><th>Small line</th><th>🍀 Chat luck</th><th>🏆 Wins</th><th></th></tr>${on.map(row).join('')}</table>
+      ${M.items2 ? `<p class="help" style="margin:8px 0 0">🥫 Things fight as themselves (their picture, cut out of its background) and 🏋️ workouts as characters holding a sign. Things without a picture get one from the internet by themselves. <button class="ghost" onclick="mpWebPic('', false, this)" title="Look for pictures for every thing that has none (right now)">🖼️ Find missing pictures</button></p>` : ''}
+      <table class="mpTable" style="margin-top:10px"><tr><th>#</th><th>🖼️</th><th>Name</th><th>Small line</th><th title="Fights as">🥫/🏋️</th><th title="Timer seconds when it wins">⏱️</th><th>🍀 Chat luck</th><th>🏆 Wins</th><th></th></tr>${on.map(row).join('')}</table>
       ${off.length ? `<details style="margin-top:10px"><summary>🙈 Taken out (${off.length})</summary><table class="mpTable">${off.map(row).join('')}</table></details>` : ''}
       <h3 style="margin-top:14px">➕ Add things</h3><textarea id="mpAdd" rows="3" placeholder="One per line, like: Pickle Balls" title="Things to add to the marathon battle, one per line"></textarea>
       <div class="row" style="gap:6px;margin-top:6px"><button class="primary" onclick="mpAddGo()" title="Add these things to the marathon battle">➕ Add</button><span class="grow"></span><button class="ghost" onclick="if(confirm('Take the chat-given 🍀 luck off everything in the marathon battle?')) mpLuck()" title="Take the chat-given luck off everything in the marathon battle">↺ Reset all chat luck</button></div>`;
@@ -2590,6 +2616,46 @@ function renderMaraPool() {
   if (box.dataset.k !== h && !box.contains(document.activeElement)) { box.dataset.k = h; box.innerHTML = h; }
 }
 async function mpEdit(eid, o) { try { await api(`/api/lists/${S.mara.listId}/entries/${eid}`, o, 'PATCH'); } catch (e) { toast('⚠️ ' + e.message); } }
+// ⏱️ (1.77.0) a timed marathon thing won: the whole window becomes one big "click to start" button (any mouse button, or
+// Space / Enter), so Derek's wireless mouse starts it from across the room. The countdown also shows on stream (marathon overlay).
+let MT = null, mtOff = 0, mtTick = null, mtRang = '';
+function mtShow(m) { MT = m.t; mtOff = (m.now || Date.now()) - Date.now(); if (S.mara) S.mara.timer = MT; mtDraw(); }
+function mtBox() {
+  let b = $('mtBox'); if (b) return b;
+  b = document.createElement('div'); b.id = 'mtBox'; b.title = '⏱️ Marathon timer: click anywhere to start it';
+  b.innerHTML = '<div class="mtIn"><div class="mtWhat"></div><div class="mtBig"></div><div class="mtHint"></div><div class="mtBar"><i></i></div><div class="mtBtns"></div></div>';
+  const go = e => { if (e.target.closest('button')) return; e.preventDefault(); mtClick(); };
+  b.addEventListener('mousedown', go); b.addEventListener('contextmenu', e => e.preventDefault());
+  b.addEventListener('mouseup', e => { if (e.button === 3 || e.button === 4) e.preventDefault(); }); // (side buttons: don't go "back")
+  document.body.appendChild(b); return b;
+}
+document.addEventListener('keydown', e => { if (!MT || !$('mtBox')?.classList.contains('on')) return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); mtClick(); } else if (e.key === 'Escape') { e.preventDefault(); mtCmd('close'); } }, true);
+function mtClick() { if (!MT) return; if (MT.state === 'ready') mtCmd('start'); else if (MT.state === 'paused') mtCmd('resume'); else if (MT.state === 'done') mtCmd('close'); }
+async function mtCmd(cmd) { try { const r = await api('/api/mara/timer', { cmd }); MT = r.t; mtDraw(); } catch (e) { toast('⚠️ ' + e.message); } }
+const mtFmt = s => { s = Math.max(0, Math.ceil(s)); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : String(s); };
+function mtDraw() {
+  clearInterval(mtTick); mtTick = null; const b = mtBox();
+  if (!MT) { b.className = ''; return; }
+  b.className = 'on' + (MT.state === 'done' ? ' done' : ''); const q = c => b.querySelector(c);
+  q('.mtWhat').textContent = `${MT.test ? '🧪 ' : ''}🏋️ ${MT.label}`;
+  const btn = (t, cmd, tip) => `<button class="ghost" onclick="mtCmd('${cmd}')" title="${tip}">${t}</button>`;
+  const left = () => MT.state === 'running' ? (MT.endsAt - (Date.now() + mtOff)) / 1000 : MT.state === 'paused' ? MT.left : MT.state === 'done' ? 0 : MT.secs;
+  const paint = () => { const L = left(); q('.mtBig').textContent = MT.state === 'done' ? "⏰ TIME'S UP!" : mtFmt(L); q('.mtBar i').style.width = `${Math.max(0, Math.min(100, (1 - L / MT.secs) * 100))}%`; if (MT.state === 'running' && L <= 3.05 && L > 0 && Math.ceil(L) !== mtTick?.last) { if (mtTick) mtTick.last = Math.ceil(L); mtSnd('tick'); } };
+  q('.mtHint').innerHTML = MT.state === 'ready' ? '🖱️ Click anywhere to start (any mouse button, or Space)' : MT.state === 'running' ? 'Go go go! 💪' : MT.state === 'paused' ? '⏸ Paused: click anywhere to keep going' : '🖱️ Click anywhere to close';
+  q('.mtBtns').innerHTML = MT.state === 'ready' ? btn('✕ Skip the timer', 'close', 'No timer this time') : MT.state === 'running' ? btn('⏸ Pause', 'pause', 'Pause the timer') + btn('⏹ Done early', 'done', 'End it now (the alarm rings)') + btn('↺ Start over', 'restart', 'Back to the start (click to start again)') : MT.state === 'paused' ? btn('▶ Keep going', 'resume', 'Keep going') + btn('↺ Start over', 'restart', 'Back to the start') + btn('✕ Close', 'close', 'Close the timer') : btn('✕ Close', 'close', 'Close the timer');
+  paint(); if (MT.state === 'running') { mtTick = setInterval(paint, 100); mtTick.last = null; }
+  if (MT.state === 'done' && mtRang !== MT.id) { mtRang = MT.id; mtSnd('alarm', { secs: MT.alarmSecs || 5 }); }
+  if (MT.state === 'ready' && mtRang !== 'r' + MT.id) { mtRang = 'r' + MT.id; mtSnd('ding'); }
+}
+function mtSnd(k, o) { try { if (window.SFX) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S?.settings?.sfxVolume ?? 70) / 100, music: 0 }); SFX.play(k, o); } } catch {} } // (the alarm always rings, even with sounds off: it's your timer)
+async function mtTest(secs) { const out = $('mtTestOut'); try { await api('/api/test/mara-timer', { secs }); if (out) out.textContent = `⏱️ A pretend ${secs}-second timer is waiting: click anywhere on the window to start it.`; } catch (e) { if (out) out.textContent = '⚠️ ' + e.message; } }
+async function mtSecsTry() { const v = $('mtSecsIn').value.trim(); if (!v) return; try { const r = await api('/api/test/mara-secs?label=' + encodeURIComponent(v)); $('mtTestOut').textContent = `“${v}” → ${r.kind === 'workout' ? '🏋️ workout (a character with a sign)' : '🥫 thing (its picture)'} · ${r.secs ? `⏱️ ${r.secs} s timer` : 'no timer'}`; } catch (e) { $('mtTestOut').textContent = '⚠️ ' + e.message; } }
+async function mpEntry(eid, o) { try { const r = await api('/api/mara/entry', { id: eid, ...o }); toast(`Saved: ${r.kind === 'workout' ? '🏋️ workout' : '🥫 thing'}${r.secs ? ` · ⏱️ ${r.secs} s timer` : ''}`); } catch (e) { toast('⚠️ ' + e.message); } }
+async function mpWebPic(eid, next, btn) {
+  if (btn) btn.disabled = true;
+  try { const r = await api('/api/mara/pics', { id: eid || undefined, next }); toast(eid ? `🖼️ Picture ${r.n} of ${r.of}` : r.busy ? '🖼️ Already looking for pictures…' : `🖼️ Found ${r.done}${r.failed ? `, couldn't find ${r.failed}${r.err ? ` (${r.err})` : ''}` : ''}`); }
+  catch (e) { toast('⚠️ ' + e.message); } finally { if (btn) btn.disabled = false; }
+}
 async function mpLuck(id) { try { const r = await api('/api/mara/luck-reset', { id }); toast(`↺ Reset 🍀 on ${r.reset}`); } catch (e) { toast('⚠️ ' + e.message); } }
 async function mpPic(eid, f) { if (!f) return; try { const r = await fetch(`/api/lists/${S.mara.listId}/entries/${eid}/picture?name=${encodeURIComponent(f.name)}`, { method: 'POST', body: f }); if (!r.ok) throw new Error('upload failed'); toast('🖼️ Picture saved'); } catch (e) { toast('⚠️ ' + e.message); } }
 async function mpAddGo() { const t = $('mpAdd').value.trim(); if (!t) return; try { const r = await api(`/api/lists/${S.mara.listId}/bulk`, { text: t, plain: true }); $('mpAdd').value = ''; toast(`➕ Added ${r.added}`); } catch (e) { toast('⚠️ ' + e.message); } }
@@ -2660,7 +2726,7 @@ async function coTest(a) { // 🧪 Test tab: pretend partner
       : r.partner ? `🤝 Pretend partner: <b>${esc(r.partner.who)}</b>, their battle ${r.partnerBattle ? '<b>running</b>' : 'not running'}. Settings → 🤝 Co-stream shows it too.` : '✕ Pretend partner gone.';
   } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
-function render() { applyStyle(); holTestInit(); sceneInit(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { applyStyle(); { const t = S.mara?.timer || null, k = t ? t.id + t.state : ''; if (k !== (MT ? MT.id + MT.state : '')) { MT = t; mtDraw(); } } holTestInit(); sceneInit(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); luckBattlesSync(); inactSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -3156,7 +3222,7 @@ const mapSec = m => { const md = m.modes || ['ball', 'card']; return m.holiday ?
 const mapGroups = (list, only, opt) => { const az = (a, b) => a.name.localeCompare(b.name), line = '<option disabled>──────────────</option>';
   const secs = [...MAP_SECS, ['hol', '🎉 Holiday maps']].map(([k, lbl]) => [lbl, list.filter(m => mapSec(m) === k).sort(az)]).filter(x => x[1].length);
   return secs.map(([lbl, ms]) => `<optgroup label="${lbl}">${ms.map(opt).join('')}</optgroup>`).join(line); };
-const cardMapOpts = (sel, withChar) => `<option value="random" ${sel === 'random' ? 'selected' : ''}>🎲 Random (any card map)</option>` + mapGroups((S.cards?.maps || []).filter(m => withChar || !m.charOnly), 'card', m => mapOpt(m, m.id === sel)); // (🔴 NEW / 🔵 UPDATED like the ball maps; withChar = the 🏴‍☠️ character-only maps too: the Test lab)
+const cardMapOpts = (sel, withChar) => `<option value="random" ${sel === 'random' ? 'selected' : ''}>🎲 Random (any card map)</option>` + mapGroups([...(S.cards?.maps || []).filter(m => withChar || !m.charOnly), ...(withChar ? S.cards?.maraMaps || [] : [])], 'card', m => mapOpt(m, m.id === sel)); // (🌴 withChar also shows the 🏃 marathon-only map: the Test lab) // (🔴 NEW / 🔵 UPDATED like the ball maps; withChar = the 🏴‍☠️ character-only maps too: the Test lab)
 // (chars = the battle has 🧍 characters on: the 🃏 character-only maps can be picked too, and its characters fight there)
 const charsNow = () => !!(S.lists || []).find(l => l.id === S.activeListId)?.chars;
 const ballMapOpts = (sel, chars, noRace) => mapGroups([...(S.maps || []), ...(chars ? (S.cards?.maps || []).filter(m => !m.ball) : [])], 'ball', m => mapOpt(m, sel === m.id, noRace)); // noRace: 🏁 too many pieces for a race

@@ -35,6 +35,7 @@ import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
 import * as marathon from './marathon.js';
+import * as itempics from './itempics.js';
 import * as cards from './cards.js';
 import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
@@ -118,7 +119,7 @@ function ownLuckAfter(list, winnerId, fighters, quiet) {
   if (had) act('luck', `“${w?.label || '?'}” won, so its luck starts over (${pctW(had)} → 0%). It stays in “${list.name}”`, { icon: '🍀', kind: 'reset', list: list.name });
   return { per, up: items.length, had };
 }
-const mapLabel = id => { const m = mapById(id) || cards.cardMaps().find(x => x.id === id); return m ? `${m.icon || '🗺️'} ${m.name}` : String(id || 'a map'); };
+const mapLabel = id => { const m = mapById(id) || cards.cardMaps(true).find(x => x.id === id); return m ? `${m.icon || '🗺️'} ${m.name}` : String(id || 'a map'); };
 const chanceOf = (f, tot) => { const p = (f.weight || 1) / (tot || 1) * 100; return `${p < 10 ? Math.round(p * 10) / 10 : Math.round(p)}%`; };
 function winLine(f, list, totalW, series) {
   const who = !f.owner ? '' : list?.type === 'movies' ? (f.spot ? '' : ` (${f.owner}'s pick)`) : f.showOwner && f.owner !== f.label ? ` (${f.owner})` : '';
@@ -190,6 +191,7 @@ function gameResult(m) {
         f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
         if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
       }
+      if (list && list.id === paid.cfg().listId) maraTimerWin(list, f, !!live.game.test); // ⏱️ a timed thing won: its timer waits for your click
       if (list && !live.game.test) { marathon.won(list.id, f.id); maraGuessResult(live.game, f.id); } // 🏃 (+ 🎯 the guessers who called it win a battle) the chat-given 🍀 on the winner starts over
       if (ownLuck(list)) ownLuckAfter(list, f.id, live.game.fighters); // 🍀 your own battle with luck: the ones that lost get luckier, the winner's luck starts over (it stays in)
       if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`, !!db.live || !!live.fakeLive); // everyone who lost gets a little luckier (🎟️ wild spots: once a night while live, see Settings → 🍀 Luck)
@@ -221,8 +223,8 @@ function refreshPreview(now = false) {
     if (live.phase !== 'idle') return;
     previewIds = fighters.map(f => f.id); cliffN = fighters.length;
     { const k = list.id + ':' + previewIds.join(','); if (k !== refreshPreview.cliffKey) { refreshPreview.cliffKey = k; broadcast({ type: 'cliff', cliff: cliffInfo() }, 'control'); } } // 📋 the Battle tab's list shows who's really in
-    const pmap = currentMap(); cards.charPreview(isCharMap(pmap) && list.chars ? { map: pmap, name: list.screenTitle || list.name, fighters: charFighters(fighters), pace: fightPacer(list), length: fightSecs(list), lookSeed: live.lookSeed } : null); // 🧍 a character-only map: the card fight engine shows them waiting
-    lastPreview = { type: 'preview', mapSize: mapSizeK(), map: pmap, lookSeed: live.lookSeed, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
+    const pmap = currentMap(); cards.charPreview(isCharMap(pmap) && (list.chars || itemLook(list)) ? { map: pmap, name: list.screenTitle || list.name, fighters: charFighters(fighters), pace: fightPacer(list), length: fightSecs(list), lookSeed: live.lookSeed } : null); // 🧍 a character-only map: the card fight engine shows them waiting
+    lastPreview = { type: 'preview', mapSize: mapSizeK(), map: pmap, lookSeed: live.lookSeed, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: itemLook(list) ? 'items' : list.chars ? 'chars' : undefined, queued: db.pendingEffects.length, chaos: chaosState(), chatGate: list.type === 'movies' && db.settings.chatGate !== false }; lastPreview.key = fighters.map(f => f.id).sort().join(',');
     broadcast(lastPreview, 'overlay');
     lastPreview.at = Date.now(); previewError = null;
   } catch (e) { console.error('[preview]', e); previewError = e.message; broadcast({ type: 'toast', text: `⚠️ The cliff couldn't be set up: ${e.message}` }, 'control'); } 
@@ -269,7 +271,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()) },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -378,7 +380,8 @@ async function buildFighters(list, keepIds = null) {
         glow: Math.min(100, (e.luckPct > 0 && (list.type === 'movies' || ownLuck(list)) ? e.luckPct : Math.max(0, Math.round(((e.weight || 1) - 1) * 10))) + wl + (Number(e.vLuck) || 0)),
         image: proxied(image), poster: proxied(e.poster), owner, ownerLogin,
         showOwner: list.type === 'movies' || (list.type === 'chat' && !!e.joined), color: (db.settings.colorsOn !== false && ownerLogin && db.colors?.[ownerLogin.toLowerCase()]) || null,
-        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null, gender, look: lk
+        backers: e.backers?.length || 0, kind: list.type, details: e.details || null, spot: isSpot(e), tmdbId: e.tmdbId || null, powers: list.type === 'chat' && list.fun?.powerups && e.powers ? e.powers : null, gender, look: lk,
+        ...(itemLook(list) ? (marathon.kindOf(e) === 'workout' ? { gym: true, sign: e.label } : { item: true }) : {}) // 🏃 marathon: the thing itself, or a 🏋️ workout character with a sign
       };
     })
   };
@@ -669,6 +672,7 @@ function maraSeen() { // 👀 when the people with a battle waiting last chatted
 }
 function maraMapList() {
   const l = marathon.list(), n = l ? l.entries.filter(e => e.status === 'active').length : 0, big = n > raceMax();
+  if (itemLook(l)) return cards.cardMaps(true).filter(m => !(big && isRaceMap(m.id))).map(m => ({ id: m.id, name: m.name, icon: m.icon, only: !!m.maraOnly })).sort((a, b) => (b.only - a.only) || a.name.localeCompare(b.name)); // 🏃 (Derek, 1.77.0) every character + card battle map (the marathon's own map first)
   return [...MAP_LIST.filter(m => !(big && isRaceMap(m.id))), ...(l?.chars ? cards.CARD_MAPS : [])].map(m => ({ id: m.id, name: m.name, icon: m.icon })).sort((a, b) => a.name.localeCompare(b.name));
 }
 const maraRandomMap = () => { const ms = marathon.maps().filter(m => m.id !== db.lastMap); return ms.length ? ms[Math.floor(Math.random() * ms.length)].id : currentMap(); };
@@ -1215,7 +1219,7 @@ wss.on('connection', (ws, req) => {
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
-  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
+  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg())); // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
@@ -2423,7 +2427,7 @@ app.post('/api/lists/:id/entries/:eid/picture', express.raw({ type: '*/*', limit
   const l = getList(req.params.id), e = l?.entries.find(x => x.id === req.params.eid); if (!e) return res.sendStatus(404);
   if (!req.body?.length) { delete e.image; save(); pushState(); refreshPreview(); return res.json({ ok: true }); }
   const ext = (String(req.query.name || '').match(/\.(png|jpe?g|gif|webp)$/i) || [, 'png'])[1].toLowerCase(), file = uid() + '.' + ext;
-  fs.writeFileSync(path.join(UPLOADS, file), req.body); e.image = '/uploads/' + file; save(); pushState(); refreshPreview(); res.json({ ok: true, image: e.image });
+  fs.writeFileSync(path.join(UPLOADS, file), req.body); e.image = '/uploads/' + file; e.picAuto = false; save(); pushState(); refreshPreview(); res.json({ ok: true, image: e.image });
 });
 app.patch('/api/lists/:id/entries/:eid', (req, res) => {
   const l = getList(req.params.id); const e = l?.entries.find(x => x.id === req.params.eid);
@@ -3200,11 +3204,13 @@ app.post('/api/maps/reset-tags', (req, res) => { // ↺ the 🔴 NEW / 🔵 UPDA
 function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; mapRuns()[id] = { rev: m.rev || 1, at: Date.now() }; } // only battles while you're live count
 // 🧍 character-only maps (Kung Fu Town, Royal Rumble, Wizard Battle, Colosseum, WW2): battles with characters on can use them
 const isCharMap = id => cards.CARD_MAPS.some(m => m.id === id);
-const charsOn = () => !!getList(db.activeListId)?.chars;
-const charFighters = fighters => fighters.map(f => ({ id: f.id, packId: f.id, name: f.label, tag: '', game: f.owner || '', image: f.image || f.poster || null, color: f.color || null, char: true, look: f.look || null, gender: f.gender || 'n', chaos: f.chaos || undefined }));
+const charsOn = () => { const l = getList(db.activeListId); return !!l?.chars || itemLook(l); }; // (🏃 the marathon's things can use the character maps too)
+/** 🏃 (1.77.0) the marathon battle's pieces are the things themselves (Settings → 💰 → 🏃 Marathon picks: "things look like themselves") */
+function itemLook(l) { return !!l && l.id === paid.cfg().listId && marathon.cfg().itemLook !== false; }
+const charFighters = fighters => fighters.map(f => ({ id: f.id, packId: f.id, name: f.label, tag: '', game: f.owner || '', image: f.image || f.poster || null, color: f.color || null, char: !f.item, item: f.item || undefined, gym: f.gym || undefined, sign: f.sign || undefined, look: f.look || null, gender: f.gender || 'n', chaos: f.chaos || undefined }));
 function currentMap() {
   if (live.map && isCharMap(live.map) && !charsOn()) live.map = null; // (characters turned off: back to a ball map)
-  { const want = db.settings.map; if (isCharMap(want) && charsOn() && live.map !== want && live.phase !== 'lobby' && live.phase !== 'running') live.map = want; } // (characters turned on with a character-only map picked)
+  { const want = db.settings.map; if (isCharMap(want) && charsOn() && !live.mapPick && live.map !== want && live.phase !== 'lobby' && live.phase !== 'running') live.map = want; } // (🏃 mapPick: a marathon battle's picked map stays) // (characters turned on with a character-only map picked)
   const idle = live.phase !== 'lobby' && live.phase !== 'running';
   if (idle && live.map && isRaceMap(live.map) && !raceOk()) { live.raceSkip = live.map; live.map = null; } // 🏁 too many pieces for a race
   if (idle && live.raceSkip && raceOk() && (!live.map || !isRaceMap(live.map))) { live.map = live.raceSkip; live.raceSkip = null; } // (few enough again: back to that race)
@@ -3215,7 +3221,7 @@ function currentMap() {
   }
   return live.map;
 }
-function nextMap() { if (live.mapUsed) { db.lastMap = live.map; live.map = null; live.mapUsed = false; live.raceSkip = null; } }
+function nextMap() { if (live.mapUsed) { db.lastMap = live.map; live.map = null; live.mapUsed = false; live.raceSkip = null; live.mapPick = false; } }
 app.post('/api/map', (req, res) => {
   const id = String(req.body?.id || 'random'); if (id !== 'random' && !mapById(id) && !isCharMap(id)) return res.status(400).json({ error: 'Unknown map' });
   if (isRaceMap(id) && !raceOk()) return res.status(400).json({ error: `🏁 No races with more than ${raceMax()} pieces: this battle has ${cliffCount()}. (Change the number in Settings → ⚔️ Game.)` });
@@ -3877,13 +3883,14 @@ app.post('/api/test/battle', async (req, res) => { // a practice round with made
   if (req.body?.spots) { const L = (db.settings.spotLooks || []).filter(Boolean); fighters.slice(0, Math.max(2, Math.min(4, L.length || 2))).forEach((f, i) => Object.assign(f, { label: `${db.settings.spotName || 'Kirb'}'s Pick`, sub: '', owner: db.settings.spotName || 'Kirb', spot: true, look: L.length ? looks.check(L[i % L.length]).look : undefined })); } // 🎟️ wild spots in their characters
   if (req.body?.looks) fighters.forEach((f, i) => { f.look = i === 0 && typeof req.body.looks === 'object' ? looks.check(req.body.looks).look : looks.randomLook(); if (i === 0 && typeof req.body.looks === 'object') f.owner = 'You (test)'; }); // 🎨 /character looks (the first one = the look picked on the Test tab)
   if (req.body?.bodies) { const nB = looks.NAMES.body.length - 24, R = n => 1 + Math.floor(Math.random() * n); fighters.forEach((f, i) => { f.look = { hair: R(50), outfit: R(50), makeup: 1, facialhair: R(2) > 1 ? R(25) : 1, body: 25 + (i % nB), skin: R(8), haircolor: R(7), accessory: 1, hairaccessory: 1 }; }); } // 🧍 Test tab: everyone in the new body types (25+: men's builds + odd ones)
+  if (req.body?.items) { const W = ['45-second plank', '20 push-ups', '1 minute wall sit', '30 jumping jacks']; fighters.forEach((f, i) => { const gym = i % 3 === 2; if (gym) Object.assign(f, { label: W[(i / 3 | 0) % W.length], sub: '', gym: true, sign: W[(i / 3 | 0) % W.length], owner: null, showOwner: false, details: null, kind: 'text' }); else { const p = itempics.fakePic(i - (i / 3 | 0)); Object.assign(f, { label: p.name, sub: '', item: true, image: p.image, owner: null, showOwner: false, details: null, kind: 'text' }); } }); } // 🏃 pretend marathon things (pictures on a white background, cut out on the screen) + 🏋️ workouts
   if (req.body?.numbers) fighters.forEach((f, i) => Object.assign(f, { label: String(i + 1), sub: '', luck: 0, owner: null, showOwner: false, details: null, image: null, poster: null, kind: 'text' })); // 🔢 a number battle
-  let tmap = req.body?.map && req.body.map !== 'random' && (mapById(req.body.map) || (req.body.chars && isCharMap(req.body.map))) ? req.body.map : req.body?.map === 'random' || (isCharMap(currentMap()) && !req.body?.chars) ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
+  let tmap = req.body?.map && req.body.map !== 'random' && (mapById(req.body.map) || ((req.body.chars || req.body.items) && isCharMap(req.body.map))) ? req.body.map : req.body?.map === 'random' || (isCharMap(currentMap()) && !req.body?.chars && !req.body?.items) ? MAP_LIST[Math.floor(Math.random() * MAP_LIST.length)].id : currentMap();
   let raceSkipped = null; if (isRaceMap(tmap) && fighters.length > raceMax()) { raceSkipped = tmap; tmap = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(tmap)?.name || tmap)} instead.` }, 'control'); }
   live.game = { id: 'test-' + uid(), listId: null, fighters, total: fighters.length, test: true, nudeTest: !!req.body?.nudity, map: tmap, startedAt: Date.now(), secs: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList) };
   live.phase = 'lobby'; live.claim = null;
   if (isCharMap(tmap)) { cards.setShow(false); cards.endChars(); const err = startCharFight(req.body?.chaos ? '🤪 Chaos practice round' : req.body?.showdownTest ? '🥊 Final fight test' : '🧪 Practice round', true, !!req.body?.showdownTest); return err ? res.status(400).json({ error: err }) : res.json({ ok: true }); } // 🧍 a character-only map
-  broadcast({ type: 'start', mapSize: req.body?.mapSize != null ? clampN(req.body.mapSize, 50, 200, 100) / 100 : mapSizeK(), gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : tList ? `🧪 Practice: ${tList.screenTitle || tList.name}` : '🧪 Practice round', kind: 'films', skin: req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList), pacer: req.body?.pacer != null ? clampN(req.body.pacer, 0, 100, 50) : fightPacer(tList), fairOdds: !req.body?.racePowers, racePowers: !!req.body?.racePowers, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [], showdownTest: !!req.body?.showdownTest }, 'overlay');
+  broadcast({ type: 'start', mapSize: req.body?.mapSize != null ? clampN(req.body.mapSize, 50, 200, 100) / 100 : mapSizeK(), gameId: live.game.id, fighters, total: fighters.length, map: tmap, listName: req.body?.fun ? '🎉 Pretend fun battle' : tList ? `🧪 Practice: ${tList.screenTitle || tList.name}` : '🧪 Practice round', kind: 'films', skin: req.body?.items ? 'items' : req.body?.chars ? 'chars' : undefined, fun: req.body?.fun ? { ...(getList('chat-join')?.fun?.wacky || {}) } : null, lobbySeconds: req.body?.lobby != null ? clampN(req.body.lobby, 0, 120, 10) : db.settings.lobbySeconds, gameSeconds: req.body?.game != null ? clampN(req.body.game, 10, 600, 30) : fightSecs(tList), pacer: req.body?.pacer != null ? clampN(req.body.pacer, 0, 100, 50) : fightPacer(tList), fairOdds: !req.body?.racePowers, racePowers: !!req.body?.racePowers, laps: clampN(req.body?.laps ?? db.settings.f8Laps ?? 5, 1, 50, 5), survival: req.body?.survival ?? null, queued: [], showdownTest: !!req.body?.showdownTest }, 'overlay');
   pushState(); res.json({ ok: true, map: tmap, raceSkipped });
 });
 
@@ -3929,7 +3936,7 @@ async function startRound(opts = {}) {
   if (isCharMap(live.game.map)) return startCharFight(list.screenTitle || list.name, !!opts.test); // 🧍 a character-only map: the card fight engine plays it
   const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
-    type: 'start', mapSize: mapSizeK(), map: currentMap(), lookSeed: live.lookSeed, gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: list.chars ? 'chars' : undefined, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
+    type: 'start', mapSize: mapSizeK(), map: currentMap(), lookSeed: live.lookSeed, gameId: live.game.id, fighters, total, listName: list.screenTitle || list.name, kind: list.type, skin: itemLook(list) ? 'items' : list.chars ? 'chars' : undefined, movieNo: list.type === 'movies' || (stream().spotPending && list.type !== 'chat' && !list.giveaway && !live.game.test) ? (stream().movies || 0) + 1 : null,
     lobbySeconds: db.settings.lobbySeconds, gameSeconds: live.game.secs, pacer: fightPacer(list), fairOdds: !racePowersOn(list), racePowers: racePowersOn(list), /* 🏁 race power-ups can change who wins (Derek), so then no winner is picked ahead of time */ /* 🎯 every battle's winner is drawn by the odds before it starts (luck included), and the battle plays out around it (Derek's rule) */ laps: clampN(db.settings.f8Laps ?? 5, 1, 50, 5), fun: list.type === 'chat' ? { ...(list.fun?.wacky || {}) } : null, chaos: chaosState(), queued,
     series: list.type !== 'movies' && (Number(list.bestOf) || 1) > 1 ? (live.series && !live.series.done && live.series.listId === list.id ? { bestOf: live.series.bestOf, need: live.series.need, round: live.series.round + 1, tally: Object.entries(live.series.wins).sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, label: live.series.names[id], n })) } : { bestOf: Number(list.bestOf), need: Math.ceil(Number(list.bestOf) / 2), round: 1, tally: [] }) : null
   }, 'overlay');
@@ -4124,9 +4131,9 @@ app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (o
 /** The paid battle goes on: their 🍀 luck (else a token for later), the map, the battle. Returns an error text, or nothing. */
 async function paidRun(it, map, guess) {
   const st = marathon.atStart(it, () => map), mapWas = live.map; // 🏃 their 🗺️ map + their 🍀 luck (else they keep a luck token for later)
-  live.map = st.map; live.mapUsed = false; live.raceSkip = null;
+  live.map = st.map; live.mapUsed = false; live.raceSkip = null; live.mapPick = true;
   const err = await startRound({ paid: { who: it.who, login: it.login, kind: it.kind, what: it.what, at: it.at, test: it.test || undefined, map: st.map, mapPicked: st.mapPicked || undefined, luck: st.gave ? st.gave.e.label : undefined } });
-  if (err) { st.undo(); live.map = mapWas; return err; }
+  if (err) { st.undo(); live.map = mapWas; live.mapPick = false; return err; }
   if (guess && live.game) live.game.maraGuess = guess; // 🎯 who guessed what (paid out at the result)
   if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})! 🗺️ ${mapLabel(st.map)}${st.mapPicked ? '' : ' (random)'}${st.gave ? ` · 🍀 ${st.gave.e.label} is at ${Math.round(st.gave.e.vLuck * 100) / 100}%` : st.tok ? ' · 🍀 they can still give their luck later' : ''}.${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
   return null;
@@ -4135,17 +4142,17 @@ async function paidRun(it, map, guess) {
 // what number wins. If that number wins they win a battle. They pick map and luck in the order they typed"):
 // ▶ Run → the battle waits on the cliff for guessSecs; chat types a number (one guess each, the first one counts); then it starts.
 // Everyone who typed the winner's number gets a battle, added to the line in the order they guessed.
-function maraGuessMsg() { const g = live.maraGuess; return g ? { type: 'maraGuess', on: true, endsAt: g.endsAt, who: g.item.who, map: mapLabel(g.map), items: g.nums.map(x => ({ n: x.n, label: x.label, luck: x.luck })), count: g.guesses.length, last: g.guesses.slice(-6).map(x => x.name) } : { type: 'maraGuess', on: false }; }
+function maraGuessMsg() { const g = live.maraGuess; return g ? { type: 'maraGuess', on: true, at: g.at, endsAt: g.endsAt, who: g.item.who, map: mapLabel(g.map), items: g.nums.map(x => ({ n: x.n, label: x.label, luck: x.luck })), count: g.guesses.length, last: g.guesses.slice(-6).map(x => x.name) } : { type: 'maraGuess', on: false }; }
 function maraGuessBegin(it, map, secs) {
-  live.map = map; live.mapUsed = false; live.raceSkip = null; refreshPreview(true);
-  live.maraGuess = { item: it, map, endsAt: Date.now() + secs * 1000, nums: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, luck: x.luck })), guesses: [], timer: setTimeout(() => maraGuessEnd(), secs * 1000) };
+  live.map = map; live.mapUsed = false; live.raceSkip = null; live.mapPick = true; refreshPreview(true);
+  live.maraGuess = { item: it, map, at: Date.now(), endsAt: Date.now() + secs * 1000, nums: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, luck: x.luck })), guesses: [], timer: setTimeout(() => maraGuessEnd(), secs * 1000) };
   broadcast(maraGuessMsg(), 'mara'); pushState();
   paidSay(`🎯 GUESS THE WINNER! Type the number of the thing you think wins (one guess each, numbers are on screen). Right = you win a battle! ${secs} seconds. This one is for ${it.login ? '@' + it.login : it.who}.`);
   act('battle', `Chat is guessing the winner for ${it.who}'s battle (${secs} s)`, { icon: '🎯', kind: 'guess' });
 }
 async function maraGuessEnd(cancel) {
   const g = live.maraGuess; if (!g) return; clearTimeout(g.timer); live.maraGuess = null; broadcast({ type: 'maraGuess', on: false }, 'mara');
-  if (cancel) { paid.putBack(g.item); pushState(); return; }
+  if (cancel) { paid.putBack(g.item); live.mapPick = false; pushState(); return; }
   const err = await paidRun(g.item, g.map, { nums: g.nums.map(x => ({ n: x.n, id: x.id })), guesses: g.guesses });
   if (err) { paid.putBack(g.item); broadcast({ type: 'toast', text: `⚠️ ${hEsc(err)}` }, 'control'); }
   pushState();
@@ -4168,11 +4175,81 @@ function maraGuessResult(game, winnerId) { // 🎯 everyone who called it gets a
   if (G.guesses.length) paidSay(right.length ? `🎯 #${n} ${label} won! ${right.map(x => '@' + x.login).join(', ')} called it: ${right.length === 1 ? 'you win a battle' : 'you each win a battle'} (in the order you guessed)!` : `🎯 #${n} ${label} won! Nobody called it (${G.guesses.length} guess${G.guesses.length === 1 ? '' : 'es'}).`);
   act('battle', `${right.length} of ${G.guesses.length} guessed #${n} ${label}${right.length ? ': ' + right.map(x => x.name).join(', ') + ' won a battle' : ''}`, { icon: '🎯', kind: 'guess' });
 }
+// ⏱️ (1.77.0, Derek: "when it's a timed physical thing like a wall sit… I have a wireless mouse to start the timer, but have an
+// alarm go off for 5 seconds when the timer is finished"): a thing in the marathon battle with a time in its name (45-second
+// plank, 1 minute wall sit, 1:30…) or set by hand in the Marathon pool wins → Movie Royal comes to the front with "click to
+// start"; any mouse button (or Space) starts it; the countdown shows on stream (marathon overlay) and in the app; at 0 the
+// alarm rings for alarmSecs (5) seconds.
+let mtTimer = null;
+const secsWord = n => n >= 60 && n % 60 === 0 ? `${n / 60}-minute` : n > 60 ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}` : `${n}-second`;
+const mtMsg = () => ({ type: 'maraTimer', t: live.maraTimer ? { ...live.maraTimer, alarmSecs: Math.max(1, Math.min(30, Number(marathon.cfg().alarmSecs) || 5)) } : null, now: Date.now() });
+function mtSend() { const m = mtMsg(); broadcast(m, 'mara'); broadcast(m, 'control'); }
+function maraTimerWin(list, f, test) {
+  if (marathon.cfg().timerOn === false) return;
+  const e = list.entries.find(x => x.id === f.id), secs = e ? marathon.secsOf(e) : 0; if (!(secs > 0)) return;
+  clearTimeout(mtTimer); live.maraTimer = { id: uid(), label: f.label, secs, state: 'ready', at: Date.now(), who: live.game?.paid?.who || null, test: !!test };
+  mtSend(); try { globalThis.__desktop?.front?.(); } catch {}
+  act('battle', `⏱️ ${f.label} won: a ${secsWord(secs)} timer is ready (click to start)`, { icon: '⏱️', kind: 'timer', test });
+}
+function maraTimerCmd(cmd) {
+  const T = live.maraTimer; if (!T) throw new Error('There is no timer right now.');
+  clearTimeout(mtTimer);
+  if (cmd === 'start' || cmd === 'resume') {
+    if (T.state === 'running') return T;
+    const left = T.state === 'paused' ? T.left : T.secs; Object.assign(T, { state: 'running', endsAt: Date.now() + left * 1000, startedAt: T.startedAt || Date.now() }); delete T.left;
+    mtTimer = setTimeout(maraTimerDone, left * 1000);
+    if (cmd === 'start') act('battle', `⏱️ Started the ${secsWord(T.secs)} timer for ${T.label}`, { icon: '⏱️', kind: 'timer', test: T.test });
+  } else if (cmd === 'pause') { if (T.state !== 'running') return T; T.left = Math.max(0, (T.endsAt - Date.now()) / 1000); T.state = 'paused'; delete T.endsAt; }
+  else if (cmd === 'restart') { Object.assign(T, { state: 'ready' }); delete T.endsAt; delete T.left; delete T.startedAt; }
+  else if (cmd === 'close') { live.maraTimer = null; }
+  else if (cmd === 'done') return maraTimerDone();
+  mtSend(); return live.maraTimer;
+}
+function maraTimerDone() {
+  const T = live.maraTimer; if (!T) return null; clearTimeout(mtTimer);
+  T.state = 'done'; T.doneAt = Date.now(); delete T.endsAt; mtSend();
+  act('battle', `⏱️ Time's up: ${T.label} (${secsWord(T.secs)})`, { icon: '⏰', kind: 'timer', test: T.test });
+  const id = T.id; mtTimer = setTimeout(() => { if (live.maraTimer?.id === id) { live.maraTimer = null; mtSend(); } }, (Math.max(1, Number(marathon.cfg().alarmSecs) || 5) + 12) * 1000);
+  return T;
+}
+app.get('/api/mara/timer', (req, res) => res.json(mtMsg()));
+app.post('/api/mara/timer', wTry(b => ({ t: maraTimerCmd(String(b.cmd || '')) })));
+app.post('/api/test/mara-timer', wTry(b => { // 🧪 pretend a timed thing just won (nothing else happens)
+  const secs = Math.max(3, Math.min(600, Math.round(Number(b.secs) || 10)));
+  clearTimeout(mtTimer); live.maraTimer = { id: uid(), label: String(b.label || `${secs}-second plank (test)`).slice(0, 80), secs, state: 'ready', at: Date.now(), who: 'Test_Viewer', test: true };
+  mtSend(); try { globalThis.__desktop?.front?.(); } catch {} return { t: live.maraTimer };
+}));
+app.get('/api/test/mara-secs', (req, res) => res.json({ label: String(req.query.label || ''), kind: marathon.kindOf({ label: String(req.query.label || '') }), secs: marathon.secsOf({ label: String(req.query.label || '') }) }));
+
+// 🖼️ (1.77.0) pictures of the marathon's things from the internet (itempics.js): every thing without one gets one by itself
+// (25 s after opening, then every 5 minutes, each tried at most once a day); 🔄 in the Marathon pool steps to another picture.
+const maraList = () => { const id = paid.cfg().listId; return id ? getList(id) : null; };
+async function maraPicsAuto(force) {
+  const l = maraList(); if (!itemLook(l) || !itempics.missing(l, marathon.kindOf)) return { done: [], failed: [] };
+  const r = await itempics.fillMissing(l, marathon.kindOf, { force, onEach: () => pushState() });
+  if (r.done?.length) { act('battle', `🖼️ Found pictures for ${r.done.length} thing${r.done.length === 1 ? '' : 's'} in “${l.name}”: ${r.done.slice(0, 6).join(', ')}${r.done.length > 6 ? '…' : ''}`, { icon: '🖼️', kind: 'pics' }); refreshPreview(); pushState(); }
+  if (r.failed?.length && force) console.error(`[marathon] couldn't find pictures for ${r.failed.length} thing(s): ${r.failed.slice(0, 5).join(', ')}${r.err ? ' (' + r.err + ')' : ''}`);
+  return r;
+}
+setTimeout(() => maraPicsAuto().catch(() => {}), 25000); setInterval(() => maraPicsAuto().catch(() => {}), 5 * 60000);
+app.post('/api/mara/pics', wTry(async b => {
+  const l = maraList(); if (!l) throw new Error('Pick the marathon battle first (Settings → 💰 → 🎟️ Paid battles).');
+  if (!b.id) { const r = await maraPicsAuto(true); return { done: r.done?.length || 0, failed: r.failed?.length || 0, busy: !!r.busy, err: r.err || null }; }
+  const e = l.entries.find(x => x.id === b.id); if (!e) throw new Error('That thing is not in the marathon battle.');
+  const r = await itempics.findOne(e, { next: !!b.next }); if (r.error) throw new Error(r.error);
+  act('battle', `🖼️ ${b.next ? 'Another' : 'A'} picture for “${e.label}” (${r.n} of ${r.of})`, { icon: '🖼️', kind: 'pics' }); refreshPreview(); pushState(); return r;
+}));
+app.post('/api/mara/entry', wTry(b => { // 🏋️ thing or workout + ⏱️ timer seconds, by hand (Marathon pool)
+  const l = maraList(), e = l?.entries.find(x => x.id === b.id); if (!e) throw new Error('That thing is not in the marathon battle.');
+  if ('mk' in b) { if (b.mk === 'thing' || b.mk === 'workout') e.mk = b.mk; else delete e.mk; }
+  if ('mSecs' in b) { if (b.mSecs === '' || b.mSecs == null) delete e.mSecs; else e.mSecs = Math.max(0, Math.min(7200, Math.round(Number(b.mSecs) || 0))); }
+  save(); refreshPreview(); pushState(); return { kind: marathon.kindOf(e), secs: marathon.secsOf(e) };
+}));
 app.post('/api/mara/guess/now', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(); return {}; }));
 app.post('/api/mara/guess/cancel', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(true); return {}; }));
 app.post('/api/test/mara-guess', wTry(b => { if (!live.maraGuess) throw new Error('Press ▶ Run on a battle first (chat guesses before it starts).'); const n = Number(b.n) || 1, name = String(b.name || 'Test_Guesser'); return { took: maraGuessChat({ login: name.toLowerCase(), name, text: String(n) }), count: live.maraGuess.guesses.length }; }));
 // 🏃 Marathon (1.76.0)
-app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; db.settings.marathon = c; save(); pushState(); maraCount(true); return marathon.cfg(); }));
+app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
 app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
   const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');
   if (b.map !== undefined) { if (!b.map) { it.map = null; it.mapVia = null; } else { const m = marathon.findMap(b.map); if (m.error) throw new Error(m.error); it.map = m.id; it.mapVia = 'you'; } }

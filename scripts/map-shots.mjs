@@ -11,7 +11,7 @@ const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 170
 await pg.goto(`http://localhost:${PORT}/control.html`); await pg.waitForTimeout(5000);
 await pg.evaluate(() => { document.querySelectorAll('dialog[open]').forEach(d => d.close()); setView('test'); testGo('labCard'); });
 await pg.evaluate(() => { const lp = labPost; window.labPost = m => lp(m.type === 'start' || m.type === 'cardScene' ? { ...m, listName: m.listName ? ' ' : m.listName, battleName: m.battleName ? ' ' : m.battleName, ...(m.chaos ? { chaos: { ...m.chaos, points: false, bits: false } } : {}) } : m); }); // (no "Test lab" title or chat power ticker in the pictures)
-const maps = await pg.evaluate(() => [...(S.maps || []).map(m => ({ id: m.id, card: false })), ...(S.cards?.maps || []).filter(m => !m.ball).map(m => ({ id: m.id, card: true }))]);
+const maps = await pg.evaluate(() => [...(S.maps || []).map(m => ({ id: m.id, card: false })), ...[...(S.cards?.maps || []), ...(S.cards?.maraMaps || [])].filter(m => !m.ball).map(m => ({ id: m.id, card: true }))]); // (🌴 + the marathon-only map)
 await pg.evaluate(async () => { Object.assign(labSet, { type: 'ball', map: 'classic', n: 6, lobby: 0, sound: false }); labSave(true); labInit(); await labRun(); }); await pg.waitForTimeout(4000); // (warm-up: the lab screen's first battle can start before it's ready)
 for (const m of maps) {
   if (only.length && !only.includes(m.id)) continue;

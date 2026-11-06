@@ -15,11 +15,11 @@
   // 🧍 a battle with characters on a character-only map: fighters are people (charparts.js) instead of packs.
   // Their own /character, else a random look for this battle (scene.lookSeed: the same on every game screen; themed by map).
   const CP = () => window.CHAR_PARTS;
-  const charLook = f => { const k = scene.lookSeed + scene.map + (f.team ?? ''); if (f._lk && f._lkK === k) return f._lk; const base = f.look || CP().auto(String(f.id) + (scene.lookSeed || ''), f.gender, scene.map, f.chaos); f._lkK = k; return (f._lk = PIR() && f.team != null ? pirDress(base, f) : base); };
+  const charLook = f => { const k = scene.lookSeed + scene.map + (f.team ?? ''); if (f._lk && f._lkK === k) return f._lk; const base = f.look || CP().auto(String(f.id) + (scene.lookSeed || ''), f.gender, scene.map, f.chaos); f._lkK = k; return (f._lk = PIR() && f.team != null ? pirDress(base, f) : f.gym && CP().gym ? CP().gym(base, f.id) : base); }; // (🏋️ 1.77.0: a workout = gym clothes)
   function charCanvas(f) { // drawn once (again when their picture arrives): head to waist, the movie poster / Twitch picture on the chest
     const img = imgFor(f.image), k = `${scene.lookSeed}|${scene.map}|${img ? 1 : 0}|${f.team ?? ''}`; if (f._cc && f._ccK === k) return f._cc;
     const c = f._cc || document.createElement('canvas'); c.width = 200; c.height = 200 + CHAR_TOP; const cg = c.getContext('2d'); cg.clearRect(0, 0, c.width, c.height);
-    cg.save(); cg.translate(0, CHAR_TOP); CP().draw(cg, 100, 62, charLook(f), img, f.color, (f.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()); cg.restore(); // (🧍 1.70.0: room on top for a big head or a long neck)
+    cg.save(); cg.translate(0, CHAR_TOP); CP().draw(cg, 100, 62, charLook(f), img, f.color, (f.name || '?').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()); if (f.gym && CP().sign) CP().sign(cg, 100, 62, f.sign || f.name); cg.restore(); // (🏋️ a workout holds a sign with the exercise) // (🧍 1.70.0: room on top for a big head or a long neck)
     const up = CP().room?.(charLook(f)) || 0; f._ccUp = up > .03 ? Math.min(CHAR_SRC[1], up * 62 + 4) : 0; // (how far above the usual box that character's head goes)
     f._cc = c; f._ccK = k; return c;
   }
@@ -62,7 +62,8 @@
   const MAPINFO = { kungfu: { title: '🏯 KUNG FU TOWN', intro: 'KUNG FU TOWN', weapons: ['sword', 'staff', 'nunchaku'], drops: () => scene.wacky.weapons }, ring: { title: '🔔 ROYAL RUMBLE', intro: 'ROYAL RUMBLE', weapons: ['chair'], drops: () => true },
     wizard: { title: '🧙 WIZARD BATTLE', intro: 'WIZARD BATTLE', weapons: [], drops: () => false }, colosseum: { title: '🏛️ COLOSSEUM', intro: 'THE COLOSSEUM', weapons: [], drops: () => false, armed: true },
     ww2: { title: '🪖 WW2 BATTLEFIELD', intro: 'WW2 BATTLEFIELD', weapons: [], drops: () => false, armed: true },
-    pirates: { title: '🏴‍☠️ PIRATE BATTLE', intro: 'PIRATE BATTLE', weapons: [], drops: () => false, armed: true } };
+    pirates: { title: '🏴‍☠️ PIRATE BATTLE', intro: 'PIRATE BATTLE', weapons: [], drops: () => false, armed: true },
+    neon: { title: '🌴 NEON BEACH', intro: 'NEON BEACH', weapons: ['staff', 'chair'], drops: () => scene.wacky.weapons } };
   // 🗡️ weapons: how much harder they hit (d), how much further they reach (r), slower swings (cd), the hit word (w)
   const WSTAT = { sword: { d: 2.6, r: 30, w: 'SLASH!' }, staff: { d: 2.2, r: 40 }, nunchaku: { d: 2.4, r: 30 }, chair: { d: 2.4, r: 30, w: 'CLANG!' },
     gladius: { d: 1.6, r: 26, w: 'SLASH!', sharp: 1 }, spear: { d: 1.45, r: 62, w: 'STAB!', sharp: 1 }, trident: { d: 1.5, r: 56, w: 'STAB!', sharp: 1 }, axe: { d: 1.9, r: 30, cd: 1.25, w: 'CHOP!', sharp: 1 },
@@ -123,7 +124,7 @@
   const grabbable = o => o.alive && !o.heldBy && !o.whip && !(o.rebound > 0) && o.h === 0 && !o.atk?.o;
 
   function makeFighters(list) {
-    crewC = null; tiles = newTiles(); bolts = []; zaps = []; lions = []; meteorT = 8; crumbleT = 1; lionT = 1.5; tanks = [{ x: 260, side: -1, aim: 0, cd: 3, recoil: 0 }, { x: 1660, side: 1, aim: 0, cd: 5, recoil: 0 }]; shells = []; planes = []; bombs = []; planeT = 7;
+    crewC = null; cars = []; carT = 5; tiles = newTiles(); bolts = []; zaps = []; lions = []; meteorT = 8; crumbleT = 1; lionT = 1.5; tanks = [{ x: 260, side: -1, aim: 0, cd: 3, recoil: 0 }, { x: 1660, side: 1, aim: 0, cd: 5, recoil: 0 }]; shells = []; planes = []; bombs = []; planeT = 7;
     pir = pirNew(); for (const s of [0, 1]) for (const z of [.16, .5, .86]) pir.cannons.push({ s, z, recoil: 0, fireAt: 0 }); if (PIR()) pir.cd = [rr(3, 5), rr(4.5, 6.5)];
     const n = list.length, size = baseSize(n) * (PIR() ? .88 : 1);
     const team = PIR() ? pirTeams(list) : null, crew = [[], []]; if (team) for (const p of list) crew[team.get(p.id)].push(p); // 🏴‍☠️ two crews, one on each ship
@@ -220,7 +221,7 @@
     }
     if (MI().drops() && weapDrops < 2 && (weapT -= dt) <= 0) { weapT = rr(5, 8); weapDrops++; const ks = MI().weapons, kind = ks[Math.floor(R() * ks.length)], z = rr(.1, .9), [lo, hi] = bounds(z);
       weapons.push({ kind, x: RUMBLE() ? rr(lo + 40, hi - 40) : rr(200, 1720), z, h: RUMBLE() ? 260 : 700, vh: 0 }); if (RUMBLE()) { word('A CHAIR!', weapons[weapons.length - 1].x, zY(z) - 320, '#d6e2ee', 40); snd('crowd', { v: .6 }); } }
-    if (WIZ()) wizStep(dt, live); if (COLO()) lionStep(dt); if (WAR()) warStep(dt, live); if (PIR()) pirStep(dt, live);
+    if (WIZ()) wizStep(dt, live); if (COLO()) lionStep(dt); if (WAR()) warStep(dt, live); if (PIR()) pirStep(dt, live); if (NEON()) neonStep(dt, live);
     for (const w of weapons) if (w.h > 0) { w.vh -= grav() * dt; w.h = Math.max(0, w.h + w.vh * dt); if (w.h === 0) { w.vh = 0; dust(w.x, w.z, 6); snd('land', { p: 1.4 }); } }
     for (const f of F) {
       f.ph += dt * (f.atk ? 6 : Math.abs(f.vx) > 20 || Math.abs(f.vz) > .02 ? 9 : 3);
@@ -352,6 +353,107 @@
     for (const tk of tanks) if (tk.fireAt && T >= tk.fireAt) { tk.fireAt = 0; tk.recoil = 1; snd('tank'); }
     if ((planeT -= dt * (behind ? 1.5 : 1)) <= 0) { planeT = rr(9, 14); const dir = R() < .5 ? 1 : -1, z0 = rr(.15, .85), y = rr(120, 220); planes.push({ x: dir > 0 ? -300 : W + 300, y, vx: dir * 620, dir }); snd('plane');
       for (let i = 0; i < 5; i++) { const x = 260 + i * 350 + rr(-60, 60), bx = dir > 0 ? x : W - x, o = warTarget(); bombs.push({ x: o && Math.abs(o.x - bx) < 300 ? o.x : bx, z: o ? clamp(o.z + rr(-.05, .05), 0, 1) : clamp(z0 + rr(-.2, .2), 0, 1), t: ((dir > 0 ? bx + 300 : W + 300 - bx) / 620) + .9 }); } }
+  }
+  // ---------- 🌴 Neon Beach (1.77.0, Derek: "an exclusive map for just these [🏃 marathon] battles… vice city themed": an
+  // original 80s beach city at sunset, all made up here (no real names or logos): a striped synthwave sun over the sea,
+  // pastel hotels with neon signs, palm trees, and the beach drive through the middle where pastel convertibles come speeding
+  // through (headlights + ⚠️ first). Only in the marathon battle's map list.
+  const NEON = () => scene.map === 'neon';
+  let cars = [], carT = 6;
+  const CAR_COLS = ['#ff5ab4', '#38e8e0', '#f4ecff', '#ffb04a', '#b07aff', '#7dffb0'];
+  const NEON_SIGNS = [[190, 330, 'HOTEL', '#ff4fd8'], [450, 400, 'SUNSET', '#3ef0ff'], [1470, 400, 'MOTEL', '#ffe14a'], [1745, 330, 'NEON NIGHTS', '#ff4fd8']];
+  function palm(b, x, y, h, lean, col) { // a palm tree (trunk + fronds), drawn as a silhouette
+    b.strokeStyle = col; b.lineCap = 'round'; b.lineWidth = h * .055; b.beginPath(); b.moveTo(x, y); b.quadraticCurveTo(x + lean * .5, y - h * .55, x + lean, y - h); b.stroke();
+    b.fillStyle = col; const tx = x + lean, ty = y - h;
+    for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + (i - 3) * .52 + (i > 3 ? .25 : 0), L = h * (.42 + (i % 2) * .08), ex = tx + Math.cos(a) * L, ey = ty + Math.sin(a) * L * .55 + L * .32;
+      b.beginPath(); b.moveTo(tx, ty); b.quadraticCurveTo(tx + Math.cos(a) * L * .55, ty + Math.sin(a) * L * .55 - L * .12, ex, ey); b.quadraticCurveTo(tx + Math.cos(a) * L * .5, ty + Math.sin(a) * L * .5 + L * .05, tx, ty + 4); b.fill(); }
+  }
+  function drawBgNeon(k) {
+    const c = document.createElement('canvas'); c.width = W * k; c.height = H * k; const b = c.getContext('2d'); b.scale(k, k);
+    const HZ = 455; // the sea's horizon
+    const sky = b.createLinearGradient(0, 0, 0, HZ); sky.addColorStop(0, '#0d0628'); sky.addColorStop(.35, '#3a0d5a'); sky.addColorStop(.7, '#b0217a'); sky.addColorStop(1, '#ff7a5a');
+    b.fillStyle = sky; b.fillRect(0, 0, W, HZ + 2);
+    for (let i = 0; i < 90; i++) { b.fillStyle = `rgba(255,255,255,${vr(.2, .8)})`; b.fillRect(vr(0, W), vr(0, 220), vr(1, 2.5), vr(1, 2.5)); } // stars
+    // the striped sun, half under the sea
+    b.save(); b.beginPath(); b.rect(0, 0, W, HZ); b.clip(); const sun = b.createLinearGradient(0, 160, 0, HZ); sun.addColorStop(0, '#fff27a'); sun.addColorStop(.55, '#ff9a4a'); sun.addColorStop(1, '#ff3a8a');
+    b.shadowColor = '#ff6ab0'; b.shadowBlur = 70; b.fillStyle = sun; b.beginPath(); b.arc(960, HZ + 20, 260, Math.PI, 0); b.fill(); b.shadowBlur = 0;
+    for (let i = 0; i < 7; i++) { const y = HZ - 150 + i * 24 + i * i * 1.6, h = 3 + i * 2.2; const g2 = b.createLinearGradient(0, y, 0, y + h); g2.addColorStop(0, '#d03a80'); g2.addColorStop(1, '#ff6a6a'); b.fillStyle = g2; b.fillRect(600, y, 720, h); } b.restore();
+    // the sea + the sun on the water
+    const sea = b.createLinearGradient(0, HZ, 0, 560); sea.addColorStop(0, '#2a0f50'); sea.addColorStop(1, '#13234a'); b.fillStyle = sea; b.fillRect(0, HZ, W, 110);
+    for (let i = 0; i < 26; i++) { const y = HZ + 4 + i * 4, w = 340 - i * 9 + vr(-30, 30); b.fillStyle = `rgba(255,${150 + i * 3},120,${.55 - i * .018})`; b.fillRect(960 - w / 2 + vr(-20, 20), y, w, 2); }
+    for (let i = 0; i < 60; i++) { b.fillStyle = `rgba(120,200,255,${vr(.05, .18)})`; b.fillRect(vr(0, W), vr(HZ + 6, 560), vr(20, 70), 1.5); }
+    // the beach + the sea wall
+    const sand = b.createLinearGradient(0, 560, 0, 610); sand.addColorStop(0, '#e9a07a'); sand.addColorStop(1, '#b06a6a'); b.fillStyle = sand; b.fillRect(0, 560, W, 50);
+    // pastel art deco hotels on both sides (rounded corners, eyebrow ledges, porthole windows)
+    const hotel = (x, w, top, col, trim) => {
+      b.fillStyle = col; b.beginPath(); b.roundRect ? b.roundRect(x, top, w, GY0 - top + 6, [18, 18, 0, 0]) : b.rect(x, top, w, GY0 - top + 6); b.fill();
+      b.fillStyle = 'rgba(0,0,0,.14)'; b.fillRect(x + w * .78, top + 20, w * .22, GY0 - top);
+      b.fillStyle = trim; for (let y = top + 70; y < GY0 - 50; y += 62) b.fillRect(x - 6, y, w + 12, 7); // ledges
+      b.fillRect(x + w / 2 - 14, top - 46, 28, 50); b.beginPath(); b.arc(x + w / 2, top - 46, 18, 0, 7); b.fill(); // the tower on top
+      for (let y = top + 86; y < GY0 - 60; y += 62) for (let i = 0; i < 4; i++) { const wx = x + 22 + i * (w - 44) / 3.4, lit = (Math.sin(wx * 7.3 + y * 1.7) > -.2); b.fillStyle = lit ? 'rgba(255,214,140,.95)' : 'rgba(30,20,60,.8)'; b.fillRect(wx, y, 26, 32); }
+      b.fillStyle = 'rgba(30,20,60,.85)'; b.fillRect(x + w / 2 - 34, GY0 - 64, 68, 66); // the door
+    };
+    hotel(-30, 330, 260, '#f2a6c8', '#fff0f6'); hotel(300, 300, 330, '#8ad8d0', '#e8fffb'); hotel(1320, 300, 330, '#c2a6f2', '#f4eeff'); hotel(1620, 330, 260, '#a6e8b8', '#eefff2');
+    // palm trees
+    for (const [x, h, lean] of [[640, 260, 30], [700, 200, -20], [1230, 250, -34], [1290, 190, 24], [880, 150, 16], [1050, 160, -18]]) palm(b, x, 600, h, lean, '#1a0a2e');
+    // the drive: road at the back (z 0–.33), then a pink and teal tiled walk
+    const yR = zY(.33), road = b.createLinearGradient(0, GY0, 0, yR); road.addColorStop(0, '#2a1f44'); road.addColorStop(1, '#3a2d56'); b.fillStyle = road; b.fillRect(0, GY0 - 4, W, yR - GY0 + 4);
+    b.fillStyle = '#ffd84a'; for (let x = 0; x < W; x += 110) b.fillRect(x + 20, zY(.165) - 3, 60, 6); // the middle line
+    b.fillStyle = '#e8e0f8'; b.fillRect(0, yR - 2, W, 10); b.fillStyle = 'rgba(0,0,0,.25)'; b.fillRect(0, yR + 8, W, 4); // the curb
+    const tw = z => 92 + z * 70, tx = (i, z) => 960 + i * tw(z); // (a checkerboard in perspective: tiles get wider closer to you)
+    for (let r = 0; r < 13; r++) { const z0 = .345 + r * .055, z1 = z0 + .055, y0 = zY(z0), y1 = zY(z1); for (let i = -15; i < 15; i++) { b.fillStyle = (r + i) % 2 ? '#f6b6d6' : '#9ce4dc'; b.beginPath(); b.moveTo(tx(i, z0), y0); b.lineTo(tx(i + 1, z0), y0); b.lineTo(tx(i + 1, z1), y1); b.lineTo(tx(i, z1), y1); b.closePath(); b.fill(); } }
+    b.fillStyle = 'rgba(40,10,60,.18)'; b.fillRect(0, yR + 12, W, H - yR);
+    for (let i = 0; i < 200; i++) { b.fillStyle = `rgba(255,255,255,${vr(.03, .08)})`; b.fillRect(vr(0, W), vr(yR + 12, H), vr(2, 5), vr(1, 2)); }
+    // street lamps on the curb
+    for (const x of [120, 560, 1360, 1800]) { b.fillStyle = '#2a1f44'; b.fillRect(x - 4, yR - 190, 8, 190); b.fillRect(x - 4, yR - 190, 34, 6); }
+    return c;
+  }
+  function neonLights(t) { // the neon signs + lamp glow (they hum and flicker)
+    g.save(); g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const [i, [x, y, txt, col]] of NEON_SIGNS.entries()) {
+      const fl = (Math.sin(t * 13 + i * 2.1) > .97 || (i === 2 && Math.sin(t * 1.3) > .93 && Math.sin(t * 31) > 0)) ? .35 : 1; // (one of them is a bit broken)
+      g.font = `${txt.length > 8 ? 40 : 56}px ${FONT}`; g.globalAlpha = fl; g.shadowColor = col; g.shadowBlur = 26; g.lineWidth = 4; g.strokeStyle = col; g.strokeText(txt, x, y); g.fillStyle = '#fff'; g.globalAlpha = fl * .85; g.fillText(txt, x, y);
+    }
+    g.globalAlpha = 1; g.shadowBlur = 0; const yR = zY(.33);
+    for (const x of [150, 590, 1390, 1830]) { const gl = g.createRadialGradient(x, yR - 180, 2, x, yR - 180, 140); gl.addColorStop(0, 'rgba(255,220,160,.55)'); gl.addColorStop(1, 'rgba(255,120,200,0)'); g.fillStyle = gl; g.beginPath(); g.arc(x, yR - 180, 140, 0, 7); g.fill(); g.fillStyle = '#fff4d0'; g.fillRect(x - 10, yR - 186, 20, 8); }
+    g.restore();
+  }
+  function neonStep(dt, live) { // 🚗 convertibles speed through (seeded R: the same on every screen)
+    for (const c of cars) {
+      c.t += dt; if (c.t < c.warn) continue;
+      c.x += c.dir * c.v * dt;
+      for (const o of F) if (o.alive && !o.falling && !c.hit.has(o) && Math.abs(o.z - c.z) < .055 && Math.abs(o.x - c.x) < 150 * (.72 + c.z * .4) && o.h < 120) {
+        c.hit.add(o); o.vx += c.dir * rr(650, 820); o.vh = Math.max(o.vh, rr(330, 430)); o.stun = .8; o.hurtT = .35; o.atk = null;
+        damage(null, o, rr(24, 36) * paceBoost() * (T > D * 1.35 ? 2 : 1), 'car'); word(pick(['HIT AND RUN!', 'BEEP BEEP!', 'ROADKILL!', 'WATCH IT!', 'SPLAT!']), o.x, zY(o.z) - 200 * S(o), '#ff6ad8', 46); snd('crash'); quake(8);
+      }
+    }
+    cars = cars.filter(c => c.t < c.warn || (c.dir > 0 ? c.x < W + 400 : c.x > -400));
+    if (mode !== 'fight' || finalLeft > 0) return; // (no cars in the final fight)
+    const behind = live.length > paceTarget();
+    if ((carT -= dt * (behind ? 1.6 : 1)) > 0) return;
+    carT = rr(6, 9.5); const o = warTarget(), dir = R() < .5 ? 1 : -1, z = o ? clamp(o.z + rr(-.03, .03), .02, .98) : rr(.05, .3);
+    cars.push({ x: dir > 0 ? -320 : W + 320, z, dir, v: rr(1500, 1900), t: 0, warn: 1.25, col: CAR_COLS[Math.floor(R() * CAR_COLS.length)], hit: new Set() }); snd('horn');
+  }
+  function drawCar(c, t) {
+    const s = .72 + c.z * .4, y = zY(c.z);
+    if (c.t < c.warn) { // ⚠️ headlights + a warning lane across the ground first
+      const k = c.t / c.warn, pulse = .5 + .5 * Math.sin(t * 20); g.save();
+      g.fillStyle = `rgba(255,80,200,${.12 + .1 * pulse})`; g.fillRect(0, y - 26 * s, W, 52 * s);
+      const ex = c.dir > 0 ? 0 : W, lg = g.createRadialGradient(ex, y - 30 * s, 4, ex, y - 30 * s, 420 * k + 60); lg.addColorStop(0, 'rgba(255,250,210,.9)'); lg.addColorStop(1, 'rgba(255,250,210,0)'); g.fillStyle = lg; g.beginPath(); g.arc(ex, y - 30 * s, 420 * k + 60, 0, 7); g.fill();
+      g.font = `${Math.round(64 * s)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.globalAlpha = .6 + .4 * pulse; g.fillText('⚠️', c.dir > 0 ? 70 : W - 70, y - 70 * s); g.restore(); return;
+    }
+    g.save(); g.translate(c.x, y); g.scale(c.dir * s, s);
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(0, 4, 170, 20, 0, 0, 7); g.fill();
+    const beam = g.createLinearGradient(150, 0, 520, 0); beam.addColorStop(0, 'rgba(255,250,200,.55)'); beam.addColorStop(1, 'rgba(255,250,200,0)'); g.fillStyle = beam; g.beginPath(); g.moveTo(150, -40); g.lineTo(520, -90); g.lineTo(520, 30); g.lineTo(150, -22); g.fill();
+    g.fillStyle = c.col; g.strokeStyle = 'rgba(20,10,30,.8)'; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(-170, -22); g.lineTo(-176, -62); g.lineTo(-120, -50); g.lineTo(-40, -52); g.lineTo(10, -62); g.lineTo(120, -56); g.quadraticCurveTo(168, -50, 172, -26); g.lineTo(168, -8); g.lineTo(-168, -8); g.closePath(); g.fill(); g.stroke(); // body with tail fins
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-150, -46, 290, 6); // chrome stripe
+    g.strokeStyle = 'rgba(200,240,255,.85)'; g.lineWidth = 5; g.beginPath(); g.moveTo(10, -62); g.lineTo(-6, -98); g.stroke(); // the windshield
+    g.fillStyle = '#2a1a1a'; g.beginPath(); g.arc(-40, -82, 17, 0, 7); g.fill(); g.fillRect(-52, -70, 26, 18); g.fillStyle = '#111'; g.fillRect(-36, -88, 22, 7); // the driver (sunglasses at night)
+    g.fillStyle = '#fffbe0'; g.beginPath(); g.ellipse(166, -36, 7, 9, 0, 0, 7); g.fill(); g.fillStyle = '#ff2a4a'; g.fillRect(-176, -40, 8, 14);
+    for (const wx of [-108, 108]) { g.fillStyle = '#111'; g.beginPath(); g.arc(wx, -8, 28, 0, 7); g.fill(); g.fillStyle = '#d8dde6'; g.beginPath(); g.arc(wx, -8, 12, 0, 7); g.fill(); const a = c.x * .05; g.strokeStyle = '#8a929e'; g.lineWidth = 3; g.beginPath(); g.moveTo(wx + Math.cos(a) * 11, -8 + Math.sin(a) * 11); g.lineTo(wx - Math.cos(a) * 11, -8 - Math.sin(a) * 11); g.stroke(); }
+    g.restore();
+    if (Math.random() < .5) parts.push({ x: c.x - c.dir * 170 * s, y: y - 10 * s, vx: -c.dir * vr(60, 140), vy: -vr(10, 40), g: -10, life: vr(.3, .6), max: .6, size: vr(6, 12), color: 'rgba(220,200,255,.35)', gz: null, dust: true }); // exhaust
   }
   // ---------- 🏴‍☠️ Pirate Battle: crossing over, rope swings, cannons, the sea, and the 🐙 kraken final ----------
   function pirAI(f, t, dx, dz, reach, dt) { // gets over to the ship the pirate it's after is on (a gangplank, or a rope swing); same ship = fight normally
@@ -1147,8 +1249,8 @@
       const hb = top + PH * .16; g.fillStyle = '#9aa2aa'; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 2 * s; g.beginPath(); g.arc(cx, hb, PW * .46, Math.PI, 0); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#c8ced4'; g.fillRect(cx - PW * .5, hb - 3 * s, PW, 6 * s);
       g.fillStyle = '#c81e2a'; g.beginPath(); for (let i = 0; i <= 8; i++) { const a = Math.PI + i / 8 * Math.PI, r = PW * .46 + 16 * s + (i % 2) * 4 * s; g.lineTo(cx + Math.cos(a) * r * .9, hb + Math.sin(a) * r); } for (let i = 8; i >= 0; i--) { const a = Math.PI + i / 8 * Math.PI; g.lineTo(cx + Math.cos(a) * PW * .42, hb + Math.sin(a) * PW * .44); } g.fill();
     } else if (PIR()) pirHat(f, cx, top, PW, PH, s); // 🏴‍☠️ a pirate hat or bandana in their crew's colour
-    else if (!RUMBLE()) { g.fillStyle = '#d82020'; g.fillRect(cx - PW / 2, top + PH * .12, PW, PH * .07); }
-    const tx = RUMBLE() || WIZ() || COLO() || WAR() || PIR() ? -9999 : cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
+    else if (!RUMBLE() && !f.item) { g.fillStyle = '#d82020'; g.fillRect(cx - PW / 2, top + PH * .12, PW, PH * .07); }
+    const tx = f.item || RUMBLE() || WIZ() || COLO() || WAR() || PIR() ? -9999 : cx - f.face * PW / 2, tw = Math.sin(T * 9 + f.ph) * 6 * s; g.strokeStyle = '#d82020'; g.lineWidth = 4 * s; g.beginPath(); g.moveTo(tx, top + PH * .15); g.quadraticCurveTo(tx - f.face * 18 * s, top + PH * .15 + tw, tx - f.face * 34 * s, top + PH * .2 - tw); g.stroke();
     for (const side of [-1, 1]) {
       const x = cx + side * ex + f.face * 3 * s;
       g.lineWidth = 2.4 * s; g.strokeStyle = '#111';
@@ -1172,6 +1274,19 @@
       g.drawImage(c, sx, sy + cy, sw, sh - cy, x - PW * .06, top + PH * cy / sh, PW * 1.12, PH - PH * cy / sh);
       g.restore();
       if (cut) { g.fillStyle = '#b0101c'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(x + PW * (i + .5) / 6, top + PH * cy / sh + 3 * s, 6 * s, 4 * s, 0, 0, 7); g.fill(); } }
+      return;
+    }
+    if (f.item) { // 🏃 (1.77.0) the thing itself: its picture cut out of its background (cutout.js), no pack around it
+      const pic = (window.CUTOUT && f.image && CUTOUT.get(f.image)) || imgFor(f.image);
+      g.save(); if (f.hurtT > 0) g.filter = `brightness(${1 + f.hurtT * 1.6})`; else if (f.hp < 100) g.filter = `brightness(${1 - (1 - Math.max(0, f.hp) / 100) * .25})`;
+      if (cut) { g.beginPath(); g.rect(x - PW, top + cut, PW * 3, PH * 2); g.clip(); }
+      if (pic) { const pw = pic.naturalWidth || pic.width, ph = pic.naturalHeight || pic.height, k = Math.min(PW * 1.18 / pw, PH * 1.08 / ph), w = pw * k, h = ph * k; g.shadowColor = 'rgba(0,0,0,.4)'; g.shadowBlur = 6 * s; g.drawImage(pic, x + (PW - w) / 2, top + PH - h, w, h); }
+      else { const gr = g.createLinearGradient(x, top, x + PW, top + PH); gr.addColorStop(0, f.color); gr.addColorStop(1, '#1a0a2a'); g.fillStyle = gr; g.beginPath(); g.roundRect ? g.roundRect(x, top, PW, PH, 10 * s) : g.rect(x, top, PW, PH); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.9)'; g.textAlign = 'center'; g.textBaseline = 'middle'; const nm = String(f.name || '').toUpperCase(); let fs = 15 * s; g.font = `${Math.round(fs)}px ${FONT}`; while (g.measureText(nm).width > PW * 1.6 && fs > 7 * s) { fs *= .88; g.font = `${Math.round(fs)}px ${FONT}`; }
+        const words = nm.split(/\s+/), half = Math.ceil(words.length / 2), lines = g.measureText(nm).width > PW * .92 && words.length > 1 ? [words.slice(0, half).join(' '), words.slice(half).join(' ')] : [nm]; lines.forEach((l, i) => g.fillText(l, x + PW / 2, top + PH * .72 + (i - (lines.length - 1) / 2) * fs * 1.05)); } // (no picture yet: its name on it)
+      g.restore();
+      for (const st of f.stains) { g.fillStyle = 'rgba(160,0,16,.7)'; g.beginPath(); g.ellipse(x + st.x * PW, top + st.y * PH, st.r * PW * .7, st.r * PW * .55, 0, 0, 7); g.fill(); }
+      if (cut) { g.fillStyle = '#b0101c'; for (let i = 0; i < 6; i++) { g.beginPath(); g.ellipse(x + PW * (i + .5) / 6, top + cut + 3 * s, 6 * s, 4 * s, 0, 0, 7); g.fill(); } }
       return;
     }
     const img = imgFor(f.image);
@@ -2010,7 +2125,7 @@
     const real = Math.min(.1, (now - (lastFrame || now)) / 1000); lastFrame = now;
     if (!scene.show) { modeT += real; if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; } if (mode === 'final' && modeT > finIntro()) { mode = 'fight'; modeT = 0; finalLeft = 20; } acc += real * timeK(); let n = 0; while (acc >= DT && n < 8) { step(DT); acc -= DT; n++; } if (n === 8) acc = 0; parts = []; texts = []; return; } // (behind another tab: just finish the fight)
     const k = RY().scale?.() || 1; if (cv.width !== Math.round(W * k)) { cv.width = Math.round(W * k); cv.height = Math.round(H * k); }
-    if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : WIZ() ? drawBgWizard(bgScale) : COLO() ? drawBgColosseum(bgScale) : WAR() ? drawBgWar(bgScale) : PIR() ? drawBgSea(bgScale) : drawBg(bgScale); }
+    if (!bg || bgScale !== Math.min(2, k) || bgMap !== scene.map) { bgScale = Math.min(2, k); bgMap = scene.map; bg = RUMBLE() ? drawBgRumble(bgScale) : WIZ() ? drawBgWizard(bgScale) : COLO() ? drawBgColosseum(bgScale) : WAR() ? drawBgWar(bgScale) : PIR() ? drawBgSea(bgScale) : NEON() ? drawBgNeon(bgScale) : drawBg(bgScale); }
     modeT += real; toastT -= real; finTick(real); camStep(real); if (PIR()) pirTick(real);
     if (mode === 'intro' && modeT > 2.4) { mode = 'fight'; modeT = 0; bell(); if (RUMBLE()) snd('crowd'); if (PIR()) snd('cannon'); }
     if (mode === 'final' && modeT > finIntro()) { mode = 'fight'; modeT = 0; finalLeft = 20; snd('bell'); snd(RUMBLE() ? 'crowd' : 'hyah'); } // 🔔 FIGHT! (the battle clock was stopped while FINAL FIGHT showed)
@@ -2023,7 +2138,7 @@
     parts = parts.filter(p => p.life > 0);
     for (const o of flyers) { if (o.rest) continue; o.vy += 1500 * vt; o.x += o.vx * vt; o.y += o.vy * vt; o.rot += o.vrot * vt; if (o.blood > 0) { o.blood -= vt; if (Math.random() < .6) parts.push({ x: o.x, y: o.y, vx: vr(-60, 60), vy: vr(-60, 40), g: 1500, life: 2, max: 2, size: vr(2, 4), color: '#b0101c', gz: o.gz, blood: true }); } const gy = zY(o.gz) - 6; if (o.y > gy && o.vy > 0) { o.y = gy; o.vy *= -.35; o.vx *= .6; o.vrot *= .5; if (Math.abs(o.vy) < 60) { o.rest = true; o.vy = 0; } } }
     for (const t of texts) { t.life -= real; t.y -= 40 * real; } texts = texts.filter(t => t.life > 0);
-    if (!RUMBLE() && !WAR() && !PIR() && petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
+    if (!RUMBLE() && !WAR() && !PIR() && !NEON() && petals.length < 40 && Math.random() < .3) petals.push({ x: vr(-100, W), y: -20, vx: vr(30, 90), vy: vr(30, 70), r: vr(0, 6), c: Math.random() < .5 ? '#ffc0d8' : '#ffd9e6' });
     for (const p of petals) { p.x += (p.vx + Math.sin(now / 700 + p.r) * 30) * real; p.y += p.vy * real; p.r += real * 2; } petals = petals.filter(p => p.y < H + 20 && p.x < W + 40);
 
     g.setTransform(k, 0, 0, k, 0, 0); g.imageSmoothingEnabled = GFX.smooth !== false;
@@ -2034,8 +2149,8 @@
     drawStage(now, false);
     for (const w of weapons) { const s = .9 + w.z * .4; g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(w.x, zY(w.z), 30 * s, 7 * s, 0, 0, 7); g.fill(); drawWeapon(w.kind, w.x - 20 * s, zY(w.z) - w.h - (w.kind === 'chair' ? 28 * s : 6), 1, s, w.h > 0 ? T * 8 : 0); }
     const shown = mode === 'replay' && replay ? replay.frames[replay.i].f.map((sn, i) => ({ ...F[i], ...sn, stains: F[i].stains.slice(0, sn.sn), target: { x: F[i].x * 0 + sn.x + sn.look * 50, alive: true } })) : F;
-    const order2 = [...shown.filter(f => !f.falling && !f.wreck), ...lions.map(L => ({ lion: L, alive: true, z: L.z })), ...(PIR() ? pirMasts() : [])].sort((a, b) => (a.alive - b.alive) || a.z - b.z);
-    for (const f of order2) { if (FIN.on && (f === FIN.W || f === FIN.L)) continue; f.lion ? drawLion(f.lion) : f.mast ? drawMast(f.mast, now) : PIR() && f.pm && mode === 'final' ? pirPmDraw(f) : drawFighter(f); } // (🏴‍☠️ the masts stand among the pirates)
+    const order2 = [...shown.filter(f => !f.falling && !f.wreck), ...lions.map(L => ({ lion: L, alive: true, z: L.z })), ...(PIR() ? pirMasts() : []), ...(NEON() ? cars.filter(c => c.t >= c.warn).map(c => ({ car: c, alive: true, z: c.z })) : [])].sort((a, b) => (a.alive - b.alive) || a.z - b.z);
+    for (const f of order2) { if (FIN.on && (f === FIN.W || f === FIN.L)) continue; f.lion ? drawLion(f.lion) : f.car ? drawCar(f.car, now / 1000) : f.mast ? drawMast(f.mast, now) : PIR() && f.pm && mode === 'final' ? pirPmDraw(f) : drawFighter(f); } // (🏴‍☠️ the masts stand among the pirates)
     if (FIN.on) finDraw(now);
     if (WIZ()) drawSpells(now / 1000); if (WAR()) drawWar(now / 1000); if (PIR()) pirFront(now);
     if (RUMBLE()) drawRing(g, true); // (the front ropes are in front of everyone)
@@ -2054,7 +2169,7 @@
   }
   function drawStage(now, orbit) { // the map behind the fighters (orbit = the circling FINAL FIGHT camera drew the picture itself; nobody falling)
     if (!orbit) g.drawImage(bg, 0, 0, W, H);
-    if (RUMBLE()) ringLogo(); else if (WIZ()) { if (!orbit) for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (PIR()) pirStage(now, orbit); else if (!COLO() && !orbit) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
+    if (RUMBLE()) ringLogo(); else if (WIZ()) { if (!orbit) for (const f of F) if (f.falling && f.h > -1300) drawFighter(f); drawPlatform(now / 1000); } else if (WAR()) drawTanks(now / 1000, false); else if (PIR()) pirStage(now, orbit); else if (NEON()) { neonLights(now / 1000); for (const c of cars) if (c.t < c.warn) drawCar(c, now / 1000); } else if (!COLO() && !orbit) lanterns(now / 1000); // (falling packs go behind the platform: you see them through the holes)
     g.drawImage(crat, 0, 0); g.drawImage(floor, 0, 0);
     if (RUMBLE()) arenaLights(now / 1000);
   }
@@ -2098,7 +2213,7 @@
       if (Math.random() < .5) petals.push({ x: vr(0, W), y: -10, vx: vr(-40, 40), vy: vr(80, 160), r: 0, c: ['#ffd23a', '#ff5a7a', '#5ad6ff', '#ffffff'][Math.floor(Math.random() * 4)] });
     }
   }
-  window.CARDS = { msg, on: () => !layer.classList.contains('hidden'), cam: a => camCmd(a), camAuto: on => { cam.auto = !!on; }, camState: () => ({ ...cam, follow: cam.follow?.name || null }), state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }),
+  window.CARDS = { msg, neon: () => ({ cars: cars.map(c => ({ x: Math.round(c.x), z: c.z, t: c.t, hit: c.hit.size })), carT }), on: () => !layer.classList.contains('hidden'), cam: a => camCmd(a), camAuto: on => { cam.auto = !!on; }, camState: () => ({ ...cam, follow: cam.follow?.name || null }), state: () => ({ mode, alive: alive().length, n: F.length, winner: winner?.id || null, T }),
     sim: secs => { const out = []; let last = alive().length; if (mode === 'intro') mode = 'fight'; for (let i = 0; i < secs * 60 && !winner; i++) { if (mode === 'final') { mode = 'fight'; finalLeft = 20; } step(DT); const n = alive().length; if (n !== last) { out.push([+T.toFixed(1), n]); last = n; } } return { out, T, winner: winner?.id || null, destined, falls: F.filter(f => f.falling).length, lions: lions.length }; },
     finList: map => ({ fin: finLib('fin', map).map(f => `${f.tone === 'funny' ? '🤪' : '☠️'} ${f.name}`), cel: finLib('cel', map).map(c => c.name) }),
     finCheck: (map, fps = 15, who) => { // (tests) run every finisher + celebration of a map through every frame, drawing it: returns any errors (who: 'chars' / 'packs', else the map's usual)

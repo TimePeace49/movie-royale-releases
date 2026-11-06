@@ -734,5 +734,22 @@
   const BEARDS_OK = r1(2, 25).filter(n => n !== 18 && n !== 20); // (no braided or wizard beards on regular folks)
   const EVERYDAY_COSTUMES = [53, 57, 58, 67, 69, 72, 73, 75];
   const MEN_BODIES = r1(25, 35); // 🧍 the men's builds (36–46 are the odd ones: chaos looks + people's own /character only) // costumes that still make sense in a normal battle (superhero, pirate, ninja, sweater, onesies…)
-  window.CHAR_PARTS = { chestSize, buildOf, bodyK, bodyW, NAMES: ALLN, BASE, VARS, GROUPS, SKIN, HAIRC, THEMES, draw, norm, limbs, chest, auto, sp, skinCol, hairCol: hairColN, figure, figureFit, figureBox, room };
+  // 🏋️ (1.77.0) workout fighters in the 🏃 marathon battle: gym clothes + a sweatband, holding a sign with the exercise
+  function gym(look, id) {
+    let h = 0; for (const ch of String(id || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const outfits = [7, 5, 56, 3, 7, 5]; return { ...look, outfit: outfits[h % outfits.length], accessory: h % 3 ? 7 : 2, hairaccessory: 1, makeup: 1 };
+  }
+  function sign(g, m, rr, text) {
+    const w = rr * 1.32, hh = rr * .66, x = m - w / 2, y = m + rr * .14;
+    g.save();
+    g.fillStyle = '#7a5a34'; g.fillRect(m - w * .3 - rr * .03, y + hh * .7, rr * .06, rr * .55); g.fillRect(m + w * .3 - rr * .03, y + hh * .7, rr * .06, rr * .55); // (the sticks it's held by)
+    g.fillStyle = '#fffdf2'; g.strokeStyle = '#1a1a1a'; g.lineWidth = rr * .045; g.beginPath(); g.roundRect ? g.roundRect(x, y, w, hh, rr * .06) : g.rect(x, y, w, hh); g.fill(); g.stroke();
+    const words = String(text || '').toUpperCase().split(/\s+/).filter(Boolean), lines = [];
+    let fs = rr * .3; const fit = () => { g.font = `${Math.round(fs)}px 'Lilita One', Impact, sans-serif`; lines.length = 0; let cur = ''; for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > w * .9 && cur) { lines.push(cur); cur = wd; } else cur = t; } if (cur) lines.push(cur); return lines.length <= 2 && lines.every(l => g.measureText(l).width <= w * .92); };
+    while (!fit() && fs > rr * .1) fs *= .9;
+    g.fillStyle = '#d0202a'; g.textAlign = 'center'; g.textBaseline = 'middle'; const lh = fs * 1.02, y0 = y + hh / 2 - (lines.length - 1) * lh / 2;
+    lines.slice(0, 2).forEach((l, i) => g.fillText(l, m, y0 + i * lh));
+    g.restore();
+  }
+  window.CHAR_PARTS = { gym, sign, chestSize, buildOf, bodyK, bodyW, NAMES: ALLN, BASE, VARS, GROUPS, SKIN, HAIRC, THEMES, draw, norm, limbs, chest, auto, sp, skinCol, hairCol: hairColN, figure, figureFit, figureBox, room };
 })();
