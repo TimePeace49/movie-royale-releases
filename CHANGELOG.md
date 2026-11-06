@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.80.2
+- 🌐 Fixed: Settings → Viewer site was empty (only the top text showed) when you had never run a poll. Everything shows again, including the new 🔑 Let viewers sign in steps.
+
 ## 1.80.1
 - 🔑 The viewer website's Twitch step is easier: Settings → 🌐 Viewer site → 🔑 Let viewers sign in is now 4 numbered steps: 📋 your website's address with a Copy button right there, 🟣 a button that opens dev.twitch.tv (and the end of your Client ID, so you know which app to press Manage on), exactly where to paste it, and ✅ Check it, which asks Twitch if it knows the address yet (✅ Done / ⚠️ Not done yet). 🔑 Try signing in on the site opens it like a viewer.
 - The website always sends viewers back to the same address after signing in (a / at the end of the address used to make Twitch say no).
