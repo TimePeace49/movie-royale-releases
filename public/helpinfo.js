@@ -27,6 +27,10 @@ H(/^⚙ settings$/i, '⚙ Settings', 'Paid battle amounts, luck per pick, the po
 H(/^🌐 website$/i, '🌐 Website', 'Opens your viewer website: people can pick their map and luck there too (with map screenshots).');
 H(/^tip:which battle is the marathon battle/i, '⚔️ The marathon battle', 'Which battle paid battles use (import your Marathon Battle in 🎬 Movie Pool → 📥 Import).');
 H(/^tip:its name \(chat sees it/i, '✏️ Name', 'Its name: chat sees it on the pick pop-up and the website.');
+H(/^tip:see the viewer page right here/i, '👀 Preview the viewer page', 'Shows your viewer website inside Movie Royal: 🧪 a pretend one (pretend battles, guesses and a poll, works without the 24/7 bot) or 🌐 your real one, at 💻 computer or 📱 phone size.');
+H(/^tip:see it the size it is on a (computer|phone)/i, '💻 / 📱 Size', 'Shows the viewer page the size it is on a computer or on a phone.');
+H(/^tip:show (the pretend viewer page instead|your real viewer website here)/i, '🧪 / 🌐 Pretend or real', 'Switches between the pretend viewer page (made-up battles) and your real website.');
+H(/^tip:open (this|the pretend) viewer page in your (web )?browser/i, '↗️ In my browser', 'Opens the viewer page in your web browser.');
 H(/let viewers sign in with twitch/i, '🔑 Let viewers sign in', 'One time: tell your Twitch app your viewer website\'s address, so viewers can sign in there (for guesses, polls and My page). 1 copy the address, 2 open dev.twitch.tv and press Manage on your Movie Royal app, 3 paste it under OAuth Redirect URLs and Save, 4 ✅ Check it.');
 H(/^tip:your viewer website's address: this is what you paste/i, '📋 Your website\'s address', 'Your viewer website\'s address. It\'s made for you by your 24/7 bot. This is what you paste into your Twitch app under OAuth Redirect URLs.');
 H(/^tip:open your apps on dev\.twitch\.tv/i, '🟣 Open dev.twitch.tv', 'Opens the page with your Twitch apps in your browser. Press Manage next to the app you made for Movie Royal.');

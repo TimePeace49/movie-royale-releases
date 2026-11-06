@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.80.3
+- 👀 Preview the viewer page right inside Movie Royal: 🧪 Test tab → 🎬 Scenes → 🌐 Viewer website → 👀 Preview the viewer page (also 👀 Preview in Settings → 🌐 Viewer site). A pretend page (made-up battles, guesses, a poll; works without the 24/7 bot) or your real site, at 💻 computer or 📱 phone size.
+
 ## 1.80.2
 - 🌐 Fixed: Settings → Viewer site was empty (only the top text showed) when you had never run a poll. Everything shows again, including the new 🔑 Let viewers sign in steps.
 
