@@ -1172,6 +1172,12 @@
     <p class="help">A pretend ad break: the bot says the 1-minute warning in chat now (💬 Test chat shows it when you're not signed in) and Movie Royal pops up a note with a ding; 20 seconds later it says the ads are over. Works even while 📺 Ad warnings is off (Settings → 💜 Twitch &amp; channel points).</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="api('/api/test/ad',{}).then(()=>toast('📺 Pretend ad break: the end message comes in 20 seconds'))">📺 Pretend ad break</button><button class="ghost" onclick="pchat(true)">💬 Test chat</button></div>
   </div>
+  <div class="card devOnly" id="maraBattleTestCard">
+    <h3>🏃 Test marathon battle</h3>
+    <p class="help">Your real 🏃 Marathon Battle (its things, pictures, odds and chat luck) as a practice round on a character map. <b>Nothing changes:</b> nobody's battle in the line is used, the winner doesn't count, chat luck stays, nothing goes in the history. If a timed thing wins (a plank, a wall sit…), its ⏱️ timer pops up so you can try it (🧪).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="mbtMap" title="The map for the test marathon battle" style="width:auto"></select><button class="primary" onclick="maraBattleTest()" title="Start a practice marathon battle with your real things (nothing counts)">▶ Start a test marathon battle</button><button class="ghost" onclick="setView('marapool')" title="The things in the marathon battle (names, odds, pictures)">🏃 Marathon pool</button></div>
+    <div id="mbtOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card devOnly" id="paidTestCard">
     <h3>🎟️ Paid battles</h3>
     <p class="help">Pretend money comes in: each one adds a battle with that person's name to the line on the Battle tab (works even while 🎟️ Paid battles is off; test ones are marked 🧪). Leftovers carry over: two $3 tips = one battle. Press <b>▶ Start next</b> on the Battle tab to start it: the history (and the 🌐 viewer website) show who paid.</p>
@@ -1190,7 +1196,7 @@
     <div class="row" style="gap:6px;align-items:center;margin-top:6px"><input id="mtSecsIn" placeholder="Type a name, like: 1 minute wall sit" style="max-width:320px" onkeydown="if(event.key==='Enter')mtSecsTry()" title="Check what a name fights as and its timer"><button onclick="mtSecsTry()">🔎 Check a name</button></div>
     <div id="mtTestOut" class="help" style="margin-top:8px"></div>
   </div>
-  <div class="card" id="siteTestCard">
+  <div class="card devOnly" id="siteTestCard">
     <h3>🌐 Viewer website</h3>
     <p class="help">See the viewer website without your 24/7 bot: <b>👀 Preview the viewer page</b> shows it right here (💻 computer or 📱 phone size) with pretend battles, guesses and a poll (nothing is sent anywhere). <b>📦 What the site gets</b> shows what Movie Royal would send it right now (the battle on now, the newest history rows with who paid + ▶ VOD links, stats). The real one is in Settings → 🌐 Viewer site.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="sitePreview('demo')" title="See the viewer page right here, with pretend battles, guesses and a poll">👀 Preview the viewer page</button><button class="ghost" onclick="window.open('/live.html?demo=1','_blank')" title="Open the pretend viewer page in your web browser">🧪 Demo page in my browser</button><button onclick="siteTest()">📦 What the site gets</button><button onclick="S.site?.url ? window.open(S.site.url,'_blank') : toast('Turn it on first: Settings → 🌐 Viewer site')">🌐 Open my real site</button></div>
@@ -1314,7 +1320,7 @@
     <button data-s="prices">💰 Rewards &amp; prices</button>
     <button data-s="obs">🎥 OBS</button>
     <button data-s="costream">🤝 Co-stream</button>
-    <button data-s="site">🌐 Viewer site</button>
+    <button data-s="site" class="devOnly">🌐 Viewer site</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
     <button data-s="sounds">🔊 Sounds</button>
@@ -1881,7 +1887,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/^🌐 viewer website$/i, 'scenes'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2246,7 +2252,7 @@ function ckCatGo(c) { ckCat = c; try { localStorage.ckCat = c; } catch {} drawCh
 function caretEnd(el) { try { if (el && /^(text|search|url|tel|password|textarea|)$/.test(el.type || '')) el.setSelectionRange(el.value.length, el.value.length); } catch {} }
 const SCREEN_TESTS = /^\/api\/(cards\/start|lists\/numbers|test\/(wheel-boost|donation|alert|discord-battle|chat-join|sitout|everyone-in|claim-chat|chat|wheel-land|doom-preview|power|wheel-redeem|wheel-redeem-raw|redeem|cheer|battle))(\?|$)/;
 // 🧪 a test on the Test tab that starts a battle, spins the wheel or starts a card fight takes you to that tab (Derek)
-const TEST_GO = [[/^\/api\/test\/(battle|discord-battle)$/, 'battle'], [/^\/api\/(wheel\/spin|test\/wheel-land)$/, 'wheel'], [/^\/api\/cards\/start$/, 'cards']];
+const TEST_GO = [[/^\/api\/test\/(battle|discord-battle|mara-battle)$/, 'battle'], [/^\/api\/(wheel\/spin|test\/wheel-land)$/, 'wheel'], [/^\/api\/cards\/start$/, 'cards']];
 async function api(url, body, method = 'POST') {
   const goTab = method === 'POST' && view === 'test' ? (TEST_GO.find(([re]) => re.test(url)) || [])[1] : null;
   if (!goTab && method === 'POST' && view !== 'battle' && SCREEN_TESTS.test(url) && (url.startsWith('/api/test/') || view === 'test')) peek(true); // a test that changes the stream screen? show it (other tests and checks don't pop it up)
@@ -2756,6 +2762,14 @@ async function maraTest(a, v) {
     out.innerHTML = r.ok ? `✅ ${esc(r.text)}` : `⚠️ ${esc(r.error)}`;
   } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
+// 🏃🧪 (1.81.2) a practice marathon battle with the real things (dev mode only)
+function mbtMaps() { const sel = $('mbtMap'); if (!sel) return; const M = S?.mara || {}, key = JSON.stringify([M.maps, M.cfg?.defMap]); if (sel.dataset.k === key) return; const was = sel.value; sel.dataset.k = key;
+  const def = (M.maps || []).find(m => m.id === M.cfg?.defMap); sel.innerHTML = `<option value="">${def ? `🗺️ Your map (${esc(def.name)})` : '🎲 Random map'}</option>` + (M.maps || []).map(m => `<option value="${esc(m.id)}">${esc(m.icon)} ${esc(m.name)}</option>`).join(''); sel.value = was; }
+async function maraBattleTest() {
+  const out = $('mbtOut');
+  try { const r = await api('/api/test/mara-battle', { map: $('mbtMap')?.value || '' }); if (out) out.textContent = `▶ Test marathon battle on ${r.mapName} with ${r.n} things (nothing counts).`; toast(`🧪 Test marathon battle: ${esc(r.mapName)}`); }
+  catch (e) { if (out) out.textContent = '⚠️ ' + e.message; }
+}
 async function paidSet(o) { try { await api('/api/paid/settings', o); toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
 async function paidTest(kind, amount) { const out = $('paidTestOut'); try { if (kind === 'clear') { await api('/api/test/paid-clear', {}); out.textContent = '✕ The 🧪 test battles are out of the line.'; return; } const r = await api('/api/test/paid', { kind, amount }); out.innerHTML = `${r.added ? `✅ Added ${r.added === 1 ? 'a battle' : r.added + ' battles'}` : '⏳ Not enough for a battle yet: it carries over (try it again)'} · <b>${r.waiting}</b> waiting on the Battle tab${r.on ? '' : ' <span style="color:var(--gold)">(🎟️ Paid battles is off: real money won\'t add battles until you turn it on in Settings → 💰 Rewards &amp; prices)</span>'}`; } catch (e) { out.textContent = '⚠️ ' + e.message; } }
 
@@ -2848,7 +2862,7 @@ async function coTest(a) { // 🧪 Test tab: pretend partner
       : r.partner ? `🤝 Pretend partner: <b>${esc(r.partner.who)}</b>, their battle ${r.partnerBattle ? '<b>running</b>' : 'not running'}. Settings → 🤝 Co-stream shows it too.` : '✕ Pretend partner gone.';
   } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
-function render() { applyStyle(); { const t = S.mara?.timer || null, k = t ? t.id + t.state : ''; if (k !== (MT ? MT.id + MT.state : '')) { MT = t; mtDraw(); } } holTestInit(); sceneInit(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { applyStyle(); { const t = S.mara?.timer || null, k = t ? t.id + t.state : ''; if (k !== (MT ? MT.id + MT.state : '')) { MT = t; mtDraw(); } } holTestInit(); sceneInit(); if (view === 'test') mbtMaps(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); luckBattlesSync(); inactSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -3182,7 +3196,7 @@ function renderView() {
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
-  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool')) return setView('battle'); // 🛠️ dev mode shows the features still being tried
+  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool')) return setView('battle'); // 🛠️ dev mode shows the features still being tried
   if (view === 'pool') renderPool();
   else if (view === 'cards') renderCards();
   else if (view === 'cardpool') renderCardPool();

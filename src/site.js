@@ -16,7 +16,7 @@ export function setHooks(h) { hooks = { ...hooks, ...h }; }
 export const SITE_V = 19; // the 24/7 bot version that has the website
 const cloud = () => db.settings.cloud || {};
 export const canRun = () => !!cloud().enabled && !!cloud().url && !!cloud().syncKey;
-export const on = () => db.settings.siteOn === true && canRun();
+export const on = () => db.settings.siteOn === true && !!db.settings.betaUpdates && canRun(); // (🛠️ dev mode only for now, Derek 1.81.2)
 export const url = () => canRun() ? cloud().url.replace(/\/+$/, '') + '/live' : '';
 const PAGE = path.join(ROOT, 'public', 'live.html');
 

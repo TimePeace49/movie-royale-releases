@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.81.2
+- 🌐 The viewer website is a 🛠️ dev mode thing for now: Settings → 🌐 Viewer site, the Test tab card, the Setup guide step and !site only show (and the site only runs) with Dev mode on. Turn Dev mode off and the website goes offline; turn it back on and it comes back with everything as it was.
+- 🧪 Test marathon battle (🛠️ dev mode only): 🧪 Test tab → ⚔️ Battles → 🏃 Test marathon battle plays your real Marathon Battle (its things, pictures, odds and chat luck) as a practice round on a character map you pick (or your marathon map / random). Nothing counts: no battle from the line is used, the winner doesn't count, chat luck stays and nothing goes in the history. If a timed thing wins, its ⏱️ timer pops up so you can try it.
+
 ## 1.81.1
 - 🎲 Every thing in the 🏃 Marathon Battle starts with even odds (1 each). Your marathon battle gets even odds too when you update (only because you hadn't changed any odds yourself; change them any time in the Marathon pool).
 - 🏃 The built-in Marathon Battle is now your pool as you set it up: your small lines (Pickle Balls “1”, Jolt “1 can”…) and without Toxic Waste x3, CHAT'S CHOICE and DOUBLE. (➕ Add a fresh copy uses it too.)

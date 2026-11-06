@@ -135,7 +135,7 @@ function gameResult(m) {
       const f = live.game.fighters.find(x => x.id === m.winnerId);
       if (!f) return;
       if (live.game.cards) { live.lastWinner = { ...f, at: Date.now(), cards: true, gameId: live.game.id, listName: live.game.testName || '🃏 Card battle' }; try { markMapRun(live.game.map); } catch {} cards.result({ fightId: live.game.cards, winnerId: f.id, order: m.order }); save(); pushState(); return; } // 🃏 a card battle on a ball map
-      if (live.game.test) { act('battle', `Practice battle: “${f.label}” won${live.game.testName ? ` (${live.game.testName.replace(/^🧪 Test: /, '')})` : ''} · nothing changed`, { icon: '🧪', kind: 'win', test: true, list: live.game.testName || 'Practice round' }); try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; if (live.game.nudeTest) { live.lastWinner.nudity = fakeNudity(f.details?.runtime); nudeToStream(f, live.lastWinner.nudity); } pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history (🔞 nudeTest: a pretend nudity result for the winner)
+      if (live.game.test) { act('battle', `Practice battle: “${f.label}” won${live.game.testName ? ` (${live.game.testName.replace(/^🧪 Test: /, '')})` : ''} · nothing changed`, { icon: '🧪', kind: 'win', test: true, list: live.game.testName || 'Practice round' }); try { recordRound({ game: live.game, list: null, m, startedAt: live.game.startedAt, test: true }); } catch {} live.lastWinner = { ...f, listName: live.game.testName || 'Practice round', at: Date.now(), test: true, gameId: live.game.id }; if (live.game.nudeTest) { live.lastWinner.nudity = fakeNudity(f.details?.runtime); nudeToStream(f, live.lastWinner.nudity); } if (live.game.maraTest) { const tl = getList(live.game.listId); if (tl && tl.id === paid.cfg().listId && paid.dev()) maraTimerWin(tl, f, true); } pushState(); battleDoneForWheel(); return; } // practice rounds never touch real lists or history (🔞 nudeTest: a pretend nudity result for the winner)
       const list = getList(live.game.listId);
       try { recordRound({ game: live.game, list, m, startedAt: live.game.startedAt }); } catch (e) { console.error('[stats]', e.message); }
       markMapRun(live.game.map); // full results + lifetime stats (every round, series rounds too)
@@ -2083,7 +2083,7 @@ function donePage(title, msg) {
 app.get('/api/app', (req, res) => {
   const seen = db.settings.setupSeen ? guideSeen() : null, sc = twitch.status.scopes || [];
   res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [],
-    guideNew: seen ? GUIDE_STEPS.filter(x => !seen.has(x.id)).map(x => x.id) : [], // 🆕 steps you haven't seen in the Setup guide yet
+    guideNew: seen ? GUIDE_STEPS.filter(x => guideShown(x) && !seen.has(x.id)).map(x => x.id) : [], // 🆕 steps you haven't seen in the Setup guide yet
     twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x) && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot)) : [] }); // signed in before a newer permission was added: sign in again
 });
 app.get('/api/close-check', async (req, res) => { // the Discord bot stops when the app closes (unless the 24/7 bot really has Discord)
@@ -2154,6 +2154,7 @@ app.get('/api/cloud/outdated', async (req, res) => { // ☁️ the "Update your 
 });
 // 🧭 the Setup guide's steps (setup.html has the pages). A step added since you last opened the guide pops up when the app starts,
 // every time, until you open the guide, set it up, or press "Don't show again". (since = the version that added it)
+const guideShown = x => !x.dev || !!db.settings.betaUpdates; // 🛠️ dev mode steps (the 🌐 viewer website, 1.81.2) only show in dev mode
 const GUIDE_STEPS = [
   { id: 'twitch', title: '💜 Sign in with Twitch' }, { id: 'rewards', title: '💎 Channel points & bits' }, { id: 'tmdb', title: '🎬 Movie search' }, { id: 'omdb', title: '🍅 Ratings' },
   { id: 'letterboxd', title: '📗 Letterboxd' }, { id: 'discord', title: '🤖 Discord bot' }, { id: 'cloud', title: '☁️ 24/7 Discord bot' }, { id: 'donations', title: '💵 Donations' },
@@ -2161,7 +2162,7 @@ const GUIDE_STEPS = [
   { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   { id: 'rollcall', since: '1.61.0', title: '📣 Roll call in OBS', why: 'Roll call can show in any OBS scene, even ones without the game screen (like your camera scene).', how: ['Connect OBS first (🎥 OBS control step).', 'Press 🧭 Set it up and tick the scenes, or add a Browser source with the address shown there.'], done: () => !!db.settings.rollObs },
   { id: 'costream', since: '1.71.0', title: '🤝 Co-stream with a friend', why: 'Stream together with a friend who also has Movie Royal: cameras in each other\'s OBS, their battle on your stream while it runs, and chaos across both chats.', how: ['Do the 🎥 OBS control step first.', 'One of you: Settings → 🤝 Co-stream → 🎟️ Make an invite code, and send it in Discord. The other: paste it and press 🤝 Join.', 'One time in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.'], done: () => costream.linked() },
-  { id: 'site', since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch (Settings → 🌐 Viewer site → 🔑 Let viewers sign in): 📋 copy your website\'s address, 🟣 open dev.twitch.tv → Manage on your Movie Royal app, paste it under OAuth Redirect URLs → Add → Save, then ✅ Check it.'], done: () => site.on() },
+  { id: 'site', dev: true, since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch (Settings → 🌐 Viewer site → 🔑 Let viewers sign in): 📋 copy your website\'s address, 🟣 open dev.twitch.tv → Manage on your Movie Royal app, paste it under OAuth Redirect URLs → Add → Save, then ✅ Check it.'], done: () => site.on() },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
   { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', how: ['Make a second Twitch account for the bot, like MoviesRoyalBot (Twitch names can\'t have spaces).', 'Open the sign-in link below in a private (incognito) browser window, log in there as the BOT, and press Authorize. (Or press 🔑 Sign in as the bot: if Twitch shows your own account, press "Not you?" and log in as the bot.)', 'In your Twitch chat, type /mod and the bot\'s name (like /mod MoviesRoyalBot).'], done: () => !!db.twitchBot },
   { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', how: ['Press 🧭 Set it up and answer the two questions (men and women characters, character creation).', 'Or later: Settings → ⚔️ Game → 🧍 Characters.'], done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
@@ -2177,7 +2178,7 @@ app.get('/api/whatsnew', (req, res) => {
   if (!db.settings.setupSeen) { db.settings.lastSeenVersion = VERSION; db.settings.setupStepsSeen = GUIDE_STEPS.map(x => x.id); save(); return res.json({ steps: [] }); }
   const seen = guideSeen();
   const steps = NEW_SETUP.filter(x => newer(x.since, from) && !newer(x.since, VERSION) && !x.done()).map(({ id, title, why }) => ({ id, title, why }));
-  for (const x of GUIDE_STEPS) if (!seen.has(x.id) && !x.done?.() && !steps.some(y => y.id === x.id)) steps.push({ id: x.id, title: x.title, why: x.why || '', how: x.how || [], guide: true }); // 🆕 new in the Setup guide (with how to do it, right in the pop-up)
+  for (const x of GUIDE_STEPS) if (guideShown(x) && !seen.has(x.id) && !x.done?.() && !steps.some(y => y.id === x.id)) steps.push({ id: x.id, title: x.title, why: x.why || '', how: x.how || [], guide: true }); // 🆕 new in the Setup guide (with how to do it, right in the pop-up)
   db.settings.lastSeenVersion = VERSION; save();
   res.json({ from, to: VERSION, steps });
 });
@@ -2246,7 +2247,8 @@ app.post('/api/settings', (req, res) => {
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
   if (('mapSize' in body || 'raceMax' in body) && live.phase === 'idle') { refreshPreview(true); pushState(); } // 📏 map size / 🏁 race limit changed
-  if ('betaUpdates' in body && db.settings.betaUpdates) maraBattleOnce(); // 🏃 dev mode on: Derek's marathon battle comes with it (once)
+  if ('betaUpdates' in body && db.settings.betaUpdates) maraBattleOnce();
+  if ('betaUpdates' in body) site.connect(); // 🌐 the viewer website is a dev mode thing for now (Derek, 1.81.2): on/off with dev mode // 🏃 dev mode on: Derek's marathon battle comes with it (once)
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   broadcast(audioMsg(), 'overlay'); broadcast(audioMsg(), 'celebrate'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
@@ -3487,6 +3489,22 @@ app.delete('/api/sounds/:name', (req, res) => {
 
 // ---------- Test tab: try every feature without waiting for real viewers ----------
 app.post('/api/test/alert', (req, res) => { chatlog.onAlert({ kind: String(req.body?.kind || 'sub'), login: 'test_viewer', name: 'Test_Viewer', amount: 5, text: String(req.body?.text || 'subscribed · 5 months') }); res.json({ ok: true }); });
+// 🏃🧪 (1.81.2, Derek: "a test marathon battle in Test, only in dev mode") your real Marathon Battle (its things, pictures, odds and
+// chat luck) on a character map, as a practice round: nobody's battle is used, nothing wins, no luck changes, no history. A timed
+// thing that wins shows its ⏱️ timer (a 🧪 one) so you can try that too.
+app.post('/api/test/mara-battle', async (req, res) => {
+  if (!paid.dev()) return res.status(400).json({ error: 'The test marathon battle is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.' });
+  if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
+  if (live.maraGuess) return res.status(400).json({ error: 'Chat is guessing for a marathon battle right now.' });
+  const l = maraList(); if (!l) return res.status(400).json({ error: 'Pick your marathon battle first (🏃 Marathon pool tab).' });
+  leaveEnded(); if (db.activeListId !== l.id) { db.activeListId = l.id; previewIds = null; }
+  const want = String(req.body?.map || ''), map = want && marathon.maps().some(m => m.id === want) ? want : maraRandomMap();
+  const mapWas = live.map, pickWas = live.mapPick; live.map = map; live.mapUsed = false; live.raceSkip = null; live.mapPick = true;
+  const err = await startRound({ test: true });
+  if (err) { live.map = mapWas; live.mapPick = pickWas; return res.status(400).json({ error: err }); }
+  if (live.game) { live.game.maraTest = true; live.game.testName = `🧪 Test: ${l.name}`; }
+  res.json({ ok: true, map, mapName: mapLabel(map), n: live.game?.fighters?.length || 0 });
+});
 app.post('/api/test/discord-battle', async (req, res) => { // a Discord movies battle with the real pieces on the cliff, but it changes nothing (no winner, no luck, no cooldowns)
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
   leaveEnded(); if (db.activeListId !== 'movies') { db.activeListId = 'movies'; previewIds = null; }
@@ -4424,7 +4442,7 @@ async function siteSigninCheck() {
 }
 app.post('/api/site/check-signin', wTry(() => siteSigninCheck()));
 app.post('/api/test/site-signin', wTry(b => ({ ...signinVerdict(Number(b.status) || 400, String(b.text || '')), pretend: true }))); // 🧪 how a Twitch answer is read
-app.post('/api/site/settings', wTry(b => { const st = db.settings; for (const k of ['siteOn', 'sitePredict', 'sitePredSay']) if (typeof b[k] === 'boolean') st[k] = b[k]; if (typeof b.siteCommand === 'string') st.siteCommand = b.siteCommand.trim().slice(0, 30) || '!site'; if (typeof b.siteTitle === 'string') st.siteTitle = b.siteTitle.trim().slice(0, 80); save(); site.connect(); pushState(); return site.info(); }));
+app.post('/api/site/settings', wTry(b => { if (b.siteOn === true && !db.settings.betaUpdates) throw new Error('The viewer website is a 🛠️ dev mode feature for now: turn on Dev mode in Settings → 👤 Account & updates.'); const st = db.settings; for (const k of ['siteOn', 'sitePredict', 'sitePredSay']) if (typeof b[k] === 'boolean') st[k] = b[k]; if (typeof b.siteCommand === 'string') st.siteCommand = b.siteCommand.trim().slice(0, 30) || '!site'; if (typeof b.siteTitle === 'string') st.siteTitle = b.siteTitle.trim().slice(0, 80); save(); site.connect(); pushState(); return site.info(); }));
 app.post('/api/site/poll', wTry(b => { const p = site.pollStart(b); paidSay(`🗳️ Poll on the website: “${p.q}” (${p.opts.join(' / ')}). Vote: ${site.url()}`); act('chat', `Poll started on the viewer website: “${p.q}” (${p.opts.join(' / ')})`, { icon: '🗳️', kind: 'poll' }); return site.info(); }));
 app.post('/api/site/poll/end', wTry(() => { site.pollEnd(); return site.info(); }));
 app.post('/api/site/poll/clear', wTry(() => { site.pollClear(); return site.info(); }));

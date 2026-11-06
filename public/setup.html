@@ -80,7 +80,8 @@ async function api(url, body, method = 'POST') {
 const copyBox = v => `<div class="copy"><input readonly value="${esc(v)}" onclick="this.select()"><button onclick="navigator.clipboard.writeText(${esc(JSON.stringify(v))});this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button></div>`;
 const link = (url, text) => `<a href="${esc(url)}" target="_blank">${text} ↗</a>`;
 
-const STEPS = [
+let STEPS = [];
+const ALL_STEPS = [
   { id: 'twitch', title: 'Sign in with Twitch', sub: 'Your account, chat & !join', done: () => !!S.owner && !(A.twitchMissing || []).length },
   { id: 'chatbot', title: 'Chat bot account', sub: 'Talk in chat as a bot (optional)', done: () => !!S.chatBot },
   { id: 'rewards', title: 'Channel points & bits', sub: 'Chaos, wheel & viewer rewards', done: () => !!S.settings.rewardsCreated && S.status.twitch.state === 'online' },
@@ -97,11 +98,13 @@ const STEPS = [
   { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs },
   { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs },
   { id: 'costream', title: 'Co-stream with a friend', sub: 'Cameras, battles + chaos shared (optional)', done: () => !!S.costream?.linked },
-  { id: 'site', title: 'Viewer website', sub: '!site: history, VOD links, guesses (optional)', done: () => !!S.site?.on }
+  { id: 'site', dev: true, title: 'Viewer website', sub: '!site: history, VOD links, guesses (optional)', done: () => !!S.site?.on }
 ];
 
 async function load() {
   [S, A] = await Promise.all([fetch('/api/state').then(r => r.json()), fetch('/api/app').then(r => r.json())]);
+  STEPS = ALL_STEPS.filter(x => !x.dev || S.settings?.betaUpdates); // 🛠️ dev mode steps (🌐 viewer website) only in dev mode
+  if (step && !STEPS.some(x => x.id === step)) step = null;
   if (!NEW_IDS) NEW_IDS = new Set(S.settings.setupSeen ? A.guideNew || [] : []); // 🆕 = added to the guide since you last opened it (remembered for this visit)
   if (!S.settings.setupSeen) api('/api/settings', { setupSeen: true }).catch(() => {});
   if (!load.seenSent) { load.seenSent = true; api('/api/setup/seen', { ids: STEPS.map(x => x.id) }).catch(() => {}); } // (you've seen every step in the guide now: no more 🆕 pop-up for them)
