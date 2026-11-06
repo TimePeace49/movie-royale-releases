@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.79.0
+- 🧰 **Marathon OBS setup** (Derek: "I want to make a new OBS profile for this stream"): Marathon tab → 📺 On stream → **🧰 Make my marathon OBS setup…** makes a separate OBS setup so your normal one stays exactly as it is:
+  - **A new profile** (“GTA 6 Marathon”), copied from the one you're on: stream key, video size, frame rate, bitrate and recording settings.
+  - **A new scene collection** with 🎮 **GTA 6 Gameplay** (game capture full screen, camera bottom left, the battle hidden until you want it), 💬 **Just Chatting** (synthwave background, big camera, the battle), 😴 **Sleeping / AFK** (camera full screen + a "Shh… sleeping stream" banner) and ⏳ **Starting Soon / BRB** (a big neon title screen with the battles owed). Every scene already has the battles owed counter and pick pop-ups (plus 🎉 Viewer's Choice and 📣 roll call if you use them).
+  - OBS doesn't let apps copy a camera or game capture between scene collections, so it makes new ones: double-click them once and pick your camera / GTA.
+  - Change the names and the title screen words in the same window, 🔎 see what it would do first, and **🏃 Use it** / **↩️ Back to normal** switch OBS between the two setups. Pressing it again only adds what's missing; anything you moved stays put. OBS won't switch profiles while you're live, so make it before you go live.
+  - The title screen switches between ⏳ Starting soon and 👋 Be right back with one menu on the Marathon tab.
+- 🔧 Fixed: the Test tab's 🔎 Check a name box didn't answer.
+
 ## 1.78.1
 - ⏸ **The paused message pauses the battles** (Derek: "when I turn on the source it will pause the battles, and turning it off will resume them"): on the 🏃 Marathon tab, **⏸ Show it + pause battles** shows the scrolling message AND pauses the paid battles (▶ Run is off; new battles still go in the line). **▶ Hide it + resume battles** takes the message off and starts them again (key: **P**). The bot says it in chat, the battles owed counter on stream says ⏸ Paused, and the "got a battle" pop-up and chat line tell people theirs is safe in the line. Switched scenes while paused? **📌 Show it in [scene] too** adds the message there. If OBS isn't open, the battles still pause (it tells you it couldn't show the message).
 

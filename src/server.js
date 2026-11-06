@@ -271,7 +271,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg() },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -1219,7 +1219,7 @@ wss.on('connection', (ws, req) => {
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
-  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
+  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
@@ -4262,6 +4262,39 @@ app.post('/api/mara/luck-reset', wTry(b => { const n = marathon.resetLuck(b.id |
 app.post('/api/mara/token-remove', wTry(b => { db.paidTokens = marathon.tokens().filter((t, i) => i !== Number(b.i)); save(); pushState(); return {}; }));
 app.post('/api/mara/pop-again', wTry(b => { const it = paid.queue().find(x => x.id === b.id) || paid.queue()[0]; if (!it) throw new Error('Nobody is waiting.'); broadcast(maraPopMsg({ who: it.who, n: paid.queue().filter(x => marathon.norm(x.who) === marathon.norm(it.who)).length, what: it.what, test: it.test }), 'mara'); return {}; }));
 const maraUrl = () => `http://localhost:${PORT}/marathon.html`;
+// 🧰 (1.79.0, Derek) the marathon's own OBS setup: a profile copied from yours + a scene collection with 4 scenes (obs.marathonSetup).
+// The title screens are public/scenecard.html?k=soon|sleep|chat (ws role 'mara': battles owed + the words below, changeable live).
+const cardsCfg = () => { const c = db.settings.marathon?.cards || {}; return { title: String(c.title || '').trim() || 'GTA 6 MARATHON', soonMode: c.soonMode === 'brb' ? 'brb' : 'soon', soon: String(c.soon || '').trim() || 'Starting soon', brb: String(c.brb || '').trim() || 'Be right back', sleep: String(c.sleep || '').trim() || 'Shh… sleeping stream' }; };
+const cardsMsg = () => ({ type: 'sceneCard', ...cardsCfg() });
+const obsSetupCfg = () => { const o = db.settings.marathon?.obsSetup || {}; return { profile: o.profile || 'GTA 6 Marathon', collection: o.collection || 'GTA 6 Marathon', prev: o.prev || null, madeAt: o.madeAt || null }; };
+app.get('/api/obs/marathon-setup', async (req, res) => { let now = null, err = null; try { now = await obs.obsSetups(); } catch (e) { err = e.message; } res.json({ ...obsSetupCfg(), now, err, cards: cardsCfg(), scenes: Object.values(obs.MARA_SCENES) }); });
+app.post('/api/obs/marathon-setup', wTry(async b => {
+  if (!b.dry && !b.go) throw new Error('Press 🧰 Make it to make the marathon OBS setup.'); // (only the button really changes OBS)
+  const c = { ...(db.settings.marathon || {}) }, o = { ...(c.obsSetup || {}) };
+  const clean = (v, d) => String(v || '').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 60) || d;
+  const profile = clean(b.profile, o.profile || 'GTA 6 Marathon'), collection = clean(b.collection, o.collection || 'GTA 6 Marathon');
+  const extra = [];
+  if (!b.dry && db.settings.choiceObs && obsOk()) { try { const f = await choiceFile(); extra.push({ name: 'Movie Royal celebration', url: f.file, local: true }); } catch {} } // 🎉 Viewer's Choice, if you have it in OBS
+  if (!b.dry && db.settings.rollObs && obsOk()) extra.push({ name: obs.ROLL_NAME, url: rollUrl() }); // 📣 roll call, if you have it in OBS
+  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), card: k => `http://localhost:${PORT}/scenecard.html?k=${k}` } });
+  if (!b.dry) {
+    o.profile = profile; o.collection = collection; o.madeAt = Date.now(); if (r.prev && (r.prev.profile !== profile || r.prev.collection !== collection)) o.prev = r.prev;
+    c.obsSetup = o; c.obs = true; c.scenes = r.scenes; db.settings.marathon = c; save(); pushState();
+    act('stream', `🧰 Made the marathon OBS setup: profile “${profile}” + scene collection “${collection}”`, { icon: '🧰', kind: 'obs' });
+  }
+  return r;
+}));
+app.post('/api/obs/marathon-switch', wTry(async b => { // ↩️ back to your normal setup / 🏃 to the marathon one
+  const o = obsSetupCfg(), to = b.to === 'normal' ? o.prev : { profile: o.profile, collection: o.collection };
+  if (!to) throw new Error("Movie Royal doesn't know your normal setup yet: make the marathon setup first (or switch in OBS: Profile / Scene Collection menus).");
+  const r = await obs.switchSetup(to.profile, to.collection); act('stream', `🔁 Switched OBS to ${b.to === 'normal' ? 'your normal' : 'the marathon'} setup (${r.profile} / ${r.collection})`, { icon: '🔁', kind: 'obs' }); return r;
+}));
+app.post('/api/mara/cards', wTry(b => { // ✏️ the title screens' words (+ ⏳ Starting soon / 👋 Be right back)
+  const c = { ...(db.settings.marathon || {}) }, k = { ...(c.cards || {}) };
+  for (const f of ['title', 'soon', 'brb', 'sleep']) if (f in b) { const v = String(b[f] || '').replace(/\s+/g, ' ').trim().slice(0, 80); if (v) k[f] = v; else delete k[f]; }
+  if (b.soonMode === 'soon' || b.soonMode === 'brb') k.soonMode = b.soonMode;
+  c.cards = k; db.settings.marathon = c; save(); broadcast(cardsMsg(), 'mara'); pushState(); return cardsCfg();
+}));
 // 📜 (1.78.0, Derek) "battles are paused" message for OBS: one line of white text scrolling right to left (public/ticker.html).
 // Marathon tab → 📜 Paused message: ▶ Show / ⏸ Hide in the scene you're in; ✏️ the words, speed, size, top or bottom.
 const TICKER_TEXT = "⏸️ Battles are paused right now, but don't worry: every battle is added to the queue, and we'll run them as soon as they're back on! Can't stick around? No worries, come say hi any other time during the stream to redeem your battles. If you can't make it back, they'll be run in the last part of the stream, and the VOD will be up to watch later. 🎟️";

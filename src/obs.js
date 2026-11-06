@@ -342,3 +342,102 @@ export async function coStats() {
     return { at: Date.now(), cpu: Math.round(st.cpuUsage || 0), fps: Math.round(st.activeFps || 0), render: pct(st.renderSkippedFrames || 0, st.renderTotalFrames || 0), encode: pct(st.outputSkippedFrames || 0, st.outputTotalFrames || 0), live: !!ss.outputActive, net: pct(ss.outputSkippedFrames || 0, ss.outputTotalFrames || 0), congestion: Math.round((ss.outputCongestion || 0) * 100), vcam: !!vc.outputActive };
   });
 }
+
+// ---------- 🧰 Marathon OBS setup (1.79.0, Derek: "I want to make a new OBS profile for this stream, so we will have to make that too") ----------
+// One button makes (or fixes) a separate OBS setup for the 🏃 marathon: a new PROFILE copied from the one you're using (stream
+// key, video size, frame rate, output + audio settings) and a new SCENE COLLECTION with four scenes, each with the Movie Royal
+// pieces already in place. Your normal profile + scenes are left alone (switch back any time: OBS's Profile / Scene Collection
+// menus, or ↩️ in Movie Royal). Running it again on an existing setup only adds what's missing (nothing you moved is touched).
+// OBS can't copy a camera or game capture between scene collections, so it makes new ones that you point at your camera / GTA once.
+export const MARA_SCENES = { game: '🎮 GTA 6 Gameplay', chat: '💬 Just Chatting', sleep: '😴 Sleeping / AFK', soon: '⏳ Starting Soon / BRB' };
+const PROFILE_PARAMS = [['Output', 'Mode'], ['SimpleOutput', 'VBitrate'], ['SimpleOutput', 'ABitrate'], ['SimpleOutput', 'StreamEncoder'], ['SimpleOutput', 'RecEncoder'], ['SimpleOutput', 'RecQuality'], ['SimpleOutput', 'RecFormat2'], ['SimpleOutput', 'FilePath'], ['SimpleOutput', 'Preset'], ['SimpleOutput', 'NVENCPreset2'], ['SimpleOutput', 'UseAdvanced'],
+  ['AdvOut', 'Encoder'], ['AdvOut', 'RecEncoder'], ['AdvOut', 'RecFilePath'], ['AdvOut', 'RecFormat2'], ['AdvOut', 'TrackIndex'], ['AdvOut', 'RecTracks'], ['AdvOut', 'AudioEncoder'], ['AdvOut', 'RecAudioEncoder'], ['AdvOut', 'VodTrackEnabled'], ['AdvOut', 'VodTrackIndex'],
+  ['Audio', 'SampleRate'], ['Audio', 'ChannelSetup'], ['Video', 'ScaleType'], ['Video', 'ColorFormat'], ['Video', 'ColorSpace'], ['Video', 'ColorRange']];
+export async function obsSetups() { return session(async call => { const p = await call('GetProfileList'), c = await call('GetSceneCollectionList'); return { profile: p.currentProfileName, profiles: p.profiles || [], collection: c.currentSceneCollectionName, collections: c.sceneCollections || [] }; }); }
+export async function switchSetup(profile, collection) {
+  return session(async call => {
+    if ((await call('GetStreamStatus').catch(() => ({}))).outputActive || (await call('GetRecordStatus').catch(() => ({}))).outputActive) throw new Error("OBS is streaming or recording: OBS doesn't let anyone change the profile then. Switch after you stop, or use OBS's menus.");
+    const p = await call('GetProfileList'), c = await call('GetSceneCollectionList');
+    if (profile && p.currentProfileName !== profile) { if (!(p.profiles || []).includes(profile)) throw new Error(`OBS has no profile called “${profile}”.`); await call('SetCurrentProfile', { profileName: profile }); }
+    if (collection && c.currentSceneCollectionName !== collection) { if (!(c.sceneCollections || []).includes(collection)) throw new Error(`OBS has no scene collection called “${collection}”.`); await call('SetCurrentSceneCollection', { sceneCollectionName: collection }); }
+    return { profile: profile || p.currentProfileName, collection: collection || c.currentSceneCollectionName };
+  });
+}
+/** urls: {game, mara, card(kind)}; extra: [{name, url}] browser sources to put in every scene too (celebration, roll call). dry = only say what it would do. */
+export async function marathonSetup({ profile, collection, urls, extra = [], dry = false }) {
+  return session(async call => {
+    const out = [], say = (icon, text) => out.push({ icon, text });
+    if ((await call('GetStreamStatus').catch(() => ({}))).outputActive || (await call('GetRecordStatus').catch(() => ({}))).outputActive) throw new Error("OBS is streaming or recording right now: OBS doesn't let anyone switch profiles then. Do this before you go live.");
+    const P = await call('GetProfileList'), C = await call('GetSceneCollectionList');
+    const prev = { profile: P.currentProfileName, collection: C.currentSceneCollectionName };
+    // 1) the profile: a copy of the one you're on (or switch to it if it's there already)
+    if (P.currentProfileName === profile) say('✅', `Profile “${profile}” is already the one in use.`);
+    else if ((P.profiles || []).includes(profile)) { if (!dry) await call('SetCurrentProfile', { profileName: profile }); say('🔁', `Switched to your profile “${profile}” (it was there already, so its settings were left as they are).`); }
+    else {
+      const video = await call('GetVideoSettings'), svc = await call('GetStreamServiceSettings').catch(() => null), params = [];
+      for (const [cat, name] of PROFILE_PARAMS) { const r = await call('GetProfileParameter', { parameterCategory: cat, parameterName: name }).catch(() => null); if (r && r.parameterValue != null) params.push([cat, name, r.parameterValue]); }
+      const recDir = await call('GetRecordDirectory').catch(() => null);
+      if (!dry) {
+        await call('CreateProfile', { profileName: profile }); // (OBS switches to it)
+        await call('SetVideoSettings', { fpsNumerator: video.fpsNumerator, fpsDenominator: video.fpsDenominator, baseWidth: video.baseWidth, baseHeight: video.baseHeight, outputWidth: video.outputWidth, outputHeight: video.outputHeight }).catch(e => say('⚠️', `Couldn't copy the video size / frame rate (${e.message}): check Settings → Video.`));
+        for (const [cat, name, v] of params) await call('SetProfileParameter', { parameterCategory: cat, parameterName: name, parameterValue: v }).catch(() => {});
+        if (svc?.streamServiceSettings) await call('SetStreamServiceSettings', { streamServiceType: svc.streamServiceType, streamServiceSettings: svc.streamServiceSettings }).catch(e => say('⚠️', `Couldn't copy the stream key (${e.message}): set it in Settings → Stream.`));
+        if (recDir?.recordDirectory) await call('SetRecordDirectory', { recordDirectory: recDir.recordDirectory }).catch(() => {});
+      }
+      say('🆕', `Made the profile “${profile}”: a copy of “${prev.profile}” (stream key, ${video.baseWidth}×${video.baseHeight} at ${Math.round(video.fpsNumerator / (video.fpsDenominator || 1))} fps, bitrate + recording settings).`);
+    }
+    // 2) the scene collection
+    let fresh = false;
+    if (C.currentSceneCollectionName === collection) say('✅', `Scene collection “${collection}” is already open.`);
+    else if ((C.sceneCollections || []).includes(collection)) { if (!dry) await call('SetCurrentSceneCollection', { sceneCollectionName: collection }); say('🔁', `Opened your scene collection “${collection}”.`); }
+    else { if (!dry) await call('CreateSceneCollection', { sceneCollectionName: collection }); fresh = true; say('🆕', `Made the scene collection “${collection}” (your normal scenes are still in “${prev.collection}”).`); }
+    if (dry) { say('🎬', `Scenes it fills in: ${Object.values(MARA_SCENES).join(', ')}.`); return { dry: true, steps: out, prev }; }
+    // 3) the scenes + what's in them
+    const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080;
+    let have = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName);
+    for (const sc of Object.values(MARA_SCENES)) if (!have.includes(sc)) await call('CreateScene', { sceneName: sc });
+    if (fresh) for (const sc of have) if (!Object.values(MARA_SCENES).includes(sc)) { const n = ((await call('GetSceneItemList', { sceneName: sc })).sceneItems || []).length; if (!n) await call('RemoveScene', { sceneName: sc }).catch(() => {}); } // (OBS's empty starter "Scene")
+    have = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName);
+    const inputs = new Set(((await call('GetInputList')).inputs || []).map(i => i.inputName));
+    const itemOf = (sc, src) => call('GetSceneItemId', { sceneName: sc, sourceName: src }).then(r => r.sceneItemId).catch(() => null);
+    const browser = url => ({ is_local_file: false, url, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' });
+    let made = 0, skipped = [];
+    async function put(sc, name, kind, settings, box, on = true) { // box = [x, y, w, h] as parts of the canvas
+      let id = await itemOf(sc, name), isNew = false;
+      if (id == null) {
+        try {
+          if (!inputs.has(name)) { id = (await call('CreateInput', { sceneName: sc, inputName: name, inputKind: kind, inputSettings: settings, sceneItemEnabled: on })).sceneItemId; inputs.add(name); }
+          else id = (await call('CreateSceneItem', { sceneName: sc, sourceName: name, sceneItemEnabled: on })).sceneItemId;
+          isNew = true; made++;
+        } catch (e) { if (!skipped.includes(name)) skipped.push(name); return; }
+      }
+      if (!isNew) return; // (already there: left exactly how you have it)
+      const [x, y, w, h] = box;
+      await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: { positionX: Math.round(x * W), positionY: Math.round(y * H), alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: Math.round(w * W), boundsHeight: Math.round(h * H), rotation: 0 } }).catch(() => {});
+      const n = ((await call('GetSceneItemList', { sceneName: sc })).sceneItems || []).length;
+      await call('SetSceneItemIndex', { sceneName: sc, sceneItemId: id, sceneItemIndex: Math.max(0, n - 1) }).catch(() => {}); // (each new piece goes on top, in the order below)
+    }
+    const S = MARA_SCENES, CAM = '📷 Camera (marathon)', GAME = '🎮 GTA 6 capture', BATTLE = 'Movie Royal battle', FULL = [0, 0, 1, 1];
+    const cam = ['dshow_input', { video_device_id: '' }], gameCap = ['game_capture', { capture_mode: 'any_fullscreen', capture_cursor: false, allow_transparency: false }];
+    // 🎮 gameplay: GTA full screen, camera bottom left, the battle (hidden: show it when you run one while playing)
+    await put(S.game, GAME, ...gameCap, FULL);
+    await put(S.game, CAM, ...cam, [.015, .69, .27, .28]);
+    await put(S.game, BATTLE, 'browser_source', browser(urls.game), [.56, .52, .42, .45], false);
+    // 💬 just chatting: background, big camera on the left, the battle on the right
+    await put(S.chat, 'Movie Royal background (chatting)', 'browser_source', browser(urls.card('chat')), FULL);
+    await put(S.chat, CAM, ...cam, [.025, .22, .37, .56]);
+    await put(S.chat, BATTLE, 'browser_source', browser(urls.game), [.405, .13, .575, .74]);
+    // 😴 sleeping: the camera full screen + a "sleeping stream" banner
+    await put(S.sleep, CAM, ...cam, FULL);
+    await put(S.sleep, 'Movie Royal sleeping banner', 'browser_source', browser(urls.card('sleep')), FULL);
+    // ⏳ starting soon / be right back: the title screen
+    await put(S.soon, 'Movie Royal starting soon / BRB', 'browser_source', browser(urls.card('soon')), FULL);
+    // every scene: the 🏃 marathon overlay (battles owed counter + pop-ups) and anything else you have on (celebration, roll call)
+    for (const sc of Object.values(S)) { await put(sc, MARA_NAME, 'browser_source', browser(urls.mara), FULL); for (const x of extra) await put(sc, x.name, 'browser_source', x.local ? { ...browser(''), is_local_file: true, local_file: x.url } : browser(x.url), FULL); }
+    await call('SetCurrentProgramScene', { sceneName: S.soon }).catch(() => {});
+    say('🎬', `Filled in the scenes ${Object.values(S).join(', ')} (${made} new piece${made === 1 ? '' : 's'}${made ? '' : ': everything was there already'}).`);
+    if (skipped.length) say('⚠️', `Couldn't add ${skipped.join(', ')} (this OBS doesn't have that kind of source): add your own instead.`);
+    else if (made) say('👉', `Two things to do once in OBS: double-click “${CAM}” and pick your camera, and double-click “${GAME}” (it grabs any full-screen game; pick GTA 6 if you want it to only show that). Check your mic in the Audio Mixer.`);
+    return { steps: out, prev, scenes: Object.values(S), profile, collection };
+  });
+}

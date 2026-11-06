@@ -1,0 +1,70 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal marathon screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
+<style>
+/* 🧰 Marathon title screens (1.79.0, Derek's marathon OBS setup): ?k=soon = ⏳ Starting soon / 👋 Be right back (full screen),
+   ?k=chat = the 💬 Just Chatting background, ?k=sleep = the 😴 sleeping banner (see-through, over the camera).
+   An 80s synthwave look (our own design). Words + battles owed come from Movie Royal (Marathon tab). ?demo=1 = pretend. */
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: Nunito, 'Segoe UI', sans-serif; color: #fff; }
+canvas { position: absolute; inset: 0; }
+.soon, .chat { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.soon { justify-content: center; padding-bottom: 230px; box-sizing: border-box; }
+.title { font: 400 150px/1 'Lilita One', Impact, sans-serif; letter-spacing: 4px; color: #fff; text-shadow: 0 0 18px #ff4fd8, 0 0 44px #ff4fd8, 0 6px 0 #7a1a6a; }
+.line { margin-top: 26px; font: 400 92px/1 'Lilita One', Impact, sans-serif; color: #3ef0ff; text-shadow: 0 0 16px #3ef0ff, 0 0 40px #1aa8ff; animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+.owed { margin-top: 40px; font-weight: 900; font-size: 34px; padding: 12px 28px; border-radius: 40px; background: rgba(20,6,40,.6); border: 3px solid #ffcf4a; color: #ffe9a8; }
+.owed:empty { display: none; }
+.chat .title { position: absolute; left: 0; right: 0; bottom: 34px; font-size: 64px; letter-spacing: 3px; }
+.sleep { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); display: flex; align-items: center; gap: 22px; padding: 16px 38px 16px 28px; border-radius: 60px; background: linear-gradient(90deg, rgba(30,10,60,.88), rgba(70,20,90,.88)); border: 3px solid #b07aff; box-shadow: 0 0 30px rgba(176,122,255,.45); white-space: nowrap; }
+.sleep .moon { font-size: 64px; }
+.sleep .t1 { font: 400 54px/1 'Lilita One', Impact, sans-serif; }
+.sleep .t2 { font-weight: 900; font-size: 24px; color: #e2d0ff; margin-top: 6px; letter-spacing: 2px; }
+.z { position: absolute; font: 400 54px 'Lilita One', sans-serif; color: #d9c4ff; opacity: 0; animation: zz 4.5s linear infinite; text-shadow: 0 0 12px #b07aff; }
+@keyframes zz { 0% { transform: translate(0, 0) scale(.6); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(70px, -170px) scale(1.3); opacity: 0; } }
+</style></head>
+<body>
+<canvas id="cv" width="1920" height="1080"></canvas>
+<div id="ui"></div>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search), K = ['soon', 'chat', 'sleep'].includes(Q.get('k')) ? Q.get('k') : 'soon', DEMO = Q.has('demo');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let C = { title: 'GTA 6 MARATHON', soonMode: 'soon', soon: 'Starting soon', brb: 'Be right back', sleep: 'Shh… sleeping stream' }, owed = null;
+const ui = document.getElementById('ui'), cv = document.getElementById('cv'), g = cv.getContext('2d');
+function draw() {
+  const o = owed && owed.n ? `🎟️ ${owed.n} battle${owed.n === 1 ? '' : 's'} owed${owed.paused ? ' · ⏸ paused' : owed.next?.length ? ' · next: ' + owed.next.slice(0, 3).join(', ') : ''}` : '';
+  if (K === 'soon') ui.innerHTML = `<div class="soon"><div class="title">${esc(C.title)}</div><div class="line">${esc(C.soonMode === 'brb' ? C.brb : C.soon)}</div><div class="owed">${esc(o)}</div></div>`;
+  else if (K === 'chat') ui.innerHTML = `<div class="chat"><div class="title">${esc(C.title)}</div></div>`;
+  else ui.innerHTML = `<div class="sleep"><div class="moon">🌙</div><div><div class="t1">${esc(C.sleep)}</div><div class="t2">${esc(C.title)}${o ? ' · ' + esc(o) : ''}</div></div>${[0, 1.5, 3].map((d, i) => `<span class="z" style="right:${-10 - i * 24}px;top:${10 + i * 6}px;animation-delay:${d}s">z</span>`).join('')}</div>`;
+}
+// 🌅 the synthwave background (soon + chat): striped sun, palm trees, a neon grid floor rolling toward you
+const HZ = 640;
+function palm(x, y, h, lean) { g.strokeStyle = '#12061f'; g.lineCap = 'round'; g.lineWidth = h * .05; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + lean * .5, y - h * .55, x + lean, y - h); g.stroke(); g.fillStyle = '#12061f'; const tx = x + lean, ty = y - h;
+  for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + (i - 3) * .52 + (i > 3 ? .25 : 0), L = h * (.42 + (i % 2) * .08); g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(tx + Math.cos(a) * L * .55, ty + Math.sin(a) * L * .55 - L * .12, tx + Math.cos(a) * L, ty + Math.sin(a) * L * .55 + L * .32); g.quadraticCurveTo(tx + Math.cos(a) * L * .5, ty + Math.sin(a) * L * .5 + L * .05, tx, ty + 4); g.fill(); } }
+const stars = Array.from({ length: 120 }, () => [Math.random() * 1920, Math.random() * 420, Math.random() * 2 + .5, Math.random() * 6]);
+function bg(t) {
+  const dim = K === 'chat' ? .7 : 1;
+  const sky = g.createLinearGradient(0, 0, 0, HZ); sky.addColorStop(0, '#0a0424'); sky.addColorStop(.5, '#3a0d5a'); sky.addColorStop(.85, '#b0217a'); sky.addColorStop(1, '#ff6a5a'); g.fillStyle = sky; g.fillRect(0, 0, 1920, HZ);
+  for (const [x, y, r, p] of stars) { g.globalAlpha = .4 + .4 * Math.sin(t * 1.5 + p); g.fillStyle = '#fff'; g.fillRect(x, y, r, r); } g.globalAlpha = 1;
+  g.save(); g.beginPath(); g.rect(0, 0, 1920, HZ); g.clip(); const sun = g.createLinearGradient(0, HZ - 330, 0, HZ); sun.addColorStop(0, '#fff27a'); sun.addColorStop(.55, '#ff9a4a'); sun.addColorStop(1, '#ff3a8a');
+  g.shadowColor = '#ff6ab0'; g.shadowBlur = 80; g.fillStyle = sun; g.beginPath(); g.arc(960, HZ + 30, 330, Math.PI, 0); g.fill(); g.shadowBlur = 0;
+  for (let i = 0; i < 8; i++) { const y = HZ - 190 + i * 26 + i * i * 1.5 + (t * 12) % 26 * (i / 8), h = 3 + i * 2.4; g.fillStyle = '#c0307e'; g.fillRect(560, y, 800, h); } g.restore();
+  for (const [x, h, lean] of [[230, 330, 40], [330, 250, -30], [1620, 320, -44], [1710, 240, 30]]) palm(x, HZ + 4, h, lean);
+  const fl = g.createLinearGradient(0, HZ, 0, 1080); fl.addColorStop(0, '#1a0630'); fl.addColorStop(1, '#2a0a3a'); g.fillStyle = fl; g.fillRect(0, HZ, 1920, 1080 - HZ);
+  g.strokeStyle = '#ff4fd8'; g.shadowColor = '#ff4fd8'; g.shadowBlur = 10; g.lineWidth = 2;
+  for (let i = -24; i <= 24; i++) { g.beginPath(); g.moveTo(960 + i * 40, HZ); g.lineTo(960 + i * 260, 1080); g.stroke(); }
+  for (let i = 0; i < 14; i++) { const k = ((i + (t * .6) % 1) / 14), y = HZ + Math.pow(k, 2.2) * (1080 - HZ); g.globalAlpha = Math.min(1, k * 3); g.beginPath(); g.moveTo(0, y); g.lineTo(1920, y); g.stroke(); }
+  g.globalAlpha = 1; g.shadowBlur = 0;
+  if (dim < 1) { g.fillStyle = `rgba(10,4,24,${1 - dim})`; g.fillRect(0, 0, 1920, 1080); }
+}
+function frame(now) { requestAnimationFrame(frame); if (K === 'sleep') return; bg(now / 1000); }
+function connect() {
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=mara`);
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'sceneCard') { C = { ...C, ...m }; draw(); } else if (m.type === 'maraCount') { owed = { n: m.owed, next: m.next, paused: m.paused }; draw(); } };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+draw(); requestAnimationFrame(frame);
+if (DEMO) { owed = { n: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], paused: K === 'sleep' }; if (Q.get('brb')) C.soonMode = 'brb'; if (K === 'sleep') document.body.style.background = '#3a3f4a'; draw(); if (Q.has('live')) connect(); }
+else connect();
+</script>
+</body></html>
