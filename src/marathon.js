@@ -136,8 +136,8 @@ export function announce(items, info) {
 function flush(p) {
   const gifts = p.whats.filter(w => /gift sub/.test(w)).length, what = p.whats.length === 1 ? p.whats[0] : gifts === p.whats.length ? `${gifts} gift subs` : p.whats.join(' + ');
   const owed = paid.queue().length, site = H.siteUrl(), anon = p.who === 'Anonymous';
-  H.popup({ who: p.who, n: p.n, what, test: p.test, anon });
-  if (paid.cfg().say) H.say(`⚔️ ${p.login ? '@' + p.login : p.who} got ${p.n === 1 ? 'a battle' : p.n + ' battles'} (${what})! ${anon ? '' : `Pick the map: map # · give 🍀 +${pct(cfg().luckPer)} luck to one thing: luck # (the lists are on screen)${site ? ` or pick at ${site}` : ''}. `}🎟️ ${owed} battle${owed === 1 ? '' : 's'} owed.`);
+  H.popup({ who: p.who, n: p.n, what, test: p.test, anon, paused: !!db.paidPaused });
+  if (paid.cfg().say) H.say(`⚔️ ${p.login ? '@' + p.login : p.who} got ${p.n === 1 ? 'a battle' : p.n + ' battles'} (${what})! ${anon ? '' : `Pick the map: map # · give 🍀 +${pct(cfg().luckPer)} luck to one thing: luck # (the lists are on screen)${site ? ` or pick at ${site}` : ''}. `}🎟️ ${owed} battle${owed === 1 ? '' : 's'} owed.${db.paidPaused ? " ⏸ Battles are paused right now: yours is safe in the line and runs when they're back on." : ''}`);
 }
 /** What the 🏃 marathon overlay shows all the time. */
-export const counter = () => ({ on: !!paid.cfg().on && cfg().counter !== false, owed: paid.queue().length, next: paid.queue().slice(0, 4).map(x => x.who), corner: cfg().corner || 'bl' });
+export const counter = () => ({ on: !!paid.cfg().on && cfg().counter !== false, owed: paid.queue().length, next: paid.queue().slice(0, 4).map(x => x.who), corner: cfg().corner || 'bl', paused: !!db.paidPaused });

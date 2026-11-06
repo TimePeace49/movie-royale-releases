@@ -81,7 +81,7 @@ function count(m) {
   const c = $('count'); c.className = 'count ' + (m.corner || 'bl') + (m.on ? '' : ' off');
   if (last != null && m.owed > last) { c.classList.add('bump'); setTimeout(() => c.classList.remove('bump'), 450); }
   last = m.owed; $('cn').textContent = m.owed; $('ct').textContent = m.owed === 1 ? 'battle owed' : 'battles owed';
-  $('cx').textContent = m.next?.length ? 'Next: ' + m.next.join(', ') : 'Sub, gift, $5 or 500 bits = a battle';
+  $('cx').textContent = m.paused ? '⏸ Paused: they run when we\'re back' : m.next?.length ? 'Next: ' + m.next.join(', ') : 'Sub, gift, $5 or 500 bits = a battle';
 }
 function cols(arr, max) { return Math.max(1, Math.min(max, Math.ceil(arr.length / 17))); }
 function pop(m) { Q.push(m); if (!showing) next(); }
@@ -89,7 +89,7 @@ function next() {
   const m = Q.shift(); if (!m) { showing = false; return; } showing = true;
   const p = $('pop'), luck = (Math.round(m.luckPer * 100) / 100) + '%', mc = cols(m.maps, 3), ic = cols(m.items, 2);
   p.className = 'pop' + (m.anon ? ' anon' : '');
-  p.innerHTML = `<h1>⚔️ <b>${esc(m.who)}</b> got ${m.n === 1 ? 'a battle' : m.n + ' battles'}!</h1><div class="what">${esc(m.what)}${m.owed ? ` · 🎟️ ${m.owed} owed` : ''}</div>
+  p.innerHTML = `<h1>⚔️ <b>${esc(m.who)}</b> got ${m.n === 1 ? 'a battle' : m.n + ' battles'}!</h1><div class="what">${esc(m.what)}${m.owed ? ` · 🎟️ ${m.owed} owed` : ''}${m.paused ? ' · ⏸ battles are paused: yours is safe in the line' : ''}</div>
     <div class="how">Pick a map: <code>map #</code> · give 🍀 +${luck} luck to one thing: <code>luck #</code>${m.site ? ` · or pick at <span class="site">${esc(m.site)}</span>` : ''}</div>
     <div class="cols"><div class="col"><h2>🗺️ Maps</h2><div class="grid" style="grid-template-columns:repeat(${mc},minmax(0,1fr))">${m.maps.map(x => `<div><i>${x.n}</i><span>${esc(x.icon)} ${esc(x.name)}</span></div>`).join('')}</div></div>
     <div class="col"><h2>🍀 Give luck to one</h2><div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div></div></div>

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.78.1
+- ⏸ **The paused message pauses the battles** (Derek: "when I turn on the source it will pause the battles, and turning it off will resume them"): on the 🏃 Marathon tab, **⏸ Show it + pause battles** shows the scrolling message AND pauses the paid battles (▶ Run is off; new battles still go in the line). **▶ Hide it + resume battles** takes the message off and starts them again (key: **P**). The bot says it in chat, the battles owed counter on stream says ⏸ Paused, and the "got a battle" pop-up and chat line tell people theirs is safe in the line. Switched scenes while paused? **📌 Show it in [scene] too** adds the message there. If OBS isn't open, the battles still pause (it tells you it couldn't show the message).
+
 ## 1.78.0
 - 📜 **Paused message** (Derek): on the 🏃 Marathon tab, **▶ Show it** puts a line of white text scrolling right to left across the stream, in the OBS scene you're in right now. It says battles are paused, every battle is safe in the line and will run when they're back on, people who can't stick around can come say hi any other time during the stream, any left at the end get run in the last part of the stream, and the VOD will be up to watch later. **⏸ Hide it** takes it off in every scene (key: **P** on the Marathon tab). ✏️ Words & look… changes the words, speed, size, top or bottom, and an optional dark strip behind it; changes show on stream right away. Test tab → 🏃 Marathon fighters → 👀 Paused message shows it in a window.
 

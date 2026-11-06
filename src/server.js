@@ -271,7 +271,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() } },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -680,7 +680,7 @@ let maraCountKey = '';
 function maraCount(force) { const c = marathon.counter(), k = JSON.stringify(c); if (!force && k === maraCountKey) return; maraCountKey = k; broadcast({ type: 'maraCount', ...c }, 'mara'); }
 function maraPopMsg(p) {
   const site2 = site.on() ? site.url() : '';
-  return { type: 'maraPop', id: uid(), who: p.who, n: p.n, what: p.what, anon: !!p.anon, test: !!p.test, owed: paid.queue().length, luckPer: marathon.cfg().luckPer, secs: Math.max(10, Math.min(120, Number(marathon.cfg().popSecs) || 40)), site: site2.replace(/^https?:\/\//, ''),
+  return { type: 'maraPop', id: uid(), who: p.who, n: p.n, what: p.what, anon: !!p.anon, test: !!p.test, paused: !!db.paidPaused, owed: paid.queue().length, luckPer: marathon.cfg().luckPer, secs: Math.max(10, Math.min(120, Number(marathon.cfg().popSecs) || 40)), site: site2.replace(/^https?:\/\//, ''),
     maps: marathon.maps().map(m => ({ n: m.n, name: m.name, icon: m.icon })), items: marathon.items().map(x => ({ n: x.n, label: x.label, luck: x.luck })) };
 }
 marathon.setHooks({
@@ -4114,6 +4114,7 @@ app.post('/api/paid/settings', wTry(b => { const c = { ...paid.cfg() }; if (type
 app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (or a picked one): 🎯 a guess countdown first (marathon), then its battle goes on, logged with who paid
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going. Start the next one when it ends.' });
   if (live.maraGuess) return res.status(400).json({ error: 'Chat is still guessing for the next battle: ▶ Start now or ✕ Cancel it first.' });
+  if (db.paidPaused) return res.status(400).json({ error: 'Battles are paused (📜 the paused message is on). Press ▶ Hide it + resume battles on the Marathon tab (or P) to start them again.' }); // 📜 (1.78.1, Derek)
   const it = paid.take(req.body?.id); if (!it) return res.status(400).json({ error: 'Nobody is waiting for a battle.' });
   const c = paid.cfg(), l = c.listId && getList(c.listId);
   if (c.listId && !l) { paid.putBack(it); return res.status(400).json({ error: "The battle picked for paid battles isn't there any more: pick one in Settings → 💰 Rewards & prices." }); }
@@ -4268,16 +4269,24 @@ const tickerCfg = () => { const t = db.settings.marathon?.ticker || {}; return {
 const tickerMsg = () => ({ type: 'ticker', ...tickerCfg() });
 const tickerUrl = () => `http://localhost:${PORT}/ticker.html`;
 live.ticker = { on: false, scene: '', checkedAt: 0 };
-async function tickerShow(on) {
-  const r = await obs.tickerSource(on, tickerUrl()); live.ticker = { on: !!r.on, scene: r.scene || '', checkedAt: Date.now() };
-  act('stream', on ? `📜 Showed the “battles are paused” message on stream (${r.scene})` : '📜 Took the “battles are paused” message off stream', { icon: '📜', kind: 'ticker' });
-  pushState(); return { ...r, ticker: live.ticker };
+// (1.78.1, Derek: "when I turn on the source it will pause the battles, and turning it off will resume them": db.paidPaused)
+async function tickerShow(on, here) {
+  let r, warn = null;
+  try { r = await obs.tickerSource(on, tickerUrl()); } catch (e) { if (here) throw e; r = { on: false, scene: '' }; warn = `OBS: ${e.message}`; } // (the pause still works when OBS isn't reachable)
+  live.ticker = { on: !!r.on, scene: r.scene || '', checkedAt: Date.now(), ...(warn ? { err: warn } : {}) };
+  const was = !!db.paidPaused; db.paidPaused = !!on; save();
+  if (!here && was !== !!on) {
+    const owed = paid.queue().length;
+    act('battle', on ? `⏸ Paused the paid battles (📜 paused message on${r.scene ? ' in ' + r.scene : ''}; ${owed} owed)` : `▶ Paid battles are back on (📜 paused message off; ${owed} owed)`, { icon: on ? '⏸' : '▶', kind: 'pause' });
+    if (paid.cfg().say) paidSay(on ? `⏸ Battles are paused for now. Every battle stays in the line (🎟️ ${owed} owed) and we'll run them when they're back on!` : `▶ Battles are back on! 🎟️ ${owed} owed.`);
+  }
+  pushState(); maraCount(true); return { ...r, paused: !!db.paidPaused, warn, ticker: live.ticker };
 }
 app.get('/api/mara/ticker', async (req, res) => { // (checks OBS: is it showing in the scene you're in?)
   try { const r = await obs.tickerState(); live.ticker = { on: r.on, scene: r.scene, checkedAt: Date.now() }; } catch (e) { live.ticker = { ...live.ticker, err: e.message, checkedAt: Date.now() }; }
-  res.json({ ...live.ticker, cfg: tickerCfg() });
+  res.json({ ...live.ticker, cfg: tickerCfg(), paused: !!db.paidPaused });
 });
-app.post('/api/mara/ticker/show', wTry(async b => tickerShow(b.on === 'toggle' ? !(await obs.tickerState().then(r => r.on).catch(() => live.ticker.on)) : !!b.on)));
+app.post('/api/mara/ticker/show', wTry(async b => b.here ? tickerShow(true, true) : tickerShow(b.on === 'toggle' ? !db.paidPaused : !!b.on))); // (here: paused already, show it in the scene you switched to)
 app.post('/api/mara/ticker', wTry(b => { // ✏️ words + look (saved right away, the OBS page changes live)
   const c = { ...(db.settings.marathon || {}) }, t = { ...(c.ticker || {}) };
   if ('text' in b) { const v = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 600); if (v && v !== TICKER_TEXT) t.text = v; else delete t.text; }
