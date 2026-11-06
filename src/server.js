@@ -4251,6 +4251,21 @@ function maraBattleOnce() {
   save(); pushState(); return l;
 }
 setTimeout(maraBattleOnce, 1500);
+// 🎲 (1.81.1, Derek: "all odds should start even") the marathon battle made before 1.81.1 still had the old odds (8 for pickle
+// balls, 2 for DOUBLE…). Once: if a marathon battle still has exactly those old odds (you never changed them), every thing → 1.
+const MARA_OLD_ODDS = { 'Pickle Balls': 8, 'Ketchup candy cane': 8, 'Hot Dog candy': 8, 'Toxic Waste': 6, 'Toxic Waste x3': 2, 'BeanBoozled': 6, 'Heksehyl salt licorice': 4, 'Fazer Salmiakki': 5, 'Durian candy': 4, 'Octopus': 3, 'Mushroom tempura seaweed': 6, 'BBQ seaweed roll': 7, "Thai prawn Lay's": 7, 'Jolt energy drink': 4, 'KitKat NY Cheesecake': 7, 'KitKat Matcha': 7, 'KitKat Strawberry': 7, 'Kopiko coffee candy': 7, 'Muscat gummies': 7, '10 push-ups': 8, '20 sit-ups': 8, '20 squats': 8, '30 jumping jacks': 6, '45-second plank': 6, '1-minute wall sit': 5, '10 burpees': 3, 'MERCY': 5, "CHAT'S CHOICE": 2, 'DOUBLE': 2 };
+function maraEvenOnce() {
+  if (db.settings.maraEvenOdds) return; db.settings.maraEvenOdds = true;
+  for (const l of db.lists || []) {
+    if (l.madeBy !== 'marathon' && !/marathon battle/i.test(l.name)) continue;
+    const known = l.entries.filter(e => e.label in MARA_OLD_ODDS);
+    if (known.length < 10 || known.some(e => Number(e.weight || 1) !== MARA_OLD_ODDS[e.label]) || l.entries.some(e => !(e.label in MARA_OLD_ODDS) && Number(e.weight || 1) !== 1)) continue; // (you changed some odds yourself: left as it is)
+    for (const e of l.entries) e.weight = 1;
+    act('battle', `🎲 every thing in “${l.name}” starts with even odds now (1 each)`, { icon: '🎲', kind: 'odds', list: l.name });
+  }
+  save();
+}
+setTimeout(maraEvenOnce, 1200);
 app.post('/api/mara/add-battle', wTry(b => { // ➕ a fresh copy of Derek's marathon battle (Marathon pool tab), made the marathon battle
   if (!paid.dev()) throw new Error('This is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
   const l = maraBattleMake(); db.settings.madeMaraBattle = true; (db.settings.paidBattles ||= {}).listId = l.id;
