@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.74.0
+- 🧹 **Inactive people's movies** (Derek): when someone hasn't been in a battle for **3 months** (none of their movies was on the cliff in a real battle), their movies go back so anyone can pick them in Discord. With no movies left they get a fresh set of picks, so they can pick them again later. On by default.
+  - Each battle with people's movies has its own switch and time limit in **Settings → ⚔️ Game → 🧹 Inactive people's movies**: a number box + days, weeks, months or years.
+  - **👀 Who's next** shows everyone with movies in that battle, when they were last in a battle and the day their movies would go back. **🧹 Check now** checks right away (it also checks by itself every hour, never while that battle is playing).
+  - It counts back through your saved battle results, so it works right away. Someone with no battle on record only counts from as far back as those results go, and someone who just picked their first movie gets the full time. Practice battles don't count.
+  - Nothing is deleted: ▶ Bring back in the Movie Pool puts a movie back in. Every time it happens there's a line in History → 🧾 Everything.
+- 🧪 Test tab → 🎬 Movie nights → **🧹 Inactive people's movies**: try any limit on a pretend battle of 6 people (nothing is saved).
+
 ## 1.73.2
 - 🏃 The ready-made Marathon Battle is out of the app again (Derek: he'd rather import it). It's a battle file now: Movie Pool → 📥 Import → drop the file. If 1.73.1 already made one for you, it stays until you delete it.
 

@@ -1069,6 +1069,12 @@
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="undoTest()" title="A pretend wheel gets changed, then goes all the way back to its start (nothing real changes)">🤖 Check it (pretend wheel)</button><button onclick="setView('wheel');setTimeout(()=>{$('wUndoList').innerHTML='';wUndoMenu()},300)" title="The real ⏪ Go back… list for the wheel you have picked">⏪ Open Go back…</button></div><div id="tUndoOut"></div>
   </div>
   <div class="card">
+    <h3>🧹 Inactive people's movies</h3>
+    <p class="help">A pretend battle with 6 people: last in a battle 3, 40, 80, 100 and 400 days ago, plus Fay who just picked her first movie. Pick a limit and see whose movies would go back (nothing is saved). The real setting is in ⚙️ Settings → ⚔️ Game.</p>
+    <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><input id="tInN" type="number" min="1" value="3" style="width:72px" title="Pretend limit (the number)"><select id="tInU" style="width:auto" title="Pretend limit (days, weeks, months or years)"><option value="days">days</option><option value="weeks">weeks</option><option value="months" selected>months</option><option value="years">years</option></select><button class="primary" onclick="inTest()">🧹 Try it</button><button onclick="setView('settings');setSub('game');setTimeout(()=>$('inBox')?.scrollIntoView({block:'center'}),300)" title="Open the real setting in Settings → Game">⚙️ Open the setting</button></div>
+    <div id="tInOut"></div>
+  </div>
+  <div class="card">
     <h3>🍀 Luck in your own battles</h3>
     <p class="help">Your own battles (words, pictures or movies you add yourself) can have the Discord battle's luck: everything that loses gets a little luckier every battle, and a winner <b>stays in</b> (only you take things out) with its luck starting over. Great for a battle of stuff for you to do. Chat can't join these battles. Turn it on with <b>🍀 Luck</b> on the Battle tab, in Settings → 🍀 Luck (with how much), or when you make a new battle. This plays 6 pretend battles and shows who won and everyone's luck after each one. Nothing real changes.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tOlList" style="width:auto" title="Which battle's entries and luck amount to use" onfocus="olFill(this)" onmousedown="olFill(this)"><option value="">(made-up stuff to do)</option></select><button class="primary" onclick="olTest()">🍀 6 pretend battles</button></div><div id="tOlOut"></div>
@@ -1787,7 +1793,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2400,7 +2406,7 @@ async function coTest(a) { // 🧪 Test tab: pretend partner
   } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
 function render() { applyStyle(); holTestInit(); sceneInit(); if (view === 'settings' && sub === 'costream') coDraw(false); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
-  renderHeader(); renderBattle(); renderView(); luckBattlesSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
+  renderHeader(); renderBattle(); renderView(); luckBattlesSync(); inactSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }
@@ -2433,6 +2439,35 @@ async function wlToggle(lid, ch) { // 👀 watch luck on/off (or how much) for o
     toast('on' in ch ? (ch.on ? `👀 Watch luck is on for ${esc(l?.name || 'this battle')}: every ${w.hours} h watched = +${w.amount}% luck (counting from now).` : `👀 Watch luck is off for ${esc(l?.name || 'this battle')}.`) : 'Saved', 'on' in ch ? 5000 : 1500); } catch {}
 }
 let luckBattlesKey = '';
+// 🧹 Settings → ⚔️ Game: inactive people's movies, one row per battle with people's movies (1.74.0)
+const IN_UNITS = [['days', 'days'], ['weeks', 'weeks'], ['months', 'months'], ['years', 'years']];
+function inForList(l) { return !!l && !l.giveaway && (l.type === 'movies' || (l.entries || []).some(e => e.backers?.some(b => b.discordId))); }
+function inRule(l) { const r = { on: true, n: 3, unit: 'months', ...(l.inactive || {}) }; r.on = r.on !== false; return r; }
+function inactHTML() {
+  const ls = (S.lists || []).filter(inForList);
+  if (!ls.length) return '<p class="help">No battles with people\'s movies yet.</p>';
+  return ls.map(l => { const r = inRule(l); return `<div class="row inRow" data-in="${esc(l.id)}" style="gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0">
+    <label class="ck" style="min-width:200px"><input type="checkbox" ${r.on ? 'checked' : ''} title="Take out the movies of people who haven't been in this battle for a while" onchange="inSet('${esc(l.id)}',{on:this.checked})"><span><b>${esc(l.name)}</b></span></label>
+    <span class="muted">after</span><input type="number" min="1" max="999" value="${r.n}" style="width:72px" title="How long someone can go without being in a battle (the number)" onchange="inSet('${esc(l.id)}',{n:this.value})">
+    <select style="width:auto" title="How long someone can go without being in a battle (days, weeks, months or years)" onchange="inSet('${esc(l.id)}',{unit:this.value})">${IN_UNITS.map(([v, t]) => `<option value="${v}" ${r.unit === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <button class="ghost" title="See who has movies in this battle, when they were last in a battle, and who's next to lose their movies" onclick="inPeek('${esc(l.id)}')">👀 Who's next</button>
+    <button class="ghost" title="Check now and take out the movies of everyone who's been gone too long" onclick="inRun('${esc(l.id)}')">🧹 Check now</button></div>`; }).join('') + '<div id="inPeek"></div>';
+}
+let inKey = '';
+function inactSync() { const el = $('inBox'); if (!el || el.contains(document.activeElement)) return; const h = inactHTML(); if (h !== inKey) { const peek = $('inPeek')?.innerHTML || ''; inKey = h; el.innerHTML = h; if ($('inPeek')) $('inPeek').innerHTML = peek; } }
+async function inSet(lid, part) { try { await api('/api/lists/' + lid, { inactive: part }, 'PATCH'); toast('🧹 Saved'); } catch {} }
+function inAgo(t) { if (!t) return 'not in a battle we have records of'; const d = Math.round((Date.now() - t) / 864e5); return d < 1 ? 'today' : d === 1 ? 'yesterday' : d < 60 ? d + ' days ago' : Math.round(d / 30.4) + ' months ago'; }
+async function inPeek(lid) {
+  let r; try { r = await fetch('/api/lists/' + lid + '/inactive').then(x => x.json()); } catch { return; } if (r.error) return toast(esc(r.error));
+  const rows = r.people.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(inAgo(p.last))}</td><td>${p.movies.length}</td><td>${p.due ? '<b style="color:var(--bad)">due now</b>' : !r.rule.on ? '<span class="muted">off</span>' : new Date(p.goesAt).toLocaleDateString()}</td></tr>`).join('');
+  $('inPeek').innerHTML = `<div class="card" style="margin-top:8px"><p class="help" style="margin-top:0">Limit: <b>${esc(r.words)}</b>${r.rule.on ? '' : ' (turned off)'}. People with no battle on record count from ${new Date(r.since || Date.now()).toLocaleDateString()} (or from when their movie was added).</p>
+    ${r.people.length ? `<div class="tablewrap"><table style="table-layout:fixed;width:100%"><tr><th>Person</th><th>Last in a battle</th><th>Movies</th><th>Movies go back</th></tr>${rows}</table></div>` : '<p class="help">Nobody has movies in this battle.</p>'}</div>`;
+}
+async function inRun(lid) { try { const r = await api('/api/lists/' + lid + '/inactive/run', {}); toast(r.out?.length ? `🧹 ${r.out.length} ${r.out.length === 1 ? 'person' : 'people'}'s movies went back: ${esc(r.out.map(p => p.name).join(', '))}` : '🧹 Nobody is past the limit right now'); if ($('inPeek')?.innerHTML) inPeek(lid); } catch {} }
+async function inTest() {
+  const n = $('tInN').value, unit = $('tInU').value; let r; try { r = await api('/api/test/inactive', { n, unit }); } catch { return; }
+  $('tInOut').innerHTML = `<p class="help">Limit <b>${esc(r.words)}</b>. Movies go back for: <b>${r.out.length ? esc(r.out.join(', ')) : 'nobody'}</b>. Still in: ${esc(r.stillIn.join(', '))}.</p><table style="table-layout:fixed;width:100%"><tr><th>Person</th><th>Last in a battle</th><th>Goes?</th></tr>${r.people.map(p => `<tr><td>${esc(p.name)}</td><td>${p.name === 'Fay' ? 'never (picked 2 days ago)' : p.last + ' days ago'}</td><td>${p.due ? '🧹 yes' : '✅ stays'}</td></tr>`).join('')}</table>`;
+}
 function luckBattlesSync() { const el = $('setLuckBattles'); if (!el) return; const h = luckBattlesHTML(); if (h !== luckBattlesKey) { luckBattlesKey = h; el.innerHTML = h; } }
 let luckFor = 'movies';
 function luckTools(lid = 'movies', inLuckTab) {
@@ -4607,6 +4642,9 @@ function openSettings(force) {
     game: `<h3>⚔️ The battle</h3>
       <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('raceMax', '🏁 No races with more than this many pieces (a race map is skipped)', '50', 'number', 'min="2" max="1000"')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
       ${timingHTML()}
+      <h3 style="margin-top:18px">🧹 Inactive people's movies</h3>
+      <p class="help" style="margin:0 0 6px">When someone hasn't been in a battle for this long (none of their movies was on the cliff in a real battle), their movies go back so anyone can pick them in Discord. They can pick them again later. Nothing is deleted: you can ▶ bring a movie back in the Movie Pool. Only battles with people's movies are listed.</p>
+      <div id="inBox">${inactHTML()}</div>
       <p class="help">🎯 <b>Fair winner:</b> every battle's winner is drawn by the odds before the battle starts (like a wheel, with luck counted in), and the battle plays out around it. Chaos, power-ups and wacky settings change the show, never who wins. (Except 🏁 race power-ups in a chat battle race: those can.)</p>
       ${ck('seriesAuto', 'Best of 3/5/7/9: start the next round by itself (a few seconds after each round’s winner)', false)}
       <h3 style="margin-top:18px">🧍 Characters &amp; ${esc(s.idCommand || '!id')}</h3>

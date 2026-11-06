@@ -33,6 +33,7 @@ import * as donations from './donations.js';
 import * as obs from './obs.js';
 import * as costream from './costream.js';
 import * as cards from './cards.js';
+import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
@@ -2127,6 +2128,36 @@ app.post('/api/lists', (req, res) => {
   act('battle', `made a new battle: “${l.name}”${l.luckOn ? ' (with 🍀 luck)' : ''}`, { icon: '🆕', who: streamerName(), kind: 'list', list: l.name });
   db.lists.push(l); db.activeListId = l.id; leaveEnded(); save(); pushState(); refreshPreview(true); res.json(l);
 });
+// 🧹 Inactive people's movies (1.74.0, Derek): check every battle with people's movies (on open + every hour + when the setting changes)
+function inactiveSweep(only = null) {
+  const done = [];
+  for (const l of db.lists || []) {
+    if (only && l.id !== only) continue; if (!inactive.forList(l)) continue;
+    const busy = live.game?.listId === l.id && ['lobby', 'running'].includes(live.phase) || (!!live.gather && db.activeListId === l.id);
+    let r; try { r = inactive.sweep(l, { busy }); } catch (e) { console.error('[inactive]', e.message); continue; }
+    if (r.out?.length) {
+      done.push(...r.out);
+      broadcast({ type: 'toast', text: `🧹 ${hEsc(r.out.map(p => p.name).join(', '))} ${r.out.length === 1 ? "hasn't" : "haven't"} been in a battle of “${hEsc(l.name)}” for ${hEsc(inactive.ruleWords(inactive.ruleOf(l)))}: ${r.out.reduce((a, p) => a + p.movies.length, 0)} movie(s) went back for anyone to pick` }, 'control');
+    }
+  }
+  if (done.length) { pushState(); try { discord.refreshPinned?.(); } catch {} if (cloud.enabled()) cloud.sync(true)?.catch?.(() => {}); }
+  return done;
+}
+setTimeout(() => inactiveSweep(), 30000); setInterval(() => inactiveSweep(), 3600000);
+const inactiveView = l => { inactive.backfill(l); const r = inactive.ruleOf(l), now = Date.now(); return { rule: r, words: inactive.ruleWords(r), since: l.lastInSince || 0, people: inactive.people(l, now).map(({ entries, ...p }) => p) }; };
+app.get('/api/lists/:id/inactive', (req, res) => { const l = getList(req.params.id); if (!inactive.forList(l)) return res.status(400).json({ error: "This battle doesn't have people's movies." }); res.json(inactiveView(l)); });
+app.post('/api/lists/:id/inactive/run', (req, res) => { const l = getList(req.params.id); if (!inactive.forList(l)) return res.status(400).json({ error: "This battle doesn't have people's movies." }); if (!inactive.ruleOf(l).on) return res.status(400).json({ error: 'It\'s turned off for this battle.' }); res.json({ ok: true, out: inactiveSweep(l.id) }); });
+// pretend: 5 people on a pretend battle, how long ago they were last in a battle → who'd lose their movies (nothing saved)
+app.post('/api/test/inactive', (req, res) => {
+  const n = Number(req.body?.n) || 3, unit = inactive.UNITS[req.body?.unit] ? req.body.unit : 'months', DAY = 86400000, now = Date.now();
+  const ago = [['Ava', 3], ['Ben', 40], ['Cal', 80], ['Dee', 100], ['Eli', 400]], newbie = ['Fay', 2];
+  const l = { id: 'test-inactive', name: '🧪 Pretend battle', type: 'movies', inactive: { on: true, n, unit }, lastIn: {}, lastInSince: now - 800 * DAY, entries: [] };
+  for (const [name, d] of ago) { l.lastIn['t-' + name] = now - d * DAY; l.entries.push({ id: 'm-' + name, label: `${name}'s movie`, status: 'active', addedAt: now - 500 * DAY, backers: [{ discordId: 't-' + name, name }] }); }
+  l.entries.push({ id: 'm-Fay', label: "Fay's movie", status: 'active', addedAt: now - newbie[1] * DAY, backers: [{ discordId: 't-Fay', name: 'Fay' }] });
+  const before = inactive.people(l, now).map(p => ({ name: p.name, last: p.last ? Math.round((now - p.last) / DAY) : null, due: p.due }));
+  const r = inactive.sweep(l, { now, quiet: true });
+  res.json({ ok: true, words: inactive.ruleWords(inactive.ruleOf(l)), people: before, out: r.out.map(p => p.name), stillIn: l.entries.filter(e => e.status === 'active').map(e => e.backers[0].name) });
+});
 app.patch('/api/lists/:id', (req, res) => {
   const l = getList(req.params.id); if (!l) return res.sendStatus(404);
   if (req.body.name != null) l.name = String(req.body.name).slice(0, 60);
@@ -2135,6 +2166,9 @@ app.patch('/api/lists/:id', (req, res) => {
   if (req.body.charIds != null) { l.charIds = !!req.body.charIds; refreshPreview(); } // 👫 use chat's !id for the characters (off = everyone non-binary)
   if ('gameSeconds' in req.body) { const v = Math.round(Number(req.body.gameSeconds) || 0); if (v > 0) l.gameSeconds = Math.max(10, Math.min(600, v)); else delete l.gameSeconds; refreshPreview(); } // ⏱️ this battle's own timer (0 = the one for all battles)
   if ('pacer' in req.body) { const v = req.body.pacer; if (v == null || v === '' || Number(v) < 0) delete l.pacer; else l.pacer = Math.round(clampN(v, 0, 100, 50)); refreshPreview(); } // ⏳ this battle's own elimination pacer (null = the one for all battles)
+  if (req.body.inactive && typeof req.body.inactive === 'object' && inactive.forList(l)) { // 🧹 take out the movies of people who haven't been in a battle for a while
+    if (inactive.setRule(l, req.body.inactive)) { const r = inactive.ruleOf(l); act('discord', `${r.on ? `set “${l.name}” to take out the movies of people who haven't been in a battle for ${inactive.ruleWords(r)}` : `turned off taking out inactive people's movies in “${l.name}”`}`, { icon: '🧹', who: streamerName(), kind: 'setting', list: l.name }); setTimeout(() => inactiveSweep(l.id), 300); }
+  }
   if (req.body.watchLuck && typeof req.body.watchLuck === 'object') { // 👀 watch luck: every N hours watched (counted from when it's turned on) = +X% luck in this battle
     const w = req.body.watchLuck, cur = l.watchLuck ||= { on: false, hours: 10, amount: 1, since: 0, base: {} };
     const snap = () => { cur.since = Date.now(); cur.base = Object.fromEntries(Object.entries(db.viewers || {}).filter(([, v]) => v.watchMins > 0).map(([k, v]) => [k, v.watchMins])); }; // (watch time before today doesn't count)
@@ -3705,6 +3739,7 @@ async function startRound(opts = {}) {
   }
   previewIds = null; cliffN = fighters.length; if (live.vote) endVote();
   if (live.redoSkip?.listId === list.id) live.redoSkip = null; // 🔁 (the redo leaves it out once)
+  if (!opts.test) { try { inactive.backfill(list); inactive.entered(list, fighters); } catch (e) { console.error('[inactive]', e.message); } } // 🧹 everyone whose movie is in this battle entered it
   if (list.type === 'movies' && !opts.test) for (const e of list.entries) if (e.skipNext) { delete e.skipNext; e.skippedAt = Date.now(); } // ⏭️ sat out this battle: back in the next one
   { const m0 = currentMap(); if (isRaceMap(m0) && fighters.length > raceMax()) { live.raceSkip = m0; live.map = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(live.map)?.name || live.map)} instead.` }, 'control'); } }
   live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test;
