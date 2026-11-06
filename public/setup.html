@@ -96,7 +96,8 @@ const STEPS = [
   { id: 'obs', title: 'OBS control', sub: 'Doomsday, capture window, confetti', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
   { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs },
   { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs },
-  { id: 'costream', title: 'Co-stream with a friend', sub: 'Cameras, battles + chaos shared (optional)', done: () => !!S.costream?.linked }
+  { id: 'costream', title: 'Co-stream with a friend', sub: 'Cameras, battles + chaos shared (optional)', done: () => !!S.costream?.linked },
+  { id: 'site', title: 'Viewer website', sub: '!site: history, VOD links, guesses (optional)', done: () => !!S.site?.on }
 ];
 
 async function load() {
@@ -375,6 +376,21 @@ const PAGES = {
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="location.href='/control.html?settings=costream'">🤝 Open the Co-stream settings</button><button onclick="api('/api/setup/seen',{ids:['costream']}).catch(()=>{}).finally(()=>location.href='/control.html')" title="Not co-streaming? Skip it: it won't pop up again. It stays here in the Setup guide">⏭️ Skip co-streaming</button></div>
     <p class="help">Only want chaos across chats, no cameras? Join anyway, then press <b>⏭️ Skip cameras</b> in the Co-stream tab.</p>
     <p class="help">Worried about lag? Settings → 🤝 Co-stream → 🩺 Lag check shows whether it's the internet or the PC, and 📶 quality Low sends less.</p>
+    ${nav()}`;
+  },
+  site() {
+    const T = S.site || {};
+    return `<h2>🌐 Viewer website (optional)</h2><p class="why">A website your viewers get with <b>!site</b>: your stream, the battle on right now (who's in, odds, who paid), every battle with who paid and a ▶ link to that moment in your VOD, stats, and (signed in with Twitch) guessing who wins and voting in your polls. It runs on your ☁️ 24/7 Discord bot, so your PC stays private.</p>
+    ${status(!!T.on, `It's on: <a href="${esc(T.url || '#')}" target="_blank">${esc(T.url || '')}</a>. Everything else is in Settings → 🌐 Viewer site.`)}
+    ${note('site')}
+    <ol class="steps">
+      <li>Do the <b>24/7 Discord bot</b> step first (the website lives on it).</li>
+      <li>Settings → 🌐 Viewer site → <b>🌐 Turn on the viewer site</b> (if it asks, update the 24/7 bot first: paste your Cloudflare token).</li>
+      <li><b>One time on Twitch</b> (so viewers can sign in to guess and vote): <a href="https://dev.twitch.tv/console/apps" target="_blank">dev.twitch.tv/console/apps</a> → <b>Manage</b> your Movie Royal app → <b>OAuth Redirect URLs</b> → <b>Add</b> → paste the website's address → <b>Save</b>.</li>
+      <li>For ▶ VOD links: Twitch → Creator Dashboard → Settings → Stream → <b>Store past broadcasts</b> on.</li>
+      <li>Want “who paid” on every battle? Settings → 💰 Rewards &amp; prices → <b>🎟️ Paid battles</b> (every $5 / 500 bits / sub adds a battle to a line).</li>
+    </ol>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="location.href='/control.html?settings=site'">🌐 Open the Viewer site settings</button><button onclick="api('/api/setup/seen',{ids:['site']}).catch(()=>{}).finally(()=>location.href='/control.html')" title="Don't want a website? Skip it: it won't pop up again. It stays here in the Setup guide">⏭️ Skip the website</button></div>
     ${nav()}`;
   },
   rollcall() {

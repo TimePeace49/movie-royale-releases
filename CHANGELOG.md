@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.75.0
+- 🌐 **Viewer website** (Derek: "a bootleg extension"): viewers type **!site** in chat and get a website with your stream + chat, the battle that's on right now (who's in, their odds, who paid for it), **every battle in the history with who paid and a ▶ VOD link to that moment**, 🍽️ everything you've tried, 📊 stats (who paid for the most battles, totals), and their own page. Signed in with Twitch, viewers can **🔮 guess who wins** (longer odds = more points, with a 🏆 leaderboard) and **🗳️ vote in polls** you start from Movie Royal. It runs on your ☁️ 24/7 Discord bot (your PC stays private, the site stays up while it's off). Turn it on in Settings → 🌐 Viewer site (the 24/7 bot needs a quick update; one time on Twitch you add the site's address so viewers can sign in: the tab shows how).
+- 🎟️ **Paid battles** (Derek: "$5 donation, 500 bits or 1 sub gets a battle"): every tip, bits or sub that reaches the amount adds a battle with that person's name to a line on the Battle tab. Press ▶ Start next when you're ready: it switches to the battle you picked (like your Marathon Battle), chat hears who it's for, and the history and the website show who paid. Leftovers carry over per person (two $3 tips = one battle), gift subs count one each, ➕ adds one by hand, nothing is ever refunded. Settings → 💰 Rewards & prices → 🎟️ Paid battles.
+- 👀 **Watch your co-streamer's battles** (Derek + Kirb): when your partner's battle starts, a note pops up in Movie Royal with 👀 Watch: their battle in a small window you can drag around (it closes by itself after it ends). Card and character battles count now too, so their battle also pops up on your stream whatever kind it is.
+- 🧪 Test tab: 🎟️ Paid battles (pretend tips, bits and subs), 🌐 Viewer website (a demo page with pretend battles, guesses and a poll, plus what the site would get right now), 👀 Watch your partner's battle. Setup guide: new 🌐 Viewer website step.
+
 ## 1.74.0
 - 🧹 **Inactive people's movies** (Derek): when someone hasn't been in a battle for **3 months** (none of their movies was on the cliff in a real battle), their movies go back so anyone can pick them in Discord. With no movies left they get a fresh set of picks, so they can pick them again later. On by default.
   - Each battle with people's movies has its own switch and time limit in **Settings → ⚔️ Game → 🧹 Inactive people's movies**: a number box + days, weeks, months or years.

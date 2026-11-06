@@ -32,6 +32,8 @@ import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
 import * as costream from './costream.js';
+import * as site from './site.js';
+import * as paid from './paid.js';
 import * as cards from './cards.js';
 import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
@@ -145,6 +147,7 @@ function gameResult(m) {
         seriesInfo = { round: sr.round, bestOf: bo, need, tally, done: sr.wins[f.id] >= need };
         broadcast({ type: 'series', gameId: live.game.id, series: seriesInfo, winnerId: f.id }, 'overlay');
         if (!seriesInfo.done) {
+          if (live.game.pid) { const tw0 = live.game.fighters.reduce((a, x) => a + (x.weight || 1), 0) || 1; site.result({ pid: live.game.pid, winnerId: f.id, winner: f.label, pct: Math.round((f.weight || 1) / tw0 * 1000) / 10 }); }
           act('battle', `Round ${sr.round} of best of ${bo} in “${list.name}”: “${f.label}” won it (${tally.slice(0, 4).map(x => `${x.label} ${x.n}`).join(', ')} · first to ${need})`, { icon: '🥊', kind: 'round', list: list.name });
           live.lastWinner = { ...f, listId: list.id, listName: list.name, at: Date.now(), series: seriesInfo, interim: true, gameId: live.game.id };
           if (twitch.canSay() && db.settings.announceWinner !== false) setTimeout(() => twitch.say(`🥊 Round ${sr.round} goes to ${f.ownerLogin && f.showOwner ? '@' + f.ownerLogin : f.label}! (${tally.slice(0, 3).map(x => `${x.label} ${x.n}`).join(' · ')} — first to ${need})`).catch(() => {}), (db.settings.replayOn !== false ? 12 : 2) * 1000);
@@ -163,9 +166,10 @@ function gameResult(m) {
         entrants: live.game.fighters.length, total: live.game.total,
         top: order.slice(0, 5).map(id => slim(byId.get(id))),
         events: (Array.isArray(m.events) ? m.events : []).slice(0, 40).map(e => ({ event: String(e.event), by: String(e.by || '').slice(0, 40) })),
-        claimed: null, outcome: null, gameId: live.game.id, map: live.game.map, rounds: live.series?.listId === list?.id && live.series?.games?.length > 1 ? live.series.games.slice() : undefined
+        claimed: null, outcome: null, gameId: live.game.id, map: live.game.map, started: live.game.startedAt, ...(live.game.paid ? { paid: live.game.paid } : {}), ...(live.game.vod ? { vod: live.game.vod } : {}), rounds: live.series?.listId === list?.id && live.series?.games?.length > 1 ? live.series.games.slice() : undefined
       };
       db.history.push(rec); db.history = db.history.slice(-1000); historyVersion++;
+      if (live.game.pid) site.result({ pid: live.game.pid, winnerId: f.id, winner: f.label, pct: Math.round((f.weight || 1) / totalW * 1000) / 10 }); // 🔮 score the viewer website's guesses
       act('battle', winLine(f, list, totalW, seriesInfo), { icon: '🏆', kind: 'win', list: list?.name, items: order.slice(0, 10).map((id, i) => `${i + 1}. ${byId.get(id)?.label || ''}`) }); // 🧾
       live.lastWinner = { ...f, listId: list?.id, listName: list?.name, at: Date.now(), historyId: rec.id, gameId: live.game.id };
       battleDoneForWheel();
@@ -259,7 +263,9 @@ function publicState() { applyCharsDefault();
   const st = db.settings;
   return {
     cloud: { enabled: cloud.enabled(), url: st.cloud?.url || '', ...cloud.status },
-    costream: { ...costream.info(), obsError: costream.cfg().obsError || null },
+    costream: { ...costream.info(), obsError: costream.cfg().obsError || null, partnerView: (() => { const v = costream.status.partner?.state?.video; return v?.id ? { url: vdoView(v.id, v.q), layout: v.layout || null } : null; })() }, // (👀 watch their battle inside the app, 1.74.0)
+    site: { ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
+    paid: paid.info(),
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -586,7 +592,7 @@ async function coVideo(on) {
 async function coViewerSync(force) { // your partner's picture in your OBS (made / fixed when it changes, battle piece shown while their battle runs)
   const c = costream.cfg(), v = costream.status.partner?.state?.video;
   if (!costream.linked() || !v?.id) return;
-  const side = costream.status.partner?.state?.camSide || (costream.mySide() === 'left' ? 'right' : 'left'), url = vdoView(v.id, v.q), key = JSON.stringify([url, v.layout, c.scene || '', c.showCam !== false, costream.partnerName(), side]), battleOn = costream.partnerBattle();
+  const side = costream.status.partner?.state?.camSide || (costream.mySide() === 'left' ? 'right' : 'left'), url = vdoView(v.id, v.q), key = JSON.stringify([url, v.layout, c.scene || '', c.showCam !== false, costream.partnerName(), side]), battleOn = costream.partnerShowing(); // (1.75.0: card battles too, Derek: watch each other's battles)
   if (!force && key === co.viewerKey) {
     if (c.showBattle !== false && battleOn !== co.battleShown) { co.battleShown = battleOn; obs.coBattleShow(c.obs, battleOn).catch(() => { co.battleShown = null; }); }
     return;
@@ -604,13 +610,93 @@ setInterval(() => { // keeps the picture going: OBS opened later, the hidden win
 }, 10000);
 setInterval(() => coViewerSync(false).catch(() => {}), 3000);
 costream.setHooks({
-  local: () => { const m = live.map || currentMap(), mp = mapById(m); return { name: streamerName(), login: db.owner?.login || '', phase: live.phase, cards: !!(live.game?.cards || live.game?.charFight), map: m, mapName: mp?.name || m, solid: !!mp?.solid, chaosIn: db.settings.pointsOn !== false || db.settings.bitsOn !== false }; },
+  local: () => { const m = live.map || currentMap(), mp = mapById(m); return { name: streamerName(), login: db.owner?.login || '', phase: live.phase, showing: live.phase === 'lobby' || live.phase === 'running' || cards.live.phase === 'fight', cards: !!(live.game?.cards || live.game?.charFight), map: m, mapName: mp?.name || m, solid: !!mp?.solid, chaosIn: db.settings.pointsOn !== false || db.settings.bitsOn !== false }; },
   chaos: coChaosIn,
   changed: () => pushState(),
   partnerChanged: () => { rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 200); coViewerSync(false).catch(() => {}); },
   log: m => console.error(m)
 });
 setTimeout(() => { if (costream.linked()) { costream.connect(); if (coWantVideo()) setTimeout(() => coVideo(true).catch(() => {}), 8000); } }, 3000);
+
+// ---------- 🎟️ Paid battles + 🌐 Viewer website (1.75.0) ----------
+let sitePid = uid(); // 🔮 the guess round the viewer website is on (the battle that's waiting / starting)
+const pubImg = u => /^https:\/\//.test(String(u || '')) ? String(u) : null;
+const paidSay = t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); };
+paid.setHooks({ act: (text, x) => act('money', text, { icon: '🎟️', who: x.who, kind: 'paid', test: !!x.test }), say: paidSay, changed: () => pushState() });
+const pctOf = (f, tot) => Math.round((f.weight || 1) / (tot || 1) * 1000) / 10;
+function siteLive() {
+  const st = db.settings, q = paid.queue(), view = wheel.W().show ? 'wheel' : cards.live.show || cards.live.phase === 'fight' ? 'cards' : 'battle';
+  let phase = live.phase, fighters = [], list = null, winner = null, game = live.game;
+  if ((phase === 'lobby' || phase === 'running' || phase === 'ended') && game && !game.test) { list = getList(game.listId); fighters = game.fighters; }
+  else if (phase === 'idle' && lastPreview && lastPreview.kind !== 'cards' && view === 'battle') { list = getList(db.activeListId); fighters = lastPreview.fighters || []; phase = 'ready'; }
+  else if (phase !== 'idle' && game?.test) phase = 'idle'; // (practice battles don't show on the website)
+  const tot = fighters.reduce((a, x) => a + (x.weight || 1), 0) || 1;
+  if (phase === 'ended' && live.lastWinner && !live.lastWinner.test) winner = { id: live.lastWinner.id, label: live.lastWinner.label, sub: live.lastWinner.sub || '', pct: fighters.length ? pctOf(fighters.find(x => x.id === live.lastWinner.id) || {}, tot) : null };
+  const pid = phase === 'ready' ? sitePid : game?.pid || null;
+  return {
+    phase, view, pid, predictOpen: st.sitePredict !== false && !!pid && (phase === 'ready' || phase === 'lobby') && fighters.length >= 2 && list?.type !== 'cards',
+    list: list ? (list.screenTitle || list.name) : null, kind: list?.type || null, map: phase === 'idle' ? null : mapLabel(game && phase !== 'ready' ? game.map : currentMap()),
+    fighters: [...fighters].sort((a, b) => (b.weight || 1) - (a.weight || 1)).slice(0, 80).map(f => ({ id: f.id, label: f.label, sub: f.sub || '', pct: pctOf(f, tot), luck: Math.round((f.luck || 0) * 10) / 10, image: pubImg(f.image || f.poster), owner: list?.type === 'movies' && !f.spot ? f.owner || '' : '' })),
+    n: fighters.length, paid: phase !== 'ready' && game?.paid ? { who: game.paid.who, what: game.paid.what } : null,
+    next: phase === 'ready' && q[0] && paid.cfg().listId === db.activeListId ? { who: q[0].who, what: q[0].what } : null,
+    queue: q.slice(0, 12).map(x => ({ who: x.who, what: x.what })), waiting: q.length, winner,
+    wheel: view === 'wheel' ? { name: wheel.W().name || 'Wheel', last: wheel.W().last?.text || null } : null,
+    live: !!db.live, stream: db.stream?.startedAt || null, title: st.siteTitle || ''
+  };
+}
+let siteRowsKey = '', siteRowsCache = [];
+function siteRows() { // every real battle in the history (newest 1000): what landed, who paid, ▶ the VOD spot
+  const k = historyVersion + ':' + Object.keys(db.vodIds || {}).length; if (k === siteRowsKey) return siteRowsCache;
+  siteRowsCache = db.history.filter(h => h.winner && h.listName).map(h => ({
+    id: h.id, at: h.at, list: h.listName, kind: h.kind, label: h.winner.label, sub: h.winner.sub || '', owner: h.kind === 'movies' ? h.winner.owner || '' : '', image: pubImg(h.winner.poster || h.winner.image),
+    pct: Math.round((h.winner.odds || 0) * 1000) / 10, luck: Math.round((h.winner.luck || 0) * 10) / 10, n: h.entrants || 0, map: h.map ? mapLabel(h.map) : '',
+    paid: h.paid ? { who: h.paid.who, what: h.paid.what } : null, vod: site.vodUrl(h.vod, h.started || h.at, sid => twitch.vodFor(sid)), outcome: h.outcome || null
+  }));
+  siteRowsKey = k; return siteRowsCache;
+}
+function siteStats() {
+  const rows = siteRows(), since = db.stream?.startedAt || 0, tally = (arr, key) => { const m = new Map(); for (const r of arr) { const kk = key(r); if (!kk) continue; const o = m.get(kk) || { n: 0, last: 0 }; o.n++; if (r.at > o.last) { o.last = r.at; o.vod = r.vod; o.label = r.label; o.list = r.list; o.who = r.paid?.who; } m.set(kk, o); } return [...m.entries()].map(([k2, o]) => ({ key: k2, ...o })); };
+  const paidRows = rows.filter(r => r.paid), kinds = {}; for (const h of db.history) if (h.paid) kinds[h.paid.kind] = (kinds[h.paid.kind] || 0) + 1;
+  return {
+    battles: rows.length, today: rows.filter(r => r.at >= since).length, paid: paidRows.length, paidKinds: kinds, waiting: paid.queue().length,
+    supporters: tally(paidRows, r => r.paid.who).sort((a, b) => b.n - a.n).slice(0, 20).map(x => ({ who: x.key, n: x.n })),
+    tried: tally(rows.filter(r => r.kind !== 'movies' && r.kind !== 'chat'), r => r.list + '\u0001' + r.label).sort((a, b) => b.last - a.last).slice(0, 300).map(x => ({ label: x.label, list: x.list, n: x.n, last: x.last, vod: x.vod || null, who: x.who || null })),
+    movies: rows.filter(r => r.kind === 'movies').slice(-15).reverse().map(r => ({ label: r.label, sub: r.sub, owner: r.owner, at: r.at, vod: r.vod })),
+    lists: tally(rows, r => r.list).sort((a, b) => b.n - a.n).slice(0, 12).map(x => ({ list: x.key, n: x.n })),
+    first: rows[0]?.at || null
+  };
+}
+function siteInfo() {
+  return { channel: db.owner?.login || db.settings.twitchChannel || '', name: streamerName(), avatar: pubImg(db.owner?.avatar), clientId: db.settings.twitchClientId || '', title: db.settings.siteTitle || '', command: db.settings.siteCommand || '!site', discord: db.settings.discordServerLink || db.discordInviteAuto || '', predict: db.settings.sitePredict !== false, points: 'Longer odds = more points: 50% → 2, 10% → 10, 2% → 50.', v: VERSION };
+}
+async function siteProfile(login) { // 👤 what a signed-in viewer sees about themselves (no chat log, nothing private)
+  login = String(login || '').toLowerCase(); const n = norm(login), v = (db.viewers || {})[login] || null;
+  const discordId = Object.entries(db.links || {}).find(([, l]) => String(l).toLowerCase() === login)?.[0] || null, dp = discordId ? discordPeople().find(p => p.discordId === discordId) : null;
+  const rows = siteRows(), mine = db.history.filter(h => h.paid && (h.paid.login === login || norm(h.paid.who) === n)).map(h => rows.find(r => r.id === h.id)).filter(Boolean).reverse();
+  const ents = getList('movies')?.entries || [], bank = Object.values(wheel.W().bank || {}).find(b => b.login === login || norm(b.name) === n);
+  return {
+    name: v?.name || dp?.name || login, streak: v ? chatlog.watchStreak(v) : 0, streams: (v?.watched || []).length, watchHours: Math.round((v?.watchMins || 0) / 6) / 10,
+    paid: mine.slice(0, 50).map(r => ({ at: r.at, label: r.label, list: r.list, what: r.paid?.what, vod: r.vod })), paidN: mine.length,
+    waiting: paid.queue().filter(x => x.login === login || norm(x.who) === n).length,
+    movies: dp ? dp.active.map(m => { const e = ents.find(x => x.id === m.id), L = e ? movieLuck(e) : { total: 0 }; return { label: m.label, sub: m.sub || '', luck: L.total }; }) : null,
+    wins: db.history.filter(h => h.winner?.owner && (norm(h.winner.owner) === n || (dp && norm(h.winner.owner) === norm(dp.name)))).slice(-15).reverse().map(h => ({ at: h.at, label: h.winner.label, list: h.listName })),
+    spins: bank?.spins || 0, id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null, linked: !!dp
+  };
+}
+site.setHooks({
+  info: siteInfo, live: siteLive, stats: siteStats, rows: siteRows, profile: login => siteProfile(login).catch(() => null), changed: () => pushState(),
+  predDone: m => { if (m.total && db.settings.sitePredSay !== false) paidSay(`🔮 ${m.nRight} of ${m.total} on the website called it: ${m.winner}${m.nRight ? ` (+${m.pts} pts${m.nRight <= 3 ? ': ' + m.right.join(', ') : ''})` : ''}. Guess the next one: ${db.settings.siteCommand || '!site'}`); if (m.total) act('chat', `${m.nRight} of ${m.total} called “${m.winner}” on the viewer website (+${m.pts} points each)`, { icon: '🔮', kind: 'guess' }); },
+  pollResult: m => { const tot = m.counts.reduce((a, b) => a + b, 0), top = Math.max(...m.counts), wins = m.opts.filter((_, i) => m.counts[i] === top && top > 0); if (db.sitePoll?.id === m.id) { db.sitePoll.ended = Date.now(); db.sitePoll.counts = m.counts; save(); } paidSay(tot ? `🗳️ “${m.q}”: ${wins.join(' & ')} ${wins.length > 1 ? 'tie' : 'wins'} (${top} of ${tot} votes)` : `🗳️ “${m.q}”: nobody voted`); act('chat', `Poll “${m.q}”: ${m.opts.map((o, i) => `${o} ${m.counts[i]}`).join(' · ')}`, { icon: '🗳️', kind: 'poll' }); broadcast({ type: 'toast', text: `🗳️ Poll over: ${tot ? hEsc(wins.join(' & ')) + ` (${top} of ${tot} votes)` : 'nobody voted'}` }, 'control'); }
+});
+async function siteStreamCheck() { if (!twitch.status.userId) return; try { const s2 = await twitch.streamInfo(); site.setStream(s2); } catch {} }
+setInterval(siteStreamCheck, 5 * 60000); setTimeout(siteStreamCheck, 20000);
+let siteCd = 0;
+function siteChat(m) { // !site → the link
+  const cmd = String(db.settings.siteCommand || '!site').trim().toLowerCase(); if (!cmd || !site.on()) return;
+  if (m.text.toLowerCase().split(/\s+/)[0] !== cmd || Date.now() - siteCd < 30000 || !twitch.canSay()) return; siteCd = Date.now();
+  twitch.say(`🌐 ${site.url()} : watch, every battle with who paid + a link to that moment in the VOD, stats, and guess the winner for points (sign in with Twitch)`).catch(() => {});
+}
+setTimeout(() => site.connect(), 6000);
 
 async function avatarFor(login) { if (!login) return null; const u = (await twitch.getUsers([login])).get(login.toLowerCase()); return proxied(u?.avatar); }
 
@@ -831,8 +917,9 @@ const twitchHandlers = {
     if (!entry) return;
     triggerEvent(entry[1], { name: r.name, avatar: await avatarFor(r.login) }, 'points');
   },
-  sub(sb) { if (db.moneyPaused?.wheelSubs) return; try { wheel.onSub(sb); } catch (e) { console.error('[wheel sub]', e.message); } },
+  sub(sb) { try { paid.onSub(sb); } catch (e) { console.error('[paid battles]', e.message); } if (db.moneyPaused?.wheelSubs) return; try { wheel.onSub(sb); } catch (e) { console.error('[wheel sub]', e.message); } },
   async cheer(c) {
+    try { paid.onBits(c); } catch (e) { console.error('[paid battles]', e.message); }
     if (!db.moneyPaused?.wheelBits) { try { wheel.onBits(c); } catch (e) { console.error('[wheel bits]', e.message); } }
     if (db.settings.bitsOn === false) return; // bits chaos switched off
     const tiers = Object.entries(db.settings.bits).map(([b, e]) => [Number(b), e]).filter(([b]) => c.bits >= b && !db.moneyPaused?.bits?.[b]).sort((a, b) => b[0] - a[0]); // (⏸ paused amounts skipped)
@@ -852,7 +939,7 @@ const twitchHandlers = {
     wheel.wheelChat(m); // 🎡 !respin / !spins
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
     if (skipChat(m)) return; // ⏭️ !skip <movie>: sits out the next battle
-    moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); if (!boardVote(m)) chatCall(m); helpChatCommand(m); giveawayChat(m);
+    moviesChatCommand(m); sitOutChat(m); chatVote(m); chatColor(m); if (!boardVote(m)) chatCall(m); helpChatCommand(m); siteChat(m); giveawayChat(m);
     if (newFace) pushState(); // keeps "Recent chatters" in the control panel up to date
     if (live.rollcall && !live.rollcall.done) {
       const p = live.rollcall.people.find(x => !x.here && chatMatches(x, m));
@@ -1176,7 +1263,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
@@ -1983,6 +2070,7 @@ const GUIDE_STEPS = [
   { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   { id: 'rollcall', since: '1.61.0', title: '📣 Roll call in OBS', why: 'Roll call can show in any OBS scene, even ones without the game screen (like your camera scene).', how: ['Connect OBS first (🎥 OBS control step).', 'Press 🧭 Set it up and tick the scenes, or add a Browser source with the address shown there.'], done: () => !!db.settings.rollObs },
   { id: 'costream', since: '1.71.0', title: '🤝 Co-stream with a friend', why: 'Stream together with a friend who also has Movie Royal: cameras in each other\'s OBS, their battle on your stream while it runs, and chaos across both chats.', how: ['Do the 🎥 OBS control step first.', 'One of you: Settings → 🤝 Co-stream → 🎟️ Make an invite code, and send it in Discord. The other: paste it and press 🤝 Join.', 'One time in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.'], done: () => costream.linked() },
+  { id: 'site', since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch: dev.twitch.tv/console/apps → Manage → OAuth Redirect URLs → Add the website address → Save.'], done: () => site.on() },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
   { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', how: ['Make a second Twitch account for the bot, like MoviesRoyalBot (Twitch names can\'t have spaces).', 'Open the sign-in link below in a private (incognito) browser window, log in there as the BOT, and press Authorize. (Or press 🔑 Sign in as the bot: if Twitch shows your own account, press "Not you?" and log in as the bot.)', 'In your Twitch chat, type /mod and the bot\'s name (like /mod MoviesRoyalBot).'], done: () => !!db.twitchBot },
   { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', how: ['Press 🧭 Set it up and answer the two questions (men and women characters, character creation).', 'Or later: Settings → ⚔️ Game → 🧍 Characters.'], done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
@@ -3742,9 +3830,9 @@ async function startRound(opts = {}) {
   if (!opts.test) { try { inactive.backfill(list); inactive.entered(list, fighters); } catch (e) { console.error('[inactive]', e.message); } } // 🧹 everyone whose movie is in this battle entered it
   if (list.type === 'movies' && !opts.test) for (const e of list.entries) if (e.skipNext) { delete e.skipNext; e.skippedAt = Date.now(); } // ⏭️ sat out this battle: back in the next one
   { const m0 = currentMap(); if (isRaceMap(m0) && fighters.length > raceMax()) { live.raceSkip = m0; live.map = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(live.map)?.name || live.map)} instead.` }, 'control'); } }
-  live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test;
+  live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), pid: opts.test ? null : sitePid, ...(opts.paid ? { paid: opts.paid } : {}), ...(!opts.test && site.vodNow() ? { vod: site.vodNow() } : {}), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test; if (!opts.test) sitePid = uid(); // (🎟️ who paid, ▶ the VOD spot, 🔮 the viewer website's guesses made while it waited)
   live.phase = 'lobby'; live.claim = null;
-  { const tw = fighters.reduce((a, x) => a + (x.weight || 1), 0); act('battle', `${opts.test ? 'Practice battle' : 'Battle'} started: “${list.name}” on ${mapLabel(live.game.map)} with ${fighters.length} ${list.type === 'chat' ? 'people' : 'pieces'}${total > fighters.length ? ` (of ${total})` : ''}`, { icon: opts.test ? '🧪' : '⚔️', kind: 'start', list: list.name, test: !!opts.test, items: [...fighters].sort((a, b) => (b.weight || 1) - (a.weight || 1)).map(x => fighterLine(x, tw)) }); } // 🧾 (with everyone's chance + luck)
+  { const tw = fighters.reduce((a, x) => a + (x.weight || 1), 0); act('battle', `${opts.test ? 'Practice battle' : 'Battle'} started: “${list.name}” on ${mapLabel(live.game.map)} with ${fighters.length} ${list.type === 'chat' ? 'people' : 'pieces'}${total > fighters.length ? ` (of ${total})` : ''}${opts.paid ? ` · 🎟️ paid for by ${opts.paid.who} (${opts.paid.what})` : ''}`, { icon: opts.test ? '🧪' : '⚔️', kind: 'start', list: list.name, test: !!opts.test, items: [...fighters].sort((a, b) => (b.weight || 1) - (a.weight || 1)).map(x => fighterLine(x, tw)) }); } // 🧾 (with everyone's chance + luck)
   if (isCharMap(live.game.map)) return startCharFight(list.screenTitle || list.name, !!opts.test); // 🧍 a character-only map: the card fight engine plays it
   const queued = opts.test ? [] : db.pendingEffects; if (!opts.test) db.pendingEffects = []; save();
   broadcast({
@@ -3893,7 +3981,7 @@ app.post('/api/co/leave', async (req, res) => {
 });
 app.post('/api/co/settings', async (req, res) => {
   const c = costream.cfg(), b = req.body || {}, was = { q: c.quality, video: c.video, scene: c.scene, cam: c.showCam };
-  for (const k of ['chaos', 'showBattle', 'showCam', 'video', 'obsTipDone']) if (typeof b[k] === 'boolean') c[k] = b[k]; // (obsTipDone: ✅ hid the one-time OBS box, 1.71.1)
+  for (const k of ['chaos', 'showBattle', 'showCam', 'video', 'obsTipDone', 'watchPop']) if (typeof b[k] === 'boolean') c[k] = b[k]; // (obsTipDone: ✅ hid the one-time OBS box, 1.71.1)
   if (['low', 'normal', 'high'].includes(b.quality)) c.quality = b.quality;
   if (typeof b.scene === 'string') c.scene = b.scene.slice(0, 200);
   if (b.camSide === 'left' || b.camSide === 'right') { c.camSide = b.camSide; costream.nudge(); } // (your partner's app moves your camera piece to that side)
@@ -3919,6 +4007,38 @@ app.post('/api/co/preview', (req, res) => { // 👀 see a picture in its own win
   if (!D?.coPreview) return res.json({ ok: true, url });
   D.coPreview(url, who === 'partner' ? `${costream.partnerName()}'s picture` : 'What your co-streamer sees'); res.json({ ok: true });
 });
+// 🎟️ Paid battles (1.75.0)
+app.get('/api/paid', (req, res) => res.json(paid.info()));
+app.post('/api/paid/settings', wTry(b => { const c = { ...paid.cfg() }; if (typeof b.on === 'boolean') c.on = b.on; if (typeof b.say === 'boolean') c.say = b.say; if (typeof b.listId === 'string') c.listId = b.listId; for (const k of ['tip', 'bits', 'subs']) if (b[k] !== undefined) c[k] = Math.max(0, Number(b[k]) || 0); db.settings.paidBattles = c; save(); pushState(); return paid.info(); }));
+app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (or a picked one): its battle goes on, logged with who paid
+  if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going. Start the next one when it ends.' });
+  const it = paid.take(req.body?.id); if (!it) return res.status(400).json({ error: 'Nobody is waiting for a battle.' });
+  const c = paid.cfg(), l = c.listId && getList(c.listId);
+  if (c.listId && !l) { paid.putBack(it); return res.status(400).json({ error: "The battle picked for paid battles isn't there any more: pick one in Settings → 💰 Rewards & prices." }); }
+  cards.setShow(false); if (wheel.W().show) wheel.setShow(false);
+  if (live.phase === 'ended' || live.claim) { if (live.claim) clearTimeout(live.claim.timer); live.claim = null; live.phase = 'idle'; live.game = null; broadcast({ type: 'reset' }, 'overlay'); }
+  stopGather(true);
+  if (l && db.activeListId !== l.id) { leaveEnded(); db.activeListId = l.id; previewIds = null; save(); }
+  const err = await startRound({ paid: { who: it.who, login: it.login, kind: it.kind, what: it.what, at: it.at, test: it.test || undefined } });
+  if (err) { paid.putBack(it); return res.status(400).json({ error: err }); }
+  if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})!${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
+  broadcast({ type: 'goView', view: 'battle' }, 'control'); res.json({ ok: true, item: it });
+});
+app.post('/api/paid/remove', wTry(b => { paid.remove(b.id); return paid.info(); }));
+app.post('/api/paid/move', wTry(b => { paid.move(b.id, Number(b.dir)); return paid.info(); }));
+app.post('/api/paid/add', wTry(b => { paid.byHand(b.who, b.what, b.n); return paid.info(); }));
+app.post('/api/test/paid', wTry(b => { const name = String(b.name || 'Test_Viewer'), login = name.toLowerCase(), k = String(b.kind || 'tip'); const items = k === 'bits' ? paid.onBits({ login, name, bits: Number(b.amount) || 500, test: true }) : k === 'sub' || k === 'gift' ? paid.onSub({ kind: k, login, name, recipient: k === 'gift' ? 'someone' : null, test: true }) : paid.onTip({ name, amount: Number(b.amount) || 5, test: true }); return { added: items.length, ...paid.info() }; }));
+app.post('/api/test/paid-clear', wTry(() => { paid.clearTests(); return paid.info(); }));
+// 🌐 Viewer website (1.75.0)
+app.get('/api/site', (req, res) => res.json({ ...site.info(), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false }));
+app.post('/api/site/settings', wTry(b => { const st = db.settings; for (const k of ['siteOn', 'sitePredict', 'sitePredSay']) if (typeof b[k] === 'boolean') st[k] = b[k]; if (typeof b.siteCommand === 'string') st.siteCommand = b.siteCommand.trim().slice(0, 30) || '!site'; if (typeof b.siteTitle === 'string') st.siteTitle = b.siteTitle.trim().slice(0, 80); save(); site.connect(); pushState(); return site.info(); }));
+app.post('/api/site/poll', wTry(b => { const p = site.pollStart(b); paidSay(`🗳️ Poll on the website: “${p.q}” (${p.opts.join(' / ')}). Vote: ${site.url()}`); act('chat', `Poll started on the viewer website: “${p.q}” (${p.opts.join(' / ')})`, { icon: '🗳️', kind: 'poll' }); return site.info(); }));
+app.post('/api/site/poll/end', wTry(() => { site.pollEnd(); return site.info(); }));
+app.post('/api/site/poll/clear', wTry(() => { site.pollClear(); return site.info(); }));
+app.post('/api/site/points/reset', wTry(() => { if (!site.resetPoints()) throw new Error("The viewer website isn't connected right now."); act('chat', 'The viewer website guess points were reset', { icon: '🔮', kind: 'guess' }); return {}; }));
+app.post('/api/site/resend', wTry(() => { site.resend(); return site.info(); }));
+app.post('/api/test/site-vod', wTry(b => { const sid = 'test-' + Date.now().toString(36); site.setStream({ id: sid, startedAt: Date.now() - (Number(b.minsIn) || 95) * 60000 }); (db.vodIds ||= {})[sid] = String(b.videoId || '1234567890'); save(); return { streamId: sid, note: 'Battles started in the next 20 minutes get a pretend ▶ VOD link (the video id is made up, so the link goes to a missing video).' }; })); // 🧪 pretend this is a live stream with a VOD
+app.get('/api/test/site', async (req, res) => { try { res.json({ url: site.url(), info: siteInfo(), live: siteLive(), stats: siteStats(), rows: siteRows().slice(-15).reverse(), profile: await siteProfile(String(req.query.login || db.owner?.login || 'test_viewer')) }); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/co/stats', async (req, res) => { try { res.json({ ok: true, ...(await obs.coStats()), sending: !!globalThis.__desktop?.coSending?.() }); } catch (e) { res.json({ ok: false, error: e.message }); } });
 // 🧪 pretend partner (Test tab): no second PC needed
 app.post('/api/test/co', (req, res) => {

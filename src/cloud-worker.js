@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 17;
+export const WORKER_V = 18;
 export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
@@ -19,6 +19,7 @@ export default {
     const url = new URL(req.url);
     try {
       if (url.pathname.startsWith('/co/')) return await coRoom(req, env, url); // 🤝 co-stream room (17): two streamers' Movie Royals linked
+      if (url.pathname === '/live' || url.pathname === '/live/' || url.pathname.startsWith('/site/')) return await siteRoute(req, env, url); // 🌐 the viewer website (18)
       if (url.pathname === '/sync') return await sync(req, env);
       if (url.pathname === '/sync/pic') return await putPic(req, env, url); // 🎨 the app uploads the /character picture sheets from the streamer's PC
       if (url.pathname === '/characters' || url.pathname === '/characters/' || url.pathname === '/characters.html') { const b = await env.KV.get('pic:sitehtml'); return new Response(b || 'The parts website is not uploaded yet: the streamer opens Movie Royal once.', { status: b ? 200 : 404, headers: { 'content-type': b ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'public, max-age=300' } }); } // 🌐 the parts website (uploaded from the streamer's PC)
@@ -424,10 +425,11 @@ async function coRoom(req, env, url) {
 }
 export class CoRoom {
   constructor(ctx, env) {
-    this.ctx = ctx;
+    this.ctx = ctx; this.env = env;
     try { ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong')); } catch {} // (keep-alives don't wake the room up: cheaper)
   }
   async fetch(req) {
+    if (new URL(req.url).pathname.startsWith('/site/')) return this.site(req); // 🌐 the same free room class runs the viewer website (one room called "site:main"), so no new Cloudflare setup step
     const url = new URL(req.url), clean = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, '').slice(0, n);
     const id = clean(url.searchParams.get('id'), 40) || crypto.randomUUID(), who = clean(url.searchParams.get('who'), 40) || 'someone';
     for (const old of this.ctx.getWebSockets(id)) { try { old.close(4000, 'replaced'); } catch {} } // the same app reconnecting
@@ -442,6 +444,7 @@ export class CoRoom {
   }
   cast(from, msg) { const s = JSON.stringify(msg); for (const w of this.ctx.getWebSockets()) if (w !== from) { try { w.send(s); } catch {} } }
   async webSocketMessage(ws, raw) {
+    if ((ws.deserializeAttachment() || {}).site) return this.siteMsg(ws, raw);
     if (typeof raw !== 'string' || raw.length > 16000) return;
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (!m || typeof m.t !== 'string') return;
@@ -451,9 +454,183 @@ export class CoRoom {
   }
   gone(ws) {
     const a = ws.deserializeAttachment() || {};
+    if (a.site) return this.siteGone(ws);
     if (this.ctx.getWebSockets(a.id).some(w => w !== ws)) return; // (it reconnected already: not gone)
     this.cast(ws, { t: 'leave', from: a.id, who: a.who });
   }
   async webSocketClose(ws, code) { this.gone(ws); try { ws.close(code === 1000 || (code >= 3000 && code < 5000) ? code : 1000, 'bye'); } catch {} }
   async webSocketError(ws) { this.gone(ws); }
 }
+
+// ---------- 🌐 Viewer website (WORKER_V 18, Derek: "a bootleg extension") ----------
+// <bot>/live = a page for viewers: the stream + the battle on right now (who's in, odds, who paid), the history of every battle
+// with a link to that moment in the VOD, stats, predictions (sign in with Twitch) and polls. Movie Royal (on the streamer's PC)
+// connects to the "site:main" room with the SYNC_KEY and sends everything; viewers only read, plus their own guesses / votes.
+// The page itself is uploaded from the PC into KV (only when it changes). Everything else lives in the room's free SQLite storage.
+async function siteRoute(req, env, url) {
+  const p = url.pathname;
+  if (p === '/live' || p === '/live/') { const b = await env.KV.get('site:page'); return new Response(b || 'The viewer website is not turned on yet: the streamer turns it on in Movie Royal (Settings → 🌐 Viewer site).', { status: b ? 200 : 404, headers: { 'content-type': b ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8', 'cache-control': 'no-cache' } }); }
+  const authed = (req.headers.get('authorization') || '') === `Bearer ${env.SYNC_KEY}`;
+  if (p === '/site/page/v') return new Response((await env.KV.get('site:pagev')) || '', { headers: { 'content-type': 'text/plain' } });
+  if (p === '/site/page') { // (the PC uploads the page: only when it changed, KV writes are limited)
+    if (!authed) return json({ error: 'bad key' }, 401);
+    if (req.method !== 'PUT') return json({ error: 'PUT only' }, 405);
+    const body = await req.text(); if (!body || body.length > 2e6) return json({ error: 'bad size' }, 400);
+    await env.KV.put('site:page', body); await env.KV.put('site:pagev', String(url.searchParams.get('v') || '')); return json({ ok: true });
+  }
+  if (!env.CO) return json({ error: 'This 24/7 bot needs an update in Movie Royal.' }, 501);
+  if (p === '/site/app' && !authed) return json({ error: 'bad key' }, 401);
+  const r = new Request(req); r.headers.set('x-mr-app', p === '/site/app' && authed ? '1' : '0');
+  return env.CO.get(env.CO.idFromName('site:main')).fetch(r);
+}
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const ub64 = s => { s = String(s || '').replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return atob(s); };
+async function hmac(key, text) { const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(key || 'x')), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); return b64u(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(text))); }
+const SITE_J = (x, status = 200) => new Response(JSON.stringify(x), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+const ptsFor = pct => Math.max(1, Math.min(50, Math.round(100 / Math.max(1, Number(pct) || 50)))); // longer odds = more points (50% → 2, 10% → 10, 2% → 50)
+const SITE = {
+  sInit() {
+    if (this._sInit) return; this._sInit = true;
+    const q = this.ctx.storage.sql;
+    q.exec(`CREATE TABLE IF NOT EXISTS hist (id TEXT PRIMARY KEY, at INTEGER, j TEXT)`); q.exec(`CREATE INDEX IF NOT EXISTS hist_at ON hist(at)`);
+    q.exec(`CREATE TABLE IF NOT EXISTS pred (pid TEXT, uid TEXT, login TEXT, name TEXT, pick TEXT, PRIMARY KEY (pid, uid))`);
+    q.exec(`CREATE TABLE IF NOT EXISTS pts (uid TEXT PRIMARY KEY, login TEXT, name TEXT, pts INTEGER, right INTEGER, tries INTEGER)`);
+    q.exec(`CREATE TABLE IF NOT EXISTS vote (poll TEXT, uid TEXT, opt INTEGER, PRIMARY KEY (poll, uid))`);
+    q.exec(`CREATE TABLE IF NOT EXISTS prof (login TEXT PRIMARY KEY, at INTEGER, j TEXT)`);
+    q.exec(`CREATE TABLE IF NOT EXISTS doc (k TEXT PRIMARY KEY, j TEXT)`);
+  },
+  sGet(k) { this.sInit(); const r = this.ctx.storage.sql.exec(`SELECT j FROM doc WHERE k = ?`, k).toArray()[0]; try { return r ? JSON.parse(r.j) : null; } catch { return null; } },
+  sPut(k, v) { this.sInit(); this.ctx.storage.sql.exec(`INSERT INTO doc (k, j) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET j = excluded.j`, k, JSON.stringify(v ?? null)); },
+  sApp() { return this.ctx.getWebSockets('app')[0] || null; },
+  sToApp(m) { const a = this.sApp(); if (a) { try { a.send(JSON.stringify(m)); } catch {} } },
+  sViewers() { return this.ctx.getWebSockets('viewer'); },
+  sCast(m) { const s = JSON.stringify(m); for (const w of this.sViewers()) { try { w.send(s); } catch {} } },
+  async sSession(tok) { // "<b64 json>.<sig>" made at sign-in
+    const [body, sig] = String(tok || '').split('.'); if (!body || !sig) return null;
+    if (await hmac(this.env.SYNC_KEY, 'site:' + body) !== sig) return null;
+    try { const u = JSON.parse(decodeURIComponent(escape(ub64(body)))); return u.exp > Date.now() ? u : null; } catch { return null; }
+  },
+  sPollOut(poll, uid) {
+    if (!poll) return null; this.sInit();
+    const c = this.ctx.storage.sql.exec(`SELECT opt, COUNT(*) AS n FROM vote WHERE poll = ? GROUP BY opt`, poll.id).toArray(), counts = poll.opts.map((_, i) => Number(c.find(r => r.opt === i)?.n || 0));
+    const mine = uid ? this.ctx.storage.sql.exec(`SELECT opt FROM vote WHERE poll = ? AND uid = ?`, poll.id, uid).toArray()[0] : null;
+    return { ...poll, counts, mine: mine ? mine.opt : null };
+  },
+  sPredOut(pid, uid) {
+    if (!pid) return null; this.sInit();
+    const c = this.ctx.storage.sql.exec(`SELECT pick, COUNT(*) AS n FROM pred WHERE pid = ? GROUP BY pick`, pid).toArray(), counts = {}; for (const r of c) counts[r.pick] = Number(r.n);
+    const mine = uid ? this.ctx.storage.sql.exec(`SELECT pick FROM pred WHERE pid = ? AND uid = ?`, pid, uid).toArray()[0] : null;
+    return { pid, counts, mine: mine ? mine.pick : null };
+  },
+  sTop(n = 25) { this.sInit(); return this.ctx.storage.sql.exec(`SELECT login, name, pts, right, tries FROM pts ORDER BY pts DESC, right DESC LIMIT ?`, n).toArray(); },
+  sLater(key, ms, fn) { (this._t ||= {}); if (this._t[key]) return; this._t[key] = setTimeout(() => { this._t[key] = null; try { fn(); } catch {} }, ms); },
+  async site(req) {
+    const url = new URL(req.url), p = url.pathname; this.sInit();
+    if (p === '/site/app') { // Movie Royal (checked by the worker: x-mr-app)
+      if (req.headers.get('x-mr-app') !== '1' || (req.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') return SITE_J({ error: 'no' }, 401);
+      for (const old of this.ctx.getWebSockets('app')) { try { old.close(4000, 'replaced'); } catch {} }
+      const pair = new WebSocketPair(), [client, server] = Object.values(pair);
+      this.ctx.acceptWebSocket(server, ['app']); server.serializeAttachment({ site: true, app: true });
+      const last = this.ctx.storage.sql.exec(`SELECT MAX(at) AS m, COUNT(*) AS n FROM hist`).toArray()[0] || {};
+      server.send(JSON.stringify({ t: 'have', last: Number(last.m || 0), n: Number(last.n || 0), viewers: this.sViewers().length }));
+      this.sCast({ t: 'app', on: true });
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    if (p === '/site/ws') { // a viewer's page (live updates)
+      if ((req.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') return SITE_J({ ok: true });
+      if (this.sViewers().length >= 2000) return new Response('busy', { status: 503 });
+      const u = await this.sSession(url.searchParams.get('s'));
+      const pair = new WebSocketPair(), [client, server] = Object.values(pair);
+      this.ctx.acceptWebSocket(server, ['viewer']); server.serializeAttachment({ site: true, viewer: true, uid: u?.uid || null, login: u?.login || null, name: u?.name || null });
+      const live = this.sGet('live');
+      server.send(JSON.stringify({ t: 'hello', info: this.sGet('info'), live, stats: this.sGet('stats'), poll: this.sPollOut(this.sGet('poll'), u?.uid), pred: this.sPredOut(live?.pid, u?.uid), lastPred: this.sGet('lastPred'), me: u ? { login: u.login, name: u.name, avatar: u.avatar } : null, appOnline: !!this.sApp() }));
+      this.sLater('vc', 3000, () => this.sToApp({ t: 'viewers', n: this.sViewers().length }));
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    if (p === '/site/api/history') {
+      const before = Number(url.searchParams.get('before')) || 9e15, lim = Math.min(100, Number(url.searchParams.get('limit')) || 50), q = String(url.searchParams.get('q') || '').toLowerCase().slice(0, 60);
+      const rows = this.ctx.storage.sql.exec(q ? `SELECT j FROM hist WHERE at < ? AND lower(j) LIKE ? ORDER BY at DESC LIMIT ?` : `SELECT j FROM hist WHERE at < ? ORDER BY at DESC LIMIT ?`, ...(q ? [before, '%' + q.replace(/[%_]/g, '') + '%', lim] : [before, lim])).toArray().map(r => JSON.parse(r.j));
+      return SITE_J({ rows, more: rows.length === lim });
+    }
+    if (p === '/site/api/top') return SITE_J({ top: this.sTop(50) });
+    if (p === '/site/api/me') {
+      const u = await this.sSession(url.searchParams.get('s')); if (!u) return SITE_J({ error: 'Sign in again.' }, 401);
+      const pr = this.ctx.storage.sql.exec(`SELECT j, at FROM prof WHERE login = ?`, u.login).toArray()[0], pt = this.ctx.storage.sql.exec(`SELECT pts, right, tries FROM pts WHERE uid = ?`, u.uid).toArray()[0] || null;
+      const rank = pt ? Number(this.ctx.storage.sql.exec(`SELECT COUNT(*) AS n FROM pts WHERE pts > ?`, pt.pts).toArray()[0]?.n || 0) + 1 : null;
+      if (!pr || Date.now() - pr.at > 60000) this.sToApp({ t: 'want', login: u.login, uid: u.uid, name: u.name }); // (fresh one comes over the live connection)
+      return SITE_J({ me: { login: u.login, name: u.name, avatar: u.avatar }, profile: pr ? JSON.parse(pr.j) : null, at: pr?.at || 0, points: pt, rank, appOnline: !!this.sApp() });
+    }
+    if (p === '/site/login' && req.method === 'POST') { // Twitch sign-in: the page got a token from Twitch, we check it's real and for this streamer's Twitch app
+      const info = this.sGet('info') || {}; let body; try { body = await req.json(); } catch { body = {}; }
+      const tok = String(body.token || '').slice(0, 200); if (!tok) return SITE_J({ error: 'no token' }, 400);
+      const v = await fetch('https://id.twitch.tv/oauth2/validate', { headers: { Authorization: 'OAuth ' + tok } }).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!v?.user_id || (info.clientId && v.client_id !== info.clientId)) return SITE_J({ error: "Twitch didn't accept that sign-in. Try again." }, 401);
+      const uj = await fetch('https://api.twitch.tv/helix/users', { headers: { Authorization: 'Bearer ' + tok, 'Client-Id': v.client_id } }).then(r => r.ok ? r.json() : null).catch(() => null), tu = uj?.data?.[0] || {};
+      const u = { uid: v.user_id, login: v.login, name: tu.display_name || v.login, avatar: tu.profile_image_url || '', exp: Date.now() + 30 * 864e5 };
+      fetch('https://id.twitch.tv/oauth2/revoke', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `client_id=${encodeURIComponent(v.client_id)}&token=${encodeURIComponent(tok)}` }).catch(() => {}); // (we only needed to know who it is)
+      const b = b64u(new TextEncoder().encode(JSON.stringify(u)));
+      return SITE_J({ session: b + '.' + await hmac(this.env.SYNC_KEY, 'site:' + b), me: { login: u.login, name: u.name, avatar: u.avatar } });
+    }
+    return SITE_J({ error: 'not found' }, 404);
+  },
+  async siteMsg(ws, raw) {
+    if (typeof raw !== 'string' || raw.length > 400000) return;
+    let m; try { m = JSON.parse(raw); } catch { return; }
+    const a = ws.deserializeAttachment() || {}, q = this.ctx.storage.sql; this.sInit();
+    if (a.app) { // ---- from Movie Royal ----
+      if (m.t === 'info') { this.sPut('info', m.info); this.sCast({ t: 'info', info: m.info }); }
+      else if (m.t === 'live') {
+        const before = this.sGet('live'); this.sPut('live', m.live);
+        this.sCast({ t: 'live', live: m.live, ...(m.live?.pid && m.live.pid !== before?.pid ? { pred: { pid: m.live.pid, counts: {}, mine: null } } : {}) });
+      }
+      else if (m.t === 'stats') { this.sPut('stats', m.stats); this.sCast({ t: 'stats', stats: m.stats }); }
+      else if (m.t === 'hist') { for (const r of (m.rows || []).slice(0, 500)) if (r?.id) q.exec(`INSERT INTO hist (id, at, j) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET at = excluded.at, j = excluded.j`, String(r.id), Number(r.at) || 0, JSON.stringify(r)); if (m.rows?.length) this.sCast({ t: 'hist', rows: m.rows.slice(0, 20) }); }
+      else if (m.t === 'histDel') { for (const id of m.ids || []) q.exec(`DELETE FROM hist WHERE id = ?`, String(id)); this.sCast({ t: 'histDel', ids: m.ids || [] }); }
+      else if (m.t === 'profile') { if (m.login) { q.exec(`INSERT INTO prof (login, at, j) VALUES (?, ?, ?) ON CONFLICT(login) DO UPDATE SET at = excluded.at, j = excluded.j`, String(m.login), Date.now(), JSON.stringify(m.profile || {})); for (const w of this.sViewers()) if ((w.deserializeAttachment() || {}).login === m.login) { try { w.send(JSON.stringify({ t: 'profile', profile: m.profile })); } catch {} } } }
+      else if (m.t === 'poll') { // a new poll (or null = none)
+        const poll = m.poll && Array.isArray(m.poll.opts) ? { id: String(m.poll.id), q: String(m.poll.q || '').slice(0, 140), opts: m.poll.opts.slice(0, 6).map(o => String(o).slice(0, 60)), endsAt: Number(m.poll.endsAt) || 0, open: true } : null;
+        this.sPut('poll', poll); if (poll?.endsAt) await this.ctx.storage.setAlarm(poll.endsAt);
+        this.sCast({ t: 'poll', poll: this.sPollOut(poll) });
+      }
+      else if (m.t === 'pollEnd') await this.sPollEnd();
+      else if (m.t === 'result') { // a battle's winner: score the guesses
+        const rows = q.exec(`SELECT uid, login, name, pick FROM pred WHERE pid = ?`, String(m.pid)).toArray(), right = [], pct = Number(m.pct) || 50, add = ptsFor(pct);
+        for (const r of rows) {
+          const ok = r.pick === String(m.winnerId); if (ok) right.push(r.name);
+          q.exec(`INSERT INTO pts (uid, login, name, pts, right, tries) VALUES (?, ?, ?, ?, ?, 1) ON CONFLICT(uid) DO UPDATE SET login = excluded.login, name = excluded.name, pts = pts + excluded.pts, right = right + excluded.right, tries = tries + 1`, r.uid, r.login, r.name, ok ? add : 0, ok ? 1 : 0);
+        }
+        q.exec(`DELETE FROM pred WHERE pid = ?`, String(m.pid));
+        const out = { pid: m.pid, winnerId: m.winnerId, winner: String(m.winner || ''), pct, pts: add, total: rows.length, right: right.slice(0, 30), nRight: right.length, at: Date.now() };
+        this.sPut('lastPred', out); this.sCast({ t: 'predResult', res: out, top: this.sTop(10) }); this.sToApp({ t: 'predDone', ...out });
+      }
+      else if (m.t === 'resetPoints') { q.exec(`DELETE FROM pts`); this.sCast({ t: 'top', top: [] }); }
+      else if (m.t === 'wipe') { q.exec(`DELETE FROM hist`); this.sCast({ t: 'histReset' }); }
+      return;
+    }
+    // ---- from a viewer ----
+    if (m.t === 'ping') return void ws.send('{"t":"pong"}');
+    if (!a.uid) return void ws.send(JSON.stringify({ t: 'err', error: 'Sign in with Twitch first.' }));
+    if (m.t === 'predict') {
+      const live = this.sGet('live');
+      if (!live?.pid || live.pid !== m.pid || !live.predictOpen) return void ws.send(JSON.stringify({ t: 'err', error: 'Guesses are closed for this battle.' }));
+      if (!(live.fighters || []).some(f => f.id === m.pick)) return;
+      q.exec(`INSERT INTO pred (pid, uid, login, name, pick) VALUES (?, ?, ?, ?, ?) ON CONFLICT(pid, uid) DO UPDATE SET pick = excluded.pick`, live.pid, a.uid, a.login, a.name, String(m.pick));
+      ws.send(JSON.stringify({ t: 'pred', pred: this.sPredOut(live.pid, a.uid) }));
+      this.sLater('pc', 1500, () => { const o = this.sPredOut(live.pid); this.sCast({ t: 'predCounts', pid: live.pid, counts: o.counts }); this.sToApp({ t: 'predCounts', pid: live.pid, counts: o.counts }); });
+    } else if (m.t === 'vote') {
+      const poll = this.sGet('poll'), i = Number(m.opt);
+      if (!poll?.open || poll.id !== m.poll || !(i >= 0 && i < poll.opts.length) || (poll.endsAt && Date.now() > poll.endsAt)) return void ws.send(JSON.stringify({ t: 'err', error: 'That poll is closed.' }));
+      q.exec(`INSERT INTO vote (poll, uid, opt) VALUES (?, ?, ?) ON CONFLICT(poll, uid) DO UPDATE SET opt = excluded.opt`, poll.id, a.uid, i);
+      ws.send(JSON.stringify({ t: 'poll', poll: this.sPollOut(poll, a.uid) }));
+      this.sLater('vt', 1500, () => { const o = this.sPollOut(poll); this.sCast({ t: 'pollCounts', id: poll.id, counts: o.counts }); this.sToApp({ t: 'pollCounts', id: poll.id, counts: o.counts }); });
+    }
+  },
+  async sPollEnd() {
+    const poll = this.sGet('poll'); if (!poll?.open) return;
+    const out = this.sPollOut(poll); poll.open = false; poll.counts = out.counts; poll.endedAt = Date.now(); this.sPut('poll', poll);
+    this.sCast({ t: 'poll', poll: { ...out, open: false } }); this.sToApp({ t: 'pollResult', id: poll.id, q: poll.q, opts: poll.opts, counts: out.counts });
+  },
+  async alarm() { await this.sPollEnd(); },
+  siteGone(ws) { const a = ws.deserializeAttachment() || {}; if (a.app && !this.ctx.getWebSockets('app').some(w => w !== ws)) this.sCast({ t: 'app', on: false }); if (a.viewer) this.sLater('vc', 3000, () => this.sToApp({ t: 'viewers', n: this.sViewers().length })); }
+};
+Object.assign(CoRoom.prototype, SITE);

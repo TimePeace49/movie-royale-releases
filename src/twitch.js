@@ -323,6 +323,10 @@ export async function listRewards() {
   return (j.data || []).map(r => ({ id: r.id, title: r.title, cost: r.cost, enabled: r.is_enabled, paused: r.is_paused, color: r.background_color, cooldown: r.global_cooldown_setting?.is_enabled ? r.global_cooldown_setting.global_cooldown_seconds : 0 }));
 }
 /** 🤖 Test all: is your Twitch sign-in still good? (reads your own name; changes nothing) */
+/** ▶ (1.75.0) the stream that's live right now: { id, startedAt } (null = offline / not signed in) */
+export async function streamInfo() { if (!status.userId) return null; const j = await helix(`streams?user_id=${status.userId}`); const d = j.data?.[0]; return d ? { id: String(d.id), startedAt: Date.parse(d.started_at) } : null; }
+/** ▶ the VOD ("past broadcast") of a stream, found by its stream id (null = not there: past broadcasts off, or deleted) */
+export async function vodFor(streamId) { if (!status.userId) return null; const j = await helix(`videos?user_id=${status.userId}&type=archive&first=20`); const v = (j.data || []).find(x => String(x.stream_id) === String(streamId)); return v ? String(v.id) : null; }
 export async function meCheck() { const j = await helix('users'); return j.data?.[0]?.login || null; }
 /** 🤖 Test all: is the chat bot account's sign-in still good? (null = no bot account) */
 export async function botCheck() { if (!db.twitchBot?.tokens?.access) return null; const j = await botHelix('users'); return j.data?.[0]?.login || null; }

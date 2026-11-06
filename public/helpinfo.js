@@ -8,6 +8,58 @@ let SEC = null; const SECTION = x => { SEC = x; }; // which Help tab section the
 const H = (re, title, text, ctx) => L.push({ re, title, text, ctx: Array.isArray(ctx) ? new RegExp(ctx.join('|'), 'i') : ctx, // (a list like ['test'] = only on those tabs)
   sec: /\(chaos power\)|map power/i.test(title) ? 'Using powers yourself' : /^(🏀|🐜|🎈|🌪️ chaos rain|🪩)|power-ups|shield \(test|mega \(test|turbo \(test/i.test(title) ? 'Fun mode' : SEC });
 
+// ───────── 1.74.0: 🌐 viewer website · 🎟️ paid battles · 👀 watch your partner's battle ─────────
+SECTION('🌐 Viewer website & paid battles');
+H(/^tip:the viewer website's address$/i, '🌐 The website address', 'Your viewer website\'s address. Click it to select it. It\'s what the chat command sends.');
+H(/^tip:copy the viewer website's address$/i, '📋 Copy', 'Copies the viewer website\'s address.');
+H(/^tip:open the viewer website in your browser$/i, '🌐 Open', 'Opens your viewer website in your browser, the way viewers see it.');
+H(/^tip:stop the viewer website$/i, '⏹ Turn off', 'Stops the viewer website: Movie Royal stops sending it anything and !site stops answering. The history it already has stays for next time.');
+H(/^tip:the chat command for the viewer website link$|^tip:save the chat command for the viewer website link$/i, '💬 Chat command for the link', 'What viewers type in Twitch chat to get the website link (!site by default). Press Save after changing it. Movie Royal answers at most once every 30 seconds.');
+H(/^tip:the poll question$/i, '🗳️ Question', 'What the poll asks, like “What should I eat next?”');
+H(/^tip:how many minutes the poll stays open$/i, '🗳️ Minutes', 'How long the poll stays open (half a minute to an hour).');
+H(/^tip:the poll answers, one per line$/i, '🗳️ Answers', 'The choices, one per line (2 to 6).');
+H(/^🌐 viewer site$/i, '🌐 Viewer site', 'Settings for the website your viewers get with !site: your stream, the battle on right now, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your ☁️ 24/7 Discord bot.');
+H(/turn on the viewer site/i, '🌐 Turn on the viewer site', 'Puts the website on your 24/7 bot and keeps it up to date while Movie Royal is open. Viewers get the link by typing the chat command (!site). Turn it off any time: the page then says it isn\'t on.');
+H(/^⏹ turn off$/i, '⏹ Turn off', 'Stops the viewer website: Movie Royal stops sending it anything and !site stops answering. The history it already has stays for next time.', /viewer site/i);
+H(/^📋 copy$|^📋$/i, '📋 Copy', 'Copies the viewer website\'s address.', /viewer site/i);
+H(/^🌐 open$/i, '🌐 Open', 'Opens your viewer website in your browser, the way viewers see it.', /viewer site/i);
+H(/one time on twitch: let viewers sign in/i, '📌 Let viewers sign in', 'Watching, history and stats work for everyone. Guesses, polls and “My page” need viewers to sign in with Twitch, and Twitch only sends them back to addresses on your Twitch app\'s list: add the website\'s address there once (dev.twitch.tv/console/apps → Manage → OAuth Redirect URLs → Add → Save).');
+H(/chat command for the link/i, '💬 Chat command for the link', 'What viewers type in Twitch chat to get the website link (!site by default). Movie Royal answers at most once every 30 seconds.');
+H(/viewers can guess who wins/i, '🔮 Guess who wins', 'Signed-in viewers tap who they think wins while the battle waits on the cliff and during the countdown; it locks when the fight starts. Right = points: the longer the odds, the more points (50% → 2, 10% → 10, 2% → 50). The 🏆 leaderboard is on the website.');
+H(/say in chat how many called it/i, '💬 Say who called it', 'After each battle, chat hears how many people on the website guessed the winner (and their names when it\'s 3 or fewer).');
+H(/^question$/i, '🗳️ Question', 'What the poll asks, like “What should I eat next?”', /viewer site/i);
+H(/^minutes$/i, '🗳️ Minutes', 'How long the poll stays open (half a minute to an hour).', /viewer site/i);
+H(/answers \(one per line/i, '🗳️ Answers', 'The choices, one per line (2 to 6).');
+H(/start the poll/i, '🗳️ Start the poll', 'Puts the poll on the viewer website (signed-in viewers vote; they can change their vote until it ends) and sends the link to chat. When the time is up, the result goes to chat and pops up here.');
+H(/^⏹ end it now$/i, '⏹ End it now', 'Ends the poll right away: the result goes to chat.');
+H(/hide it on the site/i, '✕ Hide it on the site', 'Takes the last (finished) poll off the website.');
+H(/send everything again/i, '📤 Send everything again', 'Sends the website everything again (the battle on now, stats, the whole history). Only needed if something on the site looks out of date.');
+H(/reset guess points/i, '🔮 Reset guess points', 'Sets everyone\'s guess points on the website back to 0 (a fresh leaderboard, like for a new event).');
+H(/try it \(test tab\)/i, '🧪 Try it', 'Opens the Test tab card for the viewer website (a demo page with pretend battles, guesses and a poll).');
+H(/^🎟️ paid battles$/i, '🎟️ Paid battles', 'The line of battles people paid for: every tip, bits or sub that reaches the amount (Settings → 💰 Rewards & prices) adds a battle with their name. ▶ Start next starts the first one; it\'s logged with who paid (History and the viewer website).');
+H(/^▶ start next:/i, '▶ Start next', 'Starts the battle for the first person in the line (on the battle picked for paid battles). It shows on stream and in the history with their name and what they paid; chat hears who it\'s for.');
+H(/^tip:add one by hand/i, '➕ Add one by hand', 'Adds a battle to the line yourself: cash, a tip Movie Royal didn\'t hear about, a prize… You type who it\'s for and what for.');
+H(/^tip:start this one now/i, '▶ Start this one now', 'Starts this person\'s battle now instead of the first one\'s.');
+H(/^tip:move up the line/i, '↑ Move up', 'Moves this battle one place up the line.');
+H(/^tip:take it out of the line/i, '✕ Take it out', 'Takes this battle out of the line. Nothing is refunded or sent back (refunds are always up to you).');
+H(/money adds battles to the line/i, '🎟️ Money adds battles', 'On = every tip, bits or sub that reaches the amounts below adds a battle with that person\'s name to the line on the Battle tab. Off = money does what it did before (the line keeps what\'s in it).');
+H(/the battle they get/i, '⚔️ The battle they get', 'Which battle a paid battle uses (like your 🏃 Marathon Battle). ▶ Start next switches to it by itself. Left empty = whatever battle is picked on the Battle tab.');
+H(/\$ per battle/i, '💵 $ per battle', 'How many dollars of tips buy one battle. Leftovers carry over per person: two $3 tips = one battle, a $12 tip = two battles with $2 waiting. 0 = tips don\'t count.');
+H(/bits per battle/i, '💎 Bits per battle', 'How many bits buy one battle (leftovers carry over per person). 0 = bits don\'t count.');
+H(/subs per battle/i, '⭐ Subs per battle', 'How many subs buy one battle. Gift subs count one each, so a 5-gift bomb with 1 = 5 battles. 0 = subs don\'t count.');
+H(/say it in chat \(“@name unlocked/i, '💬 Say it in chat', 'Chat hears “@name unlocked a battle!” when one is added, and “This battle is for @name” when you start it.');
+H(/^💵 \$\d+ tip$|^💎 500 bits$|^⭐ a sub$|^🎁 a gift sub$/i, '🧪 Pretend money', 'Pretends a viewer paid that, to see a battle get added to the line on the Battle tab (works even with 🎟️ Paid battles off; test ones show 🧪). Leftovers carry over like the real thing.', ['test']);
+H(/take the test ones out/i, '✕ Take the test ones out', 'Takes the 🧪 test battles out of the paid line (real ones stay).', ['test']);
+H(/^🧪 demo page$/i, '🧪 Demo page', 'Opens the viewer website with pretend battles, guesses and a poll, so you can see it without your 24/7 bot. Nothing is sent anywhere. Press “Sign in with Twitch” there to try guessing and voting.', ['test']);
+H(/what the site gets/i, '📦 What the site gets', 'Shows what Movie Royal would send the website right now: the battle on now, stats, and the newest history rows with who paid and the ▶ VOD links.', ['test']);
+H(/open my real site/i, '🌐 Open my real site', 'Opens your real viewer website (once it\'s on: Settings → 🌐 Viewer site).', ['test']);
+H(/pretend partner starts a battle/i, '🤝 Pretend partner starts a battle', 'A pretend co-streamer shows up and starts a battle a moment later, so you see the “👀 Watch” note pop up.', ['test']);
+H(/open the watch window/i, '👀 Open the watch window', 'Opens the small window that shows your co-streamer\'s battle inside Movie Royal.', ['test']);
+H(/^👀 watch .*battle here$/i, '👀 Watch their battle here', 'Opens a small window inside Movie Royal with your co-streamer\'s battle (their real game screen). Drag it by its top bar, ⤢ makes it bigger. It closes by itself 15 seconds after their battle ends. Note: each picture you watch is one more copy your friend sends, so close it if their internet struggles.');
+H(/pop up a note here with a watch button/i, '👀 Watch note', 'When your co-streamer\'s battle starts (any kind: Discord battles, their own battles, character and card battles), a note pops up in Movie Royal with a 👀 Watch button.');
+H(/^tip:bigger \/ smaller$/i, '⤢ Bigger / smaller', 'Makes the watch window bigger or smaller (it remembers).');
+H(/^tip:close \(it opens again with 👀 watch\)$/i, '✕ Close', 'Closes the watch window. 👀 Watch (in the note, or Settings → 🤝 Co-stream) opens it again.');
+
 // ───────── 1.72.0: ⏪ undo all the way back · 🍀 luck in your own battles · 🧾 History → Everything ─────────
 SECTION('The Wheel');
 H(/^tip:take back everything since this wheel's first spin|all the way back to the start$/i, '⏮️ All the way back to the start', 'Takes this wheel back to right before its first spin (since its last ↺ Reset): every spin, grow, void, round timer and saved spin since then is taken back, one big undo. It asks first and says if another wheel changed since then (that one goes back too). 🧾 History → Everything still lists everything that was taken back.');

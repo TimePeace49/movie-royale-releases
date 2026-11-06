@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live battles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+/* 🌐 Movie Royal viewer website (1.75.0). Runs on the streamer's 24/7 bot at <bot>/live; ?demo=1 = pretend data, no server. */
+:root { --bg:#0c0a14; --panel:#16121f; --panel2:#1d1829; --line:#2c2540; --ink:#f2eefc; --mute:#a59cbc; --gold:#ffcf4a; --pink:#ff4f9a; --teal:#2fe0c8; --purple:#9b6bff; --red:#ff4d5e; --ok:#46d68c; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 500 15px/1.4 Nunito, system-ui, sans-serif; }
+body { min-height: 100vh; background: radial-gradient(1200px 500px at 70% -10%, rgba(155,107,255,.18), transparent 60%), radial-gradient(900px 400px at 0% 0%, rgba(255,79,154,.12), transparent 60%), var(--bg); }
+a { color: var(--teal); }
+button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); border-radius: 10px; padding: 7px 14px; }
+button:hover { border-color: var(--purple); }
+button.go { background: linear-gradient(90deg, var(--purple), var(--pink)); border: 0; font-weight: 800; }
+button:disabled { opacity: .5; cursor: default; }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 0 16px 40px; }
+header { display: flex; align-items: center; gap: 12px; padding: 14px 0 10px; flex-wrap: wrap; }
+.ava { width: 46px; height: 46px; border-radius: 50%; background: var(--panel2) center/cover; box-shadow: 0 0 0 3px var(--gold); flex: none; }
+.brand { font-family: 'Lilita One', Nunito, sans-serif; font-size: 26px; line-height: 1; letter-spacing: .5px; }
+.brand small { display: block; font: 700 13px Nunito, sans-serif; color: var(--mute); letter-spacing: 0; margin-top: 3px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-weight: 800; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; background: var(--panel2); border: 1px solid var(--line); }
+.pill.live { background: var(--red); border-color: var(--red); }
+.grow { flex: 1; }
+.me { display: flex; align-items: center; gap: 8px; }
+.me img { width: 30px; height: 30px; border-radius: 50%; }
+nav { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+nav button { white-space: nowrap; border-radius: 999px; background: transparent; }
+nav button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 800; }
+.tab { display: none; } .tab.on { display: block; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.card h2 { font: 400 22px 'Lilita One', Nunito, sans-serif; margin: 0 0 8px; letter-spacing: .3px; }
+.card h3 { margin: 14px 0 6px; font-size: 15px; color: var(--mute); text-transform: uppercase; letter-spacing: 1px; }
+.muted { color: var(--mute); }
+.watch { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; align-items: start; }
+.player { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.chatbox { height: 420px; margin-top: 14px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); display: none; }
+.chatbox.on { display: block; } .chatbox iframe { width: 100%; height: 100%; border: 0; }
+.side { display: flex; flex-direction: column; gap: 14px; }
+.now .phase { font-weight: 800; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); }
+.now .title { font: 400 24px 'Lilita One', Nunito, sans-serif; margin: 2px 0; }
+.paidby { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: rgba(255,207,74,.1); border: 1px solid rgba(255,207,74,.35); font-weight: 700; }
+.fl { display: flex; flex-direction: column; gap: 4px; max-height: 460px; overflow-y: auto; margin-top: 8px; padding-right: 4px; }
+.f { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 9px; background: var(--panel2); overflow: hidden; border: 1px solid transparent; min-height: 38px; }
+.f .bar { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(155,107,255,.35), rgba(255,79,154,.2)); z-index: 0; }
+.f > :not(.bar) { position: relative; z-index: 1; }
+.f img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; flex: none; }
+.f .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.f .nm small { color: var(--mute); font-weight: 600; }
+.f .pc { font-weight: 800; font-variant-numeric: tabular-nums; }
+.f .gs { font-size: 12px; color: var(--teal); font-weight: 800; }
+.f.pick { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+.f.win { border-color: var(--gold); background: rgba(255,207,74,.15); }
+.f.can { cursor: pointer; } .f.can:hover { border-color: var(--purple); }
+.note { font-size: 13px; color: var(--mute); margin-top: 8px; }
+.guessbar { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(47,224,200,.08); border: 1px solid rgba(47,224,200,.35); font-size: 14px; }
+.poll .opt { position: relative; display: flex; gap: 8px; padding: 8px 10px; margin: 5px 0; border-radius: 9px; background: var(--panel2); overflow: hidden; border: 1px solid transparent; }
+.poll .opt .bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(47,224,200,.22); }
+.poll .opt > :not(.bar) { position: relative; }
+.poll .opt.mine { border-color: var(--teal); }
+.poll .opt.can { cursor: pointer; } .poll .opt.can:hover { border-color: var(--purple); }
+.q { display: flex; flex-wrap: wrap; gap: 6px; }
+.q span { padding: 3px 9px; border-radius: 999px; background: var(--panel2); font-size: 13px; }
+.rows { display: flex; flex-direction: column; gap: 6px; }
+.row { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 11px; background: var(--panel2); }
+.row .when { color: var(--mute); font-size: 13px; }
+.row .what b { font-size: 16px; }
+.row .what .sub { color: var(--mute); font-size: 13px; }
+.row .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--mute); }
+.tag.paid { background: rgba(255,207,74,.14); color: var(--gold); font-weight: 800; }
+.vod { white-space: nowrap; text-decoration: none; font-weight: 800; padding: 6px 12px; border-radius: 9px; background: rgba(155,107,255,.18); color: #dccfff; }
+.vod:hover { background: rgba(155,107,255,.35); }
+.search { display: flex; gap: 8px; margin-bottom: 10px; }
+.search input { flex: 1; min-width: 0; font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); }
+.big4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.big4 .card { text-align: center; } .big4 b { display: block; font: 400 38px 'Lilita One', Nunito, sans-serif; color: var(--gold); }
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.lb { display: flex; flex-direction: column; gap: 4px; }
+.lb div { display: flex; gap: 10px; padding: 7px 10px; border-radius: 9px; background: var(--panel2); align-items: center; }
+.lb .n { width: 28px; text-align: right; color: var(--mute); font-weight: 800; }
+.lb .p { margin-left: auto; font-weight: 800; color: var(--gold); }
+.lb .me { border: 1px solid var(--teal); }
+.group { margin-bottom: 14px; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--purple); padding: 10px 16px; border-radius: 12px; z-index: 50; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: calc(100% - 32px); }
+.empty { padding: 26px; text-align: center; color: var(--mute); }
+.demo { background: var(--gold); color: #000; text-align: center; font-weight: 800; padding: 6px; font-size: 13px; }
+@media (max-width: 980px) { .watch { grid-template-columns: minmax(0, 1fr); } .big4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cols { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr) auto; } .row .when { grid-column: 1 / -1; } .brand { font-size: 21px; } }
+</style></head>
+<body>
+<div id="demoBar" class="demo" style="display:none">🧪 Demo: pretend battles, guesses and a poll (nothing here is real)</div>
+<div class="wrap">
+  <header>
+    <div class="ava" id="ava"></div>
+    <div class="brand"><span id="chanName">Live battles</span><small id="subTitle">Battles · history · stats</small></div>
+    <span class="pill" id="livePill">offline</span>
+    <span class="grow"></span>
+    <div class="me" id="meBox"></div>
+  </header>
+  <nav id="nav">
+    <button data-t="watch" class="on">📺 Watch</button>
+    <button data-t="history">🧾 History</button>
+    <button data-t="tried">🍽️ Everything tried</button>
+    <button data-t="stats">📊 Stats</button>
+    <button data-t="top">🏆 Guess leaderboard</button>
+    <button data-t="mine">👤 My page</button>
+  </nav>
+
+  <section class="tab on" id="t-watch">
+    <div class="watch">
+      <div>
+        <div class="player" id="player"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button id="chatBtn">💬 Show chat</button><a class="vod" id="twLink" target="_blank" rel="noopener">Open on Twitch ↗</a></div>
+        <div class="chatbox" id="chatbox"></div>
+      </div>
+      <div class="side">
+        <div class="card now" id="now"></div>
+        <div class="card poll" id="poll" style="display:none"></div>
+        <div class="card" id="line" style="display:none"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-history">
+    <div class="card"><h2>🧾 Every battle</h2>
+      <p class="muted" style="margin-top:0">What it landed on, who paid for it, and ▶ to jump to that moment in the VOD.</p>
+      <div class="search"><input id="hq" placeholder="Search (a food, a movie, a name…)"><button id="hgo">Search</button></div>
+      <div class="rows" id="hrows"></div>
+      <div style="text-align:center;margin-top:10px"><button id="hmore" style="display:none">Load more</button></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-tried">
+    <div class="card"><h2>🍽️ Everything tried</h2><p class="muted" style="margin-top:0">Every result from the streamer's own battles, newest first, with how many times it came up.</p><div id="tried"></div></div>
+  </section>
+
+  <section class="tab" id="t-stats"><div id="stats"></div></section>
+
+  <section class="tab" id="t-top">
+    <div class="card"><h2>🏆 Guess leaderboard</h2><p class="muted" style="margin-top:0" id="ptsNote">Sign in and guess who wins before each battle starts. Longer odds = more points.</p><div class="lb" id="lb"></div></div>
+  </section>
+
+  <section class="tab" id="t-mine"><div id="mine"></div></section>
+</div>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DEMO = new URLSearchParams(location.search).has('demo');
+const S = { info: {}, live: null, stats: null, poll: null, pred: null, lastPred: null, me: null, top: [], hist: [], histMore: false, appOnline: true };
+let ws = null, sess = null, tab = 'watch', retry = 2000;
+try { sess = localStorage.mrSiteSess || null; S.me = JSON.parse(localStorage.mrSiteMe || 'null'); } catch {}
+const when = t => { const d = new Date(t), now = new Date(), same = d.toDateString() === now.toDateString(); return same ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+const pct = n => (n == null ? '' : (n < 10 ? Math.round(n * 10) / 10 : Math.round(n)) + '%');
+function toast(t, ms = 4000) { const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = t; document.body.appendChild(d); setTimeout(() => d.remove(), ms); }
+
+// ---------- tabs ----------
+$('nav').onclick = e => { const b = e.target.closest('button[data-t]'); if (b) go(b.dataset.t); };
+function go(t) { tab = t; for (const b of $('nav').children) b.classList.toggle('on', b.dataset.t === t); for (const s of document.querySelectorAll('.tab')) s.classList.toggle('on', s.id === 't-' + t); try { history.replaceState(null, '', location.pathname + location.search + '#' + t); } catch {} if (t === 'history') loadHist(true); if (t === 'top') loadTop(); if (t === 'mine') loadMe(); if (t === 'stats') drawStats(); if (t === 'tried') drawTried(); }
+
+// ---------- sign in with Twitch ----------
+function signIn() {
+  if (DEMO) { S.me = { login: 'demo_viewer', name: 'Demo_Viewer', avatar: '' }; sess = 'demo'; drawMe(); drawNow(); drawPoll(); toast('🧪 Signed in as Demo_Viewer'); return; }
+  if (!S.info.clientId) return toast("Sign-in isn't set up yet: the streamer turns it on in Movie Royal.");
+  const st = Math.random().toString(36).slice(2); try { sessionStorage.mrState = st; sessionStorage.mrBack = tab; } catch {}
+  location.href = `https://id.twitch.tv/oauth2/authorize?client_id=${encodeURIComponent(S.info.clientId)}&redirect_uri=${encodeURIComponent(location.origin + location.pathname)}&response_type=token&scope=&state=${st}`;
+}
+function signOut() { sess = null; S.me = null; try { delete localStorage.mrSiteSess; delete localStorage.mrSiteMe; } catch {} connect(); drawMe(); drawNow(); drawPoll(); if (tab === 'mine') loadMe(); }
+async function finishSignIn() {
+  const h = new URLSearchParams(location.hash.slice(1)); if (!h.get('access_token') && !h.get('error')) return false;
+  let back = 'watch'; try { if (h.get('state') !== sessionStorage.mrState) throw 0; back = sessionStorage.mrBack || 'watch'; } catch { history.replaceState(null, '', location.pathname); toast("That sign-in didn't come from this page. Try again."); return false; }
+  history.replaceState(null, '', location.pathname + '#' + back);
+  if (h.get('error')) { toast('Sign-in was cancelled.'); return false; }
+  try {
+    const r = await fetch('/site/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: h.get('access_token') }) }).then(r => r.json());
+    if (!r.session) throw new Error(r.error || 'sign-in failed');
+    sess = r.session; S.me = r.me; localStorage.mrSiteSess = sess; localStorage.mrSiteMe = JSON.stringify(r.me); toast(`👋 Signed in as <b>${esc(r.me.name)}</b>`);
+  } catch (e) { toast('⚠️ ' + esc(e.message)); }
+  return back;
+}
+function drawMe() { $('meBox').innerHTML = S.me ? `${S.me.avatar ? `<img src="${esc(S.me.avatar)}" alt="">` : ''}<b>${esc(S.me.name)}</b><button onclick="signOut()" title="Sign out">↩</button>` : `<button class="go" onclick="signIn()">Sign in with Twitch</button>`; }
+
+// ---------- live connection ----------
+function connect() {
+  if (DEMO) return;
+  try { ws?.close(); } catch {}
+  const u = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/site/ws' + (sess ? '?s=' + encodeURIComponent(sess) : '');
+  const sock = ws = new WebSocket(u);
+  sock.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } onMsg(m); };
+  sock.onopen = () => { retry = 2000; };
+  sock.onclose = () => { if (ws !== sock) return; setTimeout(connect, retry); retry = Math.min(retry * 1.6, 30000); };
+}
+const sendWs = m => { if (DEMO) return demoSend(m); if (ws?.readyState === 1) ws.send(JSON.stringify(m)); else toast('Reconnecting… try again in a second.'); };
+function onMsg(m) {
+  if (m.t === 'hello') { Object.assign(S, { info: m.info || {}, live: m.live, stats: m.stats, poll: m.poll, pred: m.pred, lastPred: m.lastPred, appOnline: m.appOnline }); if (m.me) { S.me = m.me; } else if (sess && !DEMO) { sess = null; S.me = null; try { delete localStorage.mrSiteSess; } catch {} } drawAll(); }
+  else if (m.t === 'info') { S.info = m.info || {}; drawHead(); }
+  else if (m.t === 'live') { S.live = m.live; if (m.pred) S.pred = m.pred; drawNow(); drawLine(); }
+  else if (m.t === 'stats') { S.stats = m.stats; if (tab === 'stats') drawStats(); if (tab === 'tried') drawTried(); }
+  else if (m.t === 'pred') { S.pred = m.pred; drawNow(); }
+  else if (m.t === 'predCounts') { if (S.pred?.pid === m.pid) { S.pred.counts = m.counts; drawNow(); } }
+  else if (m.t === 'predResult') { S.lastPred = m.res; S.top = m.top || S.top; drawNow(); if (tab === 'top') drawTop(); const mine = S.pred?.pid === m.res.pid ? S.pred.mine : null; if (mine) toast(mine === m.res.winnerId ? `🎉 You called it! <b>+${m.res.pts} points</b>` : `😬 Not this time: <b>${esc(m.res.winner)}</b> won`, 6000); }
+  else if (m.t === 'poll') { S.poll = m.poll; drawPoll(); }
+  else if (m.t === 'pollCounts') { if (S.poll?.id === m.id) { S.poll.counts = m.counts; drawPoll(); } }
+  else if (m.t === 'hist') { for (const r of m.rows || []) { const i = S.hist.findIndex(x => x.id === r.id); if (i >= 0) S.hist[i] = r; else if (!$('hq').value) S.hist.unshift(r); } S.hist.sort((a, b) => b.at - a.at); if (tab === 'history') drawHist(); }
+  else if (m.t === 'histReset') { S.hist = []; if (tab === 'history') loadHist(true); }
+  else if (m.t === 'profile') { S.myProf = m.profile; if (tab === 'mine' && S.myMe) drawMine(); }
+  else if (m.t === 'app') { S.appOnline = !!m.on; drawNow(); }
+  else if (m.t === 'err') toast('⚠️ ' + esc(m.error));
+}
+
+// ---------- 📺 watch ----------
+function drawHead() {
+  const I = S.info || {}; document.title = (I.name || 'Live') + ' · battles';
+  $('chanName').textContent = I.name || I.channel || 'Live battles'; $('subTitle').textContent = I.title || 'Battles · history · stats';
+  if (I.avatar) $('ava').style.backgroundImage = `url("${I.avatar}")`;
+  const live = !!S.live?.live; $('livePill').textContent = live ? '● live' : 'offline'; $('livePill').classList.toggle('live', live);
+  if (I.channel && $('player').dataset.ch !== I.channel) { $('player').dataset.ch = I.channel; $('player').innerHTML = `<iframe src="https://player.twitch.tv/?channel=${encodeURIComponent(I.channel)}&parent=${encodeURIComponent(location.hostname)}&autoplay=true&muted=false" allowfullscreen allow="autoplay; fullscreen"></iframe>`; $('twLink').href = 'https://twitch.tv/' + I.channel; if (innerWidth > 980 && !DEMO) $('chatBtn').click(); } // (big screens: chat shows under the stream right away)
+  if (I.points) $('ptsNote').textContent = 'Sign in and guess who wins before each battle starts. ' + I.points;
+}
+$('chatBtn').onclick = () => { const c = $('chatbox'), on = !c.classList.contains('on'); c.classList.toggle('on', on); $('chatBtn').textContent = on ? '💬 Hide chat' : '💬 Show chat'; if (on && !c.innerHTML && S.info.channel) c.innerHTML = `<iframe src="https://www.twitch.tv/embed/${encodeURIComponent(S.info.channel)}/chat?parent=${encodeURIComponent(location.hostname)}&darkpopout"></iframe>`; };
+const PHASE = { idle: 'Between battles', ready: 'Up next', lobby: 'Starting…', running: '⚔️ Battle on!', ended: '🏆 Winner' };
+function drawNow() {
+  const L = S.live, box = $('now');
+  if (!L || L.view === 'wheel' || L.phase === 'idle' || !L.n) {
+    const lp = S.lastPred;
+    box.innerHTML = `<div class="phase">${L?.view === 'wheel' ? '🎡 The wheel is on' : S.appOnline === false ? 'Offline' : 'Between battles'}</div><div class="title">${L?.wheel ? esc(L.wheel.name) : 'No battle right now'}</div>${L?.wheel?.last ? `<div class="muted">Last spin: <b>${esc(L.wheel.last)}</b></div>` : ''}
+      ${lp ? `<div class="guessbar">🔮 Last battle: <b>${lp.nRight}</b> of ${lp.total} called <b>${esc(lp.winner)}</b>${lp.nRight ? ` (+${lp.pts} pts)` : ''}</div>` : ''}<p class="note">When a battle is waiting on the cliff, it shows up here and you can guess who wins.</p>`;
+    return;
+  }
+  const P = S.pred && S.pred.pid === L.pid ? S.pred : null, can = L.predictOpen && !!S.me && !!L.pid, counts = P?.counts || {}, tot = Object.values(counts).reduce((a, b) => a + b, 0);
+  const max = Math.max(...L.fighters.map(f => f.pct), 1);
+  box.innerHTML = `<div class="phase">${PHASE[L.phase] || ''}</div><div class="title">${esc(L.list || 'Battle')}</div><div class="muted">${L.n} in${L.map ? ' · ' + esc(L.map) : ''}</div>
+    ${L.paid ? `<div class="paidby">🎟️ Paid for by ${esc(L.paid.who)} <span class="muted">(${esc(L.paid.what)})</span></div>` : L.next ? `<div class="paidby">🎟️ Up next for ${esc(L.next.who)} <span class="muted">(${esc(L.next.what)})</span></div>` : ''}
+    ${L.winner ? `<div class="paidby" style="border-color:var(--gold)">🏆 <b>${esc(L.winner.label)}</b>${L.winner.sub ? ` <span class="muted">${esc(L.winner.sub)}</span>` : ''}${L.winner.pct != null ? ` · had a ${pct(L.winner.pct)} chance` : ''}</div>` : ''}
+    ${L.predictOpen ? `<div class="guessbar">${S.me ? (P?.mine ? `🔮 Your guess: <b>${esc((L.fighters.find(f => f.id === P.mine) || {}).label || '?')}</b>. Tap another to change it.` : '🔮 <b>Tap who you think wins!</b> Longer odds = more points.') : `🔮 <a href="#" onclick="signIn();return false">Sign in with Twitch</a> to guess who wins.`}${tot ? ` <span class="muted">· ${tot} guess${tot === 1 ? '' : 'es'}</span>` : ''}</div>` : L.phase === 'running' && P?.mine ? `<div class="guessbar">🔒 Guesses are locked. You picked <b>${esc((L.fighters.find(f => f.id === P.mine) || {}).label || '?')}</b>.</div>` : ''}
+    <div class="fl">${L.fighters.map(f => `<div class="f${can ? ' can' : ''}${P?.mine === f.id ? ' pick' : ''}${L.winner?.id === f.id ? ' win' : ''}" ${can ? `data-pick="${esc(f.id)}"` : ''}><div class="bar" style="width:${Math.max(2, f.pct / max * 100)}%"></div>${f.image ? `<img src="${esc(f.image)}" alt="" loading="lazy">` : ''}<div class="nm">${esc(f.label)}${f.sub ? ` <small>${esc(f.sub)}</small>` : ''}${f.owner ? ` <small>· ${esc(f.owner)}</small>` : ''}</div>${counts[f.id] ? `<span class="gs">🔮${counts[f.id]}</span>` : ''}${f.luck ? `<span class="muted" title="luck">🍀</span>` : ''}<span class="pc">${pct(f.pct)}</span></div>`).join('')}</div>`;
+}
+$('now').onclick = e => { const f = e.target.closest('[data-pick]'); if (f) sendWs({ t: 'predict', pid: S.live.pid, pick: f.dataset.pick }); };
+function drawPoll() {
+  const p = S.poll, box = $('poll'); if (!p) { box.style.display = 'none'; return; } box.style.display = '';
+  const c = p.counts || p.opts.map(() => 0), tot = c.reduce((a, b) => a + b, 0), open = p.open !== false && (!p.endsAt || p.endsAt > Date.now()), can = open && !!S.me;
+  box.innerHTML = `<div class="phase" style="color:var(--teal);font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase">🗳️ ${open ? 'Poll' : 'Poll closed'}</div><div class="title" style="font:400 21px 'Lilita One',Nunito,sans-serif;margin:2px 0 6px">${esc(p.q)}</div>
+    ${p.opts.map((o, i) => `<div class="opt${can ? ' can' : ''}${p.mine === i ? ' mine' : ''}" ${can ? `data-opt="${i}"` : ''}><div class="bar" style="width:${tot ? c[i] / tot * 100 : 0}%"></div><span class="grow">${p.mine === i ? '✔ ' : ''}${esc(o)}</span><b>${tot ? Math.round(c[i] / tot * 100) + '%' : ''}</b></div>`).join('')}
+    <div class="note">${tot} vote${tot === 1 ? '' : 's'}${open ? (p.endsAt ? ` · ends in <span data-ends="${p.endsAt}"></span>` : '') + (S.me ? '' : ` · <a href="#" onclick="signIn();return false">Sign in</a> to vote`) : ''}</div>`;
+  tickEnds();
+}
+$('poll').onclick = e => { const o = e.target.closest('[data-opt]'); if (o) sendWs({ t: 'vote', poll: S.poll.id, opt: Number(o.dataset.opt) }); };
+function tickEnds() { for (const el of document.querySelectorAll('[data-ends]')) { const s = Math.max(0, Math.round((Number(el.dataset.ends) - Date.now()) / 1000)); el.textContent = s >= 60 ? Math.floor(s / 60) + 'm ' + (s % 60) + 's' : s + 's'; } }
+setInterval(tickEnds, 1000);
+function drawLine() {
+  const L = S.live, box = $('line'), q = L?.queue || [];
+  if (!q.length) { box.style.display = 'none'; return; } box.style.display = '';
+  box.innerHTML = `<h2 style="font-size:19px">🎟️ Battles waiting (${L.waiting})</h2><div class="q">${q.map(x => `<span title="${esc(x.what)}">${esc(x.who)}</span>`).join('')}${L.waiting > q.length ? `<span>+${L.waiting - q.length}</span>` : ''}</div><p class="note">Every tip, bits or sub that reaches the amount adds a battle with your name on it.</p>`;
+}
+
+// ---------- 🧾 history ----------
+async function loadHist(fresh) {
+  if (DEMO) { S.hist = demoHist(); S.histMore = false; drawHist(); return; }
+  const before = fresh || !S.hist.length ? '' : S.hist[S.hist.length - 1].at, q = $('hq').value.trim();
+  const r = await fetch(`/site/api/history?limit=50${before ? '&before=' + before : ''}${q ? '&q=' + encodeURIComponent(q) : ''}`).then(r => r.json()).catch(() => ({ rows: [] }));
+  S.hist = fresh ? r.rows || [] : [...S.hist, ...(r.rows || [])]; S.histMore = !!r.more; drawHist();
+}
+function histRow(r) {
+  return `<div class="row"><div class="when">${esc(when(r.at))}</div><div class="what"><b>${esc(r.label)}</b>${r.sub ? ` <span class="sub">${esc(r.sub)}</span>` : ''}${r.owner ? ` <span class="sub">· ${esc(r.owner)}'s pick</span>` : ''}
+    <div class="tags"><span class="tag">${esc(r.list)}</span>${r.paid ? `<span class="tag paid">🎟️ ${esc(r.paid.who)} · ${esc(r.paid.what)}</span>` : ''}${r.pct ? `<span class="tag">${pct(r.pct)} chance</span>` : ''}${r.n ? `<span class="tag">${r.n} in</span>` : ''}${r.outcome === 'passed' ? '<span class="tag">passed</span>' : ''}</div></div>
+    ${r.vod ? `<a class="vod" href="${esc(r.vod)}" target="_blank" rel="noopener" title="Watch it in the VOD">▶ VOD</a>` : '<span></span>'}</div>`;
+}
+function drawHist() { const q = $('hq').value.trim().toLowerCase(), rows = DEMO && q ? S.hist.filter(r => JSON.stringify(r).toLowerCase().includes(q)) : S.hist; $('hrows').innerHTML = rows.length ? rows.map(histRow).join('') : '<div class="empty">No battles yet.</div>'; $('hmore').style.display = S.histMore ? '' : 'none'; }
+$('hgo').onclick = () => loadHist(true); $('hq').onkeydown = e => { if (e.key === 'Enter') loadHist(true); }; $('hmore').onclick = () => loadHist(false);
+
+// ---------- 🍽️ tried / 📊 stats ----------
+function drawTried() {
+  const t = S.stats?.tried || [], by = new Map(); for (const x of t) { if (!by.has(x.list)) by.set(x.list, []); by.get(x.list).push(x); }
+  $('tried').innerHTML = t.length ? [...by.entries()].map(([l, xs]) => `<div class="group"><h3>${esc(l)}</h3><div class="rows">${xs.map(x => `<div class="row"><div class="when">${esc(when(x.last))}</div><div class="what"><b>${esc(x.label)}</b> <span class="sub">${x.n > 1 ? '× ' + x.n : ''}${x.who ? ` · 🎟️ ${esc(x.who)}` : ''}</span></div>${x.vod ? `<a class="vod" href="${esc(x.vod)}" target="_blank" rel="noopener">▶ VOD</a>` : '<span></span>'}</div>`).join('')}</div></div>`).join('') : '<div class="empty">Nothing yet.</div>';
+}
+function drawStats() {
+  const s = S.stats; if (!s) { $('stats').innerHTML = '<div class="card empty">No stats yet.</div>'; return; }
+  const k = s.paidKinds || {}, lb = (arr, f) => arr.length ? `<div class="lb">${arr.map((x, i) => `<div><span class="n">${i + 1}</span><span>${f(x)}</span></div>`).join('')}</div>` : '<div class="muted">Nothing yet.</div>';
+  $('stats').innerHTML = `<div class="big4"><div class="card"><b>${s.battles}</b>battles</div><div class="card"><b>${s.today}</b>this stream</div><div class="card"><b>${s.paid}</b>paid battles</div><div class="card"><b>${s.waiting}</b>waiting now</div></div>
+    <div class="cols"><div class="card"><h2>🎟️ Who paid for the most battles</h2>${lb(s.supporters || [], x => `<b>${esc(x.who)}</b> <span class="muted">× ${x.n}</span>`)}<p class="note">${[['tip', '💵 tips'], ['bits', '💎 bits'], ['sub', '⭐ subs'], ['gift', '🎁 gift subs'], ['hand', '✍️ other']].filter(([kk]) => k[kk]).map(([kk, t]) => `${t}: ${k[kk]}`).join(' · ') || ''}</p></div>
+    <div class="card"><h2>⚔️ Battles</h2>${lb(s.lists || [], x => `<b>${esc(x.list)}</b> <span class="muted">× ${x.n}</span>`)}</div>
+    ${(s.movies || []).length ? `<div class="card"><h2>🎬 Recent movie winners</h2><div class="rows">${s.movies.map(m => `<div class="row"><div class="when">${esc(when(m.at))}</div><div class="what"><b>${esc(m.label)}</b> <span class="sub">${esc(m.sub || '')}${m.owner ? ` · ${esc(m.owner)}'s pick` : ''}</span></div>${m.vod ? `<a class="vod" href="${esc(m.vod)}" target="_blank" rel="noopener">▶ VOD</a>` : '<span></span>'}</div>`).join('')}</div></div>` : ''}</div>`;
+}
+
+// ---------- 🏆 leaderboard / 👤 mine ----------
+async function loadTop() { if (DEMO) { S.top = demoTop(); drawTop(); return; } const r = await fetch('/site/api/top').then(r => r.json()).catch(() => ({ top: [] })); S.top = r.top || []; drawTop(); }
+function drawTop() { $('lb').innerHTML = S.top.length ? S.top.map((x, i) => `<div class="${S.me && x.login === S.me.login ? 'me' : ''}"><span class="n">${i + 1}</span><b>${esc(x.name)}</b><span class="muted">${x.right} of ${x.tries} right</span><span class="p">${x.pts} pts</span></div>`).join('') : '<div class="empty">No guesses yet. Be the first!</div>'; }
+async function loadMe() {
+  if (!S.me) { $('mine').innerHTML = `<div class="card empty"><p>Sign in to see your page: the battles you paid for (with ▶ VOD links), your guess points, and your movies' luck.</p><button class="go" onclick="signIn()">Sign in with Twitch</button></div>`; return; }
+  $('mine').innerHTML = '<div class="card empty">Loading…</div>';
+  if (DEMO) { S.myMe = { points: { pts: 34, right: 6, tries: 11 }, rank: 3 }; S.myProf = demoProf(); drawMine(); return; }
+  const r = await fetch('/site/api/me?s=' + encodeURIComponent(sess)).then(r => r.json()).catch(() => ({}));
+  if (r.error) { if (/sign in/i.test(r.error)) signOut(); $('mine').innerHTML = `<div class="card empty">${esc(r.error)}</div>`; return; }
+  S.myMe = r; S.myProf = r.profile || S.myProf; drawMine();
+  if (!r.profile && r.appOnline) setTimeout(() => { if (tab === 'mine' && !S.myProf) loadMe(); }, 4000); // (the stream app is filling it in)
+}
+function drawMine() {
+  const r = S.myMe || {}, p = S.myProf, pt = r.points;
+  $('mine').innerHTML = `<div class="big4"><div class="card"><b>${pt?.pts ?? 0}</b>guess points</div><div class="card"><b>${r.rank ? '#' + r.rank : '—'}</b>rank</div><div class="card"><b>${p?.paidN ?? 0}</b>battles you paid for</div><div class="card"><b>${p?.streak ?? 0}</b>streams in a row</div></div>
+    ${!p ? `<div class="card empty" style="margin-top:14px">${r.appOnline === false ? 'Your page fills in when the stream app is on.' : 'Getting your page…'}</div>` : `<div class="cols">
+      <div class="card"><h2>🎟️ Battles you paid for</h2>${p.waiting ? `<p class="paidby">⏳ ${p.waiting} waiting in the line</p>` : ''}<div class="rows">${(p.paid || []).map(x => `<div class="row"><div class="when">${esc(when(x.at))}</div><div class="what"><b>${esc(x.label)}</b> <span class="sub">${esc(x.list)} · ${esc(x.what || '')}</span></div>${x.vod ? `<a class="vod" href="${esc(x.vod)}" target="_blank" rel="noopener">▶ VOD</a>` : '<span></span>'}</div>`).join('') || '<div class="muted">None yet.</div>'}</div></div>
+      <div class="card"><h2>🎬 Your movies</h2>${p.movies ? (p.movies.length ? `<div class="lb">${p.movies.map(m => `<div><b>${esc(m.label)}</b> <span class="muted">${esc(m.sub || '')}</span><span class="p">${m.luck ? '🍀 ' + pct(m.luck) : ''}</span></div>`).join('')}</div>` : '<div class="muted">No movies in right now.</div>') : '<div class="muted">Link your Discord in chat to see your movies here.</div>'}
+        ${(p.wins || []).length ? `<h3>🏆 Your wins</h3><div class="lb">${p.wins.map(w => `<div><b>${esc(w.label)}</b><span class="muted">${esc(w.list)}</span><span class="p" style="color:var(--mute);font-weight:600">${esc(when(w.at))}</span></div>`).join('')}</div>` : ''}
+        <p class="note">${p.watchHours ? `⏱️ ${p.watchHours} hours watched · ` : ''}${p.streams ? `${p.streams} streams · ` : ''}${p.spins ? `🎡 ${p.spins} saved respins` : ''}</p></div></div>`}`;
+}
+
+function drawAll() { drawHead(); drawMe(); drawNow(); drawPoll(); drawLine(); if (tab === 'stats') drawStats(); if (tab === 'tried') drawTried(); if (tab === 'history') loadHist(true); if (tab === 'top') loadTop(); if (tab === 'mine') loadMe(); }
+
+// ---------- 🧪 demo (no server) ----------
+const DF = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Salt licorice', 'Durian candy', 'Octopus', '10 push-ups', '20 squats', '30 jumping jacks', 'MERCY'];
+function demoHist() { const now = Date.now(), who = ['Kirbgames', 'NightOwl_44', 'SpicyPanda', 'mx_rae', 'Anonymous']; return Array.from({ length: 18 }, (_, i) => ({ id: 'd' + i, at: now - i * 47 * 60000, list: i % 5 === 4 ? '🍿 Movie night' : '🏃 Marathon Battle', label: i % 5 === 4 ? 'The Thing' : DF[(i * 7) % DF.length], sub: i % 5 === 4 ? '1982' : '', owner: i % 5 === 4 ? 'mx_rae' : '', pct: 4 + (i * 13) % 30, n: 12 + i % 9, paid: i % 5 === 4 ? null : { who: who[i % who.length], what: ['a $5 tip', '500 bits', 'a sub', 'a gift sub to someone'][i % 4] }, vod: i % 3 === 2 ? null : 'https://www.twitch.tv/videos/1?t=' + (3 + i) + 'h' + (i * 7 % 60) + 'm0s' })); }
+function demoTop() { return [['SpicyPanda', 61, 9, 14], ['NightOwl_44', 48, 7, 12], ['Demo_Viewer', 34, 6, 11], ['mx_rae', 22, 4, 10], ['Kirbgames', 15, 3, 9]].map(([n, p, r, t]) => ({ login: n.toLowerCase(), name: n, pts: p, right: r, tries: t })); }
+function demoProf() { return { paidN: 3, waiting: 1, streak: 5, streams: 22, watchHours: 41.5, spins: 2, paid: demoHist().filter(r => r.paid).slice(0, 3).map(r => ({ at: r.at, label: r.label, list: r.list, what: r.paid.what, vod: r.vod })), movies: [{ label: 'The Thing', sub: '1982', luck: 6.5 }, { label: 'Hausu', sub: '1977', luck: 2 }], wins: [{ at: Date.now() - 86400000 * 3, label: 'The Thing', list: '🍿 Movie night' }] }; }
+let demoT = 0;
+function demoLive(phase) { const fs = DF.map((l, i) => ({ id: 'f' + i, label: l, sub: '', pct: 0, luck: i % 4 === 0 ? 2 : 0, image: null, owner: '' })); let w = fs.map((_, i) => 3 + (i * 5) % 11); const t = w.reduce((a, b) => a + b, 0); fs.forEach((f, i) => f.pct = Math.round(w[i] / t * 1000) / 10); return { phase, view: 'battle', pid: 'demo' + demoT, predictOpen: phase === 'ready' || phase === 'lobby', list: '🏃 Marathon Battle', kind: 'text', map: '🌋 Volcano', fighters: fs.sort((a, b) => b.pct - a.pct), n: fs.length, paid: phase === 'ready' ? null : { who: 'NightOwl_44', what: 'a $5 tip' }, next: phase === 'ready' ? { who: 'NightOwl_44', what: 'a $5 tip' } : null, queue: [{ who: 'SpicyPanda', what: '500 bits' }, { who: 'mx_rae', what: 'a sub' }], waiting: 2, winner: phase === 'ended' ? { id: 'f6', label: 'Durian candy', pct: fs.find(f => f.id === 'f6').pct } : null, live: true }; }
+function demoSend(m) {
+  if (!S.me) return toast('Sign in first.');
+  if (m.t === 'predict') { if (!S.live.predictOpen) return toast('Guesses are closed.'); S.pred = { pid: S.live.pid, counts: { ...(S.pred?.counts || {}), [m.pick]: ((S.pred?.counts || {})[m.pick] || 0) + 1 }, mine: m.pick }; drawNow(); }
+  if (m.t === 'vote') { const c = S.poll.counts.slice(); if (S.poll.mine != null) c[S.poll.mine]--; c[m.opt]++; S.poll = { ...S.poll, counts: c, mine: m.opt }; drawPoll(); }
+}
+function demoStart() {
+  $('demoBar').style.display = '';
+  S.info = { channel: 'timepeace49', name: 'TimePeace49', title: 'GTA 6 Launch Marathon', points: 'Longer odds = more points: 50% → 2, 10% → 10, 2% → 50.', clientId: 'demo' };
+  S.live = demoLive('ready'); S.pred = { pid: S.live.pid, counts: { f1: 3, f4: 5, f9: 2 }, mine: null };
+  S.poll = { id: 'p1', q: 'What should I cook tonight?', opts: ['Tacos', 'Ramen', 'Breakfast for dinner'], counts: [4, 7, 2], mine: null, endsAt: Date.now() + 120000, open: true };
+  S.stats = { battles: 64, today: 11, paid: 38, waiting: 2, paidKinds: { tip: 14, bits: 9, sub: 10, gift: 5 }, supporters: [{ who: 'SpicyPanda', n: 7 }, { who: 'NightOwl_44', n: 5 }, { who: 'Kirbgames', n: 4 }], lists: [{ list: '🏃 Marathon Battle', n: 52 }, { list: '🍿 Movie night', n: 12 }], movies: [{ label: 'The Thing', sub: '1982', owner: 'mx_rae', at: Date.now() - 3e6, vod: 'https://www.twitch.tv/videos/1' }], tried: demoHist().filter(r => r.list !== '🍿 Movie night').map(r => ({ label: r.label, list: r.list, n: 1 + r.pct % 3, last: r.at, vod: r.vod, who: r.paid?.who })) };
+  S.lastPred = { nRight: 4, total: 13, winner: 'Toxic Waste', pts: 9 };
+  drawAll();
+  const steps = [['lobby', 9000], ['running', 6000], ['ended', 8000], ['ready', 20000]]; let i = 0;
+  const next = () => { const [ph, ms] = steps[i++ % steps.length]; if (ph === 'ready') { demoT++; S.pred = { pid: 'demo' + demoT, counts: {}, mine: null }; } S.live = demoLive(ph); S.live.pid = 'demo' + demoT; if (ph === 'ended' && S.pred?.mine) onMsg({ t: 'predResult', res: { pid: S.live.pid, winnerId: 'f6', winner: 'Durian candy', pts: 9, nRight: 2, total: 9 }, top: demoTop() }); drawNow(); setTimeout(next, ms); };
+  setTimeout(next, 25000);
+}
+
+(async () => {
+  const back = DEMO ? false : await finishSignIn();
+  drawMe();
+  const h = back || location.hash.slice(1); if (['history', 'tried', 'stats', 'top', 'mine'].includes(h)) go(h);
+  if (DEMO) return demoStart();
+  drawAll(); connect();
+})();
+</script>
+</body></html>

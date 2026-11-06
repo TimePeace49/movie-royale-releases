@@ -472,6 +472,16 @@
   #startDlg .sqHead { display:flex; align-items:center; gap:10px; margin:-4px 0 10px; font-size:13px; color:var(--muted, #b9b0d6); }
   #startDlg .sqDots { display:flex; gap:4px; } #startDlg .sqDots i { width:9px; height:9px; border-radius:50%; background:#ffffff26; display:block; } #startDlg .sqDots i.done { background:#7ad37a; } #startDlg .sqDots i.on { background:#ffc94a; }
   #startDlg .holBig { font-size:54px; text-align:center; line-height:1.1; }
+  .paidBox { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line, #333); border-radius: 10px; background: rgba(255,210,63,.05); }
+  .paidHead { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .paidRow { display: flex; align-items: center; gap: 5px; font-size: 13px; padding: 3px 0; border-top: 1px solid rgba(255,255,255,.06); min-width: 0; }
+  .paidRow .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .paidRow button { padding: 1px 7px; }
+  .coWatch { position: fixed; left: 24px; top: 90px; z-index: 9000; background: #0b0b12; border: 1px solid #555; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.6); overflow: hidden; }
+  .coWatch .cwHead { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: #1a1a26; cursor: move; user-select: none; }
+  .coWatch .cwHead button { padding: 1px 8px; }
+  .coWatch .cwBody { position: relative; overflow: hidden; background: #000; }
+  .coWatch .cwIdle { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; background: rgba(0,0,0,.7); font-size: 12px; text-align: center; }
 </style>
 </head>
 <body>
@@ -610,6 +620,7 @@
   <div class="side">
     <button class="primary big" id="startBtn" onclick="start()">▶ START ROYAL</button>
     <div id="redoBox"></div>
+    <div id="paidBox"></div>
     <div data-ann="battle" style="margin-top:6px"></div>
     <div class="bigtimer" id="bigTimer" style="display:none"><div id="bigTimerLbl"></div><div id="bigTimerNum"></div></div>
     <button id="gatherBtn" onclick="gatherClick()">⏱️ 2-min chat timer, then start</button>
@@ -1117,6 +1128,23 @@
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="tMmWho" style="width:auto" title="Whose movies to show"><option value="">(the first person with movies)</option></select><button class="primary" onclick="mmTest()">🍀 Show the answers</button><button onclick="mmProfile()" title="Opens this person's profile: the 🎬 Movies part shows each movie's luck">👤 Open their profile</button></div>
     <div id="tMmOut"></div>
   </div>
+  <div class="card" id="paidTestCard">
+    <h3>🎟️ Paid battles</h3>
+    <p class="help">Pretend money comes in: each one adds a battle with that person's name to the line on the Battle tab (works even while 🎟️ Paid battles is off; test ones are marked 🧪). Leftovers carry over: two $3 tips = one battle. Press <b>▶ Start next</b> on the Battle tab to start it: the history (and the 🌐 viewer website) show who paid.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="paidTest('tip',5)">💵 $5 tip</button><button onclick="paidTest('tip',3)">💵 $3 tip</button><button onclick="paidTest('tip',12)">💵 $12 tip</button><button onclick="paidTest('bits',500)">💎 500 bits</button><button onclick="paidTest('sub')">⭐ A sub</button><button onclick="paidTest('gift')">🎁 A gift sub</button><button class="ghost" onclick="paidTest('clear')">✕ Take the test ones out</button></div>
+    <div id="paidTestOut" class="help" style="margin-top:8px"></div>
+  </div>
+  <div class="card" id="siteTestCard">
+    <h3>🌐 Viewer website</h3>
+    <p class="help">See the viewer website without your 24/7 bot: <b>🧪 Demo page</b> opens it with pretend battles, guesses and a poll (nothing is sent anywhere). <b>📦 What the site gets</b> shows what Movie Royal would send it right now (the battle on now, the newest history rows with who paid + ▶ VOD links, stats). The real one is in Settings → 🌐 Viewer site.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="window.open('/live.html?demo=1','_blank')">🧪 Demo page</button><button onclick="siteTest()">📦 What the site gets</button><button onclick="S.site?.url ? window.open(S.site.url,'_blank') : toast('Turn it on first: Settings → 🌐 Viewer site')">🌐 Open my real site</button></div>
+    <div id="siteTestOut" class="help" style="margin-top:8px"></div>
+  </div>
+  <div class="card" id="coWatchTestCard">
+    <h3>👀 Watch your partner's battle</h3>
+    <p class="help">While co-streaming, when your partner's battle starts (any kind: Discord battles, your own battles, character and card battles) a note pops up here: <b>👀 Watch</b> opens their battle in a small window you can drag around (it closes by itself 15 seconds after their battle ends). It also still shows on your stream by itself. Try it with a pretend partner (no picture: a real one shows their game screen).</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="coWatchTest()">🤝 Pretend partner starts a battle</button><button onclick="coWatchOpen(true)">👀 Open the watch window</button><button class="ghost" onclick="coTest('off')">✕ Pretend partner gone</button></div>
+  </div>
   <div class="card" id="coTestCard">
     <h3>🤝 Co-stream (pretend partner)</h3>
     <p class="help">Try co-streaming without a second PC: a <b>pretend partner</b> shows up for 10 minutes. With their battle running and yours not, your viewers' chaos goes into <b>their</b> battle (nothing is sent anywhere, no chat messages). "Chaos from their chat" drops a comet into <b>your</b> battle, the way your partner's viewers would (start a test battle first to see it).</p>
@@ -1228,6 +1256,7 @@
     <button data-s="prices">💰 Rewards &amp; prices</button>
     <button data-s="obs">🎥 OBS</button>
     <button data-s="costream">🤝 Co-stream</button>
+    <button data-s="site">🌐 Viewer site</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
     <button data-s="sounds">🔊 Sounds</button>
@@ -1793,7 +1822,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/paid battles|viewer website|watch .*battle/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2226,7 +2255,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -2364,12 +2393,13 @@ function coDraw(full) {
     <label class="ck"><input type="checkbox" ${c.showBattle ? 'checked' : ''} onchange="coSet({showBattle:this.checked})"> <span>⚔️ Show ${who}'s battle on my stream by itself while it runs (off = you show / hide it in OBS)</span></label>
     <label class="ck"><input type="checkbox" ${c.showCam ? 'checked' : ''} onchange="coSet({showCam:this.checked})"> <span>📷 Show ${who}'s camera on my stream</span></label>
     <label class="ck"><input type="checkbox" ${c.video ? 'checked' : ''} onchange="coSet({video:this.checked})"> <span>📤 Send my camera + battle to ${who}</span></label>
+    <label class="ck"><input type="checkbox" ${c.watchPop !== false ? 'checked' : ''} onchange="coSet({watchPop:this.checked})"> <span>👀 When ${who}'s battle starts, pop up a note here with a Watch button (watch it in a small window inside Movie Royal)</span></label>
     <div class="grid2"><div><label>↔️ My camera's side, on both streams</label><select onchange="coSet({camSide:this.value})"><option value="left" ${c.camSide === 'left' ? 'selected' : ''}>⬅️ Left (${who} goes on the right)</option><option value="right" ${c.camSide !== 'left' ? 'selected' : ''}>➡️ Right (${who} goes on the left)</option></select><p class="help" style="margin:4px 0 0">Movie Royal puts ${who}'s camera on their side in your OBS (and yours on your side in theirs). Put your own camera on your side in your OBS.</p></div><div></div></div>
     <div class="grid2"><div><label>📶 Picture quality I send (lower = less internet)</label><select onchange="coSet({quality:this.value})">${[['low', 'Low: about 1.2 Mbps (slow internet)'], ['normal', 'Normal: about 2.5 Mbps'], ['high', 'High: about 4 Mbps, sharper']].map(([k, t]) => `<option value="${k}" ${c.quality === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
       <div><label>🎬 OBS scene for ${who}'s picture</label><div class="row" style="gap:6px"><select class="grow" id="coScene" onchange="coSet({scene:this.value})">${scOpts}</select><button onclick="coLoadScenes(this)" title="Read the scene list from OBS">🔄</button></div></div></div>
     ${c.video && c.obsTipDone ? `<p class="help"><a href="#" onclick="coSet({obsTipDone:false});return false">📌 Show the one-time OBS setting again</a></p>` : ''}
     <h4>🧰 Tools</h4>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="coPreview('me')">👀 What my partner sees</button><button onclick="coPreview('partner')">👀 ${c.partnerName && c.partnerName !== 'your co-streamer' ? who + '’s' : 'Their'} picture</button><button onclick="coObs(this)">🔧 Set OBS up again</button><button onclick="coLag(this)">🩺 Lag check</button><button class="ghost danger" onclick="coLeave()">🚪 Stop co-streaming</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="coPreview('me')">👀 What my partner sees</button><button onclick="coPreview('partner')">👀 ${c.partnerName && c.partnerName !== 'your co-streamer' ? who + '’s' : 'Their'} picture</button><button onclick="coWatchOpen(true)">👀 Watch ${c.partnerName && c.partnerName !== 'your co-streamer' ? who + '’s' : 'their'} battle here</button><button onclick="coObs(this)">🔧 Set OBS up again</button><button onclick="coLag(this)">🩺 Lag check</button><button class="ghost danger" onclick="coLeave()">🚪 Stop co-streaming</button></div>
     <div id="coLag" class="help" style="margin-top:8px"></div>`;
 }
 async function coInvite(b) { b.disabled = true; try { const r = await api('/api/co/invite', {}); toast('🎟️ Invite code made: press 📋 Copy and send it to your friend'); coDraw(true); } catch (e) { toast('⚠️ ' + e.message, 12000); } finally { b.disabled = false; } }
@@ -2395,6 +2425,112 @@ async function coLag(b) { // 🩺 for 30 seconds: OBS's dropped frames (internet
   };
   b.disabled = true; setTimeout(() => b.disabled = false, 30000); show(); coStatsTimer = setInterval(show, 2000);
 }
+// ---------- 👀 Watch your partner's battle inside Movie Royal (1.75.0, Derek: "I want to be able to watch his and him to be able to watch mine") ----------
+let coWatchWas = false, coWatchEnd = 0;
+function coWatchCheck() {
+  const c = S.costream || {}, on = !!c.partnerShowing, w = $('coWatch');
+  if (on && !coWatchWas && c.watchPop !== false && !w) toast(`⚔️ <b>${esc(c.partnerName || 'Your co-streamer')}</b>'s battle is on! <button class="primary" style="padding:2px 12px" onclick="coWatchOpen(true);this.closest('.toast')?.remove()">👀 Watch</button>`, 15000);
+  coWatchWas = on;
+  if (w) { if (on || w.dataset.test) coWatchEnd = 0; else if (!coWatchEnd) coWatchEnd = Date.now() + 15000; else if (Date.now() > coWatchEnd) { w.remove(); coWatchEnd = 0; } coWatchFill(); }
+}
+setInterval(() => { if (S) coWatchCheck(); }, 2000);
+function coWatchOpen(user) {
+  let w = $('coWatch'); if (w) { w.style.display = ''; return; }
+  const c = S.costream || {};
+  w = document.createElement('div'); w.id = 'coWatch'; w.className = 'coWatch'; if (c.partner?.pretend) w.dataset.test = '1';
+  try { const p = JSON.parse(localStorage.coWatchPos || 'null'); if (p) { w.style.left = Math.min(innerWidth - 200, p.x) + 'px'; w.style.top = Math.min(innerHeight - 120, p.y) + 'px'; w.dataset.big = p.big ? '1' : ''; } } catch {}
+  w.innerHTML = `<div class="cwHead"><b>👀 ${esc(c.partnerName || 'Your co-streamer')}'s battle</b><span class="grow"></span><button class="ghost" title="Bigger / smaller" onclick="coWatchBig()">⤢</button><button class="ghost" title="Close (it opens again with 👀 Watch)" onclick="$('coWatch').remove()">✕</button></div><div class="cwBody"></div>`;
+  document.body.appendChild(w); coWatchEnd = 0;
+  const head = w.querySelector('.cwHead');
+  head.onpointerdown = e => { if (e.target.closest('button')) return; const r = w.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; head.setPointerCapture(e.pointerId);
+    head.onpointermove = ev => { w.style.left = Math.max(0, Math.min(innerWidth - 120, ev.clientX - dx)) + 'px'; w.style.top = Math.max(0, Math.min(innerHeight - 40, ev.clientY - dy)) + 'px'; };
+    head.onpointerup = () => { head.onpointermove = null; coWatchSave(); }; };
+  coWatchFill(true);
+}
+function coWatchSave() { const w = $('coWatch'); if (!w) return; try { localStorage.coWatchPos = JSON.stringify({ x: parseInt(w.style.left) || 20, y: parseInt(w.style.top) || 80, big: !!w.dataset.big }); } catch {} }
+function coWatchBig() { const w = $('coWatch'); if (!w) return; w.dataset.big = w.dataset.big ? '' : '1'; coWatchSave(); coWatchFill(true); }
+function coWatchFill(force) {
+  const w = $('coWatch'); if (!w) return; const body = w.querySelector('.cwBody'), c = S.costream || {}, v = c.partnerView, cw = w.dataset.big ? 800 : 440;
+  const key = JSON.stringify([v, cw, c.partnerShowing]); if (!force && body.dataset.k === key) return; body.dataset.k = key;
+  if (!v?.url) { body.style.height = ''; body.innerHTML = `<div class="help" style="padding:14px;width:${cw - 28}px">${c.partner?.pretend ? '🧪 Pretend partner: no picture (a real partner shows their game screen here).' : `No picture from ${esc(c.partnerName || 'them')} yet: they need 📤 Send my camera + battle on (Settings → 🤝 Co-stream).`}</div>`; return; }
+  const L = v.layout || { W: 1920, H: 1080, battle: [0, 0, 1440, 810] }, b = L.battle || [0, 0, L.W, L.H], k = cw / b[2];
+  if (body.querySelector('iframe')?.dataset.u === v.url && body.dataset.cw === String(cw)) return; body.dataset.cw = String(cw);
+  body.style.width = cw + 'px'; body.style.height = Math.round(b[3] * k) + 'px';
+  body.innerHTML = `<iframe data-u="${esc(v.url)}" src="${esc(v.url)}" allow="autoplay" style="position:absolute;border:0;left:${-Math.round(b[0] * k)}px;top:${-Math.round(b[1] * k)}px;width:${Math.round(L.W * k)}px;height:${Math.round(L.H * k)}px"></iframe>${c.partnerShowing ? '' : '<div class="cwIdle">💤 Their battle is over: this closes in a few seconds</div>'}`;
+}
+async function coWatchTest() { try { await api('/api/test/co', { action: 'pretend', on: true, phase: 'idle' }); setTimeout(() => api('/api/test/co', { action: 'phase', phase: 'running' }).catch(() => {}), 1500); toast('🤝 Pretend partner here: their battle starts in a moment…'); } catch (e) { toast('⚠️ ' + e.message); } }
+
+// ---------- 🎟️ Paid battles (1.75.0, Derek: "$5, 500 bits or 1 sub gets a battle") ----------
+function renderPaid() {
+  const box = $('paidBox'); if (!box) return;
+  const P = S.paid || {}, q = P.queue || [], busy = S.phase === 'lobby' || S.phase === 'running', ic = { tip: '💵', bits: '💎', sub: '⭐', gift: '🎁', hand: '✍️' };
+  const h = !P.on && !q.length ? '' : `<div class="paidBox">
+    <div class="paidHead"><b>🎟️ Paid battles</b><span class="muted">${q.length ? q.length + ' waiting' : 'nobody waiting'}</span><span class="grow"></span><button class="ghost" style="padding:2px 9px" onclick="paidAdd()" title="Add one by hand (cash, or a tip Movie Royal didn't hear about)">➕</button></div>
+    ${q.length ? `<button class="primary" style="width:100%" ${busy ? 'disabled title="A battle is going: start the next one when it ends"' : ''} onclick="paidStart()">▶ Start next: ${esc(q[0].who)}'s battle</button>` : ''}
+    ${q.slice(0, 8).map((x, i) => `<div class="paidRow" title="${esc(x.who + ': ' + x.what)}">${ic[x.kind] || '🎟️'} <b>${esc(x.who)}</b> <span class="muted">${esc(x.what)}${x.test ? ' 🧪' : ''}</span><span class="grow"></span>${i ? `<button class="ghost" title="Start this one now" onclick="paidStart('${x.id}')" ${busy ? 'disabled' : ''}>▶</button><button class="ghost" title="Move up the line" onclick="paidMove('${x.id}',-1)">↑</button>` : ''}<button class="ghost" title="Take it out of the line (nothing is refunded)" onclick="paidRemove('${x.id}')">✕</button></div>`).join('')}${q.length > 8 ? `<div class="muted" style="font-size:12px">+ ${q.length - 8} more</div>` : ''}
+    ${!P.on ? '<div class="help" style="margin:4px 0 0">Off: new money doesn\'t add battles (Settings → 💰 Rewards &amp; prices).</div>' : ''}</div>`;
+  if (box.dataset.k !== h) { box.dataset.k = h; box.innerHTML = h; }
+}
+async function paidStart(id) { try { const r = await api('/api/paid/start', { id }); toast(`⚔️ ${esc(r.item.who)}'s battle is on (${esc(r.item.what)})`); } catch (e) { toast('⚠️ ' + e.message, 10000); } }
+async function paidRemove(id) { const it = (S.paid?.queue || []).find(x => x.id === id); if (it && !confirm(`Take ${it.who}'s battle (${it.what}) out of the line? Nothing is refunded.`)) return; try { await api('/api/paid/remove', { id }); } catch (e) { toast('⚠️ ' + e.message); } }
+async function paidMove(id, dir) { try { await api('/api/paid/move', { id, dir }); } catch (e) { toast('⚠️ ' + e.message); } }
+async function paidAdd() { const who = await ask('Who is this battle for? (their Twitch name)', ''); if (!who) return; const what = await ask('For what? (shows in the history, e.g. "$5 cash")', 'added by hand'); if (what === null) return; try { await api('/api/paid/add', { who, what }); toast(`🎟️ Added a battle for ${esc(who)}`); } catch (e) { toast('⚠️ ' + e.message); } }
+let paidSetKey = '';
+function paidSetDraw(full) {
+  const box = $('paidSet'); if (!box) return; const P = S.paid || {}, key = JSON.stringify([P.on, P.listId, P.tip, P.bits, P.subs, P.say, (S.lists || []).map(l => l.id + l.name)]);
+  if (!full && (key === paidSetKey || box.contains(document.activeElement))) return; paidSetKey = key;
+  box.innerHTML = `<p class="help">Every <b>$${esc(P.tip)}</b> tip, <b>${esc(P.bits)}</b> bits or <b>${esc(P.subs)}</b> sub${Number(P.subs) === 1 ? '' : 's'} adds a battle with that person's name to a line on the Battle tab (gift subs count one each). You press <b>▶ Start next</b> when you're ready; the battle is logged with who paid (🧾 History and the 🌐 viewer website, with a ▶ link to that moment in your VOD). Leftovers carry over per person: two $3 tips = one battle. 0 = that kind doesn't count. Nothing is ever refunded.</p>
+    <label class="ck"><input type="checkbox" ${P.on ? 'checked' : ''} onchange="paidSet({on:this.checked})"> <span>🎟️ Money adds battles to the line</span></label>
+    <div class="grid2"><div><label>⚔️ The battle they get</label><select onchange="paidSet({listId:this.value})"><option value="">(whatever battle is picked on the Battle tab)</option>${(S.lists || []).map(l => `<option value="${esc(l.id)}" ${l.id === P.listId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
+      <div class="row" style="gap:8px;align-items:flex-end"><div><label>💵 $ per battle</label><input type="number" min="0" step="0.5" style="width:90px" value="${esc(P.tip)}" onchange="paidSet({tip:this.value})"></div><div><label>💎 Bits per battle</label><input type="number" min="0" step="50" style="width:100px" value="${esc(P.bits)}" onchange="paidSet({bits:this.value})"></div><div><label>⭐ Subs per battle</label><input type="number" min="0" step="1" style="width:80px" value="${esc(P.subs)}" onchange="paidSet({subs:this.value})"></div></div></div>
+    <label class="ck"><input type="checkbox" ${P.say !== false ? 'checked' : ''} onchange="paidSet({say:this.checked})"> <span>💬 Say it in chat (“@name unlocked a battle!” and “This battle is for @name”)</span></label>`;
+}
+async function paidSet(o) { try { await api('/api/paid/settings', o); toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
+async function paidTest(kind, amount) { const out = $('paidTestOut'); try { if (kind === 'clear') { await api('/api/test/paid-clear', {}); out.textContent = '✕ The 🧪 test battles are out of the line.'; return; } const r = await api('/api/test/paid', { kind, amount }); out.innerHTML = `${r.added ? `✅ Added ${r.added === 1 ? 'a battle' : r.added + ' battles'}` : '⏳ Not enough for a battle yet: it carries over (try it again)'} · <b>${r.waiting}</b> waiting on the Battle tab${r.on ? '' : ' <span style="color:var(--gold)">(🎟️ Paid battles is off: real money won\'t add battles until you turn it on in Settings → 💰 Rewards &amp; prices)</span>'}`; } catch (e) { out.textContent = '⚠️ ' + e.message; } }
+
+// ---------- 🌐 Viewer website (1.75.0) ----------
+let siteKey = '';
+function siteDraw(full) {
+  const box = $('siteBody'); if (!box) return; const T = S.site || {}, key = JSON.stringify([T, S.cloud?.enabled]);
+  if (!full && (key === siteKey || (box.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)))) return; siteKey = key;
+  if (!S.cloud?.enabled) { box.innerHTML = `<div class="card soft"><p class="help" style="margin:0">The website runs on your <b>☁️ 24/7 Discord bot</b>, so turn that on first: Settings → 🤖 Discord &amp; picks → ☁️ 24/7 mode.</p><button style="margin-top:8px" onclick="setSub('discord')">🤖 Go there</button></div>`; return; }
+  if (T.botV && T.botV < T.needV) { box.innerHTML = `<div class="card soft" style="border-color:var(--gold)"><p class="help" style="margin:0 0 8px">Your ☁️ 24/7 bot needs a quick update first (it hosts the website). Paste your Cloudflare API token and press Update.</p><div class="row" style="gap:6px"><input class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&setTimeout(()=>siteDraw(true),300))">🔄 Update the bot</button></div><p class="help">No token? <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → Create Token → <b>Edit Cloudflare Workers</b> template → Create → Copy.</p></div>`; return; }
+  const st = !T.on ? '⚪ Off' : T.state === 'online' ? `🟢 On · <b>${T.viewers || 0}</b> on the site right now` : T.state === 'connecting' ? '🟡 Connecting…' : `🟡 Trying again…${T.error ? ` <span class="muted">(${esc(T.error)})</span>` : ''}`;
+  const poll = T.poll, pc = T.pollCounts?.id === poll?.id ? T.pollCounts.counts : null, open = poll && !poll.ended && poll.endsAt > Date.now();
+  box.innerHTML = `<div class="card soft" style="margin:6px 0"><div>${st}</div>
+      <div class="row" style="gap:6px;margin-top:8px"><input readonly class="grow" value="${esc(T.url)}" onclick="this.select()" title="The viewer website's address"><button onclick="siteCopy()" title="Copy the viewer website's address">📋 Copy</button><button onclick="window.open(S.site.url,'_blank')" title="Open the viewer website in your browser">🌐 Open</button></div>
+      <div class="row" style="gap:6px;margin-top:8px">${T.on ? '<button class="ghost" onclick="siteSet({siteOn:false})" title="Stop the viewer website">⏹ Turn off</button>' : '<button class="primary" onclick="siteSet({siteOn:true})">🌐 Turn on the viewer site</button>'}</div></div>
+    <details class="card soft" style="margin:6px 0;border-color:var(--gold)" ${T.on ? '' : 'open'}><summary><b>📌 One time on Twitch: let viewers sign in</b></summary>
+      <p class="help">Watching, history and stats work without this. For guesses, polls and “My page”, viewers sign in with Twitch through your Movie Royal Twitch app, and Twitch only sends them back to addresses you've added:</p>
+      <ol class="help"><li>Open <a href="https://dev.twitch.tv/console/apps" target="_blank">dev.twitch.tv/console/apps</a> → <b>Manage</b> next to the app you made for Movie Royal.</li><li>Under <b>OAuth Redirect URLs</b> press <b>Add</b> and paste <code>${esc(T.url)}</code> <button style="padding:1px 8px" onclick="siteCopy()" title="Copy the viewer website's address">📋</button></li><li>Press <b>Save</b>. Done (your Movie Royal sign-in keeps working: its address stays in the list).</li></ol></details>
+    <h4>⚙️ Options</h4>
+    <div class="grid2"><div><label>💬 Chat command for the link</label><div class="row" style="gap:6px"><input id="siteCmd" value="${esc(T.command || '!site')}" style="width:140px" title="The chat command for the viewer website link"><button onclick="siteSet({siteCommand:$('siteCmd').value})" title="Save the chat command for the viewer website link">Save</button></div></div><div></div></div>
+    <label class="ck"><input type="checkbox" ${T.predict !== false ? 'checked' : ''} onchange="siteSet({sitePredict:this.checked})"> <span>🔮 Viewers can guess who wins (while the battle waits on the cliff and during the countdown; locked once it starts). Longer odds = more points: 50% → 2, 10% → 10, 2% → 50</span></label>
+    <label class="ck"><input type="checkbox" ${S.settings?.sitePredSay !== false ? 'checked' : ''} onchange="siteSet({sitePredSay:this.checked})"> <span>💬 Say in chat how many called it after each battle</span></label>
+    ${T.predCounts && T.lastPred ? `<p class="help">🔮 Last battle: ${T.lastPred.nRight} of ${T.lastPred.total} called ${esc(T.lastPred.winner)}.</p>` : ''}
+    <h4>🗳️ Poll</h4>
+    ${poll && !poll.ended ? `<div class="card soft"><b>${esc(poll.q)}</b> <span class="muted">${open ? `· ends in ${Math.max(0, Math.round((poll.endsAt - Date.now()) / 1000))} s` : '· ending…'}</span>${poll.opts.map((o, i) => `<div class="row" style="gap:8px"><span class="grow">${esc(o)}</span><b>${pc ? pc[i] : 0}</b></div>`).join('')}<div class="row" style="gap:6px;margin-top:6px"><button onclick="sitePollEnd()">⏹ End it now</button></div></div>`
+      : `${poll?.ended ? `<p class="help">Last poll: <b>${esc(poll.q)}</b>: ${poll.opts.map((o, i) => `${esc(o)} ${(poll.counts || [])[i] ?? 0}`).join(' · ')} <a href="#" onclick="api('/api/site/poll/clear',{});return false">✕ hide it on the site</a></p>` : ''}
+      <div class="grid2"><div><label>Question</label><input id="spQ" placeholder="What should I eat next?" title="The poll question"></div><div><label>Minutes</label><input id="spMin" type="number" min="0.5" max="60" step="0.5" value="2" style="width:90px" title="How many minutes the poll stays open"></div></div>
+      <label>Answers (one per line, 2–6)</label><textarea id="spOpts" rows="3" title="The poll answers, one per line" placeholder="Pickle balls&#10;Durian candy&#10;Octopus"></textarea>
+      <div class="row" style="gap:6px;margin-top:6px"><button class="primary" ${T.state === 'online' ? '' : 'disabled title="The site has to be on and connected"'} onclick="sitePoll(this)">🗳️ Start the poll</button><span class="help" style="margin:0">Chat gets the link; the result goes to chat when it ends.</span></div>`}
+    <h4>🧰 Tools</h4>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="api('/api/site/resend',{}).then(()=>toast('📤 Sent everything again'))">📤 Send everything again</button><button class="ghost" onclick="if(confirm('Set everyone\\'s guess points on the website back to 0?')) api('/api/site/points/reset',{}).then(()=>toast('🔮 Points reset')).catch(e=>toast('⚠️ '+e.message))">🔮 Reset guess points</button><button onclick="testGo('siteTestCard')">🧪 Try it (Test tab)</button></div>`;
+}
+function siteCopy() { const t = S.site?.url || ''; (navigator.clipboard?.writeText(t) || Promise.reject()).then(() => toast('📋 Copied')).catch(() => ask('Copy this address:', t)); }
+async function siteSet(o) { try { await api('/api/site/settings', o); toast('Saved'); setTimeout(() => siteDraw(true), 300); } catch (e) { toast('⚠️ ' + e.message); } }
+async function sitePoll(b) { const q = $('spQ').value.trim(), opts = $('spOpts').value.split('\n').map(x => x.trim()).filter(Boolean), mins = Number($('spMin').value) || 2; b.disabled = true; try { await api('/api/site/poll', { q, opts, mins }); toast('🗳️ Poll started'); setTimeout(() => siteDraw(true), 300); } catch (e) { toast('⚠️ ' + e.message); } finally { b.disabled = false; } }
+async function sitePollEnd() { try { await api('/api/site/poll/end', {}); } catch (e) { toast('⚠️ ' + e.message); } }
+setInterval(() => { if (view === 'settings' && sub === 'site' && S.site?.poll && !S.site.poll.ended) siteDraw(true); }, 5000);
+async function siteTest() {
+  const out = $('siteTestOut'); try {
+    const r = await api('/api/test/site', null, 'GET'), L = r.live, t = r.stats;
+    out.innerHTML = `<b>Right now:</b> ${L.phase === 'idle' ? 'nothing on the cliff' : `${esc(L.phase)} · ${esc(L.list || '')} · ${L.n} pieces${L.predictOpen ? ' · 🔮 guesses open' : ''}`}${L.paid ? ` · 🎟️ paid for by ${esc(L.paid.who)}` : ''}${L.waiting ? ` · ${L.waiting} paid battles waiting` : ''}
+      <br><b>Stats:</b> ${t.battles} battles (${t.today} this stream) · ${t.paid} paid · ${t.tried.length} things tried
+      <br><b>Newest history rows:</b>${r.rows.length ? '<table class="help" style="margin-top:4px">' + r.rows.slice(0, 8).map(x => `<tr><td>${new Date(x.at).toLocaleString()}</td><td>${esc(x.list)}</td><td><b>${esc(x.label)}</b></td><td>${x.paid ? '🎟️ ' + esc(x.paid.who) : ''}</td><td>${x.vod ? `<a href="${esc(x.vod)}" target="_blank">▶ VOD</a>` : '<span class="muted">no VOD link (not live / past broadcasts off)</span>'}</td></tr>`).join('') + '</table>' : ' none yet'}`;
+  } catch (e) { out.textContent = '⚠️ ' + e.message; }
+}
+
 async function coTest(a) { // 🧪 Test tab: pretend partner
   const out = $('coTestOut'), m = { pretend: ['pretend', { on: true, phase: 'running' }], 'phase-idle': ['phase', { phase: 'idle' }], 'phase-run': ['phase', { phase: 'running' }], send: ['send', { event: 'comet' }], incoming: ['incoming', { event: 'comet' }], code: ['code', {}], off: ['pretend', { on: false }] }[a];
   try {
@@ -2405,7 +2541,7 @@ async function coTest(a) { // 🧪 Test tab: pretend partner
       : r.partner ? `🤝 Pretend partner: <b>${esc(r.partner.who)}</b>, their battle ${r.partnerBattle ? '<b>running</b>' : 'not running'}. Settings → 🤝 Co-stream shows it too.` : '✕ Pretend partner gone.';
   } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
-function render() { applyStyle(); holTestInit(); sceneInit(); if (view === 'settings' && sub === 'costream') coDraw(false); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { applyStyle(); holTestInit(); sceneInit(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); luckBattlesSync(); inactSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
@@ -2772,6 +2908,7 @@ function renderHeader() {
 // ---------- ⚔️ battle ----------
 function renderBattle() {
   const busy = S.phase === 'lobby' || S.phase === 'running', l = list();
+  renderPaid();
   $('startBtn').disabled = false; $('startBtn').classList.toggle('danger', busy); $('startBtn').classList.toggle('primary', !busy);
   $('startBtn').textContent = busy ? '⏹ STOP BATTLE' : '▶ START ROYAL';
   { const w = S.lastWinner, show = !!(w?.passed && !w.redone && S.phase === 'ended' && w.listId === S.activeListId), h = show ? `<button class="redoBtn" onclick="redoBattle()" title="Battle again right away, without the movie that was passed (it's back in after that)">🔁 Redo the battle without <b>${esc(w.label)}</b></button>` : ''; if ($('redoBox').dataset.k !== h) { $('redoBox').dataset.k = h; $('redoBox').innerHTML = h; } } // ⏭️ the winner passed
@@ -4833,7 +4970,9 @@ function openSettings(force) {
     sounds: `<div id="soundsSlot"></div>`,
     prices: `<h3>💰 Rewards &amp; prices</h3>
       <p class="help">Every channel point reward, bits amount and donation amount lives here, sorted by tab. Prices and "when it's on" save right away.</p>
-      <h3 style="margin-top:14px">🚀 Raid reward</h3>
+      <h3 style="margin-top:14px">🎟️ Paid battles</h3>
+      <div id="paidSet"></div>
+      <h3 style="margin-top:18px">🚀 Raid reward</h3>
       ${ck('raidOn', '🚀 Raid reward: a viewer redeems it, types who we raid in chat, and a box at the top of the app starts the raid when you click it (press Save). Movie Royal makes the reward (a raid reward you already have keeps its price, 1500 if there is none) and hides it for the rest of the stream once it is used.', false)}
       <div class="grid2">${f('raidTitle', 'Raid reward name on Twitch', '🚀 Pick who we raid!')}<div style="display:flex;align-items:flex-end"><button onclick="raidSetupClick(this)">🚀 Make / fix the raid reward now</button></div></div>
       <h3 style="margin-top:18px">🎁 Viewer rewards</h3>
@@ -4879,6 +5018,9 @@ function openSettings(force) {
       ${ck('gfxAppSaver', '🔋 Power saver for the game inside Movie Royal: it draws lighter while it is hidden (other tabs) or small (the preview window). The stream is not affected.')}
       <p class="help">Tip: OBS records at its own resolution and frame rate (OBS → Settings → Video). Match them here (for example 1080p + 60 FPS lock) so nothing is drawn that OBS throws away. In the OBS browser source, set Width 1920, Height 1080, and tick "Use custom frame rate" with the same FPS.</p>
       <div class="row" style="gap:6px"><button onclick="gfxTest()">📈 Show the FPS counter for 15 seconds</button></div>`,
+    site: `<h3>🌐 Viewer site</h3>
+      <p class="help">A website for your viewers, running on your ☁️ 24/7 Discord bot (your PC stays private, and the site stays up while it's off). Viewers get it by typing the command in chat. It has your stream + chat, the battle that's on right now (who's in, their odds, who paid for it), <b>every battle in the history with who paid and a ▶ link to that moment in your VOD</b>, everything you've tried, and stats. Signed in with Twitch, viewers can <b>guess who wins</b> (points + leaderboard), <b>vote in your polls</b>, and see their own page.</p>
+      <div id="siteBody"></div>`,
     costream: `<h3>🤝 Co-stream</h3>
       <p class="help">Stream together with a friend who also has Movie Royal. Your cameras show up in each other's OBS (you move and resize them like any source), their battle pops up on your stream while it runs (the exact same fight, about a quarter second behind), and <b>your chat's chaos goes into their battle</b> while yours isn't running (theirs into yours too). Voices and watching videos stay on Discord.</p>
       <div id="coBody"></div>`,

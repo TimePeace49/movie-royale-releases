@@ -106,6 +106,8 @@ export const partnerName = () => status.pretend?.who || partnerState()?.name || 
 export const partnerOnline = () => !!status.pretend || (status.state === 'online' && !!status.partner);
 /** Is the partner's battle running right now (a ball battle that takes chaos)? */
 export function partnerBattle() { const s = partnerState(); return !!(partnerOnline() && s && (s.phase === 'lobby' || s.phase === 'running') && !s.cards); }
+/** Is a battle on the partner's screen right now (any kind: ball, characters, card packs)? Their battle picture shows in your OBS / app (1.75.0, Derek: watch each other's battles). */
+export function partnerShowing() { const s = partnerState(); return !!(partnerOnline() && s && (s.showing ?? (s.phase === 'lobby' || s.phase === 'running'))); }
 /** Should this chaos go to the partner? (yours isn't running, theirs is, both of you allow it, and it can do something on their map) */
 export function wantsChaos(event, groundEvents = []) {
   const c = cfg(), s = partnerState();
@@ -133,7 +135,7 @@ export function info() {
   return {
     linked: linked(), role: c.role || '', state: status.state, error: status.error, since: status.since, code: c.role === 'host' ? c.code || '' : '',
     partner: status.pretend ? { who: status.pretend.who, pretend: true, state: ps, got: status.pretend.got.slice(-5) } : p ? { who: p.who, state: ps } : null,
-    partnerName: partnerName(), partnerBattle: partnerBattle(), chaos: c.chaos !== false, showBattle: c.showBattle !== false, showCam: c.showCam !== false,
+    partnerName: partnerName(), partnerBattle: partnerBattle(), partnerShowing: partnerShowing(), watchPop: c.watchPop !== false, chaos: c.chaos !== false, showBattle: c.showBattle !== false, showCam: c.showCam !== false,
     video: c.video !== false, obsTipDone: !!c.obsTipDone, quality: c.quality, camSide: mySide(), partnerSide: ps?.camSide || (mySide() === 'left' ? 'right' : 'left'), scene: c.scene || '', videoStatus: { ...status.video, layout: undefined }, obsItems: !!c.obs?.input,
     myId: c.room ? streamId(c.room, (hooks.local() || {}).login || (hooks.local() || {}).name) : ''
   };
