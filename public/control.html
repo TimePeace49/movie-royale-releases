@@ -1172,7 +1172,7 @@
     <p class="help">A pretend ad break: the bot says the 1-minute warning in chat now (💬 Test chat shows it when you're not signed in) and Movie Royal pops up a note with a ding; 20 seconds later it says the ads are over. Works even while 📺 Ad warnings is off (Settings → 💜 Twitch &amp; channel points).</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="api('/api/test/ad',{}).then(()=>toast('📺 Pretend ad break: the end message comes in 20 seconds'))">📺 Pretend ad break</button><button class="ghost" onclick="pchat(true)">💬 Test chat</button></div>
   </div>
-  <div class="card" id="paidTestCard">
+  <div class="card devOnly" id="paidTestCard">
     <h3>🎟️ Paid battles</h3>
     <p class="help">Pretend money comes in: each one adds a battle with that person's name to the line on the Battle tab (works even while 🎟️ Paid battles is off; test ones are marked 🧪). Leftovers carry over: two $3 tips = one battle. Press <b>▶ Start next</b> on the Battle tab to start it: the history (and the 🌐 viewer website) show who paid.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="paidTest('tip',5)">💵 $5 tip</button><button onclick="paidTest('tip',3)">💵 $3 tip</button><button onclick="paidTest('tip',12)">💵 $12 tip</button><button onclick="paidTest('bits',500)">💎 500 bits</button><button onclick="paidTest('sub')">⭐ A sub</button><button onclick="paidTest('gift')">🎁 A gift sub</button><button class="ghost" onclick="paidTest('clear')">✕ Take the test ones out</button></div>
@@ -1596,7 +1596,7 @@ async function kbResetAll() { if (!confirm('Put every key bind back to how it ca
 function kbStart(id) { kbCatch = id; drawKeybinds(); }
 function drawKeybinds() {
   const box = $('kbBody'); if (!box) return;
-  const groups = Object.keys(TAB_NAMES).map(t => [t, KEYBINDS.filter(k => k[1] === t)]).filter(([, l]) => l.length);
+  const groups = Object.keys(TAB_NAMES).filter(t => t !== 'mara' || S?.settings?.betaUpdates).map(t => [t, KEYBINDS.filter(k => k[1] === t)]).filter(([, l]) => l.length); // (🏃 marathon keys: dev mode only)
   const clash = (k) => { const key = kbKey(k[0]); return key && KEYBINDS.some(o => o[0] !== k[0] && kbKey(o[0]) === key && (o[1] === k[1] || o[1] === 'any' || k[1] === 'any')); };
   box.innerHTML = `<div class="row" style="align-items:center;gap:8px;margin-bottom:6px"><span class="help grow" style="margin:0">Click a key to change it, then press the new key (Esc = keep it, Backspace = turn it off). Changes save right away. Each key only works on its own tab, and never while you're typing in a box, so typing in chat or a name box is safe. Only the Ctrl / Alt ones work anywhere. If you clicked inside the game screen, click outside it first.</span><button class="ghost" onclick="kbResetAll()">↺ Put them all back</button></div>
     ${groups.map(([t, l]) => `<h4 style="margin:14px 0 6px">${TAB_NAMES[t]}${t === 'any' ? '' : ' tab'}</h4><div class="kbGrid">${l.map(k => { const key = kbKey(k[0]), def = k[3], wait = kbCatch === k[0];
@@ -1654,7 +1654,7 @@ async function helpExplain(el) {
     ${tip ? `<p class="what">💡 ${esc(tip)}</p>` : ''}
     ${!hit && cardHelp.length ? `<p class="what">${cardHelp.map(esc).join('<br><br>')}</p>` : hit && cardHelp.length ? `<details><summary>📋 More on this part of the screen</summary><div class="body">${cardHelp.map(esc).join('<br><br>')}</div></details>` : ''}
     ${sec ? `<details ${hit && hit.text.length > 160 ? '' : 'open'}><summary>📖 From the Help tab: ${esc(sec.head)}</summary><div class="body">${sec.html}</div></details>` : ''}
-    <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">${sec ? `<button class="ghost" onclick="hmDlg.close();helpMode(false);setView('help');$('helpFrame').src='/help.html#find='+encodeURIComponent(${esc(JSON.stringify(sec.head))})">📖 Open it in the Help tab</button>` : ''}<span class="grow"></span><button onclick="hmDlg.close();helpMode(false)">Stop help mode</button><button class="primary" onclick="hmDlg.close()">Got it</button></div>
+    <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">${sec ? `<button class="ghost" onclick="hmDlg.close();helpMode(false);setView('help');$('helpFrame').src=helpUrl()+'#find='+encodeURIComponent(${esc(JSON.stringify(sec.head))})">📖 Open it in the Help tab</button>` : ''}<span class="grow"></span><button onclick="hmDlg.close();helpMode(false)">Stop help mode</button><button class="primary" onclick="hmDlg.close()">Got it</button></div>
     <p class="help" style="margin:8px 0 0">Help mode stays on: press Got it, then click something else. Esc or ❓ stops it.</p>`;
   if (!$('hmDlg').open) $('hmDlg').showModal();
 }
@@ -2306,7 +2306,7 @@ function setView(v) {
   if (v === 'wheel') peekOn = false; // the Wheel tab shows the wheel itself: no preview window (💬 Pretend chat stays open)
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
-  if (v === 'help' && !$('helpFrame').src) $('helpFrame').src = '/help.html';
+  if (v === 'help' && (!$('helpFrame').src || $('helpFrame').dataset.dev !== String(!!S?.settings?.betaUpdates))) { $('helpFrame').dataset.dev = String(!!S?.settings?.betaUpdates); $('helpFrame').src = helpUrl(); }
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
@@ -2523,7 +2523,8 @@ async function coWatchTest() { try { await api('/api/test/co', { action: 'preten
 function renderPaid() {
   const box = $('paidBox'); if (!box) return;
   const P = S.paid || {}, q = P.queue || [], busy = S.phase === 'lobby' || S.phase === 'running', ic = { tip: '💵', bits: '💎', sub: '⭐', gift: '🎁', hand: '✍️' };
-  const h = !P.on && !q.length || S.settings?.betaUpdates ? '' : `<div class="paidBox">
+  const h = true ? '' : // (🛠️ 1.79.1: paid battles are dev mode only, and in dev mode they live on the 🏃 Marathon tab, so this Battle tab box is gone)
+     `<div class="paidBox">
     <div class="paidHead"><b>🎟️ Paid battles</b><span class="muted">${q.length ? q.length + ' waiting' : 'nobody waiting'}</span><span class="grow"></span><button class="ghost" style="padding:2px 9px" onclick="paidAdd()" title="Add one by hand (cash, or a tip Movie Royal didn't hear about)">➕</button></div>
     ${q.length ? `<button class="primary" style="width:100%" ${busy ? 'disabled title="A battle is going: start the next one when it ends"' : ''} onclick="paidStart()">▶ Start next: ${esc(q[0].who)}'s battle</button>` : ''}
     ${q.slice(0, 8).map((x, i) => `<div class="paidRow" title="${esc(x.who + ': ' + x.what)}">${ic[x.kind] || '🎟️'} <b>${esc(x.who)}</b> <span class="muted">${esc(x.what)}${x.test ? ' 🧪' : ''}</span><span class="grow"></span>${i ? `<button class="ghost" title="Start this one now" onclick="paidStart('${x.id}')" ${busy ? 'disabled' : ''}>▶</button><button class="ghost" title="Move up the line" onclick="paidMove('${x.id}',-1)">↑</button>` : ''}<button class="ghost" title="Take it out of the line (nothing is refunded)" onclick="paidRemove('${x.id}')">✕</button></div>`).join('')}${q.length > 8 ? `<div class="muted" style="font-size:12px">+ ${q.length - 8} more</div>` : ''}
@@ -2656,6 +2657,7 @@ async function msGo(dry) {
   } catch (e) { out.innerHTML = `<div class="help">⚠️ ${esc(e.message)}</div>`; } finally { if (b) b.disabled = false; }
 }
 async function tickerSet(o) { try { const c = await api('/api/mara/ticker', o); if (S?.mara?.ticker) S.mara.ticker.cfg = c; toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
+const helpUrl = () => '/help.html' + (S?.settings?.betaUpdates ? '?dev=1' : ''); // (🛠️ the Help page leaves out dev mode parts unless it's on)
 function mGuessTick() { const el = $('mGuessT'), G = S?.mara?.guess; if (!el || !G) return; const t = Math.max(0, Math.ceil((G.endsAt - Date.now()) / 1000)); el.textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 setInterval(() => { if (view === 'mara') mGuessTick(); }, 500);
 async function maraSet(id, o) { try { await api('/api/mara/set', { id, ...o }); } catch (e) { toast('⚠️ ' + e.message); } }
@@ -4975,7 +4977,7 @@ function setSearchIndex() {
     out.push({ k, el: null, text: navName(k), where: navName(k), sec: '' });
     let sec = '';
     root.querySelectorAll('h3, h4, label, button, summary, .tmName b, th').forEach(el => {
-      if (el.closest('#setResults') || el.closest('dialog')) return;
+      if (el.closest('#setResults') || el.closest('dialog') || (el.closest('.devOnly') && !S?.settings?.betaUpdates)) return; // (🛠️ dev mode parts aren't searchable without it)
       let t = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
       if (el.matches('h3')) { sec = t; }
       if (!t || t.length < 2) t = el.title || el.querySelector('input,select,textarea')?.placeholder || ''; if (!t) return;
@@ -5593,7 +5595,7 @@ async function fillAppBox() {
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
     <p class="help">When a new <b>latest</b> release is posted there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>
     <label class="ck"><input type="checkbox" ${S.settings.updAsk !== false ? 'checked' : ''} onchange="api('/api/settings',{updAsk:this.checked}).then(()=>{S.settings.updAsk=this.checked;toast('Saved')})"> <span>🔔 Pop up when a new version is out (when Movie Royal opens)</span></label>
-    <label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;render();toast(this.checked ? '🛠️ Dev mode on: test builds (pre-releases) install too, and features still being tried show up (🏃 Marathon tabs).' : 'Dev mode off: only latest releases, and the features still being tried are hidden.')})"> <span>🛠️ <b>Dev mode</b>: also install <b>test builds</b> (pre-releases) and show features that are still being tried (🏃 Marathon + Marathon pool tabs). Leave this off unless you're testing new stuff.</span></label>
+    <label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;render();toast(this.checked ? '🛠️ Dev mode on: test builds (pre-releases) install too, and features still being tried show up.' : 'Dev mode off: only latest releases, and the features still being tried are hidden.')})"> <span>🛠️ <b>Dev mode</b>: also install <b>test builds</b> (pre-releases) and show features that are still being tried. Leave this off unless you're testing new stuff.</span></label>
     ${a.desktop ? `<details style="margin-top:10px" ontoggle="if(this.open) loadPastReleases()"><summary>🕰️ Run an older version</summary><div id="pastRel" class="help">Loading…</div></details>` : ''}`;
 }
 async function loadPastReleases() {

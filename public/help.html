@@ -803,10 +803,11 @@
     <p>📺 <b>Watch:</b> your stream and chat, plus the battle that's on (or waiting on the cliff): who's in, their odds, and who paid for it. 🧾 <b>History:</b> every battle with what it landed on, who paid ($5 tip, 500 bits, a sub…) and <b>▶ VOD</b>: a link to that moment in your past broadcast. 🍽️ <b>Everything tried</b>, 📊 <b>Stats</b> (who paid for the most battles, totals), 🏆 <b>Guess leaderboard</b> and 👤 <b>My page</b>.</p>
     <p>🔮 <b>Guess who wins:</b> signed-in viewers tap who they think wins while the battle waits and during the countdown (locked once it starts). Right = points, more for longer odds (50% → 2, 10% → 10, 2% → 50). 🗳️ <b>Polls:</b> start one in Settings → 🌐 Viewer site (a question, 2–6 answers, how many minutes); chat gets the link and the result.</p>
     <p>📌 <b>Once on Twitch</b> (so viewers can sign in): dev.twitch.tv/console/apps → Manage your Movie Royal app → OAuth Redirect URLs → Add the website's address → Save. ▶ <b>VOD links</b> need Twitch's “Store past broadcasts” on (Creator Dashboard → Settings → Stream). Twitch splits streams longer than 48 hours; each battle links into its own part.</p>
-    <p>🎟️ <b>Paid battles</b> (<b>Settings → 💰 Rewards &amp; prices</b>): every tip, bits or sub that reaches the amount ($5 / 500 bits / 1 sub to start) adds a battle with that person's name to a line on the Battle tab. Leftovers carry over per person (two $3 tips = one battle), and gift subs count one each. Press <b>▶ Start next</b> when you're ready: it switches to the battle you picked for paid battles, chat hears who it's for, and the history (and the website) show who paid. ➕ adds one by hand. Nothing is ever refunded.</p>
-    <p>🧪 <b>Try it:</b> Test tab → 🎟️ Paid battles (pretend tips, bits and subs) and 🌐 Viewer website (a demo page with pretend battles, guesses and a poll).</p>
+    <p data-dev="1">🎟️ <b>Paid battles</b> (<b>Settings → 💰 Rewards &amp; prices</b>): every tip, bits or sub that reaches the amount ($5 / 500 bits / 1 sub to start) adds a battle with that person's name to a line on the Battle tab. Leftovers carry over per person (two $3 tips = one battle), and gift subs count one each. Press <b>▶ Start next</b> when you're ready: it switches to the battle you picked for paid battles, chat hears who it's for, and the history (and the website) show who paid. ➕ adds one by hand. Nothing is ever refunded.</p>
+    <p>🧪 <b>Try it:</b> Test tab → 🌐 Viewer website (a demo page with pretend battles, guesses and a poll).</p>
+    <p data-dev="1">🧪 <b>Paid battles:</b> Test tab → 🎟️ Paid battles (pretend tips, bits and subs).</p>
   </section>
-  <section data-k="marathon dev mode paid battles owed counter pop-up map pick luck pick map # luck # obs line run timer exercise workout neon beach picture cut out guess paused message ticker scrolling text obs profile scene collection setup starting soon brb sleeping just chatting gameplay">
+  <section data-dev="1" data-k="marathon dev mode paid battles owed counter pop-up map pick luck pick map # luck # obs line run timer exercise workout neon beach picture cut out guess paused message ticker scrolling text obs profile scene collection setup starting soon brb sleeping just chatting gameplay">
     <h2>🏃 Marathon battles (dev mode)</h2>
     <p>🛠️ <b>Dev mode</b> (Settings → 👤 Account &amp; updates) installs test builds and shows features that are still being tried: the <b>🏃 Marathon</b> and <b>🏃 Marathon pool</b> tabs. Friends who leave it off don't see them.</p>
     <p>🎟️ <b>Getting a battle:</b> every sub, gift sub (one battle each, so 5 gifts = 5 battles), $5 tip or 500 bits adds a battle with that person's name to the line. A pop-up shows on stream <b>in OBS only</b> (Movie Royal doesn't show it): who got it, every map with a number and every thing in the marathon battle with a number, and the website link. A <b>battles owed</b> counter sits in a corner. Put both in OBS with 🎬 Put it in OBS (Marathon tab or Settings → 💰 Rewards &amp; prices).</p>
@@ -857,6 +858,8 @@
   </section>
 </main>
 <script>
+// 🛠️ (1.79.1) parts marked data-dev only show in dev mode (the app opens this page with ?dev=1 then)
+if (!/[?&]dev=1/.test(location.search)) document.querySelectorAll('[data-dev]').forEach(el => el.remove());
 const secs = [...document.querySelectorAll('section')];
 secs.forEach((s, i) => { s.id = 's' + i; s.dataset.text = (s.textContent + ' ' + s.dataset.k).toLowerCase(); s.dataset.html = s.innerHTML; });
 const toc = document.getElementById('toc');

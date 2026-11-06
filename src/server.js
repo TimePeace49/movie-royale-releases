@@ -191,7 +191,7 @@ function gameResult(m) {
         f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
         if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
       }
-      if (list && list.id === paid.cfg().listId) maraTimerWin(list, f, !!live.game.test); // ⏱️ a timed thing won: its timer waits for your click
+      if (list && list.id === paid.cfg().listId && paid.dev()) maraTimerWin(list, f, !!live.game.test); // ⏱️ a timed thing won: its timer waits for your click
       if (list && !live.game.test) { marathon.won(list.id, f.id); maraGuessResult(live.game, f.id); } // 🏃 (+ 🎯 the guessers who called it win a battle) the chat-given 🍀 on the winner starts over
       if (ownLuck(list)) ownLuckAfter(list, f.id, live.game.fighters); // 🍀 your own battle with luck: the ones that lost get luckier, the winner's luck starts over (it stays in)
       if (list?.type === 'movies') addLuck(live.game.fighters.filter(x => x.id !== f.id).map(x => x.id), `${stream().day}:${stream().startedAt || ''}`, !!db.live || !!live.fakeLive); // everyone who lost gets a little luckier (🎟️ wild spots: once a night while live, see Settings → 🍀 Luck)
@@ -3207,7 +3207,7 @@ function markMapRun(id) { const m = mapById(id); if (!m || !db.live) return; map
 const isCharMap = id => cards.CARD_MAPS.some(m => m.id === id);
 const charsOn = () => { const l = getList(db.activeListId); return !!l?.chars || itemLook(l); }; // (🏃 the marathon's things can use the character maps too)
 /** 🏃 (1.77.0) the marathon battle's pieces are the things themselves (Settings → 💰 → 🏃 Marathon picks: "things look like themselves") */
-function itemLook(l) { return !!l && l.id === paid.cfg().listId && marathon.cfg().itemLook !== false; }
+function itemLook(l) { return paid.dev() && !!l && l.id === paid.cfg().listId && marathon.cfg().itemLook !== false; } // (🛠️ dev mode only)
 const charFighters = fighters => fighters.map(f => ({ id: f.id, packId: f.id, name: f.label, tag: '', game: f.owner || '', image: f.image || f.poster || null, color: f.color || null, char: !f.item, item: f.item || undefined, gym: f.gym || undefined, sign: f.sign || undefined, look: f.look || null, gender: f.gender || 'n', chaos: f.chaos || undefined }));
 function currentMap() {
   if (live.map && isCharMap(live.map) && !charsOn()) live.map = null; // (characters turned off: back to a ball map)
@@ -4110,10 +4110,11 @@ app.post('/api/co/preview', (req, res) => { // 👀 see a picture in its own win
 });
 // 🎟️ Paid battles (1.75.0)
 app.get('/api/paid', (req, res) => res.json(paid.info()));
-app.post('/api/paid/settings', wTry(b => { const c = { ...paid.cfg() }; if (typeof b.on === 'boolean') c.on = b.on; if (typeof b.say === 'boolean') c.say = b.say; if (typeof b.listId === 'string') c.listId = b.listId; for (const k of ['tip', 'bits', 'subs']) if (b[k] !== undefined) c[k] = Math.max(0, Number(b[k]) || 0); db.settings.paidBattles = c; save(); pushState(); return paid.info(); }));
+app.post('/api/paid/settings', wTry(b => { const c = { ...paid.rawCfg() }; if (typeof b.on === 'boolean') c.on = b.on; if (typeof b.say === 'boolean') c.say = b.say; if (typeof b.listId === 'string') c.listId = b.listId; for (const k of ['tip', 'bits', 'subs']) if (b[k] !== undefined) c[k] = Math.max(0, Number(b[k]) || 0); db.settings.paidBattles = c; save(); pushState(); return paid.info(); }));
 app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (or a picked one): 🎯 a guess countdown first (marathon), then its battle goes on, logged with who paid
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going. Start the next one when it ends.' });
   if (live.maraGuess) return res.status(400).json({ error: 'Chat is still guessing for the next battle: ▶ Start now or ✕ Cancel it first.' });
+  if (!paid.dev()) return res.status(400).json({ error: 'Paid battles are a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.' });
   if (db.paidPaused) return res.status(400).json({ error: 'Battles are paused (📜 the paused message is on). Press ▶ Hide it + resume battles on the Marathon tab (or P) to start them again.' }); // 📜 (1.78.1, Derek)
   const it = paid.take(req.body?.id); if (!it) return res.status(400).json({ error: 'Nobody is waiting for a battle.' });
   const c = paid.cfg(), l = c.listId && getList(c.listId);
@@ -4269,6 +4270,7 @@ const cardsMsg = () => ({ type: 'sceneCard', ...cardsCfg() });
 const obsSetupCfg = () => { const o = db.settings.marathon?.obsSetup || {}; return { profile: o.profile || 'GTA 6 Marathon', collection: o.collection || 'GTA 6 Marathon', prev: o.prev || null, madeAt: o.madeAt || null }; };
 app.get('/api/obs/marathon-setup', async (req, res) => { let now = null, err = null; try { now = await obs.obsSetups(); } catch (e) { err = e.message; } res.json({ ...obsSetupCfg(), now, err, cards: cardsCfg(), scenes: Object.values(obs.MARA_SCENES) }); });
 app.post('/api/obs/marathon-setup', wTry(async b => {
+  if (!paid.dev()) throw new Error('The marathon OBS setup is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
   if (!b.dry && !b.go) throw new Error('Press 🧰 Make it to make the marathon OBS setup.'); // (only the button really changes OBS)
   const c = { ...(db.settings.marathon || {}) }, o = { ...(c.obsSetup || {}) };
   const clean = (v, d) => String(v || '').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 60) || d;
@@ -4285,6 +4287,7 @@ app.post('/api/obs/marathon-setup', wTry(async b => {
   return r;
 }));
 app.post('/api/obs/marathon-switch', wTry(async b => { // ↩️ back to your normal setup / 🏃 to the marathon one
+  if (!paid.dev()) throw new Error('The marathon OBS setup is a 🛠️ dev mode feature.');
   const o = obsSetupCfg(), to = b.to === 'normal' ? o.prev : { profile: o.profile, collection: o.collection };
   if (!to) throw new Error("Movie Royal doesn't know your normal setup yet: make the marathon setup first (or switch in OBS: Profile / Scene Collection menus).");
   const r = await obs.switchSetup(to.profile, to.collection); act('stream', `🔁 Switched OBS to ${b.to === 'normal' ? 'your normal' : 'the marathon'} setup (${r.profile} / ${r.collection})`, { icon: '🔁', kind: 'obs' }); return r;
@@ -4319,7 +4322,7 @@ app.get('/api/mara/ticker', async (req, res) => { // (checks OBS: is it showing 
   try { const r = await obs.tickerState(); live.ticker = { on: r.on, scene: r.scene, checkedAt: Date.now() }; } catch (e) { live.ticker = { ...live.ticker, err: e.message, checkedAt: Date.now() }; }
   res.json({ ...live.ticker, cfg: tickerCfg(), paused: !!db.paidPaused });
 });
-app.post('/api/mara/ticker/show', wTry(async b => b.here ? tickerShow(true, true) : tickerShow(b.on === 'toggle' ? !db.paidPaused : !!b.on))); // (here: paused already, show it in the scene you switched to)
+app.post('/api/mara/ticker/show', wTry(async b => !paid.dev() && b.on !== false ? (() => { throw new Error('The paused message is a 🛠️ dev mode feature.'); })() : b.here ? tickerShow(true, true) : tickerShow(b.on === 'toggle' ? !db.paidPaused : !!b.on))); // (here: paused already, show it in the scene you switched to)
 app.post('/api/mara/ticker', wTry(b => { // ✏️ words + look (saved right away, the OBS page changes live)
   const c = { ...(db.settings.marathon || {}) }, t = { ...(c.ticker || {}) };
   if ('text' in b) { const v = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 600); if (v && v !== TICKER_TEXT) t.text = v; else delete t.text; }

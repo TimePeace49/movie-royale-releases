@@ -6,7 +6,12 @@ import crypto from 'crypto';
 import { db, save } from './store.js';
 
 const DEF = { on: false, listId: '', tip: 5, bits: 500, subs: 1, say: true };
-export const cfg = () => ({ ...DEF, ...(db.settings.paidBattles || {}) });
+// 🛠️ (1.79.1, Derek: "none of this should show up unless in dev mode") paid battles + everything 🏃 marathon only work in dev mode:
+// with dev mode off, `on` reads false everywhere (tips/bits/subs add nothing, chat picks, guesses, pop-ups, timers, the website tab)
+// while your saved switch stays as it is (rawCfg) for when dev mode is back on.
+export const dev = () => !!db.settings.betaUpdates;
+export const rawCfg = () => ({ ...DEF, ...(db.settings.paidBattles || {}) });
+export const cfg = () => { const c = rawCfg(); return { ...c, on: !!c.on && dev() }; };
 export const queue = () => (db.paidQueue ||= []);
 let hooks = { act: () => {}, say: () => {}, changed: () => {}, added: () => false };
 export function setHooks(h) { hooks = { ...hooks, ...h }; }

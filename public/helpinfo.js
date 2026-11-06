@@ -10,7 +10,7 @@ const H = (re, title, text, ctx) => L.push({ re, title, text, ctx: Array.isArray
 
 // ───────── 1.76.0: 🛠️ dev mode · 🏃 marathon battles ─────────
 SECTION('🏃 Marathon battles (dev mode)');
-H(/dev mode/i, '🛠️ Dev mode', 'Installs test builds (pre-releases) too, and shows features that are still being tried, like the 🏃 Marathon and Marathon pool tabs. Off = only latest releases and none of those tabs (what your friends see).');
+H(/dev mode/i, '🛠️ Dev mode', 'Installs test builds (pre-releases) too, and shows features that are still being tried. Off = only latest releases and none of those features (what your friends see).');
 H(/^🏃 marathon$/i, '🏃 Marathon tab', 'The battles people paid for (subs, gift subs, $5 tips, 500 bits) wait in a line under the battle screen. Run them whenever that person is here. Dev mode only.');
 H(/^🏃 marathon pool$/i, '🏃 Marathon pool', 'The things in your marathon battle with their numbers (what chat types), the 🍀 luck chat gave them, wins and pictures.');
 H(/^▶ run next/i, '▶ Run next', 'Starts the first battle in the line with that person\'s 🗺️ map (random if they didn\'t pick) and gives their 🍀 luck. It comes off the line.');

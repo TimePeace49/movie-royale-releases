@@ -328,6 +328,6 @@ export function openFromWheel(id, auto, why) {
 }
 export function stateFor() {
   const c = C(), b = activeBattle(), { fighters, cut } = fightersFor(b);
-  return { keepWinner: !!c.keepWinner, mapNow: live.fight?.map || b.map, ringLogo: ringLogo(), shipIcons: shipIcons(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), maraMaps: cardMaps(true).filter(m => m.maraOnly), history: c.history.slice(-30).reverse(),
+  return { keepWinner: !!c.keepWinner, mapNow: live.fight?.map || b.map, ringLogo: ringLogo(), shipIcons: shipIcons(), ringLogoOwn: !!c.ringLogo, pool: c.pool, battles: c.battles, activeId: c.activeId, games: games(), wacky: wackyOn(), wackyList: WACKY, maps: cardMaps(), maraMaps: db.settings.betaUpdates ? cardMaps(true).filter(m => m.maraOnly) : [], history: c.history.slice(-30).reverse(),
     live: { show: live.show, phase: live.phase, fightId: live.fight?.id || null, n: live.fight?.fighters.length || 0, startedAt: live.fight?.startedAt || 0, test: !!live.fight?.test, last: live.last, link: !!live.wheelLink }, inBattle: fighters.length, cut };
 }

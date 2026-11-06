@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.79.1
+- 🛠️ **The marathon stuff is dev mode only now** (Derek: "none of this should show up unless in dev mode"). With dev mode off, nothing of it shows or runs: no 🏃 Marathon / Marathon pool tabs, no paid battles (tips, bits and subs don't add battles, no map/luck picks in chat, no guess countdown, no pop-ups, no exercise timer, no paused message, no marathon OBS setup), things don't fight as themselves, Neon Beach isn't in the test lab, the website's 🎟️ Battles owed tab is gone, and the key binds list, Settings search, Test tab and Help page leave those parts out. The Dev mode switch no longer names the marathon tabs. Your marathon settings are kept: turn dev mode back on and everything is where you left it.
+
 ## 1.79.0
 - 🧰 **Marathon OBS setup** (Derek: "I want to make a new OBS profile for this stream"): Marathon tab → 📺 On stream → **🧰 Make my marathon OBS setup…** makes a separate OBS setup so your normal one stays exactly as it is:
   - **A new profile** (“GTA 6 Marathon”), copied from the one you're on: stream key, video size, frame rate, bitrate and recording settings.
