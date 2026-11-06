@@ -27,6 +27,13 @@ H(/^⚙ settings$/i, '⚙ Settings', 'Paid battle amounts, luck per pick, the po
 H(/^🌐 website$/i, '🌐 Website', 'Opens your viewer website: people can pick their map and luck there too (with map screenshots).');
 H(/^tip:which battle is the marathon battle/i, '⚔️ The marathon battle', 'Which battle paid battles use (import your Marathon Battle in 🎬 Movie Pool → 📥 Import).');
 H(/^tip:its name \(chat sees it/i, '✏️ Name', 'Its name: chat sees it on the pick pop-up and the website.');
+H(/^tip:its number \(what chat types\)/i, '# Its number', 'The number chat types for it (luck 12). Type a new number to move it there: the others shift along.');
+H(/^tip:move it (up|down) one/i, '▲ ▼ Move it', 'Moves it up or down one in the marathon battle. The numbers are what chat types, so they change with it.');
+H(/^tip:🎲 odds: how likely/i, '🎲 Odds', 'How likely it is to win a battle: bigger = more likely (8 is twice as likely as 4). The ≈% next to it is its chance right now, with the luck chat gave it counted in.');
+H(/^tip:its chance to win a battle right now/i, '≈ Chance to win', 'Its chance to win a battle right now: its odds compared with everything else, plus the 🍀 luck chat gave it.');
+H(/^tip:the marathon battle's name/i, '✏️ Battle name', 'The marathon battle\'s name (also in 🎬 Movie Pool).');
+H(/^tip:the title over the battle on stream/i, '📺 Title on screen', 'The title over the battle on stream. Empty = the battle\'s name.');
+H(/add my marathon battle|add a fresh copy|fresh copy of my marathon battle/i, '➕ Add my Marathon Battle', 'Adds your 🏃 Marathon Battle (every eat, workout and wild card with its odds) and makes it the marathon battle. A fresh copy leaves the old one in 🎬 Movie Pool.');
 H(/^tip:the small line under its name/i, '✏️ Small line', 'The small line under its name (how much, how many…).');
 H(/^tip:add or change its picture/i, '🖼️ Picture', 'Adds or changes its picture (shows on the website\'s luck picker).');
 H(/^tip:take the chat-given 🍀 luck off this one/i, '↺ Reset luck', 'Takes the luck chat gave this one off (back to 0%).');

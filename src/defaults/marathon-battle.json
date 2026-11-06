@@ -1,0 +1,159 @@
+{
+ "movieRoyal": "battle",
+ "v": 1,
+ "from": "TimePeace49",
+ "app": "1.80.0",
+ "battle": {
+  "name": "🏃 Marathon Battle",
+  "type": "text",
+  "screenTitle": "Marathon Battle",
+  "bestOf": 1,
+  "entries": [
+   {
+    "label": "Pickle Balls",
+    "sub": "a handful",
+    "weight": 8
+   },
+   {
+    "label": "Ketchup candy cane",
+    "sub": "5 licks",
+    "weight": 8
+   },
+   {
+    "label": "Hot Dog candy",
+    "sub": "1 piece",
+    "weight": 8
+   },
+   {
+    "label": "Toxic Waste",
+    "sub": "hold it till the sour's gone",
+    "weight": 6
+   },
+   {
+    "label": "Toxic Waste x3",
+    "sub": "all at once",
+    "weight": 2
+   },
+   {
+    "label": "BeanBoozled",
+    "sub": "1 spin",
+    "weight": 6
+   },
+   {
+    "label": "Heksehyl salt licorice",
+    "sub": "1 stick",
+    "weight": 4
+   },
+   {
+    "label": "Fazer Salmiakki",
+    "sub": "2 pieces",
+    "weight": 5
+   },
+   {
+    "label": "Durian candy",
+    "sub": "1 piece",
+    "weight": 4
+   },
+   {
+    "label": "Octopus",
+    "sub": "1 bite",
+    "weight": 3
+   },
+   {
+    "label": "Mushroom tempura seaweed",
+    "sub": "a handful",
+    "weight": 6
+   },
+   {
+    "label": "BBQ seaweed roll",
+    "sub": "1 roll",
+    "weight": 7
+   },
+   {
+    "label": "Thai prawn Lay's",
+    "sub": "a handful",
+    "weight": 7
+   },
+   {
+    "label": "Jolt energy drink",
+    "sub": "chug for 10 seconds",
+    "weight": 4
+   },
+   {
+    "label": "KitKat NY Cheesecake",
+    "sub": "1 piece",
+    "weight": 7
+   },
+   {
+    "label": "KitKat Matcha",
+    "sub": "1 piece",
+    "weight": 7
+   },
+   {
+    "label": "KitKat Strawberry",
+    "sub": "1 piece",
+    "weight": 7
+   },
+   {
+    "label": "Kopiko coffee candy",
+    "sub": "1 piece",
+    "weight": 7
+   },
+   {
+    "label": "Muscat gummies",
+    "sub": "2 gummies",
+    "weight": 7
+   },
+   {
+    "label": "10 push-ups",
+    "sub": "",
+    "weight": 8
+   },
+   {
+    "label": "20 sit-ups",
+    "sub": "",
+    "weight": 8
+   },
+   {
+    "label": "20 squats",
+    "sub": "",
+    "weight": 8
+   },
+   {
+    "label": "30 jumping jacks",
+    "sub": "",
+    "weight": 6
+   },
+   {
+    "label": "45-second plank",
+    "sub": "",
+    "weight": 6
+   },
+   {
+    "label": "1-minute wall sit",
+    "sub": "",
+    "weight": 5
+   },
+   {
+    "label": "10 burpees",
+    "sub": "",
+    "weight": 3
+   },
+   {
+    "label": "MERCY",
+    "sub": "nothing happens",
+    "weight": 5
+   },
+   {
+    "label": "CHAT'S CHOICE",
+    "sub": "chat picks any of these",
+    "weight": 2
+   },
+   {
+    "label": "DOUBLE",
+    "sub": "the top 2 both happen",
+    "weight": 2
+   }
+  ]
+ }
+}

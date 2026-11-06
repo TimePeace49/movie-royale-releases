@@ -2246,6 +2246,7 @@ app.post('/api/settings', (req, res) => {
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
   if (('mapSize' in body || 'raceMax' in body) && live.phase === 'idle') { refreshPreview(true); pushState(); } // 📏 map size / 🏁 race limit changed
+  if ('betaUpdates' in body && db.settings.betaUpdates) maraBattleOnce(); // 🏃 dev mode on: Derek's marathon battle comes with it (once)
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   broadcast(audioMsg(), 'overlay'); broadcast(audioMsg(), 'celebrate'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
@@ -4227,6 +4228,43 @@ app.get('/api/test/mara-secs', (req, res) => res.json({ label: String(req.query.
 // 🖼️ (1.77.0) pictures of the marathon's things from the internet (itempics.js): every thing without one gets one by itself
 // (25 s after opening, then every 5 minutes, each tried at most once a day); 🔄 in the Marathon pool steps to another picture.
 const maraList = () => { const id = paid.cfg().listId; return id ? getList(id) : null; };
+// 🏃 Derek's own marathon battle (1.80.0, Derek: "add my battle for stream to app"): src/defaults/marathon-battle.json (a share
+// file) is added ONCE, the first time the app opens in 🛠️ dev mode (friends without dev mode never get it). Skipped when a battle
+// called "marathon battle" is already there (his imported one); either way it becomes the marathon battle if none is picked yet.
+// Delete it and it stays deleted (Marathon pool → ➕ Add my Marathon Battle brings a fresh copy back).
+function maraBattleMake() {
+  const b = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'defaults', 'marathon-battle.json'), 'utf8')).battle;
+  const l = { id: uid(), name: String(b.name).slice(0, 60), type: b.type || 'text', entries: [], joinOpen: false, screenTitle: String(b.screenTitle || '').slice(0, 60), bestOf: 1, madeBy: 'marathon' };
+  for (const e of b.entries || []) l.entries.push({ id: uid(), label: String(e.label).slice(0, 120), sub: String(e.sub || '').slice(0, 40), weight: Math.max(0.1, Number(e.weight) || 1), status: 'active', addedAt: Date.now() });
+  db.lists.push(l); return l;
+}
+function maraBattleOnce() {
+  if (!db.settings.betaUpdates || db.settings.madeMaraBattle) return null;
+  db.settings.madeMaraBattle = true;
+  let l = null;
+  try { l = db.lists.find(x => /marathon battle/i.test(x.name)) || null; if (!l) { l = maraBattleMake(); act('battle', `🏃 Your marathon battle “${l.name}” was added (${l.entries.length} things)`, { icon: '🏃', kind: 'list', list: l.name }); } }
+  catch (e) { console.error('[marathon] ready-made battle:', e.message); }
+  const pc = db.settings.paidBattles ||= {};
+  if (l && !(pc.listId && getList(pc.listId))) pc.listId = l.id;
+  save(); pushState(); return l;
+}
+setTimeout(maraBattleOnce, 1500);
+app.post('/api/mara/add-battle', wTry(b => { // ➕ a fresh copy of Derek's marathon battle (Marathon pool tab), made the marathon battle
+  if (!paid.dev()) throw new Error('This is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
+  const l = maraBattleMake(); db.settings.madeMaraBattle = true; (db.settings.paidBattles ||= {}).listId = l.id;
+  act('battle', `➕ added a fresh copy of the marathon battle “${l.name}” (${l.entries.length} things)`, { icon: '🏃', who: streamerName(), kind: 'list', list: l.name });
+  save(); pushState(); refreshPreview(); return { id: l.id, name: l.name, count: l.entries.length };
+}));
+// ↕️ (1.80.0, Derek: "edit pool in marathon pool tab") move a thing up / down / to a number: the numbers are what chat types
+app.post('/api/mara/move', wTry(b => {
+  const l = maraList(); if (!l) throw new Error('Pick your marathon battle first.');
+  const on = l.entries.filter(e => e.status === 'active'), e = on.find(x => x.id === b.id); if (!e) throw new Error('That thing is not in the marathon battle.');
+  const from = on.indexOf(e), to = Math.max(0, Math.min(on.length - 1, b.to != null ? Math.round(Number(b.to)) - 1 : from + (Number(b.dir) < 0 ? -1 : 1)));
+  if (!Number.isFinite(to) || to === from) return { n: from + 1 };
+  const target = on[to]; l.entries.splice(l.entries.indexOf(e), 1); const ti = l.entries.indexOf(target); l.entries.splice(to > from ? ti + 1 : ti, 0, e);
+  act('battle', `moved “${e.label}” in the marathon battle: #${from + 1} → #${to + 1}`, { icon: '↕️', who: streamerName(), kind: 'entry', list: l.name });
+  save(); pushState(); maraCount(true); return { n: to + 1 };
+}));
 async function maraPicsAuto(force) {
   const l = maraList(); if (!itemLook(l) || !itempics.missing(l, marathon.kindOf)) return { done: [], failed: [] };
   const r = await itempics.fillMissing(l, marathon.kindOf, { force, onEach: () => pushState() });
