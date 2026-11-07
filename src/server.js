@@ -743,6 +743,7 @@ function maraPopMsg(p) {
 marathon.setHooks({
   list: () => { const id = paid.cfg().listId; return id ? getList(id) : null; },
   maps: maraMapList, say: paidSay, siteUrl: () => site.on() ? site.url() : '',
+  started: (login, name) => { const k = marathon.norm(login || name), it = live.maraGuess?.item || (live.phase !== 'idle' && live.phase !== 'ended' ? live.game?.paid : null); return !!(it && k && (marathon.norm(it.login || '') === k || marathon.norm(it.who || '') === k)); }, // (🍀 their battle is under way: picks are locked in)
   act: (text, x) => x.rest ? act('battle', text, { icon: '😴', kind: 'rest' }) : act(x.luck ? 'luck' : 'money', text, { icon: x.luck ? '🍀' : '🎟️', who: x.who, kind: x.reset ? 'reset' : 'pick' }),
   popup: p => { if (marathon.cfg().popup !== false) broadcast(maraPopMsg(p), 'mara'); maraCount(); },
   changed: () => { pushState(); maraCount(); }
@@ -4301,8 +4302,8 @@ app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (o
   res.json({ ok: true, item: it });
 });
 /** The paid battle goes on: their 🍀 luck (else a token for later), the map, the battle. Returns an error text, or nothing. */
-async function paidRun(it, map, guess) {
-  const st = marathon.atStart(it, () => map), mapWas = live.map; // 🏃 their 🗺️ map + their 🍀 luck (else they keep a luck token for later)
+async function paidRun(it, map, guess, st0) {
+  const st = st0 || marathon.atStart(it, () => map), mapWas = live.map; // 🏃 their 🗺️ map + their 🍀 luck (else they keep a luck token for later)
   live.map = st.map; live.mapUsed = false; live.raceSkip = null; live.mapPick = true;
   const err = await startRound({ paid: { who: it.who, login: it.login, kind: it.kind, what: it.what, at: it.at, test: it.test || undefined, map: st.map, mapPicked: st.mapPicked || undefined, luck: st.gave ? st.gave.e.label : undefined } });
   if (err) { st.undo(); live.map = mapWas; live.mapPick = false; return err; }
@@ -4316,16 +4317,20 @@ async function paidRun(it, map, guess) {
 // Everyone who typed the winner's number gets a battle, added to the line in the order they guessed.
 function maraGuessMsg() { const g = live.maraGuess; return g ? { type: 'maraGuess', on: true, at: g.at, endsAt: g.endsAt, who: g.item.who, map: mapLabel(g.map), items: g.nums.map(x => ({ n: x.n, label: x.label, luck: x.luck })), count: g.guesses.length, last: g.guesses.slice(-6).map(x => x.name) } : { type: 'maraGuess', on: false }; }
 function maraGuessBegin(it, map, secs) {
+  // 🍀 (1.83.2, Derek: "luck won't be added until I hit start for that battle… people can change luck on the website until I
+  // hit start") pressing ▶ Run = the start: their luck goes on NOW (before chat guesses, so the guess pop-up shows it), and from
+  // here their picks are locked. ✕ Cancel takes it back off.
+  const st = marathon.atStart(it, () => map); map = st.map;
   live.map = map; live.mapUsed = false; live.raceSkip = null; live.mapPick = true; refreshPreview(true);
-  live.maraGuess = { item: it, map, at: Date.now(), endsAt: Date.now() + secs * 1000, nums: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, luck: x.luck })), guesses: [], timer: setTimeout(() => maraGuessEnd(), secs * 1000) };
+  live.maraGuess = { item: it, map, st, at: Date.now(), endsAt: Date.now() + secs * 1000, nums: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, luck: x.luck })), guesses: [], timer: setTimeout(() => maraGuessEnd(), secs * 1000) };
   broadcast(maraGuessMsg(), 'mara'); pushState();
   paidSay(`🎯 GUESS THE WINNER! Type the number of the thing you think wins (one guess each, numbers are on screen). Right = you win a battle! ${secs} seconds. This one is for ${it.login ? '@' + it.login : it.who}.`);
   act('battle', `Chat is guessing the winner for ${it.who}'s battle (${secs} s)`, { icon: '🎯', kind: 'guess' });
 }
 async function maraGuessEnd(cancel) {
   const g = live.maraGuess; if (!g) return; clearTimeout(g.timer); live.maraGuess = null; broadcast({ type: 'maraGuess', on: false }, 'mara');
-  if (cancel) { paid.putBack(g.item); live.mapPick = false; pushState(); return; }
-  const err = await paidRun(g.item, g.map, { nums: g.nums.map(x => ({ n: x.n, id: x.id })), guesses: g.guesses });
+  if (cancel) { g.st?.undo(); paid.putBack(g.item); live.mapPick = false; pushState(); return; } // (🍀 their luck comes back off: the battle didn't happen)
+  const err = await paidRun(g.item, g.map, { nums: g.nums.map(x => ({ n: x.n, id: x.id })), guesses: g.guesses }, g.st);
   if (err) { paid.putBack(g.item); broadcast({ type: 'toast', text: `⚠️ ${hEsc(err)}` }, 'control'); }
   pushState();
 }
@@ -4504,6 +4509,13 @@ app.post('/api/mara/entry', wTry(b => { // 🏋️ thing or workout + ⏱️ tim
   if ('rest' in b) { if (b.rest) e.restAfterWin = true; else { delete e.restAfterWin; delete e.restNext; } } // 😴 sits out the battle after it wins
   if ('restNow' in b) { if (b.restNow) e.restNext = true; else delete e.restNext; }
   save(); refreshPreview(); pushState(); return { kind: marathon.kindOf(e), secs: marathon.secsOf(e), rest: !!e.restAfterWin, restNext: !!e.restNext };
+}));
+// 🧪 🍀 a luck pick goes on only at ▶ Run (pretend battle, everything put back)
+app.post('/api/test/mara-luck-start', wTry(() => {
+  const l = maraList(), e = l?.entries.find(x => x.status === 'active'); if (!e) throw new Error('No marathon battle yet.');
+  const was = e.vLuck || 0, it = { id: 'test-' + uid(), who: 'Test_Viewer', login: 'test_viewer', luck: e.id, test: true };
+  const st = marathon.atStart(it, () => maraRandomMap()), run = e.vLuck || 0; st.undo(); const cancel = e.vLuck || 0;
+  return { label: e.label, picked: was, run, cancel, ok: run > was && cancel === was };
 }));
 // 🧪 😴 what happens after a thing that rests wins (nothing saved): the next battle without it, the one after with it
 app.post('/api/test/mara-rest', wTry(async b => {

@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import { db, save } from './store.js';
 import * as paid from './paid.js';
 
-let H = { list: () => null, maps: () => [], say: () => {}, act: () => {}, popup: () => {}, changed: () => {}, siteUrl: () => '' };
+let H = { started: () => false, list: () => null, maps: () => [], say: () => {}, act: () => {}, popup: () => {}, changed: () => {}, siteUrl: () => '' };
 export function setHooks(h) { H = { ...H, ...h }; }
 export const cfg = () => ({ luckPer: 1, popSecs: 40, guessSecs: 90, counter: true, corner: 'bl', popup: true, itemLook: true, timerOn: true, alarmSecs: 5, waitRemind: true, waitMins: 30, ...(db.settings.marathon || {}) });
 
@@ -63,7 +63,7 @@ export function mine(login, name) {
 /** Pick a map and/or the thing to give luck to. via = 'chat' | 'site' | 'you'. */
 export function pick({ login, name, qid, map, luck, via = 'chat' }) {
   const { battles, tokens: toks } = mine(login, name);
-  if (!battles.length && !toks.length) return { ok: false, none: true, error: "You don't have a battle waiting (or a 🍀 to give)." };
+  if (!battles.length && !toks.length) return H.started(login, name) ? { ok: false, error: 'Your battle already started, so your 🗺️ map and 🍀 luck are locked in.' } : { ok: false, none: true, error: "You don't have a battle waiting (or a 🍀 to give)." };
   if (qid && !battles.some(x => x.id === qid)) return { ok: false, error: "That battle isn't yours, or it already started." };
   const usable = k => battles.filter(x => (qid ? x.id === qid : true) && !(via === 'chat' && x[k + 'Via'] === 'site'));
   const out = []; let lockedOut = false;

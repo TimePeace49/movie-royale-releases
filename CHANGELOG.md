@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.83.2
+- 🛠️🍀 **Luck goes on when you press ▶ Run** (Derek): a 🍀 luck pick for a waiting paid battle doesn't count for any other battle. It goes on the moment you press ▶ Run for that person's battle (before chat guesses, so the guess pop-up shows it), and comes back off if you ✕ cancel the guess. Until you press ▶ Run, they can change their luck and map in chat or on the website as much as they like; after that they're locked in (chat tells them so).
+  - Try it: 🧪 Test tab → 🎟️ Paid battles → 🍀 Luck goes on at ▶ Run?
+
 ## 1.83.1
 - 🛠️😴 **MERCY can't win twice in a row** (Derek): when MERCY wins a marathon battle, it sits out the next battle, then it's back in the one after. Any thing can do this: tick 😴 next to it in the 🏃 Marathon pool (MERCY has it ticked already). While it's sitting out it shows 💤 resting (click it to put it back in early). Practice battles don't count.
   - Try it: 🧪 Test tab → 😴 Sits out after a win.
