@@ -340,7 +340,7 @@ function weightedPick(arr, w = x => x.weight || 1) {
 }
 
 async function buildFighters(list, keepIds = null) {
-  let pool = list.entries.filter(e => e.status === 'active' && !(list.type === 'movies' && e.skipNext) && !(live.redoSkip && live.redoSkip.listId === list.id && live.redoSkip.id === e.id)); // (⏭️ !skip = sits out the next battle · 🔁 redo without the passed movie)
+  let pool = list.entries.filter(e => e.status === 'active' && !(list.type === 'movies' && e.skipNext) && !e.restNext && !(live.redoSkip && live.redoSkip.listId === list.id && live.redoSkip.id === e.id)); // (⏭️ !skip = sits out the next battle · 🔁 redo without the passed movie)
   if (list.type === 'movies' && db.settings.chatGate !== false) { const on = activeSet(); pool = pool.filter(e => e.kind === 'spot' || e.forceIn || !e.backers?.length || on.has(e.backers[0].discordId)); } // forceIn = you put it back yourself
   const max = Math.max(2, Number(db.settings.maxFighters) || 40);
   let picked = pool;
@@ -743,7 +743,7 @@ function maraPopMsg(p) {
 marathon.setHooks({
   list: () => { const id = paid.cfg().listId; return id ? getList(id) : null; },
   maps: maraMapList, say: paidSay, siteUrl: () => site.on() ? site.url() : '',
-  act: (text, x) => act(x.luck ? 'luck' : 'money', text, { icon: x.luck ? '🍀' : '🎟️', who: x.who, kind: x.reset ? 'reset' : 'pick' }),
+  act: (text, x) => x.rest ? act('battle', text, { icon: '😴', kind: 'rest' }) : act(x.luck ? 'luck' : 'money', text, { icon: x.luck ? '🍀' : '🎟️', who: x.who, kind: x.reset ? 'reset' : 'pick' }),
   popup: p => { if (marathon.cfg().popup !== false) broadcast(maraPopMsg(p), 'mara'); maraCount(); },
   changed: () => { pushState(); maraCount(); }
 });
@@ -4097,6 +4097,7 @@ async function startRound(opts = {}) {
   if (live.redoSkip?.listId === list.id) live.redoSkip = null; // 🔁 (the redo leaves it out once)
   if (!opts.test) { try { inactive.backfill(list); inactive.entered(list, fighters); } catch (e) { console.error('[inactive]', e.message); } } // 🧹 everyone whose movie is in this battle entered it
   if (list.type === 'movies' && !opts.test) for (const e of list.entries) if (e.skipNext) { delete e.skipNext; e.skippedAt = Date.now(); } // ⏭️ sat out this battle: back in the next one
+  if (!opts.test) for (const e of list.entries) if (e.restNext) { delete e.restNext; act('battle', `“${e.label}” sat this battle out after winning, it's back in the next one`, { icon: '😴', kind: 'rest', list: list.name }); } // 😴 won last time: sat this one out, back in the next
   { const m0 = currentMap(); if (isRaceMap(m0) && fighters.length > raceMax()) { live.raceSkip = m0; live.map = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(live.map)?.name || live.map)} instead.` }, 'control'); } }
   live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), pid: opts.test ? null : sitePid, ...(opts.paid ? { paid: opts.paid } : {}), ...(!opts.test && db.live && site.vodNow(liveSegStart()) ? { vod: site.vodNow(liveSegStart()) } : {}), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test; if (!opts.test) sitePid = uid(); // (🎟️ who paid, ▶ the VOD spot, 🔮 the viewer website's guesses made while it waited)
   live.phase = 'lobby'; live.claim = null;
@@ -4402,7 +4403,7 @@ const maraList = () => { const id = paid.cfg().listId; return id ? getList(id) :
 function maraBattleMake() {
   const b = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'defaults', 'marathon-battle.json'), 'utf8')).battle;
   const l = { id: uid(), name: String(b.name).slice(0, 60), type: b.type || 'text', entries: [], joinOpen: false, screenTitle: String(b.screenTitle || '').slice(0, 60), bestOf: 1, madeBy: 'marathon' };
-  for (const e of b.entries || []) l.entries.push({ id: uid(), label: String(e.label).slice(0, 120), sub: String(e.sub || '').slice(0, 40), weight: Math.max(0.1, Number(e.weight) || 1), status: 'active', addedAt: Date.now() });
+  for (const e of b.entries || []) l.entries.push({ id: uid(), label: String(e.label).slice(0, 120), sub: String(e.sub || '').slice(0, 40), weight: Math.max(0.1, Number(e.weight) || 1), status: 'active', addedAt: Date.now(), ...(e.restAfterWin ? { restAfterWin: true } : {}) });
   db.lists.push(l); return l;
 }
 function maraBattleOnce() {
@@ -4450,6 +4451,14 @@ function maraPush5Once() {
   save();
 }
 setTimeout(maraPush5Once, 1300);
+// 😴 (1.83.1, Derek: "for MERCY, if it wins it goes away the next battle so I can't get it twice, but comes back after") once:
+// the marathon battle's MERCY gets "sits out the battle after it wins" (any thing can have it: 🏃 Marathon pool → 😴)
+function maraMercyOnce() {
+  if (db.settings.maraMercyRest) return; db.settings.maraMercyRest = true;
+  for (const l of db.lists || []) { if (l.madeBy !== 'marathon' && !/marathon battle/i.test(l.name)) continue; for (const e of l.entries) if (/^\s*mercy\b/i.test(e.label)) e.restAfterWin = true; }
+  save();
+}
+setTimeout(maraMercyOnce, 1300);
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
 function scareAllOnce() {
   if (db.settings.scareAllScreens) return; db.settings.scareAllScreens = true;
@@ -4492,7 +4501,21 @@ app.post('/api/mara/entry', wTry(b => { // 🏋️ thing or workout + ⏱️ tim
   const l = maraList(), e = l?.entries.find(x => x.id === b.id); if (!e) throw new Error('That thing is not in the marathon battle.');
   if ('mk' in b) { if (b.mk === 'thing' || b.mk === 'workout') e.mk = b.mk; else delete e.mk; }
   if ('mSecs' in b) { if (b.mSecs === '' || b.mSecs == null) delete e.mSecs; else e.mSecs = Math.max(0, Math.min(7200, Math.round(Number(b.mSecs) || 0))); }
-  save(); refreshPreview(); pushState(); return { kind: marathon.kindOf(e), secs: marathon.secsOf(e) };
+  if ('rest' in b) { if (b.rest) e.restAfterWin = true; else { delete e.restAfterWin; delete e.restNext; } } // 😴 sits out the battle after it wins
+  if ('restNow' in b) { if (b.restNow) e.restNext = true; else delete e.restNext; }
+  save(); refreshPreview(); pushState(); return { kind: marathon.kindOf(e), secs: marathon.secsOf(e), rest: !!e.restAfterWin, restNext: !!e.restNext };
+}));
+// 🧪 😴 what happens after a thing that rests wins (nothing saved): the next battle without it, the one after with it
+app.post('/api/test/mara-rest', wTry(async b => {
+  const l = maraList(); if (!l) throw new Error('No marathon battle yet.');
+  const e = l.entries.find(x => x.id === b.id) || l.entries.find(x => x.restAfterWin && x.status === 'active') || l.entries.find(x => /mercy/i.test(x.label));
+  if (!e) throw new Error('No thing to try it with.');
+  const keep = { rest: e.restAfterWin, next: e.restNext };
+  try {
+    e.restAfterWin = true; e.restNext = true; const a = (await buildFighters(l)).fighters.some(f => f.id === e.id);
+    delete e.restNext; const c = (await buildFighters(l)).fighters.some(f => f.id === e.id);
+    return { label: e.label, rests: !!keep.rest, nextBattle: a, afterThat: c, ok: !a && c };
+  } finally { if (keep.rest) e.restAfterWin = true; else delete e.restAfterWin; if (keep.next) e.restNext = true; else delete e.restNext; }
 }));
 app.post('/api/mara/guess/now', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(); return {}; }));
 app.post('/api/mara/guess/cancel', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(true); return {}; }));

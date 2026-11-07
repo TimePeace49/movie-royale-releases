@@ -137,7 +137,8 @@
    {
     "label": "MERCY",
     "sub": "nothing happens",
-    "weight": 1
+    "weight": 1,
+    "restAfterWin": true
    }
   ]
  }

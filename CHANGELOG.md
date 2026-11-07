@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.83.1
+- 🛠️😴 **MERCY can't win twice in a row** (Derek): when MERCY wins a marathon battle, it sits out the next battle, then it's back in the one after. Any thing can do this: tick 😴 next to it in the 🏃 Marathon pool (MERCY has it ticked already). While it's sitting out it shows 💤 resting (click it to put it back in early). Practice battles don't count.
+  - Try it: 🧪 Test tab → 😴 Sits out after a win.
+
 ## 1.83.0
 - 🛡️ **Spam bots get banned by themselves** (Derek): when someone's first message in your chat is selling viewers, followers, "promotion" or art (emotes / overlays) with a way to buy it (a site, "dot com", Telegram, Discord, "DM me"), Movie Royal deletes the message and bans them. Subs, VIPs, mods and you are never touched, and regulars aren't checked. Settings → 💜 Twitch → 🛡️ Spam bots: on / off, ban / time out for a day / only delete, and a list of everyone it caught with ↩️ Unban.
   - Try it: 🧪 Test tab → 🛡️ Spam bots (type a message, or ✅ Check the samples; nothing is banned). Pretend chat messages never ban anyone.

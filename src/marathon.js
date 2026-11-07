@@ -106,6 +106,7 @@ export function won(listId, winnerId) {
   const l = list(); if (!l || l.id !== listId) return;
   const w = l.entries.find(e => e.id === winnerId); if (!w) return;
   w.vWins = (w.vWins || 0) + 1; const had = r2(w.vLuck);
+  if (w.restAfterWin) { w.restNext = true; H.act(`“${w.label}” won, so it sits out the next battle (then it's back)`, { rest: true }); } // 😴 (1.83.1, Derek: MERCY can't win twice in a row)
   if (had) { w.vLuck = 0; w.vLuckBy = []; H.act(`“${w.label}” won, so its 🍀 luck from chat starts over (${pct(had)} → 0%)`, { luck: true, reset: true }); }
   save();
 }
