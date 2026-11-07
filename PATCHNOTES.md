@@ -3,6 +3,14 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.84.0: What's new
+Everything since 1.82.2.
+
+- 🛡️ **Spam bots get banned by themselves** (on by default): when someone's **first** message in your chat sells viewers, followers, "promotion" or art (emotes, overlays) and gives a way to buy it (a site, "dot com", Telegram, Discord, "DM me"), Movie Royal deletes the message and bans them. Subs, VIPs, mods and you are never touched, and people who've chatted before aren't checked. It catches the usual tricks too, like spaced-out letters ("s t r e a m b o o .com") and look-alike letters.
+  - **Settings → 💜 Twitch → 🛡️ Spam bots:** on / off, ban / time out for a day / only delete the message, and a list of everyone it caught with **↩️ Unban** (in case it got a real person). They're in History → Everything too.
+  - Try it: 🧪 Test tab → 🛡️ Spam bots (type a message, or ✅ Check the samples). Nothing is banned there, and pretend chat messages never ban anyone.
+- 🎞️ **Less work for OBS:** when a battle browser source is in a scene that isn't on screen (or is hidden in one), it now draws small and slower until it's shown again. The battle itself keeps going. That leaves more of your graphics card for what's actually on stream, so OBS should miss fewer frames.
+
 ## v1.82.2: What's new
 Everything since 1.82.1.
 
