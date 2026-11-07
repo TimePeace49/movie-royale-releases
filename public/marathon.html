@@ -182,7 +182,7 @@ function connect() {
 if (DEMO) {
   document.body.style.background = '#2a2f3a';
   const maps = ['Crumbling Cliff', 'Deep Space', 'Lava Lake', 'Sweet Donut', 'Pirate Battle', 'Santa\'s Workshop', 'Turkey Trouble', 'Zombie Horde', 'Pompeii', 'Fart Farm', 'Grand Prix', 'Monster Mash'].map((n, i) => ({ n: i + 1, name: n, icon: '🗺️' }));
-  const items = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Durian candy', 'Octopus', '10 push-ups', '20 squats', 'MERCY'].map((n, i) => ({ n: i + 1, label: n, luck: i === 3 ? 3 : 0 }));
+  const items = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Durian candy', 'Octopus', '5 push-ups', '20 squats', 'MERCY'].map((n, i) => ({ n: i + 1, label: n, luck: i === 3 ? 3 : 0 }));
   count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' }); clock({ on: true, ms: (26 * 3600 + 14 * 60 + 3) * 1000, live: true, corner: 'tr' });
   if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 90000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
   else if (/timer/.test(location.search)) timer({ t: { id: 'd', label: '45-second plank', secs: 45, state: 'running', endsAt: Date.now() + 45000, who: 'SpicyPanda', alarmSecs: 5 }, now: Date.now() });

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.9
+- 🛠️💪 **5 push-ups instead of 10** (Derek): the 🏃 Marathon Battle's “10 push-ups” is now “5 push-ups”. Your marathon battle gets changed once by itself; if you renamed it yourself it stays as it is.
+
 ## 1.82.8
 - 🛠️⏱️ **Total live time on every marathon scene** (Derek): the marathon overlay shows how long you've been live (top right; in 🎮 gameplay right next to the small battles owed counter). Only live time counts: when you restart the stream (for the co-stream and after it) it pauses and carries on when you're back. 🏃 Marathon tab → ⏱️ Total live time: 🔁 Automatic (streams with less than 6 hours offline between them count as one marathon), 🏁 Start counting now, 📺 This stream only, ✏️ Fix the time…, which corner, and on / off.
 - 🛠️▶ **VOD links after stream restarts:** each restart is its own Twitch VOD, so battles now always link into the VOD of the stream they were in. Right after a restart (before Twitch knows the new stream) the link fills in by itself a minute later instead of pointing at the old VOD. A VOD you delete (like the co-stream part) stops getting links on the website.

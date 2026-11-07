@@ -4431,6 +4431,17 @@ function maraGuess90Once() {
   save();
 }
 setTimeout(maraGuess90Once, 1200);
+// 💪 (1.82.9, Derek: "make it default 5 push-ups") once: the marathon battle's "10 push-ups" → "5 push-ups" (runs after the even-odds
+// check above, which still looks for the old name). A thing you renamed yourself stays as it is.
+function maraPush5Once() {
+  if (db.settings.maraPush5) return; db.settings.maraPush5 = true;
+  for (const l of db.lists || []) {
+    if (l.madeBy !== 'marathon' && !/marathon battle/i.test(l.name)) continue;
+    for (const e of l.entries) if (e.label === '10 push-ups') { e.label = '5 push-ups'; if (/10 push/i.test(e.sign || '')) e.sign = '5 push-ups'; act('battle', `💪 “10 push-ups” in “${l.name}” is “5 push-ups” now`, { icon: '💪', kind: 'edit', list: l.name }); }
+  }
+  save();
+}
+setTimeout(maraPush5Once, 1300);
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
 function scareAllOnce() {
   if (db.settings.scareAllScreens) return; db.settings.scareAllScreens = true;
