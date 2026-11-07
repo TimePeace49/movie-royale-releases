@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.83.0
+- 🛡️ **Spam bots get banned by themselves** (Derek): when someone's first message in your chat is selling viewers, followers, "promotion" or art (emotes / overlays) with a way to buy it (a site, "dot com", Telegram, Discord, "DM me"), Movie Royal deletes the message and bans them. Subs, VIPs, mods and you are never touched, and regulars aren't checked. Settings → 💜 Twitch → 🛡️ Spam bots: on / off, ban / time out for a day / only delete, and a list of everyone it caught with ↩️ Unban.
+  - Try it: 🧪 Test tab → 🛡️ Spam bots (type a message, or ✅ Check the samples; nothing is banned). Pretend chat messages never ban anyone.
+- 🛠️🔈 **Read chat to me, only you hear it** (Derek): 🏃 Marathon tab → 🔈 Read chat to me. A Windows voice reads every chat message on the speaker you pick (your headphones), never on stream. It's a different voice from your tip / channel point alerts and leaves cheers, channel point messages and highlighted messages out (the alerts read those). Commands, bots and your own messages are skipped, links are said as "a link", emotes are left out, and when chat is busy older messages are skipped so it keeps up. Pick the voice, speed and volume; ⏭️ Skip message, 🧹 Clear, 🔊 Test. Keys: V on / off, B skip.
+  - Nothing is read until you pick the 🎧 speaker, and an unplugged speaker skips the message instead of playing it somewhere else.
+  - Try it: 🧪 Test tab → 🔈 Read chat to me.
+
 ## 1.82.9
 - 🛠️💪 **5 push-ups instead of 10** (Derek): the 🏃 Marathon Battle's “10 push-ups” is now “5 push-ups”. Your marathon battle gets changed once by itself; if you renamed it yourself it stays as it is.
 

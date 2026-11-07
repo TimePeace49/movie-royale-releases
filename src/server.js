@@ -39,6 +39,8 @@ import * as itempics from './itempics.js';
 import * as cards from './cards.js';
 import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
+import * as chatvoice from './chatvoice.js';
+import * as spamban from './spamban.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
 import { blockReason, banMovie, unbanMovie, unapprove, autoBan, isBanned as isBannedId, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
@@ -271,7 +273,8 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), signin: db.siteSignin && db.siteSignin.url === site.url() ? db.siteSignin : null, clientTail: String(db.settings.twitchClientId || '').slice(-6), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState() },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state() },
+    spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -1082,13 +1085,15 @@ const twitchHandlers = {
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
   alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
-  clear(c) { try { chatlog.onClear(c); } catch {} },
+  clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   async chat(m) {
     if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
+    if (spamCheck(m)) return; // 🛡️ a spam bot selling viewers / followers / art: banned, nothing else looks at it
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
     try { maraWaitChat(m); } catch (e) { console.error('[marathon reminder]', e.message); } // 🔔 someone with a battle waiting 30+ min is here
+    try { chatvoice.chat(m); } catch (e) { console.error('[chat voice]', e.message); } // 🔈 read chat out loud to you only (not cheers / channel point messages)
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
     if (idChat(m)) return; // 🧍 !id man / woman / none / remove
     if (hatChat(m)) return; // 🎩 picking a hat
@@ -1300,9 +1305,11 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'control' && live.resumeNote && Date.now() - live.resumeNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.resumeNote.text })); } catch {} }, 1500); // 🔄 what came back after a restart
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
+  if (ws.role === 'chatvoice') { chatvoice.playerJoin(1); ws.on('close', () => chatvoice.playerJoin(-1)); }
   ws.on('close', pushState);
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
+    if (ws.role === 'chatvoice') { chatvoice.fromPlayer(m); return; }
     if (ws.role !== 'overlay') return;
     if (m.type === 'overlayError') { const t = `${m.msg} ${m.where || ''} (${m.phase || ''})`; console.error('[game screen]', t); live.overlayErrors = [{ at: Date.now(), text: t }, ...(live.overlayErrors || [])].slice(0, 10); broadcast({ type: 'toast', text: `⚠️ Game screen problem: ${String(m.msg).slice(0, 120)}` }, 'control'); return; }
     if (m.type === 'cliff') { // a game screen checking in: between battles it must show the same pieces as the app
@@ -2386,6 +2393,7 @@ app.post('/api/settings', (req, res) => {
   if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
   if (('mapSize' in body || 'raceMax' in body) && live.phase === 'idle') { refreshPreview(true); pushState(); } // 📏 map size / 🏁 race limit changed
   if ('betaUpdates' in body && db.settings.betaUpdates) maraBattleOnce();
+  if ('betaUpdates' in body) chatvoice.ensurePlayer(); // 🔈 the chat voice is dev mode only
   if ('betaUpdates' in body) site.connect(); // 🌐 the viewer website is a dev mode thing for now (Derek, 1.81.2): on/off with dev mode // 🏃 dev mode on: Derek's marathon battle comes with it (once)
   save();
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
@@ -3954,7 +3962,7 @@ app.post('/api/test/claim-chat', (req, res) => { // Test tab: the movie winner "
   twitchHandlers.chat({ login, name: w.owner || login, text: "I'm here! 🍿" }); res.json({ ok: true, name: w.owner || login, login, label: w.label });
 });
 app.post('/api/test/pin', async (req, res) => { try { await twitch.sayAndPin('📌 Movie Royal test: pinned messages work! (unpin it any time)'); res.json({ ok: true }); } catch (e) { res.status(400).json({ error: e.message }); } });
-app.post('/api/test/chat', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null, emotes: req.body?.emotes || '', color: req.body?.color || null, badgeList: req.body?.badgeList || '' }); res.json({ ok: true }); });
+app.post('/api/test/chat', (req, res) => { twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, ''); twitchHandlers.chat({ pretend: true, first: !!req.body?.first, login: name.toLowerCase(), name, text: String(req.body?.text || 'hello!'), badges: req.body?.badges || {}, userId: null, emotes: req.body?.emotes || '', color: req.body?.color || null, badgeList: req.body?.badgeList || '' }); res.json({ ok: true }); });
 app.post('/api/test/pc-movie', async (req, res) => { // 💬 pretend chat: this pretend viewer adds a movie, as if they used /suggest in Discord (and linked their Twitch)
   twitch.pretend.until = Date.now() + 10 * 60000;
   const name = String(req.body?.name || 'test_viewer').trim().replace(/^@/, '') || 'test_viewer', login = name.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 25) || 'test_viewer';
@@ -4591,6 +4599,64 @@ app.post('/api/mara/tts', wTry(async b => {
 }));
 // 🧪 test: what the buttons would type, nothing sent
 app.get('/api/test/mara-tts', wTry(() => { const c = ttsCfg(); return { skip: c.skip, mute: c.off, unmute: c.on, muted: c.muted, canChat: !!twitch.status?.canChat }; }));
+// 🔈 (1.83.0, Derek: "tts for all chat on and off… only so I hear it, not chat"; separate from the tip / channel point TTS and
+// never reads those) src/chatvoice.js + desktop/main.cjs chatVoice + public/chatvoice.html (a hidden window that plays it).
+chatvoice.setHooks({ broadcast, pushState, isBot: l => isChatBot(l), dev: () => paid.dev(), act });
+setTimeout(() => chatvoice.ensurePlayer(), 4000);
+app.post('/api/mara/chatvoice', wTry(async b => {
+  if (!paid.dev()) throw new Error('Reading chat out loud is a 🛠️ dev mode feature.');
+  if (b.skip) { chatvoice.skip(); return chatvoice.state(); }
+  if (b.clear) { chatvoice.stop(); return chatvoice.state(); }
+  if (b.test) { const c = chatvoice.cfg(); chatvoice.ensurePlayer(); chatvoice.test(c.names ? `${chatvoice.spokenName(streamerName())}: This is how chat sounds. Only you can hear this.` : 'This is how chat sounds. Only you can hear this.'); return chatvoice.state(); }
+  const o = { ...b }; delete o.skip; delete o.clear; delete o.test;
+  const was = chatvoice.cfg().on, c = chatvoice.setCfg(o);
+  if ('on' in o && c.on !== was) act('chat', c.on ? 'turned on 🔈 reading chat out loud (only you hear it)' : 'turned off 🔈 reading chat out loud', { icon: '🔈', who: streamerName(), kind: 'chatvoice' });
+  if (o.on || o.voice != null) chatvoice.loadVoices().then(() => pushState());
+  return chatvoice.state();
+}));
+// 🧪 what the chat voice would say for a pretend message (or why it'd skip it). say:true = read it out too
+app.post('/api/test/chatvoice', wTry(b => {
+  const m = { login: 'pretend_viewer', name: b.name || 'Pretend_Viewer42', text: String(b.text || ''), emotes: b.emotes || '', bits: b.kind === 'bits' ? 100 : 0, reward: b.kind === 'reward' ? 'test-reward' : null, paidMsg: b.kind === 'highlight', badges: { broadcaster: b.kind === 'me' } };
+  const c = chatvoice.cfg(), skip = chatvoice.skipWhy(m, c), say = skip ? '' : chatvoice.words(m, c);
+  if (b.say && say) { chatvoice.ensurePlayer(); chatvoice.test(say); }
+  return { skip, say, on: chatvoice.on() };
+}));
+// 🛡️ (1.83.0, Derek: "auto ban any bots that come into my chat trying to sell something") src/spamban.js: first messages that
+// sell viewers / followers / promotion / art with a way to buy → banned (or timed out / deleted), logged, undo = Unban.
+const spamBusy = new Set();
+function spamCheck(m) {
+  const k = String(m.login || '').toLowerCase(); if (!k) return false;
+  const seen = (db.viewers?.[k]?.msgs || 0) > 0 || live.chatLog.some(x => x.login === m.login);
+  const why = spamban.check(m, seen); if (!why) return false;
+  if (spamBusy.has(k)) return true; spamBusy.add(k); setTimeout(() => spamBusy.delete(k), 60000);
+  const c = spamban.cfg(), name = m.name || m.login;
+  (async () => {
+    let done = c.action, err = null;
+    if (m.pretend) done = 'test'; // (🧪 pretend chat: nothing is sent to Twitch)
+    else try {
+      if (c.action === 'delete') { if (m.id) await twitch.deleteMessage(m.id); }
+      else { if (m.id) await twitch.deleteMessage(m.id).catch(() => {}); await twitch.timeout(m.login, c.action === 'timeout' ? 86400 : 0, `Movie Royal: spam bot (${why})`); }
+    } catch (e) { err = e.message; done = 'failed'; }
+    if (!m.pretend) spamban.remember({ login: k, name, text: String(m.text || '').slice(0, 300), why, action: done, err });
+    try { chatvoice.clear({ login: k }); } catch {}
+    act('chat', err ? `looks like a spam bot (${why}) but couldn't be removed: ${err}` : done === 'test' ? `would be ${c.action === 'ban' ? 'banned' : c.action === 'timeout' ? 'timed out' : 'deleted'} as a 🛡️ spam bot (${why}) (pretend chat: nothing sent)` : `was ${done === 'ban' ? 'banned' : done === 'timeout' ? 'timed out for a day' : 'deleted'} as a 🛡️ spam bot (${why})`, { icon: '🛡️', who: name, kind: 'spam', test: done === 'test' });
+    broadcast({ type: 'toast', text: done === 'test' ? `🧪🛡️ Pretend chat: <b>${hEsc(name)}</b> would be ${c.action === 'ban' ? 'banned' : c.action === 'timeout' ? 'timed out' : 'deleted'} as a spam bot (${hEsc(why)}). Nothing was sent to Twitch.` : err ? `🛡️ <b>${hEsc(name)}</b> looks like a spam bot, but Movie Royal couldn't ${c.action === 'delete' ? 'delete it' : 'ban them'}: ${hEsc(err)}` : `🛡️ ${done === 'ban' ? 'Banned' : done === 'timeout' ? 'Timed out' : 'Deleted'} spam bot <b>${hEsc(name)}</b> (${hEsc(why)}). Undo: Settings → Twitch → 🛡️ Spam bots.` }, 'control');
+    pushState();
+  })();
+  return true;
+}
+app.post('/api/spam', wTry(b => { const c = spamban.setCfg(b || {}); pushState(); return c; }));
+app.post('/api/spam/unban', wTry(async b => {
+  const k = String(b.login || '').toLowerCase(); if (!k) throw new Error('Who?');
+  const r = spamban.list().find(x => x.login === k);
+  if (r && (r.action === 'ban' || r.action === 'timeout')) await twitch.unban(k);
+  spamban.forget(k); act('chat', 'was unbanned (it wasn\'t a spam bot after all)', { icon: '🛡️', who: r?.name || k, kind: 'spam' }); pushState(); return { ok: true };
+}));
+// 🧪 is this line a spam bot? (nothing is banned) + every sample line checked
+app.post('/api/test/spam', wTry(b => {
+  const samples = spamban.SAMPLES.map(([text, spam]) => { const w = spamban.why(text); return { text, spam, why: w, ok: !!w === spam }; });
+  const t = String(b.text || ''); return { why: t ? spamban.why(t) : null, would: t ? spamban.check({ login: 'test', text: t, first: !!b.first, badges: {} }, !b.first) : null, samples, cfg: spamban.cfg() };
+}));
 // 🧪 what the reminder would say for the first person in the line (nothing is sent)
 app.post('/api/test/mara-wait', wTry(() => {
   const it = paid.queue()[0]; if (!it) throw new Error('Nobody is in the line. Add a pretend one first (🎟️ Paid battles test card).');

@@ -232,7 +232,7 @@ function startChat() {
       const badges = Object.fromEntries(String(tags.badges || '').split(',').filter(Boolean).map(b => b.split('/')));
       const info = Object.fromEntries(String(tags['badge-info'] || '').split(',').filter(Boolean).map(b => b.split('/')));
       const subV = Number(badges.subscriber || badges.founder || 0);
-      handlers.chat({ self: m[2] === botLogin(), login: m[2], name: tags['display-name'] || m[2], text: m[3].trim(), userId: tags['user-id'] || null, id: tags.id || null, color: tags.color || null, emotes: tags.emotes || '', badgeList: tags.badges || '', at: Number(tags['tmi-sent-ts']) || Date.now(),
+      handlers.chat({ self: m[2] === botLogin(), login: m[2], name: tags['display-name'] || m[2], text: m[3].trim(), userId: tags['user-id'] || null, id: tags.id || null, color: tags.color || null, emotes: tags.emotes || '', badgeList: tags.badges || '', at: Number(tags['tmi-sent-ts']) || Date.now(), first: tags['first-msg'] === '1', bits: Number(tags.bits) || 0, reward: tags['custom-reward-id'] || null, paidMsg: !!tags['msg-id'],
         badges: { sub: 'subscriber' in badges || 'founder' in badges, tier: subV >= 3000 ? 3 : subV >= 2000 ? 2 : ('subscriber' in badges || 'founder' in badges) ? 1 : 0, months: Number(info.subscriber || info.founder || 0), vip: 'vip' in badges, mod: 'moderator' in badges, broadcaster: 'broadcaster' in badges } });
     }
   });

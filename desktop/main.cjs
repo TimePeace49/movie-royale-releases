@@ -130,6 +130,72 @@ app.on('browser-window-focus', muteCheck);
 app.on('browser-window-blur', muteCheck);
 app.on('browser-window-created', (e, w) => w.once('ready-to-show', muteCheck));
 
+// 🔈 (1.83.0, Derek: "tts for all chat… only so I hear it, not chat") Windows' own voices make a sound file for each chat
+// message (one PowerShell kept open, so it's quick), and a hidden player window plays it on the speaker you picked, so it can go
+// to your headphones only and never to the stream. Separate from the StreamElements tip / channel point voice.
+let cvPs = null, cvVoices = null, cvBuf = '', cvWait = new Map(), cvN = 0, cvWin = null;
+const CV_PS = `$ErrorActionPreference='Stop'
+Add-Type -AssemblyName System.Speech
+$s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+$v = @($s.GetInstalledVoices() | Where-Object { $_.Enabled } | ForEach-Object { $_.VoiceInfo.Name })
+[Console]::Out.WriteLine('VOICES ' + (ConvertTo-Json -InputObject $v -Compress))
+while ($true) {
+  $l = [Console]::In.ReadLine(); if ($l -eq $null) { break }
+  $p = $l.Split(' ')
+  try {
+    $t = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($p[1]))
+    $f = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($p[2]))
+    $vn = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($p[3]))
+    if ($vn) { try { $s.SelectVoice($vn) } catch {} }
+    $s.Rate = [int]$p[4]; $s.Volume = 100
+    $s.SetOutputToWaveFile($f); $s.Speak($t); $s.SetOutputToNull()
+    [Console]::Out.WriteLine('DONE ' + $p[0])
+  } catch { try { $s.SetOutputToNull() } catch {}; [Console]::Out.WriteLine('FAIL ' + $p[0] + ' ' + $_.Exception.Message) }
+}`;
+function cvStart() {
+  if (process.platform !== 'win32') return null;
+  if (cvPs && !cvPs.killed && cvPs.exitCode == null) return cvPs;
+  const { spawn } = require('child_process');
+  cvVoices = null; cvBuf = '';
+  cvPs = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(CV_PS, 'utf16le').toString('base64')], { windowsHide: true });
+  cvPs.stdout.on('data', d => {
+    cvBuf += d.toString('utf8'); let i;
+    while ((i = cvBuf.indexOf('\n')) >= 0) {
+      const line = cvBuf.slice(0, i).trim(); cvBuf = cvBuf.slice(i + 1);
+      if (line.startsWith('VOICES ')) { try { const v = JSON.parse(line.slice(7)); cvVoices = Array.isArray(v) ? v : v ? [v] : []; } catch { cvVoices = []; } continue; }
+      const m = line.match(/^(DONE|FAIL) (\d+) ?(.*)$/); if (!m) continue;
+      const w = cvWait.get(m[2]); if (!w) continue; cvWait.delete(m[2]); clearTimeout(w.t);
+      if (m[1] === 'DONE') { try { const b = fs.readFileSync(w.file); fs.unlink(w.file, () => {}); w.ok(b); } catch (e) { w.no(e); } } else w.no(new Error(m[3] || 'Windows could not make the voice'));
+    }
+  });
+  cvPs.stderr.on('data', () => {});
+  cvPs.on('exit', () => { for (const w of cvWait.values()) { clearTimeout(w.t); w.no(new Error('The Windows voice stopped')); } cvWait.clear(); cvPs = null; });
+  return cvPs;
+}
+const b64 = t => Buffer.from(String(t || ''), 'utf8').toString('base64');
+const chatVoice = {
+  ok: () => process.platform === 'win32',
+  voices: async () => { if (!cvStart()) return []; for (let i = 0; i < 60 && cvVoices == null; i++) await new Promise(r => setTimeout(r, 100)); return cvVoices || []; },
+  wav: (text, { voice = '', rate = 0 } = {}) => new Promise((ok, no) => {
+    const ps = cvStart(); if (!ps) return no(new Error('Only on Windows'));
+    const id = String(++cvN), file = path.join(app.getPath('temp'), `movie-royal-voice-${process.pid}-${id}.wav`);
+    const t = setTimeout(() => { cvWait.delete(id); no(new Error('The Windows voice took too long')); }, 20000);
+    cvWait.set(id, { ok, no, t, file });
+    ps.stdin.write(`${id} ${b64(String(text).slice(0, 600))} ${b64(file)} ${b64(voice)} ${Math.max(-10, Math.min(10, Math.round(Number(rate) || 0)))}\n`);
+  }),
+  // the hidden player window (url null = close it). It's never muted by 🔇 "sounds only while you're in Movie Royal".
+  player: url => {
+    if (cvWin && !cvWin.isDestroyed()) { if (url && cvWin.__url === url) return { ok: true, same: true }; cvWin.destroy(); }
+    cvWin = null; if (!url) { if (cvPs) { try { cvPs.kill(); } catch {} cvPs = null; } return { ok: true, stopped: true }; }
+    const w = new BrowserWindow({ show: false, width: 400, height: 300, webPreferences: { backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' } });
+    w.__url = url; w.__celebrate = true; w.webContents.setAudioMuted(false); w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    w.webContents.on('render-process-gone', () => { if (cvWin === w) cvWin = null; });
+    w.loadURL(url).catch(() => {}); cvWin = w; return { ok: true };
+  },
+  playing: () => !!(cvWin && !cvWin.isDestroyed())
+};
+app.on('will-quit', () => { try { cvPs && cvPs.kill(); } catch {} });
+
 app.on('second-instance', () => showWindow());
 // Quitting: if the Discord bot only runs inside this app (24/7 mode is off), ask first. The control panel shows the question (closeAsk).
 let closeOk = false, asking = false;
@@ -267,6 +333,7 @@ app.whenReady().then(async () => {
       w.webContents.on('render-process-gone', () => { if (coWin === w) { coWin = null; coLost = Date.now(); } });
       w.loadURL(url).catch(() => {}); coWin = w; return { ok: true };
     },
+    chatVoice,
     coSending: () => !!(coWin && !coWin.isDestroyed()),
     coSenderLost: () => coLost,
     // 👀 what your partner sees (your own picture, back from VDO.Ninja) or their picture, in a normal window

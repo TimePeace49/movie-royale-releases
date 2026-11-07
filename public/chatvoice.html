@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Movie Royal chat voice</title>
+<!-- 🔈 (1.83.0) Movie Royal opens this in a hidden window while "Read chat to me" is on. It plays each chat message on the
+     speaker Derek picked (so only he hears it, never the stream). The Windows voice comes as a sound file (wav); without it
+     (not the Windows app) it falls back to the browser's own voice, which can only use the default speaker. -->
+</head>
+<body style="background:#111;color:#ddd;font:14px sans-serif">
+<div id="st">🔈 Chat voice</div>
+<script>
+(() => {
+  let ws = null, cur = null, devs = [];
+  const send = o => { try { ws && ws.readyState === 1 && ws.send(JSON.stringify(o)); } catch {} };
+  const status = t => { document.getElementById('st').textContent = '🔈 ' + t; };
+  async function devices() {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      devs = all.filter(d => d.kind === 'audiooutput').map(d => ({ id: d.deviceId, label: d.label || (d.deviceId === 'default' ? 'Default speaker' : 'Speaker') }));
+    } catch { devs = []; }
+    let voices = []; try { voices = (speechSynthesis.getVoices() || []).map(v => v.name); } catch {}
+    send({ type: 'cvDevices', list: devs, voices });
+  }
+  function sinkFor(m) {
+    if (!m.sink && !m.sinkLabel) return '';
+    const d = devs.find(x => x.id === m.sink) || devs.find(x => m.sinkLabel && x.label === m.sinkLabel);
+    return d ? d.id : null; // null = the speaker you picked isn't plugged in
+  }
+  function finish(id, err) { if (!cur || cur.id !== id) return; cur = null; send(err ? { type: 'cvError', id, msg: err } : { type: 'cvDone', id }); status('waiting'); }
+  function stop() {
+    if (!cur) return;
+    try { if (cur.audio) { cur.audio.pause(); cur.audio.src = ''; } } catch {}
+    try { if (cur.utt) speechSynthesis.cancel(); } catch {}
+    cur = null;
+  }
+  async function play(m) {
+    stop(); cur = { id: m.id }; status(m.say);
+    const vol = Math.max(0, Math.min(1, (Number(m.vol) || 0) / 100));
+    if (m.wav) {
+      const a = new Audio('data:audio/wav;base64,' + m.wav); cur.audio = a; a.volume = vol;
+      const sink = sinkFor(m);
+      if (sink === null) return finish(m.id, `The speaker you picked (${m.sinkLabel || 'unknown'}) isn't plugged in, so it was skipped (it never plays on your other speakers).`);
+      if (sink && a.setSinkId) { try { await a.setSinkId(sink); } catch (e) { return finish(m.id, 'Couldn\'t use that speaker: ' + e.message); } }
+      a.onended = () => finish(m.id); a.onerror = () => finish(m.id, 'Couldn\'t play the voice');
+      try { await a.play(); } catch (e) { finish(m.id, 'Couldn\'t play the voice: ' + e.message); }
+      return;
+    }
+    // (no sound file: the browser's own voice, default speaker only)
+    try {
+      const u = new SpeechSynthesisUtterance(m.say); cur.utt = u;
+      const v = (speechSynthesis.getVoices() || []).find(x => m.voice && x.name === m.voice); if (v) u.voice = v;
+      u.rate = Math.max(.5, Math.min(2, 1 + (Number(m.rate) || 0) / 10)); u.volume = vol;
+      u.onend = () => finish(m.id); u.onerror = () => finish(m.id);
+      speechSynthesis.speak(u);
+      setTimeout(() => finish(m.id), Math.min(30000, 4000 + m.say.length * 110)); // (some voices never say they're done)
+    } catch (e) { finish(m.id, e.message); }
+  }
+  function connect() {
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=chatvoice`);
+    ws.onopen = () => { status('waiting'); devices(); };
+    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'cvPlay') play(m); else if (m.type === 'cvStop') stop(); else if (m.type === 'cvDevices?') devices(); };
+    ws.onclose = () => { stop(); setTimeout(connect, 2000); };
+  }
+  try { navigator.mediaDevices.addEventListener('devicechange', devices); } catch {}
+  try { speechSynthesis.onvoiceschanged = devices; } catch {}
+  window.__cv = { devices, play, stop, cur: () => cur };
+  connect();
+})();
+</script>
+</body>
+</html>
