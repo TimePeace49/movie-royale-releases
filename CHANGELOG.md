@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.83.3
+- 🛠️🎲 **No luck pick = a random thing gets it** (Derek): when you press ▶ Run for a paid battle and that person didn't pick a thing for their 🍀 luck, a random thing gets the +1% (no more saving it for later). The chat message says which one.
+- 🛠️🔴 **Red +1% on the guess pop-up:** the thing that just got this battle's luck (their pick, or the 🎲 random one) shows a red **+1%** next to its luck on the "Guess the winner" pop-up and the side panel.
+  - Try it: overlay preview `marathon.html?demo=1&guess=1&big=1`, or 🧪 Test tab → 🎟️ Paid battles: add a $5 tip, then ▶ Run it on the Marathon tab without a luck pick.
+
 ## 1.83.2
 - 🛠️🍀 **Luck goes on when you press ▶ Run** (Derek): a 🍀 luck pick for a waiting paid battle doesn't count for any other battle. It goes on the moment you press ▶ Run for that person's battle (before chat guesses, so the guess pop-up shows it), and comes back off if you ✕ cancel the guess. Until you press ▶ Run, they can change their luck and map in chat or on the website as much as they like; after that they're locked in (chat tells them so).
   - Try it: 🧪 Test tab → 🎟️ Paid battles → 🍀 Luck goes on at ▶ Run?

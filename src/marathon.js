@@ -4,7 +4,7 @@
 // Each paid battle (paid.js line) can carry a 🗺️ map pick and a 🍀 luck pick. Picks come from chat (`!map 3` / `!luck 12`, or
 // without the !) or from the 🌐 viewer website (signed in with Twitch; a pick made there can't be changed from chat, so a
 // stray chat message doesn't undo it). The luck is given when Derek starts that battle (+1% by default, Settings) and stays on
-// that thing until it wins, then it starts over. A battle that starts without a luck pick leaves a 🍀 luck token for that person,
+// that thing until it wins, then it starts over. A battle that starts without a luck pick gives the luck to a random thing (1.83.3; before that it left a 🍀 luck token for that person,
 // spent later from chat or the website (it's given right away then).
 import crypto from 'crypto';
 import { db, save } from './store.js';
@@ -93,12 +93,14 @@ export function give(entryId, who, via) {
   H.act(`gave 🍀 +${pct(cfg().luckPer)} luck to “${e.label}” in “${l.name}” (${pct(was)} → ${pct(e.vLuck)})`, { who, luck: true });
   return { e, was };
 }
-/** Your 🎟️ ▶ Start: the battle uses their map (else a random one), their luck goes on, or they keep a 🍀 token for later. Returns an undo for a battle that couldn't start. */
+/** Your 🎟️ ▶ Start: the battle uses their map (else a random one), their luck goes on (no pick = a random thing gets it). Returns an undo for a battle that couldn't start. */
 export function atStart(item, randomMap) {
   const okMap = item.map && maps().some(m => m.id === item.map), map = okMap ? item.map : randomMap();
   let gave = null, tok = null;
   if (item.luck) gave = give(item.luck, item.who, 'start');
-  if (!gave && item.who !== 'Anonymous') { tok = { id: uid(), who: item.who, login: item.login || null, at: Date.now(), from: item.id, ...(item.test ? { test: true } : {}) }; tokens().push(tok); save(); }
+  // 🎲 (1.83.3, Derek: "if someone doesn't pick a thing for luck when I hit start, a random one will be selected") no pick (or
+  // the picked thing is gone) = a random thing gets the luck (no more 🍀 tokens for later)
+  if (!gave) { const on = (list()?.entries || []).filter(e => e.status === 'active'); if (on.length) { gave = give(on[Math.floor(Math.random() * on.length)].id, item.who, 'random'); if (gave) gave.random = true; } }
   return { map, mapPicked: okMap, gave, tok, undo() { if (gave) { gave.e.vLuck = gave.was; gave.e.vLuckBy?.pop(); } if (tok) db.paidTokens = tokens().filter(x => x !== tok); save(); } };
 }
 /** A marathon battle was won: that thing's 🍀 starts over. */

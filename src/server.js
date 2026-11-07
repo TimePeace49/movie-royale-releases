@@ -4301,30 +4301,30 @@ app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (o
   if (err) { paid.putBack(it); return res.status(400).json({ error: err }); }
   res.json({ ok: true, item: it });
 });
-/** The paid battle goes on: their 🍀 luck (else a token for later), the map, the battle. Returns an error text, or nothing. */
+/** The paid battle goes on: their 🍀 luck (no pick = a random thing), the map, the battle. Returns an error text, or nothing. */
 async function paidRun(it, map, guess, st0) {
-  const st = st0 || marathon.atStart(it, () => map), mapWas = live.map; // 🏃 their 🗺️ map + their 🍀 luck (else they keep a luck token for later)
+  const st = st0 || marathon.atStart(it, () => map), mapWas = live.map; // 🏃 their 🗺️ map + their 🍀 luck (no pick = a random thing gets it)
   live.map = st.map; live.mapUsed = false; live.raceSkip = null; live.mapPick = true;
   const err = await startRound({ paid: { who: it.who, login: it.login, kind: it.kind, what: it.what, at: it.at, test: it.test || undefined, map: st.map, mapPicked: st.mapPicked || undefined, luck: st.gave ? st.gave.e.label : undefined } });
   if (err) { st.undo(); live.map = mapWas; live.mapPick = false; return err; }
   if (guess && live.game) live.game.maraGuess = guess; // 🎯 who guessed what (paid out at the result)
-  if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})! 🗺️ ${mapLabel(st.map)}${st.mapPicked ? '' : maraDefMap() === st.map ? '' : ' (random)'}${st.gave ? ` · 🍀 ${st.gave.e.label} is at ${Math.round(st.gave.e.vLuck * 100) / 100}%` : st.tok ? ' · 🍀 they can still give their luck later' : ''}.${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
+  if (paid.cfg().say) paidSay(`⚔️ This battle is for ${it.login ? '@' + it.login : it.who} (${it.what})! 🗺️ ${mapLabel(st.map)}${st.mapPicked ? '' : maraDefMap() === st.map ? '' : ' (random)'}${st.gave ? ` · 🍀${st.gave.random ? ' 🎲 random:' : ''} ${st.gave.e.label} is at ${Math.round(st.gave.e.vLuck * 100) / 100}%` : st.tok ? ' · 🍀 they can still give their luck later' : ''}.${paid.queue().length ? ` ${paid.queue().length} more waiting.` : ''}`);
   return null;
 }
 // 🎯 Guess the winner (1.76.0, Derek: "a 1 min countdown before battle to let chat guess the winner. Number them, they type in chat
 // what number wins. If that number wins they win a battle. They pick map and luck in the order they typed"):
 // ▶ Run → the battle waits on the cliff for guessSecs; chat types a number (one guess each, the first one counts); then it starts.
 // Everyone who typed the winner's number gets a battle, added to the line in the order they guessed.
-function maraGuessMsg() { const g = live.maraGuess; return g ? { type: 'maraGuess', on: true, at: g.at, endsAt: g.endsAt, who: g.item.who, map: mapLabel(g.map), items: g.nums.map(x => ({ n: x.n, label: x.label, luck: x.luck })), count: g.guesses.length, last: g.guesses.slice(-6).map(x => x.name) } : { type: 'maraGuess', on: false }; }
+function maraGuessMsg() { const g = live.maraGuess; return g ? { type: 'maraGuess', on: true, at: g.at, endsAt: g.endsAt, who: g.item.who, map: mapLabel(g.map), items: g.nums.map(x => ({ n: x.n, label: x.label, luck: x.luck, plus: x.plus || 0, rnd: !!x.rnd })), count: g.guesses.length, last: g.guesses.slice(-6).map(x => x.name) } : { type: 'maraGuess', on: false }; }
 function maraGuessBegin(it, map, secs) {
   // 🍀 (1.83.2, Derek: "luck won't be added until I hit start for that battle… people can change luck on the website until I
   // hit start") pressing ▶ Run = the start: their luck goes on NOW (before chat guesses, so the guess pop-up shows it), and from
   // here their picks are locked. ✕ Cancel takes it back off.
   const st = marathon.atStart(it, () => map); map = st.map;
   live.map = map; live.mapUsed = false; live.raceSkip = null; live.mapPick = true; refreshPreview(true);
-  live.maraGuess = { item: it, map, st, at: Date.now(), endsAt: Date.now() + secs * 1000, nums: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, luck: x.luck })), guesses: [], timer: setTimeout(() => maraGuessEnd(), secs * 1000) };
+  live.maraGuess = { item: it, map, st, at: Date.now(), endsAt: Date.now() + secs * 1000, nums: marathon.items().map(x => ({ n: x.n, id: x.id, label: x.label, luck: x.luck, ...(st.gave?.e.id === x.id ? { plus: Math.round((st.gave.e.vLuck - st.gave.was) * 100) / 100, rnd: !!st.gave.random } : {}) })), guesses: [], timer: setTimeout(() => maraGuessEnd(), secs * 1000) };
   broadcast(maraGuessMsg(), 'mara'); pushState();
-  paidSay(`🎯 GUESS THE WINNER! Type the number of the thing you think wins (one guess each, numbers are on screen). Right = you win a battle! ${secs} seconds. This one is for ${it.login ? '@' + it.login : it.who}.`);
+  paidSay(`🎯 GUESS THE WINNER! Type the number of the thing you think wins (one guess each, numbers are on screen). Right = you win a battle! ${secs} seconds. This one is for ${it.login ? '@' + it.login : it.who}.${st.gave ? ` 🍀 +${Math.round((st.gave.e.vLuck - st.gave.was) * 100) / 100}% to ${st.gave.e.label}${st.gave.random ? ' (🎲 random: no pick)' : ''}.` : ''}`);
   act('battle', `Chat is guessing the winner for ${it.who}'s battle (${secs} s)`, { icon: '🎯', kind: 'guess' });
 }
 async function maraGuessEnd(cancel) {

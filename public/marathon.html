@@ -31,6 +31,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .grid div { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 8px; border-radius: 7px; background: rgba(255,255,255,.06); }
 .grid i { font-style: normal; color: #ffcf4a; min-width: 30px; text-align: right; font-family: 'Lilita One', sans-serif; font-weight: 400; }
 .grid span { overflow: hidden; text-overflow: ellipsis; }
+.grid b.plus { margin-left: auto; flex: none; padding: 0 7px; border-radius: 8px; background: #ff2d55; color: #fff; font-size: .8em; font-weight: 900; box-shadow: 0 0 14px rgba(255,45,85,.7); animation: plusP 1s ease-in-out infinite alternate; } .grid b.plus + em { margin-left: 6px; } @keyframes plusP { to { box-shadow: 0 0 26px rgba(255,45,85,1); } }
 .grid em { margin-left: auto; padding-left: 6px; flex: none; font-style: normal; color: #7dffa5; font-size: .84em; } .grid em.z { color: rgba(255,255,255,.45); }
 .bar { height: 8px; border-radius: 6px; background: rgba(255,255,255,.12); margin-top: 16px; overflow: hidden; }
 .bar div { height: 100%; width: 100%; background: linear-gradient(90deg, #ffcf4a, #ff4f9a); transform-origin: left; }
@@ -113,7 +114,7 @@ function count(m) {
   $('cx').textContent = m.paused ? '⏸ Paused: they run when we\'re back' : m.next?.length ? 'Next: ' + m.next.join(', ') : 'Sub, gift, $5 or 500 bits = a battle';
 }
 // 🍀 (1.82.4, Derek: "show luck of entry on the pop-up for chat to vote and for when adding luck") every thing shows its luck, 0% too
-function lk(x) { const v = Math.round((Number(x.luck) || 0) * 100) / 100; return `<em class="${v ? '' : 'z'}">🍀${v}%</em>`; }
+function lk(x) { const v = Math.round((Number(x.luck) || 0) * 100) / 100; return `${x.plus ? `<b class="plus" title="${x.rnd ? 'random luck' : 'their luck pick'}">+${x.plus}%${x.rnd ? ' 🎲' : ''}</b>` : ''}<em class="${v ? '' : 'z'}">🍀${v}%</em>`; } // (🔴 +1% = this battle's luck, 1.83.3)
 function cols(arr, max) { return Math.max(1, Math.min(max, Math.ceil(arr.length / 17))); }
 function pop(m) { Q.push(m); if (!showing) next(); }
 function next() {
@@ -184,7 +185,7 @@ if (DEMO) {
   const maps = ['Crumbling Cliff', 'Deep Space', 'Lava Lake', 'Sweet Donut', 'Pirate Battle', 'Santa\'s Workshop', 'Turkey Trouble', 'Zombie Horde', 'Pompeii', 'Fart Farm', 'Grand Prix', 'Monster Mash'].map((n, i) => ({ n: i + 1, name: n, icon: '🗺️' }));
   const items = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Durian candy', 'Octopus', '5 push-ups', '20 squats', 'MERCY'].map((n, i) => ({ n: i + 1, label: n, luck: i === 3 ? 3 : 0 }));
   count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' }); clock({ on: true, ms: (26 * 3600 + 14 * 60 + 3) * 1000, live: true, corner: 'tr' });
-  if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 90000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
+  if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 90000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items: items.map(x => x.n === 4 ? { ...x, plus: 1 } : x), count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
   else if (/timer/.test(location.search)) timer({ t: { id: 'd', label: '45-second plank', secs: 45, state: 'running', endsAt: Date.now() + 45000, who: 'SpicyPanda', alarmSecs: 5 }, now: Date.now() });
   else pop({ who: 'SpicyPanda', n: 1, what: 'a $5 tip', owed: 4, luckPer: 1, secs: 600, site: 'movie-royal.example.workers.dev/live', maps, items });
 } else connect();
