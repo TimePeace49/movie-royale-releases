@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.84.2
+- 🔋 **The battle screen inside Movie Royal only starts when it's needed** (Derek): it loads the first time you open the ⚔️ Battle, 🃏 Card battles or 🏃 Marathon tab, open the preview window, or a battle starts (even from another tab). If you only use the wheel, it never runs at all. Once it's loaded it stays loaded: switching tabs never resets the board, and a battle is never stopped (the battle itself runs in Movie Royal and OBS, the screen only shows it).
+
 ## 1.84.1
 - 🔋 **Less power in the background** (Derek): when Movie Royal is minimized or covered by other windows, the battle inside it draws small and at 30 fps (like it already did on other tabs). The battle keeps going and sounds still play; it's back to full the moment you look at it. Part of 🔋 Power saver (Settings → 🎨 Graphics, on by default). Nothing on stream changes.
 

@@ -602,7 +602,7 @@
 </div>
 
 <div id="stage">
-  <iframe id="game" src="about:blank" allow="autoplay; fullscreen" title="Movie Royal game"></iframe><script>if (!/[?&]pchat=1/.test(location.search)) document.getElementById('game').src = '/game.html'; /* (the popped-out pretend chat window has no game in it) */</script>
+  <iframe id="game" src="about:blank" allow="autoplay; fullscreen" title="Movie Royal game"></iframe><script>window.GAME_WANT = !/[?&]pchat=1/.test(location.search); /* (1.84.2, Derek) the game screen loads the first time it's needed: gameLoad() */ /* (the popped-out pretend chat window has no game in it) */</script>
   <div id="camBar" title="Camera: click someone on the battle to follow them, scroll to zoom, drag to move. Hides when the mouse stops."><button onclick="cam('prev')" title="Follow the previous one">◀</button><button onclick="cam('next')" title="Follow one (Tab)">🎯 Follow</button><button onclick="cam('next')" title="Follow the next one">▶</button><button onclick="cam('overview')" title="See the whole battle (O)">🗺️</button><button onclick="cam('auto')" title="Back to the automatic camera (R)">🎥 Auto</button><button onclick="cam('left')" title="Move left (A)">⬅</button><button onclick="cam('right')" title="Move right (D)">➡</button><button onclick="cam('up')" title="Move up (W)">⬆</button><button onclick="cam('down')" title="Move down (S)">⬇</button><button onclick="cam('out')" title="Zoom out (Q)">➖</button><button onclick="cam('in')" title="Zoom in (E)">➕</button></div>
   <div id="fsBar"><div class="fsl" id="fsGrip" title="Drag to move">⠿ ⚡ Free powers <small>keys 1–9, 0</small></div><div id="fsPowers"></div><div id="fsWacky"></div><button class="fsx" onclick="document.exitFullscreen().catch(()=>{})">Esc ✕ leave fullscreen</button></div>
   <div class="pgrip" data-d="se" title="Drag to resize"></div><div class="pgrip" data-d="sw" title="Drag to resize"></div><div class="pgrip" data-d="e"></div><div class="pgrip" data-d="w"></div><div class="pgrip" data-d="s"></div>
@@ -2402,8 +2402,18 @@ let popWin = null;
 // 🔋 tell the game inside the app whether it's showing big, small (preview) or hidden, so it can draw lighter (Settings → Graphics)
 let gfxState = '';
 function gfxTell(state, force) { if (state === gfxState && !force) return; gfxState = state; try { $('game').contentWindow.postMessage({ royalGfx: { hidden: state === 'hidden', small: state === 'small' } }, '*'); } catch {} }
+// (1.84.2, Derek: "don't open battles until you open that tab, it can save power… don't want the board to reset if I click a
+// different tab or stop a battle mid battle") the game screen inside Movie Royal loads the first time it's needed: the Battle /
+// Card battles / Marathon tab, the preview window, or any battle or card fight starting. Once loaded it stays loaded (switching
+// tabs never reloads it, a battle never stops); the battle itself lives in Movie Royal + OBS, the screen only shows it.
+function gameLoad() {
+  if (!window.GAME_WANT || $('stage').classList.contains('popped')) return;
+  const g = $('game'); if (/game\.html/.test(g.getAttribute('src') || '')) return; g.src = '/game.html';
+}
+function gameNeeded() { return view === 'battle' || view === 'cards' || view === 'mara' || peekOn || S?.phase === 'lobby' || S?.phase === 'running' || S?.cards?.live?.phase === 'running' || !!S?.cards?.live?.fightId; }
 function placeStage() {
   const st = $('stage');
+  if (gameNeeded()) gameLoad();
   if (document.fullscreenElement === st) return gfxTell(document.hidden ? 'hidden' : 'full');
   if (view === 'battle' || view === 'cards' || view === 'mara') {
     const r = $(view === 'cards' ? 'cStageSize' : view === 'mara' ? 'mStageSize' : 'stageSize').getBoundingClientRect();
@@ -3146,7 +3156,7 @@ async function coTest(a) { // 🧪 Test tab: pretend partner
       : r.partner ? `🤝 Pretend partner: <b>${esc(r.partner.who)}</b>, their battle ${r.partnerBattle ? '<b>running</b>' : 'not running'}. Settings → 🤝 Co-stream shows it too.` : '✕ Pretend partner gone.';
   } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
-function render() { applyStyle(); { const t = S.mara?.timer || null, k = t ? t.id + t.state : ''; if (k !== (MT ? MT.id + MT.state : '')) { MT = t; mtDraw(); } } holTestInit(); sceneInit(); if (view === 'test') mbtMaps(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
+function render() { applyStyle(); if (gameNeeded()) gameLoad(); { const t = S.mara?.timer || null, k = t ? t.id + t.state : ''; if (k !== (MT ? MT.id + MT.state : '')) { MT = t; mtDraw(); } } holTestInit(); sceneInit(); if (view === 'test') mbtMaps(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
   renderHeader(); renderBattle(); renderView(); luckBattlesSync(); inactSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {

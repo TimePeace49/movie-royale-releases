@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.84.2: What's new
+Everything since 1.84.1.
+
+- 🔋 **The battle screen inside Movie Royal only starts when it's needed**: it loads the first time you open the ⚔️ Battle, 🃏 Card battles or 🏃 Marathon tab, open the preview window, or a battle starts (even from another tab). If you only use the wheel, it never runs at all. Once it's loaded it stays loaded: switching tabs never resets the board, and a battle is never stopped (the battle itself runs in Movie Royal and OBS, the screen only shows it).
+
 ## v1.84.1: What's new
 Everything since 1.84.0.
 
