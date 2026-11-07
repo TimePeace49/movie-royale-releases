@@ -2,6 +2,17 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.84.0
+- 🛠️🎬 **New marathon scenes** (Derek): press 🧰 Marathon OBS setup again (Marathon tab) and it adds them. Nothing you moved yourself gets moved.
+  - ⚔️ **Battle:** the battle full screen (bigger than it was in Just Chatting) with a small camera.
+  - 💬 **Just Chatting:** your camera full screen. The old background + battle there are hidden, not deleted.
+  - ☕ **Be Right Back:** its own scene now, with YouTube videos over a Be right back screen. "⏳ Starting Soon / BRB" is renamed ⏳ Starting Soon.
+  - 😴 **Sleeping:** YouTube videos full screen, your camera small, the sleeping banner on top.
+  - 🍳 Cooking is still there (3 cameras).
+- 🛠️📺 **YouTube videos for BRB + Sleeping:** Marathon tab → 📺 YouTube videos → ✏️ Videos…: paste links (videos or whole playlists), one per line, 🔀 Shuffle for each. They loop forever, skip videos that can't be played outside YouTube, pick up where they left off when the scene comes back, and their sound goes on stream (OBS's Audio Mixer has a slider; there's a volume slider too). ⏮ ⏯ ⏭ buttons, key N = next video. Try it: 🧪 Test tab → 📺 YouTube videos.
+- 🛠️🎞️ **OBS frame rate:** the Marathon tab's OBS card shows what OBS runs at, with a **Make it 60 fps** button (not while live or recording).
+- 🎞️ **Less work for OBS:** Movie Royal's title screens stop animating while OBS isn't showing them (and never draw faster than 30 fps), and a battle source that's hidden in a scene draws small at 30 fps until it's shown. That's graphics card time OBS can use for what's on stream.
+
 ## 1.83.3
 - 🛠️🎲 **No luck pick = a random thing gets it** (Derek): when you press ▶ Run for a paid battle and that person didn't pick a thing for their 🍀 luck, a random thing gets the +1% (no more saving it for later). The chat message says which one.
 - 🛠️🔴 **Red +1% on the guess pop-up:** the thing that just got this battle's luck (their pick, or the 🎲 random one) shows a red **+1%** next to its luck on the "Guess the winner" pop-up and the side panel.

@@ -273,7 +273,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), signin: db.siteSignin && db.siteSignin.url === site.url() ? db.siteSignin : null, clientTail: String(db.settings.twitchClientId || '').slice(-6), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state() },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
@@ -1299,7 +1299,7 @@ wss.on('connection', (ws, req) => {
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
-  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
+  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
@@ -1311,6 +1311,7 @@ wss.on('connection', (ws, req) => {
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (ws.role === 'chatvoice') { chatvoice.fromPlayer(m); return; }
+    if (ws.role === 'mara' && (m.type === 'ytAt' || m.type === 'ytErr')) { ytFromPlayer(m); return; } // 📺 what the BRB / sleeping videos are playing
     if (ws.role !== 'overlay') return;
     if (m.type === 'overlayError') { const t = `${m.msg} ${m.where || ''} (${m.phase || ''})`; console.error('[game screen]', t); live.overlayErrors = [{ at: Date.now(), text: t }, ...(live.overlayErrors || [])].slice(0, 10); broadcast({ type: 'toast', text: `⚠️ Game screen problem: ${String(m.msg).slice(0, 120)}` }, 'control'); return; }
     if (m.type === 'cliff') { // a game screen checking in: between battles it must show the same pieces as the app
@@ -4753,7 +4754,7 @@ app.post('/api/obs/marathon-setup', wTry(async b => {
   const extra = [];
   if (!b.dry && db.settings.choiceObs && obsOk()) { try { const f = await choiceFile(); extra.push({ name: 'Movie Royal celebration', url: f.file, local: true }); } catch {} } // 🎉 Viewer's Choice, if you have it in OBS
   if (!b.dry && db.settings.rollObs && obsOk()) extra.push({ name: obs.ROLL_NAME, url: rollUrl() }); // 📣 roll call, if you have it in OBS
-  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, coSide: costream.mySide(), urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), maraMini: maraUrl() + '?mini=1', card: k => `http://localhost:${PORT}/scenecard.html?k=${k}` } });
+  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, coSide: costream.mySide(), urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), maraMini: maraUrl() + '?mini=1', card: k => `http://localhost:${PORT}/scenecard.html?k=${k}`, yt: k => `http://localhost:${PORT}/ytplay.html?k=${k}` } });
   if (!b.dry) {
     o.profile = profile; o.collection = collection; o.madeAt = Date.now(); if (r.prev && (r.prev.profile !== profile || r.prev.collection !== collection)) o.prev = r.prev;
     c.obsSetup = o; c.obs = true; c.scenes = r.scenes; db.settings.marathon = c;
@@ -4774,6 +4775,49 @@ app.post('/api/obs/marathon-switch', wTry(async b => { // ↩️ back to your no
   if (!to) throw new Error("Movie Royal doesn't know your normal setup yet: make the marathon setup first (or switch in OBS: Profile / Scene Collection menus).");
   const r = await obs.switchSetup(to.profile, to.collection); act('stream', `🔁 Switched OBS to ${b.to === 'normal' ? 'your normal' : 'the marathon'} setup (${r.profile} / ${r.collection})`, { icon: '🔁', kind: 'obs' }); return r;
 }));
+// 📺 (1.84.0, Derek: "a BRB scene which I will play YouTube videos… YouTube videos playing while sleeping") the YouTube links for
+// the ☕ Be Right Back + 😴 Sleeping scenes (public/ytplay.html in OBS, ws role 'mara'). settings.marathon.yt {brb:{list, shuffle},
+// sleep:{list, shuffle}, vol}; where each one is up to = db.ytPos[k] {i, t, sub, order, n} (so it carries on when the scene comes back).
+const YT_KS = ['brb', 'sleep'];
+const ytCfg = () => { const y = db.settings.marathon?.yt || {}, one = (o, sh) => ({ list: (Array.isArray(o?.list) ? o.list : []).map(String).filter(Boolean).slice(0, 300), shuffle: o?.shuffle ?? sh }); return { brb: one(y.brb, false), sleep: one(y.sleep, true), vol: Math.max(0, Math.min(100, Number(y.vol ?? 60))) }; };
+const ytMsg = () => ({ type: 'ytCfg', ...ytCfg(), pos: db.ytPos || {} });
+live.ytNow = {};
+function ytFromPlayer(m) {
+  const k = YT_KS.includes(m.k) ? m.k : null; if (!k) return;
+  if (m.type === 'ytErr') { live.ytNow[k] = { ...(live.ytNow[k] || {}), err: `A video couldn't play (YouTube said ${m.code === 101 || m.code === 150 ? "it can't be played outside YouTube" : m.code === 100 ? 'it was removed or is private' : 'the link is wrong'}): skipped`, errAt: Date.now() }; pushState(); return; }
+  const was = live.ytNow[k] || {}, now = { i: Number(m.i) || 0, n: Number(m.n) || 0, t: Number(m.t) || 0, title: String(m.title || '').slice(0, 160), paused: !!m.paused, at: Date.now(), err: was.errAt > Date.now() - 60000 ? was.err : null, errAt: was.errAt };
+  live.ytNow[k] = now;
+  db.ytPos = { ...(db.ytPos || {}), [k]: { i: now.i, t: now.t, sub: Number(m.sub) || 0, order: Array.isArray(m.order) ? m.order.slice(0, 300) : [], n: now.n } }; save();
+  if (was.title !== now.title || was.paused !== now.paused || was.n !== now.n) pushState();
+}
+function ytState() { const c = ytCfg(); return { ...c, now: live.ytNow, count: Object.fromEntries(YT_KS.map(k => [k, ytParse(c[k].list.join('\n')).ok.length])) }; }
+// a pasted block of links → which ones are YouTube videos / playlists (the same rules as ytplay.html)
+function ytParse(text) {
+  const ok = [], bad = [];
+  for (const raw of String(text || '').split(/[\n\r]+|\s{2,}|,\s*(?=https?:)/)) {
+    const t = raw.trim(); if (!t) continue; let it = null;
+    if (/^[\w-]{11}$/.test(t)) it = { v: t };
+    else { try { const u = new URL(/^https?:/i.test(t) ? t : 'https://' + t), h = u.hostname.replace(/^(www|m|music)\./, ''), list = u.searchParams.get('list');
+      if (/^(youtu\.be|youtube\.com|youtube-nocookie\.com)$/.test(h)) {
+        if (list && !/^RD/.test(list)) it = { list };
+        else { const v = h === 'youtu.be' ? u.pathname.slice(1, 12) : u.searchParams.get('v') || (u.pathname.match(/^\/(?:shorts|live|embed|v)\/([\w-]{11})/) || [])[1]; if (v && /^[\w-]{11}$/.test(v)) it = { v }; }
+      } } catch {} }
+    (it ? ok : bad).push(it ? { link: t, ...it } : t);
+  }
+  return { ok, bad, videos: ok.filter(x => x.v && !x.list).length, lists: ok.filter(x => x.list).length };
+}
+app.post('/api/mara/yt', wTry(b => {
+  if (!paid.dev()) throw new Error('The marathon YouTube videos are a 🛠️ dev mode feature.');
+  if (b.cmd) { const k = YT_KS.includes(b.k) ? b.k : null; if (!k || !['next', 'prev', 'pause', 'play', 'reload'].includes(b.cmd)) throw new Error('Which videos?'); broadcast({ type: 'ytCmd', k, cmd: b.cmd }, 'mara'); return ytState(); }
+  const c = { ...(db.settings.marathon || {}) }, y = { ...(c.yt || {}) };
+  for (const k of YT_KS) if (b[k]) { const o = { ...(y[k] || {}) }; if ('list' in b[k]) { const p = ytParse(Array.isArray(b[k].list) ? b[k].list.join('\n') : b[k].list); o.list = p.ok.map(x => x.link); if (db.ytPos?.[k]) db.ytPos[k] = { ...db.ytPos[k], n: -1 }; } if ('shuffle' in b[k]) o.shuffle = !!b[k].shuffle; y[k] = o; }
+  if ('vol' in b) y.vol = Math.max(0, Math.min(100, Math.round(Number(b.vol) || 0)));
+  c.yt = y; db.settings.marathon = c; save(); broadcast(ytMsg(), 'mara'); pushState(); return ytState();
+}));
+app.post('/api/test/yt-links', wTry(b => ytParse(b.text))); // 🧪 which pasted links are YouTube videos / playlists (nothing saved)
+// 🎞️ (1.84.0, Derek: "I should be 60 fps") OBS's frame rate
+app.get('/api/obs/fps', async (req, res) => { try { const r = await obs.obsSetups(); res.json({ fps: r.fps, profile: r.profile }); } catch (e) { res.json({ fps: null, err: e.message }); } });
+app.post('/api/obs/fps', wTry(async b => { const r = await obs.setFps(b.fps); act('stream', `🎞️ Set OBS to ${r.fps} fps (was ${r.was}) in the profile “${r.profile}”`, { icon: '🎞️', kind: 'obs' }); return r; }));
 app.post('/api/mara/cards', wTry(b => { if (!paid.dev()) throw new Error('The marathon title screens are a 🛠️ dev mode feature.'); // ✏️ the title screens' words (+ ⏳ Starting soon / 👋 Be right back)
   const c = { ...(db.settings.marathon || {}) }, k = { ...(c.cards || {}) };
   for (const f of ['title', 'soon', 'brb', 'sleep']) if (f in b) { const v = String(b[f] || '').replace(/\s+/g, ' ').trim().slice(0, 80); if (v) k[f] = v; else delete k[f]; }

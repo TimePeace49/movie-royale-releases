@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8"><title>Movie Royal marathon screen</title>
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
 <style>
-/* 🧰 Marathon title screens (1.79.0, Derek's marathon OBS setup): ?k=soon = ⏳ Starting soon / 👋 Be right back (full screen),
+/* 🧰 Marathon title screens (1.79.0, Derek's marathon OBS setup): ?k=soon = ⏳ Starting soon / 👋 Be right back (full screen), ?k=brb = 👋 Be right back (always; under the BRB videos),
    ?k=chat = the 💬 Just Chatting background, ?k=sleep = the 😴 sleeping banner (see-through, over the camera).
    An 80s synthwave look (our own design). Words + battles owed come from Movie Royal (Marathon tab). ?demo=1 = pretend. */
 html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: Nunito, 'Segoe UI', sans-serif; color: #fff; }
@@ -27,13 +27,13 @@ canvas { position: absolute; inset: 0; }
 <div id="ui"></div>
 <script>
 'use strict';
-const Q = new URLSearchParams(location.search), K = ['soon', 'chat', 'sleep'].includes(Q.get('k')) ? Q.get('k') : 'soon', DEMO = Q.has('demo');
+const Q = new URLSearchParams(location.search), K = ['soon', 'chat', 'sleep', 'brb'].includes(Q.get('k')) ? Q.get('k') : 'soon', DEMO = Q.has('demo');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let C = { title: 'GTA 6 MARATHON', soonMode: 'soon', soon: 'Starting soon', brb: 'Be right back', sleep: 'Shh… sleeping stream' }, owed = null;
 const ui = document.getElementById('ui'), cv = document.getElementById('cv'), g = cv.getContext('2d');
 function draw() {
   const o = owed && owed.n ? `🎟️ ${owed.n} battle${owed.n === 1 ? '' : 's'} owed${owed.paused ? ' · ⏸ paused' : owed.next?.length ? ' · next: ' + owed.next.slice(0, 3).join(', ') : ''}` : '';
-  if (K === 'soon') ui.innerHTML = `<div class="soon"><div class="title">${esc(C.title)}</div><div class="line">${esc(C.soonMode === 'brb' ? C.brb : C.soon)}</div><div class="owed">${esc(o)}</div></div>`;
+  if (K === 'soon' || K === 'brb') ui.innerHTML = `<div class="soon"><div class="title">${esc(C.title)}</div><div class="line">${esc(K === 'brb' || C.soonMode === 'brb' ? C.brb : C.soon)}</div><div class="owed">${esc(o)}</div></div>`;
   else if (K === 'chat') ui.innerHTML = `<div class="chat"><div class="title">${esc(C.title)}</div></div>`;
   else ui.innerHTML = `<div class="sleep"><div class="moon">🌙</div><div><div class="t1">${esc(C.sleep)}</div><div class="t2">${esc(C.title)}${o ? ' · ' + esc(o) : ''}</div></div>${[0, 1.5, 3].map((d, i) => `<span class="z" style="right:${-10 - i * 24}px;top:${10 + i * 6}px;animation-delay:${d}s">z</span>`).join('')}</div>`;
 }
@@ -57,7 +57,12 @@ function bg(t) {
   g.globalAlpha = 1; g.shadowBlur = 0;
   if (dim < 1) { g.fillStyle = `rgba(10,4,24,${1 - dim})`; g.fillRect(0, 0, 1920, 1080); }
 }
-function frame(now) { requestAnimationFrame(frame); if (K === 'sleep') return; bg(now / 1000); }
+// (1.84.0, Derek: OBS missed frames with nothing streaming) the animated background never draws faster than 30 fps, and stops
+// while OBS isn't showing this source (OBS tells browser sources: obsSourceVisibleChanged / obsSourceActiveChanged)
+let obsVis = true, obsAct = true, lastDraw = 0;
+addEventListener('obsSourceVisibleChanged', e => { obsVis = !!e.detail?.visible; });
+addEventListener('obsSourceActiveChanged', e => { obsAct = !!e.detail?.active; });
+function frame(now) { requestAnimationFrame(frame); if (K === 'sleep') return; if (!obsVis && !obsAct) return; if (now - lastDraw < 32) return; lastDraw = now; bg(now / 1000); }
 function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=mara`);
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'sceneCard') { C = { ...C, ...m }; draw(); } else if (m.type === 'maraCount') { owed = { n: m.owed, next: m.next, paused: m.paused }; draw(); } };

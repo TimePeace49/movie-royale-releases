@@ -237,11 +237,16 @@ const IN_APP = window.parent !== window;
 if (IN_APP) { let mt = 0; addEventListener('mousemove', () => { const now = Date.now(); if (now - mt > 200) { mt = now; try { parent.postMessage({ royalMouse: 1 }, '*'); } catch {} } }); } // 🎥 tells the app the mouse moved over the battle (its camera buttons show)
 const RES_SCALE = { '720': 1280 / 1920, '900': 1600 / 1920, '1080': 1, '1440': 2560 / 1920, '2160': 2 };
 let gScale = 1;
-const saving = () => IN_APP && GFX.appSaver && (GFX.hidden || GFX.small);
+// (1.84.0, Derek: OBS missed frames with nothing streaming) a battle browser source OBS isn't showing (hidden in the gameplay
+// scenes, or its scene isn't on) draws small and at 30 fps, like the hidden game inside the app; the battle itself keeps going
+const OBSV = { vis: true, act: true }, obsOff = () => !OBSV.vis && !OBSV.act;
+addEventListener('obsSourceVisibleChanged', e => { OBSV.vis = !!e.detail?.visible; gfxApply(); });
+addEventListener('obsSourceActiveChanged', e => { OBSV.act = !!e.detail?.active; gfxApply(); });
+const saving = () => obsOff() || (IN_APP && GFX.appSaver && (GFX.hidden || GFX.small));
 const lowGfx = () => GFX.quality === 'low' || saving();
 const noGlow = () => lowGfx() || GFX.glow === false; // (advanced: glows off on their own)
 function gfxApply() {
-  let sc = saving() ? (GFX.hidden ? .25 : .5) : (RES_SCALE[GFX.res] || 1) * clamp((Number(GFX.scale) || 100) / 100, .5, 2); // (advanced: render scale)
+  let sc = saving() ? (GFX.hidden || obsOff() ? .25 : .5) : (RES_SCALE[GFX.res] || 1) * clamp((Number(GFX.scale) || 100) / 100, .5, 2); // (advanced: render scale)
   if (IN_APP && GFX.appSaver && !saving()) sc = Math.min(sc, Math.max(.5, Math.ceil(innerWidth * (devicePixelRatio || 1) / 1920 * 8) / 8)); // (inside the app: no sharper than the window it's shown in)
   if (sc !== gScale || cv.width !== Math.round(W * sc)) { gScale = sc; for (const c of [cv, fxc]) { c.width = Math.round(W * sc); c.height = Math.round(H * sc); } }
   ctx.imageSmoothingQuality = fx.imageSmoothingQuality = GFX.quality === 'high' && !saving() ? 'high' : 'low';
@@ -5757,7 +5762,7 @@ window.__royalEvent = e => runEvent({ event: e, by: { name: 'test' }, source: 't
 window.__royalSim = secs => { const dt = 1 / 60; for (let i = 0; i < secs * 60 && phase === 'running'; i++) { runStep(dt); updateFalling(dt); if (MAP.cars) for (const f of fighters) CARS.smoke(f, dt); for (const q of parts) q.life -= dt; for (const q of floaters) q.life -= dt; } parts = parts.filter(q => q.life > 0); floaters = floaters.filter(q => q.life > 0); return { phase, t, alive: alive().length, winner: winner?.label, destined: destined?.label, parts: parts.length }; }; // (fast test runs)
 function frame(now) {
   requestAnimationFrame(frame); // (asked for first: one bad frame can never stop the game screen for good)
-  const cap = saving() && GFX.hidden ? 30 : GFX.fps; // (the hidden game inside the app only needs 30 frames a second)
+  const cap = saving() && (GFX.hidden || obsOff()) ? 30 : GFX.fps; // (the hidden game inside the app only needs 30 frames a second)
   if (cap && last && now - last < 1000 / cap - 1.5) return; // 🎨 frame rate cap / lock
   dtReal = Math.max(0, Math.min(.05, (now - last) / 1000)); last = now; clock += dtReal; // (never backwards: the first frame's time can be from before the page finished loading)
   fpsN++; if (now - fpsAt >= 1000) { fpsShow = Math.round(fpsN * 1000 / (now - fpsAt || 1000)); fpsN = 0; fpsAt = now; }

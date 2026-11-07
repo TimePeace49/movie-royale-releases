@@ -1214,6 +1214,15 @@
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="restTest()" title="Check that a thing with 😴 sits out the next battle and comes back after (nothing is saved)">😴 Check it</button></div>
     <div id="restTestOut" class="help" style="margin-top:8px"></div>
   </div>
+  <div class="card devOnly" id="ytTestCard">
+    <h3>📺 YouTube videos (BRB + Sleeping)</h3>
+    <p class="help">The ☕ Be Right Back and 😴 Sleeping scenes play YouTube links you paste in (🏃 Marathon tab → 📺 YouTube videos → ✏️ Videos…). Paste links here to see which ones Movie Royal understands, or watch the player play them (nothing is saved).</p>
+    <textarea id="ytTestText" rows="3" style="width:100%" spellcheck="false" title="YouTube links to try, one per line">https://www.youtube.com/watch?v=jfKfPfyJRdk
+https://youtu.be/5qap5aO4i9A
+not a link</textarea>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="primary" onclick="ytTest()" title="Check which of these lines are YouTube videos or playlists (nothing saved)">🔍 Check links</button><button onclick="ytTestPlay()" title="Open the player with these links, like OBS shows it (nothing saved)">▶ Try the player</button></div>
+    <div id="ytTestOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card devOnly" id="cvTestCard">
     <h3>🔈 Read chat to me</h3>
     <p class="help">A Windows voice reads chat on the speaker you pick (🏃 Marathon tab → 🔈 Read chat to me), so only you hear it. It's not the same voice as your alerts, and it leaves cheers and channel point messages out (the alerts read those). Type a pretend message to see what it would say, or read it out loud now.</p>
@@ -1567,6 +1576,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['m-ticker', 'mara', '⏸ Pause / ▶ resume battles (📜 paused message)', 'P', () => tickerToggle()],
   ['m-wait', 'mara', '🔔 Chat reminders for people waiting on / off', 'R', () => maraCfg({ waitRemind: S?.mara?.cfg?.waitRemind === false })],
   ['m-ttsskip', 'mara', '⏭️ Skip the text to speech that is talking', 'K', () => ttsCmd('skip')],
+  ['m-ytnext', 'mara', '⏭️ Next YouTube video (BRB / Sleeping)', 'N', () => ytNextKey()],
   ['m-voice', 'mara', '🔈 Read chat to me on / off', 'V', () => cvSet({ on: !S?.mara?.voice?.cfg?.on })],
   ['m-voiceskip', 'mara', '⏭️ Skip the chat message being read', 'B', () => cvDo('skip')],
   ['m-ttsmute', 'mara', '🔇 Mute / 🔊 unmute text to speech', 'M', () => ttsCmd(S?.mara?.tts?.muted ? 'unmute' : 'mute')],
@@ -1950,7 +1960,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/read chat to me|spam bots/i, 'chat'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2654,6 +2664,7 @@ function renderMara() {
   const sh = `<button class="primary big" ${busy || !q.length || !l || M.guess || M.paused ? 'disabled' : ''} onclick="paidStart()" title="Start the first battle in the line (or press ▶ Run on anyone's)">${M.paused ? '⏸ Battles paused' : q.length ? `▶ Run next: ${esc(q[0].who)}` : '🎟️ Nobody waiting'}</button>
     ${ttsCard(M.tts || {})}
     ${cvCard(M.voice || {})}
+    ${ytCard(M.yt)}
     ${scareCard(M.scare || {})}
     ${clockCard(M.clock || {})}
     <div class="card"><h2 style="margin:0 0 4px">🗺️ Map</h2><select id="mDefMap" title="The map for battles where nobody picked one (🎲 Random = a different character map each time)" onchange="maraCfg({defMap:this.value})"><option value="">🎲 Random each battle</option>${(M.maps || []).map(m => `<option value="${esc(m.id)}" ${m.id === M.cfg?.defMap ? 'selected' : ''}>${esc(m.icon)} ${esc(m.name)}</option>`).join('')}</select><div class="help" style="margin:4px 0 0">For battles where nobody picked one. A map chat picked (<b>map #</b>) or the menu on a battle in the line comes first. Only character maps: no ball or car maps in marathon battles.</div></div>
@@ -2805,7 +2816,7 @@ async function tickerToggle() {
 }
 async function tickerHere() { try { const r = await api('/api/mara/ticker/show', { here: true }); toast(`📜 Paused message is on in “${esc(r.scene || 'your scene')}” too`); if (S?.mara) S.mara.ticker = { ...(S.mara.ticker || {}), ...r.ticker }; renderMara(); } catch (e) { toast('⚠️ ' + e.message); } }
 async function tickerCheck() { try { const r = await api('/api/mara/ticker', null, 'GET'); if (S?.mara) { S.mara.ticker = r; renderMara(); } } catch {} }
-setInterval(() => { if (view === 'mara' && S && !document.hidden) tickerCheck(); }, 15000);
+setInterval(() => { if (view === 'mara' && S && !document.hidden) { tickerCheck(); fpsCheck(); } }, 15000);
 function tickerEdit() {
   const C = S?.mara?.ticker?.cfg || {}; let d = $('tkDlg');
   if (!d) { d = document.createElement('dialog'); d.id = 'tkDlg'; document.body.appendChild(d); }
@@ -2826,8 +2837,9 @@ function msCard(M) {
   const O = M.obsSetup || {}, C = M.cards || {};
   return `<div style="border-top:1px solid rgba(255,255,255,.1);margin-top:10px;padding-top:8px"><b>🧰 Marathon OBS setup</b><div class="help" style="margin:2px 0 6px">${O.madeAt ? `Profile <b>${esc(O.profile)}</b> + scene collection <b>${esc(O.collection)}</b>.` : 'A separate OBS profile + scene collection for the marathon (your normal one stays as it is).'}</div>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${O.madeAt ? 'ghost' : 'primary'}" onclick="msOpen()" title="Make (or fix) the marathon's own OBS profile + scene collection">🧰 ${O.madeAt ? 'Marathon OBS setup…' : 'Make my marathon OBS setup…'}</button>${O.madeAt ? `<button onclick="msSwitch('marathon')" title="Switch OBS to the marathon profile + scene collection">🏃 Use it</button>${O.prev ? `<button class="ghost" onclick="msSwitch('normal')" title="Switch OBS back to your normal profile + scene collection (${esc(O.prev.profile)} / ${esc(O.prev.collection)})">↩️ Back to normal</button>` : ''}` : ''}</div>
-    <div class="row" style="gap:6px;align-items:center;margin-top:6px"><span class="help" style="margin:0">Title screen says:</span><select style="width:auto" title="What the ⏳ Starting Soon / BRB scene says" onchange="msCards({soonMode:this.value})"><option value="soon" ${C.soonMode !== 'brb' ? 'selected' : ''}>⏳ ${esc(C.soon || 'Starting soon')}</option><option value="brb" ${C.soonMode === 'brb' ? 'selected' : ''}>👋 ${esc(C.brb || 'Be right back')}</option></select></div>
+    <div class="row" style="gap:6px;align-items:center;margin-top:6px"><span class="help" style="margin:0">Title screen says:</span><select style="width:auto" title="What the ⏳ Starting Soon scene says" onchange="msCards({soonMode:this.value})"><option value="soon" ${C.soonMode !== 'brb' ? 'selected' : ''}>⏳ ${esc(C.soon || 'Starting soon')}</option><option value="brb" ${C.soonMode === 'brb' ? 'selected' : ''}>👋 ${esc(C.brb || 'Be right back')}</option></select></div>
     ${O.madeAt ? micHTML(M.mics || {}) : ''}
+    ${fpsHTML()}
     ${O.madeAt ? `<div class="row" style="gap:6px;align-items:center;margin-top:6px"><span class="help" style="margin:0">🍳 Big cooking camera:</span>${[1, 2, 3].map(n => `<button class="${(O.cookBig || 1) === n ? 'primary' : 'ghost'}" style="padding:4px 12px" onclick="msCook(${n})" title="Make cooking camera ${n} the big one in the 🍳 Cooking scene (the other two go small)">📷 ${n}</button>`).join('')}</div>` : ''}</div>`;
 }
 // 🎙️ (1.82.7, Derek: GoXLR on the PC, wireless mics (USB receiver) for cooking, auto switch) the mics follow the OBS scene
@@ -2835,6 +2847,60 @@ function micHTML(Mi) {
   const on = Mi.auto !== false, mode = Mi.mode === 'cook' ? '🍳 Cooking mics are on' : Mi.mode === 'pc' ? '🎙️ Your PC mic is on' : '';
   return `<div style="margin-top:8px"><b>🎙️ Mics</b><div class="help" style="margin:2px 0 6px">🍳 Cooking scene = your wireless mics, every other marathon scene = your PC mic (GoXLR). ${mode ? `<b>${mode}</b>${Mi.at ? ` (${ago(Mi.at)})` : ''}.` : ''}${Mi.err ? ` <span style="color:var(--gold)">⚠️ ${esc(Mi.err)}</span>` : ''}</div>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${on ? 'primary' : 'ghost'}" onclick="micSet({auto:${!on}})" title="Switch the mics by themselves when you change scenes in OBS (Cooking = wireless mics, other marathon scenes = PC mic)">${on ? '🔁 Auto switch: ON' : '🔁 Auto switch: OFF'}</button><button class="ghost" onclick="micNow('pc')" title="Right now: your PC mic on, the wireless mics off">🎙️ PC mic</button><button class="ghost" onclick="micNow('cook')" title="Right now: the wireless mics on, your PC mic off">🍳 Cooking mics</button><button class="ghost" onclick="micPick()" title="Pick which OBS mics count as your PC mic">⚙ Which mics…</button></div></div>`;
+}
+// 🎞️ (1.84.0, Derek: "I should be 60 fps, or at least I normally do") what OBS runs at + a button to make it 60
+let OBS_FPS = null, fpsAsked = 0;
+async function fpsCheck() { try { const r = await api('/api/obs/fps', null, 'GET'); const was = JSON.stringify(OBS_FPS); OBS_FPS = r; if (was !== JSON.stringify(r)) renderMara(); } catch {} }
+function fpsHTML() {
+  if (!OBS_FPS && Date.now() - fpsAsked > 15000) { fpsAsked = Date.now(); setTimeout(fpsCheck, 50); }
+  const f = OBS_FPS?.fps;
+  return `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px"><span class="help" style="margin:0">🎞️ OBS frame rate: <b>${f ? f + ' fps' : OBS_FPS?.err ? "OBS isn't open" : '…'}</b>${OBS_FPS?.profile ? ` (profile ${esc(OBS_FPS.profile)})` : ''}</span>${f && f !== 60 ? `<button class="primary" style="padding:4px 12px" onclick="fpsSet(60)" title="Set OBS to 60 frames a second (the profile you're on; not while live or recording)">🎞️ Make it 60 fps</button>` : f === 60 ? `<button class="ghost" style="padding:4px 12px" onclick="fpsSet(30)" title="Set OBS to 30 frames a second (half the work for your graphics card; not while live or recording)">30 fps</button>` : ''}</div>`;
+}
+async function fpsSet(n) { try { const r = await api('/api/obs/fps', { fps: n }); toast(`🎞️ OBS is at ${r.fps} fps now (was ${r.was})`); OBS_FPS = { fps: r.fps, profile: r.profile }; renderMara(); } catch (e) { toast('⚠️ ' + e.message); } }
+// 📺 (1.84.0, Derek: "a BRB scene which I will play YouTube videos… YouTube videos playing while sleeping") the videos for the
+// ☕ Be Right Back + 😴 Sleeping scenes (OBS browser sources made by 🧰 Marathon OBS setup)
+const YT_NAME = { brb: '☕ Be Right Back', sleep: '😴 Sleeping' };
+function ytCard(Y) {
+  if (!Y) return '';
+  const row = k => { const n = Y.count?.[k] || 0, N = Y.now?.[k], live = N && Date.now() - N.at < 30000;
+    return `<div style="margin-top:6px"><b>${YT_NAME[k]}</b> <span class="muted">${n ? `${n} link${n === 1 ? '' : 's'}${Y[k].shuffle ? ' · 🔀 shuffled' : ''}` : 'no videos yet'}</span>
+      ${live && N.title ? `<div class="help" style="margin:2px 0">${N.paused ? '⏸' : '▶'} ${esc(N.title)}${N.n > 1 ? ` <span class="muted">(${N.i + 1} of ${N.n})</span>` : ''}</div>` : n ? `<div class="help" style="margin:2px 0">Plays when the ${YT_NAME[k]} scene is on in OBS.</div>` : ''}
+      ${N?.err ? `<div class="help" style="margin:2px 0;color:var(--gold)">⚠️ ${esc(N.err)}</div>` : ''}
+      ${n ? `<div class="row" style="gap:4px;flex-wrap:wrap"><button class="ghost" style="padding:3px 10px" onclick="ytCmd('${k}','prev')" title="Go back to the video before (${YT_NAME[k]} videos)">⏮</button><button class="ghost" style="padding:3px 10px" onclick="ytCmd('${k}','${live && !N.paused ? 'pause' : 'play'}')" title="Pause / play the ${YT_NAME[k]} video">${live && !N.paused ? '⏸' : '▶'}</button><button class="ghost" style="padding:3px 10px" onclick="ytCmd('${k}','next')" title="Skip to the next video (${YT_NAME[k]} videos). Key: N">⏭</button></div>` : ''}</div>`; };
+  return `<div class="card"><h2 style="margin:0 0 4px">📺 YouTube videos</h2><div class="help" style="margin:0 0 4px">They play in OBS in the ☕ Be Right Back and 😴 Sleeping scenes, one after another, and carry on where they left off when the scene comes back. Their sound goes on stream (OBS's Audio Mixer has a slider for each).</div>
+    ${row('brb')}${row('sleep')}
+    <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px"><button class="primary" onclick="ytEdit()" title="Paste the YouTube links (videos or playlists) for the Be Right Back and Sleeping scenes">✏️ Videos…</button><span class="help" style="margin:0">🔊</span><input type="range" min="0" max="100" value="${Y.vol ?? 60}" style="width:110px" title="How loud the YouTube videos are" onchange="ytSave({vol:Number(this.value)})"></div></div>`;
+}
+async function ytTest() { const o = $('ytTestOut'); try { const r = await api('/api/test/yt-links', { text: $('ytTestText').value }); o.innerHTML = `✅ ${r.videos} video${r.videos === 1 ? '' : 's'}, ${r.lists} playlist${r.lists === 1 ? '' : 's'}${r.bad.length ? `<br>⚠️ Not YouTube links (left out): ${r.bad.map(esc).join(', ')}` : ''}`; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
+async function ytTestPlay() {
+  const r = await api('/api/test/yt-links', { text: $('ytTestText').value }); if (!r.ok.length) return toast('⚠️ No YouTube links to play');
+  let d = $('ytPlayDlg'); if (!d) { d = document.createElement('dialog'); d.id = 'ytPlayDlg'; document.body.appendChild(d); }
+  d.innerHTML = `<div class="inner" style="max-width:min(1000px,94vw)"><h2 style="margin-top:0">📺 The player, like OBS shows it</h2><div style="position:relative;width:100%;aspect-ratio:16/9;background:#111;overflow:hidden;border-radius:8px"><iframe src="/ytplay.html?k=brb&demo=1&list=${encodeURIComponent(r.ok.map(x => x.link).join(','))}" style="position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0" id="ytPlayFr" allow="autoplay"></iframe></div><div class="row" style="justify-content:flex-end;margin-top:8px"><button class="primary" onclick="$('ytPlayDlg').close();$('ytPlayDlg').innerHTML=''">Close</button></div></div>`;
+  d.showModal(); const fit = () => { const f = $('ytPlayFr'); if (f) f.style.transform = `scale(${f.parentElement.clientWidth / 1920})`; }; fit(); setTimeout(fit, 50);
+}
+async function ytSave(o) { try { const r = await api('/api/mara/yt', o); if (S?.mara) S.mara.yt = r; renderMara(); return r; } catch (e) { toast('⚠️ ' + e.message); } }
+async function ytCmd(k, cmd) { await ytSave({ k, cmd }); }
+function ytNextKey() { const N = S?.mara?.yt?.now || {}; const k = (N.brb?.at || 0) >= (N.sleep?.at || 0) ? 'brb' : 'sleep'; if (!S?.mara?.yt?.count?.[k]) return toast('📺 No YouTube videos playing'); ytCmd(k, 'next'); toast(`⏭️ Next ${YT_NAME[k]} video`, 2000); }
+function ytEdit() {
+  const Y = S?.mara?.yt || { brb: { list: [] }, sleep: { list: [] } }; let d = $('ytDlg');
+  if (!d) { d = document.createElement('dialog'); d.id = 'ytDlg'; document.body.appendChild(d); }
+  const box = k => `<h3 style="margin:10px 0 4px">${YT_NAME[k]}</h3><textarea id="yt_${k}" rows="6" style="width:100%" spellcheck="false" placeholder="One YouTube link per line (a video or a playlist)" title="The YouTube links for the ${YT_NAME[k]} scene: one per line, videos or playlists">${esc((Y[k]?.list || []).join('\n'))}</textarea>
+    <label class="ck" style="margin:4px 0 0"><input type="checkbox" id="yt_${k}_sh" ${Y[k]?.shuffle ? 'checked' : ''} title="Play the ${YT_NAME[k]} videos in a random order"> <span>🔀 Shuffle</span></label>`;
+  d.innerHTML = `<div class="inner" style="max-width:640px"><h2 style="margin-top:0">📺 YouTube videos</h2>
+    <p class="help">Paste links from YouTube, one per line: a video (youtube.com/watch?v=…, youtu.be/…) or a whole playlist (a link with <b>list=</b>). They loop forever. Some videos can't be played outside YouTube (the owner turned that off): those get skipped. Only use videos you're allowed to play on stream (music especially).</p>
+    ${box('brb')}${box('sleep')}
+    <div id="ytChk" class="help" style="margin-top:8px"></div>
+    <div class="row" style="gap:6px;justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="ytCheck()" title="Check which of the pasted lines are YouTube links (nothing is saved)">🔍 Check links</button><button class="ghost" onclick="$('ytDlg').close()">Cancel</button><button class="primary" onclick="ytEditSave()" title="Save the YouTube links (the scenes start the new list right away)">💾 Save</button></div></div>`;
+  if (!d.open) d.showModal();
+}
+async function ytCheck() {
+  const out = [];
+  for (const k of ['brb', 'sleep']) { const r = await api('/api/test/yt-links', { text: $('yt_' + k).value }); out.push(`${YT_NAME[k]}: ${r.videos} video${r.videos === 1 ? '' : 's'}, ${r.lists} playlist${r.lists === 1 ? '' : 's'}${r.bad.length ? ` · ⚠️ not YouTube links (left out): ${r.bad.slice(0, 4).map(esc).join(', ')}${r.bad.length > 4 ? '…' : ''}` : ''}`); }
+  $('ytChk').innerHTML = out.join('<br>');
+}
+async function ytEditSave() {
+  const r = await ytSave({ brb: { list: $('yt_brb').value, shuffle: $('yt_brb_sh').checked }, sleep: { list: $('yt_sleep').value, shuffle: $('yt_sleep_sh').checked } });
+  if (r) { $('ytDlg').close(); toast(`📺 Saved: ☕ ${r.count.brb} + 😴 ${r.count.sleep} link${r.count.brb + r.count.sleep === 1 ? '' : 's'}`); }
 }
 async function micSet(o) { try { const r = await api('/api/mara/mics', o); if (S?.mara) S.mara.mics = r; renderMara(); } catch (e) { toast('⚠️ ' + e.message); } }
 async function micNow(to) { try { await api('/api/mara/mics/now', { to }); } catch (e) { toast('⚠️ ' + e.message); } }
@@ -2861,7 +2927,7 @@ async function msOpen() {
   d.innerHTML = `<div class="inner" style="max-width:640px"><h2 style="margin-top:0">🧰 Marathon OBS setup</h2>
     <p class="help" style="margin-top:0">Makes a separate OBS setup for the marathon, so your normal one stays exactly as it is:</p>
     <ul class="help" style="margin:0 0 8px 18px;padding:0"><li><b>A new profile</b>, a copy of the one you're on: stream key, video size, frame rate, bitrate and recording settings.</li>
-      <li><b>A new scene collection</b> with 🎮 GTA 6 Gameplay (the game + a small camera, a tiny counter, battle hidden), 🤝 Co-stream (GTA 6) (the game + your camera on your side; your partner's camera goes on theirs, + the 🤝 Co-stream share scene that sends to them), 🍳 Cooking (3 cooking cameras: 1 big + 2 small, battle hidden), 💬 Just Chatting (big camera + the battle), 😴 Sleeping / AFK (camera + a sleeping banner) and ⏳ Starting Soon / BRB (title screen). Every scene gets the battles owed counter + pop-ups${S?.settings?.choiceObs ? ', 🎉 Viewer\'s Choice' : ''}${S?.settings?.rollObs ? ', 📣 roll call' : ''}.</li>
+      <li><b>A new scene collection</b> with 🎮 GTA 6 Gameplay (the game + a small camera, a tiny counter, battle hidden), 🤝 Co-stream (GTA 6) (the game + your camera on your side; your partner's camera goes on theirs, + the 🤝 Co-stream share scene that sends to them), 🍳 Cooking (3 cooking cameras: 1 big + 2 small, battle hidden), ⚔️ Battle (the battle full screen + a small camera), 💬 Just Chatting (your camera full screen), ☕ Be Right Back (your BRB YouTube videos over a Be right back screen), 😴 Sleeping / AFK (your sleeping YouTube videos, a small camera + a sleeping banner) and ⏳ Starting Soon (title screen). Every scene gets the battles owed counter + pop-ups${S?.settings?.choiceObs ? ', 🎉 Viewer\'s Choice' : ''}${S?.settings?.rollObs ? ', 📣 roll call' : ''}.</li>
       <li>OBS can't copy your camera or game capture over, so it makes new ones: you pick your camera and GTA once.</li></ul>
     <div class="grid2"><div><label>Profile name</label><input id="msProf" value="${esc(O.profile || 'GTA 6 Marathon')}" title="The new OBS profile's name"></div><div><label>Scene collection name</label><input id="msColl" value="${esc(O.collection || 'GTA 6 Marathon')}" title="The new OBS scene collection's name"></div></div>
     <h3 style="margin:12px 0 4px">✏️ Title screen words</h3>
