@@ -49,6 +49,20 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .win.on { transform: translate(-50%, 0); }
 .win h1 { margin: 0; font: 400 50px/1.1 'Lilita One', sans-serif; color: #7dffa5; }
 .win div { font-size: 26px; font-weight: 900; margin-top: 4px; }
+/* ⏱️ (1.82.8, Derek: "a total live time counter on all scenes") */
+.clock { position: absolute; display: flex; align-items: center; gap: 12px; padding: 10px 20px 10px 16px; border-radius: 18px; background: linear-gradient(135deg, rgba(30,14,52,.9), rgba(70,20,70,.9)); border: 3px solid #ff4f7a; box-shadow: 0 6px 22px rgba(0,0,0,.45); color: #fff; transition: opacity .4s; }
+.clock.tl { left: 30px; top: 30px; } .clock.tr { right: 30px; top: 30px; } .clock.bl { left: 30px; bottom: 30px; } .clock.br { right: 30px; bottom: 30px; }
+.clock .dot { width: 16px; height: 16px; border-radius: 50%; background: #ff3a4a; box-shadow: 0 0 12px #ff3a4a; animation: ckDot 1.6s ease-in-out infinite; }
+.clock .ct { font: 400 44px/1 'Lilita One', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 1px; text-shadow: 0 3px 0 #6a1030; }
+.clock .cl { font-weight: 900; font-size: 15px; letter-spacing: 2px; text-transform: uppercase; color: #ffd0dc; line-height: 1.1; }
+.clock.paused { border-color: #8a7aa8; } .clock.paused .dot { background: #9a8ab8; box-shadow: none; animation: none; } .clock.paused .ct { color: #d8cfe8; }
+.clock.hide, .clock.gone { opacity: 0; }
+@keyframes ckDot { 50% { opacity: .35; } }
+.count .ck { display: none; } .count.mini .ck { display: flex; align-items: center; gap: 6px; margin-left: 6px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,.25); font: 400 22px/1 'Lilita One', sans-serif; font-variant-numeric: tabular-nums; }
+.count.mini .ck i { width: 10px; height: 10px; border-radius: 50%; background: #ff3a4a; box-shadow: 0 0 8px #ff3a4a; animation: ckDot 1.6s ease-in-out infinite; }
+.count.mini .ck.paused i { background: #9a8ab8; box-shadow: none; animation: none; }
+.count.mini.ckOnly .n, .count.mini.ckOnly .t { display: none; } .count.mini.ckOnly .ck { margin: 0; padding: 0; border: 0; }
+.count.mini.ckOnly.off { opacity: 1; transform: translateX(-50%); }
 /* 🎯 (1.77.0) the big guess pop-up in the middle when guessing starts, then it slides over to the side panel */
 .gbig { position: absolute; left: 50%; top: 50%; width: 1600px; max-height: 1010px; box-sizing: border-box; padding: 26px 36px 22px; border-radius: 30px; transform: translate(-50%, -50%) scale(.6); opacity: 0;
   background: linear-gradient(165deg, rgba(10,30,44,.97), rgba(30,14,52,.97)); border: 5px solid #2fe0c8; box-shadow: 0 20px 80px rgba(0,0,0,.6), 0 0 60px rgba(47,224,200,.4); transition: transform .5s cubic-bezier(.2,1.4,.4,1), opacity .4s; }
@@ -70,7 +84,8 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 
 </style></head>
 <body>
-<div class="count off" id="count"><div class="n" id="cn">0</div><div class="t"><div id="ct">battles owed</div><div class="nx" id="cx"></div></div></div>
+<div class="count off" id="count"><div class="n" id="cn">0</div><div class="t"><div id="ct">battles owed</div><div class="nx" id="cx"></div></div><div class="ck" id="ckm"><i></i><span id="ckmt">0:00:00</span></div></div>
+<div class="clock gone" id="clock"><div class="dot"></div><div><div class="ct" id="clt">0:00:00</div><div class="cl" id="cll">total live time</div></div></div>
 <div class="pop" id="pop"></div>
 <div class="guess" id="guess"></div>
 <div class="gbig" id="gbig"></div>
@@ -81,8 +96,18 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 'use strict';
 const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const DEMO = /[?&]demo/.test(location.search), MINI = /[?&]mini=1/.test(location.search), Q = []; let showing = false, last = null, audio = { on: true, sfx: .7 };
+// ⏱️ total live time: the server sends the total + whether you're live; this page counts on by itself between messages
+const CK = { on: false, ms: 0, live: false, at: 0, corner: 'tr' }; let lastCount = null;
+function hms(ms) { const t = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; }
+function clock(m) { Object.assign(CK, m, { got: Date.now() }); if (lastCount) count(lastCount); clockTick(); }
+function clockTick() {
+  const ms = CK.ms + (CK.live ? Date.now() - CK.got : 0), t = hms(ms), el = $('clock');
+  if (MINI) { el.className = 'clock gone'; const k = $('ckm'); k.style.display = CK.on ? '' : 'none'; k.className = 'ck' + (CK.live ? '' : ' paused'); $('ckmt').textContent = t; return; }
+  el.className = 'clock ' + (CK.corner || 'tr') + (CK.live ? '' : ' paused') + (CK.on ? '' : ' gone'); $('clt').textContent = t; $('cll').textContent = CK.live ? 'total live time' : 'total live time (paused)';
+}
+setInterval(clockTick, 500);
 function count(m) {
-  const c = $('count'); c.className = 'count ' + (MINI ? 'mini tc' : (m.corner || 'bl')) + (m.on ? '' : ' off');
+  const c = $('count'); lastCount = m; c.className = 'count ' + (MINI ? 'mini tc' : (m.corner || 'bl')) + (m.on ? '' : ' off') + (MINI && !m.on && CK.on ? ' ckOnly' : '');
   if (last != null && m.owed > last) { c.classList.add('bump'); setTimeout(() => c.classList.remove('bump'), 450); }
   last = m.owed; $('cn').textContent = m.owed; $('ct').textContent = m.owed === 1 ? 'battle owed' : 'battles owed';
   $('cx').textContent = m.paused ? '⏸ Paused: they run when we\'re back' : m.next?.length ? 'Next: ' + m.next.join(', ') : 'Sub, gift, $5 or 500 bits = a battle';
@@ -151,14 +176,14 @@ function timer(m) {
 }
 function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=mara`);
-  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'maraCount') count(m); else if (m.type === 'maraPop') pop(m); else if (m.type === 'maraGuess') guess(m); else if (m.type === 'maraGuessN') gn(m); else if (m.type === 'maraGuessWin') win(m); else if (m.type === 'maraTimer') timer(m); else if (m.type === 'audio') audio = { on: m.on, sfx: m.sfx }; };
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'maraCount') count(m); else if (m.type === 'maraClock') clock(m); else if (m.type === 'maraPop') pop(m); else if (m.type === 'maraGuess') guess(m); else if (m.type === 'maraGuessN') gn(m); else if (m.type === 'maraGuessWin') win(m); else if (m.type === 'maraTimer') timer(m); else if (m.type === 'audio') audio = { on: m.on, sfx: m.sfx }; };
   ws.onclose = () => setTimeout(connect, 2000);
 }
 if (DEMO) {
   document.body.style.background = '#2a2f3a';
   const maps = ['Crumbling Cliff', 'Deep Space', 'Lava Lake', 'Sweet Donut', 'Pirate Battle', 'Santa\'s Workshop', 'Turkey Trouble', 'Zombie Horde', 'Pompeii', 'Fart Farm', 'Grand Prix', 'Monster Mash'].map((n, i) => ({ n: i + 1, name: n, icon: '🗺️' }));
   const items = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Durian candy', 'Octopus', '10 push-ups', '20 squats', 'MERCY'].map((n, i) => ({ n: i + 1, label: n, luck: i === 3 ? 3 : 0 }));
-  count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' });
+  count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' }); clock({ on: true, ms: (26 * 3600 + 14 * 60 + 3) * 1000, live: true, corner: 'tr' });
   if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 90000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
   else if (/timer/.test(location.search)) timer({ t: { id: 'd', label: '45-second plank', secs: 45, state: 'running', endsAt: Date.now() + 45000, who: 'SpicyPanda', alarmSecs: 5 }, now: Date.now() });
   else pop({ who: 'SpicyPanda', n: 1, what: 'a $5 tip', owed: 4, luckPer: 1, secs: 600, site: 'movie-royal.example.workers.dev/live', maps, items });

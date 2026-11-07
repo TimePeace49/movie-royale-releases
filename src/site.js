@@ -121,7 +121,10 @@ export const resend = () => { sent = {}; rowHash.clear(); tick(true); };
 // stream id (Twitch cuts streams at 48 hours, so a marathon is several streams: each battle points into its own VOD).
 let streamNow = null, streamAt = 0, lookups = {};
 export function setStream(s) { streamNow = s; streamAt = Date.now(); }
-export const vodNow = () => streamNow && Date.now() - streamAt < 20 * 60000 ? { sid: String(streamNow.id), st: streamNow.startedAt } : null;
+export const streamInfoNow = () => streamNow;
+// (1.82.8, Derek restarts the stream for the co-stream and again after it, so each part is its own VOD) only the stream that's
+// on RIGHT NOW counts: segStart = when this live part started; Twitch's info from before a restart is ignored (no link, filled in later)
+export const vodNow = segStart => streamNow && Date.now() - streamAt < 20 * 60000 && (!segStart || streamNow.startedAt >= segStart - 3 * 60000) ? { sid: String(streamNow.id), st: streamNow.startedAt } : null;
 export function vodUrl(vod, at, find) {
   if (!vod?.sid) return null;
   const vid = (db.vodIds || {})[vod.sid];

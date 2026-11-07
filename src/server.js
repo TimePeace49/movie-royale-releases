@@ -271,7 +271,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), signin: db.siteSignin && db.siteSignin.url === site.url() ? db.siteSignin : null, clientTail: String(db.settings.twitchClientId || '').slice(-6), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState() },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState() },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -670,6 +670,40 @@ function maraSeen() { // 👀 when the people with a battle waiting last chatted
   for (const m of live.chatLog) for (const k of [marathon.norm(m.login), marathon.norm(m.name)]) if (want.has(k)) out[k] = Math.max(out[k] || 0, m.at || 0);
   return out;
 }
+// ⏱️ (1.82.8, Derek: "have a total live time counter on all scenes") every time you go live / offline is kept in db.liveLog
+// [{s, e}] (e = null while live). The marathon overlay (in every marathon scene) shows the total live time since the clock
+// started (settings.marathon.clock.from; null = this stream only), counting only the time you were live, + any fix you made.
+function liveLogMark(on) {
+  const L = (db.liveLog ||= []), last = L[L.length - 1], now = Date.now();
+  if (on) { if (!last || last.e) L.push({ s: now, e: null }); }
+  else if (last && !last.e) last.e = now;
+  if (L.length > 2000) L.splice(0, L.length - 2000);
+  setTimeout(() => clockSend(true), 0);
+}
+(function liveLogSeed() { const L = (db.liveLog ||= []), last = L[L.length - 1]; if (db.live && (!last || last.e)) L.push({ s: db.stream?.startedAt || Date.now(), e: null }); else if (!db.live && last && !last.e) last.e = Date.now(); })();
+// mode 'auto' (default) = this stream + the ones right before it with less than CLOCK_GAP offline between (restarts for the
+// co-stream etc. count as one marathon); 'from' = since you pressed 🏁 Start counting now; 'stream' = this stream only.
+const CLOCK_GAP = 6 * 3600000;
+const clockCfg = () => ({ on: true, mode: 'auto', from: null, add: 0, corner: 'tr', ...(db.settings.marathon?.clock || {}) });
+function clockFrom(now = Date.now()) {
+  const c = clockCfg(), L = db.liveLog || [], last = L[L.length - 1];
+  if (!last) return now;
+  if (c.mode === 'from' && c.from) return c.from;
+  if (c.mode === 'stream') return last.s;
+  let i = L.length - 1; while (i > 0 && L[i].s - (L[i - 1].e || L[i].s) < CLOCK_GAP) i--;
+  return L[i].s;
+}
+function clockTotal(now = Date.now()) {
+  const c = clockCfg(), L = db.liveLog || [], from = clockFrom(now);
+  let ms = 0; for (const x of L) { const a = Math.max(x.s, from), b = Math.min(x.e || now, now); if (b > a) ms += b - a; }
+  return Math.max(0, ms + (Number(c.add) || 0));
+}
+const clockMsg = () => { const c = clockCfg(); return { type: 'maraClock', on: paid.dev() && c.on !== false, ms: clockTotal(), live: !!db.live, at: Date.now(), corner: c.corner || 'tr' }; };
+const clockState = () => { const c = clockCfg(); return { ...c, ms: clockTotal(), live: !!db.live, text: hms(clockTotal()), since: (db.liveLog || []).length ? clockFrom() : null, gapH: CLOCK_GAP / 3600000 }; };
+let clockKey = '';
+function clockSend(force) { const m = clockMsg(), k = [m.on, m.live, m.corner, Math.round(m.ms / 30000)].join('|'); if (!force && k === clockKey) return; clockKey = k; broadcast(m, 'mara'); }
+setInterval(() => clockSend(), 10000);
+const hms = ms => { const t = Math.floor(ms / 1000); return `${Math.floor(t / 3600)}:${String(Math.floor(t / 60) % 60).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 // 🔔 (1.82.6, Derek: "if someone has a battle queued for longer than 30 mins, when they type in chat remind me in chat they have a
 // battle queued; easy button on the Marathon tab to turn it on and off") once per person per waitMins.
 const maraWaitAt = new Map();
@@ -789,7 +823,24 @@ site.setHooks({
   predDone: m => { if (m.total && db.settings.sitePredSay !== false) paidSay(`🔮 ${m.nRight} of ${m.total} on the website called it: ${m.winner}${m.nRight ? ` (+${m.pts} pts${m.nRight <= 3 ? ': ' + m.right.join(', ') : ''})` : ''}. Guess the next one: ${db.settings.siteCommand || '!site'}`); if (m.total) act('chat', `${m.nRight} of ${m.total} called “${m.winner}” on the viewer website (+${m.pts} points each)`, { icon: '🔮', kind: 'guess' }); },
   pollResult: m => { const tot = m.counts.reduce((a, b) => a + b, 0), top = Math.max(...m.counts), wins = m.opts.filter((_, i) => m.counts[i] === top && top > 0); if (db.sitePoll?.id === m.id) { db.sitePoll.ended = Date.now(); db.sitePoll.counts = m.counts; save(); } paidSay(tot ? `🗳️ “${m.q}”: ${wins.join(' & ')} ${wins.length > 1 ? 'tie' : 'wins'} (${top} of ${tot} votes)` : `🗳️ “${m.q}”: nobody voted`); act('chat', `Poll “${m.q}”: ${m.opts.map((o, i) => `${o} ${m.counts[i]}`).join(' · ')}`, { icon: '🗳️', kind: 'poll' }); broadcast({ type: 'toast', text: `🗳️ Poll over: ${tot ? hEsc(wins.join(' & ')) + ` (${top} of ${tot} votes)` : 'nobody voted'}` }, 'control'); }
 });
-async function siteStreamCheck() { if (!twitch.status.userId) return; try { const s2 = await twitch.streamInfo(); site.setStream(s2); } catch {} }
+async function siteStreamCheck() { if (!twitch.status.userId) return; try { const s2 = await twitch.streamInfo(); site.setStream(s2); if (s2) vodBackfill(s2); } catch {} }
+// ▶ (1.82.8) battles that started before Twitch knew about a restarted stream get their VOD spot now (same live part only)
+function vodBackfill(s2) {
+  const seg = liveSegStart(); if (!seg || !(s2.startedAt >= seg - 3 * 60000)) return;
+  let n = 0;
+  for (const h of (db.history || []).slice(-300)) if (!h.vod && !h.test && (h.started || h.at) >= Math.max(seg, s2.startedAt - 60000)) { h.vod = { sid: String(s2.id), st: s2.startedAt }; n++; }
+  if (n) { historyVersion++; save(); }
+}
+// ▶ (1.82.8, Derek deletes the co-stream part's VOD) a VOD that's gone from Twitch stops getting links: recent ones are re-checked
+async function vodRecheck() {
+  if (!twitch.status.userId || !db.vodIds) return;
+  const week = Date.now() - 7 * 86400000, recent = new Set((db.history || []).filter(h => h.vod?.sid && (h.started || h.at) > week).map(h => h.vod.sid));
+  let changed = false;
+  for (const sid of recent) { if (!db.vodIds[sid]) continue; try { const id = await twitch.vodFor(sid); if (!id) { db.vodIds[sid] = 0; changed = true; act('stream', '▶ A VOD is gone from Twitch, so the website stops linking to it', { icon: '▶', kind: 'vod' }); } else if (id !== db.vodIds[sid]) { db.vodIds[sid] = id; changed = true; } } catch {} }
+  if (changed) { historyVersion++; save(); }
+}
+setInterval(vodRecheck, 30 * 60000); setTimeout(vodRecheck, 90000);
+const liveSegStart = () => { const L = db.liveLog || [], last = L[L.length - 1]; return db.live && last && !last.e ? last.s : null; };
 setInterval(siteStreamCheck, 5 * 60000); setTimeout(siteStreamCheck, 20000);
 let siteCd = 0;
 function siteChat(m) { // !site → the link
@@ -986,6 +1037,8 @@ const twitchHandlers = {
     if (!!db.live === !!isLive) return;
     if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
     act('stream', isLive ? 'You went live 🔴' : 'The stream ended ⚫', { icon: isLive ? '🔴' : '⚫', kind: isLive ? 'live' : 'offline' }); // 🧾
+    liveLogMark(!!isLive); // ⏱️ the marathon's total live time
+    if (isLive) { for (const ms of [5000, 30000, 90000, 180000]) setTimeout(siteStreamCheck, ms); } else site.setStream(null); // ▶ a restarted stream = a new VOD: find its id right away
     db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
@@ -1240,7 +1293,7 @@ wss.on('connection', (ws, req) => {
   if (!isLocal(req)) return ws.close(4001, 'local only');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
-  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
+  if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
@@ -4037,7 +4090,7 @@ async function startRound(opts = {}) {
   if (!opts.test) { try { inactive.backfill(list); inactive.entered(list, fighters); } catch (e) { console.error('[inactive]', e.message); } } // 🧹 everyone whose movie is in this battle entered it
   if (list.type === 'movies' && !opts.test) for (const e of list.entries) if (e.skipNext) { delete e.skipNext; e.skippedAt = Date.now(); } // ⏭️ sat out this battle: back in the next one
   { const m0 = currentMap(); if (isRaceMap(m0) && fighters.length > raceMax()) { live.raceSkip = m0; live.map = nonRaceMap(); broadcast({ type: 'toast', text: `🏁 ${fighters.length} pieces is too many for a race (${raceMax()} at most), so it's ${hEsc(mapById(live.map)?.name || live.map)} instead.` }, 'control'); } }
-  live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), pid: opts.test ? null : sitePid, ...(opts.paid ? { paid: opts.paid } : {}), ...(!opts.test && site.vodNow() ? { vod: site.vodNow() } : {}), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test; if (!opts.test) sitePid = uid(); // (🎟️ who paid, ▶ the VOD spot, 🔮 the viewer website's guesses made while it waited)
+  live.game = { id: uid(), listId: list.id, fighters, total, map: currentMap(), secs: fightSecs(list), startedAt: Date.now(), pid: opts.test ? null : sitePid, ...(opts.paid ? { paid: opts.paid } : {}), ...(!opts.test && db.live && site.vodNow(liveSegStart()) ? { vod: site.vodNow(liveSegStart()) } : {}), ...(opts.test ? { test: true, testName: `🧪 Test: ${list.name}` } : {}) }; live.mapUsed = !opts.test; if (!opts.test) sitePid = uid(); // (🎟️ who paid, ▶ the VOD spot, 🔮 the viewer website's guesses made while it waited)
   live.phase = 'lobby'; live.claim = null;
   { const tw = fighters.reduce((a, x) => a + (x.weight || 1), 0); act('battle', `${opts.test ? 'Practice battle' : 'Battle'} started: “${list.name}” on ${mapLabel(live.game.map)} with ${fighters.length} ${list.type === 'chat' ? 'people' : 'pieces'}${total > fighters.length ? ` (of ${total})` : ''}${opts.paid ? ` · 🎟️ paid for by ${opts.paid.who} (${opts.paid.what})` : ''}`, { icon: opts.test ? '🧪' : '⚔️', kind: 'start', list: list.name, test: !!opts.test, items: [...fighters].sort((a, b) => (b.weight || 1) - (a.weight || 1)).map(x => fighterLine(x, tw)) }); } // 🧾 (with everyone's chance + luck)
   if (isCharMap(live.game.map)) return startCharFight(list.screenTitle || list.name, !!opts.test); // 🧍 a character-only map: the card fight engine plays it
@@ -4541,6 +4594,23 @@ app.post('/api/mara/mics', wTry(b => {
 app.post('/api/mara/mics/now', wTry(async b => { if (!paid.dev()) throw new Error('The mic switching is a 🛠️ dev mode feature.'); if (!['cook', 'pc'].includes(b.to)) throw new Error('Pick cook or pc.'); return micApply(b.to, 'you pressed the button'); }));
 // 🧪 what switching would do (nothing changes in OBS): {to: 'cook'|'pc'}
 app.post('/api/test/mara-mics', wTry(async b => { const r = await obs.audioInputs(); return { to: b.to, ...(await micPlan(b.to === 'pc' ? 'pc' : 'cook', r.inputs)), inputs: r.inputs, scene: r.scene, remembered: db.micMuted || [] }; }));
+app.post('/api/mara/clock', wTry(b => {
+  if (!paid.dev()) throw new Error('The live time counter is a 🛠️ dev mode feature.');
+  const c = { ...clockCfg() };
+  if (typeof b.on === 'boolean') c.on = b.on;
+  if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner;
+  if (b.start) { c.mode = 'from'; c.from = Date.now(); c.add = 0; act('stream', '⏱️ The marathon live time counter starts now (0:00:00)', { icon: '⏱️', kind: 'clock' }); }
+  if (b.stream) { c.mode = 'stream'; c.add = 0; act('stream', '⏱️ The live time counter shows this stream only', { icon: '⏱️', kind: 'clock' }); }
+  if (b.auto) { c.mode = 'auto'; c.from = null; c.add = 0; act('stream', '⏱️ The live time counter is back on automatic (stream restarts count as one marathon)', { icon: '⏱️', kind: 'clock' }); }
+  if (b.addMins != null) { const was = clockTotal(); c.add = (Number(c.add) || 0) + Math.round(Number(b.addMins) || 0) * 60000; db.settings.marathon = { ...(db.settings.marathon || {}), clock: c }; const now = clockTotal(); if (now <= 0 && b.addMins < 0) c.add -= now; act('stream', `⏱️ Fixed the live time counter: ${hms(was)} → ${hms(clockTotal())}`, { icon: '⏱️', kind: 'clock' }); }
+  if (b.set != null) { const want = Math.max(0, Math.round(Number(b.set) || 0)) * 1000; c.add = 0; db.settings.marathon = { ...(db.settings.marathon || {}), clock: c }; c.add = want - clockTotal(); act('stream', `⏱️ Set the live time counter to ${hms(want)}`, { icon: '⏱️', kind: 'clock' }); }
+  db.settings.marathon = { ...(db.settings.marathon || {}), clock: c }; save(); clockSend(true); pushState();
+  return clockState();
+}));
+// 🧪 ▶ which stream new battles link to right now, and the newest battles' VOD spots (nothing changes)
+app.get('/api/test/vod-check', wTry(() => { const si = site.streamInfoNow(), seg = liveSegStart(); return { live: !!db.live, liveSince: seg, twitchStream: si ? { id: si.id, startedAt: si.startedAt } : null, linksTo: db.live ? site.vodNow(seg) : null, recent: (db.history || []).slice(-8).reverse().map(h => ({ label: h.winner?.label, at: h.started || h.at, sid: h.vod?.sid || null, vod: h.vod ? (db.vodIds || {})[h.vod.sid] === 0 ? 'gone' : (db.vodIds || {})[h.vod.sid] ? 'found' : 'not found yet' : 'none' })) }; }));
+// 🧪 the counter right now + the live times it adds up (nothing changes)
+app.get('/api/test/mara-clock', wTry(() => ({ ...clockState(), segs: (db.liveLog || []).slice(-8).map(x => ({ s: x.s, e: x.e })) })));
 app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn', 'waitRemind']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.waitMins != null) c.waitMins = Math.max(1, Math.min(600, Math.round(Number(b.waitMins) || 30))); if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; if (typeof b.defMap === 'string') { if (b.defMap && !marathon.maps().some(m => m.id === b.defMap)) throw new Error('That map isn\'t one of the marathon\'s maps.'); c.defMap = b.defMap; if (live.phase !== 'lobby' && live.phase !== 'running' && maraCharList(getList(db.activeListId)) && !live.maraGuess) { live.map = null; live.mapPick = false; setTimeout(() => refreshPreview(true), 0); } act('battle', b.defMap ? `set the marathon map to ${mapLabel(b.defMap)} (for battles where nobody picked one)` : 'set the marathon map back to 🎲 random', { icon: '🗺️', who: streamerName(), kind: 'setting' }); } db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
 app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
   const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');

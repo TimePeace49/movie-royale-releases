@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.8
+- 🛠️⏱️ **Total live time on every marathon scene** (Derek): the marathon overlay shows how long you've been live (top right; in 🎮 gameplay right next to the small battles owed counter). Only live time counts: when you restart the stream (for the co-stream and after it) it pauses and carries on when you're back. 🏃 Marathon tab → ⏱️ Total live time: 🔁 Automatic (streams with less than 6 hours offline between them count as one marathon), 🏁 Start counting now, 📺 This stream only, ✏️ Fix the time…, which corner, and on / off.
+- 🛠️▶ **VOD links after stream restarts:** each restart is its own Twitch VOD, so battles now always link into the VOD of the stream they were in. Right after a restart (before Twitch knows the new stream) the link fills in by itself a minute later instead of pointing at the old VOD. A VOD you delete (like the co-stream part) stops getting links on the website.
+  - Try it: 🧪 Test tab → ⏱️ Total live time (Show the counter, 👀 Preview, 🎮 Small one, ▶ VOD links).
+
 ## 1.82.7
 - 🛠️🎙️ **Mics switch with the scene** (Derek: GoXLR on the PC, wireless mics for cooking): 🧰 Marathon OBS setup now adds “🎙️ Cooking mics (wireless)” to the 🍳 Cooking scene and picks your wireless mics' USB receiver by itself (not the GoXLR or a camera mic). With 🔁 Auto switch on, going to 🍳 Cooking turns the wireless mics on and mutes your PC mic (GoXLR); going to any other marathon scene turns the wireless mics off and puts back exactly the mics it muted. Your normal OBS scenes are left alone.
   - 🏃 Marathon tab → 📺 On stream → 🎙️ Mics: 🔁 Auto switch ON / OFF, 🎙️ PC mic / 🍳 Cooking mics (switch right now), ⚙ Which mics… (pick which mics count as your PC mic). Press 🧰 Marathon OBS setup again to add the wireless mics.
