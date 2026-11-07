@@ -271,7 +271,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), signin: db.siteSignin && db.siteSignin.url === site.url() ? db.siteSignin : null, clientTail: String(db.settings.twitchClientId || '').slice(-6), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg() },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState() },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -4477,6 +4477,37 @@ app.post('/api/test/scare-pop', wTry(b => {
   const j = b.dry ? scareJob(a) : scareFor(a, true);
   return { job: j, desktop: !!globalThis.__desktop?.scarePop, queued: scareQ.length };
 }));
+// 🎙️ (1.82.7, Derek: "for my PC setup I use my GoXLR, for cooking streams wireless mics" + picked auto switch, USB receiver)
+// In the marathon scenes: going to 🍳 Cooking mutes the PC mics that were on (GoXLR) and turns the wireless mics on; leaving
+// it turns the wireless mics off and puts back exactly the mics it muted. Scenes from your normal setup are left alone.
+const micCfg = () => ({ auto: true, pc: null, ...(db.settings.marathon?.mics || {}) });
+const micLive = { mode: null, at: 0, err: null };
+const micState = () => ({ ...micCfg(), mode: micLive.mode, at: micLive.at, err: micLive.err, watching: obs.watching() });
+function micModeFor(scene) { const S = obs.MARA_SCENES; return scene === S.cook ? 'cook' : (Object.values(S).includes(scene) || scene === obs.CO_SCENE) ? 'pc' : null; }
+async function micPlan(mode, inputs) { // → {mute, unmute} (names)
+  const c = micCfg(), names = inputs.map(i => i.name), cook = names.includes(obs.COOK_MIC) ? [obs.COOK_MIC] : [];
+  const pcAll = Array.isArray(c.pc) && c.pc.length ? c.pc.filter(n => names.includes(n)) : names.filter(n => n !== obs.COOK_MIC && (!db.settings.obsMic || n === db.settings.obsMic));
+  if (mode === 'cook') return { mute: pcAll.filter(n => inputs.find(i => i.name === n)?.muted === false), unmute: cook };
+  const back = (db.micMuted || []).filter(n => names.includes(n));
+  return { mute: cook, unmute: back.length ? back : [] };
+}
+async function micApply(mode, why) {
+  const { inputs } = await obs.audioInputs(), plan = await micPlan(mode, inputs);
+  const done = await obs.setMutes(plan.mute, plan.unmute);
+  if (mode === 'cook') db.micMuted = [...new Set([...(db.micMuted || []), ...done.muted])]; else db.micMuted = [];
+  save(); micLive.mode = mode; micLive.at = Date.now(); micLive.err = null;
+  const txt = mode === 'cook' ? `🍳 Cooking mics on${done.muted.length ? `, ${done.muted.join(', ')} muted` : ''}` : `🎙️ PC mic back on${done.unmuted.length ? ` (${done.unmuted.join(', ')})` : ''}${done.muted.length ? `, wireless mics off` : ''}`;
+  act('stream', `${txt}${why ? ` (${why})` : ''}`, { icon: '🎙️', kind: 'mics' });
+  broadcast({ type: 'toast', text: '🎙️ ' + hEsc(txt) }, 'control'); pushState();
+  return { mode, ...done };
+}
+let micWatchOn = false;
+function micWatch() {
+  const want = paid.dev() && micCfg().auto !== false && !!db.settings.marathon?.obsSetup?.madeAt && db.settings.obsOn !== false;
+  if (want && !micWatchOn) { micWatchOn = true; obs.watchScenes((scene, first) => { const m = micModeFor(scene); if (!m || (first && m === 'pc' && !(db.micMuted || []).length) || m === micLive.mode && !first) return; micApply(m, first ? 'OBS was already on ' + scene : 'switched to ' + scene).catch(e => { micLive.err = e.message; }); }); }
+  else if (!want && micWatchOn) { micWatchOn = false; obs.stopWatch(); }
+}
+setTimeout(micWatch, 5000); setInterval(micWatch, 60000);
 // 🗣️ (1.82.3, Derek: "a stop button on the marathon battle tab to mute tts or skip tts") the TTS lives in the StreamElements
 // jump-scare alerts (they read tips / bits / the 500-point reward). Movie Royal can't reach that widget directly, so the
 // buttons type the widget's chat commands as you (no name tag): every copy of the overlay (OBS + the phone) hears them.
@@ -4501,6 +4532,15 @@ app.post('/api/test/mara-wait', wTry(() => {
   const it = paid.queue()[0]; if (!it) throw new Error('Nobody is in the line. Add a pretend one first (🎟️ Paid battles test card).');
   return { text: maraWaitChat({ login: it.login || it.who, name: it.who, text: 'hi' }, true), on: marathon.cfg().waitRemind !== false, mins: Number(marathon.cfg().waitMins) || 30, waited: Math.round((Date.now() - it.at) / 60000) };
 }));
+app.get('/api/mara/mics', wTry(async () => { let inputs = null, scene = null, err = null; try { const r = await obs.audioInputs(); inputs = r.inputs; scene = r.scene; } catch (e) { err = e.message; } return { ...micState(), inputs, scene, err, cookMic: obs.COOK_MIC }; }));
+app.post('/api/mara/mics', wTry(b => {
+  if (!paid.dev()) throw new Error('The mic switching is a 🛠️ dev mode feature.');
+  const c = { ...micCfg() }; if (typeof b.auto === 'boolean') c.auto = b.auto; if (b.pc === null || Array.isArray(b.pc)) c.pc = b.pc ? b.pc.map(String).slice(0, 20) : null;
+  db.settings.marathon = { ...(db.settings.marathon || {}), mics: { auto: c.auto, pc: c.pc } }; save(); micWatch(); pushState(); return micState();
+}));
+app.post('/api/mara/mics/now', wTry(async b => { if (!paid.dev()) throw new Error('The mic switching is a 🛠️ dev mode feature.'); if (!['cook', 'pc'].includes(b.to)) throw new Error('Pick cook or pc.'); return micApply(b.to, 'you pressed the button'); }));
+// 🧪 what switching would do (nothing changes in OBS): {to: 'cook'|'pc'}
+app.post('/api/test/mara-mics', wTry(async b => { const r = await obs.audioInputs(); return { to: b.to, ...(await micPlan(b.to === 'pc' ? 'pc' : 'cook', r.inputs)), inputs: r.inputs, scene: r.scene, remembered: db.micMuted || [] }; }));
 app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn', 'waitRemind']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.waitMins != null) c.waitMins = Math.max(1, Math.min(600, Math.round(Number(b.waitMins) || 30))); if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; if (typeof b.defMap === 'string') { if (b.defMap && !marathon.maps().some(m => m.id === b.defMap)) throw new Error('That map isn\'t one of the marathon\'s maps.'); c.defMap = b.defMap; if (live.phase !== 'lobby' && live.phase !== 'running' && maraCharList(getList(db.activeListId)) && !live.maraGuess) { live.map = null; live.mapPick = false; setTimeout(() => refreshPreview(true), 0); } act('battle', b.defMap ? `set the marathon map to ${mapLabel(b.defMap)} (for battles where nobody picked one)` : 'set the marathon map back to 🎲 random', { icon: '🗺️', who: streamerName(), kind: 'setting' }); } db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
 app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
   const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');
@@ -4537,6 +4577,7 @@ app.post('/api/obs/marathon-setup', wTry(async b => {
     c.obsSetup = o; c.obs = true; c.scenes = r.scenes; db.settings.marathon = c;
     if (db.costream && !db.costream.scene) db.costream.scene = obs.MARA_SCENES.co; // 🤝 your partner's camera + battle go in the co-stream gameplay scene
     save(); pushState();
+    setTimeout(micWatch, 500); // 🎙️ start switching the mics with the scenes
     act('stream', `🧰 Made the marathon OBS setup: profile “${profile}” + scene collection “${collection}”`, { icon: '🧰', kind: 'obs' });
   }
   return r;

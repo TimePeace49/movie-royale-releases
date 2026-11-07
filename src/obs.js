@@ -354,6 +354,7 @@ export const MARA_SCENES = { game: '🎮 GTA 6 Gameplay', co: '🤝 Co-stream (G
 export const COOK_CAMS = ['📷 Cooking cam 1', '📷 Cooking cam 2', '📷 Cooking cam 3'];
 const COOK_BOXES = [[0, 0, .75, .75], [.75, 0, .25, .25], [.75, .25, .25, .25]];
 export const MARA_MINI = 'Movie Royal marathon (small)';
+export const COOK_MIC = '🎙️ Cooking mics (wireless)'; // (1.82.7) the USB receiver of Derek's wireless mics: only in the 🍳 Cooking scene
 const GAME_CAM = [.81, .785, .175, .19];
 /** 🍳 make cooking camera n (1–3) the big one; the other two go small in order. */
 export async function cookBig(n) {
@@ -474,6 +475,8 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
       } catch { say('🍳', 'Double-click each 📷 Cooking cam in OBS and pick its camera.'); }
     }
     await put(S.cook, BATTLE, 'browser_source', browser(urls.game), [.03, .05, .69, .65], false);
+    // 🎙️ (1.82.7, Derek: "GoXLR on the PC, wireless mics for cooking", USB receiver) the wireless mics live in the cooking scene
+    { const had = inputs.has(COOK_MIC); await put(S.cook, COOK_MIC, 'wasapi_input_capture', { device_id: '' }, FULL); if (!had && inputs.has(COOK_MIC)) say('🎙️', await pickCookMic(call)); }
     // 💬 just chatting: background, big camera on the left, the battle on the right
     await put(S.chat, 'Movie Royal background (chatting)', 'browser_source', browser(urls.card('chat')), FULL);
     await put(S.chat, CAM, ...cam, [.025, .22, .37, .56]);
@@ -497,3 +500,61 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
     return { steps: out, prev, scenes: Object.values(S), profile, collection };
   });
 }
+
+// 🎙️ (1.82.7, Derek: "for my PC setup I use my GoXLR, for cooking streams wireless mics" → auto switch) the mics
+const NOT_RX = /goxlr|tc-helicon|virtual|cable|voicemeeter|nvidia|broadcast|steam|stereo mix|webcam|brio|c9[0-9]{2}|usb video|camera|^default$/i;
+const RX = /wireless|dji|r[oø]de|hollyland|lark|saramonic|boya|sennheiser|shure|synco|comica|\bgo\b|go ii|rx|receiver|lav/i;
+/** The wireless mics' USB receiver: the best-looking microphone that isn't the GoXLR or a camera. Returns a line for the setup report. */
+async function pickCookMic(call) {
+  try {
+    const devs = ((await call('GetInputPropertiesListPropertyItems', { inputName: COOK_MIC, propertyName: 'device_id' })).propertyItems || []).filter(x => x.itemEnabled !== false && x.itemValue && x.itemValue !== 'default');
+    const ok = devs.filter(d => !NOT_RX.test(d.itemName || '')), best = ok.find(d => RX.test(d.itemName || '')) || (ok.length === 1 ? ok[0] : null);
+    if (!best) return `“${COOK_MIC}” is in the 🍳 Cooking scene: plug in the wireless mics' receiver, then double-click it in OBS and pick it${ok.length ? ` (OBS sees: ${ok.map(d => d.itemName).join(', ')})` : ''}.`;
+    await call('SetInputSettings', { inputName: COOK_MIC, inputSettings: { device_id: best.itemValue }, overlay: true });
+    return `“${COOK_MIC}” = ${best.itemName} (only heard in the 🍳 Cooking scene). Wrong one? Double-click it in OBS and pick another.`;
+  } catch { return `Double-click “${COOK_MIC}” in OBS and pick your wireless mics' receiver.`; }
+}
+/** Every mic-type source OBS has (incl. the global Mic/Aux), with whether it's muted. */
+export async function audioInputs() {
+  return session(async call => {
+    const ins = ((await call('GetInputList')).inputs || []).filter(i => MIC_KIND.test(i.inputKind || ''));
+    const out = [];
+    for (const i of ins) { const m = await call('GetInputMute', { inputName: i.inputName }).catch(() => null); out.push({ name: i.inputName, kind: i.inputKind, muted: m ? !!m.inputMuted : null }); }
+    const sc = (await call('GetCurrentProgramScene').catch(() => ({}))).currentProgramSceneName || null;
+    return { inputs: out, scene: sc };
+  });
+}
+/** Mute some sources and unmute others (names OBS doesn't have are skipped). */
+export async function setMutes(mute = [], unmute = []) {
+  return session(async call => {
+    const have = new Set(((await call('GetInputList')).inputs || []).map(i => i.inputName)), done = { muted: [], unmuted: [] };
+    for (const n of mute) if (have.has(n)) { await call('SetInputMute', { inputName: n, inputMuted: true }).catch(() => {}); done.muted.push(n); }
+    for (const n of unmute) if (have.has(n)) { await call('SetInputMute', { inputName: n, inputMuted: false }).catch(() => {}); done.unmuted.push(n); }
+    return done;
+  });
+}
+/** Stay connected and tell onScene(name) every time OBS changes scene (and once when it connects). Reconnects by itself. */
+let watcher = null;
+export function watchScenes(onScene) {
+  stopWatch();
+  const me = { on: true, ws: null, t: null };
+  watcher = me;
+  const again = () => { if (me.on) me.t = setTimeout(go, 15000); };
+  function go() {
+    if (!me.on) return;
+    const s = db.settings, ws = new WebSocket((s.obsUrl || 'ws://127.0.0.1:4455').trim()); me.ws = ws;
+    ws.on('error', () => {});
+    ws.on('close', () => { if (me.ws === ws) { me.ws = null; again(); } });
+    ws.on('message', raw => {
+      let m; try { m = JSON.parse(raw); } catch { return; }
+      if (m.op === 0) { const auth = m.d.authentication; if (auth && !s.obsPassword) return ws.close(); ws.send(JSON.stringify({ op: 1, d: { rpcVersion: 1, eventSubscriptions: 4, ...(auth ? { authentication: sha(sha(s.obsPassword + auth.salt) + auth.challenge) } : {}) } })); }
+      else if (m.op === 2) ws.send(JSON.stringify({ op: 6, d: { requestType: 'GetCurrentProgramScene', requestId: 'w1', requestData: {} } }));
+      else if (m.op === 7 && m.d.requestId === 'w1' && m.d.requestStatus?.result) { try { onScene(m.d.responseData.currentProgramSceneName, true); } catch {} }
+      else if (m.op === 5 && m.d.eventType === 'CurrentProgramSceneChanged') { try { onScene(m.d.eventData.sceneName, false); } catch {} }
+    });
+  }
+  go();
+  return true;
+}
+export function stopWatch() { if (!watcher) return; watcher.on = false; clearTimeout(watcher.t); try { watcher.ws?.close(); } catch {} watcher = null; }
+export const watching = () => !!(watcher && watcher.ws && watcher.ws.readyState === 1);

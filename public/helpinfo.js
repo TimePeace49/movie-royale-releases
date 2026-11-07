@@ -85,6 +85,13 @@ H(/^tip:play the scare's sound on this pc too/i, '🔊 Sound', 'Plays the scare 
 H(/^tip:scare me for/i, '😱 Which alerts', 'Pick which alerts pop a scare up on your screen.');
 H(/^tip:pop a (small|medium|big) scare/i, '😱 Try a scare', 'Pops that scare up right now (on every screen, or the screen your mouse is on if you picked that), so you can see how it looks over a game.');
 H(/^tip:which scare (100 bits|1,000 bits|a \$30 tip|a 20 gift sub bomb|a raid of 5) gets/i, '😱 Which scare?', 'Shows which scare (small / medium / big) that alert would get. Nothing pops up.', ['test']);
+H(/^🎟️ nobody waiting$/i, '🎟️ Nobody waiting', 'Nobody has a marathon battle in the line right now. When someone does, this button runs the first one.');
+H(/^tip:switch the mics by themselves when you change scenes/i, '🔁 Mic auto switch', 'When you change scenes in OBS: 🍳 Cooking = your wireless mics on and your PC mic (GoXLR) muted; any other marathon scene = the wireless mics off and your PC mic back on (only the mics it muted come back). Scenes from your normal OBS setup are left alone. Press to turn it on / off.');
+H(/^tip:right now: your pc mic on/i, '🎙️ PC mic', 'Right now: your PC mic (GoXLR) back on and the wireless mics off, whatever scene you are on.');
+H(/^tip:right now: the wireless mics on/i, '🍳 Cooking mics', 'Right now: the wireless mics on and your PC mic muted, whatever scene you are on.');
+H(/^tip:pick which obs mics count as your pc mic/i, '⚙ Which mics', 'Pick which OBS mics get muted while you are cooking: every mic that is on (except the wireless ones), or only the ones you tick.');
+H(/^tip:count “.*” as your pc mic/i, '🎙️ PC mic', 'Tick it to have it muted while you are in the Cooking scene (and turned back on after).');
+H(/^tip:what (going to|leaving) the cooking scene would/i, '🎙️ Mic switch test', 'Asks OBS what switching would mute and turn on. Nothing changes.', ['test']);
 H(/^tip:when someone whose battle has waited/i, '🔔 Chat reminders', 'When someone with a marathon battle that has been in the line 30+ minutes (you pick the minutes) types in chat, the bot says in chat “@you … is here and has a battle waiting”, so you can run it while they are here. Once per person every 30 minutes. Press to turn it on / off. Key: R on the Marathon tab.');
 H(/^tip:how long a battle waits before you get reminded/i, '🔔 Minutes', 'How long a battle has to be in the line before the bot reminds you when that person chats.');
 H(/^tip:show the reminder for the first person in the line/i, '🔔 Show the reminder', 'Shows what the bot would say in chat for the first person in the line. Nothing is sent.', ['test']);

@@ -1184,6 +1184,12 @@
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="mbtMap" title="The map for the test marathon battle" style="width:auto"></select><button class="primary" onclick="maraBattleTest()" title="Start a practice marathon battle with your real things (nothing counts)">▶ Start a test marathon battle</button><button class="ghost" onclick="setView('marapool')" title="The things in the marathon battle (names, odds, pictures)">🏃 Marathon pool</button></div>
     <div id="mbtOut" class="help" style="margin-top:8px"></div>
   </div>
+  <div class="card devOnly" id="micTestCard">
+    <h3>🎙️ Mic switching</h3>
+    <p class="help">In the marathon OBS setup, going to 🍳 Cooking turns your wireless mics on and mutes your PC mic (GoXLR); any other marathon scene puts your PC mic back. This asks OBS what it would mute / turn on. <b>Nothing changes.</b></p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="micTest('cook')" title="What going to the Cooking scene would mute and turn on (nothing changes)">🍳 Going to Cooking?</button><button onclick="micTest('pc')" title="What leaving the Cooking scene would mute and turn on (nothing changes)">🎙️ Leaving Cooking?</button></div>
+    <div id="micTestOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card devOnly" id="waitTestCard">
     <h3>🔔 Waiting reminders</h3>
     <p class="help">When someone whose marathon battle has waited 30+ minutes types in chat, the bot says in chat “@you … is here and has a battle waiting” (once per person every 30 min). This shows what it would say for the first person in the line. Nothing is sent.</p>
@@ -2673,6 +2679,7 @@ function waitHTML(C) {
   const on = C.waitRemind !== false, mins = Number(C.waitMins) || 30;
   return `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 6px"><button class="${on ? 'primary' : 'ghost'}" id="waitBtn" onclick="maraCfg({waitRemind:${!on}})" title="When someone whose battle has waited ${mins}+ minutes types in chat, remind you in chat that they have a battle waiting. Key: R">${on ? '🔔 Chat reminders: ON' : '🔕 Chat reminders: OFF'}</button><span class="help" style="margin:0">after</span><input type="number" min="1" max="600" step="5" style="width:70px" value="${mins}" title="How long a battle waits before you get reminded (minutes)" onchange="maraCfg({waitMins:this.value})"><span class="help" style="margin:0">min in the line</span></div>`;
 }
+async function micTest(to) { const o = $('micTestOut'); try { const r = await api('/api/test/mara-mics', { to }); o.innerHTML = `${to === 'cook' ? '🍳 Going to Cooking' : '🎙️ Leaving Cooking'}: mute <b>${esc(r.mute.join(', ') || 'nothing')}</b> · turn on <b>${esc(r.unmute.join(', ') || 'nothing')}</b><br><span class="muted">OBS mics: ${esc((r.inputs || []).map(i => i.name + (i.muted ? ' (muted)' : '')).join(', ') || 'none')} · scene now: ${esc(r.scene || '?')}</span>`; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
 async function waitTest() { const o = $('waitTestOut'); try { const r = await api('/api/test/mara-wait', {}); o.innerHTML = `${r.on ? '🔔 On' : '🔕 Off'} · after ${esc(r.mins)} min · this one has waited ${esc(r.waited)} min.<br>The bot would say: <b>${esc(r.text)}</b> (nothing sent)`; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
 let ttsBusy = false;
 async function ttsCmd(cmd) {
@@ -2724,8 +2731,30 @@ function msCard(M) {
   return `<div style="border-top:1px solid rgba(255,255,255,.1);margin-top:10px;padding-top:8px"><b>🧰 Marathon OBS setup</b><div class="help" style="margin:2px 0 6px">${O.madeAt ? `Profile <b>${esc(O.profile)}</b> + scene collection <b>${esc(O.collection)}</b>.` : 'A separate OBS profile + scene collection for the marathon (your normal one stays as it is).'}</div>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${O.madeAt ? 'ghost' : 'primary'}" onclick="msOpen()" title="Make (or fix) the marathon's own OBS profile + scene collection">🧰 ${O.madeAt ? 'Marathon OBS setup…' : 'Make my marathon OBS setup…'}</button>${O.madeAt ? `<button onclick="msSwitch('marathon')" title="Switch OBS to the marathon profile + scene collection">🏃 Use it</button>${O.prev ? `<button class="ghost" onclick="msSwitch('normal')" title="Switch OBS back to your normal profile + scene collection (${esc(O.prev.profile)} / ${esc(O.prev.collection)})">↩️ Back to normal</button>` : ''}` : ''}</div>
     <div class="row" style="gap:6px;align-items:center;margin-top:6px"><span class="help" style="margin:0">Title screen says:</span><select style="width:auto" title="What the ⏳ Starting Soon / BRB scene says" onchange="msCards({soonMode:this.value})"><option value="soon" ${C.soonMode !== 'brb' ? 'selected' : ''}>⏳ ${esc(C.soon || 'Starting soon')}</option><option value="brb" ${C.soonMode === 'brb' ? 'selected' : ''}>👋 ${esc(C.brb || 'Be right back')}</option></select></div>
+    ${O.madeAt ? micHTML(M.mics || {}) : ''}
     ${O.madeAt ? `<div class="row" style="gap:6px;align-items:center;margin-top:6px"><span class="help" style="margin:0">🍳 Big cooking camera:</span>${[1, 2, 3].map(n => `<button class="${(O.cookBig || 1) === n ? 'primary' : 'ghost'}" style="padding:4px 12px" onclick="msCook(${n})" title="Make cooking camera ${n} the big one in the 🍳 Cooking scene (the other two go small)">📷 ${n}</button>`).join('')}</div>` : ''}</div>`;
 }
+// 🎙️ (1.82.7, Derek: GoXLR on the PC, wireless mics (USB receiver) for cooking, auto switch) the mics follow the OBS scene
+function micHTML(Mi) {
+  const on = Mi.auto !== false, mode = Mi.mode === 'cook' ? '🍳 Cooking mics are on' : Mi.mode === 'pc' ? '🎙️ Your PC mic is on' : '';
+  return `<div style="margin-top:8px"><b>🎙️ Mics</b><div class="help" style="margin:2px 0 6px">🍳 Cooking scene = your wireless mics, every other marathon scene = your PC mic (GoXLR). ${mode ? `<b>${mode}</b>${Mi.at ? ` (${ago(Mi.at)})` : ''}.` : ''}${Mi.err ? ` <span style="color:var(--gold)">⚠️ ${esc(Mi.err)}</span>` : ''}</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="${on ? 'primary' : 'ghost'}" onclick="micSet({auto:${!on}})" title="Switch the mics by themselves when you change scenes in OBS (Cooking = wireless mics, other marathon scenes = PC mic)">${on ? '🔁 Auto switch: ON' : '🔁 Auto switch: OFF'}</button><button class="ghost" onclick="micNow('pc')" title="Right now: your PC mic on, the wireless mics off">🎙️ PC mic</button><button class="ghost" onclick="micNow('cook')" title="Right now: the wireless mics on, your PC mic off">🍳 Cooking mics</button><button class="ghost" onclick="micPick()" title="Pick which OBS mics count as your PC mic">⚙ Which mics…</button></div></div>`;
+}
+async function micSet(o) { try { const r = await api('/api/mara/mics', o); if (S?.mara) S.mara.mics = r; renderMara(); } catch (e) { toast('⚠️ ' + e.message); } }
+async function micNow(to) { try { await api('/api/mara/mics/now', { to }); } catch (e) { toast('⚠️ ' + e.message); } }
+async function micPick() {
+  let d = $('micDlg'); if (!d) { d = document.createElement('dialog'); d.id = 'micDlg'; document.body.appendChild(d); }
+  d.innerHTML = '<div class="inner" style="max-width:560px"><h2 style="margin-top:0">🎙️ Which mics</h2><p class="help">Asking OBS…</p></div>'; if (!d.open) d.showModal();
+  let r; try { r = await api('/api/mara/mics', null, 'GET'); } catch (e) { r = { err: e.message }; }
+  const pc = Array.isArray(r.pc) ? r.pc : null, list = (r.inputs || []).filter(i => i.name !== r.cookMic);
+  d.innerHTML = `<div class="inner" style="max-width:560px"><h2 style="margin-top:0">🎙️ Which mics</h2>
+    ${r.err ? `<p class="help">⚠️ ${esc(r.err)}</p>` : `<p class="help">🍳 Wireless mics: <b>${esc(r.cookMic)}</b>${(r.inputs || []).some(i => i.name === r.cookMic) ? '' : ' (not in OBS yet: press 🧰 Marathon OBS setup again)'}.<br>Your PC mic(s), muted while you're in 🍳 Cooking and put back after:</p>
+    <label class="ck"><input type="radio" name="micAuto" ${pc ? '' : 'checked'} onchange="$('micList').style.opacity=this.checked?.5:1"> <span>Every mic that's on (except the wireless ones)</span></label>
+    <label class="ck"><input type="radio" name="micAuto" id="micOwn" ${pc ? 'checked' : ''} onchange="$('micList').style.opacity=this.checked?1:.5"> <span>Only these:</span></label>
+    <div id="micList" style="margin:4px 0 0 26px;opacity:${pc ? 1 : .5}">${list.map(i => `<label class="ck"><input type="checkbox" value="${esc(i.name)}" ${pc && pc.includes(i.name) ? 'checked' : ''} title="Count “${esc(i.name)}” as your PC mic"> <span>${esc(i.name)}${i.muted ? ' <span class="muted">(muted now)</span>' : ''}</span></label>`).join('') || '<span class="help">OBS has no mics.</span>'}</div>`}
+    <div class="row" style="gap:6px;justify-content:flex-end;margin-top:12px"><button class="ghost" onclick="$('micDlg').close()">Cancel</button>${r.err ? '' : '<button class="primary" onclick="micPickSave()">Save</button>'}</div></div>`;
+}
+async function micPickSave() { const own = $('micOwn')?.checked, pc = own ? [...document.querySelectorAll('#micList input:checked')].map(x => x.value) : null; if (own && !pc.length) return toast('Tick at least one mic (or pick “Every mic that\'s on”).'); await micSet({ pc }); $('micDlg').close(); toast('Saved'); }
 async function msCook(n) { try { await api('/api/obs/cook-big', { n }); toast(`🍳 Cooking cam ${n} is the big one now`, 2500); } catch (e) { toast('⚠️ ' + e.message); } }
 async function msCards(o, quiet) { try { const c = await api('/api/mara/cards', o); if (S?.mara) S.mara.cards = c; if (!quiet) toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
 async function msSwitch(to) { try { const r = await api('/api/obs/marathon-switch', { to }); toast(`🔁 OBS is on ${esc(r.profile)} / ${esc(r.collection)}`); } catch (e) { toast('⚠️ ' + e.message); } }

@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.7
+- 🛠️🎙️ **Mics switch with the scene** (Derek: GoXLR on the PC, wireless mics for cooking): 🧰 Marathon OBS setup now adds “🎙️ Cooking mics (wireless)” to the 🍳 Cooking scene and picks your wireless mics' USB receiver by itself (not the GoXLR or a camera mic). With 🔁 Auto switch on, going to 🍳 Cooking turns the wireless mics on and mutes your PC mic (GoXLR); going to any other marathon scene turns the wireless mics off and puts back exactly the mics it muted. Your normal OBS scenes are left alone.
+  - 🏃 Marathon tab → 📺 On stream → 🎙️ Mics: 🔁 Auto switch ON / OFF, 🎙️ PC mic / 🍳 Cooking mics (switch right now), ⚙ Which mics… (pick which mics count as your PC mic). Press 🧰 Marathon OBS setup again to add the wireless mics.
+  - Try it: 🧪 Test tab → 🎙️ Mic switching shows what it would mute and turn on (nothing changes). Tested against a pretend OBS only.
+
 ## 1.82.6
 - 🛠️🔔 **Chat reminders for people waiting** (Derek): when someone whose marathon battle has been in the line 30+ minutes types in chat, the bot says in chat “@you … is here and has a battle waiting”, so you can run it while they're here (once per person every 30 minutes, plus a pop-up in the app). 🏃 Marathon tab → 🎟️ owed card: **🔔 Chat reminders: ON / OFF** (or the **R** key) and the minutes.
   - Try it: 🧪 Test tab → 🔔 Waiting reminders shows what it would say (nothing sent).
