@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.84.3: What's new
+Everything since 1.84.2.
+
+- 🔇 **No more double sound:** while OBS has a Movie Royal game screen open (the battle browser source, in any scene), the battle inside Movie Royal stays quiet, so every sound plays once, from OBS. When OBS closes it, the app plays sounds again. The switch is in Settings → 🔊 Sounds (**🔇 No double sound**, on by default), and it shows how many game screens OBS has open. If you then hear nothing at all, your OBS source has "Control audio via OBS" ticked: turn on monitoring for it in OBS (Edit → Advanced Audio Properties → Monitor and Output) or untick it.
+
 ## v1.84.2: What's new
 Everything since 1.84.1.
 

@@ -904,6 +904,7 @@
       <label>Sound effects <span id="sfxVal"></span></label><input type="range" min="0" max="100" id="sfxVol" oninput="volChange('sfxVolume', this.value)">
       <label>Music <span id="musVal"></span></label><input type="range" min="0" max="100" id="musVol" oninput="volChange('musicVolume', this.value)">
       <p class="help">Sound plays from the game screen, so OBS picks it up with the game window.</p>
+      <label class="ck"><input type="checkbox" id="sndAppQuiet" onchange="S.settings.appQuietObs=this.checked;api('/api/settings',{appQuietObs:this.checked}).then(()=>toast('Saved'))" title="While OBS has the Movie Royal game screen open, the battle and wheel sounds play only from OBS, not from the app too"> <span>🔇 No double sound: while OBS has the game screen open, battle + wheel sounds play only from OBS <span class="muted" id="sndObsN"></span></span></label>
       <label class="ck"><input type="checkbox" id="sndMuteUnf" onchange="S.settings.muteUnfocused=this.checked;api('/api/settings',{muteUnfocused:this.checked}).then(()=>toast('Saved'))"> <span>🔇 Mute Movie Royal while I'm in another program (the sound comes back when I click back into Movie Royal)</span></label>
       <p class="help">On by default. The stream isn't affected: the game screen in OBS plays its own sound. Turn this off if you capture Movie Royal's own window or desktop sound in OBS, or want to hear it while you're in other programs.</p>
     </div>
@@ -5262,7 +5263,7 @@ function renderSound() {
   if (document.activeElement?.id !== 'bSfx') $('bSfx').value = st.sfxVolume ?? 70;
   if (document.activeElement?.id !== 'bMus') $('bMus').value = st.musicVolume ?? 35;
   $('bSfxVal').textContent = $('bSfx').value + '%'; $('bMusVal').textContent = $('bMus').value + '%';
-  $('sndToggle').textContent = on ? '🔊 Sound is ON' : '🔇 Sound is OFF'; if ($('sndMuteUnf') && document.activeElement !== $('sndMuteUnf')) $('sndMuteUnf').checked = S.settings.muteUnfocused !== false;
+  $('sndToggle').textContent = on ? '🔊 Sound is ON' : '🔇 Sound is OFF'; if ($('sndMuteUnf') && document.activeElement !== $('sndMuteUnf')) $('sndMuteUnf').checked = S.settings.muteUnfocused !== false; if ($('sndAppQuiet') && document.activeElement !== $('sndAppQuiet')) $('sndAppQuiet').checked = S.settings.appQuietObs !== false; if ($('sndObsN')) $('sndObsN').textContent = S.obsGames ? `(OBS has ${S.obsGames} open right now${S.settings.appQuietObs !== false ? ': the app is quiet' : ''})` : '(OBS has none open right now)';
   $('sndToggle').className = on ? '' : 'danger';
   if (document.activeElement?.id !== 'sfxVol') $('sfxVol').value = st.sfxVolume ?? 70;
   if (document.activeElement?.id !== 'musVol') $('musVol').value = st.musicVolume ?? 35;

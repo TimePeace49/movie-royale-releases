@@ -274,6 +274,7 @@ function publicState() { applyCharsDefault();
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
+    obsGames: obsGames(),
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
@@ -1304,6 +1305,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
   if (ws.role === 'control' && live.resumeNote && Date.now() - live.resumeNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.resumeNote.text })); } catch {} }, 1500); // 🔄 what came back after a restart
+  if (ws.role === 'overlay') { ws.send(JSON.stringify(audioMsg())); if (/\bOBS\//.test(ws.ua)) { setTimeout(() => broadcast(audioMsg(), 'overlay'), 200); ws.on('close', () => setTimeout(() => { broadcast(audioMsg(), 'overlay'); pushState(); }, 200)); } } // 🔇 an OBS game screen opened / closed: the app's game screen goes quiet / plays again
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   if (ws.role === 'chatvoice') { chatvoice.playerJoin(1); ws.on('close', () => chatvoice.playerJoin(-1)); }
@@ -1333,7 +1335,11 @@ function fightSecs(l) { return Math.round(clampN(Number(l?.gameSeconds) > 0 ? l.
 function fightPacer(l) { return Math.round(clampN(l?.pacer != null && l.pacer !== '' && Number(l.pacer) >= 0 ? l.pacer : (db.settings.pacer ?? 50), 0, 100, 50)); }
 // 🖥️ graphics (Settings → Graphics): resolution, frame rate cap, quality, FPS counter — for every game screen (OBS, the app, pop-outs)
 const gfxMsg = () => ({ type: 'gfx', res: String(db.settings.gfxRes || '1080'), fps: Number(db.settings.gfxFps) || 0, quality: ['low', 'medium', 'high'].includes(db.settings.gfxQuality) ? db.settings.gfxQuality : 'high', showFps: !!db.settings.gfxShowFps, appSaver: db.settings.gfxAppSaver !== false, scale: clampN(db.settings.gfxScale, 50, 200, 100), glow: db.settings.gfxGlow !== false, particles: ['few', 'lots'].includes(db.settings.gfxParticles) ? db.settings.gfxParticles : 'auto', shake: clampN(db.settings.gfxShake, 0, 200, 100), flash: db.settings.gfxFlash !== false, smooth: db.settings.gfxSmooth !== false });
-const audioMsg = () => ({ type: 'audio', on: db.settings.soundOn !== false, sfx: Number(db.settings.sfxVolume ?? 70) / 100, music: Number(db.settings.musicVolume ?? 35) / 100 });
+// 🔇 (1.84.3, Derek: "double audio with the app and OBS open with a scene with the app on it") how many OBS game screens are open
+// (OBS's browser says "OBS/…"): while there's one, the game screens that AREN'T in OBS (inside the app, popped out) go quiet, so
+// the battle / wheel sounds play once (setting appQuietObs, Settings → 🔊 Sounds)
+const obsGames = () => { let n = 0; for (const c of wss.clients) if (c.role === 'overlay' && c.readyState === 1 && /\bOBS\//.test(c.ua || '')) n++; return n; };
+const audioMsg = () => ({ type: 'audio', obsGame: obsGames(), appQuiet: db.settings.appQuietObs !== false, on: db.settings.soundOn !== false, sfx: Number(db.settings.sfxVolume ?? 70) / 100, music: Number(db.settings.musicVolume ?? 35) / 100 });
 
 // ---------- http ----------
 app.use(express.json({ limit: '50mb' }));

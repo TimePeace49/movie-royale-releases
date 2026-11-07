@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.84.3
+- 🔇 **No more double sound** (Derek: "getting double audio with the app and OBS open with a scene with the app on it"): while OBS has a Movie Royal game screen open (the battle browser source, in any scene), the battle inside Movie Royal stays quiet, so every sound plays once (from OBS). As soon as OBS closes it, the app plays sounds again. Settings → 🔊 Sounds has the switch (**🔇 No double sound**, on by default) and shows how many game screens OBS has open. If you then hear nothing at all, the OBS source has "Control audio via OBS" ticked: turn on monitoring for it in OBS (Edit → Advanced Audio Properties → Monitor and Output) or untick it. Test: open OBS with a battle scene and look at the number in Settings → 🔊 Sounds.
+
 ## 1.84.2
 - 🔋 **The battle screen inside Movie Royal only starts when it's needed** (Derek): it loads the first time you open the ⚔️ Battle, 🃏 Card battles or 🏃 Marathon tab, open the preview window, or a battle starts (even from another tab). If you only use the wheel, it never runs at all. Once it's loaded it stays loaded: switching tabs never resets the board, and a battle is never stopped (the battle itself runs in Movie Royal and OBS, the screen only shows it).
 
