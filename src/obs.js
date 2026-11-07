@@ -164,6 +164,23 @@ export async function capture(on) {
 }
 // 🎉 Viewer's choice: a browser source (Movie Royal's celebration page) on top of every scene. Only added when you turn it on.
 /** 🎬 Your OBS scenes (for picking where the celebration goes): names, the one on stream now, and the ones that already have it. */
+// 🎛️ (1.85.0) the scenes of the scene collection OBS has open (Stream Deck scene keys)
+export async function scenesNow() {
+  return session(async call => {
+    const r = await call('GetSceneList'), c = await call('GetSceneCollectionList').catch(() => ({}));
+    return { scenes: (r.scenes || []).map(x => x.sceneName).reverse(), current: r.currentProgramSceneName || null, collection: c.currentSceneCollectionName || '' };
+  });
+}
+// 🎛️ switch to a scene (preview = put it in Studio Mode's preview when Studio Mode is on, like OBS's own scene keys)
+export async function goScene(name, preview = false) {
+  return session(async call => {
+    const r = await call('GetSceneList');
+    if (!(r.scenes || []).some(x => x.sceneName === name)) { const c = await call('GetSceneCollectionList').catch(() => ({})); throw new Error(`OBS has no scene called “${name}” right now${c.currentSceneCollectionName ? ` (OBS has your “${c.currentSceneCollectionName}” scenes open)` : ''}.`); }
+    let studio = false; if (preview) studio = !!(await call('GetStudioModeEnabled').catch(() => ({}))).studioModeEnabled;
+    await call(studio ? 'SetCurrentPreviewScene' : 'SetCurrentProgramScene', { sceneName: name });
+    return { studio };
+  });
+}
 export async function sceneList(source = 'Movie Royal celebration') {
   return session(async call => {
     const r = await call('GetSceneList'), scenes = (r.scenes || []).map(x => x.sceneName).reverse(); // (OBS lists them bottom-up)

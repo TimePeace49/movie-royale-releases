@@ -370,7 +370,7 @@
   .dkName { font-weight:700; margin:0 0 6px; font-size:13px; } .dkName a { text-decoration:none; margin-left:4px; }
   .dkGrid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:5px; }
   .dkKey { aspect-ratio:1; border-radius:9px; overflow:hidden; background:#0d0b18; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--muted, #999); }
-  .dkKey img { width:100%; height:100%; display:block; } .dkEmpty { border:2px dashed rgba(255,255,255,.18); background:transparent; }
+  .dkKey img { width:100%; height:100%; display:block; } .dkTxt { font-size:10px; text-align:center; padding:2px; line-height:1.15; color:#fff; } .dkEmpty { border:2px dashed rgba(255,255,255,.18); background:transparent; }
   .ckWrap { display:grid; grid-template-columns:220px minmax(0,1fr); gap:14px; align-items:start; margin-top:10px; }
   .ckSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(100vh - var(--hdr) - 90px); overflow:auto; }
   #tCheck .ckSide button { display:flex; align-items:center; gap:6px; } #tCheck .ckSide button .pill { margin-left:auto; flex:none; }
@@ -3089,7 +3089,7 @@ const dkImg = k => `/deck/${k === 'home' ? 'home' : k.startsWith('>') ? 'nav-' +
 function dkGrid(p) {
   let h = '';
   for (let y = 0; y < 3; y++) for (let x = 0; x < 5; x++) { const pos = `${x},${y}`, k = p.keys[pos];
-    h += k ? `<div class="dkKey" title="${esc(k.label)}${k.nav ? ' (goes to that page)' : ''}"><img src="${dkImg(k.k)}" alt="${esc(k.label)}"></div>` : `<div class="dkKey dkEmpty" title="${pos === '0,2' ? 'Empty: put your own Home button here' : 'Empty'}">${pos === '0,2' ? '🏠?' : ''}</div>`; }
+    h += k ? `<div class="dkKey" title="${esc(k.scene ? 'Scene: ' + k.scene : k.label)}${k.nav ? ' (goes to that page)' : ''}"><img src="${esc(k.src || dkImg(k.k))}" alt="${esc(k.label)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:${esc(JSON.stringify(k.icon + ' ' + k.label))},className:'dkTxt'}))"></div>` : `<div class="dkKey dkEmpty" title="${pos === '0,2' ? 'Empty: put your own Home button here' : 'Empty'}">${pos === '0,2' ? '🏠?' : ''}</div>`; }
   return `<div class="dkPage"><div class="dkName">${esc(p.icon)} ${esc(p.name)} <a href="/api/deck/file/${p.id}" download title="Download just this page as a Stream Deck file">⬇️</a></div><div class="dkGrid">${h}</div></div>`;
 }
 async function deckDraw() {
@@ -3103,6 +3103,11 @@ async function deckDraw() {
       <option value="" ${!DK.homePick ? 'selected' : ''}>${DK.home && !DK.homePick ? `Your profile called “${esc(DK.home.name)}”` : 'Find my profile called “Home”'}</option>${opts}<option value="NONE" ${DK.homePick === 'NONE' ? 'selected' : ''}>Nothing: leave that key empty for my own</option></select></div>
     ${DK.sd.found ? '' : '<p class="help" style="margin:6px 0 0">Couldn\'t find the Stream Deck app\'s profiles on this PC, so the Home key stays empty. Drag your own Home button onto it after adding the pages.</p>'}
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><button class="primary" onclick="deckOpen()" title="Make the pages and hand them to the Stream Deck app (it asks to import each one)">🎛️ Add the pages to my Stream Deck</button><button onclick="testGo('deckTestCard')" title="Press any button from the Test tab, like the Stream Deck would">🧪 Try a button</button></div>
+    <div class="card soft" style="margin:10px 0 0;padding:10px 12px"><b>🎞️ Scene keys</b>
+      <p class="help" style="margin:4px 0 6px">A page with a key for every scene in OBS (each with its own picture). Movie Royal reads your scenes from OBS when you press Add, so have OBS open. Got a second set of scenes (like your marathon setup)? Switch OBS to it and press Add again: Movie Royal keeps a page for each, with a 🔀 key between them.</p>
+      ${DK.sceneSets.length ? `<div class="help" style="margin:0 0 6px">${DK.sceneSets.map(x => `<span class="chip" style="margin:0 6px 4px 0;display:inline-block">${esc(x.coll)}: ${x.n} scene${x.n === 1 ? '' : 's'}${x.coll === DK.sceneNow ? ' (open in OBS last)' : ''} <a href="#" onclick="deckSet({forget:${esc(JSON.stringify(x.coll))}});return false" title="Forget the scene keys for this set of scenes">✕</a></span>`).join('')}</div>` : '<p class="help" style="margin:0 0 6px">No scenes yet: press 🔄 below with OBS open.</p>'}
+      ${DK.sceneErr ? `<p class="help" style="margin:0 0 6px;color:var(--gold)">⚠️ Last time: ${esc(DK.sceneErr)}</p>` : ''}
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><button onclick="deckScenes()" title="Read the scenes OBS has open right now">🔄 Read my scenes from OBS</button><label style="margin:0">A scene key:</label><select onchange="deckSet({sceneTarget:this.value})" title="What a scene key does in OBS"><option value="live" ${DK.sceneTarget !== 'preview' ? 'selected' : ''}>Goes live right away</option><option value="preview" ${DK.sceneTarget === 'preview' ? 'selected' : ''}>Goes to the preview first (when Studio Mode is on)</option></select></div></div>
     ${DK.oldKey ? '<p class="help" style="margin:6px 0 0;color:var(--gold)">⚠️ The secret key changed since you added the pages: add them again, or the keys won\'t work.</p>' : DK.madeAt ? `<p class="help" style="margin:6px 0 0">Last made ${esc(new Date(DK.madeAt).toLocaleString())}. When a Movie Royal update adds new buttons, press Add again (Stream Deck asks to replace the old pages).</p>` : ''}
     ${L ? `<p class="help" style="margin:6px 0 0">Last key pressed: <b>${esc(L.label)}</b> ${L.ok ? '✅' : '⚠️'} ${esc(L.msg || '')} <span class="muted">(${esc(new Date(L.at).toLocaleTimeString())}${L.via === 'test' ? ', from the Test tab' : ''})</span></p>` : ''}
     <div class="dkPages">${DK.pages.map(dkGrid).join('')}</div>
@@ -3113,9 +3118,10 @@ async function deckDraw() {
       <li>If a page key (like ⚔️ Battle) doesn't jump to its page, pick the page again in that key's settings in the Stream Deck app.</li>
       <li><button class="ghost" onclick="deckNewKey()" title="Make a new secret address (the pages you added stop working until you add them again)">🔑 New secret key</button> only if someone else found your key addresses.</li></ol></details>`;
 }
+async function deckScenes() { try { const r = await api('/api/deck/scenes', {}); toast(`🎞️ Found ${r.count} scene${r.count === 1 ? '' : 's'} in “${esc(r.collection)}”. Press 🎛️ Add to put them on your Stream Deck.`); deckDraw(); } catch (e) { toast('⚠️ ' + esc(e.message), 9000); deckDraw(); } }
 async function deckSet(o) { try { await api('/api/deck/settings', o); toast('Saved'); deckDraw(); } catch (e) { toast('⚠️ ' + esc(e.message)); } }
 async function deckOpen(id) {
-  try { const r = await api('/api/deck/open', id ? { id } : {}); toast(r.opened ? `🎛️ Opening ${r.opened} page${r.opened === 1 ? '' : 's'} in the Stream Deck app: say yes to each import.` : `🎛️ Made ${r.pages.length} pages. ${esc(r.note || '')} Use ⬇️ on each page.`, 9000); setTimeout(deckDraw, 600); }
+  try { const r = await api('/api/deck/open', id ? { id } : {}); if (r.scenes && !r.scenes.ok) toast(`🎞️ Couldn't read your scenes from OBS (${esc(r.scenes.error)}), so the scene keys are from last time${DK?.sceneSets?.length ? '' : ' (none yet)'}.`, 9000); toast(r.opened ? `🎛️ Opening ${r.opened} page${r.opened === 1 ? '' : 's'} in the Stream Deck app: say yes to each import.` : `🎛️ Made ${r.pages.length} pages. ${esc(r.note || '')} Use ⬇️ on each page.`, 9000); setTimeout(deckDraw, 600); }
   catch (e) { toast('⚠️ ' + esc(e.message)); }
 }
 async function deckNewKey() { if (!await ask('Make a new secret key? The Stream Deck pages you already added stop working until you add them again. (Type yes)', '')) return; try { await api('/api/deck/new-key', {}); toast('🔑 New key made: press 🎛️ Add the pages again.'); deckDraw(); } catch (e) { toast('⚠️ ' + esc(e.message)); } }
@@ -3123,13 +3129,14 @@ async function deckTestEnsure() { if (!DK) { try { DK = await api('/api/deck', n
 setTimeout(() => { if (!PC_ONLY) deckTestEnsure(); }, 4000);
 function deckTestFill() {
   const sel = $('deckTestPick'); if (!sel || !DK) return; const was = sel.value;
-  sel.innerHTML = DK.pages.map(p => `<optgroup label="${esc(p.icon + ' ' + p.name)}">${Object.values(p.keys).filter(k => !k.nav && k.k !== 'home').map(k => `<option value="${k.k}">${esc(k.icon + ' ' + k.label)}</option>`).join('')}</optgroup>`).join('');
+  sel.innerHTML = DK.pages.map(p => `<optgroup label="${esc(p.icon + ' ' + p.name)}">${Object.values(p.keys).filter(k => !k.nav && k.k !== 'home').map(k => `<option value="${esc(k.k)}">${esc(k.icon + ' ' + k.label)}${k.scene ? ' (switches OBS for real)' : ''}</option>`).join('')}</optgroup>`).join('');
   if (was) sel.value = was; else sel.value = 'sound';
 }
 async function deckTest() {
   const out = $('deckTestOut'), id = $('deckTestPick').value;
   if (!DK) { try { DK = await api('/api/deck', null, 'GET'); } catch (e) { out.textContent = '⚠️ ' + e.message; return; } }
-  try { const r = await fetch(`/deck/${DK.key}/${id}?test=1`), t = await r.text(); out.innerHTML = `${r.ok ? '✅' : '⚠️'} <b>${esc(id)}</b>: ${esc(t.replace(/^(✅|⚠️) /, ''))} <span class="muted">(the key on your Stream Deck would show ${r.ok ? 'a ✓' : 'a ⚠'})</span>`; }
+  const url = id.startsWith('scene:') ? `/deck/${DK.key}/scene?name=${encodeURIComponent(id.slice(6))}&test=1` : `/deck/${DK.key}/${id}?test=1`;
+  try { const r = await fetch(url), t = await r.text(); out.innerHTML = `${r.ok ? '✅' : '⚠️'} <b>${esc(id.replace(/^scene:/, '🎞️ '))}</b>: ${esc(t.replace(/^(✅|⚠️) /, ''))} <span class="muted">(the key on your Stream Deck would show ${r.ok ? 'a ✓' : 'a ⚠'})</span>`; }
   catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
 function siteDraw(full) {

@@ -111,16 +111,64 @@ export function pagesFor(dev = H.dev()) {
   }
   return out;
 }
-// what a key shows: {icon, label, color, page}
+// ── 🎞️ scene keys (1.85.0, Derek: "also going to want ones for my scenes for my stream") ──────────
+// Movie Royal reads the scenes of the scene collection OBS has open when you press Add (and remembers each collection it saw),
+// then makes "Movie Royal – Scenes" page(s): one key per scene (its own picture), Home + Menu in the bottom-left like the rest.
+export const SCENE_COLOR = '#ec4899';
+const SCENE_ICONS = [[/start|soon|intro|waiting/i, '⏳'], [/brb|be right back|break|pause/i, '☕'], [/just chat|chatting|\bchat\b|talk/i, '💬'], [/sleep|afk|night|bed/i, '😴'], [/end|outro|bye|ending|offline/i, '👋'], [/cook|kitchen|food/i, '🍳'], [/battle|royal/i, '⚔️'], [/co-?stream|duo|collab|friend/i, '🤝'], [/race|iracing|racing|car\b/i, '🏎️'], [/console|xbox|ps5|playstation|switch/i, '🕹️'], [/gta|game|gaming|play|main/i, '🎮'], [/no ?cam/i, '🖥️'], [/cam|camera|face/i, '📷'], [/monitor|screen|desktop|\bpc\b|left|right/i, '🖥️'], [/phone|mobile/i, '📱'], [/music|song|dj/i, '🎵'], [/wheel/i, '🎡'], [/movie|film|watch/i, '🍿'], [/alert|test/i, '🧪']];
+const EMO = /^((?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:\uFE0F|\u200D(?:\p{Extended_Pictographic})|\p{Emoji_Modifier}|\uFE0F)*)\s*/u;
+export function sceneLook(name) {
+  const n = String(name || ''), m = n.match(EMO), rest = (m ? n.slice(m[0].length) : n).trim() || n;
+  return { icon: m ? m[1] : (SCENE_ICONS.find(([re]) => re.test(n)) || [])[1] || '🎬', label: rest.slice(0, 28), color: SCENE_COLOR, scene: n };
+}
+const hex = t => crypto.createHash('sha1').update(String(t)).digest('hex');
+const sets = () => (cfg().sceneSets && typeof cfg().sceneSets === 'object' ? cfg().sceneSets : {});
+// the scene pages: the collection OBS had open last first, then the others Movie Royal has seen
+const SLOTS = ['0,0', '1,0', '2,0', '3,0', '4,0', '0,1', '1,1', '2,1', '3,1', '4,1', '2,2', '3,2', '4,2'];
+export function scenePages() {
+  const all = sets(), now = cfg().sceneNow, names = Object.keys(all).sort((a, b) => (b === now) - (a === now) || (all[b].at || 0) - (all[a].at || 0));
+  const out = [];
+  names.forEach((coll, si) => {
+    const list = (all[coll].list || []).slice(0, 60), other = names.length > 1 ? names[(si + 1) % names.length] : null;
+    const per = SLOTS.length - (other ? 1 : 0), multi = list.length > per, cap = per - (multi ? 1 : 0), n = Math.max(1, Math.ceil(list.length / cap));
+    for (let i = 0; i < n; i++) {
+      const id = `scenes-${si}-${i}`, keys = {}; const part = list.slice(i * cap, i * cap + cap); let k = 0;
+      for (const sc of part) keys[SLOTS[k++]] = 'scene:' + sc;
+      keys['1,2'] = '>hub';
+      if (multi) keys['4,2'] = `>scenes-${si}-${(i + 1) % n}~more`;
+      if (other) keys[multi ? '3,2' : '4,2'] = `>scenes-${(si + 1) % names.length}-0~other:${other}`;
+      out.push({ id, name: `Movie Royal – Scenes${names.length > 1 ? ` (${coll})` : ''}${n > 1 ? ` ${i + 1}` : ''}`, icon: '🎞️', color: SCENE_COLOR, coll, uuid: `6D0B1E00-4D52-4F59-A1A1-${hex(coll).slice(0, 10).toUpperCase()}${String(i).padStart(2, '0')}`, keys });
+    }
+  });
+  return out;
+}
+const pageById = id => PAGES[id] ? { id, ...PAGES[id] } : scenePages().find(p => p.id === id) || null;
+// what a key shows: {icon, label, color, nav?, scene?}
 export function keyLook(k, pageId) {
   if (k === 'home') return { icon: '🏠', label: 'Home', color: '#64748b' };
-  if (k.startsWith('>')) { const p = PAGES[k.slice(1)]; return { icon: p.icon, label: NAV_LABEL[k.slice(1)], color: p.color, nav: true }; }
+  if (k.startsWith('scene:')) return sceneLook(k.slice(6));
+  if (k.startsWith('>')) {
+    const [id, kind] = k.slice(1).split('~');
+    if (/^scenes/.test(id)) { const kd = (kind || '').split(':')[0]; return { icon: kd === 'more' ? '⏭️' : kd === 'other' ? '🔀' : '🎞️', label: kd === 'more' ? 'More scenes' : kd === 'other' ? `${(kind.split(':').slice(1).join(':') || 'Other').slice(0, 18)} scenes` : 'Scenes', color: SCENE_COLOR, nav: true, img: kd === 'more' ? 'nav-scenesmore' : kd === 'other' ? 'nav-otherset' : 'nav-scenes' }; }
+    const p = PAGES[id]; return { icon: p.icon, label: NAV_LABEL[id], color: p.color, nav: true };
+  }
   const b = BUTTONS[k]; return { icon: b.icon, label: b.label, color: PAGES[b.page]?.color || PAGES[pageId]?.color };
+}
+// all pages: the built-in ones (the menu gets a 🎞️ Scenes key once Movie Royal knows your scenes) + the scene pages
+export function allPages(dev = H.dev()) {
+  const sp = scenePages(), ps = pagesFor(dev);
+  if (sp.length) { const hub = ps.find(p => p.id === 'hub'); if (hub) hub.keys = { ...hub.keys, '4,2': `>${sp[0].id}` }; }
+  return [...ps, ...sp];
 }
 
 // ── pressing a button ──────────────────────────────────────────────────────────────────────────────
 let lastPress = null;
-export async function press(id, via = 'deck') {
+export async function press(id, via = 'deck', q = {}) {
+  if (id === 'scene') { // 🎞️ /deck/<key>/scene?name=<scene>
+    const name = String(q.name || '').slice(0, 200); if (!name) throw Object.assign(new Error('Which scene?'), { code: 400 });
+    try { const r = await H.scene(name, cfg().sceneTarget === 'preview'); const msg = `${r?.studio ? 'In the preview' : 'Switched to'}: ${name}`; lastPress = { id, label: sceneLook(name).label, ok: true, msg, at: Date.now(), via }; return msg; }
+    catch (e) { lastPress = { id, label: sceneLook(name).label, ok: false, msg: e.message, at: Date.now(), via }; throw Object.assign(e, { code: 409 }); }
+  }
   const b = BUTTONS[id]; if (!b) throw Object.assign(new Error(`There's no Stream Deck button called "${id}". Make the pages again in Settings → 🖥️ App → 🎛️ Stream Deck.`), { code: 404 });
   if (b.dev && !H.dev()) throw Object.assign(new Error(`${b.label} is a 🛠️ dev mode button.`), { code: 409 });
   try { const msg = await b.run(); lastPress = { id, label: b.label, ok: true, msg, at: Date.now(), via }; return msg; }
@@ -143,8 +191,8 @@ export function sdProfiles() {
   }
   return { found: false, list: [] };
 }
-export function cfg() { return { home: '', model: '', ...(db.settings.deck || {}) }; }
-export function setCfg(o) { const c = cfg(); if ('home' in o) c.home = String(o.home || '').toUpperCase().replace(/[^0-9A-F-]/g, '').slice(0, 36); if ('model' in o) c.model = String(o.model || '').slice(0, 30); db.settings.deck = c; save(); return c; }
+export function cfg() { return { home: '', model: '', sceneTarget: 'live', ...(db.settings.deck || {}) }; }
+export function setCfg(o) { const c = cfg(); if ('home' in o) c.home = String(o.home || '').toUpperCase().replace(/[^0-9A-F-]/g, '').slice(0, 36); if ('model' in o) c.model = String(o.model || '').slice(0, 30); if (['live', 'preview'].includes(o.sceneTarget)) c.sceneTarget = o.sceneTarget; if (o.forget) { const ss = { ...(c.sceneSets || {}) }; delete ss[o.forget]; c.sceneSets = ss; } db.settings.deck = c; save(); return c; }
 // the Home profile: picked, else one called "Home"
 export function homeProfile() {
   const c = cfg(), sd = sdProfiles();
@@ -174,19 +222,42 @@ export function zip(files) { // [{name, data: Buffer}] → a plain (stored) zip
   const cd = Buffer.concat(dir), end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(off, 16);
   return Buffer.concat([...parts, cd, end]);
 }
-const iconFile = k => path.join(H.root, 'public', 'deck', `${k.replace(/^>/, 'nav-')}.png`);
+const sceneIconFile = look => path.join(H.data, 'streamdeck', 'icons', hex(`${look.icon}|${look.label}|${look.color}|v1`).slice(0, 16) + '.png');
+function iconFile(k) {
+  if (k === 'home') return path.join(H.root, 'public', 'deck', 'home.png');
+  const look = keyLook(k);
+  if (look.scene) return sceneIconFile(look);
+  if (look.img) return path.join(H.root, 'public', 'deck', look.img + '.png');
+  return path.join(H.root, 'public', 'deck', `${k.split('~')[0].replace(/^>/, 'nav-')}.png`);
+}
+// draws a scene key's picture (public/deckicon.html in a hidden window; Playwright when it isn't the Windows app, for tests)
+async function renderIcon(look) {
+  const url = `http://127.0.0.1:${H.port}/deckicon.html?icon=${encodeURIComponent(look.icon)}&label=${encodeURIComponent(look.label)}&color=${encodeURIComponent(look.color)}`;
+  let png = null;
+  try {
+    if (globalThis.__desktop?.renderPicture) png = await globalThis.__desktop.renderPicture(url, 10000);
+    else {
+      const { createRequire } = await import('node:module'); const req = createRequire(import.meta.url); let pw;
+      for (const p of ['playwright', ...(process.env.NODE_PATH || '').split(/[:;]/).filter(Boolean).map(d => d + '/playwright')]) { try { pw = req(p); break; } catch {} }
+      if (pw) { const b = await pw.chromium.launch(); try { const pg = await b.newPage(); await pg.goto(url); png = await pg.waitForFunction(() => window.__png, null, { timeout: 10000 }).then(h => h.jsonValue()); } finally { await b.close(); } }
+    }
+  } catch (e) { console.error('[deck] couldn\'t draw a scene key picture:', e.message); }
+  return png && String(png).startsWith('data:image/png;base64,') ? Buffer.from(String(png).split(',')[1], 'base64') : null;
+}
 const STATE = img => ({ FFamily: '', FSize: '', FStyle: '', FUnderline: '', Image: img ? 'state0.png' : '', Title: '', TitleAlignment: '', TitleColor: '', TitleShow: '' });
 // one page → {file name, zip}
 export function buildPage(p, home, model) {
   const folder = `${p.uuid}.sdProfile`, acts = {}, files = [{ name: folder + '/' }];
   const keys = { ...p.keys }; if (home) keys[HOME_KEY] = 'home';
   for (const [pos, k] of Object.entries(keys)) {
-    const look = keyLook(k, p.id), img = iconFile(k === 'home' ? 'home' : k), has = fs.existsSync(img);
+    const look = keyLook(k, p.id), img = iconFile(k), has = fs.existsSync(img);
     let a;
     if (k === 'home') a = { Name: 'Switch Profile', Settings: { DeviceUUID: '', ProfileUUID: home.uuid }, UUID: 'com.elgato.streamdeck.profile.rotate' };
-    else if (k.startsWith('>')) a = { Name: 'Switch Profile', Settings: { DeviceUUID: '', ProfileUUID: PAGES[k.slice(1)].uuid }, UUID: 'com.elgato.streamdeck.profile.rotate' };
+    else if (k.startsWith('>')) a = { Name: 'Switch Profile', Settings: { DeviceUUID: '', ProfileUUID: pageById(k.slice(1).split('~')[0])?.uuid || PAGES.hub.uuid }, UUID: 'com.elgato.streamdeck.profile.rotate' };
+    else if (look.scene) a = { Name: `Scene: ${look.scene}`, Settings: { openInBrowser: false, path: `${urlFor('scene')}?name=${encodeURIComponent(look.scene)}` }, UUID: 'com.elgato.streamdeck.system.website' };
     else a = { Name: `Movie Royal: ${look.label}`, Settings: { openInBrowser: false, path: urlFor(k) }, UUID: 'com.elgato.streamdeck.system.website' };
-    acts[pos] = { ...a, State: 0, States: [STATE(has)] };
+    const st = STATE(has); if (!has && look.scene) Object.assign(st, { Title: look.label, TitleAlignment: 'middle', TitleShow: '' }); // (no picture: at least the name)
+    acts[pos] = { ...a, State: 0, States: [st] };
     files.push({ name: `${folder}/${pos}/` }, { name: `${folder}/${pos}/CustomImages/` });
     if (has) files.push({ name: `${folder}/${pos}/CustomImages/state0.png`, data: fs.readFileSync(img) });
   }
@@ -194,18 +265,28 @@ export function buildPage(p, home, model) {
   files.splice(1, 0, { name: `${folder}/manifest.json`, data: Buffer.from(JSON.stringify(man)) });
   return { id: p.id, name: p.name, file: `${p.name.replace(/[–]/g, '-').replace(/[^\w &+-]/g, '').trim()}.streamDeckProfile`, data: zip(files), keys: Object.keys(acts).length };
 }
+// asks OBS for the scenes it has open now (kept per scene collection; OBS closed = the ones Movie Royal saw before)
+export async function readScenes() {
+  try { const r = await H.scenes(); const c = cfg(), coll = r.collection || 'OBS'; db.settings.deck = { ...c, sceneNow: coll, sceneErr: null, sceneSets: { ...(c.sceneSets || {}), [coll]: { list: r.scenes, at: Date.now() } } }; save(); return { ok: true, collection: coll, count: r.scenes.length }; }
+  catch (e) { db.settings.deck = { ...cfg(), sceneErr: e.message }; save(); return { ok: false, error: e.message }; }
+}
 // all pages, saved to DATA/streamdeck/ (old files there are replaced)
-export function makeAll() {
+export async function makeAll({ scenes = true } = {}) {
+  const sc = scenes ? await readScenes() : null;
   const home = homeProfile(), model = deviceModel(home), dir = path.join(H.data, 'streamdeck');
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(path.join(dir, 'icons'), { recursive: true });
+  const pages = allPages();
+  for (const p of pages) for (const k of Object.values(p.keys)) { if (!k.startsWith('scene:')) continue; const look = keyLook(k), f = sceneIconFile(look); if (!fs.existsSync(f)) { const png = await renderIcon(look); if (png) fs.writeFileSync(f, png); } }
   for (const f of fs.readdirSync(dir)) if (/\.streamDeckProfile$/i.test(f)) { try { fs.unlinkSync(path.join(dir, f)); } catch {} }
-  const out = pagesFor().map(p => buildPage(p, home, model));
+  const out = pages.map(p => buildPage(p, home, model));
   for (const o of out) fs.writeFileSync(path.join(dir, o.file), o.data);
   db.settings.deck = { ...cfg(), madeAt: Date.now(), madeKey: key() }; save();
-  return { dir, home, model, pages: out.map(o => ({ id: o.id, name: o.name, file: o.file, path: path.join(dir, o.file), keys: o.keys, bytes: o.data.length })) };
+  return { dir, home, model, scenes: sc, pages: out.map(o => ({ id: o.id, name: o.name, file: o.file, path: path.join(dir, o.file), keys: o.keys, bytes: o.data.length })) };
 }
+export function iconPath(k) { const f = iconFile(String(k || '')); return fs.existsSync(f) ? f : null; }
 export function state() {
   const c = cfg(), sd = sdProfiles(), home = homeProfile();
   return { key: key(), base: `http://127.0.0.1:${H.port}/deck/${key()}/`, home: home ? { uuid: home.uuid, name: home.name } : null, homePick: c.home || '', sd: { found: sd.found, list: sd.list.map(p => ({ uuid: p.uuid, name: p.name })) }, madeAt: c.madeAt || null, oldKey: !!c.madeKey && c.madeKey !== key(), last: lastPress,
-    pages: pagesFor().map(p => ({ id: p.id, name: p.name, icon: p.icon, color: p.color, keys: Object.fromEntries(Object.entries({ ...p.keys, ...(home ? { [HOME_KEY]: 'home' } : {}) }).map(([pos, k]) => [pos, { k, ...keyLook(k, p.id) }])) })) };
+    sceneTarget: c.sceneTarget, sceneNow: c.sceneNow || null, sceneErr: c.sceneErr || null, sceneSets: Object.entries(sets()).map(([coll, v]) => ({ coll, n: (v.list || []).length, at: v.at || null })),
+    pages: allPages().map(p => ({ id: p.id, name: p.name, icon: p.icon, color: p.color, scenes: !!p.coll, keys: Object.fromEntries(Object.entries({ ...p.keys, ...(home ? { [HOME_KEY]: 'home' } : {}) }).map(([pos, k]) => { const L = keyLook(k, p.id); return [pos, { k, ...L, src: k === 'home' ? '/deck/home.png' : L.scene ? `/api/deck/icon?k=${encodeURIComponent(k)}` : `/deck/${L.img || k.split('~')[0].replace(/^>/, 'nav-')}.png` }]; })) })) };
 }

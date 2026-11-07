@@ -3725,6 +3725,8 @@ errlog.setOnNew(e => {
 // each Stream Deck key opens /deck/<secret key>/<button> in the background (deck.js); it presses the same thing as in the app
 deck.setHooks({
   port: PORT, data: DATA, root: ROOT, dev: () => paid.dev(),
+  scenes: () => { if (db.settings.obsOn === false) throw new Error('Movie Royal isn\'t allowed to use OBS (Settings → 🎥 OBS).'); return obs.scenesNow(); },
+  scene: (name, preview) => { if (db.settings.obsOn === false) throw new Error('Movie Royal isn\'t allowed to use OBS (Settings → 🎥 OBS), so it can\'t switch scenes.'); return obs.goScene(name, preview); },
   call: async (method, p, body) => {
     if (method === 'GOVIEW') { await deck_call('/api/view', { view: p }); broadcast({ type: 'goView', view: p, force: true }, 'control'); return {}; }
     return deck_call(p, body);
@@ -3742,21 +3744,23 @@ async function deck_call(p, body) { // (the same as clicking the button in the a
 }
 async function deckPress(req, res) {
   if (!deck.keyOk(req.params.key)) return res.status(403).type('text').send('Wrong Stream Deck key. Make the Stream Deck pages again in Movie Royal (Settings → 🖥️ App & background → 🎛️ Stream Deck).');
-  try { const msg = await deck.press(String(req.params.id || ''), req.query.test ? 'test' : 'deck'); pushState(); res.type('text').send('✅ ' + msg); }
+  try { const msg = await deck.press(String(req.params.id || ''), req.query.test ? 'test' : 'deck', req.query); pushState(); res.type('text').send('✅ ' + msg); }
   catch (e) { const b = deck.BUTTONS[req.params.id]; broadcast({ type: 'toast', text: `🎛️ Stream Deck${b ? ` (${b.label})` : ''}: ${e.message}`, ms: 6000 }, 'control'); pushState(); res.status(e.code || 409).type('text').send('⚠️ ' + e.message); }
 }
 app.get('/deck/:key/:id', deckPress); app.post('/deck/:key/:id', deckPress);
 app.get('/api/deck', (req, res) => res.json(deck.state()));
+app.get('/api/deck/icon', (req, res) => { const f = deck.iconPath(req.query.k); f ? res.sendFile(f) : res.status(404).end(); }); // (a scene key's picture, once it's drawn)
+app.post('/api/deck/scenes', wTry(async () => { const r = await deck.readScenes(); if (!r.ok) throw new Error(`Couldn't read your scenes from OBS: ${r.error}`); return { ...r, state: deck.state() }; }));
 app.post('/api/deck/settings', wTry(b => { deck.setCfg(b); return deck.state(); }));
 app.post('/api/deck/new-key', wTry(() => { deck.newKey(); return deck.state(); })); // (the old pages stop working: make them again)
-app.post('/api/deck/make', wTry(b => { const r = deck.makeAll(); act('stream', `made the Stream Deck pages (${r.pages.length})`, { icon: '🎛️' }); return { ...r, state: deck.state() }; }));
+app.post('/api/deck/make', wTry(async b => { const r = await deck.makeAll(); act('stream', `made the Stream Deck pages (${r.pages.length})`, { icon: '🎛️' }); return { ...r, state: deck.state() }; }));
 app.post('/api/deck/open', wTry(async b => { // 🎛️ hand the pages to the Stream Deck app (it asks to import each one)
-  const r = deck.makeAll(), want = b.id ? r.pages.filter(p => p.id === b.id) : r.pages, op = globalThis.__desktop?.openPath;
+  const r = await deck.makeAll(), want = b.id ? r.pages.filter(p => p.id === b.id) : r.pages, op = globalThis.__desktop?.openPath;
   if (!op) return { opened: 0, pages: r.pages, note: 'Open the files yourself (this is only automatic in the Windows app).' };
   for (const [i, p] of want.entries()) setTimeout(() => { try { op(p.path); } catch {} }, i * 2500);
   return { opened: want.length, pages: r.pages };
 }));
-app.get('/api/deck/file/:id', (req, res) => { const r = deck.makeAll(), p = r.pages.find(x => x.id === req.params.id); if (!p) return res.status(404).end(); res.download(p.path, p.file); });
+app.get('/api/deck/file/:id', async (req, res) => { const r = await deck.makeAll({ scenes: false }), p = r.pages.find(x => x.id === req.params.id); if (!p) return res.status(404).end(); res.download(p.path, p.file); });
 app.post('/api/discord/restart', async (req, res) => { // 🔄 turn the Discord bot off and on again (reconnects, re-makes slash commands, channels and pins)
   if (!db.settings.discordToken || !db.settings.discordClientId) return res.status(400).json({ error: 'Put in the Application ID and Bot token first.' });
   await discord.start(pushState);
