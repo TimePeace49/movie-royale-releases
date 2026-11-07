@@ -365,6 +365,12 @@
   #labCard.card-mode .labBall, #labCard:not(.card-mode) .labCard { display:none; }
   #v-test.checkmode > .card:not(#tCheck):not(.ttabs), #v-test.errmode > .card:not(#tErr):not(.ttabs) { display:none; }
   /* 🗂️ ✅ Checklist parts down the left side + 🤖 Test all (1.67.0, Derek) */
+  .dkPages { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap:12px; margin-top:12px; }
+  .dkPage { background:rgba(0,0,0,.25); border-radius:12px; padding:8px; }
+  .dkName { font-weight:700; margin:0 0 6px; font-size:13px; } .dkName a { text-decoration:none; margin-left:4px; }
+  .dkGrid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:5px; }
+  .dkKey { aspect-ratio:1; border-radius:9px; overflow:hidden; background:#0d0b18; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--muted, #999); }
+  .dkKey img { width:100%; height:100%; display:block; } .dkEmpty { border:2px dashed rgba(255,255,255,.18); background:transparent; }
   .ckWrap { display:grid; grid-template-columns:220px minmax(0,1fr); gap:14px; align-items:start; margin-top:10px; }
   .ckSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(100vh - var(--hdr) - 90px); overflow:auto; }
   #tCheck .ckSide button { display:flex; align-items:center; gap:6px; } #tCheck .ckSide button .pill { margin-left:auto; flex:none; }
@@ -1231,6 +1237,12 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cvTest('')" title="Show what the chat voice would say for this message (nothing is read)">🔍 What would it say?</button><button onclick="cvTest('say')" title="Read this pretend message out loud on your speaker now">🔈 Read it out loud</button><button class="ghost" onclick="cvTest('bits')" title="The same message as a cheer with bits: left out (your alerts read those)">💎 As a cheer</button><button class="ghost" onclick="cvTest('reward')" title="The same message as a channel point message: left out (your alerts read those)">⭐ As channel points</button><button class="ghost" onclick="cvTest('', '!respin')" title="A chat command: left out">❗ A command</button></div>
     <div id="cvTestOut" class="help" style="margin-top:8px"></div>
   </div>
+  <div class="card" id="deckTestCard">
+    <h3>🎛️ Stream Deck buttons</h3>
+    <p class="help">Press any Stream Deck button from here, exactly the way your Stream Deck does (same secret address). It really does the thing, so pick one that's safe right now (like 🔊 Sound on/off twice). Make and add the pages in Settings → 🖥️ App &amp; background → 🎛️ Stream Deck.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="deckTestPick" title="Which Stream Deck button to press" style="max-width:260px" onfocus="deckTestEnsure()"><option value="sound">🔊 Sound on/off</option></select><button class="primary" onclick="deckTest()" title="Press this button the way the Stream Deck would">🎛️ Press it</button><button onclick="setView('settings');setSub('app');setTimeout(()=>$('deckBody')?.scrollIntoView({block:'center'}),200)" title="Open the Stream Deck settings">⚙️ Stream Deck settings</button></div>
+    <div id="deckTestOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card" id="spamTestCard">
     <h3>🛡️ Spam bots</h3>
     <p class="help">Movie Royal bans chatters whose first message sells viewers, followers, promotion or art (Settings → 💜 Twitch → 🛡️ Spam bots). Type a message to see if it would count. Nothing is banned here. <b>✅ Check the samples</b> runs real spam lines and normal chat lines through it.</p>
@@ -1961,7 +1973,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/stream deck/i, 'tools'], [/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2356,7 +2368,7 @@ function connect() {
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
-    if (m.type === 'goView' && (view === 'wheel' || view === 'battle' || view === 'cards') && view !== m.view) setView(m.view); else if (m.type === 'goView' && view === 'mara') { /* (🏃 a paid battle started from the Marathon tab: stay here) */ } // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
+    if (m.type === 'goView' && m.force && view !== m.view) setView(m.view); /* (🎛️ a Stream Deck key picked the tab) */ else if (m.type === 'goView' && (view === 'wheel' || view === 'battle' || view === 'cards') && view !== m.view) setView(m.view); else if (m.type === 'goView' && view === 'mara') { /* (🏃 a paid battle started from the Marathon tab: stay here) */ } // 🔀 a linked wheel spot: follow it (only from the Battle / Wheel tabs)
     if (m.type === 'botSay') pcLog('bot', 'Movie Royal', m.text);
     if (m.type === 'raidPicked') raidPop({ ...m.raid, by: m.raid.name || m.raid.by });
     if (m.type === 'vrPop') vrPop(m);
@@ -2396,7 +2408,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'app') setTimeout(deckDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -3070,6 +3082,56 @@ async function paidTest(kind, amount) { const out = $('paidTestOut'); try { if (
 
 // ---------- 🌐 Viewer website (1.75.0) ----------
 let siteKey = '';
+// ---------- 🎛️ Stream Deck (1.85.0, Derek: "pages and icons for my Stream Deck… one key left open for the home page") ----------
+// Settings → 🖥️ App & background → 🎛️ Stream Deck: pick your 🏠 Home profile, see the pages, add them to the Stream Deck app.
+let DK = null;
+const dkImg = k => `/deck/${k === 'home' ? 'home' : k.startsWith('>') ? 'nav-' + k.slice(1) : k}.png`;
+function dkGrid(p) {
+  let h = '';
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 5; x++) { const pos = `${x},${y}`, k = p.keys[pos];
+    h += k ? `<div class="dkKey" title="${esc(k.label)}${k.nav ? ' (goes to that page)' : ''}"><img src="${dkImg(k.k)}" alt="${esc(k.label)}"></div>` : `<div class="dkKey dkEmpty" title="${pos === '0,2' ? 'Empty: put your own Home button here' : 'Empty'}">${pos === '0,2' ? '🏠?' : ''}</div>`; }
+  return `<div class="dkPage"><div class="dkName">${esc(p.icon)} ${esc(p.name)} <a href="/api/deck/file/${p.id}" download title="Download just this page as a Stream Deck file">⬇️</a></div><div class="dkGrid">${h}</div></div>`;
+}
+async function deckDraw() {
+  const box = $('deckBody'); if (!box) return;
+  try { DK = await api('/api/deck', null, 'GET'); } catch (e) { box.textContent = '⚠️ ' + e.message; return; }
+  deckTestFill();
+  const opts = DK.sd.list.map(p => `<option value="${p.uuid}" ${DK.homePick === p.uuid ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  const L = DK.last;
+  box.innerHTML = `<p class="help" style="margin:0 0 8px">Stream Deck pages for Movie Royal (made for a 15-key Stream Deck), with their own pictures. Each key presses a Movie Royal button in the background, so it works while you're in a game. Like your own pages, every page has a <b>🏠 Home</b> key in the bottom-left corner and a <b>🎬 Menu</b> key next to it that goes to the Movie Royal menu page.${S.settings.betaUpdates ? ' The 🏃 Marathon pages are only made in 🛠️ dev mode.' : ''}</p>
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><label style="margin:0">🏠 Home key goes to:</label><select id="dkHome" onchange="deckSet({home:this.value})" title="Which of your Stream Deck profiles the bottom-left Home key switches to">
+      <option value="" ${!DK.homePick ? 'selected' : ''}>${DK.home && !DK.homePick ? `Your profile called “${esc(DK.home.name)}”` : 'Find my profile called “Home”'}</option>${opts}<option value="NONE" ${DK.homePick === 'NONE' ? 'selected' : ''}>Nothing: leave that key empty for my own</option></select></div>
+    ${DK.sd.found ? '' : '<p class="help" style="margin:6px 0 0">Couldn\'t find the Stream Deck app\'s profiles on this PC, so the Home key stays empty. Drag your own Home button onto it after adding the pages.</p>'}
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><button class="primary" onclick="deckOpen()" title="Make the pages and hand them to the Stream Deck app (it asks to import each one)">🎛️ Add the pages to my Stream Deck</button><button onclick="testGo('deckTestCard')" title="Press any button from the Test tab, like the Stream Deck would">🧪 Try a button</button></div>
+    ${DK.oldKey ? '<p class="help" style="margin:6px 0 0;color:var(--gold)">⚠️ The secret key changed since you added the pages: add them again, or the keys won\'t work.</p>' : DK.madeAt ? `<p class="help" style="margin:6px 0 0">Last made ${esc(new Date(DK.madeAt).toLocaleString())}. When a Movie Royal update adds new buttons, press Add again (Stream Deck asks to replace the old pages).</p>` : ''}
+    ${L ? `<p class="help" style="margin:6px 0 0">Last key pressed: <b>${esc(L.label)}</b> ${L.ok ? '✅' : '⚠️'} ${esc(L.msg || '')} <span class="muted">(${esc(new Date(L.at).toLocaleTimeString())}${L.via === 'test' ? ', from the Test tab' : ''})</span></p>` : ''}
+    <div class="dkPages">${DK.pages.map(dkGrid).join('')}</div>
+    <details style="margin-top:8px"><summary>How it works / fixing it</summary><ol class="help" style="margin:6px 0 0 18px;padding:0">
+      <li><b>🎛️ Add the pages</b> opens each page in the Stream Deck app, which asks if you want to import it. Say yes to each. (Or use ⬇️ on a page and double-click the file.)</li>
+      <li>On your own home page, add a <b>Switch Profile</b> key that goes to <b>Movie Royal</b> to get to the menu.</li>
+      <li>Every key is a <b>Website</b> action with “GET request in background” ticked, going to <code>${esc(DK.base)}…</code>. Movie Royal has to be open for them to work. A ⚠️ on the key means Movie Royal said no (it pops up why).</li>
+      <li>If a page key (like ⚔️ Battle) doesn't jump to its page, pick the page again in that key's settings in the Stream Deck app.</li>
+      <li><button class="ghost" onclick="deckNewKey()" title="Make a new secret address (the pages you added stop working until you add them again)">🔑 New secret key</button> only if someone else found your key addresses.</li></ol></details>`;
+}
+async function deckSet(o) { try { await api('/api/deck/settings', o); toast('Saved'); deckDraw(); } catch (e) { toast('⚠️ ' + esc(e.message)); } }
+async function deckOpen(id) {
+  try { const r = await api('/api/deck/open', id ? { id } : {}); toast(r.opened ? `🎛️ Opening ${r.opened} page${r.opened === 1 ? '' : 's'} in the Stream Deck app: say yes to each import.` : `🎛️ Made ${r.pages.length} pages. ${esc(r.note || '')} Use ⬇️ on each page.`, 9000); setTimeout(deckDraw, 600); }
+  catch (e) { toast('⚠️ ' + esc(e.message)); }
+}
+async function deckNewKey() { if (!await ask('Make a new secret key? The Stream Deck pages you already added stop working until you add them again. (Type yes)', '')) return; try { await api('/api/deck/new-key', {}); toast('🔑 New key made: press 🎛️ Add the pages again.'); deckDraw(); } catch (e) { toast('⚠️ ' + esc(e.message)); } }
+async function deckTestEnsure() { if (!DK) { try { DK = await api('/api/deck', null, 'GET'); } catch { return; } deckTestFill(); } }
+setTimeout(() => { if (!PC_ONLY) deckTestEnsure(); }, 4000);
+function deckTestFill() {
+  const sel = $('deckTestPick'); if (!sel || !DK) return; const was = sel.value;
+  sel.innerHTML = DK.pages.map(p => `<optgroup label="${esc(p.icon + ' ' + p.name)}">${Object.values(p.keys).filter(k => !k.nav && k.k !== 'home').map(k => `<option value="${k.k}">${esc(k.icon + ' ' + k.label)}</option>`).join('')}</optgroup>`).join('');
+  if (was) sel.value = was; else sel.value = 'sound';
+}
+async function deckTest() {
+  const out = $('deckTestOut'), id = $('deckTestPick').value;
+  if (!DK) { try { DK = await api('/api/deck', null, 'GET'); } catch (e) { out.textContent = '⚠️ ' + e.message; return; } }
+  try { const r = await fetch(`/deck/${DK.key}/${id}?test=1`), t = await r.text(); out.innerHTML = `${r.ok ? '✅' : '⚠️'} <b>${esc(id)}</b>: ${esc(t.replace(/^(✅|⚠️) /, ''))} <span class="muted">(the key on your Stream Deck would show ${r.ok ? 'a ✓' : 'a ⚠'})</span>`; }
+  catch (e) { out.textContent = '⚠️ ' + e.message; }
+}
 function siteDraw(full) {
   const box = $('siteBody'); if (!box) return; const T = S.site || {}, key = JSON.stringify([T, S.cloud?.enabled]);
   if (!full && (key === siteKey || (box.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)))) return; siteKey = key;
@@ -5557,6 +5619,8 @@ function openSettings(force) {
       <h3 style="margin-top:18px">💬 Pop-ups</h3>
       <div style="max-width:340px"><label>💬 Little pop-ups at the bottom stay for (seconds; longer messages stay longer)</label><input type="number" min="2" max="60" data-k="toastSecs" value="${Number(s.toastSecs) || 8}" title="How long the little pop-ups at the bottom stay"></div>
       ${holStyleHTML()}
+      <h3 style="margin-top:18px">🎛️ Stream Deck</h3>
+      <div id="deckBody" class="help">Loading…</div>
       <div class="row" style="margin-top:10px"><button onclick="api('/api/open-data-folder')">📂 Open data folder</button><a href="/setup.html"><button>🧭 Setup guide</button></a></div>`,
     obs: `<h3>🎥 OBS (optional)</h3>
       <p class="help">Movie Royal can do a few things in OBS for you (each one below can be switched off). To connect: in OBS, <b>Tools → WebSocket Server Settings</b> → tick <b>Enable WebSocket server</b> → <b>Show Connect Info</b> → copy the password here. (OBS 28 or newer has it built in.)</p>
@@ -5661,6 +5725,7 @@ function openSettings(force) {
   };
   $('settingsBody').innerHTML = Object.entries(subs).map(([k, html]) => `<div class="sub${k === sub ? ' on' : ''}" data-s="${k}">${html}</div>`).join('');
   spSetInit(); // 🎟️ wild spot character builder
+  if (sub === 'app') setTimeout(deckDraw, 0); // 🎛️
   $('settingsBody').oninput = $('settingsBody').onchange = e => { if (e.target.matches('[data-k], .rt, .re')) dirty(); };
   settingsDirty = false; $('saveHint').textContent = 'Change anything, then press Save.';
   const lbd = $('lbdrop');

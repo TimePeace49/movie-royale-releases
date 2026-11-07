@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.85.0
+- 🎛️ **Stream Deck pages** (Derek: "I have a Stream Deck, let's make a page or pages and icons for that… I only have a 15 button one and need one left open for the home page"): Settings → 🖥️ App & background → 🎛️ Stream Deck → **🎛️ Add the pages to my Stream Deck**, and the Stream Deck app asks to import each page. Made like your own pages: one profile per section, linked with page keys, and the bottom-left key is 🏠 Home (it goes to your Stream Deck profile called "Home", or pick another one, or leave it empty). Pages: 🎬 Movie Royal (menu + the most-used buttons), 🎡 Wheel, ⚔️ Battle, 🃏 Cards & more, and in 🛠️ dev mode 🏃 Marathon + 🎬 Marathon stream (run next, start now, pause battles, ⏱️ timer, TTS, read chat, YouTube next/back/pause, 🍳 big camera 1/2/3, 🎙️ PC / cooking mic). Every key has its own picture and presses the same thing as the button in the app, in the background, so it works while you're in a game. ✓ on the key = it worked, ⚠ = it couldn't (Movie Royal pops up why). Each key's address has a secret key in it, so a web page can't press your buttons. Test: 🧪 Test → 🧰 Test tools → 🎛️ Stream Deck buttons.
+
 ## 1.84.3
 - 🔇 **No more double sound** (Derek: "getting double audio with the app and OBS open with a scene with the app on it"): while OBS has a Movie Royal game screen open (the battle browser source, in any scene), the battle inside Movie Royal stays quiet, so every sound plays once (from OBS). As soon as OBS closes it, the app plays sounds again. Settings → 🔊 Sounds has the switch (**🔇 No double sound**, on by default) and shows how many game screens OBS has open. If you then hear nothing at all, the OBS source has "Control audio via OBS" ticked: turn on monitoring for it in OBS (Edit → Advanced Audio Properties → Monitor and Output) or untick it. Test: open OBS with a battle scene and look at the number in Settings → 🔊 Sounds.
 

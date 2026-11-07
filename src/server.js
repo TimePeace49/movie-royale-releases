@@ -41,6 +41,7 @@ import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
 import * as spamban from './spamban.js';
+import * as deck from './deck.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
 import { blockReason, banMovie, unbanMovie, unapprove, autoBan, isBanned as isBannedId, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
@@ -3720,6 +3721,42 @@ errlog.setOnNew(e => {
   broadcast({ type: 'errorLogged' }, 'control');
   if (['discord', '24/7', 'cloud'].includes(e.source) || db.settings.discordDebugAll) discord.postDebug(debugText(e)); // 🐞 Discord problems go to the mods-only #movie-royal-debug channel too
 });
+// ---------- 🎛️ Stream Deck (1.85.0, Derek) ----------
+// each Stream Deck key opens /deck/<secret key>/<button> in the background (deck.js); it presses the same thing as in the app
+deck.setHooks({
+  port: PORT, data: DATA, root: ROOT, dev: () => paid.dev(),
+  call: async (method, p, body) => {
+    if (method === 'GOVIEW') { await deck_call('/api/view', { view: p }); broadcast({ type: 'goView', view: p, force: true }, 'control'); return {}; }
+    return deck_call(p, body);
+  },
+  state: () => {
+    const st = wheel.W(), yt = live.ytNow || {}, ytK = ['brb', 'sleep'].sort((a, b) => (yt[b]?.at || 0) - (yt[a]?.at || 0))[0];
+    return { round: wheel.getRound(), reveal: st.reveal?.id || null, capture: !!live.capture, soundOn: db.settings.soundOn !== false, maraTimer: live.maraTimer || null, ttsMuted: !!ttsCfg().muted, chatVoice: !!chatvoice.cfg().on, ytK, ytPaused: !!yt[ytK]?.paused };
+  }
+});
+async function deck_call(p, body) { // (the same as clicking the button in the app: it goes through the app's own address)
+  const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}), signal: AbortSignal.timeout(20000) });
+  let j = {}; try { j = await r.json(); } catch {}
+  if (!r.ok || j.error) throw new Error(j.error || `It didn't work (${r.status}).`);
+  return j;
+}
+async function deckPress(req, res) {
+  if (!deck.keyOk(req.params.key)) return res.status(403).type('text').send('Wrong Stream Deck key. Make the Stream Deck pages again in Movie Royal (Settings → 🖥️ App & background → 🎛️ Stream Deck).');
+  try { const msg = await deck.press(String(req.params.id || ''), req.query.test ? 'test' : 'deck'); pushState(); res.type('text').send('✅ ' + msg); }
+  catch (e) { const b = deck.BUTTONS[req.params.id]; broadcast({ type: 'toast', text: `🎛️ Stream Deck${b ? ` (${b.label})` : ''}: ${e.message}`, ms: 6000 }, 'control'); pushState(); res.status(e.code || 409).type('text').send('⚠️ ' + e.message); }
+}
+app.get('/deck/:key/:id', deckPress); app.post('/deck/:key/:id', deckPress);
+app.get('/api/deck', (req, res) => res.json(deck.state()));
+app.post('/api/deck/settings', wTry(b => { deck.setCfg(b); return deck.state(); }));
+app.post('/api/deck/new-key', wTry(() => { deck.newKey(); return deck.state(); })); // (the old pages stop working: make them again)
+app.post('/api/deck/make', wTry(b => { const r = deck.makeAll(); act('stream', `made the Stream Deck pages (${r.pages.length})`, { icon: '🎛️' }); return { ...r, state: deck.state() }; }));
+app.post('/api/deck/open', wTry(async b => { // 🎛️ hand the pages to the Stream Deck app (it asks to import each one)
+  const r = deck.makeAll(), want = b.id ? r.pages.filter(p => p.id === b.id) : r.pages, op = globalThis.__desktop?.openPath;
+  if (!op) return { opened: 0, pages: r.pages, note: 'Open the files yourself (this is only automatic in the Windows app).' };
+  for (const [i, p] of want.entries()) setTimeout(() => { try { op(p.path); } catch {} }, i * 2500);
+  return { opened: want.length, pages: r.pages };
+}));
+app.get('/api/deck/file/:id', (req, res) => { const r = deck.makeAll(), p = r.pages.find(x => x.id === req.params.id); if (!p) return res.status(404).end(); res.download(p.path, p.file); });
 app.post('/api/discord/restart', async (req, res) => { // 🔄 turn the Discord bot off and on again (reconnects, re-makes slash commands, channels and pins)
   if (!db.settings.discordToken || !db.settings.discordClientId) return res.status(400).json({ error: 'Put in the Application ID and Bot token first.' });
   await discord.start(pushState);
