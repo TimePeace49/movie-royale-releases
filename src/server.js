@@ -8,7 +8,7 @@ import { WebSocketServer } from 'ws';
 import os from 'os';
 import { spawn } from 'child_process';
 import { streamerName } from './store.js';
-import { db, save, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS, saveInfo, DB_FILE } from './store.js';
+import { db, save, saveNow, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS, saveInfo, DB_FILE } from './store.js';
 import * as lb from './letterboxd.js';
 import * as series from './series.js';
 import * as discord from './discord.js';
@@ -1222,6 +1222,8 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); } // 🏃 the marathon overlay (counter + pop-ups)
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
+  if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
+  if (ws.role === 'control' && live.resumeNote && Date.now() - live.resumeNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.resumeNote.text })); } catch {} }, 1500); // 🔄 what came back after a restart
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
   ws.on('close', pushState);
@@ -2187,6 +2189,67 @@ app.get('/api/patchnotes', async (req, res) => {
   let releases = []; try { releases = (await ghReleases()).filter(x => !x.pre).map(x => ({ tag: x.tag, at: x.at, notes: x.notes })); } catch {}
   res.json({ version: VERSION, local, releases });
 });
+// 🔄 Pick up where you left off (1.82.2, Derek: "when updating app while live save battle or wheel status as is… so if I send an update
+// to a friend during stream he can update and leave off what he is currently doing"). The wheels, battles, pools, luck, picks and
+// tonight's movies are already saved all the time; this keeps the bits that only live while the app is open (the map you picked, a
+// best-of series, the winner waiting to !accept / !pass, the join timer + chat's votes) and puts them back when the app opens again
+// within 30 minutes. A battle that was playing can't carry on mid-fight: nothing of it counted, so you just press Start again.
+const RESUME_MS = 30 * 60000;
+function resumeData(why) {
+    const c = live.claim, game = live.game;
+    return {
+      at: Date.now(), why, version: VERSION, phase: live.phase, listId: game?.listId || null, test: !!game?.test, cardsFight: cards.live.phase === 'fight' && !cards.live.fight?.chars ? !!cards.live.fight?.test : null,
+      map: live.map ?? null, mapPick: live.mapPick ?? null, mapUsed: !!live.mapUsed, raceSkip: live.raceSkip ?? null, series: live.series || null, redoSkip: live.redoSkip || null, lookSeed: live.lookSeed,
+      lastWinner: live.lastWinner || null, claim: c ? { winner: c.winner, claimed: !!c.claimed, done: !!c.done, passed: !!c.passed, instant: !!c.instant, waiting: c.waiting || null, asked: c.asked || null, left: c.endsAt ? Math.max(0, c.endsAt - Date.now()) : 0 } : null,
+      gather: live.gather ? { left: Math.max(0, live.gather.endsAt - Date.now()), discord: !!live.gather.discord } : null, board: live.board || null, calls: [...(live.calls || new Map())],
+      round: (() => { const R = wheel.W().round; return R?.state === 'running' ? 'running' : null; })(),
+    };
+}
+function resumeSave(why) { try { db.resume = resumeData(why); saveNow(); } catch (e) { console.error('[resume] couldn\'t keep what was going on:', e.message); } }
+// 🧪 Test tab: what would come back if Movie Royal closed right now (nothing is saved or changed)
+app.get('/api/test/resume', (req, res) => {
+  const r = resumeData('test'), W = wheel.W(), aw = W.wheels.find(w => w.id === W.activeId), out = [];
+  if (aw) out.push(`🎡 “${aw.name}”: ${aw.entries.filter(e => e.on !== false && !e.voided).length} spots on, ${aw.entries.filter(e => e.on === false).length} off, ${aw.entries.filter(e => e.voided).length} voided, ${aw.entries.filter(e => e.count != null).length} countdowns (saved all the time)`);
+  if (W.round) out.push(`⏱️ the wheel's round timer (${W.round.state === 'running' ? 'comes back paused: press ▶' : W.round.state})`);
+  out.push(`⚔️ the battle you're on: “${getList(db.activeListId)?.name || '?'}” and every pool, luck and pick (saved all the time)`);
+  if (r.map) out.push(`🗺️ the map: ${mapLabel(r.map)}`);
+  if (r.series && !r.series.done) out.push(`🏆 best of ${r.series.bestOf}, round ${r.series.round}`);
+  if (r.lastWinner) out.push(`🏆 the winner card: “${r.lastWinner.label}”${r.claim && !r.claim.done ? ' (still waiting for !accept / !pass)' : ''}`);
+  if (r.gather) out.push(`⏱️ the join timer (${Math.round(r.gather.left / 1000)} s left)`);
+  if (r.board) out.push(`🔮 chat's votes (${r.calls.length})`);
+  if (r.phase === 'lobby' || r.phase === 'running') out.push('⚠️ the battle playing right now would NOT carry on (nothing of it counts): press Start again after');
+  if (r.cardsFight != null) out.push('⚠️ the card battle playing right now would NOT carry on (no pack is used): start it again after');
+  res.json({ ok: true, items: out, mins: RESUME_MS / 60000 });
+});
+function resumeLoad() {
+  const r = db.resume; if (!r) return; delete db.resume; save();
+  if (!(Date.now() - r.at < RESUME_MS)) return;
+  const notes = [];
+  try {
+    if (r.map != null) { live.map = r.map; live.mapUsed = !!r.mapUsed; } if (r.mapPick != null) live.mapPick = r.mapPick; if (r.raceSkip != null) live.raceSkip = r.raceSkip;
+    if (r.series && !r.series.done) { live.series = r.series; notes.push(`🏆 best of ${r.series.bestOf} (round ${r.series.round})`); }
+    if (r.redoSkip) live.redoSkip = r.redoSkip; if (r.lookSeed) live.lookSeed = r.lookSeed;
+    if (r.lastWinner) live.lastWinner = r.lastWinner;
+    if (r.claim && r.lastWinner) {
+      const c = live.claim = { winner: r.claim.winner, claimed: r.claim.claimed, done: r.claim.done, passed: r.claim.passed, instant: r.claim.instant };
+      if (r.claim.waiting) { c.waiting = r.claim.waiting; c.asked = r.claim.asked; } // (the bot already asked them: !accept / !pass still works)
+      else if (!c.done) { const ms = Math.max(15000, r.claim.left || 0); c.endsAt = Date.now() + ms; c.timer = setTimeout(() => finishClaim(false), ms); }
+      if (!c.done) notes.push(`🏆 ${r.lastWinner.label}'s claim`);
+    }
+    if (r.gather && r.gather.left > 3000 && (r.phase === 'idle' || r.phase === 'ended')) {
+      live.gather = { endsAt: Date.now() + r.gather.left, discord: r.gather.discord }; live.gather.timer = setTimeout(gatherTimeUp, r.gather.left);
+      notes.push(`⏱️ the join timer (${Math.round(r.gather.left / 1000)} s left)`);
+    }
+    if (r.board) { live.board = r.board; for (const [k, v] of r.calls || []) live.calls.set(k, v); setTimeout(() => sendBoard(true), 2500); notes.push(`🔮 chat's ${(r.calls || []).length} votes`); }
+    if (r.round) notes.push('⏱️ the wheel\'s round timer (paused: press ▶ to keep going)');
+    if (r.phase === 'lobby' || r.phase === 'running') notes.push(`⚠️ the ${r.test ? 'practice ' : ''}battle that was playing couldn't carry on, nothing of it counted: press Start to run it again`);
+    if (r.cardsFight != null) notes.push(`⚠️ the ${r.cardsFight ? 'practice ' : ''}card battle that was playing couldn't carry on, no pack was used: start it again`);
+  } catch (e) { console.error('[resume] couldn\'t put everything back:', e.message); }
+  const mins = Math.max(1, Math.round((Date.now() - r.at) / 60000));
+  live.resumeNote = { at: Date.now(), text: `🔄 Picked up where you left off (closed ${mins} min ago${r.version && r.version !== VERSION ? `, updated ${r.version} → ${VERSION}` : ''}): your wheels, battles and pools are as you left them${notes.length ? ', plus ' + notes.join(', ') : ''}.` };
+  act('stream', `Movie Royal opened again ${mins} min after closing${r.version && r.version !== VERSION ? ` (updated ${r.version} → ${VERSION})` : ''}: picked up where it left off`, { icon: '🔄', kind: 'resume' });
+  pushState();
+}
 function runInstaller(file, res) {
   if (!DESKTOP || process.platform !== 'win32') return res.status(400).json({ error: 'Updates install from the Windows app.' });
   // run the installer quietly, then open Movie Royal again once it's done (a little helper script waits for it)
@@ -2195,6 +2258,7 @@ function runInstaller(file, res) {
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^ELECTRON_/i.test(k)));
   spawn('cmd.exe', ['/c', bat], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref();
   res.json({ ok: true });
+  resumeSave('update'); // 🔄 keep what's going on for when the new version opens
   setTimeout(() => globalThis.__desktop?.quit(), 600);
 }
 app.post('/api/update/install-file', express.raw({ type: '*/*', limit: '500mb' }), (req, res) => {
@@ -3069,7 +3133,7 @@ app.post('/api/test/storm', (req, res) => { // 🧪 a pretend storm power in the
   stormSend(kind, String(req.body?.name || 'test_viewer')); res.json({ ok: true });
 });
 app.post('/api/rewards/pause-all', async (req, res) => { // the app is closing: nothing can be redeemed while it's off
-  activity.flush(); // (🧾 the last lines of the complete history are saved right away)
+  resumeSave('close'); activity.flush(); // (🧾 the last lines of the complete history are saved right away)
   rewardBusy = false; rewardKey = ''; await Promise.all([syncRewards(true).catch(() => {}), Promise.race([backuplink.tick({ closing: true }).catch(() => {}), new Promise(r => setTimeout(r, 4000))])]); rewardKey = 'closed'; res.json({ ok: true }); // (and tell the backup bot server Movie Royal is closing)
 });
 app.post('/api/chaos-toggle', async (req, res) => {
@@ -4018,6 +4082,16 @@ function boardVote(m) { // 🔮 a plain number or movie name in chat while the b
   live.calls.set(m.login.toLowerCase(), hit.spot ? { spot: true, label: hit.label, name: m.name } : { id: hit.id, label: hit.label, name: m.name });
   sendBoard(); clearTimeout(callsBcast); callsBcast = setTimeout(pushState, 400); return true;
 }
+async function gatherTimeUp() { // ⏱️ the join timer ran out
+    const g = live.gather; live.gather = null; broadcast({ type: 'gather', endsAt: null }, 'overlay');
+    if (g?.discord) { // 🎬 Discord battles: time's up, but YOU start the battle
+      sendBoard(true); broadcast({ type: 'toast', text: '⏱️ Join time is up. Press START ROYAL when you\'re ready (people can still vote until the fight starts).' }, 'control');
+      if (twitch.canSay() && live.board) twitch.say('⏱️ Time\'s up! The battle starts soon: last chance to vote who wins (type the number or the movie name) 🔮').catch(() => {});
+      pushState(); return;
+    }
+    const err = await startRound();
+    if (err) { broadcast({ type: 'gatherFailed', error: err }, 'overlay'); pushState(); }
+}
 app.post('/api/gather/start', (req, res) => {
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
   if (live.phase === 'ended' || live.claim) { // coming from a finished round: put the next round's pieces back first
@@ -4034,16 +4108,7 @@ app.post('/api/gather/start', (req, res) => {
     const n = live.board?.rows.length || 0, luck = Number(db.settings.callLuck ?? 1);
     if (twitch.canSay()) twitch.say(`⏱️ ${Math.round(seconds / 60 * 10) / 10} minutes to join the battle! Got a movie in Discord? Type anything in chat to put it on the battlefield. 🔮 Who's gonna win? Type the NUMBER or the MOVIE NAME from the list on screen (1–${n})${db.settings.callsOn !== false && luck ? `: if it wins, +${luck}% luck on your own movies next time 🍀` : ''}`).catch(() => {});
   }
-  live.gather.timer = setTimeout(async () => {
-    const g = live.gather; live.gather = null; broadcast({ type: 'gather', endsAt: null }, 'overlay');
-    if (g?.discord) { // 🎬 Discord battles: time's up, but YOU start the battle
-      sendBoard(true); broadcast({ type: 'toast', text: '⏱️ Join time is up. Press START ROYAL when you\'re ready (people can still vote until the fight starts).' }, 'control');
-      if (twitch.canSay() && live.board) twitch.say('⏱️ Time\'s up! The battle starts soon: last chance to vote who wins (type the number or the movie name) 🔮').catch(() => {});
-      pushState(); return;
-    }
-    const err = await startRound();
-    if (err) { broadcast({ type: 'gatherFailed', error: err }, 'overlay'); pushState(); }
-  }, seconds * 1000);
+  live.gather.timer = setTimeout(gatherTimeUp, seconds * 1000);
   setTimeout(() => broadcast({ type: 'gather', endsAt: live.gather?.endsAt || null, seconds, discord: discordBattle }, 'overlay'), 400);
   pushState(); res.json({ ok: true });
 });
@@ -4607,6 +4672,7 @@ server.on('error', e => {
   if (globalThis.__desktop) globalThis.__desktop.fatal(msg); else process.exit(1);
 });
 server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
+  resumeLoad(); // 🔄 opened again soon after closing (an update while live): put back what was going on
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   globalThis.__desktop?.ready(`http://localhost:${PORT}/`);
   console.log(`\n  🍿 Movie Royal is running!\n  Open http://localhost:${PORT} in your browser (keep this window open while you stream)\n`);

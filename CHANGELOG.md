@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.2
+- 🔄 **Updating while you're live** (Derek): when Movie Royal closes (an update during stream) and opens again within 30 minutes, it picks up where you left off. Your wheels (spots on / off, voided spots, countdowns, sizes, the last landing), battles, pools, luck and Discord picks were already saved all the time; now these come back too: the map you picked, a best-of series, the winner card still waiting for !accept / !pass (with its countdown), the join timer and chat's votes. A message tells you what came back.
+  - The wheel's round timer comes back paused (press ▶ to keep going). A battle that was playing right then can't carry on mid-fight: nothing of it counted, so press Start again.
+  - Try it: 🧪 Test tab → 🔄 Pick up where you left off shows what would come back if it closed right now.
+
 ## 1.82.1
 - 🛠️ The last few marathon OBS bits are dev mode only too: putting the marathon counter + pop-up in OBS, and changing the title screen words or the paused message. With dev mode off nothing marathon touches OBS.
 - 🏴‍☠️ Checked: the Pirate Battle is on the 🃏 Card battles tab (it came in 1.73.0, which wasn't a latest release until now).
