@@ -12,6 +12,10 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .count .nx { font-weight: 700; font-size: 17px; color: #e8dcff; letter-spacing: 0; text-transform: none; margin-top: 3px; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .count.bump { transform: scale(1.15); }
 .count.off { opacity: 0; transform: scale(.8); }
+/* (1.82.0) ?mini=1 = the small counter for the gameplay scenes: a little tag at the top middle (pop-ups stay full size) */
+.count.mini { padding: 6px 14px 6px 10px; gap: 8px; border-width: 2px; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+.count.mini .n { font-size: 30px; min-width: 22px; text-shadow: 0 2px 0 #7a3c00; } .count.mini .t { font-size: 13px; letter-spacing: 1.5px; } .count.mini .nx { display: none; }
+.count.tc { left: 50%; top: 14px; transform: translateX(-50%); } .count.tc.bump { transform: translateX(-50%) scale(1.15); } .count.tc.off { transform: translateX(-50%) scale(.8); }
 .pop { position: absolute; left: 50%; top: 50%; width: 1700px; max-height: 1000px; transform: translate(-50%, -50%) scale(.6); opacity: 0; border-radius: 30px; padding: 26px 34px 20px; box-sizing: border-box;
   background: linear-gradient(160deg, rgba(24,10,44,.96), rgba(56,14,62,.96)); border: 4px solid #ffcf4a; box-shadow: 0 20px 80px rgba(0,0,0,.6), 0 0 60px rgba(255,79,154,.35); transition: transform .45s cubic-bezier(.2,1.5,.4,1), opacity .35s; }
 .pop.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -76,9 +80,9 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 <script>
 'use strict';
 const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const DEMO = /[?&]demo/.test(location.search), Q = []; let showing = false, last = null, audio = { on: true, sfx: .7 };
+const DEMO = /[?&]demo/.test(location.search), MINI = /[?&]mini=1/.test(location.search), Q = []; let showing = false, last = null, audio = { on: true, sfx: .7 };
 function count(m) {
-  const c = $('count'); c.className = 'count ' + (m.corner || 'bl') + (m.on ? '' : ' off');
+  const c = $('count'); c.className = 'count ' + (MINI ? 'mini tc' : (m.corner || 'bl')) + (m.on ? '' : ' off');
   if (last != null && m.owed > last) { c.classList.add('bump'); setTimeout(() => c.classList.remove('bump'), 450); }
   last = m.owed; $('cn').textContent = m.owed; $('ct').textContent = m.owed === 1 ? 'battle owed' : 'battles owed';
   $('cx').textContent = m.paused ? '⏸ Paused: they run when we\'re back' : m.next?.length ? 'Next: ' + m.next.join(', ') : 'Sub, gift, $5 or 500 bits = a battle';

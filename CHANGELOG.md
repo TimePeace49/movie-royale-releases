@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.0
+- 🎮 The marathon's GTA 6 Gameplay scene is more minimal: the game, a small camera in the bottom right and a tiny "battles owed" tag at the top middle (pop-ups and battles still show full size). Already made the setup? Press 🧰 Marathon OBS setup again: your camera moves to the new spot only if it's still where the old setup put it.
+- 🍳 New 🍳 Cooking scene in the marathon OBS setup: 3 cooking cameras, 1 big + 2 small, plus the title background and the battle (hidden). Movie Royal picks the cameras your stream camera isn't using; 📷 1 / 2 / 3 on the 🏃 Marathon tab makes that camera the big one.
+- 🤝 New 🤝 Co-stream (GTA 6) scene: the game + your camera on your side; your partner's camera (and their battle) go in this scene on their side. The 🤝 Co-stream share scene the co-stream sends is made too.
+
 ## 1.81.2
 - 🌐 The viewer website is a 🛠️ dev mode thing for now: Settings → 🌐 Viewer site, the Test tab card, the Setup guide step and !site only show (and the site only runs) with Dev mode on. Turn Dev mode off and the website goes offline; turn it back on and it comes back with everything as it was.
 - 🧪 Test marathon battle (🛠️ dev mode only): 🧪 Test tab → ⚔️ Battles → 🏃 Test marathon battle plays your real Marathon Battle (its things, pictures, odds and chat luck) as a practice round on a character map you pick (or your marathon map / random). Nothing counts: no battle from the line is used, the winner doesn't count, chat luck stays and nothing goes in the history. If a timed thing wins, its ⏱️ timer pops up so you can try it.

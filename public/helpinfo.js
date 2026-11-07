@@ -27,6 +27,8 @@ H(/^⚙ settings$/i, '⚙ Settings', 'Paid battle amounts, luck per pick, the po
 H(/^🌐 website$/i, '🌐 Website', 'Opens your viewer website: people can pick their map and luck there too (with map screenshots).');
 H(/^tip:which battle is the marathon battle/i, '⚔️ The marathon battle', 'Which battle paid battles use (import your Marathon Battle in 🎬 Movie Pool → 📥 Import).');
 H(/^tip:its name \(chat sees it/i, '✏️ Name', 'Its name: chat sees it on the pick pop-up and the website.');
+H(/^tip:see the small battles-owed tag/i, '🎮 Small counter', 'Shows the small battles-owed tag that the 🎮 Gameplay and 🤝 Co-stream scenes get (top middle), with pretend numbers.');
+H(/^tip:make cooking camera \d the big one/i, '🍳 Big cooking camera', 'Picks which of your 3 cooking cameras is big in the 🍳 Cooking scene; the other two go small on the right. Works any time, even live.');
 H(/^tip:start a practice marathon battle/i, '▶ Test marathon battle', 'Plays your real Marathon Battle (its things, pictures, odds and chat luck) as a practice round. Nothing counts: no battle from the line is used, the winner doesn\'t count, chat luck stays and nothing goes in the history. A timed thing that wins shows its timer so you can try it.');
 H(/^tip:the map for the test marathon battle/i, '🗺️ Test battle map', 'The map for the test marathon battle: your marathon map (or 🎲 random), or pick one. Only character maps.');
 H(/^tip:the things in the marathon battle \(names, odds/i, '🏃 Marathon pool', 'Opens the 🏃 Marathon pool tab: the things in the marathon battle, their numbers, odds and pictures.');

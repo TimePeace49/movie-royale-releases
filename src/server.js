@@ -4344,7 +4344,7 @@ const maraUrl = () => `http://localhost:${PORT}/marathon.html`;
 // The title screens are public/scenecard.html?k=soon|sleep|chat (ws role 'mara': battles owed + the words below, changeable live).
 const cardsCfg = () => { const c = db.settings.marathon?.cards || {}; return { title: String(c.title || '').trim() || 'GTA 6 MARATHON', soonMode: c.soonMode === 'brb' ? 'brb' : 'soon', soon: String(c.soon || '').trim() || 'Starting soon', brb: String(c.brb || '').trim() || 'Be right back', sleep: String(c.sleep || '').trim() || 'Shh… sleeping stream' }; };
 const cardsMsg = () => ({ type: 'sceneCard', ...cardsCfg() });
-const obsSetupCfg = () => { const o = db.settings.marathon?.obsSetup || {}; return { profile: o.profile || 'GTA 6 Marathon', collection: o.collection || 'GTA 6 Marathon', prev: o.prev || null, madeAt: o.madeAt || null }; };
+const obsSetupCfg = () => { const o = db.settings.marathon?.obsSetup || {}; return { profile: o.profile || 'GTA 6 Marathon', collection: o.collection || 'GTA 6 Marathon', prev: o.prev || null, madeAt: o.madeAt || null, cookBig: db.settings.marathon?.cookBig || 1 }; };
 app.get('/api/obs/marathon-setup', async (req, res) => { let now = null, err = null; try { now = await obs.obsSetups(); } catch (e) { err = e.message; } res.json({ ...obsSetupCfg(), now, err, cards: cardsCfg(), scenes: Object.values(obs.MARA_SCENES) }); });
 app.post('/api/obs/marathon-setup', wTry(async b => {
   if (!paid.dev()) throw new Error('The marathon OBS setup is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
@@ -4355,13 +4355,19 @@ app.post('/api/obs/marathon-setup', wTry(async b => {
   const extra = [];
   if (!b.dry && db.settings.choiceObs && obsOk()) { try { const f = await choiceFile(); extra.push({ name: 'Movie Royal celebration', url: f.file, local: true }); } catch {} } // 🎉 Viewer's Choice, if you have it in OBS
   if (!b.dry && db.settings.rollObs && obsOk()) extra.push({ name: obs.ROLL_NAME, url: rollUrl() }); // 📣 roll call, if you have it in OBS
-  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), card: k => `http://localhost:${PORT}/scenecard.html?k=${k}` } });
+  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, coSide: costream.mySide(), urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), maraMini: maraUrl() + '?mini=1', card: k => `http://localhost:${PORT}/scenecard.html?k=${k}` } });
   if (!b.dry) {
     o.profile = profile; o.collection = collection; o.madeAt = Date.now(); if (r.prev && (r.prev.profile !== profile || r.prev.collection !== collection)) o.prev = r.prev;
-    c.obsSetup = o; c.obs = true; c.scenes = r.scenes; db.settings.marathon = c; save(); pushState();
+    c.obsSetup = o; c.obs = true; c.scenes = r.scenes; db.settings.marathon = c;
+    if (db.costream && !db.costream.scene) db.costream.scene = obs.MARA_SCENES.co; // 🤝 your partner's camera + battle go in the co-stream gameplay scene
+    save(); pushState();
     act('stream', `🧰 Made the marathon OBS setup: profile “${profile}” + scene collection “${collection}”`, { icon: '🧰', kind: 'obs' });
   }
   return r;
+}));
+app.post('/api/obs/cook-big', wTry(async b => { // 🍳 (1.82.0) which cooking camera is the big one
+  if (!paid.dev()) throw new Error('The marathon OBS setup is a 🛠️ dev mode feature.');
+  const r = await obs.cookBig(b.n); db.settings.marathon = { ...(db.settings.marathon || {}), cookBig: r.big }; save(); pushState(); return r;
 }));
 app.post('/api/obs/marathon-switch', wTry(async b => { // ↩️ back to your normal setup / 🏃 to the marathon one
   if (!paid.dev()) throw new Error('The marathon OBS setup is a 🛠️ dev mode feature.');

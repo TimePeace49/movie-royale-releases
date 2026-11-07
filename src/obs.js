@@ -349,7 +349,23 @@ export async function coStats() {
 // pieces already in place. Your normal profile + scenes are left alone (switch back any time: OBS's Profile / Scene Collection
 // menus, or ↩️ in Movie Royal). Running it again on an existing setup only adds what's missing (nothing you moved is touched).
 // OBS can't copy a camera or game capture between scene collections, so it makes new ones that you point at your camera / GTA once.
-export const MARA_SCENES = { game: '🎮 GTA 6 Gameplay', chat: '💬 Just Chatting', sleep: '😴 Sleeping / AFK', soon: '⏳ Starting Soon / BRB' };
+export const MARA_SCENES = { game: '🎮 GTA 6 Gameplay', co: '🤝 Co-stream (GTA 6)', cook: '🍳 Cooking', chat: '💬 Just Chatting', sleep: '😴 Sleeping / AFK', soon: '⏳ Starting Soon / BRB' };
+// 🍳 (1.82.0, Derek: a cooking stream with 3 cameras, 1 big + 2 small) the cooking cameras and where they sit; cookBig(n) swaps which one is big
+export const COOK_CAMS = ['📷 Cooking cam 1', '📷 Cooking cam 2', '📷 Cooking cam 3'];
+const COOK_BOXES = [[0, 0, .75, .75], [.75, 0, .25, .25], [.75, .25, .25, .25]];
+export const MARA_MINI = 'Movie Royal marathon (small)';
+const GAME_CAM = [.81, .785, .175, .19];
+/** 🍳 make cooking camera n (1–3) the big one; the other two go small in order. */
+export async function cookBig(n) {
+  return session(async call => {
+    const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080, sc = MARA_SCENES.cook;
+    const ids = []; for (const c of COOK_CAMS) ids.push(await call('GetSceneItemId', { sceneName: sc, sourceName: c }).then(r => r.sceneItemId).catch(() => null));
+    if (ids.every(x => x == null)) throw new Error(`OBS has no “${sc}” scene with the cooking cameras: make the marathon OBS setup first (🏃 Marathon tab → 🧰).`);
+    const k = Math.max(1, Math.min(3, Number(n) || 1)) - 1, order = [k, ...[0, 1, 2].filter(i => i !== k)];
+    for (let j = 0; j < 3; j++) { const id = ids[order[j]]; if (id == null) continue; const b = COOK_BOXES[j]; await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: { positionX: Math.round(b[0] * W), positionY: Math.round(b[1] * H), alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: Math.round(b[2] * W), boundsHeight: Math.round(b[3] * H), rotation: 0 } }); }
+    return { big: k + 1 };
+  });
+}
 const PROFILE_PARAMS = [['Output', 'Mode'], ['SimpleOutput', 'VBitrate'], ['SimpleOutput', 'ABitrate'], ['SimpleOutput', 'StreamEncoder'], ['SimpleOutput', 'RecEncoder'], ['SimpleOutput', 'RecQuality'], ['SimpleOutput', 'RecFormat2'], ['SimpleOutput', 'FilePath'], ['SimpleOutput', 'Preset'], ['SimpleOutput', 'NVENCPreset2'], ['SimpleOutput', 'UseAdvanced'],
   ['AdvOut', 'Encoder'], ['AdvOut', 'RecEncoder'], ['AdvOut', 'RecFilePath'], ['AdvOut', 'RecFormat2'], ['AdvOut', 'TrackIndex'], ['AdvOut', 'RecTracks'], ['AdvOut', 'AudioEncoder'], ['AdvOut', 'RecAudioEncoder'], ['AdvOut', 'VodTrackEnabled'], ['AdvOut', 'VodTrackIndex'],
   ['Audio', 'SampleRate'], ['Audio', 'ChannelSetup'], ['Video', 'ScaleType'], ['Video', 'ColorFormat'], ['Video', 'ColorSpace'], ['Video', 'ColorRange']];
@@ -364,7 +380,7 @@ export async function switchSetup(profile, collection) {
   });
 }
 /** urls: {game, mara, card(kind)}; extra: [{name, url}] browser sources to put in every scene too (celebration, roll call). dry = only say what it would do. */
-export async function marathonSetup({ profile, collection, urls, extra = [], dry = false }) {
+export async function marathonSetup({ profile, collection, urls, extra = [], dry = false, coSide = 'right' }) {
   return session(async call => {
     const out = [], say = (icon, text) => out.push({ icon, text });
     if ((await call('GetStreamStatus').catch(() => ({}))).outputActive || (await call('GetRecordStatus').catch(() => ({}))).outputActive) throw new Error("OBS is streaming or recording right now: OBS doesn't let anyone switch profiles then. Do this before you go live.");
@@ -391,7 +407,7 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
     if (C.currentSceneCollectionName === collection) say('✅', `Scene collection “${collection}” is already open.`);
     else if ((C.sceneCollections || []).includes(collection)) { if (!dry) await call('SetCurrentSceneCollection', { sceneCollectionName: collection }); say('🔁', `Opened your scene collection “${collection}”.`); }
     else { if (!dry) await call('CreateSceneCollection', { sceneCollectionName: collection }); fresh = true; say('🆕', `Made the scene collection “${collection}” (your normal scenes are still in “${prev.collection}”).`); }
-    if (dry) { say('🎬', `Scenes it fills in: ${Object.values(MARA_SCENES).join(', ')}.`); return { dry: true, steps: out, prev }; }
+    if (dry) { say('🎬', `Scenes it fills in: ${Object.values(MARA_SCENES).join(', ')} + ${CO_SCENE} (what the co-stream sends your partner).`); return { dry: true, steps: out, prev }; }
     // 3) the scenes + what's in them
     const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080;
     let have = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName);
@@ -419,10 +435,45 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
     }
     const S = MARA_SCENES, CAM = '📷 Camera (marathon)', GAME = '🎮 GTA 6 capture', BATTLE = 'Movie Royal battle', FULL = [0, 0, 1, 1];
     const cam = ['dshow_input', { video_device_id: '' }], gameCap = ['game_capture', { capture_mode: 'any_fullscreen', capture_cursor: false, allow_transparency: false }];
-    // 🎮 gameplay: GTA full screen, camera bottom left, the battle (hidden: show it when you run one while playing)
+    const box = (sc, name, b) => itemOf(sc, name).then(id => id == null ? null : call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: { positionX: Math.round(b[0] * W), positionY: Math.round(b[1] * H), alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: Math.round(b[2] * W), boundsHeight: Math.round(b[3] * H), rotation: 0 } }).catch(() => {}));
+    const refit = async (sc, name, oldB, newB) => { // (1.82.0) a piece still exactly where an older setup put it moves to the new spot; one you moved stays
+      const id = await itemOf(sc, name); if (id == null) return; const t = (await call('GetSceneItemTransform', { sceneName: sc, sceneItemId: id }).catch(() => ({}))).sceneItemTransform || {};
+      if (Math.abs((t.boundsWidth || 0) - oldB[2] * W) < 3 && Math.abs((t.boundsHeight || 0) - oldB[3] * H) < 3 && Math.abs((t.positionX || 0) - oldB[0] * W) < 3) { await box(sc, name, newB); say('🎮', `Moved “${name}” in ${sc} to the new, smaller spot.`); }
+    };
+    const above = async (sc, name, under) => { // keep a piece above another (a camera must never end up behind the full-screen game)
+      const list = (await call('GetSceneItemList', { sceneName: sc }).catch(() => ({}))).sceneItems || [], a = list.findIndex(i => i.sourceName === name), b = list.findIndex(i => i.sourceName === under);
+      if (a >= 0 && b >= 0 && a < b) await call('SetSceneItemIndex', { sceneName: sc, sceneItemId: list[a].sceneItemId, sceneItemIndex: b }).catch(() => {});
+    };
+    // 🎮 gameplay (1.82.0, Derek: more minimal): GTA full screen, a small camera bottom right, the battle hidden, a tiny counter (top middle)
     await put(S.game, GAME, ...gameCap, FULL);
-    await put(S.game, CAM, ...cam, [.015, .69, .27, .28]);
+    await put(S.game, CAM, ...cam, GAME_CAM);
+    await refit(S.game, CAM, [.015, .69, .27, .28], GAME_CAM);
     await put(S.game, BATTLE, 'browser_source', browser(urls.game), [.56, .52, .42, .45], false);
+    await above(S.game, CAM, GAME);
+    // 🤝 co-stream gameplay: GTA full screen, your camera small at the top on YOUR side (your partner's camera goes on theirs: Movie Royal adds it), the battle hidden
+    await put(S.co, GAME, ...gameCap, FULL);
+    await put(S.co, CAM, ...cam, coSide === 'left' ? [.015, .03, .24, .24] : [.745, .03, .24, .24]);
+    await put(S.co, BATTLE, 'browser_source', browser(urls.game), [.56, .52, .42, .45], false);
+    await above(S.co, CAM, GAME);
+    // 🤝 the scene the co-stream sends to your partner (OBS's Virtual Camera shows it): the battle top-left ¾ + your camera top-right
+    if (!have.includes(CO_SCENE)) await call('CreateScene', { sceneName: CO_SCENE }).catch(() => {});
+    await put(CO_SCENE, BATTLE, 'browser_source', browser(urls.game), [0, 0, .75, .75]);
+    await put(CO_SCENE, CAM, ...cam, [.75, 0, .25, .25]);
+    // 🍳 cooking: a background with the title, 3 cameras (1 big + 2 small), the battle hidden
+    await put(S.cook, 'Movie Royal background (cooking)', 'browser_source', browser(urls.card('chat')), FULL);
+    const newCook = [];
+    for (let i = 0; i < 3; i++) { const had = inputs.has(COOK_CAMS[i]); await put(S.cook, COOK_CAMS[i], ...cam, COOK_BOXES[i]); if (!had && inputs.has(COOK_CAMS[i])) newCook.push(COOK_CAMS[i]); }
+    if (newCook.length) { // pick the cameras your stream camera ISN'T using (each new cooking camera gets the next free one)
+      try {
+        const devs = ((await call('GetInputPropertiesListPropertyItems', { inputName: newCook[0], propertyName: 'video_device_id' })).propertyItems || []).filter(x => x.itemEnabled !== false && x.itemValue).map(x => ({ id: x.itemValue, name: x.itemName }));
+        const used = new Set(); for (const n of [CAM, ...COOK_CAMS]) { if (newCook.includes(n)) continue; const v = (await call('GetInputSettings', { inputName: n }).catch(() => ({}))).inputSettings?.video_device_id; if (v) used.add(v); }
+        const free = devs.filter(d => !used.has(d.id)), got = [];
+        for (const n of newCook) { const d = free.shift(); if (!d) break; await call('SetInputSettings', { inputName: n, inputSettings: { video_device_id: d.id }, overlay: true }).catch(() => {}); got.push(`${n} = ${d.name}`); }
+        if (got.length) say('🍳', `Cooking cameras: ${got.join(', ')}.${got.length < newCook.length ? ` OBS found only ${got.length} free camera${got.length === 1 ? '' : 's'}: pick the rest in OBS (double-click them).` : ' (Wrong one? Double-click it in OBS and pick another.)'}`);
+        else say('🍳', "OBS didn't list any free cameras: plug them in, then double-click each 📷 Cooking cam in OBS and pick it.");
+      } catch { say('🍳', 'Double-click each 📷 Cooking cam in OBS and pick its camera.'); }
+    }
+    await put(S.cook, BATTLE, 'browser_source', browser(urls.game), [.03, .05, .69, .65], false);
     // 💬 just chatting: background, big camera on the left, the battle on the right
     await put(S.chat, 'Movie Royal background (chatting)', 'browser_source', browser(urls.card('chat')), FULL);
     await put(S.chat, CAM, ...cam, [.025, .22, .37, .56]);
@@ -432,12 +483,17 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
     await put(S.sleep, 'Movie Royal sleeping banner', 'browser_source', browser(urls.card('sleep')), FULL);
     // ⏳ starting soon / be right back: the title screen
     await put(S.soon, 'Movie Royal starting soon / BRB', 'browser_source', browser(urls.card('soon')), FULL);
-    // every scene: the 🏃 marathon overlay (battles owed counter + pop-ups) and anything else you have on (celebration, roll call)
-    for (const sc of Object.values(S)) { await put(sc, MARA_NAME, 'browser_source', browser(urls.mara), FULL); for (const x of extra) await put(sc, x.name, 'browser_source', x.local ? { ...browser(''), is_local_file: true, local_file: x.url } : browser(x.url), FULL); }
+    // the 🏃 marathon overlay (battles owed counter + pop-ups) and anything else you have on (celebration, roll call): gameplay scenes get the small one
+    const mini = [S.game, S.co];
+    for (const sc of Object.values(S)) {
+      if (mini.includes(sc)) { const had = (await itemOf(sc, MARA_MINI)) != null; await put(sc, MARA_MINI, 'browser_source', browser(urls.maraMini), FULL); if (!had) { const big = await itemOf(sc, MARA_NAME); if (big != null) await call('SetSceneItemEnabled', { sceneName: sc, sceneItemId: big, sceneItemEnabled: false }).catch(() => {}); } }
+      else await put(sc, MARA_NAME, 'browser_source', browser(urls.mara), FULL);
+      for (const x of extra) await put(sc, x.name, 'browser_source', x.local ? { ...browser(''), is_local_file: true, local_file: x.url } : browser(x.url), FULL);
+    }
     await call('SetCurrentProgramScene', { sceneName: S.soon }).catch(() => {});
     say('🎬', `Filled in the scenes ${Object.values(S).join(', ')} (${made} new piece${made === 1 ? '' : 's'}${made ? '' : ': everything was there already'}).`);
     if (skipped.length) say('⚠️', `Couldn't add ${skipped.join(', ')} (this OBS doesn't have that kind of source): add your own instead.`);
-    else if (made) say('👉', `Two things to do once in OBS: double-click “${CAM}” and pick your camera, and double-click “${GAME}” (it grabs any full-screen game; pick GTA 6 if you want it to only show that). Check your mic in the Audio Mixer.`);
+    else if (made) say('👉', `Things to do once in OBS: double-click “${CAM}” and pick your camera, and double-click “${GAME}” (it grabs any full-screen game; pick GTA 6 if you want it to only show that). Check your mic in the Audio Mixer.`);
     return { steps: out, prev, scenes: Object.values(S), profile, collection };
   });
 }
