@@ -670,6 +670,26 @@ function maraSeen() { // 👀 when the people with a battle waiting last chatted
   for (const m of live.chatLog) for (const k of [marathon.norm(m.login), marathon.norm(m.name)]) if (want.has(k)) out[k] = Math.max(out[k] || 0, m.at || 0);
   return out;
 }
+// 🔔 (1.82.6, Derek: "if someone has a battle queued for longer than 30 mins, when they type in chat remind me in chat they have a
+// battle queued; easy button on the Marathon tab to turn it on and off") once per person per waitMins.
+const maraWaitAt = new Map();
+function maraWaitText(name, mine, mins) {
+  const me = twitch.status.login || db.owner?.login, oldest = Math.min(...mine.map(x => x.at || Date.now())), age = Math.max(1, Math.round((Date.now() - oldest) / 60000));
+  const ageW = age >= 120 ? `${Math.round(age / 6) / 10} hours` : `${age} min`;
+  return `🔔 ${me ? '@' + me + ' ' : ''}${name} is here and has ${mine.length === 1 ? 'a battle' : mine.length + ' battles'} waiting (in the line for ${ageW}).`;
+}
+function maraWaitFor(m) { const k = [marathon.norm(m.login), marathon.norm(m.name)]; return paid.queue().filter(x => k.includes(marathon.norm(x.login || x.who))); }
+function maraWaitChat(m, force) {
+  const c = marathon.cfg(); if (!force && (!paid.cfg().on || c.waitRemind === false)) return null;
+  const mins = Math.max(1, Number(c.waitMins) || 30), mine = maraWaitFor(m); if (!mine.length) return null;
+  const oldest = Math.min(...mine.map(x => x.at || Date.now()));
+  if (!force && Date.now() - oldest < mins * 60000) return null;
+  const k = marathon.norm(m.login || m.name); if (!force && Date.now() - (maraWaitAt.get(k) || 0) < mins * 60000) return null;
+  if (!force) maraWaitAt.set(k, Date.now());
+  const text = maraWaitText(m.name || m.login, mine, mins);
+  if (!force) { paidSay(text); broadcast({ type: 'toast', text: `🔔 ${hEsc(m.name || m.login)} is in chat and has ${mine.length === 1 ? 'a battle' : mine.length + ' battles'} waiting.` }, 'control'); act('battle', `is in chat with ${mine.length === 1 ? 'a battle' : mine.length + ' battles'} waiting (reminder)`, { icon: '🔔', who: m.name || m.login, kind: 'reminder' }); }
+  return text;
+}
 function maraMapList() { // 🏃 (1.81.0, Derek: "no car/ball maps should be on marathon battles") only the character maps (the marathon's own map first)
   return cards.CARD_MAPS.map(m => ({ id: m.id, name: m.name, icon: m.icon, only: !!m.maraOnly })).sort((a, b) => (b.only - a.only) || a.name.localeCompare(b.name));
 }
@@ -1015,6 +1035,7 @@ const twitchHandlers = {
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
+    try { maraWaitChat(m); } catch (e) { console.error('[marathon reminder]', e.message); } // 🔔 someone with a battle waiting 30+ min is here
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
     if (idChat(m)) return; // 🧍 !id man / woman / none / remove
     if (hatChat(m)) return; // 🎩 picking a hat
@@ -4475,7 +4496,12 @@ app.post('/api/mara/tts', wTry(async b => {
 }));
 // 🧪 test: what the buttons would type, nothing sent
 app.get('/api/test/mara-tts', wTry(() => { const c = ttsCfg(); return { skip: c.skip, mute: c.off, unmute: c.on, muted: c.muted, canChat: !!twitch.status?.canChat }; }));
-app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; if (typeof b.defMap === 'string') { if (b.defMap && !marathon.maps().some(m => m.id === b.defMap)) throw new Error('That map isn\'t one of the marathon\'s maps.'); c.defMap = b.defMap; if (live.phase !== 'lobby' && live.phase !== 'running' && maraCharList(getList(db.activeListId)) && !live.maraGuess) { live.map = null; live.mapPick = false; setTimeout(() => refreshPreview(true), 0); } act('battle', b.defMap ? `set the marathon map to ${mapLabel(b.defMap)} (for battles where nobody picked one)` : 'set the marathon map back to 🎲 random', { icon: '🗺️', who: streamerName(), kind: 'setting' }); } db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
+// 🧪 what the reminder would say for the first person in the line (nothing is sent)
+app.post('/api/test/mara-wait', wTry(() => {
+  const it = paid.queue()[0]; if (!it) throw new Error('Nobody is in the line. Add a pretend one first (🎟️ Paid battles test card).');
+  return { text: maraWaitChat({ login: it.login || it.who, name: it.who, text: 'hi' }, true), on: marathon.cfg().waitRemind !== false, mins: Number(marathon.cfg().waitMins) || 30, waited: Math.round((Date.now() - it.at) / 60000) };
+}));
+app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn', 'waitRemind']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.waitMins != null) c.waitMins = Math.max(1, Math.min(600, Math.round(Number(b.waitMins) || 30))); if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; if (typeof b.defMap === 'string') { if (b.defMap && !marathon.maps().some(m => m.id === b.defMap)) throw new Error('That map isn\'t one of the marathon\'s maps.'); c.defMap = b.defMap; if (live.phase !== 'lobby' && live.phase !== 'running' && maraCharList(getList(db.activeListId)) && !live.maraGuess) { live.map = null; live.mapPick = false; setTimeout(() => refreshPreview(true), 0); } act('battle', b.defMap ? `set the marathon map to ${mapLabel(b.defMap)} (for battles where nobody picked one)` : 'set the marathon map back to 🎲 random', { icon: '🗺️', who: streamerName(), kind: 'setting' }); } db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
 app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
   const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');
   if (b.map !== undefined) { if (!b.map) { it.map = null; it.mapVia = null; } else { const m = marathon.findMap(b.map); if (m.error) throw new Error(m.error); it.map = m.id; it.mapVia = 'you'; } }

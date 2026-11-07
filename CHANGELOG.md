@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.6
+- 🛠️🔔 **Chat reminders for people waiting** (Derek): when someone whose marathon battle has been in the line 30+ minutes types in chat, the bot says in chat “@you … is here and has a battle waiting”, so you can run it while they're here (once per person every 30 minutes, plus a pop-up in the app). 🏃 Marathon tab → 🎟️ owed card: **🔔 Chat reminders: ON / OFF** (or the **R** key) and the minutes.
+  - Try it: 🧪 Test tab → 🔔 Waiting reminders shows what it would say (nothing sent).
+
 ## 1.82.5
 - 🛠️😱 Scares on my screen now pop up on **every screen** at once (Derek). 🏃 Marathon tab → 😱 Scares on my screen can still set it to only the screen your mouse is on. The sound (if you turn it on) plays once, not once per screen.
 

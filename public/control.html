@@ -1184,6 +1184,12 @@
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="mbtMap" title="The map for the test marathon battle" style="width:auto"></select><button class="primary" onclick="maraBattleTest()" title="Start a practice marathon battle with your real things (nothing counts)">▶ Start a test marathon battle</button><button class="ghost" onclick="setView('marapool')" title="The things in the marathon battle (names, odds, pictures)">🏃 Marathon pool</button></div>
     <div id="mbtOut" class="help" style="margin-top:8px"></div>
   </div>
+  <div class="card devOnly" id="waitTestCard">
+    <h3>🔔 Waiting reminders</h3>
+    <p class="help">When someone whose marathon battle has waited 30+ minutes types in chat, the bot says in chat “@you … is here and has a battle waiting” (once per person every 30 min). This shows what it would say for the first person in the line. Nothing is sent.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="waitTest()" title="Show the reminder for the first person in the line (nothing is sent)">🔔 Show the reminder</button><button class="ghost" onclick="paidTest('tip',5)" title="Put a pretend $5 tip battle in the line first">💵 Add a pretend battle</button></div>
+    <div id="waitTestOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card devOnly" id="ttsTestCard">
     <h3>🗣️ Text to speech buttons</h3>
     <p class="help">The ⏭️ Skip voice / 🔇 Mute TTS buttons on the 🏃 Marathon tab type a command in your chat as you, and your StreamElements jump-scare alerts (on stream and on your phone) stop the voice. This shows what they'd type and tries them <b>without sending anything</b> to chat.</p>
@@ -1526,6 +1532,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
   ['b-start', 'battle', '▶ START ROYAL', 'G', () => kbClick('#v-battle', /START ROYAL/, 'START ROYAL')],
   ['m-ticker', 'mara', '⏸ Pause / ▶ resume battles (📜 paused message)', 'P', () => tickerToggle()],
+  ['m-wait', 'mara', '🔔 Chat reminders for people waiting on / off', 'R', () => maraCfg({ waitRemind: S?.mara?.cfg?.waitRemind === false })],
   ['m-ttsskip', 'mara', '⏭️ Skip the text to speech that is talking', 'K', () => ttsCmd('skip')],
   ['m-ttsmute', 'mara', '🔇 Mute / 🔊 unmute text to speech', 'M', () => ttsCmd(S?.mara?.tts?.muted ? 'unmute' : 'mute')],
   ['b-timer', 'battle', '⏱️ 2-min chat timer, then start', 'T', () => kbClick('#v-battle', /chat timer|join timer/i, 'The chat timer')],
@@ -2613,7 +2620,7 @@ function renderMara() {
     ${ttsCard(M.tts || {})}
     ${scareCard(M.scare || {})}
     <div class="card"><h2 style="margin:0 0 4px">🗺️ Map</h2><select id="mDefMap" title="The map for battles where nobody picked one (🎲 Random = a different character map each time)" onchange="maraCfg({defMap:this.value})"><option value="">🎲 Random each battle</option>${(M.maps || []).map(m => `<option value="${esc(m.id)}" ${m.id === M.cfg?.defMap ? 'selected' : ''}>${esc(m.icon)} ${esc(m.name)}</option>`).join('')}</select><div class="help" style="margin:4px 0 0">For battles where nobody picked one. A map chat picked (<b>map #</b>) or the menu on a battle in the line comes first. Only character maps: no ball or car maps in marathon battles.</div></div>
-    <div class="card"><h2 style="margin:0 0 4px">🎟️ ${q.length} owed</h2><div class="help" style="margin:0">${l ? `Battle: <b>${esc(l.name)}</b> · ` : ''}${tk.length ? `🍀 ${tk.length} luck still to give (${esc([...new Set(tk.map(t => t.who))].slice(0, 6).join(', '))}): they type <b>luck #</b> or use the website` : 'Everyone has given their 🍀.'}</div></div>
+    <div class="card"><h2 style="margin:0 0 4px">🎟️ ${q.length} owed</h2>${waitHTML(M.cfg || {})}<div class="help" style="margin:0">${l ? `Battle: <b>${esc(l.name)}</b> · ` : ''}${tk.length ? `🍀 ${tk.length} luck still to give (${esc([...new Set(tk.map(t => t.who))].slice(0, 6).join(', '))}): they type <b>luck #</b> or use the website` : 'Everyone has given their 🍀.'}</div></div>
     ${lw ? `<div class="card"><h2 style="margin:0 0 4px">🏆 Last winner</h2><b>${esc(lw.label)}</b>${lw.sub ? ` <span class="muted">${esc(lw.sub)}</span>` : ''}</div>` : ''}
     <div class="card"><h2 style="margin:0 0 6px">🍀 Luck from chat</h2>${top.length ? top.map(x => `<div class="row" style="gap:6px"><span class="grow">${x.n}. ${esc(x.label)}</span><b>${x.luck}%</b></div>`).join('') : '<div class="help" style="margin:0">Nothing has luck yet.</div>'}<div class="help" style="margin:6px 0 0">It stays on a thing until it wins, then starts over. 🏃 Marathon pool has all of them.</div></div>
     ${tickerCard(M.ticker || {}, !!M.paused)}
@@ -2661,6 +2668,12 @@ async function scareTry(lvl, out) {
 async function scareRule(kind, amount) {
   try { const r = await api('/api/test/scare-pop', { kind, amount, dry: true }); $('scareTestOut').innerHTML = r.job ? `${esc(kind)} ${amount != null ? esc(amount) : ''} → <b>${['', '🐊 small', '🚗 medium', '🔦 big'][r.job.lvl]}</b> scare: “${esc(r.job.label)} ${esc(r.job.sub || '')}”` : 'No scare for that.'; } catch (e) { toast('⚠️ ' + e.message); }
 }
+// 🔔 (1.82.6, Derek) someone with a battle waiting 30+ min types in chat → the bot reminds you in chat (once per person per 30 min)
+function waitHTML(C) {
+  const on = C.waitRemind !== false, mins = Number(C.waitMins) || 30;
+  return `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 6px"><button class="${on ? 'primary' : 'ghost'}" id="waitBtn" onclick="maraCfg({waitRemind:${!on}})" title="When someone whose battle has waited ${mins}+ minutes types in chat, remind you in chat that they have a battle waiting. Key: R">${on ? '🔔 Chat reminders: ON' : '🔕 Chat reminders: OFF'}</button><span class="help" style="margin:0">after</span><input type="number" min="1" max="600" step="5" style="width:70px" value="${mins}" title="How long a battle waits before you get reminded (minutes)" onchange="maraCfg({waitMins:this.value})"><span class="help" style="margin:0">min in the line</span></div>`;
+}
+async function waitTest() { const o = $('waitTestOut'); try { const r = await api('/api/test/mara-wait', {}); o.innerHTML = `${r.on ? '🔔 On' : '🔕 Off'} · after ${esc(r.mins)} min · this one has waited ${esc(r.waited)} min.<br>The bot would say: <b>${esc(r.text)}</b> (nothing sent)`; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
 let ttsBusy = false;
 async function ttsCmd(cmd) {
   if (ttsBusy) return; ttsBusy = true;
