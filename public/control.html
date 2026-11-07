@@ -2404,7 +2404,7 @@ let gfxState = '';
 function gfxTell(state, force) { if (state === gfxState && !force) return; gfxState = state; try { $('game').contentWindow.postMessage({ royalGfx: { hidden: state === 'hidden', small: state === 'small' } }, '*'); } catch {} }
 function placeStage() {
   const st = $('stage');
-  if (document.fullscreenElement === st) return gfxTell('full');
+  if (document.fullscreenElement === st) return gfxTell(document.hidden ? 'hidden' : 'full');
   if (view === 'battle' || view === 'cards' || view === 'mara') {
     const r = $(view === 'cards' ? 'cStageSize' : view === 'mara' ? 'mStageSize' : 'stageSize').getBoundingClientRect();
     st.classList.remove('mini', 'hide');
@@ -2420,8 +2420,11 @@ function placeStage() {
     Object.assign(st.style, { left: '', top: '', width: '', height: '' });
   }
   if (view === 'battle' || view === 'cards' || view === 'mara' || !peekOn) st.classList.remove('peek');
-  gfxTell(view === 'battle' || view === 'cards' || view === 'mara' ? 'full' : st.classList.contains('hide') ? 'hidden' : 'small');
+  // (1.84.1, Derek: "do the background fps thing for everyone… so it takes up less power when running in the background")
+  // Movie Royal minimized or covered by other windows → the battle inside it draws like a hidden one (small + 30 fps); it keeps going
+  gfxTell(document.hidden ? 'hidden' : view === 'battle' || view === 'cards' || view === 'mara' ? 'full' : st.classList.contains('hide') ? 'hidden' : 'small');
 }
+document.addEventListener('visibilitychange', () => { try { placeStage(); } catch {} });
 $('game').addEventListener('load', () => gfxTell(gfxState || 'full', true));
 let peekOn = false;
 function peek(on = true) { if (on && prevWin && !prevWin.closed) return; peekOn = on; placeStage(); drawPrevBtns(); } // (popped out on another monitor: that window shows it)
@@ -5629,7 +5632,7 @@ function openSettings(force) {
       ${ck('gfxFlash', '💥 Screen flashes (big hits flash the whole screen). Off = easier on the eyes.')}
       ${ck('gfxSmooth', '🧈 Smooth pictures (posters, card packs, avatars). Off = crisp, pixel-style.')}
       ${ck('gfxShowFps', '📈 Show an FPS counter in the corner of the game screen (also on stream: turn it off before going live)', false)}
-      ${ck('gfxAppSaver', '🔋 Power saver for the game inside Movie Royal: it draws lighter while it is hidden (other tabs) or small (the preview window). The stream is not affected.')}
+      ${ck('gfxAppSaver', '🔋 Power saver for the game inside Movie Royal: it draws lighter while it is hidden (other tabs, or Movie Royal minimized / behind other windows) or small (the preview window). The stream is not affected.')}
       <p class="help">Tip: OBS records at its own resolution and frame rate (OBS → Settings → Video). Match them here (for example 1080p + 60 FPS lock) so nothing is drawn that OBS throws away. In the OBS browser source, set Width 1920, Height 1080, and tick "Use custom frame rate" with the same FPS.</p>
       <div class="row" style="gap:6px"><button onclick="gfxTest()">📈 Show the FPS counter for 15 seconds</button></div>`,
     site: `<h3>🌐 Viewer site</h3>

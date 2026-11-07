@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.84.1: What's new
+Everything since 1.84.0.
+
+- 🔋 **Less power in the background:** when Movie Royal is minimized or covered by other windows, the battle inside it draws small and at 30 fps, like it already did on other tabs. The battle keeps going and sounds still play, and it's back to full the moment you look at it. It's part of 🔋 Power saver (Settings → 🎨 Graphics, on by default). Nothing on stream changes.
+
 ## v1.84.0: What's new
 Everything since 1.82.2.
 

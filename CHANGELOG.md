@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.84.1
+- 🔋 **Less power in the background** (Derek): when Movie Royal is minimized or covered by other windows, the battle inside it draws small and at 30 fps (like it already did on other tabs). The battle keeps going and sounds still play; it's back to full the moment you look at it. Part of 🔋 Power saver (Settings → 🎨 Graphics, on by default). Nothing on stream changes.
+
 ## 1.84.0
 - 🛠️🎬 **New marathon scenes** (Derek): press 🧰 Marathon OBS setup again (Marathon tab) and it adds them. Nothing you moved yourself gets moved.
   - ⚔️ **Battle:** the battle full screen (bigger than it was in Just Chatting) with a small camera.
