@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.5
+- 🛠️😱 Scares on my screen now pop up on **every screen** at once (Derek). 🏃 Marathon tab → 😱 Scares on my screen can still set it to only the screen your mouse is on. The sound (if you turn it on) plays once, not once per screen.
+
 ## 1.82.4
 - 🛠️🎯 Marathon: chat now gets **90 seconds** to guess the winner (was 60), in case of stream lag. If yours was still on the old 60, it moves to 90 by itself; a time you picked yourself stays (Settings → 💰 Rewards & prices → 🎯 Guess countdown).
 - 🛠️🍀 The **guess the winner** pop-up and the **"got a battle" pop-up** (where chat gives luck) now show every thing's 🍀 luck, 0% too (green when it has some).

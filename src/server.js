@@ -4357,6 +4357,13 @@ function maraGuess90Once() {
   save();
 }
 setTimeout(maraGuess90Once, 1200);
+// 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
+function scareAllOnce() {
+  if (db.settings.scareAllScreens) return; db.settings.scareAllScreens = true;
+  const m = db.settings.marathon; if (m?.scare) m.scare.where = 'all';
+  save();
+}
+setTimeout(scareAllOnce, 1200);
 app.post('/api/mara/add-battle', wTry(b => { // ➕ a fresh copy of Derek's marathon battle (Marathon pool tab), made the marathon battle
   if (!paid.dev()) throw new Error('This is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
   const l = maraBattleMake(); db.settings.madeMaraBattle = true; (db.settings.paidBattles ||= {}).listId = l.id;
@@ -4401,7 +4408,7 @@ app.post('/api/test/mara-guess', wTry(b => { if (!live.maraGuess) throw new Erro
 // 😱 (1.82.3, Derek: "make the scare pop-ups pop up on whatever screen I am focused on so it will scare me. I might be in game")
 // The StreamElements jump-scare alerts play on stream / the phone; this plays the same scare in a see-through window on top of
 // whatever you're using (the screen your mouse is on, or every screen). Same small / medium / big rules as the alerts' defaults.
-const SCARE_DEF = { on: true, where: 'mouse', sound: false, vol: 70, flash: true, kinds: { follow: true, sub: true, gift: true, bits: true, tip: true, raid: true }, bitsMed: 500, bitsBig: 2500, tipMed: 5, tipBig: 25, giftMed: 2, giftBig: 10, raidMed: 10, raidBig: 50 };
+const SCARE_DEF = { on: true, where: 'all', sound: false, vol: 70, flash: true, kinds: { follow: true, sub: true, gift: true, bits: true, tip: true, raid: true }, bitsMed: 500, bitsBig: 2500, tipMed: 5, tipBig: 25, giftMed: 2, giftBig: 10, raidMed: 10, raidBig: 50 };
 function scareCfg() { const c = { ...SCARE_DEF, ...(db.settings.marathon?.scare || {}) }; c.kinds = { ...SCARE_DEF.kinds, ...(c.kinds || {}) }; return c; }
 function scareJob(a) {
   const c = scareCfg(), n = Number(a.amount) || 0, nm = a.name || 'Someone', lv = (v, m, b) => v >= b ? 3 : v >= m ? 2 : 1;
