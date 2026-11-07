@@ -309,6 +309,18 @@ export async function say(message) {
   if (r && r.is_sent === false) throw new Error(r.drop_reason?.message || 'Twitch dropped the message');
   return r?.message_id || true;
 }
+/** 🗣️ (1.82.3) Say a chat command exactly as written, as YOU (no name tag, not the bot account), so other tools that only
+ *  listen to the broadcaster (the StreamElements TTS alerts' !skiptts) take it. Falls back to say() if you can't chat. */
+export async function sayAsMe(message) {
+  for (const f of sayListeners) { try { f(String(message)); } catch {} }
+  if (!status.canChat && Date.now() < pretend.until) return true;
+  if (!status.userId) throw new Error('Sign in with Twitch first');
+  if (!status.canChat) throw new Error('Sign in with Twitch again so Movie Royal can type in chat (new permission)');
+  const j = await helix('chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: status.userId, sender_id: status.userId, message: String(message).slice(0, 490) }) });
+  const r = j.data?.[0];
+  if (r && r.is_sent === false) throw new Error(r.drop_reason?.message || 'Twitch dropped the message');
+  return r?.message_id || true;
+}
 /** Say something and pin it at the top of chat (needs a sign-in that allows managing chat messages). */
 export async function sayAndPin(message) {
   const id = await say(message);

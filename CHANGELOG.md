@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.3
+- 🛠️🗣️ **Text to speech buttons on the 🏃 Marathon tab** (dev mode, Derek): ⏭️ Skip voice (key K) stops the text to speech that's talking, 🔇 Mute TTS / 🔊 Unmute TTS (key M) stops or starts it reading messages. They type !skiptts / !ttsoff / !ttson in your chat as you, so the StreamElements jump-scare alerts hear them on stream and on your phone. ✏️ Commands… changes the words.
+  - Try it: 🧪 Test tab → 🗣️ Text to speech buttons (nothing is sent to chat).
+- 🛠️😱 **Scares on my screen** (dev mode, Derek): when a follow, sub, gift sub, bits, tip or raid comes in, the same Neon Nights jump scare as the StreamElements alerts pops up in a see-through window on top of whatever you're using (the screen your mouse is on, or every screen), so it scares you even mid-game. Clicks go through it. Small / medium / big by the money, like the alerts. Sound off by default here. On the 🏃 Marathon tab; works over windowed / borderless games.
+  - Try it: 🧪 Test tab → 😱 Scares on my screen pops a real one up.
+
 ## 1.82.2
 - 🔄 **Updating while you're live** (Derek): when Movie Royal closes (an update during stream) and opens again within 30 minutes, it picks up where you left off. Your wheels (spots on / off, voided spots, countdowns, sizes, the last landing), battles, pools, luck and Discord picks were already saved all the time; now these come back too: the map you picked, a best-of series, the winner card still waiting for !accept / !pass (with its countdown), the join timer and chat's votes. A message tells you what came back.
   - The wheel's round timer comes back paused (press ▶ to keep going). A battle that was playing right then can't carry on mid-fight: nothing of it counted, so press Start again.

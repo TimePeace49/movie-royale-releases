@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Movie Royal scare</title>
+<!-- 😱 (1.82.3, Derek: "make the scare pop-ups pop up on whatever screen I am focused on so it will scare me")
+     Movie Royal opens this in a see-through, click-through window on top of everything (the screen your mouse is on, or every
+     screen) when a follow / sub / bits / tip / raid comes in. It plays the same Neon Nights scare as the StreamElements alerts.
+     The scare comes in the hash: #{"lvl":1|2|3,"label","line","sub","plate","vol","flash","shake","pos"} -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Pacifico&family=Monoton&display=swap');
+  html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+  #scare { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="scare"></canvas>
+<script>window.SE_API = { resumeQueue() {}, store: { get: () => Promise.resolve(null), set() {} } };</script>
+<script src="/neonscare.js"></script>
+<script>
+(() => {
+  let job = {};
+  try { job = JSON.parse(decodeURIComponent(location.hash.slice(1) || '{}')); } catch {}
+  const vol = Math.max(0, Math.min(100, Number(job.vol ?? 0)));
+  dispatchEvent(new CustomEvent('onWidgetLoad', { detail: { fieldData: {
+    volume: vol, soundWhere: 'all', flash: job.flash !== false, shake: job.shake !== false, position: job.pos || 'bottom',
+    showMessage: true, ttsOn: false
+  } } }));
+  const go = () => window.__neonPlay && window.__neonPlay({ lvl: [1, 2, 3].includes(job.lvl) ? job.lvl : 1, label: job.label || 'Boo!', line: job.line || 'Someone', sub: job.sub || '', msg: job.msg || '', plate: job.plate || '' });
+  if (document.fonts && document.fonts.load) Promise.race([Promise.all(['50px Pacifico', '40px Bungee'].map(f => document.fonts.load(f).catch(() => {}))), new Promise(r => setTimeout(r, 700))]).then(go);
+  else go();
+})();
+</script>
+</body>
+</html>

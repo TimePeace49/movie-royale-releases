@@ -240,6 +240,21 @@ app.whenReady().then(async () => {
       w.loadURL(url).then(() => { if (!w.isDestroyed()) { w.showInactive(); w.webContents.setAudioMuted(false); } }).catch(() => {});
       setTimeout(() => { if (!w.isDestroyed()) w.destroy(); }, 11500);
     },
+    // 😱 (1.82.3) a jump scare over whatever you're using: see-through, clicks go through, doesn't take your keyboard.
+    // where 'mouse' = the screen your mouse is on, 'all' = every screen. Sound only if the page is given a volume.
+    scarePop: (url, where = 'mouse', ms = 12500) => {
+      const { screen } = require('electron');
+      const shows = where === 'all' ? screen.getAllDisplays() : [screen.getDisplayNearestPoint(screen.getCursorScreenPoint())];
+      shows.forEach((d, i) => {
+        const b = d.bounds;
+        const w = new BrowserWindow({ x: b.x, y: b.y, width: b.width, height: b.height, transparent: true, frame: false, resizable: false, movable: false, focusable: false, skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, backgroundColor: '#00000000', webPreferences: { autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } });
+        w.__celebrate = true; w.setAlwaysOnTop(true, 'screen-saver'); w.setIgnoreMouseEvents(true); w.setVisibleOnAllWorkspaces?.(true);
+        w.webContents.setAudioMuted(i > 0); // the sound plays once, not once per screen
+        w.loadURL(url).then(() => { if (!w.isDestroyed()) w.showInactive(); }).catch(() => {});
+        setTimeout(() => { if (!w.isDestroyed()) w.destroy(); }, ms);
+      });
+      return { ok: true, screens: shows.length };
+    },
     // 🤝 co-stream (1.71.0): a hidden window sends OBS's Virtual Camera to your co-streamer with VDO.Ninja (camera only, no sound).
     // Its own session lets just that page use the camera, without asking. url null = stop.
     coSender: url => {

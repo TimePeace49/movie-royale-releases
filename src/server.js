@@ -271,7 +271,7 @@ function publicState() { applyCharsDefault();
     site: { ...site.info(), signin: db.siteSignin && db.siteSignin.url === site.url() ? db.siteSignin : null, clientTail: String(db.settings.twitchClientId || '').slice(-6), command: db.settings.siteCommand || '!site', predict: db.settings.sitePredict !== false, botV: cloud.status.botV || 0, needV: site.SITE_V, clientId: db.settings.twitchClientId ? 'yes' : '' },
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
-    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg() },
+    mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg() },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
     lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
@@ -1008,7 +1008,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} },
   async chat(m) {
     if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
@@ -1351,7 +1351,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
@@ -4390,6 +4390,76 @@ app.post('/api/mara/guess/now', wTry(async () => { if (!live.maraGuess) throw ne
 app.post('/api/mara/guess/cancel', wTry(async () => { if (!live.maraGuess) throw new Error('Chat isn\'t guessing right now.'); await maraGuessEnd(true); return {}; }));
 app.post('/api/test/mara-guess', wTry(b => { if (!live.maraGuess) throw new Error('Press ▶ Run on a battle first (chat guesses before it starts).'); const n = Number(b.n) || 1, name = String(b.name || 'Test_Guesser'); return { took: maraGuessChat({ login: name.toLowerCase(), name, text: String(n) }), count: live.maraGuess.guesses.length }; }));
 // 🏃 Marathon (1.76.0)
+// 😱 (1.82.3, Derek: "make the scare pop-ups pop up on whatever screen I am focused on so it will scare me. I might be in game")
+// The StreamElements jump-scare alerts play on stream / the phone; this plays the same scare in a see-through window on top of
+// whatever you're using (the screen your mouse is on, or every screen). Same small / medium / big rules as the alerts' defaults.
+const SCARE_DEF = { on: true, where: 'mouse', sound: false, vol: 70, flash: true, kinds: { follow: true, sub: true, gift: true, bits: true, tip: true, raid: true }, bitsMed: 500, bitsBig: 2500, tipMed: 5, tipBig: 25, giftMed: 2, giftBig: 10, raidMed: 10, raidBig: 50 };
+function scareCfg() { const c = { ...SCARE_DEF, ...(db.settings.marathon?.scare || {}) }; c.kinds = { ...SCARE_DEF.kinds, ...(c.kinds || {}) }; return c; }
+function scareJob(a) {
+  const c = scareCfg(), n = Number(a.amount) || 0, nm = a.name || 'Someone', lv = (v, m, b) => v >= b ? 3 : v >= m ? 2 : 1;
+  const money = v => (a.currency && a.currency !== 'USD' ? '' : '$') + (Math.round(v * 100) / 100) + (a.currency && a.currency !== 'USD' ? ' ' + a.currency : '');
+  switch (a.kind) {
+    case 'follow': return { lvl: 1, label: 'New follower', line: nm, plate: 'FOLLOW' };
+    case 'sub': { const t3 = /tier 3/i.test(a.text || ''); return { lvl: t3 ? 3 : 2, label: t3 ? 'Tier 3 sub!' : 'New subscriber', line: nm, sub: n > 1 ? `${n} months` : '', plate: n > 1 ? `${n} MO` : 'SUB' }; }
+    case 'gift': return n > 1 ? { lvl: lv(n, c.giftMed, c.giftBig), label: 'Gift bomb!', line: nm, sub: `gifted ${n} subs`, plate: `${n} SUBS` } : { lvl: 2, label: 'Gift sub', line: nm, sub: String(a.text || 'gifted a sub').slice(0, 60), plate: 'GIFT' };
+    case 'bits': return { lvl: lv(n, c.bitsMed, c.bitsBig), label: 'Bits!', line: nm, sub: `${n} bits`, plate: `${n} BITS` };
+    case 'tip': return { lvl: lv(n, c.tipMed, c.tipBig), label: 'Tip!', line: nm, sub: money(n), plate: money(n) };
+    case 'raid': return { lvl: lv(n, c.raidMed, c.raidBig), label: 'Raid!', line: nm, sub: `raiding with ${n} viewer${n === 1 ? '' : 's'}`, plate: 'RAID' };
+  }
+  return null;
+}
+const scareQ = []; let scareBusy = false;
+function scareFor(a, force) {
+  const c = scareCfg();
+  if (!force && (!paid.dev() || !c.on || !c.kinds[a.kind])) return null;
+  const j = scareJob(a); if (!j) return null;
+  if (!globalThis.__desktop?.scarePop) return { ...j, noDesktop: true };
+  scareQ.push(j); if (scareQ.length > 12) scareQ.splice(0, scareQ.length - 12);
+  scareNext(); return j;
+}
+function scareNext() {
+  if (scareBusy || !scareQ.length) return;
+  const j = scareQ.shift(), c = scareCfg(); scareBusy = true;
+  const msg = { ...j, vol: c.sound ? Math.max(0, Math.min(100, Number(c.vol) || 0)) : 0, flash: c.flash !== false, shake: true, pos: 'bottom' };
+  try { globalThis.__desktop.scarePop(`http://127.0.0.1:${PORT}/scare.html#${encodeURIComponent(JSON.stringify(msg))}`, c.where === 'all' ? 'all' : 'mouse', 12500); } catch (e) { console.error('[scare pop-up]', e.message); }
+  setTimeout(() => { scareBusy = false; scareNext(); }, 12800); // one at a time, like the alerts
+}
+app.post('/api/mara/scare', wTry(b => {
+  if (!paid.dev()) throw new Error('The scare pop-ups are a 🛠️ dev mode feature.');
+  const c = { ...(db.settings.marathon?.scare || {}) };
+  for (const k of ['on', 'sound', 'flash']) if (typeof b[k] === 'boolean') c[k] = b[k];
+  if (['mouse', 'all'].includes(b.where)) c.where = b.where;
+  if (b.vol != null) c.vol = Math.max(0, Math.min(100, Math.round(Number(b.vol) || 0)));
+  if (b.kinds && typeof b.kinds === 'object') { c.kinds = { ...scareCfg().kinds }; for (const k of Object.keys(SCARE_DEF.kinds)) if (typeof b.kinds[k] === 'boolean') c.kinds[k] = b.kinds[k]; }
+  for (const k of ['bitsMed', 'bitsBig', 'tipMed', 'tipBig', 'giftMed', 'giftBig', 'raidMed', 'raidBig']) if (b[k] != null && Number(b[k]) >= 0) c[k] = Number(b[k]);
+  db.settings.marathon = { ...(db.settings.marathon || {}), scare: c }; save(); pushState(); return scareCfg();
+}));
+// 🧪 a real pop-up on your screen (lvl 1 / 2 / 3), or {kind, amount} = what that alert would do
+app.post('/api/test/scare-pop', wTry(b => {
+  if (!paid.dev()) throw new Error('The scare pop-ups are a 🛠️ dev mode feature.');
+  const a = b.kind ? { kind: b.kind, name: 'TestViewer', amount: b.amount, text: b.text || '' } : { kind: ['follow', 'sub', 'tip'][(Number(b.lvl) || 1) - 1] || 'follow', name: 'TestViewer', amount: [0, 1, 50][(Number(b.lvl) || 1) - 1], text: '' };
+  const j = b.dry ? scareJob(a) : scareFor(a, true);
+  return { job: j, desktop: !!globalThis.__desktop?.scarePop, queued: scareQ.length };
+}));
+// 🗣️ (1.82.3, Derek: "a stop button on the marathon battle tab to mute tts or skip tts") the TTS lives in the StreamElements
+// jump-scare alerts (they read tips / bits / the 500-point reward). Movie Royal can't reach that widget directly, so the
+// buttons type the widget's chat commands as you (no name tag): every copy of the overlay (OBS + the phone) hears them.
+const TTS_DEF = { skip: '!skiptts', off: '!ttsoff', on: '!ttson', muted: false };
+function ttsCfg() { const t = { ...TTS_DEF, ...(db.settings.marathon?.tts || {}) }; for (const k of ['skip', 'off', 'on']) t[k] = String(t[k] || TTS_DEF[k]).trim().slice(0, 40) || TTS_DEF[k]; return t; }
+function ttsSave(o) { db.settings.marathon = { ...(db.settings.marathon || {}), tts: { ...ttsCfg(), ...o } }; save(); pushState(); }
+app.post('/api/mara/tts', wTry(async b => {
+  if (!paid.dev()) throw new Error('The TTS buttons are a 🛠️ dev mode feature.');
+  const c = ttsCfg();
+  if (b.cmd === 'words') { const o = {}; for (const k of ['skip', 'off', 'on']) if (typeof b[k] === 'string' && b[k].trim()) o[k] = b[k].trim().slice(0, 40); ttsSave(o); return ttsCfg(); }
+  const said = b.cmd === 'skip' ? c.skip : b.cmd === 'mute' ? c.off : b.cmd === 'unmute' ? c.on : null;
+  if (!said) throw new Error('Pick skip, mute or unmute.');
+  if (!b.test) await twitch.sayAsMe(said);
+  if (b.cmd !== 'skip') ttsSave({ muted: b.cmd === 'mute' });
+  act('chat', b.cmd === 'skip' ? 'skipped the text to speech that was talking' : b.cmd === 'mute' ? 'muted text to speech' : 'turned text to speech back on', { icon: b.cmd === 'skip' ? '⏭️' : b.cmd === 'mute' ? '🔇' : '🔊', who: streamerName(), kind: 'tts', test: !!b.test });
+  return { ...ttsCfg(), said, test: !!b.test };
+}));
+// 🧪 test: what the buttons would type, nothing sent
+app.get('/api/test/mara-tts', wTry(() => { const c = ttsCfg(); return { skip: c.skip, mute: c.off, unmute: c.on, muted: c.muted, canChat: !!twitch.status?.canChat }; }));
 app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; if (typeof b.defMap === 'string') { if (b.defMap && !marathon.maps().some(m => m.id === b.defMap)) throw new Error('That map isn\'t one of the marathon\'s maps.'); c.defMap = b.defMap; if (live.phase !== 'lobby' && live.phase !== 'running' && maraCharList(getList(db.activeListId)) && !live.maraGuess) { live.map = null; live.mapPick = false; setTimeout(() => refreshPreview(true), 0); } act('battle', b.defMap ? `set the marathon map to ${mapLabel(b.defMap)} (for battles where nobody picked one)` : 'set the marathon map back to 🎲 random', { icon: '🗺️', who: streamerName(), kind: 'setting' }); } db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
 app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
   const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');
