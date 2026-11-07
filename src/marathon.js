@@ -12,7 +12,7 @@ import * as paid from './paid.js';
 
 let H = { list: () => null, maps: () => [], say: () => {}, act: () => {}, popup: () => {}, changed: () => {}, siteUrl: () => '' };
 export function setHooks(h) { H = { ...H, ...h }; }
-export const cfg = () => ({ luckPer: 1, popSecs: 40, guessSecs: 60, counter: true, corner: 'bl', popup: true, itemLook: true, timerOn: true, alarmSecs: 5, ...(db.settings.marathon || {}) });
+export const cfg = () => ({ luckPer: 1, popSecs: 40, guessSecs: 90, counter: true, corner: 'bl', popup: true, itemLook: true, timerOn: true, alarmSecs: 5, ...(db.settings.marathon || {}) });
 
 // 🏋️ (1.77.0, Derek) a workout fights as a character in gym clothes holding a sign; everything else fights as the thing itself.
 // The pool can say which by hand (entry.mk 'thing' | 'workout'); otherwise it's guessed from the words.

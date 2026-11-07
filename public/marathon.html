@@ -31,7 +31,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .grid div { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 8px; border-radius: 7px; background: rgba(255,255,255,.06); }
 .grid i { font-style: normal; color: #ffcf4a; min-width: 30px; text-align: right; font-family: 'Lilita One', sans-serif; font-weight: 400; }
 .grid span { overflow: hidden; text-overflow: ellipsis; }
-.grid em { margin-left: auto; font-style: normal; color: #7dffa5; font-size: 16px; }
+.grid em { margin-left: auto; padding-left: 6px; flex: none; font-style: normal; color: #7dffa5; font-size: .84em; } .grid em.z { color: rgba(255,255,255,.45); }
 .bar { height: 8px; border-radius: 6px; background: rgba(255,255,255,.12); margin-top: 16px; overflow: hidden; }
 .bar div { height: 100%; width: 100%; background: linear-gradient(90deg, #ffcf4a, #ff4f9a); transform-origin: left; }
 .anon .how, .anon .cols { display: none; }
@@ -87,6 +87,8 @@ function count(m) {
   last = m.owed; $('cn').textContent = m.owed; $('ct').textContent = m.owed === 1 ? 'battle owed' : 'battles owed';
   $('cx').textContent = m.paused ? '⏸ Paused: they run when we\'re back' : m.next?.length ? 'Next: ' + m.next.join(', ') : 'Sub, gift, $5 or 500 bits = a battle';
 }
+// 🍀 (1.82.4, Derek: "show luck of entry on the pop-up for chat to vote and for when adding luck") every thing shows its luck, 0% too
+function lk(x) { const v = Math.round((Number(x.luck) || 0) * 100) / 100; return `<em class="${v ? '' : 'z'}">🍀${v}%</em>`; }
 function cols(arr, max) { return Math.max(1, Math.min(max, Math.ceil(arr.length / 17))); }
 function pop(m) { Q.push(m); if (!showing) next(); }
 function next() {
@@ -96,7 +98,7 @@ function next() {
   p.innerHTML = `<h1>⚔️ <b>${esc(m.who)}</b> got ${m.n === 1 ? 'a battle' : m.n + ' battles'}!</h1><div class="what">${esc(m.what)}${m.owed ? ` · 🎟️ ${m.owed} owed` : ''}${m.paused ? ' · ⏸ battles are paused: yours is safe in the line' : ''}</div>
     <div class="how">Pick a map: <code>map #</code> · give 🍀 +${luck} luck to one thing: <code>luck #</code>${m.site ? ` · or pick at <span class="site">${esc(m.site)}</span>` : ''}</div>
     <div class="cols"><div class="col"><h2>🗺️ Maps</h2><div class="grid" style="grid-template-columns:repeat(${mc},minmax(0,1fr))">${m.maps.map(x => `<div><i>${x.n}</i><span>${esc(x.icon)} ${esc(x.name)}</span></div>`).join('')}</div></div>
-    <div class="col"><h2>🍀 Give luck to one</h2><div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div></div></div>
+    <div class="col"><h2>🍀 Give luck to one</h2><div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${lk(x)}</div>`).join('')}</div></div></div>
     <div class="bar"><div id="pbar"></div></div>`;
   // (shrink the lists to fit when there are a lot of maps / things)
   requestAnimationFrame(() => { let f = 19; while (p.scrollHeight > 1000 && f > 11) { f--; p.querySelectorAll('.grid').forEach(g => g.style.fontSize = f + 'px'); } p.classList.add('on'); });
@@ -114,14 +116,14 @@ function guess(m) {
   if (fresh && m.items?.length) {
     const ic = m.items.length > 40 ? 4 : m.items.length > 20 ? 3 : m.items.length > 8 ? 2 : 1;
     B.innerHTML = `<h1>🎯 GUESS THE WINNER!</h1><div class="gb2"><div class="gt" id="gtb"></div><div class="gh">Type the <b>number</b> of the one you think wins in chat.<br>Right = <b>you win a battle!</b> (one guess each)<div class="for">⚔️ This battle is for ${esc(m.who || '')}${m.map ? ` · 🗺️ ${esc(m.map)}` : ''}</div></div></div>
-      <div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div>`;
+      <div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${lk(x)}</div>`).join('')}</div>`;
     B.className = 'gbig'; gBigOn = true; g.classList.remove('on');
     requestAnimationFrame(() => { let f = 28; while (B.scrollHeight > 1010 && f > 12) { f--; B.querySelector('.grid').style.fontSize = f + 'px'; } B.classList.add('on'); });
     gBigT = setTimeout(() => { gBigOn = false; B.classList.add('away'); g.classList.add('on'); setTimeout(() => { if (!gBigOn) B.className = 'gbig'; }, 800); }, Math.max(3, BIG_SECS - (m.at ? (Date.now() - m.at) / 1000 : 0)) * 1000);
   }
   gEnd = m.endsAt; const ic = m.items.length > 36 ? 2 : 1;
   g.innerHTML = `<h1>🎯 GUESS THE WINNER</h1><div class="gt" id="gt"></div><div class="gh">Type the <b>number</b> in chat. Right = <b>you win a battle!</b></div>
-    <div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${x.luck ? `<em>🍀${x.luck}%</em>` : ''}</div>`).join('')}</div>
+    <div class="grid" style="grid-template-columns:repeat(${ic},minmax(0,1fr))">${m.items.map(x => `<div><i>${x.n}</i><span>${esc(x.label)}</span>${lk(x)}</div>`).join('')}</div>
     <div class="gn" id="gn"></div>`;
   gn(m); requestAnimationFrame(() => { let f = ic === 2 ? 17 : 21; while (g.scrollHeight > 960 && f > 11) { f--; g.querySelector('.grid').style.fontSize = f + 'px'; } if (!gBigOn) g.classList.add('on'); });
   const tick = () => { const s = Math.max(0, Math.ceil((gEnd - Date.now()) / 1000)), t = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); $('gt').textContent = t; if ($('gtb')) $('gtb').textContent = t; };
@@ -157,7 +159,7 @@ if (DEMO) {
   const maps = ['Crumbling Cliff', 'Deep Space', 'Lava Lake', 'Sweet Donut', 'Pirate Battle', 'Santa\'s Workshop', 'Turkey Trouble', 'Zombie Horde', 'Pompeii', 'Fart Farm', 'Grand Prix', 'Monster Mash'].map((n, i) => ({ n: i + 1, name: n, icon: '🗺️' }));
   const items = ['Pickle Balls', 'Ketchup candy cane', 'Hot Dog candy', 'Toxic Waste', 'BeanBoozled', 'Durian candy', 'Octopus', '10 push-ups', '20 squats', 'MERCY'].map((n, i) => ({ n: i + 1, label: n, luck: i === 3 ? 3 : 0 }));
   count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' });
-  if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 60000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
+  if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 90000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items, count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
   else if (/timer/.test(location.search)) timer({ t: { id: 'd', label: '45-second plank', secs: 45, state: 'running', endsAt: Date.now() + 45000, who: 'SpicyPanda', alarmSecs: 5 }, now: Date.now() });
   else pop({ who: 'SpicyPanda', n: 1, what: 'a $5 tip', owed: 4, luckPer: 1, secs: 600, site: 'movie-royal.example.workers.dev/live', maps, items });
 } else connect();

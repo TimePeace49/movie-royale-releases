@@ -4210,7 +4210,7 @@ app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (o
   stopGather(true);
   if (l && db.activeListId !== l.id) { leaveEnded(); db.activeListId = l.id; previewIds = null; save(); }
   const map = it.map && marathon.maps().some(m => m.id === it.map) ? it.map : maraRandomMap(); // (their 🗺️ map, else a random one: it shows on the cliff while chat guesses)
-  const secs = Number(marathon.cfg().guessSecs ?? 60);
+  const secs = Number(marathon.cfg().guessSecs ?? 90);
   broadcast({ type: 'goView', view: 'battle' }, 'control');
   if (secs > 0 && !req.body?.now && l) { maraGuessBegin(it, map, secs); return res.json({ ok: true, item: it, guessing: secs }); }
   const err = await paidRun(it, map, null);
@@ -4349,6 +4349,14 @@ function maraEvenOnce() {
   save();
 }
 setTimeout(maraEvenOnce, 1200);
+// 🎯 (1.82.4, Derek: "change the timer for chat to vote on winner to 90 seconds just in case of lag") once: a guess countdown
+// still on the old 60-second default → 90. One you set to something else yourself stays.
+function maraGuess90Once() {
+  if (db.settings.maraGuess90) return; db.settings.maraGuess90 = true;
+  const m = db.settings.marathon; if (m && Number(m.guessSecs) === 60) m.guessSecs = 90;
+  save();
+}
+setTimeout(maraGuess90Once, 1200);
 app.post('/api/mara/add-battle', wTry(b => { // ➕ a fresh copy of Derek's marathon battle (Marathon pool tab), made the marathon battle
   if (!paid.dev()) throw new Error('This is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
   const l = maraBattleMake(); db.settings.madeMaraBattle = true; (db.settings.paidBattles ||= {}).listId = l.id;

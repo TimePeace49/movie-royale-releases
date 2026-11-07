@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.4
+- 🛠️🎯 Marathon: chat now gets **90 seconds** to guess the winner (was 60), in case of stream lag. If yours was still on the old 60, it moves to 90 by itself; a time you picked yourself stays (Settings → 💰 Rewards & prices → 🎯 Guess countdown).
+- 🛠️🍀 The **guess the winner** pop-up and the **"got a battle" pop-up** (where chat gives luck) now show every thing's 🍀 luck, 0% too (green when it has some).
+  - Try it: 🏃 Marathon tab → 📺 On stream → 👀 Preview, or 🧪 Test tab → 🎟️ Paid battles → 🎯 guess test.
+
 ## 1.82.3
 - 🛠️🗣️ **Text to speech buttons on the 🏃 Marathon tab** (dev mode, Derek): ⏭️ Skip voice (key K) stops the text to speech that's talking, 🔇 Mute TTS / 🔊 Unmute TTS (key M) stops or starts it reading messages. They type !skiptts / !ttsoff / !ttson in your chat as you, so the StreamElements jump-scare alerts hear them on stream and on your phone. ✏️ Commands… changes the words.
   - Try it: 🧪 Test tab → 🗣️ Text to speech buttons (nothing is sent to chat).
