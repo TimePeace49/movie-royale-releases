@@ -3,6 +3,17 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.82.1: What's new
+Everything since 1.72.0.
+
+- 🏴‍☠️ **Pirate Battle in card battles:** the Pirate Battle map is on the 🃏 Card battles tab now (and 🎲 Random can pick it). Your packs split into two even crews, a 🔴 red crew on the *TimePeace49* and a 🔵 blue crew on the *Kirbgames*, wearing pirate hats or bandanas in their crew's colour (some get an eye patch). They only fight the other crew (gangplanks, rope swings, cannons), off the side = into the sea, and it always ends with one pack from each crew, the 🐙 kraken and a 🥊 FINAL FIGHT with a pirate finisher. Every pack still has the same chance.
+  - Chat's ⛈️ storm powers and 🐒 Take out Time / Take out Kirb work in card Pirate Battles too (they never change who wins).
+  - 🧪 Test tab: 🃏 Card battle tests → 🏴‍☠️ Pirate Battle, a **Who fights** choice (characters or card packs) on the Pirate Battle card, in the Test lab and for finishers.
+- 🧹 **Inactive people's movies:** when someone hasn't been in a battle for **3 months** (none of their movies was on the cliff in a real battle), their movies go back so anyone can pick them in Discord, and they get a fresh set of picks to pick them again later. On by default. Each battle has its own switch and time limit (a number + days, weeks, months or years) in **Settings → ⚔️ Game → 🧹 Inactive people's movies**, with 👀 Who's next and 🧹 Check now. Nothing is deleted: ▶ Bring back in the Movie Pool puts a movie back. Try it on a pretend battle: 🧪 Test tab → 🎬 Movie nights → 🧹 Inactive people's movies.
+- 👀 **Watch your co-streamer's battles:** when your partner's battle starts, a note pops up with 👀 Watch: their battle in a small window you can drag around (it closes by itself when it ends).
+- 📺 **Ad warnings** (off by default, Settings → 💜 Twitch & channel points): the bot tells chat about a minute before an ad break and again when it's over, and Movie Royal pops up a note with a ding. Needs one extra Twitch permission (sign in with Twitch again). Try it in the 🧪 Test tab.
+- 🛠️ **Dev mode:** the old "Also install test builds" box in Settings → 👤 Account & updates is now **Dev mode**. It still installs test builds, and it also shows features that are still being tried. Leave it off and you won't see them.
+
 ## v1.72.0: What's new
 Everything since 1.71.1.
 

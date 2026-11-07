@@ -4375,7 +4375,7 @@ app.post('/api/obs/marathon-switch', wTry(async b => { // ↩️ back to your no
   if (!to) throw new Error("Movie Royal doesn't know your normal setup yet: make the marathon setup first (or switch in OBS: Profile / Scene Collection menus).");
   const r = await obs.switchSetup(to.profile, to.collection); act('stream', `🔁 Switched OBS to ${b.to === 'normal' ? 'your normal' : 'the marathon'} setup (${r.profile} / ${r.collection})`, { icon: '🔁', kind: 'obs' }); return r;
 }));
-app.post('/api/mara/cards', wTry(b => { // ✏️ the title screens' words (+ ⏳ Starting soon / 👋 Be right back)
+app.post('/api/mara/cards', wTry(b => { if (!paid.dev()) throw new Error('The marathon title screens are a 🛠️ dev mode feature.'); // ✏️ the title screens' words (+ ⏳ Starting soon / 👋 Be right back)
   const c = { ...(db.settings.marathon || {}) }, k = { ...(c.cards || {}) };
   for (const f of ['title', 'soon', 'brb', 'sleep']) if (f in b) { const v = String(b[f] || '').replace(/\s+/g, ' ').trim().slice(0, 80); if (v) k[f] = v; else delete k[f]; }
   if (b.soonMode === 'soon' || b.soonMode === 'brb') k.soonMode = b.soonMode;
@@ -4406,7 +4406,7 @@ app.get('/api/mara/ticker', async (req, res) => { // (checks OBS: is it showing 
   res.json({ ...live.ticker, cfg: tickerCfg(), paused: !!db.paidPaused });
 });
 app.post('/api/mara/ticker/show', wTry(async b => !paid.dev() && b.on !== false ? (() => { throw new Error('The paused message is a 🛠️ dev mode feature.'); })() : b.here ? tickerShow(true, true) : tickerShow(b.on === 'toggle' ? !db.paidPaused : !!b.on))); // (here: paused already, show it in the scene you switched to)
-app.post('/api/mara/ticker', wTry(b => { // ✏️ words + look (saved right away, the OBS page changes live)
+app.post('/api/mara/ticker', wTry(b => { if (!paid.dev()) throw new Error('The paused message is a 🛠️ dev mode feature.'); // ✏️ words + look (saved right away, the OBS page changes live)
   const c = { ...(db.settings.marathon || {}) }, t = { ...(c.ticker || {}) };
   if ('text' in b) { const v = String(b.text || '').replace(/\s+/g, ' ').trim().slice(0, 600); if (v && v !== TICKER_TEXT) t.text = v; else delete t.text; }
   if (b.speed != null) t.speed = Math.max(40, Math.min(400, Number(b.speed) || 140));
@@ -4415,7 +4415,7 @@ app.post('/api/mara/ticker', wTry(b => { // ✏️ words + look (saved right awa
   if (typeof b.band === 'boolean') t.band = b.band;
   c.ticker = t; db.settings.marathon = c; save(); broadcast(tickerMsg(), 'ticker'); pushState(); return tickerCfg();
 }));
-app.post('/api/obs/mara-source', async (req, res) => { try { const on = !!req.body?.on, sc = req.body?.scenes; const c = { ...(db.settings.marathon || {}) }; if (on && Array.isArray(sc)) { if (!sc.length) throw new Error('Pick at least one OBS scene for it.'); c.scenes = sc.map(String).slice(0, 200); } const pick = Array.isArray(c.scenes) && c.scenes.length ? c.scenes : null; const r = await obs.maraSource(on, maraUrl(), pick); c.obs = on; db.settings.marathon = c; save(); pushState(); res.json({ ok: true, url: maraUrl(), ...r }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
+app.post('/api/obs/mara-source', async (req, res) => { try { if (req.body?.on && !paid.dev()) throw new Error('The marathon counter is a 🛠️ dev mode feature.'); const on = !!req.body?.on, sc = req.body?.scenes; const c = { ...(db.settings.marathon || {}) }; if (on && Array.isArray(sc)) { if (!sc.length) throw new Error('Pick at least one OBS scene for it.'); c.scenes = sc.map(String).slice(0, 200); } const pick = Array.isArray(c.scenes) && c.scenes.length ? c.scenes : null; const r = await obs.maraSource(on, maraUrl(), pick); c.obs = on; db.settings.marathon = c; save(); pushState(); res.json({ ok: true, url: maraUrl(), ...r }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/test/mara-chat', wTry(b => { const name = String(b.name || 'Test_Viewer'); return marathon.pick({ login: name.toLowerCase(), name, [b.kind === 'map' ? 'map' : 'luck']: b.value, via: b.via === 'site' ? 'site' : 'chat' }); })); // 🧪 pretend Test_Viewer types map # / luck # (or picks on the website)
 app.post('/api/test/mara-pop', wTry(b => { broadcast(maraPopMsg({ who: String(b.name || 'Test_Viewer'), n: Number(b.n) || 1, what: String(b.what || 'a $5 tip'), test: true }), 'mara'); return { maps: marathon.maps().length, items: marathon.items().length }; }));
 app.post('/api/paid/remove', wTry(b => { paid.remove(b.id); return paid.info(); }));

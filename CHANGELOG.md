@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.82.1
+- 🛠️ The last few marathon OBS bits are dev mode only too: putting the marathon counter + pop-up in OBS, and changing the title screen words or the paused message. With dev mode off nothing marathon touches OBS.
+- 🏴‍☠️ Checked: the Pirate Battle is on the 🃏 Card battles tab (it came in 1.73.0, which wasn't a latest release until now).
+
 ## 1.82.0
 - 🎮 The marathon's GTA 6 Gameplay scene is more minimal: the game, a small camera in the bottom right and a tiny "battles owed" tag at the top middle (pop-ups and battles still show full size). Already made the setup? Press 🧰 Marathon OBS setup again: your camera moves to the new spot only if it's still where the old setup put it.
 - 🍳 New 🍳 Cooking scene in the marathon OBS setup: 3 cooking cameras, 1 big + 2 small, plus the title background and the battle (hidden). Movie Royal picks the cameras your stream camera isn't using; 📷 1 / 2 / 3 on the 🏃 Marathon tab makes that camera the big one.
