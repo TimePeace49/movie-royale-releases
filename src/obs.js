@@ -268,6 +268,41 @@ async function browserSource(name, on, mkSettings, pick = null) {
   });
 }
 
+// ---------- 🎬 My videos (1.86.0, Derek: "make sure new stuff is added to OBS") ----------
+// A video file from your PC as a looping Media Source "🎬 <name>", behind everything (the bottom of the source list), filling
+// the screen, in the scenes you picked (taken out of the others). Already in a scene = left where you put it.
+export const VIDEO_PREFIX = '🎬 ';
+export async function videoSource(name, { file, scenes, on = true, loop = true }) {
+  return session(async call => {
+    const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === name);
+    if (!on) { if (have) await call('RemoveInput', { inputName: name }); return { on: false, removed: !!have }; }
+    const all = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName); if (!all.length) throw new Error('OBS has no scenes.');
+    const target = (scenes || []).filter(sc => all.includes(sc)); if (!target.length) throw new Error((scenes || []).length ? 'Those scenes aren\'t in OBS right now (is your other scene collection open?).' : 'Pick at least one OBS scene for it.');
+    const v = await call('GetVideoSettings'), W = v.baseWidth || 1920, H = v.baseHeight || 1080;
+    const settings = { is_local_file: true, local_file: file, looping: !!loop, restart_on_activate: false, close_when_inactive: false, hw_decode: true, clear_on_media_end: false };
+    let fileChanged = false;
+    if (!have) await call('CreateInput', { sceneName: target[0], inputName: name, inputKind: 'ffmpeg_source', inputSettings: settings, sceneItemEnabled: true });
+    else { const cur = (await call('GetInputSettings', { inputName: name }).catch(() => ({}))).inputSettings || {}; if (cur.local_file !== file || cur.looping !== !!loop) { await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true }); fileChanged = true; } }
+    const inScene = async sc => call('GetSceneItemId', { sceneName: sc, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
+    let added = 0;
+    for (const sc of target) {
+      let id = await inScene(sc);
+      if (id != null && !(!have && sc === target[0])) continue; // (already there: left how you have it)
+      if (id == null) { id = (await call('CreateSceneItem', { sceneName: sc, sourceName: name, sceneItemEnabled: true })).sceneItemId; }
+      added++;
+      await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: { positionX: 0, positionY: 0, alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_OUTER', boundsAlignment: 0, boundsWidth: W, boundsHeight: H, rotation: 0 } }).catch(() => {});
+      await call('SetSceneItemIndex', { sceneName: sc, sceneItemId: id, sceneItemIndex: 0 }).catch(() => {}); // behind everything
+    }
+    let removed = 0;
+    for (const sc of all) { if (target.includes(sc)) continue; const id = await inScene(sc); if (id != null) { await call('RemoveSceneItem', { sceneName: sc, sceneItemId: id }).catch(() => {}); removed++; } }
+    return { on: true, scenes: target.length, added, removed, fileChanged, made: !have };
+  });
+}
+// 🔄 play it from the start again (OBS opens the file again, so a video you replaced on disk shows up)
+export async function videoReload(name) {
+  return session(async call => { await call('TriggerMediaInputAction', { inputName: name, mediaAction: 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART' }); return { ok: true }; });
+}
+
 // ---------- 🤝 co-stream (1.71.0) ----------
 // Your side: a small scene "🤝 Co-stream share" = your camera + your game screen (the SAME sources as on your stream, not copies,
 // so it's the exact same fight), shown by OBS's Virtual Camera. A hidden window sends that picture to your partner (VDO.Ninja).
@@ -410,7 +445,7 @@ export async function setFps(n) {
   });
 }
 /** urls: {game, mara, card(kind)}; extra: [{name, url}] browser sources to put in every scene too (celebration, roll call). dry = only say what it would do. */
-export async function marathonSetup({ profile, collection, urls, extra = [], dry = false, coSide = 'right' }) {
+export async function marathonSetup({ profile, collection, urls, extra = [], dry = false, coSide = 'right', keepScene = false }) {
   return session(async call => {
     const out = [], say = (icon, text) => out.push({ icon, text });
     if ((await call('GetStreamStatus').catch(() => ({}))).outputActive || (await call('GetRecordStatus').catch(() => ({}))).outputActive) throw new Error("OBS is streaming or recording right now: OBS doesn't let anyone switch profiles then. Do this before you go live.");
@@ -540,7 +575,7 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
       else await put(sc, MARA_NAME, 'browser_source', browser(urls.mara), FULL);
       for (const x of extra) await put(sc, x.name, 'browser_source', x.local ? { ...browser(''), is_local_file: true, local_file: x.url } : browser(x.url), FULL);
     }
-    await call('SetCurrentProgramScene', { sceneName: S.soon }).catch(() => {});
+    if (!keepScene) await call('SetCurrentProgramScene', { sceneName: S.soon }).catch(() => {}); // (not when 🔄 Keep OBS up to date tops it up)
     say('🎬', `Filled in the scenes ${Object.values(S).join(', ')} (${made} new piece${made === 1 ? '' : 's'}${made ? '' : ': everything was there already'}).`);
     if (skipped.length) say('⚠️', `Couldn't add ${skipped.join(', ')} (this OBS doesn't have that kind of source): add your own instead.`);
     else if (made) say('👉', `Things to do once in OBS: double-click “${CAM}” and pick your camera, and double-click “${GAME}” (it grabs any full-screen game; pick GTA 6 if you want it to only show that). Check your mic in the Audio Mixer.`);

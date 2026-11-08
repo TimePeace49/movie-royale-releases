@@ -275,7 +275,7 @@ function publicState() { applyCharsDefault();
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
-    obsGames: obsGames(),
+    obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
@@ -1682,7 +1682,7 @@ async function choiceSource(on, scenes) {
   pushState(); return { ...r, note };
 }
 setInterval(() => { if (db.settings.choiceObs && obsOk() && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); }, 10 * 60000); // (keeps it in the scenes you picked, and a new reward or channel is written in)
-app.get('/api/vr/scenes', async (req, res) => { const roll = req.query.for === 'roll', mara = req.query.for === 'mara'; try { res.json({ ok: true, ...(await obs.sceneList(mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
+app.get('/api/vr/scenes', async (req, res) => { if (req.query.for === 'video') { const v = obsVideos().find(x => x.id === req.query.id); try { return res.json({ ok: true, ...(await obs.sceneList(v ? videoInput(v) : '-')), picked: v?.scenes || [] }); } catch (e) { return res.status(400).json({ error: e.message }); } } const roll = req.query.for === 'roll', mara = req.query.for === 'mara'; try { res.json({ ok: true, ...(await obs.sceneList(mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
 app.get('/api/vr/obs-file', (req, res) => res.download(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'viewers-choice.html')); // ⬇️ the file for OBS (it sets itself up when you open it)
 app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 📣 roll call browser source in OBS (1.61.0): Movie Royal adds /rollcall.html to the scenes you pick (or you add it by hand: the address is in Settings → 🎥 OBS)
@@ -4792,7 +4792,8 @@ const cardsCfg = () => { const c = db.settings.marathon?.cards || {}; return { t
 const cardsMsg = () => ({ type: 'sceneCard', ...cardsCfg() });
 const obsSetupCfg = () => { const o = db.settings.marathon?.obsSetup || {}; return { profile: o.profile || 'GTA 6 Marathon', collection: o.collection || 'GTA 6 Marathon', prev: o.prev || null, madeAt: o.madeAt || null, cookBig: db.settings.marathon?.cookBig || 1 }; };
 app.get('/api/obs/marathon-setup', async (req, res) => { let now = null, err = null; try { now = await obs.obsSetups(); } catch (e) { err = e.message; } res.json({ ...obsSetupCfg(), now, err, cards: cardsCfg(), scenes: Object.values(obs.MARA_SCENES) }); });
-app.post('/api/obs/marathon-setup', wTry(async b => {
+app.post('/api/obs/marathon-setup', wTry(async b => maraObsSetup(b)));
+async function maraObsSetup(b) { // (also used by 🔄 Keep OBS up to date with keepScene: adds what's missing, never switches the scene)
   if (!paid.dev()) throw new Error('The marathon OBS setup is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
   if (!b.dry && !b.go) throw new Error('Press 🧰 Make it to make the marathon OBS setup.'); // (only the button really changes OBS)
   const c = { ...(db.settings.marathon || {}) }, o = { ...(c.obsSetup || {}) };
@@ -4801,17 +4802,17 @@ app.post('/api/obs/marathon-setup', wTry(async b => {
   const extra = [];
   if (!b.dry && db.settings.choiceObs && obsOk()) { try { const f = await choiceFile(); extra.push({ name: 'Movie Royal celebration', url: f.file, local: true }); } catch {} } // 🎉 Viewer's Choice, if you have it in OBS
   if (!b.dry && db.settings.rollObs && obsOk()) extra.push({ name: obs.ROLL_NAME, url: rollUrl() }); // 📣 roll call, if you have it in OBS
-  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, coSide: costream.mySide(), urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), maraMini: maraUrl() + '?mini=1', card: k => `http://localhost:${PORT}/scenecard.html?k=${k}`, yt: k => `http://localhost:${PORT}/ytplay.html?k=${k}` } });
+  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, keepScene: !!b.keepScene, coSide: costream.mySide(), urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), maraMini: maraUrl() + '?mini=1', card: k => `http://localhost:${PORT}/scenecard.html?k=${k}`, yt: k => `http://localhost:${PORT}/ytplay.html?k=${k}` } });
   if (!b.dry) {
     o.profile = profile; o.collection = collection; o.madeAt = Date.now(); if (r.prev && (r.prev.profile !== profile || r.prev.collection !== collection)) o.prev = r.prev;
     c.obsSetup = o; c.obs = true; c.scenes = r.scenes; db.settings.marathon = c;
     if (db.costream && !db.costream.scene) db.costream.scene = obs.MARA_SCENES.co; // 🤝 your partner's camera + battle go in the co-stream gameplay scene
     save(); pushState();
     setTimeout(micWatch, 500); // 🎙️ start switching the mics with the scenes
-    act('stream', `🧰 Made the marathon OBS setup: profile “${profile}” + scene collection “${collection}”`, { icon: '🧰', kind: 'obs' });
+    act('stream', b.keepScene ? `🔄 Topped up the marathon OBS scenes (profile “${profile}”, scene collection “${collection}”)` : `🧰 Made the marathon OBS setup: profile “${profile}” + scene collection “${collection}”`, { icon: b.keepScene ? '🔄' : '🧰', kind: 'obs' });
   }
   return r;
-}));
+}
 app.post('/api/obs/cook-big', wTry(async b => { // 🍳 (1.82.0) which cooking camera is the big one
   if (!paid.dev()) throw new Error('The marathon OBS setup is a 🛠️ dev mode feature.');
   const r = await obs.cookBig(b.n); db.settings.marathon = { ...(db.settings.marathon || {}), cookBig: r.big }; save(); pushState(); return r;
@@ -4905,6 +4906,75 @@ app.post('/api/mara/ticker', wTry(b => { if (!paid.dev()) throw new Error('The p
   if (typeof b.band === 'boolean') t.band = b.band;
   c.ticker = t; db.settings.marathon = c; save(); broadcast(tickerMsg(), 'ticker'); pushState(); return tickerCfg();
 }));
+// ---------- 🔄 Keep OBS up to date + 🎬 My videos (1.86.0, Derek: "give me an option to make sure new stuff is added to OBS") ----------
+// Keep OBS up to date (setting obsKeep, on by default): on start (45 s) and every 10 minutes Movie Royal checks the OBS pieces you've
+// turned on (🎉 celebration, 📣 roll call, 🏃 marathon counter, 🎬 your videos) and puts back / adds what's missing. After an update
+// it also tops up the 🧰 marathon scenes once (only while OBS has the marathon scenes open and you're not live; never switches scenes).
+const VIDEO_EXT = /\.(mp4|webm|mov|mkv|m4v|avi|flv|gif)$/i;
+const obsVideos = () => (Array.isArray(db.settings.obsVideos) ? db.settings.obsVideos : []);
+const videoInput = v => obs.VIDEO_PREFIX + v.name;
+const videosFolder = () => { const h = process.env.USERPROFILE || process.env.HOME; return h ? path.join(h, 'Videos') : null; };
+function videoFiles() {
+  const d = videosFolder(); if (!d) return [];
+  try { return fs.readdirSync(d).filter(f => VIDEO_EXT.test(f)).map(f => { const st = fs.statSync(path.join(d, f)); return { name: f, file: path.join(d, f), mb: Math.round(st.size / 1e5) / 10, at: st.mtimeMs }; }).sort((a, b) => b.at - a.at).slice(0, 80); } catch { return []; }
+}
+const videoName = n => String(n || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 50);
+async function videoApply(v) {
+  if (v.on === false) return obs.videoSource(videoInput(v), { on: false });
+  if (!v.file || !fs.existsSync(v.file)) throw new Error(`The video file isn't there any more (${v.file || 'no file'}): pick it again.`);
+  return obs.videoSource(videoInput(v), { file: v.file, scenes: v.scenes || [], loop: v.loop !== false });
+}
+let obsSyncBusy = false; live.obsSync = null;
+async function obsSync(why = 'check', force = false) {
+  if (db.settings.obsOn === false) return (live.obsSync = { at: Date.now(), why, items: [], note: 'Movie Royal isn\'t allowed to use OBS (the switch at the top of Settings → 🎥 OBS).' });
+  if (!force && db.settings.obsKeep === false) return live.obsSync;
+  if (obsSyncBusy) return live.obsSync; obsSyncBusy = true;
+  const items = [], add = (id, name, ok, msg) => items.push({ id, name, ok, msg });
+  try {
+    let setup; try { setup = await obs.obsSetups(); } catch (e) { live.obsSync = { at: Date.now(), why, items, note: 'OBS isn\'t open (or Movie Royal can\'t reach it), so nothing was checked. It checks again when OBS is open.' }; return live.obsSync; }
+    const live_ = await obs.streaming().catch(() => false);
+    const r1 = (r, what) => r.added ? `added to ${r.added} scene${r.added === 1 ? '' : 's'}` : r.fileChanged ? 'video file updated' : `${what || 'everything'} is there`;
+    if (db.settings.choiceObs && twitch.status.userId) { try { const f = await choiceFile(); add('choice', '🎉 Viewer\'s choice celebration', true, r1(await obs.celebrateSource(true, f.file, choicePick()))); } catch (e) { add('choice', '🎉 Viewer\'s choice celebration', false, e.message); } }
+    if (db.settings.rollObs) { try { add('roll', '📣 Roll call', true, r1(await obs.rollSource(true, rollUrl(), Array.isArray(db.settings.rollScenes) && db.settings.rollScenes.length ? db.settings.rollScenes : null))); } catch (e) { add('roll', '📣 Roll call', false, e.message); } }
+    const mc = db.settings.marathon || {};
+    if (paid.dev() && mc.obs && Array.isArray(mc.scenes) && mc.scenes.length && mc.obsSetup?.collection !== undefined && setup.collection === mc.obsSetup?.collection) { try { add('mara', '🏃 Marathon counter', true, r1(await obs.maraSource(true, maraUrl(), mc.scenes))); } catch (e) { add('mara', '🏃 Marathon counter', false, e.message); } }
+    const ms = mc.obsSetup;
+    if (paid.dev() && ms?.madeAt) {
+      const nm = '🧰 Marathon scenes';
+      if (setup.collection !== ms.collection || setup.profile !== ms.profile) add('marasetup', nm, null, `waiting until OBS has your “${ms.collection}” scenes open`);
+      else if (live_) add('marasetup', nm, null, 'waiting until you\'re not live (OBS can\'t change these while streaming)');
+      else if (!force && db.settings.obsSyncVer === PKG.version) add('marasetup', nm, true, `up to date for v${PKG.version}`);
+      else { try { const r = await maraObsSetup({ go: true, keepScene: true }); db.settings.obsSyncVer = PKG.version; save(); const last = (r.steps || []).filter(x => x.icon === '🎬').pop(); add('marasetup', nm, true, last ? last.text.replace(/^Filled in the scenes .*? \(/, '(') : 'checked'); } catch (e) { add('marasetup', nm, false, e.message); } }
+    }
+    for (const v of obsVideos()) { if (v.on === false) continue; if (!(v.scenes || []).length) { add('video:' + v.id, '🎬 ' + v.name, null, 'no scenes picked yet (🎬 Scenes)'); continue; } try { add('video:' + v.id, '🎬 ' + v.name, true, r1(await videoApply(v), 'the video')); } catch (e) { add('video:' + v.id, '🎬 ' + v.name, false, e.message); } }
+    live.obsSync = { at: Date.now(), why, items };
+    const fixed = items.filter(x => x.ok && /^added|updated/.test(x.msg || '')); if (fixed.length && why !== 'button') { broadcast({ type: 'toast', text: `🔄 Put back in OBS: ${fixed.map(x => x.name).join(', ')}`, ms: 7000 }, 'control'); act('stream', `🔄 Keep OBS up to date added: ${fixed.map(x => `${x.name} (${x.msg})`).join(', ')}`, { icon: '🔄', kind: 'obs' }); }
+    return live.obsSync;
+  } finally { obsSyncBusy = false; pushState(); }
+}
+setTimeout(() => obsSync('start').catch(() => {}), 45000);
+setInterval(() => obsSync('timer').catch(() => {}), 10 * 60000);
+app.post('/api/obs/sync', wTry(async b => { if ('keep' in b) { db.settings.obsKeep = !!b.keep; save(); pushState(); if (!b.keep) return { keep: false, last: live.obsSync }; } return { keep: db.settings.obsKeep !== false, last: await obsSync('button', true) }; }));
+app.get('/api/obs/videos', (req, res) => res.json({ list: obsVideos().map(v => ({ ...v, exists: !!v.file && fs.existsSync(v.file) })), folder: videosFolder(), files: videoFiles(), canPick: !!globalThis.__desktop?.pickFile }));
+app.post('/api/obs/videos/pick', wTry(async () => { if (!globalThis.__desktop?.pickFile) throw new Error('Picking a file only works in the Windows app: type or paste the file\'s address instead.'); return { file: await globalThis.__desktop.pickFile('Pick a video for OBS', ['mp4', 'webm', 'mov', 'mkv', 'm4v', 'avi', 'flv', 'gif']) }; }));
+app.post('/api/obs/videos', wTry(async b => { // add / change / remove one of your videos ({id?, name, file, scenes, on, loop, remove})
+  const list = obsVideos().slice(); let v = b.id ? list.find(x => x.id === b.id) : null;
+  if (b.remove) { if (!v) throw new Error('That video is gone already.'); try { await obs.videoSource(videoInput(v), { on: false }); } catch {} db.settings.obsVideos = list.filter(x => x !== v); save(); pushState(); act('stream', `🎬 Took “${v.name}” out of OBS`, { icon: '🎬', kind: 'obs' }); return { removed: true }; }
+  if (!v) { const file = String(b.file || '').trim().replace(/^"|"$/g, ''); if (!file) throw new Error('Pick a video file first.'); if (!VIDEO_EXT.test(file)) throw new Error('That isn\'t a video file Movie Royal knows (mp4, webm, mov, mkv…).'); if (!fs.existsSync(file)) throw new Error(`Can't find that file on this PC: ${file}`);
+    const name = videoName(b.name || path.basename(file).replace(VIDEO_EXT, '')); if (!name) throw new Error('Give it a name.'); if (list.some(x => x.name.toLowerCase() === name.toLowerCase())) throw new Error('You already have a video with that name.');
+    v = { id: uid(), name, file, scenes: [], on: true, loop: true, at: Date.now() }; list.push(v); }
+  const old = { ...v };
+  if (b.file && b.file !== v.file) { const f = String(b.file).trim().replace(/^"|"$/g, ''); if (!fs.existsSync(f)) throw new Error(`Can't find that file on this PC: ${f}`); v.file = f; }
+  if (b.name && videoName(b.name) && videoName(b.name) !== v.name) { if (list.some(x => x !== v && x.name.toLowerCase() === videoName(b.name).toLowerCase())) throw new Error('You already have a video with that name.'); v.name = videoName(b.name); }
+  if (Array.isArray(b.scenes)) v.scenes = b.scenes.map(String).slice(0, 60);
+  if ('on' in b) v.on = !!b.on; if ('loop' in b) v.loop = !!b.loop;
+  db.settings.obsVideos = list; save(); pushState();
+  if (old.name !== v.name) { try { await obs.videoSource(obs.VIDEO_PREFIX + old.name, { on: false }); } catch {} } // (renamed: the old source goes)
+  if (!v.scenes.length && v.on !== false) return { video: v, note: 'Saved. Now pick the scenes it goes in (🎬 Scenes).' };
+  const r = await videoApply(v); act('stream', v.on === false ? `🎬 Took “${v.name}” out of OBS` : `🎬 “${v.name}” is in OBS: ${v.scenes.length} scene${v.scenes.length === 1 ? '' : 's'}`, { icon: '🎬', kind: 'obs' });
+  return { video: v, ...r };
+}));
+app.post('/api/obs/videos/reload', wTry(async b => { const v = obsVideos().find(x => x.id === b.id); if (!v) throw new Error('That video is gone.'); return obs.videoReload(videoInput(v)); }));
 app.post('/api/obs/mara-source', async (req, res) => { try { if (req.body?.on && !paid.dev()) throw new Error('The marathon counter is a 🛠️ dev mode feature.'); const on = !!req.body?.on, sc = req.body?.scenes; const c = { ...(db.settings.marathon || {}) }; if (on && Array.isArray(sc)) { if (!sc.length) throw new Error('Pick at least one OBS scene for it.'); c.scenes = sc.map(String).slice(0, 200); } const pick = Array.isArray(c.scenes) && c.scenes.length ? c.scenes : null; const r = await obs.maraSource(on, maraUrl(), pick); c.obs = on; db.settings.marathon = c; save(); pushState(); res.json({ ok: true, url: maraUrl(), ...r }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/test/mara-chat', wTry(b => { const name = String(b.name || 'Test_Viewer'); return marathon.pick({ login: name.toLowerCase(), name, [b.kind === 'map' ? 'map' : 'luck']: b.value, via: b.via === 'site' ? 'site' : 'chat' }); })); // 🧪 pretend Test_Viewer types map # / luck # (or picks on the website)
 app.post('/api/test/mara-pop', wTry(b => { broadcast(maraPopMsg({ who: String(b.name || 'Test_Viewer'), n: Number(b.n) || 1, what: String(b.what || 'a $5 tip'), test: true }), 'mara'); return { maps: marathon.maps().length, items: marathon.items().length }; }));

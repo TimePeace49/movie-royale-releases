@@ -1237,6 +1237,12 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="cvTest('')" title="Show what the chat voice would say for this message (nothing is read)">🔍 What would it say?</button><button onclick="cvTest('say')" title="Read this pretend message out loud on your speaker now">🔈 Read it out loud</button><button class="ghost" onclick="cvTest('bits')" title="The same message as a cheer with bits: left out (your alerts read those)">💎 As a cheer</button><button class="ghost" onclick="cvTest('reward')" title="The same message as a channel point message: left out (your alerts read those)">⭐ As channel points</button><button class="ghost" onclick="cvTest('', '!respin')" title="A chat command: left out">❗ A command</button></div>
     <div id="cvTestOut" class="help" style="margin-top:8px"></div>
   </div>
+  <div class="card" id="obsKeepTestCard">
+    <h3>🔄 OBS up to date + 🎬 My videos</h3>
+    <p class="help">Runs the 🔄 Keep OBS up to date check now: it puts back anything missing in OBS (celebration, roll call, your videos, marathon pieces in dev mode) and lists what it found. Add your own videos in Settings → 🎥 OBS → 🎬 My videos.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="obsKeepTest()" title="Check OBS and add anything missing (the same as the Settings button)">🔄 Check OBS now</button><button onclick="setView('settings');setSub('obs');setTimeout(()=>$('vidBox')?.scrollIntoView({block:'center'}),300)" title="Open Settings → 🎥 OBS → 🎬 My videos">🎬 My videos</button></div>
+    <div id="obsKeepTestOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card" id="deckTestCard">
     <h3>🎛️ Stream Deck buttons</h3>
     <p class="help">Press any Stream Deck button from here, exactly the way your Stream Deck does (same secret address). It really does the thing, so pick one that's safe right now (like 🔊 Sound on/off twice). Make and add the pages in Settings → 🖥️ App &amp; background → 🎛️ Stream Deck.</p>
@@ -1973,7 +1979,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/stream deck/i, 'tools'], [/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/stream deck/i, 'tools'], [/obs up to date/i, 'screen'], [/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2408,7 +2414,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'app') setTimeout(deckDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -3139,6 +3145,54 @@ async function deckTest() {
   try { const r = await fetch(url), t = await r.text(); out.innerHTML = `${r.ok ? '✅' : '⚠️'} <b>${esc(id.replace(/^scene:/, '🎞️ '))}</b>: ${esc(t.replace(/^(✅|⚠️) /, ''))} <span class="muted">(the key on your Stream Deck would show ${r.ok ? 'a ✓' : 'a ⚠'})</span>`; }
   catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
+// ---------- 🔄 Keep OBS up to date + 🎬 My videos (1.86.0, Derek: "an option to make sure new stuff is added to OBS") ----------
+let VD = null;
+function obsKeepHTML() {
+  const K = S.obsKeep || {}, L = K.last;
+  const rows = L?.items?.length ? `<ul style="margin:6px 0 0 18px;padding:0">${L.items.map(x => `<li>${x.ok === true ? '✅' : x.ok === false ? '⚠️' : '⏳'} <b>${esc(x.name)}</b>: ${esc(x.msg || '')}</li>`).join('')}</ul>` : '';
+  return `<p class="help" style="margin:0 0 6px">When you open Movie Royal, and every 10 minutes, it checks the things it put in OBS for you (🎉 celebration, 📣 roll call, 🎬 your videos${S.settings.betaUpdates ? ', 🏃 marathon counter and scenes' : ''}) and puts back anything that's missing. After an update it also adds any new OBS pieces that update brought. It never moves things you placed yourself and never switches your scene.</p>
+    <label class="ck"><input type="checkbox" ${K.on !== false ? 'checked' : ''} onchange="obsKeepSet(this.checked)" title="Check OBS when Movie Royal opens and every 10 minutes, and add anything missing"> <span>🔄 Keep OBS up to date (adds new and missing Movie Royal things by itself)</span></label>
+    <div class="row" style="gap:6px;margin-top:6px;align-items:center"><button onclick="obsKeepNow()" title="Check OBS right now and add anything that's missing">🔄 Check OBS now</button><span class="muted">${L?.at ? 'Last check: ' + esc(new Date(L.at).toLocaleTimeString()) : 'Not checked yet'}</span></div>
+    ${L?.note ? `<p class="help" style="margin:6px 0 0">${esc(L.note)}</p>` : ''}${rows}`;
+}
+async function obsKeepTest() { const o = $('obsKeepTestOut'); o.textContent = 'Checking OBS…'; try { const r = await api('/api/obs/sync', {}); const L = r.last || {}; o.innerHTML = L.note ? esc(L.note) : (L.items || []).length ? (L.items || []).map(x => `${x.ok === true ? '✅' : x.ok === false ? '⚠️' : '⏳'} <b>${esc(x.name)}</b>: ${esc(x.msg || '')}`).join('<br>') : 'Nothing to check: you haven\'t put anything from Movie Royal in OBS yet.'; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
+async function obsKeepSet(on) { try { await api('/api/obs/sync', { keep: on }); toast(on ? '🔄 Movie Royal keeps OBS up to date' : 'Turned off: Movie Royal won\'t add things to OBS by itself'); } catch (e) { toast('⚠️ ' + esc(e.message)); } }
+async function obsKeepNow() { const b = $('obsKeepBody'); if (b) b.insertAdjacentHTML('beforeend', '<p class="help">Checking OBS…</p>'); try { const r = await api('/api/obs/sync', {}); S.obsKeep = { on: r.keep, last: r.last }; vidDraw(); const n = (r.last?.items || []).filter(x => x.ok === false).length; toast(r.last?.note ? '🔄 ' + esc(r.last.note) : n ? `🔄 Checked OBS: ${n} thing${n === 1 ? '' : 's'} couldn't be added (see Settings → 🎥 OBS)` : '🔄 OBS has everything it needs'); } catch (e) { toast('⚠️ ' + esc(e.message)); } }
+async function vidDraw() {
+  const kb = $('obsKeepBody'); if (kb) kb.innerHTML = obsKeepHTML();
+  const box = $('vidBody'); if (!box) return;
+  try { VD = await api('/api/obs/videos', null, 'GET'); } catch (e) { box.textContent = '⚠️ ' + e.message; return; }
+  const rows = VD.list.map(v => `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.18)">
+      <label class="ck" style="margin:0"><input type="checkbox" ${v.on !== false ? 'checked' : ''} onchange="vidSet('${v.id}',{on:this.checked})" title="On = in OBS in the scenes you picked; off = taken out of OBS (kept here)"> <b>🎬 ${esc(v.name)}</b></label>
+      <span class="muted" title="${esc(v.file)}">${esc(v.file.split(/[\\/]/).pop())}${v.exists ? '' : ' ⚠️ file missing'} · ${v.scenes.length ? `${v.scenes.length} scene${v.scenes.length === 1 ? '' : 's'}` : '<b>no scenes yet</b>'}</span>
+      <span style="flex:1"></span>
+      <button onclick="scenePick('video:${v.id}')" title="Pick which OBS scenes this video goes in">🎬 Scenes</button>
+      <button onclick="vidFile('${v.id}')" title="Use a different video file for this one">📂 File</button>
+      <button onclick="vidReload('${v.id}')" title="Play it from the start in OBS (shows a video you replaced on disk)">🔄 Restart</button>
+      <button class="ghost" onclick="vidRemove('${v.id}')" title="Take it out of OBS and off this list (the file stays on your PC)">🗑</button></div>`).join('');
+  const opts = VD.files.filter(f => !VD.list.some(v => v.file === f.file)).map(f => `<option value="${esc(f.file)}">${esc(f.name)} (${f.mb} MB)</option>`).join('');
+  box.innerHTML = `<p class="help" style="margin:0 0 6px">Videos from your PC (backgrounds, starting / ending screens…) that Movie Royal puts in OBS for you: looping, filling the screen, behind everything else, in the scenes you pick. Once one is in a scene, move it however you like: Movie Royal leaves it there.</p>
+    ${rows || '<p class="help" style="margin:0 0 6px">No videos yet.</p>'}
+    <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <select id="vidPick" title="Videos in your Videos folder" style="max-width:320px"><option value="">${VD.files.length ? '➕ Pick a video from your Videos folder…' : 'No videos in your Videos folder'}</option>${opts}</select>
+      ${VD.canPick ? '<button onclick="vidBrowse()" title="Pick a video file anywhere on your PC">📂 Browse…</button>' : ''}
+      <button class="primary" onclick="vidAdd()" title="Add this video, then pick its scenes">➕ Add</button></div>
+    <input id="vidPath" placeholder="…or paste the video file's address (C:\\Users\\you\\Videos\\my video.mp4)" title="The video file's address on this PC" style="margin-top:6px">`;
+}
+async function vidBrowse() { try { const r = await api('/api/obs/videos/pick', {}); if (r.file) { $('vidPath').value = r.file; $('vidPick').value = ''; } } catch (e) { toast('⚠️ ' + esc(e.message)); } }
+async function vidAdd() {
+  const file = ($('vidPath').value || '').trim() || $('vidPick').value; if (!file) return toast('Pick a video first');
+  const base = file.split(/[\\/]/).pop().replace(/\.[^.]+$/, '');
+  const name = await ask('Name it (the OBS source will be “🎬 name”):', base); if (!name) return;
+  try { const r = await api('/api/obs/videos', { file, name }); toast(`🎬 Added “${esc(r.video.name)}”: now tick its scenes`); await vidDraw(); scenePick('video:' + r.video.id); } catch (e) { toast('⚠️ ' + esc(e.message)); }
+}
+async function vidSet(id, o) { try { const r = await api('/api/obs/videos', { id, ...o }); toast(r.note ? esc(r.note) : o.on === false ? '🎬 Taken out of OBS' : `🎬 In OBS${r.added ? `: added to ${r.added} scene${r.added === 1 ? '' : 's'}` : ''}${r.removed ? `, taken out of ${r.removed}` : ''}`); } catch (e) { toast('⚠️ ' + esc(e.message)); } vidDraw(); }
+async function vidFile(id) {
+  let file = null; if (VD?.canPick) { try { file = (await api('/api/obs/videos/pick', {})).file; } catch {} } else file = await ask('The new video file\'s address:', '');
+  if (file) vidSet(id, { file });
+}
+async function vidReload(id) { try { await api('/api/obs/videos/reload', { id }); toast('🔄 Playing from the start in OBS'); } catch (e) { toast('⚠️ ' + esc(e.message)); } }
+async function vidRemove(id) { const v = VD?.list.find(x => x.id === id); if (!await ask(`Take “${v?.name || 'this video'}” out of OBS and off this list? (The file stays on your PC.) Type yes`, '')) return; try { await api('/api/obs/videos', { id, remove: true }); toast('🗑 Removed'); } catch (e) { toast('⚠️ ' + esc(e.message)); } vidDraw(); }
 function siteDraw(full) {
   const box = $('siteBody'); if (!box) return; const T = S.site || {}, key = JSON.stringify([T, S.cloud?.enabled]);
   if (!full && (key === siteKey || (box.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)))) return; siteKey = key;
@@ -5638,6 +5692,8 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🔌 What Movie Royal may do in OBS</h3>
       ${cki('obsOn', '🎥 Let Movie Royal use OBS (off = it never touches OBS, and takes out what it added)', true, "$('obsParts').style.opacity=this.checked?'':'.45'")}
       <div id="obsParts" style="${s.obsOn === false ? 'opacity:.45' : ''}">
+      <div class="card soft obsBox" id="obsKeepBox"><h4>🔄 Keep OBS up to date</h4><div id="obsKeepBody" class="help">Loading…</div></div>
+      <div class="card soft obsBox" id="vidBox"><h4>🎬 My videos</h4><div id="vidBody" class="help">Loading…</div></div>
       <div class="card soft obsBox"><h4>☠️ Doomsday</h4>
         ${cki('obsDoomOn', '☠️ When the void swallows the wheel: mute my mic, hide my camera and end the stream 15 seconds later')}
         <p class="help">Off = the Doomsday screen still shows on stream, but nothing in OBS is touched. Your mic and camera come back on by themselves once the stream is over.</p>
@@ -5733,6 +5789,7 @@ function openSettings(force) {
   $('settingsBody').innerHTML = Object.entries(subs).map(([k, html]) => `<div class="sub${k === sub ? ' on' : ''}" data-s="${k}">${html}</div>`).join('');
   spSetInit(); // 🎟️ wild spot character builder
   if (sub === 'app') setTimeout(deckDraw, 0); // 🎛️
+  if (sub === 'obs') setTimeout(vidDraw, 0); // 🔄 🎬
   $('settingsBody').oninput = $('settingsBody').onchange = e => { if (e.target.matches('[data-k], .rt, .re')) dirty(); };
   settingsDirty = false; $('saveHint').textContent = 'Change anything, then press Save.';
   const lbd = $('lbdrop');
@@ -5804,14 +5861,15 @@ function scenePick(kind) { sceneFor = kind; return choicePick(); }
 async function rollObs(on) { try { await api('/api/obs/roll-source', { on }); toast(on ? '📣 Roll call is in OBS' : '⏸ Took the roll call source out of OBS', 6000); } catch {} setTimeout(() => { if (sub === 'obs') openSettings(true); }, 400); }
 // 🎬 pick which OBS scenes get the viewer's choice celebration (1.58.1, Derek: not every scene)
 async function choicePick() {
-  const mara = sceneFor === 'mara', roll = sceneFor === 'roll'; sceneFor = 'choice'; $('choiceDlg').dataset.for = mara ? 'mara' : roll ? 'roll' : 'choice';
+  const vid = String(sceneFor).startsWith('video:') ? String(sceneFor).slice(6) : null, mara = sceneFor === 'mara', roll = sceneFor === 'roll'; sceneFor = 'choice'; $('choiceDlg').dataset.for = vid ? 'video:' + vid : mara ? 'mara' : roll ? 'roll' : 'choice';
   $('choiceDlgT').textContent = roll ? '🎬 Which OBS scenes get the roll call?' : '🎬 Which OBS scenes get the celebration?';
   if (mara) { $('choiceDlgT').textContent = '🎬 Which OBS scenes get the marathon counter + pop-up?'; }
   $('choiceDlgH').innerHTML = roll ? 'Tick the scenes where 📣 roll call should show. Movie Royal puts the browser source <b>Movie Royal roll call</b> on top of those scenes only (and takes it out of the ones you don\'t tick). It\'s see-through until a roll call starts.' : 'Tick the scenes where the 🎉 Viewer\'s choice confetti should show. Movie Royal puts the source <b>Movie Royal celebration</b> on top of those scenes only (and takes it out of the ones you don\'t tick).';
   if (mara) $('choiceDlgH').innerHTML = 'Tick the scenes where the 🏃 <b>battles owed</b> counter and the pick pop-up should show (your game, sleeping, cooking… scenes). Movie Royal puts the browser source <b>Movie Royal marathon</b> on top of those scenes only. It\'s see-through except for the counter and the pop-up.';
+  if (vid) { const v = VD?.list.find(x => x.id === vid); $('choiceDlgT').textContent = `🎬 Which OBS scenes get “${v?.name || 'this video'}”?`; $('choiceDlgH').innerHTML = 'Tick the scenes where this video should play. Movie Royal puts it <b>behind everything</b> in those scenes, filling the screen and looping (and takes it out of the ones you don\'t tick). Already in a scene = left where you put it.'; }
   $('choiceList').innerHTML = '<p class="help">Asking OBS for your scenes…</p>'; $('choiceGoBtn').disabled = true; $('choiceDlg').showModal();
   try {
-    const r = await fetch('/api/vr/scenes' + (mara ? '?for=mara' : roll ? '?for=roll' : '')).then(x => x.json()); if (r.error) throw new Error(r.error);
+    const r = await fetch('/api/vr/scenes' + (vid ? '?for=video&id=' + encodeURIComponent(vid) : mara ? '?for=mara' : roll ? '?for=roll' : '')).then(x => x.json()); if (r.error) throw new Error(r.error);
     if (!r.scenes?.length) throw new Error('OBS has no scenes.');
     const on = new Set(r.picked?.length ? r.picked : r.has?.length ? r.has : [r.current].filter(Boolean));
     $('choiceList').innerHTML = r.scenes.map(sc => `<label class="ck"><input type="checkbox" value="${esc(sc)}" ${on.has(sc) ? 'checked' : ''}> <span>${esc(sc)}${sc === r.current ? ' <small class="muted">(on stream now)</small>' : ''}${r.has?.includes(sc) ? ' <small class="muted">· has it</small>' : ''}</span></label>`).join('');
@@ -5822,6 +5880,7 @@ async function choiceGo() {
   const scenes = [...document.querySelectorAll('#choiceList input:checked')].map(i => i.value);
   if (!scenes.length) return toast('Tick at least one scene');
   $('choiceGoBtn').disabled = true;
+  if ($('choiceDlg').dataset.for.startsWith('video:')) { try { const r = await api('/api/obs/videos', { id: $('choiceDlg').dataset.for.slice(6), scenes, on: true }); $('choiceDlg').close(); toast(`🎬 “${esc(r.video.name)}” is in ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}`); } catch (e) { toast('⚠️ ' + esc(e.message)); } $('choiceGoBtn').disabled = false; vidDraw(); return; }
   if ($('choiceDlg').dataset.for === 'mara') { try { const r = await api('/api/obs/mara-source', { on: true, scenes }); $('choiceDlg').close(); toast(`🏃 “Movie Royal marathon” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}`, 6000); } catch {} $('choiceGoBtn').disabled = false; return; }
   if ($('choiceDlg').dataset.for === 'roll') { try { const r = await api('/api/obs/roll-source', { on: true, scenes }); $('choiceDlg').close(); toast(`📣 “Movie Royal roll call” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}`, 6000); } catch {} $('choiceGoBtn').disabled = false; setTimeout(() => { if (sub === 'obs') openSettings(true); }, 400); return; }
   try { const r = await api('/api/vr/source', { on: true, scenes }); $('choiceDlg').close(); toast(`📺 “Movie Royal celebration” is on top of ${r.scenes} OBS scene${r.scenes === 1 ? '' : 's'}${r.removed ? ` (taken out of ${r.removed} other${r.removed === 1 ? '' : 's'})` : ''}${r.note ? '. ⚠️ ' + esc(r.note) : ''}`, r.note ? 12000 : 6000); } catch {} finally { $('choiceGoBtn').disabled = false; }

@@ -298,6 +298,10 @@ app.whenReady().then(async () => {
     applySettings,
     windowAction: a => { const w = win; if (!w || w.isDestroyed()) return; if (a === 'min') w.minimize(); else if (a === 'close') w.close(); else if (['window', 'borderless', 'fullscreen'].includes(a)) setWindowMode(a); },
     openPath: p => shell.openPath(p),
+    pickFile: async (title, exts) => { // 🎬 (1.86.0) pick a file on this PC (the dialog opens over Movie Royal)
+      const r = await dialog.showOpenDialog(win && !win.isDestroyed() ? win : undefined, { title: title || 'Pick a file', properties: ['openFile'], defaultPath: app.getPath('videos'), filters: exts ? [{ name: 'Videos', extensions: exts }, { name: 'All files', extensions: ['*'] }] : undefined });
+      return r.canceled ? null : (r.filePaths || [])[0] || null;
+    },
     // 🎉 Viewer's choice: confetti + a big pop-up over whatever you're using, on the screen your mouse is on (clicks go through it; it doesn't take your keyboard)
     celebrate: url => {
       const { screen } = require('electron'), d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()), b = d.bounds;
