@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.86.2
+- 🏆 **Race standings board** (Derek: "a position board on the right side that says what position the top 10 cars are for races"): on every race map with laps (Figure 8, Oval, Grand Prix, Night City… all the 🏁 races), the right side of the screen now shows the top 10 places while the race runs: place number, the car's paint colour, the name and which lap they're on. The leader is highlighted, wrecked cars show 💥 OUT, and when the race ends the winner shows 🏁 WIN at the top. Races without laps (💥 Last Bus Standing) and every other map have no board. The knock-out list on the right moves down under the board during races. Test: 🧪 Test → 🏁 Race with power-ups → 🏆 Standings board.
+
 ## 1.86.1
 - 🌴 **The Vice videos go into OBS by themselves** (Derek: "videos are not installed on my OBS"; 1.86.0 only added videos you put on 🎬 My videos yourself, and the list was empty): when the Vice background, starting soon and thanks for watching videos are in your Videos folder, Keep OBS up to date adds them to 🎬 My videos and puts them in the matching scenes of each scene collection the first time it's open in OBS (never while you're live): the background in your Just Chatting scenes, starting soon in your starting scenes, thanks for watching in your ending scenes. The marathon scenes didn't have an ending scene, so they get a new **👋 Thanks for Watching** scene. 🗑 on one of them = it's never added again.
 - 🙈 **Hide the scene's background** (a new box on each video): when a video goes into a scene, that scene's own full-screen background is switched off (Movie Royal's title card, or an overlay named after the scene like "Starting Overlay"), so the video is what you see instead of sitting hidden behind it. Turning the video off or removing it brings them back. On for the ready-made videos.

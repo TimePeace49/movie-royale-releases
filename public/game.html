@@ -5047,6 +5047,38 @@ function drawTicker() {
   ctx.restore();
 }
 function pill(x, y, w, h, fill) { ctx.fillStyle = fill; roundRect(ctx, x, y, w, h, h / 2); ctx.fill(); }
+// 🏁 standings board (1.86.2, Derek): top 10 places down the right side, only on races that have laps (not survival / non-race maps)
+function standings() {
+  if (!MAP || !MAP.laps || !MAP.pts || MAP.survival || (phase !== 'running' && phase !== 'ended') || NUKE.on || NUKE.hit) return null;
+  const cars = fighters.filter(f => f.s != null);
+  if (cars.length < 2) return null;
+  const rank = f => f === winner ? 0 : f.alive || f.finished ? 1 : 2; // winner, still racing / finished, wrecked
+  return cars.slice().sort((a, b) => rank(a) - rank(b) || b.s - a.s || (elim.indexOf(b.id) - elim.indexOf(a.id)));
+}
+window.__standings = () => (standings() || []).map(f => ({ label: f.label, s: f.s, alive: f.alive, finished: !!f.finished, win: f === winner })); // (tests)
+function drawStandings() {
+  const list = standings(); if (!list) return 0;
+  const top = list.slice(0, 10), rowH = 36, hd = 44, bw = 330, x = W - 40 - bw, y0 = 120, h = hd + top.length * rowH + 10, laps = MAP.laps;
+  ctx.save(); ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(18,10,36,.8)'; roundRect(ctx, x, y0, bw, h, 18); ctx.fill();
+  ctx.font = "800 20px Inter, sans-serif"; ctx.textAlign = 'left'; ctx.fillStyle = '#ffc94a'; ctx.fillText('🏁 STANDINGS', x + 18, y0 + 24);
+  ctx.textAlign = 'right'; ctx.font = "700 15px Inter, sans-serif"; ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillText(`${list.length} CARS`, x + bw - 18, y0 + 24);
+  top.forEach((f, i) => {
+    const ry = y0 + hd + i * rowH + rowH / 2, out = !f.alive && !f.finished && f !== winner;
+    if (i === 0) { ctx.fillStyle = 'rgba(255,201,74,.18)'; roundRect(ctx, x + 8, ry - rowH / 2 + 2, bw - 16, rowH - 4, 10); ctx.fill(); }
+    ctx.globalAlpha = out ? .45 : 1;
+    ctx.textAlign = 'center'; ctx.font = "800 18px Inter, sans-serif"; ctx.fillStyle = i === 0 ? '#ffc94a' : i < 3 ? '#fff' : 'rgba(255,255,255,.75)'; ctx.fillText(String(i + 1), x + 30, ry + 1);
+    const pc = (BUS.paints[(f.paint ?? 0) % BUS.paints.length] || {}).base || f.color || '#888';
+    ctx.fillStyle = pc; ctx.beginPath(); ctx.arc(x + 62, ry, 10, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'left'; ctx.font = "700 18px Inter, sans-serif"; ctx.fillStyle = '#fff';
+    const full = f.label || '?', maxW = bw - 165; let name = full; while (name.length > 3 && ctx.measureText(name + '…').width > maxW) name = name.slice(0, -1); if (name !== full) name += '…';
+    ctx.fillText(name, x + 82, ry + 1);
+    ctx.textAlign = 'right'; ctx.font = "700 15px Inter, sans-serif"; ctx.fillStyle = out ? '#ff8a7a' : f === winner ? '#7dff8a' : 'rgba(255,255,255,.7)';
+    ctx.fillText(out ? '💥 OUT' : f === winner ? '🏁 WIN' : `LAP ${clamp(Math.floor(f.s) + 1, 1, laps)}`, x + bw - 18, ry + 1);
+    ctx.globalAlpha = 1;
+  });
+  ctx.restore(); return h;
+}
 function drawHUD() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   // title plate
@@ -5095,8 +5127,8 @@ function drawHUD() {
     if (movieNo && kind !== 'chat') { const mt = `MOVIE #${movieNo} TONIGHT`; ctx.font = "800 20px Inter, sans-serif"; const mw = ctx.measureText(mt).width + 40; pill(CX - mw / 2, 168, mw, 34, 'rgba(255,201,74,.92)'); ctx.fillStyle = '#2a1500'; ctx.fillText(mt, CX, 186); } // Discord movie battles only
     if (suddenDeath && phase === 'running') { ctx.font = "64px 'Lilita One', Impact, sans-serif"; ctx.globalAlpha = .75 + .25 * Math.sin(clock * 8); ctx.lineWidth = 8; ctx.strokeStyle = '#1a0610'; ctx.strokeText(showdown ? 'FINAL SHOWDOWN!' : 'SUDDEN DEATH!', CX, 262); ctx.fillStyle = '#ff5a4a'; ctx.fillText(showdown ? 'FINAL SHOWDOWN!' : 'SUDDEN DEATH!', CX, 262); ctx.globalAlpha = 1; }
   }
-  // kill feed
-  let y = 120;
+  // kill feed (on a race with laps it goes under the 🏁 standings board)
+  let y = 120; { const sh = drawStandings(); if (sh) y = 120 + sh + 14; }
   for (const f of feed) {
     f.life -= dtReal; if (f.life <= 0) continue;
     ctx.globalAlpha = clamp(f.life, 0, 1);
