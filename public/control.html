@@ -3164,7 +3164,8 @@ async function vidDraw() {
   try { VD = await api('/api/obs/videos', null, 'GET'); } catch (e) { box.textContent = '⚠️ ' + e.message; return; }
   const rows = VD.list.map(v => `<div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.18)">
       <label class="ck" style="margin:0"><input type="checkbox" ${v.on !== false ? 'checked' : ''} onchange="vidSet('${v.id}',{on:this.checked})" title="On = in OBS in the scenes you picked; off = taken out of OBS (kept here)"> <b>🎬 ${esc(v.name)}</b></label>
-      <span class="muted" title="${esc(v.file)}">${esc(v.file.split(/[\\/]/).pop())}${v.exists ? '' : ' ⚠️ file missing'} · ${v.scenes.length ? `${v.scenes.length} scene${v.scenes.length === 1 ? '' : 's'}` : '<b>no scenes yet</b>'}</span>
+      <span class="muted" title="${esc(v.file)}">${esc(v.file.split(/[\\/]/).pop())}${v.exists ? '' : ' ⚠️ file missing'} · ${v.scenes.length ? `${v.scenes.length} scene${v.scenes.length === 1 ? '' : 's'}` : '<b>no scenes yet</b>'}${v.auto ? ' · 🌴 ready-made (added by itself)' : ''}</span>
+      <label class="ck" style="margin:0" title="When the video goes into a scene, switch off that scene's own full-screen background (Movie Royal's title card, or an overlay named after the scene) so the video is what you see. It comes back if you turn the video off."><input type="checkbox" ${v.cover ? 'checked' : ''} onchange="vidSet('${v.id}',{cover:this.checked})"> 🙈 Hide the scene's background</label>
       <span style="flex:1"></span>
       <button onclick="scenePick('video:${v.id}')" title="Pick which OBS scenes this video goes in">🎬 Scenes</button>
       <button onclick="vidFile('${v.id}')" title="Use a different video file for this one">📂 File</button>

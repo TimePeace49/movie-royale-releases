@@ -157,6 +157,7 @@ H(/^tip:check obs right now and add anything/i, '🔄 Check OBS now', 'Checks OB
 H(/^tip:on = in obs in the scenes you picked/i, '🎬 Video on / off', 'On = the video is in OBS in the scenes you picked. Off = taken out of OBS but kept on this list, so you can turn it back on.');
 H(/^tip:pick which obs scenes this video goes in/i, '🎬 Scenes', 'Tick the OBS scenes this video plays in. It goes behind everything, fills the screen and loops. Scenes you untick lose it.');
 H(/^tip:use a different video file for this one/i, '📂 File', 'Swap the video file this one plays. OBS starts playing the new file right away, in the same spot.');
+H(/^tip:when the video goes into a scene, switch off/i, '🙈 Hide the scene\'s background', 'When the video is put into a scene, Movie Royal switches off that scene\'s own full-screen background (its title card, or an overlay named after the scene like “Starting Overlay”) so the video is what shows. Turn the video off and those come back. 🌴 Ready-made videos (like the Vice backgrounds in your Videos folder) have it on.');
 H(/^tip:play it from the start in obs/i, '🔄 Restart', 'Plays the video from the start in OBS. Use it after you replaced the file on your PC with a new version (same name).');
 H(/^tip:take it out of obs and off this list/i, '🗑 Remove video', 'Takes the video out of every OBS scene and off this list. The file stays on your PC.');
 H(/^tip:videos in your videos folder/i, '➕ Pick a video', 'The videos in your Windows Videos folder, newest first. Pick one, then ➕ Add.');

@@ -4919,10 +4919,42 @@ function videoFiles() {
   try { return fs.readdirSync(d).filter(f => VIDEO_EXT.test(f)).map(f => { const st = fs.statSync(path.join(d, f)); return { name: f, file: path.join(d, f), mb: Math.round(st.size / 1e5) / 10, at: st.mtimeMs }; }).sort((a, b) => b.at - a.at).slice(0, 80); } catch { return []; }
 }
 const videoName = n => String(n || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 50);
-async function videoApply(v) {
-  if (v.on === false) return obs.videoSource(videoInput(v), { on: false });
+async function videoApply(v, coll) {
+  if (v.on === false) { await videoUnhide(v); return obs.videoSource(videoInput(v), { on: false }); }
   if (!v.file || !fs.existsSync(v.file)) throw new Error(`The video file isn't there any more (${v.file || 'no file'}): pick it again.`);
-  return obs.videoSource(videoInput(v), { file: v.file, scenes: v.scenes || [], loop: v.loop !== false });
+  const r = await obs.videoSource(videoInput(v), { file: v.file, scenes: v.scenes || [], loop: v.loop !== false, cover: !!v.cover });
+  if (r.hid?.length) { if (coll === undefined) coll = (await obs.obsSetups().catch(() => ({}))).collection || ''; v.hidden = [...(v.hidden || []), ...r.hid.map(h => ({ ...h, coll }))].slice(-60); save(); }
+  return r;
+}
+async function videoUnhide(v) { // (1.86.1) the backgrounds a video switched off come back when it's turned off / removed (this scene collection's ones)
+  if (!v.hidden?.length) return; const coll = (await obs.obsSetups().catch(() => null))?.collection; if (coll == null) return;
+  const mine = v.hidden.filter(h => h.coll === coll); if (!mine.length) return;
+  await obs.showItems(mine).catch(() => {}); v.hidden = v.hidden.filter(h => h.coll !== coll); save();
+}
+// 🌴 Ready-made backgrounds (1.86.1, Derek: "videos are not installed on my obs"): when one of these files is in your Videos folder,
+// Keep OBS up to date puts it on 🎬 My videos BY ITSELF and into the matching scenes of each scene collection the first time that
+// collection is open (and you're not live): its own background switched off, video behind everything. Taking it off the list =
+// it's never added again (settings.obsVideoAuto[key] = 'gone'). Scenes can still be changed in 🎬 Scenes.
+const READY_VIDEOS = [
+  { key: 'vice-bg', file: /^vice background\b.*\.(mp4|mov|mkv|webm)$/i, name: 'Vice background', want: /chatting/i },
+  { key: 'vice-start', file: /^vice starting soon\b.*\.(mp4|mov|mkv|webm)$/i, name: 'Vice starting soon', want: /starting|\bsoon\b/i },
+  { key: 'vice-end', file: /^vice thanks for watching\b.*\.(mp4|mov|mkv|webm)$/i, name: 'Vice thanks for watching', want: /ending|\bend\b|thanks|outro|offline|goodbye/i, make: '👋 Thanks for Watching' },
+];
+async function readyVideos(setup, isLive) {
+  const files = videoFiles(), seen = db.settings.obsVideoAuto || {}, notes = [];
+  for (const R of READY_VIDEOS) {
+    if (seen[R.key] === 'gone') continue;
+    const f = files.find(x => R.file.test(x.name)); if (!f) continue;
+    const list = obsVideos().slice(); let v = list.find(x => x.auto === R.key);
+    if (!v) { v = { id: uid(), name: list.some(x => x.name.toLowerCase() === R.name.toLowerCase()) ? R.name + ' 2' : R.name, file: f.file, scenes: [], on: true, loop: true, at: Date.now(), auto: R.key, cover: true, autoColl: [] }; list.push(v); db.settings.obsVideos = list; db.settings.obsVideoAuto = { ...seen, [R.key]: 'added' }; save(); notes.push(`🎬 ${v.name} added to My videos`); act('stream', `🎬 Found “${f.name}” in your Videos folder: added it to 🎬 My videos`, { icon: '🎬', kind: 'obs' }); }
+    if (!fs.existsSync(v.file)) v.file = f.file;
+    if (isLive || v.on === false || (v.autoColl || []).includes(setup.collection)) continue;
+    let names = []; try { names = ((await obs.sceneList(videoInput(v))).scenes || []).map(s => s.name ?? s); } catch { continue; }
+    let hit = names.filter(n => R.want.test(n) && !/^\s*-/.test(n) && n !== obs.CO_SCENE);
+    if (!hit.length && R.make && setup.collection === db.settings.marathon?.obsSetup?.collection) { try { await obs.makeScene(R.make); hit = [R.make]; notes.push(`made the scene ${R.make}`); } catch {} }
+    v.autoColl = [...(v.autoColl || []), setup.collection]; v.scenes = [...new Set([...(v.scenes || []), ...hit])]; save();
+  }
+  return notes;
 }
 let obsSyncBusy = false; live.obsSync = null;
 async function obsSync(why = 'check', force = false) {
@@ -4946,7 +4978,8 @@ async function obsSync(why = 'check', force = false) {
       else if (!force && db.settings.obsSyncVer === PKG.version) add('marasetup', nm, true, `up to date for v${PKG.version}`);
       else { try { const r = await maraObsSetup({ go: true, keepScene: true }); db.settings.obsSyncVer = PKG.version; save(); const last = (r.steps || []).filter(x => x.icon === '🎬').pop(); add('marasetup', nm, true, last ? last.text.replace(/^Filled in the scenes .*? \(/, '(') : 'checked'); } catch (e) { add('marasetup', nm, false, e.message); } }
     }
-    for (const v of obsVideos()) { if (v.on === false) continue; if (!(v.scenes || []).length) { add('video:' + v.id, '🎬 ' + v.name, null, 'no scenes picked yet (🎬 Scenes)'); continue; } try { add('video:' + v.id, '🎬 ' + v.name, true, r1(await videoApply(v), 'the video')); } catch (e) { add('video:' + v.id, '🎬 ' + v.name, false, e.message); } }
+    try { await readyVideos(setup, live_); } catch (e) { console.error('[obs] ready-made videos: ' + e.message); }
+    for (const v of obsVideos()) { if (v.on === false) continue; if (!(v.scenes || []).length) { add('video:' + v.id, '🎬 ' + v.name, null, v.auto ? (live_ ? 'waiting until you\'re not live' : 'no matching scene in this scene collection: pick some in 🎬 Scenes') : 'no scenes picked yet (🎬 Scenes)'); continue; } try { add('video:' + v.id, '🎬 ' + v.name, true, r1(await videoApply(v, setup.collection), 'the video')); } catch (e) { add('video:' + v.id, '🎬 ' + v.name, (v.auto && /aren't in OBS right now/.test(e.message)) ? null : false, v.auto && /aren't in OBS right now/.test(e.message) ? 'none of its scenes are in this scene collection' : e.message); } }
     live.obsSync = { at: Date.now(), why, items };
     const fixed = items.filter(x => x.ok && /^added|updated/.test(x.msg || '')); if (fixed.length && why !== 'button') { broadcast({ type: 'toast', text: `🔄 Put back in OBS: ${fixed.map(x => x.name).join(', ')}`, ms: 7000 }, 'control'); act('stream', `🔄 Keep OBS up to date added: ${fixed.map(x => `${x.name} (${x.msg})`).join(', ')}`, { icon: '🔄', kind: 'obs' }); }
     return live.obsSync;
@@ -4959,7 +4992,7 @@ app.get('/api/obs/videos', (req, res) => res.json({ list: obsVideos().map(v => (
 app.post('/api/obs/videos/pick', wTry(async () => { if (!globalThis.__desktop?.pickFile) throw new Error('Picking a file only works in the Windows app: type or paste the file\'s address instead.'); return { file: await globalThis.__desktop.pickFile('Pick a video for OBS', ['mp4', 'webm', 'mov', 'mkv', 'm4v', 'avi', 'flv', 'gif']) }; }));
 app.post('/api/obs/videos', wTry(async b => { // add / change / remove one of your videos ({id?, name, file, scenes, on, loop, remove})
   const list = obsVideos().slice(); let v = b.id ? list.find(x => x.id === b.id) : null;
-  if (b.remove) { if (!v) throw new Error('That video is gone already.'); try { await obs.videoSource(videoInput(v), { on: false }); } catch {} db.settings.obsVideos = list.filter(x => x !== v); save(); pushState(); act('stream', `🎬 Took “${v.name}” out of OBS`, { icon: '🎬', kind: 'obs' }); return { removed: true }; }
+  if (b.remove) { if (!v) throw new Error('That video is gone already.'); try { await videoUnhide(v); await obs.videoSource(videoInput(v), { on: false }); } catch {} if (v.auto) db.settings.obsVideoAuto = { ...(db.settings.obsVideoAuto || {}), [v.auto]: 'gone' }; db.settings.obsVideos = list.filter(x => x !== v); save(); pushState(); act('stream', `🎬 Took “${v.name}” out of OBS`, { icon: '🎬', kind: 'obs' }); return { removed: true }; }
   if (!v) { const file = String(b.file || '').trim().replace(/^"|"$/g, ''); if (!file) throw new Error('Pick a video file first.'); if (!VIDEO_EXT.test(file)) throw new Error('That isn\'t a video file Movie Royal knows (mp4, webm, mov, mkv…).'); if (!fs.existsSync(file)) throw new Error(`Can't find that file on this PC: ${file}`);
     const name = videoName(b.name || path.basename(file).replace(VIDEO_EXT, '')); if (!name) throw new Error('Give it a name.'); if (list.some(x => x.name.toLowerCase() === name.toLowerCase())) throw new Error('You already have a video with that name.');
     v = { id: uid(), name, file, scenes: [], on: true, loop: true, at: Date.now() }; list.push(v); }
@@ -4968,6 +5001,7 @@ app.post('/api/obs/videos', wTry(async b => { // add / change / remove one of yo
   if (b.name && videoName(b.name) && videoName(b.name) !== v.name) { if (list.some(x => x !== v && x.name.toLowerCase() === videoName(b.name).toLowerCase())) throw new Error('You already have a video with that name.'); v.name = videoName(b.name); }
   if (Array.isArray(b.scenes)) v.scenes = b.scenes.map(String).slice(0, 60);
   if ('on' in b) v.on = !!b.on; if ('loop' in b) v.loop = !!b.loop;
+  if ('cover' in b) { v.cover = !!b.cover; if (!v.cover) await videoUnhide(v); }
   db.settings.obsVideos = list; save(); pushState();
   if (old.name !== v.name) { try { await obs.videoSource(obs.VIDEO_PREFIX + old.name, { on: false }); } catch {} } // (renamed: the old source goes)
   if (!v.scenes.length && v.on !== false) return { video: v, note: 'Saved. Now pick the scenes it goes in (🎬 Scenes).' };

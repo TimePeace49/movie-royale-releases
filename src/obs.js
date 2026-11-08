@@ -272,7 +272,28 @@ async function browserSource(name, on, mkSettings, pick = null) {
 // A video file from your PC as a looping Media Source "🎬 <name>", behind everything (the bottom of the source list), filling
 // the screen, in the scenes you picked (taken out of the others). Already in a scene = left where you put it.
 export const VIDEO_PREFIX = '🎬 ';
-export async function videoSource(name, { file, scenes, on = true, loop = true }) {
+// (1.86.1) cover = when the video goes into a scene for the first time, the scene's own full-screen background piece is switched
+// off (its eye), so the video is what shows: Movie Royal's title card (scenecard.html), or an overlay named after the scene
+// ("Starting Overlay" in "Starting", "Just Chatting Overlay" in "Just Chatting"). Returns them in `hid` so they can come back.
+const BG_KINDS = /browser_source|image_source|ffmpeg_source|color_source|slideshow/;
+const sceneWords = sc => String(sc).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !/^(stream|scene|movie|royal)$/.test(w));
+async function findBackground(call, sceneName, mine) {
+  const items = ((await call('GetSceneItemList', { sceneName })).sceneItems || []).slice().sort((a, b) => (a.sceneItemIndex ?? 0) - (b.sceneItemIndex ?? 0));
+  const words = sceneWords(sceneName);
+  for (const it of items) {
+    if (it.sourceName === mine || it.sceneItemEnabled === false || it.isGroup || (it.inputKind && !BG_KINDS.test(it.inputKind))) continue;
+    const nm = String(it.sourceName).toLowerCase();
+    let url = ''; if (/browser/.test(it.inputKind || 'browser')) { try { url = (await call('GetInputSettings', { inputName: it.sourceName })).inputSettings?.url || ''; } catch {} }
+    if (/scenecard\.html/.test(url) && !/k=sleep/.test(url)) return it;
+    if (/overlay|background|screen|card/.test(nm) && words.some(w => nm.includes(w))) return it;
+  }
+  return null;
+}
+export async function showItems(list) { // put back pieces a video switched off
+  return session(async call => { let n = 0; for (const h of list || []) { try { const id = (await call('GetSceneItemId', { sceneName: h.scene, sourceName: h.source })).sceneItemId; await call('SetSceneItemEnabled', { sceneName: h.scene, sceneItemId: id, sceneItemEnabled: true }); n++; } catch {} } return { shown: n }; });
+}
+export async function makeScene(sceneName) { return session(async call => { const all = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName); if (!all.includes(sceneName)) await call('CreateScene', { sceneName }); return { made: !all.includes(sceneName) }; }); }
+export async function videoSource(name, { file, scenes, on = true, loop = true, cover = false }) {
   return session(async call => {
     const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === name);
     if (!on) { if (have) await call('RemoveInput', { inputName: name }); return { on: false, removed: !!have }; }
@@ -284,18 +305,19 @@ export async function videoSource(name, { file, scenes, on = true, loop = true }
     if (!have) await call('CreateInput', { sceneName: target[0], inputName: name, inputKind: 'ffmpeg_source', inputSettings: settings, sceneItemEnabled: true });
     else { const cur = (await call('GetInputSettings', { inputName: name }).catch(() => ({}))).inputSettings || {}; if (cur.local_file !== file || cur.looping !== !!loop) { await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true }); fileChanged = true; } }
     const inScene = async sc => call('GetSceneItemId', { sceneName: sc, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
-    let added = 0;
+    let added = 0; const hid = [];
     for (const sc of target) {
       let id = await inScene(sc);
       if (id != null && !(!have && sc === target[0])) continue; // (already there: left how you have it)
       if (id == null) { id = (await call('CreateSceneItem', { sceneName: sc, sourceName: name, sceneItemEnabled: true })).sceneItemId; }
       added++;
+      if (cover) { try { const bg = await findBackground(call, sc, name); if (bg) { await call('SetSceneItemEnabled', { sceneName: sc, sceneItemId: bg.sceneItemId, sceneItemEnabled: false }); hid.push({ scene: sc, source: bg.sourceName }); } } catch {} }
       await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: { positionX: 0, positionY: 0, alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_OUTER', boundsAlignment: 0, boundsWidth: W, boundsHeight: H, rotation: 0 } }).catch(() => {});
       await call('SetSceneItemIndex', { sceneName: sc, sceneItemId: id, sceneItemIndex: 0 }).catch(() => {}); // behind everything
     }
     let removed = 0;
     for (const sc of all) { if (target.includes(sc)) continue; const id = await inScene(sc); if (id != null) { await call('RemoveSceneItem', { sceneName: sc, sceneItemId: id }).catch(() => {}); removed++; } }
-    return { on: true, scenes: target.length, added, removed, fileChanged, made: !have };
+    return { on: true, scenes: target.length, added, removed, fileChanged, made: !have, hid };
   });
 }
 // 🔄 play it from the start again (OBS opens the file again, so a video you replaced on disk shows up)
