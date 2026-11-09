@@ -32,6 +32,7 @@ import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
 import * as movienight from './movienight.js';
+import * as raids from './raids.js';
 import * as xlsx from './xlsx.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
@@ -1108,6 +1109,7 @@ const twitchHandlers = {
   },
   alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
+  raidOut(t) { try { raids.note(t); } catch (e) { console.error('[raid tab]', e.message); } }, // 🚀 you raided someone (Twitch says so, also for /raid typed by hand)
   async chat(m) {
     if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
     if (!m.pretend && kick.on() !== !!m.kick) return; // 🟢 the platform switch: only chat from the platform you picked counts
@@ -1699,7 +1701,7 @@ function raidChat(m) {
 }
 app.post('/api/raid/start', async (req, res) => {
   const t = live.raid?.target; if (!t) return res.status(400).json({ error: 'Nobody has been picked to raid yet.' });
-  try { await twitch.startRaid(t.id); live.raid.started = Date.now(); twitch.say(`🚀 RAID! We're heading to ${t.name}: twitch.tv/${t.login} 💜`).catch(() => {}); pushState(); res.json({ ok: true, target: t }); }
+  try { await twitch.startRaid(t.id); live.raid.started = Date.now(); try { raids.note(t); } catch {} twitch.say(`🚀 RAID! We're heading to ${t.name}: twitch.tv/${t.login} 💜`).catch(() => {}); pushState(); res.json({ ok: true, target: t }); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 // 💧🙆🎩🎉 viewer rewards: Hydrate, Stretch, Pick a hat, Viewer's choice. Always on in the channel points menu.
@@ -2323,7 +2325,7 @@ app.get('/api/app', (req, res) => {
   const seen = db.settings.setupSeen ? guideSeen() : null, sc = twitch.status.scopes || [];
   res.json({ version: VERSION, edition: editionInfo(), desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || EDITION.repo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [],
     guideNew: seen ? GUIDE_STEPS.filter(x => guideShown(x) && !seen.has(x.id)).map(x => x.id) : [], // 🆕 steps you haven't seen in the Setup guide yet
-    twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x) && x !== 'clips:edit' && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot)) : [] }); // signed in before a newer permission was added: sign in again
+    twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x) && x !== 'clips:edit' && (x !== 'user:read:follows' || feat('raids')) && (x === 'user:read:follows' || !twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot)) : [] }); // signed in before a newer permission was added: sign in again
 });
 app.get('/api/close-check', async (req, res) => { // the Discord bot stops when the app closes (unless the 24/7 bot really has Discord)
   if (DESKTOP && db.settings.discordToken && cloud.enabled()) { await Promise.race([cloud.checkLink(true), new Promise(r => setTimeout(r, 6000))]); }
@@ -3957,7 +3959,7 @@ const SELF_CHECKS = {
   },
   async twitchPerms() {
     if (!twitch.status.userId) return { ok: null, note: 'not signed in' };
-    const sc = twitch.status.scopes || [], miss = twitch.SCOPES.filter(x => !sc.includes(x) && x !== 'clips:edit' && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot));
+    const sc = twitch.status.scopes || [], miss = twitch.SCOPES.filter(x => !sc.includes(x) && x !== 'clips:edit' && (x !== 'user:read:follows' || feat('raids')) && (x === 'user:read:follows' || !twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot));
     return miss.length ? { ok: false, note: `sign in again so Movie Royal gets ${plural(miss.length, 'new permission')} (Settings → 💜 Twitch)` } : { ok: true, note: `all ${sc.length} there` };
   },
   async twitchChat() { if (!twitch.status.userId) return { ok: null, note: 'not signed in' }; const c = String(twitch.status.chat || 'off'); return /^reading/.test(c) ? { ok: true, note: c } : { ok: false, note: `chat: ${c}` }; },
@@ -4699,6 +4701,18 @@ function maraPrizesOnce() {
   save();
 }
 setTimeout(maraPrizesOnce, 1400);
+// 🚀 Raid tab (1.95.0; Birx's, Kirb's and Derek's editions): the live channels you follow, the ones you raided most recently first. See src/raids.js
+raids.setHooks({
+  on: () => feat('raids'), signedIn: () => !!twitch.status.userId, canSee: () => twitch.canSeeFollows(), followed: () => twitch.followedLive(),
+  start: id => twitch.startRaid(id), cancel: () => twitch.cancelRaid(), say: t => twitch.say(t), act: (cat, text, o) => act(cat, text, o), changed: () => broadcast({ type: 'raids' }, 'control'),
+});
+const rdTry = fn => wTry(async (b, req) => { if (!feat('raids')) throw new Error('The Raid tab is not part of this edition.'); return fn(b, req); });
+app.get('/api/raids', async (req, res) => { if (!feat('raids')) return res.json({ on: false }); try { res.json(await raids.list({ fresh: req.query.fresh === '1', sort: req.query.sort })); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/raids/go', rdTry(b => raids.start(b)));
+app.post('/api/raids/cancel', rdTry(() => raids.cancel()));
+app.post('/api/raids/sort', rdTry(b => ({ ok: true, sort: raids.setSort(b.sort) })));
+app.post('/api/raids/forget', rdTry(b => raids.forget(b.login)));
+app.post('/api/test/raids', rdTry(b => (b.action === 'sort' ? raids.sortDemo() : raids.pretend(b.action !== 'clear'))));
 // 🍿 Movie night voting (1.93.0, Birx & Jess's edition; in Derek's with dev mode on): see src/movienight.js
 movienight.setHooks({
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',

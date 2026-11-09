@@ -10,7 +10,10 @@
   "streamer": "TimePeace49",
   "repo": "TimePeace49/TimePeaceChatbot",
   "dev": true,
-  "app": "TimePeace Chatbot"
+  "app": "TimePeace Chatbot",
+  "on": [
+   "raids"
+  ]
  },
  "kirb": {
   "name": "Kirb",
@@ -18,7 +21,10 @@
   "repo": "TimePeace49/TimePeaceChatbotKirbEdtion",
   "dev": false,
   "note": "Everything in the latest version.",
-  "app": "TimePeace Chatbot"
+  "app": "TimePeace Chatbot",
+  "on": [
+   "raids"
+  ]
  },
  "true": {
   "name": "True",
@@ -49,7 +55,8 @@
   "note": "No movie battles, no Kirb wheels, no card battles. Gets the chat bot, song + movie night tools (not built yet).",
   "app": "Birx & Jess Chatbot",
   "on": [
-   "movienight"
+   "movienight",
+   "raids"
   ]
  }
 }

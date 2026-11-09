@@ -19,7 +19,7 @@ export const lookingAs = () => lookAs;
 /** Extras made for one edition (editions.json `on`: movienight…). A dev edition has every one of them while dev mode is on, so they can be tried first. */
 export const onNow = () => { const e = lookAs && ALL[lookAs] ? ALL[lookAs] : ALL[EDITION.id]; return Array.isArray(e?.on) ? e.on : []; };
 export const feat = (name, devMode) => onNow().includes(name) || (EDITION.dev && !!devMode);
-export const FEATS = ['movienight', 'chatbot', 'kick', 'songs', 'dash', 'eggs'];
+export const FEATS = ['movienight', 'chatbot', 'kick', 'songs', 'dash', 'eggs', 'raids'];
 export const is = (...ids) => ids.includes(EDITION.id);
 // 🏷️ The name people see (1.92.0, Derek: "rename the whole project to TimePeace Chatbot"; True's + Birx's editions carry their own name).
 // Only what people SEE changes: the data folder, program file, installer file, OBS source names, Stream Deck page names and the Backup Bots

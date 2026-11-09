@@ -405,6 +405,12 @@
   .obsBox { margin:10px 0; padding:10px 14px; } .obsBox h4 { margin:0 0 4px; }
   tr.pausedRow { opacity:.5; } tr.pausedRow:hover { opacity:.8; }
   tr.blHead td { background:var(--panel2); font-weight:700; padding:6px 10px; border-radius:6px; } tr.blHead small { font-weight:400; }
+  .rdGrid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:14px; align-items:start; } @media (max-width:1150px) { .rdGrid { grid-template-columns:minmax(0,1fr); } .rdPrev { order:-1; } }
+  .rdRow { display:flex; gap:10px; align-items:center; padding:8px; margin-bottom:8px; border:1px solid var(--line); border-radius:12px; cursor:pointer; background:rgba(255,255,255,.03); min-width:0; } .rdRow:hover { border-color:#9146ff88; } .rdRow.on { border-color:#9146ff; background:rgba(145,70,255,.12); }
+  .rdTh { position:relative; flex:0 0 150px; height:84px; border-radius:8px; overflow:hidden; background:#000; } .rdV { position:absolute; left:4px; bottom:4px; background:rgba(0,0,0,.75); border-radius:6px; padding:1px 6px; font-size:12px; }
+  .rdTx { flex:1; min-width:0; } .rdN { font-weight:700; font-size:16px; } .rdG, .rdT { color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .rdL { font-size:13px; margin-top:2px; color:#c9a6ff; } .rdL.no { color:var(--muted); } .rdGo { flex:0 0 auto; }
+  .rdPrev { position:sticky; top:8px; min-width:0; } .rdPrevHead { margin-bottom:8px; font-size:17px; } .rdFrame { position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:10px; overflow:hidden; } .rdFrame iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .rdFake { position:absolute; inset:0; display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; background:linear-gradient(135deg,#1c1238,#4b2a7a); text-align:center; padding:12px; } .rdFake span { color:var(--muted); font-size:13px; }
   #raidBox { display:inline-flex; align-items:center; gap:2px; margin-left:auto; flex:0 1 auto; min-width:0; }
   #raidBox + .dots { margin-left:8px; }
   #raidGo { background:#2a1650; border:1px solid #9146ff; color:#fff; border-radius:10px; padding:5px 10px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px; }
@@ -558,6 +564,7 @@
     <button data-v="capture" class="devOnly" title="🛠️ Dev mode: play your console through Movie Royal (your capture card's picture and sound)">🎮 Game capture</button>
     <button data-v="bot" title="Your own chat commands, timers and quotes (a Streamlabs bot replacement)">🤖 Chat bot</button>
     <button data-v="mnight" data-feat="movienight" class="edOff" title="Tonight's movies, chat's votes and the guess counter">🍿 <span class="nt">Movie night</span><span id="mnNav" class="pill" style="display:none"></span></button>
+    <button data-v="raid" data-feat="raids" class="edOff" title="Who you follow that's live right now, and raid them from here">🚀 <span class="nt">Raid</span></button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
@@ -757,6 +764,7 @@
   <div class="side" id="mSide"></div>
  </div>
 </section>
+<section class="view" id="v-raid"><div class="pane"><div id="rdBody" style="max-width:1500px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <section class="view" id="v-mnight"><div class="pane"><div id="mnBody" style="max-width:1300px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <section class="view" id="v-bot"><div class="pane"><div class="card" id="botBody" style="max-width:1250px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <dialog id="botDlg" style="max-width:640px;width:92vw"><div id="botDlgBody"></div></dialog>
@@ -1341,6 +1349,12 @@ not a link</textarea>
     <p class="help">Your own chat commands, timers and quotes (the 🤖 Chat bot tab). These check it without touching your real chat.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
     <div id="tBotOut"></div>
+  </div>
+  <div class="card edOff" id="rdTestCard" data-feat="raids">
+    <h3>🚀 Raid tab</h3>
+    <p class="help">The 🚀 Raid tab lists the channels you follow that are live, the ones you raided most recently first, with a preview and a Raid button. These tests use pretend channels: nothing is asked from Twitch and no raid is sent.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="rdTest('fill')" title="Fills the Raid tab with 5 pretend live channels (some raided before, some never) and opens it. Raiding one of them is pretend: nothing is sent to Twitch">🚀 Open with pretend channels</button><button onclick="rdTest('sort')" title="Walks the sorting through with pretend channels and shows the order each way of sorting gives (nothing is saved)">📋 Check the sorting</button><button class="ghost" onclick="rdTest('clear')" title="Takes the pretend channels away again: the Raid tab shows the real channels you follow">🧹 Remove the pretend channels</button></div>
+    <div id="tRdOut"></div>
   </div>
   <div class="card edOff" id="mnTestCard" data-feat="movienight">
     <h3>🍿 Movie night voting</h3>
@@ -2470,6 +2484,7 @@ function connect() {
     if (m.type === 'toast') toast(esc(m.text), m.ms);
     if (m.type === 'maraTimer') mtShow(m);
     if (m.type === 'chatbot') { if (view === 'bot') botLoad(); }
+    if (m.type === 'raids' && view === 'raid') rdLoad();
     if (m.type === 'movieNight') { if (view === 'mnight') mnLoad(); else mnPending(); }
     if (m.type === 'mnVote') mnPop(m.vote);
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
@@ -2513,6 +2528,7 @@ function setView(v) {
   gcTab(v === 'capture');
   if (v === 'bot') botLoad();
   if (v === 'mnight') mnLoad();
+  if (v === 'raid') rdLoad(true); else rdLeave();
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
@@ -3654,6 +3670,53 @@ async function clipNow(via, testFail) {
   catch (e) { clipDot('bad', e?.message || 'No clip'); }
   finally { clipBusy = false; }
 }
+/* 🚀 Raid tab (1.95.0, Derek: for Birx, Kirb and him): the live channels you follow, the ones you raided most recently first, a preview and a Raid button */
+let RD = null, rdSel = '', rdTimer = 0, rdShown = '';
+const rdAgo = t => { if (!t) return 'never raided'; const d = Date.now() - t, m = Math.round(d / 60000); return m < 2 ? 'just now' : m < 60 ? m + ' min ago' : m < 60 * 36 ? Math.round(m / 60) + ' h ago' : m < 60 * 24 * 60 ? Math.round(m / 1440) + ' days ago' : Math.round(m / 43200) + ' months ago'; };
+const rdUp = t => { const m = Math.max(0, Math.round((Date.now() - t) / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; };
+async function rdLoad(fresh) {
+  try { RD = await api('/api/raids' + (fresh ? '?fresh=1' : ''), null, 'GET'); } catch (e) { RD = { on: true, error: e.message || String(e), rows: [], history: [] }; }
+  rdDraw(); clearTimeout(rdTimer); if (view === 'raid') rdTimer = setTimeout(() => rdLoad(), 60000);
+}
+function rdLeave() { clearTimeout(rdTimer); const f = $('rdFrame'); if (f) { f.innerHTML = ''; rdShown = ''; } }
+function rdPic(r) { return r.thumb ? `<img src="${esc(r.thumb)}${r.thumb.includes('?') ? '&' : '?'}t=${Math.floor(Date.now() / 60000)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px;background:linear-gradient(135deg,#2a1b4d,#4b2a7a)">📺</div>`; }
+function rdDraw() {
+  const el = $('rdBody'); if (!el || !RD) return; const R = RD, rows = R.rows || [];
+  if (!rows.some(r => r.login === rdSel)) rdSel = rows[0]?.login || '';
+  const sel = rows.find(r => r.login === rdSel), sorts = [['recent', 'Raided most recently first'], ['oldest', 'Not raided for the longest first'], ['viewers', 'Most viewers first'], ['fewest', 'Fewest viewers first'], ['az', 'A to Z']];
+  const why = R.error ? `⚠️ ${esc(R.error)}` : R.signedIn === false ? 'Sign in with Twitch first: Settings → 💜 Twitch.' : R.canSee === false ? 'Twitch needs you to say yes to one new thing: letting Movie Royal see which channels you follow. Press the button and click Authorize.' : '';
+  const top = `<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><h3 style="margin:0">🚀 Raid</h3><span class="help" style="margin:0">${R.test ? '🧪 Pretend channels (nothing is sent to Twitch)' : rows.length ? `${rows.length} of the channels you follow ${rows.length === 1 ? 'is' : 'are'} live` : ''}</span><span style="flex:1"></span><label class="help" style="margin:0">Sort: <select id="rdSort" style="width:auto" onchange="rdSort(this.value)" title="The order of the live channels: the ones you raided most recently first, the ones you haven't raided for the longest, or by how many are watching">${sorts.map(([k, t]) => `<option value="${k}"${R.sort === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label><button onclick="rdLoad(true)" title="Ask Twitch again who is live right now (it also refreshes by itself every minute)">🔄 Refresh</button></div>`;
+  const going = R.going ? `<div class="card" style="border-color:#9146ff;margin:0 0 10px"><b>🚀 The raid to ${esc(R.going.name)} is on its way${R.going.test ? ' (pretend)' : ''}.</b> <span class="help" style="margin:0">${R.going.test ? 'A real one counts down about 90 seconds on Twitch.' : 'Twitch counts down about 90 seconds, or press Raid Now in your Twitch chat.'}</span> <button class="ghost" onclick="rdCancel()" title="Stop the raid before it goes (Twitch lets you cancel during its countdown)">✖ Cancel the raid</button></div>` : '';
+  const list = why ? `<div class="card"><p style="margin:0 0 8px">${why}</p>${R.canSee === false && R.signedIn !== false ? `<button class="primary" onclick="location.href='/auth/twitch'" title="Sign in with Twitch again so the Raid tab can see which channels you follow (Twitch asks you to authorize it once)">🔑 Sign in with Twitch again</button> ` : ''}<button class="ghost" onclick="rdTest('fill')" title="Fills the Raid tab with 5 pretend live channels so you can see how it works (nothing is sent to Twitch)">🧪 Show me with pretend channels</button></div>`
+    : !rows.length ? `<div class="empty">Nobody you follow is live right now. 🔄 Refresh checks again.</div>`
+    : rows.map(r => `<div class="rdRow${r.login === rdSel ? ' on' : ''}" onclick="rdPick('${esc(r.login)}')" title="Show ${esc(r.name)} in the preview"><div class="rdTh">${rdPic(r)}<span class="rdV">🔴 ${r.viewers.toLocaleString()}</span></div><div class="rdTx"><div class="rdN">${esc(r.name)}</div><div class="rdG">${esc(r.game || '')}${r.game ? ' · ' : ''}live ${rdUp(r.startedAt)}</div><div class="rdT">${esc(r.title)}</div><div class="rdL${r.lastAt ? '' : ' no'}">${r.lastAt ? `🚀 You raided them ${rdAgo(r.lastAt)}${r.times > 1 ? ` (${r.times} times)` : ''}` : 'You have not raided them yet'}</div></div><button class="primary rdGo" onclick="event.stopPropagation();rdGo('${esc(r.login)}')" title="Raid ${esc(r.name)} now: your viewers are sent to their channel when Twitch's countdown ends">🚀 Raid</button></div>`).join('');
+  const hist = (R.history || []).length ? `<details style="margin-top:12px"><summary title="The channels you raided, newest first (kept on this PC only)">🕘 Who you raided (${R.history.length})</summary><table class="tbl" style="width:100%;margin-top:6px"><tbody>${R.history.map(h => `<tr><td>${esc(h.name || h.login)}</td><td class="muted">${rdAgo(h.at)}${h.n > 1 ? ` · ${h.n} times` : ''}</td><td style="text-align:right"><button class="ghost" onclick="rdForget('${esc(h.login)}')" title="Forget that you raided ${esc(h.name || h.login)} (only changes the sorting here)">✕ Forget</button></td></tr>`).join('')}</tbody></table></details>` : '';
+  const prev = sel ? `<div class="rdPrevHead"><b>${esc(sel.name)}</b> <span class="muted">🔴 ${sel.viewers.toLocaleString()} · ${esc(sel.game || '')}</span></div><div id="rdFrame" class="rdFrame"></div><div class="rdT" style="margin:8px 0;white-space:normal">${esc(sel.title)}</div><div class="row" style="gap:8px;flex-wrap:wrap"><button class="primary" style="font-size:16px;padding:10px 18px" onclick="rdGo('${esc(sel.login)}')" title="Raid ${esc(sel.name)} now: your viewers are sent to their channel when Twitch's countdown ends">🚀 Raid ${esc(sel.name)}</button><button onclick="rdSound()" title="Turn the preview's sound on or off (it starts muted so your stream doesn't hear it)">${rdMuted ? '🔇 Preview sound is off' : '🔊 Preview sound is on'}</button>${R.test ? '' : `<button class="ghost" onclick="window.open('https://twitch.tv/${esc(sel.login)}')" title="Open their channel on Twitch in your browser">↗ Open on Twitch</button>`}</div>` : `<div class="empty">Pick a channel on the left to preview it here.</div>`;
+  const keep = sel && rdShown === sel.login + '|' + rdMuted && $('rdFrame') ? $('rdFrame').firstChild : null;
+  el.innerHTML = `${top}${going}<div class="rdGrid"><div class="rdList">${list}${hist}</div><div class="rdPrev card" style="margin:0">${prev}</div></div>`;
+  const f = $('rdFrame'); if (!f || !sel) { rdShown = ''; return; }
+  if (keep) { f.appendChild(keep); return; } // same channel: keep the player running instead of loading it again
+  rdShown = sel.login + '|' + rdMuted;
+  f.innerHTML = R.test || /^pretend/.test(sel.login) ? `<div class="rdFake"><div style="font-size:54px">📺</div><b>${esc(sel.name)}</b><span>pretend preview: a real channel's live picture plays here</span></div>` : `<iframe src="https://player.twitch.tv/?channel=${encodeURIComponent(sel.login)}&parent=${encodeURIComponent(location.hostname)}&muted=${rdMuted}&autoplay=true" allow="autoplay; fullscreen" allowfullscreen title="Live preview of ${esc(sel.name)}"></iframe>`;
+}
+let rdMuted = true;
+function rdSound() { rdMuted = !rdMuted; rdDraw(); }
+function rdPick(login) { rdSel = login; rdDraw(); }
+async function rdSort(sort) { try { await api('/api/raids/sort', { sort }); } catch { return; } rdLoad(); }
+async function rdGo(login) {
+  const r = (RD?.rows || []).find(x => x.login === login); if (!r) return;
+  if (!confirm(`Raid ${r.name} now?\n\n${RD.test ? 'This is a pretend channel: nothing is sent to Twitch.' : 'Your viewers are sent to their channel when Twitch\'s countdown (about 90 seconds) ends. You can cancel during the countdown.'}`)) return;
+  try { const x = await api('/api/raids/go', { id: r.id, login: r.login, name: r.name }); toast(x.test ? `🧪 Pretend raid to ${esc(r.name)}: nothing was sent to Twitch.` : `🚀 Raid to ${esc(r.name)} started! Twitch counts down about 90 seconds.`); } catch {}
+  rdLoad();
+}
+async function rdCancel() { try { await api('/api/raids/cancel', {}); toast('✖ The raid was cancelled.'); } catch {} rdLoad(); }
+async function rdForget(login) { try { await api('/api/raids/forget', { login }); } catch {} rdLoad(); }
+async function rdTest(action) {
+  let r; try { r = await api('/api/test/raids', { action }); } catch { return; } const el = $('tRdOut');
+  if (action === 'sort') { if (el) el.innerHTML = `<p style="margin:8px 0 4px">${r.ok ? '✅ The sorting works.' : '⚠️ The sorting is off: tell Claude.'}</p><table class="tbl" style="width:100%"><thead><tr><th>Sorted by</th><th>Order</th><th></th></tr></thead><tbody>${r.out.map(o => `<tr><td>${o.sort === 'recent' ? 'Raided most recently first' : o.sort === 'oldest' ? 'Not raided for the longest first' : 'Most viewers first'}</td><td>${o.got.map(esc).join(' → ')}</td><td>${o.ok ? '✅' : '⚠️'}</td></tr>`).join('')}</tbody></table>`; return; }
+  if (el) el.innerHTML = `<p style="margin:8px 0 0">${action === 'clear' ? '🧹 The pretend channels are gone.' : '🚀 5 pretend channels are live on the Raid tab.'}</p>`;
+  if (action === 'fill') setView('raid'); else if (view === 'raid') rdLoad(true);
+}
 /* 🍿 Movie night voting (1.93.0, Birx & Jess): tonight's movies, chat's !vote, the "did he guess it?" pop-ups and the on-stream vote box */
 let MN = null, mnQ = '', mnPopQ = [];
 async function mnLoad() { try { MN = await api('/api/movienight', null, 'GET'); } catch { return; } mnDraw(); mnPending(); }
@@ -3739,6 +3802,7 @@ function edApply() {
   if (noM && view === 'settings' && ['discord', 'movies', 'bans'].includes(sub)) setSub('account');
   if (noC && (view === 'cards' || view === 'cardpool')) setView('battle');
   if (view === 'mnight' && !featOn('movienight')) setView('battle');
+  if (view === 'raid' && !featOn('raids')) setView('battle');
   try { fitNav(); } catch {}
 }
 async function edLook(id) { try { const r = await api('/api/test/edition-look', { id }); toast(r.lookAs ? `👀 Looking like the ${esc(id)} edition${r.off.length ? ': hidden: ' + esc(r.off.join(', ')) : ' (it has everything)'}. Your dev tabs stay so you can keep testing.` : '👀 Back to your own edition (everything).', 6000); } catch {} }

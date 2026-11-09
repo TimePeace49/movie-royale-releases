@@ -163,6 +163,21 @@ H(/anyone in chat can make a clip by typing/i, '🙋 !clip in chat', 'Anyone in 
 H(/^tip:a pretend viewer types !clip/i, '💬 Pretend viewer types !clip', 'A pretend viewer types !clip, so you can see what the bot answers. Nothing is sent to Twitch.', ['test']);
 H(/post the link in chat when a clip is made/i, '💬 Post the clip in chat', 'When a clip is made, the bot posts its link in your Twitch chat.');
 H(/^tip:pretend to make a clip/i, '🧪 Pretend clip', 'Shows what you see when a clip works. Nothing is sent to Twitch and no clip is made.', ['test']);
+// 🚀 Raid tab (1.95.0)
+H(/^tip:(?:who you follow that's live right now)/i, '🚀 Raid', 'The Raid tab: every channel you follow that is live right now, the ones you raided most recently first. Click one to preview it, then 🚀 Raid sends your viewers there.');
+H(/^(?:🚀 Raid\b|tip:raid .* now: your viewers)/i, '🚀 Raid', "Starts a raid to that channel. Twitch counts down about 90 seconds (or press Raid Now in your Twitch chat), then your viewers are sent over. You're asked to confirm first, and you can cancel during the countdown.", ['raid']);
+H(/^tip:show .* in the preview/i, '👀 Preview', 'Click a channel to see its live picture on the right before you raid it.', ['raid']);
+H(/^(?:🔄 Refresh|tip:ask twitch again who is live)/i, '🔄 Refresh', 'Asks Twitch again who is live right now. It also refreshes by itself every minute while this tab is open.', ['raid']);
+H(/^(?:sort:|tip:the order of the live channels)/i, 'Sort', "The order of the list: the channels you raided most recently first (the usual), the ones you haven't raided for the longest, or by how many people are watching. Your choice is remembered.", ['raid']);
+H(/^(?:✖ Cancel the raid|tip:stop the raid before it goes)/i, '✖ Cancel the raid', 'Stops a raid during the Twitch countdown, before your viewers are sent.', ['raid']);
+H(/^(?:🔇 Preview sound|🔊 Preview sound|tip:turn the preview's sound)/i, 'Preview sound', "The preview starts muted so your stream doesn't hear the other channel. Click to hear it, click again to mute.", ['raid']);
+H(/^(?:↗ Open on Twitch|tip:open their channel on twitch)/i, '↗ Open on Twitch', 'Opens that channel on Twitch in your browser.', ['raid']);
+H(/^(?:🕘 Who you raided|tip:the channels you raided, newest first)/i, '🕘 Who you raided', "The channels you raided, newest first. It's kept on this PC only and is what the sorting uses. Raids you start by typing /raid in chat are counted too.", ['raid']);
+H(/^(?:✕ Forget|tip:forget that you raided)/i, '✕ Forget', 'Forgets that you raided that channel. It only changes the sorting on this tab.', ['raid']);
+H(/^(?:🔑 Sign in with Twitch again|tip:sign in with twitch again so the raid tab)/i, '🔑 Sign in with Twitch again', 'Twitch asks you once to let the app see which channels you follow. That list is only used to show who is live on this tab.', ['raid']);
+H(/^(?:🧪 Show me with pretend channels|🚀 Open with pretend channels|tip:fills the raid tab with 5 pretend)/i, '🧪 Pretend channels', 'Fills the Raid tab with 5 pretend live channels so you can try it. Raiding one is pretend: nothing is sent to Twitch.');
+H(/^(?:📋 Check the sorting|tip:walks the sorting through)/i, '📋 Check the sorting', 'Shows the order each way of sorting gives, with pretend channels. Nothing is saved.');
+H(/^(?:🧹 Remove the pretend channels|tip:takes the pretend channels away)/i, '🧹 Remove the pretend channels', 'Takes the pretend channels away: the Raid tab shows the real channels you follow again.');
 // 🍿 Movie night voting (1.93.0)
 H(/^tip:(?:filter everything on this tab)/i, '🔍 Search', "Type to filter this tab: tonight's movies, who asked, the voters and the per-chatter stats.");
 H(/^tip:(?:start the last call countdown)/i, '⏳ Last call', 'Starts the countdown at the end of voting (5 minutes unless you change the box next to it). Chat is told, a clock shows in the on-stream vote box, a one-minute warning is posted, and voting closes by itself at 0. People can vote or change their vote until then.');

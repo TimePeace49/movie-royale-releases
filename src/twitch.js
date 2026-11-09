@@ -3,11 +3,11 @@ import WebSocket from 'ws';
 import { db, save } from './store.js';
 
 import { brand as brandOut } from './edition.js';
-export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit'];
-export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
+export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit', 'user:read:follows'];
+export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit', 'user:read:follows']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
 
-let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {} };
+let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {}, raidOut: () => {} };
 let es = null, esAlive = false, chat = null, appToken = null, stopped = false;
 const userCache = new Map();
 
@@ -155,7 +155,7 @@ function connectEventSub(url, subscribe) {
       if (subscribe) {
         const sid = m.payload.session.id;
         const cond = { broadcaster_user_id: status.userId };
-        const subs = [['channel.channel_points_custom_reward_redemption.add', '1'], ['channel.cheer', '1'], ['stream.online', '1'], ['stream.offline', '1'], ['channel.raid', '1', { to_broadcaster_user_id: status.userId }], ['channel.follow', '2', { broadcaster_user_id: status.userId, moderator_user_id: status.userId }]];
+        const subs = [['channel.channel_points_custom_reward_redemption.add', '1'], ['channel.cheer', '1'], ['stream.online', '1'], ['stream.offline', '1'], ['channel.raid', '1', { to_broadcaster_user_id: status.userId }], ['channel.raid', '1', { from_broadcaster_user_id: status.userId }], ['channel.follow', '2', { broadcaster_user_id: status.userId, moderator_user_id: status.userId }]];
         if ((status.scopes || []).includes('channel:read:ads')) subs.push(['channel.ad_break.begin', '1']); // 📺 ad warnings (only with that permission)
         const errs = [];
         for (const [t, v, c2] of subs) {
@@ -171,7 +171,8 @@ function connectEventSub(url, subscribe) {
       kick(10);
       const t = m.metadata.subscription_type, e = m.payload.event;
       if (t === 'channel.channel_points_custom_reward_redemption.add') handlers.alert({ kind: 'redeem', login: e.user_login, name: e.user_name, text: e.reward.title + (e.user_input ? ': ' + e.user_input : ''), amount: e.reward.cost });
-      if (t === 'channel.raid') handlers.alert({ kind: 'raid', login: e.from_broadcaster_user_login, name: e.from_broadcaster_user_name, amount: e.viewers, text: `raided with ${e.viewers} viewers` });
+      if (t === 'channel.raid' && String(e.from_broadcaster_user_id) === String(status.userId)) handlers.raidOut({ id: String(e.to_broadcaster_user_id), login: e.to_broadcaster_user_login, name: e.to_broadcaster_user_name, viewers: e.viewers }); // 🚀 YOU raided someone (also when you typed /raid yourself)
+      else if (t === 'channel.raid') handlers.alert({ kind: 'raid', login: e.from_broadcaster_user_login, name: e.from_broadcaster_user_name, amount: e.viewers, text: `raided with ${e.viewers} viewers` });
       if (t === 'channel.follow') handlers.alert({ kind: 'follow', login: e.user_login, name: e.user_name, text: 'followed', at: Date.parse(e.followed_at) || Date.now() });
       if (t === 'channel.cheer') handlers.alert({ kind: 'bits', login: e.user_login, name: e.is_anonymous ? 'Anonymous' : e.user_name, amount: e.bits, text: `cheered ${e.bits} bits${e.message ? ': ' + e.message : ''}` });
       if (t === 'channel.channel_points_custom_reward_redemption.add')
@@ -389,6 +390,21 @@ export async function startRaid(toId) {
   if (!status.userId) throw new Error('Sign in with Twitch first');
   if (!(status.scopes || []).includes('channel:manage:raids')) throw new Error('Sign in with Twitch again so Movie Royal can start raids (new permission)');
   await helix(`raids?from_broadcaster_id=${status.userId}&to_broadcaster_id=${encodeURIComponent(toId)}`, { method: 'POST', body: '{}' });
+}
+/** 🚀 Raid tab: stop a raid that hasn't gone yet */
+export async function cancelRaid() { if (!status.userId) throw new Error('Sign in with Twitch first'); await helix(`raids?broadcaster_id=${status.userId}`, { method: 'DELETE' }); }
+export const canSeeFollows = () => !!status.userId && (status.scopes || []).includes('user:read:follows');
+/** 🚀 Raid tab: the channels YOU follow that are live right now (needs the "see who you follow" permission) */
+export async function followedLive() {
+  if (!status.userId) throw new Error('Sign in with Twitch first');
+  if (!canSeeFollows()) throw new Error('Sign in with Twitch again so Movie Royal can see which channels you follow (a new permission): Settings → 💜 Twitch → Sign in');
+  const out = []; let after = '';
+  for (let i = 0; i < 6; i++) {
+    const j = await helix(`streams/followed?user_id=${status.userId}&first=100${after ? '&after=' + encodeURIComponent(after) : ''}`);
+    for (const d of j.data || []) out.push({ id: String(d.user_id), login: d.user_login, name: d.user_name, title: d.title || '', game: d.game_name || '', viewers: d.viewer_count || 0, startedAt: Date.parse(d.started_at) || 0, thumb: d.thumbnail_url || '', mature: !!d.is_mature });
+    after = j.pagination?.cursor || ''; if (!after) break;
+  }
+  return out;
 }
 export async function deleteReward(id) {
   await helix(`channel_points/custom_rewards?broadcaster_id=${status.userId}&id=${encodeURIComponent(id)}`, { method: 'DELETE' });

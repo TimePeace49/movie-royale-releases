@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.95.0
+- 🚀 **Raid tab** (Derek: for Birx, Kirb and him). Every channel you follow that is live right now, **the ones you raided most recently first**, each with when you last raided them and how many times. Click one for a **live preview** on the right (muted until you turn the sound on), then **🚀 Raid**: you confirm, Twitch counts down about 90 seconds, chat is told where you're heading, and **✖ Cancel the raid** stops it. You can also sort by who you haven't raided for the longest, or by viewers.
+- Raids you start by typing /raid, or with the 🚀 raid reward, are remembered too. The list of who you raided stays on your PC.
+- The first time, Twitch asks you to sign in again once, so the app may see which channels you follow.
+- 🧪 Test tab → 🚀 Raid tab: pretend channels (nothing is sent to Twitch) and a sorting check.
+
 ## 1.94.0
 - 🤖 **The chat bot is in every edition now** (Derek: "add all the Streamlabs chatbot to every build"). The 🤖 Chat bot tab (your own commands, timers and quotes, with import and export) no longer needs dev mode.
 - 📗 **Import straight from Streamlabs Chatbot's Excel file.** In Streamlabs Chatbot: Connections → Cloud → Pick Folder → Save Settings → Create Excel Files. Pick the **Data.xlsx** it makes in 🤖 Chat bot → 📥 Import: the Commands, Timers and Quotes pages are read in one go. You see what was found before anything is added.
