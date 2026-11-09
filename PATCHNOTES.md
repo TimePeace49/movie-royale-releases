@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.88.1: What's new
+Everything since 1.88.0.
+
+- 🎬 **Clips are 1 minute long now** (they were 30 seconds). That's the longest Twitch lets an app make; trim one shorter with ✂️ Trim / name it.
+
 ## v1.88.0: What's new
 Everything since 1.86.3.
 

@@ -369,13 +369,14 @@ export async function updateReward(id, { title, cost, enabled, cooldown, paused,
   return j.data?.[0];
 }
 /** 🚀 start a raid to another channel (needs the "manage raids" permission from signing in) */
-// 🎬 (1.88.0) a Twitch clip of about the last 30 seconds of the live stream (new permission clips:edit: asked for when the 🎬 Clip button is pressed, never nagged)
+// 🎬 (1.88.0) a Twitch clip of the last minute of the live stream (new permission clips:edit: asked for when the 🎬 Clip button is pressed, never nagged)
+export const CLIP_SECS = 60; // (1.88.1, Derek: "make clip 1 min"; 60 is the most Twitch allows)
 export const canClip = () => (status.scopes || []).includes('clips:edit');
 export async function createClip() {
   if (!status.userId) throw new Error('Sign in with Twitch first (Settings → 💜 Twitch)');
   if (!canClip()) throw new Error('Sign in with Twitch again so Movie Royal can make clips (a new permission): Settings → 💜 Twitch → Sign in');
   let j;
-  try { j = await helix(`clips?broadcaster_id=${status.userId}`, { method: 'POST' }); }
+  try { j = await helix(`clips?broadcaster_id=${status.userId}&duration=${CLIP_SECS}`, { method: 'POST' }); /* (Twitch: 5–60 s, 30 if left out) */ }
   catch (e) { if (/offline|not live|not found|404/i.test(e.message || '')) throw new Error("Twitch only makes clips while you're live"); if (/clip.*(disabled|restricted)|not permitted/i.test(e.message || '')) throw new Error('Twitch says clips are switched off for your channel (Twitch → Creator Dashboard → Settings → Channel → Clips)'); throw new Error('Twitch could not make the clip: ' + (e.message || e)); }
   const c = j.data?.[0]; if (!c?.id) throw new Error('Twitch did not give a clip back. Try again in a moment.');
   return { id: c.id, url: `https://clips.twitch.tv/${c.id}`, edit: c.edit_url || '' };

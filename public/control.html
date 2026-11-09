@@ -646,7 +646,7 @@
       <button onclick="api('/api/shuffle')" title="Move every piece to a random new spot before the fight">🔀 Shuffle</button>
       <span class="grow"></span>
       <button id="skipBtn" onclick="cam('skip')" title="Skip the slow-motion replay" style="display:none">⏭ Skip replay</button>
-      <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of about the last 30 seconds of your stream (Alt+C)">🎬 Clip</button><button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
+      <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Alt+C)">🎬 Clip</button><button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
       <button onclick="popOut()" title="Open the game in its own window (for OBS window capture)">🪟 Pop out</button>
       <button onclick="resetEntries()" title="Empty this battle: every entry comes out so you can start its list over (not for the Discord movie battle)">↺ Reset entries</button>
       <button onclick="api('/api/reset')" title="Clear the cliff and start over (your entries stay as they are)">↺ Reset battlefield</button>
@@ -710,7 +710,7 @@
       <span class="muted">🗺️ Map</span>
       <select id="cMapSel" style="width:auto" onchange="cardsApi('/api/cards/battle',{id:S.cards.activeId,map:this.value})"></select>
       <span class="grow"></span>
-      <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of about the last 30 seconds of your stream (Alt+C)">🎬 Clip</button><button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
+      <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Alt+C)">🎬 Clip</button><button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button>
       <button onclick="popOut()" title="Open the game in its own window (for OBS window capture)">🪟 Pop out</button>
       <button onclick="cardsApi('/api/cards/reset')" title="Clear the battlefield: the packs line up again, waiting for the next fight (on every map, the ball and holiday maps too)">↺ Reset battlefield</button>
     </div>
@@ -739,7 +739,7 @@
  <div class="battleTop">
   <div id="mStageSlot" style="min-height:0;min-width:0;display:flex;flex-direction:column;gap:10px;container-type:inline-size">
     <div style="flex:1;min-height:120px;display:flex;align-items:flex-start;justify-content:center"><div id="mStageSize" style="width:100%;aspect-ratio:16/9;max-height:100%"></div></div>
-    <div class="under" style="row-gap:6px"><span class="muted">🗺️ On the cliff</span> <b id="mMapNow"></b><span class="grow"></span><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of about the last 30 seconds of your stream (Alt+C)">🎬 Clip</button><button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button><button onclick="api('/api/reset',{})" title="Clear the battlefield: the pieces line up again, waiting for the next battle">↺ Reset battlefield</button></div>
+    <div class="under" style="row-gap:6px"><span class="muted">🗺️ On the cliff</span> <b id="mMapNow"></b><span class="grow"></span><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Alt+C)">🎬 Clip</button><button onclick="fullscreen()" title="Fill the whole screen with the game">⛶ Fullscreen</button><button onclick="api('/api/reset',{})" title="Clear the battlefield: the pieces line up again, waiting for the next battle">↺ Reset battlefield</button></div>
     <div class="card mQueue" id="mQueue"></div>
   </div>
   <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
@@ -754,14 +754,14 @@
       <div><label>🖼️ Picture</label><select id="gcRes" onchange="gcSet({res:this.value})" title="Game capture: the picture size and speed to ask the capture card for" style="width:auto"><option value="1080p60">1080p 60</option><option value="1440p60">1440p 60</option><option value="2160p60">4K 60</option><option value="1080p120">1080p 120</option><option value="720p60">720p 60</option></select></div>
       <div><label>🔈 Volume <span id="gcVolN"></span></label><input type="range" id="gcVol" min="0" max="100" step="1" oninput="gcSet({vol:Number(this.value)})" title="Game capture: how loud the game's sound is" style="width:130px"></div>
       <button class="primary" id="gcGo" onclick="gcToggle()" title="Game capture: start or stop showing the capture card">▶ Start</button>
-      <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of about the last 30 seconds of your stream (Alt+C)">🎬 Clip</button>
+      <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Alt+C)">🎬 Clip</button>
       <button onclick="gcFull()" title="Game capture: fill the whole screen with the game (Esc or F leaves)">⛶ Fullscreen</button>
       <button class="ghost" onclick="gcDevices(true)" title="Game capture: look again for capture cards (after you plugged one in)">🔄 Find my capture card</button>
       <label style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><input type="checkbox" id="gcFpsOn" onchange="gcSet({fps:this.checked})" title="Game capture: show the game's FPS in the upper right corner"> 📈 Show FPS</label>
       <div><label>👻 FPS see-through <span id="gcFpsAN"></span></label><input type="range" id="gcFpsA" min="0" max="90" step="5" oninput="gcSet({fpsA:Number(this.value)})" title="Game capture: how see-through the FPS number is (0% = solid, 90% = barely there)" style="width:120px"></div>
     </div>
     <p class="help" id="gcNote" style="margin:6px 0 8px"></p>
-    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of about the last 30 seconds"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
+    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
     <p class="help" style="margin:8px 0 0">While you're on this tab the battles inside Movie Royal make no sound (your stream still hears them from OBS). Double-click the picture or press <b>F</b> for fullscreen. The big FPS number is the game's own speed (how many different pictures a second); the small one is what the capture card sends. A still picture (a menu, a pause screen) reads low.</p>
   </div>
 </section>
@@ -807,7 +807,7 @@
       <button class="bigjoin" id="joinBtn" onclick="toggleJoin()"></button>
       <p class="help" id="joinHint"></p>
       <button class="primary big" style="width:100%;margin-top:6px" id="chatStart" onclick="chatStart()">▶ START CHAT BATTLE</button>
-      <div class="row" style="margin-top:6px"><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of about the last 30 seconds of your stream (Alt+C)">🎬 Clip</button></div>
+      <div class="row" style="margin-top:6px"><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Alt+C)">🎬 Clip</button></div>
       <div data-ann="chat" style="margin-top:6px"></div>
       <div data-chars="chat-join"></div>
       <div data-laps></div>
@@ -844,7 +844,7 @@
   <div class="wsplit" title="Drag to make either side bigger (double-click to reset)" onpointerdown="wSplit(event)" ondblclick="wSplitSet(640)"></div>
   <div class="pane"><div class="card" id="wheelRight">
     <canvas id="wheelCv" width="900" height="900" title="Click to spin"></canvas>
-    <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of about the last 30 seconds of your stream (Alt+C)">🎬 Clip</button><button id="wMineBtn" onclick="wMine()" title="Your own respins: you get a few each stream. They come back when you go live again.">🎟️ Streamer respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
+    <div class="wbtns"><button class="primary wspin" onclick="wSpin('spin')">🎡 SPIN</button><button onclick="wSpin('respin')" title="Spin again (a respin)">🔁 Respin</button><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Alt+C)">🎬 Clip</button><button id="wMineBtn" onclick="wMine()" title="Your own respins: you get a few each stream. They come back when you go live again.">🎟️ Streamer respin</button><button onclick="wSpin('up')" title="Move to the spot above">⬆️ Up</button><button onclick="wSpin('down')" title="Move to the spot below">⬇️ Down</button></div>
     <div id="wUndoList"></div>
     <div data-ann="wheel" style="margin-top:6px"></div>
     <div class="row" style="margin-top:10px;gap:8px"><input id="wBy" class="grow" placeholder="Who's spinning? (blank = you)" list="wChatters" autocomplete="off" onfocus="fillChatters('wChatters')" oninput="fillChatters('wChatters')" title="Who's spinning: pick from the people who chatted most recently (bots left out), or type any name"><datalist id="wChatters"></datalist><button class="ghost" onclick="wUndo()" title="Take back the last thing that happened on the wheel">⏪ Undo</button><button class="ghost" onclick="wUndoMenu()" title="Go back several steps">⏪ Go back…</button><button id="wShowBtn" onclick="wShow()">📺 Show on stream</button><button class="ghost" onclick="wPopOut()" title="Open the wheel in its own window (for OBS window capture or a second screen)">🪟 Pop out</button></div>
@@ -863,7 +863,7 @@
       <button class="bigjoin" id="gaJoin" onclick="gaToggle()"></button>
       <p class="help" id="gaHint"></p>
       <button class="primary big" style="width:100%;margin-top:6px" id="gaStart" onclick="gaStartClick()">▶ START GIVEAWAY</button>
-      <div class="row" style="margin-top:6px"><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of about the last 30 seconds of your stream (Alt+C)">🎬 Clip</button></div>
+      <div class="row" style="margin-top:6px"><button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Alt+C)">🎬 Clip</button></div>
       <div data-ann="giveaway" style="margin-top:6px"></div>
       <div data-chars="giveaway"></div>
       <div data-msize></div>
@@ -1318,7 +1318,7 @@ not a link</textarea>
   </div>
   <div class="card" id="clipTestCard">
     <h3>🎬 Clips</h3>
-    <p class="help">The 🎬 Clip button makes a Twitch clip of about the last 30 seconds of your stream (it only works while you're live). These pretend, so nothing is sent to Twitch.</p>
+    <p class="help">The 🎬 Clip button makes a Twitch clip of the last minute of your stream (it only works while you're live). These pretend, so nothing is sent to Twitch.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="clipNow('test')" title="Pretend to make a clip: shows what you see when it works (nothing is sent to Twitch)">🧪 Pretend clip</button><button onclick="clipNow('test', true)" title="Pretend the clip fails because you're not live: shows the message you get">🧪 Pretend I'm not live</button><button class="ghost" onclick="setView('settings');setSub('twitch')" title="Open Settings → Twitch, where your latest clips are listed">📋 My clips</button></div>
   </div>
   <div class="card devOnly" id="gcTestCard">
@@ -1645,7 +1645,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['help', 'any', '❓ Help mode on / off', 'Ctrl+H', () => helpMode(!hmOn()), true],
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
   ['b-start', 'battle', '▶ START ROYAL', 'G', () => kbClick('#v-battle', /START ROYAL/, 'START ROYAL')],
-  ['clip', 'any', '🎬 Clip the last 30 seconds (Twitch clip)', 'Alt+C', () => clipNow(), true],
+  ['clip', 'any', '🎬 Clip the last minute (Twitch clip)', 'Alt+C', () => clipNow(), true],
   ['gc-full', 'capture', '⛶ Fullscreen on / off', 'F', () => gcFull()],
   ['gc-go', 'capture', '▶ Start / ⏹ stop the capture card', 'S', () => gcToggle()],
   ['m-ticker', 'mara', '⏸ Pause / ▶ resume battles (📜 paused message)', 'P', () => tickerToggle()],
@@ -3485,7 +3485,7 @@ document.addEventListener('fullscreenchange', () => { const st = $('gcStage'); i
 navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (view === 'capture') gcDevices(false); });
 function gcTest(fps) { setView('capture'); setTimeout(() => gcStart(fps), 300); }
 function gcQuietTest() { let q = null; try { q = $('game').contentWindow.__audioQuiet?.(); } catch {} const el = $('tGcOut'); if (el) el.innerHTML = `<p class="help" style="margin:8px 0 0">Battle sound inside Movie Royal right now: <b>${q === null || q === undefined ? 'the battle screen is not open yet (it opens with the ⚔️ Battle tab)' : q ? '🔇 quiet' : '🔊 on'}</b>. Open the 🎮 Game capture tab and it goes quiet; any other tab and it is back on.</p>`; }
-// ---------- 🎬 Clips (1.88.0): one press = a Twitch clip of about the last 30 seconds ----------
+// ---------- 🎬 Clips (1.88.0): one press = a Twitch clip of the last minute ----------
 let clipBusy = false, clipDotT = 0;
 function clipDot(state, msg) { const d = $('gcClipDot'), m = $('gcClipMsg'); if (!d) return; d.classList.remove('wait', 'ok', 'bad'); if (state) d.classList.add(state); clearTimeout(clipDotT); if (m) { m.textContent = msg || ''; m.classList.toggle('show', !!msg); } if (state && state !== 'wait') clipDotT = setTimeout(() => { d.classList.remove('ok', 'bad'); m?.classList.remove('show'); }, 4000); }
 function clipToast(c) { toast(`🎬 ${c.test ? 'Pretend clip' : 'Clip'} made! ${c.test ? '(nothing was sent to Twitch)' : `<a href="${esc(c.url)}" target="_blank" rel="noopener">▶ Watch it</a>${c.edit ? ` · <a href="${esc(c.edit)}" target="_blank" rel="noopener">✂️ Trim / name it</a>` : ''}`}`, 9000); }
@@ -3499,7 +3499,7 @@ async function clipNow(via, testFail) {
 function clipHTML() {
   const C = S.clip || {}, L = C.list || [];
   const st = !C.signedIn ? '⚠️ Sign in with Twitch first.' : !C.ok ? '⚠️ Clips need a new permission: press <b>Sign in with Twitch</b> again (once).' : C.live ? '✅ Ready: you are live.' : '✅ Ready. Twitch only makes clips while you are live.';
-  return `<p class="help">The <b>🎬 Clip</b> button (on the Battle, Card battles, Chat battle, Giveaway and Wheel tabs, or <b>Alt+C</b> anywhere) makes a Twitch clip of about the last 30 seconds of your stream. ${st}</p>
+  return `<p class="help">The <b>🎬 Clip</b> button (on the Battle, Card battles, Chat battle, Giveaway and Wheel tabs, or <b>Alt+C</b> anywhere) makes a Twitch clip of the last minute of your stream. ${st}</p>
     ${L.length ? `<p class="help" style="margin:6px 0 2px">Your latest clips:</p><ul class="help" style="margin:0 0 0 18px">${L.map(c => `<li>${new Date(c.at).toLocaleString()} · <a href="${esc(c.url)}" target="_blank" rel="noopener">▶ Watch</a>${c.edit ? ` · <a href="${esc(c.edit)}" target="_blank" rel="noopener">✂️ Trim / name it</a>` : ''}</li>`).join('')}</ul>` : '<p class="help" style="margin:6px 0 0">No clips made here yet.</p>'}`;
 }
 function clipDraw() { const el = $('clipBox'); if (el) el.innerHTML = clipHTML(); }

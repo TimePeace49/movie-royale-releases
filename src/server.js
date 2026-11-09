@@ -1538,7 +1538,7 @@ async function announceNow() {
   try { await twitch.say(announceText(kind)); a.error = null; } catch (e) { a.error = e.message; console.error('[twitch] hourly chat message:', e.message); }
   pushState();
 }
-// 🎬 Clips (1.88.0, Derek: "a clipping feature in all versions… a button on every battle and wheel tab"): one press = a Twitch clip of about the last 30 s
+// 🎬 Clips (1.88.0, Derek: "a clipping feature in all versions… a button on every battle and wheel tab"): one press = a Twitch clip of the last minute
 let clipAt = 0;
 async function makeClip(via, test) {
   if (Date.now() - clipAt < 8000) throw new Error('A clip was just made. Give it a few seconds.');
