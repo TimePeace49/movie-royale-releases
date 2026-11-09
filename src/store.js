@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { has as edHas } from './edition.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // desktop app keeps data in %APPDATA%\Movie Royal\data so updates/uninstalls never touch it
@@ -152,7 +153,7 @@ export const uid = () => crypto.randomBytes(6).toString('hex');
 export const getList = id => db.lists.find(l => l.id === id);
 
 // 🔢 a ready-made number battle (1 to 500) called Worse Movies. Made once: if you delete it, it stays deleted.
-if (!db.settings.madeWorseMovies) {
+if (!db.settings.madeWorseMovies && edHas('movies')) { /* 🎭 not in editions without movie battles */
   db.settings.madeWorseMovies = true;
   if (!db.lists.some(l => /^(🔢 )?worse movies$/i.test(l.name))) {
     const l = { id: uid(), name: '🔢 Worse Movies', type: 'text', entries: [], joinOpen: false, numbers: { from: 1, to: 500 } };

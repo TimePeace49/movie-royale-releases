@@ -489,6 +489,7 @@
   .coWatch .cwBody { position: relative; overflow: hidden; background: #000; }
   .coWatch .cwIdle { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; background: rgba(0,0,0,.7); font-size: 12px; text-align: center; }
   body:not(.dev) .devOnly { display: none !important; }
+  .edOff, body.noMovies [data-tcat="movies"], body.noMovies [data-tcat="discord"] { display: none !important; }
   .botTabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
   .botRow { display: flex; gap: 8px; align-items: center; padding: 7px 4px; border-top: 1px solid rgba(255,255,255,.08); min-width: 0; }
   .botRow .bn { flex: 0 0 150px; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3633,6 +3634,19 @@ async function clipNow(via, testFail) {
   catch (e) { clipDot('bad', e?.message || 'No clip'); }
   finally { clipBusy = false; }
 }
+/* 🎭 Editions: parts an edition leaves out are hidden (True's + Birx's: no movie battles; Birx's: no card battles) */
+const edOff = f => (S?.edition?.off || []).includes(f);
+function edApply() {
+  const noM = edOff('movies'), noC = edOff('cards'), set = (sel, off) => document.querySelectorAll(sel).forEach(el => el.classList.toggle('edOff', off));
+  if (document.body.dataset.ed === noM + '|' + noC) return; document.body.dataset.ed = noM + '|' + noC;
+  document.body.classList.toggle('noMovies', noM); document.body.classList.toggle('noCards', noC);
+  set('#subnav [data-s="discord"], #subnav [data-s="movies"], #subnav [data-s="bans"]', noM);
+  set('#nav [data-v="cards"], #nav [data-v="cardpool"]', noC);
+  const pool = document.querySelector('#nav [data-v="pool"]'); if (pool && noM) pool.innerHTML = '📋 <span class="nt">Battle pool</span>';
+  if (noM && view === 'settings' && ['discord', 'movies', 'bans'].includes(sub)) setSub('account');
+  if (noC && (view === 'cards' || view === 'cardpool')) setView('battle');
+  try { fitNav(); } catch {}
+}
 async function edTest() { let r; try { r = await api('/api/test/edition', null, 'GET'); } catch { return; } const el = $('tEdOut'); if (el) el.innerHTML = `🎭 <b>${esc(r.name)} edition</b>, version ${esc(r.version)}.<br>⬇️ Updates come from <b>${esc(r.updatesFrom || 'nowhere (not set)')}</b>.<br>🧪 Test builds: ${r.testBuilds ? 'offered too' : 'off (latest releases only)'}.${r.dev ? `<br>🛠️ Dev mode: ${r.devMode ? 'on' : 'off'}.` : ''}<br><span class="muted">All editions: ${r.all.map(x => esc(x.name)).join(', ')}.</span>`; }
 async function clipOpen(id) { try { await api('/api/clip/open', { id }); } catch {} }
 async function clipKickTest() { clipDot('wait'); try { const r = await api('/api/test/clip', { kick: true }); clipDot('ok', 'Clip made'); clipToast(r.clip); } catch (e) { clipDot('bad', e?.message || 'No clip'); } }
@@ -3932,7 +3946,7 @@ function renderView() {
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
-  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool' || view === 'capture' || view === 'bot')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
+  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); edApply(); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool' || view === 'capture' || view === 'bot')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
   if (view === 'pool') renderPool();
   else if (view === 'cards') renderCards();
   else if (view === 'cardpool') renderCardPool();

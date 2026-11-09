@@ -31,7 +31,7 @@ import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
-import { EDITION, info as editionInfo } from './edition.js';
+import { EDITION, has as edHas, info as editionInfo } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
@@ -280,12 +280,12 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
-    edition: { id: EDITION.id, name: EDITION.name, dev: EDITION.dev },
+    edition: { id: EDITION.id, name: EDITION.name, dev: EDITION.dev, off: EDITION.off },
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
-    lists: db.lists, activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
+    lists: edHas('movies') ? db.lists : db.lists.filter(l => l.id !== 'movies'), activeListId: db.activeListId, history: db.history.slice(-15).reverse().map(h => ({ label: h.winner?.label ?? h.label, sub: h.winner?.sub ?? h.sub, at: h.at, listName: h.listName })),
     week: { start: weekStartDate().toISOString(), backOn: backOn(), winners: db.week?.winners?.length || 0, spotWon: !!db.week?.spotWon },
     version: VERSION, historyVersion, wheelVer: wheel.W().ver || 0, wheelShow: !!wheel.W().show, owner: db.owner ? { name: db.owner.name, avatar: db.owner.avatar, login: db.owner.login } : null, people: discordPeople(),
     pendingEffects: db.pendingEffects, events: EVENTS,
@@ -1868,6 +1868,7 @@ const wheelChanged = () => { const w = wheel.W(); w.ver = (w.ver || 0) + 1; save
 // 🎡 ready-made wheels that come with the app (src/defaults/*.json, Movie Royal share files). Each is added once: delete it and it stays deleted.
 for (const [key, file] of [['madeKirbportions', 'wheel-of-kirbportions.json']]) {
   if (db.settings[key]) continue;
+  if (key === 'madeKirbportions' && !edHas('kirbWheel')) continue; /* 🎭 editions without the Kirb wheels */
   try {
     const s = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'defaults', file), 'utf8')).wheel;
     if (!wheel.W().wheels.some(w => w.name.trim().toLowerCase() === String(s.name).trim().toLowerCase())) {
@@ -2281,6 +2282,14 @@ function editionDev() {
   return ch;
 }
 if (editionDev()) save();
+// 🎭 an edition without movie battles (True's, Birx's): the Discord movie battle is never the one on screen: the first time, a plain battle of your own takes its place
+function editionNoMovies() {
+  if (edHas('movies') || db.activeListId !== 'movies') return;
+  let l = db.lists.find(x => x.id !== 'movies');
+  if (!l) { l = { id: uid(), name: 'My battle', type: 'text', entries: [], joinOpen: false }; db.lists.push(l); }
+  db.activeListId = l.id; save();
+}
+setTimeout(editionNoMovies, 200);
 const wantTests = () => !!db.settings.betaUpdates || !!db.settings.testBuilds;
 function donePage(title, msg) {
   return `<!doctype html><meta charset="utf-8"><title>Movie Royal</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#120a24;color:#f3edff;font:18px Segoe UI,system-ui,sans-serif;text-align:center">
@@ -2360,7 +2369,8 @@ app.get('/api/cloud/outdated', async (req, res) => { // ☁️ the "Update your 
 });
 // 🧭 the Setup guide's steps (setup.html has the pages). A step added since you last opened the guide pops up when the app starts,
 // every time, until you open the guide, set it up, or press "Don't show again". (since = the version that added it)
-const guideShown = x => !x.dev || !!db.settings.betaUpdates; // 🛠️ dev mode steps (the 🌐 viewer website, 1.81.2) only show in dev mode
+const GUIDE_MOVIES = ['tmdb', 'omdb', 'letterboxd', 'discord', 'cloud', 'backup']; /* 🎭 setup steps that only matter with movie battles */
+const guideShown = x => (!x.dev || !!db.settings.betaUpdates) && (edHas('movies') || !GUIDE_MOVIES.includes(x.id)); // 🛠️ dev mode steps (the 🌐 viewer website, 1.81.2) only show in dev mode
 const GUIDE_STEPS = [
   { id: 'twitch', title: '💜 Sign in with Twitch' }, { id: 'rewards', title: '💎 Channel points & bits' }, { id: 'tmdb', title: '🎬 Movie search' }, { id: 'omdb', title: '🍅 Ratings' },
   { id: 'letterboxd', title: '📗 Letterboxd' }, { id: 'discord', title: '🤖 Discord bot' }, { id: 'cloud', title: '☁️ 24/7 Discord bot' }, { id: 'donations', title: '💵 Donations' },

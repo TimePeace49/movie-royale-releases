@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.91.1
+- 🎭 **What each edition has** (Derek): **Kirb** = everything in the latest version. **True** = no movie battles and no Kirb wheels. **Birx** = no movie battles, no Kirb wheels and no card battles.
+  - "No movie battles" hides the Discord movie battle, the 🤖 Discord & picks, 🎬 Movie info and 🚫 Banned Movies settings, the movie and Discord tests, and the movie steps of the Setup guide (movie search, ratings, Letterboxd, Discord bot, 24/7 bot, backup bots). The 🎬 Movie Pool tab is called 📋 Battle pool there, and the ready-made "Worse Movies" battle isn't added.
+  - "No Kirb wheels" = the ready-made Wheel of Kirbportions isn't added. "No card battles" hides the 🃏 Card battles and 📦 Card pool tabs.
+  - Void spots stay in True's and Birx's editions (off until you turn one on), but the Setup guide doesn't bring them up.
+
 ## 1.91.0
 - 🎭 **Editions** (Derek: "make this app 5 things: one for Kirb, True, Birx, myself and public… customize them for each stream but still add things for everyone"): Movie Royal is still ONE app, but it now comes in 5 editions: **Public**, **Derek**, **Kirb**, **True** and **Birx**. A fix or feature for everyone is made once and goes to all of them; things made for one streamer are switched on only in that streamer's edition.
   - Each edition has its own GitHub for downloads and updates, so a copy only ever updates to its own edition. The current GitHub is the Public one: everyone already using the app keeps updating with nothing to do.

@@ -1,7 +1,45 @@
 {
- "public": { "name": "Public", "repo": "TimePeace49/movie-royale-releases", "dev": false },
- "derek": { "name": "Derek", "streamer": "TimePeace49", "repo": "TimePeace49/movie-royale-derek", "dev": true },
- "kirb": { "name": "Kirb", "streamer": "Kirbgames", "repo": "TimePeace49/movie-royale-kirb", "dev": false },
- "true": { "name": "True", "streamer": "", "repo": "TimePeace49/movie-royale-true", "dev": false },
- "birx": { "name": "Birx", "streamer": "", "repo": "TimePeace49/movie-royale-birx", "dev": false }
+ "public": {
+  "name": "Public",
+  "repo": "TimePeace49/movie-royale-releases",
+  "dev": false
+ },
+ "derek": {
+  "name": "Derek",
+  "streamer": "TimePeace49",
+  "repo": "TimePeace49/movie-royale-derek",
+  "dev": true
+ },
+ "kirb": {
+  "name": "Kirb",
+  "streamer": "Kirbgames",
+  "repo": "TimePeace49/movie-royale-kirb",
+  "dev": false,
+  "note": "Everything in the latest version."
+ },
+ "true": {
+  "name": "True",
+  "streamer": "",
+  "repo": "TimePeace49/movie-royale-true",
+  "dev": false,
+  "off": [
+   "movies",
+   "kirbWheel",
+   "voidSetup"
+  ],
+  "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet)."
+ },
+ "birx": {
+  "name": "Birx",
+  "streamer": "",
+  "repo": "TimePeace49/movie-royale-birx",
+  "dev": false,
+  "off": [
+   "movies",
+   "kirbWheel",
+   "cards",
+   "voidSetup"
+  ],
+  "note": "No movie battles, no Kirb wheels, no card battles. Gets the chat bot, song + movie night tools (not built yet)."
+ }
 }

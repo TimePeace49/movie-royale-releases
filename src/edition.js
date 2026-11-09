@@ -9,6 +9,8 @@ const read = f => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 
 export const ALL = read('src/editions.json');
 const want = String(process.env.MOVIE_ROYAL_EDITION || read('package.json').edition || 'public').toLowerCase();
 const id = ALL[want] ? want : 'public';
-export const EDITION = { id, name: ALL[id]?.name || 'Public', streamer: ALL[id]?.streamer || '', repo: ALL[id]?.repo || '', dev: !!ALL[id]?.dev };
+export const EDITION = { id, name: ALL[id]?.name || 'Public', streamer: ALL[id]?.streamer || '', repo: ALL[id]?.repo || '', dev: !!ALL[id]?.dev, off: Array.isArray(ALL[id]?.off) ? ALL[id].off : [] };
+/** Is this part of the app in this edition? (`off` in editions.json: movies, kirbWheel, cards, voidSetup) */
+export const has = f => !EDITION.off.includes(f);
 export const is = (...ids) => ids.includes(EDITION.id);
-export const info = () => ({ id: EDITION.id, name: EDITION.name, dev: EDITION.dev, repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, repo: v.repo })) });
+export const info = () => ({ id: EDITION.id, name: EDITION.name, dev: EDITION.dev, off: EDITION.off, repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, repo: v.repo })) });

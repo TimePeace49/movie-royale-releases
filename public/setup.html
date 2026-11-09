@@ -56,6 +56,7 @@
   .choice .row button.on { background:var(--good); color:#062a12; border-color:var(--good); font-weight:800; }
   ul.list { margin:6px 0 0; padding-left:20px; } ul.list li { margin:3px 0; }
   .help { color:var(--dim); font-size:14px; }
+  body.noVoidSetup .voidSetup { display: none !important; }
 </style>
 </head>
 <body>
@@ -103,7 +104,8 @@ const ALL_STEPS = [
 
 async function load() {
   [S, A] = await Promise.all([fetch('/api/state').then(r => r.json()), fetch('/api/app').then(r => r.json())]);
-  STEPS = ALL_STEPS.filter(x => !x.dev || S.settings?.betaUpdates); // 🛠️ dev mode steps (🌐 viewer website) only in dev mode
+  const edOffs = A.edition?.off || [], noMovies = edOffs.includes('movies'); document.body.classList.toggle('noVoidSetup', edOffs.includes('voidSetup'));
+  STEPS = ALL_STEPS.filter(x => (!x.dev || S.settings?.betaUpdates) && !(noMovies && ['tmdb', 'omdb', 'letterboxd', 'discord', 'cloud', 'backup'].includes(x.id))); // 🛠️ dev mode steps (🌐 viewer website) only in dev mode
   if (step && !STEPS.some(x => x.id === step)) step = null;
   if (!NEW_IDS) NEW_IDS = new Set(S.settings.setupSeen ? A.guideNew || [] : []); // 🆕 = added to the guide since you last opened it (remembered for this visit)
   if (!S.settings.setupSeen) api('/api/settings', { setupSeen: true }).catch(() => {});
@@ -348,7 +350,7 @@ const PAGES = {
   },
   obs() {
     return `<h2>OBS control (optional)</h2><p class="why">Lets Movie Royal do a few things in OBS for you:</p>
-    <ul class="list" style="margin:-10px 0 20px;color:var(--dim)"><li>☠️ <b>Doomsday</b> on the 🎡 wheel (Wheel → ⚙️ Wheel settings → Void spot): when the void swallows the whole wheel, your mic and camera go off and the stream ends 15 seconds later.</li>
+    <ul class="list" style="margin:-10px 0 20px;color:var(--dim)"><li class="voidSetup">☠️ <b>Doomsday</b> on the 🎡 wheel (Wheel → ⚙️ Wheel settings → Void spot): when the void swallows the whole wheel, your mic and camera go off and the stream ends 15 seconds later.</li>
     <li>📺 <b>Capture window</b> (Battle tab): shows another window, like a YouTube video, small in the corner of your stream.</li>
     <li>🎉 <b>Viewer's Choice</b> (next step): adds the confetti source to the scenes you pick.</li>
     <li>📣 <b>Roll call</b> (last step): its own browser source, so roll call shows in any scene.</li></ul>
