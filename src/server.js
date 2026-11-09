@@ -31,6 +31,7 @@ import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
+import { EDITION, info as editionInfo } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
@@ -279,6 +280,7 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
+    edition: { id: EDITION.id, name: EDITION.name, dev: EDITION.dev },
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
@@ -2268,14 +2270,25 @@ app.get('/api/state', (req, res) => res.json(publicState()));
 // ---------- desktop app, setup guide, updates ----------
 const DESKTOP = !!process.env.MR_DESKTOP;
 // where updates come from: your own setting, or the GitHub repo this copy was built from
-const updateRepo = () => (db.settings.updateRepo || PKG.updateRepo || '').trim();
+const updateRepo = () => (db.settings.updateRepo || PKG.updateRepo || EDITION.repo || '').trim();
+// 🎭 Editions (1.91.0): dev mode (marathon, game capture, chat bot, Kick…) only exists in editions marked `dev` (Derek's). In the others the same
+// switch was also "install test builds": that part moves to its own setting (`testBuilds`), and dev mode stays off. `devWas` brings dev mode back
+// when a copy that had it on is later updated to a dev edition.
+function editionDev() {
+  const st = db.settings; let ch = false;
+  if (!EDITION.dev && st.betaUpdates) { st.testBuilds = true; st.devWas = true; st.betaUpdates = false; ch = true; }
+  else if (EDITION.dev && st.devWas) { st.betaUpdates = true; delete st.devWas; ch = true; }
+  return ch;
+}
+if (editionDev()) save();
+const wantTests = () => !!db.settings.betaUpdates || !!db.settings.testBuilds;
 function donePage(title, msg) {
   return `<!doctype html><meta charset="utf-8"><title>Movie Royal</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#120a24;color:#f3edff;font:18px Segoe UI,system-ui,sans-serif;text-align:center">
   <div><div style="font-size:64px">✅</div><h1 style="color:#ffc94a;margin:10px 0">${title.replace(/</g, '&lt;')}</h1><p>${msg}</p></div></body>`;
 }
 app.get('/api/app', (req, res) => {
   const seen = db.settings.setupSeen ? guideSeen() : null, sc = twitch.status.scopes || [];
-  res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [],
+  res.json({ version: VERSION, edition: editionInfo(), desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || EDITION.repo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [],
     guideNew: seen ? GUIDE_STEPS.filter(x => guideShown(x) && !seen.has(x.id)).map(x => x.id) : [], // 🆕 steps you haven't seen in the Setup guide yet
     twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x) && x !== 'clips:edit' && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot)) : [] }); // signed in before a newer permission was added: sign in again
 });
@@ -2326,7 +2339,7 @@ async function ghReleases() {
 app.get('/api/update/check', async (req, res) => {
   if (!repoName()) return res.json({ configured: false, version: VERSION });
   try {
-    const beta = !!db.settings.betaUpdates, list = (await ghReleases()).filter(x => x.url && (beta || !x.pre));
+    const beta = wantTests(), list = (await ghReleases()).filter(x => x.url && (beta || !x.pre));
     const best = list.reduce((a, x) => !a || newer(x.version, a.version) ? x : a, null);
     res.json({ configured: true, version: VERSION, beta, latest: best?.tag, pre: !!best?.pre, available: !!best && newer(best.version, VERSION), url: best?.url, notes: (best?.notes || '').slice(0, 1500) });
   } catch (e) { res.json({ configured: true, version: VERSION, error: e.message }); }
@@ -2502,6 +2515,7 @@ app.post('/api/settings', (req, res) => {
   if (colWas !== db.settings.colorsOn && live.phase === 'idle') refreshPreview();
   if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
   if (('mapSize' in body || 'raceMax' in body) && live.phase === 'idle') { refreshPreview(true); pushState(); } // 📏 map size / 🏁 race limit changed
+  if ('betaUpdates' in body) editionDev(); /* 🎭 dev mode only exists in a dev edition */
   if ('betaUpdates' in body && db.settings.betaUpdates) maraBattleOnce();
   if ('betaUpdates' in body) chatvoice.ensurePlayer(); // 🔈 the chat voice is dev mode only
   if ('betaUpdates' in body) site.connect(); // 🌐 the viewer website is a dev mode thing for now (Derek, 1.81.2): on/off with dev mode // 🏃 dev mode on: Derek's marathon battle comes with it (once)
@@ -3967,7 +3981,7 @@ const SELF_CHECKS = {
   },
   async update() {
     if (!repoName()) return { ok: null, note: 'no update address set' };
-    const list = (await within(ghReleases(), 15000, 'GitHub')).filter(x => x.url && (db.settings.betaUpdates || !x.pre));
+    const list = (await within(ghReleases(), 15000, 'GitHub')).filter(x => x.url && (wantTests() || !x.pre));
     const best = list.reduce((a, x) => !a || newer(x.version, a.version) ? x : a, null);
     if (!best) return { ok: null, note: 'no versions found' };
     return newer(best.version, VERSION) ? { ok: 'warn', note: `${best.tag} is out (you have v${VERSION}): Settings → 👤 Account & updates → 🔄 Check for updates` } : { ok: true, note: `v${VERSION} is the newest` };
@@ -4650,6 +4664,7 @@ function maraPrizesOnce() {
   save();
 }
 setTimeout(maraPrizesOnce, 1400);
+app.get('/api/test/edition', (req, res) => res.json({ ...editionInfo(), updatesFrom: repoName(), devMode: !!db.settings.betaUpdates, testBuilds: wantTests(), version: VERSION }));
 app.get('/api/test/mara-prizes', (req, res) => { const l = maraList(); if (!l) return res.status(400).json({ error: 'There is no marathon battle yet (dev mode makes it).' }); res.json({ name: l.name, things: l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, label: e.label, sub: e.sub || '', desc: e.desc || '' })), would: maraPrizes(l, true) }); });
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
 function scareAllOnce() {

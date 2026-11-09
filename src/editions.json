@@ -1,0 +1,7 @@
+{
+ "public": { "name": "Public", "repo": "TimePeace49/movie-royale-releases", "dev": false },
+ "derek": { "name": "Derek", "streamer": "TimePeace49", "repo": "TimePeace49/movie-royale-derek", "dev": true },
+ "kirb": { "name": "Kirb", "streamer": "Kirbgames", "repo": "TimePeace49/movie-royale-kirb", "dev": false },
+ "true": { "name": "True", "streamer": "", "repo": "TimePeace49/movie-royale-true", "dev": false },
+ "birx": { "name": "Birx", "streamer": "", "repo": "TimePeace49/movie-royale-birx", "dev": false }
+}

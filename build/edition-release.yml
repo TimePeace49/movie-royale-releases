@@ -1,0 +1,27 @@
+# 🎭 The workflow that goes in each edition GitHub (movie-royale-derek / -kirb / -true / -birx) as .github/workflows/release.yml.
+# Change the ONE word after "edition:" to that GitHub's edition (derek, kirb, true or birx).
+# It builds Movie Royal from the main code (TimePeace49/movie-royale-releases) and publishes the installer HERE,
+# so that edition's copies update from this GitHub.
+name: Build & release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number, like 1.91.0"
+        required: true
+      latest:
+        description: "Make it the latest release (leave off for a test build)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: TimePeace49/movie-royale-releases/.github/workflows/release.yml@main
+    with:
+      version: ${{ inputs.version }}
+      latest: ${{ inputs.latest }}
+      edition: EDITION_NAME

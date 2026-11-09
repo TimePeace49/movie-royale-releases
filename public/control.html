@@ -1339,6 +1339,12 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
     <div id="tBotOut"></div>
   </div>
+  <div class="card" id="edTestCard">
+    <h3>🎭 Edition</h3>
+    <p class="help">Movie Royal comes in editions (one for everyone, and ones made for a streamer). This shows which one this copy is and where it gets its updates.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="edTest()" title="Show which edition of Movie Royal this is and which GitHub it updates from">🎭 Which edition is this?</button><button class="ghost" onclick="setView('settings');setSub('account')" title="Open Settings → Account & updates, where the edition and update settings are">👤 Account & updates</button></div>
+    <div id="tEdOut" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card" id="clipTestCard">
     <h3>🎬 Clips</h3>
     <p class="help">The 🎬 Clip button makes a Twitch clip of the last minute of your stream (it only works while you're live). These pretend, so nothing is sent to Twitch.</p>
@@ -3627,6 +3633,7 @@ async function clipNow(via, testFail) {
   catch (e) { clipDot('bad', e?.message || 'No clip'); }
   finally { clipBusy = false; }
 }
+async function edTest() { let r; try { r = await api('/api/test/edition', null, 'GET'); } catch { return; } const el = $('tEdOut'); if (el) el.innerHTML = `🎭 <b>${esc(r.name)} edition</b>, version ${esc(r.version)}.<br>⬇️ Updates come from <b>${esc(r.updatesFrom || 'nowhere (not set)')}</b>.<br>🧪 Test builds: ${r.testBuilds ? 'offered too' : 'off (latest releases only)'}.${r.dev ? `<br>🛠️ Dev mode: ${r.devMode ? 'on' : 'off'}.` : ''}<br><span class="muted">All editions: ${r.all.map(x => esc(x.name)).join(', ')}.</span>`; }
 async function clipOpen(id) { try { await api('/api/clip/open', { id }); } catch {} }
 async function clipKickTest() { clipDot('wait'); try { const r = await api('/api/test/clip', { kick: true }); clipDot('ok', 'Clip made'); clipToast(r.clip); } catch (e) { clipDot('bad', e?.message || 'No clip'); } }
 async function clipChatTest() { try { pchat(true); } catch {} try { await api('/api/test/chat', { name: 'clip_fan', text: '!clip' }); } catch {} }
@@ -6397,10 +6404,11 @@ async function fillAppBox() {
   box.innerHTML = `<div class="row"><span class="grow">Movie Royal <b>v${esc(a.version)}</b>${a.desktop ? '' : ' (running from source)'}</span></div>
     ${a.desktop ? `<div class="row" style="margin-top:8px"><button class="primary" onclick="checkUpdate(this)">🔄 Check for updates</button>
       <button onclick="$('updFile').click()">📦 Install update from file…</button><input type="file" id="updFile" accept=".exe" hidden onchange="installFile(this.files[0])"></div><div id="updMsg"></div>` : ''}
+    <p class="help" id="edLine" style="margin:0 0 8px">🎭 This is the <b>${esc(a.edition?.name || 'Public')} edition</b> of Movie Royal${a.edition?.id === 'public' ? ' (the one for everyone)' : ': it has its own downloads and updates, and can have things made just for this stream'}.</p>
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
     <p class="help">When a new <b>latest</b> release is posted there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>
     <label class="ck"><input type="checkbox" ${S.settings.updAsk !== false ? 'checked' : ''} onchange="api('/api/settings',{updAsk:this.checked}).then(()=>{S.settings.updAsk=this.checked;toast('Saved')})"> <span>🔔 Pop up when a new version is out (when Movie Royal opens)</span></label>
-    <label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;render();toast(this.checked ? '🛠️ Dev mode on: test builds (pre-releases) install too, and features still being tried show up.' : 'Dev mode off: only latest releases, and the features still being tried are hidden.')})"> <span>🛠️ <b>Dev mode</b>: also install <b>test builds</b> (pre-releases) and show features that are still being tried. Leave this off unless you're testing new stuff.</span></label>
+    ${a.edition?.dev ? `<label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;render();toast(this.checked ? '🛠️ Dev mode on: test builds (pre-releases) install too, and features still being tried show up.' : 'Dev mode off: only latest releases, and the features still being tried are hidden.')})"> <span>🛠️ <b>Dev mode</b>: also install <b>test builds</b> (pre-releases) and show features that are still being tried. Leave this off unless you're testing new stuff.</span></label>` : `<label class="ck"><input type="checkbox" ${S.settings.testBuilds ? 'checked' : ''} onchange="api('/api/settings',{testBuilds:this.checked}).then(()=>{S.settings.testBuilds=this.checked;toast(this.checked ? '🧪 Test builds (pre-releases) will be offered too.' : 'Only latest releases from now on.')})" title="Also offer test builds (pre-releases), not only the latest releases"> <span>🧪 Also install <b>test builds</b> (pre-releases). Leave this off unless you're helping test new stuff.</span></label>`}
     ${a.desktop ? `<details style="margin-top:10px" ontoggle="if(this.open) loadPastReleases()"><summary>🕰️ Run an older version</summary><div id="pastRel" class="help">Loading…</div></details>` : ''}`;
 }
 async function loadPastReleases() {

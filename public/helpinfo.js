@@ -163,6 +163,9 @@ H(/anyone in chat can make a clip by typing/i, '🙋 !clip in chat', 'Anyone in 
 H(/^tip:a pretend viewer types !clip/i, '💬 Pretend viewer types !clip', 'A pretend viewer types !clip, so you can see what the bot answers. Nothing is sent to Twitch.', ['test']);
 H(/post the link in chat when a clip is made/i, '💬 Post the clip in chat', 'When a clip is made, the bot posts its link in your Twitch chat.');
 H(/^tip:pretend to make a clip/i, '🧪 Pretend clip', 'Shows what you see when a clip works. Nothing is sent to Twitch and no clip is made.', ['test']);
+H(/^tip:also offer test builds/i, '🧪 Test builds', 'Normally Movie Royal only offers the latest release. Tick this to also be offered test builds (pre-releases): newer, but less tried. Leave it off unless you are helping test.');
+H(/^tip:show which edition of movie royal/i, '🎭 Which edition is this?', 'Shows which edition of Movie Royal this copy is (the one for everyone, or one made for a streamer), its version and which GitHub it gets updates from.', ['test']);
+H(/^tip:open settings → account & updates, where the edition/i, '👤 Account & updates', 'Opens Settings → 👤 Account & updates, where the edition and the update settings are.', ['test']);
 H(/^tip:🎙️ prize description/i, '🎙️ Prize description', 'A short game-show style paragraph about this thing. It shows on the 🏆 Last winner card of the Marathon tab when it wins, so you can read it out. Click to write or change it; empty = none.');
 H(/^tip:list every thing in the marathon battle with its prize/i, '🎙️ Prize descriptions', 'Lists every thing in your marathon battle with its prize description, so you can check none is missing.', ['test']);
 H(/^tip:pretend to make a clip while kick|pretend kick clip/i, '🟢 Pretend Kick clip', 'Shows what you see when you clip while Kick is your platform: OBS saves the last minute as a video file. Nothing is saved.', ['test']);

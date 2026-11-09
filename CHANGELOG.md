@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.91.0
+- 🎭 **Editions** (Derek: "make this app 5 things: one for Kirb, True, Birx, myself and public… customize them for each stream but still add things for everyone"): Movie Royal is still ONE app, but it now comes in 5 editions: **Public**, **Derek**, **Kirb**, **True** and **Birx**. A fix or feature for everyone is made once and goes to all of them; things made for one streamer are switched on only in that streamer's edition.
+  - Each edition has its own GitHub for downloads and updates, so a copy only ever updates to its own edition. The current GitHub is the Public one: everyone already using the app keeps updating with nothing to do.
+  - Installing an edition over the app you have keeps all your data (lists, wheels, history, settings).
+  - 🛠️ **Dev mode** (marathon, game capture, chat bot, Kick…) now only exists in Derek's edition. In the other editions the same switch is just **🧪 Also install test builds**.
+  - Settings → 👤 Account & updates says which edition a copy is. Test: 🧪 Test → 🎭 Edition → Which edition is this?
+
 ## 1.90.2
 - 🎁 **Marathon battle: the rest of the snacks + prize descriptions** (🛠️ dev mode; Derek's photo of the haul): 7 things from the photo that weren't in the battle yet are added once (Dr Jolt, dark chocolate crickets, Bob Ross energy drink, Dirty Mountain Dew cream soda, Coca-Cola float, rose peach wafer sticks, Thai banana bread bites). Things you took out stay out.
   - 🎙️ Every thing now has a short game-show style **prize description**. When it wins, it shows on the 🏆 Last winner card of the Marathon tab so you can read it out. Change one with the 🎙️ button in the 🏃 Marathon pool (yours are never overwritten).
