@@ -2,8 +2,8 @@
 import WebSocket from 'ws';
 import { db, save } from './store.js';
 
-export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads'];
-export const OPTIONAL_SCOPES = ['channel:read:ads']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
+export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit'];
+export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
 
 let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {} };
@@ -369,6 +369,17 @@ export async function updateReward(id, { title, cost, enabled, cooldown, paused,
   return j.data?.[0];
 }
 /** 🚀 start a raid to another channel (needs the "manage raids" permission from signing in) */
+// 🎬 (1.88.0) a Twitch clip of about the last 30 seconds of the live stream (new permission clips:edit: asked for when the 🎬 Clip button is pressed, never nagged)
+export const canClip = () => (status.scopes || []).includes('clips:edit');
+export async function createClip() {
+  if (!status.userId) throw new Error('Sign in with Twitch first (Settings → 💜 Twitch)');
+  if (!canClip()) throw new Error('Sign in with Twitch again so Movie Royal can make clips (a new permission): Settings → 💜 Twitch → Sign in');
+  let j;
+  try { j = await helix(`clips?broadcaster_id=${status.userId}`, { method: 'POST' }); }
+  catch (e) { if (/offline|not live|not found|404/i.test(e.message || '')) throw new Error("Twitch only makes clips while you're live"); if (/clip.*(disabled|restricted)|not permitted/i.test(e.message || '')) throw new Error('Twitch says clips are switched off for your channel (Twitch → Creator Dashboard → Settings → Channel → Clips)'); throw new Error('Twitch could not make the clip: ' + (e.message || e)); }
+  const c = j.data?.[0]; if (!c?.id) throw new Error('Twitch did not give a clip back. Try again in a moment.');
+  return { id: c.id, url: `https://clips.twitch.tv/${c.id}`, edit: c.edit_url || '' };
+}
 export async function startRaid(toId) {
   if (!status.userId) throw new Error('Sign in with Twitch first');
   if (!(status.scopes || []).includes('channel:manage:raids')) throw new Error('Sign in with Twitch again so Movie Royal can start raids (new permission)');

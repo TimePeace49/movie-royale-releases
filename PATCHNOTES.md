@@ -3,6 +3,15 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.88.0: What's new
+Everything since 1.86.3.
+
+- 🎬 **Clips:** a new **🎬 Clip** button on the ⚔️ Battle, 🃏 Card battles, 🎲 Chat battle, 🎁 Giveaway and 🎡 Wheel tabs makes a Twitch clip of about the last 30 seconds of your stream. **Alt+C** does it from any tab.
+  - A pop-up gives you the link: ▶ Watch it, or ✂️ Trim / name it on Twitch. The link is also posted in your chat.
+  - **Settings → 💜 Twitch → 🎬 Clips** lists your latest clips and has the switch for posting in chat.
+  - Twitch only makes clips while you're live. **The first time, press Sign in with Twitch again** so Movie Royal is allowed to make clips (the button tells you if that's still needed).
+  - Try it: 🧪 Test → 🎬 Clips (pretend, nothing is sent to Twitch).
+
 ## v1.86.3: What's new
 Everything since 1.84.3.
 

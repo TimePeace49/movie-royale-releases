@@ -79,6 +79,11 @@ H(/^tip:see the sleeping banner/i, '😴 Sleeping banner', 'Shows the sleeping b
 H(/^tip:the marathon's starting soon \/ brb title screen/i, '👀 Title screen', 'Shows the marathon title screen in a window (a pretend one).');
 H(/^tip:the marathon obs setup window/i, '🧰 OBS setup', 'Opens the marathon OBS setup window. 🔎 What would it do? there changes nothing in OBS.');
 H(/^tip:show the paused message in the scene you switched to/i, '📌 Show it here too', 'Battles are already paused: this shows the paused message in the OBS scene you switched to as well.');
+H(/^tip:clip: make a twitch clip|^🎬 clip$/i, '🎬 Clip', "Makes a Twitch clip of about the last 30 seconds of your stream, like the clip button on Twitch. It only works while you're live. A pop-up gives you the link (▶ Watch it, ✂️ Trim / name it) and the link is posted in chat (Settings → 💜 Twitch → 🎬 Clips turns that off). The first time, sign in with Twitch again so Movie Royal may make clips. Key: Alt+C on any tab.");
+H(/post the link in chat when a clip is made/i, '💬 Post the clip in chat', 'When a clip is made, the bot posts its link in your Twitch chat.');
+H(/^tip:pretend to make a clip/i, '🧪 Pretend clip', 'Shows what you see when a clip works. Nothing is sent to Twitch and no clip is made.', ['test']);
+H(/^tip:pretend the clip fails/i, "🧪 Pretend I'm not live", 'Shows the message you get when Twitch cannot make a clip because the stream is not live.', ['test']);
+H(/^tip:open settings → twitch, where your latest clips/i, '📋 My clips', 'Opens Settings → 💜 Twitch → 🎬 Clips: your latest clips with links to watch or trim them.', ['test']);
 H(/^tip:game capture: which capture card/i, '📺 Capture card', 'Pick the capture card whose picture you want to see (your Elgato). It can only be shown by one program at a time: close the Elgato app, and switch off its source in OBS if that shows the card itself.');
 H(/^tip:game capture: where the game's sound/i, '🔊 Game sound', "Where the game's sound comes from: usually the same capture card. Pick 🔇 No sound if you already hear the game another way.");
 H(/^tip:game capture: the picture size/i, '🖼️ Picture', 'The picture size and speed Movie Royal asks the capture card for. If the card cannot do it, it gives the closest it can; the line under the buttons says what you got.');

@@ -276,6 +276,7 @@ function publicState() { applyCharsDefault();
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
+    clip: { signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
@@ -1537,6 +1538,20 @@ async function announceNow() {
   try { await twitch.say(announceText(kind)); a.error = null; } catch (e) { a.error = e.message; console.error('[twitch] hourly chat message:', e.message); }
   pushState();
 }
+// 🎬 Clips (1.88.0, Derek: "a clipping feature in all versions… a button on every battle and wheel tab"): one press = a Twitch clip of about the last 30 s
+let clipAt = 0;
+async function makeClip(via, test) {
+  if (Date.now() - clipAt < 8000) throw new Error('A clip was just made. Give it a few seconds.');
+  let c;
+  if (test) { if (test === 'fail') throw new Error("Twitch only makes clips while you're live"); c = { id: 'PretendClip' + Date.now().toString(36), url: 'https://clips.twitch.tv/PretendClip', edit: '' }; }
+  else { clipAt = Date.now(); try { c = await twitch.createClip(); } catch (e) { clipAt = 0; throw e; } }
+  const rec = { ...c, at: Date.now(), via: String(via || '').slice(0, 20), ...(test ? { test: true } : {}) };
+  if (!test) { db.clips = [rec, ...(db.clips || [])].slice(0, 100); save(); if (db.settings.clipChat !== false) twitch.say(`🎬 New clip: ${rec.url}`).catch(() => {}); pushState(); }
+  act('stream', `${test ? 'Pretend clip' : 'Clip'} made: ${rec.url}`, { icon: '🎬', kind: 'clip', test: !!test });
+  return rec;
+}
+app.post('/api/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip(req.body?.via) }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
+app.post('/api/test/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip('test', req.body?.fail ? 'fail' : 'ok') }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 // 🎮 Game capture tab (1.87.0, dev only): its sound keeps playing when Movie Royal isn't the window in front
 app.post('/api/gamecap/sound', (req, res) => { const on = !!req.body?.on && !!db.settings.betaUpdates; let kept = null; try { kept = globalThis.__desktop?.keepSound?.(on) ?? null; } catch {} res.json({ ok: true, on, kept }); });
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
@@ -2192,7 +2207,7 @@ app.get('/api/app', (req, res) => {
   const seen = db.settings.setupSeen ? guideSeen() : null, sc = twitch.status.scopes || [];
   res.json({ version: VERSION, desktop: DESKTOP, dataDir: DATA, updateRepo: db.settings.updateRepo || '', defaultRepo: PKG.updateRepo || '', discordInvite: discord.inviteUrl(), guilds: discord.status.guilds || [],
     guideNew: seen ? GUIDE_STEPS.filter(x => guideShown(x) && !seen.has(x.id)).map(x => x.id) : [], // 🆕 steps you haven't seen in the Setup guide yet
-    twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x) && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot)) : [] }); // signed in before a newer permission was added: sign in again
+    twitchMissing: twitch.status.userId && sc.length ? twitch.SCOPES.filter(x => !sc.includes(x) && x !== 'clips:edit' && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot)) : [] }); // signed in before a newer permission was added: sign in again
 });
 app.get('/api/close-check', async (req, res) => { // the Discord bot stops when the app closes (unless the 24/7 bot really has Discord)
   if (DESKTOP && db.settings.discordToken && cloud.enabled()) { await Promise.race([cloud.checkLink(true), new Promise(r => setTimeout(r, 6000))]); }
@@ -3823,7 +3838,7 @@ const SELF_CHECKS = {
   },
   async twitchPerms() {
     if (!twitch.status.userId) return { ok: null, note: 'not signed in' };
-    const sc = twitch.status.scopes || [], miss = twitch.SCOPES.filter(x => !sc.includes(x) && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot));
+    const sc = twitch.status.scopes || [], miss = twitch.SCOPES.filter(x => !sc.includes(x) && x !== 'clips:edit' && (!twitch.OPTIONAL_SCOPES.includes(x) || db.settings.adBot));
     return miss.length ? { ok: false, note: `sign in again so Movie Royal gets ${plural(miss.length, 'new permission')} (Settings → 💜 Twitch)` } : { ok: true, note: `all ${sc.length} there` };
   },
   async twitchChat() { if (!twitch.status.userId) return { ok: null, note: 'not signed in' }; const c = String(twitch.status.chat || 'off'); return /^reading/.test(c) ? { ok: true, note: c } : { ok: false, note: `chat: ${c}` }; },

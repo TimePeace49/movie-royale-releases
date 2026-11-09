@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.88.0
+- 🎬 **Clips** (Derek: "a clipping feature in all versions… a button on every battle and wheel tab, also the capture tab"): a **🎬 Clip** button on the ⚔️ Battle, 🃏 Card battles, 🎲 Chat battle, 🎁 Giveaway and 🎡 Wheel tabs (and 🏃 Marathon + 🎮 Game capture in dev mode) makes a Twitch clip of about the last 30 seconds of your stream. **Alt+C** does it from any tab. A pop-up gives you the link (▶ Watch it · ✂️ Trim / name it) and the link is posted in chat (Settings → 💜 Twitch → 🎬 Clips turns that off; your latest clips are listed there). Twitch only makes clips while you're live, and the first time you need to press Sign in with Twitch again (a new permission; Movie Royal doesn't nag about it, the button tells you). Test: 🧪 Test → 🎬 Clips (pretend).
+- 🎮 **Game capture fullscreen: a faint clip dot** (🛠️ dev mode; Derek: "a small dot in the right corner… almost invisible"): in fullscreen there's a small, nearly see-through dot in the bottom right corner (the FPS number has the top right). Click it to clip: it turns yellow while Twitch works, green when the clip is made, red (with a few words why) when it couldn't be.
+
 ## 1.87.1
 - 🎮 **Game capture: see-through FPS number** (🛠️ dev mode; Derek: "add transparency to the FPS"): the FPS number in the corner is now see-through (50% to start), with a 👻 FPS see-through slider next to 📈 Show FPS to make it more solid or fainter (0% to 90%).
 
