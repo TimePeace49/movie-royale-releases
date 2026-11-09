@@ -7,20 +7,20 @@
  "derek": {
   "name": "Derek",
   "streamer": "TimePeace49",
-  "repo": "TimePeace49/movie-royale-derek",
+  "repo": "TimePeace49/TimePeaceChatbot",
   "dev": true
  },
  "kirb": {
   "name": "Kirb",
   "streamer": "Kirbgames",
-  "repo": "TimePeace49/movie-royale-kirb",
+  "repo": "TimePeace49/TimePeaceChatbotKirbEdtion",
   "dev": false,
   "note": "Everything in the latest version."
  },
  "true": {
   "name": "True",
   "streamer": "",
-  "repo": "TimePeace49/movie-royale-true",
+  "repo": "TimePeace49/TimePeaceChatbotTrueEdtion",
   "dev": false,
   "off": [
    "movies",
@@ -30,9 +30,9 @@
   "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet)."
  },
  "birx": {
-  "name": "Birx",
+  "name": "Birx & Jess",
   "streamer": "",
-  "repo": "TimePeace49/movie-royale-birx",
+  "repo": "TimePeace49/TimePeaceChatbotBirxandJessEdition",
   "dev": false,
   "off": [
    "movies",

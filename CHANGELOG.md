@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.91.3
+- 🎭 The editions now point at their real GitHubs: Derek's (the dev version) = **TimePeaceChatbot**, Kirb's = **TimePeaceChatbotKirbEdtion**, True's = **TimePeaceChatbotTrueEdtion**, Birx & Jess's = **TimePeaceChatbotBirxandJessEdition**. Public stays where it is.
+
 ## 1.91.2
 - 🎭 **Derek's edition = the dev version** (Derek: "TimePeace version will have everything along with tests for everything so I can test it before giving it to them"): it has every part and every feature made for the other editions, each with its 🧪 Test.
   - 👀 New: 🧪 Test → 🎭 Edition → **See the app the way another edition has it** (Public, Kirb, True, Birx). It hides what that edition leaves out so you can try it first. Nothing is removed; pick Mine or restart to get everything back.
