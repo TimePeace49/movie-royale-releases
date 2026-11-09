@@ -493,7 +493,7 @@
   #gcStage:fullscreen { border-radius: 0; max-height: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
   #gcStage.gcHideCur { cursor: none; }
   #gcVideo { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
-  #gcFps { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.6); color: #7dff8a; font: 800 22px/1.15 Inter, sans-serif; text-align: right; pointer-events: none; display: none; text-shadow: 0 1px 2px #000; }
+  #gcFps { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.35); color: #7dff8a; font: 800 22px/1.15 Inter, sans-serif; text-align: right; pointer-events: none; display: none; text-shadow: 0 1px 2px #000; }
   #gcFps small { display: block; font-size: 12px; font-weight: 700; color: #cfd3dc; }
   #gcStage:fullscreen #gcFps { font-size: 30px; top: 16px; right: 18px; } #gcStage:fullscreen #gcFps small { font-size: 15px; }
   #gcIdle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #9aa0b4; font-weight: 700; pointer-events: none; }
@@ -751,6 +751,7 @@
       <button onclick="gcFull()" title="Game capture: fill the whole screen with the game (Esc or F leaves)">⛶ Fullscreen</button>
       <button class="ghost" onclick="gcDevices(true)" title="Game capture: look again for capture cards (after you plugged one in)">🔄 Find my capture card</button>
       <label style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><input type="checkbox" id="gcFpsOn" onchange="gcSet({fps:this.checked})" title="Game capture: show the game's FPS in the upper right corner"> 📈 Show FPS</label>
+      <div><label>👻 FPS see-through <span id="gcFpsAN"></span></label><input type="range" id="gcFpsA" min="0" max="90" step="5" oninput="gcSet({fpsA:Number(this.value)})" title="Game capture: how see-through the FPS number is (0% = solid, 90% = barely there)" style="width:120px"></div>
     </div>
     <p class="help" id="gcNote" style="margin:6px 0 8px"></p>
     <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFps"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
@@ -3391,7 +3392,7 @@ async function nightTest() { let r; try { r = await api('/api/test/stream-night'
 // the capture card is just a camera + a microphone to the browser: getUserMedia → <video>. Settings are per PC (localStorage gcSet).
 const GC = { stream: null, set: null, raf: 0, n: 0, uniq: 0, at: 0, prev: null, cv: null, g: null, fps: 0, sig: 0, fake: null, hideT: 0, quiet: null };
 const GC_RES = { '720p60': [1280, 720, 60], '1080p60': [1920, 1080, 60], '1080p120': [1920, 1080, 120], '1440p60': [2560, 1440, 60], '2160p60': [3840, 2160, 60] };
-function gcCfg() { if (!GC.set) { try { GC.set = JSON.parse(localStorage.gcSet || '{}'); } catch { GC.set = {}; } GC.set = { vid: '', aud: '', res: '1080p60', vol: 100, fps: true, on: false, ...GC.set }; } return GC.set; }
+function gcCfg() { if (!GC.set) { try { GC.set = JSON.parse(localStorage.gcSet || '{}'); } catch { GC.set = {}; } GC.set = { vid: '', aud: '', res: '1080p60', vol: 100, fps: true, fpsA: 50, on: false, ...GC.set }; } return GC.set; }
 function gcSave() { try { localStorage.gcSet = JSON.stringify(gcCfg()); } catch {} }
 function gcNote(t) { const n = $('gcNote'); if (n) n.innerHTML = t || ''; }
 const gcIsCard = l => /elgato|game capture|cam link|hd60|4k60|4k x|4k s|4k pro|capture|avermedia|live gamer|usb video/i.test(l || '');
@@ -3404,12 +3405,12 @@ async function gcDevices(ask) { // the list of capture cards / sound inputs (nam
   gcSave();
   $('gcVid').innerHTML = vids.length ? vids.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Camera ' + (i + 1))}</option>`).join('') : '<option value="">(nothing found)</option>';
   $('gcAud').innerHTML = '<option value="none">🔇 No sound</option>' + auds.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Sound input ' + (i + 1))}</option>`).join('');
-  $('gcVid').value = c.vid; $('gcAud').value = c.aud; $('gcRes').value = c.res; $('gcVol').value = c.vol; $('gcVolN').textContent = c.vol + '%'; $('gcFpsOn').checked = c.fps !== false;
+  $('gcVid').value = c.vid; $('gcAud').value = c.aud; $('gcRes').value = c.res; $('gcVol').value = c.vol; $('gcVolN').textContent = c.vol + '%'; $('gcFpsOn').checked = c.fps !== false; $('gcFpsA').value = c.fpsA ?? 50;
   if (ask) toast(vids.length ? `🎮 Found ${vids.length} picture source${vids.length === 1 ? '' : 's'}` : '🎮 No capture card found. Is it plugged in, and not in use by another program?');
   return vids.length;
 }
 function gcSet(o) { const c = gcCfg(), re = ('vid' in o && o.vid !== c.vid) || ('aud' in o && o.aud !== c.aud) || ('res' in o && o.res !== c.res); Object.assign(c, o); gcSave(); $('gcVolN').textContent = c.vol + '%'; $('gcVideo').volume = Math.max(0, Math.min(1, c.vol / 100)); gcDraw(); if (re && GC.stream && !GC.fake) gcStart(); }
-function gcDraw() { const on = !!GC.stream, c = gcCfg(); $('gcGo').textContent = on ? '⏹ Stop' : '▶ Start'; $('gcGo').classList.toggle('primary', !on); $('gcIdle').style.display = on ? 'none' : 'flex'; $('gcFps').style.display = on && c.fps !== false ? 'block' : 'none'; }
+function gcDraw() { const on = !!GC.stream, c = gcCfg(); $('gcGo').textContent = on ? '⏹ Stop' : '▶ Start'; $('gcGo').classList.toggle('primary', !on); $('gcIdle').style.display = on ? 'none' : 'flex'; $('gcFps').style.display = on && c.fps !== false ? 'block' : 'none'; $('gcFps').style.opacity = String(1 - Math.max(0, Math.min(90, Number(c.fpsA ?? 50))) / 100); if ($('gcFpsAN')) $('gcFpsAN').textContent = (c.fpsA ?? 50) + '%'; }
 function gcKeep(on) { fetch('/api/gamecap/sound', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }) }).catch(() => {}); }
 async function gcStart(fake) {
   gcStop(true); const c = gcCfg(), v = $('gcVideo');

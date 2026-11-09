@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.87.1
+- 🎮 **Game capture: see-through FPS number** (🛠️ dev mode; Derek: "add transparency to the FPS"): the FPS number in the corner is now see-through (50% to start), with a 👻 FPS see-through slider next to 📈 Show FPS to make it more solid or fainter (0% to 90%).
+
 ## 1.87.0
 - 🎮 **Game capture tab** (🛠️ dev mode only; Derek: "a tab that will show my Elgato capture card, so I play GTA 6 through the app… full screen, mute all battle sounds if on the tab, an FPS number in the upper right corner… FPS of gameplay"): a new **🎮 Game capture** tab shows your capture card's picture and plays its sound. Pick the card and its sound, press ▶ Start, then ⛶ Fullscreen (or **F**, or double-click the picture; Esc leaves, and the mouse pointer hides). **📈 FPS** in the upper right corner: the big number is the game's own speed (how many different pictures a second), the small one is what the card sends. While you're on the tab the battles inside Movie Royal make no sound (your stream still hears them from OBS), and the game's sound keeps playing even when another window is in front. It remembers your picks and starts by itself next time. Test: 🧪 Test → 🎮 Game capture (a pretend game at 30 or 60 FPS, no card needed).
 
