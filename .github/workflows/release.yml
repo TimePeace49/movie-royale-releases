@@ -60,7 +60,10 @@ jobs:
           E="${{ inputs.edition }}"; if [ -z "$E" ]; then E="public"; fi
           node -e "const a=require('./src/editions.json'); if(!a['$E']){console.error('Unknown edition: $E');process.exit(1)} console.log('Edition: '+a['$E'].name)"
           echo "edition=$E" >> "$GITHUB_OUTPUT"
-          if [ "$E" = "public" ]; then echo "tag=" >> "$GITHUB_OUTPUT"; else echo "tag= · $(node -p "require('./src/editions.json')['$E'].name") edition" >> "$GITHUB_OUTPUT"; fi
+          APP="$(node -p "require('./src/editions.json')['$E'].app || 'Movie Royal'")"
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+          # the edition's name goes after the version unless the app's own name already says whose it is
+          if [ "$E" = "public" ] || [ "$APP" != "TimePeace Chatbot" ]; then echo "tag=" >> "$GITHUB_OUTPUT"; else echo "tag= · $(node -p "require('./src/editions.json')['$E'].name") edition" >> "$GITHUB_OUTPUT"; fi
 
       - name: Check the pages for mistakes
         run: node scripts/check-pages.mjs
@@ -88,7 +91,7 @@ jobs:
             fi
             echo "## ⬇️ Download"
             echo "Grab **MovieRoyal-Setup-$V.exe** below and run it."
-            echo "Already have Movie Royal? It will offer this update the next time it opens."
+            echo "Already have it? It will offer this update the next time it opens."
             echo
             echo "🛡️ Want the backup bot server (optional)? Grab **MovieRoyalBackupBots-Setup-$V.exe** and run it on the PC that should run the backup."
             if [ "${{ inputs.latest }}" != "true" ]; then
@@ -106,7 +109,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.v.outputs.version }}
-          name: Movie Royal ${{ steps.v.outputs.version }}${{ steps.v.outputs.tag }}${{ inputs.latest != true && ' (test build)' || '' }}
+          name: ${{ steps.v.outputs.app }} ${{ steps.v.outputs.version }}${{ steps.v.outputs.tag }}${{ inputs.latest != true && ' (test build)' || '' }}
           prerelease: ${{ inputs.latest != true }}
           make_latest: ${{ inputs.latest == true && 'true' || 'false' }}
           files: dist/MovieRoyal-Setup-${{ steps.v.outputs.version }}.exe
