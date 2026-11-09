@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.91.2
+- 🎭 **Derek's edition = the dev version** (Derek: "TimePeace version will have everything along with tests for everything so I can test it before giving it to them"): it has every part and every feature made for the other editions, each with its 🧪 Test.
+  - 👀 New: 🧪 Test → 🎭 Edition → **See the app the way another edition has it** (Public, Kirb, True, Birx). It hides what that edition leaves out so you can try it first. Nothing is removed; pick Mine or restart to get everything back.
+
 ## 1.91.1
 - 🎭 **What each edition has** (Derek): **Kirb** = everything in the latest version. **True** = no movie battles and no Kirb wheels. **Birx** = no movie battles, no Kirb wheels and no card battles.
   - "No movie battles" hides the Discord movie battle, the 🤖 Discord & picks, 🎬 Movie info and 🚫 Banned Movies settings, the movie and Discord tests, and the movie steps of the Setup guide (movie search, ratings, Letterboxd, Discord bot, 24/7 bot, backup bots). The 🎬 Movie Pool tab is called 📋 Battle pool there, and the ready-made "Worse Movies" battle isn't added.

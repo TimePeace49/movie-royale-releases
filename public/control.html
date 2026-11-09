@@ -1344,6 +1344,7 @@ not a link</textarea>
     <h3>🎭 Edition</h3>
     <p class="help">Movie Royal comes in editions (one for everyone, and ones made for a streamer). This shows which one this copy is and where it gets its updates.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="edTest()" title="Show which edition of Movie Royal this is and which GitHub it updates from">🎭 Which edition is this?</button><button class="ghost" onclick="setView('settings');setSub('account')" title="Open Settings → Account & updates, where the edition and update settings are">👤 Account & updates</button></div>
+    <div class="row devOnly" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">👀 See the app the way another edition has it:</span><select id="edLook" style="width:auto" onchange="edLook(this.value)" title="Look like another edition: hides what that edition leaves out, so you can try it before giving it to them (nothing is removed; back to normal when you pick Mine or restart)"><option value="">Mine (everything)</option><option value="public">Public</option><option value="kirb">Kirb</option><option value="true">True</option><option value="birx">Birx</option></select></div>
     <div id="tEdOut" class="help" style="margin-top:8px"></div>
   </div>
   <div class="card" id="clipTestCard">
@@ -3638,15 +3639,16 @@ async function clipNow(via, testFail) {
 const edOff = f => (S?.edition?.off || []).includes(f);
 function edApply() {
   const noM = edOff('movies'), noC = edOff('cards'), set = (sel, off) => document.querySelectorAll(sel).forEach(el => el.classList.toggle('edOff', off));
-  if (document.body.dataset.ed === noM + '|' + noC) return; document.body.dataset.ed = noM + '|' + noC;
+  if (document.body.dataset.ed === noM + '|' + noC) return; document.body.dataset.ed = noM + '|' + noC; { const sel = $('edLook'); if (sel) sel.value = S?.edition?.lookAs || ''; }
   document.body.classList.toggle('noMovies', noM); document.body.classList.toggle('noCards', noC);
   set('#subnav [data-s="discord"], #subnav [data-s="movies"], #subnav [data-s="bans"]', noM);
   set('#nav [data-v="cards"], #nav [data-v="cardpool"]', noC);
-  const pool = document.querySelector('#nav [data-v="pool"]'); if (pool && noM) pool.innerHTML = '📋 <span class="nt">Battle pool</span>';
+  const pool = document.querySelector('#nav [data-v="pool"]'); if (pool) { pool.dataset.was = pool.dataset.was || pool.innerHTML; pool.innerHTML = noM ? '📋 <span class="nt">Battle pool</span>' : pool.dataset.was; }
   if (noM && view === 'settings' && ['discord', 'movies', 'bans'].includes(sub)) setSub('account');
   if (noC && (view === 'cards' || view === 'cardpool')) setView('battle');
   try { fitNav(); } catch {}
 }
+async function edLook(id) { try { const r = await api('/api/test/edition-look', { id }); toast(r.lookAs ? `👀 Looking like the ${esc(id)} edition${r.off.length ? ': hidden: ' + esc(r.off.join(', ')) : ' (it has everything)'}. Your dev tabs stay so you can keep testing.` : '👀 Back to your own edition (everything).', 6000); } catch {} }
 async function edTest() { let r; try { r = await api('/api/test/edition', null, 'GET'); } catch { return; } const el = $('tEdOut'); if (el) el.innerHTML = `🎭 <b>${esc(r.name)} edition</b>, version ${esc(r.version)}.<br>⬇️ Updates come from <b>${esc(r.updatesFrom || 'nowhere (not set)')}</b>.<br>🧪 Test builds: ${r.testBuilds ? 'offered too' : 'off (latest releases only)'}.${r.dev ? `<br>🛠️ Dev mode: ${r.devMode ? 'on' : 'off'}.` : ''}<br><span class="muted">All editions: ${r.all.map(x => esc(x.name)).join(', ')}.</span>`; }
 async function clipOpen(id) { try { await api('/api/clip/open', { id }); } catch {} }
 async function clipKickTest() { clipDot('wait'); try { const r = await api('/api/test/clip', { kick: true }); clipDot('ok', 'Clip made'); clipToast(r.clip); } catch (e) { clipDot('bad', e?.message || 'No clip'); } }

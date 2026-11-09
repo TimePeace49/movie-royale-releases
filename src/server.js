@@ -31,7 +31,7 @@ import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
-import { EDITION, has as edHas, info as editionInfo } from './edition.js';
+import { EDITION, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
@@ -280,7 +280,7 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
-    edition: { id: EDITION.id, name: EDITION.name, dev: EDITION.dev, off: EDITION.off },
+    edition: { id: EDITION.id, name: EDITION.name, dev: EDITION.dev, off: edOffNow(), lookAs: edLooking() },
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
@@ -4674,6 +4674,10 @@ function maraPrizesOnce() {
   save();
 }
 setTimeout(maraPrizesOnce, 1400);
+app.post('/api/test/edition-look', (req, res) => { // 👀 the dev edition shows what another edition leaves out (until you switch back or restart; nothing is saved or removed)
+  if (!EDITION.dev) return res.status(400).json({ error: "Only the dev edition can look like the others." });
+  const id = edLookAs(String(req.body?.id || '')); editionNoMovies(); pushState(); res.json({ ok: true, lookAs: id, off: edOffNow() });
+});
 app.get('/api/test/edition', (req, res) => res.json({ ...editionInfo(), updatesFrom: repoName(), devMode: !!db.settings.betaUpdates, testBuilds: wantTests(), version: VERSION }));
 app.get('/api/test/mara-prizes', (req, res) => { const l = maraList(); if (!l) return res.status(400).json({ error: 'There is no marathon battle yet (dev mode makes it).' }); res.json({ name: l.name, things: l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, label: e.label, sub: e.sub || '', desc: e.desc || '' })), would: maraPrizes(l, true) }); });
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
