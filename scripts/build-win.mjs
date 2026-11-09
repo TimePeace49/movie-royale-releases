@@ -11,6 +11,8 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const VER = pkg.version;
+// 🏷️ the name people see in the installer (the edition's own, src/editions.json); file and folder names stay "Movie Royal"
+const BRAND = (() => { try { const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'editions.json'), 'utf8')); return String((all[pkg.edition || 'public'] || all.public).app || 'Movie Royal').replace(/"/g, ''); } catch { return 'Movie Royal'; } })();
 const UNPACKED = path.join(ROOT, 'dist', 'win-unpacked');
 const OUT = path.join(ROOT, 'dist', `MovieRoyal-Setup-${VER}.exe`);
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts });
@@ -32,7 +34,7 @@ ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, groupId, la
 const vi = ResEdit.Resource.VersionInfo.fromEntries(res.entries)[0] || ResEdit.Resource.VersionInfo.createEmpty();
 const [a, b, c] = VER.split('.').map(Number);
 vi.setFileVersion(a, b, c, 0, 1033); vi.setProductVersion(a, b, c, 0, 1033);
-vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: 'Movie Royal', FileDescription: 'Movie Royal', CompanyName: 'Movie Royal', FileVersion: VER, ProductVersion: VER, OriginalFilename: 'MovieRoyal.exe', InternalName: 'MovieRoyal', LegalCopyright: 'Movie Royal' });
+vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: BRAND, FileDescription: BRAND, CompanyName: 'Movie Royal', FileVersion: VER, ProductVersion: VER, OriginalFilename: 'MovieRoyal.exe', InternalName: 'MovieRoyal', LegalCopyright: 'Movie Royal' });
 vi.outputToResourceEntries(res.entries);
 res.outputResource(exe);
 fs.writeFileSync(exePath, Buffer.from(exe.generate()));
@@ -53,7 +55,7 @@ if (!nsisDir) { // first build on this machine: fetch NSIS (same copy electron-b
 const makensis = process.platform === 'win32' ? path.join(nsisDir, 'Bin', 'makensis.exe') : path.join(nsisDir, process.platform === 'darwin' ? 'mac' : 'linux', 'makensis');
 fs.chmodSync(makensis, 0o755);
 fs.rmSync(OUT, { force: true });
-run(makensis, ['-V2', `-DVER=${VER}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT}`, path.join(ROOT, 'build', 'installer.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
+run(makensis, ['-V2', `-DVER=${VER}`, `-DBRAND=${BRAND}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT}`, path.join(ROOT, 'build', 'installer.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
 
 // 🛡️ the Movie Royal Backup Bots installer: same program files, its own install folder, shortcut and uninstaller
 const OUT_B = path.join(ROOT, 'dist', `MovieRoyalBackupBots-Setup-${VER}.exe`);

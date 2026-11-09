@@ -2,24 +2,27 @@
  "public": {
   "name": "Public",
   "repo": "TimePeace49/movie-royale-releases",
-  "dev": false
+  "dev": false,
+  "app": "TimePeace Chatbot"
  },
  "derek": {
   "name": "Derek",
   "streamer": "TimePeace49",
   "repo": "TimePeace49/TimePeaceChatbot",
-  "dev": true
+  "dev": true,
+  "app": "TimePeace Chatbot"
  },
  "kirb": {
   "name": "Kirb",
-  "streamer": "Kirbgames",
+  "streamer": "kirbgames",
   "repo": "TimePeace49/TimePeaceChatbotKirbEdtion",
   "dev": false,
-  "note": "Everything in the latest version."
+  "note": "Everything in the latest version.",
+  "app": "TimePeace Chatbot"
  },
  "true": {
   "name": "True",
-  "streamer": "",
+  "streamer": "true_schu",
   "repo": "TimePeace49/TimePeaceChatbotTrueEdtion",
   "dev": false,
   "off": [
@@ -27,11 +30,13 @@
    "kirbWheel",
    "voidSetup"
   ],
-  "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet)."
+  "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet).",
+  "app": "True’s Chatbot",
+  "kick": "true_schu"
  },
  "birx": {
   "name": "Birx & Jess",
-  "streamer": "",
+  "streamer": "birxandjess",
   "repo": "TimePeace49/TimePeaceChatbotBirxandJessEdition",
   "dev": false,
   "off": [
@@ -40,6 +45,7 @@
    "cards",
    "voidSetup"
   ],
-  "note": "No movie battles, no Kirb wheels, no card battles. Gets the chat bot, song + movie night tools (not built yet)."
+  "note": "No movie battles, no Kirb wheels, no card battles. Gets the chat bot, song + movie night tools (not built yet).",
+  "app": "Birx & Jess Chatbot"
  }
 }

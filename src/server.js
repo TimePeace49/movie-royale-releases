@@ -31,7 +31,7 @@ import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
-import { EDITION, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
+import { EDITION, APP as APP_NAME, brand, brandFile, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
@@ -90,6 +90,7 @@ const obsOk = kind => db.settings.obsOn !== false && (!kind || db.settings['obs'
 function rollSend(msg) { broadcast(msg, 'rollcall'); if (db.settings.rollOnGame !== false) broadcast(msg, 'overlay'); }
 const rollStartMsg = () => { const rc = live.rollcall; return { type: 'rollcallStart', seconds: Math.max(0, Math.round((rc.endsAt - Date.now()) / 1000)), people: rc.people.map(p => ({ key: p.key, name: p.name, avatar: proxied(p.avatar), here: p.here, movies: p.entries.length })) }; };
 function broadcast(msg, role) {
+  if (msg && msg.type === 'toast' && msg.text) msg = { ...msg, text: brand(msg.text) }; /* 🏷️ pop-ups say the edition's name */
   const s = JSON.stringify(msg);
   for (const c of wss.clients) if (c.readyState === 1 && (!role || c.role === role)) c.send(s);
 }
@@ -280,7 +281,7 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
-    edition: { id: EDITION.id, name: EDITION.name, dev: EDITION.dev, off: edOffNow(), lookAs: edLooking() },
+    edition: { id: EDITION.id, name: EDITION.name, app: APP_NAME, dev: EDITION.dev, off: edOffNow(), lookAs: edLooking() },
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
@@ -2261,6 +2262,20 @@ app.delete('/api/movies/:eid/backers/:did', (req, res) => {
   e.backers = (e.backers || []).filter(b => b.discordId !== req.params.did);
   if (e.backers.length < before) { e.weight = Math.max(1, (e.weight || 1) - 1); db.picks ||= {}; db.picks[req.params.did] = Math.max(0, (db.picks[req.params.did] || 0) - 1); }
   save(); pushState(); res.json({ ok: true });
+});
+// 🏷️ pages are sent with the name people see (TimePeace Chatbot, or the edition's own name) in place of "Movie Royal"
+const brandCache = new Map();
+app.use((req, res, next) => {
+  if (APP_NAME === 'Movie Royal' || req.method !== 'GET') return next();
+  let rel = decodeURIComponent(req.path); if (rel === '/') rel = '/index.html';
+  if (!/^\/[\w./-]+\.(html|js)$/.test(rel) || rel.includes('..')) return next();
+  const file = path.join(ROOT, 'public', rel);
+  fs.stat(file, (err, st) => {
+    if (err || !st.isFile()) return next();
+    const hit = brandCache.get(file);
+    if (hit && hit.m === st.mtimeMs) return res.type(rel.endsWith('.js') ? 'application/javascript' : 'html').send(hit.t);
+    fs.readFile(file, 'utf8', (e2, text) => { if (e2) return next(); const t = brandFile(text); brandCache.set(file, { m: st.mtimeMs, t }); res.type(rel.endsWith('.js') ? 'application/javascript' : 'html').send(t); });
+  });
 });
 app.use(express.static(path.join(ROOT, 'public')));
 app.use('/uploads', express.static(UPLOADS));

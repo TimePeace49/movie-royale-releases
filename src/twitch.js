@@ -2,6 +2,7 @@
 import WebSocket from 'ws';
 import { db, save } from './store.js';
 
+import { brand as brandOut } from './edition.js';
 export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit'];
 export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
@@ -291,7 +292,7 @@ export const canSay = () => (route.on() ? !!route.canSay() : !!status.canChat) |
 // 🤖 talking as yourself: every message starts with a name tag (Settings → Twitch, default "🤖 Movies Royal Bot:") so chat can tell it's the app
 const tagged = m => { const t = String(s().chatTag ?? '🤖 Movies Royal Bot:').trim(); return botOn() || !t || String(m).startsWith(t) ? String(m) : `${t} ${m}`; };
 export async function say(message) {
-  message = tagged(message);
+  message = tagged(brandOut(message)); /* 🏷️ chat lines say the edition's name */
   for (const f of sayListeners) { try { f(String(message)); } catch {} }
   if (route.on()) { if (!route.canSay() && Date.now() < pretend.until) return true; return route.say(String(message)); } // 🟢 Kick is the platform
   if (!status.canChat && Date.now() < pretend.until) return true; // testing while signed out: shown in the pretend chat window only

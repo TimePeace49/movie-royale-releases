@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.92.0
+- 🏷️ **New name: TimePeace Chatbot** (Derek: "rename the whole project to TimePeace Chatbot"). The app, its window, the installer, the Help and Setup pages, pop-ups and the bot's chat lines now say **TimePeace Chatbot** instead of Movie Royal. True's edition is called **True’s Chatbot** and Birx's **Birx & Jess Chatbot**.
+  - Only what you see changed. Your data folder, the program file and the installer file keep their old names, so nothing is lost and updates keep working. The desktop / Start menu shortcut is renamed on the next install.
+  - Kept as they were, because other programs find them by name: the OBS sources ("Movie Royal celebration", "…capture window" and so on), the Stream Deck pages, the Backup Bots app and chat commands like `!moviesroyal`.
+- 🎭 Channel names for the editions: Kirb = kirbgames, Birx & Jess = birxandjess, True = true_schu (Twitch and Kick).
+
 ## 1.91.3
 - 🎭 The editions now point at their real GitHubs: Derek's (the dev version) = **TimePeaceChatbot**, Kirb's = **TimePeaceChatbotKirbEdtion**, True's = **TimePeaceChatbotTrueEdtion**, Birx & Jess's = **TimePeaceChatbotBirxandJessEdition**. Public stays where it is.
 

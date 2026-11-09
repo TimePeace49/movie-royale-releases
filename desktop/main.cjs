@@ -9,6 +9,8 @@ const { pathToFileURL } = require('url');
 if (process.argv.includes('--backup') || /backup/i.test(require('path').basename(process.execPath))) { require('./backup.cjs'); return; }
 
 app.setName('Movie Royal');
+// 🏷️ the name people see (window title, tray): the edition's own (src/editions.json). The app's real name above stays: it's the data folder.
+const SHOWN = (() => { try { const p = require('../package.json'), all = require('../src/editions.json'); return String((all[String(process.env.MOVIE_ROYAL_EDITION || p.edition || 'public').toLowerCase()] || all.public || {}).app || 'Movie Royal'); } catch { return 'Movie Royal'; } })();
 // your data lives in %APPDATA%\Movie Royal (older versions used a misspelled folder: move it over once)
 {
   const oldDir = path.join(app.getPath('appData'), 'Movie Royale'), newDir = path.join(app.getPath('appData'), 'Movie Royal');
@@ -38,7 +40,7 @@ function hardenWindow(w) {
   // links to other sites (TMDB, Discord, Twitch sign-in…) open in your normal browser
   w.webContents.setWindowOpenHandler(({ url }) => {
     if (isOurs(url) && /\/game\.html/.test(url)) {
-      return { action: 'allow', overrideBrowserWindowOptions: { width: 1280, height: 720, title: 'Movie Royal — Game', icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { backgroundThrottling: false } } };
+      return { action: 'allow', overrideBrowserWindowOptions: { width: 1280, height: 720, title: SHOWN + ' — Game', icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { backgroundThrottling: false } } };
     }
     if (/^https?:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
@@ -58,7 +60,7 @@ function createWindow(mode = prefs.windowMode || 'window') {
   const frameless = mode !== 'window', old = win; // (1.59.0: Fullscreen is frameless too, see placeWindow)
   const w = new BrowserWindow({
     width: 1560, height: 980, minWidth: 1000, minHeight: 700, frame: !frameless,
-    title: 'Movie Royal', icon: ICON, backgroundColor: '#120a24', autoHideMenuBar: true, show: false,
+    title: SHOWN, icon: ICON, backgroundColor: '#120a24', autoHideMenuBar: true, show: false,
     webPreferences: { backgroundThrottling: false, spellcheck: true } // keeps the game smooth even when the window isn't focused (+ ✍️ spell check in text boxes)
   });
   w.__mode = mode; win = w;
@@ -71,7 +73,7 @@ function createWindow(mode = prefs.windowMode || 'window') {
     if (swapping || quitting || closeOk) return;
     if (!prefs.runInBackground) { e.preventDefault(); tryQuit(); return; } // closing the window = quitting: check the 24/7 bot first
     e.preventDefault(); w.hide(); // keep the Discord bot + Twitch running in the tray
-    if (!prefs.toldAboutTray && tray) { prefs.toldAboutTray = true; tray.displayBalloon?.({ title: 'Movie Royal is still running', content: 'The Discord bot keeps working. Right-click the icon by the clock to quit.', iconType: 'info' }); }
+    if (!prefs.toldAboutTray && tray) { prefs.toldAboutTray = true; tray.displayBalloon?.({ title: SHOWN + ' is still running', content: 'The Discord bot keeps working. Right-click the icon by the clock to quit.', iconType: 'info' }); }
   });
   w.on('closed', () => { if (swapping) return; if (win === w) win = null; if (!prefs.runInBackground || quitting) app.quit(); });
   w.loadURL(readyUrl);
@@ -104,11 +106,11 @@ function reopenBackup() {
 }
 function makeTray() {
   tray = new Tray(nativeImage.createFromPath(ICON).resize({ width: 16, height: 16 }));
-  tray.setToolTip('Movie Royal');
+  tray.setToolTip(SHOWN);
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open Movie Royal', click: showWindow },
+    { label: 'Open ' + SHOWN, click: showWindow },
     { type: 'separator' },
-    { label: 'Quit Movie Royal', click: () => app.quit() }
+    { label: 'Quit ' + SHOWN, click: () => app.quit() }
   ]));
   tray.on('click', showWindow); tray.on('double-click', showWindow);
 }
@@ -233,7 +235,7 @@ app.on('browser-window-created', (_e, w) => {
 app.whenReady().then(async () => {
   try { const ses = require('electron').session.defaultSession; ses.setSpellCheckerEnabled(true); if (process.platform !== 'darwin') { const have = ses.availableSpellCheckerLanguages || []; const want = [app.getLocale(), 'en-US'].filter(l => have.includes(l)); if (want.length) ses.setSpellCheckerLanguages([...new Set(want)]); } } catch {} // ✍️ spell check
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'Movie Royal', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }, { type: 'separator' }, { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }] }
+    { label: SHOWN, submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }, { type: 'separator' }, { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }] }
   ]));
   let started = false;
   const hiddenPages = new Set(); // hidden windows reading shop pages (card pack search)
@@ -345,13 +347,13 @@ app.whenReady().then(async () => {
     coSenderLost: () => coLost,
     // 👀 what your partner sees (your own picture, back from VDO.Ninja) or their picture, in a normal window
     coPreview: (url, title) => { const w = new BrowserWindow({ width: 960, height: 560, title: title || 'Co-stream picture', icon: ICON, autoHideMenuBar: true, backgroundColor: '#000000', webPreferences: { backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' } }); w.webContents.setAudioMuted(true); w.loadURL(url).catch(() => {}); return { ok: true }; },
-    fatal: msg => { dialog.showErrorBox('Movie Royal', msg); app.quit(); },
+    fatal: msg => { dialog.showErrorBox(SHOWN, msg); app.quit(); },
     ready: url => { if (started) return; started = true; readyUrl = url; makeTray(); createWindow(); reopenBackup(); }
   };
   try {
     await import(pathToFileURL(path.join(__dirname, '..', 'src', 'server.js')).href);
   } catch (e) {
-    dialog.showErrorBox('Movie Royal could not start', String(e && e.stack || e));
+    dialog.showErrorBox(SHOWN + ' could not start', String(e && e.stack || e));
     app.quit();
   }
 });

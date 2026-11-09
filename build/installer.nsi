@@ -4,6 +4,10 @@ Unicode true
 SetCompressor /SOLID lzma
 
 !define APP "Movie Royal"
+; BRAND = the name people see (-DBRAND=..., the edition's own). Folders, the program file and the registry key keep the old name.
+!ifndef BRAND
+!define BRAND "Movie Royal"
+!endif
 !define EXE "MovieRoyal.exe"
 !define UNINST "Uninstall Movie Royal.exe"
 ; older versions used a misspelled name; these are only used to clean that copy up
@@ -12,16 +16,16 @@ SetCompressor /SOLID lzma
 !define OLDREGKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\MovieRoyale"
 !define REGKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\MovieRoyal"
 
-Name "${APP}"
+Name "${BRAND}"
 OutFile "${OUT}"
 InstallDir "$LOCALAPPDATA\Programs\Movie Royal"
 InstallDirRegKey HKCU "${REGKEY}" "InstallLocation"
 RequestExecutionLevel user
-BrandingText "Movie Royal ${VER}"
+BrandingText "${BRAND} ${VER}"
 
 VIProductVersion "${VER}.0"
-VIAddVersionKey "ProductName" "${APP}"
-VIAddVersionKey "FileDescription" "${APP} Setup"
+VIAddVersionKey "ProductName" "${BRAND}"
+VIAddVersionKey "FileDescription" "${BRAND} Setup"
 VIAddVersionKey "FileVersion" "${VER}"
 VIAddVersionKey "ProductVersion" "${VER}"
 VIAddVersionKey "LegalCopyright" "Movie Royal"
@@ -33,10 +37,10 @@ VIAddVersionKey "LegalCopyright" "Movie Royal"
 !define MUI_ICON "icon.ico"
 !define MUI_UNICON "icon.ico"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Welcome to Movie Royal"
-!define MUI_WELCOMEPAGE_TEXT "This installs Movie Royal ${VER} — the battle royal movie wheel for your stream.$\r$\n$\r$\nIf you already have Movie Royal, this updates it. Your lists, history and settings are kept.$\r$\n$\r$\nClick Next to continue."
-!define MUI_FINISHPAGE_TITLE "Movie Royal is ready"
-!define MUI_FINISHPAGE_TEXT "Movie Royal ${VER} is installed and opening now.$\r$\n$\r$\nClick Finish to close this window."
+!define MUI_WELCOMEPAGE_TITLE "Welcome to ${BRAND}"
+!define MUI_WELCOMEPAGE_TEXT "This installs ${BRAND} ${VER} for your stream.$\r$\n$\r$\nIf you already have it (it used to be called Movie Royal), this updates it. Your lists, history and settings are kept.$\r$\n$\r$\nClick Next to continue."
+!define MUI_FINISHPAGE_TITLE "${BRAND} is ready"
+!define MUI_FINISHPAGE_TEXT "${BRAND} ${VER} is installed and opening now.$\r$\n$\r$\nClick Finish to close this window."
 
 ; in-app updates (/UPDATE): skip the questions and just show the progress bar, then close by itself
 Var IsUpdate
@@ -44,8 +48,8 @@ Var IsUpdate
 !insertmacro MUI_PAGE_WELCOME
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_DIRECTORY
-!define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "Movie Royal is updated"
-!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "Opening Movie Royal again…"
+!define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "${BRAND} is updated"
+!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "Opening ${BRAND} again…"
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_FINISH
@@ -74,11 +78,14 @@ Section "Movie Royal" SecMain
   Delete "$DESKTOP\${OLDNAME}.lnk"
   RMDir /r "$LOCALAPPDATA\Programs\${OLDNAME}"
   DeleteRegKey HKCU "${OLDREGKEY}"
-  CreateShortCut "$SMPROGRAMS\Movie Royal.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
-  CreateShortCut "$DESKTOP\Movie Royal.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
+  ; the shortcuts carry the name people see; the ones from before the rename are taken away
+  Delete "$SMPROGRAMS\Movie Royal.lnk"
+  Delete "$DESKTOP\Movie Royal.lnk"
+  CreateShortCut "$SMPROGRAMS\${BRAND}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
+  CreateShortCut "$DESKTOP\${BRAND}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
 
   ; shows up in Windows Settings > Apps so it can be uninstalled like any program
-  WriteRegStr HKCU "${REGKEY}" "DisplayName" "${APP}"
+  WriteRegStr HKCU "${REGKEY}" "DisplayName" "${BRAND}"
   WriteRegStr HKCU "${REGKEY}" "DisplayVersion" "${VER}"
   WriteRegStr HKCU "${REGKEY}" "Publisher" "Movie Royal"
   WriteRegStr HKCU "${REGKEY}" "DisplayIcon" "$INSTDIR\icon.ico"
@@ -119,6 +126,8 @@ Section "Uninstall"
   Sleep 500
   Delete "$DESKTOP\Movie Royal.lnk"
   Delete "$SMPROGRAMS\Movie Royal.lnk"
+  Delete "$DESKTOP\${BRAND}.lnk"
+  Delete "$SMPROGRAMS\${BRAND}.lnk"
   ; (Movie Royal Backup Bots has its own installer and uninstaller now: left alone)
   Delete "$DESKTOP\${OLDNAME}.lnk"
   Delete "$SMPROGRAMS\${OLDNAME}.lnk"
