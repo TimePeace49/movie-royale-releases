@@ -938,7 +938,7 @@ function sitOutPerson(p, out) { // 🛌 out = their movies skip tonight's battle
   let n = 0;
   for (const e of getList('movies')?.entries || []) {
     if (e.kind === 'spot' || e.backers?.[0]?.discordId !== p.discordId) continue;
-    if (out && e.status === 'active') { e.status = 'away'; e.awayDay = todayKey(); e.satOut = true; n++; }
+    if (out && e.status === 'active') { e.status = 'away'; e.awayDay = stream().day; e.satOut = true; n++; }
     if (!out && e.status === 'away') { e.status = 'active'; delete e.awayDay; delete e.satOut; n++; }
   }
   if (!out) { const st = stream(); if (!st.active.includes(p.discordId)) st.active.push(p.discordId); }
@@ -1045,7 +1045,11 @@ const twitchHandlers = {
     act('stream', isLive ? 'You went live 🔴' : 'The stream ended ⚫', { icon: isLive ? '🔴' : '⚫', kind: isLive ? 'live' : 'offline' }); // 🧾
     liveLogMark(!!isLive); // ⏱️ the marathon's total live time
     if (isLive) { for (const ms of [5000, 30000, 90000, 180000]) setTimeout(siteStreamCheck, ms); } else site.setStream(null); // ▶ a restarted stream = a new VOD: find its id right away
-    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500); if (isLive) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); wheel.newStream(); } // new stream: movie count starts over
+    const st0 = db.stream, back = isLive && st0 && st0.startedAt && !nightOver(st0); // 🌙 back within an hour = the same night
+    if (!isLive && st0) { st0.offAt = Math.max(st0.liveSeen || 0, Date.now() - 5 * 60000); } // (an app that was closed while live: counts from when we last saw you live)
+    db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500);
+    if (back) { delete st0.offAt; st0.liveSeen = Date.now(); act('stream', `Back live within an hour: still the same stream night (movie #${(st0.movies || 0) + 1} is next)`, { icon: '🌙', kind: 'live' }); }
+    else if (isLive) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); stream().liveSeen = Date.now(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
     save(); pushState();
@@ -1234,11 +1238,21 @@ function endRollcall() {
 // 🔢 "countdown" reward rule: it can be used N times per stream, then it's off until the next stream
 const countMax = t => Math.max(1, Math.round(Number(db.rewardCounts?.[t]) || 3));
 const countLeft = t => countMax(t) - (stream().rewardUses?.[t] || 0);
+// 🌙 one stream night (1.86.3, Derek: "start counting until I go offline for longer than an hour before resetting it"):
+// while live it never resets (not at midnight, not after a short internet drop); after going offline it ends once you've
+// been offline for more than an hour. Never went live: a new calendar day = a new night (like before).
+const NIGHT_GAP = 60 * 60000;
+function nightOver(st, now = Date.now(), liveNow = db.live, day = todayKey()) {
+  if (!st) return true;
+  if (liveNow) return false;
+  if (st.offAt) return now - st.offAt > NIGHT_GAP;
+  return st.day !== day;
+}
 function stream() {
-  const day = todayKey();
-  if (!db.stream || db.stream.day !== day) { db.stream = { day, active: [] }; save(); } // new day = new stream
+  if (nightOver(db.stream)) { db.stream = { day: todayKey(), active: [] }; save(); }
   return db.stream;
 }
+setInterval(() => { if (db.live && db.stream) db.stream.liveSeen = Date.now(); }, 60000); // (the last time we knew you were live, for a PC that was off)
 const activeSet = () => new Set(stream().active);
 const chatMatches = (p, m) => (p.login && p.login === m.login) || norm(p.name) === norm(m.name) || (p.login && norm(p.login) === norm(m.name));
 function discordPeopleWithMovies() {
@@ -1276,7 +1290,7 @@ function recentChatters() {
 }
 function restoreAway(onlyOld = false) {
   let n = 0;
-  for (const e of getList('movies')?.entries || []) if (e.status === 'away' && (!onlyOld || e.awayDay !== todayKey())) { e.status = 'active'; delete e.awayDay; n++; }
+  for (const e of getList('movies')?.entries || []) if (e.status === 'away' && (!onlyOld || e.awayDay !== stream().day)) { e.status = 'active'; delete e.awayDay; n++; }
   if (n) save();
   return n;
 }
@@ -2649,6 +2663,20 @@ app.post('/api/chatters/link', (req, res) => { // "this chatter is that person"
   db.links[id] = login; if (db.manualPeople?.[id]) db.manualPeople[id].twitch = login;
   const st = stream(); if (!st.active.includes(id)) st.active.push(id);
   save(); pushState(); refreshPreview(); res.json({ ok: true });
+});
+// 🧪 🌙 stream night walk-through (pretend times, nothing saved)
+app.get('/api/test/stream-night', (req, res) => {
+  const H = 3600000, t0 = new Date(2026, 10, 7, 22, 30).getTime(), dayOf = t => new Date(t).toDateString();
+  const steps = [], st = { day: dayOf(t0), startedAt: t0, movies: 0 };
+  const check = (what, t, liveNow, expectSame) => { const over = nightOver(st, t, liveNow, dayOf(t)); const ok = over === !expectSame; steps.push({ what, same: !over, ok }); return ok; };
+  st.movies = 1; check('10:30 pm: live, movie #1 won', t0, true, true);
+  check('12:15 am: still live after midnight', t0 + 1.75 * H, true, true);
+  st.offAt = t0 + 2 * H; check('12:32 am: internet dropped 2 minutes ago', t0 + 2 * H + 2 * 60000, false, true);
+  delete st.offAt; st.movies = 2; check('12:35 am: back live, movie #2 won', t0 + 2.1 * H, true, true);
+  st.offAt = t0 + 3 * H; check('1:59 am: offline for 59 minutes', t0 + 3 * H + 59 * 60000, false, true);
+  check('2:31 am: offline for over an hour', t0 + 4 * H + 60000, false, false);
+  const st2 = { day: dayOf(t0) }; const ok2 = nightOver(st2, t0 + 26 * H, false, dayOf(t0 + 26 * H)) === true; steps.push({ what: 'Never went live, next day', same: !ok2, ok: ok2 });
+  res.json({ ok: steps.every(x => x.ok), steps, gapMins: NIGHT_GAP / 60000, now: { live: !!db.live, movies: db.stream?.movies || 0, offAt: db.stream?.offAt || null, startedAt: db.stream?.startedAt || null } });
 });
 app.post('/api/stream/new', (req, res) => { db.stream = { day: todayKey(), active: [] }; save(); pushState(); refreshPreview(); res.json({ ok: true }); });
 app.post('/api/stream/toggle', (req, res) => {

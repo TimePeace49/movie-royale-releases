@@ -57,7 +57,7 @@ export function helpText() {
     ``,
     `**Rules:** be in Twitch chat during the stream · if your movie wins, your other movies sit out until Sunday · one movie per series${luckOn() ? ' · 🍀 every loss makes your movies a little luckier' : ''}`
   ];
-  const today = db.stream?.day === new Date().toDateString(), t = today ? (db.stream.tonight || []).filter(x => !x.text) : [], spot = db.settings.spotName || 'Kirb';
+  const today = !!db.stream && (db.live || (db.stream.offAt ? Date.now() - db.stream.offAt <= 3600000 : db.stream.day === new Date().toDateString())), /* 🌙 same rule as server.js nightOver() */ t = today ? (db.stream.tonight || []).filter(x => !x.text) : [], spot = db.settings.spotName || 'Kirb';
   const movies = t.map(x => `• #${x.n} ${x.label}${x.sub ? ` (${x.sub})` : ''}${x.viaSpot ? ` — 🎟️ ${x.owner || spot}'s pick (wild spot)` : x.owner ? ` — ${x.owner}'s movie` : ''}`);
   const idea = db.settings.ideasDoc ? [``, `💡 **Got an idea for Movie Royal?** [Leave a note in the ideas doc](<${db.settings.ideasDoc}>).`] : [];
   return fitHelp(top, movies, idea);

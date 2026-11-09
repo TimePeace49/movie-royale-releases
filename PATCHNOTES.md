@@ -3,6 +3,15 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.86.3: What's new
+Everything since 1.84.3.
+
+- 🌙 **The movie count doesn't start over in the middle of a stream any more:** before, going past midnight or a short internet drop could make the next movie say "Movie #1" again (and empty the list of who had chatted). Now a stream night keeps going while you're live and only starts over once you've been offline for more than an hour. Try it: 🧪 Test → 🌙 One stream night.
+- 🏆 **Race standings board:** on race maps with laps, the right side of the screen shows the top 10 places while the race runs (paint colour, name, which lap they're on; wrecked cars show 💥 OUT, the winner 🏁 WIN). Races without laps and every other map don't have it. Try it: 🧪 Test → 🏁 Race with power-ups → 🏆 Standings board.
+- 🎛️ **Stream Deck pages:** Settings → 🖥️ App & background → 🎛️ Stream Deck → 🎛️ Add the pages to my Stream Deck. You get pages for 🎬 Movie Royal, 🎡 Wheel, ⚔️ Battle and 🃏 Cards & more, each key with its own picture, pressing the same thing as the button in the app (it works while you're in a game). The bottom-left key goes back to your own "Home" profile. There's also a **🎞️ Scenes** page with one key per OBS scene (have OBS open when you add the pages).
+- 🔄 **Keep OBS up to date** (Settings → 🎥 OBS, on by default): when Movie Royal opens and every 10 minutes, it puts back anything it added to OBS for you that went missing (🎉 viewer's choice celebration, 📣 roll call, your videos). It never moves things you placed and never switches your scene. **🔄 Check OBS now** checks right away.
+- 🎬 **My videos** (same place): add videos from your PC (like starting / ending screens or a background loop) and tick which OBS scenes they go in. Each one plays on a loop, filling the screen behind everything else. Tick 🙈 to switch off that scene's own background while the video is in it.
+
 ## v1.84.3: What's new
 Everything since 1.84.2.
 

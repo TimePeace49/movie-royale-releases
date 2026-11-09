@@ -1132,6 +1132,12 @@
     <div id="tRsOut"></div>
   </div>
   <div class="card">
+    <h3>🌙 One stream night</h3>
+    <p class="help">The movie count (Movie #1, #2… tonight) keeps going while you're live, also past midnight and after a short internet drop. It only starts over once you've been offline for more than an hour.</p>
+    <div class="row" style="gap:6px"><button class="primary" onclick="nightTest()" title="Walk through a pretend stream night: midnight, a 2-minute internet drop, then over an hour offline (nothing saved)">🌙 Walk through a stream night</button></div>
+    <div id="tNtOut"></div>
+  </div>
+  <div class="card">
     <h3>🧹 Inactive people's movies</h3>
     <p class="help">A pretend battle with 6 people: last in a battle 3, 40, 80, 100 and 400 days ago, plus Fay who just picked her first movie. Pick a limit and see whose movies would go back (nothing is saved). The real setting is in ⚙️ Settings → ⚔️ Game.</p>
     <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><input id="tInN" type="number" min="1" value="3" style="width:72px" title="Pretend limit (the number)"><select id="tInU" style="width:auto" title="Pretend limit (days, weeks, months or years)"><option value="days">days</option><option value="weeks">weeks</option><option value="months" selected>months</option><option value="years">years</option></select><button class="primary" onclick="inTest()">🧹 Try it</button><button onclick="setView('settings');setSub('game');setTimeout(()=>$('inBox')?.scrollIntoView({block:'center'}),300)" title="Open the real setting in Settings → Game">⚙️ Open the setting</button></div>
@@ -3345,6 +3351,7 @@ async function inTest() {
   const n = $('tInN').value, unit = $('tInU').value; let r; try { r = await api('/api/test/inactive', { n, unit }); } catch { return; }
   $('tInOut').innerHTML = `<p class="help">Limit <b>${esc(r.words)}</b>. Movies go back for: <b>${r.out.length ? esc(r.out.join(', ')) : 'nobody'}</b>. Still in: ${esc(r.stillIn.join(', '))}.</p><table style="table-layout:fixed;width:100%"><tr><th>Person</th><th>Last in a battle</th><th>Goes?</th></tr>${r.people.map(p => `<tr><td>${esc(p.name)}</td><td>${p.name === 'Fay' ? 'never (picked 2 days ago)' : p.last + ' days ago'}</td><td>${p.due ? '🧹 yes' : '✅ stays'}</td></tr>`).join('')}</table>`;
 }
+async function nightTest() { let r; try { r = await api('/api/test/stream-night', null, 'GET'); } catch { return; } const n = r.now; $('tNtOut').innerHTML = `<p class="help" style="margin:8px 0 4px">${r.ok ? '✅ All right' : '❌ Something is off'} (a new night starts after ${r.gapMins} minutes offline)</p><ul class="help" style="margin:0 0 0 18px">${r.steps.map(x => `<li>${x.ok ? '✅' : '❌'} ${esc(x.what)}: ${x.same ? 'same night' : '<b>new night</b>'}</li>`).join('')}</ul><p class="help" style="margin:6px 0 0">Right now: ${n.live ? '🔴 live' : n.offAt ? `⚫ offline since ${new Date(n.offAt).toLocaleTimeString()}` : '⚫ offline'} · ${n.movies} movie${n.movies === 1 ? '' : 's'} this night</p>`; }
 async function resumeTest() { let r; try { r = await api('/api/test/resume', null, 'GET'); } catch { return; } $('tRsOut').innerHTML = `<ul class="help" style="margin:8px 0 0 18px">${r.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`; }
 function luckBattlesSync() { const el = $('setLuckBattles'); if (!el) return; const h = luckBattlesHTML(); if (h !== luckBattlesKey) { luckBattlesKey = h; el.innerHTML = h; } }
 let luckFor = 'movies';
