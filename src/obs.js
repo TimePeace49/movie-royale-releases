@@ -662,3 +662,23 @@ export function watchScenes(onScene) {
 }
 export function stopWatch() { if (!watcher) return; watcher.on = false; clearTimeout(watcher.t); try { watcher.ws?.close(); } catch {} watcher = null; }
 export const watching = () => !!(watcher && watcher.ws && watcher.ws.readyState === 1);
+
+/** 🎬 Kick clips (1.90.1): Kick has no clip button for apps, so OBS keeps the last minute (its Replay Buffer) and saves it as a video file. */
+const REPLAY_OFF = "OBS's Replay Buffer is off. In OBS: Settings → Output → Replay Buffer → tick Enable and set it to 60 seconds. Then press Clip again.";
+export async function replayReady(start = true) {
+  return session(async call => {
+    let st; try { st = await call('GetReplayBufferStatus'); } catch { return { enabled: false, active: false }; }
+    if (!st.outputActive && start) { try { await call('StartReplayBuffer'); return { enabled: true, active: true, started: true }; } catch { return { enabled: false, active: false }; } }
+    return { enabled: true, active: !!st.outputActive };
+  });
+}
+export async function saveReplay() {
+  return session(async call => {
+    let st; try { st = await call('GetReplayBufferStatus'); } catch { throw new Error(REPLAY_OFF); }
+    if (!st.outputActive) { try { await call('StartReplayBuffer'); } catch { throw new Error(REPLAY_OFF); } throw new Error("OBS's Replay Buffer wasn't running, so I just started it. From now on, Clip saves the last minute."); }
+    await call('SaveReplayBuffer');
+    await new Promise(r => setTimeout(r, 1500));
+    let file = ''; try { file = (await call('GetLastReplayBufferReplay')).savedReplayPath || ''; } catch {}
+    return { file };
+  });
+}

@@ -279,7 +279,7 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
-    clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, list: (db.clips || []).slice(0, 10) },
+    clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
@@ -1045,6 +1045,7 @@ const twitchHandlers = {
   change: pushState,
   live(isLive, from) {
     if (kick.on() !== (from === 'kick')) return; // 🟢 the platform switch: only the platform you picked says when you're live
+    if (isLive && from === 'kick' && db.settings.obsOn !== false) obs.replayReady(true).catch(() => {}); /* 🎬 Kick clips come from OBS's Replay Buffer: have it running */
     if (!!db.live === !!isLive) return;
     if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
     act('stream', isLive ? 'You went live 🔴' : 'The stream ended ⚫', { icon: isLive ? '🔴' : '⚫', kind: isLive ? 'live' : 'offline' }); // 🧾
@@ -1571,13 +1572,17 @@ async function announceNow() {
 // 🎬 Clips (1.88.0, Derek: "a clipping feature in all versions… a button on every battle and wheel tab"): one press = a Twitch clip of the last minute
 let clipAt = 0;
 async function makeClip(via, test, by) {
-  if (Date.now() - clipAt < 8000) throw new Error('A clip was just made. Give it a few seconds.');
-  let c;
-  if (test) { if (test === 'fail') throw new Error("Twitch only makes clips while you're live"); c = { id: 'PretendClip' + Date.now().toString(36), url: 'https://clips.twitch.tv/PretendClip', edit: '' }; }
+  if (!test && Date.now() - clipAt < 8000) throw new Error('A clip was just made. Give it a few seconds.');
+  let c; const onKick = test === 'kick' || (!test && kick.on()); /* 🟢 Kick has no clip button for apps: OBS saves the last minute as a video file instead */
+  if (test) { if (test === 'fail') throw new Error("Twitch only makes clips while you're live"); c = onKick ? { id: 'PretendClip' + Date.now().toString(36), url: '', file: 'Videos\\Replay pretend.mp4', kind: 'obs' } : { id: 'PretendClip' + Date.now().toString(36), url: 'https://clips.twitch.tv/PretendClip', edit: '' }; }
+  else if (onKick) {
+    if (db.settings.obsOn === false) throw new Error('On Kick, clips are saved by OBS, and OBS is switched off in Settings → 🎥 OBS.');
+    clipAt = Date.now(); try { const r = await obs.saveReplay(); c = { id: 'obs' + Date.now().toString(36), url: '', file: r.file || '', kind: 'obs' }; } catch (e) { clipAt = 0; throw e; }
+  }
   else { clipAt = Date.now(); try { c = await twitch.createClip(by ? `Clipped by ${by}` : ''); } catch (e) { clipAt = 0; throw e; } }
   const rec = { ...c, at: Date.now(), via: String(via || '').slice(0, 20), ...(by ? { by } : {}), ...(test ? { test: true } : {}) };
-  if (!test) { db.clips = [rec, ...(db.clips || [])].slice(0, 100); save(); if (!by && db.settings.clipChat !== false) twitch.say(`🎬 New clip: ${rec.url}`).catch(() => {}); pushState(); }
-  act('stream', `${by ? 'clipped the last minute with !clip' : (test ? 'Pretend clip' : 'Clip') + ' made'}: ${rec.url}`, { icon: '🎬', kind: 'clip', test: !!test, ...(by ? { who: by } : {}) });
+  if (!test) { db.clips = [rec, ...(db.clips || [])].slice(0, 100); save(); if (!by && db.settings.clipChat !== false) twitch.say(rec.url ? `🎬 New clip: ${rec.url}` : '🎬 Clipped! The last minute was saved.').catch(() => {}); pushState(); }
+  act('stream', `${by ? 'clipped the last minute with !clip' : (test ? 'Pretend clip' : 'Clip') + ' made'}: ${rec.url || 'saved by OBS' + (rec.file ? ' as ' + rec.file : '')}`, { icon: '🎬', kind: 'clip', test: !!test, ...(by ? { who: by } : {}) });
   return rec;
 }
 // 💬 !clip (1.88.2, Derek: "anyone in chat can do it"): the same clip, named "Clipped by <them>" (Twitch still lists the streamer as the maker: the app makes it)
@@ -1603,10 +1608,10 @@ function clipChatGo(m, name) {
   const now = Date.now();
   if (now - clipCmdAt < 30000) { if (now - clipNoAt > 20000 && twitch.canSay()) { clipNoAt = now; twitch.say(`🎬 @${name} a clip was just made. Try again in a few seconds.`).catch(() => {}); } return true; }
   clipCmdAt = now;
-  makeClip('chat', m.pretend ? 'ok' : false, name).then(c => {
-    twitch.say(`🎬 @${name} clipped the last minute: ${c.url}`).catch(() => {});
-    broadcast({ type: 'toast', text: `🎬 ${hEsc(name)} made a clip with !clip${c.test ? ' (pretend)' : `: <a href="${hEsc(c.url)}" target="_blank" rel="noopener">▶ Watch it</a>`}` }, 'control');
-  }).catch(e => { clipCmdAt = 0; if (now - clipNoAt > 20000 && twitch.canSay()) { clipNoAt = Date.now(); twitch.say(`🎬 @${name} no clip: ${/live/i.test(e.message) ? 'clips only work while the stream is live' : /sign in/i.test(e.message) ? 'the streamer needs to sign in with Twitch again first' : 'Twitch could not make it right now'}.`).catch(() => {}); } });
+  makeClip('chat', m.pretend ? (m.kick ? 'kick' : 'ok') : false, name).then(c => {
+    twitch.say(c.url ? `🎬 @${name} clipped the last minute: ${c.url}` : `🎬 @${name} clipped the last minute! It's saved for the streamer.`).catch(() => {});
+    broadcast({ type: 'toast', text: `🎬 ${hEsc(name)} made a clip with !clip${c.test ? ' (pretend)' : c.url ? `: <a href="${hEsc(c.url)}" target="_blank" rel="noopener">▶ Watch it</a>` : c.file ? `: saved as ${hEsc(c.file)}` : ''}` }, 'control');
+  }).catch(e => { clipCmdAt = 0; if (now - clipNoAt > 20000 && twitch.canSay()) { clipNoAt = Date.now(); twitch.say(`🎬 @${name} no clip: ${/live/i.test(e.message) ? 'clips only work while the stream is live' : /sign in/i.test(e.message) ? 'the streamer needs to sign in with Twitch again first' : kick.on() ? 'OBS could not save it right now' : 'Twitch could not make it right now'}.`).catch(() => {}); } });
   return true;
 }
 app.post('/api/clip/who', (req, res) => { const w = (Array.isArray(req.body?.who) ? req.body.who : []).filter(k => CLIP_WHO[k]); db.settings.clipWho = w.includes('all') ? ['all'] : [...new Set(w)]; db.settings.clipCmdOn = true; save(); pushState(); res.json({ ok: true, who: clipWho() }); });
@@ -1615,7 +1620,8 @@ app.post('/api/test/clip-who', async (req, res) => { // 🧪 would these people 
   const who = clipWho(), rows = []; for (const [name, m] of P) rows.push({ name, ok: await clipAllowed(m, who) }); res.json({ who, rows });
 });
 app.post('/api/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip(req.body?.via) }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
-app.post('/api/test/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip('test', req.body?.fail ? 'fail' : 'ok') }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
+app.post('/api/clip/open', (req, res) => { const c = (db.clips || []).find(x => x.id === req.body?.id); if (!c?.file || !globalThis.__desktop?.openPath) return res.status(400).json({ error: 'That clip has no file to show.' }); globalThis.__desktop.openPath(path.dirname(c.file)); res.json({ ok: true }); });
+app.post('/api/test/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip('test', req.body?.fail ? 'fail' : req.body?.kick ? 'kick' : 'ok') }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 // 🎮 Game capture tab (1.87.0, dev only): its sound keeps playing when Movie Royal isn't the window in front
 app.post('/api/gamecap/sound', (req, res) => { const on = !!req.body?.on && !!db.settings.betaUpdates; let kept = null; try { kept = globalThis.__desktop?.keepSound?.(on) ?? null; } catch {} res.json({ ok: true, on, kept }); });
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)

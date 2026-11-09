@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.90.1
+- 🎬🟢 **Clips work on Kick too** (🛠️ dev mode, Derek: "make sure the clip shortcut works on both Kick and Twitch"): the 🎬 Clip buttons, **Ctrl+Alt+C**, the fullscreen dot and `!clip` now follow the platform switch.
+  - On **Twitch** nothing changes: a Twitch clip of the last minute, with its link.
+  - On **Kick**: Kick doesn't let apps make clips yet (their developers have it on the wish list), so OBS saves the last minute as a video file on your PC instead (OBS's Replay Buffer). The pop-up says where it went, with 📂 Open the folder; chat gets "Clipped!" with no link.
+  - One-time set-up in OBS: Settings → Output → Replay Buffer → tick Enable, 60 seconds. Movie Royal starts the buffer by itself when you go live on Kick (or on your first clip).
+  - Test: 🧪 Test → 🎬 Clips → 🟢 Pretend Kick clip.
+
 ## 1.90.0
 - 🟢 **Kick, part 1: chat** (🛠️ dev mode only; Derek: "make this work with Kick. Make it easy to switch it over"): Settings → 💜 Twitch → 🟢 Kick has one switch, **💜 Twitch / 🟢 Kick**. With Kick on, Movie Royal reads your Kick chat and answers there, so `!join`, the 🤖 chat bot commands, quotes, timers and the other chat commands work on Kick, and going live on Kick counts as your stream. Switching back is one click and nothing is deleted.
   - Reading chat only needs your Kick channel name. To let Movie Royal answer in chat you make an app on kick.com (Settings → Developer) and press 🟢 Sign in with Kick; the steps are in the app.

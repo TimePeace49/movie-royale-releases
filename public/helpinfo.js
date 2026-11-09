@@ -163,6 +163,8 @@ H(/anyone in chat can make a clip by typing/i, '🙋 !clip in chat', 'Anyone in 
 H(/^tip:a pretend viewer types !clip/i, '💬 Pretend viewer types !clip', 'A pretend viewer types !clip, so you can see what the bot answers. Nothing is sent to Twitch.', ['test']);
 H(/post the link in chat when a clip is made/i, '💬 Post the clip in chat', 'When a clip is made, the bot posts its link in your Twitch chat.');
 H(/^tip:pretend to make a clip/i, '🧪 Pretend clip', 'Shows what you see when a clip works. Nothing is sent to Twitch and no clip is made.', ['test']);
+H(/^tip:pretend to make a clip while kick|pretend kick clip/i, '🟢 Pretend Kick clip', 'Shows what you see when you clip while Kick is your platform: OBS saves the last minute as a video file. Nothing is saved.', ['test']);
+H(/^tip:open the folder this clip was saved in/i, '📂 Open the folder', 'Opens the folder on your PC where OBS saved this clip.');
 H(/^tip:pretend the clip fails/i, "🧪 Pretend I'm not live", 'Shows the message you get when Twitch cannot make a clip because the stream is not live.', ['test']);
 H(/^tip:open settings → twitch, where your latest clips/i, '📋 My clips', 'Opens Settings → 💜 Twitch → 🎬 Clips: your latest clips with links to watch or trim them.', ['test']);
 H(/^tip:game capture: which capture card/i, '📺 Capture card', 'Pick the capture card whose picture you want to see (your Elgato). It can only be shown by one program at a time: close the Elgato app, and switch off its source in OBS if that shows the card itself.');
