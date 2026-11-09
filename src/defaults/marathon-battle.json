@@ -12,133 +12,241 @@
    {
     "label": "Pickle Balls",
     "sub": "1",
-    "weight": 1
+    "weight": 1,
+    "match": "pickle",
+    "desc": "From the snack aisle nobody asked for: Pickle Balls! Big, crunchy corn puffs dusted in tangy dill pickle seasoning. They look like tennis balls, they taste like the bottom of the pickle jar, and one of them is all yours."
    },
    {
     "label": "Ketchup candy cane",
     "sub": "5 licks",
-    "weight": 1
+    "weight": 1,
+    "match": "ketchup",
+    "desc": "It's the holiday treat that should not exist: ketchup candy canes! Classic red and white stripes on the outside, pure tomato-and-vinegar surprise on the inside. Five licks, no fries included."
    },
    {
     "label": "Hot Dog candy",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "hot ?dog",
+    "desc": "Straight from the ballpark to your sweet tooth: Hot Dog Candy! A collectible tin of little hard candies that taste like a grilled frank with the works. No bun, no mustard, no mercy."
    },
    {
     "label": "Toxic Waste",
     "sub": "hold it till the sour's gone",
-    "weight": 1
+    "weight": 1,
+    "match": "toxic",
+    "desc": "Handle with care! It's Toxic Waste, the hazardously sour candy that comes in its own little yellow drum. Hold it on your tongue until the sour is gone, and try to keep a straight face for the folks at home."
    },
    {
     "label": "BeanBoozled",
     "sub": "1 spin",
-    "weight": 1
+    "weight": 1,
+    "match": "bean ?boozled",
+    "desc": "Feeling lucky? It's BeanBoozled, the jelly bean game of chance! Every color could be a tasty treat or its evil twin, like peach or barf, or buttered popcorn or rotten egg. One spin of the wheel decides your fate."
    },
    {
     "label": "Heksehyl salt licorice",
     "sub": "1 stick",
-    "weight": 1
+    "weight": 1,
+    "match": "heksehyl",
+    "desc": "All the way from Denmark: Heksehyl, the \"witch's howl\"! A soft black licorice stick rolled in salty, tingly salmiak powder. Loved across Scandinavia and feared just about everywhere else."
    },
    {
     "label": "Fazer Salmiakki",
     "sub": "2 pieces",
-    "weight": 1
+    "weight": 1,
+    "match": "salmiakki|fazer",
+    "desc": "A true taste of Finland: Fazer Salmiakki! Little black diamonds of salty licorice in the classic checkered box. Two pieces of pure salt-and-ammonia zing that a whole nation calls candy."
    },
    {
     "label": "Durian candy",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "durian",
+    "desc": "They call it the king of fruits, and it's banned on public transit in more than one country! It's durian candy: creamy, sweet, and carrying that famous smell of onions and custard. One piece and the whole room knows."
    },
    {
     "label": "Octopus",
     "sub": "1 bite",
-    "weight": 1
+    "weight": 1,
+    "match": "octopus",
+    "desc": "A gourmet prize from the coast of Portugal: tinned octopus in garlic sauce! Tender pieces of octopus packed in rich olive oil and garlic. One fancy bite, straight from the tin."
    },
    {
     "label": "Mushroom tempura seaweed",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "tempura",
+    "desc": "Light, crispy and straight from Thailand: tempura seaweed in mushroom and black pepper flavor! Sheets of seaweed fried in a crunchy batter, with an earthy, peppery kick in every piece."
    },
    {
     "label": "BBQ seaweed roll",
     "sub": "1 roll",
-    "weight": 1
+    "weight": 1,
+    "match": "seaweed roll|big roll|bbq",
+    "desc": "Roll out the red carpet for the Big Roll! Grilled seaweed rolled into a crunchy stick and coated in sweet and smoky BBQ sauce flavor. A snack-time favorite across Thailand, and tonight one roll is yours."
    },
    {
     "label": "Thai prawn Lay's",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "lay'?s|prawn",
+    "desc": "A bag of chips that took the long way here: Lay's from Thailand! Thin, crispy potato chips with a bold seafood flavor you will not find at the gas station back home. One chip, one trip around the world."
    },
    {
     "label": "Jolt energy drink",
     "sub": "1 can",
-    "weight": 1
+    "weight": 1,
+    "match": "^(?!.*dr\\.? ?jolt).*jolt",
+    "desc": "The legend is back! It's Jolt Cola, the high-performance energy drink with zero sugar and all the caffeine. A full 16-ounce can to keep this marathon rolling."
    },
    {
     "label": "KitKat NY Cheesecake",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "cheesecake",
+    "desc": "Imported all the way from Japan: the New York Cheesecake KitKat! Crispy wafers wrapped in creamy, tangy cheesecake-flavored white chocolate. Break off one piece and enjoy a slice of the Big Apple by way of Tokyo."
    },
    {
     "label": "KitKat Matcha",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "matcha",
+    "desc": "A Japanese classic: the rich Matcha KitKat! Crispy wafers covered in deep green tea chocolate, a little sweet, a little bitter, and very, very green. One elegant piece is yours."
    },
    {
     "label": "KitKat Strawberry",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "strawberry",
+    "desc": "Pretty in pink, it's the Strawberry KitKat from Japan! Light, crispy wafers in sweet strawberry-flavored chocolate. One of the nice ones, so enjoy it while it lasts."
    },
    {
     "label": "Kopiko coffee candy",
     "sub": "1 piece",
-    "weight": 1
+    "weight": 1,
+    "match": "kopiko",
+    "desc": "For the coffee lover on the go: Kopiko Cappuccino Candy! Made with real coffee extract, it's a little cup of cappuccino you can keep in your pocket. One piece, no barista required."
    },
    {
     "label": "Muscat gummies",
     "sub": "1 gummies",
-    "weight": 1
+    "weight": 1,
+    "match": "muscat",
+    "desc": "Soft, juicy and individually wrapped: muscat gummy candy from Japan! Each one bursts with the flavor of sweet green muscat grapes. A real treat, and a rare safe one on this board."
+   },
+   {
+    "label": "Dr Jolt energy drink",
+    "sub": "1 can",
+    "weight": 1,
+    "match": "dr\\.? ?jolt",
+    "desc": "Is there a doctor in the house? It's Dr Jolt, the spiced cherry soda take on the legendary energy drink. Zero sugar, a full 16 ounces, and enough caffeine to see the sunrise.",
+    "since": "1.90.2"
+   },
+   {
+    "label": "Dark chocolate crickets",
+    "sub": "3 crickets",
+    "weight": 1,
+    "match": "cricket",
+    "desc": "Handmade in San Francisco: Don Bugito dark chocolate crickets! Real toasted crickets, packed with protein and covered in rich dark chocolate. Crunchy, sustainable, and looking right back at you.",
+    "since": "1.90.2"
+   },
+   {
+    "label": "Bob Ross energy drink",
+    "sub": "3 big gulps",
+    "weight": 1,
+    "match": "bob ross",
+    "desc": "No mistakes here, just happy little accidents! It's the Bob Ross Positive Energy Drink, a lightly carbonated can of calm, joyful caffeine. Three big gulps and paint yourself a second wind.",
+    "since": "1.90.2"
+   },
+   {
+    "label": "Dirty Mountain Dew cream soda",
+    "sub": "3 big gulps",
+    "weight": 1,
+    "match": "mountain dew|dirty",
+    "desc": "Do the Dew, the dirty way! It's Dirty Mountain Dew, the citrus soda swirled with smooth cream soda flavor. Three big gulps of soda shop sweetness.",
+    "since": "1.90.2"
+   },
+   {
+    "label": "Coca-Cola float",
+    "sub": "3 big gulps",
+    "weight": 1,
+    "match": "coca|coke",
+    "desc": "A special import from across the Pacific: a limited-edition Coca-Cola with a creamy ice cream float twist! The world's most famous cola, dressed up like dessert. Three big gulps.",
+    "since": "1.90.2"
+   },
+   {
+    "label": "Rose peach wafer sticks",
+    "sub": "1 stick",
+    "weight": 1,
+    "match": "rose|peach",
+    "desc": "Delicate, pink and perfumed: rose peach wafer sticks! Light, crispy rolls filled with sweet cream that tastes like a peach orchard next to a rose garden. One fancy stick.",
+    "since": "1.90.2"
+   },
+   {
+    "label": "Thai banana bread bites",
+    "sub": "1 bite",
+    "weight": 1,
+    "match": "banana",
+    "desc": "Fresh from the bakery case: Thai banana bread with coconut! Sweet, soft banana bread made with coconut sugar and coconut milk. One bite of the nicest thing on the whole board.",
+    "since": "1.90.2"
    },
    {
     "label": "5 push-ups",
     "sub": "",
-    "weight": 1
+    "weight": 1,
+    "match": "push",
+    "desc": "Get down and give us five! It's a set of five push-ups, the classic that builds your chest, shoulders and arms. No equipment needed, just you and the floor."
    },
    {
     "label": "20 sit-ups",
     "sub": "",
-    "weight": 1
+    "weight": 1,
+    "match": "sit-?ups",
+    "desc": "Time to feel the burn: twenty sit-ups! A full set for the core, done right here on the floor while chat counts along."
    },
    {
     "label": "20 squats",
     "sub": "",
-    "weight": 1
+    "weight": 1,
+    "match": "squat",
+    "desc": "Leg day comes early: twenty squats! Down and up, twenty times, for stronger legs and a chair that feels a whole lot better afterward."
    },
    {
     "label": "30 jumping jacks",
     "sub": "",
-    "weight": 1
+    "weight": 1,
+    "match": "jumping",
+    "desc": "Up on your feet for thirty jumping jacks! The gym class favorite that gets the heart pumping and the camera shaking."
    },
    {
     "label": "45-second plank",
     "sub": "",
-    "weight": 1
+    "weight": 1,
+    "match": "plank",
+    "desc": "Hold it right there: a 45-second plank! Elbows down, back straight, and the longest 45 seconds of the night."
    },
    {
     "label": "1-minute wall sit",
     "sub": "",
-    "weight": 1
+    "weight": 1,
+    "match": "wall",
+    "desc": "Pull up a chair that isn't there: the one-minute wall sit! Back against the wall, knees bent, and sixty seconds of shaky legs."
    },
    {
     "label": "10 burpees",
     "sub": "",
-    "weight": 1
+    "weight": 1,
+    "match": "burpee",
+    "desc": "The one everybody dreads: ten burpees! Down to the floor, back up, and jump. Ten times, and yes, they all count."
    },
    {
     "label": "MERCY",
     "sub": "nothing happens",
     "weight": 1,
-    "restAfterWin": true
+    "restAfterWin": true,
+    "match": "mercy",
+    "desc": "The best prize on the board: MERCY! Absolutely nothing happens. No snack, no workout, just a moment of peace. Enjoy it, because it sits out the next battle."
    }
   ]
  }

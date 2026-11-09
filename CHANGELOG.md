@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.90.2
+- 🎁 **Marathon battle: the rest of the snacks + prize descriptions** (🛠️ dev mode; Derek's photo of the haul): 7 things from the photo that weren't in the battle yet are added once (Dr Jolt, dark chocolate crickets, Bob Ross energy drink, Dirty Mountain Dew cream soda, Coca-Cola float, rose peach wafer sticks, Thai banana bread bites). Things you took out stay out.
+  - 🎙️ Every thing now has a short game-show style **prize description**. When it wins, it shows on the 🏆 Last winner card of the Marathon tab so you can read it out. Change one with the 🎙️ button in the 🏃 Marathon pool (yours are never overwritten).
+  - Test: 🧪 Test → 🏃 Test marathon battle → 🎙️ Prize descriptions (lists them all).
+
 ## 1.90.1
 - 🎬🟢 **Clips work on Kick too** (🛠️ dev mode, Derek: "make sure the clip shortcut works on both Kick and Twitch"): the 🎬 Clip buttons, **Ctrl+Alt+C**, the fullscreen dot and `!clip` now follow the platform switch.
   - On **Twitch** nothing changes: a Twitch clip of the last minute, with its link.

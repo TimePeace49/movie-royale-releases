@@ -4571,7 +4571,7 @@ const maraList = () => { const id = paid.cfg().listId; return id ? getList(id) :
 function maraBattleMake() {
   const b = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'defaults', 'marathon-battle.json'), 'utf8')).battle;
   const l = { id: uid(), name: String(b.name).slice(0, 60), type: b.type || 'text', entries: [], joinOpen: false, screenTitle: String(b.screenTitle || '').slice(0, 60), bestOf: 1, madeBy: 'marathon' };
-  for (const e of b.entries || []) l.entries.push({ id: uid(), label: String(e.label).slice(0, 120), sub: String(e.sub || '').slice(0, 40), weight: Math.max(0.1, Number(e.weight) || 1), status: 'active', addedAt: Date.now(), ...(e.restAfterWin ? { restAfterWin: true } : {}) });
+  for (const e of b.entries || []) l.entries.push({ id: uid(), label: String(e.label).slice(0, 120), sub: String(e.sub || '').slice(0, 40), weight: Math.max(0.1, Number(e.weight) || 1), status: 'active', addedAt: Date.now(), ...(e.restAfterWin ? { restAfterWin: true } : {}), ...(e.desc ? { desc: String(e.desc).slice(0, 600) } : {}) });
   db.lists.push(l); return l;
 }
 function maraBattleOnce() {
@@ -4627,6 +4627,30 @@ function maraMercyOnce() {
   save();
 }
 setTimeout(maraMercyOnce, 1300);
+// 🎁 (1.90.2, Derek: "make sure all these items are on the battle, also have a small 1 paragraph description… think Price is Right") once:
+// the marathon battle gets the snacks from his photo that were missing, and every thing gets its prize description (only where there is none yet)
+function maraPrizes(l, dry) {
+  const b = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'defaults', 'marathon-battle.json'), 'utf8')).battle, out = { added: [], described: [] };
+  for (const d of b.entries || []) {
+    let re; try { re = new RegExp(d.match || '^$', 'i'); } catch { continue; }
+    const e = l.entries.find(x => x.label === d.label) || l.entries.find(x => re.test(x.label));
+    if (e) { if (d.desc && !e.desc) { out.described.push(e.label); if (!dry) e.desc = d.desc; } continue; }
+    if (!d.since) continue; /* only the new snacks are added: things you took out stay out */
+    out.added.push(d.label);
+    if (!dry) l.entries.push({ id: uid(), label: d.label, sub: String(d.sub || ''), weight: 1, status: 'active', addedAt: Date.now(), ...(d.desc ? { desc: d.desc } : {}) });
+  }
+  return out;
+}
+function maraPrizesOnce() {
+  if (db.settings.maraPrizes1) return; db.settings.maraPrizes1 = true;
+  for (const l of db.lists || []) {
+    if (l.madeBy !== 'marathon' && !/marathon battle/i.test(l.name)) continue;
+    const r = maraPrizes(l); if (r.added.length || r.described.length) act('battle', `🎁 “${l.name}”: ${r.added.length ? `added ${r.added.join(', ')}` : 'nothing new to add'} · ${r.described.length} things got a prize description`, { icon: '🎁', kind: 'edit', list: l.name });
+  }
+  save();
+}
+setTimeout(maraPrizesOnce, 1400);
+app.get('/api/test/mara-prizes', (req, res) => { const l = maraList(); if (!l) return res.status(400).json({ error: 'There is no marathon battle yet (dev mode makes it).' }); res.json({ name: l.name, things: l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, label: e.label, sub: e.sub || '', desc: e.desc || '' })), would: maraPrizes(l, true) }); });
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
 function scareAllOnce() {
   if (db.settings.scareAllScreens) return; db.settings.scareAllScreens = true;
@@ -4671,6 +4695,7 @@ app.post('/api/mara/entry', wTry(b => { // 🏋️ thing or workout + ⏱️ tim
   if ('mSecs' in b) { if (b.mSecs === '' || b.mSecs == null) delete e.mSecs; else e.mSecs = Math.max(0, Math.min(7200, Math.round(Number(b.mSecs) || 0))); }
   if ('rest' in b) { if (b.rest) e.restAfterWin = true; else { delete e.restAfterWin; delete e.restNext; } } // 😴 sits out the battle after it wins
   if ('restNow' in b) { if (b.restNow) e.restNext = true; else delete e.restNext; }
+  if ('desc' in b) { const t = String(b.desc || '').trim().slice(0, 600); if (t) e.desc = t; else delete e.desc; } /* 🎁 the prize description (shown on the winner card) */
   save(); refreshPreview(); pushState(); return { kind: marathon.kindOf(e), secs: marathon.secsOf(e), rest: !!e.restAfterWin, restNext: !!e.restNext };
 }));
 // 🧪 🍀 a luck pick goes on only at ▶ Run (pretend battle, everything put back)
