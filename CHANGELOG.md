@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.89.0
+- 🤖 **Chat bot, part 1** (🛠️ dev mode only; Derek: "make this app replace Streamlabs bot… adding commands, song request, sound alerts… allow imports for easy transfer"): a new **🤖 Chat bot** tab.
+  - 💬 **Your own commands:** a name people type and what the bot answers, who can use it (everyone / followers / subs / VIPs / mods / only you), a wait between uses and per person, other names for it, on / off, and a count of how often it was used. Mods can add them from chat: `!addcom !name the answer`, `!editcom`, `!delcom` (or `!command add / edit / remove`).
+  - 🔤 **Special words** in answers: `$user`, `$target`, `$arg1`…, `$msg`, `$count`, `$randnum(1,100)`, `$randusr`, `$uptime`, `$channel`, `$date`, `$time`. Streamlabs-style words (`$username`, `$targetname`, `{user}`, `{touser}`, `{1}`) work too, so imported commands keep working.
+  - ⏰ **Timers:** messages every so many minutes, only while live (a switch) and only after chat has moved a few lines.
+  - 📝 **Quotes:** `!quote`, `!quote 12`, `!quote word`; mods `!addquote` / `!delquote`.
+  - 📥 **Import / export:** pick a file from your old bot (Streamlabs Chatbot style files, a spreadsheet saved as CSV, plain lines) or paste the text, look at what was found, then add it. ⬇️ Save mine as a file for a backup.
+  - Still to come in the next parts: song requests, sound commands, points and chat games, and chat filters.
+  - Test: 🧪 Test → 🤖 Chat bot.
+
 ## 1.88.3
 - 🙋 **Pick who can !clip** (Derek: "add checkboxes for allowing who can clip: streamer, mods, VIPs, subs, following, none"): Settings → 💜 Twitch → 🎬 Clips now has boxes for who may type !clip: 🌍 Everyone (how it was), or any mix of 🎥 Streamer, 🗡️ Mods, 💎 VIPs, ⭐ Subs and 💜 Followers. 🚫 None switches chat clipping off. Someone who isn't allowed gets a short answer saying who it's for (at most once a minute). Your own 🎬 Clip button and Ctrl+Alt+C always work. Test: 🧪 Test → 🎬 Clips → 🙋 Who can !clip?
 

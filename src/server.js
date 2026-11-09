@@ -41,6 +41,7 @@ import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
 import * as spamban from './spamban.js';
+import * as chatbot from './chatbot.js';
 import * as deck from './deck.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
@@ -1108,6 +1109,7 @@ const twitchHandlers = {
     wheel.wheelChat(m); // 🎡 !respin / !spins
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
     if (clipChatCmd(m)) return; // 🎬 !clip: anyone can clip the last minute
+    if (chatbot.onChat(m)) return; // 🤖 your own chat commands, quotes (dev mode)
     if (skipChat(m)) return; // ⏭️ !skip <movie>: sits out the next battle
     if (maraGuessChat(m)) return; // 🎯 a number while chat guesses the marathon battle's winner
     if (marathon.chat(m)) return; // 🏃 map 3 / luck 12 from someone with a paid battle waiting
@@ -4816,6 +4818,35 @@ app.post('/api/spam/unban', wTry(async b => {
   spamban.forget(k); act('chat', 'was unbanned (it wasn\'t a spam bot after all)', { icon: '🛡️', who: r?.name || k, kind: 'spam' }); pushState(); return { ok: true };
 }));
 // 🧪 is this line a spam bot? (nothing is banned) + every sample line checked
+// ---------- 🤖 Chat bot (1.89.0, dev mode only): your own commands, timers, quotes + import ----------
+const BOT_RESERVED = ['!join', '!leave', '!mymovies', '!moviesroyal', '!respin', '!myspins', '!spins', '!call', '!id', '!clip', '!vote', '!enter', '!up', '!down', '!map', '!luck', '!command', '!commands', '!addcom', '!editcom', '!delcom', '!quote', '!addquote', '!delquote'];
+chatbot.setHooks({
+  say: t => twitch.say(t), canSay: () => twitch.canSay(), follows: m => twitch.followedAt(m.userId),
+  live: () => !!db.live || !!live.fakeLive, startedAt: () => db.stream?.startedAt || 0, channel: () => db.owner?.login || twitch.status.login || '',
+  chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => !!db.settings.betaUpdates,
+  reserved: () => [...new Set([...BOT_RESERVED, ...Object.entries(db.settings).filter(([k, v]) => /Command$/.test(k) && typeof v === 'string').map(([, v]) => v.trim().toLowerCase())])],
+  changed: () => broadcast({ type: 'chatbot' }, 'control')
+});
+setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot] timer', e.message); } }, 30000);
+const botDev = fn => wTry((b, req) => { if (!db.settings.betaUpdates) throw new Error('The chat bot is a 🛠️ dev mode feature for now'); return fn(b, req); });
+app.get('/api/chatbot', (req, res) => res.json(chatbot.info()));
+app.post('/api/chatbot/opts', botDev(b => chatbot.setOpts(b)));
+app.post('/api/chatbot/command', botDev(b => ({ command: chatbot.saveCommand(b) })));
+app.post('/api/chatbot/command/remove', botDev(b => ({ command: chatbot.removeCommand(b.id) })));
+app.post('/api/chatbot/timer', botDev(b => ({ timer: chatbot.saveTimer(b) })));
+app.post('/api/chatbot/timer/remove', botDev(b => ({ timer: chatbot.removeTimer(b.id) })));
+app.post('/api/chatbot/quote', botDev(b => ({ quote: b.n ? chatbot.editQuote(b.n, b.text) : chatbot.addQuote(b.text, b.by || 'you') })));
+app.post('/api/chatbot/quote/remove', botDev(b => ({ quote: chatbot.removeQuote(b.n) })));
+app.post('/api/chatbot/import', botDev(b => { const p = chatbot.parseImport(b.text, b.kind || 'auto', { cdMins: !!b.cdMins }); if (b.dry) return { found: p }; return { found: { note: p.note, commands: p.commands.length, timers: p.timers.length, quotes: p.quotes.length }, done: chatbot.applyImport(p, { replace: !!b.replace }) }; }));
+app.get('/api/chatbot/export', (req, res) => { res.setHeader('Content-Disposition', 'attachment; filename="movie-royal-chat-bot.json"'); res.json(chatbot.exportAll()); });
+app.post('/api/test/chatbot', wTry(b => ({ says: chatbot.preview(b.text, b.who || 'TestViewer', b.typed || '') }))); // 🧪 what the bot would answer (nothing is sent)
+app.post('/api/test/chatbot-import', wTry(() => { // 🧪 the importer on three sample files (nothing is saved)
+  const A = chatbot.parseImport(JSON.stringify([{ Command: '!discord', Permission: 'Everyone', Response: 'Join us: discord.gg/example $username', Cooldown: 1, UserCooldown: 2, Enabled: true, Count: 12 }, { Command: '!so', Permission: 'Moderator', Response: 'Go follow $targetname!', Cooldown: 0 }]), 'auto', { cdMins: true });
+  const B = chatbot.parseImport('name,message,userlevel,cooldown\n!lurk,"{user} is lurking, thanks!",everyone,30\n!rules,"Be kind, no spoilers",subscriber,60');
+  const C = chatbot.parseImport('1. I meant to do that\n2. That was the plan all along', 'quotes');
+  const ok = A.commands.length === 2 && A.commands[0].cd === 60 && A.commands[1].perm === 'mods' && B.commands.length === 2 && B.commands[1].perm === 'subs' && C.quotes.length === 2 && C.quotes[1].n === 2;
+  return { ok, files: [{ name: 'Streamlabs Chatbot style file', ...A }, { name: 'Spreadsheet (CSV)', ...B }, { name: 'Plain quote lines', ...C }] };
+}));
 app.post('/api/test/spam', wTry(b => {
   const samples = spamban.SAMPLES.map(([text, spam]) => { const w = spamban.why(text); return { text, spam, why: w, ok: !!w === spam }; });
   const t = String(b.text || ''); return { why: t ? spamban.why(t) : null, would: t ? spamban.check({ login: 'test', text: t, first: !!b.first, badges: {} }, !b.first) : null, samples, cfg: spamban.cfg() };

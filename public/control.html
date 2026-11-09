@@ -489,6 +489,14 @@
   .coWatch .cwBody { position: relative; overflow: hidden; background: #000; }
   .coWatch .cwIdle { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; background: rgba(0,0,0,.7); font-size: 12px; text-align: center; }
   body:not(.dev) .devOnly { display: none !important; }
+  .botTabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+  .botRow { display: flex; gap: 8px; align-items: center; padding: 7px 4px; border-top: 1px solid rgba(255,255,255,.08); min-width: 0; }
+  .botRow .bn { flex: 0 0 150px; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .botRow .bt { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted, #b9bdd0); }
+  .botRow .bm { flex: 0 0 auto; font-size: 12px; opacity: .75; white-space: nowrap; }
+  .botRow.off .bn, .botRow.off .bt { opacity: .45; }
+  .botRow button { padding: 3px 8px; }
+  #botDlg label { display: block; margin: 10px 0 3px; } #botDlg textarea { width: 100%; min-height: 90px; }
   #gcStage { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; max-height: calc(100vh - 290px); margin: 0 auto; }
   #gcStage:fullscreen { border-radius: 0; max-height: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
   #gcStage.gcHideCur { cursor: none; }
@@ -547,6 +555,7 @@
     <button data-v="mara" class="devOnly" title="🛠️ Dev mode: battles people paid for (subs, gifts, tips, bits)">🏃 Marathon</button>
     <button data-v="marapool" class="devOnly" title="🛠️ Dev mode: the things in the marathon battle">🏃 Marathon pool</button>
     <button data-v="capture" class="devOnly" title="🛠️ Dev mode: play your console through Movie Royal (your capture card's picture and sound)">🎮 Game capture</button>
+    <button data-v="bot" class="devOnly" title="🛠️ Dev mode: your own chat commands, timers and quotes (a Streamlabs bot replacement)">🤖 Chat bot</button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
@@ -746,6 +755,8 @@
   <div class="side" id="mSide"></div>
  </div>
 </section>
+<section class="view" id="v-bot"><div class="pane"><div class="card" id="botBody" style="max-width:1250px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
+<dialog id="botDlg" style="max-width:640px;width:92vw"><div id="botDlgBody"></div></dialog>
 <section class="view" id="v-capture">
   <div class="card" style="max-width:1500px;margin:0 auto">
     <div class="row" id="gcBar" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -1316,6 +1327,12 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="maraTest('gift5')">🎁 5 gift subs</button><button onclick="maraTest('map', 3)">💬 map 3</button><button onclick="maraTest('luck', 2)">💬 luck 2</button><button onclick="maraTest('site', 1)">🌐 Website: luck 1</button><button onclick="maraTest('luck', 3)">💬 luck 3</button><button onclick="maraTest('guess')">🎯 Guess #1</button><button onclick="maraTest('pop')">📣 Pop-up on stream</button><button onclick="maraTest('overlay')">🖥️ Open the overlay</button><button onclick="maraTest('maps')" title="Which maps the marathon battle can use, and which map the next battles would get">🗺️ Marathon maps</button><button class="ghost" onclick="setView('mara')">🏃 Marathon tab</button></div>
     <div id="maraTestOut" class="help" style="margin-top:8px"></div></div>
   </div>
+  <div class="card devOnly" id="botTestCard">
+    <h3>🤖 Chat bot</h3>
+    <p class="help">Your own chat commands, timers and quotes (the 🤖 Chat bot tab). These check it without touching your real chat.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
+    <div id="tBotOut"></div>
+  </div>
   <div class="card" id="clipTestCard">
     <h3>🎬 Clips</h3>
     <p class="help">The 🎬 Clip button makes a Twitch clip of the last minute of your stream (it only works while you're live). These pretend, so nothing is sent to Twitch.</p>
@@ -1641,7 +1658,7 @@ function kbClick(scope, re, why) { // press the visible button in that part of t
 }
 function kbFocus(scope, re) { const i = [...document.querySelectorAll(`${scope} input, ${scope} textarea`)].find(x => kbVis(x) && re.test(x.placeholder || '')); if (i) { i.focus(); i.select?.(); } else toast('⌨️ No box to type in here right now'); }
 const kbPower = i => { const b = [...document.querySelectorAll('#events button')].filter(kbVis)[i]; if (b) { b.click(); toast('⚡ ' + esc(b.textContent.trim())); } };
-const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings', mara: '🏃 Marathon', capture: '🎮 Game capture' };
+const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings', mara: '🏃 Marathon', capture: '🎮 Game capture', bot: '🤖 Chat bot' };
 const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typing?]
   ['help', 'any', '❓ Help mode on / off', 'Ctrl+H', () => helpMode(!hmOn()), true],
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
@@ -1754,7 +1771,7 @@ async function kbResetAll() { if (!confirm('Put every key bind back to how it ca
 function kbStart(id) { kbCatch = id; drawKeybinds(); }
 function drawKeybinds() {
   const box = $('kbBody'); if (!box) return;
-  const groups = Object.keys(TAB_NAMES).filter(t => (t !== 'mara' && t !== 'capture') || S?.settings?.betaUpdates).map(t => [t, KEYBINDS.filter(k => k[1] === t)]).filter(([, l]) => l.length); // (🏃 marathon keys: dev mode only)
+  const groups = Object.keys(TAB_NAMES).filter(t => (t !== 'mara' && t !== 'capture' && t !== 'bot') || S?.settings?.betaUpdates).map(t => [t, KEYBINDS.filter(k => k[1] === t)]).filter(([, l]) => l.length); // (🏃 marathon keys: dev mode only)
   const clash = (k) => { const key = kbKey(k[0]); return key && KEYBINDS.some(o => o[0] !== k[0] && kbKey(o[0]) === key && (o[1] === k[1] || o[1] === 'any' || k[1] === 'any')); };
   box.innerHTML = `<div class="row" style="align-items:center;gap:8px;margin-bottom:6px"><span class="help grow" style="margin:0">Click a key to change it, then press the new key (Esc = keep it, Backspace = turn it off). Changes save right away. Each key only works on its own tab, and never while you're typing in a box, so typing in chat or a name box is safe. Only the Ctrl / Alt ones work anywhere. If you clicked inside the game screen, click outside it first.</span><button class="ghost" onclick="kbResetAll()">↺ Put them all back</button></div>
     ${groups.map(([t, l]) => `<h4 style="margin:14px 0 6px">${TAB_NAMES[t]}${t === 'any' ? '' : ' tab'}</h4><div class="kbGrid">${l.map(k => { const key = kbKey(k[0]), def = k[3], wait = kbCatch === k[0];
@@ -2430,6 +2447,7 @@ function connect() {
     if (m.type === 'banScan') banScanShow(m.scan);
     if (m.type === 'toast') toast(esc(m.text), m.ms);
     if (m.type === 'maraTimer') mtShow(m);
+    if (m.type === 'chatbot') { if (view === 'bot') botLoad(); }
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
@@ -2469,6 +2487,7 @@ function setView(v) {
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
   gcTab(v === 'capture');
+  if (v === 'bot') botLoad();
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
@@ -3487,6 +3506,90 @@ document.addEventListener('fullscreenchange', () => { const st = $('gcStage'); i
 navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (view === 'capture') gcDevices(false); });
 function gcTest(fps) { setView('capture'); setTimeout(() => gcStart(fps), 300); }
 function gcQuietTest() { let q = null; try { q = $('game').contentWindow.__audioQuiet?.(); } catch {} const el = $('tGcOut'); if (el) el.innerHTML = `<p class="help" style="margin:8px 0 0">Battle sound inside Movie Royal right now: <b>${q === null || q === undefined ? 'the battle screen is not open yet (it opens with the ⚔️ Battle tab)' : q ? '🔇 quiet' : '🔊 on'}</b>. Open the 🎮 Game capture tab and it goes quiet; any other tab and it is back on.</p>`; }
+// ---------- 🤖 Chat bot tab (1.89.0, dev only): your own commands, timers, quotes + import ----------
+let BOT = null, botTab = 'commands', botImp = null;
+try { botTab = localStorage.botTab || 'commands'; } catch {}
+async function botLoad() { try { BOT = await api('/api/chatbot', null, 'GET'); } catch { return; } botDraw(); }
+function botGo(t) { botTab = t; try { localStorage.botTab = t; } catch {} botDraw(); }
+const botCd = c => [c.cd ? `⏳ ${c.cd}s` : '', c.ucd ? `👤 ${c.ucd}s` : ''].filter(Boolean).join(' · ');
+function botDraw() {
+  const el = $('botBody'); if (!el || !BOT || view !== 'bot') return;
+  if (document.activeElement && el.contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return; // (don't redraw under your typing)
+  const tabs = [['commands', `💬 Commands (${BOT.commands.length})`], ['timers', `⏰ Timers (${BOT.timers.length})`], ['quotes', `📝 Quotes (${BOT.quotes.length})`], ['import', '📥 Import / export']];
+  let body = '';
+  if (botTab === 'commands') body = `<p class="help">Your own chat commands: someone types the name, the bot answers. Mods can also add them from chat: <code>!addcom !name the answer</code>, <code>!editcom</code>, <code>!delcom</code>.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botCmdEdit()" title="Chat bot: make a new chat command">➕ New command</button><input id="botFind" placeholder="🔍 Find a command" oninput="botFilter(this.value)" title="Chat bot: find a command by its name or its answer" style="flex:1 1 180px;min-width:0"></div>
+    <div id="botList">${BOT.commands.length ? BOT.commands.map(c => `<div class="botRow ${c.on === false ? 'off' : ''}" data-f="${esc((c.name + ' ' + c.text + ' ' + (c.aliases || []).join(' ')).toLowerCase())}"><span class="bn" title="${esc([c.name, ...(c.aliases || [])].join(', '))}">${esc(c.name)}</span><span class="bt" title="${esc(c.text)}">${esc(c.text)}</span><span class="bm">${esc(BOT.perms[c.perm] || 'Everyone')}${botCd(c) ? ' · ' + botCd(c) : ''} · ${c.uses || 0}×</span><button onclick="botCmdOn('${c.id}',${c.on === false})" title="Chat bot: turn this command on or off">${c.on === false ? '▶ Off' : '✅ On'}</button><button onclick="botCmdEdit('${c.id}')" title="Chat bot: change this command">✏️</button><button onclick="botCmdDel('${c.id}')" title="Chat bot: delete this command">🗑</button></div>`).join('') : '<div class="empty">No commands yet. Make one, or bring yours over under 📥 Import / export.</div>'}</div>`;
+  else if (botTab === 'timers') body = `<p class="help">Messages the bot posts by itself every so many minutes${BOT.opts.timersLive ? ', only while you are live' : ''}, and only after chat has moved a few lines (so it never talks to an empty room).</p>
+    <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><button class="primary" onclick="botTimerEdit()" title="Chat bot: make a new timer message">➕ New timer</button><label class="ck" style="margin:0"><input type="checkbox" ${BOT.opts.timersLive ? 'checked' : ''} onchange="botOpt({timersLive:this.checked})" title="Chat bot: timers only post while you are live"> <span>Only while I'm live</span></label></div>
+    ${BOT.timers.length ? BOT.timers.map(t => `<div class="botRow ${t.on === false ? 'off' : ''}"><span class="bn" title="${esc(t.name)}">${esc(t.name)}</span><span class="bt" title="${esc(t.text)}">${esc(t.text)}</span><span class="bm">every ${t.mins} min · ${t.lines} chat lines</span><button onclick="botTimerOn('${t.id}',${t.on === false})" title="Chat bot: turn this timer on or off">${t.on === false ? '▶ Off' : '✅ On'}</button><button onclick="botTimerEdit('${t.id}')" title="Chat bot: change this timer">✏️</button><button onclick="botTimerDel('${t.id}')" title="Chat bot: delete this timer">🗑</button></div>`).join('') : '<div class="empty">No timers yet.</div>'}`;
+  else if (botTab === 'quotes') body = `<p class="help"><code>!quote</code> shows a random one, <code>!quote 12</code> that number, <code>!quote word</code> one with that word. Mods add them from chat with <code>!addquote the words</code> and remove with <code>!delquote 12</code>.</p>
+    <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><button class="primary" onclick="botQuoteEdit()" title="Chat bot: add a quote">➕ New quote</button><label class="ck" style="margin:0"><input type="checkbox" ${BOT.opts.quoteOn ? 'checked' : ''} onchange="botOpt({quoteOn:this.checked})" title="Chat bot: the !quote commands work in chat"> <span>!quote works in chat</span></label></div>
+    ${BOT.quotes.length ? BOT.quotes.map(q => `<div class="botRow"><span class="bn" style="flex-basis:60px">#${q.n}</span><span class="bt" title="${esc(q.text)}">“${esc(q.text)}”</span><span class="bm">${q.by ? esc(q.by) + ' · ' : ''}${q.at ? new Date(q.at).toLocaleDateString() : ''}</span><button onclick="botQuoteEdit(${q.n})" title="Chat bot: change this quote">✏️</button><button onclick="botQuoteDel(${q.n})" title="Chat bot: delete this quote">🗑</button></div>`).join('') : '<div class="empty">No quotes yet.</div>'}`;
+  else body = botImportHTML();
+  el.innerHTML = `<div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><h3 style="margin:0">🤖 Chat bot</h3><button class="${BOT.on ? 'primary' : 'ghost'}" onclick="botOpt({on:${!BOT.on}})" title="Chat bot: turn the whole chat bot on or off">${BOT.on ? '🤖 Chat bot: ON' : '🤖 Chat bot: OFF'}</button><span class="grow"></span><button class="ghost" onclick="botWords()" title="Chat bot: the special words you can put in an answer, like $user">🔤 Special words</button></div>
+    <div class="botTabs">${tabs.map(([k, t]) => `<button class="${botTab === k ? 'primary' : ''}" onclick="botGo('${k}')" title="Chat bot: show ${t.replace(/^\S+ /, '').replace(/ \(.*/, '').toLowerCase()}">${t}</button>`).join('')}</div>${body}`;
+}
+function botFilter(q) { q = String(q || '').toLowerCase().trim(); document.querySelectorAll('#botList .botRow').forEach(r => r.style.display = !q || r.dataset.f.includes(q) ? '' : 'none'); }
+async function botPost(url, body, msg) { try { const r = await api(url, body); if (msg) toast(msg); await botLoad(); return r; } catch { return null; } }
+const botOpt = o => botPost('/api/chatbot/opts', o, 'Saved');
+function botDlg(html) { $('botDlgBody').innerHTML = html; const d = $('botDlg'); if (!d.open) d.showModal(); }
+function botWords() { botDlg(`<h3 style="margin-top:0">🔤 Special words for answers</h3><p class="help">Put these in a command's answer or a timer; the bot swaps them for the real thing. Streamlabs-style words like <code>$username</code>, <code>$targetname</code>, <code>{user}</code>, <code>{touser}</code> and <code>{1}</code> work too, so imported commands keep working.</p><ul class="help" style="margin:0 0 0 18px">${BOT.words.map(([w, t]) => `<li><code>${esc(w)}</code>: ${esc(t)}</li>`).join('')}</ul><div class="row" style="margin-top:14px;justify-content:flex-end"><button onclick="$('botDlg').close()">Close</button></div>`); }
+function botCmdEdit(id) {
+  const c = (BOT.commands.find(x => x.id === id)) || { name: '', text: '', perm: 'all', cd: 5, ucd: 0, aliases: [] };
+  botDlg(`<h3 style="margin-top:0">${id ? '✏️ Change command' : '➕ New command'}</h3>
+    <label>Command (what people type)</label><input id="bcName" value="${esc(c.name)}" placeholder="!discord" title="Chat bot: the command's name, like !discord">
+    <label>The bot answers</label><textarea id="bcText" oninput="botPrev()" placeholder="Join our Discord: discord.gg/… $user" title="Chat bot: what the bot answers (special words like $user work)">${esc(c.text)}</textarea>
+    <p class="help" id="bcPrev" style="margin:4px 0 0"></p>
+    <div class="grid2"><div><label>Who can use it</label><select id="bcPerm" title="Chat bot: who may use this command">${Object.entries(BOT.perms).map(([k, t]) => `<option value="${k}" ${c.perm === k ? 'selected' : ''}>${t}${k === 'subs' ? ' (+ VIPs, mods)' : k === 'vips' ? ' (+ mods)' : k === 'followers' ? ' (+ subs, VIPs, mods)' : ''}</option>`).join('')}</select></div>
+      <div><label>Other names for it (optional)</label><input id="bcAli" value="${esc((c.aliases || []).join(' '))}" placeholder="!dc !disc" title="Chat bot: other names that do the same thing"></div>
+      <div><label>⏳ Wait between uses (seconds)</label><input type="number" id="bcCd" min="0" max="86400" value="${c.cd ?? 5}" title="Chat bot: seconds before anyone can use it again (mods skip the wait)"></div>
+      <div><label>👤 Wait per person (seconds)</label><input type="number" id="bcUcd" min="0" max="86400" value="${c.ucd ?? 0}" title="Chat bot: seconds before the same person can use it again"></div></div>
+    <div class="row" style="margin-top:14px;gap:8px;justify-content:flex-end"><button onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="botCmdSave('${id || ''}')" title="Chat bot: save this command">💾 Save</button></div>`);
+  botPrev();
+}
+let botPrevT = 0;
+function botPrev() { clearTimeout(botPrevT); botPrevT = setTimeout(async () => { const t = $('bcText')?.value || ''; if (!t.trim()) return void ($('bcPrev').textContent = ''); try { const r = await fetch('/api/test/chatbot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, who: 'TestViewer', typed: '@SomeFriend hello' }) }).then(x => x.json()); if ($('bcPrev')) $('bcPrev').textContent = '👀 For example: ' + (r.says || ''); } catch {} }, 250); }
+async function botCmdSave(id) { const r = await botPost('/api/chatbot/command', { id: id || undefined, name: $('bcName').value, text: $('bcText').value, perm: $('bcPerm').value, aliases: $('bcAli').value, cd: $('bcCd').value, ucd: $('bcUcd').value }, 'Saved'); if (r) $('botDlg').close(); }
+function botCmdOn(id, on) { const c = BOT.commands.find(x => x.id === id); if (c) botPost('/api/chatbot/command', { ...c, on }); }
+function botCmdDel(id) { const c = BOT.commands.find(x => x.id === id); if (c && confirm(`Delete ${c.name}? This can't be undone.`)) botPost('/api/chatbot/command/remove', { id }, '🗑 Deleted'); }
+function botTimerEdit(id) {
+  const t = BOT.timers.find(x => x.id === id) || { name: '', text: '', mins: 15, lines: 5 };
+  botDlg(`<h3 style="margin-top:0">${id ? '✏️ Change timer' : '➕ New timer'}</h3>
+    <label>Name (just for you)</label><input id="btName" value="${esc(t.name)}" placeholder="Follow reminder" title="Chat bot: a name for this timer, only you see it">
+    <label>The bot posts</label><textarea id="btText" placeholder="Enjoying the stream? Hit follow!" title="Chat bot: the message the bot posts">${esc(t.text)}</textarea>
+    <div class="grid2"><div><label>Every (minutes)</label><input type="number" id="btMins" min="1" max="1440" value="${t.mins}" title="Chat bot: how many minutes between posts"></div><div><label>After at least (chat lines)</label><input type="number" id="btLines" min="0" max="1000" value="${t.lines}" title="Chat bot: how many chat messages must come in before it posts again"></div></div>
+    <div class="row" style="margin-top:14px;gap:8px;justify-content:flex-end"><button onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="botTimerSave('${id || ''}')" title="Chat bot: save this timer">💾 Save</button></div>`);
+}
+async function botTimerSave(id) { const r = await botPost('/api/chatbot/timer', { id: id || undefined, name: $('btName').value, text: $('btText').value, mins: $('btMins').value, lines: $('btLines').value }, 'Saved'); if (r) $('botDlg').close(); }
+function botTimerOn(id, on) { const t = BOT.timers.find(x => x.id === id); if (t) botPost('/api/chatbot/timer', { ...t, on }); }
+function botTimerDel(id) { if (confirm("Delete this timer? This can't be undone.")) botPost('/api/chatbot/timer/remove', { id }, '🗑 Deleted'); }
+function botQuoteEdit(n) {
+  const q = BOT.quotes.find(x => x.n === n) || { text: '' };
+  botDlg(`<h3 style="margin-top:0">${n ? '✏️ Change quote #' + n : '➕ New quote'}</h3><label>The quote</label><textarea id="bqText" placeholder="I meant to do that" title="Chat bot: the words of the quote">${esc(q.text)}</textarea>
+    <div class="row" style="margin-top:14px;gap:8px;justify-content:flex-end"><button onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="botQuoteSave(${n || 0})" title="Chat bot: save this quote">💾 Save</button></div>`);
+}
+async function botQuoteSave(n) { const r = await botPost('/api/chatbot/quote', { n: n || undefined, text: $('bqText').value }, 'Saved'); if (r) $('botDlg').close(); }
+function botQuoteDel(n) { if (confirm(`Delete quote #${n}? This can't be undone.`)) botPost('/api/chatbot/quote/remove', { n }, '🗑 Deleted'); }
+// 📥 import: pick a file or paste → 👀 a look at what was found → ✅ add it
+function botImportHTML() {
+  const F = botImp?.found;
+  return `<p class="help">Bring your commands, timers and quotes over from another bot. Pick the file it exported (Streamlabs Chatbot, a spreadsheet saved as CSV, or Movie Royal's own file) or paste the text. Plain lines work too: <code>!discord Join us at …</code>, one per line. You get a look at what was found before anything is added.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div><label>📂 File</label><input type="file" id="biFile" accept=".json,.csv,.txt,.abcomg,.tsv,*/*" onchange="botImpFile(this.files[0])" title="Chat bot: pick the file your old bot exported"></div>
+      <div><label>What is in it</label><select id="biKind" title="Chat bot: what the file or text holds (Work it out is usually right)" style="width:auto"><option value="auto">🔎 Work it out</option><option value="commands">💬 Commands</option><option value="timers">⏰ Timers</option><option value="quotes">📝 Quotes</option></select></div>
+      <label class="ck" style="margin:0 0 8px"><input type="checkbox" id="biMins" title="Chat bot: tick this when the waits in the file are in minutes (Streamlabs Chatbot does that)"> <span>Its waits are in minutes</span></label>
+      <label class="ck" style="margin:0 0 8px"><input type="checkbox" id="biRep" title="Chat bot: when a command with the same name is already here, replace it with the one from the file"> <span>Replace ones I already have</span></label>
+    </div>
+    <label style="margin-top:8px">…or paste it here</label><textarea id="biText" style="width:100%;min-height:110px" placeholder="!discord Join us: discord.gg/…&#10;!lurk $user is lurking" title="Chat bot: paste the commands, timers or quotes here"></textarea>
+    <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button class="primary" onclick="botImpLook()" title="Chat bot: read the file or text and show what was found (nothing is added yet)">👀 Look at what's in it</button>${F ? `<button class="primary" onclick="botImpGo()" title="Chat bot: add what was found to your chat bot">✅ Add ${F.commands.length} command${F.commands.length === 1 ? '' : 's'}, ${F.timers.length} timer${F.timers.length === 1 ? '' : 's'}, ${F.quotes.length} quote${F.quotes.length === 1 ? '' : 's'}</button>` : ''}<span class="grow"></span><button class="ghost" onclick="location.href='/api/chatbot/export'" title="Chat bot: save all your commands, timers and quotes as a file (a backup, or to give a friend)">⬇️ Save mine as a file</button></div>
+    ${F ? `<p class="help" style="margin:10px 0 4px">${esc(F.note)} Found:</p>${[...F.commands.slice(0, 40).map(c => `<div class="botRow"><span class="bn">${esc(c.name)}</span><span class="bt" title="${esc(c.text)}">${esc(c.text)}</span><span class="bm">${esc(BOT.perms[c.perm] || '')} · ⏳ ${c.cd}s</span></div>`), ...F.timers.slice(0, 20).map(t => `<div class="botRow"><span class="bn">⏰ ${t.mins} min</span><span class="bt" title="${esc(t.text)}">${esc(t.text)}</span></div>`), ...F.quotes.slice(0, 20).map(q => `<div class="botRow"><span class="bn">📝 quote</span><span class="bt" title="${esc(q.text)}">“${esc(q.text)}”</span></div>`)].join('') || '<div class="empty">Nothing it could use. Try another “What is in it”, or send the file to Claude.</div>'}${F.commands.length > 40 || F.timers.length > 20 || F.quotes.length > 20 ? '<p class="help">…and more (all of it gets added).</p>' : ''}` : ''}`;
+}
+async function botImpFile(f) { if (!f) return; const t = await f.text(); $('biText').value = t; if (/\.abcomg$/i.test(f.name)) $('biMins').checked = true; botImpLook(); }
+async function botImpLook() { const text = $('biText').value, keep = { kind: $('biKind').value, mins: $('biMins').checked, rep: $('biRep').checked }; try { const r = await api('/api/chatbot/import', { text, kind: keep.kind, cdMins: keep.mins, dry: true }); botImp = { text, found: r.found }; } catch { return; } document.activeElement?.blur?.(); botDraw(); $('biText').value = text; $('biKind').value = keep.kind; $('biMins').checked = keep.mins; $('biRep').checked = keep.rep; }
+async function botImpGo() { if (!botImp) return; const r = await botPost('/api/chatbot/import', { text: botImp.text, kind: $('biKind').value, cdMins: $('biMins').checked, replace: $('biRep').checked }); if (!r) return; const d = r.done; botImp = null; toast(`📥 Added ${d.commands} command${d.commands === 1 ? '' : 's'}${d.replaced ? ` (${d.replaced} replaced)` : ''}, ${d.timers} timer${d.timers === 1 ? '' : 's'}, ${d.quotes} quote${d.quotes === 1 ? '' : 's'}${d.skipped.length ? `. Skipped: ${d.skipped.slice(0, 6).map(esc).join(', ')}${d.skipped.length > 6 ? '…' : ''}` : ''}`, 9000); botLoad(); }
+async function botImpTest() { let r; try { r = await api('/api/test/chatbot-import', {}); } catch { return; } const el = $('tBotOut'); if (el) el.innerHTML = `<p class="help" style="margin:8px 0 4px">${r.ok ? '✅ All three sample files were read right' : '❌ Something was read wrong'}</p><ul class="help" style="margin:0 0 0 18px">${r.files.map(f => `<li><b>${esc(f.name)}</b>: ${f.commands.length} command${f.commands.length === 1 ? '' : 's'}, ${f.quotes.length} quote${f.quotes.length === 1 ? '' : 's'}${f.commands[0] ? ` (like ${esc(f.commands[0].name)} for ${esc(f.commands[0].perm)}, wait ${f.commands[0].cd}s)` : ''}</li>`).join('')}</ul>`; }
+async function botChatTest() { try { pchat(true); } catch {} try { await api('/api/chatbot/command', { name: '!hello', text: 'Hi $user! You are visitor number $count.', cd: 0 }); } catch {} try { await api('/api/test/chat', { name: 'bot_tester', text: '!hello' }); } catch {} }
 // ---------- 🎬 Clips (1.88.0): one press = a Twitch clip of the last minute ----------
 let clipBusy = false, clipDotT = 0;
 function clipDot(state, msg) { const d = $('gcClipDot'), m = $('gcClipMsg'); if (!d) return; d.classList.remove('wait', 'ok', 'bad'); if (state) d.classList.add(state); clearTimeout(clipDotT); if (m) { m.textContent = msg || ''; m.classList.toggle('show', !!msg); } if (state && state !== 'wait') clipDotT = setTimeout(() => { d.classList.remove('ok', 'bad'); m?.classList.remove('show'); }, 4000); }
@@ -3794,7 +3897,7 @@ function renderView() {
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
-  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool' || view === 'capture')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
+  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool' || view === 'capture' || view === 'bot')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
   if (view === 'pool') renderPool();
   else if (view === 'cards') renderCards();
   else if (view === 'cardpool') renderCardPool();
