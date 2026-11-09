@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.88.2
+- 🙋 **!clip in chat** (Derek: "make it so !clip does the same thing and anyone in chat can do it"): anyone can type **!clip** to clip the last minute. The clip is named "Clipped by" and their name, the bot answers them with the link, and you get a pop-up in Movie Royal. At most one clip every 30 seconds. Switch it off in Settings → 💜 Twitch → 🎬 Clips. (Twitch still lists you as the maker of the clip, because your Movie Royal makes it: an app can't make a clip in a viewer's name.) Test: 🧪 Test → 🎬 Clips → 💬 Pretend viewer types !clip.
+- 🎬 **Clip key is Ctrl+Alt+C** (Derek: "on any battle tab or fullscreen Ctrl+Alt+C does the clip command"): the clip key changed from Alt+C to **Ctrl+Alt+C**. It works on every tab, and in fullscreen too (the battle, card battle and game capture screens), also right after you clicked on the battle. Change it in Settings → ⌨️ Key binds if you like.
+
 ## 1.88.1
 - 🎬 **Clips are 1 minute now** (Derek: "make clip 1 min"): the 🎬 Clip button, Alt+C and the fullscreen dot now clip the last 60 seconds instead of 30. That's the longest Twitch lets an app make; you can still trim it shorter with ✂️ Trim / name it.
 

@@ -3,6 +3,12 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.88.2: What's new
+Everything since 1.88.1.
+
+- 🙋 **!clip in chat:** anyone in your chat can type **!clip** to clip the last minute. The clip is named "Clipped by" and their name, and the bot answers them with the link (at most one clip every 30 seconds). Switch it off in Settings → 💜 Twitch → 🎬 Clips.
+- 🎬 **The clip key is Ctrl+Alt+C now** (it was Alt+C). It works on every tab and in fullscreen. Change it in Settings → ⌨️ Key binds.
+
 ## v1.88.1: What's new
 Everything since 1.88.0.
 

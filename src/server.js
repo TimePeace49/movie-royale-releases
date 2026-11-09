@@ -1107,6 +1107,7 @@ const twitchHandlers = {
     if (hatChat(m)) return; // 🎩 picking a hat
     wheel.wheelChat(m); // 🎡 !respin / !spins
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
+    if (clipChatCmd(m)) return; // 🎬 !clip: anyone can clip the last minute
     if (skipChat(m)) return; // ⏭️ !skip <movie>: sits out the next battle
     if (maraGuessChat(m)) return; // 🎯 a number while chat guesses the marathon battle's winner
     if (marathon.chat(m)) return; // 🏃 map 3 / luck 12 from someone with a paid battle waiting
@@ -1540,15 +1541,29 @@ async function announceNow() {
 }
 // 🎬 Clips (1.88.0, Derek: "a clipping feature in all versions… a button on every battle and wheel tab"): one press = a Twitch clip of the last minute
 let clipAt = 0;
-async function makeClip(via, test) {
+async function makeClip(via, test, by) {
   if (Date.now() - clipAt < 8000) throw new Error('A clip was just made. Give it a few seconds.');
   let c;
   if (test) { if (test === 'fail') throw new Error("Twitch only makes clips while you're live"); c = { id: 'PretendClip' + Date.now().toString(36), url: 'https://clips.twitch.tv/PretendClip', edit: '' }; }
-  else { clipAt = Date.now(); try { c = await twitch.createClip(); } catch (e) { clipAt = 0; throw e; } }
-  const rec = { ...c, at: Date.now(), via: String(via || '').slice(0, 20), ...(test ? { test: true } : {}) };
-  if (!test) { db.clips = [rec, ...(db.clips || [])].slice(0, 100); save(); if (db.settings.clipChat !== false) twitch.say(`🎬 New clip: ${rec.url}`).catch(() => {}); pushState(); }
-  act('stream', `${test ? 'Pretend clip' : 'Clip'} made: ${rec.url}`, { icon: '🎬', kind: 'clip', test: !!test });
+  else { clipAt = Date.now(); try { c = await twitch.createClip(by ? `Clipped by ${by}` : ''); } catch (e) { clipAt = 0; throw e; } }
+  const rec = { ...c, at: Date.now(), via: String(via || '').slice(0, 20), ...(by ? { by } : {}), ...(test ? { test: true } : {}) };
+  if (!test) { db.clips = [rec, ...(db.clips || [])].slice(0, 100); save(); if (!by && db.settings.clipChat !== false) twitch.say(`🎬 New clip: ${rec.url}`).catch(() => {}); pushState(); }
+  act('stream', `${by ? 'clipped the last minute with !clip' : (test ? 'Pretend clip' : 'Clip') + ' made'}: ${rec.url}`, { icon: '🎬', kind: 'clip', test: !!test, ...(by ? { who: by } : {}) });
   return rec;
+}
+// 💬 !clip (1.88.2, Derek: "anyone in chat can do it"): the same clip, named "Clipped by <them>" (Twitch still lists the streamer as the maker: the app makes it)
+let clipCmdAt = 0, clipNoAt = 0;
+function clipChatCmd(m) {
+  const cmd = String(db.settings.clipCommand || '!clip').trim().toLowerCase(); if (!cmd || db.settings.clipCmdOn === false) return false;
+  if (String(m.text || '').trim().toLowerCase().split(/\s+/)[0] !== cmd) return false;
+  const name = m.name || m.login || 'someone', now = Date.now();
+  if (now - clipCmdAt < 30000) { if (now - clipNoAt > 20000 && twitch.canSay()) { clipNoAt = now; twitch.say(`🎬 @${name} a clip was just made. Try again in a few seconds.`).catch(() => {}); } return true; }
+  clipCmdAt = now;
+  makeClip('chat', m.pretend ? 'ok' : false, name).then(c => {
+    twitch.say(`🎬 @${name} clipped the last minute: ${c.url}`).catch(() => {});
+    broadcast({ type: 'toast', text: `🎬 ${hEsc(name)} made a clip with !clip${c.test ? ' (pretend)' : `: <a href="${hEsc(c.url)}" target="_blank" rel="noopener">▶ Watch it</a>`}` }, 'control');
+  }).catch(e => { clipCmdAt = 0; if (now - clipNoAt > 20000 && twitch.canSay()) { clipNoAt = Date.now(); twitch.say(`🎬 @${name} no clip: ${/live/i.test(e.message) ? 'clips only work while the stream is live' : /sign in/i.test(e.message) ? 'the streamer needs to sign in with Twitch again first' : 'Twitch could not make it right now'}.`).catch(() => {}); } });
+  return true;
 }
 app.post('/api/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip(req.body?.via) }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 app.post('/api/test/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip('test', req.body?.fail ? 'fail' : 'ok') }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
