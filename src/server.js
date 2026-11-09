@@ -1537,6 +1537,8 @@ async function announceNow() {
   try { await twitch.say(announceText(kind)); a.error = null; } catch (e) { a.error = e.message; console.error('[twitch] hourly chat message:', e.message); }
   pushState();
 }
+// 🎮 Game capture tab (1.87.0, dev only): its sound keeps playing when Movie Royal isn't the window in front
+app.post('/api/gamecap/sound', (req, res) => { const on = !!req.body?.on && !!db.settings.betaUpdates; let kept = null; try { kept = globalThis.__desktop?.keepSound?.(on) ?? null; } catch {} res.json({ ok: true, on, kept }); });
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
   const v = String(req.body?.view || ''); if (v !== live.view) helpCd = 0; live.view = v; // (a new tab = !moviesroyal can list its commands right away)
   if (v === 'mara') { // 🏃 Marathon tab = the marathon battle on stream (when nothing is running)

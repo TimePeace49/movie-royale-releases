@@ -489,6 +489,14 @@
   .coWatch .cwBody { position: relative; overflow: hidden; background: #000; }
   .coWatch .cwIdle { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; background: rgba(0,0,0,.7); font-size: 12px; text-align: center; }
   body:not(.dev) .devOnly { display: none !important; }
+  #gcStage { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; max-height: calc(100vh - 290px); margin: 0 auto; }
+  #gcStage:fullscreen { border-radius: 0; max-height: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
+  #gcStage.gcHideCur { cursor: none; }
+  #gcVideo { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+  #gcFps { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.6); color: #7dff8a; font: 800 22px/1.15 Inter, sans-serif; text-align: right; pointer-events: none; display: none; text-shadow: 0 1px 2px #000; }
+  #gcFps small { display: block; font-size: 12px; font-weight: 700; color: #cfd3dc; }
+  #gcStage:fullscreen #gcFps { font-size: 30px; top: 16px; right: 18px; } #gcStage:fullscreen #gcFps small { font-size: 15px; }
+  #gcIdle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #9aa0b4; font-weight: 700; pointer-events: none; }
   .mQueue { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px 12px; }
   .mRow { display: grid; grid-template-columns: 34px minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 6px 4px; border-top: 1px solid rgba(255,255,255,.07); }
   .mRow:first-of-type { border-top: 0; }
@@ -532,6 +540,7 @@
     <button data-v="cardpool">📦 Card pool</button>
     <button data-v="mara" class="devOnly" title="🛠️ Dev mode: battles people paid for (subs, gifts, tips, bits)">🏃 Marathon</button>
     <button data-v="marapool" class="devOnly" title="🛠️ Dev mode: the things in the marathon battle">🏃 Marathon pool</button>
+    <button data-v="capture" class="devOnly" title="🛠️ Dev mode: play your console through Movie Royal (your capture card's picture and sound)">🎮 Game capture</button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
@@ -730,6 +739,23 @@
   <div class="wsplit" title="Drag to make the battle screen or the side boxes bigger (double-click to reset)" onpointerdown="bSplit(event)" ondblclick="bSplitSet(330)"></div>
   <div class="side" id="mSide"></div>
  </div>
+</section>
+<section class="view" id="v-capture">
+  <div class="card" style="max-width:1500px;margin:0 auto">
+    <div class="row" id="gcBar" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div style="min-width:0;flex:1 1 220px"><label>📺 Capture card (picture)</label><select id="gcVid" onchange="gcSet({vid:this.value})" title="Game capture: which capture card or camera to show"></select></div>
+      <div style="min-width:0;flex:1 1 220px"><label>🔊 Game sound</label><select id="gcAud" onchange="gcSet({aud:this.value})" title="Game capture: where the game's sound comes from (usually the same capture card)"></select></div>
+      <div><label>🖼️ Picture</label><select id="gcRes" onchange="gcSet({res:this.value})" title="Game capture: the picture size and speed to ask the capture card for" style="width:auto"><option value="1080p60">1080p 60</option><option value="1440p60">1440p 60</option><option value="2160p60">4K 60</option><option value="1080p120">1080p 120</option><option value="720p60">720p 60</option></select></div>
+      <div><label>🔈 Volume <span id="gcVolN"></span></label><input type="range" id="gcVol" min="0" max="100" step="1" oninput="gcSet({vol:Number(this.value)})" title="Game capture: how loud the game's sound is" style="width:130px"></div>
+      <button class="primary" id="gcGo" onclick="gcToggle()" title="Game capture: start or stop showing the capture card">▶ Start</button>
+      <button onclick="gcFull()" title="Game capture: fill the whole screen with the game (Esc or F leaves)">⛶ Fullscreen</button>
+      <button class="ghost" onclick="gcDevices(true)" title="Game capture: look again for capture cards (after you plugged one in)">🔄 Find my capture card</button>
+      <label style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><input type="checkbox" id="gcFpsOn" onchange="gcSet({fps:this.checked})" title="Game capture: show the game's FPS in the upper right corner"> 📈 Show FPS</label>
+    </div>
+    <p class="help" id="gcNote" style="margin:6px 0 8px"></p>
+    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFps"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
+    <p class="help" style="margin:8px 0 0">While you're on this tab the battles inside Movie Royal make no sound (your stream still hears them from OBS). Double-click the picture or press <b>F</b> for fullscreen. The big FPS number is the game's own speed (how many different pictures a second); the small one is what the capture card sends. A still picture (a menu, a pause screen) reads low.</p>
+  </div>
 </section>
 <section class="view" id="v-marapool"><div class="card" id="mpBody" style="max-width:1250px;margin:0 auto"></div></section>
 
@@ -1280,6 +1306,12 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="maraTest('gift5')">🎁 5 gift subs</button><button onclick="maraTest('map', 3)">💬 map 3</button><button onclick="maraTest('luck', 2)">💬 luck 2</button><button onclick="maraTest('site', 1)">🌐 Website: luck 1</button><button onclick="maraTest('luck', 3)">💬 luck 3</button><button onclick="maraTest('guess')">🎯 Guess #1</button><button onclick="maraTest('pop')">📣 Pop-up on stream</button><button onclick="maraTest('overlay')">🖥️ Open the overlay</button><button onclick="maraTest('maps')" title="Which maps the marathon battle can use, and which map the next battles would get">🗺️ Marathon maps</button><button class="ghost" onclick="setView('mara')">🏃 Marathon tab</button></div>
     <div id="maraTestOut" class="help" style="margin-top:8px"></div></div>
   </div>
+  <div class="card devOnly" id="gcTestCard">
+    <h3>🎮 Game capture</h3>
+    <p class="help">The 🎮 Game capture tab shows your capture card so you can play through Movie Royal. These use a pretend game picture (no capture card needed) to check the FPS number.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="gcTest(30)" title="Open the Game capture tab with a pretend game that runs at 30 frames a second: the big FPS number should read about 30">🧪 Pretend game at 30 FPS</button><button onclick="gcTest(60)" title="Open the Game capture tab with a pretend game that runs at 60 frames a second: the big FPS number should read about 60">🧪 Pretend game at 60 FPS</button><button onclick="gcQuietTest()" title="Check whether the battle sound inside Movie Royal is quiet right now (it is while the Game capture tab is open)">🔇 Is the battle quiet?</button></div>
+    <div id="tGcOut"></div>
+  </div>
   <div class="card devOnly" id="mtTestCard">
     <h3>🏃 Marathon fighters, ⏱️ timer + 🌴 Neon Beach</h3>
     <p class="help">Pretend marathon battles with made-up things (pictures on a white background that get cut out on the screen) and 🏋️ workout characters holding signs. The ⏱️ timer covers this whole window: click anywhere (any mouse button, or Space) to start it; the alarm rings when it's done (the countdown shows on stream in the marathon overlay too).</p>
@@ -1593,11 +1625,13 @@ function kbClick(scope, re, why) { // press the visible button in that part of t
 }
 function kbFocus(scope, re) { const i = [...document.querySelectorAll(`${scope} input, ${scope} textarea`)].find(x => kbVis(x) && re.test(x.placeholder || '')); if (i) { i.focus(); i.select?.(); } else toast('⌨️ No box to type in here right now'); }
 const kbPower = i => { const b = [...document.querySelectorAll('#events button')].filter(kbVis)[i]; if (b) { b.click(); toast('⚡ ' + esc(b.textContent.trim())); } };
-const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings', mara: '🏃 Marathon' };
+const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings', mara: '🏃 Marathon', capture: '🎮 Game capture' };
 const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typing?]
   ['help', 'any', '❓ Help mode on / off', 'Ctrl+H', () => helpMode(!hmOn()), true],
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
   ['b-start', 'battle', '▶ START ROYAL', 'G', () => kbClick('#v-battle', /START ROYAL/, 'START ROYAL')],
+  ['gc-full', 'capture', '⛶ Fullscreen on / off', 'F', () => gcFull()],
+  ['gc-go', 'capture', '▶ Start / ⏹ stop the capture card', 'S', () => gcToggle()],
   ['m-ticker', 'mara', '⏸ Pause / ▶ resume battles (📜 paused message)', 'P', () => tickerToggle()],
   ['m-wait', 'mara', '🔔 Chat reminders for people waiting on / off', 'R', () => maraCfg({ waitRemind: S?.mara?.cfg?.waitRemind === false })],
   ['m-ttsskip', 'mara', '⏭️ Skip the text to speech that is talking', 'K', () => ttsCmd('skip')],
@@ -1702,7 +1736,7 @@ async function kbResetAll() { if (!confirm('Put every key bind back to how it ca
 function kbStart(id) { kbCatch = id; drawKeybinds(); }
 function drawKeybinds() {
   const box = $('kbBody'); if (!box) return;
-  const groups = Object.keys(TAB_NAMES).filter(t => t !== 'mara' || S?.settings?.betaUpdates).map(t => [t, KEYBINDS.filter(k => k[1] === t)]).filter(([, l]) => l.length); // (🏃 marathon keys: dev mode only)
+  const groups = Object.keys(TAB_NAMES).filter(t => (t !== 'mara' && t !== 'capture') || S?.settings?.betaUpdates).map(t => [t, KEYBINDS.filter(k => k[1] === t)]).filter(([, l]) => l.length); // (🏃 marathon keys: dev mode only)
   const clash = (k) => { const key = kbKey(k[0]); return key && KEYBINDS.some(o => o[0] !== k[0] && kbKey(o[0]) === key && (o[1] === k[1] || o[1] === 'any' || k[1] === 'any')); };
   box.innerHTML = `<div class="row" style="align-items:center;gap:8px;margin-bottom:6px"><span class="help grow" style="margin:0">Click a key to change it, then press the new key (Esc = keep it, Backspace = turn it off). Changes save right away. Each key only works on its own tab, and never while you're typing in a box, so typing in chat or a name box is safe. Only the Ctrl / Alt ones work anywhere. If you clicked inside the game screen, click outside it first.</span><button class="ghost" onclick="kbResetAll()">↺ Put them all back</button></div>
     ${groups.map(([t, l]) => `<h4 style="margin:14px 0 6px">${TAB_NAMES[t]}${t === 'any' ? '' : ' tab'}</h4><div class="kbGrid">${l.map(k => { const key = kbKey(k[0]), def = k[3], wait = kbCatch === k[0];
@@ -2416,6 +2450,7 @@ function setView(v) {
   if (v === 'help' && (!$('helpFrame').src || $('helpFrame').dataset.dev !== String(!!S?.settings?.betaUpdates))) { $('helpFrame').dataset.dev = String(!!S?.settings?.betaUpdates); $('helpFrame').src = helpUrl(); }
   if (v === 'settings') openSettings(true);
   if (v === 'bans') loadBans();
+  gcTab(v === 'capture');
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
@@ -3352,6 +3387,88 @@ async function inTest() {
   $('tInOut').innerHTML = `<p class="help">Limit <b>${esc(r.words)}</b>. Movies go back for: <b>${r.out.length ? esc(r.out.join(', ')) : 'nobody'}</b>. Still in: ${esc(r.stillIn.join(', '))}.</p><table style="table-layout:fixed;width:100%"><tr><th>Person</th><th>Last in a battle</th><th>Goes?</th></tr>${r.people.map(p => `<tr><td>${esc(p.name)}</td><td>${p.name === 'Fay' ? 'never (picked 2 days ago)' : p.last + ' days ago'}</td><td>${p.due ? '🧹 yes' : '✅ stays'}</td></tr>`).join('')}</table>`;
 }
 async function nightTest() { let r; try { r = await api('/api/test/stream-night', null, 'GET'); } catch { return; } const n = r.now; $('tNtOut').innerHTML = `<p class="help" style="margin:8px 0 4px">${r.ok ? '✅ All right' : '❌ Something is off'} (a new night starts after ${r.gapMins} minutes offline)</p><ul class="help" style="margin:0 0 0 18px">${r.steps.map(x => `<li>${x.ok ? '✅' : '❌'} ${esc(x.what)}: ${x.same ? 'same night' : '<b>new night</b>'}</li>`).join('')}</ul><p class="help" style="margin:6px 0 0">Right now: ${n.live ? '🔴 live' : n.offAt ? `⚫ offline since ${new Date(n.offAt).toLocaleTimeString()}` : '⚫ offline'} · ${n.movies} movie${n.movies === 1 ? '' : 's'} this night</p>`; }
+// ---------- 🎮 Game capture tab (1.87.0, Derek, dev only): play the console through Movie Royal ----------
+// the capture card is just a camera + a microphone to the browser: getUserMedia → <video>. Settings are per PC (localStorage gcSet).
+const GC = { stream: null, set: null, raf: 0, n: 0, uniq: 0, at: 0, prev: null, cv: null, g: null, fps: 0, sig: 0, fake: null, hideT: 0, quiet: null };
+const GC_RES = { '720p60': [1280, 720, 60], '1080p60': [1920, 1080, 60], '1080p120': [1920, 1080, 120], '1440p60': [2560, 1440, 60], '2160p60': [3840, 2160, 60] };
+function gcCfg() { if (!GC.set) { try { GC.set = JSON.parse(localStorage.gcSet || '{}'); } catch { GC.set = {}; } GC.set = { vid: '', aud: '', res: '1080p60', vol: 100, fps: true, on: false, ...GC.set }; } return GC.set; }
+function gcSave() { try { localStorage.gcSet = JSON.stringify(gcCfg()); } catch {} }
+function gcNote(t) { const n = $('gcNote'); if (n) n.innerHTML = t || ''; }
+const gcIsCard = l => /elgato|game capture|cam link|hd60|4k60|4k x|4k s|4k pro|capture|avermedia|live gamer|usb video/i.test(l || '');
+async function gcDevices(ask) { // the list of capture cards / sound inputs (names only show once the app may use them)
+  const c = gcCfg(); let list = [];
+  try { list = await navigator.mediaDevices.enumerateDevices(); if (ask || !list.some(d => d.label)) { try { const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); s.getTracks().forEach(t => t.stop()); } catch {} list = await navigator.mediaDevices.enumerateDevices(); } } catch (e) { gcNote('⚠️ Movie Royal could not look for capture cards: ' + esc(e.message || e)); }
+  const vids = list.filter(d => d.kind === 'videoinput'), auds = list.filter(d => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications');
+  if (!vids.some(d => d.deviceId === c.vid)) c.vid = (vids.find(d => gcIsCard(d.label)) || vids[0] || {}).deviceId || '';
+  if (c.aud !== 'none' && !auds.some(d => d.deviceId === c.aud)) { const v = vids.find(d => d.deviceId === c.vid); c.aud = (auds.find(d => v && d.groupId && d.groupId === v.groupId) || auds.find(d => gcIsCard(d.label)) || {}).deviceId || 'none'; }
+  gcSave();
+  $('gcVid').innerHTML = vids.length ? vids.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Camera ' + (i + 1))}</option>`).join('') : '<option value="">(nothing found)</option>';
+  $('gcAud').innerHTML = '<option value="none">🔇 No sound</option>' + auds.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Sound input ' + (i + 1))}</option>`).join('');
+  $('gcVid').value = c.vid; $('gcAud').value = c.aud; $('gcRes').value = c.res; $('gcVol').value = c.vol; $('gcVolN').textContent = c.vol + '%'; $('gcFpsOn').checked = c.fps !== false;
+  if (ask) toast(vids.length ? `🎮 Found ${vids.length} picture source${vids.length === 1 ? '' : 's'}` : '🎮 No capture card found. Is it plugged in, and not in use by another program?');
+  return vids.length;
+}
+function gcSet(o) { const c = gcCfg(), re = ('vid' in o && o.vid !== c.vid) || ('aud' in o && o.aud !== c.aud) || ('res' in o && o.res !== c.res); Object.assign(c, o); gcSave(); $('gcVolN').textContent = c.vol + '%'; $('gcVideo').volume = Math.max(0, Math.min(1, c.vol / 100)); gcDraw(); if (re && GC.stream && !GC.fake) gcStart(); }
+function gcDraw() { const on = !!GC.stream, c = gcCfg(); $('gcGo').textContent = on ? '⏹ Stop' : '▶ Start'; $('gcGo').classList.toggle('primary', !on); $('gcIdle').style.display = on ? 'none' : 'flex'; $('gcFps').style.display = on && c.fps !== false ? 'block' : 'none'; }
+function gcKeep(on) { fetch('/api/gamecap/sound', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }) }).catch(() => {}); }
+async function gcStart(fake) {
+  gcStop(true); const c = gcCfg(), v = $('gcVideo');
+  try {
+    if (fake) { GC.fake = gcFakeStream(fake); GC.stream = GC.fake.stream; }
+    else {
+      if (!c.vid) { await gcDevices(true); if (!c.vid) return gcNote('⚠️ No capture card found. Plug it in (and close other programs that are showing it, like the Elgato app or an OBS source of it), then press 🔄 Find my capture card.'); }
+      const [w, h, f] = GC_RES[c.res] || GC_RES['1080p60'];
+      const want = { video: { deviceId: { exact: c.vid }, width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: f } }, audio: c.aud && c.aud !== 'none' ? { deviceId: { exact: c.aud }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 }, sampleRate: { ideal: 48000 }, latency: { ideal: 0 } } : false };
+      try { GC.stream = await navigator.mediaDevices.getUserMedia(want); }
+      catch (e) { if (!want.audio) throw e; GC.stream = await navigator.mediaDevices.getUserMedia({ ...want, audio: false }); toast('🎮 The picture works, but that sound input could not be opened (' + esc(e.name || e.message || e) + '). Pick another one under 🔊 Game sound.'); }
+      GC.stream.getVideoTracks()[0]?.addEventListener('ended', () => { if (GC.stream) { gcStop(); gcNote('⚠️ The capture card stopped sending a picture (unplugged, or another program took it).'); } });
+    }
+    v.srcObject = GC.stream; v.muted = !!fake; v.volume = Math.max(0, Math.min(1, c.vol / 100)); await v.play().catch(() => {});
+    if (!fake) { c.on = true; gcSave(); gcKeep(true); }
+    const st = GC.stream.getVideoTracks()[0]?.getSettings?.() || {};
+    gcNote(fake ? `🧪 A pretend game picture that changes ${fake} times a second (no capture card used). The big number should read about ${fake}.` : `✅ Showing ${st.width || '?'}×${st.height || '?'} at ${Math.round(st.frameRate || 0) || '?'} a second${c.aud === 'none' ? ', no sound' : ''}.`);
+    GC.n = GC.uniq = 0; GC.at = performance.now(); GC.prev = null; gcLoop(); gcDraw();
+  } catch (e) {
+    GC.stream = null; gcDraw();
+    const why = e?.name === 'NotReadableError' ? 'another program is using it (close the Elgato app, or switch off its source in OBS)' : e?.name === 'NotAllowedError' ? 'Windows is not letting apps use cameras (Windows Settings → Privacy → Camera)' : e?.name === 'OverconstrainedError' || e?.name === 'NotFoundError' ? 'it was not found: press 🔄 Find my capture card' : (e?.message || e);
+    gcNote('⚠️ Could not show the capture card: ' + esc(why) + '.');
+  }
+}
+function gcStop(quietly) { const v = $('gcVideo'); try { GC.stream?.getTracks().forEach(t => t.stop()); } catch {} if (GC.fake) { clearInterval(GC.fake.timer); GC.fake = null; } else if (GC.stream && !quietly) { gcCfg().on = false; gcSave(); } if (GC.stream && !quietly) gcKeep(false); GC.stream = null; if (v) { try { v.pause(); } catch {} v.srcObject = null; } if (!quietly) { gcNote(''); gcDraw(); } }
+function gcToggle() { if (GC.stream) gcStop(); else gcStart(); }
+function gcFull() { const st = $('gcStage'); if (document.fullscreenElement === st) document.exitFullscreen?.(); else st.requestFullscreen?.().catch(() => toast('Fullscreen did not start: click the picture once and try again.')); }
+// 📈 FPS: every picture the card delivers is counted (the small number); a picture that differs from the one before = a new game frame (the big number)
+function gcLoop() {
+  const v = $('gcVideo'), mine = GC.stream; if (!mine) return;
+  if (!GC.cv) { GC.cv = document.createElement('canvas'); GC.cv.width = 64; GC.cv.height = 36; GC.g = GC.cv.getContext('2d', { willReadFrequently: true }); }
+  const tick = () => {
+    if (GC.stream !== mine) return;
+    GC.n++;
+    if (gcCfg().fps !== false && v.videoWidth) { try { GC.g.drawImage(v, 0, 0, 64, 36); const d = GC.g.getImageData(0, 0, 64, 36).data, p = GC.prev; let diff = 0; if (p) for (let i = 0; i < d.length; i += 4) diff += Math.abs(d[i] - p[i]) + Math.abs(d[i + 1] - p[i + 1]) + Math.abs(d[i + 2] - p[i + 2]); if (!p || diff > 64 * 36 * .35) GC.uniq++; GC.prev = d; } catch {} }
+    const now = performance.now(), el = now - GC.at;
+    if (el >= 1000) { GC.sig = Math.round(GC.n * 1000 / el); GC.fps = Math.round(GC.uniq * 1000 / el); GC.n = GC.uniq = 0; GC.at = now; const b = $('gcFps'); if (b) b.innerHTML = `${GC.fps} FPS<small>card sends ${GC.sig}</small>`; }
+    v.requestVideoFrameCallback ? v.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
+  };
+  v.requestVideoFrameCallback ? v.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
+}
+function gcFakeStream(fps) { // 🧪 a pretend game: a 60-a-second video whose picture only changes `fps` times a second
+  const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 720; const g = cv.getContext('2d'); let k = 0, n = 0;
+  const timer = setInterval(() => { n++; if (n % Math.max(1, Math.round(60 / fps)) === 0) k++; g.fillStyle = '#12203a'; g.fillRect(0, 0, 1280, 720); g.fillStyle = '#ff5ad1'; g.fillRect((k * 37) % 1180, 200 + 150 * Math.sin(k / 5), 100, 100); g.fillStyle = '#7dff8a'; g.fillRect(1180 - (k * 23) % 1180, 500, 100, 60); g.fillStyle = '#fff'; g.font = '800 54px Inter, sans-serif'; g.fillText('🧪 Pretend game picture', 60, 100); g.fillStyle = `rgb(${n % 2},0,0)`; g.fillRect(0, 0, 2, 2); }, 1000 / 60);
+  return { stream: cv.captureStream(60), timer };
+}
+// on the tab: the battles inside the app go quiet; leaving it: sound back. The capture keeps playing on other tabs until ⏹ Stop.
+function gcQuiet(on) { GC.quiet = on; const m = { royalQuiet: !!on }; try { $('game').contentWindow.postMessage(m, '*'); } catch {} try { if (popWin && !popWin.closed) popWin.postMessage(m, '*'); } catch {} }
+function gcTab(on) {
+  if (on !== !!GC.quiet) gcQuiet(on);
+  if (!on) return;
+  gcDevices(false).then(() => { gcDraw(); if (!GC.stream && gcCfg().on) gcStart(); });
+}
+$('game').addEventListener('load', () => { if (GC.quiet) setTimeout(() => gcQuiet(true), 300); });
+document.addEventListener('mousemove', () => { const st = $('gcStage'); if (!st || document.fullscreenElement !== st) return; st.classList.remove('gcHideCur'); clearTimeout(GC.hideT); GC.hideT = setTimeout(() => st.classList.add('gcHideCur'), 2500); });
+document.addEventListener('fullscreenchange', () => { const st = $('gcStage'); if (st && document.fullscreenElement !== st) st.classList.remove('gcHideCur'); });
+navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (view === 'capture') gcDevices(false); });
+function gcTest(fps) { setView('capture'); setTimeout(() => gcStart(fps), 300); }
+function gcQuietTest() { let q = null; try { q = $('game').contentWindow.__audioQuiet?.(); } catch {} const el = $('tGcOut'); if (el) el.innerHTML = `<p class="help" style="margin:8px 0 0">Battle sound inside Movie Royal right now: <b>${q === null || q === undefined ? 'the battle screen is not open yet (it opens with the ⚔️ Battle tab)' : q ? '🔇 quiet' : '🔊 on'}</b>. Open the 🎮 Game capture tab and it goes quiet; any other tab and it is back on.</p>`; }
 async function resumeTest() { let r; try { r = await api('/api/test/resume', null, 'GET'); } catch { return; } $('tRsOut').innerHTML = `<ul class="help" style="margin:8px 0 0 18px">${r.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`; }
 function luckBattlesSync() { const el = $('setLuckBattles'); if (!el) return; const h = luckBattlesHTML(); if (h !== luckBattlesKey) { luckBattlesKey = h; el.innerHTML = h; } }
 let luckFor = 'movies';
@@ -3624,7 +3741,7 @@ function renderView() {
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
-  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool')) return setView('battle'); // 🛠️ dev mode shows the features still being tried
+  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'mara' || view === 'marapool' || view === 'capture')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
   if (view === 'pool') renderPool();
   else if (view === 'cards') renderCards();
   else if (view === 'cardpool') renderCardPool();

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.87.0
+- 🎮 **Game capture tab** (🛠️ dev mode only; Derek: "a tab that will show my Elgato capture card, so I play GTA 6 through the app… full screen, mute all battle sounds if on the tab, an FPS number in the upper right corner… FPS of gameplay"): a new **🎮 Game capture** tab shows your capture card's picture and plays its sound. Pick the card and its sound, press ▶ Start, then ⛶ Fullscreen (or **F**, or double-click the picture; Esc leaves, and the mouse pointer hides). **📈 FPS** in the upper right corner: the big number is the game's own speed (how many different pictures a second), the small one is what the card sends. While you're on the tab the battles inside Movie Royal make no sound (your stream still hears them from OBS), and the game's sound keeps playing even when another window is in front. It remembers your picks and starts by itself next time. Test: 🧪 Test → 🎮 Game capture (a pretend game at 30 or 60 FPS, no card needed).
+
 ## 1.86.3
 - 🌙 **The movie count no longer starts over in the middle of a stream** (Derek: on his friend's last stream the final movie said it was the 1st movie): Movie Royal used to start a new "stream night" at midnight, and also every time Twitch said you went live again (like after an internet drop). Both set the count back to Movie #1 and emptied the list of who had chatted, and a re-go-live also refilled your streamer respins and brought voided wheel spots back. Now one stream night keeps going while you're live (past midnight too) and after short drops, and only starts over once you've been offline for **more than an hour**. Test: 🧪 Test → 🌙 One stream night.
 

@@ -120,9 +120,10 @@ function applySettings(p) {
 }
 // 🔇 sounds only while you're in Movie Royal (Settings → App & background, on by default): clicking into another
 // program mutes every Movie Royal window (the stream in OBS keeps its own sound); coming back turns it on again
+let keepSound = false;
 function muteCheck() {
   setTimeout(() => { // (wait a moment: going from one Movie Royal window to another isn't leaving the app)
-    const mute = prefs.muteUnfocused !== false && !BrowserWindow.getFocusedWindow();
+    const mute = prefs.muteUnfocused !== false && !keepSound && !BrowserWindow.getFocusedWindow(); // (🎮 game capture playing: its sound stays on)
     for (const w of BrowserWindow.getAllWindows()) { try { if (!w.isDestroyed() && !w.__celebrate && w.webContents.isAudioMuted() !== mute) w.webContents.setAudioMuted(mute); } catch {} }
   }, 150);
 }
@@ -246,6 +247,8 @@ app.whenReady().then(async () => {
     return pageSes;
   };
   globalThis.__desktop = {
+    // 🎮 (1.87.0) the Game capture tab is playing: don't mute Movie Royal when another window is clicked
+    keepSound: on => { keepSound = !!on; muteCheck(); return keepSound; },
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
     refocus: () => { const w = BrowserWindow.getFocusedWindow() || win; if (w && !w.isDestroyed()) { w.blur(); setTimeout(() => !w.isDestroyed() && w.focus(), 30); } },
     // ⏱️ (1.77.0) a timed marathon thing won: bring Movie Royal to the front so a click of your (wireless) mouse starts the timer
