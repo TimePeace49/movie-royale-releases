@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.94.0
+- 🤖 **The chat bot is in every edition now** (Derek: "add all the Streamlabs chatbot to every build"). The 🤖 Chat bot tab (your own commands, timers and quotes, with import and export) no longer needs dev mode.
+- 📗 **Import straight from Streamlabs Chatbot's Excel file.** In Streamlabs Chatbot: Connections → Cloud → Pick Folder → Save Settings → Create Excel Files. Pick the **Data.xlsx** it makes in 🤖 Chat bot → 📥 Import: the Commands, Timers and Quotes pages are read in one go. You see what was found before anything is added.
+- 🧭 **Setup guide: "Bring your old chat bot over"** (Derek: "add an export and import to the setup guide"): the steps above, an 📥 Import button and ⬇️ Export my chat bot (a file to keep or share).
+- Not built yet from Streamlabs Chatbot's list: song requests, sound commands, points and ranks, betting, polls and the chat mini-games.
+
 ## 1.93.0
 - 🍿 **Movie night voting** (made for Birx & Jess; in Derek's edition with dev mode on so it can be tried first). A new **🍿 Movie night** tab:
   - Type tonight's movies before the stream (with who asked for each, or paste a whole list). ▶ Open voting posts the numbered list in chat and pins it.

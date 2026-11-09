@@ -32,6 +32,7 @@ import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
 import * as movienight from './movienight.js';
+import * as xlsx from './xlsx.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
@@ -284,6 +285,7 @@ function publicState() { applyCharsDefault();
     kick: kick.info(),
     edition: { id: EDITION.id, name: EDITION.name, app: APP_NAME, dev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), on: ED_FEATS.filter(feat) },
     mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
+    botCount: (db.chatbot?.commands || []).length,
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
@@ -2396,9 +2398,10 @@ const guideShown = x => (!x.dev || !!db.settings.betaUpdates) && (edHas('movies'
 const GUIDE_STEPS = [
   { id: 'twitch', title: '💜 Sign in with Twitch' }, { id: 'rewards', title: '💎 Channel points & bits' }, { id: 'tmdb', title: '🎬 Movie search' }, { id: 'omdb', title: '🍅 Ratings' },
   { id: 'letterboxd', title: '📗 Letterboxd' }, { id: 'discord', title: '🤖 Discord bot' }, { id: 'cloud', title: '☁️ 24/7 Discord bot' }, { id: 'donations', title: '💵 Donations' },
-  { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
+  { id: 'botimport', title: '🤖 Bring your old chat bot over' }, { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
   { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   { id: 'rollcall', since: '1.61.0', title: '📣 Roll call in OBS', why: 'Roll call can show in any OBS scene, even ones without the game screen (like your camera scene).', how: ['Connect OBS first (🎥 OBS control step).', 'Press 🧭 Set it up and tick the scenes, or add a Browser source with the address shown there.'], done: () => !!db.settings.rollObs },
+  { id: 'botimport', since: '1.94.0', title: '🤖 Bring your old chat bot over', why: 'Movie Royal has its own chat bot now (🤖 Chat bot tab): commands, timers and quotes. You can move everything over from Streamlabs Chatbot in one go, and save your own as a file.', how: ['In Streamlabs Chatbot: Connections (bottom left) → Cloud → Pick Folder → Save Settings → Create Excel Files. That makes Data.xlsx.', 'In Movie Royal: 🤖 Chat bot tab → 📥 Import → pick Data.xlsx → 👀 look at what was found → ✅ Add.', 'Tick "Its waits are in minutes" (Streamlabs Chatbot counts in minutes).', '⬇️ Export on the same tab saves your commands, timers and quotes as a file you can keep or give to someone.'], done: () => (db.chatbot?.commands || []).length > 0 },
   { id: 'costream', since: '1.71.0', title: '🤝 Co-stream with a friend', why: 'Stream together with a friend who also has Movie Royal: cameras in each other\'s OBS, their battle on your stream while it runs, and chaos across both chats.', how: ['Do the 🎥 OBS control step first.', 'One of you: Settings → 🤝 Co-stream → 🎟️ Make an invite code, and send it in Discord. The other: paste it and press 🤝 Join.', 'One time in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.'], done: () => costream.linked() },
   { id: 'site', dev: true, since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch (Settings → 🌐 Viewer site → 🔑 Let viewers sign in): 📋 copy your website\'s address, 🟣 open dev.twitch.tv → Manage on your Movie Royal app, paste it under OAuth Redirect URLs → Add → Save, then ✅ Check it.'], done: () => site.on() },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
@@ -4963,12 +4966,12 @@ const BOT_RESERVED = ['!join', '!leave', '!mymovies', '!moviesroyal', '!respin',
 chatbot.setHooks({
   say: t => twitch.say(t), canSay: () => twitch.canSay(), follows: m => twitch.followedAt(m.userId),
   live: () => !!db.live || !!live.fakeLive, startedAt: () => db.stream?.startedAt || 0, channel: () => db.owner?.login || twitch.status.login || '',
-  chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => !!db.settings.betaUpdates,
+  chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => true, /* 🤖 the chat bot is in every edition since 1.94.0 (Derek: "add all the Streamlabs chatbot to every build") */
   reserved: () => [...new Set([...BOT_RESERVED, ...Object.entries(db.settings).filter(([k, v]) => /Command$/.test(k) && typeof v === 'string').map(([, v]) => v.trim().toLowerCase())])],
   changed: () => broadcast({ type: 'chatbot' }, 'control')
 });
 setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot] timer', e.message); } }, 30000);
-const botDev = fn => wTry((b, req) => { if (!db.settings.betaUpdates) throw new Error('The chat bot is a 🛠️ dev mode feature for now'); return fn(b, req); });
+const botDev = fn => wTry((b, req) => fn(b, req)); /* (was dev mode only until 1.94.0) */
 app.get('/api/chatbot', (req, res) => res.json(chatbot.info()));
 app.post('/api/chatbot/opts', botDev(b => chatbot.setOpts(b)));
 app.post('/api/chatbot/command', botDev(b => ({ command: chatbot.saveCommand(b) })));
@@ -4977,7 +4980,19 @@ app.post('/api/chatbot/timer', botDev(b => ({ timer: chatbot.saveTimer(b) })));
 app.post('/api/chatbot/timer/remove', botDev(b => ({ timer: chatbot.removeTimer(b.id) })));
 app.post('/api/chatbot/quote', botDev(b => ({ quote: b.n ? chatbot.editQuote(b.n, b.text) : chatbot.addQuote(b.text, b.by || 'you') })));
 app.post('/api/chatbot/quote/remove', botDev(b => ({ quote: chatbot.removeQuote(b.n) })));
-app.post('/api/chatbot/import', botDev(b => { const p = chatbot.parseImport(b.text, b.kind || 'auto', { cdMins: !!b.cdMins }); if (b.dry) return { found: p }; return { found: { note: p.note, commands: p.commands.length, timers: p.timers.length, quotes: p.quotes.length }, done: chatbot.applyImport(p, { replace: !!b.replace }) }; }));
+app.post('/api/chatbot/import', botDev(b => { const p = b.xlsx ? botXlsx(b.xlsx, b.kind || 'auto', !!b.cdMins) : chatbot.parseImport(b.text, b.kind || 'auto', { cdMins: !!b.cdMins }); if (b.dry) return { found: p }; return { found: { note: p.note, commands: p.commands.length, timers: p.timers.length, quotes: p.quotes.length }, done: chatbot.applyImport(p, { replace: !!b.replace }) }; }));
+// 📗 an Excel file (Streamlabs Chatbot → Connections → Cloud → Create Excel Files = Data.xlsx): every sheet is read like a spreadsheet; the sheet's name says what it holds
+function botXlsx(b64, kind, cdMins) {
+  const out = { commands: [], timers: [], quotes: [], note: '' }, seen = [];
+  for (const sh of xlsx.sheets(Buffer.from(String(b64), 'base64'))) {
+    if (sh.rows.length < 2) continue;
+    const k = kind !== 'auto' ? kind : /quote/i.test(sh.name) ? 'quotes' : /timer/i.test(sh.name) ? 'timers' : /command/i.test(sh.name) ? 'commands' : null; if (!k) continue;
+    let p; try { p = chatbot.parseImport(xlsx.toCsv(sh.rows), k, { cdMins }); } catch { continue; }
+    out.commands.push(...p.commands); out.timers.push(...p.timers); out.quotes.push(...p.quotes); seen.push(sh.name);
+  }
+  if (!seen.length) throw new Error("I couldn't find commands, timers or quotes in that Excel file (its pages should be named Commands, Timers or Quotes).");
+  out.note = `Read as an Excel file (pages: ${seen.join(', ')}).`; return out;
+}
 app.get('/api/chatbot/export', (req, res) => { res.setHeader('Content-Disposition', 'attachment; filename="movie-royal-chat-bot.json"'); res.json(chatbot.exportAll()); });
 app.post('/api/test/chatbot', wTry(b => ({ says: chatbot.preview(b.text, b.who || 'TestViewer', b.typed || '') }))); // 🧪 what the bot would answer (nothing is sent)
 app.post('/api/test/chatbot-import', wTry(() => { // 🧪 the importer on three sample files (nothing is saved)
