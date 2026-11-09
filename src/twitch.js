@@ -286,12 +286,14 @@ export async function followedAt(userId) {
 /** Say something in your chat as you (needs the "send chat" permission from signing in). */
 export const sayListeners = new Set(); // 💬 the pretend chat window shows what Movie Royal says in chat
 export const pretend = { until: 0 }; // 🧪 someone is using pretend chat: replies show in the window even when you're not signed in
-export const canSay = () => !!status.canChat || Date.now() < pretend.until;
+export const route = { on: () => false, say: null, canSay: () => false }; // 🟢 (1.90.0, dev) Kick is the platform: what Movie Royal says goes to Kick chat instead
+export const canSay = () => (route.on() ? !!route.canSay() : !!status.canChat) || Date.now() < pretend.until;
 // 🤖 talking as yourself: every message starts with a name tag (Settings → Twitch, default "🤖 Movies Royal Bot:") so chat can tell it's the app
 const tagged = m => { const t = String(s().chatTag ?? '🤖 Movies Royal Bot:').trim(); return botOn() || !t || String(m).startsWith(t) ? String(m) : `${t} ${m}`; };
 export async function say(message) {
   message = tagged(message);
   for (const f of sayListeners) { try { f(String(message)); } catch {} }
+  if (route.on()) { if (!route.canSay() && Date.now() < pretend.until) return true; return route.say(String(message)); } // 🟢 Kick is the platform
   if (!status.canChat && Date.now() < pretend.until) return true; // testing while signed out: shown in the pretend chat window only
   if (!status.userId) throw new Error('Sign in with Twitch first');
   if (botOn()) { // 🤖 say it as the chat bot account; if that fails, say it as you so nothing gets lost

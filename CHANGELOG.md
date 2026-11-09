@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.90.0
+- 🟢 **Kick, part 1: chat** (🛠️ dev mode only; Derek: "make this work with Kick. Make it easy to switch it over"): Settings → 💜 Twitch → 🟢 Kick has one switch, **💜 Twitch / 🟢 Kick**. With Kick on, Movie Royal reads your Kick chat and answers there, so `!join`, the 🤖 chat bot commands, quotes, timers and the other chat commands work on Kick, and going live on Kick counts as your stream. Switching back is one click and nothing is deleted.
+  - Reading chat only needs your Kick channel name. To let Movie Royal answer in chat you make an app on kick.com (Settings → Developer) and press 🟢 Sign in with Kick; the steps are in the app.
+  - Kick mods, VIPs, subs and you are recognised (for mod-only commands and "who can use it").
+  - Channel points, clips and raids are Twitch things: they rest while Kick is on. Kick subs / gifts / follows as alerts are not built yet.
+  - Test: 🧪 Test → 🟢 Kick (a pretend Kick message).
+
 ## 1.89.0
 - 🤖 **Chat bot, part 1** (🛠️ dev mode only; Derek: "make this app replace Streamlabs bot… adding commands, song request, sound alerts… allow imports for easy transfer"): a new **🤖 Chat bot** tab.
   - 💬 **Your own commands:** a name people type and what the bot answers, who can use it (everyone / followers / subs / VIPs / mods / only you), a wait between uses and per person, other names for it, on / off, and a count of how often it was used. Mods can add them from chat: `!addcom !name the answer`, `!editcom`, `!delcom` (or `!command add / edit / remove`).

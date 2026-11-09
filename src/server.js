@@ -42,6 +42,7 @@ import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
 import * as spamban from './spamban.js';
 import * as chatbot from './chatbot.js';
+import * as kick from './kick.js';
 import * as deck from './deck.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
@@ -277,6 +278,7 @@ function publicState() { applyCharsDefault();
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
+    kick: kick.info(),
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
@@ -1041,7 +1043,8 @@ function activityBackfill() {
 const twitchHandlers = {
   adBreak: x => adBreakIn(x), // 📺 ad warnings
   change: pushState,
-  live(isLive) {
+  live(isLive, from) {
+    if (kick.on() !== (from === 'kick')) return; // 🟢 the platform switch: only the platform you picked says when you're live
     if (!!db.live === !!isLive) return;
     if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
     act('stream', isLive ? 'You went live 🔴' : 'The stream ended ⚫', { icon: isLive ? '🔴' : '⚫', kind: isLive ? 'live' : 'offline' }); // 🧾
@@ -1097,7 +1100,8 @@ const twitchHandlers = {
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   async chat(m) {
     if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
-    if (spamCheck(m)) return; // 🛡️ a spam bot selling viewers / followers / art: banned, nothing else looks at it
+    if (!m.pretend && kick.on() !== !!m.kick) return; // 🟢 the platform switch: only chat from the platform you picked counts
+    if (!m.kick && spamCheck(m)) return; // 🛡️ a spam bot selling viewers / followers / art: banned, nothing else looks at it
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
@@ -1396,6 +1400,29 @@ app.get('/auth/twitch-bot', (req, res) => {
 });
 app.post('/api/twitch-bot/off', (req, res) => { db.twitchBot = null; save(); pushState(); res.json({ ok: true }); });
 app.post('/api/twitch-bot/test', async (req, res) => { try { await twitch.say(`🤖 ${db.twitchBot?.user?.name || 'Movie Royal'} here! Movie Royal's chat messages come from me now. Type ${db.settings.helpCommand || '!moviesroyal'} to see the commands.`); res.json({ ok: true, as: twitch.botOn() && !twitch.botStatus.error ? db.twitchBot.user.name : (db.owner?.name || 'you'), error: twitch.botStatus.error }); } catch (e) { res.status(400).json({ error: e.message }); } });
+// ---------- 🟢 Kick (1.90.0, dev mode only): chat from / to Kick, one switch ----------
+kick.setHooks({ dev: () => !!db.settings.betaUpdates, chat: m => twitchHandlers.chat(m), live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
+  getPage: async url => { const g = globalThis.__desktop?.getPage; if (!g) return ''; const r = await g(url); return r?.text || ''; } });
+twitch.route.on = () => kick.on(); twitch.route.say = t => kick.say(t); twitch.route.canSay = () => kick.canSay();
+setTimeout(() => kick.start(), 4000);
+const kickDev = (req, res) => { if (db.settings.betaUpdates) return true; res.status(400).json({ error: 'Kick is a 🛠️ dev mode feature for now' }); return false; };
+app.get('/api/kick', (req, res) => res.json({ ...kick.info(), redirect: kick.redirectUri(PORT) }));
+app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(); const r = kick.setCfg(req.body || {}); if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
+app.get('/auth/kick', (req, res) => { try { if (!db.settings.betaUpdates) throw new Error('Kick is a dev mode feature for now'); res.redirect(kick.authUrl(PORT)); } catch (e) { res.status(400).send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>🟢 Kick sign-in</h2><p>${hEsc(e.message)}</p><p>Close this tab and go back to Movie Royal.</p></body>`); } });
+app.get('/kick/callback', async (req, res) => {
+  const page = (ok, msg) => res.send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>${ok ? '✅ Signed in with Kick' : '⚠️ Kick sign-in did not work'}</h2><p>${hEsc(msg)}</p><p>You can close this tab and go back to Movie Royal.</p></body>`);
+  try { if (req.query.error) throw new Error(String(req.query.error_description || req.query.error)); const u = await kick.finishAuth(PORT, String(req.query.code || ''), String(req.query.state || '')); act('stream', `Signed in with Kick as ${u?.name || '?'}`, { icon: '🟢', kind: 'kick' }); page(true, `Hello ${u?.name || ''}! Movie Royal can now talk in your Kick chat.`); }
+  catch (e) { page(false, e.message || String(e)); }
+});
+app.post('/api/kick/signout', (req, res) => { kick.signOut(); res.json({ ok: true }); });
+app.post('/api/kick/say-test', async (req, res) => { if (!kickDev(req, res)) return; try { await kick.say('🟢 Movie Royal is connected to this Kick chat!'); res.json({ ok: true }); } catch (e) { res.status(400).json({ error: e.message }); } });
+// 🧪 a pretend Kick chat message, read the same way a real one is (replies show in the pretend chat window)
+app.post('/api/test/kick-chat', (req, res) => {
+  const b = req.body || {}, role = String(b.role || '');
+  const m = kick.toChat({ id: 'test' + Date.now(), content: String(b.text || '!hello'), sender: { id: 4242, username: String(b.name || 'KickViewer'), slug: String(b.name || 'KickViewer').toLowerCase(), identity: { color: '#53fc18', badges: role ? [{ type: role, text: role }] : [] } } });
+  twitch.pretend.until = Date.now() + 10 * 60000; twitchHandlers.chat({ ...m, pretend: true });
+  res.json({ ok: true, read: { name: m.name, login: m.login, text: m.text, badges: m.badges, userId: m.userId } });
+});
 app.get('/twitch/callback', async (req, res) => {
   const fail = msg => res.redirect('/login.html?error=' + encodeURIComponent(msg));
   if (req.query.error) return fail('Twitch sign-in was cancelled.');
