@@ -61,7 +61,7 @@ const defaults = () => ({
     backupRelay: true, // 🛡️ the hidden #movie-royal-sync channel for a backup bot server
     keybinds: {}, // ⌨️ key binds you changed (id → key, '' = off); the rest use the defaults in control.html
     acceptCommand: '!accept', passCommand: '!pass', // ✋ the movie winner answers in chat: watch it now / not tonight
-    sitOutCommand: '!sitout', skipCommand: '!skip', nudityCheck: true, nudityStream: true, clipChat: true, clipCmdOn: true, clipCommand: '!clip', backCommand: '!imback', // chat: take your movies out of tonight's battles / put them back
+    sitOutCommand: '!sitout', skipCommand: '!skip', nudityCheck: true, nudityStream: true, clipChat: true, clipCmdOn: true, clipCommand: '!clip', clipWho: ['all'], backCommand: '!imback', // chat: take your movies out of tonight's battles / put them back
     joinCommand: '!join',
     // channel point reward title -> event
     rewards: {

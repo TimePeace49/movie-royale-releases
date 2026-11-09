@@ -276,7 +276,7 @@ function publicState() { applyCharsDefault();
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
-    clip: { signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, list: (db.clips || []).slice(0, 10) },
+    clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
     settings: { ...st, cloud: { enabled: !!st.cloud?.enabled, url: st.cloud?.url || '' }, seJwt: mask(st.seJwt), slToken: mask(st.slToken), obsPassword: mask(st.obsPassword), discordToken: mask(st.discordToken), twitchClientSecret: mask(st.twitchClientSecret), tmdbKey: mask(st.tmdbKey), omdbKey: mask(st.omdbKey), wheelOfNamesKey: mask(st.wheelOfNamesKey) },
@@ -1553,10 +1553,25 @@ async function makeClip(via, test, by) {
 }
 // 💬 !clip (1.88.2, Derek: "anyone in chat can do it"): the same clip, named "Clipped by <them>" (Twitch still lists the streamer as the maker: the app makes it)
 let clipCmdAt = 0, clipNoAt = 0;
+// 🙋 who may use !clip (1.88.3, Derek: checkboxes streamer / mods / VIPs / subs / followers / none; 'all' = everyone)
+const CLIP_WHO = { all: 'everyone', streamer: 'the streamer', mods: 'mods', vips: 'VIPs', subs: 'subs', followers: 'followers' };
+function clipWho() { if (db.settings.clipCmdOn === false) return []; const w = db.settings.clipWho; return Array.isArray(w) ? w.filter(k => CLIP_WHO[k]) : ['all']; }
+async function clipAllowed(m, who = clipWho()) {
+  if (!who.length) return false; if (who.includes('all')) return true;
+  const b = m.badges || {}, me = !!b.broadcaster || (!!m.login && m.login === String(db.owner?.login || twitch.status.login || '').toLowerCase());
+  if ((who.includes('streamer') && me) || (who.includes('mods') && b.mod) || (who.includes('vips') && b.vip) || (who.includes('subs') && b.sub)) return true;
+  if (who.includes('followers')) { if (m.pretend) return !!m.follows; try { const f = await twitch.followedAt(m.userId); if (f) return true; } catch {} }
+  return false;
+}
 function clipChatCmd(m) {
-  const cmd = String(db.settings.clipCommand || '!clip').trim().toLowerCase(); if (!cmd || db.settings.clipCmdOn === false) return false;
+  const cmd = String(db.settings.clipCommand || '!clip').trim().toLowerCase(), who = clipWho(); if (!cmd || !who.length) return false;
   if (String(m.text || '').trim().toLowerCase().split(/\s+/)[0] !== cmd) return false;
-  const name = m.name || m.login || 'someone', now = Date.now();
+  const name = m.name || m.login || 'someone';
+  clipAllowed(m, who).then(ok => { if (ok) return clipChatGo(m, name); if (Date.now() - clipNoAt > 60000 && twitch.canSay()) { clipNoAt = Date.now(); twitch.say(`🎬 @${name} !clip is for ${who.map(k => CLIP_WHO[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')}.`).catch(() => {}); } }).catch(() => {});
+  return true;
+}
+function clipChatGo(m, name) {
+  const now = Date.now();
   if (now - clipCmdAt < 30000) { if (now - clipNoAt > 20000 && twitch.canSay()) { clipNoAt = now; twitch.say(`🎬 @${name} a clip was just made. Try again in a few seconds.`).catch(() => {}); } return true; }
   clipCmdAt = now;
   makeClip('chat', m.pretend ? 'ok' : false, name).then(c => {
@@ -1565,6 +1580,11 @@ function clipChatCmd(m) {
   }).catch(e => { clipCmdAt = 0; if (now - clipNoAt > 20000 && twitch.canSay()) { clipNoAt = Date.now(); twitch.say(`🎬 @${name} no clip: ${/live/i.test(e.message) ? 'clips only work while the stream is live' : /sign in/i.test(e.message) ? 'the streamer needs to sign in with Twitch again first' : 'Twitch could not make it right now'}.`).catch(() => {}); } });
   return true;
 }
+app.post('/api/clip/who', (req, res) => { const w = (Array.isArray(req.body?.who) ? req.body.who : []).filter(k => CLIP_WHO[k]); db.settings.clipWho = w.includes('all') ? ['all'] : [...new Set(w)]; db.settings.clipCmdOn = true; save(); pushState(); res.json({ ok: true, who: clipWho() }); });
+app.post('/api/test/clip-who', async (req, res) => { // 🧪 would these people be let in right now? (pretend people, nothing sent)
+  const P = [['the streamer', { badges: { broadcaster: true } }], ['a mod', { badges: { mod: true } }], ['a VIP', { badges: { vip: true } }], ['a sub', { badges: { sub: true } }], ['a follower', { pretend: true, follows: true }], ['someone new', { pretend: true }]];
+  const who = clipWho(), rows = []; for (const [name, m] of P) rows.push({ name, ok: await clipAllowed(m, who) }); res.json({ who, rows });
+});
 app.post('/api/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip(req.body?.via) }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 app.post('/api/test/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip('test', req.body?.fail ? 'fail' : 'ok') }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 // 🎮 Game capture tab (1.87.0, dev only): its sound keeps playing when Movie Royal isn't the window in front

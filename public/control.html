@@ -1319,7 +1319,8 @@ not a link</textarea>
   <div class="card" id="clipTestCard">
     <h3>🎬 Clips</h3>
     <p class="help">The 🎬 Clip button makes a Twitch clip of the last minute of your stream (it only works while you're live). These pretend, so nothing is sent to Twitch.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="clipNow('test')" title="Pretend to make a clip: shows what you see when it works (nothing is sent to Twitch)">🧪 Pretend clip</button><button onclick="clipNow('test', true)" title="Pretend the clip fails because you're not live: shows the message you get">🧪 Pretend I'm not live</button><button onclick="clipChatTest()" title="A pretend viewer types !clip in chat: the bot answers with a pretend clip (nothing is sent to Twitch)">💬 Pretend viewer types !clip</button><button class="ghost" onclick="setView('settings');setSub('twitch')" title="Open Settings → Twitch, where your latest clips are listed">📋 My clips</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="clipNow('test')" title="Pretend to make a clip: shows what you see when it works (nothing is sent to Twitch)">🧪 Pretend clip</button><button onclick="clipNow('test', true)" title="Pretend the clip fails because you're not live: shows the message you get">🧪 Pretend I'm not live</button><button onclick="clipWhoTest()" title="Show who would be allowed to clip with !clip right now, with your Settings → Twitch → Clips boxes">🙋 Who can !clip?</button><button onclick="clipChatTest()" title="A pretend viewer types !clip in chat: the bot answers with a pretend clip (nothing is sent to Twitch)">💬 Pretend viewer types !clip</button><button class="ghost" onclick="setView('settings');setSub('twitch')" title="Open Settings → Twitch, where your latest clips are listed">📋 My clips</button></div>
+    <div id="tClipWho"></div>
   </div>
   <div class="card devOnly" id="gcTestCard">
     <h3>🎮 Game capture</h3>
@@ -3498,10 +3499,26 @@ async function clipNow(via, testFail) {
   finally { clipBusy = false; }
 }
 async function clipChatTest() { try { pchat(true); } catch {} try { await api('/api/test/chat', { name: 'clip_fan', text: '!clip' }); } catch {} }
+const CLIP_WHO = [['all', '🌍 Everyone'], ['streamer', '🎥 Streamer'], ['mods', '🗡️ Mods'], ['vips', '💎 VIPs'], ['subs', '⭐ Subs'], ['followers', '💜 Followers']];
+function clipWhoHTML() {
+  const C = S.clip || {}, w = C.who || ['all'], all = w.includes('all');
+  return `<p class="help" style="margin:10px 0 4px">🙋 <b>Who can clip by typing <code>!clip</code> in chat</b> (at most one clip every 30 seconds):</p>
+    <div class="row" style="gap:6px 14px;flex-wrap:wrap">${CLIP_WHO.map(([k, t]) => `<label class="ck" style="margin:0"><input type="checkbox" ${w.includes(k) ? 'checked' : ''} onchange="clipWhoSet('${k}',this.checked)" title="Who can clip with !clip: ${t.replace(/^\S+ /, '').toLowerCase()}"> <span>${t}</span></label>`).join('')}<label class="ck" style="margin:0"><input type="checkbox" ${!w.length ? 'checked' : ''} onchange="clipWhoSet('none',this.checked)" title="Who can clip with !clip: nobody (chat clipping off)"> <span>🚫 None</span></label></div>
+    ${!all && w.includes('followers') && C.signedIn && !C.canFollow ? '<p class="help" style="color:var(--gold);margin:4px 0 0">⚠️ To check followers, press Sign in with Twitch again (once).</p>' : ''}`;
+}
+async function clipWhoSet(k, on) {
+  let w = [...((S.clip || {}).who || ['all'])];
+  if (k === 'none') w = on ? [] : ['all'];
+  else if (k === 'all') w = on ? ['all'] : [];
+  else { w = w.filter(x => x !== 'all' && x !== k); if (on) w.push(k); }
+  try { const r = await api('/api/clip/who', { who: w }); S.clip = { ...(S.clip || {}), who: r.who }; toast('Saved'); } catch {}
+  const el = $('clipWhoBox'); if (el) el.innerHTML = clipWhoHTML();
+}
+async function clipWhoTest() { let r; try { r = await api('/api/test/clip-who', {}); } catch { return; } const el = $('tClipWho'); if (el) el.innerHTML = `<ul class="help" style="margin:8px 0 0 18px">${r.rows.map(x => `<li>${x.ok ? '✅' : '🚫'} ${esc(x.name)}: ${x.ok ? 'can clip with !clip' : 'cannot'}</li>`).join('')}</ul>`; }
 function clipHTML() {
   const C = S.clip || {}, L = C.list || [];
   const st = !C.signedIn ? '⚠️ Sign in with Twitch first.' : !C.ok ? '⚠️ Clips need a new permission: press <b>Sign in with Twitch</b> again (once).' : C.live ? '✅ Ready: you are live.' : '✅ Ready. Twitch only makes clips while you are live.';
-  return `<p class="help">The <b>🎬 Clip</b> button (on the Battle, Card battles, Chat battle, Giveaway and Wheel tabs, or <b>Ctrl+Alt+C</b> anywhere) makes a Twitch clip of the last minute of your stream. Viewers can do the same by typing <code>!clip</code>. ${st}</p>
+  return `<p class="help">The <b>🎬 Clip</b> button (on the Battle, Card battles, Chat battle, Giveaway and Wheel tabs, or <b>Ctrl+Alt+C</b> anywhere) makes a Twitch clip of the last minute of your stream. The people you tick below can do the same by typing <code>!clip</code>. ${st}</p>
     ${L.length ? `<p class="help" style="margin:6px 0 2px">Your latest clips:</p><ul class="help" style="margin:0 0 0 18px">${L.map(c => `<li>${new Date(c.at).toLocaleString()}${c.by ? ` · by ${esc(c.by)}` : ''} · <a href="${esc(c.url)}" target="_blank" rel="noopener">▶ Watch</a>${c.edit ? ` · <a href="${esc(c.edit)}" target="_blank" rel="noopener">✂️ Trim / name it</a>` : ''}</li>`).join('')}</ul>` : '<p class="help" style="margin:6px 0 0">No clips made here yet.</p>'}`;
 }
 function clipDraw() { const el = $('clipBox'); if (el) el.innerHTML = clipHTML(); }
@@ -5790,7 +5807,7 @@ function openSettings(force) {
       <div class="grid2"><div><label>⏰ The 1-minute warning</label><input id="adWarnText" placeholder="📺 Heads up chat: ads start in about 1 minute! Grab a drink, stretch, I'll be right here." value="${esc(S.settings.adWarnText || '')}" onchange="api('/api/settings',{adWarnText:this.value}).then(()=>toast('Saved'))" title="What the bot says in chat a minute before an ad break (empty = the usual message)"></div>
       <div><label>✅ When the ads end</label><input id="adEndText" placeholder="✅ Ads are over, welcome back!" value="${esc(S.settings.adEndText || '')}" onchange="api('/api/settings',{adEndText:this.value}).then(()=>toast('Saved'))" title="What the bot says in chat when the ad break is over (empty = the usual message)"></div></div>
       <div class="row" style="gap:6px;margin-top:6px"><button class="ghost" onclick="testGo('adTestCard')" title="Try the ad warnings in the Test tab (a pretend ad break)">🧪 Try it</button></div>
-      <h3 style="margin-top:18px">🎬 Clips</h3><div id="clipBox">${clipHTML()}</div>${cki('clipChat', '💬 Post the link in chat when a clip is made')}${cki('clipCmdOn', '🙋 Anyone in chat can make a clip by typing <code>!clip</code> (at most one every 30 seconds)')}
+      <h3 style="margin-top:18px">🎬 Clips</h3><div id="clipBox">${clipHTML()}</div>${cki('clipChat', '💬 Post the link in chat when a clip is made')}<div id="clipWhoBox">${clipWhoHTML()}</div>
       <h3 style="margin-top:18px">🛡️ Spam bots</h3>${spamHTML()}
       <h3 style="margin-top:18px">🎨 Ball colors</h3>
       ${colorHTML(s)}

@@ -3,6 +3,11 @@
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 
+## v1.88.3: What's new
+Everything since 1.88.2.
+
+- 🙋 **Pick who can !clip:** Settings → 💜 Twitch → 🎬 Clips has boxes for who may type !clip in chat: 🌍 Everyone, or any mix of 🎥 Streamer, 🗡️ Mods, 💎 VIPs, ⭐ Subs and 💜 Followers. 🚫 None switches chat clipping off.
+
 ## v1.88.2: What's new
 Everything since 1.88.1.
 
