@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.93.0
+- 🍿 **Movie night voting** (made for Birx & Jess; in Derek's edition with dev mode on so it can be tried first). A new **🍿 Movie night** tab:
+  - Type tonight's movies before the stream (with who asked for each, or paste a whole list). ▶ Open voting posts the numbered list in chat and pins it.
+  - Chat votes with `!vote 3` or `!vote the name`. Birx's rules are built in: everyone gets **1 vote and 1 vote change**; **2 votes** if you raided tonight, were the first one to type in chat, or it's your birthday on a Wednesday or Sunday. You can also add a vote or an extra vote by hand.
+  - 🔮 Every vote pops up in the app with **✅ Right / ❌ Wrong**, for whether the guess was right. The count shows on stream and is kept for tonight, all time and per chatter.
+  - ⏳ **Last call**: a 5-minute countdown at the end (chat is told, the clock shows on stream, a one-minute warning), then voting closes by itself and the winner is posted.
+  - 📺 A vote box for OBS (each movie's votes, the clock, the guess counter), and 📜 Past nights.
+  - Test: 🧪 Test → 🍿 Movie night voting.
+
 ## 1.92.0
 - 🏷️ **New name: TimePeace Chatbot** (Derek: "rename the whole project to TimePeace Chatbot"). The app, its window, the installer, the Help and Setup pages, pop-ups and the bot's chat lines now say **TimePeace Chatbot** instead of Movie Royal. True's edition is called **True’s Chatbot** and Birx's **Birx & Jess Chatbot**.
   - Only what you see changed. Your data folder, the program file and the installer file keep their old names, so nothing is lost and updates keep working. The desktop / Start menu shortcut is renamed on the next install.

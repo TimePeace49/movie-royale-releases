@@ -32,7 +32,8 @@
   ],
   "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet).",
   "app": "True’s Chatbot",
-  "kick": "true_schu"
+  "kick": "true_schu",
+  "on": []
  },
  "birx": {
   "name": "Birx & Jess",
@@ -46,6 +47,9 @@
    "voidSetup"
   ],
   "note": "No movie battles, no Kirb wheels, no card battles. Gets the chat bot, song + movie night tools (not built yet).",
-  "app": "Birx & Jess Chatbot"
+  "app": "Birx & Jess Chatbot",
+  "on": [
+   "movienight"
+  ]
  }
 }

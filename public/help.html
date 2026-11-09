@@ -461,6 +461,15 @@
     <p class="tip">Easiest Wheel of Names trick: click the entries box on the wheel, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it into the list box. Always works.</p>
   </section>
 
+  <section data-feat="movienight" data-k="movie night vote voting !vote birthday raid first chat guess counter last call countdown pin">
+    <h2>🍿 Movie night voting</h2>
+    <p>The <b>🍿 Movie night</b> tab runs the vote for tonight's movie. Before the stream, type tonight's movies (and who asked for each, if you like), or paste a whole list. <b>▶ Open voting</b> posts the numbered list in chat and pins it.</p>
+    <p>Chat votes with <code>!vote 3</code> or <code>!vote the name</code>. <b>Everyone gets one vote and one vote change.</b> You get <b>two votes</b> if you raided tonight, if you were the first one to type in chat, or if it's your birthday and today is a Wednesday or a Sunday (save birthdays under ⭐ Two votes tonight). You can also give someone an extra vote, or count a vote by hand.</p>
+    <p>🔮 <b>Guess counter:</b> every vote pops up in the corner of the app. Click <b>✅ Right</b> or <b>❌ Wrong</b> for whether the guess was right (or Skip). The count shows on stream and is kept for tonight, all time and per chatter.</p>
+    <p>⏳ <b>Last call:</b> starts a countdown (5 minutes unless you change it). Chat is told, the clock shows on stream, and voting closes by itself at 0 with the winner posted in chat. <b>⏹ Close voting</b> ends it right away.</p>
+    <p>📺 <b>On stream:</b> add the address from the tab to OBS as a Browser source to show each movie's votes, the last call clock and the guess counter. <b>🆕 New night</b> saves tonight under Past nights and clears the votes.</p>
+    <p>🧪 Try it: Test tab → 🍿 Movie night voting (pretend voters, nothing is sent to Twitch).</p>
+  </section>
   <section data-dev="1" data-k="kick platform switch kick.com chat stream on kick">
     <h2>🟢 Kick (stream on Kick instead of Twitch)</h2>
     <p><b>Settings → 💜 Twitch → 🟢 Kick</b> has one switch: 💜 Twitch or 🟢 Kick. With Kick on, Movie Royal reads your Kick chat and answers there, so <code>!join</code>, your 🤖 chat bot commands, quotes and timers work on Kick. Switch back any time: nothing is deleted.</p>
@@ -927,6 +936,8 @@
 <script>
 // 🛠️ (1.79.1) parts marked data-dev only show in dev mode (the app opens this page with ?dev=1 then)
 if (!/[?&]dev=1/.test(location.search)) document.querySelectorAll('[data-dev]').forEach(el => el.remove());
+// 🎭 parts marked data-feat only show in editions that have that extra (?feat=movienight,raids…)
+{ const have = (new URLSearchParams(location.search).get('feat') || '').split(','); document.querySelectorAll('[data-feat]').forEach(el => { if (!have.includes(el.dataset.feat)) el.remove(); }); }
 const secs = [...document.querySelectorAll('section')];
 secs.forEach((s, i) => { s.id = 's' + i; s.dataset.text = (s.textContent + ' ' + s.dataset.k).toLowerCase(); s.dataset.html = s.innerHTML; });
 const toc = document.getElementById('toc');

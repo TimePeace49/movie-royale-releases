@@ -557,6 +557,7 @@
     <button data-v="marapool" class="devOnly" title="🛠️ Dev mode: the things in the marathon battle">🏃 Marathon pool</button>
     <button data-v="capture" class="devOnly" title="🛠️ Dev mode: play your console through Movie Royal (your capture card's picture and sound)">🎮 Game capture</button>
     <button data-v="bot" class="devOnly" title="🛠️ Dev mode: your own chat commands, timers and quotes (a Streamlabs bot replacement)">🤖 Chat bot</button>
+    <button data-v="mnight" data-feat="movienight" class="edOff" title="Tonight's movies, chat's votes and the guess counter">🍿 <span class="nt">Movie night</span><span id="mnNav" class="pill" style="display:none"></span></button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
@@ -756,6 +757,7 @@
   <div class="side" id="mSide"></div>
  </div>
 </section>
+<section class="view" id="v-mnight"><div class="pane"><div id="mnBody" style="max-width:1300px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <section class="view" id="v-bot"><div class="pane"><div class="card" id="botBody" style="max-width:1250px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <dialog id="botDlg" style="max-width:640px;width:92vw"><div id="botDlgBody"></div></dialog>
 <section class="view" id="v-capture">
@@ -1340,6 +1342,12 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
     <div id="tBotOut"></div>
   </div>
+  <div class="card edOff" id="mnTestCard" data-feat="movienight">
+    <h3>🍿 Movie night voting</h3>
+    <p class="help">The 🍿 Movie night tab: chat votes with !vote, everyone gets 1 vote and 1 change, 2 votes for raiders, the first one in chat and Wednesday / Sunday birthdays. These use pretend people (named pretend_…), and nothing is sent to Twitch.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="mnRulesTest()" title="Walks the voting rules through with pretend people on a pretend night and shows what each one was allowed to do (nothing is saved)">📋 Check the voting rules</button><button onclick="mnTest('fill')" title="Adds 4 pretend movies when your movie night list is empty">📋 Fill a pretend list</button><button onclick="mnTest('vote')" title="A pretend viewer votes for a random movie through the pretend chat (opens voting quietly if it's closed)">🗳️ Pretend viewer votes</button><button onclick="mnTest('raid')" title="A pretend raid: pretend_raider gets two votes tonight">🚀 Pretend raid</button><button onclick="mnTest('clear')" title="Takes the pretend voters and their votes out again">🧹 Clear the pretend voters</button><button class="ghost" onclick="window.open('/movienight.html?demo=1','_blank','width=960,height=540')" title="See what the on-stream vote box looks like, with pretend votes and the last call clock">👀 The vote box</button><button class="ghost" onclick="setView('mnight')" title="Open the Movie night tab">🍿 Open the tab</button></div>
+    <div id="tMnOut"></div>
+  </div>
   <div class="card" id="edTestCard">
     <h3>🎭 Edition</h3>
     <p class="help">Movie Royal comes in editions (one for everyone, and ones made for a streamer). This shows which one this copy is and where it gets its updates.</p>
@@ -1672,7 +1680,7 @@ function kbClick(scope, re, why) { // press the visible button in that part of t
 }
 function kbFocus(scope, re) { const i = [...document.querySelectorAll(`${scope} input, ${scope} textarea`)].find(x => kbVis(x) && re.test(x.placeholder || '')); if (i) { i.focus(); i.select?.(); } else toast('⌨️ No box to type in here right now'); }
 const kbPower = i => { const b = [...document.querySelectorAll('#events button')].filter(kbVis)[i]; if (b) { b.click(); toast('⚡ ' + esc(b.textContent.trim())); } };
-const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings', mara: '🏃 Marathon', capture: '🎮 Game capture', bot: '🤖 Chat bot' };
+const TAB_NAMES = { any: '🌐 Any tab', battle: '⚔️ Battle', pool: '🎬 Movie Pool', chat: '🎲 Chat battle', giveaway: '🎁 Giveaway', wheel: '🎡 Wheel', tchat: '💬 Chat', people: '👥 People', history: '📜 History', test: '🧪 Test', settings: '⚙️ Settings', mara: '🏃 Marathon', capture: '🎮 Game capture', bot: '🤖 Chat bot', mnight: '🍿 Movie night' };
 const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typing?]
   ['help', 'any', '❓ Help mode on / off', 'Ctrl+H', () => helpMode(!hmOn()), true],
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
@@ -2462,6 +2470,8 @@ function connect() {
     if (m.type === 'toast') toast(esc(m.text), m.ms);
     if (m.type === 'maraTimer') mtShow(m);
     if (m.type === 'chatbot') { if (view === 'bot') botLoad(); }
+    if (m.type === 'movieNight') { if (view === 'mnight') mnLoad(); else mnPending(); }
+    if (m.type === 'mnVote') mnPop(m.vote);
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
@@ -2502,6 +2512,7 @@ function setView(v) {
   if (v === 'bans') loadBans();
   gcTab(v === 'capture');
   if (v === 'bot') botLoad();
+  if (v === 'mnight') mnLoad();
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
@@ -3072,7 +3083,7 @@ async function msGo(dry) {
   } catch (e) { out.innerHTML = `<div class="help">⚠️ ${esc(e.message)}</div>`; } finally { if (b) b.disabled = false; }
 }
 async function tickerSet(o) { try { const c = await api('/api/mara/ticker', o); if (S?.mara?.ticker) S.mara.ticker.cfg = c; toast('Saved'); } catch (e) { toast('⚠️ ' + e.message); } }
-const helpUrl = () => '/help.html' + (S?.settings?.betaUpdates ? '?dev=1' : ''); // (🛠️ the Help page leaves out dev mode parts unless it's on)
+const helpUrl = () => '/help.html?feat=' + (S?.edition?.on || []).join(',') + (S?.settings?.betaUpdates ? '&dev=1' : ''); // (🛠️ the Help page leaves out dev mode parts unless it's on)
 function mGuessTick() { const el = $('mGuessT'), G = S?.mara?.guess; if (!el || !G) return; const t = Math.max(0, Math.ceil((G.endsAt - Date.now()) / 1000)); el.textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 setInterval(() => { if (view === 'mara') mGuessTick(); }, 500);
 async function maraSet(id, o) { try { await api('/api/mara/set', { id, ...o }); } catch (e) { toast('⚠️ ' + e.message); } }
@@ -3635,17 +3646,91 @@ async function clipNow(via, testFail) {
   catch (e) { clipDot('bad', e?.message || 'No clip'); }
   finally { clipBusy = false; }
 }
+/* 🍿 Movie night voting (1.93.0, Birx & Jess): tonight's movies, chat's !vote, the "did he guess it?" pop-ups and the on-stream vote box */
+let MN = null, mnQ = '', mnPopQ = [];
+async function mnLoad() { try { MN = await api('/api/movienight', null, 'GET'); } catch { return; } mnDraw(); mnPending(); }
+async function mnGo(url, body) { try { const r = await api('/api/movienight/' + url, body || {}); if (r.state) MN = r.state; mnDraw(); mnPending(); return r; } catch { return null; } }
+function mnPending() { const el = $('mnNav'), n = MN ? MN.pending.length : (S?.mnight?.pending || 0); if (el) { el.style.display = n ? '' : 'none'; el.textContent = n; } }
+const mnClock = () => { const el = $('mnClock'); if (!el || !MN) return; const left = MN.open && MN.endsAt ? Math.max(0, Math.ceil((MN.endsAt - Date.now()) / 1000)) : -1; el.textContent = left < 0 ? '' : `⏳ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; };
+setInterval(mnClock, 500);
+function mnDraw() {
+  const el = $('mnBody'); if (!el || !MN) return; if (el.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement.tagName) && document.activeElement.id !== 'mnSearch') return;
+  const M = MN, q = mnQ.trim().toLowerCase(), hit = t => !q || String(t).toLowerCase().includes(q), top = Math.max(1, ...M.tally.map(x => x.votes)), lead = Math.max(0, ...M.tally.map(x => x.votes));
+  const url = location.origin + '/movienight.html';
+  const rows = M.tally.filter(x => hit(x.title) || hit(x.by)).map(x => `<tr${lead && x.votes === lead ? ' style="background:rgba(255,210,75,.10)"' : ''}><td style="width:34px"><b>${x.n}</b></td>
+    <td><input value="${esc(x.title)}" title="The movie's name (chat can vote by its number or its name)" onchange="mnGo('movies',{id:'${x.id}',title:this.value})"></td>
+    <td style="width:150px"><input value="${esc(x.by)}" placeholder="who asked" title="Who asked for this movie (can be empty)" onchange="mnGo('movies',{id:'${x.id}',by:this.value})"></td>
+    <td style="width:120px"><div style="position:relative;background:rgba(255,255,255,.07);border-radius:6px;height:22px"><div style="position:absolute;inset:0 auto 0 0;width:${Math.round(100 * x.votes / top)}%;background:var(--accent,#8a4dff);border-radius:6px"></div><b style="position:relative;padding-left:6px">${x.votes}</b></div></td>
+    <td style="width:110px;white-space:nowrap"><button class="ghost" style="padding:2px 7px" title="Move this movie up the list" onclick="mnGo('movies',{id:'${x.id}',dir:-1})">▲</button><button class="ghost" style="padding:2px 7px" title="Move this movie down the list" onclick="mnGo('movies',{id:'${x.id}',dir:1})">▼</button><button class="ghost" style="padding:2px 7px" title="Take this movie off tonight's list" onclick="mnGo('movies',{id:'${x.id}',remove:true})">✕</button></td></tr>`).join('');
+  const pend = M.pending.map(g => `<div class="row" style="gap:6px;align-items:center;margin:4px 0"><span class="grow">🗳️ <b>${esc(g.name)}</b> ${g.kind === 'change' ? 'changed to' : 'voted'} <b>#${g.n} ${esc(g.title)}</b>${g.test ? ' <span class="muted">(pretend)</span>' : ''}</span><button class="primary" style="padding:3px 9px" title="The guess for this vote was right" onclick="mnGuess('${g.id}',true)">✅ Right</button><button style="padding:3px 9px" title="The guess for this vote was wrong" onclick="mnGuess('${g.id}',false)">❌ Wrong</button><button class="ghost" style="padding:3px 9px" title="No guess was made for this vote: leave it out of the count" onclick="mnGuess('${g.id}','skip')">Skip</button></div>`).join('');
+  const voters = M.voters.filter(v => hit(v.name) || v.picks.some(p => hit(p.title))).map(v => `<tr><td><b>${esc(v.name)}</b>${v.why.length ? ` <span class="pill" title="Two votes tonight: ${esc(v.why.join(', '))}">×2 ${esc(v.why.join(', '))}</span>` : ''}</td><td>${v.picks.map(p => `#${p.n} ${esc(p.title)}${p.changed ? ' 🔁' : ''}`).join(' · ') || '<span class="muted">—</span>'}</td><td style="white-space:nowrap">${v.picks.length} of ${v.allowed}${v.changes ? ` · ${v.changes} change${v.changes === 1 ? '' : 's'}` : ''}</td></tr>`).join('');
+  const st = M.stats, pct = (a, b) => a + b ? Math.round(100 * a / (a + b)) + '%' : '—';
+  const per = st.per.filter(p => hit(p.name)).slice(0, 60).map(p => `<tr><td>${esc(p.name)}</td><td>${p.right}</td><td>${p.wrong}</td><td>${pct(p.right, p.wrong)}</td></tr>`).join('');
+  const chips = (obj, kind, fmt) => Object.entries(obj).map(([k, v]) => `<span class="pill" style="margin:2px">${esc(k)}${fmt ? ' ' + fmt(v) : ''} <a href="#" title="Take this one off" onclick="mnGo('people',{kind:'${kind}',name:'${esc(k)}',remove:true});return false">✕</a></span>`).join('') || '<span class="muted">none</span>';
+  el.innerHTML = `<div class="card"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+      <h2 style="margin:0" class="grow">🍿 Movie night ${M.open ? '<span class="pill" style="background:#2a8a4a">voting is open</span>' : '<span class="pill">voting is closed</span>'} <span id="mnClock" style="color:var(--gold)"></span></h2>
+      <input id="mnSearch" placeholder="🔍 search movies, people…" value="${esc(mnQ)}" title="Filter everything on this tab: movies, who asked, voters and the stats" oninput="mnQ=this.value;mnDraw();const s=$('mnSearch');s.focus();s.setSelectionRange(s.value.length,s.value.length)" style="width:230px">
+      ${M.open ? `<button title="Start the last call countdown: chat is told, a clock shows on stream, and voting closes by itself at 0" onclick="mnGo('lastcall',{on:true,mins:$('mnMins').value})">⏳ Last call</button><input id="mnMins" type="number" min="1" max="60" value="${M.opts.lastMins}" title="How many minutes the last call countdown runs" style="width:62px" onchange="mnGo('opts',{lastMins:this.value})"> min ${M.endsAt ? `<button class="ghost" title="Stop the countdown: voting stays open" onclick="mnGo('lastcall',{on:false})">✋ Stop the countdown</button>` : ''}
+        <button class="danger" title="Close voting now: chat is told the winner" onclick="mnGo('open',{on:false})">⏹ Close voting</button><button class="ghost" title="Post and pin the list of movies in chat again" onclick="mnGo('pin')">📌 Pin again</button>`
+      : `<button class="primary" title="Open voting: the list of movies is posted and pinned in chat, and chat can vote" onclick="mnGo('open',{on:true})">▶ Open voting</button>`}
+      <button class="ghost" title="Start a fresh night: tonight's votes go into Past nights and everyone's votes are wiped. Your list of movies stays" onclick="mnNew()">🆕 New night</button></div>
+      ${M.pinError ? `<p class="help" style="color:var(--gold);margin:6px 0 0">⚠️ Couldn't pin the list (${esc(M.pinError)}). It was posted as a normal chat message instead.</p>` : ''}
+      <p class="help" style="margin:6px 0 0">Chat votes with <b>${esc(M.opts.command)} 3</b> or <b>${esc(M.opts.command)} the name</b>. Everyone gets <b>1 vote</b> and <b>${M.opts.changes} change${M.opts.changes === 1 ? '' : 's'}</b>. <b>2 votes</b> for: a raider tonight, the first one in chat, or a birthday on a Wednesday or Sunday${M.bonusToday ? ' (that\'s today)' : ''}.</p></div>
+    ${M.pending.length ? `<div class="card" style="border-color:var(--gold)"><h3 style="margin:0 0 4px">🔮 Did he guess it? (${M.pending.length})</h3>${pend}</div>` : ''}
+    <div style="display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:12px;align-items:start">
+    <div><div class="card"><h3 style="margin:0 0 6px">🎬 Tonight's movies (${M.movies.length}) · ${M.total} vote${M.total === 1 ? '' : 's'}</h3>
+      <div class="row" style="gap:6px;margin-bottom:8px"><input id="mnAddT" class="grow" placeholder="Movie name" title="A movie to add to tonight's list" onkeydown="if(event.key==='Enter')mnAdd()"><input id="mnAddB" placeholder="who asked (optional)" title="Who asked for the movie you're adding (can be empty)" style="width:170px" onkeydown="if(event.key==='Enter')mnAdd()"><button class="primary" title="Add this movie to tonight's list" onclick="mnAdd()">➕ Add</button><button class="ghost" title="Paste a whole list at once: one movie per line, with who asked after a | if you like" onclick="mnPaste()">📋 Paste a list</button></div>
+      ${M.movies.length ? `<table class="tbl" style="width:100%"><thead><tr><th>#</th><th>Movie</th><th>Asked by</th><th>Votes</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">Nothing matches the search.</td></tr>'}</tbody></table>` : '<div class="empty">No movies yet. Add tonight\'s movies above before the stream.</div>'}</div>
+    <div class="card"><h3 style="margin:0 0 6px">🗳️ Who voted (${M.voters.length})</h3>
+      ${M.open ? `<div class="row" style="gap:6px;margin-bottom:8px"><input id="mnVW" placeholder="chat name" title="Who you're adding a vote for (for a vote someone gave out loud)" style="width:160px"><input id="mnVM" placeholder="movie number or name" title="The movie this person votes for" class="grow" onkeydown="if(event.key==='Enter')mnVote()"><button title="Count this vote by hand (same rules as chat)" onclick="mnVote()">➕ Add a vote</button></div>` : ''}
+      ${voters ? `<table class="tbl" style="width:100%"><thead><tr><th>Who</th><th>Voted for</th><th>Used</th></tr></thead><tbody>${voters}</tbody></table>` : '<div class="help" style="margin:0">Nobody has voted yet.</div>'}</div></div>
+    <div><div class="card"><h3 style="margin:0 0 6px">🔮 Guess counter</h3>
+      <p style="margin:0;font-size:20px">Tonight: <b style="color:#7dffa8">${M.guess.right}</b> right of <b>${M.guess.total}</b> <span class="muted">(${pct(M.guess.right, M.guess.wrong)})</span></p>
+      <p class="help" style="margin:4px 0 6px">All time: ${st.right} right, ${st.wrong} wrong (${pct(st.right, st.wrong)}). Each vote pops up so you can click if the guess was right.</p>
+      ${per ? `<details><summary>Per chatter (${st.per.length})</summary><table class="tbl" style="width:100%"><thead><tr><th>Who</th><th>Right</th><th>Wrong</th><th>%</th></tr></thead><tbody>${per}</tbody></table></details>` : ''}
+      ${M.guesses.length ? `<details><summary>Tonight's votes, one by one</summary>${M.guesses.map(g => `<div class="row" style="gap:6px;margin:3px 0"><span class="grow">${esc(g.name)} → #${g.n} ${esc(g.title)}</span><span>${g.right === true ? '✅' : g.right === false ? '❌' : g.skip ? 'skipped' : '…'}</span><button class="ghost" style="padding:1px 6px" title="Change this vote's guess to right" onclick="mnGuess('${g.id}',true)">✅</button><button class="ghost" style="padding:1px 6px" title="Change this vote's guess to wrong" onclick="mnGuess('${g.id}',false)">❌</button></div>`).join('')}</details>` : ''}</div>
+    <div class="card"><h3 style="margin:0 0 6px">⭐ Two votes tonight</h3>
+      <p class="help" style="margin:0 0 4px">🥇 First in chat: <b>${M.first ? esc(M.first) : 'nobody yet'}</b> ${M.first ? `<a href="#" title="Clear the first one in chat (the next person to type becomes it)" onclick="mnGo('people',{kind:'first',remove:true});return false">✕</a>` : ''}</p>
+      <p class="help" style="margin:0 0 4px">🚀 Raiders tonight: ${M.raiders.map(r => `<span class="pill" style="margin:2px">${esc(r)} <a href="#" title="Take this raider off" onclick="mnGo('people',{kind:'raid',name:'${esc(r)}',remove:true});return false">✕</a></span>`).join('') || '<span class="muted">none</span>'}</p>
+      <p class="help" style="margin:0 0 4px">🎂 Birthdays (2 votes when it lands on a Wednesday or Sunday): ${chips(M.birthdays, 'bday', v => v.replace('-', '/'))}</p>
+      <p class="help" style="margin:0 0 6px">➕ Extra votes you gave: ${chips(M.extra, 'extra', v => '+' + v)}</p>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><input id="mnPN" placeholder="chat name" title="The chat name for the birthday, raider or extra vote you're adding" style="width:150px"><input id="mnPD" placeholder="birthday, like 3/14" title="Their birthday (month/day), only for 🎂 Save birthday" style="width:150px"><button title="Save this person's birthday: they get two votes when it lands on a Wednesday or Sunday" onclick="mnGo('people',{kind:'bday',name:$('mnPN').value,day:$('mnPD').value})">🎂 Save birthday</button><button title="Mark this person as a raider tonight (two votes), for a raid Twitch didn't tell the app about" onclick="mnGo('people',{kind:'raid',name:$('mnPN').value})">🚀 Raided</button><button title="Give this person one more vote tonight" onclick="mnGo('people',{kind:'extra',name:$('mnPN').value,n:(MN.extra[$('mnPN').value.trim().toLowerCase().replace(/^@/,'')]||0)+1})">➕ Extra vote</button></div></div>
+    <div class="card"><h3 style="margin:0 0 6px">📺 On stream + options</h3>
+      <label class="ck" style="margin:0"><input type="checkbox" ${M.opts.overlay ? 'checked' : ''} onchange="mnGo('opts',{overlay:this.checked})" title="Show the vote box on stream (the OBS browser source below)"> <span>Show the vote count on stream</span></label>
+      <label class="ck" style="margin:0"><input type="checkbox" ${M.opts.reply ? 'checked' : ''} onchange="mnGo('opts',{reply:this.checked})" title="The bot answers each vote in chat, so people know it counted"> <span>The bot answers each vote in chat</span></label>
+      <div class="row" style="gap:6px;align-items:center;margin-top:6px"><span>Command</span><input value="${esc(M.opts.command)}" title="What chat types to vote (like !vote)" style="width:110px" onchange="mnGo('opts',{command:this.value})"><span>Changes each</span><input type="number" min="0" max="5" value="${M.opts.changes}" title="How many times each person can change their vote" style="width:60px" onchange="mnGo('opts',{changes:this.value})"></div>
+      <p class="help" style="margin:8px 0 4px">In OBS add a <b>Browser</b> source, 1920 × 1080, with this address (add <code>?side=left</code> or <code>?at=bottom</code> to move the box):</p>
+      <div class="row" style="gap:6px"><input readonly value="${esc(url)}" title="The address of the on-stream vote box for an OBS browser source" class="grow" onclick="this.select()"><button title="Copy the vote box's address for OBS" onclick="copyText('${esc(url)}').then(ok=>ok&&toast('Copied'))">📋 Copy</button><button class="ghost" title="See what the vote box looks like with pretend votes" onclick="window.open('/movienight.html?demo=1','_blank','width=960,height=540')">👀 Preview</button></div></div>
+    ${M.past.length ? `<div class="card"><details><summary><b>📜 Past nights (${M.past.length})</b></summary>${M.past.filter(p => hit(p.winner) || p.movies.some(m => hit(m.title))).map(p => `<div style="margin:6px 0"><b>${new Date(p.at).toLocaleDateString()}</b>: ${esc(p.winner || 'no winner')} <span class="muted">· ${p.voters} voter${p.voters === 1 ? '' : 's'} · guessed ${p.right} of ${p.right + p.wrong}</span><div class="muted" style="font-size:12px">${p.movies.map(m => `${esc(m.title)} (${m.votes})`).join(' · ')}</div></div>`).join('')}</details></div>` : ''}</div></div>`;
+  mnClock();
+}
+async function mnAdd() { const t = $('mnAddT').value.trim(); if (!t) return; const r = await mnGo('movies', { title: t, by: $('mnAddB').value }); if (r) { const i = $('mnAddT'); if (i) i.focus(); } }
+async function mnPaste() { const t = await ask('Paste tonight\'s movies, one per line. Put who asked after a | (like: Jaws | bob). This replaces the list:', (MN?.movies || []).map(m => m.title + (m.by ? ' | ' + m.by : '')).join('\n')); if (t == null) return; mnGo('movies', { text: t }); }
+async function mnVote() { const r = await mnGo('vote', { name: $('mnVW').value, movie: $('mnVM').value }); if (r) toast('🗳️ Vote counted'); }
+async function mnNew() { const a = ((await ask('Start a new night? Tonight\'s votes are saved under Past nights, then cleared. Type YES to go on (your movie list stays), or CLEAR to also empty the list:', '')) || '').trim().toUpperCase(); if (a !== 'YES' && a !== 'CLEAR') return; mnGo('new', { clear: a === 'CLEAR' }); }
+async function mnGuess(id, right) { mnPopQ = mnPopQ.filter(g => g.id !== id); mnPopDraw(); await mnGo('guess', { id, right }); if (view !== 'mnight') mnLoadQuiet(); }
+async function mnLoadQuiet() { try { MN = await api('/api/movienight', null, 'GET'); mnPending(); } catch {} }
+function mnPop(g) { if (!g) return; mnPopQ.push(g); mnPopQ = mnPopQ.slice(-12); mnPopDraw(); if (view !== 'mnight') mnLoadQuiet(); }
+function mnPopDraw() {
+  let el = $('mnPop'); if (!el) { el = document.createElement('div'); el.id = 'mnPop'; el.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:60;width:340px;max-width:calc(100vw - 32px)'; document.body.appendChild(el); }
+  const g = mnPopQ[0]; if (!g || view === 'mnight') { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="card" style="margin:0;border-color:var(--gold);box-shadow:0 8px 30px rgba(0,0,0,.5)"><div style="margin-bottom:6px">🗳️ <b>${esc(g.name)}</b> ${g.kind === 'change' ? 'changed to' : 'voted'} <b>#${g.n} ${esc(g.title)}</b>${mnPopQ.length > 1 ? ` <span class="muted">(+${mnPopQ.length - 1} more)</span>` : ''}</div><div class="row" style="gap:6px"><button class="primary grow" title="The guess for this vote was right" onclick="mnGuess('${g.id}',true)">✅ Right</button><button class="grow" title="The guess for this vote was wrong" onclick="mnGuess('${g.id}',false)">❌ Wrong</button><button class="ghost" title="No guess was made for this vote: leave it out of the count" onclick="mnGuess('${g.id}','skip')">Skip</button><button class="ghost" title="Open the Movie night tab" onclick="mnPopQ=[];mnPopDraw();setView('mnight')">🍿</button></div></div>`;
+}
+async function mnRulesTest() { let r; try { r = await api('/api/test/movienight-rules', null, 'GET'); } catch { return; } const el = $('tMnOut'); if (el) el.innerHTML = `<p style="margin:8px 0 4px">${r.ok ? '✅ The voting rules all work.' : '⚠️ Something in the rules is off: tell Claude.'}</p><table class="tbl" style="width:100%"><thead><tr><th>Who</th><th>Votes allowed</th><th>Tried</th><th>What happened</th><th></th></tr></thead><tbody>${r.rows.map(x => `<tr><td>${esc(x.who)}</td><td>${x.allowed}</td><td>${esc(x.tried)}</td><td>${esc(x.got)}</td><td>${x.ok ? '✅' : '⚠️'}</td></tr>`).join('')}</tbody></table><p class="help" style="margin:6px 0 0">Finding a movie from what chat types: ${r.finds.map(x => `${esc(x.typed)} → ${esc(x.found)} ${x.ok ? '✅' : '⚠️'}`).join(' · ')}<br>Reading birthdays: ${r.days.map(x => `${esc(x.typed)} → ${esc(x.read)} ${x.ok ? '✅' : '⚠️'}`).join(' · ')}</p>`; }
+async function mnTest(action) { try { const r = await api('/api/test/movienight', { action }); const el = $('tMnOut'); if (el) el.innerHTML = `<p style="margin:8px 0 0">${action === 'fill' ? '📋 A pretend list of 4 movies was added.' : action === 'clear' ? '🧹 The pretend voters are gone.' : action === 'raid' ? '🚀 pretend_raider raided: they get two votes tonight.' : `🗳️ ${esc(r.who)} typed the vote command for #${r.n}. Look for the pop-up in the corner.`}</p>`; if (action !== 'clear' && action !== 'fill') pchat(true); } catch {} }
 /* 🎭 Editions: parts an edition leaves out are hidden (True's + Birx's: no movie battles; Birx's: no card battles) */
-const edOff = f => (S?.edition?.off || []).includes(f);
+const edOff = f => (S?.edition?.off || []).includes(f), featOn = f => (S?.edition?.on || []).includes(f);
 function edApply() {
   const noM = edOff('movies'), noC = edOff('cards'), set = (sel, off) => document.querySelectorAll(sel).forEach(el => el.classList.toggle('edOff', off));
-  if (document.body.dataset.ed === noM + '|' + noC) return; document.body.dataset.ed = noM + '|' + noC; { const sel = $('edLook'); if (sel) sel.value = S?.edition?.lookAs || ''; }
+  const edKey = noM + '|' + noC + '|' + (S?.edition?.on || []).join(','); if (document.body.dataset.ed === edKey) return; document.body.dataset.ed = edKey; { const sel = $('edLook'); if (sel) sel.value = S?.edition?.lookAs || ''; }
   document.body.classList.toggle('noMovies', noM); document.body.classList.toggle('noCards', noC);
   set('#subnav [data-s="discord"], #subnav [data-s="movies"], #subnav [data-s="bans"]', noM);
   set('#nav [data-v="cards"], #nav [data-v="cardpool"]', noC);
+  document.querySelectorAll('[data-feat]').forEach(el => el.classList.toggle('edOff', !featOn(el.dataset.feat)));
   const pool = document.querySelector('#nav [data-v="pool"]'); if (pool) { pool.dataset.was = pool.dataset.was || pool.innerHTML; pool.innerHTML = noM ? '📋 <span class="nt">Battle pool</span>' : pool.dataset.was; }
   if (noM && view === 'settings' && ['discord', 'movies', 'bans'].includes(sub)) setSub('account');
   if (noC && (view === 'cards' || view === 'cardpool')) setView('battle');
+  if (view === 'mnight' && !featOn('movienight')) setView('battle');
   try { fitNav(); } catch {}
 }
 async function edLook(id) { try { const r = await api('/api/test/edition-look', { id }); toast(r.lookAs ? `👀 Looking like the ${esc(id)} edition${r.off.length ? ': hidden: ' + esc(r.off.join(', ')) : ' (it has everything)'}. Your dev tabs stay so you can keep testing.` : '👀 Back to your own edition (everything).', 6000); } catch {} }

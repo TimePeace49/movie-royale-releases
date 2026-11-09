@@ -31,7 +31,8 @@ import * as wheel from './wheel.js';
 import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
-import { EDITION, APP as APP_NAME, brand, brandFile, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
+import * as movienight from './movienight.js';
+import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
@@ -281,7 +282,8 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
-    edition: { id: EDITION.id, name: EDITION.name, app: APP_NAME, dev: EDITION.dev, off: edOffNow(), lookAs: edLooking() },
+    edition: { id: EDITION.id, name: EDITION.name, app: APP_NAME, dev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), on: ED_FEATS.filter(feat) },
+    mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
@@ -1043,6 +1045,8 @@ function activityBackfill() {
   db.activityFilled = { at: Date.now(), n }; save(); broadcast({ type: 'activityFilled' }, 'control');
   console.log(`[history] the complete history starts with ${n} lines from the older history lists`);
 }
+/** 🎭 an extra made for an edition (or everything, in the dev edition with dev mode on) */
+const feat = name => edFeat(name, db.settings.betaUpdates);
 const twitchHandlers = {
   adBreak: x => adBreakIn(x), // 📺 ad warnings
   change: pushState,
@@ -1058,7 +1062,7 @@ const twitchHandlers = {
     if (!isLive && st0) { st0.offAt = Math.max(st0.liveSeen || 0, Date.now() - 5 * 60000); } // (an app that was closed while live: counts from when we last saw you live)
     db.live = !!isLive; rewardKey = ''; setTimeout(() => syncRewards().catch(() => {}), 500);
     if (back) { delete st0.offAt; st0.liveSeen = Date.now(); act('stream', `Back live within an hour: still the same stream night (movie #${(st0.movies || 0) + 1} is next)`, { icon: '🌙', kind: 'live' }); }
-    else if (isLive) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); stream().liveSeen = Date.now(); wheel.newStream(); } // new stream: movie count starts over
+    else if (isLive) { stream().movies = 0; stream().tonight = []; delete stream().spotPending; stream().raidUsed = false; live.raid = null; stream().startedAt = Date.now(); stream().liveSeen = Date.now(); movienight.streamStart(); wheel.newStream(); } // new stream: movie count starts over
     cloud.sync(true); // lock / unlock swaps on the 24/7 bot right away
     if (lockMode() === 'live' && !db.picksClosed && db.settings.announcePicks !== false) discord.notify(isLive ? '🔒 **Movie picks are closed** while the stream is live. They open again when it ends.' : '🍿 **Movie picks are open again!** Use `/suggest` to add yours.').catch(() => {});
     save(); pushState();
@@ -1100,7 +1104,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   async chat(m) {
     if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
@@ -1109,6 +1113,7 @@ const twitchHandlers = {
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
+    try { movienight.noteChat(m); } catch (e) { console.error('[movie night]', e.message); } // 🍿 the first one in chat gets two movie night votes
     try { maraWaitChat(m); } catch (e) { console.error('[marathon reminder]', e.message); } // 🔔 someone with a battle waiting 30+ min is here
     try { chatvoice.chat(m); } catch (e) { console.error('[chat voice]', e.message); } // 🔈 read chat out loud to you only (not cheers / channel point messages)
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
@@ -1116,6 +1121,7 @@ const twitchHandlers = {
     if (hatChat(m)) return; // 🎩 picking a hat
     wheel.wheelChat(m); // 🎡 !respin / !spins
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
+    if (movienight.onChat(m)) return; // 🍿 !vote 3 on a movie night
     if (clipChatCmd(m)) return; // 🎬 !clip: anyone can clip the last minute
     if (chatbot.onChat(m)) return; // 🤖 your own chat commands, quotes (dev mode)
     if (skipChat(m)) return; // ⏭️ !skip <movie>: sits out the next battle
@@ -1329,6 +1335,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
+  if (ws.role === 'movienight') ws.send(JSON.stringify(movienight.screen())); // 🍿 the movie night vote box
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
   if (ws.role === 'control' && live.resumeNote && Date.now() - live.resumeNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.resumeNote.text })); } catch {} }, 1500); // 🔄 what came back after a restart
@@ -4689,6 +4696,37 @@ function maraPrizesOnce() {
   save();
 }
 setTimeout(maraPrizesOnce, 1400);
+// 🍿 Movie night voting (1.93.0, Birx & Jess's edition; in Derek's with dev mode on): see src/movienight.js
+movienight.setHooks({
+  on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
+  isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
+  act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),
+});
+setInterval(() => { try { movienight.tick(); } catch (e) { console.error('[movie night]', e.message); } }, 1000);
+const mnTry = fn => wTry(async (b, req) => { if (!feat('movienight')) throw new Error('Movie night voting is not part of this edition.'); const r = await fn(b, req); return r && r.movies ? { state: r } : { ...(r || {}), state: movienight.state() }; });
+app.get('/api/movienight', (req, res) => res.json(feat('movienight') ? movienight.state() : { on: false }));
+app.post('/api/movienight/movies', mnTry(b => 'text' in b || Array.isArray(b.list) ? movienight.setMovies(b.list || b.text) : b.id ? movienight.editMovie(b.id, b) : movienight.addMovie(b.title, b.by)));
+app.post('/api/movienight/open', mnTry(b => movienight.open(!!b.on)));
+app.post('/api/movienight/lastcall', mnTry(b => movienight.lastCall(b.on !== false, b.mins)));
+app.post('/api/movienight/pin', mnTry(() => movienight.pin()));
+app.post('/api/movienight/new', mnTry(b => movienight.newNight({ clear: !!b.clear })));
+app.post('/api/movienight/guess', mnTry(b => movienight.guess(String(b.id || ''), b.right)));
+app.post('/api/movienight/vote', mnTry(b => { const d = movienight.data(), m = movienight.findMovie(String(b.movie || ''), d); if (!m || m.many) throw new Error('Pick a movie from the list (its number works).'); const who = String(b.name || '').trim().replace(/^@/, ''); if (!who) throw new Error('Type who is voting.'); if (!d.open) throw new Error('Open voting first.'); const r = movienight.vote(who, who, m, { via: 'you', quiet: true }); if (!r.ok) throw new Error(r.why === 'same' ? 'They already voted for that one.' : 'They have used their votes and their change.'); return {}; }));
+app.post('/api/movienight/people', mnTry(b => b.kind === 'bday' ? movienight.setBirthday(b.name, b.remove ? '' : b.day) : b.kind === 'extra' ? movienight.setExtra(b.name, b.remove ? 0 : b.n) : b.kind === 'raid' ? movienight.setRaider(b.name, !b.remove) : b.kind === 'first' ? movienight.setFirst(b.remove ? '' : b.name) : (() => { throw new Error('bad kind'); })()));
+app.post('/api/movienight/opts', mnTry(b => movienight.setOpts(b)));
+app.get('/api/test/movienight-rules', (req, res) => res.json(movienight.rulesDemo()));
+app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote through the pretend chat (nothing is sent to Twitch); 'clear' takes them out again
+  const d = movienight.data();
+  if (b.action === 'clear') return movienight.clearTests();
+  if (b.action === 'fill') { if (d.movies.length) throw new Error('Your list already has movies: this only fills an empty list.'); return movienight.setMovies([{ title: 'Jaws', by: 'pretend_ana' }, { title: 'Alien', by: '' }, { title: 'The Thing', by: 'pretend_bo' }, { title: 'Clue', by: '' }]); }
+  if (!d.movies.length) throw new Error('Add movies first (or press 📋 Fill a pretend list).');
+  if (!d.open) await movienight.open(true, { quiet: true });
+  if (b.action === 'raid') { movienight.onAlert({ kind: 'raid', login: 'pretend_raider', name: 'pretend_raider' }); return {}; }
+  const names = ['pretend_ana', 'pretend_bo', 'pretend_cy', 'pretend_raider', 'pretend_dee'], who = b.name || names[Math.floor(Math.random() * names.length)], n = b.n || 1 + Math.floor(Math.random() * d.movies.length);
+  twitch.pretend.until = Date.now() + 600000;
+  await twitchHandlers.chat({ login: who, name: who, text: `${movienight.opts().command} ${n}`, badges: {}, pretend: true, userId: 'p-' + who });
+  return { who, n };
+}));
 app.post('/api/test/edition-look', (req, res) => { // 👀 the dev edition shows what another edition leaves out (until you switch back or restart; nothing is saved or removed)
   if (!EDITION.dev) return res.status(400).json({ error: "Only the dev edition can look like the others." });
   const id = edLookAs(String(req.body?.id || '')); editionNoMovies(); pushState(); res.json({ ok: true, lookAs: id, off: edOffNow() });

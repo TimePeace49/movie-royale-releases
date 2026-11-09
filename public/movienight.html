@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal movie night votes</title>
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; color: #fff; }
+  #box { position: absolute; right: 28px; top: 28px; width: 460px; background: rgba(16, 10, 34, .88); border: 2px solid rgba(255, 255, 255, .16); border-radius: 18px; padding: 16px 18px 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); opacity: 0; transform: translateX(40px); transition: opacity .5s, transform .5s; }
+  #box.show { opacity: 1; transform: none; }
+  body.left #box { right: auto; left: 28px; } body.bottom #box { top: auto; bottom: 28px; }
+  h1 { margin: 0 0 2px; font-size: 26px; letter-spacing: .5px; } .sub { font-size: 16px; opacity: .8; margin-bottom: 10px; }
+  .row { position: relative; margin: 6px 0; border-radius: 10px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+  .bar { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #7b3ff2, #c04bff); border-radius: 10px; transition: width .6s; }
+  .row.top .bar { background: linear-gradient(90deg, #f2a23f, #ffd24b); } .row.top { color: #1a0f2e; font-weight: 700; }
+  .txt { position: relative; display: flex; gap: 8px; align-items: center; padding: 7px 10px; font-size: 19px; }
+  .n { opacity: .75; min-width: 26px; } .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .v { font-weight: 800; font-size: 21px; }
+  #clock { display: none; margin: 10px 0 2px; text-align: center; font-size: 30px; font-weight: 800; color: #ffd24b; } #clock.on { display: block; } #clock.hot { color: #ff6464; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.08); } }
+  #guess { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .15); font-size: 18px; display: none; } #guess.on { display: block; } #guess b { font-size: 22px; color: #7dffa8; }
+  .tiny .txt { font-size: 15px; padding: 4px 8px; } .tiny .v { font-size: 17px; }
+</style></head>
+<body>
+<div id="box"><h1 id="head">🍿 Movie night vote</h1><div class="sub" id="sub"></div><div id="rows"></div><div id="clock"></div><div id="guess"></div></div>
+<script>
+const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+if (Q.get('side') === 'left') document.body.classList.add('left'); if (Q.get('at') === 'bottom') document.body.classList.add('bottom');
+let S = null;
+function draw() {
+  const s = S; if (!s) return; $('box').classList.toggle('show', !!s.show);
+  const top = Math.max(1, ...s.movies.map(m => m.votes)), lead = Math.max(0, ...s.movies.map(m => m.votes));
+  $('head').textContent = s.closed ? '🍿 Tonight\'s movie' : '🍿 Movie night vote';
+  $('sub').textContent = s.closed ? (s.leaders.length ? s.leaders.join(' / ') : 'Nobody voted') : `Type ${s.command} and a number · ${s.total} vote${s.total === 1 ? '' : 's'}`;
+  $('rows').className = s.movies.length > 12 ? 'tiny' : '';
+  $('rows').innerHTML = s.movies.map(m => `<div class="row${lead && m.votes === lead ? ' top' : ''}"><div class="bar" style="width:${Math.round(100 * m.votes / top)}%"></div><div class="txt"><span class="n">${m.n}</span><span class="t">${esc(m.title)}</span><span class="v">${m.votes}</span></div></div>`).join('');
+  const g = s.guess || {}; $('guess').classList.toggle('on', g.total > 0); $('guess').innerHTML = g.total ? `🔮 Guessed right: <b>${g.right}</b> of ${g.total}` : '';
+  tick();
+}
+function tick() {
+  const c = $('clock'), s = S; if (!s || !s.open || !s.endsAt) { c.classList.remove('on'); return; }
+  const left = Math.max(0, Math.ceil((s.endsAt - Date.now()) / 1000)); c.classList.add('on'); c.classList.toggle('hot', left <= 30);
+  c.textContent = `⏳ Last call ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+}
+setInterval(tick, 250);
+if (Q.get('demo')) { S = { show: true, open: true, endsAt: Date.now() + 95000, command: '!vote', total: 9, leaders: ['Alien'], guess: { right: 4, wrong: 2, total: 6 }, movies: [{ n: 1, title: 'Jaws', votes: 2 }, { n: 2, title: 'Alien', votes: 4 }, { n: 3, title: 'The Thing', votes: 3 }, { n: 4, title: 'Clue', votes: 0 }] }; draw(); }
+else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } }; ws.onclose = () => setTimeout(go, 2000); })();
+</script></body></html>
