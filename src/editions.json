@@ -5,7 +5,15 @@
   "dev": false,
   "app": "TimePeace Chatbot",
   "on": [
-   "raids"
+   "raids",
+   "dash",
+   "songs"
+  ],
+  "off": [
+   "movies",
+   "kirbWheel",
+   "void",
+   "voidSetup"
   ]
  },
  "derek": {
@@ -15,7 +23,15 @@
   "dev": true,
   "app": "TimePeace Chatbot",
   "on": [
-   "raids"
+   "raids",
+   "dash",
+   "songs"
+  ],
+  "off": [
+   "movies",
+   "kirbWheel",
+   "void",
+   "voidSetup"
   ]
  },
  "kirb": {
@@ -26,7 +42,9 @@
   "note": "Everything in the latest version.",
   "app": "TimePeace Chatbot",
   "on": [
-   "raids"
+   "raids",
+   "dash",
+   "songs"
   ]
  },
  "true": {
@@ -35,17 +53,24 @@
   "repo": "TimePeace49/TimePeaceChatbotTrueEdtion",
   "dev": false,
   "off": [
+   "battle",
+   "pool",
+   "people",
    "movies",
    "kirbWheel",
-   "voidSetup"
+   "void",
+   "voidSetup",
+   "luck"
   ],
   "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet).",
   "app": "True’s Chatbot",
   "kick": "true_schu",
   "on": [
+   "raids",
    "eggs",
-   "kick",
-   "raids"
+   "dash",
+   "songs",
+   "kick"
   ],
   "scrub": true
  },
@@ -55,27 +80,27 @@
   "repo": "TimePeace49/TimePeaceChatbotBirxandJessEdition",
   "dev": false,
   "off": [
-   "movies",
-   "kirbWheel",
-   "cards",
-   "voidSetup",
    "battle",
    "pool",
+   "cards",
    "chatBattle",
    "people",
-   "luck",
-   "costream",
-   "game",
+   "movies",
+   "kirbWheel",
    "void",
-   "chaos"
+   "voidSetup",
+   "chaos",
+   "game",
+   "luck",
+   "costream"
   ],
   "note": "No battles (Battle, Battle pool, Chat battle), no People tab, no movie battles, no Kirb wheels, no card battles. Songs + Movie night live in the Chat bot tab.",
   "app": "Birx & Jess Chatbot",
   "on": [
-   "movienight",
    "raids",
+   "dash",
    "songs",
-   "dash"
+   "movienight"
   ],
   "scrub": true
  }
