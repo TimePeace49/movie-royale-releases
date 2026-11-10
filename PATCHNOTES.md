@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.122.0: What's new
+New in this version.
+
+- {dash} 🧲 **Chat tab boxes dock like in OBS:** drag a box by its top bar and drop it near an edge of another box to move it in beside it (a dashed yellow shape shows where it will land), on the middle of a box to trade places, or at the very edge of the tab to make it a strip along that side. The others fill the room it left.
+
 ## v1.121.0: What's new
 New in this version.
 

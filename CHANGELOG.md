@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.122.0
+- 🧲 **Chat tab boxes dock like in OBS.** Drag a box by its top bar anywhere:
+  - near an **edge of another box** (left, right, top or bottom) and it moves in beside it on that side: the two share that room. A dashed yellow shape shows where it will land before you let go.
+  - on the **middle of another box** and the two trade places (like before).
+  - at the **very edge of the tab** and it becomes a full strip along that side, with everything else squeezing over.
+  - The room the box left behind is filled by its old neighbours, so there are never gaps or boxes on top of each other.
+
 ## 1.121.0
 - 📊 **Stream stats box on the Chat tab** (off to start with: right-click the Chat tab, or press ▦ Boxes, and tick 📊 Stream stats). It shows what OBS's own Stats window shows, refreshed every 2 seconds: whether you're live and for how long, bitrate, dropped frames (network), skipped frames (encoder), missed frames (rendering), FPS, frame time, CPU, memory, free disk space and recording. Numbers turn yellow or red when they get bad.
 - 🧪 Test tab → 🧰 Chat tab → 📊 Stream stats (pretend): 15 seconds of pretend numbers, no OBS needed.
