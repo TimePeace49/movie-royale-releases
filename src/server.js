@@ -1456,7 +1456,7 @@ twitch.route.on = () => kick.on(); twitch.route.say = t => kick.say(t); twitch.r
 setTimeout(() => kick.start(), 4000);
 const kickDev = (req, res) => { if (feat('kick')) return true; res.status(400).json({ error: 'Kick is not part of this edition.' }); return false; };
 app.get('/api/kick', (req, res) => res.json({ ...kick.info(), redirect: kick.redirectUri(PORT) }));
-app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(); const r = kick.setCfg(req.body || {}); if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
+app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(); let r; try { r = kick.setCfg(req.body || {}); } catch (e) { return res.status(400).json({ error: e.message }); } if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
 app.get('/auth/kick', (req, res) => { try { if (!feat('kick')) throw new Error('Kick is not part of this edition.'); res.redirect(kick.authUrl(PORT)); } catch (e) { res.status(400).send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>🟢 Kick sign-in</h2><p>${hEsc(e.message)}</p><p>Close this tab and go back to Movie Royal.</p></body>`); } });
 app.get('/kick/callback', async (req, res) => {
   const page = (ok, msg) => res.send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>${ok ? '✅ Signed in with Kick' : '⚠️ Kick sign-in did not work'}</h2><p>${hEsc(msg)}</p><p>You can close this tab and go back to Movie Royal.</p></body>`);

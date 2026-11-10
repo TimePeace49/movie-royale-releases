@@ -29,8 +29,11 @@ export const slug = () => String(data().slug || data().user?.slug || '').trim().
 // ---------- sign-in (OAuth 2.1 with PKCE) ----------
 const pending = new Map(); // state → {verifier, at}
 const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+/* a web address is never a Kick key: people paste the Redirect URL into the Client ID box by mistake */
+export const notKey = v => /^https?:|[\/\s]|localhost/i.test(String(v || ''));
+const NOT_KEY = what => `That is a web address, not the ${what}. The Redirect URL goes INTO Kick. The ${what} is the code Kick shows on your app's page (Settings → Developer → your app): copy that one here.`;
 export function authUrl(port) {
-  const d = data(); if (!d.clientId || !d.secret) throw new Error('Paste your Kick app\'s Client ID and Client Secret first');
+  const d = data(); if (notKey(d.clientId)) throw new Error(NOT_KEY('Client ID')); if (!d.clientId || !d.secret) throw new Error('Paste your Kick app\'s Client ID and Client Secret first');
   const state = crypto.randomBytes(16).toString('hex'), verifier = b64u(crypto.randomBytes(48)), challenge = b64u(crypto.createHash('sha256').update(verifier).digest());
   pending.set(state, { verifier, at: Date.now() }); for (const [k, v] of pending) if (Date.now() - v.at > 600000) pending.delete(k);
   const q = new URLSearchParams({ response_type: 'code', client_id: d.clientId, redirect_uri: redirectUri(port), scope: SCOPES.join(' '), code_challenge: challenge, code_challenge_method: 'S256', state });
@@ -172,6 +175,8 @@ export function stop() { wantSock = false; clearTimeout(retryT); clearInterval(p
 // ---------- settings ----------
 export function setCfg(b) {
   const d = data(); let re = false;
+  if (b.clientId != null && notKey(b.clientId)) throw new Error(NOT_KEY('Client ID'));
+  if (b.secret != null && notKey(b.secret)) throw new Error(NOT_KEY('Client Secret'));
   if (b.clientId != null && String(b.clientId).trim() !== (d.clientId || '')) { d.clientId = String(b.clientId).trim(); }
   if (b.secret != null && String(b.secret).trim() && !/^•+/.test(String(b.secret))) d.secret = String(b.secret).trim();
   if (b.slug != null) { const s = String(b.slug).trim().toLowerCase().replace(/^https?:\/\/(www\.)?kick\.com\//, '').replace(/[^a-z0-9_-]/g, ''); if (s !== (d.slug || '')) { d.slug = s; d.chatroomId = null; re = true; } }
@@ -179,6 +184,6 @@ export function setCfg(b) {
   if (b.on != null && !!b.on !== !!d.on) { d.on = !!b.on; re = true; }
   save(); if (re) restart(); H.changed(); return info();
 }
-export const info = () => { const d = data(); return { on: !!d.on, dev: H.dev(), clientId: d.clientId || '', hasSecret: !!d.secret, signedIn: signedIn(), user: d.user ? { name: d.user.name, slug: d.user.slug } : null, slug: slug(), chatroomId: d.chatroomId || null, chat: status.chat, chatError: status.chatError, live: status.live, lastMsgAt: status.lastMsgAt, lines: status.lines, sayError: status.sayError, scopes: SCOPES, canRewards: canRewards(), needsResign: needsResign(), rewardError: status.rewardError || null, redeems: status.redeems || 0, watch: d.watch || {} }; };
+export const info = () => { const d = data(); return { on: !!d.on, dev: H.dev(), clientId: notKey(d.clientId) ? '' : d.clientId || '', badId: notKey(d.clientId), hasSecret: !!d.secret && !notKey(d.secret), signedIn: signedIn(), user: d.user ? { name: d.user.name, slug: d.user.slug } : null, slug: slug(), chatroomId: d.chatroomId || null, chat: status.chat, chatError: status.chatError, live: status.live, lastMsgAt: status.lastMsgAt, lines: status.lines, sayError: status.sayError, scopes: SCOPES, canRewards: canRewards(), needsResign: needsResign(), rewardError: status.rewardError || null, redeems: status.redeems || 0, watch: d.watch || {} }; };
 export function start() { if (on()) restart(); }
 setInterval(() => { if (on() !== wantSock) restart(); }, 15000); // (dev mode or the switch changed)

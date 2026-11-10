@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.114.3
+- 🟢 **Kick sign-in showing a broken page:** that happened when the Redirect URL (the web address) was pasted into the Client ID box. The app now refuses a web address in the Client ID / Client Secret boxes and says which one goes where, and if the wrong one was already saved it shows a red note and asks for the real Client ID instead of opening Kick's broken page. The Connections page wording is clearer: the Redirect URL goes INTO Kick, the Client ID and Client Secret come FROM Kick.
+
 ## 1.114.2
 - **⭐ Name your ratings:** on Settings → Connections, the RateYourMusic line now has a **name box** (so it says your name instead of "Rating 1") and a **"A second person rates too"** tick box. Untick it and the second rating disappears everywhere (music box, history, song list, stats). The same tick box is in Chat bot → Songs → Settings.
 - The line also says it plainly: ratings only come **in** from RateYourMusic. There is no way for an app to send ratings back to a RateYourMusic account.
