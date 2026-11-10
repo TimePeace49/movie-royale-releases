@@ -5370,7 +5370,7 @@ function botImportAll(files, { cdMins = true } = {}) {
   for (const f of (files || []).slice(0, 12)) {
     const name = String(f.name || 'file').slice(0, 80);
     try {
-      if (f.xlsx) { for (const sh of xlsx.sheets(Buffer.from(String(f.xlsx), 'base64'))) { const rows = sh.rows.filter(r => r.some(c => String(c ?? '').trim())); if (rows.length < 2) continue; const k = kindOf(sh.name, name), label = `${name} → ${sh.name}`;
+      if (f.xlsx) { for (const sh of xlsx.sheets(Buffer.from(String(f.xlsx), 'base64'))) { const rows = sh.rows.filter(r => r.some(c => String(c ?? '').trim())); if (rows.length < 2) { if (rows.length) (out.empty ||= []).push(sh.name); continue; } const k = kindOf(sh.name, name), label = `${name} → ${sh.name}`;
           if (!k) { out.other.push({ label, n: rows.length - 1 }); continue; }
           if (k === 'songs' || k === 'banned') { if (!hasSongs) { out.other.push({ label, n: rows.length - 1, why: 'songs' }); continue; } add(k, songs.readTable(rows, k), label); continue; }
           add(k, chatbot.parseImport(xlsx.toCsv(rows), k, { cdMins }), label); } }
@@ -5379,13 +5379,18 @@ function botImportAll(files, { cdMins = true } = {}) {
         else add(k, chatbot.parseImport(f.text, k, { cdMins: cdMins || /\.abcomg?$/i.test(name) }), name); }
     } catch (e) { out.other.push({ label: name, n: 0, why: 'error', err: e.message }); }
   }
+  { /* 🔊 (1.124.0) Streamlabs Chatbot keeps sounds on their own SFX page (name + volume, no file): a sound with the same name as a command goes onto that command */
+    const snd = new Map(); for (const c of out.commands) if (c.sfxOnly && !snd.has(c.name)) snd.set(c.name, c);
+    for (const c of out.commands) if (!c.sfxOnly && !c.soundFrom && snd.has(c.name)) { const s = snd.get(c.name); c.soundFrom = s.soundFrom; c.vol = s.vol; s.used = true; }
+    out.commands = out.commands.filter(c => !c.used); out.emptySkipped = [];
+    out.commands = out.commands.filter(c => { if (!String(c.text || '').trim() && !c.soundFrom) { out.emptySkipped.push(c.name); return false; } c.text = String(c.text || '').trim(); return true; }); }
   const seen = new Set(); out.commands = out.commands.filter(c => !seen.has(c.name) && seen.add(c.name)); // (the same command in two files: once)
   for (const c of out.commands) if (c.soundFrom) { try { const from = c.soundFrom.replace(/^"|"$/g, ''); c.fileHere = SFX_OK.test(from) && fs.existsSync(from); } catch { c.fileHere = false; } }
   return out;
 }
 app.post('/api/chatbot/import-all', botDev(b => {
   const p = botImportAll(b.files, { cdMins: b.cdMins !== false }), snd = p.commands.filter(c => c.soundFrom);
-  const found = { commands: p.commands.length - snd.length, sounds: snd.length, soundFiles: snd.filter(c => c.fileHere).length, timers: p.timers.length, quotes: p.quotes.length, songs: p.songs.length, banned: p.banned.length, pages: p.pages, other: p.other,
+  const found = { commands: p.commands.length - snd.length, sounds: snd.length, soundFiles: snd.filter(c => c.fileHere).length, emptySkipped: p.emptySkipped || [], empty: [...new Set(p.empty || [])], timers: p.timers.length, quotes: p.quotes.length, songs: p.songs.length, banned: p.banned.length, pages: p.pages, other: p.other,
     sample: { commands: p.commands.filter(c => !c.soundFrom).slice(0, 8).map(c => ({ name: c.name, text: c.text })), sounds: snd.slice(0, 8).map(c => ({ name: c.name, file: c.soundFrom, here: !!c.fileHere })), timers: p.timers.slice(0, 5).map(t => ({ mins: t.mins, text: t.text })), quotes: p.quotes.slice(0, 5).map(q => ({ text: q.text })), songs: p.songs.slice(0, 5).map(x => ({ title: x.title || 'YouTube video ' + x.yt })) } };
   if (!(found.commands + found.sounds + found.timers + found.quotes + found.songs + found.banned)) throw new Error(p.other.length ? "I read the file" + (b.files?.length === 1 ? '' : 's') + " but found nothing I can bring over. Pages I saw: " + p.other.map(o => o.label).join(', ') : 'Nothing to read: pick the files Streamlabs Chatbot made (Data.xlsx, Songlist.xlsx) first.');
   if (b.dry) return { found };

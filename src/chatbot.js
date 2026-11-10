@@ -160,14 +160,15 @@ function csvRows(text) { // (a small CSV reader: quotes, commas or tabs or semic
 }
 function fromObject(o, out, hint) {
   if (o == null || typeof o !== 'object') return;
-  const name = pick(o, ['command', 'trigger', 'name', 'cmd', 'commandname']), text = pick(o, ['response', 'message', 'reply', 'text', 'output', 'content', 'quote']);
+  const name = pick(o, ['command', 'trigger', 'name', 'cmd', 'commandname']); let text = pick(o, ['response', 'message', 'reply', 'text', 'output', 'content', 'quote']);
   const mins = pick(o, ['interval', 'minutes', 'mins', 'every', 'timer']), isQuote = hint === 'quotes' || (pick(o, ['quote']) != null && name == null);
   const file = pick(o, ['file', 'filepath', 'path', 'sound', 'soundfile', 'filename', 'audiofile']); // 🔊 Streamlabs Chatbot's SFX page: a command + a sound file
   if ((hint === 'sfx' || (typeof file === 'string' && /\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i.test(file.trim()))) && name != null && cleanName(name)) {
     const unit = out.cdMins ? 60 : 1, v = Number(pick(o, ['volume', 'vol']));
-    return void out.commands.push({ name: cleanName(name), text: typeof text === 'string' && !/\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i.test(text.trim()) ? text.trim() : '', soundFrom: String(file || '').trim(), vol: Number.isFinite(v) ? clampN(v <= 1 ? v * 100 : v, 0, 100, 80) : 80, perm: permIn(pick(o, ['permission', 'userlevel', 'access', 'level', 'perm', 'accesslevel'])), cd: clampN(Number(pick(o, ['cooldown', 'globalcooldown', 'cd'])) * unit, 0, 86400, 5), ucd: clampN(Number(pick(o, ['usercooldown', 'ucd', 'usercd'])) * unit, 0, 86400, 0), uses: clampN(pick(o, ['count', 'uses', 'used']), 0, 1e9, 0), on: pick(o, ['enabled', 'on', 'active']) !== false, aliases: [] });
+    return void out.commands.push({ name: cleanName(name), text: typeof text === 'string' && !/\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i.test(text.trim()) ? text.trim() : '', soundFrom: String(file || '').trim() || (hint === 'sfx' ? String(name).trim() : ''), /* (Streamlabs Chatbot's SFX page has only the sound's name, no file: the name is kept so the file can be matched later) */ sfxOnly: !file, vol: Number.isFinite(v) ? clampN(v <= 1 ? v * 100 : v, 0, 100, 80) : 80, perm: permIn(pick(o, ['permission', 'userlevel', 'access', 'level', 'perm', 'accesslevel'])), cd: clampN(Number(pick(o, ['cooldown', 'globalcooldown', 'cd'])) * unit, 0, 86400, 5), ucd: clampN(Number(pick(o, ['usercooldown', 'ucd', 'usercd'])) * unit, 0, 86400, 0), uses: clampN(pick(o, ['count', 'uses', 'used']), 0, 1e9, 0), on: pick(o, ['enabled', 'on', 'active']) !== false, aliases: [] });
   }
-  if (typeof text !== 'string' || !text.trim()) return;
+  if ((typeof text !== 'string' || !text.trim()) && hint === 'commands' && name != null && cleanName(name)) text = ' '; /* (1.124.0: Streamlabs Chatbot commands that only play a sound have no answer: kept, their sound comes from the SFX page) */
+  if (typeof text !== 'string' || (!text.trim() && text !== ' ')) return;
   if (isQuote) return void out.quotes.push({ text: text.trim(), by: String(pick(o, ['by', 'author', 'addedby', 'user']) || ''), at: Date.parse(pick(o, ['date', 'at', 'created', 'createdat']) || '') || 0, n: Number(pick(o, ['id', 'n', 'number', 'index'])) || 0 });
   if (hint === 'timers' || (mins != null && (hint !== 'commands') && (name == null || !/^[!?.]/.test(String(name))))) return void out.timers.push({ name: String(name || '').trim(), text: text.trim(), mins: clampN(mins, 1, 1440, 15), lines: clampN(pick(o, ['chatlines', 'minlines', 'lines', 'minimumlines']), 0, 1000, 5), on: pick(o, ['enabled', 'on', 'active']) !== false });
   if (name == null || !cleanName(name)) return;

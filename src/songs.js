@@ -32,7 +32,7 @@ export function infoWhy(info, title, o) {
   if (o.minViews > 0 && info.views != null && info.views < o.minViews) return 'views';
   return '';
 }
-export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, solo: false, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
+export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, solo: false, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', skipPerm: 'all', vetoPerm: 'mods', reqInfo: '', skipInfo: '', vetoInfo: '', perVip: 0, perMod: 0, onlyKnown: false, showVideo: false, quality: 'auto', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
 
 // ---------- what a request is ----------
 /** A YouTube link or id → the 11-character video id ('' when it isn't one). */
@@ -57,14 +57,16 @@ const say = (t, gap = 0) => { if (gap && Date.now() - lastSay < gap) return; las
 export function mine(login, d = data()) { const l = low(login), out = []; if (!l) return out; if (d.now && d.now.login === l) out.push({ title: d.now.title, pos: 0, yt: d.now.yt || '' }); d.queue.forEach((q, i) => { if (q.login === l) out.push({ title: q.title, pos: i + 1, yt: q.yt || '' }); }); return out; }
 export function onChat(m) {
   if (!on() || !m?.login) return false; const d = data(), o = opts(d), text = String(m.text || '').trim(), sp = text.split(/\s+/), w = low(sp[0]), arg = text.slice(sp[0].length).trim(), name = m.name || m.login;
-  if (o.command && w === low(o.command)) { if (!arg) { say(`🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
+  if (o.command && w === low(o.command)) { if (!arg) { say(o.reqInfo ? `🎵 @${name} ${o.reqInfo}` : `🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
   if (o.nowCommand && w === low(o.nowCommand)) { say(d.now ? `🎵 Now playing: ${d.now.title}${d.now.by ? ` (asked by ${d.now.by})` : ''}` : '🎵 Nothing is playing right now.', 5000); return true; }
   if (o.queueCommand && w === low(o.queueCommand)) { say(d.queue.length ? `🎵 Next up (${d.queue.length}): ${d.queue.slice(0, 5).map((q, i) => `${i + 1}. ${q.title}`).join(' · ')}${d.queue.length > 5 ? ' …' : ''}`.slice(0, 480) : '🎵 The song queue is empty.', 8000); return true; }
   /* ⏭ skipping: mods and the streamer skip right away, and so does the person whose song it is; anyone else counts as a vote to skip (when votes are on). "!skip song" works like the skip command. */
-  const voteSkip = () => { if (!(o.skipVotes > 0) || !d.now) return false; const v = (d.vs && d.vs.id === d.now.id) ? d.vs : (d.vs = { id: d.now.id, who: [] }); if (v.who.includes(low(m.login))) return true; v.who.push(low(m.login));
+  const PW = { all: 'everyone', followers: 'followers', subs: 'subs', vips: 'VIPs', mods: 'mods', streamer: 'the streamer' };
+  const voteSkip = () => { if (!(o.skipVotes > 0) || !d.now) return false; if (o.skipPerm && o.skipPerm !== 'all') { const at = d.now.id; H.allowed(m, o.skipPerm).then(ok => { if (!d.now || d.now.id !== at) return; if (ok) voteNow(); else say(`🎵 @${name} ${o.skipInfo || 'voting to skip is for ' + (PW[o.skipPerm] || 'others') + '.'}`, 8000); }).catch(() => {}); return true; } return voteNow(); };
+  const voteNow = () => { if (!d.now) return false; const v = (d.vs && d.vs.id === d.now.id) ? d.vs : (d.vs = { id: d.now.id, who: [] }); if (v.who.includes(low(m.login))) return true; v.who.push(low(m.login));
     if (v.who.length >= o.skipVotes) { const n = d.now; next(); if (n.login) H.note(n.login, n.by, 'skipped', `${n.title} (chat voted)`); say(`🎵 Chat voted to skip: ${n.title}`); } else say(`🎵 ${name} voted to skip (${v.who.length} of ${o.skipVotes}).`, 4000); return true; };
   if ((o.skipCommand && w === low(o.skipCommand)) || (w === '!skip' && /^song\b/i.test(arg) && (o.skipCommand || o.voteCommand))) { if (!d.now) { say('🎵 Nothing is playing right now.', 5000); return true; } const own = d.now.login === low(m.login);
-    H.allowed(m, 'mods').then(ok => { if (!d.now) return; if (ok || own) { const n = d.now; next(); H.note(m.login, name, 'skip', n.title); if (n.login && !own) H.note(n.login, n.by, 'skipped', `${n.title} (by ${name})`); say(`🎵 ${name} skipped: ${n.title}`); } else if (!voteSkip()) say(`🎵 @${name} only mods can skip a song (or the person who asked for it).`, 8000); }).catch(() => {}); return true; }
+    H.allowed(m, o.vetoPerm || 'mods').then(ok => { if (!d.now) return; if (ok || own) { const n = d.now; next(); H.note(m.login, name, 'skip', n.title); if (n.login && !own) H.note(n.login, n.by, 'skipped', `${n.title} (by ${name})`); say(`🎵 ${name} skipped: ${n.title}`); } else if (!voteSkip()) say(`🎵 @${name} ${o.vetoInfo || 'only ' + (PW[o.vetoPerm || 'mods'] || 'mods') + ' can skip a song (or the person who asked for it).'}`, 8000); }).catch(() => {}); return true; }
   if (o.voteCommand && w === low(o.voteCommand)) { if (w === '!skip' && arg && H.movieSkip()) return false; /* ("!skip 3" in an edition with movie battles is the movie skip) */ voteSkip(); return true; }
   if (o.volCommand && w === low(o.volCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const n = Number(arg); if (!arg || !Number.isFinite(n)) return say(`🔉 The song volume is ${o.vol}.`, 4000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
   if (o.mineCommand && w === low(o.mineCommand)) { const who = arg && /^@?\w{2,30}$/.test(arg) ? arg.replace(/^@/, '') : m.login, own = low(who) === low(m.login), l = mine(who, d), nm = own ? name : who; say(l.length ? `🎵 @${name} ${own ? 'your' : nm + "'s"} song${l.length === 1 ? '' : 's'}: ${l.map(x => x.pos ? `#${x.pos} ${x.title}` : `▶ playing now: ${x.title}`).join(' · ')}`.slice(0, 480) : `🎵 @${name} ${own ? 'you have' : nm + ' has'} no songs in the queue.`, 3000); return true; }
@@ -79,7 +81,8 @@ export async function request(m, arg, { hand = false, test = false, now = Date.n
     if (d.bannedUsers.includes(login)) return no('user');
     if (!(await H.allowed(m, o.perm))) return no('perm', 'song requests are for ' + ({ followers: 'followers', subs: 'subs', vips: 'VIPs', mods: 'mods', streamer: 'the streamer' }[o.perm] || 'others') + ' right now.');
     if (d.queue.length >= o.max) return no('full', 'the song queue is full. Try again in a bit.');
-    { let lim = o.perUser; if (lim && o.perUserSub > lim && (await H.allowed(m, 'subs'))) lim = o.perUserSub; /* (subs can be given more) */
+    { let lim = o.perUser; /* (subs, VIPs and mods can be given more: the biggest number that fits them counts; 0 = same as everyone) */
+      for (const [k, p] of [['perUserSub', 'subs'], ['perVip', 'vips'], ['perMod', 'mods']]) if (lim && o[k] > lim && (await H.allowed(m, p))) lim = o[k];
       if (lim && d.queue.filter(q => q.login === login).length >= lim) return no('limit', `you already have ${lim} song${lim === 1 ? '' : 's'} in the queue.`); }
     { const last = d.req[login] && d.req[login].last, left = o.cd > 0 && last ? Math.ceil((last + o.cd * 1000 - now) / 1000) : 0; if (left > 0 && !(await H.allowed(m, 'mods'))) return no('wait', `you can ask for another song in ${left >= 90 ? Math.round(left / 60) + ' min' : left + ' s'}.`); }
   }
@@ -101,6 +104,7 @@ export async function request(m, arg, { hand = false, test = false, now = Date.n
   if (yt) { title = d.lib['yt:' + yt]?.title || (found && found.title) || ''; if (!title) { try { title = String(await H.title(yt) || '').slice(0, 140); } catch {} } if (!title) title = 'YouTube video ' + yt; }
   if (!title) return no('empty');
   const x = { yt, title }, key = keyOf(x), ban = bannedWhy(x, d); if (d.lib[key]?.title && !/^YouTube video /.test(d.lib[key].title)) x.title = title = d.lib[key].title; /* (a song you know keeps the name you gave it) */ if (ban) return no('banned', "that song is on the banned list, sorry.");
+  if (o.onlyKnown && !hand && !(d.lib[key] && (d.lib[key].plays || d.lib[key].old || d.lib[key].requests))) return no('unknown', 'right now only songs already in the song list can be requested.');
   if (d.queue.some(q => q.key === key) || d.now?.key === key) return no('dupe', 'that song is already in the queue.');
   const item = { id: uid(), key, title, yt, by: name, login, at: now, test: test || undefined };
   d.queue.push(item); if (login && !test && !hand) H.note(login, name, 'song', title); const L = lib(d, { key, title, yt }); L.requests++; if (!L.first) L.first = now; if (login) { L.by[login] = (L.by[login] || 0) + 1; if (!hand && !test) { const r = (d.req[login] ||= { name, n: 0 }); r.n++; r.name = name; r.last = now; } }
@@ -163,12 +167,15 @@ export function setHold(id) { const d = data(), p = id ? (d.playlists || []).fin
 export function setOpts(b) {
   const d = data(), x = d.opts;
   for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'mineCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (!c) x[k] = ''; /* (left blank = that command is turned off) */ else if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr (or leave the box empty to turn it off)'); }
-  if ('perm' in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b.perm)) x.perm = b.perm;
+  for (const k of ['perm', 'skipPerm', 'vetoPerm']) if (k in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b[k])) x[k] = b[k];
+  for (const k of ['reqInfo', 'skipInfo', 'vetoInfo']) if (k in b) x[k] = String(b[k] || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  for (const k of ['perVip', 'perMod']) if (k in b) x[k] = Math.round(clampN(b[k], 0, 50, 0));
+  if ('quality' in b) x.quality = ['auto', 'small', 'medium', 'large', 'hd720', 'hd1080'].includes(b.quality) ? b.quality : 'auto';
   if ('perUser' in b) x.perUser = Math.round(clampN(b.perUser, 0, 50, 2)); if ('max' in b) x.max = Math.round(clampN(b.max, 1, 500, 50));
   if ('reply' in b) x.reply = !!b.reply; if ('overlay' in b) x.overlay = !!b.overlay; if ('links' in b) x.links = b.links === 'youtube' ? 'youtube' : 'any';
   if ('perUserSub' in b) x.perUserSub = Math.round(clampN(b.perUserSub, 0, 50, 0)); if ('cd' in b) x.cd = Math.round(clampN(b.cd, 0, 86400, 0)); if ('maxMins' in b) x.maxMins = clampN(b.maxMins, 0, 600, 10); if ('minViews' in b) x.minViews = Math.round(clampN(b.minViews, 0, 1e9, 0));
   if ('skipVotes' in b) x.skipVotes = Math.round(clampN(b.skipVotes, 0, 500, 0)); if ('vol' in b) x.vol = Math.round(clampN(b.vol, 0, 100, 60));
-  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo', 'noRate']) if (k in b) x[k] = !!b[k]; /* (noRate = no song ratings at all: the stars are hidden everywhere, saved ratings are kept) */ /* (solo = only one person rates: the second rating is hidden everywhere) */
+  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo', 'noRate', 'onlyKnown', 'showVideo']) if (k in b) x[k] = !!b[k]; /* (noRate = no song ratings at all: the stars are hidden everywhere, saved ratings are kept) */ /* (solo = only one person rates: the second rating is hidden everywhere) */
   if ('dmcaList' in b) { const l = (Array.isArray(b.dmcaList) ? b.dmcaList : String(b.dmcaList || '').split(/[\n,]+/)).map(s => String(s).trim().slice(0, 60)).filter(Boolean).slice(0, 200); if (l.length) x.dmcaList = l; else delete x.dmcaList; }
   if ('scale' in b) x.scale = [5, 10, 100].includes(Number(b.scale)) ? Number(b.scale) : 10;
   if ('raters' in b && Array.isArray(b.raters)) x.raters = [0, 1].map(i => String(b.raters[i] || '').trim().slice(0, 20) || opts(d).raters[i]);
@@ -265,7 +272,7 @@ export function clearTests() { const d = data(); d.queue = d.queue.filter(q => !
 
 /** 🧪 the rules + the importer, walked through on pretend data (nothing saved, nothing said, nothing looked up) */
 export async function demo() {
-  const keep = { ...H }; Object.assign(H, { say: async () => {}, act: () => {}, send: () => {}, allowed: async (m, p) => p === 'all' || !!m.sub, title: async id => 'Looked-up title ' + id, info: async () => null }); const rows = [], add = (what, ok) => rows.push({ what, ok: !!ok });
+  const keep = { ...H }; Object.assign(H, { say: async () => {}, act: () => {}, send: () => {}, allowed: async (m, p) => p === 'all' || !!m.sub || (p === 'vips' && !!m.vip) || (p === 'mods' && !!m.mod), title: async id => 'Looked-up title ' + id, info: async () => null }); const rows = [], add = (what, ok) => rows.push({ what, ok: !!ok });
   try {
     const d = data({ opts: { perUser: 2, max: 4 } }), o = opts(d), v = n => ({ login: n, name: n }), R = (n, a, x = {}) => request(v(n), a, { d, quiet: true, ...x });
     add('A YouTube link is understood (watch, youtu.be, shorts, music)', ytId('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10') === 'dQw4w9WgXcQ' && ytId('https://youtu.be/dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && ytId('https://youtube.com/shorts/dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && ytId('just a song name') === '');
@@ -290,6 +297,13 @@ export async function demo() {
       add('🔎 A name YouTube finds nothing for is still added as typed', miss.ok && !miss.item.yt && miss.item.title === 'a song nobody has'); }
     { const mm = mine('amy', d); add('!mysongs: each person\'s songs come with their place in the queue', mm.length === 2 && mm[0].pos === 1 && mm[1].pos === 2 && mine('nobody', d).length === 0); }
     { add('📻 A playlist link gives its list id, and a plain video link is refused', plId('https://www.youtube.com/playlist?list=PLabcdefghij12345') === 'PLabcdefghij12345' && plId('https://youtu.be/dQw4w9WgXcQ?list=PLabcdefghij12345&index=2') === 'PLabcdefghij12345' && plId('https://youtu.be/dQw4w9WgXcQ') === ''); }
+    { const d5 = data({ opts: { perUser: 1, perVip: 3, max: 50, search: false } }), V5 = (who, a, x = {}) => request({ login: who, name: who, ...x }, a, { d: d5, quiet: true });
+      const vic = []; for (const t of ['V1', 'V2', 'V3', 'V4']) vic.push(await V5('vic', t, { vip: true })); const pam = [await V5('pam', 'P1'), await V5('pam', 'P2')];
+      add('👑 VIPs can be given more songs in the queue than everyone else (3 here, everyone else 1)', vic.slice(0, 3).every(r => r.ok) && vic[3].why === 'limit' && pam[0].ok && pam[1].why === 'limit'); }
+    { const d6 = data({ opts: { perUser: 9, max: 50, search: false, onlyKnown: true } }); lib(d6, { key: 't:' + norm('Known Song'), title: 'Known Song', yt: '' }).old = true;
+      add('📚 Only songs already in the song list: a known song is taken, a new one is refused', (await request(v('kim'), 'Known Song', { d: d6, quiet: true })).ok && (await request(v('kim'), 'Brand New Song', { d: d6, quiet: true })).why === 'unknown'); }
+    { const said = [], was = H.say; H.say = async t => { said.push(t); }; const o0 = { ...data().opts }; try { Object.assign(data().opts, { reqInfo: 'Send a link, friend!', reply: true }); lastSay = 0; onChat({ login: 'zed', name: 'zed', text: (opts().command || '!sr') }); } finally { data().opts = Object.assign(data().opts, o0); if (!('reqInfo' in o0)) delete data().opts.reqInfo; H.say = was; }
+      add('💬 Your own request help line is said when someone types the request command alone', !on() || !opts().command || said.some(t => /Send a link, friend!/.test(t))); }
     d.open = false; add('Closed = no requests', (await R('dan', 'Later')).why === 'closed'); d.open = true;
     const rym = readText('RYM Album, First Name,Last Name,First Name localized, Last Name localized,Title,Release_Date,Rating,Ownership,Purchase Date,Media Type,Review\n1,"","Toto","","","Toto IV",1982,9,n,,,""\n2,"Daft","Punk","","","Discovery",2001,10,o,,,"great, really"\n3,"","Nobody","","","Wishlist only",1999,0,w,,,""\n', 'songs', { ...o, raters: ['Birx', 'Jess'] }, 1);
     add('A RateYourMusic export is read: artist + album, the rating out of 10, unrated ones left out, for the person you pick', rym.rym && rym.songs.length === 2 && rym.songs[0].title === 'Toto - Toto IV' && rym.songs[0].rate[1] === 9 && rym.songs[0].rate[0] === null && rym.songs[1].title === 'Daft Punk - Discovery' && rym.songs[1].year === '2001' && rym.songs[1].album);

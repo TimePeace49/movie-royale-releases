@@ -22,7 +22,8 @@ const texts = xml => [...xml.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map(m 
 const colNo = ref => { let n = 0; for (const c of ref.replace(/\d+/g, '')) n = n * 26 + (c.charCodeAt(0) - 64); return n - 1; };
 
 export function sheets(buffer) {
-  const z = unzip(Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)), get = n => (z[n] ? z[n]() : '');
+  /* (1.124.0: Streamlabs Chatbot writes every tag with an x: in front, like <x:row>: the prefixes are taken off first, or nothing was found) */
+  const z = unzip(Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)), get = n => (z[n] ? z[n]().replace(/^\uFEFF/, '').replace(/<(\/?)[A-Za-z][\w.-]*:(?=[A-Za-z])/g, '<$1') : '');
   const wb = get('xl/workbook.xml'); if (!wb) throw new Error("That file isn't an Excel (.xlsx) file.");
   const shared = [...get('xl/sharedStrings.xml').matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m => texts(m[1]));
   const rels = Object.fromEntries([...get('xl/_rels/workbook.xml.rels').matchAll(/<Relationship\b[^>]*>/g)].map(m => [(m[0].match(/\bId="([^"]+)"/) || [])[1], (m[0].match(/\bTarget="([^"]+)"/) || [])[1]]));

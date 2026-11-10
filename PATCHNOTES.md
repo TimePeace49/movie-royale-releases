@@ -4,6 +4,13 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.124.0: What's new
+New in this version.
+
+- 🧳 **Bringing your Streamlabs Chatbot stuff over works now:** its Excel files weren't being read at all. Commands, sound alerts, timers and quotes come over, including commands that only play a sound.
+- 🔊 **📁 Pick my sounds folder** on the 🔊 Sound alerts tab: Streamlabs Chatbot only exports the names of your sounds, so pick the folder they're in and every matching file is added in one go.
+- {songs} 🎵 **More song request options:** who can vote to skip, who can skip right away, more songs for VIPs and mods, only songs already in your song list, your own chat lines for help / can't vote / can't skip, and showing the video in the music box with a quality pick.
+
 ## v1.123.0: What's new
 New in this version.
 

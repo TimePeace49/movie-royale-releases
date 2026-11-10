@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.124.0
+- 🧳 **Streamlabs Chatbot import fixed:** its Excel files write every part with a hidden "x:" in front, so nothing was read at all (commands, sound alerts, timers, quotes, songs). They're read now. Commands that only play a sound (no answer) come over too, and each sound from the SFX page goes onto the command with the same name, with its volume.
+- 🔊 **📁 Pick my sounds folder:** Streamlabs Chatbot's export has only the sound names, not the files. On 🔊 Sound alerts, pick your sounds folder (or some sound files) and every file named like an alert is added in one go.
+- The import now lists which pages were empty in your files. Banned songs and Streamlabs' song request settings aren't in its export (it keeps them locked), so the import says where to add them by hand.
+- 🎵 **More song request options (like Streamlabs Chatbot):** who can vote to skip, who can skip right away, how many songs VIPs and mods can have waiting, "only songs already in my song list", your own chat lines for request help / can't vote / can't skip, 📺 show the video in the music box (off by default) and its quality. A 🧪 Check these rules button tries them with pretend people.
+
 ## 1.123.0
 - 📌 **Movie night: the list pins itself in chat.** When you add, paste or change tonight's movies, the list is pinned in chat 20 seconds after your last change (so typing a whole list pins once). The pin is just the number, name and year of each movie: `1. Jaws (1975) · 2. Alien (1979)`. The year comes from the name, or from the ratings look-up when the name doesn't have one. A tick box in 📺 On stream + options turns it off; 📌 Pin again still works by hand.
 - Opening voting now says how to vote in its own chat line and pins the same short list.
