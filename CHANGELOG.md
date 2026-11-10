@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.103.0
+**🥚 Egg game: one free egg, buy more with channel points** (True's edition; also in Derek's with dev mode on)
+- **Everyone gets 1 free egg.** After it hatches, they buy more eggs with channel points: a new **🥚 Buy an egg** reward (made by itself after you sign in; 1,000 points to start, you set the price on the Eggs tab).
+- **Several eggs, one incubator.** A viewer can own as many eggs as they like, but only one incubates at a time. The others wait in their nest and the next one starts by itself when an egg hatches.
+- **Every egg is a surprise:** which creature is inside is only decided when it hatches.
+- With no egg in the incubator, watching and chatting fill nothing. Subs, gifts, bits and tips are kept and go into their next egg.
+- `!egg` now also says how many eggs are waiting, or that they have none and how to get one. The viewer website shows it too.
+- Eggs tab: a **🛒 Getting eggs** box (price, make the reward) and a **🥚 Give an egg** button (handy for Kick viewers, who have no channel points).
+- 🧪 Test tab → Egg game: **🛒 Pretend buys an egg**.
+
 ## 1.102.0
 **🥚 Egg game: creatures in chat battles, skills and powers** (True's edition; also in Derek's with dev mode on)
 - **Creatures fight in the Chat battle.** When someone joins the Chat battle, the creature they have out is their piece on the battlefield, with its level on it.

@@ -549,6 +549,7 @@ function rewardWants() {
   for (const [kind, title] of Object.entries(W.rewards || {})) if (title) want[title.toLowerCase()] = !(inUse && wheelUp && W.pointsOn !== false && P[kind] !== false && !(kind === 'respin' && onAuto));
   if (st.colorReward) want[st.colorReward.toLowerCase()] = !(inUse && st.colorsOn !== false && st.colorMode === 'points' && !wheelUp);
   if (st.raidOn !== false && st.raidTitle) want[st.raidTitle.toLowerCase()] = !(db.live && !stream().raidUsed); // 🚀 while you're live, until someone redeems it
+  if (feat('eggs')) want[eggs.opts().buyTitle.toLowerCase()] = false; // 🥚 buy an egg: always in the menu (like the viewer rewards)
   for (const k of Object.keys(VR)) want[vrTitle(k).toLowerCase()] = vrOff(k); // 💧🙆🎩🎉 on in the menu, unless you switched that one off (1.61.0)
   for (const [t, m] of Object.entries(db.rewardModes || {})) { if (m === 'off') want[t] = true; else if (m === 'on' || m === 'once') want[t] = false; else if (m === 'count') want[t] = countLeft(t) <= 0; } // (🔢 countdown: on until it's been used that many times this stream) // 💰 your override (Settings → Rewards & prices) beats the rules
   return want;
@@ -1103,6 +1104,7 @@ const twitchHandlers = {
   async redeemNow(r) {
     if (db.settings.raidOn !== false && db.settings.raidTitle && r.title.toLowerCase() === db.settings.raidTitle.toLowerCase()) return raidRedeem(r); // 🚀
     { const k = vrKind(r.title); if (k) return vrRedeem(k, r); } // 💧🙆🎩🎉 viewer rewards
+    if (feat('eggs') && r.title.toLowerCase() === eggs.opts().buyTitle.toLowerCase()) return void eggs.buy({ login: r.login, name: r.name }, { test: !!r.test }); // 🥚 buy an egg
     if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
     if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
     if (db.settings.pointsOn === false) return; // channel point chaos switched off
@@ -1865,6 +1867,7 @@ async function pricesInfo() {
   const WN = { respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down', grow: '📈 Grow a spot', shrink: '📉 Shrink a spot', double: '✌️ Double trouble', stop: '🛑 Force stop' };
   for (const [k, title] of Object.entries(W.rewards || {})) if (title) rewards.push(R('wheel', 'wheel:' + k, title, WN[k] || k, W.costs?.[k]));
   for (const [k, d] of Object.entries(VR)) rewards.push(R('viewer', 'vr:' + k, vrTitle(k), ({ hydrate: '💧 Hydrate (pop-up + chugging sound)', stretch: '🙆 Stretch (pop-up + stretching sound)', hat: '🎩 Pick a hat (they pick from your hat list in chat)', choice: "🎉 Viewer's choice (confetti, balloons, big pop-up)" })[k], db.settings.vrCosts?.[k] ?? d.cost));
+  if (feat('eggs')) rewards.push(R('viewer', 'egg:buy', eggs.opts().buyTitle, '🥚 Buy an egg (egg game: one more egg for their nest)', eggs.opts().buyCost));
   if (st.raidTitle) rewards.push(R('raid', 'raid', st.raidTitle, '🚀 Pick who we raid' + (st.raidOn === false ? ' (raid reward is off)' : ''), st.raidCost));
   const bits = Object.entries(st.bits || {}).map(([b, ev]) => ({ amount: Number(b), what: `${EVENTS[ev]?.icon || ''} ${EVENTS[ev]?.name || ev}`, event: ev, paused: !!P.bits?.[b] })).sort((a, b) => a.amount - b.amount);
   return { rewards, bits, wheel: { ...W.auto }, paused: { wheelBits: !!P.wheelBits, wheelSubs: !!P.wheelSubs, donations: !!P.donations }, twErr, bitsOn: st.bitsOn !== false, pointsOn: st.pointsOn !== false, wheelPointsOn: W.pointsOn !== false };
@@ -1887,6 +1890,7 @@ app.post('/api/prices/reward', async (req, res) => {
       else if (key.startsWith('monkey:')) { (db.settings.monkeyCosts ||= {})[key.slice(7)] = cost; }
       else if (key === 'raid') db.settings.raidCost = cost;
       else if (key.startsWith('vr:')) (db.settings.vrCosts ||= {})[key.slice(3)] = cost;
+      else if (key === 'egg:buy') { eggs.data().opts.buyCost = cost; broadcast({ type: 'eggs' }, 'control'); }
       const t = (await twitch.listRewards().catch(() => [])).find(x => x.title.toLowerCase() === title.toLowerCase());
       if (t) await twitch.updateReward(t.id, { cost });
       else if ((await twitch.listAllRewards().catch(() => [])).some(x => x.title.toLowerCase() === title.toLowerCase())) note = 'That reward was made by hand on Twitch, so only Twitch can change its price (Twitch → Creator Dashboard → Channel Points).';
@@ -4731,12 +4735,21 @@ setTimeout(maraPrizesOnce, 1400);
 // 🥚 The egg game (1.100.0, True's edition; Derek's with dev mode on): see src/eggs.js + public/creatures.js
 eggs.setHooks({ on: () => feat('eggs'), say: t => twitch.say(t), live: () => !!db.live || !!live.fakeLive, act: (text, o = {}) => act('chat', text, { icon: '🥚', ...o }), send: (msg, role) => broadcast(msg, role), changed: () => { broadcast({ type: 'eggs' }, 'control'); broadcast({ type: 'eggBadges', badges: eggs.badges() }, 'eggs'); eggSiteSoon(); }, isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
 const egTry = fn => async (req, res) => { try { if (!feat('eggs')) throw new Error('The egg game is not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.players ? { state: r } : r || {}); } catch (e) { res.status(400).json({ error: e.message }); } };
-app.get('/api/eggs', (req, res) => res.json(feat('eggs') ? { ...eggs.state({ q: String(req.query.q || '') }), site: eggSite } : { on: false }));
+app.get('/api/eggs', (req, res) => res.json(feat('eggs') ? { ...eggs.state({ q: String(req.query.q || '') }), site: eggSite, reward: db.eggs?.rewardSetup || null, signedIn: !!twitch.status.userId } : { on: false }));
 app.get('/api/eggs/public', (req, res) => res.json(feat('eggs') ? eggs.publicData() : { players: [] })); // (what the viewer page shows: names + creatures)
 app.get('/api/eggs/badges', (req, res) => res.json(feat('eggs') ? eggs.badges() : {}));
 app.post('/api/eggs/opts', egTry(b => eggs.setOpts(b)));
 app.post('/api/eggs/give', egTry(b => eggs.grant(b.name, b.pts)));
 app.post('/api/eggs/remove', egTry(b => eggs.removePlayer(b.key)));
+app.post('/api/eggs/give-egg', egTry(b => eggs.grantEggs(b.name, b.n)));
+// 🥚 the "Buy an egg" channel point reward: made once by itself after signing in (never refunds: every redeem is an egg)
+async function eggRewardSetup() {
+  const o = eggs.opts(), all = await twitch.listAllRewards(), mine = new Set((await twitch.listRewards()).map(r => r.id)), old = all.find(r => r.title.toLowerCase() === o.buyTitle.toLowerCase()), out = { title: o.buyTitle, cost: old?.cost || o.buyCost, made: false, byHand: !!old && !mine.has(old.id) };
+  if (old) eggs.data().opts.buyCost = old.cost; else out.made = await twitch.createReward({ title: o.buyTitle, cost: o.buyCost, prompt: 'One more egg for your nest! Only one egg incubates at a time; the next one starts when it hatches. Which creature is inside is a surprise.', color: '#FFB020', input: false, queue: false }).catch(e => { out.error = e.message; return false; });
+  eggs.data().rewardSetup = { at: Date.now(), ...out }; save(); rewardKey = ''; syncRewards().catch(() => {}); broadcast({ type: 'eggs' }, 'control'); return out;
+}
+setInterval(() => { if (feat('eggs') && twitch.status.userId && !db.eggs?.rewardSetup && !eggRewardSetup.busy) { eggRewardSetup.busy = true; eggRewardSetup().catch(e => console.error('[twitch] egg reward:', e.message)).finally(() => { eggRewardSetup.busy = false; }); } }, 30000);
+app.post('/api/eggs/reward', egTry(async () => ({ ok: true, ...(await eggRewardSetup()) })));
 // 🌐 the public egg page on your own 24/7 bot (Cloudflare): the page + the creature drawings once, then a copy of names + creatures at most every 5 minutes, only when something changed
 const eggSite = { url: '', at: 0, error: '', v: '' }; let eggSiteT = null, eggSiteLast = '';
 function eggSiteSoon() { if (eggSiteT || !feat('eggs') || db.eggs?.opts?.site === false) return; eggSiteT = setTimeout(() => { eggSiteT = null; eggSitePush().catch(e => { eggSite.error = e.message; }); }, Math.max(15000, 5 * 60000 - (Date.now() - eggSite.at))); }
@@ -4757,8 +4770,9 @@ app.post('/api/test/eggs', egTry(async b => {
   if (b.action === 'rules') return eggs.demo();
   if (b.action === 'clear') return eggs.clearTests();
   twitch.pretend.until = Date.now() + 10 * 60000; const d = eggs.data(), names = ['pretend_ash', 'pretend_bee', 'pretend_cy', 'pretend_dot'];
-  if (b.action === 'fill') { for (const n of names) { const p = eggs.player({ login: n, name: n.replace('pretend_', 'Pretend_') }, d); eggs.give(p, eggs.opts().need * (2 + Math.floor(Math.random() * 4)) + Math.floor(Math.random() * eggs.opts().need), 'test', { quiet: true, test: true }); for (const c of p.pets) eggs.addXp(c, Math.floor(Math.random() * 1500)); } save(); broadcast({ type: 'eggs' }, 'control'); broadcast({ type: 'eggBadges', badges: eggs.badges() }, 'eggs'); return eggs.state(); }
-  if (b.action === 'hatch') { const p = eggs.player({ login: names[0], name: 'Pretend_ash' }, d); const got = eggs.give(p, eggs.opts().need - p.pts, 'test', { test: true }); save(); broadcast({ type: 'eggs' }, 'control'); return { ok: true, hatched: got.length }; }
+  if (b.action === 'buy') { const r = eggs.buy({ login: names[0], name: 'Pretend_ash' }, { test: true }); return { ok: true, waiting: r.waiting, started: r.started }; }
+  if (b.action === 'fill') { for (const n of names) { const p = eggs.player({ login: n, name: n.replace('pretend_', 'Pretend_') }, d); eggs.addEggs(p, 6, { d }); eggs.give(p, eggs.opts().need * (2 + Math.floor(Math.random() * 4)) + Math.floor(Math.random() * eggs.opts().need), 'test', { quiet: true, test: true }); for (const c of p.pets) eggs.addXp(c, Math.floor(Math.random() * 1500)); } save(); broadcast({ type: 'eggs' }, 'control'); broadcast({ type: 'eggBadges', badges: eggs.badges() }, 'eggs'); return eggs.state(); }
+  if (b.action === 'hatch') { const p = eggs.player({ login: names[0], name: 'Pretend_ash' }, d); if (!eggs.hasEgg(p)) eggs.addEggs(p, 1, { d }); const got = eggs.give(p, eggs.opts().need - p.pts, 'test', { test: true }); save(); broadcast({ type: 'eggs' }, 'control'); return { ok: true, hatched: got.length }; }
   if (b.action === 'powers') { const p = eggs.player({ login: names[0], name: 'Pretend_ash' }, d); if (!p.pets.length) eggs.give(p, eggs.opts().need, 'test', { quiet: true, test: true }); const c = p.pets[p.eq] || p.pets[0]; if (c.lvl < 12) { c.lvl = 12; c.xp = 0; if (c.stage < 1) c.stage = 1; } c.pw = []; save(); const o = eggs.opts(), say = (t, ms) => setTimeout(() => twitchHandlers.chat({ login: names[0], name: 'Pretend_ash', text: t, userId: 'p-ash', badges: {}, pretend: true }), ms); say(o.skillsCommand, 0); say(o.powersCommand, 700); say(o.powerCommand + ' 1', 1400); say(o.powerCommand + ' crowd', 2100); return { ok: true }; }
   if (b.action === 'battle') { for (const n of names.slice(0, 2)) { const p = eggs.player({ login: n, name: n.replace('pretend_', 'Pretend_') }, d); if (!p.pets.length) eggs.give(p, eggs.opts().need, 'test', { quiet: true, test: true }); } twitchHandlers.chat({ login: names[0], name: 'Pretend_ash', text: `${eggs.opts().battleCommand} ${names[1]}`, userId: 'p-ash', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 400)); twitchHandlers.chat({ login: names[1], name: 'Pretend_bee', text: eggs.opts().battleCommand, userId: 'p-bee', badges: {}, pretend: true }); return { ok: true }; }
   twitchHandlers.chat({ login: names[0], name: 'Pretend_ash', text: String(b.text || eggs.opts().eggCommand), userId: 'p-ash', badges: {}, pretend: true }); return { ok: true };
