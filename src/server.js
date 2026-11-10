@@ -1444,7 +1444,7 @@ app.get('/auth/twitch-bot', (req, res) => {
 app.post('/api/twitch-bot/off', (req, res) => { db.twitchBot = null; save(); pushState(); res.json({ ok: true }); });
 app.post('/api/twitch-bot/test', async (req, res) => { try { await twitch.say(`🤖 ${db.twitchBot?.user?.name || 'Movie Royal'} here! Movie Royal's chat messages come from me now. Type ${db.settings.helpCommand || '!moviesroyal'} to see the commands.`); res.json({ ok: true, as: twitch.botOn() && !twitch.botStatus.error ? db.twitchBot.user.name : (db.owner?.name || 'you'), error: twitch.botStatus.error }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // ---------- 🟢 Kick (1.90.0, dev mode only): chat from / to Kick, one switch ----------
-kick.setHooks({ dev: () => feat('kick'), /* 🟢 True's edition has Kick (he streams on both); Derek's with dev mode on */ chat: m => twitchHandlers.chat(m), live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
+kick.setHooks({ redeem: r => { if (r.key === 'egg' && feat('eggs')) eggs.buy({ login: r.login, name: r.name, kick: true }); }, /* 🟢🥚 Kick channel points: Buy an egg (never accepted / rejected / refunded by the app) */ dev: () => feat('kick'), /* 🟢 True's edition has Kick (he streams on both); Derek's with dev mode on */ chat: m => twitchHandlers.chat(m), live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
   getPage: async url => { const g = globalThis.__desktop?.getPage; if (!g) return ''; const r = await g(url); return r?.text || ''; } });
 twitch.route.on = () => kick.on(); twitch.route.say = t => kick.say(t); twitch.route.canSay = () => kick.canSay();
 setTimeout(() => kick.start(), 4000);
@@ -1890,7 +1890,7 @@ app.post('/api/prices/reward', async (req, res) => {
       else if (key.startsWith('monkey:')) { (db.settings.monkeyCosts ||= {})[key.slice(7)] = cost; }
       else if (key === 'raid') db.settings.raidCost = cost;
       else if (key.startsWith('vr:')) (db.settings.vrCosts ||= {})[key.slice(3)] = cost;
-      else if (key === 'egg:buy') { eggs.data().opts.buyCost = cost; broadcast({ type: 'eggs' }, 'control'); }
+      else if (key === 'egg:buy') { eggs.data().opts.buyCost = cost; broadcast({ type: 'eggs' }, 'control'); const kw = feat('kick') && kick.watched('egg'); if (kw) kick.updateReward(kw.id, { cost }).then(() => { kw.cost = cost; save(); }).catch(e => console.error('[kick] egg price:', e.message)); }
       const t = (await twitch.listRewards().catch(() => [])).find(x => x.title.toLowerCase() === title.toLowerCase());
       if (t) await twitch.updateReward(t.id, { cost });
       else if ((await twitch.listAllRewards().catch(() => [])).some(x => x.title.toLowerCase() === title.toLowerCase())) note = 'That reward was made by hand on Twitch, so only Twitch can change its price (Twitch → Creator Dashboard → Channel Points).';
@@ -4735,7 +4735,7 @@ setTimeout(maraPrizesOnce, 1400);
 // 🥚 The egg game (1.100.0, True's edition; Derek's with dev mode on): see src/eggs.js + public/creatures.js
 eggs.setHooks({ on: () => feat('eggs'), say: t => twitch.say(t), live: () => !!db.live || !!live.fakeLive, act: (text, o = {}) => act('chat', text, { icon: '🥚', ...o }), send: (msg, role) => broadcast(msg, role), changed: () => { broadcast({ type: 'eggs' }, 'control'); broadcast({ type: 'eggBadges', badges: eggs.badges() }, 'eggs'); eggSiteSoon(); }, isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
 const egTry = fn => async (req, res) => { try { if (!feat('eggs')) throw new Error('The egg game is not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.players ? { state: r } : r || {}); } catch (e) { res.status(400).json({ error: e.message }); } };
-app.get('/api/eggs', (req, res) => res.json(feat('eggs') ? { ...eggs.state({ q: String(req.query.q || '') }), site: eggSite, reward: db.eggs?.rewardSetup || null, signedIn: !!twitch.status.userId } : { on: false }));
+app.get('/api/eggs', (req, res) => res.json(feat('eggs') ? { ...eggs.state({ q: String(req.query.q || '') }), site: eggSite, reward: db.eggs?.rewardSetup || null, signedIn: !!twitch.status.userId, kick: feat('kick') ? { signedIn: kick.signedIn(), can: kick.canRewards(), resign: kick.needsResign(), reward: kick.watched('egg'), error: kick.status.rewardError || eggKickSetup.error || null, redeems: kick.status.redeems || 0 } : null } : { on: false }));
 app.get('/api/eggs/public', (req, res) => res.json(feat('eggs') ? eggs.publicData() : { players: [] })); // (what the viewer page shows: names + creatures)
 app.get('/api/eggs/badges', (req, res) => res.json(feat('eggs') ? eggs.badges() : {}));
 app.post('/api/eggs/opts', egTry(b => eggs.setOpts(b)));
@@ -4750,6 +4750,15 @@ async function eggRewardSetup() {
 }
 setInterval(() => { if (feat('eggs') && twitch.status.userId && !db.eggs?.rewardSetup && !eggRewardSetup.busy) { eggRewardSetup.busy = true; eggRewardSetup().catch(e => console.error('[twitch] egg reward:', e.message)).finally(() => { eggRewardSetup.busy = false; }); } }, 30000);
 app.post('/api/eggs/reward', egTry(async () => ({ ok: true, ...(await eggRewardSetup()) })));
+// 🟢 the same reward on Kick (Kick has channel points since 2026): made once after signing in with Kick, redemptions read every few seconds
+async function eggKickSetup() {
+  if (!feat('kick')) throw new Error('Kick is not part of this edition.'); if (!kick.signedIn()) throw new Error('Sign in with Kick first (Settings → Twitch → Kick).'); if (kick.needsResign()) throw new Error('Sign in with Kick once more: channel points need two new permissions (read + manage channel rewards).');
+  const o = eggs.opts(); const r = await kick.ensureReward('egg', { title: o.buyTitle, cost: o.buyCost, description: 'One more egg for your nest! Only one egg incubates at a time; the next one starts when it hatches. Which creature is inside is a surprise.', color: '#FFB020' });
+  eggs.data().kickSetup = { at: Date.now(), title: r.title, cost: r.cost, had: r.had }; save(); broadcast({ type: 'eggs' }, 'control'); return r;
+}
+setInterval(() => { if (feat('eggs') && feat('kick') && kick.canRewards() && !kick.watched('egg') && !eggKickSetup.busy && Date.now() - (eggKickSetup.failAt || 0) > 10 * 60000) { eggKickSetup.busy = true; eggKickSetup().catch(e => { eggKickSetup.failAt = Date.now(); eggKickSetup.error = e.message; console.error('[kick] egg reward:', e.message); broadcast({ type: 'eggs' }, 'control'); }).finally(() => { eggKickSetup.busy = false; }); } }, 30000);
+app.post('/api/eggs/kick-reward', egTry(async () => { try { eggKickSetup.error = null; return { ok: true, ...(await eggKickSetup()) }; } catch (e) { eggKickSetup.error = e.message; throw e; } }));
+app.post('/api/test/kick-redeem', async (req, res) => { try { if (!feat('eggs')) throw new Error('The egg game is not part of this edition.'); twitch.pretend.until = Date.now() + 10 * 60000; const name = String(req.body?.name || 'Pretend_kicker'), r = eggs.buy({ login: name.toLowerCase(), name, kick: true }, { test: true }); res.json({ ok: true, waiting: r.waiting, started: r.started }); } catch (e) { res.status(400).json({ error: e.message }); } }); // (a pretend Kick viewer redeems Buy an egg)
 // 🌐 the public egg page on your own 24/7 bot (Cloudflare): the page + the creature drawings once, then a copy of names + creatures at most every 5 minutes, only when something changed
 const eggSite = { url: '', at: 0, error: '', v: '' }; let eggSiteT = null, eggSiteLast = '';
 function eggSiteSoon() { if (eggSiteT || !feat('eggs') || db.eggs?.opts?.site === false) return; eggSiteT = setTimeout(() => { eggSiteT = null; eggSitePush().catch(e => { eggSite.error = e.message; }); }, Math.max(15000, 5 * 60000 - (Date.now() - eggSite.at))); }

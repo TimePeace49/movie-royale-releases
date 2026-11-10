@@ -14,10 +14,10 @@ const ID = process.env.KICK_ID_URL || 'https://id.kick.com';
 const API = process.env.KICK_API_URL || 'https://api.kick.com/public/v1';
 const WEB = process.env.KICK_WEB_URL || 'https://kick.com';
 const WS = process.env.KICK_WS_URL || 'wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0&flash=false';
-export const SCOPES = ['user:read', 'channel:read', 'chat:write', 'events:subscribe'];
+export const SCOPES = ['user:read', 'channel:read', 'chat:write', 'events:subscribe', 'channel:rewards:read', 'channel:rewards:write']; // (rewards = Kick's channel points, 2026)
 export const redirectUri = port => `http://localhost:${port}/kick/callback`;
 
-const H = { chat: () => {}, live: () => {}, changed: () => {}, dev: () => false, getPage: null };
+const H = { chat: () => {}, live: () => {}, changed: () => {}, dev: () => false, getPage: null, redeem: () => {} };
 export const setHooks = h => Object.assign(H, h);
 export const status = { chat: 'off', chatError: null, live: null, startedAt: 0, lastMsgAt: 0, sayError: null, lines: 0 };
 export function data() { const d = (db.kick ||= {}); return d; }
@@ -76,6 +76,46 @@ export async function say(message) {
   try { const j = await api('chat', { method: 'POST', body: JSON.stringify(body) }); status.sayError = null; return j.data?.message_id || true; }
   catch (e) { status.sayError = e.message; throw e; }
 }
+
+// ---------- channel points (Kick's official API: channels/rewards + channels/rewards/redemptions) ----------
+// Movie Royal only MAKES rewards and READS who redeemed them. It never accepts, rejects or refunds a redemption (the streamer's rule).
+// Rewards are made to skip the request queue; redemptions are read every few seconds and each one is handled once (by its id).
+const scopeList = () => String(data().token?.scope || '').split(/[\s,]+/).filter(Boolean);
+/** Signed in with the channel point permissions? (Kick doesn't always say which were granted: unknown = try.) */
+export const canRewards = () => H.dev() && signedIn() && (!scopeList().length || scopeList().includes('channel:rewards:write'));
+export const needsResign = () => signedIn() && scopeList().length > 0 && !scopeList().includes('channel:rewards:write');
+const rows = j => (Array.isArray(j?.data) ? j.data : Array.isArray(j?.data?.rewards) ? j.data.rewards : Array.isArray(j?.data?.redemptions) ? j.data.redemptions : Array.isArray(j?.data?.data) ? j.data.data : []);
+export async function listRewards() { return rows(await api('channels/rewards')); }
+export async function createReward({ title, cost, description = '', color = '#FFB020' }) {
+  const j = await api('channels/rewards', { method: 'POST', body: JSON.stringify({ title: String(title).slice(0, 50), cost: Math.max(1, Math.round(cost)), description: String(description).slice(0, 200), background_color: color, is_enabled: true, is_user_input_required: false, should_redemptions_skip_request_queue: true }) });
+  return j.data?.reward || j.data || {};
+}
+export async function updateReward(id, patch) { const j = await api('channels/rewards/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(patch) }); return j.data?.reward || j.data || {}; }
+/** Make sure a reward with this title exists (uses one that is already there), and start reading its redemptions under `key`. */
+export async function ensureReward(key, { title, cost, description, color }) {
+  const d = data(), old = (await listRewards()).find(r => String(r.title || '').toLowerCase() === String(title).toLowerCase()), r = old || await createReward({ title, cost, description, color });
+  if (!r.id) throw new Error('Kick did not give the reward a number');
+  (d.watch ||= {})[key] = { id: String(r.id), title: r.title || title, cost: Number(r.cost) || cost, since: d.watch?.[key]?.id === String(r.id) ? d.watch[key].since : Date.now(), made: !old }; save(); status.rewardError = null; H.changed();
+  return { ...d.watch[key], had: !!old };
+}
+export const watched = key => data().watch?.[key] || null;
+export function forgetReward(key) { const d = data(); if (d.watch) delete d.watch[key]; save(); }
+async function pollRedeems() {
+  const d = data(); if (!H.dev() || !signedIn() || !d.watch || !Object.keys(d.watch).length) return; d.seen ||= [];
+  for (const [key, w] of Object.entries(d.watch)) for (const st of ['accepted', 'pending']) {
+    let list; try { list = rows(await api(`channels/rewards/redemptions?reward_id=${encodeURIComponent(w.id)}&status=${st}`)); if (status.rewardError) { status.rewardError = null; H.changed(); } }
+    catch (e) { if (status.rewardError !== e.message) { status.rewardError = e.message; H.changed(); } return; }
+    for (const r of list) {
+      const id = String(r.id || ''); if (!id || d.seen.includes(id)) continue; d.seen.push(id); if (d.seen.length > 3000) d.seen.splice(0, d.seen.length - 3000);
+      const at = Date.parse(r.redeemed_at || '') || Date.now(); if (at < w.since - 60000) continue; /* (from before Movie Royal was reading this reward) */
+      const u = r.redeemer || r.user || {}, name = u.username || u.name || u.slug || '', login = String(u.slug || u.username || u.name || '').toLowerCase(); if (!login) continue;
+      status.redeems = (status.redeems || 0) + 1; try { H.redeem({ key, id, login, name: name || login, input: r.user_input || '', title: w.title, kick: true }); } catch {}
+    }
+    save();
+  }
+}
+setInterval(() => { pollRedeems().catch(() => {}); }, 12000);
+export const pollNow = () => pollRedeems();
 
 // ---------- live / offline (official channel info, once a minute) ----------
 function liveFrom(c) {
@@ -139,6 +179,6 @@ export function setCfg(b) {
   if (b.on != null && !!b.on !== !!d.on) { d.on = !!b.on; re = true; }
   save(); if (re) restart(); H.changed(); return info();
 }
-export const info = () => { const d = data(); return { on: !!d.on, dev: H.dev(), clientId: d.clientId || '', hasSecret: !!d.secret, signedIn: signedIn(), user: d.user ? { name: d.user.name, slug: d.user.slug } : null, slug: slug(), chatroomId: d.chatroomId || null, chat: status.chat, chatError: status.chatError, live: status.live, lastMsgAt: status.lastMsgAt, lines: status.lines, sayError: status.sayError, scopes: SCOPES }; };
+export const info = () => { const d = data(); return { on: !!d.on, dev: H.dev(), clientId: d.clientId || '', hasSecret: !!d.secret, signedIn: signedIn(), user: d.user ? { name: d.user.name, slug: d.user.slug } : null, slug: slug(), chatroomId: d.chatroomId || null, chat: status.chat, chatError: status.chatError, live: status.live, lastMsgAt: status.lastMsgAt, lines: status.lines, sayError: status.sayError, scopes: SCOPES, canRewards: canRewards(), needsResign: needsResign(), rewardError: status.rewardError || null, redeems: status.redeems || 0, watch: d.watch || {} }; };
 export function start() { if (on()) restart(); }
 setInterval(() => { if (on() !== wantSock) restart(); }, 15000); // (dev mode or the switch changed)
