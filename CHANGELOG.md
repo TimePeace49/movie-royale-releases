@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.125.0
+- ⭐ **Recommended commands** on the 🤖 Chat bot → Commands tab: 18 ready-made ones (!lurk, !discord, !socials, !uptime, !so, !hug, !dice, a death counter…). Press ➕ to add one; ones with a part to fill in (like your Discord link) open the editor with that part picked so you just type over it.
+- ⌨️ **Typing finishes it for you:** in ➕ New command, start typing a name (like `!dis`) and press Tab (or click the suggestion) to fill in the whole command and its answer. In the answer, type `$` and press Tab to finish a special word like `$user` or `$uptime`.
+
 ## 1.124.1
 - 🔊 **Sound alerts play on every scene:** the app now puts one invisible "Movie Royal sound alerts" source into every OBS scene (one shared source, so each sound plays once, whatever scene you're on). It's added by itself once you have sound alerts, new scenes get it within 10 minutes, and the 🔊 Sound alerts tab has buttons to put it in or take it out. It shows in OBS's audio mixer so you can set its volume.
 - 🎵 The RateYourMusic button is gone from the music box.

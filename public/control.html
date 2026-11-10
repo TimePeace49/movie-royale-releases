@@ -557,6 +557,7 @@
   .mpTable { width: 100%; border-collapse: collapse; } .mpTable td, .mpTable th { padding: 5px 6px; border-top: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: middle; }
   .mpTable input { width: 100%; min-width: 0; } .mpTable img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; display: block; } .mpTable .mpSecs { width: 70px; } .mpTable .mpKind { width: auto; max-width: 130px; } .sgStep { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.08); } .sgN { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--gold); color: #1a0f2e; font-weight: 900; display: grid; place-items: center; } .mpTable .mpNum { width: 52px; padding: 4px; text-align: center; font-weight: 800; color: var(--gold); } .mpTable .mpOdds { width: 64px; } .mpTable .mpArr { padding: 0 5px; font-size: 9px; line-height: 13px; min-height: 0; } .mpTable img { object-fit: contain; background: rgba(255,255,255,.06); }
   @container (max-width: 760px) { .mRow { grid-template-columns: 30px minmax(0,1fr) auto; } .mRow select { grid-column: 2 / -1; } }
+  .bcSug { min-height:0; margin:3px 0 0; font-size:13px; display:flex; gap:4px; flex-wrap:wrap; align-items:center; } .bcSug button { padding:1px 8px; font-size:13px; }
 </style>
 </head>
 <body>
@@ -1367,7 +1368,7 @@ not a link</textarea>
   <div class="card" id="botTestCard">
     <h3>🤖 Chat bot</h3>
     <p class="help">Your own chat commands, timers and quotes (the 🤖 Chat bot tab). These check it without touching your real chat.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="botRecTest()" title="Chat bot: tries every recommended command with a pretend viewer (nothing is added or sent) and checks that typing finishes names">⭐ Recommended commands</button><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="botSndTest()" title="Makes a !testbeep sound alert with a short beep (if it isn't there) and has a pretend viewer type it: you hear the beep">🔊 Pretend viewer uses a sound alert</button><button onclick="botAllTest()" title="Reads a pretend Streamlabs Chatbot export (commands, a sound alert, a timer, a quote) and shows that each part is understood. Nothing is added">🧳 Check the bring-everything-over import</button></div>
     <div id="tBotOut"></div>
   </div>
@@ -3666,7 +3667,7 @@ function botDraw() {
   let body = '';
   if (botTab === 'commands') body = `<p class="help">Your own chat commands: someone types the name, the bot answers. Mods can also add them from chat: <code>!addcom !name the answer</code>, <code>!editcom</code>, <code>!delcom</code>.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botCmdEdit()" title="Chat bot: make a new chat command">➕ New command</button><input id="botFind" placeholder="🔍 Find a command" oninput="botFilter(this.value)" title="Chat bot: find a command by its name or its answer" style="flex:1 1 180px;min-width:0"></div>
-    <div id="botList">${cmds.length ? cmds.map(c => `<div class="botRow ${c.on === false ? 'off' : ''}" data-f="${esc((c.name + ' ' + c.text + ' ' + (c.aliases || []).join(' ')).toLowerCase())}"><span class="bn" title="${esc([c.name, ...(c.aliases || [])].join(', '))}">${esc(c.name)}</span><span class="bt" title="${esc(c.text)}">${c.sound ? '🔊 ' : c.soundMissing ? '⚠️🔊 ' : ''}${esc(c.text || (c.sound ? '(plays ' + c.sound + ')' : c.soundMissing ? '(sound file not found: open ✏️ and pick it)' : ''))}</span><span class="bm">${esc(BOT.perms[c.perm] || 'Everyone')}${botCd(c) ? ' · ' + botCd(c) : ''} · ${c.uses || 0}×</span><button onclick="botCmdOn('${c.id}',${c.on === false})" title="Chat bot: turn this command on or off">${c.on === false ? '▶ Off' : '✅ On'}</button><button onclick="botCmdEdit('${c.id}')" title="Chat bot: change this command">✏️</button><button onclick="botCmdDel('${c.id}')" title="Chat bot: delete this command">🗑</button></div>`).join('') : '<div class="empty">No commands yet. Make one, or bring yours over under 📥 Import / export.</div>'}</div>`;
+    ${botRecsHTML()}<div id="botList">${cmds.length ? cmds.map(c => `<div class="botRow ${c.on === false ? 'off' : ''}" data-f="${esc((c.name + ' ' + c.text + ' ' + (c.aliases || []).join(' ')).toLowerCase())}"><span class="bn" title="${esc([c.name, ...(c.aliases || [])].join(', '))}">${esc(c.name)}</span><span class="bt" title="${esc(c.text)}">${c.sound ? '🔊 ' : c.soundMissing ? '⚠️🔊 ' : ''}${esc(c.text || (c.sound ? '(plays ' + c.sound + ')' : c.soundMissing ? '(sound file not found: open ✏️ and pick it)' : ''))}</span><span class="bm">${esc(BOT.perms[c.perm] || 'Everyone')}${botCd(c) ? ' · ' + botCd(c) : ''} · ${c.uses || 0}×</span><button onclick="botCmdOn('${c.id}',${c.on === false})" title="Chat bot: turn this command on or off">${c.on === false ? '▶ Off' : '✅ On'}</button><button onclick="botCmdEdit('${c.id}')" title="Chat bot: change this command">✏️</button><button onclick="botCmdDel('${c.id}')" title="Chat bot: delete this command">🗑</button></div>`).join('') : '<div class="empty">No commands yet. Make one, or bring yours over under 📥 Import / export.</div>'}</div>`;
   else if (botTab === 'sounds') body = `<p class="help">Sound alerts: someone types the command (like <code>!airhorn</code>) and its sound plays on stream. Each one has its own volume, who can use it, and a wait so it can't be spammed.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botSndEdit()" title="Chat bot: make a new sound alert (a command that plays a sound)">➕ New sound alert</button><input id="botFind" placeholder="🔍 Find a sound alert" oninput="botFilter(this.value)" title="Chat bot: find a sound alert by its command or file name" style="flex:1 1 180px;min-width:0"></div>
     ${snds.some(c => !c.sound) ? `<div class="card" style="margin:8px 0;border-color:#f5a623"><b>⚠️ ${snds.filter(c => !c.sound).length} sound alert${snds.filter(c => !c.sound).length === 1 ? ' needs its' : 's need their'} sound file.</b> <span class="help">Streamlabs Chatbot doesn't put the sound files in its export, only their names. Pick the folder your sounds are in: every file whose name matches an alert (like <code>tink.mp3</code> for <code>!tink</code>) is added in one go.</span><div class="row" style="gap:8px;margin-top:6px;align-items:center"><label class="btn" title="Chat bot: pick the folder with your sound files; files named like your sound alerts are matched to them">📁 Pick my sounds folder<input type="file" id="botSndDir" webkitdirectory multiple style="display:none" onchange="botSndFolder(this.files)"></label><label class="btn ghost" title="Chat bot: pick some sound files (not a folder); files named like your sound alerts are matched to them">🎵 Pick sound files<input type="file" multiple accept=".mp3,.wav,.ogg,.m4a,.flac,.aac,.opus,audio/*" style="display:none" onchange="botSndFolder(this.files)"></label><span id="botSndOut" class="muted"></span></div></div>` : ''}
@@ -3690,11 +3691,77 @@ async function botPost(url, body, msg) { try { const r = await api(url, body); i
 const botOpt = o => botPost('/api/chatbot/opts', o, 'Saved');
 function botDlg(html) { $('botDlgBody').innerHTML = html; const d = $('botDlg'); if (!d.open) d.showModal(); }
 function botWords() { botDlg(`<h3 style="margin-top:0">🔤 Special words for answers</h3><p class="help">Put these in a command's answer or a timer; the bot swaps them for the real thing. Streamlabs-style words like <code>$username</code>, <code>$targetname</code>, <code>{user}</code>, <code>{touser}</code> and <code>{1}</code> work too, so imported commands keep working.</p><ul class="help" style="margin:0 0 0 18px">${BOT.words.map(([w, t]) => `<li><code>${esc(w)}</code>: ${esc(t)}</li>`).join('')}</ul><div class="row" style="margin-top:14px;justify-content:flex-end"><button onclick="$('botDlg').close()">Close</button></div>`); }
+// ⭐ (1.125.0, Derek: "add recommended commands… if you start typing it will finish commands out for you")
+// ready-made commands to add with one press; <…> parts are yours to fill in (the editor opens for those)
+const BOT_RECS = [
+  { name: '!lurk', text: '$user is lurking. Thanks for hanging out! 👀', cd: 0, ucd: 60, why: 'Someone going quiet but staying' },
+  { name: '!unlurk', text: 'Welcome back, $user! 👋', cd: 0, ucd: 60, why: 'Back from lurking' },
+  { name: '!discord', text: 'Join the Discord: <your invite link>', cd: 30, why: 'Your Discord invite' },
+  { name: '!socials', text: 'Find me here: <your links>', cd: 30, why: 'Your other pages' },
+  { name: '!schedule', text: 'I stream <your days and times>.', cd: 30, why: 'When you go live' },
+  { name: '!rules', text: 'Be kind, no spam, no spoilers, and have fun!', cd: 30, why: 'Chat rules' },
+  { name: '!uptime', text: '$channel has been live for $uptime.', cd: 10, why: 'How long the stream has been on' },
+  { name: '!time', text: "It's $time here.", cd: 10, why: 'Your time of day' },
+  { name: '!so', text: 'Go show some love to $target at twitch.tv/$target ❤️', cd: 0, perm: 'mods', why: 'Mods shout out a streamer' },
+  { name: '!welcome', text: 'Welcome in, $target! Glad you found us 👋', cd: 0, perm: 'mods', why: 'Mods greet someone new' },
+  { name: '!hug', text: '$user gives $target a big hug! 🤗', cd: 5, ucd: 30, why: 'A hug for someone' },
+  { name: '!bonk', text: '$user bonks $target! 🔨', cd: 5, ucd: 30, why: 'A silly bonk' },
+  { name: '!love', text: '$user loves $target $randnum(1,100)%! 💘', cd: 5, ucd: 30, why: 'A love meter' },
+  { name: '!dice', text: '🎲 $user rolled a $randnum(1,6)!', cd: 3, ucd: 10, why: 'Roll a die' },
+  { name: '!hydrate', text: 'Time to drink some water, chat! 💧', cd: 300, why: 'A water reminder' },
+  { name: '!death', text: '💀 Death number $count!', cd: 10, perm: 'mods', why: 'A death counter (each use adds one)' },
+  { name: '!raidmsg', text: '<your raid message> 🎉', cd: 0, perm: 'mods', why: 'Your raid message to copy' },
+  { name: '!gg', text: 'GG! 🏆 $user is calling it!', cd: 10, why: 'Good game' }
+];
+const botHave = n => (BOT?.commands || []).some(c => c.name === n || (c.aliases || []).includes(n));
+let botRecsOpen = false; try { botRecsOpen = localStorage.botRecs === '1'; } catch {}
+function botRecsHTML() {
+  const left = BOT_RECS.filter(r => !botHave(r.name)).length;
+  return `<details class="card" style="margin:8px 0" ${botRecsOpen ? 'open' : ''} ontoggle="botRecsOpen=this.open;try{localStorage.botRecs=this.open?'1':'0'}catch{}"><summary style="cursor:pointer;font-weight:800" title="Chat bot: ready-made commands you can add with one press">⭐ Recommended commands <span class="muted" style="font-weight:400">(${left} you don't have yet)</span></summary>
+    <p class="help" style="margin:6px 0">Press ➕ to add one. Ones with <code>&lt;…&gt;</code> open the editor so you can fill in your own part first. Tip: in ➕ New command, start typing a name (like <code>!dis</code>) and press <b>Tab</b> to finish it.</p>
+    ${BOT_RECS.map((r, i) => { const have = botHave(r.name); return `<div class="botRow" style="${have ? 'opacity:.55' : ''}"><span class="bn">${esc(r.name)}</span><span class="bt" title="${esc(r.text)}">${esc(r.text)} <span class="muted">· ${esc(r.why)}${r.perm === 'mods' ? ' · mods only' : ''}</span></span>${have ? '<span class="muted" style="font-size:13px">✅ you have it</span>' : `<button onclick="botRecAdd(${i})" title="Chat bot: add this recommended command">➕ Add</button>`}</div>`; }).join('')}</details>`;
+}
+async function botRecAdd(i) {
+  const r = BOT_RECS[i]; if (!r) return;
+  if (/<[^>]+>/.test(r.text)) { botCmdEdit(); botSugFill(r); return; }
+  await botPost('/api/chatbot/command', { name: r.name, text: r.text, perm: r.perm || 'all', cd: r.cd ?? 5, ucd: r.ucd ?? 0 }, `➕ Added ${r.name}`);
+}
+let BSUG = { on: false, filled: '' };
+const BOT_WORDS = ['$user', '$target', '$msg', '$count', '$randnum(1,100)', '$randusr', '$uptime', '$channel', '$date', '$time', '$arg1', '$arg2', '$arg3'];
+function botSugList(v) { v = String(v || '').trim().toLowerCase(); if (!v) return []; if (!v.startsWith('!')) v = '!' + v; return BOT_RECS.filter(r => r.name.startsWith(v) && r.name !== v && !botHave(r.name)).slice(0, 4); }
+function botSugName() {
+  const el = $('bcSugName'); if (!el) return; if (!BSUG.on) return void (el.innerHTML = '');
+  const L = botSugList($('bcName').value); BSUG.name = L;
+  el.innerHTML = L.length ? `<span class="muted">↹ Tab:</span> ${L.map((r, i) => `<button class="ghost" onmousedown="event.preventDefault();botSugFill(BOT_RECS[${BOT_RECS.indexOf(r)}])" title="Chat bot: finish it as ${esc(r.name)} with its answer">${i ? '' : '<b>'}${esc(r.name)}${i ? '' : '</b>'}</button>`).join(' ')} <span class="muted">${esc(L[0].text.slice(0, 60))}</span>` : '';
+}
+function botSugFill(r) {
+  const t = $('bcText'); $('bcName').value = r.name;
+  if (t && (!t.value.trim() || t.value === BSUG.filled)) { t.value = r.text; BSUG.filled = r.text; $('bcPerm').value = r.perm || 'all'; $('bcCd').value = r.cd ?? 5; $('bcUcd').value = r.ucd ?? 0; }
+  $('bcSugName').innerHTML = ''; botPrev();
+  const m = t && t.value.match(/<[^>]+>/); if (m) { t.focus(); t.setSelectionRange(m.index, m.index + m[0].length); } /* (your part to fill in is picked, so typing replaces it) */
+}
+function botWordAt() { const t = $('bcText'); if (!t) return null; const pos = t.selectionStart, before = t.value.slice(0, pos), m = before.match(/\$[a-z0-9(]*$/i); return m ? { from: pos - m[0].length, to: pos, part: m[0].toLowerCase() } : null; }
+function botSugWord() {
+  const el = $('bcSugWord'); if (!el) return; const w = botWordAt();
+  const L = w ? BOT_WORDS.filter(x => x.startsWith(w.part) && x !== w.part).slice(0, 6) : []; BSUG.word = L;
+  el.innerHTML = L.length ? `<span class="muted">↹ Tab:</span> ${L.map((x, i) => `<button class="ghost" onmousedown="event.preventDefault();botWordPut('${x}')" title="Chat bot: put ${x} here">${i ? esc(x) : '<b>' + esc(x) + '</b>'}</button>`).join(' ')} <span class="muted">${esc(((BOT?.words || []).find(([k]) => k.startsWith(L[0].replace(/\(.*$/, ''))) || [])[1] || '')}</span>` : '';
+}
+function botWordPut(x) { const t = $('bcText'), w = botWordAt(); if (!t || !w) return; t.value = t.value.slice(0, w.from) + x + t.value.slice(w.to); const p = w.from + x.length; t.focus(); t.setSelectionRange(p, p); botSugWord(); botPrev(); }
+function botSugKey(e, kind) {
+  if (e.key !== 'Tab' || e.shiftKey) return;
+  if (kind === 'name' && BSUG.on && BSUG.name?.length) { e.preventDefault(); botSugFill(BSUG.name[0]); }
+  else if (kind === 'word' && BSUG.word?.length) { e.preventDefault(); botWordPut(BSUG.word[0]); }
+}
+async function botRecTest() { const el = $('tBotOut'); const rows = []; for (const r of BOT_RECS) { let says = ''; try { says = (await api('/api/test/chatbot', { text: r.text.replace(/<[^>]+>/g, 'X'), who: 'TestViewer', typed: '@SomeFriend' })).says; } catch {} rows.push({ r, says, ok: !!says && !/\$[a-z]/i.test(says) }); }
+  const bad = rows.filter(x => !x.ok), done = [botSugList('!dis')[0]?.name === '!discord' || botHave('!discord'), botSugList('lu')[0]?.name === '!lurk' || botHave('!lurk')];
+  if (el) el.innerHTML = `<p style="margin:8px 0 4px">${bad.length || !done.every(Boolean) ? '⚠️ Something is off: tell Claude.' : `✅ All ${rows.length} recommended commands answer properly, and typing <code>!dis</code> / <code>lu</code> finishes as !discord / !lurk.`}</p><table class="tbl" style="width:100%"><tbody>${rows.map(x => `<tr><td>${x.ok ? '✅' : '⚠️'}</td><td><b>${esc(x.r.name)}</b></td><td>${esc(x.says)}</td></tr>`).join('')}</tbody></table>`; }
 function botCmdEdit(id) {
   const c = (BOT.commands.find(x => x.id === id)) || { name: '', text: '', perm: 'all', cd: 5, ucd: 0, aliases: [] };
   botDlg(`<h3 style="margin-top:0">${id ? '✏️ Change command' : '➕ New command'}</h3>
-    <label>Command (what people type)</label><input id="bcName" value="${esc(c.name)}" placeholder="!discord" title="Chat bot: the command's name, like !discord">
-    <label>The bot answers</label><textarea id="bcText" oninput="botPrev()" placeholder="Join our Discord: discord.gg/… $user" title="Chat bot: what the bot answers (special words like $user work)">${esc(c.text)}</textarea>
+    <label>Command (what people type)</label><input id="bcName" value="${esc(c.name)}" placeholder="!discord" autocomplete="off" title="Chat bot: the command's name, like !discord. Start typing and press Tab to finish it with a recommended command" oninput="botSugName()" onkeydown="botSugKey(event, 'name')">
+    <div id="bcSugName" class="bcSug"></div>
+    <label>The bot answers</label><textarea id="bcText" oninput="botPrev();botSugWord()" onkeydown="botSugKey(event, 'word')" onclick="botSugWord()" placeholder="Join our Discord: discord.gg/… $user" title="Chat bot: what the bot answers (special words like $user work: type $ and press Tab to finish one)">${esc(c.text)}</textarea>
+    <div id="bcSugWord" class="bcSug"></div>
     <p class="help" id="bcPrev" style="margin:4px 0 0"></p>
     <div class="grid2"><div><label>Who can use it</label><select id="bcPerm" title="Chat bot: who may use this command">${Object.entries(BOT.perms).map(([k, t]) => `<option value="${k}" ${c.perm === k ? 'selected' : ''}>${t}${k === 'subs' ? ' (+ VIPs, mods)' : k === 'vips' ? ' (+ mods)' : k === 'followers' ? ' (+ subs, VIPs, mods)' : ''}</option>`).join('')}</select></div>
       <div><label>Other names for it (optional)</label><input id="bcAli" value="${esc((c.aliases || []).join(' '))}" placeholder="!dc !disc" title="Chat bot: other names that do the same thing"></div>
@@ -3704,7 +3771,7 @@ function botCmdEdit(id) {
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">${c.sound ? `<span title="The sound this command plays">🔊 <b>${esc(c.sound)}</b></span><button onclick="botSndPlay('${id}')" title="Chat bot: play this command's sound now to hear it">▶ Play</button><button class="ghost" onclick="botSndDel('${id}')" title="Chat bot: take the sound off this command (the file stays in your data folder)">✕ No sound</button>` : c.soundMissing ? `<span class="muted" title="The sound file your old bot used wasn't found on this PC">⚠️ Sound file not found: ${esc(c.soundMissing)}</span>` : ''}<input type="file" id="bcSnd" accept=".mp3,.wav,.ogg,.m4a,.flac,.aac,.opus,audio/*" title="Chat bot: pick a sound file for this command (mp3, wav, ogg…)" style="max-width:260px"><span>Volume</span><input type="number" id="bcVol" min="0" max="100" value="${c.vol ?? 80}" style="width:64px" title="Chat bot: how loud this command's sound plays (0 to 100)"></div>
     <p class="help" style="margin:4px 0 0">With a sound you can leave the answer empty. It plays on stream through OBS: add <code>${location.origin}/soundboard.html</code> as a Browser source, or it plays through the battle screen if that's in OBS, else in the app.</p>
     <div class="row" style="margin-top:14px;gap:8px;justify-content:flex-end"><button onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="botCmdSave('${id || ''}')" title="Chat bot: save this command">💾 Save</button></div>`);
-  botPrev();
+  BSUG = { on: !id, filled: '' }; botPrev();
 }
 function botSndEdit(id) { /* 🔊 a sound alert = a command with a sound (same boxes as a command, the sound first) */
   const c = (BOT.commands.find(x => x.id === id)) || { name: '', text: '', perm: 'all', cd: 10, ucd: 0, vol: 80, aliases: [] };
