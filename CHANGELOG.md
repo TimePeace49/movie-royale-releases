@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.116.1
+- 💬 **Chat tab boxes resize from every corner and every side.** Each box now has a little handle on all four corners, and all four edges can be dragged (the top edge is the thin strip right at the top; just under it is still the bar that moves the box). The boxes next to it still adjust to fit, like before.
+
 ## 1.116.0
 - 🍿 **Movie night leaderboard for OBS (new look).** The on-stream vote box is now an arcade high-score board: the top line shows how many votes the guesser got right out of all the votes ("BIRX GOT RIGHT 4 / 9 VOTES"), and under it each movie with its number, name, year and votes. The most votes are on top; ties (and everything on 0) are in ABC order. When a movie passes another one it turns sideways and hops up the list to its new spot. Compact, no sound.
 - **See-through:** a Background slider on the Movie night tab (📺 On stream + options) goes from solid to fully see-through (only the glowing words show). You can also pick left / right and top / bottom.
