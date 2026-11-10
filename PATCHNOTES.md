@@ -4,6 +4,12 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.124.1: What's new
+New in this version.
+
+- 🔊 **Sound alerts play on every scene:** one invisible "Movie Royal sound alerts" source goes into every OBS scene by itself (new scenes too), so a sound plays whatever scene you're on. Set its volume in OBS's audio mixer.
+- {dash} 🎵 The RateYourMusic button is gone from the music box.
+
 ## v1.124.0: What's new
 New in this version.
 

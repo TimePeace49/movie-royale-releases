@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.124.1
+- 🔊 **Sound alerts play on every scene:** the app now puts one invisible "Movie Royal sound alerts" source into every OBS scene (one shared source, so each sound plays once, whatever scene you're on). It's added by itself once you have sound alerts, new scenes get it within 10 minutes, and the 🔊 Sound alerts tab has buttons to put it in or take it out. It shows in OBS's audio mixer so you can set its volume.
+- 🎵 The RateYourMusic button is gone from the music box.
+
 ## 1.124.0
 - 🧳 **Streamlabs Chatbot import fixed:** its Excel files write every part with a hidden "x:" in front, so nothing was read at all (commands, sound alerts, timers, quotes, songs). They're read now. Commands that only play a sound (no answer) come over too, and each sound from the SFX page goes onto the command with the same name, with its volume.
 - 🔊 **📁 Pick my sounds folder:** Streamlabs Chatbot's export has only the sound names, not the files. On 🔊 Sound alerts, pick your sounds folder (or some sound files) and every file named like an alert is added in one go.

@@ -204,6 +204,12 @@ export const MN_NAME = 'Movie Royal movie night';
 export async function mnSource(on, url, pick = null) {
   return browserSource(MN_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick);
 }
+export const SFX_NAME = 'Movie Royal sound alerts';
+/** 🔊 (1.124.1, Derek: "sound effects should play on every scene") the sound alert page as ONE browser source put in EVERY scene:
+ * one source shared by all scenes plays each sound once, and OBS sends its sound out with the stream (shows nothing). */
+export async function sfxSource(on, url) {
+  return browserSource(SFX_NAME, on, (W, H) => ({ is_local_file: false, url, width: 64, height: 64, fps: 10, reroute_audio: true, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), on ? 'all' : null, { noReload: true });
+}
 export const MARA_NAME = 'Movie Royal marathon';
 /** 🏃 the marathon overlay (battles owed counter + the pop-up when someone gets a battle), 1.76.0 */
 export async function maraSource(on, url, pick = null) {
@@ -243,7 +249,7 @@ export async function tickerState() {
   });
 }
 /** A browser source on top of the scenes you picked (taken out of the others); off = removed from OBS. */
-async function browserSource(name, on, mkSettings, pick = null) {
+async function browserSource(name, on, mkSettings, pick = null, { noReload = false } = {}) {
   return session(async call => {
     const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === name);
     if (!on) { if (have) await call('RemoveInput', { inputName: name }); return { on: false, removed: !!have }; }
@@ -251,11 +257,13 @@ async function browserSource(name, on, mkSettings, pick = null) {
     const all = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName); if (!all.length) throw new Error('OBS has no scenes.');
     const inScene = async sc => call('GetSceneItemId', { sceneName: sc, sourceName: name }).then(r => r.sceneItemId).catch(() => null);
     let target;
-    if (Array.isArray(pick)) target = pick.filter(sc => all.includes(sc));
+    if (pick === 'all') target = all.slice(); /* (🔊 sound alerts: every scene, so a sound is heard whatever scene is on) */
+    else if (Array.isArray(pick)) target = pick.filter(sc => all.includes(sc));
     else { target = []; if (have) for (const sc of all) if (await inScene(sc) != null) target.push(sc); }
     if (!target.length) throw new Error(Array.isArray(pick) && pick.length ? 'Those scenes aren\'t in OBS any more: pick your scenes again.' : 'Pick at least one OBS scene for it.');
     const settings = mkSettings(W, H);
     if (!have) await call('CreateInput', { sceneName: target[0], inputName: name, inputKind: 'browser_source', inputSettings: settings, sceneItemEnabled: true });
+    else if (noReload) { const cur = await call('GetInputSettings', { inputName: name }).catch(() => null); if (!cur || cur.inputSettings?.url !== settings.url || cur.inputSettings?.reroute_audio !== settings.reroute_audio) await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true }); } /* (🔊 left playing: a reload could cut a sound off) */
     else { await call('SetInputSettings', { inputName: name, inputSettings: settings, overlay: true }); await call('PressInputPropertiesButton', { inputName: name, propertyName: 'refreshnocache' }).catch(() => {}); } // (reload it: the file may have changed)
     let added = 0;
     for (const sc of target) {

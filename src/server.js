@@ -1882,6 +1882,15 @@ app.post('/api/test/obs-meters', (req, res) => {
     broadcast({ type: 'obsMeters', test: true, list: { '🎙️ Mic (pretend)': { db: [w(-48 + talk * 46, 3, 5), w(-48 + talk * 46, 3, 5)], muted: false }, '🖥️ Desktop audio (pretend)': { db: [w(-24, 1.3, 8), w(-26, 1.7, 8)], muted: false }, '🎵 Music (pretend)': { db: [w(-14, .8, 5), w(-13, .9, 5)], muted: false }, '🔇 Muted one (pretend)': { db: [w(-20, 2, 6), w(-20, 2, 6)], muted: true } } }, 'control'); }, 90);
   res.json({ ok: true, secs: 12 });
 });
+/* 🔊 sound alerts in EVERY OBS scene (1.124.1, Derek: "sound effect should play on every scene"): one shared browser source, kept in new scenes by 🔄 Keep OBS up to date */
+const sfxUrl = () => `http://localhost:${PORT}/soundboard.html`;
+const sfxWanted = () => db.settings.sfxObs === true || (db.settings.sfxObs == null && (db.chatbot?.commands || []).some(c => c.sound || c.soundMissing));
+async function sfxObsSource(on) {
+  if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
+  const r = await obs.sfxSource(!!on, sfxUrl()); db.settings.sfxObs = !!on; save(); pushState(); return r;
+}
+const sfxSoon = () => { if (db.settings.obsKeep !== false && db.settings.sfxObs == null && sfxWanted()) setTimeout(() => obsSync('sounds').catch(() => {}), 3000); }; /* (the first sound alert: put the sound page in OBS without waiting 10 min) */
+app.post('/api/obs/sfx-source', async (req, res) => { try { res.json({ ok: true, url: sfxUrl(), ...(await sfxObsSource(!!req.body?.on)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 /* 🍿 movie night leaderboard browser source in OBS (1.116.0): added to the scenes you pick, see-through around the board */
 const mnUrl = () => `http://localhost:${PORT}/movienight.html`;
 async function mnObsSource(on, scenes) {
@@ -5351,7 +5360,7 @@ app.post('/api/chatbot/sound', botDev(b => {
   if (b.play) { const r = sfxPlay(c.sound, b.vol ?? c.vol ?? 80, true); if (!r.ok) throw new Error("That command has no sound file yet."); return r; }
   let name = sfxName(b.name); if (!SFX_OK.test(name)) throw new Error('Pick a sound file (mp3, wav, ogg, m4a, flac).');
   const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]*,/, ''), 'base64'); if (!buf.length) throw new Error('That file is empty.'); if (buf.length > 25e6) throw new Error('That sound is too big (25 MB at most).');
-  name = sfxFree(name, buf); fs.writeFileSync(path.join(SFXDIR, name), buf); return { command: chatbot.saveCommand({ ...c, sound: name }) };
+  name = sfxFree(name, buf); fs.writeFileSync(path.join(SFXDIR, name), buf); const out = { command: chatbot.saveCommand({ ...c, sound: name }) }; sfxSoon(); return out;
 }));
 app.post('/api/chatbot/command/remove', botDev(b => ({ command: chatbot.removeCommand(b.id) })));
 app.post('/api/chatbot/timer', botDev(b => ({ timer: chatbot.saveTimer(b) })));
@@ -5397,7 +5406,7 @@ app.post('/api/chatbot/import-all', botDev(b => {
   const done = chatbot.applyImport({ commands: p.commands, timers: p.timers, quotes: p.quotes }, { replace: !!b.replace });
   if (p.songs.length) done.songs = songs.applyImport({ songs: p.songs }, { kind: 'songs', replace: !!b.replace });
   if (p.banned.length) done.bannedSongs = songs.applyImport({ songs: p.banned }, { kind: 'banned' });
-  return { found, done };
+  sfxSoon(); return { found, done };
 }));
 app.post('/api/test/chatbot-sound', botDev(async () => { // 🧪 a !testbeep sound alert (a short beep made here), used by a pretend viewer
   const name = 'test-beep.wav', file = path.join(SFXDIR, name);
@@ -5664,6 +5673,7 @@ async function obsSync(why = 'check', force = false) {
     const r1 = (r, what) => r.added ? `added to ${r.added} scene${r.added === 1 ? '' : 's'}` : r.fileChanged ? 'video file updated' : `${what || 'everything'} is there`;
     if (db.settings.choiceObs && twitch.status.userId) { try { const f = await choiceFile(); add('choice', '🎉 Viewer\'s choice celebration', true, r1(await obs.celebrateSource(true, f.file, choicePick()))); } catch (e) { add('choice', '🎉 Viewer\'s choice celebration', false, e.message); } }
     if (db.settings.rollObs) { try { add('roll', '📣 Roll call', true, r1(await obs.rollSource(true, rollUrl(), Array.isArray(db.settings.rollScenes) && db.settings.rollScenes.length ? db.settings.rollScenes : null))); } catch (e) { add('roll', '📣 Roll call', false, e.message); } }
+    if (sfxWanted()) { try { add('sfx', '🔊 Sound alerts (every scene)', true, r1(await obs.sfxSource(true, sfxUrl()))); } catch (e) { add('sfx', '🔊 Sound alerts (every scene)', false, e.message); } }
     if (db.settings.mnObs && feat('movienight')) { try { add('mnight', '🍿 Movie night leaderboard', true, r1(await obs.mnSource(true, mnUrl(), Array.isArray(db.settings.mnScenes) && db.settings.mnScenes.length ? db.settings.mnScenes : null))); } catch (e) { add('mnight', '🍿 Movie night leaderboard', false, e.message); } }
     const mc = db.settings.marathon || {};
     if (paid.dev() && mc.obs && Array.isArray(mc.scenes) && mc.scenes.length && mc.obsSetup?.collection !== undefined && setup.collection === mc.obsSetup?.collection) { try { add('mara', '🏃 Marathon counter', true, r1(await obs.maraSource(true, maraUrl(), mc.scenes))); } catch (e) { add('mara', '🏃 Marathon counter', false, e.message); } }
