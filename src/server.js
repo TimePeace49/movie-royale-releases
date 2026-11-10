@@ -35,6 +35,7 @@ import * as movienight from './movienight.js';
 import * as raids from './raids.js';
 import * as birthdays from './birthdays.js';
 import * as songs from './songs.js';
+import * as pstats from './pstats.js';
 import * as eggs from './eggs.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
@@ -1140,6 +1141,7 @@ const twitchHandlers = {
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
+    try { pstats.chat(m); } catch (e) { console.error('[stats]', e.message); } // 📊 which commands each person uses
     try { movienight.noteChat(m); } catch (e) { console.error('[movie night]', e.message); } // 🍿 the first one in chat gets two movie night votes
     try { maraWaitChat(m); } catch (e) { console.error('[marathon reminder]', e.message); } // 🔔 someone with a battle waiting 30+ min is here
     try { chatvoice.chat(m); } catch (e) { console.error('[chat voice]', e.message); } // 🔈 read chat out loud to you only (not cheers / channel point messages)
@@ -2028,6 +2030,7 @@ app.post('/api/chat/mod', wTry(async b => {
   else throw new Error('Unknown action');
   return {};
 }));
+app.get('/api/test/person-stats', (req, res) => res.json(pstats.demo())); // 🧪 the profile's Stats tab rules with a pretend person (nothing saved)
 app.get('/api/viewer-lookup', (req, res) => { // double-clicked a word: is it someone we know?
   const q = String(req.query.name || '').replace(/^@/, '').trim(), k = q.toLowerCase(), n = norm(q); if (!q) return res.status(404).json({});
   const vs = db.viewers || {}, hit = vs[k] || Object.values(vs).find(v => norm(v.name) === n);
@@ -2056,6 +2059,8 @@ app.get('/api/viewer/:login', async (req, res) => {
   res.json({
     linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
     id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
+    slim: !edHas('battle'), // 🎭 an edition without battles: no character, respins, movies or games on the profile
+    acts: feat('songs') || feat('movienight') ? pstats.of(login) : null, // 📊 the Stats tab: songs asked for, movie votes, skips, commands (newest first)
     songs: feat('songs') ? songs.mine(login) : null, // 🎵 their songs in the queue, with the place each one has
     look: (() => { const l = looks.lookOf(discordId) || looks.lookOf(looks.discordFor(login)); return l ? looks.nums(l) : null; })(), // 🎨 their own /character
     login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
@@ -4859,7 +4864,7 @@ app.get('/api/test/yt-parse', (req, res) => { /* 🧪 the two YouTube page reade
   const w = ytWatchParse('x"lengthSeconds":"275","ownerChannelName":"TotoVEVO","viewCount":"912345","category":"Music","isLiveContent":false y'), sr = ytSearchParse('{"videoRenderer":{"videoId":"FTQbiNvZqaY","thumbnail":{},"title":{"runs":[{"text":"Toto - Africa (Official HD Video)"}]},"longBylineText":{"runs":[{"text":"TotoVEVO"}]},"lengthText":{"accessibility":{"label":"4 minutes"},"simpleText":"4:35"},"viewCountText":{"simpleText":"1,012,345 views"}}}{"videoRenderer":{"videoId":"aaaaaaaaaaa","title":{"runs":[{"text":"Other \\"one\\""}]}}}');
   const ok = !!w && w.secs === 275 && w.category === 'Music' && w.views === 912345 && w.author === 'TotoVEVO' && sr.length === 2 && sr[0].id === 'FTQbiNvZqaY' && sr[0].secs === 275 && sr[0].views === 1012345 && sr[0].author === 'TotoVEVO' && sr[1].title === 'Other "one"';
   res.json({ ok, watch: w, search: sr }); });
-songs.setHooks({ info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
+songs.setHooks({ note: pstats.note, info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
 const sgTry = fn => async (req, res) => { try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.queue ? { state: r } : { ...(r || {}), state: songs.state() }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/songs', (req, res) => res.json(feat('songs') ? songs.state({ q: String(req.query.q || ''), sort: String(req.query.sort || 'last') }) : { on: false }));
 app.post('/api/songs/add', sgTry(async b => { const r = await songs.request({ login: '', name: String(b.by || '').trim() }, String(b.song || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'banned' ? 'That song is on your banned list.' : r.why === 'dupe' ? 'That song is already in the queue.' : r.why === 'link' ? 'Only YouTube links (or a song name).' : 'Type a song name or paste a YouTube link.'); return r; }));
@@ -4873,6 +4878,9 @@ app.post('/api/songs/rate', sgTry(b => songs.rate(b.key, b.who, b.value)));
 app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
+app.post('/api/songs/playlist', sgTry(b => songs.playlist(b))); // 📻 add / rename / remove one of your YouTube playlists
+app.post('/api/songs/backup', sgTry(b => songs.setBackup(String(b.id || '')))); // 📻 the playlist that plays when no requests are left
+app.post('/api/songs/hold', sgTry(b => songs.setHold(String(b.id || '')))); // ⏸ pause the requests and play a playlist ('' = back to requests)
 app.post('/api/songs/import', sgTry(b => { // a spreadsheet (.xlsx as base64), a CSV / text file, or pasted lines; kind: songs | banned; dry = only show what was found
   const kind = b.kind === 'banned' ? 'banned' : 'songs', who = Number(b.who) === 1 ? 1 : 0; let p;
   if (b.xlsx) { const all = xlsx.sheets(Buffer.from(String(b.xlsx), 'base64')).filter(sh => sh.rows.length), want = all.filter(sh => (kind === 'banned' ? /ban|black|block/i : /song|queue|rating|list|played|request|sheet/i).test(sh.name)), use = want.length ? want : all.slice(0, 1); p = { songs: [], note: '' }; for (const sh of use) { const t = songs.readTable(sh.rows, kind, undefined, who); p.songs.push(...t.songs); if (t.rym) p.rymNote = t.note; } p.note = `Read as an Excel file (page${use.length === 1 ? '' : 's'}: ${use.map(x => x.name).join(', ')}).`; }
@@ -4943,7 +4951,7 @@ app.post('/api/raids/sort', rdTry(b => ({ ok: true, sort: raids.setSort(b.sort) 
 app.post('/api/raids/forget', rdTry(b => raids.forget(b.login)));
 app.post('/api/test/raids', rdTry(b => (b.action === 'sort' ? raids.sortDemo() : raids.pretend(b.action !== 'clear'))));
 // 🍿 Movie night voting (1.93.0, Birx & Jess's edition; in Derek's with dev mode on): see src/movienight.js
-movienight.setHooks({
+movienight.setHooks({ note: pstats.note,
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
   isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
   act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),

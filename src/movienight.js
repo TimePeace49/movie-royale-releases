@@ -7,7 +7,7 @@ import { db, save, uid } from './store.js';
 import * as bdays from './birthdays.js';
 import { is } from './edition.js';
 
-const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '', info: async () => null };
+const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '', info: async () => null, note: () => {} };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
 
@@ -199,7 +199,7 @@ export function vote(login, name, movie, { via = 'chat', test = false, quiet = f
   const d = data(), o = opts(d), r = cast(login, name, movie, d);
   if (!r.ok) { if (!quiet) sayOnce(r.why === 'same' ? `🍿 @${name} you already voted for that one.` : `🍿 @${name} you've used your vote${r.allowed > 1 ? 's' : ''} and your change for tonight.`, 6000); return r; }
   const g = { id: uid(), login: low(login), name, movie: movie.id, title: movie.title, n: r.n, kind: r.kind, from: r.from || '', at: Date.now(), right: null, ...(said ? { said: String(said).slice(0, 300) } : {}), ...(test ? { test: true } : {}) };
-  d.guesses.push(g); d.guesses = d.guesses.slice(-400); changed();
+  d.guesses.push(g); d.guesses = d.guesses.slice(-400); changed(); if (!test) H.note(g.login, name, 'vote', `#${r.n} ${movie.title}${r.kind === 'change' ? ' (changed vote)' : ''}`);
   H.send({ type: 'mnVote', vote: g }, 'control');
   Promise.resolve().then(() => H.info(g.login, userId, test)).then(x => { if (!x) return; if (x.avatar) g.avatar = x.avatar; if (x.followed !== undefined) g.followed = x.followed; changed(); H.send({ type: 'mnVote', vote: g, update: true }, 'control'); }).catch(() => {}); /* (their picture + how long they've followed, for the pop-up: looked up after, so the vote itself never waits) */
   H.act(r.kind === 'change' ? `changed their movie night vote to #${r.n} ${movie.title}` : `voted for #${r.n} ${movie.title}`, { icon: '🗳️', who: name, kind: 'vote', test });

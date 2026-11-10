@@ -6,7 +6,7 @@
 import { db, save } from './store.js';
 import { is } from './edition.js';
 
-const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', info: async () => null, search: async () => [], isBot: () => false };
+const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', info: async () => null, search: async () => [], isBot: () => false, note: () => {} };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -60,9 +60,12 @@ export function onChat(m) {
   if (w === low(o.command)) { if (!arg) { say(`🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
   if (w === low(o.nowCommand)) { say(d.now ? `🎵 Now playing: ${d.now.title}${d.now.by ? ` (asked by ${d.now.by})` : ''}` : '🎵 Nothing is playing right now.', 5000); return true; }
   if (w === low(o.queueCommand)) { say(d.queue.length ? `🎵 Next up (${d.queue.length}): ${d.queue.slice(0, 5).map((q, i) => `${i + 1}. ${q.title}`).join(' · ')}${d.queue.length > 5 ? ' …' : ''}`.slice(0, 480) : '🎵 The song queue is empty.', 8000); return true; }
-  if (w === low(o.skipCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const t = d.now && d.now.title; next(); say(t ? `🎵 ${name} skipped: ${t}` : '🎵 Nothing was playing.'); }).catch(() => {}); return true; }
-  if (w === low(o.voteCommand)) { if (!(o.skipVotes > 0) || !d.now) return true; const v = (d.vs && d.vs.id === d.now.id) ? d.vs : (d.vs = { id: d.now.id, who: [] }); if (v.who.includes(low(m.login))) return true; v.who.push(low(m.login));
-    if (v.who.length >= o.skipVotes) { const t = d.now.title; next(); say(`🎵 Chat voted to skip: ${t}`); } else say(`🎵 ${name} voted to skip (${v.who.length} of ${o.skipVotes}).`, 4000); return true; }
+  /* ⏭ skipping: mods and the streamer skip right away, and so does the person whose song it is; anyone else counts as a vote to skip (when votes are on). "!skip song" works like the skip command. */
+  const voteSkip = () => { if (!(o.skipVotes > 0) || !d.now) return false; const v = (d.vs && d.vs.id === d.now.id) ? d.vs : (d.vs = { id: d.now.id, who: [] }); if (v.who.includes(low(m.login))) return true; v.who.push(low(m.login));
+    if (v.who.length >= o.skipVotes) { const n = d.now; next(); if (n.login) H.note(n.login, n.by, 'skipped', `${n.title} (chat voted)`); say(`🎵 Chat voted to skip: ${n.title}`); } else say(`🎵 ${name} voted to skip (${v.who.length} of ${o.skipVotes}).`, 4000); return true; };
+  if (w === low(o.skipCommand) || (w === '!skip' && /^song\b/i.test(arg))) { if (!d.now) { say('🎵 Nothing is playing right now.', 5000); return true; } const own = d.now.login === low(m.login);
+    H.allowed(m, 'mods').then(ok => { if (!d.now) return; if (ok || own) { const n = d.now; next(); H.note(m.login, name, 'skip', n.title); if (n.login && !own) H.note(n.login, n.by, 'skipped', `${n.title} (by ${name})`); say(`🎵 ${name} skipped: ${n.title}`); } else if (!voteSkip()) say(`🎵 @${name} only mods can skip a song (or the person who asked for it).`, 8000); }).catch(() => {}); return true; }
+  if (w === low(o.voteCommand)) { voteSkip(); return true; }
   if (w === low(o.volCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const n = Number(arg); if (!arg || !Number.isFinite(n)) return say(`🔉 The song volume is ${o.vol}.`, 4000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
   if (w === low(o.mineCommand)) { const who = arg && /^@?\w{2,30}$/.test(arg) ? arg.replace(/^@/, '') : m.login, own = low(who) === low(m.login), l = mine(who, d), nm = own ? name : who; say(l.length ? `🎵 @${name} ${own ? 'your' : nm + "'s"} song${l.length === 1 ? '' : 's'}: ${l.map(x => x.pos ? `#${x.pos} ${x.title}` : `▶ playing now: ${x.title}`).join(' · ')}`.slice(0, 480) : `🎵 @${name} ${own ? 'you have' : nm + ' has'} no songs in the queue.`, 3000); return true; }
   if (w === low(o.wrongCommand)) { const i = d.queue.map(q => q.login).lastIndexOf(low(m.login)); if (i < 0) say(`🎵 @${name} you have no song in the queue.`, 5000); else { const [q] = d.queue.splice(i, 1); changed(); say(`🎵 @${name} took out: ${q.title}`); } return true; }
@@ -100,7 +103,7 @@ export async function request(m, arg, { hand = false, test = false, now = Date.n
   const x = { yt, title }, key = keyOf(x), ban = bannedWhy(x, d); if (d.lib[key]?.title && !/^YouTube video /.test(d.lib[key].title)) x.title = title = d.lib[key].title; /* (a song you know keeps the name you gave it) */ if (ban) return no('banned', "that song is on the banned list, sorry.");
   if (d.queue.some(q => q.key === key) || d.now?.key === key) return no('dupe', 'that song is already in the queue.');
   const item = { id: uid(), key, title, yt, by: name, login, at: now, test: test || undefined };
-  d.queue.push(item); const L = lib(d, { key, title, yt }); L.requests++; if (!L.first) L.first = now; if (login) { L.by[login] = (L.by[login] || 0) + 1; if (!hand && !test) { const r = (d.req[login] ||= { name, n: 0 }); r.n++; r.name = name; r.last = now; } }
+  d.queue.push(item); if (login && !test && !hand) H.note(login, name, 'song', title); const L = lib(d, { key, title, yt }); L.requests++; if (!L.first) L.first = now; if (login) { L.by[login] = (L.by[login] || 0) + 1; if (!hand && !test) { const r = (d.req[login] ||= { name, n: 0 }); r.n++; r.name = name; r.last = now; } }
   if (d === data()) { changed(); H.act(`${name || 'You'} asked for a song: ${title}`, { who: name, kind: 'songReq', test }); }
   if (!quiet && !hand) { const old = L.plays ? ` (played ${L.plays} time${L.plays === 1 ? '' : 's'} before${rateText(L, o) ? ', ' + rateText(L, o) : ''})` : ''; say(`🎵 @${name} added: ${title}, #${d.queue.length} in the queue${old}`.slice(0, 480)); }
   return { ok: true, item };
@@ -142,6 +145,21 @@ export function ban(b) {
 }
 export function unban(key) { const d = data(); d.banned = d.banned.filter(b => b.key !== key); changed(); return state(); }
 export function banUser(name, yes = true) { const d = data(), l = low(name); if (!/^[a-z0-9_]{2,25}$/.test(l)) throw new Error('Type their chat name.'); d.bannedUsers = d.bannedUsers.filter(x => x !== l); if (yes) { d.bannedUsers.push(l); d.queue = d.queue.filter(q => q.login !== l); } changed(); return state(); }
+/* 📻 Your own YouTube playlists: one can play while song requests are paused, and one can fill in when the queue is empty.
+   The app only keeps the playlist's id and your name for it: YouTube's own player plays the list. */
+export const plId = s => { const t = String(s || '').trim(), m = t.match(/[?&]list=([A-Za-z0-9_-]{10,80})/); return m ? m[1] : /^[A-Za-z0-9_-]{10,80}$/.test(t) ? t : ''; };
+export function playlist(b) {
+  const d = data(), L = (d.playlists ||= []);
+  if (b.remove) { const i = L.findIndex(p => p.id === b.id); if (i >= 0) L.splice(i, 1); if (d.backup === b.id) d.backup = ''; if (d.hold === b.id) d.hold = ''; changed(); return state(); }
+  if (b.id) { const p = L.find(x => x.id === b.id); if (!p) throw new Error("That playlist isn't in your list any more."); if ('name' in b) p.name = String(b.name || '').trim().slice(0, 60) || p.name; if ('shuffle' in b) p.shuffle = !!b.shuffle; if ('link' in b) { const l = plId(b.link); if (!l) throw new Error("That doesn't look like a YouTube playlist link (it has list= in it)."); p.list = l; } changed(); return state(); }
+  const list = plId(b.link); if (!list) throw new Error("That doesn't look like a YouTube playlist link. Open the playlist on YouTube and copy the address (it has list= in it).");
+  if (L.length >= 40) throw new Error('That is a lot of playlists: remove one first.'); if (L.some(p => p.list === list)) throw new Error('That playlist is already in your list.');
+  L.push({ id: 'pl' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name: String(b.name || '').trim().slice(0, 60) || 'Playlist ' + (L.length + 1), list, shuffle: !!b.shuffle }); changed(); return state();
+}
+/** 📻 The playlist that plays by itself when no song requests are left ('' = none). */
+export function setBackup(id) { const d = data(); if (id && !(d.playlists || []).some(p => p.id === id)) throw new Error("That playlist isn't in your list any more."); d.backup = id || ''; changed(); return state(); }
+/** ⏸ Pause the song requests and play a playlist ('' = back to the requests). Requests still come in and wait their turn. */
+export function setHold(id) { const d = data(), p = id ? (d.playlists || []).find(x => x.id === id) : null; if (id && !p) throw new Error("That playlist isn't in your list any more."); d.hold = id || ''; H.act(p ? `Song requests paused: playing the playlist “${p.name}”` : 'Back to the song requests', { kind: 'songHold' }); changed(); return state(); }
 export function setOpts(b) {
   const d = data(), x = d.opts;
   for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'mineCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr'); }
@@ -235,7 +253,7 @@ export function state({ q = '', sort = 'last', limit = 200 } = {}) {
   const avg = L => { const r = (L.rate || []).filter(x => x != null); return r.length ? r.reduce((a, b) => a + b, 0) / r.length : -1; };
   rows = rows.sort(sort === 'title' ? (a, b) => a.title.localeCompare(b.title) : sort === 'plays' ? (a, b) => b.plays - a.plays || a.title.localeCompare(b.title) : sort === 'rating' ? (a, b) => avg(b) - avg(a) || b.plays - a.plays : sort === 'a' ? (a, b) => (b.rate?.[0] ?? -1) - (a.rate?.[0] ?? -1) : sort === 'b' ? (a, b) => (b.rate?.[1] ?? -1) - (a.rate?.[1] ?? -1) : (a, b) => (b.last || 0) - (a.last || 0) || a.title.localeCompare(b.title));
   const rated = all.filter(L => (L.rate || []).some(x => x != null));
-  return { on: true, open: d.open, opts: o, now: view(d, d.now, o), queue: d.queue.map(x => view(d, x, o)), played: d.played.slice(0, 40).map(x => ({ ...x, rate: (d.lib[x.key] && d.lib[x.key].rate) || [null, null], yt: (d.lib[x.key] && d.lib[x.key].yt) || '' })), banned: d.banned, bannedUsers: d.bannedUsers,
+  return { on: true, open: d.open, playlists: d.playlists || [], backup: (d.playlists || []).some(p => p.id === d.backup) ? d.backup : '', hold: (d.playlists || []).some(p => p.id === d.hold) ? d.hold : '', opts: o, now: view(d, d.now, o), queue: d.queue.map(x => view(d, x, o)), played: d.played.slice(0, 40).map(x => ({ ...x, rate: (d.lib[x.key] && d.lib[x.key].rate) || [null, null], yt: (d.lib[x.key] && d.lib[x.key].yt) || '' })), banned: d.banned, bannedUsers: d.bannedUsers,
     lib: rows.slice(0, limit).map(L => ({ key: L.key, title: L.title, yt: L.yt, plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, album: !!L.album, year: L.year || '', who: Object.entries(L.by || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]) })), found: rows.length, total: all.length, q, sort,
     stats: { albums: all.filter(L => L.album).length, songs: all.length, plays: all.reduce((n, L) => n + (L.plays || 0), 0), rated: rated.length, avg: [0, 1].map(i => { const v = all.map(L => L.rate?.[i]).filter(x => x != null); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : null; }),
       requesters: Object.entries(d.req).map(([login, x]) => ({ login, name: x.name || login, n: x.n, last: x.last || 0 })).sort((a, b) => b.n - a.n).slice(0, 25),
@@ -271,6 +289,7 @@ export async function demo() {
       add('🔎 A typed song name is looked up on YouTube: the first result that fits the rules is added (the 10-hour one is passed over)', hit.ok && hit.item.yt === 'bbbbbbbbbb2' && hit.item.title === 'Toto - Africa (Official Video)');
       add('🔎 A name YouTube finds nothing for is still added as typed', miss.ok && !miss.item.yt && miss.item.title === 'a song nobody has'); }
     { const mm = mine('amy', d); add('!mysongs: each person\'s songs come with their place in the queue', mm.length === 2 && mm[0].pos === 1 && mm[1].pos === 2 && mine('nobody', d).length === 0); }
+    { add('📻 A playlist link gives its list id, and a plain video link is refused', plId('https://www.youtube.com/playlist?list=PLabcdefghij12345') === 'PLabcdefghij12345' && plId('https://youtu.be/dQw4w9WgXcQ?list=PLabcdefghij12345&index=2') === 'PLabcdefghij12345' && plId('https://youtu.be/dQw4w9WgXcQ') === ''); }
     d.open = false; add('Closed = no requests', (await R('dan', 'Later')).why === 'closed'); d.open = true;
     const rym = readText('RYM Album, First Name,Last Name,First Name localized, Last Name localized,Title,Release_Date,Rating,Ownership,Purchase Date,Media Type,Review\n1,"","Toto","","","Toto IV",1982,9,n,,,""\n2,"Daft","Punk","","","Discovery",2001,10,o,,,"great, really"\n3,"","Nobody","","","Wishlist only",1999,0,w,,,""\n', 'songs', { ...o, raters: ['Birx', 'Jess'] }, 1);
     add('A RateYourMusic export is read: artist + album, the rating out of 10, unrated ones left out, for the person you pick', rym.rym && rym.songs.length === 2 && rym.songs[0].title === 'Toto - Toto IV' && rym.songs[0].rate[1] === 9 && rym.songs[0].rate[0] === null && rym.songs[1].title === 'Daft Punk - Discovery' && rym.songs[1].year === '2001' && rym.songs[1].album);

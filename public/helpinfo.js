@@ -222,6 +222,15 @@ H(/^(?:Turn the lock off|tip:switch the lock off)/i, 'Turn the lock off', 'Switc
 H(/^(?:✅ Turn the lock on|tip:check the code and switch the lock on|tip:the 6-digit code your authenticator app shows)/i, 'Turn the lock on', 'Type the 6 digits your authenticator app shows right now. If they match, the lock is on and your backup codes are shown.');
 H(/^(?:I saved them|📋 Copy|tip:copy the backup codes|tip:close this window \(the codes)/i, 'Backup codes', 'Save these somewhere safe. If you lose your phone, one backup code opens the lock (each works once). They are only shown this one time.', ['settings']);
 H(/^(?:🔐 Open the lock settings|tip:open settings → account & updates, where the lock)/i, '🔐 Lock settings', 'Opens Settings → 👤 Account & updates, where the lock is set up, changed or turned off.');
+// 🧱 movable boxes, 📻 playlists, 📊 stats (1.110.0)
+H(/^(?:⠿|tip:drag to move this box)/i, '⠿ Move a box', 'Drag this strip to move the box anywhere on the Chat tab. Its edges stick to the other boxes. Where you leave it is remembered on this PC.');
+H(/^tip:drag to make this box bigger/i, '◢ Resize a box', 'Drag this corner to make the box bigger or smaller.');
+H(/^(?:↺ Boxes|↺ Reset the Chat tab boxes|tip:put every box on the chat tab back)/i, '↺ Reset the boxes', 'Puts every box on the Chat tab back where it started.');
+H(/^(?:📻|📻 My playlists|tip:your (?:youtube )?playlists)/i, '📻 My playlists', 'Your YouTube playlists. ▶ Play pauses the song requests and plays one. The fill-in playlist plays by itself when no requests are left; a new request starts after the playlist song that is on.');
+H(/^(?:↩ Back to song requests|tip:stop the playlist and go back)/i, '↩ Back to song requests', 'Stops the playlist and goes back to playing the song requests that are waiting.');
+H(/^(?:#plName\b|#plLink\b|#plBackup\b|tip:(?:add this youtube playlist|the playlist that plays by itself|play this playlist in a mixed|take this playlist off|pause the song requests and play this))/i, '📻 Playlists', 'Add a YouTube playlist with a name and its link, play it, shuffle it, remove it, or pick it as the one that fills in when the queue is empty.');
+H(/^(?:📊 Check the Stats tab|tip:walks the profile's stats tab)/i, '📊 Stats tab test', 'Checks with a pretend person that songs, votes, skips and commands are kept newest first. Nothing is saved.');
+H(/^tip:drag to move this box anywhere on the window/i, '👀 Move this box', 'Drag to move the “seeing the app as” box anywhere on the window.');
 // 🧰 Chat tab tools + raid wait (1.109.0)
 H(/^(?:🧰 Stream tools)/i, '🧰 Stream tools', 'The box under the alerts on the Chat tab: a 🎬 Clip button and your own buttons that switch OBS to a scene.');
 H(/^(?:⚙ Pick scenes|tip:pick which of your obs scenes)/i, '⚙ Pick scenes', 'Tick the OBS scenes you want as buttons on the Chat tab. OBS has to be open so the app can read your scenes.');

@@ -2,6 +2,24 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.110.0
+**💬 Chat tab: move and resize every box**
+- Every box on the Chat tab (stream preview, songs, movie night, alerts, stream tools, chat) can be **dragged by the little ⠿ strip on top** and **resized by its bottom-right corner**. Edges stick to the other boxes so it stays tidy. It's remembered on your PC; **↺ Boxes** in Stream tools puts everything back.
+- The "👀 Seeing the app as" box (dev) can be dragged anywhere too.
+
+**📻 Playlists for the music box**
+- New **📻** button next to Skip: add your **YouTube playlists** (name + link), then **▶ Play** one. That **pauses the song requests** (they still come in and wait) until you press **↩ Back to song requests**.
+- Pick a **fill-in playlist**: it plays by itself whenever **no song requests are left**. When a request comes in, the playlist song that's on finishes, then the request plays.
+- When a requested song ends, **the next one now starts by itself**.
+
+**👤 Profiles (Birx & Jess's edition)**
+- Gone from the profile: character, respins, movies, games and the Discord line.
+- New **📊 Stats** tab: the songs they asked for, the movies they voted for, song skips, and every chat command they used with how often and when. Newest first. (Counting starts with this version.)
+
+**⏭ !skip song**
+- Chat can type **!skip song** (same as !skipsong). Mods and the streamer skip right away, and so can the person whose song it is. For anyone else it counts as a vote to skip when skip votes are on.
+- 🧪 Try it: Test tab → 🧰 Chat tab: stream tools + my songs.
+
 ## 1.109.0
 **For everyone**
 - **🎵 Music box on the Chat tab:** it no longer shows the video (it just kept buffering). You get the song's picture instead; ▶ Play, the volume and the time slider still work.
