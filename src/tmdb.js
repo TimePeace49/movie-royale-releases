@@ -16,7 +16,7 @@ function req(pathAndQuery, ms = 2500) {
 /** 🚫 the ban list builder: any TMDB address (longer time limit) */
 export const tmdbGet = (path, ms = 10000) => req(path, ms);
 
-export const shape = m => ({ id: m.id, title: m.title, year: (m.release_date || '').slice(0, 4), poster: m.poster_path ? IMG + m.poster_path : null, popularity: m.popularity || 0, lang: m.original_language || '' });
+export const shape = m => ({ id: m.id, title: m.title, year: (m.release_date || '').slice(0, 4), poster: m.poster_path ? IMG + m.poster_path : null, popularity: m.popularity || 0, lang: m.original_language || '', rating: m.vote_count ? Math.round(m.vote_average * 10) / 10 : 0 });
 
 export async function searchMovies(q) {
   q = (q || '').trim();

@@ -20,7 +20,7 @@ import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
-import { getRatings, testOmdb } from './ratings.js';
+import { getRatings, testOmdb, ratingsByTitle } from './ratings.js';
 import { ruleBan } from './banrules.js';
 import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
 import { parseImport, toLines, importLink } from './importer.js';
@@ -327,7 +327,7 @@ function publicState() { applyCharsDefault();
 }
 
 // ---------- helpers ----------
-const IMG_HOSTS = ['static-cdn.jtvnw.net', 'cdn.discordapp.com', 'media.discordapp.net', 'image.tmdb.org'];
+const IMG_HOSTS = ['static-cdn.jtvnw.net', 'cdn.discordapp.com', 'media.discordapp.net', 'image.tmdb.org', 'm.media-amazon.com' /* OMDb's posters (movie night leaderboard) */];
 const proxied = u => !u ? null : u.startsWith('/') ? u : `/img?u=${encodeURIComponent(u)}`;
 
 function parseLines(text) {
@@ -4976,7 +4976,13 @@ app.post('/api/raids/sort', rdTry(b => ({ ok: true, sort: raids.setSort(b.sort) 
 app.post('/api/raids/forget', rdTry(b => raids.forget(b.login)));
 app.post('/api/test/raids', rdTry(b => (b.action === 'sort' ? raids.sortDemo() : raids.pretend(b.action !== 'clear'))));
 // 🍿 Movie night voting (1.93.0, Birx & Jess's edition; in Derek's with dev mode on): see src/movienight.js
-movienight.setHooks({ note: pstats.note,
+/* ⭐🍅 a movie's IMDb + Rotten Tomatoes ratings for the movie night leaderboard, by its name (OMDb; undefined = no key yet / couldn't reach it, null = not found) */
+async function mnRating(title) {
+  const m = /^(.*?)\s*\((\d{4})\)\s*$/.exec(String(title));
+  try { return await ratingsByTitle(m ? m[1] : String(title), m ? m[2] : ''); } catch { return undefined; }
+}
+setInterval(() => { if (feat('movienight')) movienight.fillRatings().catch(() => {}); }, 120000);
+movienight.setHooks({ rating: t => mnRating(t), note: pstats.note,
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
   isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
   act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),
@@ -5006,6 +5012,7 @@ app.get('/api/movienight/suggest', async (req, res) => {
     res.json({ list: out, key: key || !!req.query.fake });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+app.post('/api/movienight/ratings', mnTry(async () => { for (const m of movienight.data().movies) m.rateFor = ''; const n = await movienight.fillRatings(); return { looked: n, key: !!String(db.settings.omdbKey || '').trim() }; })); /* 🔄 look every movie's ratings + poster up again (numbers typed by hand stay) */
 app.post('/api/movienight/movies', mnTry(b => 'text' in b || Array.isArray(b.list) ? movienight.setMovies(b.list || b.text) : b.id ? movienight.editMovie(b.id, b) : movienight.addMovie(b.title, b.by)));
 app.post('/api/movienight/open', mnTry(b => movienight.open(!!b.on)));
 app.post('/api/movienight/lastcall', mnTry(b => movienight.lastCall(b.on !== false, b.mins)));
@@ -5019,7 +5026,7 @@ app.get('/api/test/movienight-rules', (req, res) => res.json(movienight.rulesDem
 app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote through the pretend chat (nothing is sent to Twitch); 'clear' takes them out again
   const d = movienight.data();
   if (b.action === 'clear') return movienight.clearTests();
-  if (b.action === 'fill') { if (d.movies.length) throw new Error('Your list already has movies: this only fills an empty list.'); return movienight.setMovies([{ title: 'Jaws', by: 'pretend_ana' }, { title: 'Alien', by: '' }, { title: 'The Thing', by: 'pretend_bo' }, { title: 'Clue', by: '' }]); }
+  if (b.action === 'fill') { if (d.movies.length) throw new Error('Your list already has movies: this only fills an empty list.'); return movienight.setMovies([{ title: 'Jaws (1975)', by: 'pretend_ana', imdb: 8.1, rt: 97, poster: '/deck/home.png' }, { title: 'Alien (1979)', by: '', imdb: 8.5, rt: 93 }, { title: 'The Thing (1982)', by: 'pretend_bo', imdb: 8.2, rt: 85 }, { title: 'Clue (1985)', by: '', imdb: 7.2, rt: 72 }]); }
   if (!d.movies.length) throw new Error('Add movies first (or press 📋 Fill a pretend list).');
   if (!d.open) await movienight.open(true, { quiet: true });
   if (b.action === 'raid') { movienight.onAlert({ kind: 'raid', login: 'pretend_raider', name: 'pretend_raider' }); return {}; }

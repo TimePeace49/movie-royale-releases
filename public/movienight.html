@@ -4,7 +4,7 @@
 <style>
   /* 🍿 Movie night leaderboard (1.116.0): an arcade high-score board. Rows are placed by hand (top = slot × row height), so a movie that climbs can turn sideways and pounce up the list. No sound. */
   html, body { margin: 0; background: transparent; overflow: hidden; color: #b8ffd9; font-family: Consolas, "Lucida Console", "DejaVu Sans Mono", monospace; }
-  #box { --a: .85; --rh: 30px; position: absolute; right: 24px; top: 24px; width: 430px; padding: 10px 12px 10px; border: 2px solid rgba(64, 255, 170, calc(.25 + var(--a) * .6)); border-radius: 6px;
+  #box { --a: .85; --rh: 30px; position: absolute; right: 24px; top: 24px; width: 500px; padding: 10px 12px 10px; border: 2px solid rgba(64, 255, 170, calc(.25 + var(--a) * .6)); border-radius: 6px;
     background: rgba(3, 14, 12, var(--a)); box-shadow: 0 0 calc(var(--a) * 22px) rgba(40, 255, 160, calc(var(--a) * .35)), inset 0 0 calc(var(--a) * 30px) rgba(40, 255, 160, calc(var(--a) * .10));
     opacity: 0; transform: translateY(-14px); transition: opacity .45s, transform .45s; text-shadow: 0 0 6px rgba(60, 255, 170, .55), 0 1px 2px rgba(0, 0, 0, .9); }
   #box.show { opacity: 1; transform: none; }
@@ -15,11 +15,11 @@
   #rows { position: relative; height: 0; transition: height .35s; }
   .row { position: absolute; left: 0; right: 0; height: var(--rh); line-height: var(--rh); display: flex; gap: 8px; font-size: 17px; white-space: nowrap; transition: top .45s cubic-bezier(.3, 1.3, .5, 1); will-change: transform, top; }
   .row .n { width: 30px; text-align: right; color: #56d8ff; } .row .t { flex: 1; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; } .row .y { color: #7fe6c0; opacity: .8; }
-  .row .v { min-width: 34px; text-align: right; font-weight: 700; color: #fff36b; } .row.zero .v { color: #6fae96; } .row.zero .t { color: #8fd9bd; }
+  .row .p { width: calc(var(--rh) * .64); flex: none; display: flex; align-items: center; } .row .p img { width: 100%; height: calc(var(--rh) - 6px); object-fit: cover; border-radius: 3px; box-shadow: 0 0 6px rgba(60, 255, 170, .45); display: block; } .row .r { color: #ffd76b; font-size: .74em; opacity: .95; white-space: nowrap; } .row .r i { font-style: normal; font-size: .8em; opacity: .75; } .row .r .rt { color: #ff8f7a; } .row .v { min-width: 34px; text-align: right; font-weight: 700; color: #fff36b; } .row.zero .v { color: #6fae96; } .row.zero .t { color: #8fd9bd; }
   .row.top .t, .row.top .n { color: #fff36b; text-shadow: 0 0 8px rgba(255, 240, 90, .8), 0 1px 2px #000; }
   .row.jump { z-index: 5; } .row.jump .t, .row.jump .v { color: #fff; text-shadow: 0 0 10px #fff, 0 0 18px #5fffc8; }
   .row.flash .v { animation: pop .5s; } @keyframes pop { 40% { transform: scale(1.7); color: #fff; } }
-  #box.tiny { --rh: 24px; } #box.tiny .row { font-size: 14px; }
+  #box.tiny { } #box.tiny .row { font-size: 14px; }
   #clock { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(64, 255, 170, .45); text-align: center; font-family: Bungee, Consolas, monospace; font-size: 19px; color: #fff36b; } #clock.on { display: block; } #clock.hot { color: #ff6b6b; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: .35; } }
   #foot { white-space: pre-line; line-height: 1.45; margin-top: 5px; font-size: 12px; color: #7fe6c0; opacity: .85; text-align: center; letter-spacing: 1px; }
@@ -46,12 +46,13 @@ function draw() {
   box.classList.toggle('show', !!s.show); document.body.classList.toggle('left', (Q.get('side') || s.side) === 'left'); document.body.classList.toggle('bottom', (Q.get('at') || s.at) === 'bottom');
   const a = Q.get('bg') != null ? Number(Q.get('bg')) : s.bg == null ? 85 : Number(s.bg); box.style.setProperty('--a', String(Math.max(0, Math.min(100, a)) / 100));
   const g = s.guess || {}, list = order(s.movies || []), lead = Math.max(0, ...list.map(m => m.votes));
-  box.classList.toggle('tiny', list.length > 12); const rh = list.length > 12 ? 24 : 30;
+  const hasPic = s.posters !== false && list.some(m => m.poster); box.classList.toggle('tiny', list.length > 12); const rh = hasPic ? (list.length > 12 ? 34 : 46) : list.length > 12 ? 24 : 30; box.style.setProperty('--rh', rh + 'px');
   $('head').innerHTML = `<span class="g">${esc(String(s.guesser || 'Guess').toUpperCase())} GOT RIGHT</span><span class="sc">${g.right || 0}<span class="of"> / </span>${s.total || 0}</span><span class="of">VOTES</span>`;
-  const rows = $('rows'); rows.style.height = list.length * rh + 'px'; const live = new Set();
+  const rows = $('rows'); rows.style.height = list.length * rh + 'px'; box.classList.toggle('pics', hasPic); const live = new Set();
   list.forEach((m, i) => { const k = key(m); live.add(k); let el = EL.get(k); const [t, y] = split(m.title), fresh = !el;
     if (!el) { el = document.createElement('div'); el.className = 'row'; el.style.top = i * rh + 'px'; rows.appendChild(el); EL.set(k, el); }
-    el.innerHTML = `<span class="n">${m.n}.</span><span class="t">${esc(t)}${y ? ` <span class="y">${y}</span>` : ''}</span><span class="v">${m.votes}</span>`;
+    const pic = s.posters !== false && m.poster ? (/^https:/.test(m.poster) ? '/img?u=' + encodeURIComponent(m.poster) : m.poster) : '';
+    el.innerHTML = `<span class="n">${m.n}.</span>${hasPic ? `<span class="p">${pic ? `<img src="${esc(pic)}" alt="">` : ''}</span>` : ''}<span class="t">${esc(t)}${y ? ` <span class="y">${y}</span>` : ''}</span>${s.ratings !== false && (m.imdb > 0 || m.rt != null) ? `<span class="r">${m.imdb > 0 ? `<i>IMDb</i> ${Number(m.imdb).toFixed(1)}` : ''}${m.rt != null ? ` <span class="rt">🍅${m.rt}%</span>` : ''}</span>` : ''}<span class="v">${m.votes}</span>`;
     el.classList.toggle('top', !!lead && m.votes === lead); el.classList.toggle('zero', !m.votes);
     const was = SLOT.get(k), had = VOTES.get(k);
     if (!fresh && had != null && m.votes !== had) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
@@ -70,8 +71,8 @@ function tick() {
 setInterval(tick, 250);
 if (Q.get('demo')) {
   /* a pretend night: a vote lands every second and a half, so the climbing shows */
-  S = { show: true, open: true, endsAt: 0, command: '!vote', total: 0, leaders: [], guesser: Q.get('who') || 'Birx', guess: { right: 0, wrong: 0, total: 0 }, bg: 85,
-    movies: ['Jaws (1975)', 'Alien (1979)', 'The Thing (1982)', 'Clue (1985)', 'Big Trouble in Little China (1986)', 'Tremors (1990)', 'Hackers (1995)', 'The Mummy (1999)'].map((t, i) => ({ id: 'd' + i, n: i + 1, title: t, votes: 0 })) };
+  S = { show: true, open: true, endsAt: 0, command: '!vote', total: 0, leaders: [], guesser: Q.get('who') || 'Birx', guess: { right: 0, wrong: 0, total: 0 }, bg: 85, ratings: Q.get('ratings') !== '0', posters: Q.get('posters') !== '0',
+    movies: ['Jaws (1975)', 'Alien (1979)', 'The Thing (1982)', 'Clue (1985)', 'Big Trouble in Little China (1986)', 'Tremors (1990)', 'Hackers (1995)', 'The Mummy (1999)'].map((t, i) => ({ id: 'd' + i, n: i + 1, title: t, votes: 0, imdb: [8.1, 8.5, 8.2, 7.2, 7.2, 7.1, 6.2, 7.1][i], rt: [97, 93, 85, 72, 76, 88, 33, 62][i], poster: Q.get('posters') === '0' ? '' : 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='60' height='90'><rect width='60' height='90' fill='hsl(${i * 45},55%,32%)'/><text x='30' y='56' font-size='34' text-anchor='middle' fill='#fff' font-family='Arial'>${t[0]}</text></svg>`) })) };
   draw(); window.__vote = i => { const m = S.movies[i]; if (!m) return; m.votes++; S.total++; if (Math.random() < .6) S.guess.right++; else S.guess.wrong++; draw(); };
   if (Q.get('demo') !== 'still') setInterval(() => { if (S.total >= 40) { S.movies.forEach(m => m.votes = 0); S.total = 0; S.guess.right = 0; } window.__vote(Math.floor(Math.random() * S.movies.length)); }, 1500);
 } else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } }; ws.onclose = () => setTimeout(go, 2000); })();

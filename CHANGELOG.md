@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.117.0
+- 🍿 **Posters + IMDb + Rotten Tomatoes ratings on the movie night leaderboard:** each movie shows a small poster, its IMDb rating and its 🍅 Rotten Tomatoes score next to its votes (a tick box each to turn posters or ratings off, and 🔄 Look them up again). The app looks them up by itself from the movie's name (with the free OMDb ratings key: the Movie night tab has a 🔑 Add the key button when there isn't one), and the list has an IMDb and a 🍅 box per movie to type your own number or fix one. A tick box in 📺 On stream + options turns the ratings off.
+- 🧪 See it: Movie night tab → 👀 See it move, or Test tab → 🍿 Movie night voting → 🏁 Leaderboard with pretend votes (both show pretend movies with ratings). 📋 Fill a pretend list also gives its 4 movies ratings.
+
 ## 1.116.5
 - 📝 **Patch notes per edition:** each line of the patch notes is now only shown to the editions it has anything to do with (in the 📝 Patch notes tab and on each edition's release page). An edition that a release changes nothing for gets no patch notes for it.
 

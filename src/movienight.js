@@ -7,7 +7,7 @@ import { db, save, uid } from './store.js';
 import * as bdays from './birthdays.js';
 import { is } from './edition.js';
 
-const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '', info: async () => null, note: () => {} };
+const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '', info: async () => null, note: () => {}, rating: async () => null };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
 
@@ -17,7 +17,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, ratings: true, posters: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -51,7 +51,7 @@ export function findMovie(arg, d = data()) {
 }
 export function tally(d = data()) {
   const n = {}; for (const v of Object.values(d.votes)) for (const x of v.list) n[x.movie] = (n[x.movie] || 0) + 1;
-  return d.movies.map((m, i) => ({ id: m.id, n: i + 1, title: m.title, by: m.by || '', votes: n[m.id] || 0 }));
+  return d.movies.map((m, i) => ({ id: m.id, n: i + 1, title: m.title, by: m.by || '', votes: n[m.id] || 0, imdb: m.imdb || 0, rt: m.rt == null ? null : m.rt, poster: m.poster || '' }));
 }
 export function leaders(d = data()) { const t = tally(d), top = Math.max(0, ...t.map(x => x.votes)); return top ? t.filter(x => x.votes === top) : []; }
 
@@ -82,16 +82,25 @@ export function state() {
 }
 export function screen() { // what the on-stream box shows
   const d = data(), s = state();
-  return { type: 'mnState', show: opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
+  return { type: 'mnState', show: opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, ratings: opts(d).ratings !== false, posters: opts(d).posters !== false, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
 }
 function changed() { save(); H.send({ type: 'movieNight' }, 'control'); H.send(screen(), 'movienight'); }
 
 // ---- the list ----
+/** ⭐🍅 IMDb (out of 10) + Rotten Tomatoes (%) for the leaderboard (1.117.0): looked up by the movie's name (hook `rating`), once per name; a number typed by hand is never looked up again. */
+let rateBusy = false;
+const numIn = (v, max, dec) => { const s = String(v ?? '').replace(',', '.').replace('%', '').trim(); if (!s) return null; const r = Number(s); return Number.isFinite(r) && r >= 0 && r <= max ? Math.round(r * dec) / dec : null; };
+export async function fillRatings(d = data()) {
+  if (rateBusy) return 0; rateBusy = true; let n = 0;
+  try { for (const m of d.movies.slice()) { if (m.rateFor === m.title || (m.imdbHand && m.rtHand)) continue; const title = m.title; let r; try { r = await H.rating(title); } catch {} if (r === undefined) break; /* (no ratings key, or it couldn't be reached: try again another time) */
+    if (m.title !== title) continue; m.rateFor = title; if (!m.imdbHand) m.imdb = r && r.imdb > 0 ? r.imdb : 0; if (!m.rtHand) m.rt = r && r.rtHas ? r.rt : null; m.poster = r && r.poster ? r.poster : ''; n++; } } finally { rateBusy = false; }
+  if (n) changed(); return n;
+}
 export function setMovies(list) { // [{title, by}] or lines "Title | who asked" / "Title - who asked"
   const d = data(); if (d.open) throw new Error('Voting is open: close it first (adding one movie with ➕ still works).');
   const rows = (Array.isArray(list) ? list : String(list || '').split(/\r?\n/)).map(x => typeof x === 'string' ? (() => { const m = x.match(/^\s*(?:\d+[.)]\s*)?(.*?)\s*(?:\||\s[-–—]\s|\t)\s*(.*)$/); return m && m[1] ? { title: m[1], by: m[2] } : { title: x.replace(/^\s*\d+[.)]\s*/, ''), by: '' }; })() : x)
-    .map(x => ({ title: String(x.title || '').trim().slice(0, 120), by: String(x.by || '').trim().replace(/^@/, '').slice(0, 40) })).filter(x => x.title);
-  d.movies = rows.slice(0, 60).map(x => { const old = d.movies.find(m => plain(m.title) === plain(x.title)); return { id: old ? old.id : uid(), title: x.title, by: x.by }; });
+    .map(x => ({ title: String(x.title || '').trim().slice(0, 120), by: String(x.by || '').trim().replace(/^@/, '').slice(0, 40), imdb: Number(x.imdb) > 0 ? Math.round(Number(x.imdb) * 10) / 10 : 0, rt: x.rt == null || x.rt === '' ? -1 : Number(x.rt), poster: x.poster || '' })).filter(x => x.title);
+  d.movies = rows.slice(0, 60).map(x => { const old = d.movies.find(m => plain(m.title) === plain(x.title)); return { ...(old ? { imdb: old.imdb, rt: old.rt, poster: old.poster, rateFor: old.rateFor, imdbHand: old.imdbHand, rtHand: old.rtHand } : {}), id: old ? old.id : uid(), title: x.title, by: x.by, ...(x.imdb > 0 ? { imdb: x.imdb, imdbHand: true } : {}), ...(x.rt >= 0 ? { rt: x.rt, rtHand: true } : {}), ...(x.poster ? { poster: String(x.poster) } : {}) }; }); setTimeout(() => fillRatings().catch(() => {}), 50);
   for (const v of Object.values(d.votes)) v.list = v.list.filter(x => d.movies.some(m => m.id === x.movie));
   changed(); return state();
 }
@@ -99,13 +108,16 @@ export function addMovie(title, by) {
   const d = data(), t = String(title || '').trim().slice(0, 120); if (!t) throw new Error('Type the movie first.');
   if (d.movies.some(m => plain(m.title) === plain(t))) throw new Error('That movie is already on the list.');
   if (d.movies.length >= 60) throw new Error('60 movies is the most one night can have.');
-  d.movies.push({ id: uid(), title: t, by: String(by || '').trim().replace(/^@/, '').slice(0, 40) }); changed(); return state();
+  d.movies.push({ id: uid(), title: t, by: String(by || '').trim().replace(/^@/, '').slice(0, 40) }); changed(); setTimeout(() => fillRatings().catch(() => {}), 50); return state();
 }
 export function editMovie(id, o) {
   const d = data(), i = d.movies.findIndex(m => m.id === id); if (i < 0) throw new Error("That movie isn't on the list.");
   const m = d.movies[i];
   if ('title' in o) { const t = String(o.title || '').trim().slice(0, 120); if (t) m.title = t; }
   if ('by' in o) m.by = String(o.by || '').trim().replace(/^@/, '').slice(0, 40);
+  if ('imdb' in o) { const r = numIn(o.imdb, 10, 10); if (r) { m.imdb = r; m.imdbHand = true; } else { m.imdb = 0; m.imdbHand = false; m.rateFor = ''; } } /* typed by hand; empty = look it up again */
+  if ('rt' in o) { const r = numIn(o.rt, 100, 1); if (r != null) { m.rt = r; m.rtHand = true; } else { m.rt = null; m.rtHand = false; m.rateFor = ''; } }
+  if ('title' in o || 'imdb' in o || 'rt' in o) setTimeout(() => fillRatings().catch(() => {}), 50);
   if (o.remove) { if (d.open) throw new Error("Voting is open: the numbers chat sees can't change now. Close voting first."); d.movies.splice(i, 1); for (const v of Object.values(d.votes)) v.list = v.list.filter(x => x.movie !== id); }
   if (o.dir) { if (d.open) throw new Error("Voting is open: the numbers chat sees can't change now."); const j = i + (o.dir < 0 ? -1 : 1); if (j >= 0 && j < d.movies.length) [d.movies[i], d.movies[j]] = [d.movies[j], d.movies[i]]; }
   changed(); return state();
@@ -229,6 +241,8 @@ export function setOpts(o) {
   if ('changes' in o) x.changes = Math.max(0, Math.min(5, Math.round(Number(o.changes) || 0)));
   if ('reply' in o) x.reply = !!o.reply;
   if ('overlay' in o) x.overlay = !!o.overlay;
+  if ('ratings' in o) x.ratings = !!o.ratings;
+  if ('posters' in o) x.posters = !!o.posters;
   if ('bg' in o) x.bg = Math.max(0, Math.min(100, Math.round(Number(o.bg) || 0))); /* how solid the board's background is on stream: 0 = see-through */
   if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
   if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';

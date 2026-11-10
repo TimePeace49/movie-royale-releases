@@ -4,6 +4,15 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.117.0: What's new
+Everything since 1.116.5.
+
+- {movienight} 🍿 **Posters and ratings on the movie night leaderboard:** each movie now shows a small poster, its **IMDb** rating and its **🍅 Rotten Tomatoes** score next to its votes.
+  - The app looks them up by itself from the movie's name. It needs the free ratings key (OMDb): the Movie night tab has a 🔑 Add the key button when there isn't one yet.
+  - The movie list has an IMDb and a 🍅 box per movie, to type your own number or fix one. 🔄 Look them up again does every movie.
+  - Tick boxes in 📺 On stream + options turn the posters or the ratings off.
+  - See it: Movie night tab → 👀 See it move.
+
 ## v1.116.5: What's new
 Everything since 1.88.3. It's a big one.
 
