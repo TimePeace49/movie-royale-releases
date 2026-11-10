@@ -6,7 +6,7 @@
 import { db, save } from './store.js';
 import { is } from './edition.js';
 
-const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', isBot: () => false };
+const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', info: async () => null, search: async () => [], isBot: () => false };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -17,7 +17,22 @@ export function data(d = (db.songs ||= {})) {
   if (d.open === undefined) d.open = true;
   return d;
 }
-export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
+/** 🛡️ Channels whose music is made to be safe on stream (the "DMCA-free only" switch; you can change the list). No list can promise a song is safe. */
+export const DMCA_DEFAULT = ['NoCopyrightSounds', 'StreamBeats', 'Harris Heller', 'Lofi Girl', 'Chillhop Music', 'Audio Library', 'Vlog No Copyright Music', 'Pretzel', 'TheFatRat', 'Bass Rebels', 'Infraction - No Copyright Music', 'Kevin MacLeod', 'Ninety9 LIVE', 'Uppbeat', 'RFM - Royalty Free Music'];
+const DMCA_WORDS = /\b(no copyright|copyright[- ]free|royalty[- ]free|dmca[- ]free|stream[- ]safe|ncs release)\b/i;
+/** Is this video from a DMCA-free channel (or does its title say so)? */
+export function dmcaOk(info, title, o) { const n = s => norm(String(s || '')), who = n(info && info.author), list = (o.dmcaList || DMCA_DEFAULT).map(n).filter(Boolean); return !!((who && list.some(x => who === x || who.includes(x) || x.includes(who))) || DMCA_WORDS.test(String(title || ''))); }
+/** Why a looked-up video is refused by the request rules ('' = fine). What YouTube didn't tell us is not held against the song, except for DMCA-free only, which needs to be sure. */
+export function infoWhy(info, title, o) {
+  if (o.dmcaFree && !dmcaOk(info, title, o)) return 'dmca';
+  if (!info) return '';
+  if (o.musicOnly && info.category && !/music/i.test(info.category)) return 'notmusic';
+  if (o.maxMins > 0 && info.secs > o.maxMins * 60) return 'long';
+  if (o.maxMins > 0 && info.live && !info.secs) return 'long';
+  if (o.minViews > 0 && info.views != null && info.views < o.minViews) return 'views';
+  return '';
+}
+export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', voteCommand: '!voteskip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 0, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
 
 // ---------- what a request is ----------
 /** A YouTube link or id → the 11-character video id ('' when it isn't one). */
@@ -43,23 +58,41 @@ export function onChat(m) {
   if (w === low(o.command)) { if (!arg) { say(`🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
   if (w === low(o.nowCommand)) { say(d.now ? `🎵 Now playing: ${d.now.title}${d.now.by ? ` (asked by ${d.now.by})` : ''}` : '🎵 Nothing is playing right now.', 5000); return true; }
   if (w === low(o.queueCommand)) { say(d.queue.length ? `🎵 Next up (${d.queue.length}): ${d.queue.slice(0, 5).map((q, i) => `${i + 1}. ${q.title}`).join(' · ')}${d.queue.length > 5 ? ' …' : ''}`.slice(0, 480) : '🎵 The song queue is empty.', 8000); return true; }
+  if (w === low(o.skipCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const t = d.now && d.now.title; next(); say(t ? `🎵 ${name} skipped: ${t}` : '🎵 Nothing was playing.'); }).catch(() => {}); return true; }
+  if (w === low(o.voteCommand)) { if (!(o.skipVotes > 0) || !d.now) return true; const v = (d.vs && d.vs.id === d.now.id) ? d.vs : (d.vs = { id: d.now.id, who: [] }); if (v.who.includes(low(m.login))) return true; v.who.push(low(m.login));
+    if (v.who.length >= o.skipVotes) { const t = d.now.title; next(); say(`🎵 Chat voted to skip: ${t}`); } else say(`🎵 ${name} voted to skip (${v.who.length} of ${o.skipVotes}).`, 4000); return true; }
+  if (w === low(o.volCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const n = Number(arg); if (!arg || !Number.isFinite(n)) return say(`🔉 The song volume is ${o.vol}.`, 4000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
   if (w === low(o.wrongCommand)) { const i = d.queue.map(q => q.login).lastIndexOf(low(m.login)); if (i < 0) say(`🎵 @${name} you have no song in the queue.`, 5000); else { const [q] = d.queue.splice(i, 1); changed(); say(`🎵 @${name} took out: ${q.title}`); } return true; }
   return false;
 }
 /** One request from chat (or typed by hand: `by` only). Returns {ok, why, item}. */
-export async function request(m, arg, { hand = false, test = false, now = Date.now(), d = data(), quiet = false } = {}) {
+export async function request(m, arg, { hand = false, test = false, now = Date.now(), d = data(), quiet = false, info: given } = {}) {
   const o = opts(d), login = low(m.login), name = m.name || m.login || '', no = (why, t) => { if (!quiet && !hand && t) say(`🎵 @${name} ${t}`, 3000); return { ok: false, why }; };
   if (!hand) {
     if (!d.open) return no('closed', 'song requests are closed right now.');
     if (d.bannedUsers.includes(login)) return no('user');
     if (!(await H.allowed(m, o.perm))) return no('perm', 'song requests are for ' + ({ followers: 'followers', subs: 'subs', vips: 'VIPs', mods: 'mods', streamer: 'the streamer' }[o.perm] || 'others') + ' right now.');
     if (d.queue.length >= o.max) return no('full', 'the song queue is full. Try again in a bit.');
-    if (o.perUser && d.queue.filter(q => q.login === login).length >= o.perUser) return no('limit', `you already have ${o.perUser} song${o.perUser === 1 ? '' : 's'} in the queue.`);
+    { let lim = o.perUser; if (lim && o.perUserSub > lim && (await H.allowed(m, 'subs'))) lim = o.perUserSub; /* (subs can be given more) */
+      if (lim && d.queue.filter(q => q.login === login).length >= lim) return no('limit', `you already have ${lim} song${lim === 1 ? '' : 's'} in the queue.`); }
+    { const last = d.req[login] && d.req[login].last, left = o.cd > 0 && last ? Math.ceil((last + o.cd * 1000 - now) / 1000) : 0; if (left > 0 && !(await H.allowed(m, 'mods'))) return no('wait', `you can ask for another song in ${left >= 90 ? Math.round(left / 60) + ' min' : left + ' s'}.`); }
   }
-  const yt = ytId(arg); let title = yt ? '' : String(arg).replace(/\s+/g, ' ').trim().slice(0, 140);
+  let yt = ytId(arg), title = yt ? '' : String(arg).replace(/\s+/g, ' ').trim().slice(0, 140), found = null;
   if (!yt && /^https?:\/\//i.test(title)) return no('link', 'I can only take YouTube links (or the name of a song).');
-  if (!yt && o.links === 'youtube' && !hand) return no('needlink', `send a YouTube link: ${o.command} and the link.`);
-  if (yt) { title = d.lib['yt:' + yt]?.title || ''; if (!title) { try { title = String(await H.title(yt) || '').slice(0, 140); } catch {} } if (!title) title = 'YouTube video ' + yt; }
+  if (!yt && title && !hand && o.search !== false && !d.lib['t:' + norm(title)]) { /* 🔎 a typed name is looked up on YouTube: the first result that fits the rules is the song (a name you already have in your songs stays that song) */
+    let res = []; try { res = (await H.search(title)) || []; } catch {}
+    for (const r of res.slice(0, 4)) { if (!r || !r.id) continue; let info = { secs: r.secs || 0, views: r.views ?? null, author: r.author || '', category: '', title: r.title || '' };
+      if (o.musicOnly) { try { const full = await H.info(r.id); if (full) info = { ...info, ...full, title: full.title || info.title }; } catch {} }
+      if (!infoWhy(info, info.title, o) && !bannedWhy({ yt: r.id, title: info.title }, d)) { found = info; yt = r.id; title = ''; break; } }
+    if (!found && res.length && (o.dmcaFree || o.links === 'youtube')) return no('nofit', "I couldn't find a version of that song that fits the request rules.");
+  }
+  if (!yt && (o.links === 'youtube' || o.dmcaFree) && !hand) return no('needlink', o.dmcaFree ? `only DMCA-free music right now: send a YouTube link from a stream-safe channel.` : `send a YouTube link: ${o.command} and the link.`);
+  if (yt && !hand && (o.musicOnly || o.dmcaFree || o.maxMins > 0 || o.minViews > 0)) { /* 🎼 the request rules that need to know the video: music only, DMCA-free only, how long, how many views */
+    let info = given; if (info === undefined) info = found; if (info === undefined || info === null) { try { info = await H.info(yt); } catch { info = null; } }
+    const why = infoWhy(info, (info && info.title) || d.lib['yt:' + yt]?.title || '', o);
+    if (why) return no(why, { dmca: "that isn't from a DMCA-free channel, and only stream-safe music is allowed right now.", notmusic: 'only music videos can be requested.', long: `that one is too long (the limit is ${o.maxMins} min).`, views: `that video needs at least ${Number(o.minViews).toLocaleString()} views.` }[why]);
+  }
+  if (yt) { title = d.lib['yt:' + yt]?.title || (found && found.title) || ''; if (!title) { try { title = String(await H.title(yt) || '').slice(0, 140); } catch {} } if (!title) title = 'YouTube video ' + yt; }
   if (!title) return no('empty');
   const x = { yt, title }, key = keyOf(x), ban = bannedWhy(x, d); if (d.lib[key]?.title && !/^YouTube video /.test(d.lib[key].title)) x.title = title = d.lib[key].title; /* (a song you know keeps the name you gave it) */ if (ban) return no('banned', "that song is on the banned list, sorry.");
   if (d.queue.some(q => q.key === key) || d.now?.key === key) return no('dupe', 'that song is already in the queue.');
@@ -77,7 +110,7 @@ function finish(d, now) { if (!d.now) return; const L = lib(d, d.now); L.last = 
 /** ⏭ the next song in the queue becomes "now playing" (the one before goes into the history). `id` = play that one now. */
 export function next(id, now = Date.now()) {
   const d = data(); finish(d, now); const i = id ? d.queue.findIndex(q => q.id === id) : 0;
-  if (i >= 0 && d.queue[i]) { const [q] = d.queue.splice(i, 1); d.now = { ...q, startedAt: now }; const L = lib(d, q); L.plays++; if (!L.first) L.first = now; L.last = now; if (!L.title || /^YouTube video /.test(L.title)) L.title = q.title; H.act(`Now playing: ${q.title}${q.by ? ` (asked by ${q.by})` : ''}`, { kind: 'songPlay', test: !!q.test }); }
+  if (i >= 0 && d.queue[i]) { const [q] = d.queue.splice(i, 1); d.now = { ...q, startedAt: now }; const L = lib(d, q); L.plays++; if (!L.first) L.first = now; L.last = now; if (!L.title || /^YouTube video /.test(L.title)) L.title = q.title; H.act(`Now playing: ${q.title}${q.by ? ` (asked by ${q.by})` : ''}`, { kind: 'songPlay', test: !!q.test }); d.vs = null; if (opts(d).sayNow && !q.test) say(`🎵 Now playing: ${q.title}${q.by ? ` (asked by ${q.by})` : ''}`); }
   changed(); return state();
 }
 export function stop() { const d = data(); finish(d, Date.now()); changed(); return state(); }
@@ -108,10 +141,14 @@ export function unban(key) { const d = data(); d.banned = d.banned.filter(b => b
 export function banUser(name, yes = true) { const d = data(), l = low(name); if (!/^[a-z0-9_]{2,25}$/.test(l)) throw new Error('Type their chat name.'); d.bannedUsers = d.bannedUsers.filter(x => x !== l); if (yes) { d.bannedUsers.push(l); d.queue = d.queue.filter(q => q.login !== l); } changed(); return state(); }
 export function setOpts(b) {
   const d = data(), x = d.opts;
-  for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr'); }
+  for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr'); }
   if ('perm' in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b.perm)) x.perm = b.perm;
   if ('perUser' in b) x.perUser = Math.round(clampN(b.perUser, 0, 50, 2)); if ('max' in b) x.max = Math.round(clampN(b.max, 1, 500, 50));
   if ('reply' in b) x.reply = !!b.reply; if ('overlay' in b) x.overlay = !!b.overlay; if ('links' in b) x.links = b.links === 'youtube' ? 'youtube' : 'any';
+  if ('perUserSub' in b) x.perUserSub = Math.round(clampN(b.perUserSub, 0, 50, 0)); if ('cd' in b) x.cd = Math.round(clampN(b.cd, 0, 86400, 0)); if ('maxMins' in b) x.maxMins = clampN(b.maxMins, 0, 600, 10); if ('minViews' in b) x.minViews = Math.round(clampN(b.minViews, 0, 1e9, 0));
+  if ('skipVotes' in b) x.skipVotes = Math.round(clampN(b.skipVotes, 0, 500, 0)); if ('vol' in b) x.vol = Math.round(clampN(b.vol, 0, 100, 60));
+  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search']) if (k in b) x[k] = !!b[k];
+  if ('dmcaList' in b) { const l = (Array.isArray(b.dmcaList) ? b.dmcaList : String(b.dmcaList || '').split(/[\n,]+/)).map(s => String(s).trim().slice(0, 60)).filter(Boolean).slice(0, 200); if (l.length) x.dmcaList = l; else delete x.dmcaList; }
   if ('scale' in b) x.scale = [5, 10, 100].includes(Number(b.scale)) ? Number(b.scale) : 10;
   if ('raters' in b && Array.isArray(b.raters)) x.raters = [0, 1].map(i => String(b.raters[i] || '').trim().slice(0, 20) || opts(d).raters[i]);
   changed(); return state();
@@ -207,7 +244,7 @@ export function clearTests() { const d = data(); d.queue = d.queue.filter(q => !
 
 /** 🧪 the rules + the importer, walked through on pretend data (nothing saved, nothing said, nothing looked up) */
 export async function demo() {
-  const keep = { ...H }; Object.assign(H, { say: async () => {}, act: () => {}, send: () => {}, allowed: async (m, p) => p === 'all' || !!m.sub, title: async id => 'Looked-up title ' + id }); const rows = [], add = (what, ok) => rows.push({ what, ok: !!ok });
+  const keep = { ...H }; Object.assign(H, { say: async () => {}, act: () => {}, send: () => {}, allowed: async (m, p) => p === 'all' || !!m.sub, title: async id => 'Looked-up title ' + id, info: async () => null }); const rows = [], add = (what, ok) => rows.push({ what, ok: !!ok });
   try {
     const d = data({ opts: { perUser: 2, max: 4 } }), o = opts(d), v = n => ({ login: n, name: n }), R = (n, a, x = {}) => request(v(n), a, { d, quiet: true, ...x });
     add('A YouTube link is understood (watch, youtu.be, shorts, music)', ytId('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10') === 'dQw4w9WgXcQ' && ytId('https://youtu.be/dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && ytId('https://youtube.com/shorts/dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && ytId('just a song name') === '');
@@ -219,6 +256,17 @@ export async function demo() {
     d.bannedUsers.push('troll'); add('A banned requester is refused', (await R('troll', 'Something nice')).why === 'user');
     add('Other links are refused', (await R('bob', 'https://example.com/song.mp3')).why === 'link');
     await R('bob', 'Africa'); await R('cat', 'Take On Me'); add('A full queue is refused', (await R('dan', 'One More')).why === 'full');
+    { const d3 = data({ opts: { perUser: 9, max: 50 } }), V = (a, info, extra) => { Object.assign(d3.opts, { musicOnly: true, dmcaFree: false, maxMins: 10, minViews: 0, ...extra }); return request(v('zed'), 'https://youtu.be/' + a, { d: d3, quiet: true, info }); };
+      add('🎼 Music only: a music video is taken, a gaming video is refused', (await V('aaaaaaaaaa1', { category: 'Music', secs: 200, author: 'Some Band' })).ok && (await V('aaaaaaaaaa2', { category: 'Gaming', secs: 200 })).why === 'notmusic');
+      add("🎼 Music only: when YouTube doesn't say what kind it is, the song is still taken", (await V('aaaaaaaaaa3', null)).ok);
+      add('⏱️ A song over the length limit is refused', (await V('aaaaaaaaaa4', { category: 'Music', secs: 3600 })).why === 'long');
+      add('👁️ A video under the view limit is refused', (await V('aaaaaaaaaa5', { category: 'Music', secs: 100, views: 12 }, { minViews: 1000 })).why === 'views');
+      add('🛡️ DMCA-free only: a stream-safe channel is taken, another channel is refused, a typed name is refused', (await V('aaaaaaaaaa6', { category: 'Music', secs: 200, author: 'NoCopyrightSounds' }, { dmcaFree: true })).ok && (await V('aaaaaaaaaa7', { category: 'Music', secs: 200, author: 'Big Label VEVO' }, { dmcaFree: true })).why === 'dmca' && (await request(v('zed'), 'Africa', { d: d3, quiet: true })).why === 'needlink');
+      Object.assign(d3.opts, { dmcaFree: false, cd: 60 }); await request(v('yan'), 'One', { d: d3, quiet: true }); d3.req.yan = { name: 'yan', n: 1, last: Date.now() }; add('⏳ A wait between requests is kept', (await request(v('yan'), 'Two', { d: d3, quiet: true })).why === 'wait'); }
+    { const d4 = data({ opts: { perUser: 9, max: 50 } }), was = H.search; H.search = async q => (/africa/i.test(q) ? [{ id: 'bbbbbbbbbb1', title: 'Toto - Africa (10 hours)', secs: 36000, author: 'Loops' }, { id: 'bbbbbbbbbb2', title: 'Toto - Africa (Official Video)', secs: 275, author: 'TotoVEVO', views: 900000 }] : []);
+      const hit = await request(v('zed'), 'africa toto', { d: d4, quiet: true }), miss = await request(v('zed'), 'a song nobody has', { d: d4, quiet: true }); H.search = was;
+      add('🔎 A typed song name is looked up on YouTube: the first result that fits the rules is added (the 10-hour one is passed over)', hit.ok && hit.item.yt === 'bbbbbbbbbb2' && hit.item.title === 'Toto - Africa (Official Video)');
+      add('🔎 A name YouTube finds nothing for is still added as typed', miss.ok && !miss.item.yt && miss.item.title === 'a song nobody has'); }
     d.open = false; add('Closed = no requests', (await R('dan', 'Later')).why === 'closed'); d.open = true;
     const rym = readText('RYM Album, First Name,Last Name,First Name localized, Last Name localized,Title,Release_Date,Rating,Ownership,Purchase Date,Media Type,Review\n1,"","Toto","","","Toto IV",1982,9,n,,,""\n2,"Daft","Punk","","","Discovery",2001,10,o,,,"great, really"\n3,"","Nobody","","","Wishlist only",1999,0,w,,,""\n', 'songs', { ...o, raters: ['Birx', 'Jess'] }, 1);
     add('A RateYourMusic export is read: artist + album, the rating out of 10, unrated ones left out, for the person you pick', rym.rym && rym.songs.length === 2 && rym.songs[0].title === 'Toto - Toto IV' && rym.songs[0].rate[1] === 9 && rym.songs[0].rate[0] === null && rym.songs[1].title === 'Daft Punk - Discovery' && rym.songs[1].year === '2001' && rym.songs[1].album);

@@ -2,6 +2,23 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.108.0
+**🤖 The Chat bot tab, for every edition**
+- The **🤖 Chat bot** tab (commands, sound alerts, timers, quotes, and bringing everything over from Streamlabs Chatbot) is now in every edition, not just dev mode. Its Setup guide step is back for everyone too.
+- **🎵 Song requests** and **🍿 Movie night** moved inside the Chat bot tab as two of its buttons (in the editions that have them). Their own top tabs are gone; the "Open" buttons on the Chat tab still take you there.
+
+**🎭 Birx & Jess's edition: fewer tabs**
+- No **Battle**, **Battle pool**, **Chat battle** or **People** tab. It opens on the 💬 Chat tab.
+
+**🎵 Song requests: more rules (Chat bot → Song requests → Settings)**
+- **🎼 Music only** (on to start): only YouTube videos in the Music category can be requested.
+- **🛡️ DMCA-free music only** (off to start): only music from stream-safe channels. **📃 Stream-safe channels** is the list (you can change it). No list can promise a song is safe.
+- **Longest song** (10 min to start), **at least … views**, **subs can have more songs**, **a wait between requests**, **votes to skip** (chat types `!voteskip`), mods can **`!skipsong`** and **`!volume 40`**, a starting **song volume**, and **say "Now playing" in chat**.
+- **🔎 Type a song's name**: chat can type `!sr africa toto` and the bot looks it up on YouTube and adds the first result that fits your rules (it passes over ones that are too long, not music, or banned). Turn it off with "Look typed song names up on YouTube".
+
+**⏩ A slider for the song (💬 Chat tab song box)**
+- Under Play / Skip / volume there's a slider with where you are and how long the song is. Drag it to fast forward or rewind. It works while the song plays there.
+
 ## 1.107.0
 **🚚 Installing a different edition moves everything over by itself**
 - Run another edition's installer on a PC that already has one and it takes its place. Your lists, wheels, history, people and settings are all there when it opens: every edition keeps them in the same spot, so nothing is copied or lost.

@@ -54,9 +54,13 @@
    "movies",
    "kirbWheel",
    "cards",
-   "voidSetup"
+   "voidSetup",
+   "battle",
+   "pool",
+   "chatBattle",
+   "people"
   ],
-  "note": "No movie battles, no Kirb wheels, no card battles. Gets the chat bot, song + movie night tools (not built yet).",
+  "note": "No battles (Battle, Battle pool, Chat battle), no People tab, no movie battles, no Kirb wheels, no card battles. Songs + Movie night live in the Chat bot tab.",
   "app": "Birx & Jess Chatbot",
   "on": [
    "movienight",

@@ -98,7 +98,7 @@ const ALL_STEPS = [
   { id: 'obs', title: 'OBS control', sub: 'Doomsday, capture window, confetti', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
   { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs },
   { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs },
-  { id: 'botimport', dev: true, title: 'Bring everything over from Streamlabs Chatbot', sub: 'Commands, sound alerts, timers, quotes', done: () => (S.botCount || 0) > 0 },
+  { id: 'botimport', title: 'Bring everything over from Streamlabs Chatbot', sub: 'Commands, sound alerts, timers, quotes', done: () => (S.botCount || 0) > 0 },
   { id: 'costream', title: 'Co-stream with a friend', sub: 'Cameras, battles + chaos shared (optional)', done: () => !!S.costream?.linked },
   { id: 'site', dev: true, title: 'Viewer website', sub: '!site: history, VOD links, guesses (optional)', done: () => !!S.site?.on }
 ];

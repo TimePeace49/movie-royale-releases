@@ -2457,7 +2457,7 @@ const GUIDE_STEPS = [
   { id: 'botimport', title: '🤖 Bring your old chat bot over' }, { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
   { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   { id: 'rollcall', since: '1.61.0', title: '📣 Roll call in OBS', why: 'Roll call can show in any OBS scene, even ones without the game screen (like your camera scene).', how: ['Connect OBS first (🎥 OBS control step).', 'Press 🧭 Set it up and tick the scenes, or add a Browser source with the address shown there.'], done: () => !!db.settings.rollObs },
-  { id: 'botimport', dev: true, since: '1.101.0', title: '🧳 Bring everything over from Streamlabs Chatbot', why: 'Movie Royal has its own chat bot (🤖 Chat bot tab): commands, timers, quotes and sound alerts. Everything you built in Streamlabs Chatbot can move over in one go.', how: ['In Streamlabs Chatbot: Connections (bottom left) → Cloud → Pick Folder → Save Settings → Create Excel Files. That makes Data.xlsx (and Songlist.xlsx) in the folder you picked.', 'In Movie Royal: 🤖 Chat bot tab → 📥 Import / export → 🧳 pick those files (you can pick several at once).', 'Look at what was found, then press ✅ Bring it all over. Sound files are copied in when they are on this PC.', 'Sound alerts land on the 🔊 Sound alerts tab; any with a ⚠️ need their sound file picked again.'], done: () => (db.chatbot?.commands || []).length > 0 },
+  { id: 'botimport', since: '1.108.0', title: '🧳 Bring everything over from Streamlabs Chatbot', why: 'Movie Royal has its own chat bot (🤖 Chat bot tab): commands, timers, quotes and sound alerts. Everything you built in Streamlabs Chatbot can move over in one go.', how: ['In Streamlabs Chatbot: Connections (bottom left) → Cloud → Pick Folder → Save Settings → Create Excel Files. That makes Data.xlsx (and Songlist.xlsx) in the folder you picked.', 'In Movie Royal: 🤖 Chat bot tab → 📥 Import / export → 🧳 pick those files (you can pick several at once).', 'Look at what was found, then press ✅ Bring it all over. Sound files are copied in when they are on this PC.', 'Sound alerts land on the 🔊 Sound alerts tab; any with a ⚠️ need their sound file picked again.'], done: () => (db.chatbot?.commands || []).length > 0 },
   { id: 'costream', since: '1.71.0', title: '🤝 Co-stream with a friend', why: 'Stream together with a friend who also has Movie Royal: cameras in each other\'s OBS, their battle on your stream while it runs, and chaos across both chats.', how: ['Do the 🎥 OBS control step first.', 'One of you: Settings → 🤝 Co-stream → 🎟️ Make an invite code, and send it in Discord. The other: paste it and press 🤝 Join.', 'One time in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.'], done: () => costream.linked() },
   { id: 'site', dev: true, since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch (Settings → 🌐 Viewer site → 🔑 Let viewers sign in): 📋 copy your website\'s address, 🟣 open dev.twitch.tv → Manage on your Movie Royal app, paste it under OAuth Redirect URLs → Add → Save, then ✅ Check it.'], done: () => site.on() },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
@@ -4816,7 +4816,37 @@ async function ytTitle(id) { // (the only thing looked up: a YouTube link's titl
   if (ytTitles.has(id)) return ytTitles.get(id);
   try { const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id), { signal: AbortSignal.timeout(6000) }); const j = r.ok ? await r.json() : null; const t = j?.title ? String(j.title) : ''; if (t) ytTitles.set(id, t); return t; } catch { return ''; }
 }
-songs.setHooks({ on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
+// 🎼 What a song request rule needs to know about a YouTube video (music only, length, views, DMCA-free channel): its public page, read the way a browser would, no key.
+function ytWatchParse(html) { const s = String(html || ''), g = re => { const m = s.match(re); return m ? m[1] : ''; }, num = v => (v === '' ? null : Number(v));
+  const secs = num(g(/"lengthSeconds":"(\d+)"/)), views = num(g(/"viewCount":"(\d+)"/)), category = g(/"category":"([^"]{1,40})"/), author = g(/"ownerChannelName":"([^"]{1,100})"/) || g(/"author":"([^"]{1,100})"/), live = /"isLiveContent":true/.test(s);
+  return secs == null && views == null && !category && !author ? null : { secs: secs || 0, views, category, author, live }; }
+const ytInfos = new Map();
+async function ytInfo(id) {
+  if (ytInfos.has(id)) return ytInfos.get(id);
+  let info = null, title = '', author = '';
+  try { const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id), { signal: AbortSignal.timeout(6000) }); const j = r.ok ? await r.json() : null; title = String(j?.title || ''); author = String(j?.author_name || ''); if (title) ytTitles.set(id, title); } catch {}
+  try { const r = await fetch('https://www.youtube.com/watch?v=' + encodeURIComponent(id) + '&hl=en', { headers: { 'accept-language': 'en-US,en;q=0.8', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' }, signal: AbortSignal.timeout(8000) }); if (r.ok) info = ytWatchParse(await r.text()); } catch {}
+  if (!info && (title || author)) info = { secs: 0, views: null, category: '', author, live: false };
+  if (info) { info.title = title; if (author) info.author = author; ytInfos.set(id, info); if (ytInfos.size > 500) ytInfos.delete(ytInfos.keys().next().value); }
+  return info;
+}
+// 🔎 A typed song name is looked up on YouTube's own search page (no key): the videos it lists, in order, with their length and views when shown.
+function ytSearchParse(html) { const s = String(html || ''), out = [], seen = new Set(), secsOf = t => { const p = String(t || '').split(':').map(Number); return p.some(isNaN) ? 0 : p.reduce((a, b) => a * 60 + b, 0); };
+  for (const m of s.matchAll(/"videoRenderer":\{"videoId":"([\w-]{11})"/g)) { const id = m[1]; if (seen.has(id)) continue; seen.add(id); const part = s.slice(m.index, m.index + 6000), g = re => { const x = part.match(re); return x ? x[1] : ''; };
+    const title = g(/"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/), author = g(/"(?:ownerText|longBylineText)":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/), len = g(/"lengthText":\{.{0,400}?"simpleText":"([\d:]+)"/), views = g(/"viewCountText":\{"simpleText":"([\d,.]+)/);
+    let t = title, a = author; try { t = JSON.parse('"' + title + '"'); a = JSON.parse('"' + author + '"'); } catch {}
+    out.push({ id, title: t, author: a, secs: secsOf(len), views: views ? Number(views.replace(/[,.]/g, '')) : null }); if (out.length >= 8) break; }
+  return out; }
+const ytSearches = new Map();
+async function ytSearch(q) { const k = String(q || '').trim().toLowerCase(); if (!k) return []; if (ytSearches.has(k)) return ytSearches.get(k);
+  let res = []; try { const r = await fetch('https://www.youtube.com/results?hl=en&search_query=' + encodeURIComponent(k), { headers: { 'accept-language': 'en-US,en;q=0.8', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' }, signal: AbortSignal.timeout(8000) }); if (r.ok) res = ytSearchParse(await r.text()); } catch {}
+  if (res.length) { ytSearches.set(k, res); if (ytSearches.size > 300) ytSearches.delete(ytSearches.keys().next().value); }
+  return res; }
+app.get('/api/test/yt-parse', (req, res) => { /* 🧪 the two YouTube page readers, on small sample pages (no internet) */
+  const w = ytWatchParse('x"lengthSeconds":"275","ownerChannelName":"TotoVEVO","viewCount":"912345","category":"Music","isLiveContent":false y'), sr = ytSearchParse('{"videoRenderer":{"videoId":"FTQbiNvZqaY","thumbnail":{},"title":{"runs":[{"text":"Toto - Africa (Official HD Video)"}]},"longBylineText":{"runs":[{"text":"TotoVEVO"}]},"lengthText":{"accessibility":{"label":"4 minutes"},"simpleText":"4:35"},"viewCountText":{"simpleText":"1,012,345 views"}}}{"videoRenderer":{"videoId":"aaaaaaaaaaa","title":{"runs":[{"text":"Other \\"one\\""}]}}}');
+  const ok = !!w && w.secs === 275 && w.category === 'Music' && w.views === 912345 && w.author === 'TotoVEVO' && sr.length === 2 && sr[0].id === 'FTQbiNvZqaY' && sr[0].secs === 275 && sr[0].views === 1012345 && sr[0].author === 'TotoVEVO' && sr[1].title === 'Other "one"';
+  res.json({ ok, watch: w, search: sr }); });
+songs.setHooks({ info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
 const sgTry = fn => async (req, res) => { try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.queue ? { state: r } : { ...(r || {}), state: songs.state() }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/songs', (req, res) => res.json(feat('songs') ? songs.state({ q: String(req.query.q || ''), sort: String(req.query.sort || 'last') }) : { on: false }));
 app.post('/api/songs/add', sgTry(async b => { const r = await songs.request({ login: '', name: String(b.by || '').trim() }, String(b.song || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'banned' ? 'That song is on your banned list.' : r.why === 'dupe' ? 'That song is already in the queue.' : r.why === 'link' ? 'Only YouTube links (or a song name).' : 'Type a song name or paste a YouTube link.'); return r; }));
@@ -5176,7 +5206,7 @@ const BOT_RESERVED = ['!join', '!leave', '!mymovies', '!moviesroyal', '!respin',
 chatbot.setHooks({
   say: t => twitch.say(t), canSay: () => twitch.canSay(), follows: m => twitch.followedAt(m.userId),
   live: () => !!db.live || !!live.fakeLive, startedAt: () => db.stream?.startedAt || 0, channel: () => db.owner?.login || twitch.status.login || '',
-  chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => !!db.settings.betaUpdates, /* 🤖 dev mode only again since 1.101.0 (Derek: "keep this dev atm until I test everything"); 1.94.0 had opened it to every edition */
+  chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => true, /* 🤖 every edition since 1.108.0 (Derek: "the chatbot tab should be on all editions") */
   reserved: () => [...new Set([...BOT_RESERVED, ...Object.entries(db.settings).filter(([k, v]) => /Command$/.test(k) && typeof v === 'string').map(([, v]) => v.trim().toLowerCase())])],
   changed: () => broadcast({ type: 'chatbot' }, 'control'),
   sound: (file, vol) => sfxPlay(file, vol), soundIn: from => sfxTake(from)
@@ -5198,7 +5228,7 @@ function sfxPlay(file, vol = 80, test) {
 }
 
 setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot] timer', e.message); } }, 30000);
-const botDev = fn => wTry((b, req) => { if (!db.settings.betaUpdates) throw new Error('The chat bot is a 🛠️ dev mode feature for now.'); return fn(b, req); }); /* (dev mode only: Derek tests it first) */
+const botDev = fn => wTry(fn); /* (every edition since 1.108.0) */
 app.get('/api/chatbot', (req, res) => res.json(chatbot.info()));
 app.post('/api/chatbot/opts', botDev(b => chatbot.setOpts(b)));
 app.post('/api/chatbot/command', botDev(b => ({ command: chatbot.saveCommand(b) })));
