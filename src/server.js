@@ -2059,6 +2059,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   res.json({
     linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
     id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
+    bday: (() => { const md = birthdays.days()[login]; return md ? { day: birthdays.nice(md), today: md === birthdays.mmdd(birthdays.dayOf()) } : null; })(), // 🎂 their birthday, if they told chat (never a year)
     slim: !edHas('battle'), // 🎭 an edition without battles: no character, respins, movies or games on the profile
     acts: feat('songs') || feat('movienight') ? pstats.of(login) : null, // 📊 the Stats tab: songs asked for, movie votes, skips, commands (newest first)
     songs: feat('songs') ? songs.mine(login) : null, // 🎵 their songs in the queue, with the place each one has

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.110.1
+- **🎂 Birthday on the profile:** if a chatter has added their birthday (with !bday or by you), their profile shows it, and says so when it's today. No year, ever.
+
 ## 1.110.0
 **💬 Chat tab: move and resize every box**
 - Every box on the Chat tab (stream preview, songs, movie night, alerts, stream tools, chat) can be **dragged by the little ⠿ strip on top** and **resized by its bottom-right corner**. Edges stick to the other boxes so it stays tidy. It's remembered on your PC; **↺ Boxes** in Stream tools puts everything back.
