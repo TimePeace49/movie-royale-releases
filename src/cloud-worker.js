@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 19;
+export const WORKER_V = 20;
 export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
@@ -20,6 +20,7 @@ export default {
     try {
       if (url.pathname.startsWith('/co/')) return await coRoom(req, env, url); // 🤝 co-stream room (17): two streamers' Movie Royals linked
       if (url.pathname === '/live' || url.pathname === '/live/' || url.pathname.startsWith('/site/')) return await siteRoute(req, env, url); // 🌐 the viewer website (18)
+      if (url.pathname === '/eggs' || url.pathname === '/eggs/' || url.pathname.startsWith('/eggs/') || url.pathname === '/creatures.js') return await eggRoute(req, env, url); // 🥚 the egg game's public page (20)
       if (url.pathname === '/sync') return await sync(req, env);
       if (url.pathname === '/sync/pic') return await putPic(req, env, url); // 🎨 the app uploads the /character picture sheets from the streamer's PC
       if (url.pathname === '/characters' || url.pathname === '/characters/' || url.pathname === '/characters.html') { const b = await env.KV.get('pic:sitehtml'); return new Response(b || 'The parts website is not uploaded yet: the streamer opens Movie Royal once.', { status: b ? 200 : 404, headers: { 'content-type': b ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'public, max-age=300' } }); } // 🌐 the parts website (uploaded from the streamer's PC)
@@ -467,6 +468,23 @@ export class CoRoom {
 // with a link to that moment in the VOD, stats, predictions (sign in with Twitch) and polls. Movie Royal (on the streamer's PC)
 // connects to the "site:main" room with the SYNC_KEY and sends everything; viewers only read, plus their own guesses / votes.
 // The page itself is uploaded from the PC into KV (only when it changes). Everything else lives in the room's free SQLite storage.
+// 🥚 The egg game's public page (20): the streamer's PC uploads the page + the creature drawings once (when they change) and a copy of
+// names + creatures every few minutes (only when something changed: KV writes are limited). Viewers only read.
+async function eggRoute(req, env, url) {
+  const p = url.pathname, text = (b, type, age) => new Response(b || 'The egg game page is not uploaded yet: the streamer opens Movie Royal once.', { status: b ? 200 : 404, headers: { 'content-type': b ? type : 'text/plain; charset=utf-8', 'cache-control': b ? `public, max-age=${age}` : 'no-store' } });
+  if (p === '/eggs' || p === '/eggs/') return text(await env.KV.get('eggs:page'), 'text/html; charset=utf-8', 120);
+  if (p === '/creatures.js' || p === '/eggs/creatures.js') return text(await env.KV.get('eggs:js'), 'application/javascript; charset=utf-8', 300);
+  if (p === '/eggs/data') return new Response((await env.KV.get('eggs:data')) || '{"players":[],"count":120,"commands":{}}', { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' } });
+  if (p === '/eggs/v') return new Response((await env.KV.get('eggs:v')) || '', { headers: { 'content-type': 'text/plain' } });
+  if (p === '/eggs/put') {
+    if ((req.headers.get('authorization') || '') !== `Bearer ${env.SYNC_KEY}`) return json({ error: 'bad key' }, 401);
+    if (req.method !== 'PUT') return json({ error: 'PUT only' }, 405);
+    const name = url.searchParams.get('name'); if (!['page', 'js', 'data'].includes(name)) return json({ error: 'bad name' }, 400);
+    const body = await req.text(); if (!body || body.length > 4e6) return json({ error: 'bad size' }, 400);
+    await env.KV.put('eggs:' + name, body); if (name === 'page') await env.KV.put('eggs:v', String(url.searchParams.get('v') || '')); return json({ ok: true });
+  }
+  return json({ error: 'not found' }, 404);
+}
 async function siteRoute(req, env, url) {
   const p = url.pathname;
   if (p === '/live' || p === '/live/') { const b = await env.KV.get('site:page'); return new Response(b || 'The viewer website is not turned on yet: the streamer turns it on in Movie Royal (Settings → 🌐 Viewer site).', { status: b ? 200 : 404, headers: { 'content-type': b ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8', 'cache-control': 'no-cache' } }); }

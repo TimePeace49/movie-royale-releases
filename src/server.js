@@ -35,6 +35,7 @@ import * as movienight from './movienight.js';
 import * as raids from './raids.js';
 import * as birthdays from './birthdays.js';
 import * as songs from './songs.js';
+import * as eggs from './eggs.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
@@ -1123,7 +1124,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   raidOut(t) { try { raids.note(t); } catch (e) { console.error('[raid tab]', e.message); } }, // 🚀 you raided someone (Twitch says so, also for /raid typed by hand)
   async chat(m) {
@@ -1144,6 +1145,7 @@ const twitchHandlers = {
     try { if (birthdays.onChat(m)) return; } catch (e) { console.error('[birthdays]', e.message); } // 🎂 !bday 3/14, and a happy birthday the first time they chat that day
     if (movienight.onChat(m)) return; // 🍿 !vote 3 on a movie night
     try { if (songs.onChat(m)) return; } catch (e) { console.error('[songs]', e.message); } // 🎵 !sr a song
+    try { eggs.onChatPoints(m); if (eggs.onChat(m)) return; } catch (e) { console.error('[eggs]', e.message); } // 🥚 chatting fills your egg; !egg, !pet, !battle…
     if (clipChatCmd(m)) return; // 🎬 !clip: anyone can clip the last minute
     if (chatbot.onChat(m)) return; // 🤖 your own chat commands, quotes (dev mode)
     if (skipChat(m)) return; // ⏭️ !skip <movie>: sits out the next battle
@@ -1359,6 +1361,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
   if (ws.role === 'songs') ws.send(JSON.stringify(songs.screen())); // 🎵 the now-playing box
+  if (ws.role === 'eggs') ws.send(JSON.stringify({ type: 'eggBadges', badges: feat('eggs') ? eggs.badges() : {} })); // 🥚 the creature chat box
   if (ws.role === 'movienight') ws.send(JSON.stringify(movienight.screen())); // 🍿 the movie night vote box
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
@@ -1436,14 +1439,14 @@ app.get('/auth/twitch-bot', (req, res) => {
 app.post('/api/twitch-bot/off', (req, res) => { db.twitchBot = null; save(); pushState(); res.json({ ok: true }); });
 app.post('/api/twitch-bot/test', async (req, res) => { try { await twitch.say(`🤖 ${db.twitchBot?.user?.name || 'Movie Royal'} here! Movie Royal's chat messages come from me now. Type ${db.settings.helpCommand || '!moviesroyal'} to see the commands.`); res.json({ ok: true, as: twitch.botOn() && !twitch.botStatus.error ? db.twitchBot.user.name : (db.owner?.name || 'you'), error: twitch.botStatus.error }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // ---------- 🟢 Kick (1.90.0, dev mode only): chat from / to Kick, one switch ----------
-kick.setHooks({ dev: () => !!db.settings.betaUpdates, chat: m => twitchHandlers.chat(m), live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
+kick.setHooks({ dev: () => feat('kick'), /* 🟢 True's edition has Kick (he streams on both); Derek's with dev mode on */ chat: m => twitchHandlers.chat(m), live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
   getPage: async url => { const g = globalThis.__desktop?.getPage; if (!g) return ''; const r = await g(url); return r?.text || ''; } });
 twitch.route.on = () => kick.on(); twitch.route.say = t => kick.say(t); twitch.route.canSay = () => kick.canSay();
 setTimeout(() => kick.start(), 4000);
-const kickDev = (req, res) => { if (db.settings.betaUpdates) return true; res.status(400).json({ error: 'Kick is a 🛠️ dev mode feature for now' }); return false; };
+const kickDev = (req, res) => { if (feat('kick')) return true; res.status(400).json({ error: 'Kick is not part of this edition.' }); return false; };
 app.get('/api/kick', (req, res) => res.json({ ...kick.info(), redirect: kick.redirectUri(PORT) }));
 app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(); const r = kick.setCfg(req.body || {}); if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
-app.get('/auth/kick', (req, res) => { try { if (!db.settings.betaUpdates) throw new Error('Kick is a dev mode feature for now'); res.redirect(kick.authUrl(PORT)); } catch (e) { res.status(400).send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>🟢 Kick sign-in</h2><p>${hEsc(e.message)}</p><p>Close this tab and go back to Movie Royal.</p></body>`); } });
+app.get('/auth/kick', (req, res) => { try { if (!feat('kick')) throw new Error('Kick is not part of this edition.'); res.redirect(kick.authUrl(PORT)); } catch (e) { res.status(400).send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>🟢 Kick sign-in</h2><p>${hEsc(e.message)}</p><p>Close this tab and go back to Movie Royal.</p></body>`); } });
 app.get('/kick/callback', async (req, res) => {
   const page = (ok, msg) => res.send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>${ok ? '✅ Signed in with Kick' : '⚠️ Kick sign-in did not work'}</h2><p>${hEsc(msg)}</p><p>You can close this tab and go back to Movie Royal.</p></body>`);
   try { if (req.query.error) throw new Error(String(req.query.error_description || req.query.error)); const u = await kick.finishAuth(PORT, String(req.query.code || ''), String(req.query.state || '')); act('stream', `Signed in with Kick as ${u?.name || '?'}`, { icon: '🟢', kind: 'kick' }); page(true, `Hello ${u?.name || ''}! Movie Royal can now talk in your Kick chat.`); }
@@ -1521,7 +1524,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { eggs.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase().replace(/[^a-z0-9_]/g, ''), name: t.name, amount: t.amount }); } catch {} try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
@@ -1995,7 +1998,7 @@ const wTry = fn => async (req, res) => { try { res.json({ ok: true, ...(await fn
 app.get('/api/renames', (req, res) => res.json(db.renames || []));
 // ---------- 💬 chat tab + 👤 viewer profiles ----------
 chatlog.initChat({ send: m => { broadcast(m, 'control'); broadcast(m, 'chatview'); } });
-setInterval(() => { if (db.live) twitch.chatters().then(chatlog.tickWatch).catch(() => {}); }, 5 * 60000); // watch time while live
+setInterval(() => { if (db.live) twitch.chatters().then(list => { chatlog.tickWatch(list); try { eggs.onWatch(list); } catch (e) { console.error('[eggs]', e.message); } }).catch(() => {}); }, 5 * 60000); // watch time while live (+ 🥚 eggs)
 let badgeCache = { at: 0, map: {} };
 app.get('/api/chat/recent', async (req, res) => {
   if (Date.now() - badgeCache.at > 3600000) { badgeCache = { at: Date.now(), map: await twitch.badges().catch(() => ({})) }; }
@@ -4721,6 +4724,40 @@ function maraPrizesOnce() {
   save();
 }
 setTimeout(maraPrizesOnce, 1400);
+// 🥚 The egg game (1.100.0, True's edition; Derek's with dev mode on): see src/eggs.js + public/creatures.js
+eggs.setHooks({ on: () => feat('eggs'), say: t => twitch.say(t), live: () => !!db.live || !!live.fakeLive, act: (text, o = {}) => act('chat', text, { icon: '🥚', ...o }), send: (msg, role) => broadcast(msg, role), changed: () => { broadcast({ type: 'eggs' }, 'control'); broadcast({ type: 'eggBadges', badges: eggs.badges() }, 'eggs'); eggSiteSoon(); }, isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
+const egTry = fn => async (req, res) => { try { if (!feat('eggs')) throw new Error('The egg game is not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.players ? { state: r } : r || {}); } catch (e) { res.status(400).json({ error: e.message }); } };
+app.get('/api/eggs', (req, res) => res.json(feat('eggs') ? { ...eggs.state({ q: String(req.query.q || '') }), site: eggSite } : { on: false }));
+app.get('/api/eggs/public', (req, res) => res.json(feat('eggs') ? eggs.publicData() : { players: [] })); // (what the viewer page shows: names + creatures)
+app.get('/api/eggs/badges', (req, res) => res.json(feat('eggs') ? eggs.badges() : {}));
+app.post('/api/eggs/opts', egTry(b => eggs.setOpts(b)));
+app.post('/api/eggs/give', egTry(b => eggs.grant(b.name, b.pts)));
+app.post('/api/eggs/remove', egTry(b => eggs.removePlayer(b.key)));
+// 🌐 the public egg page on your own 24/7 bot (Cloudflare): the page + the creature drawings once, then a copy of names + creatures at most every 5 minutes, only when something changed
+const eggSite = { url: '', at: 0, error: '', v: '' }; let eggSiteT = null, eggSiteLast = '';
+function eggSiteSoon() { if (eggSiteT || !feat('eggs') || db.eggs?.opts?.site === false) return; eggSiteT = setTimeout(() => { eggSiteT = null; eggSitePush().catch(e => { eggSite.error = e.message; }); }, Math.max(15000, 5 * 60000 - (Date.now() - eggSite.at))); }
+async function eggSitePush(force) {
+  if (!feat('eggs') || db.eggs?.opts?.site === false) return eggSite; let on = false; try { on = cloud.enabled(); } catch {} if (!on) { eggSite.error = 'Set up the 24/7 bot first (Setup guide): the egg website lives on it.'; eggSite.url = ''; return eggSite; }
+  const base = String(db.settings.cloud.url || '').replace(/\/+$/, ''), key = db.settings.cloud.syncKey, put = (name, body, type, v) => fetch(`${base}/eggs/put?name=${name}${v ? '&v=' + v : ''}`, { method: 'PUT', headers: { Authorization: `Bearer ${key}`, 'content-type': type }, body, signal: AbortSignal.timeout(30000) });
+  const page = brandFile(fs.readFileSync(path.join(ROOT, 'public', 'eggpage.html'), 'utf8')), js = fs.readFileSync(path.join(ROOT, 'public', 'creatures.js'), 'utf8'), v = crypto.createHash('sha256').update(page + js).digest('hex').slice(0, 16);
+  const have = await fetch(base + '/eggs/v', { signal: AbortSignal.timeout(10000) }).then(r => (r.ok ? r.text() : r.status === 404 ? '404' : '')).catch(() => '');
+  if (have === '404') { eggSite.error = 'Your 24/7 bot needs an update first (Settings → 🤖 Discord & picks → Update the 24/7 bot), then the egg website works.'; eggSite.url = ''; return eggSite; }
+  if (have.trim() !== v) { for (const [n, b, t] of [['js', js, 'application/javascript'], ['page', page, 'text/html']]) { const r = await put(n, b, t, v); if (!r.ok) throw new Error('egg website upload: ' + r.status); } }
+  const body = JSON.stringify(eggs.publicData()), h = crypto.createHash('sha256').update(body.replace(/"at":\d+,/, '')).digest('hex');
+  if (force || h !== eggSiteLast) { const r = await put('data', body, 'application/json'); if (!r.ok) throw new Error('egg website data: ' + r.status); eggSiteLast = h; }
+  eggSite.url = base + '/eggs'; eggSite.at = Date.now(); eggSite.error = ''; eggSite.v = v; return eggSite;
+}
+setTimeout(() => eggSitePush().catch(e => { eggSite.error = e.message; }), 40000);
+app.post('/api/eggs/site', egTry(async b => { if ('on' in b) { eggs.data().opts.site = !!b.on; save(); } try { await eggSitePush(true); } catch (e) { eggSite.error = e.message; } return { site: eggSite, on: db.eggs?.opts?.site !== false }; }));
+app.post('/api/test/eggs', egTry(async b => {
+  if (b.action === 'rules') return eggs.demo();
+  if (b.action === 'clear') return eggs.clearTests();
+  twitch.pretend.until = Date.now() + 10 * 60000; const d = eggs.data(), names = ['pretend_ash', 'pretend_bee', 'pretend_cy', 'pretend_dot'];
+  if (b.action === 'fill') { for (const n of names) { const p = eggs.player({ login: n, name: n.replace('pretend_', 'Pretend_') }, d); eggs.give(p, eggs.opts().need * (2 + Math.floor(Math.random() * 4)) + Math.floor(Math.random() * eggs.opts().need), 'test', { quiet: true, test: true }); for (const c of p.pets) eggs.addXp(c, Math.floor(Math.random() * 1500)); } save(); broadcast({ type: 'eggs' }, 'control'); broadcast({ type: 'eggBadges', badges: eggs.badges() }, 'eggs'); return eggs.state(); }
+  if (b.action === 'hatch') { const p = eggs.player({ login: names[0], name: 'Pretend_ash' }, d); const got = eggs.give(p, eggs.opts().need - p.pts, 'test', { test: true }); save(); broadcast({ type: 'eggs' }, 'control'); return { ok: true, hatched: got.length }; }
+  if (b.action === 'battle') { for (const n of names.slice(0, 2)) { const p = eggs.player({ login: n, name: n.replace('pretend_', 'Pretend_') }, d); if (!p.pets.length) eggs.give(p, eggs.opts().need, 'test', { quiet: true, test: true }); } twitchHandlers.chat({ login: names[0], name: 'Pretend_ash', text: `${eggs.opts().battleCommand} ${names[1]}`, userId: 'p-ash', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 400)); twitchHandlers.chat({ login: names[1], name: 'Pretend_bee', text: eggs.opts().battleCommand, userId: 'p-bee', badges: {}, pretend: true }); return { ok: true }; }
+  twitchHandlers.chat({ login: names[0], name: 'Pretend_ash', text: String(b.text || eggs.opts().eggCommand), userId: 'p-ash', badges: {}, pretend: true }); return { ok: true };
+}));
 // 🎵 Song requests + ratings (1.98.0, Birx & Jess's edition; Derek's with dev mode on): see src/songs.js
 const ytTitles = new Map();
 async function ytTitle(id) { // (the only thing looked up: a YouTube link's title, the way a link preview does; no key, nothing about you is sent)

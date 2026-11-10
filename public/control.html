@@ -570,6 +570,7 @@
     <button data-v="mnight" data-feat="movienight" class="edOff" title="Tonight's movies, chat's votes and the guess counter">🍿 <span class="nt">Movie night</span><span id="mnNav" class="pill" style="display:none"></span></button>
     <button data-v="raid" data-feat="raids" class="edOff" title="Who you follow that's live right now, and raid them from here">🚀 <span class="nt">Raid</span></button>
     <button data-v="songs" data-feat="songs" class="edOff" title="Song requests: the queue, what's playing, your ratings and the song database">🎵 <span class="nt">Songs</span></button>
+    <button data-v="eggs" data-feat="eggs" class="edOff" title="The egg game: viewers hatch eggs into creatures, level them up and battle in chat">🥚 <span class="nt">Eggs</span></button>
     <button data-v="chat">🎲 Chat battle</button>
     <button data-v="giveaway">🎁 Giveaway</button>
     <button data-v="wheel">🎡 Wheel</button>
@@ -770,6 +771,7 @@
  </div>
 </section>
 <section class="view" id="v-songs"><div class="pane"><div id="sgBody" style="max-width:1500px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
+<section class="view" id="v-eggs"><div class="pane"><div id="egBody" style="max-width:1400px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <section class="view" id="v-raid"><div class="pane"><div id="rdBody" style="max-width:1500px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <section class="view" id="v-mnight"><div class="pane"><div id="mnBody" style="max-width:1300px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <section class="view" id="v-bot"><div class="pane"><div class="card" id="botBody" style="max-width:1250px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
@@ -1345,7 +1347,7 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="maraTest('gift5')">🎁 5 gift subs</button><button onclick="maraTest('map', 3)">💬 map 3</button><button onclick="maraTest('luck', 2)">💬 luck 2</button><button onclick="maraTest('site', 1)">🌐 Website: luck 1</button><button onclick="maraTest('luck', 3)">💬 luck 3</button><button onclick="maraTest('guess')">🎯 Guess #1</button><button onclick="maraTest('pop')">📣 Pop-up on stream</button><button onclick="maraTest('overlay')">🖥️ Open the overlay</button><button onclick="maraTest('maps')" title="Which maps the marathon battle can use, and which map the next battles would get">🗺️ Marathon maps</button><button class="ghost" onclick="setView('mara')">🏃 Marathon tab</button></div>
     <div id="maraTestOut" class="help" style="margin-top:8px"></div></div>
   </div>
-  <div class="card devOnly" id="kickTestCard">
+  <div class="card edOff" id="kickTestCard" data-feat="kick">
     <h3>🟢 Kick</h3>
     <p class="help">A pretend Kick chat message, read exactly the way a real one is, so you can check commands work from Kick without going live there. Nothing is sent to Kick.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><input id="tKickText" value="!hello" title="The pretend Kick message to send" style="flex:1 1 160px;min-width:0"><button class="primary" onclick="kickChatTest()" title="A pretend Kick viewer types this message">🟢 Pretend Kick viewer says it</button><button onclick="kickChatTest('moderator')" title="A pretend Kick mod types this message (mods can use !addcom and skip waits)">🗡️ …as a Kick mod</button><button class="ghost" onclick="setView('settings');setSub('twitch')" title="Open Settings → Twitch, where the Kick switch is">⚙️ Kick settings</button></div>
@@ -1356,6 +1358,13 @@ not a link</textarea>
     <p class="help">Your own chat commands, timers and quotes (the 🤖 Chat bot tab). These check it without touching your real chat.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
     <div id="tBotOut"></div>
+  </div>
+  <div class="card edOff" id="egTestCard" data-feat="eggs">
+    <h3>🥚 The egg game</h3>
+    <p class="help">Viewers hatch eggs into 120 creatures by watching and chatting, level them up and battle in chat. These use pretend viewers (named pretend_…): nothing is sent to Twitch or Kick.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="egTest('rules')" title="Walks the whole egg game through with pretend people: eggs filling and hatching, levels and evolving, battles, rare ones, one profile across Twitch and Kick (nothing is saved)">📋 Check the egg game</button><button onclick="egTest('fill')" title="Gives 4 pretend viewers a few hatched creatures each, then opens the Eggs tab">🥚 Add pretend players</button><button onclick="egTest('hatch')" title="Fills a pretend viewer's egg so it hatches right now (the bot's line shows in the test chat)">🐣 Hatch a pretend egg</button><button onclick="egTest('battle')" title="Two pretend viewers battle through the pretend chat: a challenge, the answer and the result">⚔️ Pretend battle</button><button onclick="egTest('say')" title="A pretend viewer types the egg command in the pretend chat">💬 Pretend viewer types !egg</button><button class="ghost" onclick="egTest('clear')" title="Takes the pretend players out again">🧹 Remove the pretend players</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="ghost" onclick="window.open('/eggpage.html?demo=1','_blank','width=1100,height=860')" title="See the viewer page with pretend players">👀 Viewer page (pretend)</button><button class="ghost" onclick="window.open('/eggchat.html?demo=1','_blank','width=900,height=620')" title="See the on-stream chat box with creatures next to names, with pretend chat">👀 Creature chat box (pretend)</button></div>
+    <div id="tEgOut"></div>
   </div>
   <div class="card edOff" id="sgTestCard" data-feat="songs">
     <h3>🎵 Song requests &amp; ratings</h3>
@@ -2512,6 +2521,7 @@ function connect() {
     if (m.type === 'chatbot') { if (view === 'bot') botLoad(); }
     if (m.type === 'raids' && view === 'raid') rdLoad();
     if (m.type === 'songs' && view === 'songs') sgLoad();
+    if (m.type === 'eggs' && view === 'eggs') { clearTimeout(window.egT); window.egT = setTimeout(egLoad, 600); }
     if (m.type === 'sfxCmd') { try { const a = new Audio(m.url); a.volume = m.vol ?? .8; a.play().catch(() => {}); } catch {} }
     if (m.type === 'birthdays' && view === 'settings' && sub === 'twitch') bdDraw();
     if (m.type === 'movieNight') { if (view === 'mnight') mnLoad(); else mnPending(); }
@@ -2560,6 +2570,7 @@ function setView(v) {
   if (v === 'mnight') mnLoad();
   if (v === 'raid') rdLoad(true); else rdLeave();
   if (v === 'songs') sgLoad();
+  if (v === 'eggs') egLoad();
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
@@ -3711,6 +3722,40 @@ async function clipNow(via, testFail) {
   catch (e) { clipDot('bad', e?.message || 'No clip'); }
   finally { clipBusy = false; }
 }
+/* 🥚 The egg game (1.100.0, True): settings, the players and their creatures, the viewer website, the creature chat box */
+let EG = null, egQ = '';
+function egScript() { return new Promise(ok => { if (window.CREATURES) return ok(); const s = document.createElement('script'); s.src = '/creatures.js'; s.onload = ok; s.onerror = ok; document.head.appendChild(s); }); }
+async function egLoad() { await egScript(); try { EG = await api('/api/eggs?q=' + encodeURIComponent(egQ), null, 'GET'); } catch { return; } egDraw(); }
+async function egGo(url, body, msg) { try { const r = await api('/api/eggs/' + url, body || {}); if (msg) toast(msg); await egLoad(); return r; } catch { return null; } }
+function egDraw() {
+  const el = $('egBody'); if (!el || !EG) return; const a = document.activeElement; if (el.contains(a) && /INPUT/.test(a.tagName) && a.id !== 'egSearch') return;
+  const E = EG, o = E.opts, C = window.CREATURES, site = E.site || {}, num = (k, lab, tip, w) => `<label class="help" style="margin:0">${lab} <input type="number" value="${o[k]}" style="width:${w || 70}px" title="${tip}" onchange="egGo('opts',{${k}:this.value},'Saved')"></label>`, cmd = (k, lab, tip) => `<label class="help" style="margin:0">${lab} <input value="${esc(o[k])}" style="width:96px" title="${tip}" onchange="egGo('opts',{${k}:this.value},'Saved')"></label>`;
+  const pic = n => (C ? `<img src="${C.pic(n, 40)}" width="40" height="40" alt="" title="${esc(C.info(n).name)}">` : '');
+  el.innerHTML = `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0">🥚 The egg game</h3><span class="help" style="margin:0"><b>${E.total}</b> players · <b>${E.hatched}</b> eggs hatched · chat has found <b>${E.seen}</b> of ${E.count} creatures${E.linked ? ` · ${E.linked} linked Twitch + Kick` : ''}</span></div>
+    <div class="sgGrid"><div style="min-width:0">
+      <div class="card" style="margin:0 0 12px"><h3 style="margin:0 0 6px">⚙️ How eggs hatch</h3>
+        <p class="help" style="margin:0 0 8px">An egg needs points to hatch. Watching and chatting fill it slowly; subs, gifts, bits and tips fill it fast. A hatched egg becomes one of 40 creatures (some rare); one they already have gets XP instead.</p>
+        <div class="row" style="gap:10px;flex-wrap:wrap">${num('need', 'Points to hatch', 'How many points an egg needs before it hatches')}${num('watch', 'Watching (each 5 min)', 'Points for every 5 minutes someone is in your viewer list while you are live')}${num('chat', 'A chat message', 'Points for a chat message')}${num('chatGap', '…at most every (s)', 'A viewer gets chat points at most once in this many seconds')}</div>
+        <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:6px">${num('sub', 'A sub', 'Points for subscribing or resubscribing')}${num('gift', 'Each gift sub', 'Points to the gifter for each sub they gift')}${num('bitsPer', 'Bits for 1 point', 'How many bits make one point (10 = 100 bits give 10 points)')}${num('tip', 'Per 1 tipped', 'Points for each dollar (or euro…) tipped')}${num('kick', 'Per Kick (Kick gifts)', "Points for each of Kick's Kicks someone gifts (once Kick alerts are connected)")}</div>
+        <div class="row" style="gap:12px;flex-wrap:wrap;margin-top:8px;align-items:center">${num('battleCd', 'Rest between battles (s)', 'Seconds a viewer has to wait between battles')}<label class="ck" style="margin:0"><input type="checkbox" ${o.liveOnly ? 'checked' : ''} onchange="egGo('opts',{liveOnly:this.checked},'Saved')" title="Chatting only fills eggs while you are live"> <span>Chat only counts while live</span></label><label class="ck" style="margin:0"><input type="checkbox" ${o.reply ? 'checked' : ''} onchange="egGo('opts',{reply:this.checked},'Saved')" title="The bot answers the egg commands in chat (hatching and battle results are always said)"> <span>The bot answers in chat</span></label></div>
+        <details style="margin-top:8px"><summary title="Change what viewers type for each egg command">💬 The chat commands</summary><div class="row" style="gap:10px;flex-wrap:wrap;margin-top:6px">${cmd('eggCommand', 'My egg', 'What viewers type to see how far their egg is')}${cmd('petCommand', 'My fighter', 'What viewers type to see the creature they have out')}${cmd('petsCommand', 'All mine', 'What viewers type to list all their creatures')}${cmd('equipCommand', 'Pick fighter', 'What viewers type (with a number) to pick which creature fights')}${cmd('battleCommand', 'Battle', 'What viewers type (with a name) to challenge someone, and alone to accept')}${cmd('linkCommand', 'Link Twitch + Kick', 'What viewers type to share one profile between Twitch and Kick')}${cmd('topCommand', 'Leaderboard', 'What viewers type to see who has the most creatures')}</div></details></div>
+      <div class="card" style="margin:0 0 12px"><h3 style="margin:0 0 6px">🌐 The viewer website</h3>
+        <p class="help" style="margin:0 0 6px">A page where viewers look up their egg and creatures, see everyone's, and browse all 120. It lives on your own 24/7 bot and shows only what chat already sees (names, eggs, creatures). The app sends a fresh copy every few minutes when something changed.</p>
+        ${site.url ? `<div class="row" style="gap:6px"><input readonly value="${esc(site.url)}" onclick="this.select()" style="flex:1" title="The address of your egg game website: share it with your viewers"><button onclick="window.open('${esc(site.url)}')" title="Open your egg game website in your browser">↗ Open</button></div><p class="help" style="margin:4px 0 0">Last sent ${site.at ? sgAgo(site.at) : 'not yet'}.</p>` : `<p class="help" style="margin:0">⚠️ ${esc(site.error || 'Not uploaded yet.')}</p>`}
+        <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="egSite()" title="Send the page and the newest eggs and creatures to your website right now">🔄 Send it now</button><button class="ghost" onclick="window.open('/eggpage.html','_blank','width=1100,height=860')" title="See the viewer page as it is on this PC (the same page, with your real players)">👀 Preview it here</button></div>
+        <h4 style="margin:12px 0 4px">📺 Creature chat box for OBS</h4><p class="help" style="margin:0 0 6px">Twitch and Kick can't show a custom picture next to a name in their own chat. This chat box can: add it to OBS as a Browser source and every chatter's creature sits next to their name; battles pop up on it too. (Add <code>?side=right</code>, <code>?lines=8</code> or <code>?fade=30</code>.)</p>
+        <div class="row" style="gap:6px"><input readonly value="${location.origin}/eggchat.html" onclick="this.select()" style="flex:1" title="The address of the creature chat box for an OBS browser source"><button onclick="window.open('/eggchat.html?demo=1','_blank','width=900,height=620')" title="See the creature chat box with pretend chat">👀 Preview</button></div></div>
+    </div><div class="card" style="margin:0;min-width:0"><div class="row" style="gap:6px;margin-bottom:8px;flex-wrap:wrap"><input id="egSearch" placeholder="🔎 Search a player or a creature…" title="Search the players by name, or by a creature they have" value="${esc(egQ)}" style="flex:1;min-width:180px" oninput="egQ=this.value;clearTimeout(window.egT);window.egT=setTimeout(egLoad,250)"><input id="egGiveN" placeholder="chat name" style="width:130px" title="Give hatch points by hand: whose egg"><input id="egGiveP" type="number" placeholder="points" style="width:84px" title="Give hatch points by hand: how many"><button onclick="egGive()" title="Add these points to that viewer's egg (enough points hatch it)">🎁 Give points</button></div>
+      ${E.players.length ? `<table class="tbl" style="width:100%"><thead><tr><th>Player</th><th>Egg</th><th>Creatures</th><th></th></tr></thead><tbody>${E.players.map(p => `<tr><td style="white-space:nowrap"><b>${esc(p.name)}</b><div class="muted" style="font-size:12px">${p.wins}W ${p.losses}L${p.on.length > 1 ? ' · 🔗' : p.on[0] === 'kick' ? ' · Kick' : ''}</div></td><td style="width:90px"><div style="height:8px;background:var(--bg2,#0e0820);border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:${p.pct}%;background:linear-gradient(90deg,#7b3ff2,#ffb020)"></i></div><span class="muted" style="font-size:12px">${p.pct}% · ${p.hatched} hatched</span></td><td>${p.pets.map((c, i) => `<span style="display:inline-block;text-align:center;font-size:11px;line-height:1;${i === p.eq ? 'outline:2px solid var(--gold);border-radius:8px' : ''}" title="${C ? esc(C.info(c.n).name) : ''} · level ${c.lvl}${i === p.eq ? ' · their fighter' : ''}">${pic(c.n)}<br>${c.lvl}</span>`).join('') || '<span class="muted">none yet</span>'}</td><td style="text-align:right"><button class="ghost" onclick="if(confirm('Take ${esc(p.name)} out of the egg game? Their egg and creatures are deleted.'))egGo('remove',{key:'${esc(p.key)}'})" title="Take this player out of the egg game (their egg and creatures are deleted)">🗑</button></td></tr>`).join('')}</tbody></table>${E.found > E.players.length ? `<p class="help">Showing ${E.players.length} of ${E.found}: search to narrow it down.</p>` : ''}` : `<div class="empty">${egQ ? 'Nobody matches that.' : 'No players yet. Eggs start filling as soon as people chat or watch while you are live.'}</div>`}</div></div>`;
+  if (a && a.id === 'egSearch') { const i = $('egSearch'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+}
+async function egGive() { const n = $('egGiveN').value.trim(), p = Number($('egGiveP').value); if (!n || !(p > 0)) return toast('Type a chat name and how many points.'); $('egGiveN').blur(); $('egGiveP').blur(); const r = await egGo('give', { name: n, pts: p }); if (r) toast(r.hatched ? `🐣 ${esc(n)} got ${p} points: ${r.hatched} egg${r.hatched === 1 ? '' : 's'} hatched!` : `🎁 ${esc(n)} got ${p} points.`); }
+async function egSite() { let r; try { r = await api('/api/eggs/site', {}); } catch { return; } toast(r.site.url ? '🌐 Sent: your egg website is up to date.' : '⚠️ ' + esc(r.site.error || 'That did not work.')); egLoad(); }
+async function egTest(action) {
+  let r; try { r = await api('/api/test/eggs', { action }); } catch { return; } const el = $('tEgOut'); if (!el) return;
+  el.innerHTML = action === 'rules' ? `<p style="margin:8px 0 4px">${r.ok ? '✅ The egg game works.' : '⚠️ Something is off: tell Claude.'}</p><table class="tbl" style="width:100%"><tbody>${r.rows.map(x => `<tr><td>${x.ok ? '✅' : '⚠️'}</td><td>${esc(x.what)}</td></tr>`).join('')}</tbody></table>` : `<p style="margin:8px 0 0">${action === 'clear' ? '🧹 The pretend players are gone.' : action === 'fill' ? '🥚 4 pretend players with creatures are in the game.' : action === 'hatch' ? '🐣 Pretend_ash\'s egg hatched: the bot\'s line shows in 💬 Test chat.' : action === 'battle' ? '⚔️ Pretend_ash challenged Pretend_bee and they fought: see 💬 Test chat.' : '💬 Pretend_ash typed the egg command: see 💬 Test chat.'}</p>`;
+  if (action === 'fill') setView('eggs'); else if (action !== 'rules' && action !== 'clear') { try { pchat(true); } catch {} }
+}
 /* 💬 Chat dashboard (1.99.0, Birx & Jess: "preview of stream, chat, channel alerts, song request info and if movie voting night all that info"): the side of the 💬 Chat tab */
 let dashTimer = 0, dashPrevOn = true, dashPrevFor = '';
 try { dashPrevOn = localStorage.getItem('dashPrev') !== '0'; } catch {}
@@ -3992,6 +4037,7 @@ function edApply() {
   if (view === 'mnight' && !featOn('movienight')) setView('battle');
   if (view === 'raid' && !featOn('raids')) setView('battle');
   if (view === 'songs' && !featOn('songs')) setView('battle');
+  if (view === 'eggs' && !featOn('eggs')) setView('battle');
   try { fitNav(); } catch {}
 }
 async function edLook(id) { try { const r = await api('/api/test/edition-look', { id }); toast(r.lookAs ? `👀 Looking like the ${esc(id)} edition${r.off.length ? ': hidden: ' + esc(r.off.join(', ')) : ' (it has everything)'}. Your dev tabs stay so you can keep testing.` : '👀 Back to your own edition (everything).', 6000); } catch {} }
@@ -6308,7 +6354,7 @@ function openSettings(force) {
       <div class="grid2"><div><label>⏰ The 1-minute warning</label><input id="adWarnText" placeholder="📺 Heads up chat: ads start in about 1 minute! Grab a drink, stretch, I'll be right here." value="${esc(S.settings.adWarnText || '')}" onchange="api('/api/settings',{adWarnText:this.value}).then(()=>toast('Saved'))" title="What the bot says in chat a minute before an ad break (empty = the usual message)"></div>
       <div><label>✅ When the ads end</label><input id="adEndText" placeholder="✅ Ads are over, welcome back!" value="${esc(S.settings.adEndText || '')}" onchange="api('/api/settings',{adEndText:this.value}).then(()=>toast('Saved'))" title="What the bot says in chat when the ad break is over (empty = the usual message)"></div></div>
       <div class="row" style="gap:6px;margin-top:6px"><button class="ghost" onclick="testGo('adTestCard')" title="Try the ad warnings in the Test tab (a pretend ad break)">🧪 Try it</button></div>
-      <div class="devOnly"><h3 style="margin-top:18px">🟢 Kick (dev mode)</h3><div id="kickBox">${kickHTML()}</div></div>
+      <div class="${featOn('kick') ? '' : 'edOff'}" data-feat="kick"><h3 style="margin-top:18px">🟢 Kick</h3><div id="kickBox">${kickHTML()}</div></div>
       <h3 style="margin-top:18px">🎬 Clips</h3><div id="clipBox">${clipHTML()}</div>${cki('clipChat', '💬 Post the link in chat when a clip is made')}<div id="clipWhoBox">${clipWhoHTML()}</div>
       <h3 style="margin-top:18px">🛡️ Spam bots</h3>${spamHTML()}
       <h3 style="margin-top:18px">🎂 Birthdays</h3><div id="bdBox" class="help">Loading…</div>

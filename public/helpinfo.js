@@ -163,6 +163,10 @@ H(/anyone in chat can make a clip by typing/i, '🙋 !clip in chat', 'Anyone in 
 H(/^tip:a pretend viewer types !clip/i, '💬 Pretend viewer types !clip', 'A pretend viewer types !clip, so you can see what the bot answers. Nothing is sent to Twitch.', ['test']);
 H(/post the link in chat when a clip is made/i, '💬 Post the clip in chat', 'When a clip is made, the bot posts its link in your Twitch chat.');
 H(/^tip:pretend to make a clip/i, '🧪 Pretend clip', 'Shows what you see when a clip works. Nothing is sent to Twitch and no clip is made.', ['test']);
+// 🥚 The egg game (1.100.0): every control on the Eggs tab carries its own tip (shown as 💡 in help mode) + the Help tab section
+H(/^tip:the egg game: viewers hatch eggs into creatures/i, '🥚 Eggs', 'The egg game: every viewer has an egg that fills while they watch and chat (faster with subs, gifts, bits and tips). It hatches into one of 120 original creatures, which level up, evolve and battle in chat. One profile across Twitch and Kick.');
+H(/^(?:📋 Check the egg game|🥚 Add pretend players|🐣 Hatch a pretend egg|⚔️ Pretend battle|💬 Pretend viewer types !egg|🧹 Remove the pretend players|👀 Viewer page \(pretend\)|👀 Creature chat box \(pretend\))/i, '🥚 Egg game tests', 'Tries the egg game with pretend viewers. Nothing is sent to Twitch or Kick, and the pretend players can be removed again.');
+H(/^(?:🔄 Send it now|tip:send the page and the newest eggs)/i, '🌐 Viewer website', "Sends the egg page and the newest eggs and creatures to your own 24/7 bot's website right now. It also happens by itself every few minutes when something changed. Only names, eggs and creatures are sent: what chat already sees.", ['eggs']);
 // 💬 Chat dashboard (1.99.0)
 H(/^(?:preview|tip:show a small muted preview of your own stream)/i, '📺 Your stream', "A small, muted preview of your own stream next to chat, so you can see what viewers see. It runs a few seconds behind (Twitch's delay). Untick Preview to save your PC some work.", ['chat']);
 // 🎵 Song requests + ratings (1.98.0): every control on the Songs tab carries its own tip (shown as 💡 in help mode) + the Help tab section

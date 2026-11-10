@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>The egg game</title>
+<style>
+  body { margin: 0; background: #130b28; color: #efeaff; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; line-height: 1.45; }
+  main { max-width: 1100px; margin: 0 auto; padding: 18px 14px 60px; } h1 { margin: 0 0 2px; font-size: 28px; } h2 { font-size: 20px; margin: 26px 0 10px; color: #ffcf6b; } .muted { color: #b3a8d8; }
+  input { width: 100%; box-sizing: border-box; padding: 11px 14px; font-size: 17px; border-radius: 12px; border: 2px solid #3a2a66; background: #0e0820; color: #fff; outline: none; } input:focus { border-color: #ffb020; }
+  .tabs { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; } .tabs button { padding: 9px 16px; border-radius: 999px; border: 1px solid #3a2a66; background: #1c1238; color: #fff; font-size: 15px; cursor: pointer; } .tabs button.on { background: #7b3ff2; border-color: #7b3ff2; }
+  .card { background: #1c1238; border: 1px solid #2f2157; border-radius: 16px; padding: 12px 14px; margin: 10px 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; } .c { background: #1c1238; border: 1px solid #2f2157; border-radius: 14px; padding: 6px 4px 8px; text-align: center; font-size: 13px; } .c img { width: 84px; height: 84px; } .c.no img { filter: brightness(0) invert(.25); } .c b { display: block; } .c.eq { border-color: #ffd24b; }
+  .row { display: flex; gap: 10px; align-items: center; padding: 7px 4px; border-top: 1px solid #2a1d4e; cursor: pointer; } .row:first-child { border-top: 0; } .row img { width: 44px; height: 44px; } .row .grow { flex: 1; min-width: 0; }
+  .bar { height: 10px; background: #0e0820; border-radius: 999px; overflow: hidden; } .bar i { display: block; height: 100%; background: linear-gradient(90deg, #7b3ff2, #ffb020); }
+  .r1 { color: #8fd6ff; } .r2 { color: #c79bff; } .r3 { color: #ffd24b; } canvas { vertical-align: middle; } code { background: #0e0820; padding: 1px 6px; border-radius: 6px; }
+</style></head>
+<body><main>
+  <h1>🥚 The egg game</h1>
+  <p class="muted" id="sub">Watch and chat to hatch your egg. Subs, gift subs and bits hatch it faster.</p>
+  <div class="tabs"><button data-t="me" class="on">🔎 Find me</button><button data-t="top">🏆 Everyone</button><button data-t="dex">📖 All 120 creatures</button><button data-t="how">❓ How it works</button></div>
+  <div id="out"></div>
+</main>
+<script src="creatures.js" id="cjs"></script>
+<script>
+// Served by the streamer's own app (eggpage.html) and by their 24/7 bot (/eggs). Shows only what chat already sees: names, eggs, creatures.
+const LOCAL = /\.html$/.test(location.pathname), $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let D = { players: [], count: 120, commands: {} }, tab = 'me', who = '';
+try { who = new URLSearchParams(location.search).get('u') || localStorage.getItem('eggWho') || ''; } catch {}
+const C = () => window.CREATURES, card = (p, n, lvl, eq) => { const I = C().info(n); return `<div class="c${eq ? ' eq' : ''}"><img src="${C().pic(n, 84)}" alt=""><b>${esc(I.name)}</b><span class="muted">${I.icon} ${lvl ? 'Lv ' + lvl : I.elName}${eq ? ' ⭐' : ''}</span></div>`; };
+function eggPic(p) { const c = document.createElement('canvas'); c.width = c.height = 160; const g = c.getContext('2d'); g.scale(2, 2); C().egg(g, 40, 38, 62, p.pct / 100, p.seed % 97); return c.toDataURL(); }
+function profile(p) {
+  const e = p.pets[p.eq];
+  return `<div class="card"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img src="${eggPic(p)}" width="80" height="80" alt=""><div style="flex:1;min-width:200px"><div style="font-size:22px;font-weight:800">${esc(p.name)}</div><div class="muted">Egg: ${p.pct}% · hatched ${p.hatched} · ${p.pets.length} of 40 families · ${p.wins} wins, ${p.losses} losses${p.on.length > 1 ? ' · Twitch + Kick linked' : ''}</div><div class="bar" style="margin-top:6px"><i style="width:${p.pct}%"></i></div></div>${e ? `<div style="text-align:center"><img src="${C().pic(e.n, 110)}" width="110" height="110" alt=""><div><b>${esc(C().info(e.n).name)}</b> Lv ${e.lvl}</div><div class="bar" style="width:110px;margin:4px auto 0"><i style="width:${Math.round(100 * e.xp / e.need)}%"></i></div></div>` : ''}</div></div>
+    <div class="grid">${p.pets.map((c, i) => card(p, c.n, c.lvl, i === p.eq)).join('') || '<p class="muted">No creatures yet: the first egg is still hatching.</p>'}</div>`;
+}
+function draw() {
+  if (!C()) return; document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab)); const o = $('out'), cm = D.commands || {};
+  if (tab === 'me') { const q = who.trim().toLowerCase(), hit = q ? D.players.filter(p => p.name.toLowerCase().includes(q)) : [], exact = hit.find(p => p.name.toLowerCase() === q) || (hit.length === 1 ? hit[0] : null);
+    o.innerHTML = `<input id="q" placeholder="Type your chat name…" value="${esc(who)}" autocomplete="off">` + (exact ? profile(exact) : q ? (hit.length ? `<div class="card">${hit.slice(0, 30).map(p => `<div class="row" data-n="${esc(p.name)}"><div class="grow"><b>${esc(p.name)}</b> <span class="muted">· ${p.pets.length} creatures · egg ${p.pct}%</span></div></div>`).join('')}</div>` : `<p class="muted">Nobody by that name has an egg yet. Say hi in chat and one starts!</p>`) : `<p class="muted">Type your chat name to see your egg and your creatures.</p>`);
+    const i = $('q'); i.oninput = () => { who = i.value; try { localStorage.setItem('eggWho', who); } catch {} const pos = i.selectionStart; draw(); const j = $('q'); j.focus(); j.setSelectionRange(pos, pos); }; o.querySelectorAll('.row').forEach(r => r.onclick = () => { who = r.dataset.n; draw(); }); }
+  else if (tab === 'top') o.innerHTML = `<div class="card">${D.players.filter(p => p.pets.length).slice(0, 100).map((p, i) => { const e = p.pets[p.eq] || p.pets[0]; return `<div class="row" data-n="${esc(p.name)}"><b style="width:30px">${i + 1}</b><img src="${C().pic(e.n, 44)}" alt=""><div class="grow"><b>${esc(p.name)}</b><div class="muted" style="font-size:13px">${p.pets.length} creatures · best Lv ${Math.max(...p.pets.map(c => c.lvl))} · ${p.wins} wins</div></div></div>`; }).join('') || '<p class="muted">Nobody has hatched an egg yet.</p>'}</div>`, o.querySelectorAll('.row').forEach(r => r.onclick = () => { who = r.dataset.n; tab = 'me'; draw(); });
+  else if (tab === 'dex') { const seen = new Set(); for (const p of D.players) for (const c of p.pets) { const st = (c.n - 1) % 3; for (let s = 0; s <= st; s++) seen.add(c.n - st + s); }
+    o.innerHTML = `<p class="muted">Chat has found <b>${seen.size}</b> of ${C().COUNT} so far. The dark ones are still out there.</p>` + Object.entries(C().EL).map(([k, E]) => `<h2>${E.icon} ${E.name} <span class="muted" style="font-size:14px;font-weight:400">strong against ${E.beats.map(b => C().EL[b].icon + ' ' + C().EL[b].name).join(' and ')}</span></h2><div class="grid">${C().list().filter(I => I.el === k).map(I => `<div class="c${seen.has(I.n) ? '' : ' no'}"><img src="${C().pic(I.n, 84)}" alt=""><b>${seen.has(I.n) ? esc(I.name) : '???'}</b><span class="muted r${I.rare}">${I.rareName}${I.stage ? ' · form ' + (I.stage + 1) : ''}</span></div>`).join('')}</div>`).join(''); }
+  else o.innerHTML = `<div class="card"><p>🥚 <b>Everyone has an egg.</b> It fills up while you watch the stream and chat. Subs, gift subs, bits and tips fill it much faster.</p><p>🐣 <b>A full egg hatches</b> into one of 40 creatures (some are rare!), and a new egg starts. Hatch one you already have and it gets a big helping of XP instead.</p><p>⚔️ <b>Battle in chat:</b> <code>${esc(cm.battle || '!battle')} name</code> challenges someone; they type <code>${esc(cm.battle || '!battle')}</code> to fight. Both get XP, the winner more. Each element is strong against two others.</p><p>✨ <b>Level up and evolve:</b> at level 10 and again at level 25 your creature grows into its next form.</p><p>💬 <b>In chat:</b> <code>${esc(cm.egg || '!egg')}</code> your egg · <code>${esc(cm.pet || '!pet')}</code> your fighter · <code>${esc(cm.pets || '!pets')}</code> all yours · <code>${esc(cm.equip || '!equip')} 2</code> pick your fighter · <code>${esc(cm.link || '!link')}</code> share one profile between Twitch and Kick.</p></div>`;
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; draw(); });
+async function load() { try { D = await fetch(LOCAL ? '/api/eggs/public' : 'eggs/data', { cache: 'no-store' }).then(r => r.json()); } catch {} if (!document.activeElement || document.activeElement.id !== 'q') draw(); }
+if (/demo=1/.test(location.search)) { const mk = (name, pets, pct) => ({ name, pct, seed: name.length * 13, hatched: pets.length + 1, wins: pets.length * 3, losses: 4, eq: 0, pets: pets.map(([n, lvl]) => ({ n, lvl, xp: 40, need: 30 + lvl * 10 })), on: ['twitch'] }); D = { count: 120, commands: {}, players: [mk('Demo_Amy', [[3, 27], [17, 12], [112, 4], [46, 9]], 62), mk('Demo_Bob', [[29, 14], [70, 3]], 20), mk('Demo_Cat', [[118, 6]], 91)] }; who = who || 'Demo_Amy'; draw(); }
+else { load(); setInterval(load, 60000); }
+</script></body></html>

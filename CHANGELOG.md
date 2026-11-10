@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.100.0
+- 🥚 **The egg game** (True's edition; in Derek's with dev mode on). Every viewer has an egg that fills while they watch and chat, and much faster with subs, gift subs, bits and tips. A full egg hatches into one of **120 original creatures** (40 families that each grow twice, 8 elements, some rare). Creatures earn XP, level up and **evolve** at level 10 and 25.
+  - ⚔️ **Chat battles:** `!battle name` challenges someone, they type `!battle` to fight; both get XP. Also `!egg`, `!pet`, `!pets`, `!equip 2`, `!eggtop`.
+  - 🔗 **Twitch + Kick, one profile:** `!link` in one chat gives a code, `!link CODE` in the other joins them.
+  - 🌐 **A viewer website** on your own 24/7 bot: look up your egg and creatures, the leaderboard, and all 120 creatures (the 24/7 bot needs its update for this).
+  - 📺 **Creature chat box** for OBS: chat with each chatter's creature next to their name, and battles popping up. (Twitch and Kick don't let an app put a picture next to names in their own chat, so this box does it on stream.)
+  - The 🥚 Eggs tab sets every number (points per sub, per bit, per message…), shows every player and their creatures, and can give points by hand.
+- 🟢 **Kick is switched on in True's edition** (chat on Kick, the Twitch ↔ Kick switch). Kick's subs / gift / Kicks alerts are not connected yet: Kick only sends those to a public server, so that part comes next.
+- 🧪 Test tab → 🥚 The egg game: pretend players, a pretend hatch, a pretend battle.
+
 ## 1.99.0
 - 💬 **Chat tab dashboard** (Birx & Jess's edition; Derek: "preview of stream, chat, channel alerts, song request info and if movie voting night all that info"). Next to chat and the alerts, the 💬 Chat tab now has: 📺 a small muted preview of your own stream, 🎵 what's playing with both rating boxes, ⏭ Next and the next songs, and 🍿 movie night: votes so far, the last call clock, and the "did he guess it?" ✅ ❌ buttons.
 
