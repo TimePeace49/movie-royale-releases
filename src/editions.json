@@ -39,7 +39,8 @@
   "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet).",
   "app": "True’s Chatbot",
   "kick": "true_schu",
-  "on": []
+  "on": [],
+  "scrub": true
  },
  "birx": {
   "name": "Birx & Jess",
@@ -57,6 +58,7 @@
   "on": [
    "movienight",
    "raids"
-  ]
+  ],
+  "scrub": true
  }
 }

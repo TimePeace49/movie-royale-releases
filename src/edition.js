@@ -27,7 +27,17 @@ export const is = (...ids) => ids.includes(EDITION.id);
 export const APP = String(process.env.MOVIE_ROYAL_APP || ALL[id]?.app || 'Movie Royal');
 const KEEP = '(?:e\\b| celebration| capture window| paused message| battle\\b| marathon\\b| roll call| Backup| starting soon| sleeping banner| be right back| background| sync channel| debug channel| [–—] |\\\\(?!\'))';
 const SEEN = new RegExp('(?<![\\\\])Movie Royal(?!' + KEEP + ')', 'g'), SEEN_LOW = new RegExp('(?<![\\\\])movie royal(?!' + KEEP + ')', 'g');
-export const brand = t => (APP === 'Movie Royal' || typeof t !== 'string' || !t.includes('Movie Royal') ? t : t.replace(SEEN, APP));
+// 🧽 Name scrub (1.97.0, Derek: "remove kirb, timepeace, timepeace49, derek names from any birx or trues editions"): editions with `scrub`
+// never show those names. The code keeps them (Derek's and Kirb's editions want them); they are swapped on the way out, like the app's name.
+export const scrub = !!ALL[id]?.scrub;
+const SCRUB = [[/(?<!github\.com\/)TimePeace49/g, 'Red Kraken'], [/Kirbgames/g, 'Blue Serpent'], [/timepeace49 and kirbgames/g, 'red kraken and blue serpent'],
+  [/Take out Time/g, 'Take out Red'], [/Take out Kirb/g, 'Take out Blue'], [/take out kirb/g, 'take out blue'], [/'KIRB' : 'TIME'/g, "'BLUE' : 'RED'"], [/letter: 'T'/g, "letter: 'R'"], [/letter: 'K'/g, "letter: 'B'"],
+  [/Kirb \(the blue K monkey\)/g, 'Blue (the blue B monkey)'], [/Time \(the red T monkey\)/g, 'Red (the red R monkey)'], [/blue K monkey/g, 'blue B monkey'], [/red T monkey/g, 'red R monkey'], [/ \((?:Kirb|Time)\)/g, ''],
+  [/Kirb spots/g, 'Wild spots'], [/\(Kirb\) /g, ''], [/, kirb, luck/g, ', wheel, luck'], [/Wheel of Kirbportions/g, 'the ready-made wheel'], [/\bKirb's\b/g, "the streamer's"], [/\bKirb\b/g, 'the streamer'],
+  [/placeholder="timepeace49"/g, 'placeholder="your_channel"'], [/derek\/movie-royal/g, 'username/movie-royal'], [/!call kirb/g, '!call wild'], [/friend kirb partner/g, 'friend partner'],
+  [/\bDerek's\b/g, "the streamer's"], [/\bDerek\b/g, 'the streamer'], [/(?<![\w/.@-])TimePeace(?![\w])/g, 'the streamer']];
+const scrubOut = t => { if (!scrub || typeof t !== 'string') return t; for (const [re, to] of SCRUB) t = t.replace(re, to); return t; };
+export const brand = t => scrubOut(APP === 'Movie Royal' || typeof t !== 'string' || !t.includes('Movie Royal') ? t : t.replace(SEEN, APP));
 /** For page files: also the lower-case spelling (help mode's word patterns match what's on screen). */
-export const brandFile = t => (APP === 'Movie Royal' ? t : t.replace(SEEN, APP).replace(SEEN_LOW, APP.toLowerCase()).replace(/MOVIE ROYAL/g, APP.toUpperCase()));
+export const brandFile = t => scrubOut(APP === 'Movie Royal' ? t : t.replace(SEEN, APP).replace(SEEN_LOW, APP.toLowerCase()).replace(/MOVIE ROYAL/g, APP.toUpperCase()));
 export const info = () => ({ id: EDITION.id, name: EDITION.name, app: APP, dev: EDITION.dev, off: offNow(), lookAs, repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, repo: v.repo })) });

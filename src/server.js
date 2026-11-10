@@ -36,7 +36,7 @@ import * as raids from './raids.js';
 import * as birthdays from './birthdays.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
-import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
+import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
@@ -481,7 +481,7 @@ const STORM_INFO = { wave: { icon: '🌊', say: 'a BIG WAVE', what: '🌊 Pirate
 const STORM_PROMPTS = { wave: 'Pirate Battle: a huge wave crashes over one of the ships and washes pirates around (maybe overboard)!', bolt: 'Pirate Battle: a lightning bolt strikes one of the pirates!', tentacle: 'Pirate Battle: a kraken tentacle comes up out of the sea and swipes across a deck!' };
 const stormOn = () => cards.live.phase === 'fight' && cards.live.fight?.map === 'pirates' && (!cards.live.fight.chars || (live.phase === 'running' && !!live.game?.charFight)); // (a battle's 🧍 characters on the Battle tab, or 📦 card packs on the Card battles tab, 1.73.0)
 const stormTips = () => db.settings.pointsOn === false ? null : [...Object.keys(db.settings.stormRewards || {}).map(t => t.replace(/^pirates:\s*/i, '')), ...Object.keys(db.settings.monkeyRewards || {}).map(t => '🐒 ' + t)];
-const MONKEY_INFO = { T: { i: 0, name: 'Time', what: '🐒 Pirate Battle: take out the red T monkey (Time) in the rowboat', prompt: 'Pirate Battle: the little red T monkey (Time) in the rowboat between the ships gets taken out!' }, K: { i: 1, name: 'Kirb', what: '🐒 Pirate Battle: take out the blue K monkey (Kirb) in the rowboat', prompt: 'Pirate Battle: the little blue K monkey (Kirb) in the rowboat between the ships gets taken out!' } };
+const MONKEY_INFO = edScrub ? { T: { i: 0, name: 'Red', what: '🐒 Pirate Battle: take out the red monkey in the rowboat', prompt: 'Pirate Battle: the little red monkey in the rowboat between the ships gets taken out!' }, K: { i: 1, name: 'Blue', what: '🐒 Pirate Battle: take out the blue monkey in the rowboat', prompt: 'Pirate Battle: the little blue monkey in the rowboat between the ships gets taken out!' } } : { T: { i: 0, name: 'Time', what: '🐒 Pirate Battle: take out the red T monkey (Time) in the rowboat', prompt: 'Pirate Battle: the little red T monkey (Time) in the rowboat between the ships gets taken out!' }, K: { i: 1, name: 'Kirb', what: '🐒 Pirate Battle: take out the blue K monkey (Kirb) in the rowboat', prompt: 'Pirate Battle: the little blue K monkey (Kirb) in the rowboat between the ships gets taken out!' } };
 function monkeyRedeem(r, who, test) { // 🐒 chat takes out Time or Kirb: the next way in the shuffled pile (cards.monkeyOut)
   const say = t => { if (!test && twitch.canSay()) twitch.say(t).catch(() => {}); }, M = MONKEY_INFO[who]; if (!M) return 'Which monkey?';
   if (!stormOn()) { say(`@${r.name} the monkeys are only out during a 🏴‍☠️ Pirate Battle.`); return 'Start a Pirate Battle first (🏴‍☠️ Practice battle).'; }
@@ -2445,7 +2445,7 @@ app.get('/api/whatsnew', (req, res) => {
 app.get('/api/patchnotes', async (req, res) => {
   let local = ''; try { local = fs.readFileSync(path.join(ROOT, 'PATCHNOTES.md'), 'utf8'); } catch {}
   let releases = []; try { releases = (await ghReleases()).filter(x => !x.pre).map(x => ({ tag: x.tag, at: x.at, notes: x.notes })); } catch {}
-  res.json({ version: VERSION, local, releases });
+  res.json({ version: VERSION, local: brand(local), releases: releases.map(x => ({ ...x, notes: brand(x.notes || '') })) });
 });
 // 🔄 Pick up where you left off (1.82.2, Derek: "when updating app while live save battle or wheel status as is… so if I send an update
 // to a friend during stream he can update and leave off what he is currently doing"). The wheels, battles, pools, luck, picks and
@@ -3081,7 +3081,7 @@ async function fillMovieInfo(max = 80) {
 }
 setTimeout(() => fillMovieInfo().catch(() => {}), 40000); setInterval(() => fillMovieInfo().catch(() => {}), 10 * 60000);
 // 🏴‍☠️ the Pirate Battle's ships are named after these channels (Derek, 1.69.2): their figureheads wear the channels' Twitch pictures (1.70.0)
-const SHIP_LOGINS = ['timepeace49', 'kirbgames'];
+const SHIP_LOGINS = edScrub ? [] : ['timepeace49', 'kirbgames']; // (🧽 other streamers' editions: plain skull figureheads)
 const shipIcons = () => SHIP_LOGINS.map(l => proxied(db.shipPics?.[l] || (String(db.owner?.login || '').toLowerCase() === l ? db.owner.avatar : '')) || '');
 async function refreshShipPics(force) {
   const c = db.shipPics ||= {};

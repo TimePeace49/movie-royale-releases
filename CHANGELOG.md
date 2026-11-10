@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.97.0
+- 🧽 **Birx's and True's editions don't show other streamers' names any more** (Derek). In those two editions the pirate ships are the *Red Kraken* and the *Blue Serpent* with skull figureheads, the monkeys are Red and Blue ("Take out Red" / "Take out Blue"), and the help, tips, patch notes, chat lines and pop-ups say "the streamer" instead of a name. Derek's and Kirb's editions are unchanged.
+- The one place a name can still be seen there is the download link itself (the editions live on Derek's GitHub).
+
 ## 1.96.0
 - 🔐 **Safety** (Derek: "can we add 2 factor for safety… nothing being sent that shouldn't be"):
   - **Only your PC can reach the app.** It now listens on this computer only (before, it listened on the home network too and turned other devices away at the door). Pages on other websites can't press its buttons or read from it any more either.

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { has as edHas } from './edition.js';
+import { has as edHas, scrub as edScrub } from './edition.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // desktop app keeps data in %APPDATA%\Movie Royal\data so updates/uninstalls never touch it
@@ -43,9 +43,9 @@ const defaults = () => ({
     lobbySeconds: 5,
     gameSeconds: 30, pacer: 50, raceMax: 50, mapSize: 100,
     soundOn: true, sfxVolume: 70, musicVolume: 35,
-    spotName: 'Kirb', spotTwitch: '', spotMax: 3, weekStart: 0, autoSpots: true,
+    spotName: edScrub ? 'Wild' : 'Kirb', spotTwitch: '', spotMax: 3, weekStart: 0, autoSpots: true,
     runInBackground: false, startWithWindows: false, chatGate: true, autoFullscreen: true,
-    banCurrentYear: true, banRules: { english: true, religious: true, documentary: true, dubbed: true, dubVotes: 1000 }, banAsk: 'Kirb', featAsk: {}, charsDefault: false, toastSecs: 8, choiceScenes: null, vrHydrateOn: true, vrStretchOn: true, vrHatOn: true, vrChoiceOn: true, choiceShowPick: false, obsOn: true, obsDoomOn: true, obsCapOn: true, capAutoShow: true, capAutoHide: false, capWindow: '', capSize: 30, rollOnGame: true, rollObs: false, rollScenes: null, revealThemed: true, idOn: true, idCommand: '!id', charGenders: true, looksOn: true, lookPost: true, spotLooks: [], discordFolder: true, discordCategory: 'Movie Royal', charChannel: true, charChannelName: 'character-creation', appStyle: 'auto', holTheme: {}, holFx: true, luckOn: true, luckPerBattle: 1, muteUnfocused: true, appQuietObs: true, raidOn: true, raidTitle: '🚀 Pick who we raid!', raidCost: 1500, chatTag: '🤖 Movies Royal Bot:', pickLock: 'battle', trackLinkedOnly: true, useChatBot: true, discordServerLink: '', announceMins: 60, announceBattle: '', announceChat: '', announceGiveaway: '', announceWheel: '', gfxRes: '1080', gfxFps: 0, gfxQuality: 'high', gfxShowFps: false, gfxAppSaver: true, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, spotLuckMode: 'night', spotLuckNight: 1, helpCommand: '!moviesroyal', seriesAuto: false, omdbKey: '',
+    banCurrentYear: true, banRules: { english: true, religious: true, documentary: true, dubbed: true, dubVotes: 1000 }, banAsk: edScrub ? 'the streamer' : 'Kirb', featAsk: {}, charsDefault: false, toastSecs: 8, choiceScenes: null, vrHydrateOn: true, vrStretchOn: true, vrHatOn: true, vrChoiceOn: true, choiceShowPick: false, obsOn: true, obsDoomOn: true, obsCapOn: true, capAutoShow: true, capAutoHide: false, capWindow: '', capSize: 30, rollOnGame: true, rollObs: false, rollScenes: null, revealThemed: true, idOn: true, idCommand: '!id', charGenders: true, looksOn: true, lookPost: true, spotLooks: [], discordFolder: true, discordCategory: 'Movie Royal', charChannel: true, charChannelName: 'character-creation', appStyle: 'auto', holTheme: {}, holFx: true, luckOn: true, luckPerBattle: 1, muteUnfocused: true, appQuietObs: true, raidOn: true, raidTitle: '🚀 Pick who we raid!', raidCost: 1500, chatTag: '🤖 Movies Royal Bot:', pickLock: 'battle', trackLinkedOnly: true, useChatBot: true, discordServerLink: '', announceMins: 60, announceBattle: '', announceChat: '', announceGiveaway: '', announceWheel: '', gfxRes: '1080', gfxFps: 0, gfxQuality: 'high', gfxShowFps: false, gfxAppSaver: true, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, spotLuckMode: 'night', spotLuckNight: 1, helpCommand: '!moviesroyal', seriesAuto: false, omdbKey: '',
     twitchMoviesCommand: '!mymovies', twitchCooldown: 30, discordChannelName: 'movies-royal',
     pointsOn: true, bitsOn: true, cloud: {}, map: 'random', voteSeconds: 120, colorsOn: true, colorMode: 'free', colorCommand: '!color', colorReward: 'Royal: Ball color',
     ideasDoc: 'https://docs.google.com/document/d/1bcgwJP3jX2ixkwlaRS19mUdGvotVIDAppZ6AkFOTRck/edit?usp=sharing', // 💡 linked in the pinned Discord message
@@ -82,7 +82,7 @@ const defaults = () => ({
     raceCosts: { boost: 500, shield: 750, oil: 750, rocket: 1500, nuke: 20000 },
     stormRewards: { 'Pirates: 🌊 Big wave': 'wave', 'Pirates: ⚡ Lightning bolt': 'bolt', 'Pirates: 🐙 Tentacle swipe': 'tentacle' }, // ⛈️ storm powers (Pirate Battle, 1.70.0): only on while a Pirate Battle is playing
     stormCosts: { wave: 500, bolt: 750, tentacle: 1000 },
-    monkeyRewards: { 'Take out Time': 'T', 'Take out Kirb': 'K' }, // 🐒 the Pirate Battle's rowboat monkeys (1.70.0, Derek): T = TimePeace49's red one, K = Kirbgames' blue one
+    monkeyRewards: edScrub ? { 'Take out Red': 'T', 'Take out Blue': 'K' } : { 'Take out Time': 'T', 'Take out Kirb': 'K' }, // 🐒 the Pirate Battle's rowboat monkeys (1.70.0, Derek): T = TimePeace49's red one, K = Kirbgames' blue one
     monkeyCosts: { T: 10000, K: 10000 },
     // bits: cheer at least this many bits -> event (highest tier reached wins)
     bits: { '100': 'random', '300': 'comet', '500': 'tornado', '1000': 'meteors', '2500': 'shockwave' }
