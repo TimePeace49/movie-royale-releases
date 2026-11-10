@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.99.0
+- 💬 **Chat tab dashboard** (Birx & Jess's edition; Derek: "preview of stream, chat, channel alerts, song request info and if movie voting night all that info"). Next to chat and the alerts, the 💬 Chat tab now has: 📺 a small muted preview of your own stream, 🎵 what's playing with both rating boxes, ⏭ Next and the next songs, and 🍿 movie night: votes so far, the last call clock, and the "did he guess it?" ✅ ❌ buttons.
+
 ## 1.98.0
 - 🎵 **Song requests and song ratings** (Birx & Jess's edition; in Derek's with dev mode on). Chat types **!sr** and a YouTube link or a song name. The new **🎵 Songs** tab has the queue (⏭ Next song, play now, move, remove, ban, add your own), **two ratings per song** (Birx's and Jess's) that are kept in a searchable **song database** and show again when a song is replayed, **banned songs** (by name, link or "any song with these words") and blocked requesters, **stats** (who asks the most, most asked-for, best rated) and an on-stream now-playing box for OBS. Chat also has !song, !queue and !wrongsong.
 - 📥 **Import everything from before** (Derek: "he has been doing song requests for a long time… import any info and all the banned songs easily"): old song lists, old ratings and banned songs from a spreadsheet (Excel or CSV), a text file or pasted lines, including Streamlabs Chatbot's Songlist.xlsx / Queue.xlsx. You see what was found before anything is added. ⬇️ Export gives it back as a spreadsheet.

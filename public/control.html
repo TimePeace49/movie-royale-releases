@@ -405,6 +405,8 @@
   .obsBox { margin:10px 0; padding:10px 14px; } .obsBox h4 { margin:0 0 4px; }
   tr.pausedRow { opacity:.5; } tr.pausedRow:hover { opacity:.8; }
   tr.blHead td { background:var(--panel2); font-weight:700; padding:6px 10px; border-radius:6px; } tr.blHead small { font-weight:400; }
+  #dashWrap { display:flex; gap:12px; height:100%; min-width:0; } #dashSide { flex:0 0 clamp(300px,30vw,440px); min-width:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; } #dashSide.edOff { display:none; } #dashSide .card { margin:0; }
+  .dashPrev { position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:10px; overflow:hidden; } .dashPrev iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
   .sgGrid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:14px; align-items:start; } @media (max-width:1150px) { .sgGrid { grid-template-columns:minmax(0,1fr); } }
   .sgRow { display:flex; gap:6px; align-items:center; padding:6px 4px; border-top:1px solid var(--line); min-width:0; } .sgT { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .rdGrid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:14px; align-items:start; } @media (max-width:1150px) { .rdGrid { grid-template-columns:minmax(0,1fr); } .rdPrev { order:-1; } }
@@ -910,7 +912,7 @@
 <section class="view on" id="v-people"><div class="pane" id="peopleBody"></div></section>
 
 <!-- 📜 HISTORY -->
-<section class="view" id="v-tchat"><iframe id="chatFrame" title="Chat" style="width:100%;height:100%;border:0;border-radius:16px"></iframe></section>
+<section class="view" id="v-tchat"><div id="dashWrap"><div id="dashSide" class="edOff" data-feat="dash"></div><iframe id="chatFrame" title="Chat" style="flex:1;min-width:0;height:100%;border:0;border-radius:16px"></iframe></div></section>
 <section class="view" id="v-history"><div class="pane"><div id="histBody"><div class="empty">Loading…</div></div></div></section>
 
 <!-- 🚫 BANS -->
@@ -2513,6 +2515,7 @@ function connect() {
     if (m.type === 'sfxCmd') { try { const a = new Audio(m.url); a.volume = m.vol ?? .8; a.play().catch(() => {}); } catch {} }
     if (m.type === 'birthdays' && view === 'settings' && sub === 'twitch') bdDraw();
     if (m.type === 'movieNight') { if (view === 'mnight') mnLoad(); else mnPending(); }
+    if ((m.type === 'movieNight' || m.type === 'songs') && view === 'tchat') dashLoad();
     if (m.type === 'mnVote') mnPop(m.vote);
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
@@ -2560,6 +2563,7 @@ function setView(v) {
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
+  if (v === 'tchat') dashLoad(); else dashLeave();
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
 function setSub(s) { if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); bdDraw(); } if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
@@ -3706,6 +3710,37 @@ async function clipNow(via, testFail) {
   try { const r = await api(test ? '/api/test/clip' : '/api/clip', test ? { fail: !!testFail } : { via: via || view }); clipDot('ok', 'Clip made'); clipToast(r.clip); if (view === 'settings') setTimeout(clipDraw, 400); return r.clip; }
   catch (e) { clipDot('bad', e?.message || 'No clip'); }
   finally { clipBusy = false; }
+}
+/* 💬 Chat dashboard (1.99.0, Birx & Jess: "preview of stream, chat, channel alerts, song request info and if movie voting night all that info"): the side of the 💬 Chat tab */
+let dashTimer = 0, dashPrevOn = true, dashPrevFor = '';
+try { dashPrevOn = localStorage.getItem('dashPrev') !== '0'; } catch {}
+async function dashLoad() {
+  if (!featOn('dash')) return; clearTimeout(dashTimer);
+  const [sg, mn] = await Promise.all([featOn('songs') ? fetch('/api/songs').then(r => r.json()).catch(() => null) : null, featOn('movienight') ? fetch('/api/movienight').then(r => r.json()).catch(() => null) : null]);
+  if (sg && sg.on) SG = SG && view === 'songs' ? SG : sg; if (mn && mn.movies) MN = mn; dashDraw(sg && sg.on ? sg : null, mn && mn.movies ? mn : null);
+  if (view === 'tchat') dashTimer = setTimeout(dashLoad, 20000);
+}
+function dashLeave() { clearTimeout(dashTimer); const f = $('dashPrevBox'); if (f) { f.innerHTML = ''; dashPrevFor = ''; } }
+function dashPrevSet(on) { dashPrevOn = on; try { localStorage.setItem('dashPrev', on ? '1' : '0'); } catch {} dashPrevFor = ''; dashLoad(); }
+function dashDraw(sg, mn) {
+  const el = $('dashSide'); if (!el) return; if (el.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName)) return;
+  const me = String(S?.owner?.login || '').toLowerCase(), keep = dashPrevOn && me && dashPrevFor === me && $('dashPrevBox') ? $('dashPrevBox').firstChild : null;
+  const prev = `<div class="card"><div class="row" style="gap:8px;align-items:center"><b>📺 Your stream</b>${S?.live ? '<span class="pill" style="background:#e23">LIVE</span>' : '<span class="muted">not live</span>'}<span style="flex:1"></span><label class="ck" style="margin:0"><input type="checkbox" ${dashPrevOn ? 'checked' : ''} onchange="dashPrevSet(this.checked)" title="Show a small muted preview of your own stream here (untick it to save your PC some work)"> <span>Preview</span></label></div>${dashPrevOn ? (me ? `<div id="dashPrevBox" class="dashPrev" style="margin-top:8px"></div><p class="help" style="margin:4px 0 0">Muted, and a few seconds behind what you're doing (that's Twitch's delay).</p>` : `<p class="help" style="margin:8px 0 0">Sign in with Twitch (Settings → 💜 Twitch) to see your stream here.</p>`) : ''}</div>`;
+  let songs = '';
+  if (sg) { const n = sg.now, R = sg.opts.raters, o = sg.opts;
+    songs = `<div class="card"><div class="row" style="gap:8px;align-items:center"><b>🎵 Songs</b><span class="muted">${sg.queue.length} in the queue${sg.open ? '' : ' · closed'}</span><span style="flex:1"></span><button onclick="sgGo('next').then(dashLoad)" title="Move on: the next song in the queue becomes Now playing">⏭ Next</button><button class="ghost" onclick="setView('songs')" title="Open the 🎵 Songs tab">Open</button></div>
+      ${n ? `<div style="font-weight:800;font-size:16px;margin-top:6px">${esc(n.title)}</div><div class="muted" style="font-size:13px">${n.by ? 'Asked by ' + esc(n.by) : 'Added by you'}${n.lib && n.lib.plays > 1 ? ` · played ${n.lib.plays} times` : ''}</div><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">${[0, 1].map(i => `<label class="help" style="margin:0"><b>${esc(R[i])}</b> ${sgRateSel(n.key, i, n.lib?.rate?.[i] ?? null, o.scale, R[i])}</label>`).join('')}</div>` : `<p class="help" style="margin:6px 0 0">Nothing is playing.</p>`}
+      ${sg.queue.length ? `<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:6px">${sg.queue.slice(0, 4).map((q, i) => `<div class="sgT" style="font-size:13.5px">${i + 1}. ${esc(q.title)} <span class="muted">· ${esc(q.by || 'you')}${q.lib?.rate?.some(v => v != null) ? ' · ⭐ ' + q.lib.rate.filter(v => v != null).join(' / ') : ''}</span></div>`).join('')}${sg.queue.length > 4 ? `<div class="muted" style="font-size:13px">+ ${sg.queue.length - 4} more</div>` : ''}</div>` : ''}</div>`; }
+  let night = '';
+  if (mn && (mn.movies.length || mn.open)) { const top = [...mn.tally].sort((a, b) => b.votes - a.votes).slice(0, 5), left = mn.open && mn.endsAt ? Math.max(0, Math.ceil((mn.endsAt - Date.now()) / 1000)) : -1;
+    night = `<div class="card"${mn.pending.length ? ' style="border-color:var(--gold)"' : ''}><div class="row" style="gap:8px;align-items:center"><b>🍿 Movie night</b><span class="muted">${mn.open ? (left >= 0 ? `⏳ last call ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'voting is open') : 'voting is closed'} · ${mn.total} vote${mn.total === 1 ? '' : 's'}</span><span style="flex:1"></span><button class="ghost" onclick="setView('mnight')" title="Open the 🍿 Movie night tab">Open</button></div>
+      ${top.some(t => t.votes) ? `<div style="margin-top:6px">${top.filter(t => t.votes).map(t => `<div class="sgT" style="font-size:13.5px"><b>${t.votes}</b> · #${t.n} ${esc(t.title)}</div>`).join('')}</div>` : `<p class="help" style="margin:6px 0 0">No votes yet.</p>`}
+      ${mn.pending.length ? `<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:6px"><b>🔮 Did he guess it? (${mn.pending.length})</b>${mn.pending.slice(0, 4).map(g => `<div class="row" style="gap:6px;align-items:center;margin:4px 0"><span class="grow sgT" style="font-size:13.5px"><b>${esc(g.name)}</b> → #${g.n} ${esc(g.title)}</span><button class="primary" style="padding:2px 8px" title="The guess for this vote was right" onclick="mnGuess('${g.id}',true).then(dashLoad)">✅</button><button style="padding:2px 8px" title="The guess for this vote was wrong" onclick="mnGuess('${g.id}',false).then(dashLoad)">❌</button></div>`).join('')}</div>` : ''}
+      <div class="muted" style="font-size:13px;margin-top:6px">🔮 Guessed right: <b>${mn.stats.right}</b> of ${mn.stats.right + mn.stats.wrong}</div></div>`; }
+  el.innerHTML = prev + songs + night;
+  const box = $('dashPrevBox'); if (!box) { dashPrevFor = ''; return; }
+  if (keep) { box.appendChild(keep); return; } // (keep the player running instead of loading it again)
+  dashPrevFor = me; box.innerHTML = `<iframe src="https://player.twitch.tv/?channel=${encodeURIComponent(me)}&parent=${encodeURIComponent(location.hostname)}&muted=true&autoplay=true" allow="autoplay; fullscreen" allowfullscreen title="A muted preview of your own stream"></iframe>`;
 }
 /* 🎵 Song requests + ratings (1.98.0, Birx & Jess): the queue, what's playing, the two ratings, the song database, banned songs, imports */
 let SG = null, sgQ = '', sgSort = 'last', sgTab = 'lib', sgImp = null, sgPlayer = '';

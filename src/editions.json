@@ -58,7 +58,8 @@
   "on": [
    "movienight",
    "raids",
-   "songs"
+   "songs",
+   "dash"
   ],
   "scrub": true
  }

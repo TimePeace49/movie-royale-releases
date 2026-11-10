@@ -163,6 +163,8 @@ H(/anyone in chat can make a clip by typing/i, '🙋 !clip in chat', 'Anyone in 
 H(/^tip:a pretend viewer types !clip/i, '💬 Pretend viewer types !clip', 'A pretend viewer types !clip, so you can see what the bot answers. Nothing is sent to Twitch.', ['test']);
 H(/post the link in chat when a clip is made/i, '💬 Post the clip in chat', 'When a clip is made, the bot posts its link in your Twitch chat.');
 H(/^tip:pretend to make a clip/i, '🧪 Pretend clip', 'Shows what you see when a clip works. Nothing is sent to Twitch and no clip is made.', ['test']);
+// 💬 Chat dashboard (1.99.0)
+H(/^(?:preview|tip:show a small muted preview of your own stream)/i, '📺 Your stream', "A small, muted preview of your own stream next to chat, so you can see what viewers see. It runs a few seconds behind (Twitch's delay). Untick Preview to save your PC some work.", ['chat']);
 // 🎵 Song requests + ratings (1.98.0): every control on the Songs tab carries its own tip (shown as 💡 in help mode) + the Help tab section
 H(/^tip:song requests: the queue, what's playing/i, '🎵 Songs', "Song requests: chat asks with !sr, you see the queue, rate each song (two ratings), and everything is kept in a searchable song database. Old song lists, ratings and banned songs can be imported.");
 H(/^(?:⏭ Next song|tip:move on: the next song in the queue)/i, '⏭ Next song', "Moves on: the next song in the queue becomes Now playing. The one that was playing goes into the song database with its ratings.", ['songs']);
