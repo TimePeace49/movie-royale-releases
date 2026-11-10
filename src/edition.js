@@ -22,7 +22,7 @@ export const feat = (name, devMode) => onNow().includes(name) || (!lookAs && EDI
 export const FEATS = ['movienight', 'chatbot', 'kick', 'songs', 'dash', 'eggs', 'raids'];
 export const is = (...ids) => ids.includes(EDITION.id);
 /** 🎭 Every part that can be switched per edition (the Backup Bots app's Editions tab lists these). kind 'off' = on unless listed in `off`; kind 'on' = an extra, only when listed in `on`. */
-export const FEATURES = (() => { const f = read('src/features.json'); return Array.isArray(f) ? f : []; })();
+export const FEATURES = (() => { let f = read('src/features.json'); if (!Array.isArray(f)) f = read('src/features.base.json'); return Array.isArray(f) ? f : []; })();
 // 🏷️ The name people see (1.92.0, Derek: "rename the whole project to TimePeace Chatbot"; True's + Birx's editions carry their own name).
 // Only what people SEE changes: the data folder, program file, installer file, OBS source names, Stream Deck page names and the Backup Bots
 // app keep "Movie Royal", so nobody loses data and updates keep working. The code keeps saying "Movie Royal"; `brand()` swaps it on the way out.
@@ -45,4 +45,6 @@ const scrubOut = t => { if (!scrubNow() || typeof t !== 'string') return t; for 
 export const brand = t => { const A = appNow(); return scrubOut(A === 'Movie Royal' || typeof t !== 'string' || !t.includes('Movie Royal') ? t : t.replace(SEEN, A)); };
 /** For page files: also the lower-case spelling (help mode's word patterns match what's on screen). */
 export const brandFile = t => { const A = appNow(); return scrubOut(A === 'Movie Royal' ? t : t.replace(SEEN, A).replace(SEEN_LOW, A.toLowerCase()).replace(/MOVIE ROYAL/g, A.toUpperCase())); };
-export const info = () => ({ id: EDITION.id, name: EDITION.name, app: appNow(), dev: EDITION.dev && !lookAs, realDev: EDITION.dev, off: offNow(), lookAs, lookName: lookAs ? ALL[lookAs].name : '', repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, app: v.app || 'Movie Royal', repo: v.repo, dev: !!v.dev, scrub: !!v.scrub })) });
+/** What the pages have to hide right now: the `hide` notes of every part this edition (or the one being looked at) doesn't have. */
+export const hideNow = () => FEATURES.filter(f => f.hide && (f.kind === 'on' ? !onNow().includes(f.id) : !has(f.id))).map(f => f.hide);
+export const info = () => ({ hide: hideNow(), id: EDITION.id, name: EDITION.name, app: appNow(), dev: EDITION.dev && !lookAs, realDev: EDITION.dev, off: offNow(), lookAs, lookName: lookAs ? ALL[lookAs].name : '', repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, app: v.app || 'Movie Royal', repo: v.repo, dev: !!v.dev, scrub: !!v.scrub })) });

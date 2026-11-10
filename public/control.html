@@ -407,6 +407,7 @@
   tr.blHead td { background:var(--panel2); font-weight:700; padding:6px 10px; border-radius:6px; } tr.blHead small { font-weight:400; }
   body.noTests #tTabTests, body.noTests #tTabCheck, body.noTests #tTabTools, body.noTests #newNav { display:none !important; }
   #dashWrap { position:relative; display:flex; height:100%; min-width:0; } #dashWrap > #chatFrame { flex:1 1 0; width:100%; min-width:0; height:100%; border:0; border-radius:16px; }
+  .edHid { display:none !important; }
   #dashGrid { position:absolute; inset:0; overflow:hidden; } #dashGrid.edOff { display:none; } #dashGrid.dragging { user-select:none; } #dashGrid.dragging iframe { pointer-events:none; }
   .dbox { position:absolute; box-sizing:border-box; padding:0 5px 6px; display:flex; flex-direction:column; min-width:0; min-height:0; } .dbox.top { z-index:3; }
   .dbox .dgrip { flex:none; height:13px; line-height:13px; font-size:10px; text-align:center; cursor:move; color:var(--muted); opacity:.6; user-select:none; touch-action:none; border-radius:8px; } .dbox .dgrip:hover, #dashGrid.dragging .dbox.top .dgrip { opacity:1; background:#ffffff1c; }
@@ -4291,8 +4292,20 @@ function edTrim() {
     if (box) return box.classList.toggle('edOff', off); if (h.tagName !== 'H3') return;
     if (!off && !h.classList.contains('edTrimmed')) return; h.classList.toggle('edOff', off); h.classList.toggle('edTrimmed', off); for (let n = h.nextElementSibling; n && n.tagName !== 'H3'; n = n.nextElementSibling) n.classList.toggle('edOff', off); });
 }
+/* 🎭 The Editions list can switch off single things (a Settings section, a Test card, a button, a menu choice…). The server sends what to hide
+   as notes: {sel: 'css'} or {sub: 'settings page', h: 'the section heading'}. Pages get redrawn, so this runs again whenever the page changes. */
+let edHideT = 0, edHideObs = null;
+function edHide() {
+  const specs = S?.edition?.hide || []; document.querySelectorAll('.edHid').forEach(el => el.classList.remove('edHid')); if (!specs.length) return;
+  const heads = {}; for (const x of specs) { if (x.sel) { try { document.querySelectorAll(x.sel).forEach(el => el.classList.add('edHid')); } catch {} } else if (x.sub && x.h) (heads[x.sub] ||= new Set()).add(x.h); }
+  for (const [sb, set] of Object.entries(heads)) document.querySelectorAll(`#settingsBody .sub[data-s="${sb}"] h3, #settingsBody .sub[data-s="${sb}"] .obsBox h4`).forEach(h => { if (!set.has(h.textContent.trim().replace(/\s+/g, ' ').split(S.edition.app || 'Movie Royal').join('§'))) return;
+    if (h.tagName === 'H4') return (h.closest('.obsBox') || h).classList.add('edHid'); if (!h.parentElement.classList.contains('sub')) return h.parentElement.classList.add('edHid');
+    h.classList.add('edHid'); for (let n = h.nextElementSibling; n && n.tagName !== 'H3'; n = n.nextElementSibling) n.classList.add('edHid'); });
+}
+function edHideWatch() { if (edHideObs || !(S?.edition?.hide || []).length) return; edHideObs = new MutationObserver(() => { clearTimeout(edHideT); edHideT = setTimeout(edHide, 120); }); edHideObs.observe(document.body, { childList: true, subtree: true }); edHide(); }
 function edApply() {
   const noM = edOff('movies'), noC = edOff('cards'), noB = edOff('battle'), noP = edOff('pool'), noCB = edOff('chatBattle'), noPe = edOff('people'), noL = edOff('luck'), noCo = edOff('costream'), noG = edOff('game'), set = (sel, off) => document.querySelectorAll(sel).forEach(el => el.classList.toggle('edOff', off));
+  edHideWatch();
   const edKey = (S?.edition?.off || []).join(',') + '|' + (S?.edition?.on || []).join(','); if (document.body.dataset.ed === edKey) return; document.body.dataset.ed = edKey; { const sel = $('edLook'); if (sel) sel.value = S?.edition?.lookAs || ''; }
   document.body.classList.toggle('noMovies', noM); document.body.classList.toggle('noCards', noC);
   set('#subnav [data-s="discord"], #subnav [data-s="movies"], #subnav [data-s="bans"]', noM);

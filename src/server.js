@@ -305,7 +305,7 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
-    edition: { id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
+    edition: { hide: editionInfo().hide, id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
     mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
     botCount: (db.chatbot?.commands || []).length,
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
@@ -480,7 +480,8 @@ function cliffCount() {
 }
 const raceOk = (n = cliffCount()) => n <= raceMax();
 function mapSizeK() { return clampN(db.settings.mapSize, 50, 200, 100) / 100; } // 📏 map size for every ball map (Battle tab, right side): bigger cliffs + longer race tracks
-const nonRaceMap = () => { const pool = MAP_LIST.filter(m => !isRaceMap(m.id) && m.id !== db.lastMap); return pool[Math.floor(Math.random() * pool.length)].id; };
+const MAPS_ON = () => { const l = MAP_LIST.filter(m => edHas('map:' + m.id)); return l.length ? l : MAP_LIST; }; // 🎭 the maps this edition has (the Editions list can switch single maps off)
+const nonRaceMap = () => { const pool = MAPS_ON().filter(m => !isRaceMap(m.id) && m.id !== db.lastMap); return pool[Math.floor(Math.random() * pool.length)].id; };
 const racePowersOn = l => !!(l?.type === 'chat' && l.fun?.racePowers && isRaceMap(currentMap()));
 // ⛈️ the Pirate Battle's storm powers (1.70.0, Derek): chat sends big waves, lightning bolts and kraken tentacle swipes with channel points while a Pirate Battle plays.
 // They never change who wins (cardfight.js: the fair winner and the smaller crew can't be knocked out by them, so it still ends one pirate from each crew).
@@ -1141,6 +1142,7 @@ const twitchHandlers = {
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
+    if (chatCmdOff(m)) return; // 🎭 a chat command this edition doesn't have: nothing answers it
     try { pstats.chat(m); } catch (e) { console.error('[stats]', e.message); } // 📊 which commands each person uses
     try { movienight.noteChat(m); } catch (e) { console.error('[movie night]', e.message); } // 🍿 the first one in chat gets two movie night votes
     try { maraWaitChat(m); } catch (e) { console.error('[marathon reminder]', e.message); } // 🔔 someone with a battle waiting 30+ min is here
@@ -2031,6 +2033,14 @@ app.post('/api/chat/mod', wTry(async b => {
   return {};
 }));
 app.get('/api/test/person-stats', (req, res) => res.json(pstats.demo())); // 🧪 the profile's Stats tab rules with a pretend person (nothing saved)
+// 🎭 Chat commands the Editions list can switch off per edition ("chat:<name>" in editions.json `off`): [id, the words that start it]
+const CHAT_CMDS = [['chat:id', () => db.settings.idCommand], ['chat:call', () => db.settings.callCommand], ['chat:help', () => db.settings.helpCommand], ['chat:mymovies', () => db.settings.twitchMoviesCommand], ['chat:color', () => db.settings.colorCommand],
+  ['chat:accept', () => [db.settings.acceptCommand, db.settings.passCommand]], ['chat:sitout', () => [db.settings.sitOutCommand, db.settings.backCommand]], ['chat:skip', () => db.settings.skipCommand], ['chat:clip', () => db.settings.clipCommand], ['chat:join', () => db.settings.joinCommand],
+  ['chat:respin', () => ['!respin', '!myspins']], ['chat:site', () => db.settings.siteCommand], ['chat:bday', () => birthdays.opts().command], ['chat:vote', () => movienight.opts().command],
+  ['chat:sr', () => { const o = songs.opts(); return [o.command, o.nowCommand, o.queueCommand, o.mineCommand, o.wrongCommand]; }], ['chat:songskip', () => { const o = songs.opts(); return [o.voteCommand, o.skipCommand, o.volCommand]; }],
+  ['chat:quote', () => ['!quote', '!addquote', '!delquote']], ['chat:addcom', () => ['!addcom', '!editcom', '!delcom', '!command']]];
+function chatCmdOff(m) { const w = String(m?.text || '').trim().split(/\s+/)[0].toLowerCase(); if (w[0] !== '!') return false; try { return CHAT_CMDS.some(([id, get]) => !edHas(id) && [].concat(get()).some(c => c && String(c).toLowerCase() === w)); } catch { return false; } }
+app.get('/api/test/chat-off', (req, res) => res.json({ rows: CHAT_CMDS.map(([id, get]) => { let words = []; try { words = [].concat(get()).filter(Boolean); } catch {} return { id, words, on: edHas(id) }; }) })); // 🧪 which chat commands this edition has
 app.get('/api/viewer-lookup', (req, res) => { // double-clicked a word: is it someone we know?
   const q = String(req.query.name || '').replace(/^@/, '').trim(), k = q.toLowerCase(), n = norm(q); if (!q) return res.status(404).json({});
   const vs = db.viewers || {}, hit = vs[k] || Object.values(vs).find(v => norm(v.name) === n);
@@ -2466,7 +2476,7 @@ app.get('/api/cloud/outdated', async (req, res) => { // ☁️ the "Update your 
 // 🧭 the Setup guide's steps (setup.html has the pages). A step added since you last opened the guide pops up when the app starts,
 // every time, until you open the guide, set it up, or press "Don't show again". (since = the version that added it)
 const GUIDE_MOVIES = ['tmdb', 'omdb', 'letterboxd', 'discord', 'cloud', 'backup']; /* 🎭 setup steps that only matter with movie battles */
-const guideShown = x => (!x.dev || !!db.settings.betaUpdates) && (edHas('movies') || !GUIDE_MOVIES.includes(x.id)); // 🛠️ dev mode steps (the 🌐 viewer website, 1.81.2) only show in dev mode
+const guideShown = x => edHas('guide:' + x.id) && (!x.dev || !!db.settings.betaUpdates) && (edHas('movies') || !GUIDE_MOVIES.includes(x.id)); // 🛠️ dev mode steps (the 🌐 viewer website, 1.81.2) only show in dev mode
 const GUIDE_STEPS = [
   { id: 'twitch', title: '💜 Sign in with Twitch' }, { id: 'rewards', title: '💎 Channel points & bits' }, { id: 'tmdb', title: '🎬 Movie search' }, { id: 'omdb', title: '🍅 Ratings' },
   { id: 'letterboxd', title: '📗 Letterboxd' }, { id: 'discord', title: '🤖 Discord bot' }, { id: 'cloud', title: '☁️ 24/7 Discord bot' }, { id: 'donations', title: '💵 Donations' },
@@ -3589,7 +3599,7 @@ function mapRuns() {
   if (!db.mapRuns) { db.mapRuns = {}; for (const h of db.history || []) if (h.map && mapById(h.map)) db.mapRuns[h.map] = { rev: 1, at: h.at }; } // older versions: count maps your history shows
   return db.mapRuns;
 }
-function mapsWithTags() { const r = mapRuns(); return MAP_LIST.map(m => ({ ...m, tag: !r[m.id] ? 'new' : (r[m.id].rev || 1) < (m.rev || 1) ? 'updated' : null })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })); } /* A to Z in every map menu */
+function mapsWithTags() { const r = mapRuns(); return MAPS_ON().map(m => ({ ...m, tag: !r[m.id] ? 'new' : (r[m.id].rev || 1) < (m.rev || 1) ? 'updated' : null })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })); } /* A to Z in every map menu */
 app.post('/api/maps/reset-tags', (req, res) => { // ↺ the 🔴 NEW / 🔵 UPDATED tags back on: one map ({id, kind:'ball'|'card'}) or every ball + card map
   const id = req.body?.id ? String(req.body.id) : null;
   if (!id) { db.mapRuns = {}; cards.resetTags(); }
@@ -3614,7 +3624,7 @@ function currentMap() {
   if (!live.map) {
     const want = db.settings.map || 'random', big = !raceOk();
     if ((mapById(want) && !(big && isRaceMap(want))) || (isCharMap(want) && charsOn())) live.map = want;
-    else { const pool = MAP_LIST.filter(m => m.id !== db.lastMap && !(big && isRaceMap(m.id))); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
+    else { const pool = MAPS_ON().filter(m => m.id !== db.lastMap && !(big && isRaceMap(m.id))); live.map = pool[Math.floor(Math.random() * pool.length)].id; }
   }
   return live.map;
 }
@@ -3643,7 +3653,7 @@ app.post('/api/vote/start', (req, res) => {
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'Start the vote before the battle.' });
   if (live.vote) endVote(true);
   const seconds = clampN(req.body?.seconds ?? db.settings.voteSeconds, 10, 180, 30);
-  const big = !raceOk(), pool = MAP_LIST.filter(m => !(big && isRaceMap(m.id))).sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 })); // (🏁 no races in the vote when there are too many)
+  const big = !raceOk(), pool = MAPS_ON().filter(m => !(big && isRaceMap(m.id))).sort(() => Math.random() - .5).slice(0, 4).map(m => ({ id: m.id, name: m.name, icon: m.icon, count: 0 })); // (🏁 no races in the vote when there are too many)
   live.vote = { options: pool, voters: new Map(), endsAt: Date.now() + seconds * 1000 };
   live.vote.timer = setTimeout(() => endVote(false), seconds * 1000);
   broadcast(voteMsg(false), 'overlay'); pushState();

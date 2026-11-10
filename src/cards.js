@@ -2,6 +2,7 @@
 // 🃏 Card pool tab = your packs (search TCGplayer, a count for each pack you own, its picture is downloaded).
 // 🃏 Card battles tab = the fights (on stream in the game screen: public/cardfight.js). The winner gets opened: one comes off its count.
 // No luck, no chat power-ups. Wacky settings (low gravity, extreme gore, teleport switches…) can be turned on before or during a fight.
+import { has as edHas } from './edition.js';
 import fs from 'fs';
 import path from 'path';
 import { db, save, uid, UPLOADS } from './store.js';
@@ -45,7 +46,7 @@ const cardTag = id => { const r = C().mapRuns?.[id]; return !r ? 'new' : (r.rev 
 export function resetTags(id) { const c = C(); if (!c.mapRuns) return; if (id) delete c.mapRuns[id]; else c.mapRuns = {}; save(); } // ↺ NEW / UPDATED back on (one card map, or all)
 function markCardRun(id) { if (!db.live || !CARD_MAPS.some(m => m.id === id)) return; (C().mapRuns ||= {})[id] = { rev: CARD_REV[id] || 1, at: Date.now() }; } // only fights while you're live count (ball maps count in the ball map list)
 // every map a card battle can use: the card-only maps + every ball map that's for both (played by the ball game, with card fighters)
-export const cardMaps = (withMara = false) => [...CARD_MAPS.filter(m => withMara || !m.maraOnly).map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card')).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, holiday: !!m.holiday, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
+export const cardMaps = (withMara = false) => [...CARD_MAPS.filter(m => (withMara || !m.maraOnly) && edHas('map:' + m.id)).map(m => ({ ...m, tag: cardTag(m.id) })), ...MAP_LIST.filter(m => m.modes?.includes('card') && edHas('map:' + m.id)).map(m => ({ id: m.id, name: m.name, icon: m.icon, desc: m.desc, modes: m.modes, holiday: !!m.holiday, ball: true, tag: hooks.mapTag?.(m.id) || null }))];
 export const isBallMap = id => !CARD_MAPS.some(m => m.id === id) && MAP_LIST.some(m => m.id === id);
 const DEF_BATTLE = () => ({ id: 'cards-main', name: '🃏 Card battle', games: [], mode: 'all', map: 'kungfu', length: 60 }); // ⏱️ fights last 1 minute by default (Derek, 1.51.0)
 export function C() {

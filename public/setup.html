@@ -106,7 +106,7 @@ const ALL_STEPS = [
 async function load() {
   [S, A] = await Promise.all([fetch('/api/state').then(r => r.json()), fetch('/api/app').then(r => r.json())]);
   const edOffs = A.edition?.off || [], noMovies = edOffs.includes('movies'); document.body.classList.toggle('noVoidSetup', edOffs.includes('voidSetup'));
-  STEPS = ALL_STEPS.filter(x => (!x.dev || S.settings?.betaUpdates) && !(noMovies && ['tmdb', 'omdb', 'letterboxd', 'discord', 'cloud', 'backup'].includes(x.id))); // 🛠️ dev mode steps (🌐 viewer website) only in dev mode
+  STEPS = ALL_STEPS.filter(x => !edOffs.includes('guide:' + x.id) && (!x.dev || S.settings?.betaUpdates) && !(noMovies && ['tmdb', 'omdb', 'letterboxd', 'discord', 'cloud', 'backup'].includes(x.id))); // 🛠️ dev mode steps (🌐 viewer website) only in dev mode
   if (step && !STEPS.some(x => x.id === step)) step = null;
   if (!NEW_IDS) NEW_IDS = new Set(S.settings.setupSeen ? A.guideNew || [] : []); // 🆕 = added to the guide since you last opened it (remembered for this visit)
   if (!S.settings.setupSeen) api('/api/settings', { setupSeen: true }).catch(() => {});

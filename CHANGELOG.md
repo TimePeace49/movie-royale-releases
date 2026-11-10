@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.113.0
+**🎭 Editions tab: 310 switches (was 33), names stay on top**
+- The list in the Backup Bots app now has **every Settings section** (each heading on every Settings page), **every map**, **every chat command**, **every Setup guide step**, the **Chat bot / Songs sub-tabs**, each **Chat tab box**, the **History buttons**, the **wheel's spot kinds**, the **clip buttons** and the **Test tab cards**, on top of the tabs and pages from before.
+- **The edition names stay at the top** while you scroll, so you always see whose column you are ticking.
+- New **category menu** next to the search box, and a gold check box on each category line that turns **everything in that category** on or off for one edition at once.
+- A chat command that is switched off is ignored by the app in that edition. A map that is switched off is left out of the menus and the random pick.
+
 ## 1.112.0
 **🧱 Chat tab: boxes adjust to each other (like OBS)**
 - Drag a box's **right or bottom edge** (or its corner) and the boxes next to it **grow or shrink to fit**, so there are no gaps or overlaps. Boxes lined up on the same edge move together.
