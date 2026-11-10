@@ -224,6 +224,7 @@ H(/^(?:I saved them|📋 Copy|tip:copy the backup codes|tip:close this window \(
 H(/^(?:🔐 Open the lock settings|tip:open settings → account & updates, where the lock)/i, '🔐 Lock settings', 'Opens Settings → 👤 Account & updates, where the lock is set up, changed or turned off.');
 // 🧱 movable boxes, 📻 playlists, 📊 stats (1.110.0)
 H(/^(?:⠿|tip:drag to move this box)/i, '⠿ Move a box', 'Drag this strip to move the box anywhere on the Chat tab. Its edges stick to the other boxes. Where you leave it is remembered on this PC.');
+H(/^tip:drag this edge to make the box/i, '↔ Resize by an edge', 'Drag a box’s right or bottom edge. The boxes next to it grow or shrink to fit, like the docks in OBS.');
 H(/^tip:drag to make this box bigger/i, '◢ Resize a box', 'Drag this corner to make the box bigger or smaller.');
 H(/^(?:↺ Boxes|↺ Reset the Chat tab boxes|tip:put every box on the chat tab back)/i, '↺ Reset the boxes', 'Puts every box on the Chat tab back where it started.');
 H(/^(?:📻|📻 My playlists|tip:your (?:youtube )?playlists)/i, '📻 My playlists', 'Your YouTube playlists. ▶ Play pauses the song requests and plays one. The fill-in playlist plays by itself when no requests are left; a new request starts after the playlist song that is on.');

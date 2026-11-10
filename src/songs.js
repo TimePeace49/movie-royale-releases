@@ -6,7 +6,7 @@
 import { db, save } from './store.js';
 import { is } from './edition.js';
 
-const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', info: async () => null, search: async () => [], isBot: () => false, note: () => {} };
+const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', info: async () => null, search: async () => [], isBot: () => false, note: () => {}, movieSkip: () => false };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -32,7 +32,7 @@ export function infoWhy(info, title, o) {
   if (o.minViews > 0 && info.views != null && info.views < o.minViews) return 'views';
   return '';
 }
-export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!voteskip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 0, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
+export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
 
 // ---------- what a request is ----------
 /** A YouTube link or id → the 11-character video id ('' when it isn't one). */
@@ -57,18 +57,18 @@ const say = (t, gap = 0) => { if (gap && Date.now() - lastSay < gap) return; las
 export function mine(login, d = data()) { const l = low(login), out = []; if (!l) return out; if (d.now && d.now.login === l) out.push({ title: d.now.title, pos: 0, yt: d.now.yt || '' }); d.queue.forEach((q, i) => { if (q.login === l) out.push({ title: q.title, pos: i + 1, yt: q.yt || '' }); }); return out; }
 export function onChat(m) {
   if (!on() || !m?.login) return false; const d = data(), o = opts(d), text = String(m.text || '').trim(), sp = text.split(/\s+/), w = low(sp[0]), arg = text.slice(sp[0].length).trim(), name = m.name || m.login;
-  if (w === low(o.command)) { if (!arg) { say(`🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
-  if (w === low(o.nowCommand)) { say(d.now ? `🎵 Now playing: ${d.now.title}${d.now.by ? ` (asked by ${d.now.by})` : ''}` : '🎵 Nothing is playing right now.', 5000); return true; }
-  if (w === low(o.queueCommand)) { say(d.queue.length ? `🎵 Next up (${d.queue.length}): ${d.queue.slice(0, 5).map((q, i) => `${i + 1}. ${q.title}`).join(' · ')}${d.queue.length > 5 ? ' …' : ''}`.slice(0, 480) : '🎵 The song queue is empty.', 8000); return true; }
+  if (o.command && w === low(o.command)) { if (!arg) { say(`🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
+  if (o.nowCommand && w === low(o.nowCommand)) { say(d.now ? `🎵 Now playing: ${d.now.title}${d.now.by ? ` (asked by ${d.now.by})` : ''}` : '🎵 Nothing is playing right now.', 5000); return true; }
+  if (o.queueCommand && w === low(o.queueCommand)) { say(d.queue.length ? `🎵 Next up (${d.queue.length}): ${d.queue.slice(0, 5).map((q, i) => `${i + 1}. ${q.title}`).join(' · ')}${d.queue.length > 5 ? ' …' : ''}`.slice(0, 480) : '🎵 The song queue is empty.', 8000); return true; }
   /* ⏭ skipping: mods and the streamer skip right away, and so does the person whose song it is; anyone else counts as a vote to skip (when votes are on). "!skip song" works like the skip command. */
   const voteSkip = () => { if (!(o.skipVotes > 0) || !d.now) return false; const v = (d.vs && d.vs.id === d.now.id) ? d.vs : (d.vs = { id: d.now.id, who: [] }); if (v.who.includes(low(m.login))) return true; v.who.push(low(m.login));
     if (v.who.length >= o.skipVotes) { const n = d.now; next(); if (n.login) H.note(n.login, n.by, 'skipped', `${n.title} (chat voted)`); say(`🎵 Chat voted to skip: ${n.title}`); } else say(`🎵 ${name} voted to skip (${v.who.length} of ${o.skipVotes}).`, 4000); return true; };
-  if (w === low(o.skipCommand) || (w === '!skip' && /^song\b/i.test(arg))) { if (!d.now) { say('🎵 Nothing is playing right now.', 5000); return true; } const own = d.now.login === low(m.login);
+  if ((o.skipCommand && w === low(o.skipCommand)) || (w === '!skip' && /^song\b/i.test(arg) && (o.skipCommand || o.voteCommand))) { if (!d.now) { say('🎵 Nothing is playing right now.', 5000); return true; } const own = d.now.login === low(m.login);
     H.allowed(m, 'mods').then(ok => { if (!d.now) return; if (ok || own) { const n = d.now; next(); H.note(m.login, name, 'skip', n.title); if (n.login && !own) H.note(n.login, n.by, 'skipped', `${n.title} (by ${name})`); say(`🎵 ${name} skipped: ${n.title}`); } else if (!voteSkip()) say(`🎵 @${name} only mods can skip a song (or the person who asked for it).`, 8000); }).catch(() => {}); return true; }
-  if (w === low(o.voteCommand)) { voteSkip(); return true; }
-  if (w === low(o.volCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const n = Number(arg); if (!arg || !Number.isFinite(n)) return say(`🔉 The song volume is ${o.vol}.`, 4000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
-  if (w === low(o.mineCommand)) { const who = arg && /^@?\w{2,30}$/.test(arg) ? arg.replace(/^@/, '') : m.login, own = low(who) === low(m.login), l = mine(who, d), nm = own ? name : who; say(l.length ? `🎵 @${name} ${own ? 'your' : nm + "'s"} song${l.length === 1 ? '' : 's'}: ${l.map(x => x.pos ? `#${x.pos} ${x.title}` : `▶ playing now: ${x.title}`).join(' · ')}`.slice(0, 480) : `🎵 @${name} ${own ? 'you have' : nm + ' has'} no songs in the queue.`, 3000); return true; }
-  if (w === low(o.wrongCommand)) { const i = d.queue.map(q => q.login).lastIndexOf(low(m.login)); if (i < 0) say(`🎵 @${name} you have no song in the queue.`, 5000); else { const [q] = d.queue.splice(i, 1); changed(); say(`🎵 @${name} took out: ${q.title}`); } return true; }
+  if (o.voteCommand && w === low(o.voteCommand)) { if (w === '!skip' && arg && H.movieSkip()) return false; /* ("!skip 3" in an edition with movie battles is the movie skip) */ voteSkip(); return true; }
+  if (o.volCommand && w === low(o.volCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const n = Number(arg); if (!arg || !Number.isFinite(n)) return say(`🔉 The song volume is ${o.vol}.`, 4000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
+  if (o.mineCommand && w === low(o.mineCommand)) { const who = arg && /^@?\w{2,30}$/.test(arg) ? arg.replace(/^@/, '') : m.login, own = low(who) === low(m.login), l = mine(who, d), nm = own ? name : who; say(l.length ? `🎵 @${name} ${own ? 'your' : nm + "'s"} song${l.length === 1 ? '' : 's'}: ${l.map(x => x.pos ? `#${x.pos} ${x.title}` : `▶ playing now: ${x.title}`).join(' · ')}`.slice(0, 480) : `🎵 @${name} ${own ? 'you have' : nm + ' has'} no songs in the queue.`, 3000); return true; }
+  if (o.wrongCommand && w === low(o.wrongCommand)) { const i = d.queue.map(q => q.login).lastIndexOf(low(m.login)); if (i < 0) say(`🎵 @${name} you have no song in the queue.`, 5000); else { const [q] = d.queue.splice(i, 1); changed(); say(`🎵 @${name} took out: ${q.title}`); } return true; }
   return false;
 }
 /** One request from chat (or typed by hand: `by` only). Returns {ok, why, item}. */
@@ -162,7 +162,7 @@ export function setBackup(id) { const d = data(); if (id && !(d.playlists || [])
 export function setHold(id) { const d = data(), p = id ? (d.playlists || []).find(x => x.id === id) : null; if (id && !p) throw new Error("That playlist isn't in your list any more."); d.hold = id || ''; H.act(p ? `Song requests paused: playing the playlist “${p.name}”` : 'Back to the song requests', { kind: 'songHold' }); changed(); return state(); }
 export function setOpts(b) {
   const d = data(), x = d.opts;
-  for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'mineCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr'); }
+  for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'mineCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (!c) x[k] = ''; /* (left blank = that command is turned off) */ else if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr (or leave the box empty to turn it off)'); }
   if ('perm' in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b.perm)) x.perm = b.perm;
   if ('perUser' in b) x.perUser = Math.round(clampN(b.perUser, 0, 50, 2)); if ('max' in b) x.max = Math.round(clampN(b.max, 1, 500, 50));
   if ('reply' in b) x.reply = !!b.reply; if ('overlay' in b) x.overlay = !!b.overlay; if ('links' in b) x.links = b.links === 'youtube' ? 'youtube' : 'any';

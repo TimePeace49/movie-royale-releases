@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.112.0
+**🧱 Chat tab: boxes adjust to each other (like OBS)**
+- Drag a box's **right or bottom edge** (or its corner) and the boxes next to it **grow or shrink to fit**, so there are no gaps or overlaps. Boxes lined up on the same edge move together.
+- Edges still snap to the other boxes and to the sides.
+
+**⏭ Song skip settings**
+- The vote-to-skip command is now **!skip** by default, and it takes **3 votes** by default.
+- **Leave any song command box empty to turn that command off** (for example, empty "Skip (mods)" = no mod skip command).
+- In editions with movie battles, `!skip 3` (a movie number) is still the movie skip.
+
 ## 1.111.0
 **🎭 Editions tab in the Backup Bots app (dev edition only)**
 - The **Movie Royal Backup Bots** app has a new **🎭 Editions** tab: a list of every part of the app that can be switched, sorted by category, with a **search box** and a **check box for each edition** (Public, Derek, Kirb, True, Birx & Jess).
