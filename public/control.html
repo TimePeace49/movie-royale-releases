@@ -7199,7 +7199,7 @@ const md = t => esc(t).replace(/^### (.*)$/gm, '<h4>$1</h4>').replace(/^## (.*)$
 async function loadNotes() {
   const el = $('notesBody'); if (!el) return;
   const r = await fetch('/api/patchnotes').then(r => r.json());
-  const gh = r.releases.filter(x => x.notes && /patch notes|what's new|##/i.test(x.notes));
+  const gh = r.releases.filter(x => x.notes && /patch notes|what's new/i.test(x.notes)); /* (a release with nothing for this edition has no What's new part and isn't listed) */
   el.innerHTML = gh.length ? gh.map(x => `<div class="card" style="margin:10px 0"><h3 style="margin:0">${esc(x.tag)} <span class="muted" style="font-size:13px">${esc(new Date(x.at).toLocaleDateString())}</span></h3>${md(x.notes.replace(/## ⬇️ Download[\s\S]*?(?=\n## |$)/, ''))}</div>`).join('') : md(r.local || 'No patch notes yet.');
 }
 async function fillAppBox() {

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.116.5
+- 📝 **Patch notes per edition:** each line of the patch notes is now only shown to the editions it has anything to do with (in the 📝 Patch notes tab and on each edition's release page). An edition that a release changes nothing for gets no patch notes for it.
+
 ## 1.116.4
 - 👀 **Seeing the app as another edition is a dev mode thing only:** the pickers (Settings → Account & updates and the Edition test card) only show with Dev mode on, and now the app itself also refuses the switch when Dev mode is off. Going back to your own edition always works.
 

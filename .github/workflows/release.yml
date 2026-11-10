@@ -86,7 +86,8 @@ jobs:
           {
             if [ "${{ inputs.latest }}" = "true" ]; then
               # the newest section of PATCHNOTES.md (everything since the last latest release)
-              awk '/^## v/{n++} n==1' PATCHNOTES.md | sed '1s/^## .*/## What'"'"'s new/'
+              # (only the lines that are for this edition; nothing at all when none of it touches this edition)
+              node scripts/notes-for.mjs "${{ steps.v.outputs.edition }}"
               echo
             fi
             echo "## ⬇️ Download"

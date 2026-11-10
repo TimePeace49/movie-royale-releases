@@ -14,6 +14,7 @@ import * as series from './series.js';
 import * as discord from './discord.js';
 import * as twitch from './twitch.js';
 import { getMany, searchMovies, findImdb, tmdbGet } from './tmdb.js';
+import { notesFor } from './notesfilter.js';
 import { scan as banScan, runScan, yearCleanup, setScanHooks, dubCleanup, dubFix } from './banscan.js';
 import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
@@ -2519,6 +2520,7 @@ app.get('/api/whatsnew', (req, res) => {
 app.get('/api/patchnotes', async (req, res) => {
   let local = ''; try { local = fs.readFileSync(path.join(ROOT, 'PATCHNOTES.md'), 'utf8'); } catch {}
   let releases = []; try { releases = (await ghReleases()).filter(x => !x.pre).map(x => ({ tag: x.tag, at: x.at, notes: x.notes })); } catch {}
+  local = notesFor(local, edLooking() || EDITION.id); /* 📝 only the lines that are for this edition */
   res.json({ version: VERSION, local: brand(local), releases: releases.map(x => ({ ...x, notes: brand(x.notes || '') })) });
 });
 // 🔄 Pick up where you left off (1.82.2, Derek: "when updating app while live save battle or wheel status as is… so if I send an update

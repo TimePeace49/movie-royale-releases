@@ -2,33 +2,33 @@
 
 The big list of what's new in each **latest release** (the version everyone gets).
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
+<!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
-## v1.116.4: What's new
+## v1.116.5: What's new
 Everything since 1.88.3. It's a big one.
 
-- 🏷️ **New name:** the app is now called **TimePeace Chatbot** (windows, shortcuts and texts). Your data, settings and install folder stay exactly where they were.
+- {ed:public,ed:derek,ed:kirb} 🏷️ **New name:** the app is now called **TimePeace Chatbot** (windows, shortcuts and texts). Your data, settings and install folder stay exactly where they were.
 - 🤖 **Chat bot tab** (a replacement for a Streamlabs-style bot):
   - **Commands** with who may use them, cooldowns and special words like the person's name, a counter or a random number. Mods can add them from chat too.
   - **Timers** (messages every so many minutes, once chat has been busy enough) and **Quotes** (!quote, !addquote).
   - **🔊 Sound alerts:** commands that play a sound on stream.
   - **🧳 Bring everything over:** pick your Streamlabs Chatbot export files (Excel, .abcom, CSV) and it shows what it found before adding anything. The Setup guide has a step for it.
-- 🎵 **Song requests** (inside the Chat bot tab): chat asks with **!sr** and a YouTube link or a song name. You get a queue, music-only and length rules, banned songs, per-person limits, vote to skip (**!skip**, 3 votes), **!mysongs**, and it plays the next song by itself.
+- {songs} 🎵 **Song requests** (inside the Chat bot tab): chat asks with **!sr** and a YouTube link or a song name. You get a queue, music-only and length rules, banned songs, per-person limits, vote to skip (**!skip**, 3 votes), **!mysongs**, and it plays the next song by itself.
   - **Ratings:** give every song stars (one or two people can rate, and you can name them), kept in a song database with stats, so the rating shows again when the song comes back.
   - **📻 Playlists:** add your own YouTube playlists, pause requests and play one, or have one play whenever the queue is empty.
   - **💿 RateYourMusic:** bring your own exported ratings file in.
-- 💬 **Chat tab, rebuilt:** stream preview, the music box (sound only, with a volume and a seek slider, Now / History), the activity feed, your chat, and a tools box with 🎬 Clip and buttons for the OBS scenes you pick. **Every box can be moved and resized** from any corner or side, and the boxes next to it adjust to fit.
+- {dash} 💬 **Chat tab, rebuilt:** stream preview, the music box (sound only, with a volume and a seek slider, Now / History), the activity feed, your chat, and a tools box with 🎬 Clip and buttons for the OBS scenes you pick. **Every box can be moved and resized** from any corner or side, and the boxes next to it adjust to fit.
   - **Click a name in chat** to open that person's profile: their songs in the queue, a 📊 Stats tab (songs asked for, skips, commands used) and their birthday if they saved one.
   - **No box ever covers another:** resizing pushes the boxes in the way smaller, and dragging a box onto another makes the two trade places.
-- 🚀 **Raid tab:** everyone you follow who is live, sorted by who you raided longest ago (or by viewers, A–Z…), with a preview of their stream. Raid from the tab, with an optional wait first, and cancel if you change your mind. **Press Sign in with Twitch once more** so it can read who you follow.
+- {raids} 🚀 **Raid tab:** everyone you follow who is live, sorted by who you raided longest ago (or by viewers, A–Z…), with a preview of their stream. Raid from the tab, with an optional wait first, and cancel if you change your mind. **Press Sign in with Twitch once more** so it can read who you follow.
 - 🎂 **Birthdays:** viewers save theirs with **!bday** (month and day only, never the year) and the bot wishes them a happy birthday on the day. Settings → 💜 Twitch → 🎂 Birthdays.
 - 🔗 **Connections page** (Settings): everything the app links to in one place (Twitch, the chat bot account, Discord, the 24/7 bot, movie search, OBS, donations…), each with whether it's connected and a button to connect it.
 - 🔐 **Safer:** the app only answers to this PC now (other devices and other websites are refused), and Settings has a 📄 "What is sent where" page.
 - 🧪 **The Test tab is off by default** and just shows ⚠️ Errors. Turn the tests back on in Settings → Account & updates.
 - 🚚 **Switching editions keeps everything:** installing a different edition of the app over this one keeps your data and settings and tidies up the old shortcuts.
-- Only in the editions that have them:
-  - 🍿 **Movie night voting:** type tonight's movies (with suggestions while you type), chat votes with **!vote** and a number (plus anything they want to say), and an arcade-style leaderboard for OBS shows the votes, with movies hopping up the list as they pass each other. It can be see-through, and the app can add it to your OBS scenes.
-  - 🥚 **The egg game:** viewers hatch eggs by watching and chatting, collect and level up 120 creatures, and bring them into chat battles.
-  - 🟢 **Kick:** run the app on your Kick chat instead of Twitch, with the egg reward on Kick channel points.
+- {movienight} 🍿 **Movie night voting:** type tonight's movies (with suggestions while you type), chat votes with **!vote** and a number (plus anything they want to say), and an arcade-style leaderboard for OBS shows the votes, with movies hopping up the list as they pass each other. It can be see-through, and the app can add it to your OBS scenes.
+- {eggs} 🥚 **The egg game:** viewers hatch eggs by watching and chatting, collect and level up 120 creatures, and bring them into chat battles.
+- {kick} 🟢 **Kick:** run the app on your Kick chat instead of Twitch, with the egg reward on Kick channel points.
 - Removed: the Game screen dot in the header (it was almost always red and didn't mean anything was wrong).
 
 ## v1.88.3: What's new
