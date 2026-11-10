@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.111.0
+**🎭 Editions tab in the Backup Bots app (dev edition only)**
+- The **Movie Royal Backup Bots** app has a new **🎭 Editions** tab: a list of every part of the app that can be switched, sorted by category, with a **search box** and a **check box for each edition** (Public, Derek, Kirb, True, Birx & Jess).
+- Tick or untick, press **💾 Save**, and the list goes to your GitHub. **Each edition gets the change with the next build you send it.** 🧪 Check shows what would change without saving.
+- New switches: every top tab (Chat bot, Giveaway, Wheel, Chat, History…) and every Settings page can now be turned off per edition.
+- It needs a GitHub key once (the tab says how to make one). The key is kept scrambled on your PC and only sent to GitHub.
+
 ## 1.110.1
 - **🎂 Birthday on the profile:** if a chatter has added their birthday (with !bday or by you), their profile shows it, and says so when it's today. No year, ever.
 

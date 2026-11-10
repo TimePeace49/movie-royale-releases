@@ -17,6 +17,7 @@ import worker from './cloud-worker.js';
 import { SYNC_NAME, readSync, putStatus, appOpen } from './relay.js';
 import { watchChat, isLive } from './twitchirc.js';
 import { spawn } from 'child_process';
+import { EDITION, ALL as ED_ALL, FEATURES } from './edition.js';
 
 const DISCORD = 'https://discord.com/api/v10';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -383,6 +384,35 @@ export async function startBackup(opts = {}) {
     if (!t) throw new Error("Couldn't find a bot token in Movie Royal on this PC. Set up the Discord bot in Movie Royal first (Settings → Discord & picks).");
     try { return await addBot(t); } catch (e) { throw new Error(/look like a bot token/.test(e.message) ? "The bot token saved in Movie Royal doesn't look right. Paste it again in Movie Royal (Settings → Discord & picks → Bot token) and press Save." : e.message); }
   }));
+  // 🎭 Editions tab (only in the dev edition): which parts each edition has. Saved into src/editions.json on GitHub; builds made after that have it.
+  const GH = process.env.GITHUB_API_URL || 'https://api.github.com', ED_REPO = ED_ALL.public?.repo || 'TimePeace49/movie-royale-releases', ED_PATH = 'src/editions.json';
+  const ghKey = () => dec(conf.ghKey || ''), ghHead = () => ({ accept: 'application/vnd.github+json', 'user-agent': 'MovieRoyalBackup', ...(ghKey() ? { authorization: 'Bearer ' + ghKey() } : {}) });
+  const edNeedDev = () => { if (!EDITION.dev) throw new Error('The Editions tab is only in the dev edition.'); };
+  async function edFile() { // the editions file as it is on GitHub right now (else the one this app was built with)
+    try { const r = await fetch(`${GH}/repos/${ED_REPO}/contents/${ED_PATH}?ref=main`, { headers: ghHead() }); if (!r.ok) throw new Error('GitHub answered ' + r.status); const j = await r.json(); return { all: JSON.parse(Buffer.from(j.content || '', 'base64').toString('utf8')), sha: j.sha, from: 'github' }; }
+    catch (e) { return { all: JSON.parse(JSON.stringify(ED_ALL)), sha: '', from: 'app', why: e.message }; }
+  }
+  const edView = all => Object.fromEntries(Object.entries(all).map(([id, e]) => [id, { name: e.name || id, app: e.app || '', dev: !!e.dev, off: Array.isArray(e.off) ? e.off : [], on: Array.isArray(e.on) ? e.on : [] }]));
+  function edMerge(all, want) { // only the off / on lists change; ids the list doesn't know are left as they are
+    const known = new Set(FEATURES.map(f => f.id)), changes = [];
+    for (const [id, w] of Object.entries(want || {})) { const e = all[id]; if (!e) continue;
+      for (const kind of ['off', 'on']) { if (!Array.isArray(w[kind])) continue; const old = Array.isArray(e[kind]) ? e[kind] : [], keep = old.filter(x => !known.has(x)), mine = FEATURES.filter(f => f.kind === kind && w[kind].includes(f.id)).map(f => f.id), next = [...mine, ...keep];
+        for (const f of FEATURES.filter(f => f.kind === kind)) { const was = old.includes(f.id), now = next.includes(f.id); if (was !== now) changes.push({ edition: e.name || id, feature: f.name, on: kind === 'on' ? now : !now }); }
+        if (next.length) e[kind] = next; else delete e[kind]; } }
+    return changes;
+  }
+  web.get('/api/editions', async (req, res) => { if (!EDITION.dev) return res.json({ dev: false }); const f = await edFile(); res.json({ dev: true, features: FEATURES, editions: edView(f.all), from: f.from, why: f.why || '', hasKey: !!conf.ghKey, repo: ED_REPO }); });
+  web.post('/api/editions/key', wrap(async b => { edNeedDev(); const k = String(b.key || '').trim(); if (!k) { delete conf.ghKey; saveConf(); return { ok: true, hasKey: false }; }
+    const r = await fetch(`${GH}/repos/${ED_REPO}`, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'MovieRoyalBackup', authorization: 'Bearer ' + k } }); if (r.status === 401) throw new Error("GitHub doesn't know that key. Copy it again (it starts with github_pat_ or ghp_)."); if (!r.ok) throw new Error(`GitHub answered ${r.status}: the key can't see ${ED_REPO}.`);
+    const j = await r.json(); if (j.permissions && j.permissions.push === false) throw new Error(`That key can read ${ED_REPO} but not change it. Give it "Contents: Read and write".`);
+    conf.ghKey = enc(k); saveConf(); return { ok: true, hasKey: true }; }));
+  web.post('/api/editions/save', wrap(async b => { edNeedDev(); const f = await edFile(), changes = edMerge(f.all, b.editions);
+    if (b.dry) return { ok: true, dry: true, changes, from: f.from };
+    if (!changes.length) return { ok: true, changes, same: true };
+    if (!conf.ghKey) throw new Error('Paste your GitHub key first (the 🔑 box).'); if (f.from !== 'github') throw new Error("Couldn't read the editions file from GitHub (" + (f.why || 'no answer') + '), so nothing was saved.');
+    const r = await fetch(`${GH}/repos/${ED_REPO}/contents/${ED_PATH}`, { method: 'PUT', headers: { ...ghHead(), 'content-type': 'application/json' }, body: JSON.stringify({ message: 'Editions: feature switches changed from the Backup Bots app\n\n' + changes.map(c => `${c.edition}: ${c.feature} ${c.on ? 'on' : 'off'}`).join('\n'), content: Buffer.from(JSON.stringify(f.all, null, 1) + '\n').toString('base64'), sha: f.sha, branch: 'main' }) });
+    if (!r.ok) throw new Error(r.status === 409 ? 'The file changed on GitHub just now. Press 🔄 Reload and try again.' : r.status === 403 || r.status === 404 ? `GitHub refused (${r.status}): the key needs "Contents: Read and write" on ${ED_REPO}.` : 'GitHub answered ' + r.status);
+    log(`Editions: saved ${changes.length} change${changes.length === 1 ? '' : 's'} to GitHub`); return { ok: true, changes, saved: true }; }));
   web.get('/api/log', (req, res) => { const after = Number(req.query.after) || 0; res.json({ logs: LOGS.filter(l => l.id > after).slice(-500), last: logId }); });
   web.get('/api/errors', (req, res) => res.json({ errors: errs().slice(0, 200) }));
   web.post('/api/errors/clear', wrap(async () => { ERRS = []; saveErrs(); return { ok: true }; }));

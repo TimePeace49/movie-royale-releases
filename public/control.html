@@ -4279,12 +4279,16 @@ function edTrim() {
 }
 function edApply() {
   const noM = edOff('movies'), noC = edOff('cards'), noB = edOff('battle'), noP = edOff('pool'), noCB = edOff('chatBattle'), noPe = edOff('people'), noL = edOff('luck'), noCo = edOff('costream'), noG = edOff('game'), set = (sel, off) => document.querySelectorAll(sel).forEach(el => el.classList.toggle('edOff', off));
-  const edKey = noM + '|' + noC + '|' + noB + noP + noCB + noPe + noL + noCo + noG + '|' + (S?.edition?.on || []).join(','); if (document.body.dataset.ed === edKey) return; document.body.dataset.ed = edKey; { const sel = $('edLook'); if (sel) sel.value = S?.edition?.lookAs || ''; }
+  const edKey = (S?.edition?.off || []).join(',') + '|' + (S?.edition?.on || []).join(','); if (document.body.dataset.ed === edKey) return; document.body.dataset.ed = edKey; { const sel = $('edLook'); if (sel) sel.value = S?.edition?.lookAs || ''; }
   document.body.classList.toggle('noMovies', noM); document.body.classList.toggle('noCards', noC);
   set('#subnav [data-s="discord"], #subnav [data-s="movies"], #subnav [data-s="bans"]', noM);
   set('#nav [data-v="cards"], #nav [data-v="cardpool"]', noC);
   set('#subnav [data-s="luck"]', noL); set('#subnav [data-s="costream"]', noCo); set('#subnav [data-s="game"]', noG); if (view === 'settings' && ((noL && sub === 'luck') || (noCo && sub === 'costream') || (noG && sub === 'game'))) setSub('account'); edTrim();
   set('#nav [data-v="battle"]', noB); set('#nav [data-v="pool"]', noP); set('#nav [data-v="chat"]', noCB); set('#nav [data-v="people"]', noPe); /* 🎭 Birx & Jess: no battles, no People tab */
+  /* 🎭 switches from the Editions list: "tab:<name>" hides a top tab, "set:<name>" hides a Settings page */
+  document.querySelectorAll('#nav [data-v]').forEach(b => { if (edOff('tab:' + b.dataset.v)) b.classList.add('edOff'); else if (['bot', 'giveaway', 'wheel', 'tchat', 'history'].includes(b.dataset.v)) b.classList.remove('edOff'); });
+  document.querySelectorAll('#subnav [data-s]').forEach(b => { if (edOff('set:' + b.dataset.s)) b.classList.add('edOff'); else if (['twitch', 'app', 'gfx', 'prices', 'obs', 'names', 'sounds', 'keys', 'notes'].includes(b.dataset.s)) b.classList.remove('edOff'); });
+  if (edOff('tab:' + view)) setView(edHome()); if (view === 'settings' && edOff('set:' + sub)) setSub('account');
   if ((noB && view === 'battle') || (noP && view === 'pool') || (noCB && view === 'chat') || (noPe && view === 'people')) setView(edHome());
   document.querySelectorAll('[data-feat]').forEach(el => el.classList.toggle('edOff', !featOn(el.dataset.feat)));
   const pool = document.querySelector('#nav [data-v="pool"]'); if (pool) { pool.dataset.was = pool.dataset.was || pool.innerHTML; pool.innerHTML = noM ? '📋 <span class="nt">Battle pool</span>' : pool.dataset.was; }

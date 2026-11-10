@@ -42,7 +42,14 @@
 </head>
 <body>
 <header><h1>🛡️ Movie Royal Backup Bots</h1><span class="help" id="ver"></span><span style="flex:1"></span><span id="srvState" class="help"></span><button id="srvBtn" class="primary" onclick="server(this)">…</button></header>
-<nav class="tabs"><button data-t="bots" class="on" onclick="tab('bots')">🤖 Bots</button><button data-t="console" onclick="tab('console')">🖥️ Console</button><button data-t="errors" onclick="tab('errors')">⚠️ Errors <span id="errN"></span></button></nav>
+<nav class="tabs"><button data-t="bots" class="on" onclick="tab('bots')">🤖 Bots</button><button data-t="console" onclick="tab('console')">🖥️ Console</button><button data-t="errors" onclick="tab('errors')">⚠️ Errors <span id="errN"></span></button><button data-t="editions" id="edTabBtn" class="hidden" onclick="tab('editions')">🎭 Editions</button></nav>
+<main id="tab-editions" class="hidden">
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">🎭 What each edition has</h3><input id="edQ" placeholder="🔎 Search…" style="width:200px" oninput="edDraw()"><button onclick="edLoad(true)">🔄 Reload</button><button onclick="edSave(true)">🧪 Check (nothing saved)</button><button class="primary" id="edSaveBtn" onclick="edSave()">💾 Save</button></div>
+    <p class="help" style="margin-top:0">A tick = that edition has it. Saving puts the list on your GitHub. <b>It takes effect in the next build you send out</b> (test build or latest) for that edition, not right away. Your own dev edition always has every extra while dev mode is on.</p>
+    <div id="edNote" class="help"></div><div id="edGrid"></div></div>
+  <div class="card"><h3 style="margin:0 0 6px">🔑 GitHub key</h3><p class="help" style="margin-top:0">Needed once so this app may save the list. On github.com: your picture → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: only <b id="edRepo"></b>. Permissions → Contents: <b>Read and write</b>. Paste the key here. It is kept scrambled on this PC and only ever sent to GitHub.</p>
+    <div class="row"><input id="edKey" type="password" placeholder="github_pat_…" class="grow" autocomplete="off"><button onclick="edKeySave()">Save key</button><button class="danger" onclick="edKeySave(true)">Forget key</button><span id="edKeyState" class="help"></span></div></div>
+</main>
 <main id="tab-console" class="hidden">
   <div class="card"><h3 style="margin:0 0 8px">👀 Right now</h3><div id="now" class="lines"></div></div>
   <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">🖥️ What it's doing</h3><input id="logQ" placeholder="Filter…" style="width:180px" oninput="drawLog(true)"><label class="ck"><input type="checkbox" id="logErrOnly" onchange="drawLog(true)"> Only problems</label><button id="logPause" onclick="logPaused=!logPaused;this.textContent=logPaused?'▶ Resume':'⏸ Pause'">⏸ Pause</button><button onclick="copyLog()">📋 Copy</button></div>
@@ -134,7 +141,7 @@ async function updInstall(btn) { if (!confirm('Update Movie Royal Backup Bots no
 // 🖥️ Console + ⚠️ Errors tabs
 let curTab = 'bots', logLast = 0, logRows = [], logPaused = false, errSeen = 0;
 try { errSeen = Number(localStorage.bkErrSeen || 0); } catch {}
-function tab(t) { curTab = t; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); ['bots', 'console', 'errors'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== t)); if (t === 'errors') { loadErrs(true); } if (t === 'console') { drawNow(); drawLog(true); } try { localStorage.bkTab = t; } catch {} }
+function tab(t) { curTab = t; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); ['bots', 'console', 'errors', 'editions'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== t)); if (t === 'editions') edLoad(); if (t === 'errors') { loadErrs(true); } if (t === 'console') { drawNow(); drawLog(true); } try { localStorage.bkTab = t; } catch {} }
 const tm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 async function pollLog() { try { const r = await fetch('/api/log?after=' + logLast).then(r => r.json()); if (r.logs.length) { logRows.push(...r.logs); if (logRows.length > 1500) logRows.splice(0, logRows.length - 1500); logLast = r.last; if (curTab === 'console' && !logPaused) drawLog(); } if (r.logs.some(l => l.level === 'error')) loadErrs(); } catch {} }
 function drawLog(all) {
@@ -169,6 +176,26 @@ async function handBack(id) { try { await api('/api/handback', { id }); toast('�
 async function server(btn) { const on = !S.running; if (!on && !confirm('Stop the backup server?\n\nEvery bot on the list stops: no backup, and no chat saved for the viewer profiles, until you press ▶ Start the backup server.')) return; btn.disabled = true; try { await api('/api/server', { on }); toast(on ? '▶ Backup server started: the bots connect in a few seconds' : '⏹ Backup server stopped'); } catch {} btn.disabled = false; load(); }
 async function removeBot(id, tag) { if (!confirm(`Remove ${tag || 'this bot'} from the backup?`)) return; await api('/api/remove', { id }); load(); }
 load(); setInterval(load, 3000);
+// 🎭 Editions tab (dev edition only)
+let ED = null, edWant = null;
+const escH = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const edHas = (e, f) => f.kind === 'on' ? e.on.includes(f.id) : !e.off.includes(f.id);
+async function edLoad(force) { if (ED && !force) return edDraw(); let r; try { r = await api('/api/editions'); } catch { return; } if (!r.dev) return; ED = r; edWant = JSON.parse(JSON.stringify(r.editions)); $('edRepo').textContent = r.repo; $('edKeyState').textContent = r.hasKey ? '✅ a key is saved' : 'no key yet'; edDraw(); }
+function edDirty() { return ED ? ED.features.reduce((n, f) => n + Object.keys(ED.editions).filter(id => edHas(ED.editions[id], f) !== edHas(edWant[id], f)).length, 0) : 0; }
+function edDraw() {
+  if (!ED) return; const q = $('edQ').value.trim().toLowerCase(), ids = Object.keys(ED.editions), n = edDirty();
+  $('edNote').innerHTML = (ED.from === 'github' ? '' : `⚠️ Couldn't read the list from GitHub (${escH(ED.why)}), so this shows what this app was built with. `) + (n ? `<b style="color:var(--gold)">${n} change${n === 1 ? '' : 's'} not saved yet.</b>` : '');
+  $('edSaveBtn').textContent = n ? `💾 Save ${n} change${n === 1 ? '' : 's'}` : '💾 Save';
+  const rows = ED.features.filter(f => !q || (f.name + ' ' + f.text + ' ' + f.cat + ' ' + f.id).toLowerCase().includes(q)), cats = [...new Set(rows.map(f => f.cat))];
+  $('edGrid').innerHTML = rows.length ? `<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px">Feature</th>${ids.map(id => `<th style="padding:6px;white-space:nowrap">${escH(ED.editions[id].name)}${ED.editions[id].dev ? '<br><span class="help">dev</span>' : ''}</th>`).join('')}</tr></thead><tbody>${cats.map(c => `<tr><td colspan="${ids.length + 1}" style="padding:12px 6px 4px;color:var(--gold);font-weight:800">${escH(c)}</td></tr>` + rows.filter(f => f.cat === c).map(f => `<tr style="border-top:1px solid #ffffff14"><td style="padding:6px"><b>${escH(f.name)}</b>${f.kind === 'on' ? ' <span class="help">(extra)</span>' : ''}<div class="help">${escH(f.text)}</div></td>${ids.map(id => { const now = edHas(edWant[id], f), was = edHas(ED.editions[id], f); return `<td style="text-align:center;padding:6px;${now !== was ? 'background:#ffc94a22' : ''}"><input type="checkbox" ${now ? 'checked' : ''} onchange="edTick('${id}','${f.id}',this.checked)" title="${escH(ED.editions[id].name)}: ${escH(f.name)}"></td>`; }).join('')}</tr>`).join('')).join('')}</tbody></table>` : '<p class="help">Nothing fits that search.</p>';
+}
+function edTick(id, fid, on) { const f = ED.features.find(x => x.id === fid), e = edWant[id], list = f.kind === 'on' ? e.on : e.off, want = f.kind === 'on' ? on : !on, i = list.indexOf(fid); if (want && i < 0) list.push(fid); if (!want && i >= 0) list.splice(i, 1); edDraw(); }
+async function edSave(dry) { if (!ED) return; let r; try { r = await api('/api/editions/save', { editions: edWant, dry: !!dry }); } catch { return; }
+  const list = r.changes.map(c => `${escH(c.edition)}: ${escH(c.feature)} → <b>${c.on ? 'on' : 'off'}</b>`).join('<br>');
+  if (dry) return toast(r.changes.length ? `🧪 Saving would change:<br>${list}<br>(nothing was saved)` : '🧪 Nothing would change.', 12000);
+  if (r.same) return toast('Nothing to save.'); toast(`💾 Saved to GitHub:<br>${list}<br>Each edition gets it with its next build.`, 12000); edLoad(true); }
+async function edKeySave(forget) { try { const r = await api('/api/editions/key', { key: forget ? '' : $('edKey').value }); $('edKey').value = ''; $('edKeyState').textContent = r.hasKey ? '✅ a key is saved' : 'no key yet'; if (ED) ED.hasKey = r.hasKey; toast(r.hasKey ? '🔑 Key saved.' : 'Key forgotten.'); } catch {} }
+api('/api/editions').then(r => { if (r && r.dev) $('edTabBtn').classList.remove('hidden'); else if (curTab === 'editions') tab('bots'); }).catch(() => {});
 pollLog(); setInterval(pollLog, 2000); loadErrs(); try { if (localStorage.bkTab) tab(localStorage.bkTab); } catch {}
 </script>
 <script src="spell.js"></script>

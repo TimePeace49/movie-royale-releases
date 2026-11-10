@@ -1,0 +1,42 @@
+[
+ {"id":"battle","kind":"off","cat":"Top tabs","name":"⚔️ Battle tab","text":"The battle screen and its controls."},
+ {"id":"pool","kind":"off","cat":"Top tabs","name":"🎬 Pool tab","text":"The Movie Pool / Battle pool tab."},
+ {"id":"cards","kind":"off","cat":"Top tabs","name":"🃏 Card battles + Card pool","text":"Both card tabs. Character maps stay."},
+ {"id":"tab:bot","kind":"off","cat":"Top tabs","name":"🤖 Chat bot tab","text":"Commands, sound alerts, timers, quotes (and Songs / Movie night inside it)."},
+ {"id":"raids","kind":"on","cat":"Top tabs","name":"🚀 Raid tab","text":"Live channels they follow, with preview, wait slider and Raid button."},
+ {"id":"eggs","kind":"on","cat":"Top tabs","name":"🥚 Eggs tab","text":"The egg game: eggs, creatures, chat battles, viewer page."},
+ {"id":"chatBattle","kind":"off","cat":"Top tabs","name":"🎲 Chat battle tab","text":"Battles that chat joins with !join."},
+ {"id":"tab:giveaway","kind":"off","cat":"Top tabs","name":"🎁 Giveaway tab","text":"Giveaways."},
+ {"id":"tab:wheel","kind":"off","cat":"Top tabs","name":"🎡 Wheel tab","text":"The wheels."},
+ {"id":"tab:tchat","kind":"off","cat":"Top tabs","name":"💬 Chat tab","text":"Chat, alerts (and the dashboard when that is on)."},
+ {"id":"people","kind":"off","cat":"Top tabs","name":"👥 People tab","text":"The list of people and their movies."},
+ {"id":"tab:history","kind":"off","cat":"Top tabs","name":"📜 History tab","text":"Everything that happened."},
+
+ {"id":"dash","kind":"on","cat":"Chat tab","name":"💬 Chat dashboard","text":"Movable boxes: stream preview, music box, movie night, alerts, stream tools, chat."},
+
+ {"id":"songs","kind":"on","cat":"Chat bot","name":"🎵 Song requests","text":"!sr, queue, ratings, playlists, song database, imports."},
+ {"id":"movienight","kind":"on","cat":"Chat bot","name":"🍿 Movie night voting","text":"!vote, last call, guess pop-ups, on-screen count."},
+
+ {"id":"movies","kind":"off","cat":"Movies","name":"🎬 Discord movie picks","text":"The Discord movies list, Banned Movies, Discord & Movie info settings, movie setup steps."},
+
+ {"id":"kirbWheel","kind":"off","cat":"Wheel","name":"🎡 Ready-made Wheel of Kirbportions","text":"Added once on a fresh install."},
+ {"id":"void","kind":"off","cat":"Wheel","name":"🕳️ Void spot","text":"The void spot options on wheels (and Doomsday)."},
+ {"id":"voidSetup","kind":"off","cat":"Wheel","name":"🕳️ Void lines in the Setup guide","text":"The void spot parts of the setup steps."},
+
+ {"id":"chaos","kind":"off","cat":"Battles","name":"💥 Chaos + ball colors settings","text":"Chat chaos events, bits → chaos, ball colors."},
+
+ {"id":"game","kind":"off","cat":"Settings pages","name":"⚔️ Game","text":"Settings → Game."},
+ {"id":"luck","kind":"off","cat":"Settings pages","name":"🍀 Luck","text":"Settings → Luck."},
+ {"id":"costream","kind":"off","cat":"Settings pages","name":"🤝 Co-stream","text":"Settings → Co-stream."},
+ {"id":"set:twitch","kind":"off","cat":"Settings pages","name":"💜 Twitch","text":"Settings → Twitch (sign-in is on Account)."},
+ {"id":"set:app","kind":"off","cat":"Settings pages","name":"🖥️ App","text":"Settings → App."},
+ {"id":"set:gfx","kind":"off","cat":"Settings pages","name":"🎨 Graphics","text":"Settings → Graphics."},
+ {"id":"set:prices","kind":"off","cat":"Settings pages","name":"💰 Rewards & prices","text":"Settings → Rewards & prices."},
+ {"id":"set:obs","kind":"off","cat":"Settings pages","name":"🎥 OBS","text":"Settings → OBS."},
+ {"id":"set:names","kind":"off","cat":"Settings pages","name":"✏️ Name changes","text":"Settings → Name changes."},
+ {"id":"set:sounds","kind":"off","cat":"Settings pages","name":"🔊 Sounds","text":"Settings → Sounds."},
+ {"id":"set:keys","kind":"off","cat":"Settings pages","name":"⌨️ Key binds","text":"Settings → Key binds."},
+ {"id":"set:notes","kind":"off","cat":"Settings pages","name":"📝 Patch notes","text":"Settings → Patch notes."},
+
+ {"id":"kick","kind":"on","cat":"Platforms","name":"🟢 Kick","text":"Kick chat, the Twitch / Kick switch, Kick channel points for eggs."}
+]
