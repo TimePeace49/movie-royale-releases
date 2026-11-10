@@ -54,6 +54,9 @@ if (!nsisDir) { // first build on this machine: fetch NSIS (same copy electron-b
 }
 const makensis = process.platform === 'win32' ? path.join(nsisDir, 'Bin', 'makensis.exe') : path.join(nsisDir, process.platform === 'darwin' ? 'mac' : 'linux', 'makensis');
 fs.chmodSync(makensis, 0o755);
+// 🚚 installing one edition over another: the installer takes the other editions' shortcuts away (their names come from editions.json)
+{ const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'editions.json'), 'utf8')), names = [...new Set(Object.values(all).map(e => String(e.app || '')).filter(n => n && n !== BRAND && n !== 'Movie Royal' && !/["$\\]/.test(n)))];
+  fs.writeFileSync(path.join(ROOT, 'build', 'editions.nsh'), '\uFEFF' + names.map(n => `  Delete "$SMPROGRAMS\\${n}.lnk"\r\n  Delete "$DESKTOP\\${n}.lnk"\r\n`).join('')); }
 fs.rmSync(OUT, { force: true });
 run(makensis, ['-V2', `-DVER=${VER}`, `-DBRAND=${BRAND}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT}`, path.join(ROOT, 'build', 'installer.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
 

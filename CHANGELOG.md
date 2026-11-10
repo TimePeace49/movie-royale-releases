@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.107.0
+**🚚 Installing a different edition moves everything over by itself**
+- Run another edition's installer on a PC that already has one and it takes its place. Your lists, wheels, history, people and settings are all there when it opens: every edition keeps them in the same spot, so nothing is copied or lost.
+- The old edition's shortcuts (desktop and Start menu) are swapped for the new edition's.
+- What still pointed at the old edition is changed to fit the new one the first time it opens: where updates come from, the names used for wild spots and banned-movie messages, and the Test tab's starting setting.
+- A message says "This is now the … edition" when you open it, and it's written into History → Everything.
+- 🧪 Test tab → 🎭 Edition → **🚚 What moves over?** shows what would change coming from any other edition (pretend: nothing is changed).
+
 ## 1.106.2
 **🧪 A switch for the Test tab**
 - Settings → 👤 Account & updates → **Show the Test tab (tests and checklist)**. When it's off, that tab is just **⚠️ Errors**: what went wrong, in plain words.

@@ -81,6 +81,8 @@ Section "Movie Royal" SecMain
   ; the shortcuts carry the name people see; the ones from before the rename are taken away
   Delete "$SMPROGRAMS\Movie Royal.lnk"
   Delete "$DESKTOP\Movie Royal.lnk"
+  ; installing one edition over another: the other edition's shortcuts go away (the list is made by build-win.mjs from editions.json)
+  !include /NONFATAL /CHARSET=UTF8 "editions.nsh"
   CreateShortCut "$SMPROGRAMS\${BRAND}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
   CreateShortCut "$DESKTOP\${BRAND}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
 
@@ -128,6 +130,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\Movie Royal.lnk"
   Delete "$DESKTOP\${BRAND}.lnk"
   Delete "$SMPROGRAMS\${BRAND}.lnk"
+  !include /NONFATAL /CHARSET=UTF8 "editions.nsh"
   ; (Movie Royal Backup Bots has its own installer and uninstaller now: left alone)
   Delete "$DESKTOP\${OLDNAME}.lnk"
   Delete "$SMPROGRAMS\${OLDNAME}.lnk"

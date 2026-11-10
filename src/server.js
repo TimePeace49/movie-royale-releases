@@ -1370,6 +1370,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'movienight') ws.send(JSON.stringify(movienight.screen())); // 🍿 the movie night vote box
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
+  if (ws.role === 'control' && live.editionNote && Date.now() - live.editionNote.at < 300000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: brand(live.editionNote.text), ms: 12000 })); } catch {} }, 2500); /* 🚚 moved over from another edition */
   if (ws.role === 'control' && live.resumeNote && Date.now() - live.resumeNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.resumeNote.text })); } catch {} }, 1500); // 🔄 what came back after a restart
   if (ws.role === 'overlay') { ws.send(JSON.stringify(audioMsg())); if (/\bOBS\//.test(ws.ua)) { setTimeout(() => broadcast(audioMsg(), 'overlay'), 200); ws.on('close', () => setTimeout(() => { broadcast(audioMsg(), 'overlay'); pushState(); }, 200)); } } // 🔇 an OBS game screen opened / closed: the app's game screen goes quiet / plays again
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
@@ -2338,6 +2339,29 @@ function editionDev() {
   return ch;
 }
 if (editionDev()) save();
+// 🚚 Installing a different edition over this one (1.107.0, Derek: "it will auto move everything from old edition to the new one"). Every edition uses the
+// same data folder, so the lists, wheels, history, people and settings are simply there. What still pointed at the OLD edition is moved here:
+// where updates come from, the old edition's names (🧽), the Test tab's default, and the battle on screen when the new edition has no movie battles.
+const ED_ALL = Object.fromEntries(editionInfo().all.map(x => [x.id, x]));
+function editionMoveSteps(st, from, to = EDITION.id, toScrub = edScrub) {
+  const out = [], repos = Object.values(ED_ALL).map(x => String(x.repo || '').toLowerCase()).filter(Boolean), clean = r => String(r || '').replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '').toLowerCase();
+  if (st.updateRepo && repos.includes(clean(st.updateRepo))) out.push({ k: 'updateRepo', v: '', text: 'Updates now come from this edition' });
+  if (toScrub) { if (st.spotName === 'Kirb') out.push({ k: 'spotName', v: 'Wild', text: 'Wild spots are called “Wild”' }); if (st.banAsk === 'Kirb') out.push({ k: 'banAsk', v: 'the streamer', text: 'Banned movie messages say “the streamer”' }); }
+  else if (from && ED_ALL[from] && ED_ALL[from].scrub) { if (st.spotName === 'Wild') out.push({ k: 'spotName', v: 'Kirb', text: 'Wild spots are called “Kirb” again' }); if (st.banAsk === 'the streamer') out.push({ k: 'banAsk', v: 'Kirb', text: 'Banned movie messages say “Kirb” again' }); }
+  if (from && from !== to && st.testTab != null && !(ED_ALL[to] || {}).dev && ED_ALL[from] && ED_ALL[from].dev) out.push({ k: 'testTab', v: null, text: 'The Test tab starts as just Errors (turn it on in Settings)' });
+  return out;
+}
+function editionMove() {
+  const from = db.editionId || '', moved = !!from && from !== EDITION.id, steps = editionMoveSteps(db.settings, from).filter(x => moved || !from || x.k !== 'updateRepo'); /* (a GitHub you typed in yourself later is left alone) */
+  if (!moved && !steps.length && from) return;
+  for (const x of steps) db.settings[x.k] = x.v;
+  db.editionId = EDITION.id;
+  if (moved) { db.editionMoved = { from, to: EDITION.id, at: Date.now(), steps: steps.map(x => x.text) };
+    const text = `🚚 This is now the ${EDITION.name} edition (it was ${(ED_ALL[from] || {}).name || from}). Everything came along: your lists, wheels, history, people and settings.${steps.length ? ' ' + steps.map(x => x.text).join('. ') + '.' : ''}`;
+    live.editionNote = { at: Date.now(), text }; setTimeout(() => { try { act('stream', text.replace(/^🚚 /, ''), { icon: '🚚', kind: 'edition' }); } catch {} }, 8000); }
+  save();
+}
+editionMove();
 // 🎭 an edition without movie battles (True's, Birx's): the Discord movie battle is never the one on screen: the first time, a plain battle of your own takes its place
 function editionNoMovies() {
   if (edHas('movies') || db.activeListId !== 'movies') return;
@@ -4916,6 +4940,10 @@ app.post('/api/test/edition-look', (req, res) => { // 👀 the dev edition shows
   if (!EDITION.dev) return res.status(400).json({ error: "Only the dev edition can look like the others." });
   const id = edLookAs(String(req.body?.id || '')); brandCache.clear(); lockPage = ''; lockPageFor = id; editionNoMovies(); pushState(); res.json({ ok: true, lookAs: id, off: edOffNow(), app: edAppNow() });
 });
+// 🧪 what moving from another edition to this one would change (pretend: nothing is saved)
+app.post('/api/test/edition-move', (req, res) => { const from = String(req.body?.from || ''); if (!ED_ALL[from]) return res.status(400).json({ error: 'Pick an edition' });
+  const pretend = { ...db.settings, updateRepo: ED_ALL[from].repo, spotName: ED_ALL[from].scrub ? 'Wild' : 'Kirb', banAsk: ED_ALL[from].scrub ? 'the streamer' : 'Kirb', testTab: ED_ALL[from].dev ? true : db.settings.testTab };
+  res.json({ ok: true, from: ED_ALL[from].name, to: EDITION.name, same: from === EDITION.id, steps: editionMoveSteps(pretend, from).map(x => x.text), last: db.editionMoved || null }); });
 app.get('/api/test/edition', (req, res) => res.json({ ...editionInfo(), updatesFrom: repoName(), devMode: !!db.settings.betaUpdates, testBuilds: wantTests(), version: VERSION }));
 app.get('/api/test/mara-prizes', (req, res) => { const l = maraList(); if (!l) return res.status(400).json({ error: 'There is no marathon battle yet (dev mode makes it).' }); res.json({ name: l.name, things: l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, label: e.label, sub: e.sub || '', desc: e.desc || '' })), would: maraPrizes(l, true) }); });
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
