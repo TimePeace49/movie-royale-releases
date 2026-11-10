@@ -33,6 +33,8 @@ import * as donations from './donations.js';
 import * as obs from './obs.js';
 import * as movienight from './movienight.js';
 import * as raids from './raids.js';
+import * as birthdays from './birthdays.js';
+import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
@@ -75,6 +77,19 @@ const PORT = Number(process.env.PORT) || 3737;
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
+// 🔐 Safety (1.96.0): the very first thing every request meets. Only this PC, only the app's own pages: a page on another website
+// (or another device on the network) is turned away before anything else runs. See src/safety.js
+safety.setName(APP_NAME); try { if (safety.fileReset()) console.log('[safety] unlock.txt found: the lock is off'); } catch {}
+app.use((req, res, next) => { const why = safety.strange(req); if (!why) return next(); safety.refused.n++; safety.refused.last = { at: Date.now(), why }; res.status(403).send('Movie Royal only runs on this computer.'); });
+let lockPage = null;
+app.use((req, res, next) => { // 🔒 the optional lock: the control panel + setup guide ask for the authenticator code first (stream screens, OBS and the Stream Deck keep working)
+  if (!safety.isOn() || safety.unlocked(req)) return next();
+  const p = req.path; if (p.startsWith('/api/lock/')) return next();
+  if (req.method === 'GET' && (p === '/' || p === '/control.html' || p === '/setup.html')) { try { lockPage = lockPage || brandFile(fs.readFileSync(path.join(ROOT, 'public', 'lock.html'), 'utf8')); } catch { return res.status(401).send('Locked.'); } return res.set('Cache-Control', 'no-store').type('html').send(lockPage); }
+  let from = ''; try { from = new URL(String(req.headers.referer || '')).pathname; } catch {}
+  if (p.startsWith('/api/') && (from === '/' || from === '/control.html' || from === '/setup.html')) return res.status(401).json({ error: 'Movie Royal is locked. Type your code first.', locked: true });
+  next();
+});
 activity.onLine(r => broadcast({ type: 'activity', row: r }, 'control')); // 🧾 History → Everything shows new lines as they happen
 
 // ---------- live state ----------
@@ -1125,6 +1140,7 @@ const twitchHandlers = {
     if (hatChat(m)) return; // 🎩 picking a hat
     wheel.wheelChat(m); // 🎡 !respin / !spins
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
+    try { if (birthdays.onChat(m)) return; } catch (e) { console.error('[birthdays]', e.message); } // 🎂 !bday 3/14, and a happy birthday the first time they chat that day
     if (movienight.onChat(m)) return; // 🍿 !vote 3 on a movie night
     if (clipChatCmd(m)) return; // 🎬 !clip: anyone can clip the last minute
     if (chatbot.onChat(m)) return; // 🤖 your own chat commands, quotes (dev mode)
@@ -1334,7 +1350,8 @@ function finishClaim(claimed, text) {
 // ---------- websocket ----------
 wss.on('connection', (ws, req) => {
   ws.role = new URL(req.url, 'http://x').searchParams.get('role') || 'control'; ws.ua = String(req.headers['user-agent'] || ''); // (OBS's browser says "OBS/31…": 🤖 Test all looks for it)
-  if (!isLocal(req)) return ws.close(4001, 'local only');
+  if (!isLocal(req) || safety.strange(req)) return ws.close(4001, 'local only');
+  if (ws.role === 'control' && safety.isOn() && !safety.unlocked(req)) return ws.close(4003, 'locked');
   if (ws.role === 'control') ws.send(JSON.stringify({ type: 'state', state: publicState() }));
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
@@ -4701,6 +4718,44 @@ function maraPrizesOnce() {
   save();
 }
 setTimeout(maraPrizesOnce, 1400);
+// 🎂 Birthdays (1.96.0, every edition): !bday in chat (never a year), a happy-birthday wish, the list in Settings → 💜 Twitch. See src/birthdays.js
+birthdays.setHooks({ say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
+app.get('/api/birthdays', (req, res) => res.json(birthdays.state()));
+app.post('/api/birthdays', wTry(b => birthdays.set(b.login, b.day)));
+app.post('/api/birthdays/opts', wTry(b => { const r = birthdays.setOpts(b, String(db.movieNight?.opts?.command || '!vote')); broadcast({ type: 'movieNight' }, 'control'); return r; }));
+app.post('/api/test/birthday', wTry(b => {
+  if (b.action === 'rules') return birthdays.demo();
+  if (b.action === 'clear') return birthdays.clearTests();
+  const today = birthdays.mmdd(birthdays.dayOf()).replace('-', '/'), name = 'pretend_birthday'; twitch.pretend.until = Date.now() + 10 * 60000; // a pretend viewer whose birthday is today: saves it with the command, then says hi
+  if (b.action === 'wish') { birthdays.set(name, today); const d = db.bdays; if (d?.wished) delete d.wished[name]; twitchHandlers.chat({ login: name, name: 'Pretend_Birthday', text: 'hi everyone!', userId: 'pretend-bday', badges: {}, pretend: true }); return { ok: true, did: 'wish', today }; }
+  twitchHandlers.chat({ login: name, name: 'Pretend_Birthday', text: `${birthdays.opts().command} ${b.text || today}`, userId: 'pretend-bday', badges: {}, pretend: true }); return { ok: true, did: 'save', state: birthdays.state() };
+}));
+// 🔐 The lock + the safety check (Settings → 👤 Account & updates → 🔐 Safety & privacy)
+const lkTry = (fn, open) => (req, res) => { try { if (!open && !safety.unlocked(req)) throw new Error('Unlock Movie Royal first.'); res.json(fn(req.body || {}, req, res)); } catch (e) { res.status(400).json({ error: e.message }); } };
+app.get('/api/lock/state', (req, res) => res.json(safety.state(req)));
+app.post('/api/lock/verify', lkTry((b, req, res) => { const r = safety.verify(b.code, res); act('stream', r.backup ? 'Unlocked with a backup code' : 'Unlocked with the authenticator code', { icon: '🔓', kind: 'lock' }); return r; }, true));
+app.post('/api/lock/begin', lkTry(() => safety.begin(db.owner?.name || twitch.status.login || '')));
+app.post('/api/lock/confirm', lkTry((b, req, res) => { const r = safety.confirm(b.code, res); act('stream', 'Turned the 🔐 lock on', { icon: '🔐', kind: 'lock' }); return r; }));
+app.post('/api/lock/lock', lkTry((b, req, res) => safety.lockNow(req, res)));
+app.post('/api/lock/mode', lkTry(b => safety.setMode(b.mode)));
+app.post('/api/lock/codes', lkTry(b => safety.newCodes(b.code)));
+app.post('/api/lock/off', lkTry(b => { const r = safety.turnOff(b.code); act('stream', 'Turned the 🔐 lock off', { icon: '🔓', kind: 'lock' }); return r; }));
+function safetyReport(req) {
+  const st = db.settings, a = server.address(), using = [];
+  const add = (on, name, what) => { if (on) using.push({ name, what }); };
+  add(db.owner || twitch.status.userId, 'Twitch', 'your sign-in, chat, channel points, alerts, raids and clips');
+  add(st.discordToken, 'Discord', 'your own Discord bot: movie picks and its messages');
+  add((() => { try { return cloud.enabled(); } catch { return false; } })(), 'Your Cloudflare account', 'the 24/7 bot: picks, bans and settings it needs (never your passwords or sign-ins)');
+  add(st.tmdbKey, 'TMDB', 'movie titles you search for');
+  add(st.omdbKey, 'OMDb', 'the movie that won, to get its ratings');
+  add(st.letterboxdUser, 'Letterboxd', 'reads your public watched list');
+  add(st.seJwt, 'StreamElements', 'listens for tips'); add(st.slToken, 'Streamlabs', 'listens for tips');
+  add(st.obsOn !== false && st.obsPassword, 'OBS on this PC', 'adds and switches sources');
+  add(db.kick?.on, 'Kick', 'chat'); add(db.costream?.room, 'Co-stream partner', 'battle state, and your game + camera picture if you turned that on');
+  return { local: !safety.lan(), listening: a ? a.address : '', port: PORT, lock: safety.state(req), refused: safety.refused, data: DATA, using };
+}
+app.get('/api/safety', (req, res) => res.json(safetyReport(req)));
+app.get('/api/test/safety', (req, res) => { const t = safety.selfTest(), a = server.address(), onlyHere = !!a && (a.address === '127.0.0.1' || a.address === '::1'); t.rows.unshift({ what: 'The app listens on this PC only', ok: onlyHere || safety.lan(), note: safety.lan() ? 'network access was switched on by hand (ALLOW_LAN)' : '' }); res.json({ ...t, ok: t.ok && (onlyHere || safety.lan()), report: safetyReport(req) }); });
 // 🚀 Raid tab (1.95.0; Birx's, Kirb's and Derek's editions): the live channels you follow, the ones you raided most recently first. See src/raids.js
 raids.setHooks({
   on: () => feat('raids'), signedIn: () => !!twitch.status.userId, canSee: () => twitch.canSeeFollows(), followed: () => twitch.followedLive(),
@@ -5480,7 +5535,9 @@ server.on('error', e => {
   console.error('\n  ' + msg + '\n');
   if (globalThis.__desktop) globalThis.__desktop.fatal(msg); else process.exit(1);
 });
-server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : undefined, async () => {
+// 🔐 Only this computer: the app listens on this PC's own address, not on the network (before 1.96.0 it listened everywhere and turned others away at the door).
+if (!process.env.ALLOW_LAN) { const s6 = http.createServer(app); s6.on('upgrade', (req, sock, head) => { if (!wss.shouldHandle(req)) return sock.destroy(); wss.handleUpgrade(req, sock, head, ws => wss.emit('connection', ws, req)); }); s6.on('error', () => {}); s6.listen(PORT, '::1'); } // ("localhost" can mean ::1 on Windows)
+server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : '127.0.0.1', async () => {
   resumeLoad(); // 🔄 opened again soon after closing (an update while live): put back what was going on
   globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
   globalThis.__desktop?.ready(`http://localhost:${PORT}/`);

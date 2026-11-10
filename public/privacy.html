@@ -1,0 +1,68 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal: what is sent where</title>
+<style>
+  body { margin: 0; background: #120a26; color: #efeaff; font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; }
+  main { max-width: 860px; margin: 0 auto; padding: 22px 20px 60px; } h1 { font-size: 26px; margin: 0 0 4px; } h2 { font-size: 19px; margin: 26px 0 8px; color: #ffcf6b; }
+  p, li { font-size: 15px; } .muted { color: #b9aede; } table { width: 100%; border-collapse: collapse; margin-top: 6px; } td, th { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid #2c2052; font-size: 14px; } th { color: #b9aede; font-weight: 600; }
+  .ok { background: rgba(80, 220, 140, .1); border: 1px solid rgba(80, 220, 140, .35); border-radius: 12px; padding: 10px 14px; margin: 10px 0; } code { background: #0e0820; padding: 1px 5px; border-radius: 5px; }
+  #now li { margin: 3px 0; }
+</style></head>
+<body><main>
+  <h1>🔒 What Movie Royal sends, and where</h1>
+  <p class="muted">The short version: the app runs on your PC and keeps its things on your PC. It only talks to a service when you connected that service, and only sends what that job needs.</p>
+  <div class="ok"><b>Nothing is ever sent to the people who made this app.</b> No statistics, no "phone home", no list of what you do. There is no server of ours that it reports to.</div>
+
+  <h2>What stays on your PC</h2>
+  <ul>
+    <li>Your settings, wheels, battles, history, viewer stats and chat log: in the data folder (<code>%APPDATA%\Movie Royal\data</code>).</li>
+    <li>Your sign-ins and keys (Twitch, Discord and so on): in that same folder, nowhere else.</li>
+    <li>Who you raided, movie night votes, birthdays you typed in, chat bot commands and quotes.</li>
+    <li>⬇️ Download backup makes a copy of that folder's data for you. It holds your sign-ins too, so keep it private.</li>
+  </ul>
+
+  <h2>What it never asks for</h2>
+  <ul>
+    <li>Your email address. The Twitch sign-in does not include it.</li>
+    <li>Your Twitch, Discord or Kick password. You sign in on their own page, and the app only gets a pass that you can take back there at any time.</li>
+    <li>Your viewers' private details. It only sees what is public in chat: names, messages, subs, bits and follows.</li>
+  </ul>
+
+  <h2>Who can reach the app</h2>
+  <ul>
+    <li>Only this PC. The app does not listen on your home network or the internet.</li>
+    <li>Web pages you visit can't press its buttons or read from it: anything that doesn't come from the app's own pages is turned away.</li>
+    <li>🔐 If you want, a lock asks for a 6-digit code from an authenticator app on your phone before the control panel opens (Settings → 👤 Account &amp; updates).</li>
+  </ul>
+
+  <h2>What goes out, only when you use that part</h2>
+  <table>
+    <tr><th>Where</th><th>When</th><th>What is sent</th></tr>
+    <tr><td><b>Twitch</b></td><td>When you sign in</td><td>What the app says in chat, reward changes, clips, raids, and questions like "who is live". Twitch sends back chat and alerts.</td></tr>
+    <tr><td><b>Discord</b></td><td>When you set up your own Discord bot</td><td>The bot's messages in your own server (movie picks, pinned help, error notes in your hidden debug channel).</td></tr>
+    <tr><td><b>Your own Cloudflare account</b></td><td>When you set up the 24/7 bot</td><td>What that bot needs to answer while your PC is off: picks, bans and a few settings. Never your Twitch sign-in.</td></tr>
+    <tr><td><b>GitHub</b></td><td>When the app opens</td><td>Asks "is there a newer version?" and downloads it. Nothing about you is sent.</td></tr>
+    <tr><td><b>TMDB / OMDb</b></td><td>Movie battles</td><td>The movie title or number being looked up.</td></tr>
+    <tr><td><b>Letterboxd, IMDb, Rotten Tomatoes</b></td><td>Movie lists and the watched check, if you use them</td><td>Reads public pages, like a browser would.</td></tr>
+    <tr><td><b>TCGplayer and picture search</b></td><td>Only when you search for card packs</td><td>The words you searched for.</td></tr>
+    <tr><td><b>StreamElements / Streamlabs</b></td><td>When you connect donations</td><td>Listens for tips with the key you gave. Sends nothing else.</td></tr>
+    <tr><td><b>OBS</b></td><td>On this PC only</td><td>Adds and switches sources. Never leaves the PC.</td></tr>
+    <tr><td><b>Twitch's video player</b></td><td>Only on the 🚀 Raid tab's preview</td><td>Loads that channel's live picture, like opening it on Twitch.</td></tr>
+    <tr><td><b>Co-stream partner</b></td><td>Only while you co-stream</td><td>Your battle's state, and your game and camera picture if you switched that on.</td></tr>
+  </table>
+  <p class="muted">The fonts on the stream screens are carried inside the app, so nothing is fetched from a font website.</p>
+
+  <h2>On this PC right now</h2>
+  <ul id="now"><li class="muted">Checking…</li></ul>
+</main>
+<script>
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+fetch('/api/safety').then(r => r.json()).then(s => {
+  const li = [];
+  li.push(s.local ? '✅ Only this PC can reach the app.' : '⚠️ Network access was switched on by hand (ALLOW_LAN): other devices on your network can reach the app.');
+  li.push(s.lock.on ? '🔐 The lock is on.' : '🔓 The lock is off (the control panel opens without a code).');
+  if (s.refused && s.refused.n) li.push(`🛡️ Turned away since the app opened: ${s.refused.n} request${s.refused.n === 1 ? '' : 's'} that didn't come from the app.`);
+  li.push('📁 Your data folder: <code>' + esc(s.data) + '</code>');
+  li.push(s.using.length ? 'Connected right now: ' + s.using.map(u => `<b>${esc(u.name)}</b> <span class="muted">(${esc(u.what)})</span>`).join(', ') + '.' : 'Nothing is connected yet: the app is not talking to any service.');
+  document.getElementById('now').innerHTML = li.map(x => `<li>${x}</li>`).join('');
+}).catch(() => { document.getElementById('now').innerHTML = '<li class="muted">Open this page from inside the app to see this part.</li>'; });
+</script></body></html>

@@ -768,6 +768,7 @@
 <section class="view" id="v-mnight"><div class="pane"><div id="mnBody" style="max-width:1300px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <section class="view" id="v-bot"><div class="pane"><div class="card" id="botBody" style="max-width:1250px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 <dialog id="botDlg" style="max-width:640px;width:92vw"><div id="botDlgBody"></div></dialog>
+<dialog id="safeDlg" style="max-width:560px;width:92vw"><div id="safeDlgBody"></div></dialog>
 <section class="view" id="v-capture">
   <div class="card" style="max-width:1500px;margin:0 auto">
     <div class="row" id="gcBar" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -1349,6 +1350,18 @@ not a link</textarea>
     <p class="help">Your own chat commands, timers and quotes (the 🤖 Chat bot tab). These check it without touching your real chat.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="botChatTest()" title="Makes a !hello command (if it isn't there) and has a pretend viewer type it: the bot answers in the pretend chat">💬 Pretend viewer types !hello</button><button onclick="botImpTest()" title="Reads three sample files (a Streamlabs Chatbot style file, a spreadsheet and plain quote lines) to check the importer. Nothing is saved">📥 Check the importer</button><button class="ghost" onclick="setView('bot')" title="Open the Chat bot tab">🤖 Open the Chat bot tab</button></div>
     <div id="tBotOut"></div>
+  </div>
+  <div class="card" id="bdTestCard">
+    <h3>🎂 Birthdays</h3>
+    <p class="help">Viewers save their birthday with !bday (month and day only, never a year), and get a happy birthday the first time they chat that day. These use a pretend viewer through the pretend chat: nothing is sent to Twitch.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="bdTest('rules')" title="Walks the birthday rules through with a pretend viewer: saving, the 30-day wait, the wish once a day, and that a year is never kept (nothing is saved)">📋 Check the birthday rules</button><button onclick="bdTest('save')" title="A pretend viewer saves today as their birthday with the birthday command (shows in the test chat)">🎂 Pretend viewer saves a birthday</button><button onclick="bdTest('wish')" title="A pretend viewer whose birthday is today says hi in chat: the bot wishes them a happy birthday (shows in the test chat)">🎉 Pretend birthday person chats</button><button class="ghost" onclick="bdTest('clear')" title="Removes the pretend viewer's birthday again">🧹 Remove the pretend birthday</button></div>
+    <div id="tBdOut"></div>
+  </div>
+  <div class="card" id="safeTestCard">
+    <h3>🔐 Safety &amp; privacy</h3>
+    <p class="help">Checks that only this PC can reach the app, that pages on other websites are turned away, and that the lock's codes work the way authenticator apps expect. Nothing is changed.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="safeCheck('tSafeOut')" title="Runs the safety checks now and lists each one (nothing is changed)">🛡️ Run the safety check</button><button onclick="safePrivacy()" title="A plain list of everything the app sends, where to, and when (and what never leaves this PC)">📄 What is sent where</button><button class="ghost" onclick="setView('settings');setSub('account')" title="Open Settings → Account & updates, where the lock is set up">🔐 Open the lock settings</button></div>
+    <div id="tSafeOut" style="margin-top:8px"></div>
   </div>
   <div class="card edOff" id="rdTestCard" data-feat="raids">
     <h3>🚀 Raid tab</h3>
@@ -2462,6 +2475,7 @@ async function api(url, body, method = 'POST') {
   if (!goTab && method === 'POST' && view !== 'battle' && SCREEN_TESTS.test(url) && (url.startsWith('/api/test/') || view === 'test')) peek(true); // a test that changes the stream screen? show it (other tests and checks don't pop it up)
   const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && j.locked) { location.reload(); throw new Error('locked'); } // 🔐 the lock came on: show the lock screen
   if (!r.ok) { toast('⚠️ ' + esc(j.error || 'Something went wrong')); throw new Error(j.error); }
   if (goTab && view === 'test') setView(goTab);
   return j;
@@ -2485,6 +2499,7 @@ function connect() {
     if (m.type === 'maraTimer') mtShow(m);
     if (m.type === 'chatbot') { if (view === 'bot') botLoad(); }
     if (m.type === 'raids' && view === 'raid') rdLoad();
+    if (m.type === 'birthdays' && view === 'settings' && sub === 'twitch') bdDraw();
     if (m.type === 'movieNight') { if (view === 'mnight') mnLoad(); else mnPending(); }
     if (m.type === 'mnVote') mnPop(m.vote);
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
@@ -2534,7 +2549,7 @@ function setView(v) {
   if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') loadRewards(); if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); bdDraw(); } if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -3670,6 +3685,61 @@ async function clipNow(via, testFail) {
   catch (e) { clipDot('bad', e?.message || 'No clip'); }
   finally { clipBusy = false; }
 }
+/* 🎂 Birthdays (1.96.0, Derek, every edition): !bday in chat (never a year), a happy birthday the first time they chat that day */
+let BD = null;
+async function bdDraw() {
+  const el = $('bdBox'); if (!el) return; if (el.contains(document.activeElement) && /INPUT/.test(document.activeElement.tagName)) return;
+  try { BD = await fetch('/api/birthdays').then(r => r.json()); } catch { return; } const o = BD.opts, L = BD.list;
+  el.innerHTML = `<p class="help" style="margin:0 0 6px">Viewers type <b>${esc(o.command)} 3/14</b> or <b>${esc(o.command)} March 14</b> to save their birthday. Only the month and day: <b>a year is never asked for or kept</b>. The first time they chat on their birthday, the bot wishes them a happy birthday. The list stays on this PC.</p>
+    <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap"><label class="ck" style="margin:0"><input type="checkbox" ${o.on !== false ? 'checked' : ''} onchange="bdOpt({on:this.checked})" title="Turn birthdays on or off: the birthday command and the happy birthday wishes"> <span>🎂 Birthdays on</span></label><span>Command</span><input id="bdCmd" value="${esc(o.command)}" style="width:100px" title="What chat types to save their birthday (like !bday 3/14)" onchange="bdOpt({command:this.value})"><span>They can change it every</span><input id="bdDays" type="number" min="0" max="365" value="${o.days}" style="width:64px" title="How many days a viewer has to wait before changing their birthday again in chat (you can always change it by hand here)" onchange="bdOpt({days:this.value})"><span>days</span></div>
+    <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px"><label class="ck" style="margin:0"><input type="checkbox" ${o.wish !== false ? 'checked' : ''} onchange="bdOpt({wish:this.checked})" title="Wish someone a happy birthday in chat the first time they chat on their birthday (once that day)"> <span>Wish them a happy birthday in chat:</span></label><input value="${esc(o.text)}" style="flex:1;min-width:220px" title="What the bot says. {name} becomes their name" onchange="bdOpt({text:this.value})"></div>
+    <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px"><input id="bdName" placeholder="chat name" style="width:160px" title="The chat name of the person whose birthday you're adding or changing"><input id="bdDay" placeholder="birthday, like 3/14" style="width:160px" title="Their birthday: just the month and day (3/14 or March 14), no year" onkeydown="if(event.key==='Enter')bdAdd()"><button onclick="bdAdd()" title="Save this person's birthday by hand (no waiting time)">🎂 Save a birthday</button></div>
+    ${L.length ? `<details style="margin-top:8px"${L.length <= 12 ? ' open' : ''}><summary title="Everyone whose birthday is saved, by date">🎂 Saved birthdays (${L.length})</summary><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">${L.map(x => `<span class="chip" style="display:inline-flex;gap:6px;align-items:center;padding:3px 8px;border:1px solid var(--line);border-radius:999px${x.today ? ';border-color:var(--gold)' : ''}">${x.today ? '🎉 ' : ''}<b>${esc(x.login)}</b> ${esc(x.nice)}<button class="ghost" style="padding:0 4px" onclick="bdDel('${esc(x.login)}')" title="Remove ${esc(x.login)}'s birthday">✕</button></span>`).join('')}</div></details>` : '<p class="help" style="margin:8px 0 0">No birthdays saved yet.</p>'}`;
+}
+async function bdOpt(o) { try { await api('/api/birthdays/opts', o); toast('Saved'); } catch {} bdDraw(); }
+async function bdAdd() { const n = $('bdName').value.trim(), d = $('bdDay').value.trim(); if (!n || !d) return toast('Type a chat name and a birthday (like 3/14).'); try { await api('/api/birthdays', { login: n, day: d }); toast('🎂 Saved'); $('bdName').value = ''; $('bdDay').value = ''; } catch { return; } bdDraw(); }
+async function bdDel(login) { try { await api('/api/birthdays', { login, day: '' }); } catch {} bdDraw(); }
+async function bdTest(action) {
+  let r; try { r = await api('/api/test/birthday', { action }); } catch { return; } const el = $('tBdOut'); if (!el) return;
+  el.innerHTML = action === 'rules' ? `<p style="margin:8px 0 4px">${r.ok ? '✅ Birthdays work.' : '⚠️ Something is off: tell Claude.'}</p><table class="tbl" style="width:100%"><tbody>${r.rows.map(x => `<tr><td>${x.ok ? '✅' : '⚠️'}</td><td>${esc(x.what)}</td></tr>`).join('')}</tbody></table>` : `<p style="margin:8px 0 0">${action === 'clear' ? '🧹 The pretend birthday is gone.' : action === 'wish' ? '🎉 Pretend_Birthday (birthday today) said hi: the wish shows in 💬 Test chat.' : '🎂 Pretend_Birthday saved a birthday with the command: the answer shows in 💬 Test chat.'}</p>`;
+  if (action === 'wish' || action === 'save') { try { pchat(true); } catch {} }
+}
+/* 🔐 Safety & privacy (1.96.0, Derek: "2 factor for safety… nothing being sent that shouldn't be"): Settings → 👤 Account & updates */
+let SAFE = null;
+async function safeDraw() {
+  const el = $('safeBox'); if (!el) return; try { SAFE = await fetch('/api/safety').then(r => r.json()); } catch { return; } const s = SAFE, L = s.lock;
+  el.innerHTML = `<div style="margin-bottom:8px">${s.local ? '✅ Only this PC can reach the app, and web pages you visit can\'t use it.' : '⚠️ Network access was switched on by hand: other devices on your network can reach the app.'}<br>✅ Nothing is sent to the makers of this app: no statistics, no email address, no passwords.</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><button onclick="safeCheck()" title="Runs the safety checks now: only this PC can reach the app, other websites are turned away, and the lock's codes work the way authenticator apps expect">🛡️ Run the safety check</button><button class="ghost" onclick="safePrivacy()" title="A plain list of everything the app sends, where to, and when (and what never leaves this PC)">📄 What is sent where</button></div>
+    <div class="card" style="margin:0"><b>${L.on ? '🔐 The lock is on' : '🔓 Lock with a code from your phone (2-step)'}</b>
+      <p class="help" style="margin:4px 0 8px">${L.on ? 'The control panel and the Setup guide ask for the 6-digit code from your authenticator app. Your stream screens, OBS and the Stream Deck keep working while it\'s locked.' : 'Optional. When it\'s on, opening the control panel asks for a 6-digit code from an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, Authy…), so nobody else at this PC can get in. Your stream screens, OBS and the Stream Deck keep working.'}</p>
+      ${L.on ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><label class="help" style="margin:0">Ask for the code: <select id="safeMode" style="width:auto" onchange="safeMode(this.value)" title="How often this PC is asked for the code: every time the app opens, once a day, or once every 30 days"><option value="open"${L.mode === 'open' ? ' selected' : ''}>every time the app opens</option><option value="day"${L.mode === 'day' ? ' selected' : ''}>once a day</option><option value="month"${L.mode === 'month' ? ' selected' : ''}>once every 30 days</option></select></label><button onclick="safeLockNow()" title="Lock the control panel right now: it asks for the code again">🔒 Lock now</button><button class="ghost" onclick="safeCodes()" title="Make 8 fresh backup codes (the old ones stop working). You need a code from your phone to do it">🔑 New backup codes (${L.codesLeft} left)</button><button class="ghost" onclick="safeOff()" title="Switch the lock off. You need a code from your phone to do it">Turn the lock off</button></div>`
+        : `<button class="primary" onclick="safeSetup()" title="Set up the lock: scan a picture with an authenticator app on your phone, then type the code it shows">🔐 Set up the lock</button>`}
+    </div>`;
+}
+function safePrivacy() { const d = $('safeDlg'); $('safeDlgBody').innerHTML = `<iframe src="/privacy.html" style="width:100%;height:70vh;border:0;border-radius:10px" title="What is sent where"></iframe><div class="row" style="justify-content:flex-end;margin-top:8px"><button onclick="$('safeDlg').close()" title="Close this window">Close</button></div>`; d.style.maxWidth = '900px'; if (!d.open) d.showModal(); }
+async function safeCheck(out) {
+  let r; try { r = await api('/api/test/safety', null, 'GET'); } catch { return; }
+  const html = `<p style="margin:0 0 6px">${r.ok ? '✅ Everything checks out.' : '⚠️ Something is off: tell Claude.'}</p><table class="tbl" style="width:100%"><tbody>${r.rows.map(x => `<tr><td>${x.ok ? '✅' : '⚠️'}</td><td>${esc(x.what)}${x.note ? ` <span class="muted">(${esc(x.note)})</span>` : ''}</td></tr>`).join('')}</tbody></table><p class="help" style="margin:8px 0 0">${r.report.lock.on ? '🔐 The lock is on.' : '🔓 The lock is off.'} ${r.report.using.length ? 'Connected: ' + r.report.using.map(u => esc(u.name)).join(', ') + '.' : 'No service is connected.'}</p>`;
+  if (out) { const el = $(out); if (el) el.innerHTML = html; return; }
+  const d = $('safeDlg'); d.style.maxWidth = '560px'; $('safeDlgBody').innerHTML = `<h3 style="margin-top:0">🛡️ Safety check</h3>${html}<div class="row" style="justify-content:flex-end;margin-top:10px"><button onclick="$('safeDlg').close()" title="Close this window">Close</button></div>`; if (!d.open) d.showModal();
+}
+async function safeSetup() {
+  let r; try { r = await api('/api/lock/begin', {}); } catch { return; } const d = $('safeDlg'); d.style.maxWidth = '560px';
+  $('safeDlgBody').innerHTML = `<h3 style="margin-top:0">🔐 Set up the lock</h3>
+    <p class="help"><b>1.</b> On your phone, open an authenticator app (Google Authenticator, Microsoft Authenticator, Authy… any of them; they're free).<br><b>2.</b> Add an account and scan this picture${r.qr ? '' : ' (or type the key)'}:</p>
+    ${r.qr ? `<div style="background:#fff;border-radius:12px;padding:6px;width:210px;margin:0 auto">${r.qr}</div>` : ''}
+    <p class="help" style="text-align:center;margin:8px 0">Can't scan? Type this key into the app instead:<br><code style="font-size:15px;user-select:all">${esc(r.key)}</code></p>
+    <p class="help"><b>3.</b> Type the 6-digit code the app shows now:</p>
+    <div class="row" style="gap:8px"><input id="safeCode" inputmode="numeric" maxlength="6" placeholder="000000" style="font-size:22px;letter-spacing:6px;text-align:center;width:180px" title="The 6-digit code your authenticator app shows right now" onkeydown="if(event.key==='Enter')safeConfirm()"><button class="primary" onclick="safeConfirm()" title="Check the code and switch the lock on">✅ Turn the lock on</button><button class="ghost" onclick="$('safeDlg').close()" title="Close without switching the lock on">Cancel</button></div>`;
+  if (!d.open) d.showModal(); setTimeout(() => $('safeCode')?.focus(), 50);
+}
+function safeCodesHTML(codes, first) { return `<h3 style="margin-top:0">${first ? '✅ The lock is on' : '🔑 Your new backup codes'}</h3><p class="help"><b>Save these backup codes somewhere safe</b> (write them down, or keep them in a password manager). If you ever lose your phone, one of them opens the lock. Each works once, and they are only shown now.</p><pre id="safeCodeList" style="font-size:17px;text-align:center;background:var(--bg2,#0e0820);padding:12px;border-radius:10px;user-select:all;columns:2">${codes.map(esc).join('\n')}</pre><div class="row" style="gap:8px;justify-content:flex-end"><button onclick="safeCopy()" title="Copy the backup codes so you can paste them somewhere safe">📋 Copy</button><button class="primary" onclick="$('safeDlg').close()" title="Close this window (the codes won't be shown again)">I saved them</button></div>`; }
+function safeCopy() { const t = $('safeCodeList')?.textContent || ''; try { if (window.__desktop?.copy) window.__desktop.copy(t); else navigator.clipboard.writeText(t); toast('📋 Copied'); } catch { toast('Select the codes and copy them by hand.'); } }
+async function safeConfirm() { let r; try { r = await api('/api/lock/confirm', { code: $('safeCode').value }); } catch { $('safeCode').value = ''; $('safeCode').focus(); return; } $('safeDlgBody').innerHTML = safeCodesHTML(r.codes, true); safeDraw(); }
+async function safeMode(mode) { try { await api('/api/lock/mode', { mode }); toast('Saved'); } catch {} safeDraw(); }
+async function safeLockNow() { try { await api('/api/lock/lock', {}); } catch { return; } location.reload(); }
+async function safeCodes() { const code = await ask('Type the 6-digit code from your authenticator app to make new backup codes (the old ones stop working):', ''); if (!code) return; let r; try { r = await api('/api/lock/codes', { code }); } catch { return; } const d = $('safeDlg'); d.style.maxWidth = '560px'; $('safeDlgBody').innerHTML = safeCodesHTML(r.codes, false); if (!d.open) d.showModal(); safeDraw(); }
+async function safeOff() { const code = await ask('Type the 6-digit code from your authenticator app to turn the lock off:', ''); if (!code) return; try { await api('/api/lock/off', { code }); toast('🔓 The lock is off.'); } catch {} safeDraw(); }
 /* 🚀 Raid tab (1.95.0, Derek: for Birx, Kirb and him): the live channels you follow, the ones you raided most recently first, a preview and a Raid button */
 let RD = null, rdSel = '', rdTimer = 0, rdShown = '';
 const rdAgo = t => { if (!t) return 'never raided'; const d = Date.now() - t, m = Math.round(d / 60000); return m < 2 ? 'just now' : m < 60 ? m + ' min ago' : m < 60 * 36 ? Math.round(m / 60) + ' h ago' : m < 60 * 24 * 60 ? Math.round(m / 1440) + ' days ago' : Math.round(m / 43200) + ' months ago'; };
@@ -3770,6 +3840,8 @@ function mnDraw() {
       <label class="ck" style="margin:0"><input type="checkbox" ${M.opts.overlay ? 'checked' : ''} onchange="mnGo('opts',{overlay:this.checked})" title="Show the vote box on stream (the OBS browser source below)"> <span>Show the vote count on stream</span></label>
       <label class="ck" style="margin:0"><input type="checkbox" ${M.opts.reply ? 'checked' : ''} onchange="mnGo('opts',{reply:this.checked})" title="The bot answers each vote in chat, so people know it counted"> <span>The bot answers each vote in chat</span></label>
       <div class="row" style="gap:6px;align-items:center;margin-top:6px"><span>Command</span><input value="${esc(M.opts.command)}" title="What chat types to vote (like !vote)" style="width:110px" onchange="mnGo('opts',{command:this.value})"><span>Changes each</span><input type="number" min="0" max="5" value="${M.opts.changes}" title="How many times each person can change their vote" style="width:60px" onchange="mnGo('opts',{changes:this.value})"></div>
+      <div class="row" style="gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap"><span>A new day starts at</span><input type="number" min="0" max="12" value="${M.dayStart}" title="The hour in the morning when a new day starts. A stream that goes live after midnight but before this hour counts as the day before (live at 1:30 AM Tuesday = Monday), for the Wednesday / Sunday birthday votes" style="width:60px" onchange="api('/api/birthdays/opts',{dayStart:this.value}).then(()=>{toast('Saved');mnLoad()})"><span>AM <span class="muted">(right now it counts as ${esc(M.dayName || '')})</span></span></div>
+      <p class="help" style="margin:6px 0 0">🎂 Viewers save their own birthday in chat with the birthday command: its settings are in Settings → 💜 Twitch → 🎂 Birthdays.</p>
       <p class="help" style="margin:8px 0 4px">In OBS add a <b>Browser</b> source, 1920 × 1080, with this address (add <code>?side=left</code> or <code>?at=bottom</code> to move the box):</p>
       <div class="row" style="gap:6px"><input readonly value="${esc(url)}" title="The address of the on-stream vote box for an OBS browser source" class="grow" onclick="this.select()"><button title="Copy the vote box's address for OBS" onclick="copyText('${esc(url)}').then(ok=>ok&&toast('Copied'))">📋 Copy</button><button class="ghost" title="See what the vote box looks like with pretend votes" onclick="window.open('/movienight.html?demo=1','_blank','width=960,height=540')">👀 Preview</button></div></div>
     ${M.past.length ? `<div class="card"><details><summary><b>📜 Past nights (${M.past.length})</b></summary>${M.past.filter(p => hit(p.winner) || p.movies.some(m => hit(m.title))).map(p => `<div style="margin:6px 0"><b>${new Date(p.at).toLocaleDateString()}</b>: ${esc(p.winner || 'no winner')} <span class="muted">· ${p.voters} voter${p.voters === 1 ? '' : 's'} · guessed ${p.right} of ${p.right + p.wrong}</span><div class="muted" style="font-size:12px">${p.movies.map(m => `${esc(m.title)} (${m.votes})`).join(' · ')}</div></div>`).join('')}</details></div>` : ''}</div></div>`;
@@ -6008,6 +6080,7 @@ function openSettings(force) {
       <h3 style="margin-top:18px">💾 Backup</h3>
       <p class="help">Everything saves automatically. Download a backup to keep a copy or move to another computer.</p>
       <div class="row"><button onclick="location.href='/api/backup'">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
+      <h3 style="margin-top:18px">🔐 Safety &amp; privacy</h3><div id="safeBox" class="help">Loading…</div>
       <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
     game: `<h3>⚔️ The battle</h3>
       <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('raceMax', '🏁 No races with more than this many pieces (a race map is skipped)', '50', 'number', 'min="2" max="1000"')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
@@ -6121,6 +6194,7 @@ function openSettings(force) {
       <div class="devOnly"><h3 style="margin-top:18px">🟢 Kick (dev mode)</h3><div id="kickBox">${kickHTML()}</div></div>
       <h3 style="margin-top:18px">🎬 Clips</h3><div id="clipBox">${clipHTML()}</div>${cki('clipChat', '💬 Post the link in chat when a clip is made')}<div id="clipWhoBox">${clipWhoHTML()}</div>
       <h3 style="margin-top:18px">🛡️ Spam bots</h3>${spamHTML()}
+      <h3 style="margin-top:18px">🎂 Birthdays</h3><div id="bdBox" class="help">Loading…</div>
       <h3 style="margin-top:18px">🎨 Ball colors</h3>
       ${colorHTML(s)}
       ${ck('announceWinner', '🏆 Post the winner in Twitch chat (a few seconds after the replay, so chat doesn’t spoil it)')}
@@ -6572,6 +6646,7 @@ async function loadNotes() {
   el.innerHTML = gh.length ? gh.map(x => `<div class="card" style="margin:10px 0"><h3 style="margin:0">${esc(x.tag)} <span class="muted" style="font-size:13px">${esc(new Date(x.at).toLocaleDateString())}</span></h3>${md(x.notes.replace(/## ⬇️ Download[\s\S]*?(?=\n## |$)/, ''))}</div>`).join('') : md(r.local || 'No patch notes yet.');
 }
 async function fillAppBox() {
+  safeDraw();
   const box = $('appBox'); if (!box) return;
   const a = await fetch('/api/app').then(r => r.json());
   box.innerHTML = `<div class="row"><span class="grow">Movie Royal <b>v${esc(a.version)}</b>${a.desktop ? '' : ' (running from source)'}</span></div>

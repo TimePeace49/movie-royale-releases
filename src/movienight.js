@@ -4,6 +4,7 @@
 // were the first one to type in chat, or it's your birthday and today is a Wednesday or a Sunday.
 // Every vote pops up in the app so Jess can click whether Birx guessed it right: that count shows on screen and is kept per chatter.
 import { db, save, uid } from './store.js';
+import * as bdays from './birthdays.js';
 
 const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '' };
 export const setHooks = h => Object.assign(H, h);
@@ -11,29 +12,24 @@ export const on = () => !!H.on();
 
 export function data(d = (db.movieNight ||= {})) {
   d.movies ||= []; d.votes ||= {}; d.raiders ||= []; d.extra ||= {}; d.birthdays ||= {}; d.guesses ||= [];
+  if (d === db.movieNight) { const all = bdays.days(); if (d.birthdays !== all) { if (!d.bdayMoved) { for (const [l, v] of Object.entries(d.birthdays)) all[l] ??= v; d.bdayMoved = 1; } d.birthdays = all; } } // 🎂 one birthday list for the whole app (1.96.0)
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
 export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, lastMins: 5, bonusDays: [0, 3], ...d.opts });
+/** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
+export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
 const plain = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').trim();
-const mmdd = (t = Date.now()) => { const x = new Date(t); return String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
-/** "3/14", "03-14", "March 14", "14 march" → "03-14" (null when it isn't a date) */
-export function readDay(s) {
-  const t = String(s || '').trim().toLowerCase(); let m = t.match(/^(\d{1,2})\s*[\/\-. ]\s*(\d{1,2})$/), mo, da;
-  const MON = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-  if (m) { mo = +m[1]; da = +m[2]; }
-  else if ((m = t.match(/^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?$/)) || (m = t.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?$/))) { const w = isNaN(+m[1]) ? m[1] : m[2], n = isNaN(+m[1]) ? m[2] : m[1]; mo = MON.indexOf(w.slice(0, 3)) + 1; da = +n; }
-  if (!mo || !da || mo > 12 || da > 31) return null;
-  return String(mo).padStart(2, '0') + '-' + String(da).padStart(2, '0');
-}
+const mmdd = bdays.mmdd;
+export const readDay = bdays.readDay;
 
 /** Why this person has two votes tonight (empty = one vote). */
 export function bonusWhy(login, d = data(), now = Date.now()) {
   const l = low(login), why = [];
   if (d.raiders.includes(l)) why.push('raided');
   if (d.first === l) why.push('first in chat');
-  if (d.birthdays[l] === mmdd(now) && opts(d).bonusDays.includes(new Date(now).getDay())) why.push('birthday');
+  if (d.birthdays[l] === mmdd(dayOf(now, d)) && opts(d).bonusDays.includes(new Date(dayOf(now, d)).getDay())) why.push('birthday');
   return why;
 }
 export const votesAllowed = (login, d = data(), now = Date.now()) => (bonusWhy(login, d, now).length ? 2 : 1) + Math.max(0, Math.round(Number(d.extra[low(login)]) || 0));
@@ -76,7 +72,7 @@ export function state() {
     voters: Object.entries(d.votes).map(([login, v]) => ({ login, name: v.name, changes: v.changes, allowed: votesAllowed(login, d, now), why: bonusWhy(login, d, now), picks: v.list.map(x => ({ n: d.movies.findIndex(m => m.id === x.movie) + 1, title: d.movies.find(m => m.id === x.movie)?.title || '(removed)', changed: !!x.changed })) })).sort((a, b) => a.name.localeCompare(b.name)),
     pending: d.guesses.filter(g => g.right == null && !g.skip).slice(0, 30), guess: { right, wrong, total: right + wrong }, guesses: d.guesses.slice(-60).reverse(),
     stats: { right: d.stats.right, wrong: d.stats.wrong, per: Object.entries(d.stats.per).map(([login, s]) => ({ login, ...s })).sort((a, b) => (b.right + b.wrong) - (a.right + a.wrong)) },
-    first: d.first || '', raiders: d.raiders, extra: d.extra, birthdays: d.birthdays, bonusToday: o.bonusDays.includes(new Date(now).getDay()), opts: o, pinned: d.pinnedAt || 0, pinError: d.pinError || '', past: d.past.slice(0, 30),
+    first: d.first || '', raiders: d.raiders, extra: d.extra, birthdays: d.birthdays, bonusToday: o.bonusDays.includes(new Date(dayOf(now, d)).getDay()), dayStart: bdays.opts().dayStart, dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(dayOf(now, d)).getDay()], opts: o, pinned: d.pinnedAt || 0, pinError: d.pinError || '', past: d.past.slice(0, 30),
   };
 }
 export function screen() { // what the on-stream box shows
@@ -183,7 +179,8 @@ export function onAlert(a) { // a raid tonight = two votes for the raider
 }
 export function onChat(m) {
   if (!on()) return false; const d = data(), o = opts(d), cmd = low(o.command);
-  const text = String(m.text || '').trim(), sp = text.split(/\s+/); if (!cmd || low(sp[0]) !== cmd) return false;
+  const text = String(m.text || '').trim(), sp = text.split(/\s+/);
+  if (!cmd || low(sp[0]) !== cmd) return false;
   if (!d.open) { if (d.movies.length && d.closedAt) sayOnce(`🍿 @${m.name || m.login} voting is closed for tonight.`); return !!d.movies.length; }
   const arg = text.slice(sp[0].length).trim(), name = m.name || m.login;
   if (!arg) { sayOnce(`🍿 @${name} type ${o.command} and the number or name of a movie (1 to ${d.movies.length}).`, 8000); return true; }
@@ -215,12 +212,7 @@ export function guess(id, right) {
   if (!per.right && !per.wrong) delete d.stats.per[g.login];
   changed(); return state();
 }
-export function setBirthday(name, day) {
-  const d = data(), l = low(name); if (!l) throw new Error('Type their chat name.');
-  if (!day) { delete d.birthdays[l]; changed(); return state(); }
-  const x = readDay(day); if (!x) throw new Error('Type the birthday like 3/14 or March 14.');
-  d.birthdays[l] = x; changed(); return state();
-}
+export function setBirthday(name, day) { bdays.set(name, day); changed(); return state(); }
 export function setExtra(name, n) { const d = data(), l = low(name); if (!l) throw new Error('Type their chat name.'); const v = Math.max(0, Math.min(10, Math.round(Number(n) || 0))); if (v) d.extra[l] = v; else delete d.extra[l]; changed(); return state(); }
 export function setRaider(name, yes) { const d = data(), l = low(name); if (!l) throw new Error('Type their chat name.'); d.raiders = d.raiders.filter(x => x !== l); if (yes) d.raiders.push(l); changed(); return state(); }
 export function setFirst(name) { const d = data(); d.first = low(name); changed(); return state(); }
@@ -246,6 +238,8 @@ export function rulesDemo() {
   run('early', ['a', 'a', 'b'], wed, ['vote', 'vote', 'change'], 'The first one in chat');
   run('cake', ['a', 'b', 'c'], wed, ['vote', 'vote', 'change'], 'Birthday on a Wednesday');
   run('monday', ['a', 'b', 'c'], mon, ['vote', 'change', 'no (used)'], 'Birthday on a Monday (no bonus)');
+  run('cake', ['a', 'b', 'c'], new Date(2026, 10, 12, 1, 30).getTime(), ['vote', 'vote', 'change'], 'Wednesday birthday, live at 1:30 AM Thursday (still counts as Wednesday)');
+  run('cake', ['a', 'b', 'c'], new Date(2026, 10, 11, 1, 30).getTime(), ['vote', 'change', 'no (used)'], 'Wednesday birthday, live at 1:30 AM Wednesday (that is still Tuesday night)');
   const f = fresh(), finds = [['2', 'Bravo'], ['#3', 'Charlie'], ['alp', 'Alpha'], ['CHARLIE', 'Charlie'], ['9', null], ['zzz', null]].map(([q, want]) => { const m = findMovie(q, f), got = m && !m.many ? m.title : null; ok.push(got === want); return { typed: q, found: got || 'nothing', ok: got === want }; });
   const days = [['3/14', '03-14'], ['March 14', '03-14'], ['14 mar', '03-14'], ['12-25', '12-25'], ['banana', null]].map(([q, want]) => { const got = readDay(q); ok.push(got === want); return { typed: q, read: got || 'not a date', ok: got === want }; });
   return { ok: ok.every(Boolean), rows, finds, days };

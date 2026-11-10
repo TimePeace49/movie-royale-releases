@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.96.0
+- 🔐 **Safety** (Derek: "can we add 2 factor for safety… nothing being sent that shouldn't be"):
+  - **Only your PC can reach the app.** It now listens on this computer only (before, it listened on the home network too and turned other devices away at the door). Pages on other websites can't press its buttons or read from it any more either.
+  - **The lock (2-step), optional:** Settings → 👤 Account & updates → 🔐 Set up the lock. Scan the picture with an authenticator app on your phone; from then on the control panel and Setup guide ask for a 6-digit code (every time the app opens, once a day, or every 30 days). 8 backup codes for a lost phone. Stream screens, OBS and the Stream Deck keep working while it's locked.
+  - **📄 What is sent where:** a plain page listing what stays on your PC, what is never asked for (no email, no passwords, nothing to the makers of the app) and which services it talks to.
+  - **The fonts on the stream screens are inside the app now**, so nothing is fetched from Google's font site.
+  - 🧪 Test tab → 🔐 Safety & privacy: 🛡️ Run the safety check.
+- 🎂 **Birthdays, in every edition** (Derek): viewers type **!bday 3/14** or **!bday March 14** (month and day only: a year is never asked for or kept; if someone types one it's thrown away). They can change it again after 30 days; you can add, change or remove one any time in Settings → 💜 Twitch → 🎂 Birthdays. **The first time someone chats on their birthday, the bot wishes them a happy birthday.**
+- 🍿 Movie night (Birx & Jess): **late nights count as the day before**. Going live at 1:30 AM Tuesday counts as Monday (a new day starts at 6 AM; you can change the hour). The Wednesday / Sunday birthday votes and the birthday wishes both follow it. Movie night uses the same birthday list.
+
 ## 1.95.0
 - 🚀 **Raid tab** (Derek: for Birx, Kirb and him). Every channel you follow that is live right now, **the ones you raided most recently first**, each with when you last raided them and how many times. Click one for a **live preview** on the right (muted until you turn the sound on), then **🚀 Raid**: you confirm, Twitch counts down about 90 seconds, chat is told where you're heading, and **✖ Cancel the raid** stops it. You can also sort by who you haven't raided for the longest, or by viewers.
 - Raids you start by typing /raid, or with the 🚀 raid reward, are remembered too. The list of who you raided stays on your PC.
