@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.106.1
+**🎵 Song box: History + stars like Letterboxd** (Birx & Jess's edition; also in Derek's with dev mode on)
+- The song box on the 💬 Chat tab has two tabs now: **Now** and **History**. History lists the songs that were played, newest first, each with Birx's and Jess's stars, so you can go back and rate them.
+- If a song already has a rating, its stars are filled in. Click to change it: the stars light up under the mouse before you click, the left half of a star is a half star, and clicking the same star again clears it.
+- **💿 RYM** next to a song opens RateYourMusic's search for it in your browser, so you can rate it on your own account there. The app can't change a RateYourMusic account by itself: that site gives apps no way to do it.
+
 ## 1.106.0
 **💬 The Chat tab, laid out like Birx's drawing** (Birx & Jess's edition; also in Derek's with dev mode on)
 - Three columns: on the left a **big stream preview** with the **song request** box and the **movie night** box side by side under it, in the middle the **activity feed** (subs, bits, raids, follows…), on the right **chat**.
