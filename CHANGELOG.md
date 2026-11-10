@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.116.3
+- 💬 **Chat tab boxes never cover each other any more.**
+  - **Resizing:** any box in the way of the edge or corner you drag gets pushed smaller to make room (not just the ones lined up with it). When a box in the way is already at its smallest, the edge stops there.
+  - **Moving:** drag a box by its top bar onto another box and let go: the two trade places (the box you'd trade with gets a dashed yellow outline). Letting go anywhere else puts it back.
+  - A layout saved earlier with boxes on top of each other is tidied up by itself the first time you open the tab.
+
 ## 1.116.2
 - 🍿 **Leaderboard:** the line at the bottom now tells chat they can add a comment to their vote: "TYPE !VOTE + MOVIE NUMBER + ANYTHING YOU WANT TO SAY", with the example "!VOTE 1 I LOVE THIS MOVIE" under it. (The vote counts, and the extra words show in the vote pop-up in the app, like before.)
 
