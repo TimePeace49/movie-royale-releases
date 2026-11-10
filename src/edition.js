@@ -18,7 +18,7 @@ export function setLookAs(id) { lookAs = EDITION.dev && ALL[id] && id !== EDITIO
 export const lookingAs = () => lookAs;
 /** Extras made for one edition (editions.json `on`: movienight…). A dev edition has every one of them while dev mode is on, so they can be tried first. */
 export const onNow = () => { const e = lookAs && ALL[lookAs] ? ALL[lookAs] : ALL[EDITION.id]; return Array.isArray(e?.on) ? e.on : []; };
-export const feat = (name, devMode) => onNow().includes(name) || (EDITION.dev && !!devMode);
+export const feat = (name, devMode) => onNow().includes(name) || (!lookAs && EDITION.dev && !!devMode); /* (👀 while looking like another edition: only that edition's extras) */
 export const FEATS = ['movienight', 'chatbot', 'kick', 'songs', 'dash', 'eggs', 'raids'];
 export const is = (...ids) => ids.includes(EDITION.id);
 // 🏷️ The name people see (1.92.0, Derek: "rename the whole project to TimePeace Chatbot"; True's + Birx's editions carry their own name).
@@ -30,14 +30,17 @@ const SEEN = new RegExp('(?<![\\\\])Movie Royal(?!' + KEEP + ')', 'g'), SEEN_LOW
 // 🧽 Name scrub (1.97.0, Derek: "remove kirb, timepeace, timepeace49, derek names from any birx or trues editions"): editions with `scrub`
 // never show those names. The code keeps them (Derek's and Kirb's editions want them); they are swapped on the way out, like the app's name.
 export const scrub = !!ALL[id]?.scrub;
+/** 👀 The name + the name scrub of the edition being shown right now (the dev edition can look like another one, 1.106.0). */
+export const appNow = () => (lookAs && ALL[lookAs] ? String(ALL[lookAs].app || 'Movie Royal') : APP);
+export const scrubNow = () => (lookAs && ALL[lookAs] ? !!ALL[lookAs].scrub : scrub);
 const SCRUB = [[/(?<!github\.com\/)TimePeace49/g, 'Red Kraken'], [/Kirbgames/g, 'Blue Serpent'], [/timepeace49 and kirbgames/g, 'red kraken and blue serpent'],
   [/Take out Time/g, 'Take out Red'], [/Take out Kirb/g, 'Take out Blue'], [/take out kirb/g, 'take out blue'], [/'KIRB' : 'TIME'/g, "'BLUE' : 'RED'"], [/letter: 'T'/g, "letter: 'R'"], [/letter: 'K'/g, "letter: 'B'"],
   [/Kirb \(the blue K monkey\)/g, 'Blue (the blue B monkey)'], [/Time \(the red T monkey\)/g, 'Red (the red R monkey)'], [/blue K monkey/g, 'blue B monkey'], [/red T monkey/g, 'red R monkey'], [/ \((?:Kirb|Time)\)/g, ''],
   [/Kirb spots/g, 'Wild spots'], [/\(Kirb\) /g, ''], [/, kirb, luck/g, ', wheel, luck'], [/Wheel of Kirbportions/g, 'the ready-made wheel'], [/\bKirb's\b/g, "the streamer's"], [/\bKirb\b/g, 'the streamer'],
   [/placeholder="timepeace49"/g, 'placeholder="your_channel"'], [/derek\/movie-royal/g, 'username/movie-royal'], [/!call kirb/g, '!call wild'], [/friend kirb partner/g, 'friend partner'],
   [/\bDerek's\b/g, "the streamer's"], [/\bDerek\b/g, 'the streamer'], [/(?<![\w/.@-])TimePeace(?![\w])/g, 'the streamer']];
-const scrubOut = t => { if (!scrub || typeof t !== 'string') return t; for (const [re, to] of SCRUB) t = t.replace(re, to); return t; };
-export const brand = t => scrubOut(APP === 'Movie Royal' || typeof t !== 'string' || !t.includes('Movie Royal') ? t : t.replace(SEEN, APP));
+const scrubOut = t => { if (!scrubNow() || typeof t !== 'string') return t; for (const [re, to] of SCRUB) t = t.replace(re, to); return t; };
+export const brand = t => { const A = appNow(); return scrubOut(A === 'Movie Royal' || typeof t !== 'string' || !t.includes('Movie Royal') ? t : t.replace(SEEN, A)); };
 /** For page files: also the lower-case spelling (help mode's word patterns match what's on screen). */
-export const brandFile = t => scrubOut(APP === 'Movie Royal' ? t : t.replace(SEEN, APP).replace(SEEN_LOW, APP.toLowerCase()).replace(/MOVIE ROYAL/g, APP.toUpperCase()));
-export const info = () => ({ id: EDITION.id, name: EDITION.name, app: APP, dev: EDITION.dev, off: offNow(), lookAs, repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, repo: v.repo })) });
+export const brandFile = t => { const A = appNow(); return scrubOut(A === 'Movie Royal' ? t : t.replace(SEEN, A).replace(SEEN_LOW, A.toLowerCase()).replace(/MOVIE ROYAL/g, A.toUpperCase())); };
+export const info = () => ({ id: EDITION.id, name: EDITION.name, app: appNow(), dev: EDITION.dev && !lookAs, realDev: EDITION.dev, off: offNow(), lookAs, lookName: lookAs ? ALL[lookAs].name : '', repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, app: v.app || 'Movie Royal', repo: v.repo })) });

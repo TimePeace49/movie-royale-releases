@@ -2,6 +2,23 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.106.0
+**💬 The Chat tab, laid out like Birx's drawing** (Birx & Jess's edition; also in Derek's with dev mode on)
+- Three columns: on the left a **big stream preview** with the **song request** box and the **movie night** box side by side under it, in the middle the **activity feed** (subs, bits, raids, follows…), on the right **chat**.
+- 🎵 Song box: the song's picture, its name, who asked for it, **▶ Play / ⏸ Pause**, **⏭ Skip**, a **volume slider**, and **five stars each** for Birx and Jess (click the left half of a star for a half star; click the same star again to clear it).
+- 🍿 Movie box: a table with each movie, its votes, and how many of them Birx guessed right / wrong, plus the **⏳ 5 min** last call button.
+
+**🗳️ Vote pop-ups, one at a time**
+- Every vote and every vote change gets its own pop-up, **in the order chat voted**. The first one stays until you click it, then the next one shows ("+2 more" tells you how many are waiting).
+- Each pop-up shows the chatter's picture, their name, how long they've followed, which movie they voted for (or changed to, and what it was before), anything else they typed with the vote, and **Birx: ✅ Right / ❌ Wrong** (or Skip).
+- A vote can now have words after it: "!vote 3 this one has to win" counts as a vote for #3.
+- 🧪 Test tab → Movie night: **🗳️🗳️🗳️ Three votes in a row**.
+
+**👀 See the app as another edition** (Derek's edition, dev mode)
+- Settings → 👤 Account & updates → **See the app as another edition**: pick Public, Kirb, True or Birx & Jess and the whole app switches to what they get: its name, its tabs and extras, the hidden names, and no dev things.
+- A small bar at the bottom left says which edition you're looking at, lets you hop to another one, and **↩ Back to mine** brings everything back. Restarting the app also brings it back. Nothing is saved, removed or changed for real.
+- While you look like Birx's or True's edition, chat lines the app sends hide the same names too, so don't leave it on during your own stream.
+
 ## 1.105.0
 **💿 RateYourMusic ratings** (Birx & Jess's edition; also in Derek's with dev mode on)
 - 🎵 Songs → Import now reads a **RateYourMusic export**. On rateyourmusic.com: your profile page → bottom → **Export your data**. Every album and single you rated comes in with its rating; things you only catalogued or wish-listed are left out.

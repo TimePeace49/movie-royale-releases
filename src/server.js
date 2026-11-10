@@ -38,7 +38,7 @@ import * as songs from './songs.js';
 import * as eggs from './eggs.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
-import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
+import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, appNow as edAppNow, scrubNow as edScrubNow, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
@@ -83,11 +83,11 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 // (or another device on the network) is turned away before anything else runs. See src/safety.js
 safety.setName(APP_NAME); try { if (safety.fileReset()) console.log('[safety] unlock.txt found: the lock is off'); } catch {}
 app.use((req, res, next) => { const why = safety.strange(req); if (!why) return next(); safety.refused.n++; safety.refused.last = { at: Date.now(), why }; res.status(403).send('Movie Royal only runs on this computer.'); });
-let lockPage = null;
+let lockPage = null, lockPageFor = null;
 app.use((req, res, next) => { // 🔒 the optional lock: the control panel + setup guide ask for the authenticator code first (stream screens, OBS and the Stream Deck keep working)
   if (!safety.isOn() || safety.unlocked(req)) return next();
   const p = req.path; if (p.startsWith('/api/lock/')) return next();
-  if (req.method === 'GET' && (p === '/' || p === '/control.html' || p === '/setup.html')) { try { lockPage = lockPage || brandFile(fs.readFileSync(path.join(ROOT, 'public', 'lock.html'), 'utf8')); } catch { return res.status(401).send('Locked.'); } return res.set('Cache-Control', 'no-store').type('html').send(lockPage); }
+  if (req.method === 'GET' && (p === '/' || p === '/control.html' || p === '/setup.html')) { try { lockPage = (lockPageFor === edLooking() && lockPage) || brandFile(fs.readFileSync(path.join(ROOT, 'public', 'lock.html'), 'utf8')); } catch { return res.status(401).send('Locked.'); } return res.set('Cache-Control', 'no-store').type('html').send(lockPage); }
   let from = ''; try { from = new URL(String(req.headers.referer || '')).pathname; } catch {}
   if (p.startsWith('/api/') && (from === '/' || from === '/control.html' || from === '/setup.html')) return res.status(401).json({ error: 'Movie Royal is locked. Type your code first.', locked: true });
   next();
@@ -303,7 +303,7 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
-    edition: { id: EDITION.id, name: EDITION.name, app: APP_NAME, dev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), on: ED_FEATS.filter(feat) },
+    edition: { id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
     mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
     botCount: (db.chatbot?.commands || []).length,
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
@@ -2307,7 +2307,7 @@ app.delete('/api/movies/:eid/backers/:did', (req, res) => {
 // 🏷️ pages are sent with the name people see (TimePeace Chatbot, or the edition's own name) in place of "Movie Royal"
 const brandCache = new Map();
 app.use((req, res, next) => {
-  if (APP_NAME === 'Movie Royal' || req.method !== 'GET') return next();
+  if ((edAppNow() === 'Movie Royal' && !edScrubNow()) || req.method !== 'GET') return next();
   let rel = decodeURIComponent(req.path); if (rel === '/') rel = '/index.html';
   if (!/^\/[\w./-]+\.(html|js)$/.test(rel) || rel.includes('..')) return next();
   const file = path.join(ROOT, 'public', rel);
@@ -4879,6 +4879,12 @@ movienight.setHooks({
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
   isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
   act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),
+  info: async (login, userId, test) => { // the voter's Twitch picture + when they followed (pretend voters get a pretend date)
+    if (test || /^pretend_/.test(login)) return { avatar: '', followed: Date.now() - (200 + login.length * 37) * 86400000 };
+    const u = (await Promise.race([twitch.getUsers([login]).catch(() => new Map()), new Promise(r => setTimeout(() => r(new Map()), 4000))])).get(login);
+    let followed; try { followed = await twitch.followedAt(String(userId || u?.id || '').replace(/^k/, '')); } catch {}
+    return { avatar: u?.avatar ? proxied(u.avatar) : '', followed };
+  },
 });
 setInterval(() => { try { movienight.tick(); } catch (e) { console.error('[movie night]', e.message); } }, 1000);
 const mnTry = fn => wTry(async (b, req) => { if (!feat('movienight')) throw new Error('Movie night voting is not part of this edition.'); const r = await fn(b, req); return r && r.movies ? { state: r } : { ...(r || {}), state: movienight.state() }; });
@@ -4902,12 +4908,13 @@ app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote 
   if (b.action === 'raid') { movienight.onAlert({ kind: 'raid', login: 'pretend_raider', name: 'pretend_raider' }); return {}; }
   const names = ['pretend_ana', 'pretend_bo', 'pretend_cy', 'pretend_raider', 'pretend_dee'], who = b.name || names[Math.floor(Math.random() * names.length)], n = b.n || 1 + Math.floor(Math.random() * d.movies.length);
   twitch.pretend.until = Date.now() + 600000;
+  if (b.action === 'three') { const said = ['', 'this one has to win!!', 'ok fine, changing my mind']; for (let i = 0; i < 3; i++) await twitchHandlers.chat({ login: names[i], name: names[i], text: `${movienight.opts().command} ${1 + ((n - 1 + i) % d.movies.length)} ${said[i]}`.trim(), badges: {}, pretend: true, userId: 'p-' + names[i] }); return { who: names.slice(0, 3).join(', '), n }; } // (three pop-ups, shown one after another in the order they voted)
   await twitchHandlers.chat({ login: who, name: who, text: `${movienight.opts().command} ${n}`, badges: {}, pretend: true, userId: 'p-' + who });
   return { who, n };
 }));
-app.post('/api/test/edition-look', (req, res) => { // 👀 the dev edition shows what another edition leaves out (until you switch back or restart; nothing is saved or removed)
+app.post('/api/test/edition-look', (req, res) => { // 👀 the dev edition shows the app the way another edition has it: its name, its tabs, its extras, the hidden names, no dev things (until you switch back or restart; nothing is saved or removed)
   if (!EDITION.dev) return res.status(400).json({ error: "Only the dev edition can look like the others." });
-  const id = edLookAs(String(req.body?.id || '')); editionNoMovies(); pushState(); res.json({ ok: true, lookAs: id, off: edOffNow() });
+  const id = edLookAs(String(req.body?.id || '')); brandCache.clear(); lockPage = ''; lockPageFor = id; editionNoMovies(); pushState(); res.json({ ok: true, lookAs: id, off: edOffNow(), app: edAppNow() });
 });
 app.get('/api/test/edition', (req, res) => res.json({ ...editionInfo(), updatesFrom: repoName(), devMode: !!db.settings.betaUpdates, testBuilds: wantTests(), version: VERSION }));
 app.get('/api/test/mara-prizes', (req, res) => { const l = maraList(); if (!l) return res.status(400).json({ error: 'There is no marathon battle yet (dev mode makes it).' }); res.json({ name: l.name, things: l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, label: e.label, sub: e.sub || '', desc: e.desc || '' })), would: maraPrizes(l, true) }); });

@@ -5,8 +5,9 @@
 // Every vote pops up in the app so Jess can click whether Birx guessed it right: that count shows on screen and is kept per chatter.
 import { db, save, uid } from './store.js';
 import * as bdays from './birthdays.js';
+import { is } from './edition.js';
 
-const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '' };
+const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '', info: async () => null };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
 
@@ -16,7 +17,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, lastMins: 5, bonusDays: [0, 3], ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -42,7 +43,11 @@ export function findMovie(arg, d = data()) {
   let hit = by(x => x === q); if (hit.length === 1) return hit[0];
   hit = by(x => x.startsWith(q)); if (hit.length === 1) return hit[0];
   hit = by(x => x.includes(q)); if (hit.length === 1) return hit[0];
-  return hit.length > 1 ? { many: hit.slice(0, 4) } : null;
+  if (hit.length > 1) return { many: hit.slice(0, 4) };
+  /* a vote with more words after it ("3 this one has to win", "the thing because it's scary"): the number, or the first words that are exactly a title */
+  const num = t.match(/^#?(\d{1,3})[\s,.:;!-]+\S/); if (num) return d.movies[Number(num[1]) - 1] || null;
+  const words = t.split(/\s+/); for (let n = words.length - 1; n >= 1; n--) { const q2 = plain(words.slice(0, n).join(' ')); if (!q2) continue; const h2 = by(x => x === q2); if (h2.length === 1) return h2[0]; }
+  return null;
 }
 export function tally(d = data()) {
   const n = {}; for (const v of Object.values(d.votes)) for (const x of v.list) n[x.movie] = (n[x.movie] || 0) + 1;
@@ -68,7 +73,7 @@ export function state() {
   const d = data(), o = opts(d), now = Date.now();
   const right = d.guesses.filter(g => g.right === true).length, wrong = d.guesses.filter(g => g.right === false).length;
   return {
-    on: on(), open: !!d.open, openedAt: d.openedAt || 0, endsAt: d.open ? d.endsAt || 0 : 0, movies: d.movies, tally: tally(d), leaders: leaders(d).map(x => x.title), total: Object.values(d.votes).reduce((a, v) => a + v.list.length, 0),
+    on: on(), open: !!d.open, openedAt: d.openedAt || 0, endsAt: d.open ? d.endsAt || 0 : 0, movies: d.movies, tally: tally(d).map(t => ({ ...t, right: d.guesses.filter(g => g.movie === t.id && g.right === true).length, wrong: d.guesses.filter(g => g.movie === t.id && g.right === false).length })), leaders: leaders(d).map(x => x.title), total: Object.values(d.votes).reduce((a, v) => a + v.list.length, 0),
     voters: Object.entries(d.votes).map(([login, v]) => ({ login, name: v.name, changes: v.changes, allowed: votesAllowed(login, d, now), why: bonusWhy(login, d, now), picks: v.list.map(x => ({ n: d.movies.findIndex(m => m.id === x.movie) + 1, title: d.movies.find(m => m.id === x.movie)?.title || '(removed)', changed: !!x.changed })) })).sort((a, b) => a.name.localeCompare(b.name)),
     pending: d.guesses.filter(g => g.right == null && !g.skip).slice(0, 30), guess: { right, wrong, total: right + wrong }, guesses: d.guesses.slice(-60).reverse(),
     stats: { right: d.stats.right, wrong: d.stats.wrong, per: Object.entries(d.stats.per).map(([login, s]) => ({ login, ...s })).sort((a, b) => (b.right + b.wrong) - (a.right + a.wrong)) },
@@ -187,15 +192,16 @@ export function onChat(m) {
   const movie = findMovie(arg, d);
   if (!movie) { sayOnce(`🍿 @${name} I couldn't find that one. Type ${o.command} and a number from 1 to ${d.movies.length}.`, 8000); return true; }
   if (movie.many) { sayOnce(`🍿 @${name} that fits more than one (${movie.many.map(x => x.title).join(', ')}). Use the number.`, 8000); return true; }
-  vote(m.login, name, movie, { via: 'chat', test: !!m.pretend }); return true;
+  vote(m.login, name, movie, { via: 'chat', test: !!m.pretend, said: text, userId: m.userId || null }); return true;
 }
 /** Count one vote, tell chat, and queue the "did Birx guess it?" pop-up. */
-export function vote(login, name, movie, { via = 'chat', test = false, quiet = false } = {}) {
+export function vote(login, name, movie, { via = 'chat', test = false, quiet = false, said = '', userId = null } = {}) {
   const d = data(), o = opts(d), r = cast(login, name, movie, d);
   if (!r.ok) { if (!quiet) sayOnce(r.why === 'same' ? `🍿 @${name} you already voted for that one.` : `🍿 @${name} you've used your vote${r.allowed > 1 ? 's' : ''} and your change for tonight.`, 6000); return r; }
-  const g = { id: uid(), login: low(login), name, movie: movie.id, title: movie.title, n: r.n, kind: r.kind, from: r.from || '', at: Date.now(), right: null, ...(test ? { test: true } : {}) };
+  const g = { id: uid(), login: low(login), name, movie: movie.id, title: movie.title, n: r.n, kind: r.kind, from: r.from || '', at: Date.now(), right: null, ...(said ? { said: String(said).slice(0, 300) } : {}), ...(test ? { test: true } : {}) };
   d.guesses.push(g); d.guesses = d.guesses.slice(-400); changed();
   H.send({ type: 'mnVote', vote: g }, 'control');
+  Promise.resolve().then(() => H.info(g.login, userId, test)).then(x => { if (!x) return; if (x.avatar) g.avatar = x.avatar; if (x.followed !== undefined) g.followed = x.followed; changed(); H.send({ type: 'mnVote', vote: g, update: true }, 'control'); }).catch(() => {}); /* (their picture + how long they've followed, for the pop-up: looked up after, so the vote itself never waits) */
   H.act(r.kind === 'change' ? `changed their movie night vote to #${r.n} ${movie.title}` : `voted for #${r.n} ${movie.title}`, { icon: '🗳️', who: name, kind: 'vote', test });
   if (!quiet && o.reply !== false) H.say(r.kind === 'change' ? `🗳️ @${name} changed to #${r.n} ${movie.title}.` : `🗳️ @${name} voted for #${r.n} ${movie.title}.${r.left ? ` You have ${r.left} more vote${r.left === 1 ? '' : 's'}.` : ''}`).catch(() => {});
   return { ...r, guess: g };
@@ -219,6 +225,7 @@ export function setFirst(name) { const d = data(); d.first = low(name); changed(
 export function setOpts(o) {
   const d = data(), x = d.opts;
   if ('command' in o) { const c = String(o.command || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x.command = c; else throw new Error('The command has to look like !vote'); }
+  if ('guesser' in o) { const g = String(o.guesser || '').trim().slice(0, 20); if (g) x.guesser = g; }
   if ('changes' in o) x.changes = Math.max(0, Math.min(5, Math.round(Number(o.changes) || 0)));
   if ('reply' in o) x.reply = !!o.reply;
   if ('overlay' in o) x.overlay = !!o.overlay;

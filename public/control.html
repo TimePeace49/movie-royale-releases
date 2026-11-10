@@ -405,7 +405,13 @@
   .obsBox { margin:10px 0; padding:10px 14px; } .obsBox h4 { margin:0 0 4px; }
   tr.pausedRow { opacity:.5; } tr.pausedRow:hover { opacity:.8; }
   tr.blHead td { background:var(--panel2); font-weight:700; padding:6px 10px; border-radius:6px; } tr.blHead small { font-weight:400; }
-  #dashWrap { display:flex; gap:12px; height:100%; min-width:0; } #dashSide { flex:0 0 clamp(300px,30vw,440px); min-width:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; } #dashSide.edOff { display:none; } #dashSide .card { margin:0; }
+  #dashWrap { display:flex; gap:12px; height:100%; min-width:0; } #dashSide { flex:1.6 1 0; min-width:0; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:10px; } #dashSide.edOff, #dashWrap iframe.edOff { display:none; } #dashSide .card { margin:0; min-width:0; }
+  #dashWrap iframe { min-width:0; height:100%; border:0; border-radius:16px; } #dashFeed { flex:.85 1 0; } #dashChat { flex:1 1 0; } #chatFrame { flex:1; }
+  .dashRow { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:10px; } .dashSongRow { display:flex; gap:10px; align-items:center; margin-top:8px; min-width:0; }
+  #dashCover { flex:0 0 96px; width:96px; height:96px; border-radius:10px; overflow:hidden; background:#0e0820; display:flex; align-items:center; justify-content:center; font-size:38px; } #dashCover.play { flex-basis:160px; width:160px; height:96px; } #dashCover img, #dashCover iframe { width:100%; height:100%; object-fit:cover; border:0; display:block; }
+  .sgStars { display:inline-flex; gap:1px; vertical-align:middle; } .sgStars .st { position:relative; font-size:22px; line-height:1; color:#4a3f66; cursor:pointer; } .sgStars .st.f { color:#ffc928; } .sgStars .st.h { background:linear-gradient(90deg,#ffc928 50%,#4a3f66 50%); -webkit-background-clip:text; background-clip:text; color:transparent; } .sgStars .st i { position:absolute; top:0; bottom:0; width:50%; } .sgStars .st i:first-child { left:0; } .sgStars .st i:last-child { right:0; }
+  .dashTbl { width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px; } .dashTbl th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.6px; opacity:.7; padding:3px 6px; } .dashTbl td { padding:4px 6px; border-top:1px solid var(--line); } .dashTbl td.n, .dashTbl th.n { text-align:center; white-space:nowrap; width:1%; }
+  #mnPop { position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:60; width:430px; max-width:calc(100vw - 32px); } .mnAv { flex:0 0 56px; width:56px; height:56px; border-radius:50%; background:#3a2a66; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:22px; overflow:hidden; } .mnAv img { width:100%; height:100%; object-fit:cover; }
   .dashPrev { position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:10px; overflow:hidden; } .dashPrev iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
   .sgGrid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:14px; align-items:start; } @media (max-width:1150px) { .sgGrid { grid-template-columns:minmax(0,1fr); } }
   .sgRow { display:flex; gap:6px; align-items:center; padding:6px 4px; border-top:1px solid var(--line); min-width:0; } .sgT { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -914,7 +920,7 @@
 <section class="view on" id="v-people"><div class="pane" id="peopleBody"></div></section>
 
 <!-- 📜 HISTORY -->
-<section class="view" id="v-tchat"><div id="dashWrap"><div id="dashSide" class="edOff" data-feat="dash"></div><iframe id="chatFrame" title="Chat" style="flex:1;min-width:0;height:100%;border:0;border-radius:16px"></iframe></div></section>
+<section class="view" id="v-tchat"><div id="dashWrap"><div id="dashSide" class="edOff" data-feat="dash"></div><iframe id="dashFeed" class="edOff" data-feat="dash" title="Activity feed"></iframe><iframe id="dashChat" class="edOff" data-feat="dash" title="Chat"></iframe><iframe id="chatFrame" title="Chat"></iframe></div></section>
 <section class="view" id="v-history"><div class="pane"><div id="histBody"><div class="empty">Loading…</div></div></div></section>
 
 <!-- 🚫 BANS -->
@@ -1394,14 +1400,14 @@ not a link</textarea>
   <div class="card edOff" id="mnTestCard" data-feat="movienight">
     <h3>🍿 Movie night voting</h3>
     <p class="help">The 🍿 Movie night tab: chat votes with !vote, everyone gets 1 vote and 1 change, 2 votes for raiders, the first one in chat and Wednesday / Sunday birthdays. These use pretend people (named pretend_…), and nothing is sent to Twitch.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="mnRulesTest()" title="Walks the voting rules through with pretend people on a pretend night and shows what each one was allowed to do (nothing is saved)">📋 Check the voting rules</button><button onclick="mnTest('fill')" title="Adds 4 pretend movies when your movie night list is empty">📋 Fill a pretend list</button><button onclick="mnTest('vote')" title="A pretend viewer votes for a random movie through the pretend chat (opens voting quietly if it's closed)">🗳️ Pretend viewer votes</button><button onclick="mnTest('raid')" title="A pretend raid: pretend_raider gets two votes tonight">🚀 Pretend raid</button><button onclick="mnTest('clear')" title="Takes the pretend voters and their votes out again">🧹 Clear the pretend voters</button><button class="ghost" onclick="window.open('/movienight.html?demo=1','_blank','width=960,height=540')" title="See what the on-stream vote box looks like, with pretend votes and the last call clock">👀 The vote box</button><button class="ghost" onclick="setView('mnight')" title="Open the Movie night tab">🍿 Open the tab</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="mnRulesTest()" title="Walks the voting rules through with pretend people on a pretend night and shows what each one was allowed to do (nothing is saved)">📋 Check the voting rules</button><button onclick="mnTest('fill')" title="Adds 4 pretend movies when your movie night list is empty">📋 Fill a pretend list</button><button onclick="mnTest('vote')" title="A pretend viewer votes for a random movie through the pretend chat (opens voting quietly if it's closed)">🗳️ Pretend viewer votes</button><button onclick="mnTest('three')" title="Three pretend viewers vote one after another (one of them adds a message): the pop-ups come up one at a time, in the order they voted">🗳️🗳️🗳️ Three votes in a row</button><button onclick="mnTest('raid')" title="A pretend raid: pretend_raider gets two votes tonight">🚀 Pretend raid</button><button onclick="mnTest('clear')" title="Takes the pretend voters and their votes out again">🧹 Clear the pretend voters</button><button class="ghost" onclick="window.open('/movienight.html?demo=1','_blank','width=960,height=540')" title="See what the on-stream vote box looks like, with pretend votes and the last call clock">👀 The vote box</button><button class="ghost" onclick="setView('mnight')" title="Open the Movie night tab">🍿 Open the tab</button></div>
     <div id="tMnOut"></div>
   </div>
   <div class="card" id="edTestCard">
     <h3>🎭 Edition</h3>
     <p class="help">Movie Royal comes in editions (one for everyone, and ones made for a streamer). This shows which one this copy is and where it gets its updates.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="edTest()" title="Show which edition of Movie Royal this is and which GitHub it updates from">🎭 Which edition is this?</button><button class="ghost" onclick="setView('settings');setSub('account')" title="Open Settings → Account & updates, where the edition and update settings are">👤 Account & updates</button></div>
-    <div class="row devOnly" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">👀 See the app the way another edition has it:</span><select id="edLook" style="width:auto" onchange="edLook(this.value)" title="Look like another edition: hides what that edition leaves out, so you can try it before giving it to them (nothing is removed; back to normal when you pick Mine or restart)"><option value="">Mine (everything)</option><option value="public">Public</option><option value="kirb">Kirb</option><option value="true">True</option><option value="birx">Birx</option></select></div>
+    <div class="row devOnly" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">👀 See the app the way another edition has it:</span><select id="edLook" style="width:auto" onchange="edLook(this.value)" title="Switch the app to another edition's look: its name, its tabs and extras, the hidden names, and no dev things, so you see what they see (nothing is removed or saved; a bar at the bottom brings you back, and so does restarting)"><option value="">Mine (everything)</option><option value="public">Public</option><option value="kirb">Kirb</option><option value="true">True</option><option value="birx">Birx &amp; Jess</option></select></div>
     <div id="tEdOut" class="help" style="margin-top:8px"></div>
   </div>
   <div class="card" id="clipTestCard">
@@ -2527,7 +2533,7 @@ function connect() {
     if (m.type === 'birthdays' && view === 'settings' && sub === 'twitch') bdDraw();
     if (m.type === 'movieNight') { if (view === 'mnight') mnLoad(); else mnPending(); }
     if ((m.type === 'movieNight' || m.type === 'songs') && view === 'tchat') dashLoad();
-    if (m.type === 'mnVote') mnPop(m.vote);
+    if (m.type === 'mnVote') mnPop(m.vote, m.update);
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
@@ -2543,7 +2549,7 @@ function connect() {
     if (m.type === 'wheelReveal') ctlReveal(m);
     if (m.type === 'cliff' && S) { S.cliff = m.cliff; if (view === 'battle') renderBattleList(); } // 📋 who's really in the battle changed
     if (m.type === 'state') {
-      const was = S?.phase; S = m.state; render();
+      const was = S?.phase; S = m.state; if (S?.edition?.lookAs && S.settings) S.settings.betaUpdates = false; /* 👀 looking like another edition: its people have no dev mode */ render();
     }
   };
   sock.onclose = () => { applyStyle.sent = undefined; setTimeout(connect, 1500); }; // (Movie Royal restarted: tell it the app style again)
@@ -2574,7 +2580,7 @@ function setView(v) {
   if (v === 'eggs') egLoad();
   if (v === 'test') { arrangeTests(); lkInit(); raceTInit(); if (!$('labMap')?.options.length) labInit(); if ($('pirWho')) $('pirWho').value = pirWho(); drawWheelTest(); cliffWhy(); loadErrors(); let tt = 'tests'; try { tt = localStorage.testTab || 'tests'; } catch {} testTab(tt); }
   if (v === 'sounds') loadSounds();
-  if (v === 'tchat' && !$('chatFrame').src) $('chatFrame').src = '/chat.html?embed=1';
+  if (v === 'tchat') dashFrames();
   if (v === 'tchat') dashLoad(); else dashLeave();
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
@@ -3815,35 +3821,63 @@ async function egTest(action) {
   if (action === 'fill') setView('eggs'); else if (action !== 'rules' && action !== 'clear') { try { pchat(true); } catch {} }
 }
 /* 💬 Chat dashboard (1.99.0, Birx & Jess: "preview of stream, chat, channel alerts, song request info and if movie voting night all that info"): the side of the 💬 Chat tab */
-let dashTimer = 0, dashPrevOn = true, dashPrevFor = '';
-try { dashPrevOn = localStorage.getItem('dashPrev') !== '0'; } catch {}
+let dashTimer = 0, dashPrevOn = true, dashPrevFor = '', SGD = null, MND = null, dashPl = { on: false, paused: false, yt: '', vol: 60 };
+const dashC = {}, dashPut = (id, html) => { const el = $(id); if (!el || dashC[id] === html) return; dashC[id] = html; el.innerHTML = html; }; /* (only touches a part when it changed, so the players, the slider and clicks are left alone) */
+try { dashPrevOn = localStorage.getItem('dashPrev') !== '0'; dashPl.vol = Math.max(0, Math.min(100, Number(localStorage.getItem('dashVol') ?? 60))); } catch {}
+/* the Chat tab's windows: with the dashboard it is stream + songs + movie night | activity feed | chat (Birx's drawing, 1.106.0); without it, the usual chat page */
+function dashFrames() {
+  const on = featOn('dash'), set = (id, url) => { const f = $(id); if (f && !f.getAttribute('src')) f.src = url; };
+  $('chatFrame').style.display = on ? 'none' : '';
+  if (on) { set('dashFeed', '/chat.html?embed=1&panel=alerts'); set('dashChat', '/chat.html?embed=1&panel=chat'); } else set('chatFrame', '/chat.html?embed=1');
+}
 async function dashLoad() {
   if (!featOn('dash')) return; clearTimeout(dashTimer);
   const [sg, mn] = await Promise.all([featOn('songs') ? fetch('/api/songs').then(r => r.json()).catch(() => null) : null, featOn('movienight') ? fetch('/api/movienight').then(r => r.json()).catch(() => null) : null]);
-  if (sg && sg.on) SG = SG && view === 'songs' ? SG : sg; if (mn && mn.movies) MN = mn; dashDraw(sg && sg.on ? sg : null, mn && mn.movies ? mn : null);
+  if (sg && sg.on) SG = SG && view === 'songs' ? SG : sg; if (mn && mn.movies) MN = mn; SGD = sg && sg.on ? sg : null; MND = mn && mn.movies ? mn : null; dashDraw(SGD, MND); mnPopDraw();
   if (view === 'tchat') dashTimer = setTimeout(dashLoad, 20000);
 }
-function dashLeave() { clearTimeout(dashTimer); const f = $('dashPrevBox'); if (f) { f.innerHTML = ''; dashPrevFor = ''; } }
+function dashLeave() { clearTimeout(dashTimer); const f = $('dashPrevBox'); if (f) { f.innerHTML = ''; dashPrevFor = ''; } if (dashPl.on) { dashPl.on = false; dashCover(); } }
 function dashPrevSet(on) { dashPrevOn = on; try { localStorage.setItem('dashPrev', on ? '1' : '0'); } catch {} dashPrevFor = ''; dashLoad(); }
+/* ⭐ five stars (half stars by clicking the left half); the same star again clears it */
+function sgStars(key, who, val, scale, name) {
+  const s5 = val == null ? 0 : Math.round(val * 5 / scale * 2) / 2, k = esc(key).replace(/'/g, "\\'"), set = v => `sgGo('rate',{key:'${k}',who:${who},value:${s5 === v ? "''" : v * scale / 5}}).then(dashLoad)`;
+  return `<span class="sgStars">${[1, 2, 3, 4, 5].map(n => `<span class="st ${s5 >= n ? 'f' : s5 >= n - .5 ? 'h' : ''}">★<i onclick="${set(n - .5)}" title="${esc(name)}'s rating: ${n - .5} of 5 stars (click the same star again to clear it)"></i><i onclick="${set(n)}" title="${esc(name)}'s rating: ${n} of 5 stars (click the same star again to clear it)"></i></span>`).join('')}</span>`;
+}
+function dashCmd(func, args) { const f = $('dashCover') && $('dashCover').querySelector('iframe'); try { if (f) f.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), '*'); } catch {} }
+function dashCover() { /* the album picture, or the little player while a song plays here */
+  const box = $('dashCover'); if (!box) return; const n = SGD && SGD.now, play = dashPl.on && n && n.yt && n.yt === dashPl.yt, want = play ? 'play:' + n.yt : n && n.yt ? 'pic:' + n.yt : 'none';
+  if (box.dataset.k === want) return; box.dataset.k = want; box.classList.toggle('play', !!play);
+  if (play) { box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(n.yt)}?autoplay=1&enablejsapi=1&playsinline=1&rel=0" allow="autoplay; encrypted-media" title="The song that is playing"></iframe>`; for (const ms of [1200, 2500, 5000]) setTimeout(() => dashCmd('setVolume', [dashPl.vol]), ms); }
+  else box.innerHTML = n && n.yt ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(n.yt)}/mqdefault.jpg" alt="" onerror="this.replaceWith('🎵')">` : '🎵';
+}
+function dashPlay() {
+  const n = SGD && SGD.now; if (!n) return toast('Nothing is playing. ⏭ Skip starts the next song in the queue.'); if (!n.yt) return toast("This song came in as a name without a YouTube link, so it can't be played here.");
+  if (dashPl.on && dashPl.yt === n.yt) { dashPl.paused = !dashPl.paused; dashCmd(dashPl.paused ? 'pauseVideo' : 'playVideo'); } else { dashPl.on = true; dashPl.paused = false; dashPl.yt = n.yt; }
+  dashDraw(SGD, MND);
+}
+function dashVol(v) { dashPl.vol = Math.max(0, Math.min(100, Number(v) || 0)); try { localStorage.setItem('dashVol', String(dashPl.vol)); } catch {} dashCmd('setVolume', [dashPl.vol]); }
+async function dashSkip() { const was = dashPl.on && !dashPl.paused; await sgGo('next'); await dashLoad(); const n = SGD && SGD.now; dashPl.on = !!(was && n && n.yt); dashPl.paused = false; dashPl.yt = dashPl.on ? n.yt : ''; dashDraw(SGD, MND); }
 function dashDraw(sg, mn) {
-  const el = $('dashSide'); if (!el) return; if (el.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName)) return;
-  const me = String(S?.owner?.login || '').toLowerCase(), keep = dashPrevOn && me && dashPrevFor === me && $('dashPrevBox') ? $('dashPrevBox').firstChild : null;
-  const prev = `<div class="card"><div class="row" style="gap:8px;align-items:center"><b>📺 Your stream</b>${S?.live ? '<span class="pill" style="background:#e23">LIVE</span>' : '<span class="muted">not live</span>'}<span style="flex:1"></span><label class="ck" style="margin:0"><input type="checkbox" ${dashPrevOn ? 'checked' : ''} onchange="dashPrevSet(this.checked)" title="Show a small muted preview of your own stream here (untick it to save your PC some work)"> <span>Preview</span></label></div>${dashPrevOn ? (me ? `<div id="dashPrevBox" class="dashPrev" style="margin-top:8px"></div><p class="help" style="margin:4px 0 0">Muted, and a few seconds behind what you're doing (that's Twitch's delay).</p>` : `<p class="help" style="margin:8px 0 0">Sign in with Twitch (Settings → 💜 Twitch) to see your stream here.</p>`) : ''}</div>`;
-  let songs = '';
-  if (sg) { const n = sg.now, R = sg.opts.raters, o = sg.opts;
-    songs = `<div class="card"><div class="row" style="gap:8px;align-items:center"><b>🎵 Songs</b><span class="muted">${sg.queue.length} in the queue${sg.open ? '' : ' · closed'}</span><span style="flex:1"></span><button onclick="sgGo('next').then(dashLoad)" title="Move on: the next song in the queue becomes Now playing">⏭ Next</button><button class="ghost" onclick="setView('songs')" title="Open the 🎵 Songs tab">Open</button></div>
-      ${n ? `<div style="font-weight:800;font-size:16px;margin-top:6px">${esc(n.title)}</div><div class="muted" style="font-size:13px">${n.by ? 'Asked by ' + esc(n.by) : 'Added by you'}${n.lib && n.lib.plays > 1 ? ` · played ${n.lib.plays} times` : ''}</div><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">${[0, 1].map(i => `<label class="help" style="margin:0"><b>${esc(R[i])}</b> ${sgRateSel(n.key, i, n.lib?.rate?.[i] ?? null, o.scale, R[i])}</label>`).join('')}</div>` : `<p class="help" style="margin:6px 0 0">Nothing is playing.</p>`}
-      ${sg.queue.length ? `<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:6px">${sg.queue.slice(0, 4).map((q, i) => `<div class="sgT" style="font-size:13.5px">${i + 1}. ${esc(q.title)} <span class="muted">· ${esc(q.by || 'you')}${q.lib?.rate?.some(v => v != null) ? ' · ⭐ ' + q.lib.rate.filter(v => v != null).join(' / ') : ''}</span></div>`).join('')}${sg.queue.length > 4 ? `<div class="muted" style="font-size:13px">+ ${sg.queue.length - 4} more</div>` : ''}</div>` : ''}</div>`; }
-  let night = '';
-  if (mn && (mn.movies.length || mn.open)) { const top = [...mn.tally].sort((a, b) => b.votes - a.votes).slice(0, 5), left = mn.open && mn.endsAt ? Math.max(0, Math.ceil((mn.endsAt - Date.now()) / 1000)) : -1;
-    night = `<div class="card"${mn.pending.length ? ' style="border-color:var(--gold)"' : ''}><div class="row" style="gap:8px;align-items:center"><b>🍿 Movie night</b><span class="muted">${mn.open ? (left >= 0 ? `⏳ last call ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'voting is open') : 'voting is closed'} · ${mn.total} vote${mn.total === 1 ? '' : 's'}</span><span style="flex:1"></span><button class="ghost" onclick="setView('mnight')" title="Open the 🍿 Movie night tab">Open</button></div>
-      ${top.some(t => t.votes) ? `<div style="margin-top:6px">${top.filter(t => t.votes).map(t => `<div class="sgT" style="font-size:13.5px"><b>${t.votes}</b> · #${t.n} ${esc(t.title)}</div>`).join('')}</div>` : `<p class="help" style="margin:6px 0 0">No votes yet.</p>`}
-      ${mn.pending.length ? `<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:6px"><b>🔮 Did he guess it? (${mn.pending.length})</b>${mn.pending.slice(0, 4).map(g => `<div class="row" style="gap:6px;align-items:center;margin:4px 0"><span class="grow sgT" style="font-size:13.5px"><b>${esc(g.name)}</b> → #${g.n} ${esc(g.title)}</span><button class="primary" style="padding:2px 8px" title="The guess for this vote was right" onclick="mnGuess('${g.id}',true).then(dashLoad)">✅</button><button style="padding:2px 8px" title="The guess for this vote was wrong" onclick="mnGuess('${g.id}',false).then(dashLoad)">❌</button></div>`).join('')}</div>` : ''}
-      <div class="muted" style="font-size:13px;margin-top:6px">🔮 Guessed right: <b>${mn.stats.right}</b> of ${mn.stats.right + mn.stats.wrong}</div></div>`; }
-  el.innerHTML = prev + songs + night;
-  const box = $('dashPrevBox'); if (!box) { dashPrevFor = ''; return; }
-  if (keep) { box.appendChild(keep); return; } // (keep the player running instead of loading it again)
-  dashPrevFor = me; box.innerHTML = `<iframe src="https://player.twitch.tv/?channel=${encodeURIComponent(me)}&parent=${encodeURIComponent(location.hostname)}&muted=true&autoplay=true" allow="autoplay; fullscreen" allowfullscreen title="A muted preview of your own stream"></iframe>`;
+  const el = $('dashSide'); if (!el) return;
+  if (!$('dashSong')) { for (const k of Object.keys(dashC)) delete dashC[k]; el.innerHTML = `<div class="card"><div id="dashPrevHead"></div><div id="dashPrevBody"></div></div><div class="dashRow"><div class="card" id="dashSong"><div id="dashSongHead"></div><div class="dashSongRow"><div id="dashCover"></div><div id="dashSongInfo" style="flex:1;min-width:0"></div></div><div id="dashSongCtl"></div><div id="dashSongRest"></div></div><div class="card" id="dashNight"></div></div>`; }
+  const me = String(S?.owner?.login || '').toLowerCase();
+  dashPut('dashPrevHead', `<div class="row" style="gap:8px;align-items:center"><b>📺 Stream preview</b>${S?.live ? '<span class="pill" style="background:#e23">LIVE</span>' : '<span class="muted">not live</span>'}<span style="flex:1"></span><label class="ck" style="margin:0"><input type="checkbox" ${dashPrevOn ? 'checked' : ''} onchange="dashPrevSet(this.checked)" title="Show a muted preview of your own stream here (untick it to save your PC some work)"> <span>Preview</span></label></div>`);
+  dashPut('dashPrevBody', dashPrevOn ? (me ? `<div id="dashPrevBox" class="dashPrev" style="margin-top:8px"></div>` : `<p class="help" style="margin:8px 0 0">Sign in with Twitch (Settings → 💜 Twitch) to see your stream here.</p>`) : '');
+  { const box = $('dashPrevBox'); if (!box) dashPrevFor = ''; else if (dashPrevFor !== me || !box.firstChild) { dashPrevFor = me; box.innerHTML = `<iframe src="https://player.twitch.tv/?channel=${encodeURIComponent(me)}&parent=${encodeURIComponent(location.hostname)}&muted=true&autoplay=true" allow="autoplay; fullscreen" allowfullscreen title="A muted preview of your own stream"></iframe>`; } }
+  /* 🎵 the song request section */
+  $('dashSong').style.display = sg ? '' : 'none';
+  if (sg) { const n = sg.now, R = sg.opts.raters, o = sg.opts, playing = dashPl.on && n && n.yt === dashPl.yt && !dashPl.paused;
+    dashPut('dashSongHead', `<div class="row" style="gap:8px;align-items:center"><b>🎵 Song requests</b><span class="muted">${sg.queue.length} waiting${sg.open ? '' : ' · closed'}</span><span style="flex:1"></span><button class="ghost" onclick="setView('songs')" title="Open the 🎵 Songs tab">Open</button></div>`);
+    dashPut('dashSongInfo', n ? `<div style="font-weight:800;font-size:16px;overflow-wrap:anywhere">${esc(n.title)}</div><div class="muted" style="font-size:13px">${n.by ? 'Requested by <b>' + esc(n.by) + '</b>' : 'Added by you'}${n.lib && n.lib.plays > 1 ? ` · played ${n.lib.plays} times` : ''}</div>` : `<div class="muted">Nothing is playing.</div>`);
+    dashPut('dashSongCtl', `<div class="row" style="gap:8px;align-items:center;margin-top:8px"><button class="${playing ? '' : 'primary'}" onclick="dashPlay()" title="${playing ? 'Pause the song' : 'Play this song here (it needs a YouTube link)'}">${playing ? '⏸ Pause' : '▶ Play'}</button><button onclick="dashSkip()" title="Skip to the next song in the queue${sg.queue.length ? '' : ' (the queue is empty: this just ends the song)'}">⏭ Skip</button><span title="Volume">🔉</span><input id="dashVolIn" type="range" min="0" max="100" value="${dashPl.vol}" style="flex:1;min-width:60px" oninput="dashVol(this.value)" onchange="this.blur()" title="How loud the song plays here"></div>`);
+    dashPut('dashSongRest', `${n ? `<div class="row" style="gap:6px 16px;flex-wrap:wrap;align-items:center;margin-top:8px">${[0, 1].map(i => `<span style="white-space:nowrap"><b>${esc(R[i])}</b> ${sgStars(n.key, i, n.lib?.rate?.[i] ?? null, o.scale, R[i])}</span>`).join('')}</div>${n.albums && n.albums.length ? `<div class="help" style="margin:6px 0 0" title="Albums by this artist from your RateYourMusic list">💿 ${n.albums.slice(0, 3).map(a => `${esc(a.title)} <b>${a.rate.filter(v => v != null).join(' / ')}</b>`).join(' · ')}</div>` : ''}` : ''}${sg.queue.length ? `<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:6px">${sg.queue.slice(0, 3).map((q, i) => `<div class="sgT" style="font-size:13.5px">${i + 1}. ${esc(q.title)} <span class="muted">· ${esc(q.by || 'you')}</span></div>`).join('')}${sg.queue.length > 3 ? `<div class="muted" style="font-size:13px">+ ${sg.queue.length - 3} more</div>` : ''}</div>` : ''}`);
+    dashCover(); }
+  /* 🍿 the movie section */
+  $('dashNight').style.display = mn ? '' : 'none';
+  if (mn) { const G = esc(mn.opts.guesser || 'Guess'), left = mn.open && mn.endsAt ? Math.max(0, Math.ceil((mn.endsAt - Date.now()) / 1000)) : -1, rows = [...mn.tally].sort((a, b) => b.votes - a.votes || a.n - b.n);
+    dashPut('dashNight', `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>🍿 Movie night</b><span class="muted">${mn.open ? (left >= 0 ? `⏳ last call ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'voting is open') : 'voting is closed'} · ${mn.total} vote${mn.total === 1 ? '' : 's'}</span><span style="flex:1"></span>${mn.open && left < 0 ? `<button onclick="mnGo('lastcall',{on:true,mins:${Number(mn.opts.lastMins) || 5}}).then(dashLoad)" title="Start the last call countdown: chat is told, a clock shows on stream, and voting closes by itself at 0">⏳ ${Number(mn.opts.lastMins) || 5} min</button>` : ''}<button class="ghost" onclick="setView('mnight')" title="Open the 🍿 Movie night tab">Open</button></div>
+      ${rows.length ? `<table class="dashTbl"><thead><tr><th>Movie</th><th class="n">Votes</th><th class="n" title="How many of the votes for this movie ${G} guessed right / wrong tonight">${G} ✅ / ❌</th></tr></thead><tbody>${rows.map(t => `<tr><td><span class="muted">#${t.n}</span> ${esc(t.title)}</td><td class="n"><b>${t.votes}</b></td><td class="n">${t.right || t.wrong ? `${t.right} / ${t.wrong}` : '<span class="muted">–</span>'}</td></tr>`).join('')}</tbody></table>` : `<p class="help" style="margin:6px 0 0">No movies yet: type tonight's list on the 🍿 Movie night tab.</p>`}
+      <div class="muted" style="font-size:13px;margin-top:6px">${G} tonight: <b>${mn.guess.right}</b> right · <b>${mn.guess.wrong}</b> wrong${mn.pending.length ? ` · <b style="color:var(--gold)">${mn.pending.length} waiting for a click</b>` : ''} <span title="Every night added up">(all time ${mn.stats.right} of ${mn.stats.right + mn.stats.wrong})</span></div>`); }
 }
 /* 🎵 Song requests + ratings (1.98.0, Birx & Jess): the queue, what's playing, the two ratings, the song database, banned songs, imports */
 let SG = null, sgQ = '', sgSort = 'last', sgTab = 'lib', sgImp = null, sgPlayer = '';
@@ -4072,13 +4106,21 @@ async function mnAdd() { const t = $('mnAddT').value.trim(); if (!t) return; con
 async function mnPaste() { const t = await ask('Paste tonight\'s movies, one per line. Put who asked after a | (like: Jaws | bob). This replaces the list:', (MN?.movies || []).map(m => m.title + (m.by ? ' | ' + m.by : '')).join('\n')); if (t == null) return; mnGo('movies', { text: t }); }
 async function mnVote() { const r = await mnGo('vote', { name: $('mnVW').value, movie: $('mnVM').value }); if (r) toast('🗳️ Vote counted'); }
 async function mnNew() { const a = ((await ask('Start a new night? Tonight\'s votes are saved under Past nights, then cleared. Type YES to go on (your movie list stays), or CLEAR to also empty the list:', '')) || '').trim().toUpperCase(); if (a !== 'YES' && a !== 'CLEAR') return; mnGo('new', { clear: a === 'CLEAR' }); }
-async function mnGuess(id, right) { mnPopQ = mnPopQ.filter(g => g.id !== id); mnPopDraw(); await mnGo('guess', { id, right }); if (view !== 'mnight') mnLoadQuiet(); }
-async function mnLoadQuiet() { try { MN = await api('/api/movienight', null, 'GET'); mnPending(); } catch {} }
-function mnPop(g) { if (!g) return; mnPopQ.push(g); mnPopQ = mnPopQ.slice(-12); mnPopDraw(); if (view !== 'mnight') mnLoadQuiet(); }
+async function mnGuess(id, right) { mnPopQ = mnPopQ.filter(g => g.id !== id); mnPopDraw(); await mnGo('guess', { id, right }); if (view !== 'mnight') mnLoadQuiet(); if (view === 'tchat') dashLoad(); }
+async function mnLoadQuiet() { try { MN = await api('/api/movienight', null, 'GET'); mnPending(); mnPopDraw(); } catch {} }
+function mnPop(g, update) { /* one pop-up per vote or vote change, in the order chat voted: the first one stays up until it's clicked, then the next */
+  if (!g) return; const at = mnPopQ.findIndex(x => x.id === g.id);
+  if (at >= 0) mnPopQ[at] = g; else if (!update) { mnPopQ.push(g); mnPopQ = mnPopQ.slice(0, 300); } else return;
+  mnPopDraw(); if (!update && view !== 'mnight') mnLoadQuiet(); if (!update && view === 'tchat') dashLoad();
+}
 function mnPopDraw() {
-  let el = $('mnPop'); if (!el) { el = document.createElement('div'); el.id = 'mnPop'; el.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:60;width:340px;max-width:calc(100vw - 32px)'; document.body.appendChild(el); }
+  let el = $('mnPop'); if (!el) { el = document.createElement('div'); el.id = 'mnPop'; document.body.appendChild(el); }
   const g = mnPopQ[0]; if (!g || view === 'mnight') { el.innerHTML = ''; return; }
-  el.innerHTML = `<div class="card" style="margin:0;border-color:var(--gold);box-shadow:0 8px 30px rgba(0,0,0,.5)"><div style="margin-bottom:6px">🗳️ <b>${esc(g.name)}</b> ${g.kind === 'change' ? 'changed to' : 'voted'} <b>#${g.n} ${esc(g.title)}</b>${mnPopQ.length > 1 ? ` <span class="muted">(+${mnPopQ.length - 1} more)</span>` : ''}</div><div class="row" style="gap:6px"><button class="primary grow" title="The guess for this vote was right" onclick="mnGuess('${g.id}',true)">✅ Right</button><button class="grow" title="The guess for this vote was wrong" onclick="mnGuess('${g.id}',false)">❌ Wrong</button><button class="ghost" title="No guess was made for this vote: leave it out of the count" onclick="mnGuess('${g.id}','skip')">Skip</button><button class="ghost" title="Open the Movie night tab" onclick="mnPopQ=[];mnPopDraw();setView('mnight')">🍿</button></div></div>`;
+  const G = esc((MN && MN.opts && MN.opts.guesser) || 'Guess'), cmd = String((MN && MN.opts && MN.opts.command) || '!vote').toLowerCase(), said = String(g.said || '').trim(), low = s => String(s || '').toLowerCase(), rest = low(said).startsWith(cmd) ? said.slice(cmd.length).trim() : said, extra = (low(rest).startsWith(low(g.title)) ? rest.slice(String(g.title || '').length) : rest.replace(/^#?\d+\b/, '')).trim(); /* (what they said besides the vote itself) */
+  const fol = g.followed ? 'Following since ' + new Date(g.followed).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : g.followed === null ? 'Not following' : '';
+  el.innerHTML = `<div class="card" style="margin:0;border-color:var(--gold);box-shadow:0 10px 40px rgba(0,0,0,.6)"><div class="row" style="gap:12px;align-items:center"><div class="mnAv">${g.avatar ? `<img src="${esc(g.avatar)}" alt="">` : esc(String(g.name || '?').replace(/^pretend_/i, '').slice(0, 1).toUpperCase())}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:18px;overflow-wrap:anywhere">${esc(g.name)}</div><div class="muted" style="font-size:13px">${fol || '&nbsp;'}</div></div>${mnPopQ.length > 1 ? `<span class="pill" title="More votes are waiting behind this one, in the order they came in">+${mnPopQ.length - 1} more</span>` : ''}</div>
+    <div style="margin:10px 0 4px;font-size:16px">${g.kind === 'change' ? `changes their vote to` : 'votes for'} <b>#${g.n} ${esc(g.title)}</b>${g.kind === 'change' && g.from ? ` <span class="muted">(was ${esc(g.from)})</span>` : ''}</div>${extra ? `<div class="muted" style="font-style:italic;overflow-wrap:anywhere;margin-bottom:4px">“${esc(extra)}”</div>` : ''}
+    <div class="row" style="gap:8px;align-items:center;margin-top:10px"><b>${G}</b><button class="primary grow" title="The guess for this vote was right" onclick="mnGuess('${g.id}',true)">✅ Right</button><button class="grow" title="The guess for this vote was wrong" onclick="mnGuess('${g.id}',false)">❌ Wrong</button><button class="ghost" title="No guess was made for this vote: leave it out of the count" onclick="mnGuess('${g.id}','skip')">Skip</button></div></div>`;
 }
 async function mnRulesTest() { let r; try { r = await api('/api/test/movienight-rules', null, 'GET'); } catch { return; } const el = $('tMnOut'); if (el) el.innerHTML = `<p style="margin:8px 0 4px">${r.ok ? '✅ The voting rules all work.' : '⚠️ Something in the rules is off: tell Claude.'}</p><table class="tbl" style="width:100%"><thead><tr><th>Who</th><th>Votes allowed</th><th>Tried</th><th>What happened</th><th></th></tr></thead><tbody>${r.rows.map(x => `<tr><td>${esc(x.who)}</td><td>${x.allowed}</td><td>${esc(x.tried)}</td><td>${esc(x.got)}</td><td>${x.ok ? '✅' : '⚠️'}</td></tr>`).join('')}</tbody></table><p class="help" style="margin:6px 0 0">Finding a movie from what chat types: ${r.finds.map(x => `${esc(x.typed)} → ${esc(x.found)} ${x.ok ? '✅' : '⚠️'}`).join(' · ')}<br>Reading birthdays: ${r.days.map(x => `${esc(x.typed)} → ${esc(x.read)} ${x.ok ? '✅' : '⚠️'}`).join(' · ')}</p>`; }
 async function mnTest(action) { try { const r = await api('/api/test/movienight', { action }); const el = $('tMnOut'); if (el) el.innerHTML = `<p style="margin:8px 0 0">${action === 'fill' ? '📋 A pretend list of 4 movies was added.' : action === 'clear' ? '🧹 The pretend voters are gone.' : action === 'raid' ? '🚀 pretend_raider raided: they get two votes tonight.' : `🗳️ ${esc(r.who)} typed the vote command for #${r.n}. Look for the pop-up in the corner.`}</p>`; if (action !== 'clear' && action !== 'fill') pchat(true); } catch {} }
@@ -4100,7 +4142,15 @@ function edApply() {
   if (view === 'eggs' && !featOn('eggs')) setView('battle');
   try { fitNav(); } catch {}
 }
-async function edLook(id) { try { const r = await api('/api/test/edition-look', { id }); toast(r.lookAs ? `👀 Looking like the ${esc(id)} edition${r.off.length ? ': hidden: ' + esc(r.off.join(', ')) : ' (it has everything)'}. Your dev tabs stay so you can keep testing.` : '👀 Back to your own edition (everything).', 6000); } catch {} }
+async function edLook(id) { try { await api('/api/test/edition-look', { id }); location.reload(); /* (pages come with the edition's name in them, so the app loads again) */ } catch {} }
+/* 👀 while the app looks like another edition: a bar at the bottom says so and brings you back (dev edition only) */
+function edBar() {
+  let el = $('edBar'); const look = S?.edition?.lookAs;
+  if (!look) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'edBar'; el.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:70;background:#1c1238;border:2px solid var(--gold);border-radius:14px;padding:6px 10px;display:flex;gap:8px;align-items:center;font-size:13.5px;box-shadow:0 6px 24px rgba(0,0,0,.6)'; document.body.appendChild(el); }
+  if (el.dataset.k === look) return; el.dataset.k = look; const all = S.edition.all || [];
+  el.innerHTML = `<span>👀 Seeing the app as</span><select style="width:auto" onchange="edLook(this.value)" title="Switch to another edition's look, or back to your own">${all.filter(x => x.id !== S.edition.id).map(x => `<option value="${esc(x.id)}" ${x.id === look ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><button class="primary" onclick="edLook('')" title="Back to your own edition, with everything and your dev tabs">↩ Back to mine</button>`;
+}
 async function edTest() { let r; try { r = await api('/api/test/edition', null, 'GET'); } catch { return; } const el = $('tEdOut'); if (el) el.innerHTML = `🎭 <b>${esc(r.name)} edition</b>, version ${esc(r.version)}.<br>⬇️ Updates come from <b>${esc(r.updatesFrom || 'nowhere (not set)')}</b>.<br>🧪 Test builds: ${r.testBuilds ? 'offered too' : 'off (latest releases only)'}.${r.dev ? `<br>🛠️ Dev mode: ${r.devMode ? 'on' : 'off'}.` : ''}<br><span class="muted">All editions: ${r.all.map(x => esc(x.name)).join(', ')}.</span>`; }
 async function clipOpen(id) { try { await api('/api/clip/open', { id }); } catch {} }
 async function clipKickTest() { clipDot('wait'); try { const r = await api('/api/test/clip', { kick: true }); clipDot('ok', 'Clip made'); clipToast(r.clip); } catch (e) { clipDot('bad', e?.message || 'No clip'); } }
@@ -4400,7 +4450,7 @@ function renderView() {
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
-  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); edApply(); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'bot' || view === 'mara' || view === 'marapool' || view === 'capture')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
+  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); edApply(); edBar(); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'bot' || view === 'mara' || view === 'marapool' || view === 'capture')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
   if (view === 'pool') renderPool();
   else if (view === 'cards') renderCards();
   else if (view === 'cardpool') renderCardPool();
@@ -6879,6 +6929,7 @@ async function fillAppBox() {
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
     <p class="help">When a new <b>latest</b> release is posted there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>
     <label class="ck"><input type="checkbox" ${S.settings.updAsk !== false ? 'checked' : ''} onchange="api('/api/settings',{updAsk:this.checked}).then(()=>{S.settings.updAsk=this.checked;toast('Saved')})"> <span>🔔 Pop up when a new version is out (when Movie Royal opens)</span></label>
+    ${a.edition?.realDev && S.settings.betaUpdates && !a.edition.lookAs ? `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px"><b>👀 See the app as another edition</b><select id="edLookSet" style="width:auto" onchange="edLook(this.value)" title="Switch the app to another edition's look: its name, its tabs and extras, the hidden names, and no dev things, so you see what they see (nothing is removed or saved; a bar at the bottom brings you back, and so does restarting)"><option value="">Mine (everything)</option><option value="public">Public</option><option value="kirb">Kirb</option><option value="true">True</option><option value="birx">Birx &amp; Jess</option></select><span class="help" style="margin:0">Shows the app the way Kirb, True, Birx &amp; Jess or everyone else gets it. Nothing is changed for real.</span></div>` : ''}
     ${a.edition?.dev ? `<label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;render();toast(this.checked ? '🛠️ Dev mode on: test builds (pre-releases) install too, and features still being tried show up.' : 'Dev mode off: only latest releases, and the features still being tried are hidden.')})"> <span>🛠️ <b>Dev mode</b>: also install <b>test builds</b> (pre-releases) and show features that are still being tried. Leave this off unless you're testing new stuff.</span></label>` : `<label class="ck"><input type="checkbox" ${S.settings.testBuilds ? 'checked' : ''} onchange="api('/api/settings',{testBuilds:this.checked}).then(()=>{S.settings.testBuilds=this.checked;toast(this.checked ? '🧪 Test builds (pre-releases) will be offered too.' : 'Only latest releases from now on.')})" title="Also offer test builds (pre-releases), not only the latest releases"> <span>🧪 Also install <b>test builds</b> (pre-releases). Leave this off unless you're helping test new stuff.</span></label>`}
     ${a.desktop ? `<details style="margin-top:10px" ontoggle="if(this.open) loadPastReleases()"><summary>🕰️ Run an older version</summary><div id="pastRel" class="help">Loading…</div></details>` : ''}`;
 }
