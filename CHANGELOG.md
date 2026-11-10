@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.116.2
+- 🍿 **Leaderboard:** the line at the bottom now tells chat they can add a comment to their vote: "TYPE !VOTE + MOVIE NUMBER + ANYTHING YOU WANT TO SAY", with the example "!VOTE 1 I LOVE THIS MOVIE" under it. (The vote counts, and the extra words show in the vote pop-up in the app, like before.)
+
 ## 1.116.1
 - 💬 **Chat tab boxes resize from every corner and every side.** Each box now has a little handle on all four corners, and all four edges can be dragged (the top edge is the thin strip right at the top; just under it is still the bar that moves the box). The boxes next to it still adjust to fit, like before.
 

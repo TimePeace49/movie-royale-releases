@@ -22,7 +22,7 @@
   #box.tiny { --rh: 24px; } #box.tiny .row { font-size: 14px; }
   #clock { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(64, 255, 170, .45); text-align: center; font-family: Bungee, Consolas, monospace; font-size: 19px; color: #fff36b; } #clock.on { display: block; } #clock.hot { color: #ff6b6b; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: .35; } }
-  #foot { margin-top: 5px; font-size: 12px; color: #7fe6c0; opacity: .85; text-align: center; letter-spacing: 1px; }
+  #foot { white-space: pre-line; line-height: 1.45; margin-top: 5px; font-size: 12px; color: #7fe6c0; opacity: .85; text-align: center; letter-spacing: 1px; }
 </style></head>
 <body>
 <div id="box"><div id="head"></div><div id="rows"></div><div id="clock"></div><div id="foot"></div></div>
@@ -59,7 +59,7 @@ function draw() {
     else el.style.top = i * rh + 'px';
     SLOT.set(k, i); VOTES.set(k, m.votes); });
   for (const [k, el] of EL) if (!live.has(k)) { el.remove(); EL.delete(k); SLOT.delete(k); VOTES.delete(k); }
-  $('foot').textContent = s.closed ? (s.leaders && s.leaders.length ? '★ WINNER: ' + s.leaders.join(' / ').toUpperCase() + ' ★' : 'VOTING IS CLOSED') : s.open ? `TYPE ${String(s.command || '!vote').toUpperCase()} + A NUMBER` : '';
+  $('foot').textContent = s.closed ? (s.leaders && s.leaders.length ? '★ WINNER: ' + s.leaders.join(' / ').toUpperCase() + ' ★' : 'VOTING IS CLOSED') : s.open ? `TYPE ${String(s.command || '!vote').toUpperCase()} + MOVIE NUMBER + ANYTHING YOU WANT TO SAY\nLIKE: ${String(s.command || '!vote').toUpperCase()} 1 I LOVE THIS MOVIE` : '';
   tick();
 }
 function tick() {
