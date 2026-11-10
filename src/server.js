@@ -82,6 +82,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 // 🔐 Safety (1.96.0): the very first thing every request meets. Only this PC, only the app's own pages: a page on another website
 // (or another device on the network) is turned away before anything else runs. See src/safety.js
 safety.setName(APP_NAME); try { if (safety.fileReset()) console.log('[safety] unlock.txt found: the lock is off'); } catch {}
+try { if (db.lock && db.lock.on) { db.lock.on = false; db.lock.remember = []; save(); console.log('[safety] the 2-step lock was taken out of the app (1.109.0): it is off now'); } } catch {} /* 🔓 Derek: "just get rid of 2 factor from everyone" (the code stays, unused) */
 app.use((req, res, next) => { const why = safety.strange(req); if (!why) return next(); safety.refused.n++; safety.refused.last = { at: Date.now(), why }; res.status(403).send('Movie Royal only runs on this computer.'); });
 let lockPage = null, lockPageFor = null;
 app.use((req, res, next) => { // 🔒 the optional lock: the control panel + setup guide ask for the authenticator code first (stream screens, OBS and the Stream Deck keep working)
@@ -2055,6 +2056,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   res.json({
     linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
     id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
+    songs: feat('songs') ? songs.mine(login) : null, // 🎵 their songs in the queue, with the place each one has
     look: (() => { const l = looks.lookOf(discordId) || looks.lookOf(looks.discordFor(login)); return l ? looks.nums(l) : null; })(), // 🎨 their own /character
     login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
     followedAt: follow === undefined ? (v?.followedAt || undefined) : follow, url: login ? `https://twitch.tv/${login}` : null,
@@ -2364,8 +2366,16 @@ function editionMove() {
 editionMove();
 // 🎭 an edition without movie battles (True's, Birx's): the Discord movie battle is never the one on screen: the first time, a plain battle of your own takes its place
 function editionNoMovies() {
-  if (edHas('movies') || db.activeListId !== 'movies') return;
+  if (!edHas('battle') && !db.editionClean) { /* 🎭 an edition without battles (Birx & Jess): the ready-made wheels and battles go, once. Things you made yourself stay. */
+    db.editionClean = Date.now(); const gone = [];
+    const W = db.wheel; if (W && Array.isArray(W.wheels)) { const keep = W.wheels.filter(w => !/kirbportions/i.test(String(w.name || ''))); if (keep.length !== W.wheels.length) { gone.push('Wheel of Kirbportions'); W.wheels = keep; if (!keep.some(w => w.id === W.activeId)) W.activeId = keep[0] ? keep[0].id : null; } }
+    const starter = l => l.id !== 'movies' && l.type !== 'chat' && (/^🔢 Worse Movies$|^My battle$/.test(String(l.name || ''))) && !(l.entries || []).some(x => x.wins || x.backers || x.addedBy);
+    for (const l of db.lists.filter(starter)) { gone.push(l.name); db.lists = db.lists.filter(x => x !== l); }
+    if (gone.length) { console.log('  Edition clean-up: removed ' + gone.join(', ')); save(); }
+  }
+  if (edHas('movies') || db.activeListId !== 'movies') { if (!edHas('battle') && !db.lists.some(l => l.id === db.activeListId)) { db.activeListId = (db.lists.find(l => l.id === 'giveaway') || db.lists.find(l => l.id !== 'movies') || db.lists[0] || {}).id; save(); } return; }
   let l = db.lists.find(x => x.id !== 'movies');
+  if (!l && !edHas('battle')) { l = { id: 'giveaway', name: 'Giveaway', type: 'chat', giveaway: true, entries: [], joinOpen: false }; db.lists.push(l); }
   if (!l) { l = { id: uid(), name: 'My battle', type: 'text', entries: [], joinOpen: false }; db.lists.push(l); }
   db.activeListId = l.id; save();
 }
@@ -3968,6 +3978,9 @@ async function deckPress(req, res) {
   catch (e) { const b = deck.BUTTONS[req.params.id]; broadcast({ type: 'toast', text: `🎛️ Stream Deck${b ? ` (${b.label})` : ''}: ${e.message}`, ms: 6000 }, 'control'); pushState(); res.status(e.code || 409).type('text').send('⚠️ ' + e.message); }
 }
 app.get('/deck/:key/:id', deckPress); app.post('/deck/:key/:id', deckPress);
+// 🎞️ the Chat tab's scene buttons: read OBS's scenes, switch to one
+app.get('/api/obs/scenes-now', wTry(async () => { if (db.settings.obsOn === false) throw new Error("Movie Royal isn't allowed to use OBS (Settings → 🎥 OBS)."); const r = await obs.scenesNow(); return { scenes: r.scenes || [], current: r.current || '' }; }));
+app.post('/api/obs/scene', wTry(async b => { if (db.settings.obsOn === false) throw new Error("Movie Royal isn't allowed to use OBS (Settings → 🎥 OBS), so it can't switch scenes."); const name = String(b.name || '').trim(); if (!name) throw new Error('Pick a scene.'); if (b.test) return { ok: true, test: true, name }; await obs.goScene(name, false); act('stream', `Switched OBS to the scene “${name}”`, { icon: '🎞️', kind: 'scene' }); return { ok: true, name }; }));
 app.get('/api/deck', (req, res) => res.json(deck.state()));
 app.get('/api/deck/icon', (req, res) => { const f = deck.iconPath(req.query.k); f ? res.sendFile(f) : res.status(404).end(); }); // (a scene key's picture, once it's drawn)
 app.post('/api/deck/scenes', wTry(async () => { const r = await deck.readScenes(); if (!r.ok) throw new Error(`Couldn't read your scenes from OBS: ${r.error}`); return { ...r, state: deck.state() }; }));
@@ -4923,7 +4936,8 @@ raids.setHooks({
 });
 const rdTry = fn => wTry(async (b, req) => { if (!feat('raids')) throw new Error('The Raid tab is not part of this edition.'); return fn(b, req); });
 app.get('/api/raids', async (req, res) => { if (!feat('raids')) return res.json({ on: false }); try { res.json(await raids.list({ fresh: req.query.fresh === '1', sort: req.query.sort })); } catch (e) { res.status(400).json({ error: e.message }); } });
-app.post('/api/raids/go', rdTry(b => raids.start(b)));
+app.post('/api/raids/go', rdTry(b => raids.plan({ ...b, secs: b.secs != null ? b.secs : db.settings.raidDelay })));
+app.post('/api/raids/delay', rdTry(b => { db.settings.raidDelay = Math.max(0, Math.min(600, Math.round(Number(b.secs) || 0))); save(); return { ok: true, secs: db.settings.raidDelay }; })); /* ⏱️ the slider */
 app.post('/api/raids/cancel', rdTry(() => raids.cancel()));
 app.post('/api/raids/sort', rdTry(b => ({ ok: true, sort: raids.setSort(b.sort) })));
 app.post('/api/raids/forget', rdTry(b => raids.forget(b.login)));

@@ -222,6 +222,12 @@ H(/^(?:Turn the lock off|tip:switch the lock off)/i, 'Turn the lock off', 'Switc
 H(/^(?:✅ Turn the lock on|tip:check the code and switch the lock on|tip:the 6-digit code your authenticator app shows)/i, 'Turn the lock on', 'Type the 6 digits your authenticator app shows right now. If they match, the lock is on and your backup codes are shown.');
 H(/^(?:I saved them|📋 Copy|tip:copy the backup codes|tip:close this window \(the codes)/i, 'Backup codes', 'Save these somewhere safe. If you lose your phone, one backup code opens the lock (each works once). They are only shown this one time.', ['settings']);
 H(/^(?:🔐 Open the lock settings|tip:open settings → account & updates, where the lock)/i, '🔐 Lock settings', 'Opens Settings → 👤 Account & updates, where the lock is set up, changed or turned off.');
+// 🧰 Chat tab tools + raid wait (1.109.0)
+H(/^(?:🧰 Stream tools)/i, '🧰 Stream tools', 'The box under the alerts on the Chat tab: a 🎬 Clip button and your own buttons that switch OBS to a scene.');
+H(/^(?:⚙ Pick scenes|tip:pick which of your obs scenes)/i, '⚙ Pick scenes', 'Tick the OBS scenes you want as buttons on the Chat tab. OBS has to be open so the app can read your scenes.');
+H(/^tip:(?:switch obs to the scene|give this obs scene a button)/i, '🎞️ Scene button', 'Click to switch OBS to that scene right away.');
+H(/^(?:🎞️ Pretend scene switch|🎵 Check !mysongs|💬 Open the Chat tab|tip:pretends to press a scene button|tip:walks the song rules through with pretend people, including)/i, '🧪 Chat tab tools test', 'Pretend checks for the Chat tab’s scene buttons and the !mysongs command. OBS isn’t touched and nothing is typed in chat.');
+H(/^(?:#rdDelay\b|tip:how long to wait before the raid)/i, '⏱️ Raid wait', 'How long the app waits after you press 🚀 Raid before the raid starts. Chat is told, and you can cancel while it counts down. All the way left = right away.');
 // 🚀 Raid tab (1.95.0)
 H(/^tip:(?:who you follow that's live right now)/i, '🚀 Raid', 'The Raid tab: every channel you follow that is live right now, the ones you raided most recently first. Click one to preview it, then 🚀 Raid sends your viewers there.');
 H(/^(?:🚀 Raid\b|tip:raid .* now: your viewers)/i, '🚀 Raid', "Starts a raid to that channel. Twitch counts down about 90 seconds (or press Raid Now in your Twitch chat), then your viewers are sent over. You're asked to confirm first, and you can cancel during the countdown.", ['raid']);

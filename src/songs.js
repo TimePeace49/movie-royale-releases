@@ -32,7 +32,7 @@ export function infoWhy(info, title, o) {
   if (o.minViews > 0 && info.views != null && info.views < o.minViews) return 'views';
   return '';
 }
-export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', voteCommand: '!voteskip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 0, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
+export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!voteskip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 0, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
 
 // ---------- what a request is ----------
 /** A YouTube link or id → the 11-character video id ('' when it isn't one). */
@@ -53,6 +53,8 @@ export function bannedWhy(x, d = data()) {
 // ---------- chat ----------
 let lastSay = 0;
 const say = (t, gap = 0) => { if (gap && Date.now() - lastSay < gap) return; lastSay = Date.now(); if (opts().reply !== false) H.say(t).catch(() => {}); };
+/** 🎵 Someone's songs: what's playing if it's theirs (pos 0) and each one waiting with its place in the queue. */
+export function mine(login, d = data()) { const l = low(login), out = []; if (!l) return out; if (d.now && d.now.login === l) out.push({ title: d.now.title, pos: 0, yt: d.now.yt || '' }); d.queue.forEach((q, i) => { if (q.login === l) out.push({ title: q.title, pos: i + 1, yt: q.yt || '' }); }); return out; }
 export function onChat(m) {
   if (!on() || !m?.login) return false; const d = data(), o = opts(d), text = String(m.text || '').trim(), sp = text.split(/\s+/), w = low(sp[0]), arg = text.slice(sp[0].length).trim(), name = m.name || m.login;
   if (w === low(o.command)) { if (!arg) { say(`🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
@@ -62,6 +64,7 @@ export function onChat(m) {
   if (w === low(o.voteCommand)) { if (!(o.skipVotes > 0) || !d.now) return true; const v = (d.vs && d.vs.id === d.now.id) ? d.vs : (d.vs = { id: d.now.id, who: [] }); if (v.who.includes(low(m.login))) return true; v.who.push(low(m.login));
     if (v.who.length >= o.skipVotes) { const t = d.now.title; next(); say(`🎵 Chat voted to skip: ${t}`); } else say(`🎵 ${name} voted to skip (${v.who.length} of ${o.skipVotes}).`, 4000); return true; }
   if (w === low(o.volCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const n = Number(arg); if (!arg || !Number.isFinite(n)) return say(`🔉 The song volume is ${o.vol}.`, 4000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
+  if (w === low(o.mineCommand)) { const who = arg && /^@?\w{2,30}$/.test(arg) ? arg.replace(/^@/, '') : m.login, own = low(who) === low(m.login), l = mine(who, d), nm = own ? name : who; say(l.length ? `🎵 @${name} ${own ? 'your' : nm + "'s"} song${l.length === 1 ? '' : 's'}: ${l.map(x => x.pos ? `#${x.pos} ${x.title}` : `▶ playing now: ${x.title}`).join(' · ')}`.slice(0, 480) : `🎵 @${name} ${own ? 'you have' : nm + ' has'} no songs in the queue.`, 3000); return true; }
   if (w === low(o.wrongCommand)) { const i = d.queue.map(q => q.login).lastIndexOf(low(m.login)); if (i < 0) say(`🎵 @${name} you have no song in the queue.`, 5000); else { const [q] = d.queue.splice(i, 1); changed(); say(`🎵 @${name} took out: ${q.title}`); } return true; }
   return false;
 }
@@ -141,7 +144,7 @@ export function unban(key) { const d = data(); d.banned = d.banned.filter(b => b
 export function banUser(name, yes = true) { const d = data(), l = low(name); if (!/^[a-z0-9_]{2,25}$/.test(l)) throw new Error('Type their chat name.'); d.bannedUsers = d.bannedUsers.filter(x => x !== l); if (yes) { d.bannedUsers.push(l); d.queue = d.queue.filter(q => q.login !== l); } changed(); return state(); }
 export function setOpts(b) {
   const d = data(), x = d.opts;
-  for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr'); }
+  for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'mineCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr'); }
   if ('perm' in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b.perm)) x.perm = b.perm;
   if ('perUser' in b) x.perUser = Math.round(clampN(b.perUser, 0, 50, 2)); if ('max' in b) x.max = Math.round(clampN(b.max, 1, 500, 50));
   if ('reply' in b) x.reply = !!b.reply; if ('overlay' in b) x.overlay = !!b.overlay; if ('links' in b) x.links = b.links === 'youtube' ? 'youtube' : 'any';
@@ -267,6 +270,7 @@ export async function demo() {
       const hit = await request(v('zed'), 'africa toto', { d: d4, quiet: true }), miss = await request(v('zed'), 'a song nobody has', { d: d4, quiet: true }); H.search = was;
       add('🔎 A typed song name is looked up on YouTube: the first result that fits the rules is added (the 10-hour one is passed over)', hit.ok && hit.item.yt === 'bbbbbbbbbb2' && hit.item.title === 'Toto - Africa (Official Video)');
       add('🔎 A name YouTube finds nothing for is still added as typed', miss.ok && !miss.item.yt && miss.item.title === 'a song nobody has'); }
+    { const mm = mine('amy', d); add('!mysongs: each person\'s songs come with their place in the queue', mm.length === 2 && mm[0].pos === 1 && mm[1].pos === 2 && mine('nobody', d).length === 0); }
     d.open = false; add('Closed = no requests', (await R('dan', 'Later')).why === 'closed'); d.open = true;
     const rym = readText('RYM Album, First Name,Last Name,First Name localized, Last Name localized,Title,Release_Date,Rating,Ownership,Purchase Date,Media Type,Review\n1,"","Toto","","","Toto IV",1982,9,n,,,""\n2,"Daft","Punk","","","Discovery",2001,10,o,,,"great, really"\n3,"","Nobody","","","Wishlist only",1999,0,w,,,""\n', 'songs', { ...o, raters: ['Birx', 'Jess'] }, 1);
     add('A RateYourMusic export is read: artist + album, the rating out of 10, unrated ones left out, for the person you pick', rym.rym && rym.songs.length === 2 && rym.songs[0].title === 'Toto - Toto IV' && rym.songs[0].rate[1] === 9 && rym.songs[0].rate[0] === null && rym.songs[1].title === 'Daft Punk - Discovery' && rym.songs[1].year === '2001' && rym.songs[1].album);

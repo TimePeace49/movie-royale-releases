@@ -5,6 +5,7 @@ import { db, save } from './store.js';
 let hooks = { on: () => false, followed: async () => [], canSee: () => false, start: async () => {}, cancel: async () => {}, say: async () => {}, act: () => {}, changed: () => {}, signedIn: () => false };
 export const setHooks = h => { hooks = { ...hooks, ...h }; };
 const D = () => (db.raidsOut = db.raidsOut || {}); // { login: { id, name, at, n, viewers } }
+let planned = null; /* ⏱️ a raid waiting for its start time: {login, name, id, at, secs, test, timer} */
 let cache = null, fake = null, going = null; // cache {at, list}; fake = 🧪 pretend live list; going = {login, name, at, test}
 
 /** You raided someone (from this tab, the 🚀 raid reward, or by typing /raid yourself: Twitch tells Movie Royal). */
@@ -29,7 +30,7 @@ export function sortRows(rows, sort = 'recent') {
   return r.sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0) || v(a, b)); // the ones you raided most recently first, then never raided by viewers
 }
 export async function list({ fresh, sort } = {}) {
-  const d = D(), base = { on: true, sort: SORTS.includes(sort) ? sort : (db.settings.raidSort || 'recent'), going: going && Date.now() - going.at < 120000 && !going.done ? going : null, history: Object.entries(d).map(([login, x]) => ({ login, ...x })).sort((a, b) => b.at - a.at).slice(0, 30) };
+  const d = D(), base = { on: true, sort: SORTS.includes(sort) ? sort : (db.settings.raidSort || 'recent'), going: going && Date.now() - going.at < 120000 && !going.done ? going : null, planned: planned ? { login: planned.login, name: planned.name, at: planned.at, secs: planned.secs, test: planned.test } : null, delay: Math.max(0, Math.min(600, Number(db.settings.raidDelay) || 0)), history: Object.entries(d).map(([login, x]) => ({ login, ...x })).sort((a, b) => b.at - a.at).slice(0, 30) };
   if (fake) return { ...base, test: true, signedIn: true, canSee: true, at: Date.now(), rows: sortRows(fake.map(x => row(x, { ...d, ...fakeLast })), base.sort) };
   if (!hooks.signedIn()) return { ...base, signedIn: false, canSee: false, rows: [] };
   if (!hooks.canSee()) return { ...base, signedIn: true, canSee: false, rows: [] };
@@ -38,6 +39,17 @@ export async function list({ fresh, sort } = {}) {
 }
 export function setSort(sort) { if (!SORTS.includes(sort)) throw new Error('Pick one of the ways to sort.'); db.settings.raidSort = sort; save(); return sort; }
 /** 🚀 Start the raid. Twitch then counts down about 90 seconds (or you press Raid Now on Twitch); ✖ Cancel stops it. */
+/** ⏱️ Raid after a wait (the Raid tab's slider): chat is told, and when the time is up the raid starts by itself. 0 = right away. */
+export async function plan({ id, login, name, secs }) {
+  secs = Math.max(0, Math.min(600, Math.round(Number(secs) || 0))); if (!secs) return start({ id, login, name });
+  login = String(login || '').toLowerCase(); if (!login) throw new Error('Pick a channel to raid.');
+  const test = !!fake && fake.some(x => x.login === login); if (!test && !id) throw new Error("That channel isn't in the live list any more. Press 🔄 and try again.");
+  if (planned) clearTimeout(planned.timer);
+  const p = planned = { login, name: name || login, id, at: Date.now() + secs * 1000, secs, test };
+  p.timer = setTimeout(() => { if (planned !== p) return; planned = null; start({ id, login, name }).catch(e => { console.error('[raid] the planned raid could not start: ' + e.message); hooks.changed(); }); }, secs * 1000);
+  if (!test) hooks.say(`🚀 We're raiding ${name || login} in ${secs >= 90 ? Math.round(secs / 60) + ' minutes' : secs + ' seconds'}! Get ready 💜`).catch(() => {});
+  hooks.changed(); return { ok: true, test, planned: { login, name: p.name, at: p.at, secs } };
+}
 export async function start({ id, login, name }) {
   login = String(login || '').toLowerCase(); if (!login) throw new Error('Pick a channel to raid.');
   const test = !!fake && fake.some(x => x.login === login);
@@ -48,6 +60,7 @@ export async function start({ id, login, name }) {
   hooks.changed(); return { ok: true, test, going };
 }
 export async function cancel() {
+  if (planned) { const p = planned; clearTimeout(p.timer); planned = null; if (!p.test) hooks.say(`🚀 The raid to ${p.name} is off.`).catch(() => {}); hooks.changed(); return { ok: true, planned: true }; }
   const g = going; if (!g) throw new Error('No raid is on its way.');
   if (!g.test) { await hooks.cancel(); const d = D(), x = d[g.login]; if (x && Date.now() - x.at < 3 * 60000) { if (x.n > 1 && x.before) { x.n--; x.at = x.before; } else delete d[g.login]; save(); } }
   else delete fakeLast[g.login];

@@ -2,6 +2,23 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.109.0
+**For everyone**
+- **🎵 Music box on the Chat tab:** it no longer shows the video (it just kept buffering). You get the song's picture instead; ▶ Play, the volume and the time slider still work.
+- **🔐 The 2-step lock is gone.** If you had it on, it's switched off by itself. The app still only listens to your own PC.
+- **🚀 The Raid tab is in every edition**, with a new **wait slider**: pick how long to wait after pressing 🚀 Raid (up to 10 minutes). Chat is told, the tab counts down, and you can cancel.
+
+**💬 Chat tab (Birx & Jess's edition, and dev mode)**
+- The alerts column is now half as tall. Under it is a new **🧰 Stream tools** box with a **🎬 Clip** button and **scene buttons**: press ⚙ Pick scenes, tick your OBS scenes, and each one becomes a button that switches OBS to it.
+- **Click a name in chat** (one click) and that person's profile pops up. It now lists **their songs in the queue** and what number each one is.
+- New chat command **!mysongs**: the bot says that person's songs and their place in the queue. (Rename it in Chat bot → Songs → Settings.)
+
+**🎭 Birx & Jess's edition: simpler**
+- Settings no longer has **Luck**, **Co-stream** or **Game**, and the battle-only parts of other Settings pages are hidden.
+- No **void spot** on wheels.
+- A fresh install starts with **no ready-made wheels or battles** (anything you made yourself is never touched).
+- 🧪 Try it: Test tab → 🧰 Chat tab: stream tools + my songs, and 🚀 Raid tab.
+
 ## 1.108.0
 **🤖 The Chat bot tab, for every edition**
 - The **🤖 Chat bot** tab (commands, sound alerts, timers, quotes, and bringing everything over from Streamlabs Chatbot) is now in every edition, not just dev mode. Its Setup guide step is back for everyone too.

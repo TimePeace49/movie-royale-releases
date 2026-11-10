@@ -28,6 +28,7 @@
   body.solo .side { display:contents; }
   body.solo [data-panel]:not(.solo-on) { display:none !important; }
   .warn { padding:8px 12px; background:#3a2a10; color:#ffd98a; font-size:13px; border-bottom:1px solid var(--line); }
+  #msgs .cn[data-user], #alerts b[data-user] { cursor:pointer; } #msgs .cn[data-user]:hover, #alerts b[data-user]:hover { text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -59,6 +60,8 @@ const solo = new URLSearchParams(location.search).get('panel');
 if (solo) { document.body.classList.add('solo'); document.querySelector(`[data-panel="${solo}"]`)?.classList.add('solo-on'); document.title = `Movie Royal — ${{ chat: 'Chat', alerts: 'Alerts', find: 'Find someone' }[solo] || 'Chat'}`; }
 document.querySelectorAll('.pop').forEach(b => { if (!embed && (b.id === 'popAll' || solo)) b.style.display = 'none'; }); // a popped-out window can still pop out single panels
 let msgs = [], alerts = [], stick = true, info = {};
+/* one click on a name in chat or the alerts opens their profile (a double-click still does too) */
+document.addEventListener('click', e => { const n = e.target.closest('#msgs .cn[data-user], #alerts b[data-user]'); if (n && n.dataset.user && window.Profile) Profile.open(n.dataset.user); });
 function scrollDown() { const b = $('msgs'); b.scrollTop = b.scrollHeight; $('paused').style.display = 'none'; }
 $('msgs').addEventListener('scroll', () => { const b = $('msgs'); stick = b.scrollHeight - b.scrollTop - b.clientHeight < 40; if (stick) $('paused').style.display = 'none'; });
 const show = m => { const q = $('filter').value.trim().toLowerCase(); return !q || `${m.name} ${m.text}`.toLowerCase().includes(q); };

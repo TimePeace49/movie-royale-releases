@@ -36,7 +36,8 @@ window.Profile = (() => {
     const tabs = [['overview', '📋 Overview'], ['respins', '🎟️ Respins'], ['games', '🏆 Games'], ['chat', '💬 Chat log']];
     const tb = `<div class="tabs">${tabs.map(([k, n]) => `<button class="${tab === k ? 'on' : ''}" onclick="Profile.tab('${k}')">${n}</button>`).join('')}</div>`;
     let body = '';
-    if (tab === 'overview') body = lookBox(p) + `<div class="grid">
+    const songBox = p.songs ? `<div style="margin:0 0 10px;padding:8px 10px;border:1px solid #ffffff22;border-radius:10px"><b>🎵 Songs in the queue</b>${p.songs.length ? p.songs.map(x => `<div style="margin-top:4px">${x.pos ? `<b>#${x.pos}</b>` : '<b>▶ playing now</b>'} ${esc(x.title)}</div>`).join('') : '<div class="muted" style="margin-top:4px">None right now.</div>'}</div>` : '';
+    if (tab === 'overview') body = lookBox(p) + songBox + `<div class="grid">
         <div class="st"><b>${dt(p.createdAt)}</b><small>Twitch account made${p.createdAt ? ` (${ago(Date.parse(p.createdAt))} ago)` : ''}</small></div>
         <div class="st"><b>${p.followedAt === null ? 'Not following' : p.followedAt ? dt(p.followedAt) : '—'}</b><small>Following since${p.followedAt ? ` (${ago(p.followedAt)})` : ''}</small></div>
         <div class="st"><b>${p.sub?.months ? `${p.sub.months} month${p.sub.months === 1 ? '' : 's'}` : p.sub?.now ? 'yes' : '—'}</b><small>Subscribed</small></div>
