@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.120.0
+- 💎 **Birx & Jess's edition has no channel points anywhere** (their channel doesn't have them): the 💰 Rewards & prices settings page, the channel point parts of each wheel's settings, the "no channel point respins" tick on spots and the Channel points step of the Setup guide are gone, the Twitch settings page is just called 💜 Twitch, and the app doesn't make, switch or listen for rewards there. Every other edition is unchanged. (It's a new switch, 💎 Channel points, in the Editions tab.)
+
 ## 1.119.0
 - 🕰️ **History → 🍿 Movie nights** (editions with movie night voting; in Birx & Jess's edition it is the only History tab): every movie night with its date, winner, votes, how many people voted and how many the guesser got right. Each night lists its movies (with IMDb / 🍅) and votes; ▼ Who voted for what shows each person's pick and every vote in order.
   - **▶ Replay the vote (1 min):** pops up that night's leaderboard and plays the whole vote back in one minute, with the movies climbing as the votes come in (⏩ plays it in 20 seconds). Nights from before this update replay from their final counts.

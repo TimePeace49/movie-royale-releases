@@ -506,6 +506,7 @@ function stormPowerUp(r, kind) {
   act('battle', `sent ${STORM_INFO[kind].say} into the Pirate Battle`, { icon: STORM_INFO[kind].icon, who: r.name, kind: 'storm' }); // 🧾
 }
 async function stormSetup() { // ⛈️ make the storm power rewards on Twitch (switched off until a Pirate Battle plays)
+  if (!pointsOn()) return { made: [], skipped: true };
   const st = db.settings, made = [];
   for (const [title, kind] of Object.entries(st.stormRewards || {})) if (await twitch.createReward({ title, cost: st.stormCosts?.[kind] || 750, prompt: STORM_PROMPTS[kind] || '', color: '#3A7BFF', queue: true })) made.push(title);
   for (const [title, who] of Object.entries(st.monkeyRewards || {})) if (await twitch.createReward({ title, cost: st.monkeyCosts?.[who] || 10000, prompt: MONKEY_INFO[who]?.prompt || '', color: '#8A5A2A', queue: true })) made.push(title); // 🐒
@@ -558,8 +559,10 @@ function rewardWants() {
   for (const [t, m] of Object.entries(db.rewardModes || {})) { if (m === 'off') want[t] = true; else if (m === 'on' || m === 'once') want[t] = false; else if (m === 'count') want[t] = countLeft(t) <= 0; } // (🔢 countdown: on until it's been used that many times this stream) // 💰 your override (Settings → Rewards & prices) beats the rules
   return want;
 }
+/* 💎 An edition can have channel points switched off altogether (1.120.0, Birx & Jess: their channel has none): nothing is made, synced or listened to. */
+const pointsOn = () => edHas('points');
 async function syncRewards(all = null) {
-  if (!twitch.status.userId || rewardBusy) return;
+  if (!twitch.status.userId || rewardBusy || !pointsOn()) return;
   const want = all == null ? rewardWants() : null;
   const key = all == null ? JSON.stringify(want) : 'all:' + all; if (key === rewardKey) return;
   rewardBusy = true;
@@ -1098,6 +1101,7 @@ const twitchHandlers = {
     discord.refreshPinned?.();
   },
   async redeem(r) {
+    if (!pointsOn()) return;
     const mode = (db.rewardModes || {})[String(r.title || '').toLowerCase()];
     act('points', `redeemed “${r.title}”${r.cost ? ` (${Number(r.cost).toLocaleString('en-US')} points)` : ''}${r.input ? `: “${String(r.input).slice(0, 120)}”` : ''}${mode === 'off' ? ' · it\'s switched off in Movie Royal, so nothing happened' : ''}`, { icon: '💜', who: r.name, kind: 'redeem' }); // 🧾 (every redeem, ours or not)
     if (mode === 'off') return; // ⏸ paused by you (it's hidden on Twitch too)
@@ -1703,6 +1707,7 @@ setInterval(() => { let n = 0; db.linkDates ||= {}; for (const id of Object.keys
 // who to raid, they type a Twitch name, a pop-up celebrates it and a box at the top of the app shows it: click it to start the raid.
 // The reward then hides for the rest of the stream. Movie Royal makes the reward itself (an old "raid" reward's price is kept).
 async function raidSetup() {
+  if (!pointsOn()) return { made: false, skipped: true, byHand: [] };
   const st = db.settings, title = st.raidTitle || '🚀 Pick who we raid!';
   const all = await twitch.listAllRewards(), mine = new Set((await twitch.listRewards()).map(r => r.id));
   const old = all.filter(r => /raid/i.test(r.title)), out = { made: false, removed: [], byHand: [], cost: 0 };
@@ -1763,6 +1768,7 @@ const vrOff = k => db.settings['vr' + k[0].toUpperCase() + k.slice(1) + 'On'] ==
 const vrKind = title => Object.keys(VR).find(k => vrTitle(k).toLowerCase() === String(title || '').toLowerCase()) || null;
 const hats = () => String(db.settings.hatList || HATS_DEFAULT).split('\n').map(x => x.trim()).filter(Boolean).slice(0, 30);
 async function vrSetup() {
+  if (!pointsOn()) return {};
   const all = await twitch.listAllRewards(), mine = new Set((await twitch.listRewards()).map(r => r.id)), out = {};
   db.settings.vrTitles ||= {}; db.settings.vrCosts ||= {};
   for (const [k, d] of Object.entries(VR)) {
@@ -4831,6 +4837,7 @@ app.post('/api/eggs/remove', egTry(b => eggs.removePlayer(b.key)));
 app.post('/api/eggs/give-egg', egTry(b => eggs.grantEggs(b.name, b.n)));
 // 🥚 the "Buy an egg" channel point reward: made once by itself after signing in (never refunds: every redeem is an egg)
 async function eggRewardSetup() {
+  if (!pointsOn()) return { skipped: true };
   const o = eggs.opts(), all = await twitch.listAllRewards(), mine = new Set((await twitch.listRewards()).map(r => r.id)), old = all.find(r => r.title.toLowerCase() === o.buyTitle.toLowerCase()), out = { title: o.buyTitle, cost: old?.cost || o.buyCost, made: false, byHand: !!old && !mine.has(old.id) };
   if (old) eggs.data().opts.buyCost = old.cost; else out.made = await twitch.createReward({ title: o.buyTitle, cost: o.buyCost, prompt: 'One more egg for your nest! Only one egg incubates at a time; the next one starts when it hatches. Which creature is inside is a surprise.', color: '#FFB020', input: false, queue: false }).catch(e => { out.error = e.message; return false; });
   eggs.data().rewardSetup = { at: Date.now(), ...out }; save(); rewardKey = ''; syncRewards().catch(() => {}); broadcast({ type: 'eggs' }, 'control'); return out;

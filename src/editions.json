@@ -328,7 +328,10 @@
    "chat:sitout",
    "chat:skip",
    "chat:respin",
-   "chat:addcom"
+   "chat:addcom",
+   "points",
+   "set:prices",
+   "guide:rewards"
   ],
   "note": "No battles (Battle, Battle pool, Chat battle), no People tab, no movie battles, no Kirb wheels, no card battles. Songs + Movie night live in the Chat bot tab.",
   "app": "Birx & Jess Chatbot",

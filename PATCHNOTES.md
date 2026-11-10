@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.120.0: What's new
+Everything since 1.119.0.
+
+- {ed:birx} 💎 **No more channel point things:** your channel doesn't have channel points, so everything about them is gone from the app: the Rewards & prices settings page, the channel point parts of the wheel's settings and the Channel points step of the Setup guide.
+
 ## v1.119.0: What's new
 Everything since 1.116.5.
 

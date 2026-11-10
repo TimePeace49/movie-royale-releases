@@ -17,6 +17,7 @@
  {"id": "movies", "kind": "off", "cat": "Movies", "name": "🎬 Discord movie picks", "text": "The Discord movies list, Banned Movies, Discord & Movie info settings, movie setup steps."},
  {"id": "kirbWheel", "kind": "off", "cat": "Wheel", "name": "🎡 Ready-made Wheel of Kirbportions", "text": "Added once on a fresh install."},
  {"id": "void", "kind": "off", "cat": "Wheel", "name": "🕳️ Void spot", "text": "The void spot options on wheels (and Doomsday)."},
+ {"id": "points", "kind": "off", "cat": "Twitch", "name": "💎 Channel points (everything)", "text": "For a channel without channel points: no rewards are made or listened to, and the channel point options on wheels are hidden. Also switch off the 💰 Rewards & prices settings page and the Channel points step of the Setup guide."},
  {"id": "voidSetup", "kind": "off", "cat": "Wheel", "name": "🕳️ Void lines in the Setup guide", "text": "The void spot parts of the setup steps."},
  {"id": "chaos", "kind": "off", "cat": "Battles", "name": "💥 Chaos + ball colors settings", "text": "Chat chaos events, bits → chaos, ball colors."},
  {"id": "game", "kind": "off", "cat": "Settings pages", "name": "⚔️ Game", "text": "Settings → Game."},
