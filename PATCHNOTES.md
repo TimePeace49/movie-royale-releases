@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.121.0: What's new
+New in this version.
+
+- {dash} 📊 **Stream stats box on the Chat tab:** what OBS's own Stats window shows, live: whether you're streaming and for how long, bitrate, dropped / skipped / missed frames, FPS, CPU, memory and free disk space. It starts switched off: right-click the Chat tab (or press ▦ Boxes) and tick 📊 Stream stats.
+
 ## v1.120.0: What's new
 Everything since 1.119.0.
 

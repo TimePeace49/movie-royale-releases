@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.121.0
+- 📊 **Stream stats box on the Chat tab** (off to start with: right-click the Chat tab, or press ▦ Boxes, and tick 📊 Stream stats). It shows what OBS's own Stats window shows, refreshed every 2 seconds: whether you're live and for how long, bitrate, dropped frames (network), skipped frames (encoder), missed frames (rendering), FPS, frame time, CPU, memory, free disk space and recording. Numbers turn yellow or red when they get bad.
+- 🧪 Test tab → 🧰 Chat tab → 📊 Stream stats (pretend): 15 seconds of pretend numbers, no OBS needed.
+- Fix: a box turned on from the right-click menu now always makes room for itself instead of landing on top of another box.
+
 ## 1.120.0
 - 💎 **Birx & Jess's edition has no channel points anywhere** (their channel doesn't have them): the 💰 Rewards & prices settings page, the channel point parts of each wheel's settings, the "no channel point respins" tick on spots and the Channel points step of the Setup guide are gone, the Twitch settings page is just called 💜 Twitch, and the app doesn't make, switch or listen for rewards there. Every other edition is unchanged. (It's a new switch, 💎 Channel points, in the Editions tab.)
 

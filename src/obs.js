@@ -698,6 +698,15 @@ export function watchMeters(onLevels, onState = () => {}) {
 export function stopMeters() { if (!meterW) return; meterW.on = false; clearTimeout(meterW.t); try { meterW.ws?.close(); } catch {} meterW = null; }
 export const metering = () => !!(meterW && meterW.ok);
 export async function muteInput(name, muted) { return session(async call => { await call('SetInputMute', { inputName: name, inputMuted: !!muted }); return { name, muted: !!muted }; }); }
+/* 📊 OBS's own numbers (View → Stats in OBS): CPU, memory, disk, fps, frames missed / skipped / dropped, and how the stream + recording are doing. */
+export async function streamStats() {
+  return session(async call => {
+    const st = await call('GetStats'), sm = await call('GetStreamStatus').catch(() => null), rc = await call('GetRecordStatus').catch(() => null);
+    return { cpu: st.cpuUsage, mem: st.memoryUsage, disk: st.availableDiskSpace, fps: st.activeFps, frameMs: st.averageFrameRenderTime, renderSkip: st.renderSkippedFrames, renderAll: st.renderTotalFrames, encSkip: st.outputSkippedFrames, encAll: st.outputTotalFrames,
+      stream: sm ? { on: !!sm.outputActive, reconnecting: !!sm.outputReconnecting, time: sm.outputTimecode || '', ms: sm.outputDuration || 0, bytes: sm.outputBytes || 0, drop: sm.outputSkippedFrames || 0, all: sm.outputTotalFrames || 0, congestion: sm.outputCongestion || 0 } : null,
+      rec: rc ? { on: !!rc.outputActive, paused: !!rc.outputPaused, time: rc.outputTimecode || '', bytes: rc.outputBytes || 0 } : null };
+  });
+}
 export function stopWatch() { if (!watcher) return; watcher.on = false; clearTimeout(watcher.t); try { watcher.ws?.close(); } catch {} watcher = null; }
 export const watching = () => !!(watcher && watcher.ws && watcher.ws.readyState === 1);
 

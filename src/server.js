@@ -1861,6 +1861,18 @@ function metersWant(on) {
 function metersStop() { if (meters.started) { obs.stopMeters(); meters.started = false; } }
 setInterval(() => { if (meters.started && Date.now() > meters.until) metersStop(); }, 5000);
 app.post('/api/obs/meters', (req, res) => { try { if (!feat('dash')) throw new Error('The Chat tab boxes are not part of this edition.'); if (req.body?.on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.'); metersWant(!!req.body?.on); res.json({ ok: true, on: !!req.body?.on, connected: obs.metering() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+/* 📊 Stream stats box on the Chat tab (1.121.0): OBS's stats, asked for every few seconds while the box shows. The bitrate is worked out from how many bytes went out since the last look. */
+let statLast = null;
+app.get('/api/obs/stats', async (req, res) => {
+  try { if (!obsOk()) throw new Error('Movie Royal is switched off for OBS.');
+    const st = await obs.streamStats(), now = Date.now(); let kbps = null;
+    if (st.stream && st.stream.on) { if (statLast && st.stream.bytes >= statLast.bytes && now - statLast.at < 20000 && now > statLast.at) kbps = Math.round((st.stream.bytes - statLast.bytes) * 8 / (now - statLast.at)); statLast = { bytes: st.stream.bytes, at: now }; } else statLast = null;
+    res.json({ ok: true, ...st, kbps });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/test/obs-stats', (req, res) => { const t = Date.now() / 1000, w = (a, b, f) => a + Math.sin(t * f) * b; /* 🧪 pretend numbers, no OBS needed */
+  res.json({ ok: true, test: true, cpu: w(11, 4, .7), mem: 1420 + Math.sin(t / 5) * 30, disk: 412000, fps: w(59.9, .2, 1.3), frameMs: w(6.4, 1.5, .9), renderSkip: 12, renderAll: 216000, encSkip: 3, encAll: 215400, kbps: Math.round(w(6000, 350, .5)),
+    stream: { on: true, reconnecting: false, time: new Date((t % 86400) * 1000).toISOString().slice(11, 19), ms: 0, bytes: 0, drop: 41, all: 215400, congestion: Math.max(0, w(.08, .08, .4)) }, rec: { on: false, paused: false, time: '', bytes: 0 } }); });
 app.post('/api/obs/mute', async (req, res) => { try { if (!obsOk()) throw new Error('Movie Royal is switched off for OBS.'); res.json({ ok: true, ...(await obs.muteInput(String(req.body?.name || ''), !!req.body?.muted)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 /* 🧪 pretend levels for 12 seconds (no OBS needed): a mic that talks, desktop sound, music, and one that is muted */
 app.post('/api/test/obs-meters', (req, res) => {

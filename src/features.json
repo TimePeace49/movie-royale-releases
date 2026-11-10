@@ -155,6 +155,7 @@
  {"id":"dash:feed","kind":"off","cat":"Chat tab","name":"🔔 Alerts box","text":"One of the boxes on the Chat tab dashboard.","hide":{"sel":"#dashGrid .dbox[data-b=\"feed\"]"}},
  {"id":"dash:tools","kind":"off","cat":"Chat tab","name":"🧰 Stream tools box","text":"One of the boxes on the Chat tab dashboard.","hide":{"sel":"#dashGrid .dbox[data-b=\"tools\"]"}},
  {"id":"dash:audio","kind":"off","cat":"Chat tab","name":"🎚️ Audio levels box","text":"One of the boxes on the Chat tab dashboard.","hide":{"sel":"#dashGrid .dbox[data-b=\"audio\"]"}},
+ {"id":"dash:stats","kind":"off","cat":"Chat tab","name":"📊 Stream stats box","text":"One of the boxes on the Chat tab dashboard.","hide":{"sel":"#dashGrid .dbox[data-b=\"stats\"]"}},
  {"id":"dash:chat","kind":"off","cat":"Chat tab","name":"💬 Chat box","text":"One of the boxes on the Chat tab dashboard.","hide":{"sel":"#dashGrid .dbox[data-b=\"chat\"]"}},
  {"id":"hist:rounds","kind":"off","cat":"History","name":"📜 Every round","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='rounds';drawHistory()\"]"}},
  {"id":"hist:people","kind":"off","cat":"History","name":"👑 Who won what","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='people';drawHistory()\"]"}},
