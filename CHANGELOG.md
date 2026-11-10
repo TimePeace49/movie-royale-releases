@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.123.0
+- 📌 **Movie night: the list pins itself in chat.** When you add, paste or change tonight's movies, the list is pinned in chat 20 seconds after your last change (so typing a whole list pins once). The pin is just the number, name and year of each movie: `1. Jaws (1975) · 2. Alien (1979)`. The year comes from the name, or from the ratings look-up when the name doesn't have one. A tick box in 📺 On stream + options turns it off; 📌 Pin again still works by hand.
+- Opening voting now says how to vote in its own chat line and pins the same short list.
+- 🧪 Test tab → 🍿 Movie night voting → 📌 What gets pinned (shows the line, sends nothing).
+
 ## 1.122.1
 - 🧲 **Drop a Chat tab box into an open area:** drag a box by its top bar over an empty part of the tab and let go: it takes that whole empty space (the dashed yellow shape shows it first). Nothing else moves.
 

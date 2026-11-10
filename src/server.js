@@ -5057,6 +5057,7 @@ app.post('/api/movienight/movies', mnTry(b => 'text' in b || Array.isArray(b.lis
 app.post('/api/movienight/open', mnTry(b => movienight.open(!!b.on)));
 app.post('/api/movienight/lastcall', mnTry(b => movienight.lastCall(b.on !== false, b.mins)));
 app.post('/api/movienight/pin', mnTry(() => movienight.pin()));
+app.get('/api/test/movienight-pin', (req, res) => res.json(feat('movienight') ? { text: movienight.pinText(), auto: movienight.opts().autoPin !== false } : { error: 'Movie night voting is not part of this edition.' })); /* 🧪 what would be pinned (nothing is sent) */
 app.post('/api/movienight/new', mnTry(b => movienight.newNight({ clear: !!b.clear })));
 app.post('/api/movienight/guess', mnTry(b => movienight.guess(String(b.id || ''), b.right)));
 app.post('/api/movienight/vote', mnTry(b => { const d = movienight.data(), m = movienight.findMovie(String(b.movie || ''), d); if (!m || m.many) throw new Error('Pick a movie from the list (its number works).'); const who = String(b.name || '').trim().replace(/^@/, ''); if (!who) throw new Error('Type who is voting.'); if (!d.open) throw new Error('Open voting first.'); const r = movienight.vote(who, who, m, { via: 'you', quiet: true }); if (!r.ok) throw new Error(r.why === 'same' ? 'They already voted for that one.' : 'They have used their votes and their change.'); return {}; }));

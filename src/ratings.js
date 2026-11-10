@@ -21,7 +21,7 @@ export async function ratingsByTitle(title, year) {
   const r = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}${year ? '&y=' + encodeURIComponent(year) : ''}&type=movie&apikey=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(7000) });
   const j = await r.json(); let v = null;
   if (j.Response === 'False') { if (!/not found/i.test(j.Error || '')) throw new Error(j.Error || 'OMDb error'); }
-  else { const rt = parseInt((j.Ratings || []).find(x => x.Source === 'Rotten Tomatoes')?.Value || '', 10), im = parseFloat(j.imdbRating); v = { imdb: im > 0 ? Math.round(im * 10) / 10 : 0, rt: rt >= 0 ? rt : 0, rtHas: rt >= 0, poster: /^https:\/\//.test(j.Poster || '') ? j.Poster : '' }; }
+  else { const rt = parseInt((j.Ratings || []).find(x => x.Source === 'Rotten Tomatoes')?.Value || '', 10), im = parseFloat(j.imdbRating); v = { year: /^\d{4}/.test(j.Year || '') ? String(j.Year).slice(0, 4) : '', imdb: im > 0 ? Math.round(im * 10) / 10 : 0, rt: rt >= 0 ? rt : 0, rtHas: rt >= 0, poster: /^https:\/\//.test(j.Poster || '') ? j.Poster : '' }; }
   db.ratingsT[k] = { at: Date.now(), v }; const ks = Object.keys(db.ratingsT); if (ks.length > 600) for (const x of ks.slice(0, 200)) delete db.ratingsT[x]; save(); return v;
 }
 

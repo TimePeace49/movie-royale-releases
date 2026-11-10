@@ -17,7 +17,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, ratings: true, posters: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -93,14 +93,14 @@ const numIn = (v, max, dec) => { const s = String(v ?? '').replace(',', '.').rep
 export async function fillRatings(d = data()) {
   if (rateBusy) return 0; rateBusy = true; let n = 0;
   try { for (const m of d.movies.slice()) { if (m.rateFor === m.title || (m.imdbHand && m.rtHand)) continue; const title = m.title; let r; try { r = await H.rating(title); } catch {} if (r === undefined) break; /* (no ratings key, or it couldn't be reached: try again another time) */
-    if (m.title !== title) continue; m.rateFor = title; if (!m.imdbHand) m.imdb = r && r.imdb > 0 ? r.imdb : 0; if (!m.rtHand) m.rt = r && r.rtHas ? r.rt : null; m.poster = r && r.poster ? r.poster : ''; n++; } } finally { rateBusy = false; }
-  if (n) changed(); return n;
+    if (m.title !== title) continue; m.rateFor = title; if (!m.imdbHand) m.imdb = r && r.imdb > 0 ? r.imdb : 0; if (!m.rtHand) m.rt = r && r.rtHas ? r.rt : null; m.poster = r && r.poster ? r.poster : ''; m.year = r && r.year ? r.year : ''; n++; } } finally { rateBusy = false; }
+  if (n) { changed(); pinSoon(); } /* (a year just came in: the pinned list gets it) */ return n;
 }
 export function setMovies(list) { // [{title, by}] or lines "Title | who asked" / "Title - who asked"
   const d = data(); if (d.open) throw new Error('Voting is open: close it first (adding one movie with ➕ still works).');
   const rows = (Array.isArray(list) ? list : String(list || '').split(/\r?\n/)).map(x => typeof x === 'string' ? (() => { const m = x.match(/^\s*(?:\d+[.)]\s*)?(.*?)\s*(?:\||\s[-–—]\s|\t)\s*(.*)$/); return m && m[1] ? { title: m[1], by: m[2] } : { title: x.replace(/^\s*\d+[.)]\s*/, ''), by: '' }; })() : x)
     .map(x => ({ title: String(x.title || '').trim().slice(0, 120), by: String(x.by || '').trim().replace(/^@/, '').slice(0, 40), imdb: Number(x.imdb) > 0 ? Math.round(Number(x.imdb) * 10) / 10 : 0, rt: x.rt == null || x.rt === '' ? -1 : Number(x.rt), poster: x.poster || '' })).filter(x => x.title);
-  d.movies = rows.slice(0, 60).map(x => { const old = d.movies.find(m => plain(m.title) === plain(x.title)); return { ...(old ? { imdb: old.imdb, rt: old.rt, poster: old.poster, rateFor: old.rateFor, imdbHand: old.imdbHand, rtHand: old.rtHand } : {}), id: old ? old.id : uid(), title: x.title, by: x.by, ...(x.imdb > 0 ? { imdb: x.imdb, imdbHand: true } : {}), ...(x.rt >= 0 ? { rt: x.rt, rtHand: true } : {}), ...(x.poster ? { poster: String(x.poster) } : {}) }; }); setTimeout(() => fillRatings().catch(() => {}), 50);
+  d.movies = rows.slice(0, 60).map(x => { const old = d.movies.find(m => plain(m.title) === plain(x.title)); return { ...(old ? { imdb: old.imdb, rt: old.rt, poster: old.poster, rateFor: old.rateFor, imdbHand: old.imdbHand, rtHand: old.rtHand } : {}), id: old ? old.id : uid(), title: x.title, by: x.by, ...(x.imdb > 0 ? { imdb: x.imdb, imdbHand: true } : {}), ...(x.rt >= 0 ? { rt: x.rt, rtHand: true } : {}), ...(x.poster ? { poster: String(x.poster) } : {}) }; }); setTimeout(() => fillRatings().catch(() => {}), 50); pinSoon();
   for (const v of Object.values(d.votes)) v.list = v.list.filter(x => d.movies.some(m => m.id === x.movie));
   changed(); return state();
 }
@@ -108,7 +108,7 @@ export function addMovie(title, by) {
   const d = data(), t = String(title || '').trim().slice(0, 120); if (!t) throw new Error('Type the movie first.');
   if (d.movies.some(m => plain(m.title) === plain(t))) throw new Error('That movie is already on the list.');
   if (d.movies.length >= 60) throw new Error('60 movies is the most one night can have.');
-  d.movies.push({ id: uid(), title: t, by: String(by || '').trim().replace(/^@/, '').slice(0, 40) }); changed(); setTimeout(() => fillRatings().catch(() => {}), 50); return state();
+  d.movies.push({ id: uid(), title: t, by: String(by || '').trim().replace(/^@/, '').slice(0, 40) }); changed(); pinSoon(); setTimeout(() => fillRatings().catch(() => {}), 50); return state();
 }
 export function editMovie(id, o) {
   const d = data(), i = d.movies.findIndex(m => m.id === id); if (i < 0) throw new Error("That movie isn't on the list.");
@@ -118,23 +118,27 @@ export function editMovie(id, o) {
   if ('imdb' in o) { const r = numIn(o.imdb, 10, 10); if (r) { m.imdb = r; m.imdbHand = true; } else { m.imdb = 0; m.imdbHand = false; m.rateFor = ''; } } /* typed by hand; empty = look it up again */
   if ('rt' in o) { const r = numIn(o.rt, 100, 1); if (r != null) { m.rt = r; m.rtHand = true; } else { m.rt = null; m.rtHand = false; m.rateFor = ''; } }
   if ('title' in o || 'imdb' in o || 'rt' in o) setTimeout(() => fillRatings().catch(() => {}), 50);
+  if ('title' in o || o.remove || o.dir) pinSoon();
   if (o.remove) { if (d.open) throw new Error("Voting is open: the numbers chat sees can't change now. Close voting first."); d.movies.splice(i, 1); for (const v of Object.values(d.votes)) v.list = v.list.filter(x => x.movie !== id); }
   if (o.dir) { if (d.open) throw new Error("Voting is open: the numbers chat sees can't change now."); const j = i + (o.dir < 0 ? -1 : 1); if (j >= 0 && j < d.movies.length) [d.movies[i], d.movies[j]] = [d.movies[j], d.movies[i]]; }
   changed(); return state();
 }
 
 // ---- the night ----
+/* 📌 The pinned list (1.123.0, Derek: "the movie number, name and year only"): "1. Jaws (1975) · 2. Alien (1979)". The year comes from the name when it has one, else from the ratings look-up. */
+const nameYear = m => { const x = /^(.*?)\s*\((\d{4})\)\s*$/.exec(String(m.title)); return x ? [x[1], x[2]] : [String(m.title), m.year || '']; };
 export function pinText(d = data()) {
-  const o = opts(d), head = `🍿 Movie night vote! Type ${o.command} and a number: `, tail = ` (1 vote + ${o.changes} change each)`;
-  for (const max of [60, 40, 28, 20, 14, 10]) {
-    const t = head + d.movies.map((m, i) => `${i + 1}) ${m.title.length > max ? m.title.slice(0, max - 1).trim() + '…' : m.title}`).join('  ') + tail;
-    if (t.length <= 480) return t;
-  }
-  return (head + d.movies.map((m, i) => `${i + 1}) ${m.title.slice(0, 9)}`).join(' ')).slice(0, 480);
+  const row = (m, i, max) => { const [t, y] = nameYear(m); return `${i + 1}. ${t.length > max ? t.slice(0, max - 1).trim() + '…' : t}${y ? ` (${y})` : ''}`; };
+  for (const max of [80, 50, 34, 24, 16, 11]) { const t = d.movies.map((m, i) => row(m, i, max)).join(' · '); if (t.length <= 480) return t; }
+  return d.movies.map((m, i) => row(m, i, 8)).join(' ').slice(0, 480);
 }
+/* 📌 a new or changed list pins itself in chat (after 20 quiet seconds, so typing a whole list pins once) */
+let pinT = null;
+export function pinSoon(ms = 20000) { clearTimeout(pinT); pinT = null; const d = data(); if (opts(d).autoPin === false || !d.movies.length || !H.on()) return; pinT = setTimeout(() => { pinT = null; const dd = data(); if (!dd.movies.length || pinTextKey(dd) === dd.pinnedKey) return; pin().catch(() => {}); }, ms); }
+const pinTextKey = d => pinText(d);
 export async function pin() {
   const d = data(); if (!d.movies.length) throw new Error('Add tonight\'s movies first.');
-  try { await H.pin(pinText(d)); d.pinnedAt = Date.now(); d.pinError = ''; }
+  try { await H.pin(pinText(d)); d.pinnedAt = Date.now(); d.pinError = ''; d.pinnedKey = pinText(d); }
   catch (e) { d.pinError = e.message; try { await H.say(pinText(d)); } catch {} }
   changed(); return { pinned: !d.pinError, pinError: d.pinError, text: pinText(d) };
 }
@@ -144,7 +148,9 @@ export async function open(yes, { quiet = false } = {}) {
     if (d.movies.length < 2) throw new Error('Add at least two movies first.');
     d.open = true; d.openedAt = Date.now(); delete d.closedAt; delete d.endsAt; changed();
     H.act(`Movie night voting opened: ${d.movies.length} movies`, { icon: '🍿', kind: 'open' });
-    return quiet ? { open: true } : { open: true, ...(await pin()) };
+    if (quiet) return { open: true };
+    const o = opts(d); await H.say(`🍿 Movie night voting is open! Type ${o.command} and the movie's number (1 vote + ${o.changes} change each). The list is pinned.`).catch(() => {});
+    return { open: true, ...(await pin()) };
   }
   if (!d.open) return { open: false };
   d.open = false; d.closedAt = Date.now(); delete d.endsAt; changed();
@@ -266,6 +272,7 @@ export function setOpts(o) {
   if ('overlay' in o) x.overlay = !!o.overlay;
   if ('ratings' in o) x.ratings = !!o.ratings;
   if ('posters' in o) x.posters = !!o.posters;
+  if ('autoPin' in o) x.autoPin = !!o.autoPin;
   if ('bg' in o) x.bg = Math.max(0, Math.min(100, Math.round(Number(o.bg) || 0))); /* how solid the board's background is on stream: 0 = see-through */
   if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
   if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';
