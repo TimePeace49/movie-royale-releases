@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.105.0
+**💿 RateYourMusic ratings** (Birx & Jess's edition; also in Derek's with dev mode on)
+- 🎵 Songs → Import now reads a **RateYourMusic export**. On rateyourmusic.com: your profile page → bottom → **Export your data**. Every album and single you rated comes in with its rating; things you only catalogued or wish-listed are left out.
+- A new **"One rating column is …'s"** pick says whose ratings the file holds (Birx's or Jess's). It works for any file with a single rating column.
+- Albums show with 💿 and their year in the song database.
+- When a song by one of those artists plays, the **Now playing** card shows your album ratings for that artist.
+- The app only reads the file. It never visits RateYourMusic.
+- 🧪 Test tab → Songs: **💿 Pretend RateYourMusic file**.
+- **Fixed:** banned songs were not being refused when chat asked for them. They are now.
+
 ## 1.104.0
 **🟢 Kick channel points for the egg game** (True's edition; also in Derek's with dev mode on)
 - Kick has channel points now, so the **🥚 Buy an egg** reward is made on **Kick** too (by itself once you're signed in with Kick, or with **🟢 Make it on Kick** on the Eggs tab). Kick viewers buy eggs with their Kick points.

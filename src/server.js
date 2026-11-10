@@ -4807,16 +4807,17 @@ app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
 app.post('/api/songs/import', sgTry(b => { // a spreadsheet (.xlsx as base64), a CSV / text file, or pasted lines; kind: songs | banned; dry = only show what was found
-  const kind = b.kind === 'banned' ? 'banned' : 'songs'; let p;
-  if (b.xlsx) { const all = xlsx.sheets(Buffer.from(String(b.xlsx), 'base64')).filter(sh => sh.rows.length), want = all.filter(sh => (kind === 'banned' ? /ban|black|block/i : /song|queue|rating|list|played|request|sheet/i).test(sh.name)), use = want.length ? want : all.slice(0, 1); p = { songs: [], note: '' }; for (const sh of use) { const t = songs.readTable(sh.rows, kind); p.songs.push(...t.songs); } p.note = `Read as an Excel file (page${use.length === 1 ? '' : 's'}: ${use.map(x => x.name).join(', ')}).`; }
-  else p = songs.readText(b.text, kind);
+  const kind = b.kind === 'banned' ? 'banned' : 'songs', who = Number(b.who) === 1 ? 1 : 0; let p;
+  if (b.xlsx) { const all = xlsx.sheets(Buffer.from(String(b.xlsx), 'base64')).filter(sh => sh.rows.length), want = all.filter(sh => (kind === 'banned' ? /ban|black|block/i : /song|queue|rating|list|played|request|sheet/i).test(sh.name)), use = want.length ? want : all.slice(0, 1); p = { songs: [], note: '' }; for (const sh of use) { const t = songs.readTable(sh.rows, kind, undefined, who); p.songs.push(...t.songs); if (t.rym) p.rymNote = t.note; } p.note = `Read as an Excel file (page${use.length === 1 ? '' : 's'}: ${use.map(x => x.name).join(', ')}).`; }
+  else p = songs.readText(b.text, kind, undefined, who);
   if (!p.songs.length) throw new Error("I couldn't find any songs in that. A spreadsheet needs a first line naming the columns (Song, Link, " + songs.opts().raters.join(', ') + '…), or paste one song per line.');
-  if (b.dry) return { found: p.songs.length, sample: p.songs.slice(0, 12), note: p.note, withRatings: p.songs.filter(x => x.rate.some(v => v != null)).length, withLinks: p.songs.filter(x => x.yt).length };
+  if (b.dry) return { found: p.songs.length, sample: p.songs.slice(0, 12), note: p.note, rym: !!p.rym, albums: p.songs.filter(x => x.album).length, withRatings: p.songs.filter(x => x.rate.some(v => v != null)).length, withLinks: p.songs.filter(x => x.yt).length };
   return { done: songs.applyImport(p, { kind, replace: !!b.replace }), note: p.note };
 }));
 app.get('/api/songs/export', (req, res) => { if (!feat('songs')) return res.status(400).send('Not part of this edition.'); const x = songs.exportAll(), cell = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v), which = req.query.kind === 'banned'; res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Content-Disposition', `attachment; filename="${which ? 'banned-songs' : 'song-ratings'}.csv"`); res.send('\uFEFF' + (which ? [['Banned song', 'YouTube link'], ...x.banned] : [x.head, ...x.rows]).map(r => r.map(cell).join(',')).join('\r\n')); });
 app.post('/api/test/songs', sgTry(async b => {
   if (b.action === 'rules') return songs.demo();
+  if (b.action === 'rym') { const p = songs.readText('RYM Album, First Name,Last Name,First Name localized, Last Name localized,Title,Release_Date,Rating,Ownership,Purchase Date,Media Type,Review\n1,"","Toto","","","Toto IV",1982,9,n,,,""\n2,"Daft","Punk","","","Discovery",2001,10,o,,,""\n3,"","Queen","","","A Night at the Opera",1975,7,n,,,""\n4,"","Nobody","","","Never rated",1999,0,w,,,""\n', 'songs', undefined, Number(b.who) === 1 ? 1 : 0); return { found: p.songs.length, note: p.note, sample: p.songs, raters: songs.opts().raters }; } // (a pretend RateYourMusic file: only read, nothing added)
   if (b.action === 'clear') return songs.clearTests();
   const PRE = ['Pretend Song About Rain', 'Pretend Disco Banger', 'Pretend Slow Ballad', 'Pretend Sea Shanty', 'Pretend Power Anthem', 'Pretend Lo-fi Loop'], who = ['pretend_amy', 'pretend_bob', 'pretend_cat'];
   twitch.pretend.until = Date.now() + 10 * 60000;

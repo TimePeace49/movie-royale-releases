@@ -61,7 +61,7 @@ export async function request(m, arg, { hand = false, test = false, now = Date.n
   if (!yt && o.links === 'youtube' && !hand) return no('needlink', `send a YouTube link: ${o.command} and the link.`);
   if (yt) { title = d.lib['yt:' + yt]?.title || ''; if (!title) { try { title = String(await H.title(yt) || '').slice(0, 140); } catch {} } if (!title) title = 'YouTube video ' + yt; }
   if (!title) return no('empty');
-  const x = { yt, title }, key = keyOf(x), ban = bannedWhy(x, d); if (d.lib[key]?.title && !/^YouTube video /.test(d.lib[key].title)) x.title = title = d.lib[key].title; // (a song you know keeps the name you gave it) if (ban) return no('banned', "that song is on the banned list, sorry.");
+  const x = { yt, title }, key = keyOf(x), ban = bannedWhy(x, d); if (d.lib[key]?.title && !/^YouTube video /.test(d.lib[key].title)) x.title = title = d.lib[key].title; /* (a song you know keeps the name you gave it) */ if (ban) return no('banned', "that song is on the banned list, sorry.");
   if (d.queue.some(q => q.key === key) || d.now?.key === key) return no('dupe', 'that song is already in the queue.');
   const item = { id: uid(), key, title, yt, by: name, login, at: now, test: test || undefined };
   d.queue.push(item); const L = lib(d, { key, title, yt }); L.requests++; if (!L.first) L.first = now; if (login) { L.by[login] = (L.by[login] || 0) + 1; if (!hand && !test) { const r = (d.req[login] ||= { name, n: 0 }); r.n++; r.name = name; r.last = now; } }
@@ -130,8 +130,23 @@ function csvRows(text) {
 const HEAD = { title: /^(song|title|name|track|song ?name|song ?title|video ?title)$/i, artist: /^(artist|band|by|singer|author|channel)$/i, link: /^(link|url|youtube|youtube ?(link|url|id)|video ?(id|link|url)|id)$/i, by: /^(requested ?by|requester|request(ed)? ?(user|from)|user|username|viewer|who)$/i, plays: /^(plays?|times ?played|play ?count|count|times|requests?)$/i, date: /^(date|last ?played|played|added|time)$/i, rate: /^(rating|score|stars?|rate)$/i, banned: /^(banned|blacklist(ed)?|blocked)$/i };
 const numIn = v => { const m = String(v ?? '').replace(',', '.').match(/-?\d+(\.\d+)?/); return m ? Number(m[0]) : null; };
 /** Read a table (rows of cells: from a spreadsheet page or CSV) or plain lines into songs. kind: songs | banned. Returns {songs:[{title,yt,by,plays,rate:[a,b],at}], note}. */
-export function readTable(rows, kind = 'songs', o = opts()) {
+// 💿 RateYourMusic's own export (profile page → Export your data): one line per album / single they rated or catalogued.
+// Header: RYM Album, First Name, Last Name, First Name localized, Last Name localized, Title, Release_Date, Rating, Ownership, Purchase Date, Media Type, Review
+// Rating there = half stars (1–10; 0 = not rated). It is read from the file only: the app never visits rateyourmusic.com (they don't allow robots).
+export const isRym = head => !!head && head.some(c => /^rym ?album$/i.test(c)) || (!!head && head.some(c => /^release_?date$/i.test(c)) && head.some(c => /^last ?name$/i.test(c)) && head.some(c => /^rating$/i.test(c)));
+export function readRym(rows, hi, o = opts(), who = 0) {
+  const head = rows[hi], col = re => head.findIndex(c => re.test(c)), cF = col(/^first ?name$/i), cL = col(/^last ?name$/i), cFL = col(/^first ?name localized$/i), cLL = col(/^last ?name localized$/i), cT = col(/^title$/i), cY = col(/^release_?date$/i), cR = col(/^rating$/i), out = []; let unrated = 0;
+  for (const r of rows.slice(hi + 1)) {
+    const artist = [cF >= 0 ? r[cF] : '', cL >= 0 ? r[cL] : ''].filter(Boolean).join(' ').trim() || [cFL >= 0 ? r[cFL] : '', cLL >= 0 ? r[cLL] : ''].filter(Boolean).join(' ').trim(), title = cT >= 0 ? r[cT] : ''; if (!title) continue;
+    const v = cR >= 0 ? numIn(r[cR]) : null; if (!(v > 0)) { unrated++; continue; } /* (catalogued or wish-listed, never rated) */
+    const rate = [null, null]; rate[who ? 1 : 0] = Math.round(Math.min(10, v) / 10 * o.scale * 2) / 2; const year = cY >= 0 ? (String(r[cY]).match(/\d{4}/) || [''])[0] : '';
+    out.push({ title: ((artist ? artist + ' - ' : '') + title).slice(0, 140), yt: '', by: '', plays: 0, rate, at: 0, album: true, artist: artist.slice(0, 80), year });
+  }
+  return { songs: out, note: `Read as a RateYourMusic export: ${out.length} rated album${out.length === 1 ? '' : 's'} and singles${unrated ? ` (${unrated} without a rating left out)` : ''}. They go in as ${o.raters[who ? 1 : 0]}'s ratings.`, kind: 'songs', rym: true };
+}
+export function readTable(rows, kind = 'songs', o = opts(), who = 0) {
   rows = rows.map(r => r.map(c => String(c ?? '').trim())).filter(r => r.some(Boolean)); const out = [];
+  { const ri = rows.slice(0, 5).findIndex(isRym); if (ri >= 0 && kind !== 'banned') return readRym(rows, ri, o, who); }
   const isHead = r => r.filter(c => Object.values(HEAD).some(re => re.test(c)) || o.raters.some(n => low(n) === low(c))).length >= 1 && r.every(c => c.length < 40 && !ytId(c));
   const hi = rows.findIndex(isHead), head = hi >= 0 && hi < 5 ? rows[hi] : null;
   const col = re => (head ? head.findIndex(c => re.test(c)) : -1), cT = col(HEAD.title), cA = col(HEAD.artist), cL = col(HEAD.link), cB = col(HEAD.by), cP = col(HEAD.plays), cD = col(HEAD.date);
@@ -142,12 +157,12 @@ export function readTable(rows, kind = 'songs', o = opts()) {
     else { const line = r.join(' ').replace(/^\s*(?:#?\d+[.):\]-]\s+)/, '').trim(); const m = line.match(/https?:\/\/\S+/); yt = ytId(m ? m[0] : line); title = (m ? line.replace(m[0], '') : yt ? '' : line).replace(/^[\s|:\-–—]+|[\s|:\-–—]+$/g, ''); }
     if (ytId(title)) { yt = yt || ytId(title); title = ''; }
     if (!title && !yt) continue;
-    const a = rA >= 0 ? numIn(r[rA]) : rOne >= 0 && rB < 0 ? numIn(r[rOne]) : null, b = rB >= 0 ? numIn(r[rB]) : null, at = cD >= 0 ? Date.parse(r[cD]) || 0 : 0;
+    const one = rA < 0 && rB < 0 && rOne >= 0 ? numIn(r[rOne]) : null, a = rA >= 0 ? numIn(r[rA]) : rOne >= 0 && rB < 0 && !who ? numIn(r[rOne]) : one != null && !who ? one : null, b = rB >= 0 ? numIn(r[rB]) : one != null && who ? one : null, /* (a single Rating column goes to the person picked) */ at = cD >= 0 ? Date.parse(r[cD]) || 0 : 0;
     out.push({ title: title.slice(0, 140), yt, by: cB >= 0 ? r[cB].replace(/^@/, '') : '', plays: cP >= 0 ? Math.max(0, Math.round(numIn(r[cP]) || 0)) : 0, rate: [a, b], at });
   }
   return { songs: out, note: head ? `Read as a table (columns: ${head.filter(Boolean).join(', ')}).` : 'Read as plain lines (one song per line).', kind };
 }
-export const readText = (text, kind, o) => { text = String(text || '').replace(/^﻿/, ''); if (!text.trim()) throw new Error('Nothing to read: pick a file or paste the text first'); if (/^\s*[\[{]/.test(text)) { try { const j = JSON.parse(text), arr = Array.isArray(j) ? j : j.songs || j.Songs || j.queue || j.banned || Object.values(j).find(Array.isArray) || []; if (arr.length && typeof arr[0] === 'object') { const keys = [...new Set(arr.flatMap(x => Object.keys(x || {})))]; return readTable([keys, ...arr.map(x => keys.map(k => (x && x[k] != null ? (typeof x[k] === 'object' ? JSON.stringify(x[k]) : x[k]) : '')))], kind, o); } if (arr.length) return readTable(arr.map(x => [x]), kind, o); } catch {} } return readTable(csvRows(text), kind, o); };
+export const readText = (text, kind, o, who = 0) => { text = String(text || '').replace(/^﻿/, ''); if (!text.trim()) throw new Error('Nothing to read: pick a file or paste the text first'); if (/^\s*[\[{]/.test(text)) { try { const j = JSON.parse(text), arr = Array.isArray(j) ? j : j.songs || j.Songs || j.queue || j.banned || Object.values(j).find(Array.isArray) || []; if (arr.length && typeof arr[0] === 'object') { const keys = [...new Set(arr.flatMap(x => Object.keys(x || {})))]; return readTable([keys, ...arr.map(x => keys.map(k => (x && x[k] != null ? (typeof x[k] === 'object' ? JSON.stringify(x[k]) : x[k]) : '')))], kind, o, who); } if (arr.length) return readTable(arr.map(x => [x]), kind, o, who); } catch {} } return readTable(csvRows(text), kind, o, who); };
 /** Put what was read into the database (or the banned list). Nothing already there is lost: plays add up only when `addPlays`, ratings fill in blanks unless `replace`. */
 export function applyImport(p, { kind = 'songs', replace = false } = {}) {
   const d = data(), o = opts(d), r = { added: 0, updated: 0, ratings: 0, banned: 0, skipped: 0 };
@@ -156,6 +171,7 @@ export function applyImport(p, { kind = 'songs', replace = false } = {}) {
     const key = keyOf(s); if (key === 't:') { r.skipped++; continue; }
     const had = !!d.lib[key], L = lib(d, { key, title: s.title || 'YouTube video ' + s.yt, yt: s.yt }); had ? r.updated++ : r.added++;
     if (s.title && (!L.title || /^YouTube video /.test(L.title))) L.title = s.title;
+    if (s.album) { L.album = true; L.artist = s.artist || L.artist || ''; if (s.year) L.year = s.year; }
     if (!had) { L.plays = s.plays || 0; L.requests = s.plays || 0; L.first = s.at || 0; L.last = s.at || 0; L.old = true; } else if (s.plays > L.plays) L.plays = s.plays;
     if (s.by) { const l = low(s.by); if (/^[a-z0-9_]{2,25}$/.test(l)) L.by[l] = Math.max(L.by[l] || 0, 1); }
     L.rate ||= [null, null]; for (const i of [0, 1]) { const v = s.rate?.[i]; if (v == null) continue; if (L.rate[i] == null || replace) { L.rate[i] = Math.round(clampN(v, 0, o.scale, 0) * 2) / 2; r.ratings++; } }
@@ -167,7 +183,12 @@ export function applyImport(p, { kind = 'songs', replace = false } = {}) {
 export function exportAll() { const d = data(), o = opts(d); return { head: ['Song', 'YouTube link', 'Times played', 'Times asked for', o.raters[0], o.raters[1], 'Last played'], rows: Object.values(d.lib).sort((a, b) => a.title.localeCompare(b.title)).map(L => [L.title, L.yt ? 'https://youtu.be/' + L.yt : '', L.plays, L.requests, L.rate?.[0] ?? '', L.rate?.[1] ?? '', L.last ? new Date(L.last).toISOString().slice(0, 10) : '']), banned: d.banned.map(b => [b.title, b.yt ? 'https://youtu.be/' + b.yt : '']) }; }
 
 // ---------- what the app and the stream see ----------
-const view = (d, q, o) => (q ? { ...q, lib: (L => (L ? { plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, old: !!L.old } : null))(d.lib[q.key]) } : null);
+/** 💿 Albums (from a RateYourMusic import) by the artist of this song: the artist's name has to be in the song's title as whole words. Best rated first. */
+export function albumsFor(title, d = data()) {
+  const t = ' ' + norm(title) + ' '; if (t.trim().length < 3) return []; const avg = L => { const r = (L.rate || []).filter(x => x != null); return r.length ? r.reduce((a, b) => a + b, 0) / r.length : -1; };
+  return Object.values(d.lib).filter(L => L.album && L.artist && norm(L.artist).length >= 3 && t.includes(' ' + norm(L.artist) + ' ') && norm(L.title) !== t.trim()).sort((a, b) => avg(b) - avg(a)).slice(0, 5).map(L => ({ title: L.artist && L.title.startsWith(L.artist + ' - ') ? L.title.slice(L.artist.length + 3) : L.title, artist: L.artist, year: L.year || '', rate: L.rate || [null, null] }));
+}
+const view = (d, q, o) => (q ? { ...q, albums: albumsFor(q.title, d), lib: (L => (L ? { plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, old: !!L.old } : null))(d.lib[q.key]) } : null);
 export function state({ q = '', sort = 'last', limit = 200 } = {}) {
   const d = data(), o = opts(d), all = Object.values(d.lib), s = norm(q);
   let rows = s ? all.filter(L => norm(L.title).includes(s) || Object.keys(L.by || {}).some(l => l.includes(low(q)))) : all;
@@ -175,8 +196,8 @@ export function state({ q = '', sort = 'last', limit = 200 } = {}) {
   rows = rows.sort(sort === 'title' ? (a, b) => a.title.localeCompare(b.title) : sort === 'plays' ? (a, b) => b.plays - a.plays || a.title.localeCompare(b.title) : sort === 'rating' ? (a, b) => avg(b) - avg(a) || b.plays - a.plays : sort === 'a' ? (a, b) => (b.rate?.[0] ?? -1) - (a.rate?.[0] ?? -1) : sort === 'b' ? (a, b) => (b.rate?.[1] ?? -1) - (a.rate?.[1] ?? -1) : (a, b) => (b.last || 0) - (a.last || 0) || a.title.localeCompare(b.title));
   const rated = all.filter(L => (L.rate || []).some(x => x != null));
   return { on: true, open: d.open, opts: o, now: view(d, d.now, o), queue: d.queue.map(x => view(d, x, o)), played: d.played.slice(0, 30), banned: d.banned, bannedUsers: d.bannedUsers,
-    lib: rows.slice(0, limit).map(L => ({ key: L.key, title: L.title, yt: L.yt, plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, who: Object.entries(L.by || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]) })), found: rows.length, total: all.length, q, sort,
-    stats: { songs: all.length, plays: all.reduce((n, L) => n + (L.plays || 0), 0), rated: rated.length, avg: [0, 1].map(i => { const v = all.map(L => L.rate?.[i]).filter(x => x != null); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : null; }),
+    lib: rows.slice(0, limit).map(L => ({ key: L.key, title: L.title, yt: L.yt, plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, album: !!L.album, year: L.year || '', who: Object.entries(L.by || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]) })), found: rows.length, total: all.length, q, sort,
+    stats: { albums: all.filter(L => L.album).length, songs: all.length, plays: all.reduce((n, L) => n + (L.plays || 0), 0), rated: rated.length, avg: [0, 1].map(i => { const v = all.map(L => L.rate?.[i]).filter(x => x != null); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : null; }),
       requesters: Object.entries(d.req).map(([login, x]) => ({ login, name: x.name || login, n: x.n, last: x.last || 0 })).sort((a, b) => b.n - a.n).slice(0, 25),
       top: [...all].filter(L => L.requests || L.plays).sort((a, b) => (b.requests || 0) - (a.requests || 0) || b.plays - a.plays).slice(0, 15).map(L => ({ title: L.title, requests: L.requests, plays: L.plays })),
       best: [...rated].sort((a, b) => avg(b) - avg(a)).slice(0, 10).map(L => ({ title: L.title, rate: L.rate })) } };
@@ -199,6 +220,9 @@ export async function demo() {
     add('Other links are refused', (await R('bob', 'https://example.com/song.mp3')).why === 'link');
     await R('bob', 'Africa'); await R('cat', 'Take On Me'); add('A full queue is refused', (await R('dan', 'One More')).why === 'full');
     d.open = false; add('Closed = no requests', (await R('dan', 'Later')).why === 'closed'); d.open = true;
+    const rym = readText('RYM Album, First Name,Last Name,First Name localized, Last Name localized,Title,Release_Date,Rating,Ownership,Purchase Date,Media Type,Review\n1,"","Toto","","","Toto IV",1982,9,n,,,""\n2,"Daft","Punk","","","Discovery",2001,10,o,,,"great, really"\n3,"","Nobody","","","Wishlist only",1999,0,w,,,""\n', 'songs', { ...o, raters: ['Birx', 'Jess'] }, 1);
+    add('A RateYourMusic export is read: artist + album, the rating out of 10, unrated ones left out, for the person you pick', rym.rym && rym.songs.length === 2 && rym.songs[0].title === 'Toto - Toto IV' && rym.songs[0].rate[1] === 9 && rym.songs[0].rate[0] === null && rym.songs[1].title === 'Daft Punk - Discovery' && rym.songs[1].year === '2001' && rym.songs[1].album);
+    { const d2 = { lib: { 't:toto toto iv': { key: 't:toto toto iv', title: 'Toto - Toto IV', album: true, artist: 'Toto', year: '1982', rate: [9, null] } } }, hit = albumsFor('Toto - Africa (Official Video)', d2), miss = albumsFor('Totoro theme song', d2); add('When a song by that artist plays, their rated albums show (and only for that artist)', hit.length === 1 && hit[0].title === 'Toto IV' && !miss.length); }
     const t = readTable([['Song', 'Artist', 'Link', 'Birx', 'Jess', 'Times played'], ['Africa', 'Toto', 'https://youtu.be/FTQbiNvZqaY', '9', '8.5', '4'], ['Take On Me', 'a-ha', '', '7', '', '2']], 'songs', { ...o, raters: ['Birx', 'Jess'] });
     add('A ratings spreadsheet is read (song, artist, link, both ratings, plays)', t.songs.length === 2 && t.songs[0].title === 'Toto - Africa' && t.songs[0].yt === 'FTQbiNvZqaY' && t.songs[0].rate[0] === 9 && t.songs[0].rate[1] === 8.5 && t.songs[0].plays === 4 && t.songs[1].rate[1] === null);
     const b = readText('1. Baby Shark\nhttps://www.youtube.com/watch?v=XqZsoesa55w\nNever Gonna Give You Up | https://youtu.be/dQw4w9WgXcQ', 'banned', o);
