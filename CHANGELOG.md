@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.114.1
+- **🟢 Kick on the Connections page:** its button now opens **Kick's sign-in page** to connect your account, instead of sending you to the Twitch settings. The first time, the line shows the two key boxes and the steps right there.
+
 ## 1.114.0
 **🔗 Settings → Connections (new page)**
 - One list of **everything the app links to**: Twitch, the chat bot account, Kick, the Discord bot, the 24/7 bot, movie search, ratings, Letterboxd, OBS, donations, Stream Deck, co-stream, your Streamlabs Chatbot import and your RateYourMusic file. Each line shows **connected / not connected / optional** and has a button that takes you **straight to where it is set up**. It only lists the things your edition has.
