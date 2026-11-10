@@ -273,6 +273,7 @@ H(/^tip:(?:start a fresh night)/i, '🆕 New night', "Starts a fresh night. Toni
 H(/^tip:(?:the guess for this vote was right|change this vote's guess to right)/i, '✅ Right', "Click when the guess for this person's vote was right. It counts on the on-stream guess counter and in the stats for tonight, all time and that chatter.");
 H(/^tip:(?:the guess for this vote was wrong|change this vote's guess to wrong)/i, '❌ Wrong', "Click when the guess for this person's vote was wrong. It counts in the stats for tonight, all time and that chatter.");
 H(/^tip:(?:no guess was made for this vote)/i, 'Skip', 'Leaves this vote out of the guess count (nobody guessed it).');
+H(/^tip:(?:opens the movie night tab and types)/i, '🍿 Suggestions while typing', 'Test: opens the Movie night tab and types two letters in the Movie name box with pretend suggestions under it. Nothing is added to your list.');
 H(/^tip:(?:open the movie night tab)/i, '🍿 Movie night', 'Opens the 🍿 Movie night tab.');
 H(/^tip:(?:a movie to add to tonight)/i, 'Movie name', "Type a movie for tonight's list, then press ➕ Add (or Enter).");
 H(/^tip:(?:who asked for the movie you're adding|who asked for this movie)/i, 'Asked by', 'Who asked for this movie. It can be left empty.');

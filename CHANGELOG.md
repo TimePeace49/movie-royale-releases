@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.115.0
+- 🍿 **Movie night: suggestions while you type.** Start typing in the "Movie name" box on the Movie night tab and a list of movies shows under it (name + year; movies from your earlier nights come first). Click one, or use ↑ ↓ and Enter, and it fills the box in. Suggestions for every movie use the free movie-search (TMDB) key: if there isn't one yet, the list has a line to add it right there.
+- 💬 **Chat tab:** the movie box's button is now a clear **🍿 Movie night tab** button that jumps straight there.
+- 🧪 Test tab → 🍿 Movie night voting → 💡 Suggestions while typing (pretend suggestions, nothing added).
+
 ## 1.114.3
 - 🟢 **Kick sign-in showing a broken page:** that happened when the Redirect URL (the web address) was pasted into the Client ID box. The app now refuses a web address in the Client ID / Client Secret boxes and says which one goes where, and if the wrong one was already saved it shows a red note and asks for the real Client ID instead of opening Kick's broken page. The Connections page wording is clearer: the Redirect URL goes INTO Kick, the Client ID and Client Secret come FROM Kick.
 

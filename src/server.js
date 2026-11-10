@@ -4976,6 +4976,22 @@ movienight.setHooks({ note: pstats.note,
 setInterval(() => { try { movienight.tick(); } catch (e) { console.error('[movie night]', e.message); } }, 1000);
 const mnTry = fn => wTry(async (b, req) => { if (!feat('movienight')) throw new Error('Movie night voting is not part of this edition.'); const r = await fn(b, req); return r && r.movies ? { state: r } : { ...(r || {}), state: movienight.state() }; });
 app.get('/api/movienight', (req, res) => res.json(feat('movienight') ? movienight.state() : { on: false }));
+/* 🍿 suggestions while typing a movie (1.115.0): movies from earlier nights first, then TMDB's search (needs the key); fake = the Test tab's pretend answers */
+const MN_FAKE = [['Jaws', 1975], ['Jaws 2', 1978], ['Jawbreaker', 1999], ['Jaws: The Revenge', 1987], ['Jack Frost', 1998], ['Jumanji', 1995]];
+app.get('/api/movienight/suggest', async (req, res) => {
+  try {
+    if (!feat('movienight')) return res.status(400).json({ error: 'Movie night voting is not part of this edition.' });
+    const q = String(req.query.q || '').trim().toLowerCase(), key = !!String(db.settings.tmdbKey || '').trim(), out = [], seen = new Set();
+    const add = (title, year, from) => { const k = String(title).toLowerCase().replace(/\s*\(\d{4}\)\s*$/, '') + '|' + (year || ''); if (!title || seen.has(k) || out.length >= 8) return; seen.add(k); out.push({ title: String(title), year: year || '', from }); };
+    if (q.length < 2) return res.json({ list: [], key });
+    const st = movienight.state(), tonight = new Set((st.movies || []).map(m => String(m.title).toLowerCase()));
+    for (const n of db.movieNight?.past || []) for (const m of n.movies || []) if (String(m.title).toLowerCase().includes(q) && !tonight.has(String(m.title).toLowerCase())) add(m.title, '', 'past');
+    out.splice(3);
+    if (req.query.fake) for (const [t, y] of MN_FAKE) { if (t.toLowerCase().includes(q)) add(t, y, 'tmdb'); }
+    else if (key) { const r = await within(searchMovies(q), 6000, 'TMDB').catch(() => []); for (const m of r) add(m.title, m.year, 'tmdb'); }
+    res.json({ list: out, key: key || !!req.query.fake });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/movienight/movies', mnTry(b => 'text' in b || Array.isArray(b.list) ? movienight.setMovies(b.list || b.text) : b.id ? movienight.editMovie(b.id, b) : movienight.addMovie(b.title, b.by)));
 app.post('/api/movienight/open', mnTry(b => movienight.open(!!b.on)));
 app.post('/api/movienight/lastcall', mnTry(b => movienight.lastCall(b.on !== false, b.mins)));
