@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.114.0
+**🔗 Settings → Connections (new page)**
+- One list of **everything the app links to**: Twitch, the chat bot account, Kick, the Discord bot, the 24/7 bot, movie search, ratings, Letterboxd, OBS, donations, Stream Deck, co-stream, your Streamlabs Chatbot import and your RateYourMusic file. Each line shows **connected / not connected / optional** and has a button that takes you **straight to where it is set up**. It only lists the things your edition has.
+- **💿 RateYourMusic:** pick whose ratings they are, press **📂 Pick my RateYourMusic file**, check what it found, press **Add them**. (On rateyourmusic.com: your profile → Export your data at the bottom. RateYourMusic has no sign-in for apps, so it's a file.)
+
+**Smaller things**
+- The last status circle at the top (the "game screen" one that was red unless a battle was open) is gone. In editions without movie picks, the Discord and Letterboxd circles are gone too.
+- Editions without battles no longer get the "men and women characters?" question on start-up.
+- 🧪 Try it: Test tab → 🔗 Connections page.
+
 ## 1.113.0
 **🎭 Editions tab: 310 switches (was 33), names stay on top**
 - The list in the Backup Bots app now has **every Settings section** (each heading on every Settings page), **every map**, **every chat command**, **every Setup guide step**, the **Chat bot / Songs sub-tabs**, each **Chat tab box**, the **History buttons**, the **wheel's spot kinds**, the **clip buttons** and the **Test tab cards**, on top of the tabs and pages from before.

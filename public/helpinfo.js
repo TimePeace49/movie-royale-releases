@@ -222,6 +222,11 @@ H(/^(?:Turn the lock off|tip:switch the lock off)/i, 'Turn the lock off', 'Switc
 H(/^(?:✅ Turn the lock on|tip:check the code and switch the lock on|tip:the 6-digit code your authenticator app shows)/i, 'Turn the lock on', 'Type the 6 digits your authenticator app shows right now. If they match, the lock is on and your backup codes are shown.');
 H(/^(?:I saved them|📋 Copy|tip:copy the backup codes|tip:close this window \(the codes)/i, 'Backup codes', 'Save these somewhere safe. If you lose your phone, one backup code opens the lock (each works once). They are only shown this one time.', ['settings']);
 H(/^(?:🔐 Open the lock settings|tip:open settings → account & updates, where the lock)/i, '🔐 Lock settings', 'Opens Settings → 👤 Account & updates, where the lock is set up, changed or turned off.');
+// 🔗 Connections page (1.114.0)
+H(/^(?:🔗 Connections|🔗 Open the Connections page|tip:opens settings → connections)/i, '🔗 Connections', 'One list of everything the app links to: what is connected, what isn’t, and a button that takes you to where each one is set up.');
+H(/^(?:Set up|tip:go to where this is set up|tip:go to settings → co-stream)/i, 'Set up', 'Takes you to the Settings section where this connection is set up.', ['links']);
+H(/^(?:📂 Pick my RateYourMusic file|#lkRymWho\b|Add them|tip:(?:pick the file rateyourmusic gave you|whose rateyourmusic file|add these albums and ratings))/i, '💿 RateYourMusic file', 'RateYourMusic has no sign-in for apps. On rateyourmusic.com open your profile, press Export your data at the bottom, then pick that file here. Choose whose ratings they are first.');
+H(/^(?:💿 Check a pretend RateYourMusic file|tip:reads a pretend rateyourmusic export)/i, '💿 Pretend RateYourMusic file', 'Reads a made-up RateYourMusic export and shows what it would bring in. Nothing is saved.');
 // 🧱 movable boxes, 📻 playlists, 📊 stats (1.110.0)
 H(/^(?:⠿|tip:drag to move this box)/i, '⠿ Move a box', 'Drag this strip to move the box anywhere on the Chat tab. Its edges stick to the other boxes. Where you leave it is remembered on this PC.');
 H(/^tip:drag this edge to make the box/i, '↔ Resize by an edge', 'Drag a box’s right or bottom edge. The boxes next to it grow or shrink to fit, like the docks in OBS.');

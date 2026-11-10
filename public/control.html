@@ -1402,6 +1402,11 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="rdTest('fill')" title="Fills the Raid tab with 5 pretend live channels (some raided before, some never) and opens it. Raiding one of them is pretend: nothing is sent to Twitch">🚀 Open with pretend channels</button><button onclick="rdTest('sort')" title="Walks the sorting through with pretend channels and shows the order each way of sorting gives (nothing is saved)">📋 Check the sorting</button><button class="ghost" onclick="rdTest('clear')" title="Takes the pretend channels away again: the Raid tab shows the real channels you follow">🧹 Remove the pretend channels</button></div>
     <div id="tRdOut"></div>
   </div>
+  <div class="card" id="linksTestCard">
+    <h3>🔗 Connections page</h3>
+    <p class="help">Settings → 🔗 Connections lists everything the app links to (Twitch, Discord, OBS, donations, your RateYourMusic file…) with what is connected and a button to where each is set up.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="setView('settings');setTimeout(()=>setSub('links'),200)" title="Opens Settings → Connections">🔗 Open the Connections page</button><button class="edOff" data-feat="songs" onclick="sgRymTest()" title="Reads a pretend RateYourMusic export and shows what it would bring in (nothing is saved)">💿 Check a pretend RateYourMusic file</button></div>
+  </div>
   <div class="card edOff" id="dashTestCard" data-feat="dash">
     <h3>🧰 Chat tab: stream tools + my songs</h3>
     <p class="help">The 💬 Chat tab has a box under the alerts with a 🎬 Clip button and your own OBS scene buttons. Clicking a name in chat opens that person's profile, which lists their songs in the queue. <b>!mysongs</b> in chat says the same thing. These tests are pretend: OBS isn't touched and nothing is typed in chat.</p>
@@ -1556,6 +1561,7 @@ not a link</textarea>
   <div class="pane card subnav" id="subnav">
     <div class="setSearchWrap"><input id="setSearch" type="search" placeholder="🔍 Search all settings…" autocomplete="off" title="Type a few letters of any setting: the matches show here, click one to go straight to it" oninput="setSearchRun(this.value)" onfocus="setSearchRun(this.value)" onkeydown="setSearchKey(event)"><div id="setResults"></div></div>
     <button data-s="account" class="on">👤 Account &amp; updates</button>
+    <button data-s="links">🔗 Connections</button>
     <button data-s="game">⚔️ Game</button>
     <button data-s="discord">🤖 Discord &amp; picks</button>
     <button data-s="luck">🍀 Luck</button>
@@ -2609,7 +2615,7 @@ function setView(v) {
   if (v === 'tchat') dashLoad(); else dashLeave();
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); bdDraw(); } if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'links') setTimeout(linksDraw, 0); if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); bdDraw(); } if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -3853,6 +3859,42 @@ let dashTimer = 0, dashPrevOn = true, dashPrevFor = '', SGD = null, MND = null, 
 const dashC = {}, dashPut = (id, html) => { const el = $(id); if (!el || dashC[id] === html) return; dashC[id] = html; el.innerHTML = html; }; /* (only touches a part when it changed, so the players, the slider and clicks are left alone) */
 try { dashPrevOn = localStorage.getItem('dashPrev') !== '0'; dashPl.vol = Math.max(0, Math.min(100, Number(localStorage.getItem('dashVol') ?? 60))); } catch {}
 /* the Chat tab's windows: with the dashboard it is stream + songs + movie night | activity feed | chat (Birx's drawing, 1.106.0); without it, the usual chat page */
+/* 🔗 Settings → Connections: one list of everything the app links to, with its state and a button to where it is set up */
+function linkGo(re, fallback) { /* open the Settings page that has this heading and scroll to it */
+  const h = [...document.querySelectorAll('#settingsBody .sub h3, #settingsBody .sub h4')].find(x => re.test(x.textContent) && !x.closest('.sub[data-s="links"]')), sb = h ? h.closest('.sub').dataset.s : fallback; if (!sb) return;
+  setSub(sb); if (h) setTimeout(() => { h.scrollIntoView({ block: 'start', behavior: 'smooth' }); h.classList.add('setFlash'); setTimeout(() => h.classList.remove('setFlash'), 2200); }, 150);
+}
+let LK_RYM = null, LK_SG = null;
+async function linksDraw() {
+  const el = $('linksBody'); if (!el) return; const st = S.status || {}, tw = st.twitch || {}, d = st.discord || {}, dn = st.donations || {}, noM = edOff('movies'), k = S.kick || {}, cs = S.settings || {};
+  if (featOn('songs') && !LK_SG) { try { LK_SG = await fetch('/api/songs').then(r => r.json()); } catch {} }
+  const row = (icon, name, ok, text, btns) => `<div class="row" style="gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line);flex-wrap:wrap"><span style="font-size:20px;width:28px;text-align:center">${icon}</span><div style="flex:1;min-width:200px"><b>${name}</b> <span class="pill" style="background:${ok === true ? '#1f7a44' : ok === false ? '#5a2a3a' : '#3a2a5c'}">${ok === true ? 'connected' : ok === false ? 'not connected' : 'optional'}</span><div class="muted" style="font-size:13px">${text}</div></div>${btns}</div>`;
+  const go = (label, re, fb, tip) => `<button onclick="linkGo(${re}, '${fb}')" title="${tip || 'Go to where this is set up'}">${label}</button>`;
+  const rows = [];
+  rows.push(row('💜', 'Twitch (your channel)', !!S.owner, S.owner ? `Signed in as <b>${esc(S.owner.name)}</b>. Chat: ${esc(tw.chat || 'off')}.` : 'Not signed in: no chat, channel points, raids or clips.', `<button class="${S.owner ? '' : 'twitch'}" onclick="location.href='/auth/twitch'" title="Sign in with your Twitch account (again, to get new permissions)">${S.owner ? 'Sign in again' : 'Sign in with Twitch'}</button>`));
+  rows.push(row('🤖', 'Chat bot account', null, 'A second Twitch account the app talks as in chat (optional: without it, it talks as you).', go('Set up', '/Chat bot account/i', 'twitch')));
+  if (featOn('kick')) rows.push(row('🟢', 'Kick', !!k.signedIn, k.signedIn ? `Signed in${k.user ? ' as <b>' + esc(k.user) + '</b>' : ''}.` : 'Not signed in.', go('Set up', '/Kick/i', 'twitch')));
+  if (!noM) { rows.push(row('🎮', 'Discord bot', d.state === 'online', d.state === 'online' ? `Online${d.tag ? ' as <b>' + esc(d.tag) + '</b>' : ''}.` : `Not running${d.error ? ': ' + esc(d.error) : ''}.`, go('Set up', '/Discord bot|Bot token/i', 'discord')));
+    rows.push(row('☁️', '24/7 Discord bot (Cloudflare)', !!S.cloud?.enabled, S.cloud?.enabled ? 'Set up: Discord keeps working while this PC is off.' : 'Not set up (optional).', go('Set up', '/24\\/7 mode/i', 'discord')));
+    rows.push(row('🎬', 'Movie search (TMDB)', !!cs.tmdbKey, cs.tmdbKey ? 'A key is saved.' : 'No key yet: movie search and posters need it.', go('Set up', '/TMDB|Movie search/i', 'movies')));
+    rows.push(row('🍅', 'Ratings (OMDb)', cs.omdbKey ? true : null, cs.omdbKey ? 'A key is saved.' : 'No key (optional).', go('Set up', '/OMDb|Ratings/i', 'movies')));
+    rows.push(row('📗', 'Letterboxd', cs.letterboxdUser ? true : null, cs.letterboxdUser ? `Reading <b>${esc(cs.letterboxdUser)}</b>'s watched films.` : 'No name set (optional).', go('Set up', '/Letterboxd/i', 'movies'))); }
+  rows.push(row('🎥', 'OBS', cs.obsOn === false ? false : null, cs.obsOn === false ? 'The app is not allowed to use OBS.' : 'The app may control OBS (scene buttons, sources). OBS has to be open with its WebSocket server on.', go('Set up', '/OBS/i', 'obs')));
+  rows.push(row('💵', 'Donations (StreamElements / Streamlabs)', dn.se === 'on' || dn.sl === 'on' || /online|connected/.test(String(dn.se) + dn.sl) ? true : null, `StreamElements: ${esc(dn.se || 'off')} · Streamlabs: ${esc(dn.sl || 'off')}`, go('Set up', '/Donation/i', 'twitch')));
+  if (!edOff('set:app')) rows.push(row('🎛️', 'Stream Deck', null, 'Ready-made button pages for a Stream Deck.', go('Set up', '/Stream Deck/i', 'app')));
+  if (!edOff('costream')) rows.push(row('🤝', 'Co-stream with a friend', S.costream?.room ? true : null, S.costream?.room ? `Linked${S.costream.partnerName ? ' with <b>' + esc(S.costream.partnerName) + '</b>' : ''}.` : 'Not linked (optional).', `<button onclick="setSub('costream')" title="Go to Settings → Co-stream">Set up</button>`));
+  if (!edOff('tab:bot')) rows.push(row('🧳', 'Streamlabs Chatbot (bring it over)', (S.botCount || 0) > 0 ? true : null, 'Commands, timers, quotes, sound alerts and songs from your Streamlabs Chatbot export files.', `<button onclick="setView('bot');setTimeout(()=>botGo('import'),300)" title="Open the Chat bot tab's import page">Import</button>`));
+  if (featOn('songs')) { const R = (LK_SG && LK_SG.opts && LK_SG.opts.raters) || ['Rater 1', 'Rater 2'], n = LK_SG && LK_SG.stats ? LK_SG.stats.albums : 0;
+    rows.push(row('💿', 'RateYourMusic (your album ratings)', n > 0 ? true : null, `${n > 0 ? `<b>${n}</b> album${n === 1 ? '' : 's'} brought in. ` : ''}RateYourMusic has no way for an app to sign in, so you bring in your own export file: on rateyourmusic.com open <b>your profile</b>, scroll to the bottom and press <b>Export your data</b>, then pick that file here. Do it once per person.<div id="lkRymOut" style="margin-top:4px"></div>`,
+      `<label class="help" style="margin:0">These ratings are <select id="lkRymWho" style="width:auto" title="Whose RateYourMusic file this is: the ratings go in that person's column">${R.map((x, i) => `<option value="${i}">${esc(x)}'s</option>`).join('')}</select></label><button class="primary" onclick="$('lkRymFile').click()" title="Pick the file RateYourMusic gave you (Export your data)">📂 Pick my RateYourMusic file</button><input type="file" id="lkRymFile" accept=".csv,.txt" style="display:none" onchange="linkRym(this.files[0]);this.value=''">`)); }
+  el.innerHTML = rows.join('');
+}
+async function linkRym(f) { /* read the RateYourMusic export first (nothing added), show what it found, then add on a click */
+  if (!f) return; const who = Number($('lkRymWho').value) || 0, text = await f.text(), out = $('lkRymOut'); let r; try { r = await api('/api/songs/import', { text, kind: 'songs', who, dry: true }); } catch { return; }
+  const n = r.found || 0; LK_RYM = { text, who };
+  out.innerHTML = `<div class="help" style="margin:0">📄 <b>${esc(f.name)}</b>: found <b>${n}</b> album${n === 1 ? '' : 's'}, <b>${r.withRatings || 0}</b> with a rating${r.rym ? '' : '. ⚠️ This doesn’t look like a RateYourMusic export, so it is read as a plain song list'}. <button class="primary" onclick="linkRymDo()" title="Add these albums and ratings to the song database">Add them</button> <button class="ghost" onclick="LK_RYM=null;$('lkRymOut').innerHTML=''" title="Don't add anything">Cancel</button></div>`;
+}
+async function linkRymDo() { if (!LK_RYM) return; let r; try { r = await api('/api/songs/import', { text: LK_RYM.text, kind: 'songs', who: LK_RYM.who }); } catch { return; } const d = r.done || {}; LK_RYM = null; LK_SG = null; toast(`💿 RateYourMusic: ${d.added ?? 0} added, ${d.updated ?? d.merged ?? 0} updated.`); linksDraw(); }
 /* 🧰 the box under the activity feed: a clip button and your own OBS scene buttons */
 function dashTools() {
   const el = $('dashTools'); if (!el) return; const sc = (S?.settings?.dashScenes || []).filter(Boolean);
@@ -4314,7 +4356,7 @@ function edApply() {
   set('#nav [data-v="battle"]', noB); set('#nav [data-v="pool"]', noP); set('#nav [data-v="chat"]', noCB); set('#nav [data-v="people"]', noPe); /* 🎭 Birx & Jess: no battles, no People tab */
   /* 🎭 switches from the Editions list: "tab:<name>" hides a top tab, "set:<name>" hides a Settings page */
   document.querySelectorAll('#nav [data-v]').forEach(b => { if (edOff('tab:' + b.dataset.v)) b.classList.add('edOff'); else if (['bot', 'giveaway', 'wheel', 'tchat', 'history'].includes(b.dataset.v)) b.classList.remove('edOff'); });
-  document.querySelectorAll('#subnav [data-s]').forEach(b => { if (edOff('set:' + b.dataset.s)) b.classList.add('edOff'); else if (['twitch', 'app', 'gfx', 'prices', 'obs', 'names', 'sounds', 'keys', 'notes'].includes(b.dataset.s)) b.classList.remove('edOff'); });
+  document.querySelectorAll('#subnav [data-s]').forEach(b => { if (edOff('set:' + b.dataset.s)) b.classList.add('edOff'); else if (['links', 'twitch', 'app', 'gfx', 'prices', 'obs', 'names', 'sounds', 'keys', 'notes'].includes(b.dataset.s)) b.classList.remove('edOff'); });
   if (edOff('tab:' + view)) setView(edHome()); if (view === 'settings' && edOff('set:' + sub)) setSub('account');
   if ((noB && view === 'battle') || (noP && view === 'pool') || (noCB && view === 'chat') || (noPe && view === 'people')) setView(edHome());
   document.querySelectorAll('[data-feat]').forEach(el => el.classList.toggle('edOff', !featOn(el.dataset.feat)));
@@ -4665,9 +4707,8 @@ function renderHeader() {
     [`Discord: ${d.state}${d.error ? ' — ' + d.error : ''}${warns ? ' — ⚠️ ' + warns : ''}`, warns && d.state === 'online' ? 'warn' : cls(d.state)],
     [`Twitch: ${tw.state}${tw.error ? ' — ' + tw.error : ''}`, cls(tw.state)],
     [`Chat: ${tw.chat}`, /reading/.test(tw.chat) ? 'on' : ''],
-    [`Letterboxd: ${lb.count} films${lb.rssError ? ' — ' + lb.rssError : ''}`, lb.count ? 'on' : ''],
-    [`Game screen: ${st.overlays ? 'ready' : 'not open'}`, st.overlays ? 'on' : 'err']
-  ].map(([t, c]) => `<span class="dot ${c}" title="${esc(t)}"></span>`).join('');
+    [`Letterboxd: ${lb.count} films${lb.rssError ? ' — ' + lb.rssError : ''}`, lb.count ? 'on' : '']
+  ].filter(x => !edOff('movies') || !/^(Discord|Letterboxd)/.test(x[0])).map(([t, c]) => `<span class="dot ${c}" title="${esc(t)}"></span>`).join('');
   $('liveTag').innerHTML = S.live ? (S.fakeLive ? '<span class="live" title="Pretend live (🧪 Test tab): only inside Movie Royal">LIVE (pretend)</span>' : '<span class="live" title="Discord swaps are locked while you\'re live">LIVE</span>') : '';
   if ($('fakeLiveBtn')) { $('fakeLiveBtn').textContent = S.fakeLive ? '⚫ Stop pretending' : '🔴 Pretend I\'m live'; $('fakeLiveBtn').className = S.fakeLive ? 'danger' : 'primary'; }
   const o = S.owner;
@@ -6539,6 +6580,7 @@ function openSettings(force) {
   const cki = (k, text, def = true, then = '') => `<label class="ck"><input type="checkbox" ${(def ? s[k] !== false : !!s[k]) ? 'checked' : ''} onchange="S.settings['${k}']=this.checked;api('/api/settings',{${k}:this.checked}).then(()=>toast('Saved'));${then}"> <span>${text}</span></label>`; // (saves right away)
   const evOpts = sel => Object.entries(S.events).map(([k, e]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${e.icon} ${e.name}</option>`).join('');
   const subs = {
+    links: `<h3>🔗 Connections</h3><p class="help" style="margin-top:0">Everything this app links to, in one place: what is connected, what isn't, and a button that takes you straight to where it is set up.</p><div id="linksBody"></div>`,
     account: `<h3>👤 Your account</h3>
       ${o ? `<div class="row"><span class="me grow">${o.avatar ? `<img src="${esc(proxy(o.avatar))}">` : ''}Signed in with Twitch as ${esc(o.name)}</span><button onclick="location.href='/auth/twitch'">Sign in again</button><button class="ghost danger" onclick="if(confirm('Sign out of Twitch? Your lists and history stay saved.')) api('/auth/logout')">Sign out</button></div>`
         : `<div class="row"><span class="grow muted">Not signed in. Everything is still saved on this computer.</span><button class="twitch" onclick="location.href='/auth/twitch'">Sign in with Twitch</button></div>`}
@@ -7209,7 +7251,7 @@ $('startDlg').addEventListener('cancel', e => { e.preventDefault(); sqNext(); })
 const withTime = (p, ms = 9000) => Promise.race([Promise.resolve(p).catch(() => null), new Promise(r => setTimeout(() => r(null), ms))]);
 async function startPops() {
   if (PC_ONLY || !S) return;
-  const parts = await Promise.all([withTime(updCheckStep()), withTime(botStep()), backupStep(), ...Object.keys(FEAT_Q).map(k => featStep(k)), holStep(), withTime(whatsNewStep())]); // (in this order; the Setup guide ones last: 🧭 Set it up leaves for the guide)
+  const parts = await Promise.all([withTime(updCheckStep()), withTime(botStep()), backupStep(), ...(edOff('battle') && edOff('chatBattle') ? [] : Object.keys(FEAT_Q).map(k => featStep(k))) /* (the character questions only make sense with battles) */, holStep(), withTime(whatsNewStep())]); // (in this order; the Setup guide ones last: 🧭 Set it up leaves for the guide)
   const steps = parts.flat().filter(Boolean); if (steps.length) sqShow(steps);
 }
 function sqShow(steps, test = false) { // a new list (or more steps on the end of the one that's open)
