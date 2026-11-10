@@ -5908,6 +5908,7 @@ function handleMsg(m) {
     else if (m.type === 'effect') receiveEffect(m.effect);
     else if (m.type === 'queued') SFX.play('queued'), pendingCount++, floaters.push({ scr: 1, text: `${(EV_INFO[m.effect.event] || ['⚡'])[0]} queued for next round!`, x: CX, y: 260, life: 2.5, color: '#ffd98a' });
     else if (m.type === 'gfx') { Object.assign(GFX, { res: m.res, fps: m.fps, quality: m.quality, showFps: m.showFps, appSaver: m.appSaver, scale: m.scale, glow: m.glow, particles: m.particles, shake: m.shake, flash: m.flash, smooth: m.smooth }); gfxApply(); }
+    else if (m.type === 'sfxCmd') { if (IN_OBS) { try { const a = new Audio(m.url); a.volume = m.vol ?? .8; a.play().catch(() => {}); } catch {} } } /* 🔊 a chat bot sound alert (only the copy in OBS plays it) */
     else if (m.type === 'audio') { lastAudio = m; AUDIO_QUIET = !IN_OBS && m.appQuiet !== false && m.obsGame > 0; SFX.setVolume({ on: m.on && !WHEEL_ONLY && !PREVIEW_WIN && !AUDIO_QUIET && !TAB_QUIET, sfx: m.sfx, music: m.music }); } // (🔇 1.84.3: OBS has a game screen open → only it plays the sounds)
     else if (m.type === 'soundTest') { if (m.name === 'music') { SFX.music('fight'); SFX.setIntensity(.7); setTimeout(() => phase !== 'running' && SFX.stopMusic(), 6000); } else if (m.map) SFX.playOn(m.map, m.name); else SFX.play(m.name); }
     else if (m.type === 'reset') { SFX.stopMusic(); phase = 'idle'; NUKE.reset(); RP.reset(); fighters = []; hideWin(); hideClaim(); buildIsland(); freshMap(); }

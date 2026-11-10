@@ -7,7 +7,7 @@ import { db, save } from './store.js';
 import { act } from './activity.js';
 
 export const PERMS = { all: 'Everyone', followers: 'Followers', subs: 'Subs', vips: 'VIPs', mods: 'Mods', streamer: 'Only me' };
-const H = { say: async () => {}, canSay: () => true, follows: async () => false, live: () => false, startedAt: () => 0, channel: () => '', chatters: () => [], reserved: () => [], dev: () => false, changed: () => {} };
+const H = { say: async () => {}, canSay: () => true, follows: async () => false, live: () => false, startedAt: () => 0, channel: () => '', chatters: () => [], reserved: () => [], dev: () => false, changed: () => {}, sound: () => {}, soundIn: () => null };
 export const setHooks = h => Object.assign(H, h);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clampN = (v, lo, hi, d) => { v = Math.round(Number(v)); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -62,7 +62,8 @@ const byName = n => data().commands.find(c => c.name === n || (c.aliases || []).
 const cool = new Map(); // "id" / "id:login" → when it was last used
 export function saveCommand(b) {
   const d = data(), name = cleanName(b.name); if (!name) throw new Error('Give the command a name, like !discord');
-  const text = String(b.text || '').trim().slice(0, 480); if (!text) throw new Error('Type what the bot should answer');
+  const text = String(b.text || '').trim().slice(0, 480), hasSound = !!(b.sound || b.soundFrom || (b.id && d.commands.find(c => c.id === b.id)?.sound && b.sound !== ''));
+  if (!text && !hasSound) throw new Error('Type what the bot should answer');
   if (H.reserved().includes(name)) throw new Error(`${name} is already one of Movie Royal's own commands. Pick another name.`);
   const aliases = [...new Set((Array.isArray(b.aliases) ? b.aliases : String(b.aliases || '').split(/[\s,]+/)).map(cleanName).filter(x => x && x !== name && !H.reserved().includes(x)))].slice(0, 8);
   const cur = b.id ? d.commands.find(c => c.id === b.id) : null;
@@ -71,6 +72,9 @@ export function saveCommand(b) {
   const c = cur || { id: uid(), uses: 0, on: true, at: Date.now() };
   Object.assign(c, { name, text, aliases, perm: PERMS[b.perm] ? b.perm : (c.perm || 'all'), cd: clampN(b.cd, 0, 86400, c.cd ?? 5), ucd: clampN(b.ucd, 0, 86400, c.ucd ?? 0) });
   if (b.on != null) c.on = !!b.on; if (b.uses != null) c.uses = clampN(b.uses, 0, 1e9, c.uses || 0);
+  if (b.sound !== undefined) { if (b.sound) { c.sound = String(b.sound); delete c.soundMissing; } else { delete c.sound; delete c.soundMissing; } } // 🔊 sound alert: a sound file that plays when the command is used
+  if (b.soundFrom) { const got = H.soundIn(String(b.soundFrom)); if (got) { c.sound = got; delete c.soundMissing; } else if (!c.sound) c.soundMissing = String(b.soundFrom).slice(0, 300); }
+  if (b.vol != null) c.vol = clampN(b.vol, 0, 100, c.vol ?? 80);
   if (!cur) d.commands.push(c);
   d.commands.sort((x, y) => x.name.localeCompare(y.name)); save(); H.changed(); return c;
 }
@@ -137,7 +141,7 @@ export function onChat(m) {
   const c = byName(w0); if (!c || !c.on) return false;
   const now = Date.now(), who = m.login || m.name || '', mod = isMod(m);
   if (!mod && ((c.cd && now - (cool.get(c.id) || 0) < c.cd * 1000) || (c.ucd && now - (cool.get(c.id + ':' + who) || 0) < c.ucd * 1000))) return true; // (too soon: quietly skipped)
-  allowed(m, c.perm).then(ok => { if (!ok) return; cool.set(c.id, Date.now()); cool.set(c.id + ':' + who, Date.now()); c.uses = (c.uses || 0) + 1; save(); reply(fill(c.text, m, c, args)); H.changed(); }).catch(() => {});
+  allowed(m, c.perm).then(ok => { if (!ok) return; cool.set(c.id, Date.now()); cool.set(c.id + ':' + who, Date.now()); c.uses = (c.uses || 0) + 1; save(); if (c.sound) H.sound(c.sound, c.vol ?? 80, c); if (c.text) reply(fill(c.text, m, c, args)); H.changed(); }).catch(() => {});
   return true;
 }
 
@@ -158,6 +162,11 @@ function fromObject(o, out, hint) {
   if (o == null || typeof o !== 'object') return;
   const name = pick(o, ['command', 'trigger', 'name', 'cmd', 'commandname']), text = pick(o, ['response', 'message', 'reply', 'text', 'output', 'content', 'quote']);
   const mins = pick(o, ['interval', 'minutes', 'mins', 'every', 'timer']), isQuote = hint === 'quotes' || (pick(o, ['quote']) != null && name == null);
+  const file = pick(o, ['file', 'filepath', 'path', 'sound', 'soundfile', 'filename', 'audiofile']); // 🔊 Streamlabs Chatbot's SFX page: a command + a sound file
+  if ((hint === 'sfx' || (typeof file === 'string' && /\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i.test(file.trim()))) && name != null && cleanName(name)) {
+    const unit = out.cdMins ? 60 : 1, v = Number(pick(o, ['volume', 'vol']));
+    return void out.commands.push({ name: cleanName(name), text: typeof text === 'string' && !/\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i.test(text.trim()) ? text.trim() : '', soundFrom: String(file || '').trim(), vol: Number.isFinite(v) ? clampN(v <= 1 ? v * 100 : v, 0, 100, 80) : 80, perm: permIn(pick(o, ['permission', 'userlevel', 'access', 'level', 'perm', 'accesslevel'])), cd: clampN(Number(pick(o, ['cooldown', 'globalcooldown', 'cd'])) * unit, 0, 86400, 5), ucd: clampN(Number(pick(o, ['usercooldown', 'ucd', 'usercd'])) * unit, 0, 86400, 0), uses: clampN(pick(o, ['count', 'uses', 'used']), 0, 1e9, 0), on: pick(o, ['enabled', 'on', 'active']) !== false, aliases: [] });
+  }
   if (typeof text !== 'string' || !text.trim()) return;
   if (isQuote) return void out.quotes.push({ text: text.trim(), by: String(pick(o, ['by', 'author', 'addedby', 'user']) || ''), at: Date.parse(pick(o, ['date', 'at', 'created', 'createdat']) || '') || 0, n: Number(pick(o, ['id', 'n', 'number', 'index'])) || 0 });
   if (hint === 'timers' || (mins != null && (hint !== 'commands') && (name == null || !/^[!?.]/.test(String(name))))) return void out.timers.push({ name: String(name || '').trim(), text: text.trim(), mins: clampN(mins, 1, 1440, 15), lines: clampN(pick(o, ['chatlines', 'minlines', 'lines', 'minimumlines']), 0, 1000, 5), on: pick(o, ['enabled', 'on', 'active']) !== false });
@@ -175,7 +184,7 @@ export function parseImport(text, kind = 'auto', opt = {}) {
     const walk = (v, h) => { if (Array.isArray(v)) v.forEach(x => typeof x === 'string' ? (h === 'quotes' && out.quotes.push({ text: x.trim(), by: '', at: 0, n: 0 })) : walk(x, h)); else if (v && typeof v === 'object') { const before = out.commands.length + out.timers.length + out.quotes.length; fromObject(v, out, h); if (out.commands.length + out.timers.length + out.quotes.length === before) for (const [k, x] of Object.entries(v)) if (x && typeof x === 'object') walk(x, h || (/quote/i.test(k) ? 'quotes' : /timer/i.test(k) ? 'timers' : /command/i.test(k) ? 'commands' : '')); } };
     walk(j, hint); out.note = 'Read as a bot export file.';
   } else {
-    const rows = csvRows(text), head = (rows[0] || []).map(h => String(h).trim()), looksCsv = rows.length > 1 && head.length > 1 && head.some(h => /^(command|trigger|name|response|message|quote|text|reply)$/i.test(h));
+    const rows = csvRows(text), head = (rows[0] || []).map(h => String(h).trim()), looksCsv = rows.length > 1 && head.length > 1 && head.some(h => /^(command|trigger|name|response|message|quote|text|reply|file|file ?path|sound)$/i.test(h));
     if (looksCsv) { for (const r of rows.slice(1)) fromObject(Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])), out, hint); out.note = 'Read as a spreadsheet (the first line names the columns).'; }
     else {
       for (const line of text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)) {

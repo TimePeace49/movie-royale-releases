@@ -34,6 +34,7 @@ import * as obs from './obs.js';
 import * as movienight from './movienight.js';
 import * as raids from './raids.js';
 import * as birthdays from './birthdays.js';
+import * as songs from './songs.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
@@ -1142,6 +1143,7 @@ const twitchHandlers = {
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
     try { if (birthdays.onChat(m)) return; } catch (e) { console.error('[birthdays]', e.message); } // 🎂 !bday 3/14, and a happy birthday the first time they chat that day
     if (movienight.onChat(m)) return; // 🍿 !vote 3 on a movie night
+    try { if (songs.onChat(m)) return; } catch (e) { console.error('[songs]', e.message); } // 🎵 !sr a song
     if (clipChatCmd(m)) return; // 🎬 !clip: anyone can clip the last minute
     if (chatbot.onChat(m)) return; // 🤖 your own chat commands, quotes (dev mode)
     if (skipChat(m)) return; // ⏭️ !skip <movie>: sits out the next battle
@@ -1356,6 +1358,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
+  if (ws.role === 'songs') ws.send(JSON.stringify(songs.screen())); // 🎵 the now-playing box
   if (ws.role === 'movienight') ws.send(JSON.stringify(movienight.screen())); // 🍿 the movie night vote box
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
@@ -4718,6 +4721,43 @@ function maraPrizesOnce() {
   save();
 }
 setTimeout(maraPrizesOnce, 1400);
+// 🎵 Song requests + ratings (1.98.0, Birx & Jess's edition; Derek's with dev mode on): see src/songs.js
+const ytTitles = new Map();
+async function ytTitle(id) { // (the only thing looked up: a YouTube link's title, the way a link preview does; no key, nothing about you is sent)
+  if (ytTitles.has(id)) return ytTitles.get(id);
+  try { const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id), { signal: AbortSignal.timeout(6000) }); const j = r.ok ? await r.json() : null; const t = j?.title ? String(j.title) : ''; if (t) ytTitles.set(id, t); return t; } catch { return ''; }
+}
+songs.setHooks({ on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
+const sgTry = fn => async (req, res) => { try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.queue ? { state: r } : { ...(r || {}), state: songs.state() }); } catch (e) { res.status(400).json({ error: e.message }); } };
+app.get('/api/songs', (req, res) => res.json(feat('songs') ? songs.state({ q: String(req.query.q || ''), sort: String(req.query.sort || 'last') }) : { on: false }));
+app.post('/api/songs/add', sgTry(async b => { const r = await songs.request({ login: '', name: String(b.by || '').trim() }, String(b.song || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'banned' ? 'That song is on your banned list.' : r.why === 'dupe' ? 'That song is already in the queue.' : r.why === 'link' ? 'Only YouTube links (or a song name).' : 'Type a song name or paste a YouTube link.'); return r; }));
+app.post('/api/songs/next', sgTry(b => songs.next(b.id)));
+app.post('/api/songs/stop', sgTry(() => songs.stop()));
+app.post('/api/songs/remove', sgTry(b => songs.remove(b.id)));
+app.post('/api/songs/move', sgTry(b => songs.move(b.id, b.dir)));
+app.post('/api/songs/clear', sgTry(() => songs.clear()));
+app.post('/api/songs/open', sgTry(b => songs.setOpen(!!b.on)));
+app.post('/api/songs/rate', sgTry(b => songs.rate(b.key, b.who, b.value)));
+app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
+app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
+app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
+app.post('/api/songs/import', sgTry(b => { // a spreadsheet (.xlsx as base64), a CSV / text file, or pasted lines; kind: songs | banned; dry = only show what was found
+  const kind = b.kind === 'banned' ? 'banned' : 'songs'; let p;
+  if (b.xlsx) { const all = xlsx.sheets(Buffer.from(String(b.xlsx), 'base64')).filter(sh => sh.rows.length), want = all.filter(sh => (kind === 'banned' ? /ban|black|block/i : /song|queue|rating|list|played|request|sheet/i).test(sh.name)), use = want.length ? want : all.slice(0, 1); p = { songs: [], note: '' }; for (const sh of use) { const t = songs.readTable(sh.rows, kind); p.songs.push(...t.songs); } p.note = `Read as an Excel file (page${use.length === 1 ? '' : 's'}: ${use.map(x => x.name).join(', ')}).`; }
+  else p = songs.readText(b.text, kind);
+  if (!p.songs.length) throw new Error("I couldn't find any songs in that. A spreadsheet needs a first line naming the columns (Song, Link, " + songs.opts().raters.join(', ') + '…), or paste one song per line.');
+  if (b.dry) return { found: p.songs.length, sample: p.songs.slice(0, 12), note: p.note, withRatings: p.songs.filter(x => x.rate.some(v => v != null)).length, withLinks: p.songs.filter(x => x.yt).length };
+  return { done: songs.applyImport(p, { kind, replace: !!b.replace }), note: p.note };
+}));
+app.get('/api/songs/export', (req, res) => { if (!feat('songs')) return res.status(400).send('Not part of this edition.'); const x = songs.exportAll(), cell = v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v), which = req.query.kind === 'banned'; res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Content-Disposition', `attachment; filename="${which ? 'banned-songs' : 'song-ratings'}.csv"`); res.send('\uFEFF' + (which ? [['Banned song', 'YouTube link'], ...x.banned] : [x.head, ...x.rows]).map(r => r.map(cell).join(',')).join('\r\n')); });
+app.post('/api/test/songs', sgTry(async b => {
+  if (b.action === 'rules') return songs.demo();
+  if (b.action === 'clear') return songs.clearTests();
+  const PRE = ['Pretend Song About Rain', 'Pretend Disco Banger', 'Pretend Slow Ballad', 'Pretend Sea Shanty', 'Pretend Power Anthem', 'Pretend Lo-fi Loop'], who = ['pretend_amy', 'pretend_bob', 'pretend_cat'];
+  twitch.pretend.until = Date.now() + 10 * 60000;
+  if (b.action === 'fill') { for (let i = 0; i < 4; i++) await songs.request({ login: who[i % 3], name: who[i % 3] }, PRE[i], { test: true, quiet: true }); for (const q of songs.data().queue) if (q.test && songs.data().lib[q.key]) songs.data().lib[q.key].test = true; return songs.next(); }
+  const n = PRE[Math.floor(Math.random() * PRE.length)]; twitchHandlers.chat({ login: 'pretend_dj', name: 'Pretend_DJ', text: `${songs.opts().command} ${b.song || n}`, userId: 'pretend-dj', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 300)); for (const q of songs.data().queue) if (q.login === 'pretend_dj') { q.test = true; if (songs.data().lib[q.key]) songs.data().lib[q.key].test = true; } return { ok: true };
+}));
 // 🎂 Birthdays (1.96.0, every edition): !bday in chat (never a year), a happy-birthday wish, the list in Settings → 💜 Twitch. See src/birthdays.js
 birthdays.setHooks({ say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
 app.get('/api/birthdays', (req, res) => res.json(birthdays.state()));
@@ -5037,13 +5077,37 @@ chatbot.setHooks({
   live: () => !!db.live || !!live.fakeLive, startedAt: () => db.stream?.startedAt || 0, channel: () => db.owner?.login || twitch.status.login || '',
   chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => true, /* 🤖 the chat bot is in every edition since 1.94.0 (Derek: "add all the Streamlabs chatbot to every build") */
   reserved: () => [...new Set([...BOT_RESERVED, ...Object.entries(db.settings).filter(([k, v]) => /Command$/.test(k) && typeof v === 'string').map(([, v]) => v.trim().toLowerCase())])],
-  changed: () => broadcast({ type: 'chatbot' }, 'control')
+  changed: () => broadcast({ type: 'chatbot' }, 'control'),
+  sound: (file, vol) => sfxPlay(file, vol), soundIn: from => sfxTake(from)
 });
+// 🔊 Sound alerts (1.98.0, Derek: Birx's Streamlabs "SFX"): a chat bot command can play a sound file. Files live in the data folder (sounds/sfx).
+// Where it plays: a 🔊 soundboard page in OBS if you added one, else the battle screen in OBS, else the app itself.
+const SFXDIR = path.join(DATA, 'sounds', 'sfx'); try { fs.mkdirSync(SFXDIR, { recursive: true }); } catch {}
+app.use('/sfx', express.static(SFXDIR));
+const sfxName = n => String(n || 'sound').replace(/^.*[\\/]/, '').replace(/[^\w.\- ]+/g, '_').slice(-80) || 'sound.mp3';
+const SFX_OK = /\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i;
+function sfxTake(from) { // (import: the old bot's sound file is on this same PC → copy it in; not there → the command says so until you pick the file)
+  try { from = String(from || '').trim().replace(/^"|"$/g, ''); if (!SFX_OK.test(from) || !fs.existsSync(from)) return null; const st = fs.statSync(from); if (!st.isFile() || st.size > 25e6) return null; const name = sfxName(from); fs.copyFileSync(from, path.join(SFXDIR, name)); return name; } catch { return null; }
+}
+function sfxPlay(file, vol = 80, test) {
+  if (!file || !fs.existsSync(path.join(SFXDIR, sfxName(file)))) return { ok: false, why: 'missing' };
+  const msg = { type: 'sfxCmd', url: '/sfx/' + encodeURIComponent(sfxName(file)), vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
+  const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : 'control'; broadcast(msg, where); return { ok: true, where };
+}
+
 setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot] timer', e.message); } }, 30000);
 const botDev = fn => wTry((b, req) => fn(b, req)); /* (was dev mode only until 1.94.0) */
 app.get('/api/chatbot', (req, res) => res.json(chatbot.info()));
 app.post('/api/chatbot/opts', botDev(b => chatbot.setOpts(b)));
 app.post('/api/chatbot/command', botDev(b => ({ command: chatbot.saveCommand(b) })));
+app.post('/api/chatbot/sound', botDev(b => {
+  const c = db.chatbot?.commands?.find(x => x.id === b.id); if (!c) throw new Error('Save the command first.');
+  if (b.remove) return { command: chatbot.saveCommand({ ...c, sound: '', text: c.text || c.name }) };
+  if (b.play) { const r = sfxPlay(c.sound, b.vol ?? c.vol ?? 80, true); if (!r.ok) throw new Error("That command has no sound file yet."); return r; }
+  const name = sfxName(b.name); if (!SFX_OK.test(name)) throw new Error('Pick a sound file (mp3, wav, ogg, m4a, flac).');
+  const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]*,/, ''), 'base64'); if (!buf.length) throw new Error('That file is empty.'); if (buf.length > 25e6) throw new Error('That sound is too big (25 MB at most).');
+  fs.writeFileSync(path.join(SFXDIR, name), buf); return { command: chatbot.saveCommand({ ...c, sound: name }) };
+}));
 app.post('/api/chatbot/command/remove', botDev(b => ({ command: chatbot.removeCommand(b.id) })));
 app.post('/api/chatbot/timer', botDev(b => ({ timer: chatbot.saveTimer(b) })));
 app.post('/api/chatbot/timer/remove', botDev(b => ({ timer: chatbot.removeTimer(b.id) })));
@@ -5055,11 +5119,11 @@ function botXlsx(b64, kind, cdMins) {
   const out = { commands: [], timers: [], quotes: [], note: '' }, seen = [];
   for (const sh of xlsx.sheets(Buffer.from(String(b64), 'base64'))) {
     if (sh.rows.length < 2) continue;
-    const k = kind !== 'auto' ? kind : /quote/i.test(sh.name) ? 'quotes' : /timer/i.test(sh.name) ? 'timers' : /command/i.test(sh.name) ? 'commands' : null; if (!k) continue;
+    const k = kind !== 'auto' ? kind : /quote/i.test(sh.name) ? 'quotes' : /timer/i.test(sh.name) ? 'timers' : /sfx|sound/i.test(sh.name) ? 'sfx' : /command/i.test(sh.name) ? 'commands' : null; if (!k) continue;
     let p; try { p = chatbot.parseImport(xlsx.toCsv(sh.rows), k, { cdMins }); } catch { continue; }
     out.commands.push(...p.commands); out.timers.push(...p.timers); out.quotes.push(...p.quotes); seen.push(sh.name);
   }
-  if (!seen.length) throw new Error("I couldn't find commands, timers or quotes in that Excel file (its pages should be named Commands, Timers or Quotes).");
+  if (!seen.length) throw new Error("I couldn't find commands, timers or quotes in that Excel file (its pages should be named Commands, Timers, Quotes or SFX).");
   out.note = `Read as an Excel file (pages: ${seen.join(', ')}).`; return out;
 }
 app.get('/api/chatbot/export', (req, res) => { res.setHeader('Content-Disposition', 'attachment; filename="movie-royal-chat-bot.json"'); res.json(chatbot.exportAll()); });

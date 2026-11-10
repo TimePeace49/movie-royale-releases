@@ -476,6 +476,15 @@
     <p>The lock keeps other people at your PC out of the control panel. For your accounts themselves, turn on two-step sign-in on Twitch, Discord and GitHub as well: that is what protects them if a password leaks.</p>
     <p>🧪 Try it: Test tab → 🔐 Safety &amp; privacy.</p>
   </section>
+  <section data-feat="songs" data-k="song request songs sr !sr queue rating ratings rate banned songs import songlist database now playing stats requesters">
+    <h2>🎵 Song requests &amp; ratings</h2>
+    <p>Chat asks for a song with <code>!sr</code> and a YouTube link or the song's name. The <b>🎵 Songs</b> tab shows the queue: <b>⏭ Next song</b> starts the next one, ▶ plays one now, ▲ ▼ move it, ✕ takes it out, 🚫 bans it. You can add songs yourself too. Chat also has <code>!song</code> (what's playing), <code>!queue</code> (what's next) and <code>!wrongsong</code> (take my last one back).</p>
+    <p>⭐ <b>Ratings:</b> each song has two ratings, one for each of you. Pick them under Now playing. They are kept in the <b>📚 Song database</b>, and when a song is played again its old ratings show right away and can be changed. The database is searchable and sorts by name, plays, either rating or last played.</p>
+    <p>🚫 <b>Banned songs</b> can't be asked for (by name, by link, or "any song with these words"), and you can block a person from asking. 📊 <b>Stats</b> shows who asks the most, the most asked-for songs and the best rated.</p>
+    <p>📥 <b>Import:</b> bring your old song list, your old ratings and your banned songs over from a spreadsheet (Excel or CSV), a text file or pasted lines. Streamlabs Chatbot makes <b>Songlist.xlsx</b> and <b>Queue.xlsx</b> with Connections → Cloud → Create Excel Files. You see what was found before anything is added, and nothing you already have is lost. ⬇️ Export gives it all back as a spreadsheet.</p>
+    <p>📺 <b>On stream:</b> ⚙️ Settings on the tab has the address of the now-playing box (song, who asked, your ratings, what's next) for an OBS Browser source. A YouTube link can be played right in the app with ▶ Play it here.</p>
+    <p>🧪 Try it: Test tab → 🎵 Song requests &amp; ratings (pretend songs, nothing is sent to Twitch).</p>
+  </section>
   <section data-feat="raids" data-k="raid tab follow live preview raided recently sort cancel">
     <h2>🚀 Raid tab</h2>
     <p>The <b>🚀 Raid</b> tab shows every channel <b>you follow</b> that is live right now. The ones <b>you raided most recently come first</b>, each with when you last raided them and how many times; you can also sort by who you haven't raided for the longest, or by viewers.</p>
@@ -500,10 +509,11 @@
     <p>Channel points, clips and raids are Twitch things: they rest while Kick is on.</p>
     <p>🧪 Try it: Test tab → 🟢 Kick (a pretend Kick message).</p>
   </section>
-  <section data-k="chat bot commands custom command timers quotes import streamlabs cloudbot addcom quote">
+  <section data-k="chat bot commands custom command timers quotes import streamlabs cloudbot addcom quote sound alert alerts sfx soundboard">
     <h2>🤖 Chat bot (your own commands, timers and quotes)</h2>
     <p>The <b>🤖 Chat bot</b> tab is a replacement for a Streamlabs-style bot. Everything here answers as Movie Royal's bot in your chat.</p>
     <p>💬 <b>Commands:</b> a name people type (like <code>!discord</code>) and what the bot answers. Pick who can use it (everyone, followers, subs, VIPs, mods, only you) and how long to wait between uses. Mods can add them from chat too: <code>!addcom !name the answer</code>, <code>!editcom !name new answer</code>, <code>!delcom !name</code>.</p>
+    <p>🔊 <b>Sound alerts:</b> a command can play a sound when it's used (like <code>!airhorn</code>). In ✏️ pick a sound file and a volume; the answer can stay empty. On stream it plays through OBS: add the <code>soundboard.html</code> address shown there as a Browser source (or it plays through the battle screen if that's in OBS, else in the app). The import reads the <b>SFX</b> page of Streamlabs Chatbot's Data.xlsx too and copies the sound files it finds on this PC; ones it can't find are marked ⚠️ so you can pick them.</p>
     <p>🔤 <b>Special words</b> in an answer get swapped: <code>$user</code> (who typed it), <code>$target</code> (the name they typed), <code>$arg1</code>, <code>$msg</code>, <code>$count</code>, <code>$randnum(1,100)</code>, <code>$randusr</code>, <code>$uptime</code>, <code>$channel</code>. Streamlabs-style words (<code>$username</code>, <code>{user}</code>, <code>{touser}</code>, <code>{1}</code>) work too.</p>
     <p>⏰ <b>Timers:</b> messages the bot posts by itself every so many minutes, only after chat has moved a few lines.</p>
     <p>📝 <b>Quotes:</b> <code>!quote</code> (random), <code>!quote 12</code>, <code>!quote word</code>. Mods: <code>!addquote the words</code>, <code>!delquote 12</code>.</p>

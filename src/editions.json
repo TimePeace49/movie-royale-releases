@@ -57,7 +57,8 @@
   "app": "Birx & Jess Chatbot",
   "on": [
    "movienight",
-   "raids"
+   "raids",
+   "songs"
   ],
   "scrub": true
  }

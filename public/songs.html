@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal now playing</title>
+<link href="/fonts/fonts.css" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #fff; }
+  #box { position: absolute; left: 28px; bottom: 28px; width: 520px; background: rgba(16, 10, 34, .88); border: 2px solid rgba(255, 255, 255, .16); border-radius: 18px; padding: 14px 18px; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); opacity: 0; transform: translateY(30px); transition: opacity .5s, transform .5s; }
+  #box.show { opacity: 1; transform: none; } body.right #box { left: auto; right: 28px; } body.top #box { bottom: auto; top: 28px; }
+  .lab { font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; opacity: .7; font-weight: 700; } #title { font-size: 26px; font-weight: 800; line-height: 1.15; margin: 2px 0 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #by { font-size: 16px; opacity: .85; } #rates { display: flex; gap: 10px; margin-top: 8px; } .rt { background: rgba(255, 255, 255, .1); border-radius: 10px; padding: 4px 12px; font-size: 17px; } .rt b { color: #ffd24b; font-size: 21px; }
+  #next { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .15); font-size: 15px; opacity: .9; } #next div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0; } #next span { opacity: .65; }
+</style></head>
+<body><div id="box"><div class="lab" id="lab">🎵 Now playing</div><div id="title"></div><div id="by"></div><div id="rates"></div><div id="next"></div></div>
+<script>
+const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+if (Q.get('side') === 'right') document.body.classList.add('right'); if (Q.get('at') === 'top') document.body.classList.add('top');
+function draw(s) {
+  $('box').classList.toggle('show', !!s.show); const n = s.now;
+  $('lab').textContent = n ? '🎵 Now playing' : '🎵 Song requests'; $('title').textContent = n ? n.title : (s.open ? `Type ${s.command} and a song` : 'Requests are closed');
+  $('by').textContent = n ? (n.by ? 'Asked by ' + n.by : '') + (n.plays > 1 ? `${n.by ? ' · ' : ''}played ${n.plays} times` : '') : '';
+  $('rates').innerHTML = n ? n.rate.map((r, i) => (r == null ? '' : `<div class="rt">${esc(s.raters[i])} <b>${r}</b>/${s.scale}</div>`)).join('') : '';
+  $('next').style.display = s.next.length ? '' : 'none'; $('next').innerHTML = s.next.length ? '<div class="lab">Next up</div>' + s.next.map((q, i) => `<div>${i + 1}. ${esc(q.title)}${q.by ? ` <span>· ${esc(q.by)}</span>` : ''}</div>`).join('') + (s.more ? `<div><span>+ ${s.more} more</span></div>` : '') : '';
+}
+if (Q.get('demo')) draw({ show: true, open: true, command: '!sr', raters: ['Birx', 'Jess'], scale: 10, now: { title: 'Pretend Disco Banger', by: 'NightOwl_44', rate: [8, 9.5], plays: 3 }, next: [{ title: 'Pretend Slow Ballad', by: 'mx_rae' }, { title: 'Pretend Sea Shanty', by: 'SpicyPanda' }], more: 4 });
+else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=songs'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'songState') draw(m); }; ws.onclose = () => setTimeout(go, 2000); })();
+</script></body></html>

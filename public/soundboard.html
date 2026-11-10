@@ -1,0 +1,9 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal sound alerts</title>
+<style>html, body { margin: 0; background: transparent; color: #fff; font-family: "Segoe UI", system-ui, sans-serif; } #demo { display: none; padding: 20px; font-size: 20px; } body.demo #demo { display: block; }</style></head>
+<body><div id="demo">🔊 Sound alerts play through this page. It shows nothing on stream.</div>
+<script>
+// 🔊 Add this page to OBS as a Browser source: the chat bot's sound commands then play here (so they go out on stream at OBS's volume).
+if (/demo=1/.test(location.search)) document.body.classList.add('demo');
+(function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=sfx'); ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'sfxCmd') { try { const a = new Audio(m.url); a.volume = m.vol ?? .8; a.play().catch(() => {}); } catch {} } }; ws.onclose = () => setTimeout(go, 2000); })();
+</script></body></html>
