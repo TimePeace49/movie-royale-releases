@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.106.2
+**🧪 A switch for the Test tab**
+- Settings → 👤 Account & updates → **Show the Test tab (tests and checklist)**. When it's off, that tab is just **⚠️ Errors**: what went wrong, in plain words.
+- It starts **off** in Kirb's, True's, Birx & Jess's and the public edition, and **on** in Derek's. Anyone can turn it on.
+- 👀 "See the app as another edition" shows it off, the way they get it.
+
 ## 1.106.1
 **🎵 Song box: History + stars like Letterboxd** (Birx & Jess's edition; also in Derek's with dev mode on)
 - The song box on the 💬 Chat tab has two tabs now: **Now** and **History**. History lists the songs that were played, newest first, each with Birx's and Jess's stars, so you can go back and rate them.

@@ -405,6 +405,7 @@
   .obsBox { margin:10px 0; padding:10px 14px; } .obsBox h4 { margin:0 0 4px; }
   tr.pausedRow { opacity:.5; } tr.pausedRow:hover { opacity:.8; }
   tr.blHead td { background:var(--panel2); font-weight:700; padding:6px 10px; border-radius:6px; } tr.blHead small { font-weight:400; }
+  body.noTests #tTabTests, body.noTests #tTabCheck, body.noTests #tTabTools, body.noTests #newNav { display:none !important; }
   #dashWrap { display:flex; gap:12px; height:100%; min-width:0; } #dashSide { flex:1.6 1 0; min-width:0; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:10px; } #dashSide.edOff, #dashWrap iframe.edOff { display:none; } #dashSide .card { margin:0; min-width:0; }
   #dashWrap iframe { min-width:0; height:100%; border:0; border-radius:16px; } #dashFeed { flex:.85 1 0; } #dashChat { flex:1 1 0; } #chatFrame { flex:1; }
   .dashRow { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:10px; } .dashSongRow { display:flex; gap:10px; align-items:center; margin-top:8px; min-width:0; }
@@ -583,7 +584,7 @@
     <button data-v="tchat">💬 Chat</button>
     <button data-v="people" class="on">👥 People</button>
     <button data-v="history">📜 History</button>
-    <button data-v="test">🧪 Test<span id="errNav" title="Something went wrong: see 🧪 Test → ⚠️ Errors"></span><span id="newNav"></span></button>
+    <button data-v="test" id="testNavBtn"><span id="testNavTxt">🧪 Test</span><span id="errNav" title="Something went wrong: see 🧪 Test → ⚠️ Errors"></span><span id="newNav"></span></button>
     <button data-v="help">❓ Help</button>
     <button data-v="settings">⚙️ Settings</button>
   </nav>
@@ -2075,7 +2076,16 @@ function labTry(map, kind, who) { setView('test'); testTab('tests'); labSet.type
 labCW = { ...(labSet.cw || {}) };
 // 🎡 name boxes on the Wheel tab: suggest the people who chatted most recently (newest first, bots left out)
 function fillChatters(id, more = []) { const dl = $(id); if (!dl) return; const seen = new Set(), names = []; for (const n of [...(S.wheelChatters || []), ...more]) { const k = String(n).toLowerCase(); if (!n || seen.has(k)) continue; seen.add(k); names.push(n); } const html = names.map(n => `<option value="${esc(n)}">`).join(''); if (dl.innerHTML !== html) dl.innerHTML = html; }
+/* 🧪 The tests + checklist can be switched off (Settings → Account & updates): then the tab is just ⚠️ Errors. Off unless you turn it on; on in the dev edition. */
+const testsOn = () => (S?.edition?.lookAs ? false : (S?.settings?.testTab ?? !!S?.edition?.dev));
+function testsApply() {
+  const on = testsOn(); if (document.body.dataset.tests === String(on)) return; document.body.dataset.tests = String(on); document.body.classList.toggle('noTests', !on);
+  const tx = $('testNavTxt'); if (tx) tx.innerHTML = on ? '🧪 <span class="nt">Test</span>' : '⚠️ <span class="nt">Errors</span>'; const b = $('testNavBtn'); if (b) b.title = on ? '' : 'Errors: what went wrong, in plain words';
+  if (!on) testTab('errors'); else if ($('v-test').classList.contains('errmode')) { let t = 'tests'; try { t = localStorage.testTabOn || 'tests'; } catch {} testTab(t); }
+  if (typeof fitNav === 'function') fitNav();
+}
 function testTab(t) {
+  if (!testsOn()) t = 'errors'; else if (t !== 'errors') { try { localStorage.testTabOn = t; } catch {} }
   $('v-test').classList.toggle('checkmode', t === 'check'); $('v-test').classList.toggle('errmode', t === 'errors');
   $('tTabTests').classList.toggle('on', t === 'tests'); $('tTabCheck').classList.toggle('on', t === 'check'); $('tTabErr').classList.toggle('on', t === 'errors');
   if (t !== 'check') ckLeave();
@@ -4463,7 +4473,7 @@ function renderView() {
   { const st = $('stage'), on = view === 'cards'; st.classList.toggle('cardsMode', on); if (on) { cpPut('fsWacky', wackyButtons()); $('fsGrip').innerHTML = '⠿ 🤪 Wacky <small>keys 1–9, 0</small>'; } else if (!$('fsGrip').textContent.includes('Free powers')) $('fsGrip').innerHTML = '⠿ ⚡ Free powers <small>keys 1–9, 0</small>'; }
   { const wb = $('winBtns'), on = S.settings?.windowMode === 'borderless' || S.settings?.windowMode === 'fullscreen'; if (wb && wb.style.display !== (on ? 'flex' : 'none')) { wb.style.display = on ? 'flex' : 'none'; setTimeout(() => window.fitNav?.(), 50); } } // 🖥️ no title bar: minimize / close up here
   drawRaidBox();
-  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); edApply(); edBar(); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'bot' || view === 'mara' || view === 'marapool' || view === 'capture')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
+  document.body.classList.toggle('dev', !!S.settings?.betaUpdates); edApply(); edBar(); testsApply(); if (!S.settings?.betaUpdates && view === 'settings' && sub === 'site') setSub('account'); if (!S.settings?.betaUpdates && (view === 'bot' || view === 'mara' || view === 'marapool' || view === 'capture')) return setView('battle'); if (!S.settings?.betaUpdates && GC.stream) gcStop(); // 🛠️ dev mode shows the features still being tried
   if (view === 'pool') renderPool();
   else if (view === 'cards') renderCards();
   else if (view === 'cardpool') renderCardPool();
@@ -6941,6 +6951,7 @@ async function fillAppBox() {
     <p class="help" id="edLine" style="margin:0 0 8px">🎭 This is the <b>${esc(a.edition?.name || 'Public')} edition</b> of Movie Royal${a.edition?.id === 'public' ? ' (the one for everyone)' : ': it has its own downloads and updates, and can have things made just for this stream'}.</p>
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
     <p class="help">When a new <b>latest</b> release is posted there, Movie Royal asks to install it the next time it opens. Your lists, history and settings are kept.</p>
+    <label class="ck"><input type="checkbox" ${testsOn() ? 'checked' : ''} onchange="api('/api/settings',{testTab:this.checked}).then(()=>{S.settings.testTab=this.checked;render();toast(this.checked ? '🧪 The Test tab is back, with its tests and checklist.' : 'The tests and the checklist are hidden: the tab is just ⚠️ Errors now.')})" title="Show the Test tab's tests and checklist. Off = the tab only shows Errors (what went wrong, in plain words)"> <span>🧪 Show the <b>Test tab</b> (tests and checklist). Off = that tab is just ⚠️ Errors.</span></label>
     <label class="ck"><input type="checkbox" ${S.settings.updAsk !== false ? 'checked' : ''} onchange="api('/api/settings',{updAsk:this.checked}).then(()=>{S.settings.updAsk=this.checked;toast('Saved')})"> <span>🔔 Pop up when a new version is out (when Movie Royal opens)</span></label>
     ${a.edition?.realDev && S.settings.betaUpdates && !a.edition.lookAs ? `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px"><b>👀 See the app as another edition</b><select id="edLookSet" style="width:auto" onchange="edLook(this.value)" title="Switch the app to another edition's look: its name, its tabs and extras, the hidden names, and no dev things, so you see what they see (nothing is removed or saved; a bar at the bottom brings you back, and so does restarting)"><option value="">Mine (everything)</option><option value="public">Public</option><option value="kirb">Kirb</option><option value="true">True</option><option value="birx">Birx &amp; Jess</option></select><span class="help" style="margin:0">Shows the app the way Kirb, True, Birx &amp; Jess or everyone else gets it. Nothing is changed for real.</span></div>` : ''}
     ${a.edition?.dev ? `<label class="ck"><input type="checkbox" ${S.settings.betaUpdates ? 'checked' : ''} onchange="api('/api/settings',{betaUpdates:this.checked}).then(()=>{S.settings.betaUpdates=this.checked;render();toast(this.checked ? '🛠️ Dev mode on: test builds (pre-releases) install too, and features still being tried show up.' : 'Dev mode off: only latest releases, and the features still being tried are hidden.')})"> <span>🛠️ <b>Dev mode</b>: also install <b>test builds</b> (pre-releases) and show features that are still being tried. Leave this off unless you're testing new stuff.</span></label>` : `<label class="ck"><input type="checkbox" ${S.settings.testBuilds ? 'checked' : ''} onchange="api('/api/settings',{testBuilds:this.checked}).then(()=>{S.settings.testBuilds=this.checked;toast(this.checked ? '🧪 Test builds (pre-releases) will be offered too.' : 'Only latest releases from now on.')})" title="Also offer test builds (pre-releases), not only the latest releases"> <span>🧪 Also install <b>test builds</b> (pre-releases). Leave this off unless you're helping test new stuff.</span></label>`}
