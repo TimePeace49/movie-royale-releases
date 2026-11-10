@@ -4084,10 +4084,15 @@ function dashDockAt(L, k, px, py) {
     if (d[z] > .3) return { zone: 'swap', t: n };
     const wide = z === 'l' || z === 'r'; if ((wide ? o[2] / 2 : o[3] / 2) < MIN[wide ? 0 : 1]) return { zone: 'swap', t: n }; /* (too small to share: trade places instead) */
     return { zone: z, t: n, rect: z === 'l' ? [o[0], o[1], o[2] / 2, o[3]] : z === 'r' ? [o[0] + o[2] / 2, o[1], o[2] / 2, o[3]] : z === 't' ? [o[0], o[1], o[2], o[3] / 2] : [o[0], o[1] + o[3] / 2, o[2], o[3] / 2] }; }
-  return null;
+  /* over an OPEN area (no box there): the box takes that whole empty space */
+  const T = JSON.parse(JSON.stringify(L)); T[k] = [-1000, -1000, 1, 1]; T.__spot = [Math.max(0, Math.min(99.8, px - .1)), Math.max(0, Math.min(99.8, py - .1)), .2, .2];
+  const E = .15, a = T.__spot, others = Object.keys(L).filter(n => n !== k && dashLayShown(n));
+  for (let pass = 0; pass < 2; pass++) for (const P of [0, 1]) { const Q = P ? 0 : 1; let lo = 0, hi = 100; for (const n of others) { const o = T[n]; if (!(a[Q] < o[Q] + o[Q + 2] - E && o[Q] < a[Q] + a[Q + 2] - E)) continue; if (o[P] + o[P + 2] <= a[P] + E) lo = Math.max(lo, o[P] + o[P + 2]); else if (o[P] >= a[P] + a[P + 2] - E) hi = Math.min(hi, o[P]); } a[P + 2] = hi - lo; a[P] = lo; }
+  return a[2] >= MIN[0] && a[3] >= MIN[1] ? { zone: 'free', rect: a.map(v => Math.round(v * 100) / 100) } : null;
 }
 function dashDockDo(T, k, dock) { /* → the new layout, or null when it can't be done */
   const MIN = [12, 10], N = Object.keys(T).filter(n => n !== k && dashLayShown(n)), z = dock.zone;
+  if (z === 'free') { T[k] = dock.rect.slice(); for (const n of [...N, k]) T[n] = T[n].map(v => Math.round(v * 100) / 100); return dashLayHits(T) ? null : T; } /* (into an open area: it just goes there, nothing else moves) */
   if (z[0] === 'g') { const P = z === 'gl' || z === 'gr' ? 0 : 1, w = dock.rect[P + 2], far = z === 'gr' || z === 'gb', f = 1 - w / 100;
     T[k] = [-1000, -1000, 1, 1]; dashGrowSome(T, N); /* (first the others close the hole it leaves) */
     for (const n of N) { const o = T[n]; o[P] = o[P] * f + (far ? 0 : w); o[P + 2] = o[P + 2] * f; if (o[P + 2] < MIN[P] - .01) return null; }

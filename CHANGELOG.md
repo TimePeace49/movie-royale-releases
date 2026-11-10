@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.122.1
+- 🧲 **Drop a Chat tab box into an open area:** drag a box by its top bar over an empty part of the tab and let go: it takes that whole empty space (the dashed yellow shape shows it first). Nothing else moves.
+
 ## 1.122.0
 - 🧲 **Chat tab boxes dock like in OBS.** Drag a box by its top bar anywhere:
   - near an **edge of another box** (left, right, top or bottom) and it moves in beside it on that side: the two share that room. A dashed yellow shape shows where it will land before you let go.
