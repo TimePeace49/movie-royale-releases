@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.116.4
+- 👀 **Seeing the app as another edition is a dev mode thing only:** the pickers (Settings → Account & updates and the Edition test card) only show with Dev mode on, and now the app itself also refuses the switch when Dev mode is off. Going back to your own edition always works.
+
 ## 1.116.3
 - 💬 **Chat tab boxes never cover each other any more.**
   - **Resizing:** any box in the way of the edge or corner you drag gets pushed smaller to make room (not just the ones lined up with it). When a box in the way is already at its smallest, the edge stops there.

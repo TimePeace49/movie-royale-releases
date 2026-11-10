@@ -2644,6 +2644,7 @@ app.post('/api/settings', (req, res) => {
   if ('spotLooks' in body && live.phase === 'idle') refreshPreview(); // 🎨 wild spot characters changed
   if (('mapSize' in body || 'raceMax' in body) && live.phase === 'idle') { refreshPreview(true); pushState(); } // 📏 map size / 🏁 race limit changed
   if ('betaUpdates' in body) editionDev(); /* 🎭 dev mode only exists in a dev edition */
+  if ('betaUpdates' in body && !db.settings.betaUpdates && edLooking()) { edLookAs(''); brandCache.clear(); lockPage = ''; lockPageFor = ''; } /* 👀 dev mode off = back to your own edition */
   if ('betaUpdates' in body && db.settings.betaUpdates) maraBattleOnce();
   if ('betaUpdates' in body) chatvoice.ensurePlayer(); // 🔈 the chat voice is dev mode only
   if ('betaUpdates' in body) site.connect(); // 🌐 the viewer website is a dev mode thing for now (Derek, 1.81.2): on/off with dev mode // 🏃 dev mode on: Derek's marathon battle comes with it (once)
@@ -5028,6 +5029,7 @@ app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote 
 }));
 app.post('/api/test/edition-look', (req, res) => { // 👀 the dev edition shows the app the way another edition has it: its name, its tabs, its extras, the hidden names, no dev things (until you switch back or restart; nothing is saved or removed)
   if (!EDITION.dev) return res.status(400).json({ error: "Only the dev edition can look like the others." });
+  if (String(req.body?.id || '') && !db.settings.betaUpdates) return res.status(400).json({ error: 'Switching editions is a dev mode thing: turn on Dev mode in Settings → Account & updates first.' }); /* (going back to your own is always allowed) */
   const id = edLookAs(String(req.body?.id || '')); brandCache.clear(); lockPage = ''; lockPageFor = id; editionNoMovies(); pushState(); res.json({ ok: true, lookAs: id, off: edOffNow(), app: edAppNow() });
 });
 // 🧪 what moving from another edition to this one would change (pretend: nothing is saved)
