@@ -32,7 +32,7 @@ export function infoWhy(info, title, o) {
   if (o.minViews > 0 && info.views != null && info.views < o.minViews) return 'views';
   return '';
 }
-export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
+export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, solo: false, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
 
 // ---------- what a request is ----------
 /** A YouTube link or id → the 11-character video id ('' when it isn't one). */
@@ -168,7 +168,7 @@ export function setOpts(b) {
   if ('reply' in b) x.reply = !!b.reply; if ('overlay' in b) x.overlay = !!b.overlay; if ('links' in b) x.links = b.links === 'youtube' ? 'youtube' : 'any';
   if ('perUserSub' in b) x.perUserSub = Math.round(clampN(b.perUserSub, 0, 50, 0)); if ('cd' in b) x.cd = Math.round(clampN(b.cd, 0, 86400, 0)); if ('maxMins' in b) x.maxMins = clampN(b.maxMins, 0, 600, 10); if ('minViews' in b) x.minViews = Math.round(clampN(b.minViews, 0, 1e9, 0));
   if ('skipVotes' in b) x.skipVotes = Math.round(clampN(b.skipVotes, 0, 500, 0)); if ('vol' in b) x.vol = Math.round(clampN(b.vol, 0, 100, 60));
-  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search']) if (k in b) x[k] = !!b[k];
+  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo']) if (k in b) x[k] = !!b[k]; /* (solo = only one person rates: the second rating is hidden everywhere) */
   if ('dmcaList' in b) { const l = (Array.isArray(b.dmcaList) ? b.dmcaList : String(b.dmcaList || '').split(/[\n,]+/)).map(s => String(s).trim().slice(0, 60)).filter(Boolean).slice(0, 200); if (l.length) x.dmcaList = l; else delete x.dmcaList; }
   if ('scale' in b) x.scale = [5, 10, 100].includes(Number(b.scale)) ? Number(b.scale) : 10;
   if ('raters' in b && Array.isArray(b.raters)) x.raters = [0, 1].map(i => String(b.raters[i] || '').trim().slice(0, 20) || opts(d).raters[i]);

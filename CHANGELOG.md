@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.114.2
+- **⭐ Name your ratings:** on Settings → Connections, the RateYourMusic line now has a **name box** (so it says your name instead of "Rating 1") and a **"A second person rates too"** tick box. Untick it and the second rating disappears everywhere (music box, history, song list, stats). The same tick box is in Chat bot → Songs → Settings.
+- The line also says it plainly: ratings only come **in** from RateYourMusic. There is no way for an app to send ratings back to a RateYourMusic account.
+
 ## 1.114.1
 - **🟢 Kick on the Connections page:** its button now opens **Kick's sign-in page** to connect your account, instead of sending you to the Twitch settings. The first time, the line shows the two key boxes and the steps right there.
 
