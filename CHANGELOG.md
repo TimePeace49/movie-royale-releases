@@ -2,6 +2,18 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.119.0
+- 🕰️ **History → 🍿 Movie nights** (editions with movie night voting; in Birx & Jess's edition it is the only History tab): every movie night with its date, winner, votes, how many people voted and how many the guesser got right. Each night lists its movies (with IMDb / 🍅) and votes; ▼ Who voted for what shows each person's pick and every vote in order.
+  - **▶ Replay the vote (1 min):** pops up that night's leaderboard and plays the whole vote back in one minute, with the movies climbing as the votes come in (⏩ plays it in 20 seconds). Nights from before this update replay from their final counts.
+  - Tonight shows there too while it's going on. A night is saved when you press 🆕 New night.
+- 🖱️ **Right-click the Chat tab to turn boxes on and off:** a small menu lists every box with a tick. Turn one off and the others grow into the room; turn it back on and they make room again. The ▦ Boxes button in the tools box opens the same menu. ↺ All on, back to the start is in the menu too.
+- ⭐ **Song ratings can be turned off altogether:** Chat bot → Song requests → Settings → untick ⭐ Rate songs. The stars disappear everywhere (the music box, History, the song database, the on-stream box); ratings you already gave are kept and come back if you turn it on again.
+- 🧪 Test tab → 🍿 Movie night voting → 🕰️ Pretend past night + replay.
+
+## 1.118.0
+- 🎚️ **Audio levels on the Chat tab:** a new box shows OBS's own volume meters for every sound source (mic, desktop, music…), live: green is fine, yellow is loud, red is too loud, with a peak marker and the level in dB. 🔊 / 🔇 next to each one mutes or unmutes it in OBS. It only asks OBS for the levels while the Chat tab is showing, and there's an On tick box.
+- 🧪 Test tab → 🧰 Chat tab → 🎚️ Audio levels (pretend): 12 seconds of pretend levels, no OBS needed.
+
 ## 1.117.0
 - 🍿 **Posters + IMDb + Rotten Tomatoes ratings on the movie night leaderboard:** each movie shows a small poster, its IMDb rating and its 🍅 Rotten Tomatoes score next to its votes (a tick box each to turn posters or ratings off, and 🔄 Look them up again). The app looks them up by itself from the movie's name (with the free OMDb ratings key: the Movie night tab has a 🔑 Add the key button when there isn't one), and the list has an IMDb and a 🍅 box per movie to type your own number or fix one. A tick box in 📺 On stream + options turns the ratings off.
 - 🧪 See it: Movie night tab → 👀 See it move, or Test tab → 🍿 Movie night voting → 🏁 Leaderboard with pretend votes (both show pretend movies with ratings). 📋 Fill a pretend list also gives its 4 movies ratings.

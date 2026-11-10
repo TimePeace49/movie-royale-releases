@@ -54,6 +54,8 @@
 <script>
 const $ = id => document.getElementById(id), esc = ChatUI.esc;
 const embed = new URLSearchParams(location.search).has('embed');
+/* (inside the Chat tab: a right-click here opens the tab's own "turn boxes on / off" menu) */
+if (embed && parent !== window) document.addEventListener('contextmenu', e => { if (e.target.closest('input, textarea, a')) return; e.preventDefault(); parent.postMessage({ dashMenuAt: { x: e.clientX, y: e.clientY, panel: new URLSearchParams(location.search).get('panel') || '' } }, location.origin); });
 document.head.insertAdjacentHTML('beforeend', `<style>${ChatUI.CSS}</style>`);
 // ?panel=chat | alerts | find opens just that one (each can sit on its own screen)
 const solo = new URLSearchParams(location.search).get('panel');

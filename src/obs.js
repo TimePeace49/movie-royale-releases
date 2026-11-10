@@ -665,6 +665,39 @@ export function watchScenes(onScene) {
   go();
   return true;
 }
+/* 🎚️ Audio levels (1.118.0, Derek: "monitor volume levels like you can in OBS"): a lasting connection that asks OBS for its volume meters
+   (event InputVolumeMeters, about 20 a second) + mute changes. onLevels({name: {db: [left, right…] peak in dB, muted}}) at most ~12 a second. */
+let meterW = null;
+export function watchMeters(onLevels, onState = () => {}) {
+  stopMeters();
+  const me = { on: true, ws: null, t: null, mute: {}, asked: new Set(), last: 0, ok: false }; meterW = me;
+  const again = () => { if (me.on) me.t = setTimeout(go, 5000); };
+  const dB = v => v > 0 ? Math.max(-100, 20 * Math.log10(v)) : -100;
+  function go() {
+    if (!me.on) return;
+    const s = db.settings, ws = new WebSocket((s.obsUrl || 'ws://127.0.0.1:4455').trim()); me.ws = ws;
+    ws.on('error', () => {});
+    ws.on('close', () => { if (me.ws === ws) { me.ws = null; if (me.ok) { me.ok = false; try { onState(false); } catch {} } again(); } });
+    ws.on('message', raw => {
+      let m; try { m = JSON.parse(raw); } catch { return; }
+      if (m.op === 0) { const auth = m.d.authentication; if (auth && !s.obsPassword) return ws.close(); ws.send(JSON.stringify({ op: 1, d: { rpcVersion: 1, eventSubscriptions: 8 | 65536, ...(auth ? { authentication: sha(sha(s.obsPassword + auth.salt) + auth.challenge) } : {}) } })); }
+      else if (m.op === 2) { me.ok = true; me.asked.clear(); try { onState(true); } catch {} }
+      else if (m.op === 7 && String(m.d.requestId).startsWith('mu:')) { if (m.d.requestStatus?.result) me.mute[String(m.d.requestId).slice(3)] = !!m.d.responseData.inputMuted; }
+      else if (m.op === 5 && m.d.eventType === 'InputMuteStateChanged') me.mute[m.d.eventData.inputName] = !!m.d.eventData.inputMuted;
+      else if (m.op === 5 && m.d.eventType === 'InputVolumeMeters') {
+        const now = Date.now(), ins = m.d.eventData.inputs || [];
+        for (const i of ins) if (!me.asked.has(i.inputName)) { me.asked.add(i.inputName); ws.send(JSON.stringify({ op: 6, d: { requestType: 'GetInputMute', requestId: 'mu:' + i.inputName, requestData: { inputName: i.inputName } } })); }
+        if (now - me.last < 80) return; me.last = now;
+        const out = {}; for (const i of ins) out[i.inputName] = { db: (i.inputLevelsMul || []).slice(0, 2).map(c => Math.round(dB(c[1]) * 10) / 10), muted: !!me.mute[i.inputName] };
+        try { onLevels(out); } catch {}
+      }
+    });
+  }
+  go(); return true;
+}
+export function stopMeters() { if (!meterW) return; meterW.on = false; clearTimeout(meterW.t); try { meterW.ws?.close(); } catch {} meterW = null; }
+export const metering = () => !!(meterW && meterW.ok);
+export async function muteInput(name, muted) { return session(async call => { await call('SetInputMute', { inputName: name, inputMuted: !!muted }); return { name, muted: !!muted }; }); }
 export function stopWatch() { if (!watcher) return; watcher.on = false; clearTimeout(watcher.t); try { watcher.ws?.close(); } catch {} watcher = null; }
 export const watching = () => !!(watcher && watcher.ws && watcher.ws.readyState === 1);
 

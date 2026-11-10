@@ -168,7 +168,7 @@ export function setOpts(b) {
   if ('reply' in b) x.reply = !!b.reply; if ('overlay' in b) x.overlay = !!b.overlay; if ('links' in b) x.links = b.links === 'youtube' ? 'youtube' : 'any';
   if ('perUserSub' in b) x.perUserSub = Math.round(clampN(b.perUserSub, 0, 50, 0)); if ('cd' in b) x.cd = Math.round(clampN(b.cd, 0, 86400, 0)); if ('maxMins' in b) x.maxMins = clampN(b.maxMins, 0, 600, 10); if ('minViews' in b) x.minViews = Math.round(clampN(b.minViews, 0, 1e9, 0));
   if ('skipVotes' in b) x.skipVotes = Math.round(clampN(b.skipVotes, 0, 500, 0)); if ('vol' in b) x.vol = Math.round(clampN(b.vol, 0, 100, 60));
-  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo']) if (k in b) x[k] = !!b[k]; /* (solo = only one person rates: the second rating is hidden everywhere) */
+  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo', 'noRate']) if (k in b) x[k] = !!b[k]; /* (noRate = no song ratings at all: the stars are hidden everywhere, saved ratings are kept) */ /* (solo = only one person rates: the second rating is hidden everywhere) */
   if ('dmcaList' in b) { const l = (Array.isArray(b.dmcaList) ? b.dmcaList : String(b.dmcaList || '').split(/[\n,]+/)).map(s => String(s).trim().slice(0, 60)).filter(Boolean).slice(0, 200); if (l.length) x.dmcaList = l; else delete x.dmcaList; }
   if ('scale' in b) x.scale = [5, 10, 100].includes(Number(b.scale)) ? Number(b.scale) : 10;
   if ('raters' in b && Array.isArray(b.raters)) x.raters = [0, 1].map(i => String(b.raters[i] || '').trim().slice(0, 20) || opts(d).raters[i]);
@@ -260,7 +260,7 @@ export function state({ q = '', sort = 'last', limit = 200 } = {}) {
       top: [...all].filter(L => L.requests || L.plays).sort((a, b) => (b.requests || 0) - (a.requests || 0) || b.plays - a.plays).slice(0, 15).map(L => ({ title: L.title, requests: L.requests, plays: L.plays })),
       best: [...rated].sort((a, b) => avg(b) - avg(a)).slice(0, 10).map(L => ({ title: L.title, rate: L.rate })) } };
 }
-export function screen() { const d = data(), o = opts(d); return { type: 'songState', show: on() && o.overlay !== false && !!(d.now || d.queue.length), now: d.now ? { title: d.now.title, by: d.now.by, rate: d.lib[d.now.key]?.rate || [null, null], plays: d.lib[d.now.key]?.plays || 0 } : null, next: d.queue.slice(0, 3).map(q => ({ title: q.title, by: q.by })), more: Math.max(0, d.queue.length - 3), raters: o.raters, scale: o.scale, command: o.command, open: d.open }; }
+export function screen() { const d = data(), o = opts(d); return { type: 'songState', show: on() && o.overlay !== false && !!(d.now || d.queue.length), now: d.now ? { title: d.now.title, by: d.now.by, rate: o.noRate ? [null, null] : o.solo ? [(d.lib[d.now.key]?.rate || [null])[0], null] : d.lib[d.now.key]?.rate || [null, null], plays: d.lib[d.now.key]?.plays || 0 } : null, next: d.queue.slice(0, 3).map(q => ({ title: q.title, by: q.by })), more: Math.max(0, d.queue.length - 3), raters: o.raters, scale: o.scale, command: o.command, open: d.open }; }
 export function clearTests() { const d = data(); d.queue = d.queue.filter(q => !q.test); if (d.now?.test) d.now = null; for (const [k, L] of Object.entries(d.lib)) if (L.test) delete d.lib[k]; for (const l of Object.keys(d.req)) if (/^pretend_/.test(l)) delete d.req[l]; d.played = d.played.filter(p => d.lib[p.key] || !/^Pretend /.test(p.title)); changed(); return state(); }
 
 /** 🧪 the rules + the importer, walked through on pretend data (nothing saved, nothing said, nothing looked up) */

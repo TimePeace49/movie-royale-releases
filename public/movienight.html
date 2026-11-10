@@ -69,7 +69,26 @@ function tick() {
   c.textContent = `LAST CALL ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
 }
 setInterval(tick, 250);
-if (Q.get('demo')) {
+if (Q.get('replay')) {
+  /* 🕰️ Replay (1.119.0): an earlier night's votes played back in about a minute. replay=<night id>, or replay=demo for a made-up night. */
+  const SECS = Math.max(10, Math.min(300, Number(Q.get('secs')) || 60)), fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  const demoNight = () => { const T = ['Jaws (1975)', 'Alien (1979)', 'The Thing (1982)', 'Clue (1985)', 'Tremors (1990)', 'The Mummy (1999)'], ev = []; let t = 0; for (let k = 0; k < 26; k++) { t += 5 + (k * 37) % 40; ev.push({ t: t * 1000, name: 'pretend_' + 'abcdefghijklmnopqrstuvwxyz'[k], i: [1, 1, 2, 0, 1, 2, 2, 4, 0, 2, 3, 2, 5][k % 13], f: -1, r: k % 3 ? 1 : 0 }); } ev.push({ t: (t + 30) * 1000, name: 'pretend_d', i: 2, f: 0, r: null });
+    return { at: Date.now() - 864e5, guesser: Q.get('who') || 'Birx', movies: T.map((x, i) => ({ title: x, imdb: [8.1, 8.5, 8.2, 7.2, 7.1, 7.1][i], rt: [97, 93, 85, 72, 88, 62][i], poster: '' })), events: ev }; };
+  const run = N => {
+    const movies = (N.movies || []).map((m, i) => ({ id: 'r' + i, n: i + 1, title: m.title, votes: 0, imdb: m.imdb || 0, rt: m.rt == null ? null : m.rt, poster: m.poster || '' }));
+    let ev = (N.events || []).filter(e => movies[e.i]).slice().sort((a, b) => a.t - b.t);
+    if (!ev.length) { /* an old night without the vote order: the final counts, dealt out evenly */ const left = (N.movies || []).map(m => m.votes || 0); let k = 0; while (left.some(x => x > 0)) { for (let i = 0; i < left.length; i++) if (left[i] > 0) { left[i]--; ev.push({ t: k++, name: '', i, f: -1, r: null }); } } }
+    const t0 = ev.length ? ev[0].t : 0, span = ev.length ? Math.max(1, ev[ev.length - 1].t - t0) : 1, at = e => ev.length < 2 ? SECS / 2 : 1.5 + (e.t - t0) / span * (SECS - 5);
+    S = { show: true, open: true, endsAt: 0, command: '', total: 0, leaders: [], guesser: N.guesser || 'Guess', guess: { right: 0, wrong: 0, total: 0 }, bg: Q.get('bg') == null ? 92 : Number(Q.get('bg')), ratings: Q.get('ratings') !== '0', posters: Q.get('posters') !== '0', movies };
+    draw(); const start = Date.now(), day = new Date(N.at || Date.now()).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); let last = '', done = false;
+    const foot = () => { const t = Math.min(SECS, (Date.now() - start) / 1000); $('foot').textContent = done ? `REPLAY OF ${day.toUpperCase()} · ` + (S.leaders.length ? '★ WINNER: ' + S.leaders.join(' / ').toUpperCase() + ' ★' : 'NOBODY VOTED') : `▶ REPLAY OF ${day.toUpperCase()} · ${fmt(t)} / ${fmt(SECS)}` + (last ? '\n' + last : ''); };
+    ev.forEach(e => setTimeout(() => { const m = movies[e.i]; m.votes++; if (e.f >= 0 && movies[e.f] && movies[e.f].votes > 0) movies[e.f].votes--; else S.total++; if (e.r === 1) S.guess.right++; last = e.name ? `► ${String(e.name).toUpperCase()} ${e.f >= 0 ? 'CHANGED TO' : 'VOTED'} #${m.n}` : ''; draw(); foot(); }, at(e) * 1000));
+    setTimeout(() => { done = true; const top = Math.max(0, ...movies.map(m => m.votes)); S.leaders = top ? movies.filter(m => m.votes === top).map(m => split(m.title)[0]) : []; S.open = false; S.closed = true; draw(); foot(); try { parent.postMessage({ mnReplayDone: 1 }, '*'); } catch {} }, SECS * 1000);
+    const tk = setInterval(() => { if (done) return clearInterval(tk); foot(); }, 250); foot();
+  };
+  if (Q.get('replay') === 'demo') run(demoNight());
+  else fetch('/api/movienight/history').then(r => r.json()).then(h => { const N = (h.nights || []).find(n => n.id === Q.get('replay')); if (N) run({ guesser: h.guesser, ...N }); else { S = { show: true, movies: [], total: 0, guess: {}, guesser: '' }; draw(); $('foot').textContent = 'THAT NIGHT ISN\'T IN THE HISTORY ANY MORE'; } }).catch(() => {});
+} else if (Q.get('demo')) {
   /* a pretend night: a vote lands every second and a half, so the climbing shows */
   S = { show: true, open: true, endsAt: 0, command: '!vote', total: 0, leaders: [], guesser: Q.get('who') || 'Birx', guess: { right: 0, wrong: 0, total: 0 }, bg: 85, ratings: Q.get('ratings') !== '0', posters: Q.get('posters') !== '0',
     movies: ['Jaws (1975)', 'Alien (1979)', 'The Thing (1982)', 'Clue (1985)', 'Big Trouble in Little China (1986)', 'Tremors (1990)', 'Hackers (1995)', 'The Mummy (1999)'].map((t, i) => ({ id: 'd' + i, n: i + 1, title: t, votes: 0, imdb: [8.1, 8.5, 8.2, 7.2, 7.2, 7.1, 6.2, 7.1][i], rt: [97, 93, 85, 72, 76, 88, 33, 62][i], poster: Q.get('posters') === '0' ? '' : 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='60' height='90'><rect width='60' height='90' fill='hsl(${i * 45},55%,32%)'/><text x='30' y='56' font-size='34' text-anchor='middle' fill='#fff' font-family='Arial'>${t[0]}</text></svg>`) })) };

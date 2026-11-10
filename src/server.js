@@ -1844,6 +1844,26 @@ async function rollObsSource(on, scenes) {
   const r = await obs.rollSource(!!on, rollUrl(), pick);
   db.settings.rollObs = !!on; save(); pushState(); return r;
 }
+/* 🎚️ Audio levels on the Chat tab (1.118.0): the control panel says "I'm showing the meters" every few seconds; while it does, the app keeps
+   one connection to OBS for its volume meters and passes them on (about 12 a second). Nothing is kept or sent anywhere else. */
+const meters = { until: 0, fakeT: null };
+function metersWant(on) {
+  meters.until = on ? Date.now() + 20000 : 0;
+  if (on && !obs.metering() && !meters.started && !meters.fakeT) { meters.started = true; obs.watchMeters(list => broadcast({ type: 'obsMeters', list }, 'control'), ok => broadcast({ type: 'obsMeters', state: ok ? 'on' : 'lost' }, 'control')); }
+  if (!on) metersStop();
+}
+function metersStop() { if (meters.started) { obs.stopMeters(); meters.started = false; } }
+setInterval(() => { if (meters.started && Date.now() > meters.until) metersStop(); }, 5000);
+app.post('/api/obs/meters', (req, res) => { try { if (!feat('dash')) throw new Error('The Chat tab boxes are not part of this edition.'); if (req.body?.on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.'); metersWant(!!req.body?.on); res.json({ ok: true, on: !!req.body?.on, connected: obs.metering() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/obs/mute', async (req, res) => { try { if (!obsOk()) throw new Error('Movie Royal is switched off for OBS.'); res.json({ ok: true, ...(await obs.muteInput(String(req.body?.name || ''), !!req.body?.muted)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+/* 🧪 pretend levels for 12 seconds (no OBS needed): a mic that talks, desktop sound, music, and one that is muted */
+app.post('/api/test/obs-meters', (req, res) => {
+  clearInterval(meters.fakeT); metersStop(); const t0 = Date.now(); let talk = 0;
+  meters.fakeT = setInterval(() => { const t = (Date.now() - t0) / 1000; if (t > 12) { clearInterval(meters.fakeT); meters.fakeT = null; return broadcast({ type: 'obsMeters', state: 'testDone' }, 'control'); }
+    talk = Math.random() < .08 ? Math.random() : talk * .93; const w = (a, f, n) => Math.round((a + Math.sin(t * f) * 6 + (Math.random() - .5) * n) * 10) / 10;
+    broadcast({ type: 'obsMeters', test: true, list: { '🎙️ Mic (pretend)': { db: [w(-48 + talk * 46, 3, 5), w(-48 + talk * 46, 3, 5)], muted: false }, '🖥️ Desktop audio (pretend)': { db: [w(-24, 1.3, 8), w(-26, 1.7, 8)], muted: false }, '🎵 Music (pretend)': { db: [w(-14, .8, 5), w(-13, .9, 5)], muted: false }, '🔇 Muted one (pretend)': { db: [w(-20, 2, 6), w(-20, 2, 6)], muted: true } } }, 'control'); }, 90);
+  res.json({ ok: true, secs: 12 });
+});
 /* 🍿 movie night leaderboard browser source in OBS (1.116.0): added to the scenes you pick, see-through around the board */
 const mnUrl = () => `http://localhost:${PORT}/movienight.html`;
 async function mnObsSource(on, scenes) {
@@ -4996,6 +5016,7 @@ movienight.setHooks({ rating: t => mnRating(t), note: pstats.note,
 setInterval(() => { try { movienight.tick(); } catch (e) { console.error('[movie night]', e.message); } }, 1000);
 const mnTry = fn => wTry(async (b, req) => { if (!feat('movienight')) throw new Error('Movie night voting is not part of this edition.'); const r = await fn(b, req); return r && r.movies ? { state: r } : { ...(r || {}), state: movienight.state() }; });
 app.get('/api/movienight', (req, res) => res.json(feat('movienight') ? movienight.state() : { on: false }));
+app.get('/api/movienight/history', (req, res) => res.json(feat('movienight') ? movienight.history() : { nights: [] })); /* 🕰️ every movie night (History tab + the leaderboard replay) */
 /* 🍿 suggestions while typing a movie (1.115.0): movies from earlier nights first, then TMDB's search (needs the key); fake = the Test tab's pretend answers */
 const MN_FAKE = [['Jaws', 1975], ['Jaws 2', 1978], ['Jawbreaker', 1999], ['Jaws: The Revenge', 1987], ['Jack Frost', 1998], ['Jumanji', 1995]];
 app.get('/api/movienight/suggest', async (req, res) => {
@@ -5025,6 +5046,7 @@ app.post('/api/movienight/opts', mnTry(b => movienight.setOpts(b)));
 app.get('/api/test/movienight-rules', (req, res) => res.json(movienight.rulesDemo()));
 app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote through the pretend chat (nothing is sent to Twitch); 'clear' takes them out again
   const d = movienight.data();
+  if (b.action === 'night') return movienight.testNight(); /* 🕰️ a pretend earlier night for the History tab + replay */
   if (b.action === 'clear') return movienight.clearTests();
   if (b.action === 'fill') { if (d.movies.length) throw new Error('Your list already has movies: this only fills an empty list.'); return movienight.setMovies([{ title: 'Jaws (1975)', by: 'pretend_ana', imdb: 8.1, rt: 97, poster: '/deck/home.png' }, { title: 'Alien (1979)', by: '', imdb: 8.5, rt: 93 }, { title: 'The Thing (1982)', by: 'pretend_bo', imdb: 8.2, rt: 85 }, { title: 'Clue (1985)', by: '', imdb: 7.2, rt: 72 }]); }
   if (!d.movies.length) throw new Error('Add movies first (or press 📋 Fill a pretend list).');

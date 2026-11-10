@@ -4,9 +4,13 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
-## v1.117.0: What's new
+## v1.119.0: What's new
 Everything since 1.116.5.
 
+- {dash} 🎚️ **Audio levels on the Chat tab:** a new box shows OBS's own volume meters for every sound source (mic, desktop, music…), live, like the mixer in OBS: green is fine, yellow is loud, red is too loud. 🔊 / 🔇 next to each one mutes or unmutes it in OBS.
+- {dash} 🖱️ **Right-click the Chat tab to turn boxes on and off:** a small menu lists every box with a tick. Turn one off and the others grow into the room. The ▦ Boxes button in the tools box opens the same menu.
+- {songs} ⭐ **Song ratings can be turned off altogether:** Chat bot → Song requests → Settings → untick ⭐ Rate songs. Ratings you already gave are kept.
+- {movienight} 🕰️ **History → 🍿 Movie nights:** every movie night with its winner, votes, who voted for what and how many were guessed right. **▶ Replay the vote** pops up that night's leaderboard and plays the whole vote back in one minute.
 - {movienight} 🍿 **Posters and ratings on the movie night leaderboard:** each movie now shows a small poster, its **IMDb** rating and its **🍅 Rotten Tomatoes** score next to its votes.
   - The app looks them up by itself from the movie's name. It needs the free ratings key (OMDb): the Movie night tab has a 🔑 Add the key button when there isn't one yet.
   - The movie list has an IMDb and a 🍅 box per movie, to type your own number or fix one. 🔄 Look them up again does every movie.

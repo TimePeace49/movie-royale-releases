@@ -18,7 +18,7 @@ await p.evaluate(() => { const d = document.getElementById('startDlg'); if (d &&
 // ⚙️ every Settings section
 const secs = await p.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms)), res = []; setView('settings'); await w(800);
   for (const btn of [...document.querySelectorAll('#subnav [data-s]')]) { const k = btn.dataset.s; if (btn.classList.contains('devOnly')) continue; try { setSub(k); } catch {} await w(700);
-    const pane = document.querySelector(`#settingsBody .sub[data-s="${k}"]`); if (!pane) continue; const name = btn.textContent.trim().replace(/\s+/g, ' ');
+    const pane = document.querySelector(`#settingsBody .sub[data-s="${k}"]`); if (!pane || k === 'notes') continue; /* (patch notes sections aren't options) */ const name = btn.textContent.trim().replace(/\s+/g, ' ');
     for (const h of pane.querySelectorAll('h3, .obsBox h4')) { if (h.closest('.devOnly')) continue; const t = h.textContent.trim().replace(/\s+/g, ' '); if (t && t.length < 90) res.push({ k, name, t, feat: h.closest('[data-feat]')?.dataset.feat || '' }); } }
   return res; });
 const APPN = (await fetch(URL0 + '/api/app').then(r => r.json())).edition.app; /* the app's shown name differs per edition: kept as § in the heading note */
@@ -31,8 +31,8 @@ for (const c of cards) add(`test:${c.id}`, 'Test tab cards', c.t, 'One card on t
 for (const [k, n] of [['commands', '📜 Commands'], ['sounds', '🔊 Sound alerts'], ['timers', '⏰ Timers'], ['quotes', '💬 Quotes'], ['import', '🧳 Import']]) add(`bot:${k}`, 'Chat bot', n + ' (Chat bot tab)', 'One of the buttons across the top of the Chat bot tab.', { sel: `#botTop [onclick="botGo('${k}')"]` });
 for (const [k, n] of [['lib', '🎵 Song database'], ['stats', '📊 Song stats'], ['ban', '🚫 Banned songs'], ['imp', '🧳 Song import'], ['set', '⚙ Song settings']]) add(`songs:${k}`, 'Chat bot', n, 'One of the buttons inside Song requests.', { sel: `[onclick="sgTabSet('${k}')"]` });
 add('songs:playlists', 'Chat bot', '📻 Playlists', 'The playlist button in the music box and in Song settings.', { sel: '[onclick="dashPlMenu()"]' });
-for (const [k, n] of [['prev', '📺 Stream preview box'], ['song', '🎵 Music box'], ['night', '🍿 Movie night box'], ['feed', '🔔 Alerts box'], ['tools', '🧰 Stream tools box'], ['chat', '💬 Chat box']]) add(`dash:${k}`, 'Chat tab', n, 'One of the boxes on the Chat tab dashboard.', { sel: `#dashGrid .dbox[data-b="${k}"]` });
-const hist = await p.evaluate(() => HIST_TABS.map(x => [x[0], x[1]]));
+for (const [k, n] of [['prev', '📺 Stream preview box'], ['song', '🎵 Music box'], ['night', '🍿 Movie night box'], ['feed', '🔔 Alerts box'], ['tools', '🧰 Stream tools box'], ['audio', '🎚️ Audio levels box'], ['chat', '💬 Chat box']]) add(`dash:${k}`, 'Chat tab', n, 'One of the boxes on the Chat tab dashboard.', { sel: `#dashGrid .dbox[data-b="${k}"]` });
+const hist = await p.evaluate(() => [...HIST_TABS.map(x => [x[0], x[1]]), ['mnight', '🍿 Movie nights']]);
 for (const [k, n] of hist) add(`hist:${k}`, 'History', n, 'One of the buttons across the top of the History tab.', { sel: `[onclick="histMode='${k}';drawHistory()"]` });
 add('clip:buttons', 'Clips', '🎬 Clip buttons', 'Every 🎬 Clip button in the app (the chat command is its own switch).', { sel: '.clipBtn, #clipBox' });
 // 🎡 wheel spot kinds

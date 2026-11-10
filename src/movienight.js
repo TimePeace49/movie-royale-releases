@@ -171,11 +171,34 @@ export function tick() { // every second from the server
   if (left <= 60000 && left > 58000 && warned !== d.endsAt && opts(d).lastMins > 1) { warned = d.endsAt; H.say('⏳ One minute left to vote or change your vote!').catch(() => {}); }
 }
 /** A fresh night: tonight goes into the list of past nights, votes + bonus votes are wiped. The movie list is kept unless `clear`. */
+/** 🕰️ One night as the History tab + the replay need it (1.119.0): the movies with their final votes, who voted for what, the guesses, and every vote in the order it came in. */
+function nightRow(d, live) {
+  const t = tally(d), idx = id => d.movies.findIndex(m => m.id === id), right = d.guesses.filter(g => g.right === true).length, wrong = d.guesses.filter(g => g.right === false).length;
+  return { id: live ? 'live' : uid(), at: d.openedAt || d.guesses[0]?.at || Date.now(), end: d.closedAt || 0, ...(live ? { live: true, open: !!d.open } : {}), guesser: opts(d).guesser,
+    movies: t.map(x => ({ title: x.title, by: x.by, votes: x.votes, imdb: x.imdb, rt: x.rt, poster: x.poster })), winner: leaders(d).map(x => x.title).join(' / '), voters: Object.keys(d.votes).length, total: t.reduce((a, x) => a + x.votes, 0), right, wrong,
+    people: Object.entries(d.votes).map(([login, v]) => ({ name: v.name, changes: v.changes || 0, why: bonusWhy(login, d, d.openedAt || Date.now()), picks: v.list.map(x => idx(x.movie)).filter(i => i >= 0) })),
+    events: d.guesses.map(g => ({ t: g.at, name: g.name, i: idx(g.movie), f: g.kind === 'change' ? d.movies.findIndex(m => m.title === g.from) : -1, r: g.right === true ? 1 : g.right === false ? 0 : null, ...(g.said ? { said: g.said } : {}) })).filter(e => e.i >= 0) };
+}
+/** Tonight (when it has votes) + every earlier night, newest first. */
+export function history() {
+  const d = data(), nights = []; if (d.guesses.length || Object.keys(d.votes).length) nights.push(nightRow(d, true));
+  for (const n of d.past) { if (!n.id) n.id = 'p' + n.at; nights.push({ total: (n.movies || []).reduce((a, x) => a + (x.votes || 0), 0), people: [], events: [], ...n }); }
+  return { nights, guesser: opts(d).guesser, all: { right: d.stats.right, wrong: d.stats.wrong } };
+}
+/** 🧪 a pretend earlier night (marked test: 🧹 clear takes it out again). */
+export function testNight() {
+  const d = data(), M = [['Jaws (1975)', 8.1, 97], ['Alien (1979)', 8.5, 93], ['The Thing (1982)', 8.2, 85], ['Clue (1985)', 7.2, 72], ['Tremors (1990)', 7.1, 88], ['The Mummy (1999)', 7.1, 62]], names = ['pretend_ana', 'pretend_bo', 'pretend_cy', 'pretend_dee', 'pretend_eli', 'pretend_fay', 'pretend_gus', 'pretend_hal', 'pretend_ivy', 'pretend_jo', 'pretend_kit', 'pretend_lu'];
+  const t0 = Date.now() - 3 * 864e5, votes = M.map(() => 0), people = [], events = []; let t = t0, right = 0, wrong = 0;
+  names.forEach((nm, k) => { const i = [1, 1, 2, 0, 1, 2, 2, 4, 0, 2, 3, 2][k]; t += 20000 + (k * 7919) % 90000; const r = k % 3 === 0 ? 0 : 1; r ? right++ : wrong++; votes[i]++; events.push({ t, name: nm, i, f: -1, r }); people.push({ name: nm, changes: 0, why: k === 0 ? ['first in chat'] : [], picks: [i] }); });
+  [[0, 2], [3, 2], [7, 1]].forEach(([k, to], j) => { const p = people[k], f = p.picks[0]; t += 30000 + j * 11000; votes[f]--; votes[to]++; p.picks = [to]; p.changes = 1; events.push({ t, name: p.name, i: to, f, r: null }); });
+  const top = Math.max(...votes), n = { id: uid(), test: true, at: t0, end: t + 60000, guesser: opts(d).guesser, movies: M.map(([title, imdb, rt], i) => ({ title, by: i % 2 ? '' : names[i], votes: votes[i], imdb, rt, poster: '' })), winner: M.filter((m, i) => votes[i] === top).map(m => m[0]).join(' / '), voters: names.length, total: votes.reduce((a, b) => a + b, 0), right, wrong, people, events };
+  d.past.unshift(n); save(); H.send({ type: 'movieNight' }, 'control'); return { night: n.id };
+}
 export function newNight({ clear = false } = {}) {
   const d = data(), t = tally(d), total = t.reduce((a, x) => a + x.votes, 0);
   if (total || d.guesses.length) {
     const right = d.guesses.filter(g => g.right === true).length, wrong = d.guesses.filter(g => g.right === false).length;
-    d.past.unshift({ at: d.openedAt || Date.now(), movies: t.map(x => ({ title: x.title, by: x.by, votes: x.votes })), winner: leaders(d).map(x => x.title).join(' / '), voters: Object.keys(d.votes).length, right, wrong }); d.past = d.past.slice(0, 100);
+    d.past.unshift(nightRow(d, false)); d.past = d.past.slice(0, 100);
   }
   d.open = false; delete d.endsAt; d.votes = {}; d.guesses = []; d.raiders = []; d.extra = {}; d.first = ''; delete d.closedAt; delete d.openedAt; delete d.pinnedAt; d.pinError = '';
   if (clear) d.movies = [];
@@ -249,7 +272,7 @@ export function setOpts(o) {
   if ('lastMins' in o) x.lastMins = Math.max(0.25, Math.min(60, Number(o.lastMins) || 5));
   changed(); return state();
 }
-export function clearTests() { const d = data(); for (const [l, v] of Object.entries(d.votes)) if (/^pretend_/.test(l)) delete d.votes[l]; d.guesses = d.guesses.filter(g => !g.test); d.raiders = d.raiders.filter(l => !/^pretend_/.test(l)); if (/^pretend_/.test(d.first || '')) d.first = ''; changed(); return state(); }
+export function clearTests() { const d = data(); for (const [l, v] of Object.entries(d.votes)) if (/^pretend_/.test(l)) delete d.votes[l]; d.guesses = d.guesses.filter(g => !g.test); d.past = d.past.filter(n => !n.test); d.raiders = d.raiders.filter(l => !/^pretend_/.test(l)); if (/^pretend_/.test(d.first || '')) d.first = ''; changed(); return state(); }
 
 /** 🧪 The rules walked through with pretend people on a pretend night (nothing saved, nothing said). */
 export function rulesDemo() {
