@@ -1831,7 +1831,7 @@ async function choiceSource(on, scenes) {
   pushState(); return { ...r, note };
 }
 setInterval(() => { if (db.settings.choiceObs && obsOk() && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); }, 10 * 60000); // (keeps it in the scenes you picked, and a new reward or channel is written in)
-app.get('/api/vr/scenes', async (req, res) => { if (req.query.for === 'video') { const v = obsVideos().find(x => x.id === req.query.id); try { return res.json({ ok: true, ...(await obs.sceneList(v ? videoInput(v) : '-')), picked: v?.scenes || [] }); } catch (e) { return res.status(400).json({ error: e.message }); } } const roll = req.query.for === 'roll', mara = req.query.for === 'mara'; try { res.json({ ok: true, ...(await obs.sceneList(mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
+app.get('/api/vr/scenes', async (req, res) => { if (req.query.for === 'video') { const v = obsVideos().find(x => x.id === req.query.id); try { return res.json({ ok: true, ...(await obs.sceneList(v ? videoInput(v) : '-')), picked: v?.scenes || [] }); } catch (e) { return res.status(400).json({ error: e.message }); } } const roll = req.query.for === 'roll', mara = req.query.for === 'mara', mnf = req.query.for === 'mn'; try { res.json({ ok: true, ...(await obs.sceneList(mnf ? obs.MN_NAME : mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mnf ? db.settings.mnScenes : mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
 app.get('/api/vr/obs-file', (req, res) => res.download(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'viewers-choice.html')); // ⬇️ the file for OBS (it sets itself up when you open it)
 app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 📣 roll call browser source in OBS (1.61.0): Movie Royal adds /rollcall.html to the scenes you pick (or you add it by hand: the address is in Settings → 🎥 OBS)
@@ -1843,6 +1843,17 @@ async function rollObsSource(on, scenes) {
   const r = await obs.rollSource(!!on, rollUrl(), pick);
   db.settings.rollObs = !!on; save(); pushState(); return r;
 }
+/* 🍿 movie night leaderboard browser source in OBS (1.116.0): added to the scenes you pick, see-through around the board */
+const mnUrl = () => `http://localhost:${PORT}/movienight.html`;
+async function mnObsSource(on, scenes) {
+  if (on && !feat('movienight')) throw new Error('Movie night voting is not part of this edition.');
+  if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
+  if (on && Array.isArray(scenes)) { if (!scenes.length) throw new Error('Pick at least one OBS scene for it.'); db.settings.mnScenes = scenes.map(String).slice(0, 200); }
+  const pick = Array.isArray(db.settings.mnScenes) && db.settings.mnScenes.length ? db.settings.mnScenes : null;
+  const r = await obs.mnSource(!!on, mnUrl(), pick);
+  db.settings.mnObs = !!on; save(); pushState(); return r;
+}
+app.post('/api/obs/mn-source', async (req, res) => { try { res.json({ ok: true, url: mnUrl(), ...(await mnObsSource(!!req.body?.on, req.body?.scenes)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/obs/roll-source', async (req, res) => { try { res.json({ ok: true, url: rollUrl(), ...(await rollObsSource(!!req.body?.on, req.body?.scenes)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/vr/source', async (req, res) => { try { res.json({ ok: true, ...(await choiceSource(!!req.body?.on, req.body?.scenes)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/test/vr', (req, res) => { // 🧪 pretend someone redeemed one
@@ -5595,6 +5606,7 @@ async function obsSync(why = 'check', force = false) {
     const r1 = (r, what) => r.added ? `added to ${r.added} scene${r.added === 1 ? '' : 's'}` : r.fileChanged ? 'video file updated' : `${what || 'everything'} is there`;
     if (db.settings.choiceObs && twitch.status.userId) { try { const f = await choiceFile(); add('choice', '🎉 Viewer\'s choice celebration', true, r1(await obs.celebrateSource(true, f.file, choicePick()))); } catch (e) { add('choice', '🎉 Viewer\'s choice celebration', false, e.message); } }
     if (db.settings.rollObs) { try { add('roll', '📣 Roll call', true, r1(await obs.rollSource(true, rollUrl(), Array.isArray(db.settings.rollScenes) && db.settings.rollScenes.length ? db.settings.rollScenes : null))); } catch (e) { add('roll', '📣 Roll call', false, e.message); } }
+    if (db.settings.mnObs && feat('movienight')) { try { add('mnight', '🍿 Movie night leaderboard', true, r1(await obs.mnSource(true, mnUrl(), Array.isArray(db.settings.mnScenes) && db.settings.mnScenes.length ? db.settings.mnScenes : null))); } catch (e) { add('mnight', '🍿 Movie night leaderboard', false, e.message); } }
     const mc = db.settings.marathon || {};
     if (paid.dev() && mc.obs && Array.isArray(mc.scenes) && mc.scenes.length && mc.obsSetup?.collection !== undefined && setup.collection === mc.obsSetup?.collection) { try { add('mara', '🏃 Marathon counter', true, r1(await obs.maraSource(true, maraUrl(), mc.scenes))); } catch (e) { add('mara', '🏃 Marathon counter', false, e.message); } }
     const ms = mc.obsSetup;

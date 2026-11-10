@@ -17,7 +17,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -82,7 +82,7 @@ export function state() {
 }
 export function screen() { // what the on-stream box shows
   const d = data(), s = state();
-  return { type: 'mnState', show: opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command };
+  return { type: 'mnState', show: opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
 }
 function changed() { save(); H.send({ type: 'movieNight' }, 'control'); H.send(screen(), 'movienight'); }
 
@@ -229,6 +229,9 @@ export function setOpts(o) {
   if ('changes' in o) x.changes = Math.max(0, Math.min(5, Math.round(Number(o.changes) || 0)));
   if ('reply' in o) x.reply = !!o.reply;
   if ('overlay' in o) x.overlay = !!o.overlay;
+  if ('bg' in o) x.bg = Math.max(0, Math.min(100, Math.round(Number(o.bg) || 0))); /* how solid the board's background is on stream: 0 = see-through */
+  if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
+  if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';
   if ('lastMins' in o) x.lastMins = Math.max(0.25, Math.min(60, Number(o.lastMins) || 5));
   changed(); return state();
 }

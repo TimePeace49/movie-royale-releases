@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.116.0
+- 🍿 **Movie night leaderboard for OBS (new look).** The on-stream vote box is now an arcade high-score board: the top line shows how many votes the guesser got right out of all the votes ("BIRX GOT RIGHT 4 / 9 VOTES"), and under it each movie with its number, name, year and votes. The most votes are on top; ties (and everything on 0) are in ABC order. When a movie passes another one it turns sideways and hops up the list to its new spot. Compact, no sound.
+- **See-through:** a Background slider on the Movie night tab (📺 On stream + options) goes from solid to fully see-through (only the glowing words show). You can also pick left / right and top / bottom.
+- **➕ Add it to OBS for me:** pick the scenes and the app puts the source "Movie Royal movie night" on top of them (and 🔄 Keep OBS up to date puts it back if it goes missing). 👀 See it move shows it in the app with pretend votes.
+- 🧪 Test tab → 🍿 Movie night voting → 🏁 Leaderboard with pretend votes.
+
 ## 1.115.0
 - 🍿 **Movie night: suggestions while you type.** Start typing in the "Movie name" box on the Movie night tab and a list of movies shows under it (name + year; movies from your earlier nights come first). Click one, or use ↑ ↓ and Enter, and it fills the box in. Suggestions for every movie use the free movie-search (TMDB) key: if there isn't one yet, the list has a line to add it right there.
 - 💬 **Chat tab:** the movie box's button is now a clear **🍿 Movie night tab** button that jumps straight there.

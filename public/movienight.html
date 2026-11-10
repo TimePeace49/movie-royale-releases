@@ -1,43 +1,78 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>Movie Royal movie night votes</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
 <style>
-  html, body { margin: 0; background: transparent; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; color: #fff; }
-  #box { position: absolute; right: 28px; top: 28px; width: 460px; background: rgba(16, 10, 34, .88); border: 2px solid rgba(255, 255, 255, .16); border-radius: 18px; padding: 16px 18px 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); opacity: 0; transform: translateX(40px); transition: opacity .5s, transform .5s; }
+  /* 🍿 Movie night leaderboard (1.116.0): an arcade high-score board. Rows are placed by hand (top = slot × row height), so a movie that climbs can turn sideways and pounce up the list. No sound. */
+  html, body { margin: 0; background: transparent; overflow: hidden; color: #b8ffd9; font-family: Consolas, "Lucida Console", "DejaVu Sans Mono", monospace; }
+  #box { --a: .85; --rh: 30px; position: absolute; right: 24px; top: 24px; width: 430px; padding: 10px 12px 10px; border: 2px solid rgba(64, 255, 170, calc(.25 + var(--a) * .6)); border-radius: 6px;
+    background: rgba(3, 14, 12, var(--a)); box-shadow: 0 0 calc(var(--a) * 22px) rgba(40, 255, 160, calc(var(--a) * .35)), inset 0 0 calc(var(--a) * 30px) rgba(40, 255, 160, calc(var(--a) * .10));
+    opacity: 0; transform: translateY(-14px); transition: opacity .45s, transform .45s; text-shadow: 0 0 6px rgba(60, 255, 170, .55), 0 1px 2px rgba(0, 0, 0, .9); }
   #box.show { opacity: 1; transform: none; }
-  body.left #box { right: auto; left: 28px; } body.bottom #box { top: auto; bottom: 28px; }
-  h1 { margin: 0 0 2px; font-size: 26px; letter-spacing: .5px; } .sub { font-size: 16px; opacity: .8; margin-bottom: 10px; }
-  .row { position: relative; margin: 6px 0; border-radius: 10px; background: rgba(255, 255, 255, .07); overflow: hidden; }
-  .bar { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #7b3ff2, #c04bff); border-radius: 10px; transition: width .6s; }
-  .row.top .bar { background: linear-gradient(90deg, #f2a23f, #ffd24b); } .row.top { color: #1a0f2e; font-weight: 700; }
-  .txt { position: relative; display: flex; gap: 8px; align-items: center; padding: 7px 10px; font-size: 19px; }
-  .n { opacity: .75; min-width: 26px; } .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .v { font-weight: 800; font-size: 21px; }
-  #clock { display: none; margin: 10px 0 2px; text-align: center; font-size: 30px; font-weight: 800; color: #ffd24b; } #clock.on { display: block; } #clock.hot { color: #ff6464; animation: pulse 1s infinite; }
-  @keyframes pulse { 50% { transform: scale(1.08); } }
-  #guess { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .15); font-size: 18px; display: none; } #guess.on { display: block; } #guess b { font-size: 22px; color: #7dffa8; }
-  .tiny .txt { font-size: 15px; padding: 4px 8px; } .tiny .v { font-size: 17px; }
+  #box::after { content: ""; position: absolute; inset: 0; border-radius: 4px; pointer-events: none; opacity: var(--a); background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, .22) 2px 3px); }
+  body.left #box { right: auto; left: 24px; } body.bottom #box { top: auto; bottom: 24px; }
+  #head { display: flex; align-items: baseline; gap: 8px; font-family: Bungee, Consolas, monospace; font-size: 17px; letter-spacing: 1px; color: #6dffd0; padding-bottom: 6px; border-bottom: 1px dashed rgba(64, 255, 170, .45); margin-bottom: 6px; white-space: nowrap; }
+  #head .g { flex: 1; overflow: hidden; text-overflow: ellipsis; } #head .sc { color: #fff36b; font-size: 21px; text-shadow: 0 0 8px rgba(255, 240, 90, .7), 0 1px 2px #000; } #head .of { color: #8fd; opacity: .8; font-size: 13px; }
+  #rows { position: relative; height: 0; transition: height .35s; }
+  .row { position: absolute; left: 0; right: 0; height: var(--rh); line-height: var(--rh); display: flex; gap: 8px; font-size: 17px; white-space: nowrap; transition: top .45s cubic-bezier(.3, 1.3, .5, 1); will-change: transform, top; }
+  .row .n { width: 30px; text-align: right; color: #56d8ff; } .row .t { flex: 1; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; } .row .y { color: #7fe6c0; opacity: .8; }
+  .row .v { min-width: 34px; text-align: right; font-weight: 700; color: #fff36b; } .row.zero .v { color: #6fae96; } .row.zero .t { color: #8fd9bd; }
+  .row.top .t, .row.top .n { color: #fff36b; text-shadow: 0 0 8px rgba(255, 240, 90, .8), 0 1px 2px #000; }
+  .row.jump { z-index: 5; } .row.jump .t, .row.jump .v { color: #fff; text-shadow: 0 0 10px #fff, 0 0 18px #5fffc8; }
+  .row.flash .v { animation: pop .5s; } @keyframes pop { 40% { transform: scale(1.7); color: #fff; } }
+  #box.tiny { --rh: 24px; } #box.tiny .row { font-size: 14px; }
+  #clock { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(64, 255, 170, .45); text-align: center; font-family: Bungee, Consolas, monospace; font-size: 19px; color: #fff36b; } #clock.on { display: block; } #clock.hot { color: #ff6b6b; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  #foot { margin-top: 5px; font-size: 12px; color: #7fe6c0; opacity: .85; text-align: center; letter-spacing: 1px; }
 </style></head>
 <body>
-<div id="box"><h1 id="head">🍿 Movie night vote</h1><div class="sub" id="sub"></div><div id="rows"></div><div id="clock"></div><div id="guess"></div></div>
+<div id="box"><div id="head"></div><div id="rows"></div><div id="clock"></div><div id="foot"></div></div>
 <script>
 const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-if (Q.get('side') === 'left') document.body.classList.add('left'); if (Q.get('at') === 'bottom') document.body.classList.add('bottom');
-let S = null;
+let S = null; const EL = new Map(), SLOT = new Map(), VOTES = new Map();
+/* most votes on top; a tie (and everything on 0) is in ABC order */
+const order = list => [...list].sort((a, b) => b.votes - a.votes || String(a.title).localeCompare(String(b.title), undefined, { sensitivity: 'base' }) || a.n - b.n);
+const split = t => { const m = /^(.*?)\s*\((\d{4})\)\s*$/.exec(String(t)); return m ? [m[1], m[2]] : [String(t), '']; };
+const key = m => m.id || 'n' + m.n;
+function pounce(el, from, to, rh) {
+  /* the climb: turn sideways, hop up the list one row at a time, land flat with a little bounce */
+  const up = (from - to) * rh, hops = Math.min(from - to, 6), frames = [{ transform: `translateY(${up}px) rotate(0deg)`, offset: 0 }, { transform: `translateY(${up}px) rotate(-90deg) scale(.62)`, offset: .16 }];
+  for (let i = 1; i <= hops; i++) { const y = up * (1 - i / hops), o = .16 + .62 * (i / hops), mid = .16 + .62 * ((i - .5) / hops), yMid = up * (1 - (i - .5) / hops);
+    frames.push({ transform: `translate(${i % 2 ? 16 : -16}px, ${yMid}px) rotate(-90deg) scale(.7)`, offset: mid }); frames.push({ transform: `translateY(${y}px) rotate(-90deg) scale(.62)`, offset: o }); }
+  frames.push({ transform: 'translateY(0) rotate(8deg) scale(1.06)', offset: .9 }, { transform: 'translateY(0) rotate(0deg) scale(1)', offset: 1 });
+  el.classList.add('jump'); const a = el.animate(frames, { duration: 520 + hops * 190, easing: 'ease-in-out' }); a.onfinish = a.oncancel = () => el.classList.remove('jump');
+}
 function draw() {
-  const s = S; if (!s) return; $('box').classList.toggle('show', !!s.show);
-  const top = Math.max(1, ...s.movies.map(m => m.votes)), lead = Math.max(0, ...s.movies.map(m => m.votes));
-  $('head').textContent = s.closed ? '🍿 Tonight\'s movie' : '🍿 Movie night vote';
-  $('sub').textContent = s.closed ? (s.leaders.length ? s.leaders.join(' / ') : 'Nobody voted') : `Type ${s.command} and a number · ${s.total} vote${s.total === 1 ? '' : 's'}`;
-  $('rows').className = s.movies.length > 12 ? 'tiny' : '';
-  $('rows').innerHTML = s.movies.map(m => `<div class="row${lead && m.votes === lead ? ' top' : ''}"><div class="bar" style="width:${Math.round(100 * m.votes / top)}%"></div><div class="txt"><span class="n">${m.n}</span><span class="t">${esc(m.title)}</span><span class="v">${m.votes}</span></div></div>`).join('');
-  const g = s.guess || {}; $('guess').classList.toggle('on', g.total > 0); $('guess').innerHTML = g.total ? `🔮 Guessed right: <b>${g.right}</b> of ${g.total}` : '';
+  const s = S; if (!s) return; const box = $('box');
+  box.classList.toggle('show', !!s.show); document.body.classList.toggle('left', (Q.get('side') || s.side) === 'left'); document.body.classList.toggle('bottom', (Q.get('at') || s.at) === 'bottom');
+  const a = Q.get('bg') != null ? Number(Q.get('bg')) : s.bg == null ? 85 : Number(s.bg); box.style.setProperty('--a', String(Math.max(0, Math.min(100, a)) / 100));
+  const g = s.guess || {}, list = order(s.movies || []), lead = Math.max(0, ...list.map(m => m.votes));
+  box.classList.toggle('tiny', list.length > 12); const rh = list.length > 12 ? 24 : 30;
+  $('head').innerHTML = `<span class="g">${esc(String(s.guesser || 'Guess').toUpperCase())} GOT RIGHT</span><span class="sc">${g.right || 0}<span class="of"> / </span>${s.total || 0}</span><span class="of">VOTES</span>`;
+  const rows = $('rows'); rows.style.height = list.length * rh + 'px'; const live = new Set();
+  list.forEach((m, i) => { const k = key(m); live.add(k); let el = EL.get(k); const [t, y] = split(m.title), fresh = !el;
+    if (!el) { el = document.createElement('div'); el.className = 'row'; el.style.top = i * rh + 'px'; rows.appendChild(el); EL.set(k, el); }
+    el.innerHTML = `<span class="n">${m.n}.</span><span class="t">${esc(t)}${y ? ` <span class="y">${y}</span>` : ''}</span><span class="v">${m.votes}</span>`;
+    el.classList.toggle('top', !!lead && m.votes === lead); el.classList.toggle('zero', !m.votes);
+    const was = SLOT.get(k), had = VOTES.get(k);
+    if (!fresh && had != null && m.votes !== had) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+    if (!fresh && was != null && i < was && m.votes > (had || 0)) { el.style.transition = 'none'; el.style.top = i * rh + 'px'; void el.offsetWidth; el.style.transition = ''; pounce(el, was, i, rh); }
+    else el.style.top = i * rh + 'px';
+    SLOT.set(k, i); VOTES.set(k, m.votes); });
+  for (const [k, el] of EL) if (!live.has(k)) { el.remove(); EL.delete(k); SLOT.delete(k); VOTES.delete(k); }
+  $('foot').textContent = s.closed ? (s.leaders && s.leaders.length ? '★ WINNER: ' + s.leaders.join(' / ').toUpperCase() + ' ★' : 'VOTING IS CLOSED') : s.open ? `TYPE ${String(s.command || '!vote').toUpperCase()} + A NUMBER` : '';
   tick();
 }
 function tick() {
   const c = $('clock'), s = S; if (!s || !s.open || !s.endsAt) { c.classList.remove('on'); return; }
   const left = Math.max(0, Math.ceil((s.endsAt - Date.now()) / 1000)); c.classList.add('on'); c.classList.toggle('hot', left <= 30);
-  c.textContent = `⏳ Last call ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  c.textContent = `LAST CALL ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
 }
 setInterval(tick, 250);
-if (Q.get('demo')) { S = { show: true, open: true, endsAt: Date.now() + 95000, command: '!vote', total: 9, leaders: ['Alien'], guess: { right: 4, wrong: 2, total: 6 }, movies: [{ n: 1, title: 'Jaws', votes: 2 }, { n: 2, title: 'Alien', votes: 4 }, { n: 3, title: 'The Thing', votes: 3 }, { n: 4, title: 'Clue', votes: 0 }] }; draw(); }
-else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } }; ws.onclose = () => setTimeout(go, 2000); })();
+if (Q.get('demo')) {
+  /* a pretend night: a vote lands every second and a half, so the climbing shows */
+  S = { show: true, open: true, endsAt: 0, command: '!vote', total: 0, leaders: [], guesser: Q.get('who') || 'Birx', guess: { right: 0, wrong: 0, total: 0 }, bg: 85,
+    movies: ['Jaws (1975)', 'Alien (1979)', 'The Thing (1982)', 'Clue (1985)', 'Big Trouble in Little China (1986)', 'Tremors (1990)', 'Hackers (1995)', 'The Mummy (1999)'].map((t, i) => ({ id: 'd' + i, n: i + 1, title: t, votes: 0 })) };
+  draw(); window.__vote = i => { const m = S.movies[i]; if (!m) return; m.votes++; S.total++; if (Math.random() < .6) S.guess.right++; else S.guess.wrong++; draw(); };
+  if (Q.get('demo') !== 'still') setInterval(() => { if (S.total >= 40) { S.movies.forEach(m => m.votes = 0); S.total = 0; S.guess.right = 0; } window.__vote(Math.floor(Math.random() * S.movies.length)); }, 1500);
+} else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } }; ws.onclose = () => setTimeout(go, 2000); })();
 </script></body></html>

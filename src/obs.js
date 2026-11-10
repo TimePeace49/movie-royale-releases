@@ -199,6 +199,11 @@ export const ROLL_NAME = 'Movie Royal roll call';
 export async function rollSource(on, url, pick = null) {
   return browserSource(ROLL_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick);
 }
+/* 🍿 movie night leaderboard (1.116.0) */
+export const MN_NAME = 'Movie Royal movie night';
+export async function mnSource(on, url, pick = null) {
+  return browserSource(MN_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick);
+}
 export const MARA_NAME = 'Movie Royal marathon';
 /** 🏃 the marathon overlay (battles owed counter + the pop-up when someone gets a battle), 1.76.0 */
 export async function maraSource(on, url, pick = null) {
