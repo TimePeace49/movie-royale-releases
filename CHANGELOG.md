@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.101.0
+- 🔊 **Sound alerts tab** in 🤖 Chat bot (Derek: "where the other tab is make one for sound alerts"). ➕ New sound alert: type the command (like !airhorn), pick a sound file, set the volume, who can use it and the wait. ▶ plays it, ✏️ changes it, and the tab shows the address to add to OBS so the sounds go out on stream. Sound alerts no longer sit in the Commands list.
+- 🧳 **Bring everything over from Streamlabs Chatbot, in one go.** On 📥 Import / export pick the files Streamlabs Chatbot makes (Data.xlsx, and Songlist.xlsx where the edition has songs; several at once). You see what was found first: commands, **sound alerts** (with how many of their sound files are on this PC), timers, quotes and extra quotes, songs. Then ✅ Bring it all over. Sound files are copied in; ones that aren't on the PC get a ⚠️ so you can pick them again. Pages there's no place for yet (points, ranks, counters…) are listed instead of silently dropped.
+- 🧭 **Setup guide step "Bring everything over from Streamlabs Chatbot"** with the exact clicks.
+- 🛠️ **The chat bot is dev mode only again** until Derek has tested it (it was opened to every edition in 1.94.0).
+- 🧪 Test tab → 🤖 Chat bot: 🔊 Pretend viewer uses a sound alert, 🧳 Check the bring-everything-over import.
+
 ## 1.100.0
 - 🥚 **The egg game** (True's edition; in Derek's with dev mode on). Every viewer has an egg that fills while they watch and chat, and much faster with subs, gift subs, bits and tips. A full egg hatches into one of **120 original creatures** (40 families that each grow twice, 8 elements, some rare). Creatures earn XP, level up and **evolve** at level 10 and 25.
   - ⚔️ **Chat battles:** `!battle name` challenges someone, they type `!battle` to fight; both get XP. Also `!egg`, `!pet`, `!pets`, `!equip 2`, `!eggtop`.

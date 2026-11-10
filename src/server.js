@@ -2426,7 +2426,7 @@ const GUIDE_STEPS = [
   { id: 'botimport', title: '🤖 Bring your old chat bot over' }, { id: 'stream', title: '📺 Put it on stream' }, { id: 'obs', title: '🎥 OBS control' },
   { id: 'choice', since: '1.38.0', title: "🎉 Viewer's Choice in OBS", why: "Confetti, balloons and a big pop-up on stream when someone redeems Viewer's Choice. Works with just OBS open.", how: ['Connect OBS first: Settings → 🎥 OBS (OBS: Tools → WebSocket Server Settings → Enable, then paste the password).', 'Press 🧭 Set it up below and tick the OBS scenes it should show in.'], done: () => !!db.settings.choiceObs },
   { id: 'rollcall', since: '1.61.0', title: '📣 Roll call in OBS', why: 'Roll call can show in any OBS scene, even ones without the game screen (like your camera scene).', how: ['Connect OBS first (🎥 OBS control step).', 'Press 🧭 Set it up and tick the scenes, or add a Browser source with the address shown there.'], done: () => !!db.settings.rollObs },
-  { id: 'botimport', since: '1.94.0', title: '🤖 Bring your old chat bot over', why: 'Movie Royal has its own chat bot now (🤖 Chat bot tab): commands, timers and quotes. You can move everything over from Streamlabs Chatbot in one go, and save your own as a file.', how: ['In Streamlabs Chatbot: Connections (bottom left) → Cloud → Pick Folder → Save Settings → Create Excel Files. That makes Data.xlsx.', 'In Movie Royal: 🤖 Chat bot tab → 📥 Import → pick Data.xlsx → 👀 look at what was found → ✅ Add.', 'Tick "Its waits are in minutes" (Streamlabs Chatbot counts in minutes).', '⬇️ Export on the same tab saves your commands, timers and quotes as a file you can keep or give to someone.'], done: () => (db.chatbot?.commands || []).length > 0 },
+  { id: 'botimport', dev: true, since: '1.101.0', title: '🧳 Bring everything over from Streamlabs Chatbot', why: 'Movie Royal has its own chat bot (🤖 Chat bot tab): commands, timers, quotes and sound alerts. Everything you built in Streamlabs Chatbot can move over in one go.', how: ['In Streamlabs Chatbot: Connections (bottom left) → Cloud → Pick Folder → Save Settings → Create Excel Files. That makes Data.xlsx (and Songlist.xlsx) in the folder you picked.', 'In Movie Royal: 🤖 Chat bot tab → 📥 Import / export → 🧳 pick those files (you can pick several at once).', 'Look at what was found, then press ✅ Bring it all over. Sound files are copied in when they are on this PC.', 'Sound alerts land on the 🔊 Sound alerts tab; any with a ⚠️ need their sound file picked again.'], done: () => (db.chatbot?.commands || []).length > 0 },
   { id: 'costream', since: '1.71.0', title: '🤝 Co-stream with a friend', why: 'Stream together with a friend who also has Movie Royal: cameras in each other\'s OBS, their battle on your stream while it runs, and chaos across both chats.', how: ['Do the 🎥 OBS control step first.', 'One of you: Settings → 🤝 Co-stream → 🎟️ Make an invite code, and send it in Discord. The other: paste it and press 🤝 Join.', 'One time in OBS: ⚙ next to Start Virtual Camera → Output type: Scene → 🤝 Co-stream share.'], done: () => costream.linked() },
   { id: 'site', dev: true, since: '1.75.0', title: '🌐 Viewer website', why: 'A website for your viewers (!site): your stream, every battle with who paid and a ▶ link into your VOD, stats, guesses and polls. It runs on your 24/7 Discord bot.', how: ['Do the ☁️ 24/7 Discord bot step first.', 'Settings → 🌐 Viewer site → 🌐 Turn on the viewer site.', 'One time on Twitch (Settings → 🌐 Viewer site → 🔑 Let viewers sign in): 📋 copy your website\'s address, 🟣 open dev.twitch.tv → Manage on your Movie Royal app, paste it under OAuth Redirect URLs → Add → Save, then ✅ Check it.'], done: () => site.on() },
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
@@ -5112,7 +5112,7 @@ const BOT_RESERVED = ['!join', '!leave', '!mymovies', '!moviesroyal', '!respin',
 chatbot.setHooks({
   say: t => twitch.say(t), canSay: () => twitch.canSay(), follows: m => twitch.followedAt(m.userId),
   live: () => !!db.live || !!live.fakeLive, startedAt: () => db.stream?.startedAt || 0, channel: () => db.owner?.login || twitch.status.login || '',
-  chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => true, /* 🤖 the chat bot is in every edition since 1.94.0 (Derek: "add all the Streamlabs chatbot to every build") */
+  chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => !!db.settings.betaUpdates, /* 🤖 dev mode only again since 1.101.0 (Derek: "keep this dev atm until I test everything"); 1.94.0 had opened it to every edition */
   reserved: () => [...new Set([...BOT_RESERVED, ...Object.entries(db.settings).filter(([k, v]) => /Command$/.test(k) && typeof v === 'string').map(([, v]) => v.trim().toLowerCase())])],
   changed: () => broadcast({ type: 'chatbot' }, 'control'),
   sound: (file, vol) => sfxPlay(file, vol), soundIn: from => sfxTake(from)
@@ -5123,8 +5123,9 @@ const SFXDIR = path.join(DATA, 'sounds', 'sfx'); try { fs.mkdirSync(SFXDIR, { re
 app.use('/sfx', express.static(SFXDIR));
 const sfxName = n => String(n || 'sound').replace(/^.*[\\/]/, '').replace(/[^\w.\- ]+/g, '_').slice(-80) || 'sound.mp3';
 const SFX_OK = /\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i;
+const sfxFree = (name, buf) => { const f = path.join(SFXDIR, name); try { if (!fs.existsSync(f) || fs.readFileSync(f).equals(buf)) return name; } catch {} return crypto.createHash('sha1').update(buf).digest('hex').slice(0, 6) + '-' + name; }; /* (two different sounds with the same file name: the second one gets its own name) */
 function sfxTake(from) { // (import: the old bot's sound file is on this same PC → copy it in; not there → the command says so until you pick the file)
-  try { from = String(from || '').trim().replace(/^"|"$/g, ''); if (!SFX_OK.test(from) || !fs.existsSync(from)) return null; const st = fs.statSync(from); if (!st.isFile() || st.size > 25e6) return null; const name = sfxName(from); fs.copyFileSync(from, path.join(SFXDIR, name)); return name; } catch { return null; }
+  try { from = String(from || '').trim().replace(/^"|"$/g, ''); if (!SFX_OK.test(from) || !fs.existsSync(from)) return null; const st = fs.statSync(from); if (!st.isFile() || st.size > 25e6) return null; const buf = fs.readFileSync(from), name = sfxFree(sfxName(from), buf); fs.writeFileSync(path.join(SFXDIR, name), buf); return name; } catch { return null; }
 }
 function sfxPlay(file, vol = 80, test) {
   if (!file || !fs.existsSync(path.join(SFXDIR, sfxName(file)))) return { ok: false, why: 'missing' };
@@ -5133,7 +5134,7 @@ function sfxPlay(file, vol = 80, test) {
 }
 
 setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot] timer', e.message); } }, 30000);
-const botDev = fn => wTry((b, req) => fn(b, req)); /* (was dev mode only until 1.94.0) */
+const botDev = fn => wTry((b, req) => { if (!db.settings.betaUpdates) throw new Error('The chat bot is a 🛠️ dev mode feature for now.'); return fn(b, req); }); /* (dev mode only: Derek tests it first) */
 app.get('/api/chatbot', (req, res) => res.json(chatbot.info()));
 app.post('/api/chatbot/opts', botDev(b => chatbot.setOpts(b)));
 app.post('/api/chatbot/command', botDev(b => ({ command: chatbot.saveCommand(b) })));
@@ -5141,9 +5142,9 @@ app.post('/api/chatbot/sound', botDev(b => {
   const c = db.chatbot?.commands?.find(x => x.id === b.id); if (!c) throw new Error('Save the command first.');
   if (b.remove) return { command: chatbot.saveCommand({ ...c, sound: '', text: c.text || c.name }) };
   if (b.play) { const r = sfxPlay(c.sound, b.vol ?? c.vol ?? 80, true); if (!r.ok) throw new Error("That command has no sound file yet."); return r; }
-  const name = sfxName(b.name); if (!SFX_OK.test(name)) throw new Error('Pick a sound file (mp3, wav, ogg, m4a, flac).');
+  let name = sfxName(b.name); if (!SFX_OK.test(name)) throw new Error('Pick a sound file (mp3, wav, ogg, m4a, flac).');
   const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]*,/, ''), 'base64'); if (!buf.length) throw new Error('That file is empty.'); if (buf.length > 25e6) throw new Error('That sound is too big (25 MB at most).');
-  fs.writeFileSync(path.join(SFXDIR, name), buf); return { command: chatbot.saveCommand({ ...c, sound: name }) };
+  name = sfxFree(name, buf); fs.writeFileSync(path.join(SFXDIR, name), buf); return { command: chatbot.saveCommand({ ...c, sound: name }) };
 }));
 app.post('/api/chatbot/command/remove', botDev(b => ({ command: chatbot.removeCommand(b.id) })));
 app.post('/api/chatbot/timer', botDev(b => ({ timer: chatbot.saveTimer(b) })));
@@ -5151,6 +5152,53 @@ app.post('/api/chatbot/timer/remove', botDev(b => ({ timer: chatbot.removeTimer(
 app.post('/api/chatbot/quote', botDev(b => ({ quote: b.n ? chatbot.editQuote(b.n, b.text) : chatbot.addQuote(b.text, b.by || 'you') })));
 app.post('/api/chatbot/quote/remove', botDev(b => ({ quote: chatbot.removeQuote(b.n) })));
 app.post('/api/chatbot/import', botDev(b => { const p = b.xlsx ? botXlsx(b.xlsx, b.kind || 'auto', !!b.cdMins) : chatbot.parseImport(b.text, b.kind || 'auto', { cdMins: !!b.cdMins }); if (b.dry) return { found: p }; return { found: { note: p.note, commands: p.commands.length, timers: p.timers.length, quotes: p.quotes.length }, done: chatbot.applyImport(p, { replace: !!b.replace }) }; }));
+// 🧳 Everything from Streamlabs Chatbot in one go (1.101.0, Derek: "allow for imports of quotes, sound alerts, timers, basically everything"):
+// several files at once (Data.xlsx, Songlist.xlsx, exported .abcom / .abcomg command files, CSV). Each page of each file is sorted by its name:
+// commands, timers, quotes, sound alerts → the chat bot; the song list / banned songs → 🎵 Songs (editions that have it); pages there is no
+// place for yet (points, ranks, counters, the viewer queue…) are listed so nothing vanishes silently. dry = only look.
+function botImportAll(files, { cdMins = true } = {}) {
+  const out = { commands: [], timers: [], quotes: [], songs: [], banned: [], pages: [], other: [] }, hasSongs = feat('songs');
+  const kindOf = (name, file) => /quote/i.test(name) ? 'quotes' : /timer/i.test(name) ? 'timers' : /sfx|sound/i.test(name) ? 'sfx' : /black|banned|block/i.test(name) && /song|music|sr\b/i.test(name + ' ' + file) ? 'banned' : /song|playlist|music/i.test(name) || (/song/i.test(file) && !/black|ban/i.test(name)) ? 'songs' : /command/i.test(name) ? 'commands' : null;
+  const add = (k, p, label) => { if (k === 'songs' || k === 'banned') { out[k].push(...p.songs); out.pages.push({ label, kind: k, n: p.songs.length }); return; } const n = p.commands.length + p.timers.length + p.quotes.length; out.commands.push(...p.commands); out.timers.push(...p.timers); out.quotes.push(...p.quotes); out.pages.push({ label, kind: k || 'auto', n }); };
+  for (const f of (files || []).slice(0, 12)) {
+    const name = String(f.name || 'file').slice(0, 80);
+    try {
+      if (f.xlsx) { for (const sh of xlsx.sheets(Buffer.from(String(f.xlsx), 'base64'))) { const rows = sh.rows.filter(r => r.some(c => String(c ?? '').trim())); if (rows.length < 2) continue; const k = kindOf(sh.name, name), label = `${name} → ${sh.name}`;
+          if (!k) { out.other.push({ label, n: rows.length - 1 }); continue; }
+          if (k === 'songs' || k === 'banned') { if (!hasSongs) { out.other.push({ label, n: rows.length - 1, why: 'songs' }); continue; } add(k, songs.readTable(rows, k), label); continue; }
+          add(k, chatbot.parseImport(xlsx.toCsv(rows), k, { cdMins }), label); } }
+      else if (String(f.text || '').trim()) { const k = /song/i.test(name) ? (/black|ban/i.test(name) ? 'banned' : 'songs') : /sfx|sound/i.test(name) ? 'sfx' : /quote/i.test(name) ? 'quotes' : /timer/i.test(name) ? 'timers' : 'auto';
+        if (k === 'songs' || k === 'banned') { if (!hasSongs) out.other.push({ label: name, n: 0, why: 'songs' }); else add(k, songs.readText(f.text, k), name); }
+        else add(k, chatbot.parseImport(f.text, k, { cdMins: cdMins || /\.abcomg?$/i.test(name) }), name); }
+    } catch (e) { out.other.push({ label: name, n: 0, why: 'error', err: e.message }); }
+  }
+  const seen = new Set(); out.commands = out.commands.filter(c => !seen.has(c.name) && seen.add(c.name)); // (the same command in two files: once)
+  for (const c of out.commands) if (c.soundFrom) { try { const from = c.soundFrom.replace(/^"|"$/g, ''); c.fileHere = SFX_OK.test(from) && fs.existsSync(from); } catch { c.fileHere = false; } }
+  return out;
+}
+app.post('/api/chatbot/import-all', botDev(b => {
+  const p = botImportAll(b.files, { cdMins: b.cdMins !== false }), snd = p.commands.filter(c => c.soundFrom);
+  const found = { commands: p.commands.length - snd.length, sounds: snd.length, soundFiles: snd.filter(c => c.fileHere).length, timers: p.timers.length, quotes: p.quotes.length, songs: p.songs.length, banned: p.banned.length, pages: p.pages, other: p.other,
+    sample: { commands: p.commands.filter(c => !c.soundFrom).slice(0, 8).map(c => ({ name: c.name, text: c.text })), sounds: snd.slice(0, 8).map(c => ({ name: c.name, file: c.soundFrom, here: !!c.fileHere })), timers: p.timers.slice(0, 5).map(t => ({ mins: t.mins, text: t.text })), quotes: p.quotes.slice(0, 5).map(q => ({ text: q.text })), songs: p.songs.slice(0, 5).map(x => ({ title: x.title || 'YouTube video ' + x.yt })) } };
+  if (!(found.commands + found.sounds + found.timers + found.quotes + found.songs + found.banned)) throw new Error(p.other.length ? "I read the file" + (b.files?.length === 1 ? '' : 's') + " but found nothing I can bring over. Pages I saw: " + p.other.map(o => o.label).join(', ') : 'Nothing to read: pick the files Streamlabs Chatbot made (Data.xlsx, Songlist.xlsx) first.');
+  if (b.dry) return { found };
+  const done = chatbot.applyImport({ commands: p.commands, timers: p.timers, quotes: p.quotes }, { replace: !!b.replace });
+  if (p.songs.length) done.songs = songs.applyImport({ songs: p.songs }, { kind: 'songs', replace: !!b.replace });
+  if (p.banned.length) done.bannedSongs = songs.applyImport({ songs: p.banned }, { kind: 'banned' });
+  return { found, done };
+}));
+app.post('/api/test/chatbot-sound', botDev(async () => { // 🧪 a !testbeep sound alert (a short beep made here), used by a pretend viewer
+  const name = 'test-beep.wav', file = path.join(SFXDIR, name);
+  if (!fs.existsSync(file)) { const rate = 8000, n = 2400, b = Buffer.alloc(44 + n * 2); b.write('RIFF', 0); b.writeUInt32LE(36 + n * 2, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24); b.writeUInt32LE(rate * 2, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n * 2, 40); for (let i = 0; i < n; i++) b.writeInt16LE(Math.round(9000 * Math.sin(i / rate * 2 * Math.PI * 880) * Math.min(1, (n - i) / 600)), 44 + i * 2); fs.writeFileSync(file, b); }
+  const cur = db.chatbot?.commands?.find(c => c.name === '!testbeep'); chatbot.saveCommand({ id: cur?.id, name: '!testbeep', text: '', sound: name, vol: 70, cd: 0, perm: 'all' });
+  twitch.pretend.until = Date.now() + 10 * 60000; twitchHandlers.chat({ login: 'pretend_dj', name: 'Pretend_DJ', text: '!testbeep', userId: 'pretend-dj', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 300));
+  const has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || ''))); return { ok: true, where: has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : 'control' };
+}));
+app.post('/api/test/chatbot-import-all', botDev(() => { // 🧪 a pretend Streamlabs export (two pages + a sound that isn't on this PC): looked at only, nothing is added
+  const p = botImportAll([{ name: 'Commands.csv', text: 'Command,Response,Permission,Cooldown\n!discord,Join us: discord.gg/pretend,Everyone,1\n!lurk,$username is lurking,Everyone,0' }, { name: 'SFX.csv', text: 'Command,File,Volume,Cooldown,Permission\n!airhorn,C:\\Pretend\\airhorn.mp3,60,1,Everyone' }, { name: 'Timers.csv', text: 'Name,Message,Interval\nSocials,Follow the socials!,15' }, { name: 'Quotes.csv', text: 'Quote\n"It works on my stream"' }]);
+  const rows = [['2 commands read', p.commands.filter(c => !c.soundFrom).length === 2], ['Waits turned from minutes into seconds (1 min = 60 s)', p.commands.find(c => c.name === '!discord')?.cd === 60], ['1 sound alert read, with its file path and volume', p.commands.filter(c => c.soundFrom).length === 1 && p.commands.find(c => c.soundFrom).vol === 60], ['A sound file that is not on this PC is noticed', p.commands.find(c => c.soundFrom).fileHere === false], ['1 timer read', p.timers.length === 1], ['1 quote read', p.quotes.length === 1]].map(([what, ok]) => ({ what, ok: !!ok }));
+  return { ok: rows.every(r => r.ok), rows };
+}));
 // 📗 an Excel file (Streamlabs Chatbot → Connections → Cloud → Create Excel Files = Data.xlsx): every sheet is read like a spreadsheet; the sheet's name says what it holds
 function botXlsx(b64, kind, cdMins) {
   const out = { commands: [], timers: [], quotes: [], note: '' }, seen = [];

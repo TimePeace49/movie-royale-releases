@@ -98,7 +98,7 @@ const ALL_STEPS = [
   { id: 'obs', title: 'OBS control', sub: 'Doomsday, capture window, confetti', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
   { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs },
   { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs },
-  { id: 'botimport', title: 'Bring your old chat bot over', sub: 'Streamlabs Chatbot commands, timers, quotes', done: () => (S.botCount || 0) > 0 },
+  { id: 'botimport', dev: true, title: 'Bring everything over from Streamlabs Chatbot', sub: 'Commands, sound alerts, timers, quotes', done: () => (S.botCount || 0) > 0 },
   { id: 'costream', title: 'Co-stream with a friend', sub: 'Cameras, battles + chaos shared (optional)', done: () => !!S.costream?.linked },
   { id: 'site', dev: true, title: 'Viewer website', sub: '!site: history, VOD links, guesses (optional)', done: () => !!S.site?.on }
 ];
@@ -368,13 +368,15 @@ const PAGES = {
     ${nav()}`;
   },
   botimport() {
-    return `<h2>🤖 Bring your old chat bot over (optional)</h2><p class="why">Movie Royal has its own chat bot: your own commands, timers and quotes (the <b>🤖 Chat bot</b> tab). If you use <b>Streamlabs Chatbot</b>, you can move everything over in one go.</p>
-    <ol class="list" style="margin:-6px 0 18px;color:var(--dim)"><li>In Streamlabs Chatbot click <b>Connections</b> (bottom left) → <b>Cloud</b> → <b>Pick Folder</b> → <b>Save Settings</b> → <b>Create Excel Files</b>. That makes a file called <b>Data.xlsx</b> in the folder you picked.</li>
-    <li>Press <b>📥 Import my old bot</b> below, pick <b>Data.xlsx</b>, look at what was found, then press ✅ Add.</li>
-    <li>Keep <b>Its waits are in minutes</b> ticked (Streamlabs Chatbot counts in minutes).</li></ol>
+    return `<h2>🧳 Bring everything over from Streamlabs Chatbot (optional)</h2><p class="why">Movie Royal has its own chat bot (the <b>🤖 Chat bot</b> tab): your own commands, <b>sound alerts</b>, timers and quotes. If you use <b>Streamlabs Chatbot</b>, everything you built there can move over in one go.</p>
+    <ol class="list" style="margin:-6px 0 18px;color:var(--dim)"><li>In Streamlabs Chatbot click <b>Connections</b> (bottom left) → <b>Cloud</b> → <b>Pick Folder</b> → <b>Save Settings</b> → <b>Create Excel Files</b>. That makes <b>Data.xlsx</b> (and Songlist.xlsx) in the folder you picked.</li>
+    <li>Press <b>🧳 Bring it over</b> below. In the box at the top, pick the files it made (several at once is fine).</li>
+    <li>Look at what was found: commands, sound alerts, timers, quotes. Then press <b>✅ Bring it all over</b>.</li>
+    <li><b>Sound alerts:</b> their sound files are copied in when they are on this PC. Any with a ⚠️ on the 🔊 Sound alerts tab just need their file picked again.</li></ol>
+    <p class="why" style="margin:-8px 0 14px">What doesn't come over yet: points and ranks, counters, betting, polls and the mini-games. The import tells you which pages it left alone.</p>
     <p>${(S.botCount || 0) > 0 ? `<span class="good">✅ Your chat bot has ${S.botCount} command${S.botCount === 1 ? '' : 's'}.</span>` : 'Your chat bot has no commands yet.'}</p>
-    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="primary" onclick="location.href='/control.html?tab=bot'">📥 Import my old bot</button><button onclick="location.href='/api/chatbot/export'">⬇️ Export my chat bot (a file to keep or share)</button></div>
-    <p class="why" style="margin-top:14px">Other bots work too: a spreadsheet saved as CSV, a list of lines like <code>!discord Join us…</code>, or a chat bot file exported from another copy of Movie Royal. Nothing is added until you press ✅ Add.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="primary" onclick="location.href='/control.html?tab=bot'">🧳 Bring it over</button><button onclick="location.href='/api/chatbot/export'">⬇️ Export my chat bot (a file to keep or share)</button></div>
+    <p class="why" style="margin-top:14px">Other bots work too: a spreadsheet saved as CSV, a list of lines like <code>!discord Join us…</code>, or a chat bot file a friend exported from this app.</p>
     ${nav()}`;
   },
   costream() {

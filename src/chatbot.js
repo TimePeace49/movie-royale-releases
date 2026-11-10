@@ -187,7 +187,7 @@ export function parseImport(text, kind = 'auto', opt = {}) {
     const rows = csvRows(text), head = (rows[0] || []).map(h => String(h).trim()), looksCsv = rows.length > 1 && head.length > 1 && head.some(h => /^(command|trigger|name|response|message|quote|text|reply|file|file ?path|sound)$/i.test(h));
     if (looksCsv) { for (const r of rows.slice(1)) fromObject(Object.fromEntries(head.map((h, i) => [h, r[i] ?? ''])), out, hint); out.note = 'Read as a spreadsheet (the first line names the columns).'; }
     else {
-      for (const line of text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)) {
+      for (const line of text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).filter((l, i) => !(i === 0 && /^"?(quotes?|text|messages?|commands?|timers?)"?$/i.test(l)))) { /* (a one-column page's title line is not an entry) */
         if (hint === 'quotes' || (!hint && !/^[!?.]\S/.test(line))) { const mq = line.match(/^#?(\d+)[.:)\]\s-]+(.+)$/); out.quotes.push({ text: (mq ? mq[2] : line).trim(), by: '', at: 0, n: mq ? Number(mq[1]) : 0 }); continue; }
         if (hint === 'timers') { const mt = line.match(/^(\d+)\s*(?:m|min|mins|minutes)?[\s:|-]+(.+)$/i); out.timers.push({ name: '', text: (mt ? mt[2] : line).trim(), mins: mt ? clampN(mt[1], 1, 1440, 15) : 15, lines: 5, on: true }); continue; }
         const [n, ...t] = line.split(/\s+/); if (t.length) out.commands.push({ name: cleanName(n), text: t.join(' ').replace(/^[:=|-]+\s*/, ''), perm: 'all', cd: 5, ucd: 0, uses: 0, on: true, aliases: [] });
@@ -200,7 +200,7 @@ export function parseImport(text, kind = 'auto', opt = {}) {
 /** add what parseImport read. Commands with a name that exists are skipped unless replace is on; quotes with the same words are skipped */
 export function applyImport(p, { replace = false } = {}) {
   const d = data(), r = { commands: 0, replaced: 0, skipped: [], timers: 0, quotes: 0 };
-  for (const c of p.commands || []) { const cur = byName(c.name); try { if (cur && !replace) { r.skipped.push(`${c.name} (already there)`); continue; } saveCommand({ ...c, id: cur?.id }); cur ? r.replaced++ : r.commands++; } catch (e) { r.skipped.push(`${c.name || '?'} (${e.message})`); } }
+  for (const c of p.commands || []) { const cur = byName(c.name); try { if (cur && !replace) { r.skipped.push(`${c.name} (already there)`); continue; } const sc = saveCommand({ ...c, id: cur?.id }); cur ? r.replaced++ : r.commands++; if (c.soundFrom) { if (sc.sound) r.sounds = (r.sounds || 0) + 1; else (r.soundsMissing ||= []).push(c.name); } } catch (e) { r.skipped.push(`${c.name || '?'} (${e.message})`); } }
   for (const t of p.timers || []) { if (d.timers.some(x => x.text === t.text)) continue; try { saveTimer(t); r.timers++; } catch {} }
   for (const q of (p.quotes || []).slice().sort((a, b) => (a.n || 1e9) - (b.n || 1e9))) { if (!q.text || d.quotes.some(x => x.text === q.text)) continue; const nq = addQuote(q.text, q.by); if (q.at) nq.at = q.at; r.quotes++; }
   save(); H.changed();
