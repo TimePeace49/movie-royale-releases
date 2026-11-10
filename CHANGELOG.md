@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.104.0
+**🟢 Kick channel points for the egg game** (True's edition; also in Derek's with dev mode on)
+- Kick has channel points now, so the **🥚 Buy an egg** reward is made on **Kick** too (by itself once you're signed in with Kick, or with **🟢 Make it on Kick** on the Eggs tab). Kick viewers buy eggs with their Kick points.
+- The app checks every few seconds who redeemed it on Kick and gives them their egg. It never accepts, rejects or refunds a redemption.
+- Changing the egg price on the Eggs tab changes it on Kick as well.
+- **Signed in with Kick before this version?** Sign in with Kick once more: channel points need two new permissions (read and manage channel rewards). On kick.com, tick those two on your app first.
+- 🧪 Test tab → Egg game: **🟢 Pretend Kick redeem**.
+- Not tried against the real Kick yet (it can't be reached from where the app is built): only against a pretend Kick.
+
 ## 1.103.0
 **🥚 Egg game: one free egg, buy more with channel points** (True's edition; also in Derek's with dev mode on)
 - **Everyone gets 1 free egg.** After it hatches, they buy more eggs with channel points: a new **🥚 Buy an egg** reward (made by itself after you sign in; 1,000 points to start, you set the price on the Eggs tab).
