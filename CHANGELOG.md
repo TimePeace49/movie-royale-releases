@@ -2,6 +2,16 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.102.0
+**🥚 Egg game: creatures in chat battles, skills and powers** (True's edition; also in Derek's with dev mode on)
+- **Creatures fight in the Chat battle.** When someone joins the Chat battle, the creature they have out is their piece on the battlefield, with its level on it.
+- **XP for battling.** Every creature that fights in a Chat battle earns XP, and the winner's earns a lot more. The bot says who levelled up or evolved. You set both numbers on the Eggs tab.
+- **Stronger creature = slightly better odds** in the Chat battle (a switch on the Eggs tab; off = everyone even).
+- **Skills.** Each element has three. A creature knows the first, learns the second when it evolves and the third when fully grown. They go off by themselves in `!battle` fights and hit harder the later they are. `!skills` shows them.
+- **Powers.** 12 powers unlock as a creature levels up (harder hits, a faster egg, more XP, better odds and more). Viewers type `!powers` to see theirs and `!power 1` to put one on or off. A first form wears 1, a second form 2, a fully grown one 3.
+- The viewer website shows each person's skills and powers, and lists every power.
+- 🧪 Test tab → Egg game: **🏟️ Chat battle with creatures** and **💪 Pretend skills + powers**.
+
 ## 1.101.0
 - 🔊 **Sound alerts tab** in 🤖 Chat bot (Derek: "where the other tab is make one for sound alerts"). ➕ New sound alert: type the command (like !airhorn), pick a sound file, set the volume, who can use it and the wait. ▶ plays it, ✏️ changes it, and the tab shows the address to add to OBS so the sounds go out on stream. Sound alerts no longer sit in the Commands list.
 - 🧳 **Bring everything over from Streamlabs Chatbot, in one go.** On 📥 Import / export pick the files Streamlabs Chatbot makes (Data.xlsx, and Songlist.xlsx where the edition has songs; several at once). You see what was found first: commands, **sound alerts** (with how many of their sound files are on this PC), timers, quotes and extra quotes, songs. Then ✅ Bring it all over. Sound files are copied in; ones that aren't on the PC get a ⚠️ so you can pick them again. Pages there's no place for yet (points, ranks, counters…) are listed instead of silently dropped.

@@ -4,14 +4,14 @@
 (function (root) {
   const DATA = /*DATA*/{
     "elements": {
-      "ember": { "name": "Ember", "icon": "🔥", "hue": 14, "beats": ["sprout", "frost"] },
-      "tide": { "name": "Tide", "icon": "💧", "hue": 205, "beats": ["ember", "stone"] },
-      "sprout": { "name": "Sprout", "icon": "🌿", "hue": 125, "beats": ["tide", "stone"] },
-      "spark": { "name": "Spark", "icon": "⚡", "hue": 50, "beats": ["tide", "gale"] },
-      "stone": { "name": "Stone", "icon": "🪨", "hue": 30, "beats": ["spark", "ember"] },
-      "frost": { "name": "Frost", "icon": "❄️", "hue": 185, "beats": ["sprout", "gale"] },
-      "gale": { "name": "Gale", "icon": "🌪️", "hue": 165, "beats": ["sprout", "shade"] },
-      "shade": { "name": "Shade", "icon": "🌙", "hue": 275, "beats": ["spark", "frost"] }
+      "ember": { "name": "Ember", "icon": "🔥", "hue": 14, "beats": ["sprout", "frost"], "skills": ["Ember Spit", "Flame Dash", "Inferno Crown"] },
+      "tide": { "name": "Tide", "icon": "💧", "hue": 205, "beats": ["ember", "stone"], "skills": ["Splash", "Tidal Slam", "Maelstrom"] },
+      "sprout": { "name": "Sprout", "icon": "🌿", "hue": 125, "beats": ["tide", "stone"], "skills": ["Thorn Flick", "Root Snare", "Overgrowth"] },
+      "spark": { "name": "Spark", "icon": "⚡", "hue": 50, "beats": ["tide", "gale"], "skills": ["Static Snap", "Bolt Rush", "Thunderhead"] },
+      "stone": { "name": "Stone", "icon": "🪨", "hue": 30, "beats": ["spark", "ember"], "skills": ["Pebble Toss", "Rock Shell", "Landslide"] },
+      "frost": { "name": "Frost", "icon": "❄️", "hue": 185, "beats": ["sprout", "gale"], "skills": ["Frost Nip", "Ice Wall", "Whiteout"] },
+      "gale": { "name": "Gale", "icon": "🌪️", "hue": 165, "beats": ["sprout", "shade"], "skills": ["Gust", "Cyclone Kick", "Skybreaker"] },
+      "shade": { "name": "Shade", "icon": "🌙", "hue": 275, "beats": ["spark", "frost"], "skills": ["Spook", "Night Veil", "Eclipse"] }
     },
     "families": [
       { "el": "ember", "kind": "drake", "rare": 2, "names": ["Cindlet", "Cindrake", "Cindragon"] },
@@ -55,7 +55,22 @@
       { "el": "shade", "kind": "bird", "rare": 0, "names": ["Eeklet", "Eekwing", "Eekarch"] },
       { "el": "shade", "kind": "fish", "rare": 3, "names": ["Inkblot", "Inkmoor", "Inkraken"] }
     ],
-    "rarities": ["Common", "Uncommon", "Rare", "Legendary"]
+    "rarities": ["Common", "Uncommon", "Rare", "Legendary"],
+    "skillTiers": [{ "mult": 1.12, "chance": 0.35 }, { "mult": 1.22, "chance": 0.3 }, { "mult": 1.38, "chance": 0.25 }],
+    "powers": [
+      { "id": "claws", "name": "Sharp Claws", "icon": "🗡️", "lvl": 3, "text": "Hits 8% harder in every round." },
+      { "id": "warm", "name": "Egg Warmer", "icon": "🔥", "lvl": 5, "text": "Your egg fills 25% faster." },
+      { "id": "learner", "name": "Quick Learner", "icon": "📚", "lvl": 7, "text": "Earns 50% more XP." },
+      { "id": "wind", "name": "Second Wind", "icon": "💨", "lvl": 10, "text": "Loses a round? 20% stronger in the next one." },
+      { "id": "crowd", "name": "Crowd Favorite", "icon": "📣", "lvl": 12, "text": "10% better odds in the chat battle." },
+      { "id": "skin", "name": "Thick Skin", "icon": "🛡️", "lvl": 15, "text": "The other creature's element edge doesn't work on you." },
+      { "id": "master", "name": "Element Master", "icon": "🌀", "lvl": 18, "text": "Your own element edge is twice as big." },
+      { "id": "showoff", "name": "Show-off", "icon": "✨", "lvl": 21, "text": "Uses its skills much more often." },
+      { "id": "underdog", "name": "Underdog", "icon": "🐾", "lvl": 25, "text": "Up to 30% stronger against a higher-level creature." },
+      { "id": "charm", "name": "Lucky Charm", "icon": "🍀", "lvl": 30, "text": "Never has a really unlucky round." },
+      { "id": "finisher", "name": "Finisher", "icon": "🏁", "lvl": 35, "text": "20% stronger in a deciding third round." },
+      { "id": "will", "name": "Iron Will", "icon": "👑", "lvl": 40, "text": "12% harder hits and can't have an unlucky first round." }
+    ]
   }/*END*/;
 
   const EL = DATA.elements, FAM = DATA.families;
@@ -122,6 +137,8 @@
     if (p > .5) { g.beginPath(); g.moveTo(-28, 2); const n2 = 3 + Math.floor((p - .5) * 10); for (let i = 1; i <= n2; i++) g.lineTo(-28 + i * (56 / n2), 2 + (i % 2 ? -9 : 7) * Math.min(1, (p - .4) * 2)); g.stroke(); }
     g.restore();
   }
-  const api = { DATA, EL, FAM, info, numOf, list, draw, pic, egg, COUNT: FAM.length * 3 };
+  /** The skills a creature has: one per form it has reached (its element's 1st, 2nd, 3rd). Powers it could equip: by level; it holds stage + 1 of them. */
+  const skillsOf = n => { const I = info(n); return I ? EL[I.el].skills.slice(0, I.stage + 1) : []; };
+  const api = { DATA, EL, FAM, info, numOf, list, draw, pic, egg, skillsOf, POWERS: DATA.powers, COUNT: FAM.length * 3 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.CREATURES = api;
 })(typeof window !== 'undefined' ? window : globalThis);

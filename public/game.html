@@ -211,6 +211,7 @@
 <script src="ask.js"></script>
 <script src="chat.js"></script>
 <script src="charparts.js"></script>
+<script src="creatures.js"></script>
 <script src="cutout.js"></script>
 <script src="finishers.js"></script>
 <script src="cardfight.js"></script>
@@ -4252,7 +4253,10 @@ function makeToken(f) {
   const ring = g.createLinearGradient(0, 0, D, D); ring.addColorStop(0, '#fff'); ring.addColorStop(.25, f.color); ring.addColorStop(1, shade(f.color, -40));
   g.fillStyle = ring; g.beginPath(); g.arc(m, m, rr + 8, 0, 7); g.fill();
   g.save(); g.beginPath(); g.arc(m, m, rr, 0, 7); g.clip();
-  if (ok(f.img)) {
+  if (f.creature && window.CREATURES) { /* 🥚 egg game: the creature they have out is their piece */
+    const bgC = g.createRadialGradient(m - rr * .4, m - rr * .4, 2, m, m, rr); bgC.addColorStop(0, shade(f.color, 55)); bgC.addColorStop(1, shade(f.color, -35)); g.fillStyle = bgC; g.fillRect(0, 0, D, D);
+    try { CREATURES.draw(g, f.creature.n, m, m + rr * .06, rr * 1.9); } catch {}
+  } else if (ok(f.img)) {
     const im = f.img, s = Math.max(rr * 2 / im.naturalWidth, rr * 2 / im.naturalHeight);
     g.drawImage(im, m - im.naturalWidth * s / 2, m - im.naturalHeight * s / 2, im.naturalWidth * s, im.naturalHeight * s);
   } else {
@@ -4264,6 +4268,7 @@ function makeToken(f) {
   g.restore();
   const shine = g.createLinearGradient(0, m - rr, 0, m); shine.addColorStop(0, 'rgba(255,255,255,.35)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = shine; g.beginPath(); g.ellipse(m, m - rr * .45, rr * .7, rr * .4, 0, 0, 7); g.fill();
+  if (f.creature && window.CREATURES) { const bx = m + rr * .72, by = m + rr * .72, br = rr * .36, t = String(f.creature.lvl); g.fillStyle = '#1a0f33'; g.strokeStyle = '#ffd34d'; g.lineWidth = rr * .07; g.beginPath(); g.arc(bx, by, br, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#ffd34d'; g.font = `${Math.round(br * (t.length > 1 ? 1.05 : 1.3))}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t, bx, by + br * .08); } /* 🥚 its level */
   f.token = c;
 }
 function cardToken(f, c, g, m, rr) { // a card pack (portrait, crimped top + bottom) with a red headband and an angry face
@@ -4409,6 +4414,7 @@ function syncFighters(list) {
     if (f) {
       if (f.image !== m.image) { f._dirty = true; f.img = loadImg(m.image, () => makeToken(f)); }
       if (f.label !== m.label) f._dirty = true;
+      if (JSON.stringify(f.creature || null) !== JSON.stringify(m.creature || null)) f._dirty = true; // 🥚 they put another creature out, or it levelled up
       if ((f.gender || 'n') !== (m.gender || 'n')) { f._dirty = true; f.ch = null; } // 🧍 they changed their !id
       if (JSON.stringify(f.look || null) !== JSON.stringify(m.look || null)) f._dirty = true; // 🎨 they changed their /character
       const before = f.color; Object.assign(f, m); f.color = m.color || f.baseColor;

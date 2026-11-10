@@ -18,7 +18,7 @@ export const on = () => !!H.on();
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
 const clampN = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 export function data(d = (db.eggs ||= {})) { d.players ||= {}; d.alias ||= {}; d.codes ||= {}; d.opts ||= {}; return d; }
-export const opts = (d = data()) => ({ need: 240, watch: 5, chat: 1, chatGap: 30, sub: 120, gift: 120, bitsPer: 10, tip: 30, kick: 1, reply: true, liveOnly: true, battleCd: 120, eggCommand: '!egg', petCommand: '!pet', petsCommand: '!pets', equipCommand: '!equip', battleCommand: '!battle', linkCommand: '!link', topCommand: '!eggtop', evolve: [10, 25], ...d.opts });
+export const opts = (d = data()) => ({ need: 240, watch: 5, chat: 1, chatGap: 30, sub: 120, gift: 120, bitsPer: 10, tip: 30, kick: 1, reply: true, liveOnly: true, battleCd: 120, eggCommand: '!egg', petCommand: '!pet', petsCommand: '!pets', equipCommand: '!equip', battleCommand: '!battle', linkCommand: '!link', topCommand: '!eggtop', skillsCommand: '!skills', powersCommand: '!powers', powerCommand: '!power', evolve: [10, 25], chatBattle: true, oddsBoost: true, xpJoin: 15, xpWin: 60, ...d.opts });
 export const xpNeed = lvl => 30 + lvl * 10; // XP to get from this level to the next
 const RARE_W = [60, 28, 10, 2];
 
@@ -35,10 +35,24 @@ const eq = p => (p && p.pets[p.eq]) || (p && p.pets[0]) || null;
 export const petName = c => (c ? info(c.fam * 3 + c.stage + 1).name : '');
 const petInfo = c => info(c.fam * 3 + c.stage + 1);
 
+// ---------- skills (one per form reached) and powers (unlocked by level, a creature holds stage + 1 of them) ----------
+export const POWERS = DATA.powers, TIERS = DATA.skillTiers;
+const has = (c, id) => !!c && Array.isArray(c.pw) && c.pw.includes(id);
+export const skillsOf = c => EL[FAM[c.fam].el].skills.slice(0, c.stage + 1);
+export const slots = c => c.stage + 1;
+export const unlocked = c => POWERS.filter(p => c.lvl >= p.lvl);
+/** Put a power on (or take it off). A full creature swaps out the one it has had the longest. */
+export function togglePower(c, id) {
+  const p = POWERS.find(x => x.id === id); if (!p) return { ok: false, why: 'unknown' }; if (c.lvl < p.lvl) return { ok: false, why: 'level', power: p };
+  c.pw = (c.pw || []).filter(x => POWERS.some(q => q.id === x)); if (c.pw.includes(id)) { c.pw = c.pw.filter(x => x !== id); return { ok: true, on: false, power: p }; }
+  let dropped = null; if (c.pw.length >= slots(c)) dropped = POWERS.find(x => x.id === c.pw.shift()); c.pw.push(id); return { ok: true, on: true, power: p, dropped };
+}
+const xpK = c => (has(c, 'learner') ? 1.5 : 1);
+
 // ---------- the egg ----------
 /** Add hatch points. Returns the creatures that hatched (usually none). `rand` = a 0..1 source (tests). */
 export function give(p, pts, why, { d = data(), rand = Math.random, quiet = false, test = false } = {}) {
-  if (!p || !(pts > 0)) return []; const o = opts(d), out = []; p.pts += pts; p.got = (p.got || 0) + pts;
+  if (!p || !(pts > 0)) return []; const o = opts(d), out = []; if (has(eq(p), 'warm') && why !== 'hand' && why !== 'test') pts = Math.round(pts * 1.25 * 100) / 100; /* 🔥 Egg Warmer */ p.pts += pts; p.got = (p.got || 0) + pts;
   while (p.pts >= o.need && out.length < 500) { p.pts -= o.need; out.push(hatch(p, { d, rand, quiet, test })); }
   return out;
 }
@@ -89,13 +103,17 @@ const say = (key, t, gap = 4000) => { const now = Date.now(); if (now - (said.ge
 const petLine = c => { const I = petInfo(c); return `${I.name} ${I.icon} Lv ${c.lvl}`; };
 export function onChat(m) {
   if (!on() || !m?.login) return false; const d = data(), o = opts(d), text = String(m.text || '').trim(), sp = text.split(/\s+/), w = low(sp[0]), arg = text.slice(sp[0].length).trim(), k = keyOf(m);
-  if (![o.eggCommand, o.petCommand, o.petsCommand, o.equipCommand, o.battleCommand, o.linkCommand, o.topCommand].map(low).includes(w)) return false;
+  if (![o.eggCommand, o.petCommand, o.petsCommand, o.equipCommand, o.battleCommand, o.linkCommand, o.topCommand, o.skillsCommand, o.powersCommand, o.powerCommand].map(low).includes(w)) return false;
   const p = player(m, d), name = p.name;
   if (w === low(o.eggCommand)) { const pct = Math.floor(100 * p.pts / o.need); say(k, `🥚 @${name} your egg is ${pct}% of the way there${pct >= 80 ? ', almost!' : '.'} It fills while you watch and chat, and faster with subs, gifts and bits. Hatched so far: ${p.hatched}.`); return true; }
   if (w === low(o.petCommand)) { const c = eq(p); say(k, c ? `🐾 @${name}: ${petLine(c)} (${c.xp}/${xpNeed(c.lvl)} XP${c.stage < 2 ? `, evolves at level ${o.evolve[c.stage]}` : ''}) · ${p.wins} wins. ${o.petsCommand} lists all ${p.pets.length}.` : `🐾 @${name} no creature yet: your egg is ${Math.floor(100 * p.pts / o.need)}% there. ${o.eggCommand} shows it.`); return true; }
   if (w === low(o.petsCommand)) { say(k, p.pets.length ? `🐾 @${name} (${p.pets.length} of ${FAM.length}): ${p.pets.map((c, i) => `${i + 1}. ${petLine(c)}${i === p.eq ? ' ⭐' : ''}`).join(' · ')}. ${o.equipCommand} and a number picks your fighter.` : `🐾 @${name} no creatures yet. ${o.eggCommand} shows your egg.`); return true; }
   if (w === low(o.equipCommand)) { const i = /^\d+$/.test(arg) ? Number(arg) - 1 : p.pets.findIndex(c => low(petName(c)).startsWith(low(arg)) && arg); if (!p.pets[i]) say(k, `🐾 @${name} type ${o.equipCommand} and the number of one of your creatures (${o.petsCommand} lists them).`); else { p.eq = i; soon(); H.changed(); say(k, `⭐ @${name} your fighter is now ${petLine(p.pets[i])}.`); } return true; }
   if (w === low(o.topCommand)) { const t = top(d, 5); say('top', t.length ? `🏆 Most creatures: ${t.map((x, i) => `${i + 1}. ${x.name} (${x.pets}, best Lv ${x.best})`).join(' · ')}` : '🏆 Nobody has hatched an egg yet.', 15000); return true; }
+  if (w === low(o.skillsCommand)) { const c = eq(p); if (!c) say(k, `✨ @${name} no creature yet: ${o.eggCommand} shows your egg.`); else { const sk = skillsOf(c), all = EL[FAM[c.fam].el].skills; say(k, `✨ @${name}'s ${petLine(c)} knows: ${sk.join(', ')}.${c.stage < 2 ? ` It learns ${all[c.stage + 1]} when it evolves at level ${o.evolve[c.stage]}.` : ' That is all three!'} Skills go off by themselves in battles.`); } return true; }
+  if (w === low(o.powersCommand)) { const c = eq(p); if (!c) say(k, `💪 @${name} no creature yet: ${o.eggCommand} shows your egg.`); else { const un = unlocked(c), next = POWERS.find(x => x.lvl > c.lvl); say(k, un.length ? `💪 @${name}'s ${petLine(c)} can wear ${slots(c)} power${slots(c) === 1 ? '' : 's'}: ${un.map(x => `${POWERS.indexOf(x) + 1}. ${x.icon} ${x.name}${has(c, x.id) ? ' ⭐' : ''}`).join(' · ')}.${next ? ` Next at level ${next.lvl}.` : ''} ${o.powerCommand} and a number puts one on or off.` : `💪 @${name} your ${petLine(c)} unlocks its first power (${POWERS[0].icon} ${POWERS[0].name}) at level ${POWERS[0].lvl}. Battle and watch to level up!`); } return true; }
+  if (w === low(o.powerCommand)) { const c = eq(p); if (!c) { say(k, `💪 @${name} no creature yet.`); return true; } const pw = /^\d+$/.test(arg) ? POWERS[Number(arg) - 1] : arg ? POWERS.find(x => low(x.name).startsWith(low(arg))) : null; if (!pw) { say(k, `💪 @${name} type ${o.powerCommand} and a power's number (${o.powersCommand} lists them).`); return true; }
+    const r = togglePower(c, pw.id); if (!r.ok) say(k, `💪 @${name} ${pw.icon} ${pw.name} unlocks when your ${petName(c)} reaches level ${pw.lvl} (it is level ${c.lvl}).`); else { soon(); H.changed(); say(k, r.on ? `💪 @${name}'s ${petName(c)} now has ${pw.icon} ${pw.name}: ${pw.text}${r.dropped ? ` (${r.dropped.name} came off: it holds ${slots(c)}.)` : ''}` : `💪 @${name} took ${pw.icon} ${pw.name} off their ${petName(c)}.`); } return true; }
   if (w === low(o.linkCommand)) { link(m, arg, d); return true; }
   if (w === low(o.battleCommand)) { challenge(m, arg, d); return true; }
   return false;
@@ -117,8 +135,19 @@ function merge(a, b, d) { if (!b) return; a.pts += b.pts; a.hatched += b.hatched
 const pending = new Map(), lastFight = new Map(); // target key -> {from, at}
 export const power = c => 10 + c.lvl * 3 + c.stage * 8 + FAM[c.fam].rare * 2;
 export const edge = (a, b) => (EL[FAM[a.fam].el].beats.includes(FAM[b.fam].el) ? 1.15 : 1);
-/** A fight: best of three rounds. Each round = power × element edge × luck (±35%). Returns {win: 0|1, score:[a,b], rounds}. */
-export function fight(a, b, rand = Math.random) { const s = [0, 0], rounds = []; for (let i = 0; i < 3 && s[0] < 2 && s[1] < 2; i++) { const x = power(a) * edge(a, b) * (.65 + rand() * .7), y = power(b) * edge(b, a) * (.65 + rand() * .7), w = x >= y ? 0 : 1; s[w]++; rounds.push(w); } return { win: s[0] > s[1] ? 0 : 1, score: s, rounds }; }
+/** A fight: best of three rounds. Each round = power × element edge × luck (±35%) × a skill if one goes off, bent by the powers each has on. */
+export function fight(a, b, rand = Math.random) {
+  const s = [0, 0], rounds = [], used = [], lost = [false, false], side = [a, b];
+  const hit = (me, foe, i, round) => {
+    let e = has(foe, 'skin') ? 1 : edge(me, foe); if (e > 1 && has(me, 'master')) e = 1 + (e - 1) * 2;
+    let luck = .65 + rand() * .7; if (has(me, 'charm')) luck = Math.max(luck, .85); if (has(me, 'will') && round === 0) luck = Math.max(luck, 1);
+    let k = 1; if (has(me, 'claws')) k *= 1.08; if (has(me, 'will')) k *= 1.12; if (has(me, 'wind') && lost[i]) k *= 1.2; if (has(me, 'finisher') && round === 2) k *= 1.2; if (has(me, 'underdog') && foe.lvl > me.lvl) k *= 1 + Math.min(.3, (foe.lvl - me.lvl) * .03);
+    const sk = skillsOf(me); for (let t = sk.length - 1; t >= 0; t--) if (rand() < TIERS[t].chance * (has(me, 'showoff') ? 1.6 : 1)) { k *= TIERS[t].mult; used.push({ side: i, round, skill: sk[t] }); break; }
+    return power(me) * e * luck * k;
+  };
+  for (let r = 0; r < 3 && s[0] < 2 && s[1] < 2; r++) { const x = hit(a, b, 0, r), y = hit(b, a, 1, r), w = x >= y ? 0 : 1; s[w]++; rounds.push(w); lost[1 - w] = true; lost[w] = false; }
+  return { win: s[0] > s[1] ? 0 : 1, score: s, rounds, used };
+}
 export function challenge(m, arg, d = data(), now = Date.now()) {
   const k = realKey(keyOf(m), d), p = player(m, d), o = opts(d), mine = eq(p), key = keyOf(m);
   if (!mine) { say(key, `⚔️ @${p.name} you need a creature first: your egg is ${Math.floor(100 * p.pts / o.need)}% there.`); return { ok: false, why: 'none' }; }
@@ -133,29 +162,48 @@ export function challenge(m, arg, d = data(), now = Date.now()) {
 }
 function run(a, b, d, now, rand = Math.random, quiet = false) {
   const ca = eq(a), cb = eq(b); if (!ca || !cb) return { ok: false, why: 'none' }; const r = fight(ca, cb, rand), W = r.win ? b : a, L = r.win ? a : b, cw = r.win ? cb : ca, cl = r.win ? ca : cb, nameW = petName(cw), nameL = petName(cl);
-  const xw = 30 + Math.max(0, cl.lvl - cw.lvl) * 3, xl = 10, uw = addXp(cw, xw, d), ul = addXp(cl, xl, d); W.wins++; L.losses++; lastFight.set(a.key, now); lastFight.set(b.key, now); save(); H.changed();
+  const xw = Math.round((30 + Math.max(0, cl.lvl - cw.lvl) * 3) * xpK(cw)), xl = Math.round(10 * xpK(cl)), uw = addXp(cw, xw, d), ul = addXp(cl, xl, d), best = r.used.filter(u => u.side === r.win).pop(), move = best ? ` ${nameW} used ${best.skill}!` : ''; W.wins++; L.losses++; lastFight.set(a.key, now); lastFight.set(b.key, now); save(); H.changed();
   const e = edge(cw, cl) > 1 ? ` ${petInfo(cw).icon} beats ${petInfo(cl).icon}.` : '', up = (who, c, u, was) => (u.evolved ? ` ${who}'s ${was} evolved into ${petName(c)}! ✨` : u.levels ? ` ${who}'s ${petName(c)} is now level ${c.lvl}!` : '');
-  if (!quiet) { H.say(`⚔️ ${a.name}'s ${petInfo(ca).icon} ${r.win ? nameL : nameW} vs ${b.name}'s ${petInfo(cb).icon} ${r.win ? nameW : nameL}: ${W.name} wins ${Math.max(...r.score)}–${Math.min(...r.score)}!${e} +${xw} XP / +${xl} XP.${up(W.name, cw, uw, nameW)}${up(L.name, cl, ul, nameL)}`.slice(0, 480)).catch(() => {}); H.act(`Creature battle: ${W.name}'s ${nameW} beat ${L.name}'s ${nameL}`, { kind: 'eggBattle' }); H.send({ type: 'eggBattle', a: { name: a.name, n: petInfo(ca).n, lvl: ca.lvl }, b: { name: b.name, n: petInfo(cb).n, lvl: cb.lvl }, win: r.win, score: r.score }, 'eggs'); }
-  return { ok: true, fought: true, win: r.win, winner: W.name, score: r.score };
+  if (!quiet) { H.say(`⚔️ ${a.name}'s ${petInfo(ca).icon} ${r.win ? nameL : nameW} vs ${b.name}'s ${petInfo(cb).icon} ${r.win ? nameW : nameL}: ${W.name} wins ${Math.max(...r.score)}–${Math.min(...r.score)}!${move}${e} +${xw} XP / +${xl} XP.${up(W.name, cw, uw, nameW)}${up(L.name, cl, ul, nameL)}`.slice(0, 480)).catch(() => {}); H.act(`Creature battle: ${W.name}'s ${nameW} beat ${L.name}'s ${nameL}`, { kind: 'eggBattle' }); H.send({ type: 'eggBattle', a: { name: a.name, n: petInfo(ca).n, lvl: ca.lvl }, b: { name: b.name, n: petInfo(cb).n, lvl: cb.lvl }, win: r.win, score: r.score }, 'eggs'); }
+  return { ok: true, fought: true, win: r.win, winner: W.name, score: r.score, used: r.used };
+}
+
+// ---------- the on-stream chat battle (!join): your creature is your piece, and it earns XP for fighting ----------
+/** The creature a chatter brings into the chat battle (null = none yet): what the piece looks like + how much its strength helps the odds. */
+export function entrant(login, kick) {
+  if (!on()) return null; const d = data(), o = opts(d); if (o.chatBattle === false) return null; const l = low(login), p = d.players[realKey(kick ? 'k:' + l : l, d)] || d.players[realKey('k:' + l, d)], c = eq(p); if (!c) return null;
+  const boost = o.oddsBoost === false ? 0 : Math.min(.5, Math.max(0, (power(c) - 13) / 340)) + (has(c, 'crowd') ? .1 : 0);
+  return { n: c.fam * 3 + c.stage + 1, lvl: c.lvl, name: petName(c), boost: Math.round(boost * 1000) / 1000 };
+}
+/** After a chat battle: every creature that fought gets XP, the winner's much more. `fighters` = [{ownerLogin, id}], says one line in chat. */
+export function afterChatBattle(fighters, winnerId, { d = data(), quiet = false, test = false } = {}) {
+  if (d === data() && !on()) return null; const o = opts(d); if (o.chatBattle === false) return null; const ups = []; let n = 0, win = null;
+  for (const f of fighters || []) { const l = low(f.ownerLogin || f.twitch || ''); if (!l) continue; const p = d.players[realKey(l, d)] || d.players[realKey('k:' + l, d)], c = eq(p); if (!c) continue;
+    const won = f.id === winnerId, was = petName(c), xp = Math.round((won ? o.xpWin : o.xpJoin) * xpK(c)), u = addXp(c, xp, d); n++; if (won) { win = { name: p.name, pet: petName(c), xp, lvl: c.lvl }; p.arena = (p.arena || 0) + 1; }
+    if (u.evolved) ups.push(`${p.name}'s ${was} evolved into ${petName(c)} ✨`); else if (u.levels && won) ups.push(`${p.name}'s ${petName(c)} is level ${c.lvl}`); }
+  if (!n) return { n: 0 }; if (d === data()) { save(); H.changed(); }
+  if (!quiet) { H.say(`🥚 ${n} creature${n === 1 ? '' : 's'} fought and earned ${o.xpJoin} XP.${win ? ` 🏆 ${win.name}'s ${win.pet} won: +${win.xp} XP!` : ''}${ups.length ? ' ' + ups.slice(0, 4).join(' · ') + (ups.length > 4 ? ` · +${ups.length - 4} more` : '') : ''}`.slice(0, 480)).catch(() => {}); H.act(`Chat battle: ${n} creature${n === 1 ? '' : 's'} earned XP${win ? ` (${win.name}'s ${win.pet} won)` : ''}`, { kind: 'eggArena', test }); }
+  return { n, win, ups };
 }
 
 // ---------- the app, the stream and the website ----------
 const top = (d, n) => Object.values(d.players).filter(p => p.pets.length).map(p => ({ name: p.name, pets: p.pets.length, best: Math.max(...p.pets.map(c => c.lvl)), wins: p.wins })).sort((a, b) => b.pets - a.pets || b.best - a.best || b.wins - a.wins).slice(0, n);
-const pub = (p, o) => ({ name: p.name, key: p.key, pct: Math.floor(100 * p.pts / o.need), seed: p.seed, hatched: p.hatched, wins: p.wins, losses: p.losses, eq: eq(p) ? p.pets.indexOf(eq(p)) : -1, pets: p.pets.map(c => ({ n: c.fam * 3 + c.stage + 1, lvl: c.lvl, xp: c.xp, need: xpNeed(c.lvl) })), on: Object.keys(p.on || {}) });
+const pub = (p, o) => ({ name: p.name, key: p.key, pct: Math.floor(100 * p.pts / o.need), seed: p.seed, hatched: p.hatched, wins: p.wins, losses: p.losses, eq: eq(p) ? p.pets.indexOf(eq(p)) : -1, pets: p.pets.map(c => ({ n: c.fam * 3 + c.stage + 1, lvl: c.lvl, xp: c.xp, need: xpNeed(c.lvl), pw: (c.pw || []).filter(x => POWERS.some(q => q.id === x)) })), arena: p.arena || 0, on: Object.keys(p.on || {}) });
 export function state({ q = '', limit = 200 } = {}) {
   const d = data(), o = opts(d), all = Object.values(d.players), s = low(q), rows = (s ? all.filter(p => low(p.name).includes(s) || p.pets.some(c => low(petName(c)).includes(s))) : all).sort((a, b) => b.pets.length - a.pets.length || (b.got || 0) - (a.got || 0));
   const seen = new Set(); for (const p of all) for (const c of p.pets) for (let st = 0; st <= c.stage; st++) seen.add(c.fam * 3 + st + 1);
   return { on: true, opts: o, players: rows.slice(0, limit).map(p => pub(p, o)), found: rows.length, total: all.length, withPets: all.filter(p => p.pets.length).length, hatched: all.reduce((n, p) => n + p.hatched, 0), seen: seen.size, count: COUNT, top: top(d, 10), linked: Object.keys(d.alias).length };
 }
 /** What the public website shows: names, eggs and creatures only (what chat can already see). */
-export function publicData() { const d = data(), o = opts(d); return { at: Date.now(), count: COUNT, commands: { egg: o.eggCommand, pet: o.petCommand, pets: o.petsCommand, equip: o.equipCommand, battle: o.battleCommand, link: o.linkCommand }, players: Object.values(d.players).filter(p => p.pets.length || p.pts > 0).sort((a, b) => b.pets.length - a.pets.length || (b.got || 0) - (a.got || 0)).slice(0, 2000).map(p => { const x = pub(p, o); delete x.key; return x; }) }; }
+export function publicData() { const d = data(), o = opts(d); return { at: Date.now(), count: COUNT, commands: { egg: o.eggCommand, pet: o.petCommand, pets: o.petsCommand, equip: o.equipCommand, battle: o.battleCommand, link: o.linkCommand, skills: o.skillsCommand, powers: o.powersCommand, power: o.powerCommand }, chatBattle: o.chatBattle !== false, players: Object.values(d.players).filter(p => p.pets.length || p.pts > 0).sort((a, b) => b.pets.length - a.pets.length || (b.got || 0) - (a.got || 0)).slice(0, 2000).map(p => { const x = pub(p, o); delete x.key; return x; }) }; }
 /** login → the creature next to their name (the on-stream chat box). */
 export function badges() { const d = data(), out = {}; for (const p of Object.values(d.players)) { const c = eq(p); if (!c) continue; const v = { n: c.fam * 3 + c.stage + 1, lvl: c.lvl }; for (const [plat, l] of Object.entries(p.on || {})) out[(plat === 'kick' ? 'k:' : '') + l] = v; } return out; }
 export function setOpts(b) {
   const d = data(), x = d.opts;
   for (const [k, lo, hi] of [['need', 20, 100000], ['watch', 0, 1000], ['chat', 0, 100], ['chatGap', 0, 3600], ['sub', 0, 100000], ['gift', 0, 100000], ['bitsPer', 1, 10000], ['tip', 0, 10000], ['kick', 0, 10000], ['battleCd', 0, 86400]]) if (k in b) x[k] = Math.round(clampN(b[k], lo, hi, opts(d)[k]));
-  for (const k of ['reply', 'liveOnly']) if (k in b) x[k] = !!b[k];
-  for (const k of ['eggCommand', 'petCommand', 'petsCommand', 'equipCommand', 'battleCommand', 'linkCommand', 'topCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !egg'); }
+  for (const k of ['reply', 'liveOnly', 'chatBattle', 'oddsBoost']) if (k in b) x[k] = !!b[k];
+  for (const [k, lo, hi] of [['xpJoin', 0, 10000], ['xpWin', 0, 10000]]) if (k in b) x[k] = Math.round(clampN(b[k], lo, hi, opts(d)[k]));
+  for (const k of ['eggCommand', 'petCommand', 'petsCommand', 'equipCommand', 'battleCommand', 'linkCommand', 'topCommand', 'skillsCommand', 'powersCommand', 'powerCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !egg'); }
   save(); H.changed(); return state();
 }
 /** By hand (the streamer): give hatch points, or take a player out. */
@@ -180,6 +228,14 @@ export function demo() {
     give(B, 100, 'x', { d, rand, quiet: true }); const r = run(A, B, d, Date.now(), rand, true); add('A battle gives XP to both and counts a win and a loss', r.fought && A.wins + B.wins === 1 && A.losses + B.losses === 1);
     const K = player({ login: 'amy_k', name: 'AmyOnKick', kick: true }, d); give(K, 100, 'x', { d, rand, quiet: true }); const got = link({ login: 'amy', name: 'Amy' }, '', d), petsBefore = A.pets.length, done = link({ login: 'amy_k', name: 'AmyOnKick', kick: true }, got.code, d);
     add('Twitch + Kick: a code from one chat, typed in the other, makes one profile', done.ok && player({ login: 'amy_k', kick: true }, d, false) === A && A.pets.length >= petsBefore && !d.players['k:amy_k']);
+    add('Every element has three skills, and a creature knows one per form it has reached', Object.values(EL).every(e => e.skills?.length === 3) && skillsOf({ fam: 0, stage: 0 }).length === 1 && skillsOf({ fam: 0, stage: 2 }).length === 3);
+    const pc = { fam: 5, stage: 0, lvl: 2, xp: 0 }, t1 = togglePower(pc, 'claws'); pc.lvl = 12; const t2 = togglePower(pc, 'claws'), t3 = togglePower(pc, 'warm');
+    add('Powers unlock by level, and a first-form creature holds one (a new one swaps the old one out)', t1.why === 'level' && t2.on && t3.on && t3.dropped?.id === 'claws' && pc.pw.length === 1);
+    pc.stage = 2; togglePower(pc, 'claws'); togglePower(pc, 'crowd'); add('A fully grown creature holds three powers', pc.pw.length === 3 && slots(pc) === 3);
+    const plain = { fam: 5, stage: 1, lvl: 15, xp: 0 }, geared = { fam: 5, stage: 1, lvl: 15, xp: 0, pw: ['claws', 'wind'] }; let w3 = 0; for (let i = 0; i < 600; i++) if (fight(geared, plain, rand).win === 0) w3++; add(`Powers make a creature stronger (the same creature with 2 powers wins ${Math.round(w3 / 6)}% of 600 fights against itself without)`, w3 > 320);
+    let sk = 0; for (let i = 0; i < 200; i++) sk += fight(hi, lo, rand).used.length; add('Skills go off during fights', sk > 50);
+    const E1 = player({ login: 'eve', name: 'Eve' }, d), E2 = player({ login: 'fin', name: 'Fin' }, d); give(E1, 100, 'x', { d, rand, quiet: true }); give(E2, 100, 'x', { d, rand, quiet: true }); const x1 = E1.pets[0].xp + E1.pets[0].lvl * 1000, x2 = E2.pets[0].xp + E2.pets[0].lvl * 1000, ar = afterChatBattle([{ id: 'a', ownerLogin: 'eve' }, { id: 'b', ownerLogin: 'fin' }, { id: 'c', ownerLogin: 'nobody' }], 'a', { d, quiet: true });
+    add('Chat battle: everyone who fought with a creature gets XP, the winner a lot more', ar.n === 2 && ar.win?.name === 'Eve' && E1.pets[0].xp + E1.pets[0].lvl * 1000 > x1 && E2.pets[0].xp + E2.pets[0].lvl * 1000 > x2 && ar.win.xp === o.xpWin);
     let counts = [0, 0, 0, 0]; for (let i = 0; i < 4000; i++) counts[FAM[pickFamily(rand)].rare]++; add(`Rare ones are rare (of 4000 eggs: ${counts.join(' / ')} common / uncommon / rare / legendary)`, counts[0] > counts[1] && counts[1] > counts[2] && counts[2] > counts[3] && counts[3] > 0);
   } finally { Object.assign(H, keep); pending.clear(); lastFight.clear(); }
   return { ok: rows.every(r => r.ok), rows };
