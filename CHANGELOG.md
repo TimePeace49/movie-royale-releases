@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.2
+- ↗ Popped-out tabs are now normal Windows windows: a title bar to drag them around, edges and corners to resize them, and minimize / maximize buttons. This works even when the main window is in borderless or fullscreen mode. They open at normal size (100%) instead of shrinking to fit; Ctrl + mouse wheel still zooms if you want it, and Ctrl+0 goes back to 100%.
+
 ## 1.132.1
 - 🔍 **Popped-out tabs fit their window.** On Auto, everything in a popped-out window shrinks or grows with the window (a small window shows the whole tab smaller, a big screen a bit bigger). Use − / + at the top of that window (or Ctrl + mouse wheel, Ctrl+= / Ctrl+-) to pick your own size; click the size to keep it, click again (or Ctrl+0) for Auto. Each tab remembers its size.
 - 🧪 Test tab → ↗ Pop out a tab → 🔍 Auto size.
