@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.140.1
+- 🎵 **Song request music keeps playing when you tab out.** A song that's playing in the app now keeps playing when you click over to another program, whatever 🔇 Mute when unfocused says. (While that happens the battle screen still goes quiet by itself if Mute when unfocused is on.) Chat bot → 🎵 Songs → Settings has a new tick box, off by default: **Mute the music too when I tab out**. Test tab → Songs → 🎵 Music when tabbed out.
+
 ## 1.140.0
 - 🎚️ **Keep song request music off the Twitch VOD** (editions with song requests). Chat bot → 🎵 Songs → Settings has a new box: **Play the music through OBS, not on the VOD**. With it on, the song plays inside OBS as its own sound source ("Movie Royal music", added to every scene) with OBS's Twitch VOD track unticked for it. The live stream hears the music; the saved VOD doesn't, so it doesn't get muted. Battle sounds, sound alerts and everything else stay on the VOD.
   - The music box on the Chat tab becomes the remote control: play, pause, skip, seek, volume, playlists and even volume all work the same. With OBS closed the song plays in the app like before.

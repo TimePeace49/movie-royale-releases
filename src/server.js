@@ -1752,7 +1752,11 @@ app.post('/api/clip', async (req, res) => { try { res.json({ ok: true, clip: awa
 app.post('/api/clip/open', (req, res) => { const c = (db.clips || []).find(x => x.id === req.body?.id); if (!c?.file || !globalThis.__desktop?.openPath) return res.status(400).json({ error: 'That clip has no file to show.' }); globalThis.__desktop.openPath(path.dirname(c.file)); res.json({ ok: true }); });
 app.post('/api/test/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip('test', req.body?.fail ? 'fail' : req.body?.kick ? 'kick' : 'ok') }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 // 🎮 Game capture tab (1.87.0, dev only): its sound keeps playing when Movie Royal isn't the window in front
-app.post('/api/gamecap/sound', (req, res) => { const on = !!req.body?.on && !!db.settings.betaUpdates; let kept = null; try { kept = globalThis.__desktop?.keepSound?.(on) ?? null; } catch {} res.json({ ok: true, on, kept }); });
+/* (1.140.1) two things can keep the app's sound on while its window isn't in front: 🎮 the game capture and 🎵 a song request that is playing */
+const keepers = { gc: false, music: false };
+const keepSoundNow = () => { let kept = null; try { kept = globalThis.__desktop?.keepSound?.(keepers.gc || keepers.music) ?? null; } catch {} return kept; };
+app.post('/api/gamecap/sound', (req, res) => { const on = !!req.body?.on && !!db.settings.betaUpdates; keepers.gc = on; res.json({ ok: true, on, kept: keepSoundNow() }); });
+app.post('/api/songs/sound', (req, res) => { const on = !!req.body?.on && feat('songs') && !songs.opts().muteUnfocused; keepers.music = on; res.json({ ok: true, on, kept: keepSoundNow() }); }); /* 🎵 (Derek: "music from song request always stays on no matter what your setting is… by default music will always play even when tabbed out") */
 app.post('/api/view', (req, res) => { // the control panel says which tab you're on (for the chat message)
   const v = String(req.body?.view || ''); if (v !== live.view) helpCd = 0; live.view = v; // (a new tab = !moviesroyal can list its commands right away)
   if (v === 'mara') { // 🏃 Marathon tab = the marathon battle on stream (when nothing is running)
