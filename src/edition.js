@@ -13,6 +13,14 @@ export const EDITION = { id, name: ALL[id]?.name || 'Public', streamer: ALL[id]?
 /** Is this part of the app in this edition? (`off` in editions.json: movies, kirbWheel, cards, voidSetup) */
 let lookAs = null; /* 👀 Derek's (dev) edition can look like another edition for a while, to try it before handing it over (not saved) */
 /* 🛠️ (1.141.1, Derek: "when in dev mode on my edition I can do everything. This is for testing; when I turn off dev mode it will only show what I have turned on") the dev edition with dev mode ON has every part, whatever its own tick boxes say; dev mode OFF = exactly its tick boxes. (Looking like another edition still shows that edition's set.) */
+/* 🔴 (1.142.0, Derek: "turn on / off features to an edition live") the tick boxes saved on the Editions tab reach apps that are already installed: the app reads the list from GitHub now and then and hands it here. Only the off / on lists change; names, GitHub addresses, dev and the name scrub stay what the build came with. */
+export function setLive(map) {
+  let changed = false; const clean = a => (Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.length < 80).slice(0, 3000) : null);
+  for (const [k, v] of Object.entries(map && typeof map === 'object' ? map : {})) { if (!ALL[k] || !v || typeof v !== 'object') continue;
+    for (const key of ['off', 'on']) { const L = clean(v[key]); if (L && JSON.stringify(L) !== JSON.stringify(Array.isArray(ALL[k][key]) ? ALL[k][key] : [])) { ALL[k][key] = L; changed = true; } } }
+  EDITION.off = Array.isArray(ALL[EDITION.id]?.off) ? ALL[EDITION.id].off : []; return changed;
+}
+export const lists = () => Object.fromEntries(Object.entries(ALL).map(([k, v]) => [k, { off: Array.isArray(v.off) ? v.off : [], on: Array.isArray(v.on) ? v.on : [] }]));
 let devMode = () => false;
 export const setDevMode = fn => { if (typeof fn === 'function') devMode = fn; };
 const allOn = () => { try { return !lookAs && !!EDITION.dev && !!devMode(); } catch { return false; } };

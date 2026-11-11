@@ -112,6 +112,7 @@ export const view = w => w && ({ id: w.id, name: w.name, title: w.title, rot: w.
 
 let hooks = { broadcast: () => {}, pushState: () => {}, say: async () => {}, obsDoom: async () => {}, openBattle: () => 'not ready', openCards: () => 'not ready', goView: () => {}, theme: () => null };
 let busyUntil = 0, spinning = null; const queue = []; let qTimer = null;
+export const busyNow = () => !!spinning || queue.length > 0 || Date.now() < busyUntil; /* (1.142.0: a spin is going or queued: live edition switches wait) */
 export function initWheel(h) { hooks = { ...hooks, ...h }; W(); const st = W(); st.reveal = null; if (st.round?.state === 'running') { st.round.state = 'paused'; st.round.why = 'you'; } undoLoad(); }
 export function wheelMsg() { const w = W(), a = active(); return { type: 'wheel', show: w.show, wheel: view(a), last: w.last && w.last.wheelId === a?.id ? w.last : null, final: w.final && w.final.wheelId === a?.id ? w.final : null, round: roundView() }; }
 export function setShow(on) { W().show = !!on; save(); hooks.broadcast(wheelMsg()); hooks.pushState(); }

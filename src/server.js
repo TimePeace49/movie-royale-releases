@@ -42,7 +42,7 @@ import * as pstats from './pstats.js';
 import * as eggs from './eggs.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
-import { is as edition_is, setDevMode as edSetDevMode } from './edition.js';
+import { is as edition_is, setDevMode as edSetDevMode, setLive as edSetLive, lists as edLists } from './edition.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, appNow as edAppNow, scrubNow as edScrubNow, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
@@ -1084,6 +1084,33 @@ function activityBackfill() {
 /** 🎭 an extra made for an edition (or everything, in the dev edition with dev mode on) */
 const feat = name => edFeat(name, db.settings.betaUpdates);
 edSetDevMode(() => !!db.settings.betaUpdates); /* 🛠️ the dev edition with dev mode on has every part (edition.js) */
+/* 🔴 (1.142.0, Derek: "turn on off features to ed live") Live edition switches: what you tick on the server app's Editions tab reaches installed apps without a new version. The app reads src/editions.json from the public GitHub at start and every 5 minutes, applies the off / on lists (edition.js setLive) and keeps the last answer for starting without internet. */
+const ED_RAW = process.env.EDITIONS_URL || `https://raw.githubusercontent.com/${editionInfo().all.find(x => x.id === 'public')?.repo || 'TimePeace49/movie-royale-releases'}/main/src/editions.json`;
+const edLive = { at: 0, error: '', changedAt: 0 };
+try { if (db.editionLive?.ver === PKG.version && db.editionLive.lists) edSetLive(db.editionLive.lists); } catch {} /* (the last list this version heard; a new version starts from its own) */
+/* (Derek: "this live update shouldn't stop any battles, songs playing, wheels") a switch change never lands in the middle of something: while a battle / card fight / join timer / wheel round / song is going, the new set WAITS and is applied once things are quiet (checked every 15 s). */
+function edBusy() { const why = [];
+  try { if (['lobby', 'running'].includes(live.phase)) why.push('a battle'); } catch {} try { if (live.fight) why.push('a card battle'); } catch {} try { if (live.gather) why.push('a join timer'); } catch {} try { if (live.claim) why.push('a winner claiming'); } catch {}
+  try { const st = wheel.W(); if (st.round?.state === 'running' || wheel.busyNow()) why.push('the wheel'); } catch {} try { if (keepers.music || live.sp?.src) why.push('a song'); } catch {} try { if (movienight.data().open) why.push('movie night voting'); } catch {}
+  return why; }
+let edPending = null, edPendT = null;
+function edApply(j, why) { const before = edOffNow().length + '|' + JSON.stringify(editionInfo().hide), changed = edSetLive(j); db.editionLive = { ver: PKG.version, at: Date.now(), lists: edLists() }; saveNow();
+  if (changed) { edLive.changedAt = Date.now(); const mine = before !== edOffNow().length + '|' + JSON.stringify(editionInfo().hide);
+    try { editionNoMovies(); } catch {} try { syncRewards(); } catch {} try { pushState(); } catch {}
+    if (mine) { try { broadcast({ type: 'toast', text: '🎭 This edition just got its switches changed: some parts were turned on or off.' }, 'control'); } catch {} try { act('stream', 'The edition switches changed (Editions tab): parts turned on or off', { icon: '🎭', kind: 'editionLive' }); } catch {} } }
+  return changed; }
+function edWait() { clearTimeout(edPendT); if (!edPending) return; const busy = edBusy(); if (busy.length) { edLive.waiting = busy; edPendT = setTimeout(edWait, 15000); return; } const j = edPending; edPending = null; edLive.waiting = null; edApply(j, 'waited'); }
+async function editionLive(why = 'timer') {
+  try { const r = await fetch(ED_RAW + (ED_RAW.includes('?') ? '&' : '?') + 't=' + Date.now(), { signal: AbortSignal.timeout(10000) }); if (!r.ok) throw new Error('GitHub answered ' + r.status); const j = await r.json(); if (!j || typeof j !== 'object' || !j.public) throw new Error("that didn't look like the edition list");
+    edLive.at = Date.now(); edLive.error = '';
+    const differs = JSON.stringify(Object.fromEntries(Object.entries(edLists()).map(([k, v]) => [k, [v.off, v.on]]))) !== JSON.stringify(Object.fromEntries(Object.keys(edLists()).map(k => [k, [Array.isArray(j[k]?.off) ? j[k].off : edLists()[k].off, Array.isArray(j[k]?.on) ? j[k].on : edLists()[k].on]])));
+    const busy = differs ? edBusy() : []; let changed = false;
+    if (differs && busy.length) { edPending = j; edLive.waiting = busy; clearTimeout(edPendT); edPendT = setTimeout(edWait, 15000); return { ok: true, changed: false, waiting: busy, why }; }
+    edPending = null; edLive.waiting = null; changed = edApply(j, why);
+    return { ok: true, changed, why };
+  } catch (e) { edLive.error = e.message || String(e); return { ok: false, error: edLive.error, why }; }
+}
+setTimeout(() => editionLive('start').catch(() => {}), 8000); setInterval(() => editionLive('timer').catch(() => {}), 5 * 60000).unref?.();
 const twitchHandlers = {
   adBreak: x => adBreakIn(x), // 📺 ad warnings
   change: pushState,
@@ -5440,6 +5467,17 @@ app.post('/api/test/edition-look', (req, res) => { // 👀 the dev edition shows
 app.post('/api/test/edition-move', (req, res) => { const from = String(req.body?.from || ''); if (!ED_ALL[from]) return res.status(400).json({ error: 'Pick an edition' });
   const pretend = { ...db.settings, updateRepo: ED_ALL[from].repo, spotName: ED_ALL[from].scrub ? 'Wild' : 'Kirb', banAsk: ED_ALL[from].scrub ? 'the streamer' : 'Kirb', testTab: ED_ALL[from].dev ? true : db.settings.testTab };
   res.json({ ok: true, from: ED_ALL[from].name, to: EDITION.name, same: from === EDITION.id, steps: editionMoveSteps(pretend, from).map(x => x.text), last: db.editionMoved || null }); });
+app.post('/api/edition/refresh', async (req, res) => { const r = await editionLive('you'); res.json({ ...r, at: edLive.at, changedAt: edLive.changedAt, off: edOffNow().length, from: ED_RAW.replace(/\?.*$/, '') }); }); /* 🔄 read the Editions tab switches from GitHub right now */
+app.get('/api/test/edition-live', (req, res) => { /* 🧪 a pretend "switch flipped" on a copy of the lists (nothing is kept): the change is noticed, junk is ignored */
+  const L = JSON.parse(JSON.stringify(edLists())), id = EDITION.id, rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) });
+  const clean = a => (Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.length < 80) : null), same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const flipped = { ...L, [id]: { off: [...L[id].off.filter(x => x !== 'cards'), ...(L[id].off.includes('cards') ? [] : ['cards'])], on: L[id].on } };
+  add('A switch flipped on the Editions tab is noticed', !same(flipped[id].off, L[id].off), `${L[id].off.length} → ${flipped[id].off.length} parts off`);
+  add('Anything that is not a plain list is ignored', clean('nope') === null && same(clean(['a', 5, {}, 'b']), ['a', 'b']), 'ignored');
+  add('A change waits while a battle, the wheel, a song or a vote is going (nothing is interrupted)', typeof edBusy === 'function' && Array.isArray(edBusy()), edBusy().length ? 'busy right now: ' + edBusy().join(', ') : 'nothing going on right now: a change would apply at once');
+  add('The app has read the real list from GitHub', edLive.at > 0, edLive.at ? 'last read ' + new Date(edLive.at).toLocaleTimeString() : edLive.error || 'not yet (it reads 8 seconds after opening)');
+  res.json({ ok: rows.slice(0, 2).every(x => x.ok), rows, at: edLive.at, error: edLive.error, changedAt: edLive.changedAt });
+});
 app.get('/api/test/edition', (req, res) => res.json({ ...editionInfo(), updatesFrom: repoName(), devMode: !!db.settings.betaUpdates, testBuilds: wantTests(), version: VERSION }));
 app.get('/api/test/mara-prizes', (req, res) => { const l = maraList(); if (!l) return res.status(400).json({ error: 'There is no marathon battle yet (dev mode makes it).' }); res.json({ name: l.name, things: l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, label: e.label, sub: e.sub || '', desc: e.desc || '' })), would: maraPrizes(l, true) }); });
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen

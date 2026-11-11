@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.142.0
+- 🔴 **Live edition switches.** What you tick on the server app's Editions tab now reaches the apps people already have, without a new version: an app that's open picks the change up within about 5 minutes, a closed one when it opens. The app shows a small note when its parts change. It keeps the last set it heard, so it also starts right without internet. (Needs this version or newer in that person's app; a brand-new switch still needs an app new enough to know it.)
+- **It never interrupts anything.** If a battle, a card battle, a join timer, a winner's claim, the wheel (spinning or its round timer), a song or movie night voting is going on in that app, the change waits and applies by itself once that's finished.
+- Test tab → Edition: **🔄 Check the switches now** (no waiting) and **🧪 Test live switches**.
+
 ## 1.141.1
 - 🛠️ **Your dev edition: dev mode on = everything.** With dev mode on, your own edition now has every part and every chat command, whatever its tick boxes on the Editions tab say, so you can test anything. With dev mode off it shows exactly what you ticked for it. (👀 Looking like another edition still shows that edition's set.)
 
