@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.7
+- ⭐ History → 🎵 Music has a new part: Songs you rated. Every song with a rating, with its own search box and a sort menu (rated most recently, best, lowest, A to Z). The stars work there too, so you can change a rating on the spot.
+
 ## 1.132.6
 - 📝 New box for the Chat tab: Stream details. It shows your Twitch title, category and tags, and you can change them right there (💾 Save to Twitch). It starts switched off: right-click the Chat tab and tick 📝 Stream details. The first time, sign in with Twitch again (Settings → 💜 Twitch) so the app is allowed to change them. Test: 🧪 Test tab → Chat tab tests → 📝 Stream details box.
 - 🕰️ History has two new tabs: 🎵 Music (songs played, different songs, who asks the most, the most asked-for and best rated songs, and every song that was played, day by day) and 💬 Chat stats (messages all time / this year / this month, chat by month, top chatters, most hours watched, newest faces, most used commands). Click a name to open their profile; the search box filters each tab. In the Birx & Jess edition, History is now 🍿 Movie nights, 🎵 Music and 💬 Chat stats.

@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.132.7: What's new
+- {songs} ⭐ History → 🎵 Music → Songs you rated: every song you gave a rating, with a search box and a sort menu. Click the stars to change a rating.
+
 ## v1.132.6: What's new
 - {dash} 📝 New Stream details box for the Chat tab: see and change your Twitch title, category and tags without leaving the app. It starts off: right-click the Chat tab and tick 📝 Stream details. Sign in with Twitch again once so the app may change them.
 - {songs} 🕰️ History → 🎵 Music: songs played, who asks the most, the most asked-for and best rated songs, and every song that was played.
