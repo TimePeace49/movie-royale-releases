@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.130.0
+- 🎥 Test tab → 🎥 Demo for Birx & Jess: a guided tour of every feature in their version for a demo video. ▶ Start the demo switches the app to their look (tabs, names, their song raters and 6 AM day, profiles the way they see them), fills in pretend songs, movies, votes, birthdays and raid channels, and a guide bar at the bottom shows what to talk about in each of the 17 parts. Ctrl+Alt+→ / ← move through it, Ctrl+Alt+H hides the bar while recording, 🧹 Clean up + finish and ↩ Back to mine at the end.
+- 👀 Seeing the app as another edition now uses that edition's own defaults too (Birx & Jess's raters and guesser, their 6 AM day start).
+
 ## 1.129.0
 - 🗳️ Movie night: !myvotes tells someone who they voted for tonight and how many votes / changes they have left (the name can be changed).
 - 🧩 Chat bot → Commands → The app's own commands: every command the app answers by itself in your version, each with an on/off tick and ⚙ with Streamlabs Chatbot's options: name, who can use it (incl. only named people), waits for everyone / per person, mods skip the waits, a "wait" message, a sound + volume, a use count, and Twitch / Kick when you have Kick.

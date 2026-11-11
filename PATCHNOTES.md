@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.130.0: What's new
+- {ed:derek} 🎥 **Demo for Birx & Jess:** a guided tour in 🧪 Test that shows their version the way they see it, with pretend data and a guide bar, for recording a demo video.
+
 ## v1.129.0: What's new
 - 🧩 **Options for the app's own commands:** 🤖 Chat bot → Commands lists every command the app answers by itself (like !join, !clip, !bday). Each has an on/off tick and ⚙ with Streamlabs Chatbot's options: its name, who can use it, cooldowns, a "wait" message, a sound and a use count.
 - {movienight} 🗳️ **!myvotes:** tells someone who they voted for tonight and how many votes and changes they have left.

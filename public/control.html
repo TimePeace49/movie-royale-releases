@@ -559,6 +559,8 @@
   @container (max-width: 760px) { .mRow { grid-template-columns: 30px minmax(0,1fr) auto; } .mRow select { grid-column: 2 / -1; } }
   .bcSug { min-height:0; margin:3px 0 0; font-size:13px; display:flex; gap:4px; flex-wrap:wrap; align-items:center; } .bcSug button { padding:1px 8px; font-size:13px; }
   #bdPopBox { position:fixed; top:70px; right:16px; z-index:9000; display:none; flex-direction:column; gap:8px; width:340px; max-width:calc(100vw - 32px); }
+  body.demoOn #edBar { display:none !important; }
+  #demoBar { position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:min(760px, calc(100vw - 32px)); z-index:9000; background:var(--card, #1d1f2b); border:2px solid #9146ff; border-radius:14px; padding:10px 12px; box-shadow:0 10px 32px rgba(0,0,0,.5); }
   .bdWeek { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:6px; }
   .bdDay { border:1px solid var(--line); border-radius:10px; padding:6px 8px; min-width:0; }
   .bdDay.today { border-color:var(--gold, #f5c542); }
@@ -1427,6 +1429,13 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="dashTest('so')" title="Pretend to press 📣 SO: shows the chat line it would send (nothing is sent)">📣 Pretend shout-out</button><button onclick="dashTest('banhist')" title="Checks the song box's ⛔ SR off and 🚫 Ban / ✅ Unban buttons with a pretend song (nothing said in chat)">🎵 SR on/off + 🚫 Ban check</button><button class="primary" onclick="dashTest('scene')" title="Pretends to press a scene button: checks the app would switch OBS, without touching OBS">🎞️ Pretend scene switch</button><button onclick="dashTest('mine')" title="Walks the song rules through with pretend people, including !mysongs giving each song its place in the queue (nothing is saved)">🎵 Check !mysongs</button><button onclick="dashTest('stats')" title="Walks the profile's Stats tab through with a pretend person: songs, votes, skips and commands, newest first (nothing is saved)">📊 Check the Stats tab</button><button onclick="dashLayReset()" title="Put every box on the Chat tab back where it started">↺ Reset the Chat tab boxes</button><button class="ghost" onclick="setView('tchat')" title="Opens the Chat tab so you can see the stream tools box">💬 Open the Chat tab</button><button onclick="dashStatsTest()" title="Opens the Chat tab, turns the Stream stats box on and shows pretend numbers in it for 15 seconds (no OBS needed)">📊 Stream stats (pretend)</button><button onclick="dashAudioTest()" title="Opens the Chat tab and shows pretend sound levels in the Audio levels box for 12 seconds (no OBS needed, nothing is changed in OBS)">🎚️ Audio levels (pretend)</button></div>
     <div id="tDashOut"></div>
   </div>
+  <div class="card" id="demoCard">
+    <h3>🎥 Demo for Birx &amp; Jess</h3>
+    <p class="help">A guided tour of everything in Birx &amp; Jess's version, with pretend songs, movies, votes, birthdays and raid channels, so you can record a demo video for them. Nothing is sent to Twitch.</p>
+    <ol class="help" style="margin:6px 0 8px 18px;padding:0"><li>Press <b>▶ Start the demo</b>. The app switches to <b>Birx &amp; Jess's version</b> first, so everything (tabs, names, their song raters, profiles) looks the way they will see it, not the way you do. A small guide bar sits at the bottom: it shows what to talk about and sets each part up for you.</li><li>Press <b>Next ▶</b> for each part. <b>Ctrl+Alt+→</b> / <b>Ctrl+Alt+←</b> go forward / back and <b>Ctrl+Alt+H</b> hides the bar while you record.</li><li>At the end press <b>🧹 Clean up + finish</b>, then <b>↩ Back to mine</b> to get your own version back.</li></ol>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="demoStart()" title="Start the guided demo: a guide bar at the bottom walks you through every feature, step by step">▶ Start the demo</button><button class="ghost" onclick="demoClean()" title="Take out the pretend songs, movies, votes, birthdays and raid channels the demo added">🧹 Clean up the pretend things</button></div>
+    <div id="tDemoList" class="help" style="margin-top:8px"></div>
+  </div>
   <div class="card edOff" id="mnTestCard" data-feat="movienight">
     <h3>🍿 Movie night voting</h3>
     <p class="help">The 🍿 Movie night tab: chat votes with !vote, everyone gets 1 vote and 1 change, 2 votes for raiders, the first one in chat and Wednesday / Sunday birthdays. These use pretend people (named pretend_…), and nothing is sent to Twitch.</p>
@@ -2128,7 +2137,7 @@ async function lbRefreshCk(btn) { btn.disabled = true; btn.textContent = 'Updati
 let ckDone = {}; try { ckDone = JSON.parse(localStorage.ckDone || '{}'); } catch {}
 function ckTick(k, on) { if (on && ckRecent(k)) ckStay.add(k); ckDone[k] = on ? Date.now() : 0; try { localStorage.ckDone = JSON.stringify(ckDone); } catch {} drawChecklist(); newBadge(); }
 // 🧪 Test tab + checklist sorted into categories; things added in a newer version than you last looked at get a 🆕 (and a count on the Test tab)
-const TEST_CATS = [['scenes', '🎬 Scenes'], ['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
+const TEST_CATS = [['demo', '🎥 Demo for Birx & Jess'], ['scenes', '🎬 Scenes'], ['lab', '🧪 Test lab'], ['quick', '▶️ Try each kind of battle'], ['tools', '🧰 Test tools'], ['battles', '⚔️ Battles'], ['movies', '🎬 Movie nights & Discord picks'], ['chat', '💬 Twitch chat, channel points & bits'], ['wheel', '🎡 Wheel'], ['discord', '🤖 Discord, 24/7 & backup bots'], ['screen', '🖥️ Screen, sounds & the app'], ['other', '📋 Other']];
 const CK_META = { // key: [category, version it came in] (1.59.6, Derek: only the main features are on the checklist now)
   practice: ['battles'], discordBattle: ['battles'], chatJoin: ['chat'], claim: ['movies'], allMaps: ['battles', '1.45.0'], pin: ['movies'],
   sitout: ['chat'], chaos: ['chat'], plainText: ['battles', '1.28.7'], numbers: ['battles'], wheel: ['wheel'], wheelPoints: ['wheel'],
@@ -2178,7 +2187,7 @@ function arrangeTests() { // put the Test tab's cards into categories (once)
   const groups = {};
   for (const c of cards) {
     const h = c.querySelector('h3')?.textContent || '';
-    let cat = c.id === 'sceneCard' ? 'scenes' : c.id === 'labCard' ? 'lab' : c.classList.contains('tquick') ? 'quick' : c.id === 'wTestCard' ? 'wheel' : (map.find(([re]) => re.test(h)) || [])[1];
+    let cat = c.id === 'demoCard' ? 'demo' : c.id === 'sceneCard' ? 'scenes' : c.id === 'labCard' ? 'lab' : c.classList.contains('tquick') ? 'quick' : c.id === 'wTestCard' ? 'wheel' : (map.find(([re]) => re.test(h)) || [])[1];
     if (!h && c.id !== 'wTestCard') cat = 'tools';
     if (cat === 'connect') cat = 'screen';
     (groups[cat || 'other'] ||= []).push(c);
@@ -6659,6 +6668,54 @@ async function drawMnHist() {
 }
 /* ▶ the replay: that night's leaderboard in a pop-up, the votes played back in a minute */
 function mnhReplay(id, secs = 60) { const bg = MN?.opts?.bg ?? 85; $('botDlgBody').innerHTML = `<h3 style="margin:0 0 6px">▶ Replay of the vote</h3><p class="help" style="margin:0 0 8px">The whole vote played back in ${secs === 60 ? 'one minute' : secs + ' seconds'}: watch the movies climb.</p><iframe id="mnhFrame" src="/movienight.html?replay=${encodeURIComponent(id)}&secs=${secs}&bg=${Math.max(bg, 80)}" style="width:580px;max-width:100%;height:520px;border:0;border-radius:10px;background:repeating-conic-gradient(#555 0 25%, #777 0 50%) 0 0/40px 40px"></iframe><div class="row" style="justify-content:flex-end;gap:6px;margin-top:8px"><button onclick="mnhReplay('${esc(id)}', 20)" title="Play the same night again, faster (20 seconds)">⏩ Again, fast</button><button onclick="mnhReplay('${esc(id)}')" title="Play the same night again from the start (one minute)">↺ Again</button><button class="primary" onclick="$('botDlgBody').innerHTML='';$('botDlg').close()">Close</button></div>`; if (!$('botDlg').open) $('botDlg').showModal(); }
+/* 🎥 (1.130.0, Derek: "a section where I can show Birx and Jess all the features to make a demo video") a guided tour with pretend data. The guide bar (#demoBar)
+   lives outside the Test tab and remembers its step in localStorage, so it keeps going after 👀 See the app as Birx & Jess reloads the page. */
+const demoWait = ms => new Promise(r => setTimeout(r, ms));
+const DEMO = [
+  { t: '💬 The Chat tab', say: 'This is your home tab: your stream preview, the song box, the movie night box, alerts, stream tools and chat, all in one place. Drag a box by its top strip, pull any edge or corner to resize it, and right-click to turn boxes on or off.', go: async () => { setView('tchat'); } },
+  { t: '🎵 Song requests', say: 'Viewers type !sr and a YouTube link or a song name. It checks it is music, not too long, not banned, then it lands in the queue. The 🟢 SR button opens or closes requests. Press ▶ to play, ⏭ to skip, and drag the bar to jump around. When a song ends the next one starts by itself.', go: async () => { try { await api('/api/test/songs', { action: 'fill' }); } catch {} setView('tchat'); await demoWait(400); dashTabSet?.('now'); } },
+  { t: '⭐ Rating songs', say: 'Both of you rate every song with half stars, right in the song box. The ratings are saved in your own song database, so when a song comes back you see what you gave it last time. The History tab shows the songs that played, and 🚫 Ban stops one from being asked for again.', go: async () => { try { await api('/api/songs/next', {}); } catch {} setView('tchat'); await demoWait(500); dashTabSet?.('hist'); } },
+  { t: '📚 The Songs tab', say: 'Every song ever played or asked for, with both your ratings, how often it played and who asked for it. There are stats for the top requesters, a banned list, settings that match Streamlabs Chatbot, playlists for when the queue is empty, and an import for your old ratings (RateYourMusic too).', go: async () => { setView('bot'); botGo('songs'); } },
+  { t: '🍿 Movie night list', say: 'Type tonight\'s movies (it suggests movies as you type) or paste the whole list. Each one gets its IMDb and Rotten Tomatoes ratings and poster by itself, and the list (number, name and year) is pinned in chat.', go: async () => { try { await api('/api/test/movienight', { action: 'fill' }); } catch {} setView('bot'); botGo('night'); } },
+  { t: '🗳️ Votes come in', say: 'Chat votes with !vote and a number or a name, and can add a message. Everyone gets one vote and one change; raiders, the first one in chat and Wednesday or Sunday birthdays get two. Each vote pops up at the bottom so Jess can mark whether Birx guessed it ✅ or ❌. !myvotes tells someone what they voted for.', go: async () => { setView('bot'); botGo('night'); try { await api('/api/test/movienight', { action: 'three' }); } catch {} } },
+  { t: '🏆 The leaderboard on stream', say: 'This is what chat sees in OBS: an arcade-style high score board. A movie jumps up when it passes another, with the ratings and how many Birx guessed right. It can be see-through, and the 5-minute last call counts down on it.', go: async () => { setView('bot'); botGo('night'); await demoWait(300); mnBoardDemo(); } },
+  { t: '🕰️ Movie night history', say: 'Every night is kept: the winner, the votes, who voted for what and why. ▶ Replay plays the whole vote again on the leaderboard, sped up.', go: async () => { try { $('botDlg').close(); } catch {} await mnhTest(); } },
+  { t: '🎂 Birthdays', say: 'Viewers save their birthday with !bday (only the month and day, never the year). The bot wishes them a happy birthday, and when they chat on their birthday a pop-up shows you, with a little party whistle. When the app opens it shows whose birthday is coming up this week. A new day starts at 6 AM for you, so a 1:30 AM stream still counts as the night before.', go: async () => { setView('bot'); botGo('bday'); try { await api('/api/test/birthday', { action: 'pop' }); } catch {} await demoWait(1500); bdRemind(true); } },
+  { t: '🚀 The Raid tab', say: 'Everyone you follow who is live right now, sorted by who you raided most recently, with a preview of their stream. Pick one and raid straight from here, with a wait timer if you want.', go: async () => { try { await api('/api/test/raids', { action: 'fill' }); } catch {} setView('raid'); } },
+  { t: '🤖 Chat bot commands', say: 'Your own commands, like in Streamlabs Chatbot: every option is here. !so, !watchtime and !followage are ready-made, and every command the app answers by itself has the same options (who can use it, cooldowns, a sound). There is a list of recommended commands, and typing a name then Tab finishes it.', go: async () => { setView('bot'); botGo('commands'); } },
+  { t: '🔊 Sound alerts', say: 'Sound commands: someone types !airhorn and the sound plays on stream, in every OBS scene. Each one has its own volume and cooldown. Your Streamlabs sounds are found on your PC by their names.', go: async () => { setView('bot'); botGo('sounds'); try { await api('/api/test/chatbot-sound', {}); } catch {} } },
+  { t: '🧳 Bringing everything over', say: 'Pick the Excel files Streamlabs Chatbot makes, and your commands, timers, quotes, sound alerts, watch hours and songs all come over in one go.', go: async () => { setView('bot'); botGo('import'); } },
+  { t: '📣 Shout-outs + profiles', say: 'Click anyone\'s name in chat to see their profile: their songs, votes, birthday and stats, with a Shout out button. Chat can type !so too, and the 📣 SO button is in the stream tools box.', go: async () => { setView('tchat'); try { pchat(true); await api('/api/test/chat', { name: 'pretend_viewer', text: '!so pretend_friend' }); } catch {} await demoWait(900); Profile.open('pretend_ana'); } },
+  { t: '🎚️ Audio levels + stream stats', say: 'The sound levels of everything in OBS, with mute buttons, and OBS\'s stream stats (dropped frames, bitrate), right on the Chat tab, so you don\'t have to look at OBS.', go: async () => { try { Profile.close(); } catch {} await dashAudioTest(); dashStatsTest(); } },
+  { t: '🔗 Connections', say: 'One page with everything the app links to (Twitch, OBS, YouTube and more), each with a connect button.', go: async () => { setView('settings'); setSub('links'); } },
+  { t: '✅ That\'s it!', say: 'That\'s the tour. Press 🧹 Clean up to take the pretend things out again.', go: async () => { setView('tchat'); } },
+];
+let DM = { i: -1, hide: false }; try { DM = { ...DM, ...JSON.parse(localStorage.demo || '{}') }; } catch {}
+const demoSave = () => { try { localStorage.demo = JSON.stringify(DM); } catch {} };
+function demoList() { const el = $('tDemoList'); if (el) el.innerHTML = `<b>The parts (${DEMO.length}):</b> ${DEMO.map((d, i) => `<a href="#" onclick="demoGo(${i});return false" title="Jump to this part of the demo">${esc(d.t)}</a>`).join(' · ')}`; }
+async function demoStart() { /* (👀 the tour always runs in Birx & Jess's look: their tabs, names and defaults, and profiles the way they see them) */
+  DM.hide = false;
+  if (S?.edition?.lookAs !== 'birx') { try { await api('/api/test/edition-look', { id: 'birx' }); DM.i = 0; DM.pending = true; demoSave(); location.reload(); return; } catch { toast('🎥 To see it the way Birx &amp; Jess will, turn on 🛠️ Dev mode (Settings → Account &amp; updates) and press ▶ Start the demo again. Running it in your own look for now.'); } }
+  await demoGo(0);
+}
+async function demoBack() { try { await api('/api/test/edition-look', { id: '' }); } catch {} location.reload(); }
+async function demoGo(i) {
+  DM.i = Math.max(0, Math.min(DEMO.length - 1, i)); demoSave(); demoBar();
+  try { document.querySelectorAll('#startDlg[open]').forEach(d => d.close()); await DEMO[DM.i].go(); } catch (e) { console.warn('demo step', e); }
+}
+function demoEnd() { DM.i = -1; demoSave(); demoBar(); }
+function demoBar() {
+  let el = $('demoBar'); document.body.classList.toggle('demoOn', DM.i >= 0); /* (the “Seeing the app as” bar hides during the tour: Birx & Jess don't have it) */ if (DM.i < 0) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'demoBar'; document.body.appendChild(el); }
+  const d = DEMO[DM.i]; el.style.display = DM.hide ? 'none' : '';
+  el.innerHTML = `<div class="row" style="gap:8px;align-items:center"><b>🎥 ${DM.i + 1} / ${DEMO.length} · ${esc(d.t)}</b><span style="flex:1"></span><button class="ghost" onclick="demoGo(${DM.i - 1})" ${DM.i ? '' : 'disabled'} title="Demo: the part before (Ctrl+Alt+←)">◀ Back</button><button class="ghost" onclick="demoGo(${DM.i})" title="Demo: set this part up again">↺ Again</button><button class="primary" onclick="${DM.i < DEMO.length - 1 ? `demoGo(${DM.i + 1})` : 'demoClean(true)'}" title="Demo: the next part (Ctrl+Alt+→)">${DM.i < DEMO.length - 1 ? 'Next ▶' : '🧹 Clean up + finish'}</button>${S?.edition?.lookAs ? `<button class="ghost" onclick="${DM.i === DEMO.length - 1 ? 'demoClean(true).then(demoBack)' : 'demoEnd();demoBack()'}" title="Demo: ${DM.i === DEMO.length - 1 ? 'clean up and ' : 'stop the tour and '}go back to your own version of the app">↩ Back to mine</button>` : ''}<button class="ghost" onclick="DM.hide=true;demoSave();demoBar();toast('🎥 The guide bar is hidden: Ctrl+Alt+H shows it again')" title="Demo: hide this bar while recording (Ctrl+Alt+H)">🙈</button><button class="ghost" onclick="demoEnd()" title="Demo: stop the tour (the pretend things stay until you clean up)">✕</button></div><div class="help" style="margin:4px 0 0">💬 ${esc(d.say)}</div>`;
+}
+async function demoClean(end) {
+  for (const [u, b] of [['/api/test/songs', { action: 'clear' }], ['/api/test/movienight', { action: 'clear' }], ['/api/test/raids', { action: 'clear' }], ['/api/test/birthday', { action: 'clear' }]]) { try { await api(u, b); } catch {} }
+  try { $('botDlg').close(); Profile.close(); } catch {} toast('🧹 The pretend songs, movies, votes, birthdays and raid channels are gone.'); if (end) demoEnd();
+}
+document.addEventListener('keydown', e => { if (!e.ctrlKey || !e.altKey || DM.i < 0) return; if (e.code === 'ArrowRight') { e.preventDefault(); demoGo(DM.i + 1); } else if (e.code === 'ArrowLeft') { e.preventDefault(); demoGo(DM.i - 1); } else if (e.code === 'KeyH') { e.preventDefault(); DM.hide = !DM.hide; demoSave(); demoBar(); } });
+setTimeout(() => { demoList(); if (DM.i >= 0) { demoBar(); if (DM.pending) { DM.pending = false; demoSave(); demoGo(DM.i); } } }, 2500);
 async function mnhTest() { try { await api('/api/test/movienight', { action: 'night' }); } catch { return; } histMode = 'mnight'; setView('history'); setTimeout(() => { drawMnHist(); toast('🍿 A pretend movie night was added to History (🧹 Take the pretend voters out removes it). Press ▶ Replay the vote on it.'); }, 600); }
 async function drawSpinLog() {
   const box = $('histBody'), d = await fetch('/api/wheel/spin-log').then(r => r.json()).catch(() => ({ rows: [], bank: [] }));

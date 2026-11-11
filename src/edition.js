@@ -20,7 +20,7 @@ export const lookingAs = () => lookAs;
 export const onNow = () => { const e = lookAs && ALL[lookAs] ? ALL[lookAs] : ALL[EDITION.id]; return Array.isArray(e?.on) ? e.on : []; };
 export const feat = (name, devMode) => onNow().includes(name) || (!lookAs && EDITION.dev && !!devMode); /* (👀 while looking like another edition: only that edition's extras) */
 export const FEATS = ['movienight', 'chatbot', 'kick', 'songs', 'dash', 'eggs', 'raids'];
-export const is = (...ids) => ids.includes(EDITION.id);
+export const is = (...ids) => ids.includes(lookAs || EDITION.id); /* (👀 1.130.0: while looking like another edition, its own defaults too: Birx & Jess's raters, guesser, 6 AM day start) */
 /** 🎭 Every part that can be switched per edition (the Backup Bots app's Editions tab lists these). kind 'off' = on unless listed in `off`; kind 'on' = an extra, only when listed in `on`. */
 export const FEATURES = (() => { let f = read('src/features.json'); if (!Array.isArray(f)) f = read('src/features.base.json'); return Array.isArray(f) ? f : []; })();
 // 🏷️ The name people see (1.92.0, Derek: "rename the whole project to TimePeace Chatbot"; True's + Birx's editions carry their own name).
