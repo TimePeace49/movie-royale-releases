@@ -4,6 +4,12 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.132.4: What's new
+- 💬 Chat commands typed in the app's own chat box now work (for example !sr with a song): anything that starts with ! is sent exactly as typed, as you.
+- {dash} 🎵 The music box on the Chat tab lists every song waiting in the queue: scroll down in the box to see them all.
+- {dash} ⭐ ➕ Playlist in the music box saves the song that's playing (or one from History) to "⭐ My saved songs", a playlist kept in the app that you can play from 📻 or use when no requests are left.
+- 🖱 Right-click a name in chat for 👤 View profile, 📣 Shout out, ⏳ Time out and 🔨 Ban (it asks "are you sure?" first). Right-click anywhere in chat to pick how it scrolls: auto, pause on hover, or only when you scroll it.
+
 ## v1.132.3: What's new
 - {songs} 🔉 Anyone in chat can change the song volume with !volume 40, and 🎵 Songs → Settings → Who can change the volume picks who may (everyone, followers, subs, VIPs, mods or only you).
 

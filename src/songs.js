@@ -206,6 +206,20 @@ export function playlist(b) {
   if (L.length >= 40) throw new Error('That is a lot of playlists: remove one first.'); if (L.some(p => p.list === list)) throw new Error('That playlist is already in your list.');
   L.push({ id: 'pl' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name: String(b.name || '').trim().slice(0, 60) || 'Playlist ' + (L.length + 1), list, shuffle: !!b.shuffle }); changed(); return state();
 }
+/** ⭐ (1.132.4) Your own saved songs: a playlist kept in the app (YouTube can't be written to from here). `{yt | key, title}` adds the song,
+ *  the same again (or `remove`) takes it out. The first saved-songs playlist is used; one is made when there is none. */
+export function plSong(b) {
+  const d = data(), L = (d.playlists ||= []); let yt = /^[A-Za-z0-9_-]{11}$/.test(String(b.yt || '')) ? String(b.yt) : '';
+  const key = String(b.key || ''); if (!yt && key.startsWith('yt:')) yt = key.slice(3); if (!yt && key && d.lib[key] && d.lib[key].yt) yt = d.lib[key].yt;
+  if (!yt) throw new Error("This song has no YouTube link, so it can't be saved to your playlist.");
+  let p = (b.id && L.find(x => x.id === b.id && x.songs)) || L.find(x => x.songs);
+  if (!p) { const id = 'pl' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); p = { id, name: '⭐ My saved songs', list: 'app-' + id, shuffle: true, songs: [] }; L.push(p); }
+  const i = p.songs.findIndex(x => x.yt === yt); let added = false;
+  if (i >= 0) { if (b.add !== true) p.songs.splice(i, 1); }
+  else if (!b.remove) { if (p.songs.length >= 150) throw new Error('That playlist is full (150 songs): take one out first.'); p.songs.push({ yt, title: String(b.title || (d.lib['yt:' + yt] && d.lib['yt:' + yt].title) || 'Song').slice(0, 140) }); added = true; }
+  if (!p.songs.length) { if (d.backup === p.id) d.backup = ''; if (d.hold === p.id) d.hold = ''; }
+  changed(); return { ...state(), added, playlist: p.name, n: p.songs.length };
+}
 /** 📻 The playlist that plays by itself when no song requests are left ('' = none). */
 export function setBackup(id) { const d = data(); if (id && !(d.playlists || []).some(p => p.id === id)) throw new Error("That playlist isn't in your list any more."); d.backup = id || ''; changed(); return state(); }
 /** ⏸ Pause the song requests and play a playlist ('' = back to the requests). Requests still come in and wait their turn. */

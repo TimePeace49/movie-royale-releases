@@ -34,10 +34,10 @@
 <body>
 <div id="app">
   <div class="card" data-panel="chat">
-    <div class="head"><b>💬 <span id="chanName">Chat</span></b><input id="filter" placeholder="🔎 Filter chat…" style="max-width:220px" oninput="drawAll()"><button class="pop" onclick="popOut('chat')" title="Open just the chat in its own window">⧉ Pop out</button><button class="pop" id="popAll" onclick="popOut('all')" title="Open chat, alerts and find someone together in their own window">⧉ All 3</button></div>
+    <div class="head"><b>💬 <span id="chanName">Chat</span></b><input id="filter" placeholder="🔎 Filter chat…" style="max-width:220px" oninput="drawAll()"><select id="scrollMode" onchange="scrollSet(this.value)" title="How chat scrolls. Auto: follows new messages (scroll up to pause). Pause on hover: stops while your mouse is over chat, catches up when it leaves. Manual: never moves by itself, you scroll it" style="max-width:150px"><option value="auto">⬇ Auto scroll</option><option value="hover">🖱 Pause on hover</option><option value="manual">✋ I scroll it</option></select><button class="pop" onclick="popOut('chat')" title="Open just the chat in its own window">⧉ Pop out</button><button class="pop" id="popAll" onclick="popOut('all')" title="Open chat, alerts and find someone together in their own window">⧉ All 3</button></div>
     <div id="permWarn"></div>
     <div id="msgs"></div>
-    <div id="paused" onclick="stick=true;scrollDown()">⏸ Chat paused while you scroll — click to jump to new messages</div>
+    <div id="paused" onclick="stick=true;scrollDown()"></div>
     <form id="say" onsubmit="send(event)"><input id="sayTx" placeholder="Send a message in your chat…" autocomplete="off"><button class="pri">Send</button></form>
   </div>
   <div class="side">
@@ -54,8 +54,42 @@
 <script>
 const $ = id => document.getElementById(id), esc = ChatUI.esc;
 const embed = new URLSearchParams(location.search).has('embed');
-/* (inside the Chat tab: a right-click here opens the tab's own "turn boxes on / off" menu) */
-if (embed && parent !== window) document.addEventListener('contextmenu', e => { if (e.target.closest('input, textarea, a')) return; e.preventDefault(); parent.postMessage({ dashMenuAt: { x: e.clientX, y: e.clientY, panel: new URLSearchParams(location.search).get('panel') || '' } }, location.origin); });
+/* 🖱 (1.132.4) right-click menu. On a name: profile, shout out, time out, ban (asks first). In chat: how it scrolls. Inside the Chat tab: the tab's own "turn boxes on / off" menu is one click further */
+const PANEL = new URLSearchParams(location.search).get('panel') || '';
+function cNote(t, bad) { let n = $('cNote'); if (!n) { n = document.createElement('div'); n.id = 'cNote'; document.body.appendChild(n); } n.textContent = t; n.className = bad ? 'bad' : ''; n.style.display = 'block'; clearTimeout(cNote.t); cNote.t = setTimeout(() => { n.style.display = 'none'; }, 5000); }
+function cMenuClose() { $('cMenu')?.remove(); }
+async function cPost(url, body) { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(e => ({ error: e.message })); if (r.error) cNote('⚠️ ' + r.error, true); return r; }
+async function cAct(what, user, name, test) {
+  cMenuClose();
+  if (what === 'profile') { if (window.Profile) Profile.open(user); return; }
+  if (test && (what === 'so' || what === 'timeout')) { cNote(`🧪 Test: nothing was sent for ${name}`); return; }
+  if (what === 'so') { const r = await cPost('/api/shoutout', { name: user }); if (!r.error) cNote(`📣 Shout-out for ${name} sent`); return; }
+  if (what === 'timeout') { const r = await cPost('/api/chat/mod', { action: 'timeout', login: user, seconds: 600 }); if (!r.error) cNote(`⏳ ${name} is timed out for 10 minutes`); return; }
+  if (what === 'ban') { cBanAsk(user, name, test); return; }
+}
+function cBanAsk(user, name, test) { /* a ban is easy to hit by accident: always ask first */
+  $('cBan')?.remove(); const d = document.createElement('div'); d.id = 'cBan';
+  d.innerHTML = `<div class="cBanBox"><b>🔨 Ban ${esc(name)}?</b><p>They won't be able to chat in your channel until you unban them.</p><div class="cBanRow"><button id="cBanNo">Cancel</button><button id="cBanYes" class="danger">Yes, ban ${esc(name)}</button></div></div>`;
+  document.body.appendChild(d); const close = () => d.remove(); $('cBanNo').onclick = close; d.addEventListener('mousedown', e => { if (e.target === d) close(); }); $('cBanNo').focus();
+  $('cBanYes').onclick = async () => { close(); if (test) { cNote(`🧪 Test: ${name} would be banned now (nothing was sent)`); return; } const r = await cPost('/api/chat/mod', { action: 'ban', login: user }); if (!r.error) cNote(`🔨 ${name} is banned`); };
+}
+function cMenu(x, y, user, name, inChat, test) {
+  cMenuClose(); const m = document.createElement('div'); m.id = 'cMenu'; const it = (txt, js, tip) => `<div class="cmi" title="${esc(tip)}" onclick="${js}">${txt}</div>`, u = esc(user).replace(/'/g, ''), n = esc(name).replace(/'/g, '');
+  m.innerHTML = (user ? `<div class="cmh">${esc(name)}</div>` + it('👤 View profile', `cAct('profile','${u}','${n}',${!!test})`, "Open this person's profile") + it('📣 Shout out', `cAct('so','${u}','${n}',${!!test})`, 'Give this person a shout-out in chat') + it('⏳ Time out (10 min)', `cAct('timeout','${u}','${n}',${!!test})`, "This person can't chat for 10 minutes") + it('🔨 Ban…', `cAct('ban','${u}','${n}',${!!test})`, 'Ban this person from your chat (asks you first)') + '<div class="cms"></div>' : '')
+    + (inChat ? '<div class="cmh">How chat scrolls</div>' + [['auto', '⬇ Auto scroll', 'Chat follows new messages (scroll up to pause)'], ['hover', '🖱 Pause on hover', 'Chat stops while your mouse is over it and catches up when it leaves'], ['manual', '✋ I scroll it', 'Chat never moves by itself: you scroll it']].map(([k, t, tip]) => it(`${scrollMode === k ? '✓' : '<span style="visibility:hidden">✓</span>'} ${t}`, `scrollSet('${k}');cMenuClose()`, tip)).join('') : '')
+    + (embed && parent !== window ? (user || inChat ? '<div class="cms"></div>' : '') + it('▦ Show / hide boxes…', `cMenuClose();parent.postMessage({dashMenuAt:{x:${Math.round(x)},y:${Math.round(y)},panel:'${PANEL}'}},location.origin)`, 'Turn the boxes on this tab on or off') : '');
+  if (!m.innerHTML) return false; document.body.appendChild(m);
+  m.style.left = Math.max(4, Math.min(innerWidth - m.offsetWidth - 4, x)) + 'px'; m.style.top = Math.max(4, Math.min(innerHeight - m.offsetHeight - 4, y)) + 'px'; return true;
+}
+document.addEventListener('contextmenu', e => {
+  if (e.target.closest('input, textarea, a, #cMenu, #cBan')) return;
+  const n = e.target.closest('#msgs .cn[data-user], #alerts b[data-user], #found [data-user]'), inChat = !!e.target.closest('#msgs');
+  if (!n && !inChat) { if (embed && parent !== window) { e.preventDefault(); parent.postMessage({ dashMenuAt: { x: e.clientX, y: e.clientY, panel: PANEL } }, location.origin); } return; }
+  if (cMenu(e.clientX, e.clientY, n ? n.dataset.user : '', n ? n.textContent.replace(/:$/, '').trim() : '', inChat)) e.preventDefault();
+});
+document.addEventListener('mousedown', e => { if (!e.target.closest('#cMenu')) cMenuClose(); }); addEventListener('blur', cMenuClose); document.addEventListener('keydown', e => { if (e.key === 'Escape') { cMenuClose(); $('cBan')?.remove(); } });
+window.cMenuTest = ban => { const n = [...document.querySelectorAll('#msgs .cn[data-user]')].pop(); if (!n) return false; const r = n.getBoundingClientRect(); cMenu(r.left + 10, r.bottom + 2, n.dataset.user, n.textContent.replace(/:$/, '').trim(), true, true); if (ban) cAct('ban', n.dataset.user, n.textContent.replace(/:$/, '').trim(), true); return true; };
+document.head.insertAdjacentHTML('beforeend', `<style>#cMenu{position:fixed;z-index:9000;min-width:200px;background:#1d1238;border:1px solid rgba(255,255,255,.22);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.6);padding:6px 0;font-size:14px;color:#fff}#cMenu .cmi{padding:6px 14px;cursor:pointer;white-space:nowrap}#cMenu .cmi:hover{background:rgba(255,255,255,.12)}#cMenu .cmh{padding:4px 14px;font-size:12px;color:#b9aede;font-weight:700}#cMenu .cms{height:1px;background:rgba(255,255,255,.15);margin:5px 0}#cNote{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:9100;background:#1d1238;border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 14px;font-size:14px;color:#fff;display:none;max-width:90%}#cNote.bad{border-color:#ff7a7a}#cBan{position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:12px}#cBan .cBanBox{background:#1d1238;border:2px solid #ff7a7a;border-radius:14px;padding:16px;max-width:340px;color:#fff;font-size:15px}#cBan p{margin:8px 0 14px;color:#cfc6ea;font-size:14px}#cBan .cBanRow{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}#cBan button{padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:#2c2050;color:#fff;font:inherit;cursor:pointer}#cBan button.danger{background:#c62f3d;border-color:#ff7a7a;font-weight:700}</style>`);
 document.head.insertAdjacentHTML('beforeend', `<style>${ChatUI.CSS}</style>`);
 // ?panel=chat | alerts | find opens just that one (each can sit on its own screen)
 const solo = new URLSearchParams(location.search).get('panel');
@@ -64,11 +98,17 @@ document.querySelectorAll('.pop').forEach(b => { if (!embed && (b.id === 'popAll
 let msgs = [], alerts = [], stick = true, info = {};
 /* one click on a name in chat or the alerts opens their profile (a double-click still does too) */
 document.addEventListener('click', e => { const n = e.target.closest('#msgs .cn[data-user], #alerts b[data-user]'); if (n && n.dataset.user && window.Profile) Profile.open(n.dataset.user); });
-function scrollDown() { const b = $('msgs'); b.scrollTop = b.scrollHeight; $('paused').style.display = 'none'; }
-$('msgs').addEventListener('scroll', () => { const b = $('msgs'); stick = b.scrollHeight - b.scrollTop - b.clientHeight < 40; if (stick) $('paused').style.display = 'none'; });
+/* 📜 (1.132.4) how chat scrolls: auto (follows, scroll up to pause) | hover (pauses while the mouse is over chat) | manual (you scroll it) */
+let scrollMode = 'auto', hoverOn = false, unread = 0; try { const v = localStorage.getItem('chatScroll'); if (['auto', 'hover', 'manual'].includes(v)) scrollMode = v; } catch {} $('scrollMode').value = scrollMode;
+const follows = () => scrollMode === 'manual' ? false : scrollMode === 'hover' ? stick && !hoverOn : stick;
+function scrollSet(v) { scrollMode = ['auto', 'hover', 'manual'].includes(v) ? v : 'auto'; try { localStorage.setItem('chatScroll', scrollMode); } catch {} $('scrollMode').value = scrollMode; if (scrollMode !== 'manual') { stick = true; scrollDown(); } }
+function pausedShow() { unread++; const p = $('paused'); p.textContent = `${scrollMode === 'manual' ? '✋' : '⏸'} ${unread} new message${unread === 1 ? '' : 's'}${scrollMode === 'hover' && hoverOn && stick ? ': paused while your mouse is over chat' : scrollMode === 'manual' ? '' : ': paused while you scroll'} — click to jump to them`; p.style.display = 'block'; }
+function scrollDown() { const b = $('msgs'); b.scrollTop = b.scrollHeight; $('paused').style.display = 'none'; unread = 0; }
+$('msgs').addEventListener('mouseenter', () => { hoverOn = true; }); $('msgs').addEventListener('mouseleave', () => { hoverOn = false; if (scrollMode === 'hover' && stick) scrollDown(); });
+$('msgs').addEventListener('scroll', () => { const b = $('msgs'); stick = b.scrollHeight - b.scrollTop - b.clientHeight < 40; if (stick) { $('paused').style.display = 'none'; unread = 0; } });
 const show = m => { const q = $('filter').value.trim().toLowerCase(); return !q || `${m.name} ${m.text}`.toLowerCase().includes(q); };
 function drawAll() { $('msgs').innerHTML = msgs.filter(show).map(m => ChatUI.row(m, { tools: info.canMod || info.canDelete })).join('') || '<div class="muted" style="padding:10px">No chat yet. Messages show up here as they come in.</div>'; scrollDown(); }
-function addMsg(m) { msgs.push(m); if (msgs.length > 1500) msgs.shift(); if (!show(m)) return; const b = $('msgs'); if (b.querySelector('.muted')) b.innerHTML = ''; b.insertAdjacentHTML('beforeend', ChatUI.row(m, { tools: info.canMod || info.canDelete })); if (b.children.length > 1500) b.firstChild.remove(); if (stick) scrollDown(); else $('paused').style.display = 'block'; }
+function addMsg(m) { msgs.push(m); if (msgs.length > 1500) msgs.shift(); if (!show(m)) return; const b = $('msgs'); if (b.querySelector('.muted')) b.innerHTML = ''; b.insertAdjacentHTML('beforeend', ChatUI.row(m, { tools: info.canMod || info.canDelete })); if (b.children.length > 1500) b.firstChild.remove(); if (follows()) scrollDown(); else pausedShow(); }
 function drawAlerts() { $('alerts').innerHTML = alerts.map(ChatUI.alertRow).join('') || '<div class="muted">Alerts show up here (subs, gift subs, bits, raids, follows, channel point redemptions, watch streaks and donations).</div>'; }
 async function load() {
   info = await fetch('/api/chat/recent?n=500').then(r => r.json()); ChatUI.setAssets(info);

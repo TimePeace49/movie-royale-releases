@@ -2143,7 +2143,20 @@ app.get('/api/chat/recent', async (req, res) => {
 });
 app.get('/api/chat/search', (req, res) => res.json(chatlog.search({ q: req.query.q, login: req.query.login, days: Math.min(365, Number(req.query.days) || 30) })));
 app.get('/api/chat/names', (req, res) => res.json(chatlog.names(String(req.query.q || ''))));
-app.post('/api/chat/say', wTry(async b => { await twitch.say(String(b.text || '').slice(0, 490)); return {}; }));
+app.post('/api/chat/say', wTry(async b => { /* 💬 the app's own chat box. (1.132.4) A command (!sr …) goes out exactly as typed, as you: with the bot's name tag in front (or from the bot account) nothing recognised it as a command */
+  const text = String(b.text || '').trim().slice(0, 490); if (!text) return {};
+  if (!/^!\S/.test(text)) { await twitch.say(text); return { command: false }; }
+  const me = twitch.status.login || db.owner?.login || 'streamer', mine = () => twitchHandlers.chat({ pretend: true, login: String(me).toLowerCase(), name: db.owner?.name || me, text, userId: twitch.status.userId || null, emotes: '', badgeList: 'broadcaster/1', badges: { broadcaster: true, mod: false, vip: false, sub: false, tier: 0, months: 0 } });
+  if (b.test) { /* 🧪 nothing goes to the real chat: run it as you and collect what the app answers */
+    twitch.pretend.until = Date.now() + 10 * 60000; const replies = [], f = t => replies.push(t); twitch.sayListeners.add(f);
+    try { await mine(); await new Promise(r => setTimeout(r, 900)); } finally { twitch.sayListeners.delete(f); }
+    return { command: true, test: true, as: me, replies };
+  }
+  if (twitch.route.on()) { await twitch.route.say(text); return { command: true, as: me }; } /* 🟢 Kick: its chat feed brings it back like anyone's message */
+  if (!twitch.status.canChat) { if (Date.now() < twitch.pretend.until) { await mine(); return { command: true, as: me, pretend: true }; } throw new Error('Sign in with Twitch first, so the app can type in your chat'); }
+  await twitch.sayAsMe(text); /* Twitch chat sends it back to the app like any chat message, from you (the streamer), and the command runs */
+  return { command: true, as: me };
+}));
 app.post('/api/chat/mod', wTry(async b => {
   const login = String(b.login || '').replace(/^@/, '').toLowerCase();
   if (b.action === 'delete') await twitch.deleteMessage(b.id);
@@ -5061,6 +5074,7 @@ app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
 app.post('/api/songs/playlist', sgTry(b => songs.playlist(b))); // 📻 add / rename / remove one of your YouTube playlists
+app.post('/api/songs/playlist-song', sgTry(b => songs.plSong(b))); // ⭐ save a song to (or take it out of) your own saved-songs playlist
 app.post('/api/songs/backup', sgTry(b => songs.setBackup(String(b.id || '')))); // 📻 the playlist that plays when no requests are left
 app.post('/api/songs/hold', sgTry(b => songs.setHold(String(b.id || '')))); // ⏸ pause the requests and play a playlist ('' = back to requests)
 app.post('/api/songs/import', sgTry(b => { // a spreadsheet (.xlsx as base64), a CSV / text file, or pasted lines; kind: songs | banned; dry = only show what was found

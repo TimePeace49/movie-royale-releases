@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.4
+- 💬 Chat commands typed in the app's own chat box now work (like !sr with a song). Before, the app put its bot name in front of what you typed (or sent it from the bot account), so nothing saw it as a command. Now a message that starts with ! goes out exactly as typed, as you, and runs like any streamer command.
+- 🎵 The music box on the Chat tab now lists every song waiting in the queue (it used to show 3 and "+ more"). Scroll down in the box to see them all.
+- ⭐ New ➕ Playlist button in the music box (next to 📻, and on every song in History): it saves the song to "⭐ My saved songs", a playlist kept in the app. Play it from 📻 My playlists, or pick it as the one that plays when no requests are left. Click ⭐ Saved again to take a song out. (The app can't add songs to a playlist on YouTube itself: that needs a YouTube sign-in.)
+- 🖱 Right-click in chat: on someone's name you get 👤 View profile, 📣 Shout out, ⏳ Time out (10 min) and 🔨 Ban… (a pop-up asks "are you sure?" first, in case it was hit by accident). Anywhere in chat you can pick how chat scrolls: ⬇ Auto scroll, 🖱 Pause on hover or ✋ I scroll it (the same choice as the menu above chat). On the Chat tab, ▦ Show / hide boxes… is at the bottom of that menu.
+- 🎥 The demo tour has a new part: ❓ Help mode.
+- 🧪 Test tab → 🎵 Song requests → 💬 Command from the app's chat box and ⭐ Save to my playlist; Chat tab tests → 🖱 Right-click menu in chat.
+
 ## 1.132.3
 - 🔉 Song volume from chat: anyone can now change it with !volume 40 (before, only mods could). 🎵 Songs → Settings → "Who can change the volume" picks who may: everyone, followers, subs, VIPs, mods or only you. Anyone can still type !volume to see what it is.
 - 🧪 Test tab → 🎵 Song requests → 🔉 Volume from chat.
