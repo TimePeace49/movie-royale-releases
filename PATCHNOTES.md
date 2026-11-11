@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.138.2: What's new
+- {movienight} 🎬 Movies only: TV episodes and TV shows on your IMDb ratings page or watchlist no longer come in as movies, and the ones that already did are taken out by themselves.
+- {ed:birx} 📋 Your IMDb watchlist and ratings links are filled in for you: the app reads both by itself when it opens. Nothing to paste.
+
 ## v1.138.1: What's new
 - {movienight} ⭐ Reading your IMDb ratings from the link now waits for the whole page, so all of them come in (before, only the last short page did).
 

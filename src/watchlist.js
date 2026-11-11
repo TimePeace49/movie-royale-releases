@@ -3,6 +3,10 @@
 // IMDb gives apps no way to ADD to someone's watchlist, so a suggestion is marked "not on IMDb yet": the History tab has a button that
 // opens the movie's IMDb page, where the streamer clicks IMDb's own Watchlist button. Nothing here signs in to IMDb.
 import { db, save } from './store.js';
+import { is } from './edition.js';
+/* (1.138.2, Derek: "just auto add these as the imdb things for birx and jess") Birx & Jess's edition starts with their own IMDb links filled in; a saved link (or an emptied box) wins. */
+export const BIRX_IMDB = { listUrl: 'https://www.imdb.com/user/p.llqsfpc6354i2guvrds7jcivci/watchlist/', ratedUrl: 'https://www.imdb.com/user/p.llqsfpc6354i2guvrds7jcivci/ratings/' };
+export const linkDefaults = () => is('birx') ? BIRX_IMDB : { listUrl: '', ratedUrl: '' };
 
 let H = { details: async () => undefined, linkOk: () => true, read: async () => { throw new Error('Reading IMDb is not set up.'); }, on: () => false, say: async () => {}, allowed: () => true, lookup: async () => null, act: () => {}, send: () => {}, isBot: () => false, names: () => 'They' };
 export const setHooks = h => { H = { ...H, ...h }; };
@@ -14,7 +18,7 @@ export const yearOf = t => { const m = /\((\d{4})\)\s*$/.exec(String(t || '')); 
 const bare = t => String(t || '').replace(/\s*\(\d{4}\)\s*$/, '').trim();
 
 export function data(d = (db.watch ||= {})) { d.list ||= []; d.rated ||= []; d.opts ||= {}; return d; }
-export const opts = (d = data()) => ({ command: '!suggest', rateCommand: '!rating', perm: 'all', perUser: 0, reply: true, cd: 0, listUrl: '', ratedUrl: '', auto: true, ...d.opts });
+export const opts = (d = data()) => ({ command: '!suggest', rateCommand: '!rating', perm: 'all', perUser: 0, reply: true, cd: 0, ...linkDefaults(), auto: true, ...d.opts });
 export function setOpts(b) {
   const d = data(), x = d.opts;
   for (const k of ['command', 'rateCommand']) if (k in b) { let c = low(b[k]).replace(/\s+/g, ''); if (c && !c.startsWith('!')) c = '!' + c; x[k] = c.slice(0, 25); }
@@ -86,16 +90,28 @@ export function applyImport(p, { replace = false, d = data(), quiet = false } = 
   return r;
 }
 
+/** 🎬 Movies only (1.138.2): TV episodes / series / games that came in from an IMDb link are taken out again (ratings + watchlist; never a chat suggestion). */
+const dropIds = (d, ids) => { const S = new Set(ids || []); if (!S.size) return 0; const n0 = d.rated.length + d.list.length; d.rated = d.rated.filter(x => !(x.imdb && S.has(x.imdb))); d.list = d.list.filter(x => !(x.imdb && S.has(x.imdb) && x.src !== 'chat' && x.src !== 'hand')); return n0 - d.rated.length - d.list.length; };
+/** …and a second, sure check: each rated title with an IMDb id is looked up once (OMDb says "movie", "series", "episode" or "game"); the ones that aren't movies are taken out. A few at a time. */
+let typing = false;
+export async function typeCheck(max = 60, d = data(), details = H.details) {
+  if (typing) return { checked: 0, gone: 0 }; const todo = d.rated.filter(x => x.imdb && !x.tc).slice(0, max); if (!todo.length) return { checked: 0, gone: 0 };
+  typing = true; let checked = 0; const bad = [];
+  try { for (const x of todo) { let f; try { f = await details({ imdb: x.imdb }); } catch { break; } if (f === undefined) break; x.tc = 1; checked++; if (f && /series|episode|game/.test(f.type || '')) bad.push(x.imdb); if (details === H.details) await new Promise(r => setTimeout(r, 250)); }
+  } finally { typing = false; }
+  const gone = dropIds(d, bad); if (d === data()) { if (gone) { H.act(`${gone} TV episode${gone === 1 ? '' : 's'} / show${gone === 1 ? '' : 's'} taken out of the rated movies (movies only)`, { kind: 'watchSync' }); changed(); } else save(); }
+  return { checked, gone };
+}
 /** 🔄 Read the IMDb links again (their public watchlist + ratings pages) and bring in what's new. Only ever ADDS: a page that loaded half never removes anything. */
 let syncing = false;
 export async function sync(why = 'you') {
   const d = data(), o = opts(d); if (syncing) return { busy: true }; if (!o.listUrl && !o.ratedUrl) throw new Error('Paste your IMDb watchlist link or ratings link first.');
   syncing = true; const out = { at: Date.now(), why }; H.send({ type: 'watchlist', syncing: true }, 'control');
   try { for (const [k, url] of [['rated', o.ratedUrl], ['list', o.listUrl]]) { if (!url) continue;
-      try { const p = await H.read(url); if (!p.items.length) throw new Error(p.seen ? `the page loaded (${p.seen} movies), but no ratings could be read from it. Use the Export file for now [${p.shape || ""}]` : 'no movies were found on that page (is it public on IMDb?)'); const r = applyImport({ kind: p.kind, items: p.items }, { quiet: true }); out[k] = { n: p.items.length, pages: p.pages || 1, ...(p.kind === 'rated' && p.seen > p.items.length ? { seen: p.seen, shape: String(p.shape || '').slice(0, 300) } : {}), added: r.added, offList: r.offList || 0, onImdb: r.onImdb || 0 }; }
+      try { const p = await H.read(url); if (!p.items.length) throw new Error(p.seen ? `the page loaded (${p.seen} movies), but no ratings could be read from it. Use the Export file for now [${p.shape || ""}]` : 'no movies were found on that page (is it public on IMDb?)'); const gone = dropIds(d, p.skip); const r = applyImport({ kind: p.kind, items: p.items }, { quiet: true }); out[k] = { ...(gone || (p.skip || []).length ? { notMovies: (p.skip || []).length, gone } : {}), n: p.items.length, pages: p.pages || 1, ...(p.kind === 'rated' && p.seen > p.items.length ? { seen: p.seen, shape: String(p.shape || '').slice(0, 300) } : {}), added: r.added, offList: r.offList || 0, onImdb: r.onImdb || 0 }; }
       catch (e) { const t = String(e.message || e); out[k] = { err: (/fetch failed|ENOTFOUND|ECONN|timed? ?out|aborted/i.test(t) ? "couldn't reach IMDb (no internet, or IMDb refused the app)" : t).slice(0, 420) }; } }
   } finally { syncing = false; }
-  d.sync = out; const added = (out.list?.added || 0) + (out.rated?.added || 0); if (added) H.act(`IMDb read again: ${out.list?.added || 0} new on the watchlist, ${out.rated?.added || 0} new rating${out.rated?.added === 1 ? '' : 's'}`, { kind: 'watchSync' }); changed(); return out;
+  d.sync = out; const added = (out.list?.added || 0) + (out.rated?.added || 0); if (added) H.act(`IMDb read again: ${out.list?.added || 0} new on the watchlist, ${out.rated?.added || 0} new rating${out.rated?.added === 1 ? '' : 's'}`, { kind: 'watchSync' }); changed(); setTimeout(() => typeCheck(400).catch(() => {}), 3000); return out;
 }
 /** Someone suggests a movie (chat, or the streamer by hand). Refused when it's on the watchlist or already rated. */
 export async function suggest(m, text, { hand = false, test = false, d = data(), lookup = H.lookup } = {}) {

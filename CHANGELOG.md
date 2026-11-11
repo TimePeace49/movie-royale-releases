@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.138.2
+- 🎬 **Movies only from IMDb links.** TV episodes, TV shows and games on an IMDb ratings page or watchlist are now left out when the app reads the link (a whole season of Kenny vs. Spenny episodes had come in as rated movies). Ones that already came in are taken out by themselves: on the next read, and by a look-up of each rated title shortly after the app opens. TV movies and specials stay. The "Last read" line says how many were left out. Checked by the watchlist rules test on the Test tab.
+- 📋 **Birx & Jess edition:** their IMDb watchlist and ratings links are now filled in by themselves, so the app reads both when it opens with nothing to paste. (You can still change or empty the boxes in Settings → 🍿 Movie night.) The watchlist rules test on the Test tab checks it.
+
 ## 1.138.1
 - ⭐ Reading the IMDb ratings page: only the last, short page of ratings came in (46 of 296). On a full page IMDb fills in the person's own ratings a moment after the list shows, and the app read the page too soon. It now scrolls down the page and waits until the ratings have stopped arriving before reading it.
 - If some ratings still can't be read, the "Last read" line now says how many of how many came in, instead of a plain tick.

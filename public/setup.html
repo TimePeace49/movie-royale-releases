@@ -279,7 +279,7 @@ const PAGES = {
     </ol>
     ${note('imdb')}
     <button class="primary big" onclick="imdbLinks(this)">Save &amp; read IMDb</button>
-    ${sy ? `<p class="help">Last read: ${[['list', 'watchlist'], ['rated', 'ratings']].filter(([k]) => sy[k]).map(([k, n]) => sy[k].err ? `⚠️ ${n}: ${esc(sy[k].err)}` : (sy[k].seen ? `⚠️ ${n}: only ${sy[k].n} of the ${sy[k].seen} on the pages could be read [${esc(sy[k].shape || '')}]` : `✅ ${n}: ${sy[k].n} read`)).join(' · ')}</p>` : ''}
+    ${sy ? `<p class="help">Last read: ${[['list', 'watchlist'], ['rated', 'ratings']].filter(([k]) => sy[k]).map(([k, n]) => sy[k].err ? `⚠️ ${n}: ${esc(sy[k].err)}` : (sy[k].seen ? `⚠️ ${n}: only ${sy[k].n} of the ${sy[k].seen} on the pages could be read [${esc(sy[k].shape || '')}]` : `✅ ${n}: ${sy[k].n} read${sy[k].notMovies ? ' (' + sy[k].notMovies + ' TV episodes / shows left out: movies only)' : ''}`)).join(' · ')}</p>` : ''}
     <h3 style="margin-top:22px">If IMDb refuses the app: use its Export files</h3>
     <ol class="steps">
       <li>On Your Watchlist (and on Your Ratings) press <b>Export</b>. IMDb makes a file; download it from ${link('https://www.imdb.com/exports/', 'imdb.com/exports')}.</li>

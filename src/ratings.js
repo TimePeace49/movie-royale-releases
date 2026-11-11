@@ -33,7 +33,7 @@ export async function omdbDetails({ imdb, title, year }) {
   const r = await fetch(omdbUrl(q + '&plot=short'), { signal: AbortSignal.timeout(9000) }), j = await r.json();
   if (j.Response === 'False' || !j.Title) { if (/limit|key/i.test(j.Error || '')) throw new Error(j.Error); return null; }
   const na = v => (v && v !== 'N/A' ? String(v) : ''), im = parseFloat(j.imdbRating);
-  return { genres: na(j.Genre), directors: na(j.Director), actors: na(j.Actors), plot: na(j.Plot).slice(0, 400), rating: im > 0 ? Math.round(im * 10) / 10 : 0, year: /^\d{4}/.test(j.Year || '') ? String(j.Year).slice(0, 4) : '', imdb: /^tt\d+$/.test(j.imdbID || '') ? j.imdbID : '' };
+  return { genres: na(j.Genre), directors: na(j.Director), actors: na(j.Actors), plot: na(j.Plot).slice(0, 400), rating: im > 0 ? Math.round(im * 10) / 10 : 0, year: /^\d{4}/.test(j.Year || '') ? String(j.Year).slice(0, 4) : '', imdb: /^tt\d+$/.test(j.imdbID || '') ? j.imdbID : '', type: na(j.Type).toLowerCase() };
 }
 export async function ratingsByTitle(title, year) {
   if (!omdbWhere()) return undefined;

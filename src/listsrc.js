@@ -95,6 +95,20 @@ export function imdbUserRatings(html) {
   for (const row of imdbRows(html)) { const tt = (row.match(/\/title\/(tt\d+)\//) || [])[1]; if (!tt) continue; const st = rowRating(row); if (st) put(tt, st); }
   return out;
 }
+/** 🎬 Movies only (1.138.2, Derek: a TV show's episodes came in with the ratings): the ids on a page that are NOT movies (TV series, episodes, games, podcasts, music videos). TV movies / specials / shorts / videos stay. */
+const NOT_MOVIE = /series|episode|game|podcast|music/i;
+export function imdbNotMovies(html) {
+  const out = new Set(), m = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (m) { let data = null; try { data = JSON.parse(m[1]); } catch {}
+    const walk = (o, depth = 0) => { if (!o || typeof o !== 'object' || depth > 40) return; if (Array.isArray(o)) { for (const x of o) walk(x, depth + 1); return; }
+      const id = [o.id, o.titleId, o.const].find(x => typeof x === 'string' && /^tt\d+$/.test(x)); const type = o.titleType?.id || o.titleType?.text || (typeof o.titleType === 'string' ? o.titleType : '');
+      if (id && (NOT_MOVIE.test(type) || (o.series && typeof o.series === 'object'))) out.add(id);
+      for (const k in o) walk(o[k], depth + 1); };
+    walk(data); }
+  for (const row of imdbRows(html)) { const text = row.replace(/<svg[\s\S]*?<\/svg>/g, ' '); /* a row's own words: its type label ("TV Episode"), an episode number ("S1.E4"), an episodes link */
+    if (/>\s*(TV (Mini[ -]?)?Series|TV Episode|Video Game|Podcast (Series|Episode)|Music Video)\s*</i.test(text) || />\s*S\d{1,3}\s*[.·∙]\s*E\d{1,4}\b/.test(text) || /dli-ep-title|\/episodes\/?\?season/i.test(text)) for (const t of text.matchAll(/\/title\/(tt\d+)\//g)) out.add(t[1]); }
+  return out;
+}
 const imdbRows = html => { let rows = html.split(/(?=<li[^>]*ipc-metadata-list-summary-item)/).slice(1); if (!rows.length) rows = html.split(/(?=<a[^>]+href="\/title\/tt\d+\/[^"]*"[^>]*ipc-title-link)/).slice(1); return rows; };
 function rowRating(row) {
   const lab = [...row.matchAll(/aria-label="([^"]{0,80}?rating:?\s*(\d{1,2}))"/gi)].find(m => !/imdb/i.test(m[1])); if (lab) return lab[2];
@@ -112,17 +126,17 @@ export function imdbShape(html) {
 }
 /** Reads every page of someone's watchlist / ratings (IMDb shows 250 a page: ?page=2, 3…) until a page brings nothing new. `get(url)` gives a page's HTML. */
 export async function imdbUserPages(base, kind, get, want = 3000) {
-  const items = [], seen = new Set(), rates = new Map(); let shape = '', pages = 0;
+  const items = [], seen = new Set(), rates = new Map(), skip = new Set(); let shape = '', pages = 0;
   for (let pg = 1; pg <= Math.ceil(want / 250) + 1 && items.length < want; pg++) {
     let html; try { html = await get(pg === 1 ? base : `${base}?page=${pg}`, pg); } catch (e) { if (pg === 1) throw e; break; }
     if (pg === 1 && /private|isn't public|is not public|sign in to/i.test(html.slice(0, 200000)) && !/\/title\/tt\d+/.test(html)) throw new Error('IMDb says that page is private. Set it to public on IMDb (Your account → Privacy), or use the Export file instead.');
-    const titles = imdbParse(html); let fresh = 0;
-    for (const t of titles) { const k = t.imdbId || (t.title + '|' + t.year); if (seen.has(k)) continue; seen.add(k); fresh++; items.push({ title: t.title, year: t.year ? String(t.year) : '', imdb: t.imdbId || '', rate: null, at: 0 }); }
+    const titles = imdbParse(html), not = imdbNotMovies(html); let fresh = 0; for (const x of not) skip.add(x);
+    for (const t of titles) { const k = t.imdbId || (t.title + '|' + t.year); if (seen.has(k)) continue; seen.add(k); fresh++; if (t.imdbId && not.has(t.imdbId)) continue; /* (not a movie: counted as seen so the paging still works, but left out) */ items.push({ title: t.title, year: t.year ? String(t.year) : '', imdb: t.imdbId || '', rate: null, at: 0 }); }
     if (kind === 'rated') { for (const [k, v] of imdbUserRatings(html)) if (!rates.has(k)) rates.set(k, v); if (pg === 1) shape = imdbShape(html); }
     pages = pg; if (!fresh || titles.length < 200) break; /* a short page is the last one; a page with nothing new means IMDb gave the same page again */
   }
-  if (kind === 'rated') { for (const it of items) { const x = rates.get(it.imdb); if (x) { it.rate = x.rate; it.at = x.at; } } return { kind: 'rated', items: items.filter(x => x.rate), seen: items.length, pages, shape }; }
-  return { kind: 'watch', items, seen: items.length, pages };
+  if (kind === 'rated') { for (const it of items) { const x = rates.get(it.imdb); if (x) { it.rate = x.rate; it.at = x.at; } } return { kind: 'rated', items: items.filter(x => x.rate), seen: items.length, pages, shape, skip: [...skip] }; }
+  return { kind: 'watch', items, seen: items.length, pages, skip: [...skip] };
 }
 export async function readImdbUser(url, want = 3000) {
   const u = imdbUserUrl(url); if (!u) throw new Error("That isn't an IMDb watchlist or ratings link. It looks like imdb.com/user/…/watchlist (or …/ratings).");
