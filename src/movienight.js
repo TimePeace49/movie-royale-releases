@@ -17,7 +17,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', myCommand: '!myvotes', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -226,6 +226,7 @@ export function onAlert(a) { // a raid tonight = two votes for the raider
 export function onChat(m) {
   if (!on()) return false; const d = data(), o = opts(d), cmd = low(o.command);
   const text = String(m.text || '').trim(), sp = text.split(/\s+/);
+  if (o.myCommand && low(sp[0]) === low(o.myCommand) && d.movies.length) { H.say(myVotesText(m.login, m.name || m.login, d)).catch(() => {}); return true; } /* 🗳️ (1.129.0) !myvotes */
   if (!cmd || low(sp[0]) !== cmd) return false;
   if (!d.open) { if (d.movies.length && d.closedAt) sayOnce(`🍿 @${m.name || m.login} voting is closed for tonight.`); return !!d.movies.length; }
   const arg = text.slice(sp[0].length).trim(), name = m.name || m.login;
@@ -234,6 +235,13 @@ export function onChat(m) {
   if (!movie) { sayOnce(`🍿 @${name} I couldn't find that one. Type ${o.command} and a number from 1 to ${d.movies.length}.`, 8000); return true; }
   if (movie.many) { sayOnce(`🍿 @${name} that fits more than one (${movie.many.map(x => x.title).join(', ')}). Use the number.`, 8000); return true; }
   vote(m.login, name, movie, { via: 'chat', test: !!m.pretend, said: text, userId: m.userId || null }); return true;
+}
+/** 🗳️ (1.129.0, Derek) !myvotes: who they voted for tonight + votes / changes left */
+export function myVotesText(login, name, d = data(), now = Date.now()) {
+  const l = low(login), o = opts(d), mine = d.votes[l], allowed = votesAllowed(l, d, now), list = (mine?.list || []).map(x => { const i = d.movies.findIndex(m => m.id === x.movie); return i < 0 ? null : `#${i + 1} ${d.movies[i].title}${x.changed ? ' (changed)' : ''}`; }).filter(Boolean);
+  const left = Math.max(0, allowed - list.length), ch = Math.max(0, o.changes - (mine?.changes || 0));
+  if (!list.length) return `🗳️ @${name} you haven't voted yet tonight: you have ${allowed} vote${allowed === 1 ? '' : 's'}. Type ${o.command} and a number from 1 to ${d.movies.length}.`;
+  return `🗳️ @${name} your vote${list.length === 1 ? '' : 's'}: ${list.join(' · ')}.${left ? ` ${left} vote${left === 1 ? '' : 's'} left.` : ''} ${ch ? `${ch} change${ch === 1 ? '' : 's'} left.` : 'No changes left.'}${d.open ? '' : ' (Voting is closed.)'}`;
 }
 /** Count one vote, tell chat, and queue the "did Birx guess it?" pop-up. */
 export function vote(login, name, movie, { via = 'chat', test = false, quiet = false, said = '', userId = null } = {}) {
@@ -266,6 +274,7 @@ export function setFirst(name) { const d = data(); d.first = low(name); changed(
 export function setOpts(o) {
   const d = data(), x = d.opts;
   if ('command' in o) { const c = String(o.command || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c)) x.command = c; else throw new Error('The command has to look like !vote'); }
+  if ('myCommand' in o) { const c = String(o.myCommand || '').trim().toLowerCase().split(/\s+/)[0]; if (!c || /^![a-z0-9_]{2,20}$/.test(c)) x.myCommand = c; else throw new Error('The command has to look like !myvotes'); }
   if ('guesser' in o) { const g = String(o.guesser || '').trim().slice(0, 20); if (g) x.guesser = g; }
   if ('changes' in o) x.changes = Math.max(0, Math.min(5, Math.round(Number(o.changes) || 0)));
   if ('reply' in o) x.reply = !!o.reply;
@@ -296,5 +305,7 @@ export function rulesDemo() {
   run('cake', ['a', 'b', 'c'], new Date(2026, 10, 11, 1, 30).getTime(), ['vote', 'change', 'no (used)'], 'Wednesday birthday, live at 1:30 AM Wednesday (that is still Tuesday night)');
   const f = fresh(), finds = [['2', 'Bravo'], ['#3', 'Charlie'], ['alp', 'Alpha'], ['CHARLIE', 'Charlie'], ['9', null], ['zzz', null]].map(([q, want]) => { const m = findMovie(q, f), got = m && !m.many ? m.title : null; ok.push(got === want); return { typed: q, found: got || 'nothing', ok: got === want }; });
   const days = [['3/14', '03-14'], ['March 14', '03-14'], ['14 mar', '03-14'], ['12-25', '12-25'], ['banana', null]].map(([q, want]) => { const got = readDay(q); ok.push(got === want); return { typed: q, read: got || 'not a date', ok: got === want }; });
+  const mv = fresh(); cast('viewer', 'viewer', mv.movies[0], mv, wed); cast('viewer', 'viewer', mv.movies[1], mv, wed); const t1 = myVotesText('viewer', 'Viewer', mv, wed), t0 = myVotesText('nobody', 'Nobody', mv, wed);
+  const myOk = /#2 Bravo \(changed\)/.test(t1) && /No changes left/.test(t1) && /haven't voted yet/.test(t0); ok.push(myOk); rows.push({ who: '🗳️ !myvotes (voted A, changed to B)', tried: '!myvotes', got: t1, allowed: 2, ok: myOk });
   return { ok: ok.every(Boolean), rows, finds, days };
 }

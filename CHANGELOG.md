@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.129.0
+- 🗳️ Movie night: !myvotes tells someone who they voted for tonight and how many votes / changes they have left (the name can be changed).
+- 🧩 Chat bot → Commands → The app's own commands: every command the app answers by itself in your version, each with an on/off tick and ⚙ with Streamlabs Chatbot's options: name, who can use it (incl. only named people), waits for everyone / per person, mods skip the waits, a "wait" message, a sound + volume, a use count, and Twitch / Kick when you have Kick.
+- 🧪 Test tab → 🤖 Chat bot: 🧩 App commands options check and 🗳️ Pretend !myvotes.
+
 ## 1.128.0
 - ⭐🍅 IMDb + Rotten Tomatoes ratings work without a key: apps with no OMDb key use the one the app's maker shares through his 24/7 bot (the key itself never goes in the app or on GitHub). In the dev edition, Settings → 🎬 Movie info has 🌐 Share my key with every edition (your 24/7 bot needs updating first, and the 🛡️ Backup Bots app has to be open: it saves the bot's address to GitHub).
 - ⭐ Ready-made chat commands in 🤖 Chat bot → Commands: !so (anyone: "!so name" gives a shout-out in chat + Twitch's shout-out box while live), !watchtime and !followage. Each has an on/off tick and two waits (everyone / same person). New special word $shoutout.

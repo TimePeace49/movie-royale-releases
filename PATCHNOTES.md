@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.129.0: What's new
+- 🧩 **Options for the app's own commands:** 🤖 Chat bot → Commands lists every command the app answers by itself (like !join, !clip, !bday). Each has an on/off tick and ⚙ with Streamlabs Chatbot's options: its name, who can use it, cooldowns, a "wait" message, a sound and a use count.
+- {movienight} 🗳️ **!myvotes:** tells someone who they voted for tonight and how many votes and changes they have left.
+
 ## v1.128.0: What's new
 - ⭐🍅 **IMDb + Rotten Tomatoes ratings work without setting up a key:** if you don't have your own OMDb key, the app uses a shared one.
 - 📣 **!so for everyone:** anyone in chat can type `!so name` for a shout-out (plus Twitch's shout-out box while you're live). It's in 🤖 Chat bot → Commands under ⭐ Ready-made commands, with !watchtime and !followage: a tick to turn each on or off and their cooldowns.

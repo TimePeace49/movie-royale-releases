@@ -53,6 +53,7 @@ import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
 import * as spamban from './spamban.js';
 import * as chatbot from './chatbot.js';
+import * as appcmds from './appcmds.js';
 import * as kick from './kick.js';
 import * as deck from './deck.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
@@ -1150,6 +1151,7 @@ const twitchHandlers = {
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
     live.chatLog.push({ ...m, at: Date.now() }); live.chatLog = live.chatLog.slice(-300);
     if (chatCmdOff(m)) return; // 🎭 a chat command this edition doesn't have: nothing answers it
+    try { if (await appcmds.blocked(m)) return; } catch (e) { console.error('[app commands]', e.message); } // 🧩 the app's own commands: off / who / where / waits (Chat bot → Commands)
     try { pstats.chat(m); } catch (e) { console.error('[stats]', e.message); } // 📊 which commands each person uses
     try { movienight.noteChat(m); } catch (e) { console.error('[movie night]', e.message); } // 🍿 the first one in chat gets two movie night votes
     try { maraWaitChat(m); } catch (e) { console.error('[marathon reminder]', e.message); } // 🔔 someone with a battle waiting 30+ min is here
@@ -2155,9 +2157,46 @@ app.get('/api/test/person-stats', (req, res) => res.json(pstats.demo())); // �
 // 🎭 Chat commands the Editions list can switch off per edition ("chat:<name>" in editions.json `off`): [id, the words that start it]
 const CHAT_CMDS = [['chat:id', () => db.settings.idCommand], ['chat:call', () => db.settings.callCommand], ['chat:help', () => db.settings.helpCommand], ['chat:mymovies', () => db.settings.twitchMoviesCommand], ['chat:color', () => db.settings.colorCommand],
   ['chat:accept', () => [db.settings.acceptCommand, db.settings.passCommand]], ['chat:sitout', () => [db.settings.sitOutCommand, db.settings.backCommand]], ['chat:skip', () => db.settings.skipCommand], ['chat:clip', () => db.settings.clipCommand], ['chat:join', () => db.settings.joinCommand],
-  ['chat:respin', () => ['!respin', '!myspins']], ['chat:site', () => db.settings.siteCommand], ['chat:bday', () => birthdays.opts().command], ['chat:vote', () => movienight.opts().command],
+  ['chat:respin', () => ['!respin', '!myspins']], ['chat:site', () => db.settings.siteCommand], ['chat:bday', () => birthdays.opts().command], ['chat:vote', () => [movienight.opts().command, movienight.opts().myCommand]],
   ['chat:sr', () => { const o = songs.opts(); return [o.command, o.nowCommand, o.queueCommand, o.mineCommand, o.wrongCommand]; }], ['chat:songskip', () => { const o = songs.opts(); return [o.voteCommand, o.skipCommand, o.volCommand]; }],
   ['chat:quote', () => ['!quote', '!addquote', '!delquote']], ['chat:addcom', () => ['!addcom', '!editcom', '!delcom', '!command']]];
+// 🧩 (1.129.0) the app's own chat commands, one row each in Chat bot → Commands (only the ones this edition has). set = rename it (where the app lets you).
+const sSet = k => c => { db.settings[k] = c; save(); pushState(); };
+const APP_CMDS = () => { const L = [], has = id => edHas(id), A = (key, group, label, why, ok, get, set, own) => { if (ok) L.push({ key, group, label, why, words: get, set, own }); };
+  const so = songs.opts(), mo = movienight.opts(), eo = eggs.opts(), bo = birthdays.opts();
+  A('join', '⚔️ Battles', 'Join a chat battle', 'Jumps into the chat battle / giveaway that is open', has('chat:join') && (has('chatBattle') || has('battle')), () => db.settings.joinCommand, sSet('joinCommand'));
+  A('mymovies', '🎬 Movies', 'My movies', 'Lists their Discord movie picks + luck', has('chat:mymovies') && has('movies'), () => db.settings.twitchMoviesCommand, sSet('twitchMoviesCommand'));
+  A('accept', '🎬 Movies', 'Accept a win', 'The winner says yes to their movie', has('chat:accept') && has('movies'), () => db.settings.acceptCommand, sSet('acceptCommand'));
+  A('pass', '🎬 Movies', 'Pass on a win', 'The winner passes: their movie goes back in', has('chat:accept') && has('movies'), () => db.settings.passCommand, sSet('passCommand'));
+  A('sitout', '🎬 Movies', 'Sit out tonight', "Takes their movies out of tonight's battles", has('chat:sitout') && has('movies'), () => db.settings.sitOutCommand, sSet('sitOutCommand'));
+  A('imback', '🎬 Movies', "I'm back", 'Puts their movies back in', has('chat:sitout') && has('movies'), () => db.settings.backCommand, sSet('backCommand'));
+  A('skip', '🎬 Movies', 'Skip a movie', 'One of their movies sits out the next battle', has('chat:skip') && has('movies'), () => db.settings.skipCommand, sSet('skipCommand'));
+  A('call', '⚔️ Battles', 'Call the winner', 'Guess who wins the battle for luck', has('chat:call') && (has('battle') || has('chatBattle')), () => db.settings.callCommand, sSet('callCommand'));
+  A('id', '⚔️ Battles', 'Pick man / woman', 'How their character looks in battles', has('chat:id') && (has('battle') || has('chatBattle')), () => db.settings.idCommand, sSet('idCommand'));
+  A('color', '⚔️ Battles', 'Ball color', 'Picks the color of their ball', has('chat:color') && (has('battle') || has('chatBattle')), () => db.settings.colorCommand, sSet('colorCommand'));
+  A('help', '💬 Chat', 'All commands', 'Lists the chat commands', has('chat:help'), () => db.settings.helpCommand, sSet('helpCommand'));
+  A('respin', '🎡 Wheel', 'Use a saved respin', 'Spends one of their saved respins', has('chat:respin') && has('wheel'), () => '!respin', null);
+  A('myspins', '🎡 Wheel', 'My respins', 'How many saved respins they have', has('chat:respin') && has('wheel'), () => '!myspins', null);
+  A('clip', '💬 Chat', 'Clip', 'Clips the last minute of the stream', has('chat:clip'), () => db.settings.clipCommand, sSet('clipCommand'), 'Who can !clip also has its own boxes in Settings → 💜 Twitch → Clips');
+  A('bday', '🎂 Birthdays', 'Save my birthday', 'Saves their birthday (month + day)', has('chat:bday') && bo.on !== false, () => bo.command, c => birthdays.setOpts({ command: c }, mo.command));
+  A('vote', '🍿 Movie night', 'Vote', "Votes for one of tonight's movies", has('chat:vote') && feat('movienight'), () => mo.command, c => movienight.setOpts({ command: c }));
+  A('myvotes', '🍿 Movie night', 'My votes', 'Who they voted for + votes / changes left', has('chat:vote') && feat('movienight'), () => mo.myCommand, c => movienight.setOpts({ myCommand: c }));
+  for (const [k, label, why] of [['command', 'Song request', 'Asks for a song'], ['nowCommand', 'Song playing', "Says what's playing"], ['queueCommand', 'Song queue', "What's coming up"], ['mineCommand', 'My songs', 'Their songs in the queue'], ['wrongCommand', 'Wrong song', 'Takes their last song back out']])
+    A('song:' + k, '🎵 Songs', label, why, has('chat:sr') && feat('songs') && !!so[k], () => so[k], c => songs.setOpts({ [k]: c }));
+  for (const [k, label, why] of [['voteCommand', 'Vote to skip a song', 'Counts a skip vote (mods / the requester skip at once)'], ['skipCommand', 'Skip the song', 'Mods: skips the song'], ['volCommand', 'Song volume', 'Mods: changes the volume']])
+    A('song:' + k, '🎵 Songs', label, why, has('chat:songskip') && feat('songs') && !!so[k], () => so[k], c => songs.setOpts({ [k]: c }));
+  for (const [k, label, why] of [['eggCommand', 'My egg', 'How close their egg is to hatching'], ['petCommand', 'My creature', 'The creature they have out'], ['petsCommand', 'All my creatures', 'Every creature they have'], ['equipCommand', 'Pick my creature', 'Sends a different creature out'], ['battleCommand', 'Creature battle', 'Challenges someone'], ['linkCommand', 'Link Twitch + Kick', 'Joins their two profiles'], ['topCommand', 'Top players', 'The best creature trainers'], ['skillsCommand', 'Skills', "Their creature's skills"], ['powersCommand', 'Powers', 'The powers they can equip'], ['powerCommand', 'Equip a power', 'Puts a power on their creature']])
+    A('egg:' + k, '🥚 Eggs', label, why, feat('eggs'), () => eo[k], c => eggs.setOpts({ [k]: c }));
+  A('quote', '📝 Quotes', 'Quote', 'Shows a quote', has('chat:quote'), () => '!quote', null);
+  A('addquote', '📝 Quotes', 'Add a quote', 'Mods: adds a quote', has('chat:quote'), () => '!addquote', null, 'Only mods, always');
+  A('delquote', '📝 Quotes', 'Remove a quote', 'Mods: removes a quote', has('chat:quote'), () => '!delquote', null, 'Only mods, always');
+  A('addcom', '🤖 Chat bot', 'Add / change / remove a command', 'Mods: !addcom / !editcom / !delcom / !command', has('chat:addcom'), () => ['!addcom', '!editcom', '!delcom', '!command'], null, 'Only mods, always');
+  return L; };
+appcmds.setHooks({ list: APP_CMDS, allowed: (m, p) => chatbot.allowed(m, p), say: t => twitch.say(t), channel: () => db.owner?.login || twitch.status.login || '', sound: (f, v) => sfxPlay(f, v), kick: () => feat('kick'), changed: () => broadcast({ type: 'chatbot' }, 'control'),
+  sounds: () => { try { return fs.readdirSync(path.join(DATA, 'sounds', 'sfx')).filter(f => /\.(mp3|wav|ogg|m4a|flac|aac|opus)$/i.test(f)).sort(); } catch { return []; } } });
+app.get('/api/appcmds', (req, res) => res.json(appcmds.info()));
+app.post('/api/appcmds', (req, res) => { try { res.json({ ok: true, list: appcmds.set(req.body?.key, req.body || {}) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.get('/api/test/appcmds', async (req, res) => res.json({ ...(await appcmds.demo()), count: appcmds.list().length })); // 🧪 the rules with a pretend command (nothing said or saved)
 function chatCmdOff(m) { const w = String(m?.text || '').trim().split(/\s+/)[0].toLowerCase(); if (w[0] !== '!') return false; try { return CHAT_CMDS.some(([id, get]) => !edHas(id) && [].concat(get()).some(c => c && String(c).toLowerCase() === w)); } catch { return false; } }
 app.get('/api/test/chat-off', (req, res) => res.json({ rows: CHAT_CMDS.map(([id, get]) => { let words = []; try { words = [].concat(get()).filter(Boolean); } catch {} return { id, words, on: edHas(id) }; }) })); // 🧪 which chat commands this edition has
 app.get('/api/viewer-lookup', (req, res) => { // double-clicked a word: is it someone we know?
