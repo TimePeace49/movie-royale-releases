@@ -4495,6 +4495,10 @@ function dashMenu(x, y) { dashMenuClose(); const m = document.createElement('div
 document.addEventListener('contextmenu', e => { if (view !== 'tchat' || !featOn('dash') || document.body.classList.contains('helpmode')) return; const g = e.target.closest && e.target.closest('#dashGrid'); if (!g || (e.target.closest('input, textarea, select, [contenteditable]'))) return; e.preventDefault(); dashMenu(e.clientX, e.clientY); });
 document.addEventListener('pointerdown', e => { const m = $('dashMenu'); if (m && !m.contains(e.target)) dashMenuClose(); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') dashMenuClose(); });
+/* (1.143.3, Derek: "left click off menu makes box go away") a click inside one of the tab's embedded boxes (chat, alerts, players) never reaches this page, so: the app losing the keyboard to a box closes the menu, the chat boxes say when they're clicked, and a click here closes THEIR right-click menu */
+addEventListener('blur', () => setTimeout(dashMenuClose, 0));
+addEventListener('message', e => { if (e.data?.dashMenuClose && e.origin === location.origin) dashMenuClose(); });
+document.addEventListener('pointerdown', () => { try { document.querySelectorAll('#dashGrid iframe, #chatFrame').forEach(f => { try { if (f.contentWindow && new URL(f.src, location.href).origin === location.origin) f.contentWindow.postMessage({ cMenuClose: 1 }, location.origin); } catch {} }); } catch {} }, true);
 function dashLayReset() { dashLay = null; try { localStorage.removeItem('dashLay'); } catch {} dashLayApply(); toast('The Chat tab boxes are back where they started.'); }
 /* Resizing works like OBS's docks: the edge you drag is shared, so the boxes on the other side of it (and the ones lined up with it) grow or shrink to fit. */
 function dashLayGroup(L, k, axis, nearSide) { /* nearSide = the box's left / top edge is the one dragged (else its right / bottom) */ /* which boxes share the dragged edge: [name, 'a' = its far edge (right / bottom) moves, 'b' = its near edge (left / top) moves] */

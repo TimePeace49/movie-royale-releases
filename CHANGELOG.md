@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.3
+- 🖱️ **Chat tab right-click menus close when you click away.** A left click anywhere off the menu now closes it, also when the click lands inside another box (chat, alerts, the stream preview) or, for the menu inside the chat box, anywhere else on the tab.
+
 ## 1.143.2
 - 🟢 **Kick chat shows up once you're signed in to Kick.** Before, signing in wasn't enough: you also had to press 💜🟢 Both, so Kick chat never came in and Twitch names had no mark. Now, signed in to Kick and nothing picked = **both chats** by themselves (💜 Twitch only and 🟢 Kick only are still there in Settings → Twitch → Kick). If Kick chat still doesn't come in, that box shows why (usually the chat room number couldn't be found).
 - 🎂 **New birthday sound.** The party whistle is gone: the built-in sound is now a little music-box birthday tune with a sparkle at the end (in the app and on stream). 🎵 Use my own sound file still wins.

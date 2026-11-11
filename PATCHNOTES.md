@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.143.3: What's new
+- {dash} 🖱️ The Chat tab's right-click menus close when you left-click anywhere off them.
+
 ## v1.143.2: What's new
 - 🎂 New birthday pop-up sound: a little music-box birthday tune instead of the party whistle. Your own sound file still wins.
 - {kick} 🟢 Signed in to Kick and nothing picked = both chats (Twitch + Kick) show by themselves, each name with its mark.
