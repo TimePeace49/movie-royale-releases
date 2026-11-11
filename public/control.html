@@ -443,6 +443,9 @@
   #raidPopup .rpBurst { font-size:54px; animation:updPulse .5s ease-in-out infinite alternate; } #raidPopup h2 { color:var(--gold); font-size:34px; margin:6px 0; }
   #raidPopup img { width:96px; height:96px; border-radius:50%; border:3px solid #9146ff; } #raidPopup .rpName { font-size:30px; font-weight:900; margin:8px 0; }
   /* the top tabs never scroll sideways: fitNav() shrinks them step by step until they fit, and they stay on top */
+  #nav button.popped { opacity:.55; } #nav button.popped::after { content:' ↗'; font-size:.8em; }
+  #popMenu { position:fixed; z-index:9999; display:none; min-width:220px; background:#1d1238; border:1px solid var(--line); border-radius:10px; padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.5); } #popMenu button { display:block; width:100%; text-align:left; margin:2px 0; background:transparent; border:0; padding:7px 10px; border-radius:7px; } #popMenu button:hover { background:rgba(255,255,255,.08); }
+  body.popOnly #nav, body.popOnly #tabPopBtn, body.popOnly #raidBox, body.popOnly #winBtns { display:none !important; } body.popOnly #popBackBtn { display:inline-block !important; } body.popOnly header h1 { flex:1; }
   header { overflow:hidden; } header > *:not(nav) { flex-shrink:0; } nav#nav { flex:0 1 auto; min-width:0; overflow:hidden; }
   body.navMeasure header, body.navMeasure header * { transition:none !important; }
   body.fit1 nav#nav button { padding:0 8px; font-size:13.5px; } body.fit1 header { gap:10px; }
@@ -609,7 +612,7 @@
   <span id="raidBox" style="display:none"><button id="raidGo" onclick="raidClick()"></button><button class="raidX" title="Hide this (the raid pick is forgotten)" onclick="if(confirm('Forget this raid pick?')) api('/api/raid/clear',{})">✕</button></span>
   <div class="dots" id="dots"></div>
   <span id="liveTag"></span>
-  <button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does (Ctrl+H)" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
+  <button id="tabPopBtn" class="ghost" title="↗ Pop this tab out into its own window, to move it to another screen (right-click any tab for more)" onclick="popTab()" style="padding:6px 10px">↗</button><button id="popBackBtn" class="primary" title="↩ Close this window and put the tab back in the main window" onclick="popBack()" style="padding:6px 10px;display:none">↩ Put back</button><button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does (Ctrl+H)" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
   <div id="me"></div>
   <div id="winBtns" style="display:none;gap:4px;margin-left:6px"><button class="ghost" style="padding:6px 10px" onclick="api('/api/window',{action:'min'})" title="Minimize Movie Royal (Fullscreen window has no title bar)">🗕</button><button class="ghost" style="padding:6px 10px" onclick="api('/api/window',{action:'close'})" title="Close Movie Royal (Fullscreen window has no title bar)">✕</button></div>
 </header>
@@ -1423,6 +1426,12 @@ not a link</textarea>
     <p class="help">Settings → 🔗 Connections lists everything the app links to (Twitch, Discord, OBS, donations, your RateYourMusic file…) with what is connected and a button to where each is set up.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="setView('settings');setTimeout(()=>setSub('links'),200)" title="Opens Settings → Connections">🔗 Open the Connections page</button><button class="edOff" data-feat="songs" onclick="sgRymTest()" title="Reads a pretend RateYourMusic export and shows what it would bring in (nothing is saved)">💿 Check a pretend RateYourMusic file</button></div>
   </div>
+  <div class="card" id="popTestCard">
+    <h3>↗ Pop out a tab</h3>
+    <p class="help">Any tab can go in its own window, to drag it to another screen: the ↗ button at the top right (the tab you're on), right-click any tab, or Ctrl+Alt+P. This opens the 👥 People tab in its own window for a moment and checks it.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="popTest()" title="Opens the People tab in its own window, checks that it shows only that tab and that the main window marks it ↗, then closes it">🧪 Check pop-out windows</button><button onclick="popTab('wheel')" title="Opens the Wheel tab in its own window (↩ Put back at its top brings it home)">↗ Pop out the Wheel tab</button></div>
+    <div id="tPopOut"></div>
+  </div>
   <div class="card edOff" id="dashTestCard" data-feat="dash">
     <h3>🧰 Chat tab: stream tools + my songs</h3>
     <p class="help">The 💬 Chat tab has a box under the alerts with a 🎬 Clip button and your own OBS scene buttons. Clicking a name in chat opens that person's profile, which lists their songs in the queue. <b>!mysongs</b> in chat says the same thing. These tests are pretend: OBS isn't touched and nothing is typed in chat.</p>
@@ -1782,6 +1791,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
   ['b-start', 'battle', '▶ START ROYAL', 'G', () => kbClick('#v-battle', /START ROYAL/, 'START ROYAL')],
   ['clip', 'any', '🎬 Clip the last minute (Twitch clip)', 'Ctrl+Alt+C', () => clipNow(), true],
+  ['pop', 'any', '↗ Pop the tab you\'re on out into its own window', 'Ctrl+Alt+P', () => popTab(), true],
   ['gc-full', 'capture', '⛶ Fullscreen on / off', 'F', () => gcFull()],
   ['gc-go', 'capture', '▶ Start / ⏹ stop the capture card', 'S', () => gcToggle()],
   ['m-ticker', 'mara', '⏸ Pause / ▶ resume battles (📜 paused message)', 'P', () => tickerToggle()],
@@ -2182,7 +2192,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/stream deck/i, 'tools'], [/obs up to date/i, 'screen'], [/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/stream deck/i, 'tools'], [/^↗ pop out a tab$/i, 'screen'], [/obs up to date/i, 'screen'], [/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2615,8 +2625,62 @@ $('subnav').onclick = e => { const b = e.target.closest('button[data-s]'); if (b
 const onSongs = () => view === 'bot' && botTab === 'songs', onNight = () => view === 'bot' && botTab === 'night';
 /* the tab an edition opens on / falls back to: the first of these it actually has */
 const edHome = () => ['battle', 'tchat', 'wheel', 'bot'].find(v => { const b = document.querySelector('#nav [data-v="' + v + '"]'); return b && !b.classList.contains('edOff') && !b.classList.contains('devOnly'); }) || 'settings';
+// ---------- ↗ Pop out any tab (1.132.0, Derek: "make it so you can pop out any tab to move to another screen") ----------
+// A popped tab = the same control panel in its own window (/control.html?pop=<tab>) showing only that tab, no top tabs. The windows talk through a
+// BroadcastChannel: the pop-out says "here" every 3 s; the main window marks that tab ↗ and, when you click it, brings the pop-out to the front instead
+// of opening it twice. ↩ Put back closes the pop-out and opens the tab in the main window again. The app remembers each pop-out's place and size (main.cjs).
+const POP = new URLSearchParams(location.search).get('pop') || '';
+const POPS = { seen: {}, ch: null, quiet: {}, bye: false };
+const popName = v => { const b = document.querySelector('#nav [data-v="' + v + '"]'); if (!b) return TAB_NAMES[v] || v; const c = b.cloneNode(true); c.querySelectorAll('.pill,[id]').forEach(x => { if (!x.classList.contains('nt') && x.id !== 'testNavTxt') x.remove(); }); return c.textContent.replace(/\s+/g, ' ').trim() || TAB_NAMES[v] || v; };
+const popAway = v => !!(!POP && POPS.seen[v] && Date.now() - POPS.seen[v] < 7000);
+function popSend(m) { try { POPS.ch && POPS.ch.postMessage(m); } catch {} }
+function popInit() {
+  try { POPS.ch = new BroadcastChannel('mr-pop'); } catch { return; }
+  POPS.ch.onmessage = e => { const m = e.data || {};
+    if (POP) { if (m.t === 'focus' && m.v === POP) { try { window.focus(); } catch {} toast('↗ This is the ' + popName(POP) + ' tab in its own window.', 2500); } if (m.t === 'ask') popSend({ t: 'here', v: POP }); if (m.t === 'close' && m.v === POP) window.close(); return; }
+    if (m.t === 'here') { if (POPS.quiet[m.v] > Date.now()) return; const was = popAway(m.v); POPS.seen[m.v] = Date.now(); if (!was) popMark(); }
+    if (m.t === 'gone') { delete POPS.seen[m.v]; popMark(); }
+    if (m.t === 'back') { POPS.quiet[m.v] = Date.now() + 2500; delete POPS.seen[m.v]; popMark(); setView(m.v); try { window.focus(); } catch {} }
+    if (m.t === 'go') { setView(m.v); try { window.focus(); } catch {} } };
+  if (POP) { const hi = () => { if (!POPS.bye) popSend({ t: 'here', v: POP }); }; hi(); setInterval(hi, 3000); addEventListener('pagehide', () => popSend({ t: 'gone', v: POP })); }
+  else { popSend({ t: 'ask' }); setInterval(() => { for (const v in POPS.seen) if (!popAway(v)) { delete POPS.seen[v]; popMark(); } }, 2000); }
+}
+function popMark() { document.querySelectorAll('#nav button[data-v]').forEach(b => { const a = popAway(b.dataset.v); b.classList.toggle('popped', a); if (a) b.dataset.popTip = '↗ In its own window: click to bring that window to the front (right-click for more)'; else delete b.dataset.popTip; }); }
+/** ↗ open a tab in its own window (the main window moves on to another tab) */
+function popTab(v = view) {
+  if (POP) return toast('This window already shows one tab.');
+  if (popAway(v)) { popSend({ t: 'focus', v }); return; }
+  const w = window.open('/control.html?pop=' + encodeURIComponent(v), 'mr-pop-' + v, 'width=1280,height=820');
+  if (!w) return toast('Your browser blocked the pop-up. Allow pop-ups for this page.');
+  POPS.seen[v] = Date.now(); popMark();
+  if (view === v) { const all = [...document.querySelectorAll('#nav button[data-v]')].map(b => b.dataset.v).filter(x => x !== v && !popAway(x) && popShown(x)), next = ['tchat', 'people', 'history', 'settings'].find(x => all.includes(x)) || all[0]; if (next) setView(next); } /* (a calm tab, so the main window doesn't change what's on stream) */
+  toast('↗ ' + popName(v) + ' is in its own window now: drag it to your other screen. ↩ Put back (top of that window) brings it home.', 6000);
+}
+const popShown = v => { const b = document.querySelector('#nav [data-v="' + v + '"]'); return !!b && b.offsetParent !== null; };
+function popBack() { POPS.bye = true; popSend({ t: 'back', v: POP }); setTimeout(() => window.close(), 150); }
+function popMenu(x, y, v) {
+  let m = $('popMenu'); if (!m) { m = document.createElement('div'); m.id = 'popMenu'; document.body.appendChild(m); addEventListener('mousedown', e => { if (!e.target.closest('#popMenu')) m.style.display = 'none'; }); }
+  const away = popAway(v), n = esc(popName(v));
+  m.innerHTML = `<div class="muted" style="padding:4px 10px;font-size:12px">${n}</div>` + (away ? `<button onclick="popSend({t:'focus',v:'${v}'});$('popMenu').style.display='none'" title="Bring this tab's own window to the front">👀 Show its window</button><button onclick="popSend({t:'close',v:'${v}'});POPS.quiet['${v}']=Date.now()+2500;delete POPS.seen['${v}'];popMark();$('popMenu').style.display='none';setView('${v}')" title="Close this tab's own window and open the tab here again">↩ Put it back here</button>` : `<button onclick="$('popMenu').style.display='none';popTab('${v}')" title="Open this tab in its own window, so you can drag it to another screen">↗ Pop out to its own window</button>`);
+  m.style.display = 'block'; m.style.left = Math.min(x, innerWidth - 260) + 'px'; m.style.top = Math.min(y, innerHeight - 120) + 'px';
+}
+document.addEventListener('contextmenu', e => { const b = e.target.closest && e.target.closest('#nav button[data-v]'); if (!b || POP || document.body.classList.contains('helpmode')) return; e.preventDefault(); popMenu(e.clientX, e.clientY, b.dataset.v); });
+/** 🧪 opens the 👥 People tab in its own window, waits for it to say hello, then closes it */
+async function popTest() {
+  const el = $('tPopOut'), say = h => { if (el) el.innerHTML = h; };
+  if (POP) return say('<p class="help">Run this from the main window.</p>');
+  const v = view === 'people' ? 'history' : 'people', was = POPS.seen[v]; delete POPS.seen[v]; say('<p class="help">⏳ Opening the ' + esc(popName(v)) + ' tab in its own window…</p>');
+  const w = window.open('/control.html?pop=' + v, 'mr-pop-' + v, 'width=900,height=600'); if (!w) return say('<p>❌ The pop-up was blocked.</p>');
+  let ok = false; for (let i = 0; i < 40 && !ok; i++) { await new Promise(r => setTimeout(r, 300)); ok = popAway(v); }
+  const marked = !!document.querySelector('#nav [data-v="' + v + '"].popped');
+  let only = null; try { only = w.document.body.classList.contains('popOnly') && w.document.getElementById('v-' + v).classList.contains('on'); } catch {}
+  popSend({ t: 'close', v }); try { w.close(); } catch {} await new Promise(r => setTimeout(r, 600)); delete POPS.seen[v]; if (was) POPS.seen[v] = was; popMark();
+  say(`<ul style="margin:8px 0 0;padding-left:18px"><li>${ok ? '✅' : '❌'} The pop-out window opened and said hello</li><li>${marked ? '✅' : '❌'} Its tab button here got the ↗ mark</li><li>${only === null ? '❔ (couldn\'t look inside it)' : only ? '✅' : '❌'} It shows only that tab, without the top tabs</li><li>✅ Closed it again</li></ul>`);
+}
 function setView(v) {
   if (v === 'songs' || v === 'mnight') { botTab = v === 'songs' ? 'songs' : 'night'; try { localStorage.botTab = botTab; } catch {} v = 'bot'; }
+  if (POP && v !== POP) { if (navigator.userActivation?.isActive) popSend({ t: 'go', v }); return; } /* (a pop-out shows only its own tab: other tabs open in the main window) */
+  if (!POP && popAway(v)) { popSend({ t: 'focus', v }); toast('↗ ' + popName(v) + ' is in its own window (brought it to the front). Right-click its tab to put it back.', 3500); return; }
   if (view === 'settings' && v !== 'settings' && settingsDirty && !confirm('You changed some settings without saving. Leave anyway?')) return;
   if (v !== 'settings') settingsDirty = false;
   if (v !== 'test') ckLeave();
@@ -2653,7 +2717,7 @@ function gfxTell(state, force) { if (state === gfxState && !force) return; gfxSt
 // tabs never reloads it, a battle never stops); the battle itself lives in Movie Royal + OBS, the screen only shows it.
 function gameLoad() {
   if (!window.GAME_WANT || $('stage').classList.contains('popped')) return;
-  const g = $('game'); if (/game\.html/.test(g.getAttribute('src') || '')) return; g.src = '/game.html';
+  const g = $('game'); if (/game\.html/.test(g.getAttribute('src') || '')) return; g.src = '/game.html'; if (POP) g.addEventListener('load', () => { for (const ms of [300, 1500]) setTimeout(() => { try { g.contentWindow.postMessage({ royalQuiet: true }, '*'); } catch {} }, ms); }); /* (↗ a popped-out tab's battle is quiet: the main window's battle already makes the sound) */
 }
 function gameNeeded() { return view === 'battle' || view === 'cards' || view === 'mara' || peekOn || S?.phase === 'lobby' || S?.phase === 'running' || S?.cards?.live?.phase === 'running' || !!S?.cards?.live?.fightId; }
 function placeStage() {
@@ -4858,7 +4922,7 @@ function renderLuckDlg() {
 async function luckRestore(id) { const r = await api('/api/luck/restore', { id }); toast(`✅ Back from “${esc(r.name)}”. What you had just before is saved too.`); }
 // 📣 hourly chat message button (Battle / Chat battle / Giveaway / Wheel tab)
 const ANN_NAMES = { battle: 'how to add movies in Discord', chat: 'how to join the chat battle', giveaway: 'how to enter the giveaway', wheel: 'how the wheel works' };
-{ const tell = () => fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ view }) }).catch(() => {}); setTimeout(tell, 1500); setInterval(tell, 60000); } // (again now and then, e.g. after Movie Royal restarts)
+if (!POP) { const tell = () => fetch('/api/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ view }) }).catch(() => {}); setTimeout(tell, 1500); setInterval(tell, 60000); } // (again now and then, e.g. after Movie Royal restarts)
 const annHere = kind => { if (kind !== 'battle') return kind; const l = S.lists?.find(x => x.id === S.activeListId); return l?.giveaway || l?.id === 'giveaway' ? 'giveaway' : l?.type === 'chat' ? 'chat' : 'battle'; }; // the Battle tab posts for whatever it's playing
 function annHTML(kind) {
   const a = S.announce?.all || {}, mins = S.announceMins || 60, next = a.on ? Math.max(0, Math.ceil(((a.last || 0) + mins * 60000 - Date.now()) / 60000)) : 0, here = annHere(kind);
@@ -7465,7 +7529,7 @@ function vrPop(m) { // 💧🙆🎩 5 seconds, only when Movie Royal is the wind
 }
 // 🚀 raid: the box at the top (left of the connection lights) + the celebration pop-up
 let raidPending = null;
-function fitNav() { // 🧭 the top tabs: as big as they fit, never scrolling
+function fitNav() { try { popMark(); } catch {} // 🧭 the top tabs: as big as they fit, never scrolling
   const n = $('nav'), b = document.body; if (!n) return;
   b.classList.add('navMeasure'); // (no size animations while measuring, or it measures the old size)
   { for (const btn of n.querySelectorAll('button')) { if (btn.querySelector('.nt')) continue; const t = [...btn.childNodes].find(x => x.nodeType === 3 && x.textContent.trim()); const m = t?.nodeType === 3 && t.textContent.match(/^(\S+)\s+([\s\S]+)$/); if (m) { t.textContent = m[1] + ' '; const sp = document.createElement('span'); sp.className = 'nt'; sp.textContent = m[2]; btn.insertBefore(sp, t.nextSibling); if (!btn.title) btn.title = m[2].trim(); } } } // (the words can hide, the icons stay)
@@ -7968,7 +8032,8 @@ function holStyleHTML() {
 { const go = new URLSearchParams(location.search).get('settings'); if (go && /^[a-z]+$/.test(go)) { history.replaceState(null, '', '/control.html'); setTimeout(() => { setView('settings'); setTimeout(() => setSub(go), 50); }, 900); } } // (?settings=costream: the Setup guide's "Open it" buttons, 1.71.0)
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
 if (PC_ONLY) { document.body.classList.add('pcOnly'); document.title = '💬 Pretend chat · Movie Royal'; }
-fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+popInit(); if (POP) { document.body.classList.add('popOnly'); }
+fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (POP) { S = s; render(); setView(POP); placeStage(); const t = popName(POP); document.title = t + ' · Movie Royal'; const h = document.querySelector('header h1'); if (h) h.textContent = t; return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 <script src="spell.js"></script>

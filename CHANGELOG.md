@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.0
+- ↗ **Pop any tab out to another screen.** Press ↗ at the top right (the tab you're on), right-click any tab at the top, or press Ctrl+Alt+P: that tab opens in its own window that you can drag to another monitor. The main window marks it ↗ (click it to bring that window to the front), and ↩ Put back at the top of the popped window brings it home. Each popped window opens where you last left it. A popped-out battle or wheel stays quiet so you never hear things twice.
+- 🧪 Test tab → ↗ Pop out a tab.
+
 ## 1.131.0
 - 🧠 **Smarter song search.** When chat types a song's name with !sr, the app now looks at all of YouTube's results (and searches the name + "lyrics" too) and picks the best version instead of just the first one. It prefers the kind you pick in 🎵 Songs → Settings (📝 lyric videos by default, or 🎧 official audio / 🎬 official music videos), likes the artist's own channels and studio recordings, and skips live versions, covers and karaoke, remixes / sped up / nightcore / 8D / hour-long loops, and reactions / tutorials, each with its own tick box. If the request asks for one ("africa toto live", "… sped up") it finds that one. A song with "live" in its name, like Live Forever, isn't mistaken for a live version. Type a song in the new 🔎 Try it box to see which version it would pick and why.
 - 🔊 **Even volume.** YouTube measures how loud every video is: quiet songs are now turned up to match the others in the music box (YouTube already turns loud ones down; tick "Turn loud songs down too" if they still stand out). The music box shows 🔊 +dB next to the volume when a song is boosted. Keep the music volume around 60 so there's room to boost.

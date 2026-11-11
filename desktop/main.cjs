@@ -36,9 +36,25 @@ const startHidden = process.argv.includes('--hidden');
 
 function isOurs(url) { return url.startsWith(BASE + '/') || url === BASE; }
 
+// ↗ (1.132.0) a tab popped out of the control panel (/control.html?pop=<tab>) gets a normal window; its place + size are remembered per tab,
+// so it comes back on the same screen next time (only if that screen is still there).
+const POP_FILE = () => path.join(app.getPath('userData'), 'pop-windows.json');
+let popBounds = null;
+const popAll = () => { if (!popBounds) { try { popBounds = JSON.parse(fs.readFileSync(POP_FILE(), 'utf8')) || {}; } catch { popBounds = {}; } } return popBounds; };
+const popOf = url => { const m = String(url).match(/\/control\.html\?(?:[^#]*&)?pop=([\w-]{1,30})/); return m ? m[1] : ''; };
+function popPlace(tab) {
+  const b = popAll()[tab]; if (!b) return { width: 1280, height: 820 };
+  try { const { screen } = require('electron'), ok = screen.getAllDisplays().some(d => { const a = d.workArea; return b.x + 60 > a.x && b.x + 60 < a.x + a.width && b.y + 20 > a.y && b.y + 20 < a.y + a.height; }); if (ok) return { x: b.x, y: b.y, width: b.width, height: b.height }; } catch {}
+  return { width: b.width || 1280, height: b.height || 820 };
+}
+function popKeep(child, tab) {
+  const keep = () => { try { const all = popAll(), b = child.isMaximized() ? (all[tab] || child.getNormalBounds()) : child.getBounds(); all[tab] = { ...b, max: child.isMaximized() }; fs.writeFileSync(POP_FILE(), JSON.stringify(all)); } catch {} };
+  child.on('close', keep); if (popAll()[tab]?.max) child.once('ready-to-show', () => { try { child.maximize(); } catch {} });
+}
 function hardenWindow(w) {
   // links to other sites (TMDB, Discord, Twitch sign-in…) open in your normal browser
   w.webContents.setWindowOpenHandler(({ url }) => {
+    if (isOurs(url) && popOf(url)) return { action: 'allow', overrideBrowserWindowOptions: { ...popPlace(popOf(url)), minWidth: 640, minHeight: 420, title: SHOWN, icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { backgroundThrottling: false } } };
     if (isOurs(url) && /\/game\.html/.test(url)) {
       return { action: 'allow', overrideBrowserWindowOptions: { width: 1280, height: 720, title: SHOWN + ' — Game', icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { backgroundThrottling: false } } };
     }
@@ -50,7 +66,7 @@ function hardenWindow(w) {
     e.preventDefault();
     shell.openExternal(url); // Twitch sign-in happens in your browser, where you're probably already logged in
   });
-  w.webContents.on('did-create-window', child => hardenWindow(child));
+  w.webContents.on('did-create-window', (child, d) => { hardenWindow(child); const t = popOf(d && d.url); if (t) popKeep(child, t); });
 }
 
 // 🖥️ window mode (Settings → Graphics): 'window' (normal), 'borderless' (fills the whole screen, no frame, like a game's
