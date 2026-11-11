@@ -11,9 +11,11 @@ const H = (re, title, text, ctx) => L.push({ re, title, text, ctx: Array.isArray
 // ───────── 1.76.0: 🛠️ dev mode · 🏃 marathon battles ─────────
 SECTION('🏃 Marathon battles (dev mode)');
 H(/^#tabPopBtn\b|^↗$/, '↗ Pop out this tab', 'Opens the tab you are on in its own window, so you can drag it to another screen. The main window moves to another tab and marks this one ↗. Click a ↗ tab to bring its window to the front, or right-click it to put it back. The app remembers where each popped-out window was.');
+H(/^#popZVal\b|^auto \d+%$|^\d+%$/i, '🔍 Window size', 'How big everything is in this popped-out window. Auto = fits the window (a smaller window shows everything smaller, a big screen a bit bigger). Click it to keep the size you see; click again for Auto. − / + (or Ctrl + mouse wheel, Ctrl+= / Ctrl+- / Ctrl+0) change it.');
+H(/^#popZoomBox\b|^[−+]$/, '🔍 Smaller / bigger', 'Makes everything in this popped-out window smaller or bigger. Ctrl+0 goes back to Auto (fits the window).', /pop|^$/i);
 H(/^#popBackBtn\b|^↩ put back$/i, '↩ Put back', 'Closes this window and opens the tab in the main window again.');
 H(/pop out to its own window|put it back here|show its window/i, '↗ Pop-out menu', 'Right-click any tab at the top: pop it out into its own window (to move it to another screen), bring its window to the front, or put it back in the main window.');
-H(/check pop-out windows|pop out the wheel tab/i, '🧪 Pop-out check', 'Opens a tab in its own window for a moment and checks it shows only that tab and that the main window marks it ↗, then closes it.');
+H(/check pop-out windows|pop out the wheel tab|^🔍 auto size$/i, '🧪 Pop-out check', 'Opens a tab in its own window for a moment and checks it shows only that tab and that the main window marks it ↗, then closes it.');
 H(/dev mode/i, '🛠️ Dev mode', 'Installs test builds (pre-releases) too, and shows features that are still being tried. Off = only latest releases and none of those features (what your friends see).');
 H(/^🏃 marathon$/i, '🏃 Marathon tab', 'The battles people paid for (subs, gift subs, $5 tips, 500 bits) wait in a line under the battle screen. Run them whenever that person is here. Dev mode only.');
 H(/^🏃 marathon pool$/i, '🏃 Marathon pool', 'The things in your marathon battle with their numbers (what chat types), the 🍀 luck chat gave them, wins and pictures.');

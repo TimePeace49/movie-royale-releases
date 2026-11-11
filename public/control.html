@@ -39,7 +39,7 @@
   .me img { width:30px; height:30px; border-radius:50%; border:2px solid var(--twitch); }
   .live { background:#e91916; color:#fff; font-weight:800; font-size:11px; padding:2px 7px; border-radius:6px; letter-spacing:1px; }
   /* views fill the window; only inner panes scroll */
-  .view { display:none; height:calc(100vh - var(--hdr)); padding:14px 16px; gap:14px; overflow:auto; box-sizing:border-box; } /* each tab scrolls inside itself: the main tabs at the top never scroll away */
+  .view { display:none; height:calc(calc(100 * var(--vh1, 1vh)) - var(--hdr)); padding:14px 16px; gap:14px; overflow:auto; box-sizing:border-box; } /* each tab scrolls inside itself: the main tabs at the top never scroll away */
   html { height:100%; overflow:hidden; }
   .view.on { display:grid; }
   .pane { min-height:0; overflow:auto; }
@@ -60,12 +60,12 @@
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
   .grid3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
   #toasts { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center; }
-  .toast { cursor:pointer; background:var(--panel2); border:1px solid var(--gold); padding:12px 20px; border-radius:12px; z-index:200; box-shadow:0 10px 40px #0008; max-width:80vw; }
+  .toast { cursor:pointer; background:var(--panel2); border:1px solid var(--gold); padding:12px 20px; border-radius:12px; z-index:200; box-shadow:0 10px 40px #0008; max-width:calc(80 * var(--vw1, 1vw)); }
   #wEntTable select { max-width:170px; } /* (the spot list fits without scrolling sideways) */
-  dialog { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:18px; width:min(560px, 94vw); padding:0; }
+  dialog { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:18px; width:min(560px, calc(94 * var(--vw1, 1vw))); padding:0; }
   dialog::backdrop { background:#000a; }
-  dialog .inner { padding:22px; max-height:80vh; overflow:auto; }
-  dialog.wide { width:min(1000px, 96vw); }
+  dialog .inner { padding:22px; max-height:calc(80 * var(--vh1, 1vh)); overflow:auto; }
+  dialog.wide { width:min(1000px, calc(96 * var(--vw1, 1vw))); }
   table.st { width:100%; border-collapse:collapse; font-size:14px; }
   table.st th { position:sticky; top:0; background:var(--panel2); text-align:right; padding:8px 8px; cursor:pointer; user-select:none; white-space:nowrap; font-size:12px; color:var(--dim); }
   table.st th.l, table.st td.l { text-align:left; }
@@ -73,7 +73,7 @@
   table.st td { text-align:right; padding:6px 8px; border-top:1px solid var(--line); white-space:nowrap; }
   table.st td.l { white-space:normal; min-width:170px; }
   table.st tr.gold td { background:rgba(255,201,74,.08); }
-  .stwrap { max-height:62vh; overflow:auto; border:1px solid var(--line); border-radius:12px; }
+  .stwrap { max-height:calc(62 * var(--vh1, 1vh)); overflow:auto; border:1px solid var(--line); border-radius:12px; }
   .bigstat { display:flex; align-items:baseline; gap:12px; margin-bottom:10px; } .bigstat b { font-size:40px; font-family:'Lilita One',Impact,sans-serif; color:var(--gold, #ffc94a); }
   .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; flex-wrap:wrap; }
   .seg button { border:0; border-radius:0; background:transparent; }
@@ -144,7 +144,7 @@
   body.helpmode, body.helpmode * { cursor:help !important; }
   body.helpmode #helpModeBtn { background:var(--gold); color:#1a1030; }
   #helpModeTip { position:fixed; z-index:70; left:50%; top:62px; transform:translateX(-50%); padding:8px 14px; border-radius:12px; background:#ffc94a; color:#1a1030; font-weight:700; box-shadow:0 10px 30px #000a; }
-  #hmDlg { max-width:min(640px, calc(100vw - 32px)); }
+  #hmDlg { max-width:min(640px, calc(calc(100 * var(--vw1, 1vw)) - 32px)); }
   #hmDlg h3 { margin:0 0 4px; font-size:20px; }
   #hmDlg .where { margin:0 0 10px; color:var(--muted); font-size:13px; }
   #hmDlg .what { font-size:16px; line-height:1.55; margin:0 0 10px; }
@@ -152,17 +152,17 @@
   #hmDlg details summary { cursor:pointer; font-weight:700; }
   #hmDlg details .body { margin-top:6px; font-size:14px; line-height:1.5; max-height:300px; overflow:auto; }
   body.pcOnly > *:not(#pchat):not(#toasts) { display:none !important; } body.pcOnly #pchat { display:flex !important; inset:0; right:0; bottom:0; width:auto; max-width:none; border-radius:0; border:0; } body.pcOnly #pchat .pcLog { height:auto; flex:1; } body.pcOnly .pcPopBtn, body.pcOnly #pcHead button[title=Close] { display:none; }
-  #pchat { position:fixed; z-index:64; right:16px; bottom:16px; width:360px; max-width:calc(100vw - 32px); display:none; flex-direction:column; gap:6px; padding:10px; background:#1a1030f5; border:2px solid #9b7bff; border-radius:14px; box-shadow:0 12px 40px #000c; }
+  #pchat { position:fixed; z-index:64; right:16px; bottom:16px; width:360px; max-width:calc(calc(100 * var(--vw1, 1vw)) - 32px); display:none; flex-direction:column; gap:6px; padding:10px; background:#1a1030f5; border:2px solid #9b7bff; border-radius:14px; box-shadow:0 12px 40px #000c; }
   #pchat.on { display:flex; }
   #pchat .pcHead { display:flex; align-items:center; gap:6px; cursor:move; user-select:none; font-weight:800; }
   #pchat .pcLog { height:150px; overflow:auto; font-size:13px; background:#0006; border-radius:8px; padding:6px 8px; }
   #pchat .pcLog .me { color:#cfe; } #pchat .pcLog .bot { color:#ffc94a; }
   #pchat button { padding:4px 8px; font-size:13px; }
-  #handNag { position:fixed; z-index:59; left:50%; bottom:16px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a1420f2; border:1px solid #ff8a7a; border-radius:12px; font-size:13px; box-shadow:0 10px 40px #000a; }
-  #bkNag { position:fixed; z-index:59; left:50%; bottom:70px; transform:translateX(-50%); width:min(900px, calc(100vw - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a2a10f2; border:1px solid var(--gold); border-radius:14px; box-shadow:0 10px 40px #000a; }
+  #handNag { position:fixed; z-index:59; left:50%; bottom:16px; transform:translateX(-50%); width:min(900px, calc(calc(100 * var(--vw1, 1vw)) - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a1420f2; border:1px solid #ff8a7a; border-radius:12px; font-size:13px; box-shadow:0 10px 40px #000a; }
+  #bkNag { position:fixed; z-index:59; left:50%; bottom:70px; transform:translateX(-50%); width:min(900px, calc(calc(100 * var(--vw1, 1vw)) - 32px)); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#3a2a10f2; border:1px solid var(--gold); border-radius:14px; box-shadow:0 10px 40px #000a; }
   #backupNag { position:fixed; z-index:60; left:50%; top:66px; transform:translateX(-50%); display:flex; gap:10px; align-items:center; padding:10px 14px; background:#1d1238f2; border:1px solid var(--gold); border-radius:14px; box-shadow:0 10px 40px #0008; font-weight:700; }
   #luckDlg .lrow, #wBody .lrow { display:flex; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
-  #stage:fullscreen #fsBar { display:flex; flex-direction:column; position:absolute; left:18px; top:150px; width:200px; max-height:calc(100vh - 40px); overflow:auto; gap:6px; padding:8px; background:#0b0618d9; border:1px solid var(--line); border-radius:16px; backdrop-filter:blur(6px); opacity:0; transition:opacity .25s; z-index:2; }
+  #stage:fullscreen #fsBar { display:flex; flex-direction:column; position:absolute; left:18px; top:150px; width:200px; max-height:calc(calc(100 * var(--vh1, 1vh)) - 40px); overflow:auto; gap:6px; padding:8px; background:#0b0618d9; border:1px solid var(--line); border-radius:16px; backdrop-filter:blur(6px); opacity:0; transition:opacity .25s; z-index:2; }
   #stage:fullscreen.bar #fsBar, #stage:fullscreen #fsBar:hover { opacity:1; }
   #fsBar .fsl { font-weight:800; color:var(--gold); white-space:nowrap; font-size:13px; cursor:grab; user-select:none; padding:2px 4px 4px; } #fsBar .fsl small { display:block; color:var(--dim); font-weight:600; }
   #fsBar.drag .fsl { cursor:grabbing; }
@@ -196,7 +196,7 @@
   #stage.cardsMode #fsPowers { display:none; } #stage.cardsMode #fsWacky { display:flex; }
   /* battle */
   #v-battle.on { display:block; overflow:auto; }
-  .battleTop { display:grid; grid-template-columns:minmax(0,1fr) 10px min(var(--bSide,330px), calc(100vw - 460px)); gap:4px; height:calc(100vh - var(--hdr) - 28px); }
+  .battleTop { display:grid; grid-template-columns:minmax(0,1fr) 10px min(var(--bSide,330px), calc(calc(100 * var(--vw1, 1vw)) - 460px)); gap:4px; height:calc(calc(100 * var(--vh1, 1vh)) - var(--hdr) - 28px); }
   .battleTop > .wsplit { margin:0 3px; }
   .powers { display:flex; flex-wrap:wrap; gap:5px; flex:1; }
   .powers button { font-size:12.5px; padding:5px 9px; }
@@ -265,7 +265,7 @@
   #v-bans.inset { height:auto; padding:0; display:grid; }
   #v-sounds.inset { height:auto; padding:0; display:grid; }
   #v-chat, #v-giveaway { grid-template-columns:400px 1fr; }
-  #v-wheel { grid-template-columns:minmax(340px,1fr) 10px min(var(--wRight,640px), calc(100vw - 440px)); gap:4px; }
+  #v-wheel { grid-template-columns:minmax(340px,1fr) 10px min(var(--wRight,640px), calc(calc(100 * var(--vw1, 1vw)) - 440px)); gap:4px; }
   #v-wheel > .pane:first-child { container-type:inline-size; }
   /* a narrow spot list: each spot takes two lines instead of scrolling sideways */
   @container (max-width: 700px) {
@@ -279,7 +279,7 @@
   /* ⏱️⏳ Settings → Game: timer + pacer per battle; 🍀 Settings → Luck: per battle rows */
   /* 🔍 settings search */
   .setSearchWrap { position:relative; margin:0 0 8px; } .setSearchWrap input { width:100%; }
-  #setResults { display:none; margin-top:6px; max-height:55vh; overflow-y:auto; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:4px; }
+  #setResults { display:none; margin-top:6px; max-height:calc(55 * var(--vh1, 1vh)); overflow-y:auto; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:4px; }
   #setResults.on { display:block; }
   .srHit { display:block; width:100%; text-align:left; padding:6px 8px; border-radius:8px; margin:2px 0; background:transparent; border:0; white-space:normal; }
   .srHit:hover, .srHit:focus { background:var(--panel2); } .srHit b { display:block; font-size:13.5px; font-weight:600; } .srHit small { color:var(--muted,#b9a8d8); font-size:12px; }
@@ -315,10 +315,10 @@
   table.went tr.off td { opacity:.45; }
   .wres { margin-top:12px; padding:14px 16px; border-radius:14px; background:var(--panel2); border-left:6px solid var(--gold,#ffc94a); }
   .wres .t { font-size:24px; font-weight:800; } .wres .r { white-space:pre-wrap; margin-top:6px; }
-  #boosts { position:fixed; left:14px; bottom:14px; z-index:50; display:flex; flex-direction:column-reverse; gap:8px; width:310px; max-height:calc(100vh - 90px); overflow:auto; }
+  #boosts { position:fixed; left:14px; bottom:14px; z-index:50; display:flex; flex-direction:column-reverse; gap:8px; width:310px; max-height:calc(calc(100 * var(--vh1, 1vh)) - 90px); overflow:auto; }
   .boost { background:var(--panel); border:2px solid #9b4dff; border-radius:14px; padding:10px 12px; font-size:14px; box-shadow:0 12px 40px #000a; animation:boostIn .3s ease-out; }
   @keyframes boostIn { from { transform:translateX(-30px); opacity:0; } }
-  #wRound { position:fixed; left:14px; top:250px; z-index:55; width:300px; min-width:200px; max-width:90vw; min-height:80px; max-height:90vh; resize:both; overflow:auto; container-type:inline-size; background:var(--panel); border:3px solid #ffc94a; border-radius:18px; padding:14px 16px; box-shadow:0 16px 50px #000c; animation:boostIn .3s ease-out; }
+  #wRound { position:fixed; left:14px; top:250px; z-index:55; width:300px; min-width:200px; max-width:calc(90 * var(--vw1, 1vw)); min-height:80px; max-height:calc(90 * var(--vh1, 1vh)); resize:both; overflow:auto; container-type:inline-size; background:var(--panel); border:3px solid #ffc94a; border-radius:18px; padding:14px 16px; box-shadow:0 16px 50px #000c; animation:boostIn .3s ease-out; }
   #wRound.paused { border-color:#4fc3ff; } #wRound.low { border-color:#ff4f6d; animation:wrPulse 1s infinite; } #wRound.ended { border-color:#7dffb0; }
   #wRound .big { font-size:clamp(28px,24cqw,260px); font-weight:800; text-align:center; line-height:1.05; font-variant-numeric:tabular-nums; margin:4px 0; }
   #wRound .drag { cursor:move; user-select:none; }
@@ -372,7 +372,7 @@
   .dkKey { aspect-ratio:1; border-radius:9px; overflow:hidden; background:#0d0b18; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--muted, #999); }
   .dkKey img { width:100%; height:100%; display:block; } .dkTxt { font-size:10px; text-align:center; padding:2px; line-height:1.15; color:#fff; } .dkEmpty { border:2px dashed rgba(255,255,255,.18); background:transparent; }
   .ckWrap { display:grid; grid-template-columns:220px minmax(0,1fr); gap:14px; align-items:start; margin-top:10px; }
-  .ckSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(100vh - var(--hdr) - 90px); overflow:auto; }
+  .ckSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(calc(100 * var(--vh1, 1vh)) - var(--hdr) - 90px); overflow:auto; }
   #tCheck .ckSide button { display:flex; align-items:center; gap:6px; } #tCheck .ckSide button .pill { margin-left:auto; flex:none; }
   .ckSec.tOff { display:none; } .ckSec > h4:first-child { margin-top:0; }
   .taBar { height:8px; border-radius:6px; background:var(--panel2); overflow:hidden; margin:2px 0 6px; } .taBar i { display:block; height:100%; background:var(--gold); transition:width .3s; }
@@ -381,7 +381,7 @@
   @media (max-width:1150px) { .ckWrap { grid-template-columns:190px minmax(0,1fr); } }
   /* 🗂️ Tests: one tab per category down the left side, like Settings (1.67.0, Derek) */
   #tWrap { grid-column:1 / -1; display:grid; grid-template-columns:220px minmax(0,1fr); gap:14px; align-items:start; min-width:0; }
-  #tSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(100vh - var(--hdr) - 90px); overflow:auto; }
+  #tSide { position:sticky; top:48px; margin:0; padding:10px; max-height:calc(calc(100 * var(--vh1, 1vh)) - var(--hdr) - 90px); overflow:auto; }
   #tSide button { display:flex; align-items:center; gap:6px; }
   #tSide button .pill { margin-left:auto; flex:none; }
   #tMain { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; align-content:start; min-width:0; }
@@ -418,7 +418,7 @@
   #dashCover { position:relative; flex:0 0 96px; width:96px; height:96px; border-radius:10px; overflow:hidden; background:#0e0820; display:flex; align-items:center; justify-content:center; font-size:38px; } #dashCover.play { flex-basis:160px; width:160px; height:96px; } #dashCover img, #dashCover iframe { width:100%; height:100%; object-fit:cover; border:0; display:block; }
   .sgStars { display:inline-flex; gap:1px; vertical-align:middle; } .sgStars .st { position:relative; font-size:22px; line-height:1; color:#4a3f66; cursor:pointer; } .sgStars .st.f { color:#ffc928; } .sgStars.hov .st.f { color:#ffe27a; } .sgStars .st.h { background:linear-gradient(90deg,#ffc928 50%,#4a3f66 50%); -webkit-background-clip:text; background-clip:text; color:transparent; } .sgStars .st i { position:absolute; top:0; bottom:0; width:50%; } .sgStars .st i:first-child { left:0; } .sgStars .st i:last-child { right:0; }
   .dashTbl { width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px; } .dashTbl th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.6px; opacity:.7; padding:3px 6px; } .dashTbl td { padding:4px 6px; border-top:1px solid var(--line); } .dashTbl td.n, .dashTbl th.n { text-align:center; white-space:nowrap; width:1%; }
-  #mnPop { position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:60; width:430px; max-width:calc(100vw - 32px); } .mnAv { flex:0 0 56px; width:56px; height:56px; border-radius:50%; background:#3a2a66; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:22px; overflow:hidden; } .mnAv img { width:100%; height:100%; object-fit:cover; }
+  #mnPop { position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:60; width:430px; max-width:calc(calc(100 * var(--vw1, 1vw)) - 32px); } .mnAv { flex:0 0 56px; width:56px; height:56px; border-radius:50%; background:#3a2a66; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:22px; overflow:hidden; } .mnAv img { width:100%; height:100%; object-fit:cover; }
   .dashPrev { position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:10px; overflow:hidden; } .dashPrev iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
   .sgGrid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:14px; align-items:start; } @media (max-width:1150px) { .sgGrid { grid-template-columns:minmax(0,1fr); } }
   .sgRow { display:flex; gap:6px; align-items:center; padding:6px 4px; border-top:1px solid var(--line); min-width:0; } .sgT { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -435,17 +435,17 @@
   #raidBox .raidX { padding:4px 7px; font-size:12px; background:transparent; border:0; color:var(--muted); }
   #raidPopup { position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#0008; }
   #vrPopup { position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#0006; cursor:pointer; }
-  #vrPopup .rpIn { background:var(--panel); border:2px solid #3fa9f5; border-radius:22px; padding:26px 40px; text-align:center; box-shadow:0 0 60px #3fa9f588; max-width:min(520px, 92vw); animation:vrIn .35s cubic-bezier(.2,1.5,.4,1); }
+  #vrPopup .rpIn { background:var(--panel); border:2px solid #3fa9f5; border-radius:22px; padding:26px 40px; text-align:center; box-shadow:0 0 60px #3fa9f588; max-width:min(520px, calc(92 * var(--vw1, 1vw))); animation:vrIn .35s cubic-bezier(.2,1.5,.4,1); }
   #vrPopup.vr-stretch .rpIn { border-color:#4cc77a; box-shadow:0 0 60px #4cc77a88; } #vrPopup.vr-hat .rpIn { border-color:#b07af5; box-shadow:0 0 60px #b07af588; }
   #vrPopup .rpBurst { font-size:84px; animation:updPulse .5s ease-in-out infinite alternate; } #vrPopup h2 { color:var(--gold); font-size:40px; margin:6px 0; } #vrPopup .rpName { font-size:24px; font-weight:800; }
   @keyframes vrIn { from { transform:scale(.3); opacity:0; } }
-  #raidPopup .rpIn { background:var(--panel); border:2px solid #9146ff; border-radius:22px; padding:26px 34px; text-align:center; box-shadow:0 0 60px #9146ff88; max-width:min(460px, 92vw); }
+  #raidPopup .rpIn { background:var(--panel); border:2px solid #9146ff; border-radius:22px; padding:26px 34px; text-align:center; box-shadow:0 0 60px #9146ff88; max-width:min(460px, calc(92 * var(--vw1, 1vw))); }
   #raidPopup .rpBurst { font-size:54px; animation:updPulse .5s ease-in-out infinite alternate; } #raidPopup h2 { color:var(--gold); font-size:34px; margin:6px 0; }
   #raidPopup img { width:96px; height:96px; border-radius:50%; border:3px solid #9146ff; } #raidPopup .rpName { font-size:30px; font-weight:900; margin:8px 0; }
   /* the top tabs never scroll sideways: fitNav() shrinks them step by step until they fit, and they stay on top */
   #nav button.popped { opacity:.55; } #nav button.popped::after { content:' ↗'; font-size:.8em; }
   #popMenu { position:fixed; z-index:9999; display:none; min-width:220px; background:#1d1238; border:1px solid var(--line); border-radius:10px; padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.5); } #popMenu button { display:block; width:100%; text-align:left; margin:2px 0; background:transparent; border:0; padding:7px 10px; border-radius:7px; } #popMenu button:hover { background:rgba(255,255,255,.08); }
-  body.popOnly #nav, body.popOnly #tabPopBtn, body.popOnly #raidBox, body.popOnly #winBtns { display:none !important; } body.popOnly #popBackBtn { display:inline-block !important; } body.popOnly header h1 { flex:1; }
+  body.popOnly #nav, body.popOnly #tabPopBtn, body.popOnly #raidBox, body.popOnly #winBtns { display:none !important; } body.popOnly #popBackBtn { display:inline-block !important; } body.popOnly #popZoomBox { display:inline-flex !important; } body.popOnly header h1 { flex:1; }
   header { overflow:hidden; } header > *:not(nav) { flex-shrink:0; } nav#nav { flex:0 1 auto; min-width:0; overflow:hidden; }
   body.navMeasure header, body.navMeasure header * { transition:none !important; }
   body.fit1 nav#nav button { padding:0 8px; font-size:13.5px; } body.fit1 header { gap:10px; }
@@ -499,7 +499,7 @@
   body.hol-july4 { --bg:#060b1f; --panel:#0f1733; --panel2:#172244; --line:#2e3f80; --text:#f4f7ff; --dim:#a9b6e0; --gold:#ffd166; --hot:#ff3b4e; --glow:#3a0d1a; --hdrBg:rgba(6,11,31,.88); --field:#030614; --holIcon:'🎇'; }
   #holFx { position:fixed; inset:0; pointer-events:none; z-index:40; overflow:hidden; }
   #holFx span { position:absolute; top:-40px; font-size:18px; opacity:.22; animation:holFall linear infinite; }
-  @keyframes holFall { from { transform:translateY(-40px) rotate(0deg); } to { transform:translateY(calc(100vh + 80px)) rotate(360deg); } }
+  @keyframes holFall { from { transform:translateY(-40px) rotate(0deg); } to { transform:translateY(calc(calc(100 * var(--vh1, 1vh)) + 80px)) rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { #holFx { display:none; } }
   #startDlg .sqHead { display:flex; align-items:center; gap:10px; margin:-4px 0 10px; font-size:13px; color:var(--muted, #b9b0d6); }
   #startDlg .sqDots { display:flex; gap:4px; } #startDlg .sqDots i { width:9px; height:9px; border-radius:50%; background:#ffffff26; display:block; } #startDlg .sqDots i.done { background:#7ad37a; } #startDlg .sqDots i.on { background:#ffc94a; }
@@ -524,8 +524,8 @@
   .botRow.off .bn, .botRow.off .bt { opacity: .45; }
   .botRow button { padding: 3px 8px; }
   #botDlg label { display: block; margin: 10px 0 3px; } #botDlg textarea { width: 100%; min-height: 90px; }
-  #gcStage { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; max-height: calc(100vh - 290px); margin: 0 auto; }
-  #gcStage:fullscreen { border-radius: 0; max-height: none; aspect-ratio: auto; width: 100vw; height: 100vh; }
+  #gcStage { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; max-height: calc(calc(100 * var(--vh1, 1vh)) - 290px); margin: 0 auto; }
+  #gcStage:fullscreen { border-radius: 0; max-height: none; aspect-ratio: auto; width: calc(100 * var(--vw1, 1vw)); height: calc(100 * var(--vh1, 1vh)); }
   #gcStage.gcHideCur { cursor: none; }
   #gcVideo { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
   #gcFps { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.35); color: #7dff8a; font: 800 22px/1.15 Inter, sans-serif; text-align: right; pointer-events: none; display: none; text-shadow: 0 1px 2px #000; }
@@ -538,7 +538,7 @@
   #gcClipMsg { position: absolute; right: 36px; bottom: 9px; padding: 3px 9px; border-radius: 8px; background: rgba(0,0,0,.55); color: #fff; font: 700 13px Inter, sans-serif; pointer-events: none; opacity: 0; transition: opacity .3s; max-width: 60%; }
   #gcStage:fullscreen #gcClipMsg.show { opacity: .8; }
   #gcIdle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #9aa0b4; font-weight: 700; pointer-events: none; }
-  .mQueue { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px 12px; }
+  .mQueue { flex: 0 0 auto; max-height: calc(40 * var(--vh1, 1vh)); overflow-y: auto; padding: 10px 12px; }
   .mRow { display: grid; grid-template-columns: 34px minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 6px 4px; border-top: 1px solid rgba(255,255,255,.07); }
   .mRow:first-of-type { border-top: 0; }
   .mRow .mN { font-weight: 800; color: var(--gold, #ffcf4a); text-align: right; }
@@ -551,19 +551,19 @@
   /* ⏱️ marathon exercise timer (1.77.0): covers the whole window so any mouse click starts it */
   #mtBox { position: fixed; inset: 0; z-index: 2147483000; display: none; place-items: center; background: rgba(8,4,18,.93); color: #fff; text-align: center; user-select: none; cursor: pointer; }
   #mtBox.on { display: grid; } #mtBox .mtIn { max-width: 900px; padding: 20px; }
-  #mtBox .mtWhat { font: 800 clamp(28px,5vw,60px)/1.1 'Lilita One', Impact, sans-serif; color: var(--gold); }
-  #mtBox .mtBig { font: 800 clamp(90px,22vw,260px)/1 'Lilita One', Impact, sans-serif; font-variant-numeric: tabular-nums; margin: 10px 0; }
-  #mtBox .mtHint { font-size: clamp(18px,2.6vw,30px); font-weight: 800; }
+  #mtBox .mtWhat { font: 800 clamp(28px,calc(5 * var(--vw1, 1vw)),60px)/1.1 'Lilita One', Impact, sans-serif; color: var(--gold); }
+  #mtBox .mtBig { font: 800 clamp(90px,calc(22 * var(--vw1, 1vw)),260px)/1 'Lilita One', Impact, sans-serif; font-variant-numeric: tabular-nums; margin: 10px 0; }
+  #mtBox .mtHint { font-size: clamp(18px,calc(2.6 * var(--vw1, 1vw)),30px); font-weight: 800; }
   #mtBox .mtBtns { margin-top: 26px; display: flex; gap: 10px; justify-content: center; } #mtBox .mtBtns button { cursor: pointer; font-size: 16px; }
-  #mtBox .mtBar { height: 14px; border-radius: 8px; background: rgba(255,255,255,.12); overflow: hidden; margin: 10px auto 0; width: min(700px, 80vw); } #mtBox .mtBar i { display: block; height: 100%; background: linear-gradient(90deg,#46e05a,#ffd23a,#ff3a3a); }
+  #mtBox .mtBar { height: 14px; border-radius: 8px; background: rgba(255,255,255,.12); overflow: hidden; margin: 10px auto 0; width: min(700px, calc(80 * var(--vw1, 1vw))); } #mtBox .mtBar i { display: block; height: 100%; background: linear-gradient(90deg,#46e05a,#ffd23a,#ff3a3a); }
   #mtBox.done { animation: mtFlash .5s steps(2) infinite; } @keyframes mtFlash { 50% { background: rgba(200,20,30,.93); } }
   .mpTable { width: 100%; border-collapse: collapse; } .mpTable td, .mpTable th { padding: 5px 6px; border-top: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: middle; }
   .mpTable input { width: 100%; min-width: 0; } .mpTable img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; display: block; } .mpTable .mpSecs { width: 70px; } .mpTable .mpKind { width: auto; max-width: 130px; } .sgStep { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.08); } .sgN { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--gold); color: #1a0f2e; font-weight: 900; display: grid; place-items: center; } .mpTable .mpNum { width: 52px; padding: 4px; text-align: center; font-weight: 800; color: var(--gold); } .mpTable .mpOdds { width: 64px; } .mpTable .mpArr { padding: 0 5px; font-size: 9px; line-height: 13px; min-height: 0; } .mpTable img { object-fit: contain; background: rgba(255,255,255,.06); }
   @container (max-width: 760px) { .mRow { grid-template-columns: 30px minmax(0,1fr) auto; } .mRow select { grid-column: 2 / -1; } }
   .bcSug { min-height:0; margin:3px 0 0; font-size:13px; display:flex; gap:4px; flex-wrap:wrap; align-items:center; } .bcSug button { padding:1px 8px; font-size:13px; }
-  #bdPopBox { position:fixed; top:70px; right:16px; z-index:9000; display:none; flex-direction:column; gap:8px; width:340px; max-width:calc(100vw - 32px); }
+  #bdPopBox { position:fixed; top:70px; right:16px; z-index:9000; display:none; flex-direction:column; gap:8px; width:340px; max-width:calc(calc(100 * var(--vw1, 1vw)) - 32px); }
   body.demoOn #edBar { display:none !important; }
-  #demoBar { position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:min(760px, calc(100vw - 32px)); z-index:9000; background:var(--card, #1d1f2b); border:2px solid #9146ff; border-radius:14px; padding:10px 12px; box-shadow:0 10px 32px rgba(0,0,0,.5); }
+  #demoBar { position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:min(760px, calc(calc(100 * var(--vw1, 1vw)) - 32px)); z-index:9000; background:var(--card, #1d1f2b); border:2px solid #9146ff; border-radius:14px; padding:10px 12px; box-shadow:0 10px 32px rgba(0,0,0,.5); }
   .bdWeek { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:6px; }
   .bdDay { border:1px solid var(--line); border-radius:10px; padding:6px 8px; min-width:0; }
   .bdDay.today { border-color:var(--gold, #f5c542); }
@@ -585,7 +585,7 @@
   <div id="choiceList" style="max-height:320px;overflow:auto;margin:8px 0"><p class="help">Asking OBS for your scenes…</p></div>
   <div class="row" style="gap:6px;margin-top:6px"><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=true)">Tick all</button><button class="ghost" onclick="document.querySelectorAll('#choiceList input').forEach(i=>i.checked=false)">Untick all</button><span class="grow"></span><button onclick="$('choiceDlg').close()">Cancel</button><button class="primary" id="choiceGoBtn" onclick="choiceGo()">📺 Put it in these scenes</button></div>
 </div></dialog>
-<dialog id="startDlg"><div style="padding:18px;width:min(560px,90vw)" id="startBody"></div></dialog>
+<dialog id="startDlg"><div style="padding:18px;width:min(560px,calc(90 * var(--vw1, 1vw)))" id="startBody"></div></dialog>
 <header>
   <h1>🍿 MOVIE ROYAL</h1>
   <nav id="nav">
@@ -612,7 +612,7 @@
   <span id="raidBox" style="display:none"><button id="raidGo" onclick="raidClick()"></button><button class="raidX" title="Hide this (the raid pick is forgotten)" onclick="if(confirm('Forget this raid pick?')) api('/api/raid/clear',{})">✕</button></span>
   <div class="dots" id="dots"></div>
   <span id="liveTag"></span>
-  <button id="tabPopBtn" class="ghost" title="↗ Pop this tab out into its own window, to move it to another screen (right-click any tab for more)" onclick="popTab()" style="padding:6px 10px">↗</button><button id="popBackBtn" class="primary" title="↩ Close this window and put the tab back in the main window" onclick="popBack()" style="padding:6px 10px;display:none">↩ Put back</button><button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does (Ctrl+H)" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
+  <button id="tabPopBtn" class="ghost" title="↗ Pop this tab out into its own window, to move it to another screen (right-click any tab for more)" onclick="popTab()" style="padding:6px 10px">↗</button><span id="popZoomBox" style="display:none;gap:4px;align-items:center"><button class="ghost" style="padding:6px 10px" onclick="popZoomStep(-.1)" title="Make everything in this window smaller (Ctrl + minus, or Ctrl + mouse wheel)">−</button><button class="ghost" id="popZVal" style="padding:6px 8px;min-width:92px" onclick="popZoomStep(PZ.get()==='auto'?'fix':0)">Auto</button><button class="ghost" style="padding:6px 10px" onclick="popZoomStep(.1)" title="Make everything in this window bigger (Ctrl + plus, or Ctrl + mouse wheel)">+</button></span><button id="popBackBtn" class="primary" title="↩ Close this window and put the tab back in the main window" onclick="popBack()" style="padding:6px 10px;display:none">↩ Put back</button><button id="helpModeBtn" class="ghost" title="Help mode: click anything to read what it does (Ctrl+H)" onclick="helpMode(!document.body.classList.contains('helpmode'))" style="padding:6px 10px">❓</button>
   <div id="me"></div>
   <div id="winBtns" style="display:none;gap:4px;margin-left:6px"><button class="ghost" style="padding:6px 10px" onclick="api('/api/window',{action:'min'})" title="Minimize Movie Royal (Fullscreen window has no title bar)">🗕</button><button class="ghost" style="padding:6px 10px" onclick="api('/api/window',{action:'close'})" title="Close Movie Royal (Fullscreen window has no title bar)">✕</button></div>
 </header>
@@ -803,8 +803,8 @@
 <section class="view" id="v-raid"><div class="pane"><div id="rdBody" style="max-width:1500px;margin:0 auto"><div class="empty">Loading…</div></div></div></section>
 
 <section class="view" id="v-bot"><div class="pane"><div style="max-width:1500px;margin:0 auto"><div class="card" id="botTop" style="margin:0 0 12px"></div><div class="card" id="botBody" style="max-width:1250px;margin:0 auto"><div class="empty">Loading…</div></div><div id="sgBody" style="display:none"><div class="empty">Loading…</div></div><div id="mnBody" style="display:none;max-width:1300px;margin:0 auto"><div class="empty">Loading…</div></div><div id="bdBody" class="card" style="display:none;max-width:1250px;margin:0 auto"><h3 style="margin:0 0 8px">🎂 Birthdays</h3><div id="bdBox" class="help">Loading…</div></div></div></div></section>
-<dialog id="botDlg" style="max-width:660px;width:92vw"><div id="botDlgBody"></div></dialog>
-<dialog id="safeDlg" style="max-width:560px;width:92vw"><div id="safeDlgBody"></div></dialog>
+<dialog id="botDlg" style="max-width:660px;width:calc(92 * var(--vw1, 1vw))"><div id="botDlgBody"></div></dialog>
+<dialog id="safeDlg" style="max-width:560px;width:calc(92 * var(--vw1, 1vw))"><div id="safeDlgBody"></div></dialog>
 <section class="view" id="v-capture">
   <div class="card" style="max-width:1500px;margin:0 auto">
     <div class="row" id="gcBar" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -1429,7 +1429,7 @@ not a link</textarea>
   <div class="card" id="popTestCard">
     <h3>↗ Pop out a tab</h3>
     <p class="help">Any tab can go in its own window, to drag it to another screen: the ↗ button at the top right (the tab you're on), right-click any tab, or Ctrl+Alt+P. This opens the 👥 People tab in its own window for a moment and checks it.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="popTest()" title="Opens the People tab in its own window, checks that it shows only that tab and that the main window marks it ↗, then closes it">🧪 Check pop-out windows</button><button onclick="popTab('wheel')" title="Opens the Wheel tab in its own window (↩ Put back at its top brings it home)">↗ Pop out the Wheel tab</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="popTest()" title="Opens the People tab in its own window, checks that it shows only that tab and that the main window marks it ↗, then closes it">🧪 Check pop-out windows</button><button onclick="popZoomTest()" title="Shows how big a popped-out tab gets at a few window sizes when its size is on Auto">🔍 Auto size</button><button onclick="popTab('wheel')" title="Opens the Wheel tab in its own window (↩ Put back at its top brings it home)">↗ Pop out the Wheel tab</button></div>
     <div id="tPopOut"></div>
   </div>
   <div class="card edOff" id="dashTestCard" data-feat="dash">
@@ -2657,6 +2657,27 @@ function popTab(v = view) {
   toast('↗ ' + popName(v) + ' is in its own window now: drag it to your other screen. ↩ Put back (top of that window) brings it home.', 6000);
 }
 const popShown = v => { const b = document.querySelector('#nav [data-v="' + v + '"]'); return !!b && b.offsetParent !== null; };
+/* 🔍 (1.132.1, Derek: "pop-out adjust size") a popped-out tab fits its window: Auto scales everything to the window's size (smaller window = smaller,
+   a big screen = a bit bigger), or − / + set it yourself (Ctrl + mouse wheel, Ctrl+= / Ctrl+- / Ctrl+0 too). Remembered per tab (localStorage popZoom). */
+const PZ = { get() { try { return (JSON.parse(localStorage.popZoom || '{}'))[POP] ?? 'auto'; } catch { return 'auto'; } }, set(v) { try { const a = JSON.parse(localStorage.popZoom || '{}'); a[POP] = v; localStorage.popZoom = JSON.stringify(a); } catch {} } };
+const popZF = () => (POP && parseFloat(document.documentElement.style.zoom)) || 1;
+const popAutoZ = () => Math.max(.5, Math.min(1.5, Math.min(innerWidth / 1400, innerHeight / 860)));
+function popZoomNow() { const v = PZ.get(); return v === 'auto' ? popAutoZ() : Number(v) || 1; }
+function popZoomApply() {
+  if (!POP) return; const z = Math.round(popZoomNow() * 100) / 100, auto = PZ.get() === 'auto';
+  const de = document.documentElement; de.style.setProperty('--vh1', innerHeight / 100 / z + 'px'); de.style.setProperty('--vw1', innerWidth / 100 / z + 'px'); /* (lengths inside a zoomed page grow / shrink with it, so the screen-size ones are set back to the real window size) */
+  if (de.style.zoom !== String(z)) { de.style.zoom = z; requestAnimationFrame(() => { try { placeStage(); fitNav(); } catch {} }); }
+  const el = $('popZVal'); if (el) { el.textContent = (auto ? 'Auto ' : '') + Math.round(z * 100) + '%'; el.title = auto ? 'Size: Auto (fits the window). Click to keep it at this size' : 'Size: set by you. Click to go back to Auto (fits the window)'; }
+}
+function popZoomStep(d) { if (!POP) return; if (d === 0) PZ.set('auto'); else if (d === 'fix') PZ.set(Math.round(popZoomNow() * 100) / 100); else PZ.set(Math.max(.4, Math.min(2, Math.round((popZoomNow() + d) * 20) / 20))); popZoomApply(); }
+if (POP) {
+  addEventListener('resize', () => popZoomApply());
+  addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); popZoomStep(e.deltaY < 0 ? .05 : -.05); }, { passive: false });
+  addEventListener('keydown', e => { if (!e.ctrlKey || e.altKey) return; if (e.key === '=' || e.key === '+') { e.preventDefault(); popZoomStep(.1); } else if (e.key === '-') { e.preventDefault(); popZoomStep(-.1); } else if (e.key === '0') { e.preventDefault(); popZoomStep(0); } });
+}
+/** 🧪 the Auto size at a few window sizes (nothing changes) */
+function popZoomTest() { const el = $('tPopOut'); if (!el) return; const at = (w, h) => Math.round(Math.max(.5, Math.min(1.5, Math.min(w / 1400, h / 860))) * 100);
+  el.innerHTML = `<p class="help" style="margin:8px 0 4px">🔍 Auto size of a popped-out tab:</p><ul style="margin:0;padding-left:18px">${[[960, 600, 'a small window'], [1400, 860, 'a normal window'], [1920, 1080, 'a full 1080p screen'], [2560, 1440, 'a full 1440p screen'], [700, 1200, 'a tall, narrow window']].map(([w, h, t]) => `<li>${t} (${w}×${h}): <b>${at(w, h)}%</b></li>`).join('')}</ul>`; }
 function popBack() { POPS.bye = true; popSend({ t: 'back', v: POP }); setTimeout(() => window.close(), 150); }
 function popMenu(x, y, v) {
   let m = $('popMenu'); if (!m) { m = document.createElement('div'); m.id = 'popMenu'; document.body.appendChild(m); addEventListener('mousedown', e => { if (!e.target.closest('#popMenu')) m.style.display = 'none'; }); }
@@ -2725,7 +2746,7 @@ function placeStage() {
   if (gameNeeded()) gameLoad();
   if (document.fullscreenElement === st) return gfxTell(document.hidden ? 'hidden' : 'full');
   if (view === 'battle' || view === 'cards' || view === 'mara') {
-    const r = $(view === 'cards' ? 'cStageSize' : view === 'mara' ? 'mStageSize' : 'stageSize').getBoundingClientRect();
+    const r0 = $(view === 'cards' ? 'cStageSize' : view === 'mara' ? 'mStageSize' : 'stageSize').getBoundingClientRect(), zf = popZF(), r = { left: r0.left / zf, top: r0.top / zf, width: r0.width / zf, height: r0.height / zf };
     st.classList.remove('mini', 'hide');
     Object.assign(st.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', right: '', bottom: '' });
   } else if (peekOn && !(view === 'wheel' && S?.wheelShow)) { // the pop-up window that shows the stream screen while you test things (not on the Wheel tab while the wheel is on stream: you can see it there)
@@ -2733,7 +2754,7 @@ function placeStage() {
     let p = {}; try { p = JSON.parse(localStorage.peekPos || '{}'); } catch {}
     const w = Math.min(p.w || 560, innerWidth - 20), h = Math.min(p.h || 349, innerHeight - 20);
     const x = Math.max(0, Math.min(p.x ?? innerWidth - w - 20, innerWidth - 120)), y = Math.max(0, Math.min(p.y ?? innerHeight - h - 20, innerHeight - 40));
-    Object.assign(st.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', right: '', bottom: '' });
+    { const zf = popZF(); Object.assign(st.style, { left: x / zf + 'px', top: y / zf + 'px', width: w / zf + 'px', height: h / zf + 'px', right: '', bottom: '' }); }
   } else {
     st.classList.add('mini', 'hide'); // no little preview window on other tabs
     Object.assign(st.style, { left: '', top: '', width: '', height: '' });
@@ -3197,7 +3218,7 @@ async function ytTest() { const o = $('ytTestOut'); try { const r = await api('/
 async function ytTestPlay() {
   const r = await api('/api/test/yt-links', { text: $('ytTestText').value }); if (!r.ok.length) return toast('⚠️ No YouTube links to play');
   let d = $('ytPlayDlg'); if (!d) { d = document.createElement('dialog'); d.id = 'ytPlayDlg'; document.body.appendChild(d); }
-  d.innerHTML = `<div class="inner" style="max-width:min(1000px,94vw)"><h2 style="margin-top:0">📺 The player, like OBS shows it</h2><div style="position:relative;width:100%;aspect-ratio:16/9;background:#111;overflow:hidden;border-radius:8px"><iframe src="/ytplay.html?k=brb&demo=1&list=${encodeURIComponent(r.ok.map(x => x.link).join(','))}" style="position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0" id="ytPlayFr" allow="autoplay"></iframe></div><div class="row" style="justify-content:flex-end;margin-top:8px"><button class="primary" onclick="$('ytPlayDlg').close();$('ytPlayDlg').innerHTML=''">Close</button></div></div>`;
+  d.innerHTML = `<div class="inner" style="max-width:min(1000px,calc(94 * var(--vw1, 1vw)))"><h2 style="margin-top:0">📺 The player, like OBS shows it</h2><div style="position:relative;width:100%;aspect-ratio:16/9;background:#111;overflow:hidden;border-radius:8px"><iframe src="/ytplay.html?k=brb&demo=1&list=${encodeURIComponent(r.ok.map(x => x.link).join(','))}" style="position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0" id="ytPlayFr" allow="autoplay"></iframe></div><div class="row" style="justify-content:flex-end;margin-top:8px"><button class="primary" onclick="$('ytPlayDlg').close();$('ytPlayDlg').innerHTML=''">Close</button></div></div>`;
   d.showModal(); const fit = () => { const f = $('ytPlayFr'); if (f) f.style.transform = `scale(${f.parentElement.clientWidth / 1920})`; }; fit(); setTimeout(fit, 50);
 }
 async function ytSave(o) { try { const r = await api('/api/mara/yt', o); if (S?.mara) S.mara.yt = r; renderMara(); return r; } catch (e) { toast('⚠️ ' + e.message); } }
@@ -3516,9 +3537,9 @@ function siteDraw(full) {
 // 👀 (1.80.2, Derek: "give a test of viewer page on test tab so I can see how it looks") the viewer page inside the app:
 // 'demo' = pretend battles / guesses / poll (works without the 24/7 bot), 'real' = your real site; 💻 / 📱 sizes.
 function sitePreview(kind = 'demo', size) {
-  let d = $('spvDlg'); if (!d) { d = document.createElement('dialog'); d.id = 'spvDlg'; d.style.cssText = 'width:min(1500px,96vw);max-width:96vw;height:92vh;padding:0'; document.body.appendChild(d); }
+  let d = $('spvDlg'); if (!d) { d = document.createElement('dialog'); d.id = 'spvDlg'; d.style.cssText = 'width:min(1500px,calc(96 * var(--vw1, 1vw)));max-width:calc(96 * var(--vw1, 1vw));height:calc(92 * var(--vh1, 1vh));padding:0'; document.body.appendChild(d); }
   try { size = size || localStorage.spvSize || 'pc'; localStorage.spvSize = size; } catch {}
-  const real = S?.site?.url, src = kind === 'real' && real ? real : '/live.html?demo=1', w = size === 'phone' ? 'width:390px;height:844px;max-height:calc(92vh - 70px)' : 'width:100%;height:100%';
+  const real = S?.site?.url, src = kind === 'real' && real ? real : '/live.html?demo=1', w = size === 'phone' ? 'width:390px;height:844px;max-height:calc(calc(92 * var(--vh1, 1vh)) - 70px)' : 'width:100%;height:100%';
   const b = (k, sz, t, tip) => `<button class="${(k === kind && sz === size) ? 'primary' : 'ghost'}" onclick="sitePreview('${k}','${sz}')" title="${tip}">${t}</button>`;
   d.innerHTML = `<div style="display:flex;flex-direction:column;height:100%"><div class="row" style="gap:6px;padding:8px 12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.1)"><b>👀 Viewer page</b><span class="muted">${kind === 'real' ? 'your real site' : '🧪 pretend (nothing is sent anywhere)'}</span><span class="grow"></span>
       ${b(kind, 'pc', '💻 Computer', 'See it the size it is on a computer')}${b(kind, 'phone', '📱 Phone', 'See it the size it is on a phone')}
@@ -4199,7 +4220,7 @@ function dashTools() { /* (the ▦ Boxes button opens the same menu as a right-c
 async function dashScene(name) { try { await api('/api/obs/scene', { name }); toast(`🎞️ OBS is on “${esc(name)}”`); } catch {} }
 async function dashScenePick() {
   let r; try { r = await api('/api/obs/scenes-now', null, 'GET'); } catch { return; } const have = new Set(S?.settings?.dashScenes || []), all = [...new Set([...(r.scenes || []), ...have])];
-  $('botDlgBody').innerHTML = `<h3 style="margin:0 0 6px">🎞️ Scene buttons</h3><p class="help">Tick the OBS scenes you want as buttons on the 💬 Chat tab.</p><div style="max-height:50vh;overflow-y:auto">${all.length ? all.map(n => `<label class="ck" style="display:flex"><input type="checkbox" class="dashScCk" value="${esc(n)}" ${have.has(n) ? 'checked' : ''} title="Give this OBS scene a button on the Chat tab"> <span>${esc(n)}${(r.scenes || []).includes(n) ? '' : ' <span class="muted">(not in OBS right now)</span>'}</span></label>`).join('') : '<p class="help">OBS has no scenes to show.</p>'}</div><div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="dashSceneSave()">Save</button></div>`;
+  $('botDlgBody').innerHTML = `<h3 style="margin:0 0 6px">🎞️ Scene buttons</h3><p class="help">Tick the OBS scenes you want as buttons on the 💬 Chat tab.</p><div style="max-height:calc(50 * var(--vh1, 1vh));overflow-y:auto">${all.length ? all.map(n => `<label class="ck" style="display:flex"><input type="checkbox" class="dashScCk" value="${esc(n)}" ${have.has(n) ? 'checked' : ''} title="Give this OBS scene a button on the Chat tab"> <span>${esc(n)}${(r.scenes || []).includes(n) ? '' : ' <span class="muted">(not in OBS right now)</span>'}</span></label>`).join('') : '<p class="help">OBS has no scenes to show.</p>'}</div><div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px"><button class="ghost" onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="dashSceneSave()">Save</button></div>`;
   $('botDlg').showModal();
 }
 async function dashSceneSave() { const list = [...document.querySelectorAll('.dashScCk')].filter(c => c.checked).map(c => c.value); $('botDlg').close(); try { await api('/api/settings', { dashScenes: list }); S.settings.dashScenes = list; dashTools(); toast('Saved'); } catch {} }
@@ -4302,7 +4323,7 @@ async function dashPlMenu() {
   if (!SGD) { try { await dashLoadQuiet(); } catch {} } const sg = SGD; if (!sg) return toast('Song requests are not part of this edition.'); const L = sg.playlists || [];
   $('botDlgBody').innerHTML = `<h3 style="margin:0 0 6px">📻 My playlists</h3><p class="help">Add your YouTube playlists here. <b>▶ Play</b> pauses the song requests and plays that playlist (requests still come in and wait). The <b>fill-in playlist</b> plays by itself whenever no song requests are left.</p>
     ${sg.hold ? `<p><button class="primary" onclick="dashHold('')" title="Stop the playlist and go back to playing the song requests">↩ Back to song requests</button></p>` : ''}
-    ${L.length ? `<div style="max-height:40vh;overflow-y:auto">${L.map(p => `<div class="row" style="gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap"><b style="flex:1;min-width:120px;overflow-wrap:anywhere">${esc(p.name)}${sg.hold === p.id ? ' <span class="pill">playing</span>' : ''}${sg.backup === p.id ? ' <span class="pill">fill-in</span>' : ''}</b><label class="ck" style="margin:0"><input type="checkbox" ${p.shuffle ? 'checked' : ''} onchange="dashPlSave({id:'${p.id}',shuffle:this.checked})" title="Play this playlist in a mixed-up order"> <span>Shuffle</span></label><button class="primary" onclick="dashHold('${p.id}')" title="Pause the song requests and play this playlist now">▶ Play</button><button class="ghost" onclick="dashPlSave({id:'${p.id}',remove:true})" title="Take this playlist off your list (nothing changes on YouTube)">🗑</button></div>`).join('')}</div>` : '<p class="help">No playlists yet.</p>'}
+    ${L.length ? `<div style="max-height:calc(40 * var(--vh1, 1vh));overflow-y:auto">${L.map(p => `<div class="row" style="gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap"><b style="flex:1;min-width:120px;overflow-wrap:anywhere">${esc(p.name)}${sg.hold === p.id ? ' <span class="pill">playing</span>' : ''}${sg.backup === p.id ? ' <span class="pill">fill-in</span>' : ''}</b><label class="ck" style="margin:0"><input type="checkbox" ${p.shuffle ? 'checked' : ''} onchange="dashPlSave({id:'${p.id}',shuffle:this.checked})" title="Play this playlist in a mixed-up order"> <span>Shuffle</span></label><button class="primary" onclick="dashHold('${p.id}')" title="Pause the song requests and play this playlist now">▶ Play</button><button class="ghost" onclick="dashPlSave({id:'${p.id}',remove:true})" title="Take this playlist off your list (nothing changes on YouTube)">🗑</button></div>`).join('')}</div>` : '<p class="help">No playlists yet.</p>'}
     <div class="row" style="gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><span>When no requests are left, play:</span><select id="plBackup" onchange="dashPlBackup(this.value)" title="The playlist that plays by itself when the song queue is empty (None = silence until the next request)"><option value="">None</option>${L.map(p => `<option value="${p.id}" ${sg.backup === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
     <h4 style="margin:14px 0 6px">➕ Add a playlist</h4><div class="row" style="gap:8px;flex-wrap:wrap"><input id="plName" placeholder="A name for it" style="flex:1;min-width:120px" title="Your own name for this playlist"><input id="plLink" placeholder="YouTube playlist link" style="flex:2;min-width:180px" title="Open the playlist on YouTube and paste its address here (it has list= in it)"><button onclick="dashPlSave({name:$('plName').value,link:$('plLink').value})" title="Add this YouTube playlist to your list">Add</button></div>
     <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="ghost" onclick="$('botDlg').close()">Close</button></div>`;
@@ -4618,7 +4639,7 @@ async function safeDraw() {
   el.innerHTML = `<div style="margin-bottom:8px">${s.local ? '✅ Only this PC can reach the app, and web pages you visit can\'t use it.' : '⚠️ Network access was switched on by hand: other devices on your network can reach the app.'}<br>✅ Nothing is sent to the makers of this app: no statistics, no email address, no passwords.</div>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><button onclick="safeCheck()" title="Runs the safety checks now: only this PC can reach the app, other websites are turned away, and the lock's codes work the way authenticator apps expect">🛡️ Run the safety check</button><button class="ghost" onclick="safePrivacy()" title="A plain list of everything the app sends, where to, and when (and what never leaves this PC)">📄 What is sent where</button></div>`;
 }
-function safePrivacy() { const d = $('safeDlg'); $('safeDlgBody').innerHTML = `<iframe src="/privacy.html" style="width:100%;height:70vh;border:0;border-radius:10px" title="What is sent where"></iframe><div class="row" style="justify-content:flex-end;margin-top:8px"><button onclick="$('safeDlg').close()" title="Close this window">Close</button></div>`; d.style.maxWidth = '900px'; if (!d.open) d.showModal(); }
+function safePrivacy() { const d = $('safeDlg'); $('safeDlgBody').innerHTML = `<iframe src="/privacy.html" style="width:100%;height:calc(70 * var(--vh1, 1vh));border:0;border-radius:10px" title="What is sent where"></iframe><div class="row" style="justify-content:flex-end;margin-top:8px"><button onclick="$('safeDlg').close()" title="Close this window">Close</button></div>`; d.style.maxWidth = '900px'; if (!d.open) d.showModal(); }
 async function safeCheck(out) {
   let r; try { r = await api('/api/test/safety', null, 'GET'); } catch { return; }
   const html = `<p style="margin:0 0 6px">${r.ok ? '✅ Everything checks out.' : '⚠️ Something is off: tell Claude.'}</p><table class="tbl" style="width:100%"><tbody>${r.rows.map(x => `<tr><td>${x.ok ? '✅' : '⚠️'}</td><td>${esc(x.what)}${x.note ? ` <span class="muted">(${esc(x.note)})</span>` : ''}</td></tr>`).join('')}</tbody></table><p class="help" style="margin:8px 0 0">${r.report.lock.on ? '🔐 The lock is on.' : '🔓 The lock is off.'} ${r.report.using.length ? 'Connected: ' + r.report.using.map(u => esc(u.name)).join(', ') + '.' : 'No service is connected.'}</p>`;
@@ -7609,7 +7630,7 @@ function closeAsk(info = {}) {
   if (info.broken) { // 24/7 is on, but Discord isn't sending anything to it (and fixing it by itself didn't work)
     const d = document.createElement('div'); d.id = 'closeDlg';
     d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000a;display:flex;align-items:center;justify-content:center';
-    d.innerHTML = `<div class="card" style="width:min(560px,92vw);margin:0"><h2 style="margin-top:0">⚠️ Your 24/7 bot isn't connected to Discord</h2>
+    d.innerHTML = `<div class="card" style="width:min(560px,calc(92 * var(--vw1, 1vw)));margin:0"><h2 style="margin-top:0">⚠️ Your 24/7 bot isn't connected to Discord</h2>
       <p>If you close Movie Royal now, <code>/suggest</code> and <code>/linktwitch</code> won't answer. Movie Royal tried to reconnect it and couldn't${info.why ? ` (${esc(info.why)})` : ''}.</p>
       <p class="help">Paste your Cloudflare API token to set the 24/7 bot up again, then it closes.</p>
       <div class="row"><input class="grow" type="password" placeholder="Cloudflare API token"><button class="primary" onclick="closeTurnOn(this)">☁️ Fix the 24/7 bot, then close</button></div>
@@ -7619,7 +7640,7 @@ function closeAsk(info = {}) {
   }
   const d = document.createElement('div'); d.id = 'closeDlg';
   d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000a;display:flex;align-items:center;justify-content:center';
-  d.innerHTML = `<div class="card" style="width:min(560px,92vw);margin:0">
+  d.innerHTML = `<div class="card" style="width:min(560px,calc(92 * var(--vw1, 1vw)));margin:0">
     <h2 style="margin-top:0">☁️ Your 24/7 Discord bot is off</h2>
     <p>If you close Movie Royal now, the Discord bot stops too: <code>/suggest</code> and the other commands won't answer until you open it again.</p>
     <p class="help">Turn on 24/7 mode and the bot keeps running on Cloudflare while Movie Royal is closed. Paste your Cloudflare API token (Settings → Discord shows how to get one; it isn't saved).</p>
@@ -7755,7 +7776,7 @@ function updBar(m) {
   if (!m) { b?.remove(); return; }
   if (!b) { b = document.createElement('div'); b.id = 'updBar'; b.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#000b;display:flex;align-items:center;justify-content:center'; document.body.appendChild(b); }
   const pct = m.total ? Math.min(100, Math.round(m.got / m.total * 100)) : null, mb = n => (n / 1048576).toFixed(1);
-  b.innerHTML = `<div class="card" style="width:min(520px,92vw);margin:0;text-align:center"><h2 style="margin-top:0">${m.stage === 'install' ? '📦 Installing the update…' : '⬇️ Downloading the update…'}</h2>
+  b.innerHTML = `<div class="card" style="width:min(520px,calc(92 * var(--vw1, 1vw)));margin:0;text-align:center"><h2 style="margin-top:0">${m.stage === 'install' ? '📦 Installing the update…' : '⬇️ Downloading the update…'}</h2>
     <div style="height:16px;border-radius:9px;background:#ffffff18;overflow:hidden;margin:14px 0"><div style="height:100%;width:${m.stage === 'install' ? 100 : pct ?? 8}%;background:linear-gradient(90deg,#ffc94a,#ff6a3d);transition:width .25s${m.stage === 'install' || pct == null ? ';animation:updPulse 1s infinite alternate' : ''}"></div></div>
     <p class="help" style="margin:0">${m.stage === 'install' ? 'Movie Royal closes now, the installer shows its progress, then Movie Royal opens again by itself (about 30 seconds). Your lists and settings are kept.' : pct != null ? `${pct}% · ${mb(m.got)} of ${mb(m.total)} MB` : `${mb(m.got)} MB so far…`}</p></div>`;
 }
@@ -8033,7 +8054,7 @@ function holStyleHTML() {
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
 if (PC_ONLY) { document.body.classList.add('pcOnly'); document.title = '💬 Pretend chat · Movie Royal'; }
 popInit(); if (POP) { document.body.classList.add('popOnly'); }
-fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (POP) { S = s; render(); setView(POP); placeStage(); const t = popName(POP); document.title = t + ' · Movie Royal'; const h = document.querySelector('header h1'); if (h) h.textContent = t; return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (POP) { S = s; render(); setView(POP); popZoomApply(); placeStage(); const t = popName(POP); document.title = t + ' · Movie Royal'; const h = document.querySelector('header h1'); if (h) h.textContent = t; return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 <script src="spell.js"></script>

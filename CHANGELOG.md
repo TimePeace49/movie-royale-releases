@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.1
+- 🔍 **Popped-out tabs fit their window.** On Auto, everything in a popped-out window shrinks or grows with the window (a small window shows the whole tab smaller, a big screen a bit bigger). Use − / + at the top of that window (or Ctrl + mouse wheel, Ctrl+= / Ctrl+-) to pick your own size; click the size to keep it, click again (or Ctrl+0) for Auto. Each tab remembers its size.
+- 🧪 Test tab → ↗ Pop out a tab → 🔍 Auto size.
+
 ## 1.132.0
 - ↗ **Pop any tab out to another screen.** Press ↗ at the top right (the tab you're on), right-click any tab at the top, or press Ctrl+Alt+P: that tab opens in its own window that you can drag to another monitor. The main window marks it ↗ (click it to bring that window to the front), and ↩ Put back at the top of the popped window brings it home. Each popped window opens where you last left it. A popped-out battle or wheel stays quiet so you never hear things twice.
 - 🧪 Test tab → ↗ Pop out a tab.

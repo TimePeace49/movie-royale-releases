@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.132.1: What's new
+- 🔍 Popped-out tabs fit their window: everything shrinks or grows with the window on Auto, or pick your own size with − / + at the top of that window (Ctrl + mouse wheel works too).
+
 ## v1.132.0: What's new
 - ↗ Pop any tab out to another screen: press ↗ at the top right, right-click a tab, or press Ctrl+Alt+P. The tab opens in its own window you can drag to your other monitor, and it opens in the same spot next time. ↩ Put back brings it home.
 
