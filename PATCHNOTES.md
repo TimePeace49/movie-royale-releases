@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.132.5: What's new
+- {songs} ⭐ Song ratings out of 10 now show 10 stars (out of 5 shows 5), and "out of 100" is gone. Switching between 5 and 10 moves your saved ratings over to the new scale.
+
 ## v1.132.4: What's new
 - 💬 Chat commands typed in the app's own chat box now work (for example !sr with a song): anything that starts with ! is sent exactly as typed, as you.
 - {dash} 🎵 The music box on the Chat tab lists every song waiting in the queue: scroll down in the box to see them all.

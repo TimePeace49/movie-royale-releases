@@ -15,6 +15,7 @@ const clampN = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Ma
 export function data(d = (db.songs ||= {})) {
   d.queue ||= []; d.lib ||= {}; d.played ||= []; d.banned ||= []; d.bannedUsers ||= []; d.req ||= {}; d.opts ||= {};
   if (d.open === undefined) d.open = true;
+  if (d.opts.scale === 100) { for (const L of Object.values(d.lib)) if (L.rate) L.rate = L.rate.map(r => (r == null ? null : Math.round(r / 10 * 2) / 2)); d.opts.scale = 10; } /* (1.132.5) "out of 100" is gone: those ratings became out of 10 */
   return d;
 }
 /** 🛡️ Channels whose music is made to be safe on stream (the "DMCA-free only" switch; you can change the list). No list can promise a song is safe. */
@@ -238,7 +239,7 @@ export function setOpts(b) {
   if ('skipVotes' in b) x.skipVotes = Math.round(clampN(b.skipVotes, 0, 500, 0)); if ('vol' in b) x.vol = Math.round(clampN(b.vol, 0, 100, 60));
   for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo', 'noRate', 'onlyKnown', 'showVideo', 'smartSearch', 'avoidLive', 'avoidCovers', 'avoidEdits', 'avoidJunk', 'level', 'levelDown']) if (k in b) x[k] = !!b[k]; /* (noRate = no song ratings at all: the stars are hidden everywhere, saved ratings are kept) */ /* (solo = only one person rates: the second rating is hidden everywhere) */
   if ('dmcaList' in b) { const l = (Array.isArray(b.dmcaList) ? b.dmcaList : String(b.dmcaList || '').split(/[\n,]+/)).map(s => String(s).trim().slice(0, 60)).filter(Boolean).slice(0, 200); if (l.length) x.dmcaList = l; else delete x.dmcaList; }
-  if ('scale' in b) x.scale = [5, 10, 100].includes(Number(b.scale)) ? Number(b.scale) : 10;
+  if ('scale' in b) { const was = opts(d).scale, to = Number(b.scale) === 5 ? 5 : 10; if (to !== was) for (const L of Object.values(d.lib || {})) if (L.rate) L.rate = L.rate.map(r => (r == null ? null : Math.round(r * to / was * 2) / 2)); x.scale = to; } /* (1.132.5) out of 5 or 10 only; the ratings you already gave move over to the new scale */
   if ('raters' in b && Array.isArray(b.raters)) x.raters = [0, 1].map(i => String(b.raters[i] || '').trim().slice(0, 20) || opts(d).raters[i]);
   changed(); return state();
 }

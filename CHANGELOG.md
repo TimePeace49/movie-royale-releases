@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.5
+- ⭐ Song ratings out of 10 now show 10 stars (out of 5 shows 5). Half stars still work.
+- ⭐ "Out of 100" is gone: ratings are out of 5 or out of 10. If you had picked 100, your ratings were turned into out of 10. Switching between 5 and 10 now moves the ratings you already gave over to the new scale.
+
 ## 1.132.4
 - 💬 Chat commands typed in the app's own chat box now work (like !sr with a song). Before, the app put its bot name in front of what you typed (or sent it from the bot account), so nothing saw it as a command. Now a message that starts with ! goes out exactly as typed, as you, and runs like any streamer command.
 - 🎵 The music box on the Chat tab now lists every song waiting in the queue (it used to show 3 and "+ more"). Scroll down in the box to see them all.
