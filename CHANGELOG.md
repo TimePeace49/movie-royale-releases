@@ -3,6 +3,7 @@
 What changed in each version of Movie Royal. Newest first.
 
 ## 1.132.7
+- 🎁 Giveaway tab (Birx & Jess edition): picking a map or changing Pieces now redraws the battle screen right away with that map, and there is a 🔄 Refresh map button next to the Map menu.
 - 🔎 History → 🍿 Movie nights: the search box at the top now finds a night by a movie that was on the list, a movie that won, a date (November, 11/5/2026, Wednesday…) or someone who voted. When a movie matches, each night shows whether it won or was just on the list, its number and its votes.
 - ⭐ History → 🎵 Music has a new part: Songs you rated. Every song with a rating, with its own search box and a sort menu (rated most recently, best, lowest, A to Z). The stars work there too, so you can change a rating on the spot.
 
