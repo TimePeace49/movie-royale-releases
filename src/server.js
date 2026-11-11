@@ -5103,6 +5103,12 @@ app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
 app.post('/api/songs/playlist', sgTry(b => songs.playlist(b))); // 📻 add / rename / remove one of your YouTube playlists
+app.get('/api/chatters/common', (req, res) => { // 🙋 (1.132.10) names to suggest while typing who asked for something: who is chatting now first, then your most regular chatters (no bots)
+  const seen = new Set(), out = [], add = n => { const k = String(n || '').toLowerCase(); if (!k || seen.has(k) || isChatBot(k) || /^pretend_/.test(k) && !req.query.tests) return; seen.add(k); out.push(n); };
+  for (const n of chattersForWheel()) add(n);
+  for (const v of Object.values(db.viewers || {}).filter(v => v && v.login && (v.msgs || 0) > 0).sort((a, b) => (b.msgs || 0) - (a.msgs || 0)).slice(0, 150)) add(v.name || v.login);
+  res.json({ names: out.slice(0, 160) });
+});
 app.get('/api/history/music', (req, res) => { if (!feat('songs')) return res.json({ on: false }); res.json({ on: true, ...songs.history() }); }); // 🕰️ History → 🎵 Music
 app.get('/api/history/chat', (req, res) => { // 🕰️ History → 💬 Chat stats: who chats and watches the most, and which commands get used
   const skip = new Set([...BOT_NAMES, String(db.twitchBot?.user?.login || '').toLowerCase()].filter(Boolean)), now = new Date(), mk = now.toISOString().slice(0, 7), yk = mk.slice(0, 4);

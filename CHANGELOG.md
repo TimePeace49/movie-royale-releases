@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.10
+- 🙋 Movie night: the "who asked" boxes (when adding a movie and in the list) now suggest names as you type: people chatting right now first, then your most regular chatters, plus names you typed on earlier movie nights. Pick one with the arrow keys or the mouse. The "who asked" box for adding a song does the same.
+- 🧪 Test tab → 🍿 Movie night tests → 🙋 Name suggestions.
+
 ## 1.132.9
 - 🎁 Giveaway tab (Birx & Jess edition): the Map menu now only lists maps that work for the pieces you picked. ⚪ Balls shows the ball and car maps; 🧍 Characters shows the character maps plus the ones that work for both. Switching pieces while a map that doesn't fit is picked puts the map back on 🎲 Random.
 

@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.132.10: What's new
+- {movienight} 🙋 Movie night: the "who asked" boxes suggest names as you type (people chatting now, your regular chatters, and names from earlier nights).
+
 ## v1.132.9: What's new
 - {ed:birx} 🎁 Giveaway tab: the Map menu only lists maps that work for the pieces you picked (balls or characters).
 

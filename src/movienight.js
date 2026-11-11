@@ -73,6 +73,7 @@ export function state() {
   const d = data(), o = opts(d), now = Date.now();
   const right = d.guesses.filter(g => g.right === true).length, wrong = d.guesses.filter(g => g.right === false).length;
   return {
+    byNames: [...new Set((d.past || []).flatMap(n => (n.movies || []).map(m => String(m.by || '').trim())).filter(Boolean))].slice(0, 200), /* 🙋 names typed as "who asked" on earlier nights (for the suggestions) */
     on: on(), open: !!d.open, openedAt: d.openedAt || 0, endsAt: d.open ? d.endsAt || 0 : 0, movies: d.movies, tally: tally(d).map(t => ({ ...t, right: d.guesses.filter(g => g.movie === t.id && g.right === true).length, wrong: d.guesses.filter(g => g.movie === t.id && g.right === false).length })), leaders: leaders(d).map(x => x.title), total: Object.values(d.votes).reduce((a, v) => a + v.list.length, 0),
     voters: Object.entries(d.votes).map(([login, v]) => ({ login, name: v.name, changes: v.changes, allowed: votesAllowed(login, d, now), why: bonusWhy(login, d, now), picks: v.list.map(x => ({ n: d.movies.findIndex(m => m.id === x.movie) + 1, title: d.movies.find(m => m.id === x.movie)?.title || '(removed)', changed: !!x.changed })) })).sort((a, b) => a.name.localeCompare(b.name)),
     pending: d.guesses.filter(g => g.right == null && !g.skip).slice(0, 30), guess: { right, wrong, total: right + wrong }, guesses: d.guesses.slice(-60).reverse(),
