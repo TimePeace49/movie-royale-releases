@@ -5153,7 +5153,7 @@ app.get('/api/test/watchlist-read', (req, res) => { /* 🧪 the IMDb page reader
   const r = listsrc.imdbUserRatings(page), rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) });
   add("Ratings from the page's own data", r.get('tt0073195')?.rate === 9 && r.get('tt0078748')?.rate === 10, [...r].map(([k, v]) => k + ' ' + v.rate).join(', '));
   add('A rating from the star on a row', r.get('tt0087363')?.rate === 6, r.get('tt0087363')?.rate);
-  for (const [u, k] of [['https://www.imdb.com/user/ur12345678/watchlist', 'watch'], ['https://m.imdb.com/user/ur12345678/ratings/?ref_=x', 'rated'], ['https://www.imdb.com/list/ls012345678/', 'watch']]) add('Link understood: ' + u, listsrc.imdbUserUrl(u)?.kind === k, listsrc.imdbUserUrl(u)?.kind);
+  for (const [u, k] of [['https://www.imdb.com/user/ur12345678/watchlist', 'watch'], ['https://m.imdb.com/user/ur12345678/ratings/?ref_=x', 'rated'], ['https://www.imdb.com/list/ls012345678/', 'watch'], ['https://www.imdb.com/user/p.zf4tntyuu3csrlgtldkyqjfcty/watchlist/', 'watch'], ['https://www.imdb.com/user/p.zf4tntyuu3csrlgtldkyqjfcty/ratings/', 'rated']]) add('Link understood: ' + u, listsrc.imdbUserUrl(u)?.kind === k, listsrc.imdbUserUrl(u)?.kind);
   for (const u of ['https://www.imdb.com/title/tt0073195/', 'https://example.com/user/ur1/watchlist', 'jaws']) add('Refused (not a watchlist / ratings link): ' + u, !listsrc.imdbUserUrl(u), listsrc.imdbUserUrl(u) ? 'taken' : 'refused');
   res.json({ ok: rows.every(x => x.ok), rows });
 });

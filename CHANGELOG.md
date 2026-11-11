@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.136.1
+- 📋 IMDb's newer profile links (imdb.com/user/p.…/watchlist and …/ratings) are now accepted for the watchlist and ratings. Before, only the older ur… style links were.
+
 ## 1.136.0
 - 🧭 The Setup guide now has steps for movie night (they show in editions that have it, like Birx & Jess's):
   - 🎬 Movie look-up keys: how to get the free TMDB key (and the OMDb one, if the shared one isn't enough), with Save & test.

@@ -21,7 +21,7 @@ export function setOpts(b) {
   if ('perm' in b) x.perm = ['all', 'followers', 'subs', 'vips', 'mods'].includes(b.perm) ? b.perm : 'all';
   if ('perUser' in b) x.perUser = Math.max(0, Math.min(50, Math.round(Number(b.perUser) || 0)));
   if ('reply' in b) x.reply = !!b.reply; if ('auto' in b) x.auto = !!b.auto;
-  for (const k of ['listUrl', 'ratedUrl']) if (k in b) { const v = String(b[k] || '').trim(); if (v && !H.linkOk(v)) throw new Error("That isn't an IMDb watchlist or ratings link. It looks like imdb.com/user/ur12345678/watchlist (or …/ratings)."); x[k] = v.slice(0, 200); }
+  for (const k of ['listUrl', 'ratedUrl']) if (k in b) { const v = String(b[k] || '').trim(); if (v && !H.linkOk(v)) throw new Error("That isn't an IMDb watchlist or ratings link. It looks like imdb.com/user/…/watchlist (or …/ratings)."); x[k] = v.slice(0, 200); }
   changed(); return state();
 }
 function changed() { save(); H.send({ type: 'watchlist' }, 'control'); }

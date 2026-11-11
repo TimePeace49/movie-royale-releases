@@ -273,8 +273,8 @@ const PAGES = {
     <h3>Easy way: paste the two links</h3>
     <ol class="steps">
       <li>On IMDb, make both pages public: ${link('https://www.imdb.com/registration/accountsettings/', 'Account settings')} → <b>Privacy</b> → turn off "private" for your <b>watchlist</b> and your <b>ratings</b>.</li>
-      <li>Open ${link('https://www.imdb.com/list/watchlist', 'Your Watchlist')} on IMDb, copy the address from the top of your browser, and paste it here:<div class="field"><input id="wlUrl1" value="${esc(o.listUrl || '')}" placeholder="https://www.imdb.com/user/ur…/watchlist" autocomplete="off"></div></li>
-      <li>Open ${link('https://www.imdb.com/list/ratings', 'Your Ratings')}, copy its address, and paste it here:<div class="field"><input id="wlUrl2" value="${esc(o.ratedUrl || '')}" placeholder="https://www.imdb.com/user/ur…/ratings" autocomplete="off"></div></li>
+      <li>Open ${link('https://www.imdb.com/list/watchlist', 'Your Watchlist')} on IMDb, copy the address from the top of your browser, and paste it here:<div class="field"><input id="wlUrl1" value="${esc(o.listUrl || '')}" placeholder="https://www.imdb.com/user/…/watchlist" autocomplete="off"></div></li>
+      <li>Open ${link('https://www.imdb.com/list/ratings', 'Your Ratings')}, copy its address, and paste it here:<div class="field"><input id="wlUrl2" value="${esc(o.ratedUrl || '')}" placeholder="https://www.imdb.com/user/…/ratings" autocomplete="off"></div></li>
       <li>Press <b>Save &amp; read IMDb</b>. The app reads both again every time it opens.</li>
     </ol>
     ${note('imdb')}
