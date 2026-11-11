@@ -59,6 +59,9 @@
     <div id="log" class="log"></div></div>
 </main>
 <main id="tab-errors" class="hidden">
+  <div class="card" id="ccCard" style="display:none;margin-bottom:12px"><div class="row" style="margin-bottom:6px"><h3 class="grow" style="margin:0">📮 Command center: every app's problems</h3><button onclick="ccLoad(true)" title="Read the mailbox again now">🔄 Refresh</button></div>
+    <p class="help" style="margin-top:0">Each app (yours and your friends') sends its problems here through your 24/7 bot. Pick an app to see what went wrong on it. <b>🧹 Clear</b> also clears the list inside that person's app (within about 5 minutes, if it's open).</p>
+    <div id="ccTabs" class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px"></div><div id="ccBody"></div></div>
   <div class="card"><div class="row" style="margin-bottom:8px"><h3 class="grow" style="margin:0">⚠️ Problems</h3><button onclick="copyReport(this)">🛠️ Copy the debug report (for Claude)</button><button class="danger" onclick="clearErrs()">🧹 Clear</button></div>
     <p class="help" style="margin-top:0">Every problem the backup ran into, newest first, with what it means in plain words. The debug report has what the backup has and is doing (no bot tokens): paste it to Claude if something's wrong.</p>
     <div id="errs"></div></div>
@@ -144,7 +147,7 @@ async function updInstall(btn) { if (!confirm('Update Movie Royal Backup Bots no
 // 🖥️ Console + ⚠️ Errors tabs
 let curTab = 'bots', logLast = 0, logRows = [], logPaused = false, errSeen = 0;
 try { errSeen = Number(localStorage.bkErrSeen || 0); } catch {}
-function tab(t) { curTab = t; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); ['bots', 'console', 'errors', 'editions'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== t)); if (t === 'editions') edLoad(); if (t === 'errors') { loadErrs(true); } if (t === 'console') { drawNow(); drawLog(true); } try { localStorage.bkTab = t; } catch {} }
+function tab(t) { curTab = t; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); ['bots', 'console', 'errors', 'editions'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== t)); if (t === 'editions') edLoad(); if (t === 'errors') { ccLoad(false); loadErrs(true); } if (t === 'console') { drawNow(); drawLog(true); } try { localStorage.bkTab = t; } catch {} }
 const tm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 async function pollLog() { try { const r = await fetch('/api/log?after=' + logLast).then(r => r.json()); if (r.logs.length) { logRows.push(...r.logs); if (logRows.length > 1500) logRows.splice(0, logRows.length - 1500); logLast = r.last; if (curTab === 'console' && !logPaused) drawLog(); } if (r.logs.some(l => l.level === 'error')) loadErrs(); } catch {} }
 function drawLog(all) {
@@ -158,6 +161,24 @@ function drawNow() { // what each bot has and is doing right now
   if (!S) return;
   $('now').innerHTML = `<div>${S.running ? '🟢 The backup server is running' : '⏹ The backup server is stopped'} · ${S.bots.length} bot${S.bots.length === 1 ? '' : 's'} · Twitch keys: ${S.twitch.using === 'none' ? 'none' : S.twitch.using === 'yours' ? 'yours' : 'Movie Royal\'s'} · v${esc(S.version || '?')}</div>` + S.bots.map(b => `<div>🤖 <b>${esc(b.tag || 'Bot')}</b>${b.streamer ? ` (${esc(b.streamer)})` : ''}: ${!S.running ? 'stopped' : !b.on ? 'paused' : esc(b.state)} · ${b.mode === 'backup' ? '<b style="color:var(--purple)">RUNNING THE BOT</b>' : 'standing by'} · their Movie Royal ${b.appOpen ? 'open' : 'closed'} · 24/7 bot ${!b.cloud.url ? 'not used' : b.cloud.ok === false ? `problem (${b.cloud.fails}/3)` : b.cloud.ok ? 'working' : 'checking'} · rules ${b.configAt ? 'from ' + new Date(b.configAt).toLocaleString() : 'not yet'} · chat ${b.chat.channel ? `#${esc(b.chat.channel)} ${esc(b.chat.state)}${b.chat.live ? ' (🔴 live, ' + b.chat.viewers + ' watching)' : ''}, ${b.chat.waiting} waiting for Movie Royal` : 'no channel yet'} · ${b.handled} command${b.handled === 1 ? '' : 's'} answered · ${b.waitingPicks} pick${b.waitingPicks === 1 ? '' : 's'} waiting · checked ${ago(b.checkedAt)}${b.warning ? `<br><span class="warn-t">⚠️ ${esc(b.warning)}</span>` : ''}</div>`).join('');
 }
+/* 📮 Command center (1.143.0): one tab per app that reports in */
+let CC = { apps: null, pick: '', err: '', at: 0 };
+const ccAgo = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; };
+const ccName = a => (a.channel || 'someone') + (a.edition ? ' · ' + a.edition : '');
+async function ccLoad(force) { const card = $('ccCard'); if (!card) return; if (!force && CC.apps && Date.now() - CC.at < 55000) return ccDraw();
+  try { const r = await fetch('/api/reports').then(async x => ({ ok: x.ok, j: await x.json() })); if (!r.ok) { CC.err = r.j.error || 'Could not read the mailbox'; CC.apps = CC.apps || []; } else { CC.apps = r.j.apps; CC.err = ''; } CC.at = Date.now(); } catch (e) { CC.err = 'Could not read the mailbox'; CC.apps = CC.apps || []; }
+  ccDraw(); }
+function ccDraw() { const card = $('ccCard'); if (!card) return; if (CC.err && /only in the dev edition/.test(CC.err)) { card.style.display = 'none'; return; } card.style.display = '';
+  const L = CC.apps || []; if (!L.some(a => a.id === CC.pick)) CC.pick = L[0] ? L[0].id : '';
+  $('ccTabs').innerHTML = L.map(a => `<button class="${a.id === CC.pick ? 'primary' : ''}" onclick="CC.pick='${a.id}';ccDraw()" title="${escH(a.app || '')} ${escH(a.version || '')}, last heard from ${ccAgo(a.got)}">${Date.now() - a.got < 40 * 60000 ? '🟢' : '⚪'} ${escH(ccName(a))}${a.errors.length ? ` <b style="color:var(--bad)">${a.errors.length}</b>` : ''}</button>`).join('') || '';
+  const a = L.find(x => x.id === CC.pick);
+  $('ccBody').innerHTML = (CC.err ? `<p class="help" style="color:var(--bad)">⚠️ ${escH(CC.err)}</p>` : '') + (!a ? (CC.err ? '' : '<p class="help">No app has reported in yet. Apps on version 1.143.0 or newer send their first report about a minute after they open.</p>') :
+    `<p class="help" style="margin:0 0 8px"><b>${escH(a.app || 'App')}</b> ${escH(a.version || '')} · ${escH(a.edition || '?')} edition · channel <b>${escH(a.channel || 'not signed in')}</b> · ${escH(a.os || '')} · ${a.live ? '🔴 live' : 'not live'} · last heard from ${ccAgo(a.got)}${a.cleared ? ' · cleared ' + ccAgo(a.cleared) : ''}</p>
+     <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px"><button onclick="ccCopy()" title="Copy this app's tech report to paste to Claude (no passwords or keys in it)">🛠️ Copy its report (for Claude)</button><button class="danger" onclick="ccClear(false)" title="Clear this app's problems here AND inside that person's app">🧹 Clear (here and on their app)</button><button onclick="ccClear(true)" title="Take this app off the list. It comes back the next time it reports in">✕ Forget this app</button></div>
+     ${a.errors.map(e => `<div class="err"><b>${escH((e.who ? e.who + ': ' : '') + (e.what || 'Something went wrong'))}</b>${e.fix ? `<br>${escH(e.fix)}` : ''}<br><small>${new Date(e.at).toLocaleString()} · ${escH(e.source)} · ${escH(e.msg)}</small></div>`).join('') || '<p class="help">✅ No problems on this app.</p>'}`); }
+async function ccCopy() { const a = (CC.apps || []).find(x => x.id === CC.pick); if (!a) return; const text = `${a.app} ${a.version} (${a.edition} edition, ${a.channel || 'not signed in'})\n` + a.errors.map(e => `${new Date(e.at).toISOString()} [${e.source}] ${e.msg}`).join('\n') + '\n\n' + (a.report || ''); try { await navigator.clipboard.writeText(text); alert('📋 Copied. Paste it to Claude.'); } catch { alert('Could not copy it by itself. Use 🛠️ on that person\'s own Errors page instead.'); } }
+async function ccClear(forget) { const a = (CC.apps || []).find(x => x.id === CC.pick); if (!a) return; if (!confirm(forget ? `Take ${ccName(a)} off the list? It comes back when it reports in again.` : `Clear the problems of ${ccName(a)}? This also clears the list inside their app.`)) return; try { await api('/api/reports/clear', { id: a.id, forget: !!forget }); } catch { return; } ccLoad(true); }
+setInterval(() => { if (curTab === 'errors') ccLoad(false); }, 60000);
 async function loadErrs(seen) {
   try {
     const r = await fetch('/api/errors').then(r => r.json()), list = r.errors || [];

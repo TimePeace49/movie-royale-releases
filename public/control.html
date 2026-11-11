@@ -605,9 +605,9 @@
     <button data-v="tchat">💬 Chat</button>
     <button data-v="people" class="on">👥 People</button>
     <button data-v="history">📜 History</button>
-    <button data-v="test" id="testNavBtn"><span id="testNavTxt">🧪 Test</span><span id="errNav" title="Something went wrong: see 🧪 Test → ⚠️ Errors"></span><span id="newNav"></span></button>
+    <button data-v="test" id="testNavBtn"><span id="testNavTxt">🧪 Test</span><span id="newNav"></span></button>
     <button data-v="help">❓ Help</button>
-    <button data-v="settings">⚙️ Settings</button>
+    <button data-v="settings">⚙️ Settings<span id="errNav" title="Something went wrong: see ⚙️ Settings → ⚠️ Errors"></span></button>
   </nav>
   <span id="raidBox" style="display:none"><button id="raidGo" onclick="raidClick()"></button><button class="raidX" title="Hide this (the raid pick is forgotten)" onclick="if(confirm('Forget this raid pick?')) api('/api/raid/clear',{})">✕</button></span>
   <div class="dots" id="dots"></div>
@@ -1021,7 +1021,7 @@
 
 <!-- 🧪 TEST -->
 <section class="view" id="v-test">
-  <div class="card ttabs stickytop" style="grid-column:1 / -1;padding:8px;box-shadow:0 6px 18px #0008;top:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="seg"><button id="tTabTests" class="on" onclick="testTab('tests')">🧪 Tests</button><button id="tTabCheck" onclick="testTab('check')">✅ Checklist</button><button id="tTabErr" onclick="testTab('errors')">⚠️ Errors <span id="errN"></span></button></div><span style="flex:1"></span><span id="tTabTools" style="display:inline-flex;gap:6px;flex-wrap:wrap"><button onclick="previewToggle()" title="The little window that shows what's on stream (⧉ Pop out on it puts it on another monitor)">📺 Preview</button><button onclick="pchat(!$('pchat').classList.contains('on') || (pcWin && !pcWin.closed))" title="Type in chat as any viewer (⧉ Pop out on it puts it on another monitor)">💬 Test chat</button></span></div>
+  <div class="card ttabs stickytop" style="grid-column:1 / -1;padding:8px;box-shadow:0 6px 18px #0008;top:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="seg"><button id="tTabTests" class="on" onclick="testTab('tests')">🧪 Tests</button><button id="tTabCheck" onclick="testTab('check')">✅ Checklist</button><button id="tTabErr" onclick="testTab('errors')" title="Errors moved: this opens ⚙️ Settings → ⚠️ Errors">⚠️ Errors ↗ <span id="errN"></span></button></div><span style="flex:1"></span><span id="tTabTools" style="display:inline-flex;gap:6px;flex-wrap:wrap"><button onclick="previewToggle()" title="The little window that shows what's on stream (⧉ Pop out on it puts it on another monitor)">📺 Preview</button><button onclick="pchat(!$('pchat').classList.contains('on') || (pcWin && !pcWin.closed))" title="Type in chat as any viewer (⧉ Pop out on it puts it on another monitor)">💬 Test chat</button></span></div>
   <div class="card" id="sceneCard" style="grid-column:1 / -1">
     <h3>🎬 Scenes</h3>
     <p class="help">Each button plays one scene on the stream screen (and in Movie Royal), so you can see how it looks. Nothing real changes: no winners, no luck, nothing saved.</p>
@@ -1456,7 +1456,7 @@ not a link</textarea>
     <h3>🎭 Edition</h3>
     <p class="help">Movie Royal comes in editions (one for everyone, and ones made for a streamer). This shows which one this copy is and where it gets its updates.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="edTest()" title="Show which edition of Movie Royal this is and which GitHub it updates from">🎭 Which edition is this?</button><button class="ghost" onclick="setView('settings');setSub('account')" title="Open Settings → Account & updates, where the edition and update settings are">👤 Account & updates</button></div>
-    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">🔴 Live switches (the Editions tab reaches this app by itself, every 5 minutes):</span><button onclick="edLiveNow()" title="Edition: read the switches from the Editions tab right now instead of waiting up to 5 minutes, and show what changed">🔄 Check the switches now</button><button class="ghost" onclick="edLiveTest()" title="Edition: checks that a flipped switch is noticed and that the app has read the real list (nothing is changed)">🧪 Test live switches</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">🔴 Live switches (the Editions tab reaches this app by itself, every 5 minutes):</span><button onclick="edLiveNow()" title="Edition: read the switches from the Editions tab right now instead of waiting up to 5 minutes, and show what changed">🔄 Check the switches now</button><button class="ghost" onclick="repPeek()" title="Error reports: shows exactly what this app would send to the maker's command center right now (nothing is sent), and checks there are no passwords or keys in it">📮 What my error report has</button><button class="ghost" onclick="edLiveTest()" title="Edition: checks that a flipped switch is noticed and that the app has read the real list (nothing is changed)">🧪 Test live switches</button></div>
     <div class="row devOnly" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">👀 See the app the way another edition has it:</span><select id="edLook" style="width:auto" onchange="edLook(this.value)" title="Switch the app to another edition's look: its name, its tabs and extras, the hidden names, and no dev things, so you see what they see (nothing is removed or saved; a bar at the bottom brings you back, and so does restarting)"><option value="">Mine (everything)</option><option value="public">Public</option><option value="kirb">Kirb</option><option value="true">True</option><option value="birx">Birx &amp; Jess</option></select></div>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">🚚 Installing this edition over another one:</span><select id="edMoveFrom" style="width:auto" title="Pick the edition someone had before installing this one"><option value="public">from Public</option><option value="derek">from Derek's</option><option value="kirb">from Kirb's</option><option value="true">from True's</option><option value="birx">from Birx &amp; Jess's</option></select><button onclick="edMoveTest()" title="Show what moves over when this edition is installed on top of the one you picked (pretend: nothing is changed)">🚚 What moves over?</button></div>
     <div id="tEdOut" class="help" style="margin-top:8px"></div>
@@ -1610,6 +1610,7 @@ not a link</textarea>
     <button data-s="site" class="devOnly">🌐 Viewer site</button>
     <button data-s="names">✏️ Name changes</button>
     <button data-s="bans">🚫 Banned Movies</button>
+    <button data-s="errors" title="Errors: what went wrong, in plain words">⚠️ Errors <span id="errN2" class="pill" style="display:none"></span></button>
     <button data-s="sounds">🔊 Sounds</button>
     <button data-s="keys">⌨️ Key binds</button>
     <button data-s="notes">📝 Patch notes</button>
@@ -1732,9 +1733,17 @@ async function cliffWhy() {
 }
 // ⚠️ Test tab → Errors: the history of everything that went wrong, in plain words, and a tech report to paste to Claude
 let errView = (() => { try { return localStorage.errView || 'plain'; } catch { return 'plain'; } })(), errList = [];
+/* 📮 (1.143.0) error reports to the app's maker: the switch + a look at exactly what is sent */
+async function repDraw() { const el = $('repBox'); if (!el) return; let r; try { r = await fetch('/api/reports').then(x => x.json()); } catch { return; }
+  el.innerHTML = `<label class="ck" style="margin:0"><input type="checkbox" ${r.on ? 'checked' : ''} onchange="repSet(this.checked)" title="Error reports: when something goes wrong, send a short report to the person who makes this app so they can fix it. It has the app's version, your channel name and the problem, never passwords or keys"> <span>Send my error reports to the app's maker so problems can be fixed</span></label>
+    <p class="help" style="margin:6px 0">What's sent: this app's version and edition, your channel name, the list on ⚠️ Errors and its tech report. No passwords, keys or chat. ${r.url ? (r.at ? `Last sent ${new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` : r.error ? `Not sent yet (${esc(r.error)}).` : 'Not sent yet.') : 'There is nowhere to send them yet, so nothing is sent.'} When the maker clears your list on their side, it clears here too.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="ghost" onclick="repPeek()" title="Error reports: show exactly what would be sent right now (nothing is sent)">👀 See what is sent</button><button class="ghost" onclick="repNow()" title="Error reports: send a report right now instead of waiting" ${r.on && r.url ? '' : 'disabled'}>📮 Send one now</button></div><div id="repOut"></div>`; }
+async function repSet(on) { try { await api('/api/reports', { on }); } catch {} toast(on ? '📮 Error reports are on' : '📮 Error reports are off: nothing is sent'); repDraw(); }
+async function repNow() { let r; try { r = await api('/api/reports', { now: true }); } catch { return; } toast(r.ok ? '📮 Report sent' + (r.wait ? ' (one went less than 2 minutes ago, so this one was skipped)' : '') : '⚠️ Not sent: ' + esc(r.error || (r.off ? 'reports are off' : 'try again'))); repDraw(); }
+async function repPeek() { let r; try { r = await api('/api/test/report', null, 'GET'); } catch { return; } const el = $('repOut') || $('tEdOut'); if (!el) return; el.innerHTML = `<table class="tbl" style="width:100%;margin-top:6px"><tbody>${Object.entries(r.fields).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join('')}<tr><td>first problems</td><td>${r.firstProblems.map(esc).join('<br>') || 'none'}</td></tr><tr><td>tech report starts with</td><td class="muted">${r.reportStart.map(esc).join('<br>')}</td></tr><tr><td>passwords or keys in it</td><td>${r.secretsFound ? '⚠️ found something: tell Claude' : '✅ none'}</td></tr><tr><td>size</td><td>${Math.round(r.size / 1024)} KB · ${r.on ? 'reports are on' : 'reports are OFF'}${r.to ? ' · goes to ' + esc(r.to) : ' · nowhere to send yet'}</td></tr></tbody></table>`; }
 function errSeen() { try { localStorage.errSeen = Date.now(); } catch {} errBadge(); }
-function errBadge() { let seen = 0; try { seen = Number(localStorage.errSeen || 0); } catch {} const n = errList.filter(e => e.at > seen).length; if ($('errN')) $('errN').textContent = n ? n : ''; if ($('errNav')) $('errNav').textContent = n ? '⚠️ ' + n : ''; }
-async function loadErrors() { errList = await fetch('/api/errors').then(r => r.json()).catch(() => errList); errBadge(); if ($('v-test')?.classList.contains('errmode')) { errSeen(); drawErrors(); } }
+function errBadge() { let seen = 0; try { seen = Number(localStorage.errSeen || 0); } catch {} const n = errList.filter(e => e.at > seen).length; if ($('errN')) $('errN').textContent = n ? n : ''; if ($('errNav')) $('errNav').textContent = n ? '⚠️ ' + n : ''; const n2 = $('errN2'); if (n2) { n2.textContent = n || ''; n2.style.display = n ? '' : 'none'; } }
+async function loadErrors() { errList = await fetch('/api/errors').then(r => r.json()).catch(() => errList); errBadge(); if (view === 'settings' && sub === 'errors') { errSeen(); drawErrors(); } }
 async function drawErrors() {
   const box = $('tErr'); if (!box) return;
   const tabs = `<div class="row" style="align-items:center;gap:8px"><h3 class="grow" style="margin:0">⚠️ Errors <span class="pill">${errList.length}</span></h3><div class="seg"><button class="${errView === 'plain' ? 'on' : ''}" onclick="errView='plain';try{localStorage.errView='plain'}catch{};drawErrors()">🗣️ In plain words</button><button class="${errView === 'tech' ? 'on' : ''}" onclick="errView='tech';try{localStorage.errView='tech'}catch{};drawErrors()">🛠️ For Claude (tech)</button></div><button class="ghost danger" onclick="if(confirm('Clear the error history?')) api('/api/errors/clear').then(loadErrors)">Clear</button></div>`;
@@ -2140,12 +2149,13 @@ function fillChatters(id, more = []) { const dl = $(id); if (!dl) return; const 
 const testsOn = () => (S?.edition?.lookAs ? false : (S?.settings?.testTab ?? !!S?.edition?.dev));
 function testsApply() {
   const on = testsOn(); if (document.body.dataset.tests === String(on)) return; document.body.dataset.tests = String(on); document.body.classList.toggle('noTests', !on);
-  const tx = $('testNavTxt'); if (tx) tx.innerHTML = on ? '🧪 <span class="nt">Test</span>' : '⚠️ <span class="nt">Errors</span>'; const b = $('testNavBtn'); if (b) b.title = on ? '' : 'Errors: what went wrong, in plain words';
-  if (!on) testTab('errors'); else if ($('v-test').classList.contains('errmode')) { let t = 'tests'; try { t = localStorage.testTabOn || 'tests'; } catch {} testTab(t); }
+  const b = $('testNavBtn'); if (b) b.style.display = on ? '' : 'none'; /* (1.143.0: with the tests off there is no Test tab at all; Errors are in Settings) */
+  if (!on && view === 'test') { setView('settings'); setSub('errors'); } else if (on && $('v-test').classList.contains('errmode')) { let t = 'tests'; try { t = localStorage.testTabOn || 'tests'; } catch {} testTab(t); }
   if (typeof fitNav === 'function') fitNav();
 }
 function testTab(t) {
-  if (!testsOn()) t = 'errors'; else if (t !== 'errors') { try { localStorage.testTabOn = t; } catch {} }
+  if (t === 'errors' || !testsOn()) { if (testsOn() || view !== 'test') { setView('settings'); setSub('errors'); return; } t = 'errors'; } /* ⚠️ (1.143.0) Errors moved to Settings → ⚠️ Errors */
+  if (t !== 'errors') { try { localStorage.testTabOn = t; } catch {} }
   $('v-test').classList.toggle('checkmode', t === 'check'); $('v-test').classList.toggle('errmode', t === 'errors');
   $('tTabTests').classList.toggle('on', t === 'tests'); $('tTabCheck').classList.toggle('on', t === 'check'); $('tTabErr').classList.toggle('on', t === 'errors');
   if (t !== 'check') ckLeave();
@@ -2739,7 +2749,7 @@ function setView(v) {
   if (v === 'tchat') dashLoad(); else dashLeave();
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'links') setTimeout(linksDraw, 0); if (s === 'mnight') setTimeout(mnSetDraw, 0); if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); } if (s === 'account') fillAppBox(); if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'links') setTimeout(linksDraw, 0); if (s === 'mnight') setTimeout(mnSetDraw, 0); if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); } if (s === 'account') { fillAppBox(); setTimeout(repDraw, 0); } if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'errors') { const c = $('tErr'), slot = $('errSlot'); if (c && slot && c.parentElement !== slot) slot.appendChild(c); errSeen(); drawErrors(); } if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -7451,6 +7461,7 @@ function openSettings(force) {
       <p class="help">Everything saves automatically. Download a backup to keep a copy or move to another computer.</p>
       <div class="row"><button onclick="location.href='/api/backup'">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
       <h3 style="margin-top:18px">🔐 Safety &amp; privacy</h3><div id="safeBox" class="help">Loading…</div>
+      <h3 style="margin-top:18px">📮 Error reports</h3><div id="repBox" class="help">Loading…</div>
       <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
     game: `<h3>⚔️ The battle</h3>
       <div class="grid2">${f('lobbySeconds', 'Countdown when you press Start (seconds)', '', 'number')}${f('maxFighters', 'Max pieces on the cliff', '', 'number')}${f('f8Laps', '🏁 Races: how many laps (Figure 8 + the race maps)', '5', 'number')}${f('raceMax', '🏁 No races with more than this many pieces (a race map is skipped)', '50', 'number', 'min="2" max="1000"')}${f('joinCommand', 'Chat join command (Twitch chat battles)')}</div>
@@ -7659,6 +7670,7 @@ function openSettings(force) {
         <p class="help" style="margin:0">Battles, card battles and the wheel all show on one browser source. In OBS: <b>Sources → + → Browser</b>, URL <code>http://localhost:${port}/game.html</code> <button class="ghost" style="padding:2px 8px" onclick="copyText('http://localhost:${port}/game.html').then(()=>toast('Copied'))">📋 Copy</button>, width <b>1920</b>, height <b>1080</b>, tick <b>Control audio via OBS</b>. The <a href="/setup.html?step=obs">🧭 Setup guide</a> walks you through it.</p></div>
       </div>`,
     bans: `<div id="bansSlot"></div>`,
+    errors: `<div id="errSlot"></div>`, /* ⚠️ (1.143.0, Derek: "move the error tab into settings tab") the Errors list lives here now (the card itself is moved in by setSub) */
     sounds: `<div id="soundsSlot"></div>`,
     prices: `<h3>💰 Rewards &amp; prices</h3>
       <p class="help">Every channel point reward, bits amount and donation amount lives here, sorted by tab. Prices and "when it's on" save right away.</p>

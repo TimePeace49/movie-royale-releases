@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.0
+- 📮 **Command center in the server app.** The Backup Bots app's ⚠️ Errors tab now has **📮 Command center: every app's problems**: one tab per app that reports in (yours and your friends'), with its edition, version, channel, whether it's live, when it was last heard from, and its problems in plain words. 🛠️ Copy its report (for Claude) copies that app's tech report.
+  - **🧹 Clear** clears that app's problems in the command center AND inside that person's app (their app notices within about 5 minutes while it's open, and tells them the maker looked at it). ✕ Forget takes an app off the list until it reports again.
+  - How it gets there: each app sends a short report to a mailbox on **your 24/7 bot** (about a minute after opening, every 30 minutes, and soon after something goes wrong). Apps can only drop a report in; only your server app can read them. **Press "Update your 24/7 bot" once** (it asks when you open the app) or the mailbox isn't there.
+  - What's sent: the app's version and edition, the channel name, the ⚠️ Errors list and its tech report. No passwords, keys or chat. Everyone has a switch for it: Settings → 👤 Account → **📮 Error reports** (on to start), with 👀 See what is sent. It's listed on the "What is sent where" page.
+- ⚠️ **Errors moved into Settings.** The Errors list is now **⚙️ Settings → ⚠️ Errors** (the count shows on the Settings tab). With the tests switched off there is no Test tab any more.
+- Test tab → Edition: 📮 What my error report has.
+
 ## 1.142.0
 - 🔴 **Live edition switches.** What you tick on the server app's Editions tab now reaches the apps people already have, without a new version: an app that's open picks the change up within about 5 minutes, a closed one when it opens. The app shows a small note when its parts change. It keeps the last set it heard, so it also starts right without internet. (Needs this version or newer in that person's app; a brand-new switch still needs an app new enough to know it.)
 - **It never interrupts anything.** If a battle, a card battle, a join timer, a winner's claim, the wheel (spinning or its round timer), a song or movie night voting is going on in that app, the change waits and applies by itself once that's finished.

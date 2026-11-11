@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 21;
+export const WORKER_V = 22;
 export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
@@ -21,6 +21,7 @@ export default {
       if (url.pathname.startsWith('/co/')) return await coRoom(req, env, url); // 🤝 co-stream room (17): two streamers' Movie Royals linked
       if (url.pathname === '/live' || url.pathname === '/live/' || url.pathname.startsWith('/site/')) return await siteRoute(req, env, url); // 🌐 the viewer website (18)
       if (url.pathname === '/eggs' || url.pathname === '/eggs/' || url.pathname.startsWith('/eggs/') || url.pathname === '/creatures.js') return await eggRoute(req, env, url); // 🥚 the egg game's public page (20)
+      if (url.pathname === '/reports') return await reportsRoute(req, env, url); // 📮 (22) the error-report mailbox: every edition's app drops its report here, only the streamer's server app (sync key) reads them
       if (url.pathname === '/omdb' || url.pathname === '/omdb/key') return await omdbRoute(req, env, url, ctx); // ⭐🍅 (21) the streamer's OMDb key, shared with every edition's app (the key itself never leaves here)
       if (url.pathname === '/sync') return await sync(req, env);
       if (url.pathname === '/sync/pic') return await putPic(req, env, url); // 🎨 the app uploads the /character picture sheets from the streamer's PC
@@ -473,6 +474,36 @@ export class CoRoom {
 // names + creatures every few minutes (only when something changed: KV writes are limited). Viewers only read.
 // ⭐🍅 (WORKER_V 21, Derek: "everyone just uses my IMDb and Rotten Tomatoes key so they don't have to set one up"): Movie Royal apps without their own OMDb key ask here;
 // this adds the key that the streamer's own app stored (PUT /omdb/key with the sync key) and asks OMDb. Answers are cached a day, so the same movie isn't asked twice.
+// 📮 (WORKER_V 22, Derek: "in the error tab on server app I can look at all the apps connected to it and get reports of their errors… a command center")
+// A mailbox. POST /reports (anyone's app, no key): one small report per app (its install id), at most one every 90 s, 80 KB, 300 apps; kept 30 days.
+// GET /reports + DELETE /reports?id= need the sync key: only the streamer's own server app reads or clears them. An app can never read anything here.
+// DELETE /reports?id= = clear that app's problems (the app asks GET /reports?id=<its own id> every few minutes and clears its own list when the time is newer); &forget=1 = drop the app.
+const repStr = (v, n) => String(v == null ? '' : v).slice(0, n);
+async function reportsRoute(req, env, url) {
+  const authed = (req.headers.get('authorization') || '') === `Bearer ${env.SYNC_KEY}`;
+  if (req.method === 'POST') {
+    const text = await req.text(); if (text.length > 80000) return json({ error: 'too big' }, 413);
+    let b; try { b = JSON.parse(text); } catch { return json({ error: 'not a report' }, 400); }
+    const id = repStr(b && b.id, 60); if (!/^[a-f0-9]{16,40}$/.test(id)) return json({ error: 'not a report' }, 400);
+    const key = 'rep:' + id, old = await env.KV.get(key, 'json').catch(() => null);
+    if (old && Date.now() - (old.got || 0) < 90000) return json({ ok: true, wait: true });
+    if (!old) { const n = ((await env.KV.list({ prefix: 'rep:', limit: 400 })).keys || []).length; if (n >= 300) return json({ error: 'the mailbox is full' }, 429); }
+    const errors = (Array.isArray(b.errors) ? b.errors : []).slice(0, 60).map(e => ({ at: Number(e && e.at) || 0, source: repStr(e && e.source, 30), who: repStr(e && e.who, 60), what: repStr(e && e.what, 200), fix: repStr(e && e.fix, 300), msg: repStr(e && e.msg, 500) }));
+    const rep = { id, edition: repStr(b.edition, 20), app: repStr(b.app, 60), channel: repStr(b.channel, 40), version: repStr(b.version, 20), os: repStr(b.os, 60), live: !!b.live, at: Number(b.at) || 0, why: repStr(b.why, 20), errors, report: repStr(b.report, 30000), got: Date.now(), first: (old && old.first) || Date.now() };
+    await env.KV.put(key, JSON.stringify(rep), { expirationTtl: 30 * 86400 }); return json({ ok: true });
+  }
+  { const ask = repStr(url.searchParams.get('id'), 60); /* an app asks (no key): "was my problem list cleared from the command center?" It gets a time back, nothing else */
+    if (req.method === 'GET' && !authed && /^[a-f0-9]{16,40}$/.test(ask)) return json({ ok: true, clear: Number(await env.KV.get('repclr:' + ask).catch(() => 0)) || 0 }); }
+  if (!authed) return json({ error: 'bad key' }, 401);
+  if (req.method === 'DELETE') { const id = repStr(url.searchParams.get('id'), 60); if (!/^[a-f0-9]{16,40}$/.test(id)) return json({ error: 'which app?' }, 400);
+    if (url.searchParams.get('forget')) { await env.KV.delete('rep:' + id); await env.KV.delete('repclr:' + id); return json({ ok: true, forgot: true }); } /* (take the app off the list; it comes back with its next report) */
+    const now = Date.now(); await env.KV.put('repclr:' + id, String(now), { expirationTtl: 30 * 86400 }); /* 🧹 clear: the app sees this within minutes and clears its own list too */
+    const r = await env.KV.get('rep:' + id, 'json').catch(() => null); if (r) { r.errors = []; r.cleared = now; await env.KV.put('rep:' + id, JSON.stringify(r), { expirationTtl: 30 * 86400 }); }
+    return json({ ok: true, cleared: now }); }
+  const keys = ((await env.KV.list({ prefix: 'rep:', limit: 400 })).keys || []).map(k => k.name), apps = [];
+  for (const k of keys) { const r = await env.KV.get(k, 'json').catch(() => null); if (r) apps.push(r); }
+  return json({ ok: true, v: WORKER_V, apps: apps.sort((a, b) => (b.got || 0) - (a.got || 0)) });
+}
 async function omdbRoute(req, env, url, ctx) {
   if (url.pathname === '/omdb/key') {
     if ((req.headers.get('authorization') || '') !== `Bearer ${env.SYNC_KEY}`) return json({ error: 'bad key' }, 401);

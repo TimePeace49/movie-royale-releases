@@ -18,6 +18,8 @@ export const get = () => ({ ...built, ...(db.shared?.v || {}) });
 const okUrl = u => /^https:\/\/[a-z0-9.-]+(:\d+)?\/omdb$/i.test(String(u || '')) || /^http:\/\/(127\.0\.0\.1|localhost):\d+\/omdb$/i.test(String(u || ''));
 /** the OMDb helper's address ('' = none shared) */
 export const omdbProxy = () => { const u = String(get().omdb || '').trim(); return okUrl(u) ? u : ''; };
+/** 📮 (1.143.0) the error-report mailbox on the app maker's 24/7 bot: `reports` in shared.json, else next to the OMDb helper ('' = none) */
+export const reportsUrl = () => { const u = String(get().reports || '').trim() || omdbProxy().replace(/\/omdb$/, '/reports'); return /^https:\/\/[a-z0-9.-]+(:\d+)?\/reports$/i.test(u) || /^http:\/\/(127\.0\.0\.1|localhost):\d+\/reports$/i.test(u) ? u : ''; };
 export async function refresh() {
   try { const r = await fetch(RAW + '?t=' + Date.now(), { signal: AbortSignal.timeout(10000) }); if (!r.ok) throw new Error('GitHub answered ' + r.status); const j = await r.json(); db.shared = { at: Date.now(), v: j && typeof j === 'object' ? j : {} }; status.at = Date.now(); status.error = ''; }
   catch (e) { status.error = e.message || String(e); }

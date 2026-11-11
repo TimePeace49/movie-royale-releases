@@ -22,6 +22,7 @@ import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
 import { getRatings, testOmdb, ratingsByTitle, omdbWhere, omdbFind, omdbDetails } from './ratings.js';
 import * as shared from './shared.js';
+import * as reports from './reports.js';
 import { ruleBan } from './banrules.js';
 import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
 import { parseImport, toLines, importLink } from './importer.js';
@@ -67,7 +68,7 @@ import * as errlog from './errlog.js';
 import * as activity from './activity.js';
 import { act, pctW } from './activity.js';
 
-// ⚠️ every error anywhere in the app also goes in the error history (Test tab → ⚠️ Errors)
+// ⚠️ every error anywhere in the app also goes in the error history (Settings → ⚠️ Errors)
 {
   const ce = console.error.bind(console);
   console.error = (...a) => {
@@ -4224,11 +4225,11 @@ app.get('/api/test/cliff-why', async (req, res) => {
   }
   res.json(out);
 });
-// ⚠️ error history (Test tab → ⚠️ Errors)
+// ⚠️ error history (Settings → ⚠️ Errors)
 app.get('/api/errors', (req, res) => res.json(errlog.shown().map(e => ({ ...e, ...errlog.plain(e) }))));
 app.post('/api/errors/clear', (req, res) => { errlog.clear(); res.json({ ok: true }); });
 app.post('/api/errors/report', (req, res) => { const b = req.body || {}; errlog.logErr(String(b.source || 'control panel').slice(0, 30), b.msg, b.detail); res.json({ ok: true }); }); // from the control panel itself
-app.get('/api/debug-report', (req, res) => { // everything Claude needs to find a problem, as plain text (no passwords or tokens)
+function debugReportText() { // everything Claude needs to find a problem, as plain text (no passwords or tokens)
   const st = db.settings, list = getList(db.activeListId), has = k => (st[k] ? 'set' : 'missing');
   const lines = [
     `Movie Royal ${VERSION} · ${process.platform} ${os.release()} · node ${process.version}${process.versions.electron ? ' · electron ' + process.versions.electron : ''} · ${new Date().toString()}`,
@@ -4244,8 +4245,15 @@ app.get('/api/debug-report', (req, res) => { // everything Claude needs to find 
     '', `--- errors (newest first, ${errlog.errors().length}) ---`,
     ...errlog.errors().slice(0, 60).map(e => `${new Date(e.at).toISOString()} [${e.source}]${e.count > 1 ? ` x${e.count}` : ''}${e.quiet ? ' (quiet: OBS closed, not shown to Derek)' : ''} ${e.msg}${e.detail ? '\n    ' + e.detail.split('\n').slice(0, 6).join('\n    ') : ''}`)
   ].filter(x => x !== '');
-  res.type('text/plain').send(lines.join('\n'));
-});
+  return lines.join('\n');
+}
+app.get('/api/debug-report', (req, res) => res.type('text/plain').send(debugReportText()));
+/* 📮 (1.143.0) error reports to the app maker's command center (src/reports.js) */
+reports.setHooks({ cleared: () => { broadcast({ type: 'errorLogged' }, 'control'); broadcast({ type: 'toast', text: '🧹 Your problem list was cleared by the app\'s maker (they looked at it).' }, 'control'); act('stream', 'The problem list was cleared from the maker\'s command center', { icon: '🧹', kind: 'reports' }); }, report: () => debugReportText(), channel: () => twitch.status.login || db.settings.twitchChannel || db.owner?.login || '', version: () => VERSION, live: () => !!db.live });
+app.get('/api/reports', (req, res) => res.json(reports.state()));
+app.post('/api/reports', wTry(async b => { if ('on' in b) { db.settings.sendReports = !!b.on; save(); act('stream', b.on ? 'Error reports to the app\'s maker switched on' : 'Error reports to the app\'s maker switched off', { icon: '📮', kind: 'reports' }); } if (b.now) { const r = await reports.send('you', { force: false }); const c = await reports.checkClear(); return { ...r, cleared: !!c.cleared, state: reports.state() }; } return { state: reports.state() }; }));
+app.get('/api/test/report', (req, res) => { const r = reports.build('test'); res.json({ on: reports.on(), to: reports.state().url, size: JSON.stringify(r).length, fields: { edition: r.edition, app: r.app, channel: r.channel, version: r.version, os: r.os, live: r.live, problems: r.errors.length }, firstProblems: r.errors.slice(0, 3).map(e => e.what + (e.msg ? ' · ' + e.msg.slice(0, 80) : '')), reportStart: r.report.split('\n').slice(0, 4), secretsFound: /(access_token|client_secret|oauth:|Bearer [A-Za-z0-9]{12,}|syncKey"?\s*[:=]\s*"?[a-f0-9]{20,})/i.test(JSON.stringify(r)) }); }); /* 🧪 exactly what would be sent (nothing is sent) */
+
 // problems that show up as a status (not a crash) go in the history too, once each time they change
 {
   const seen = {};
@@ -4258,6 +4266,7 @@ app.get('/api/debug-report', (req, res) => { // everything Claude needs to find 
 }
 const debugText = e => { const p = errlog.plain(e); return `⚠️ **${p.who}: ${p.what}**${p.fix ? `\n👉 ${p.fix}` : ''}\n\`\`\`\n[${e.source}] ${String(e.msg).slice(0, 700)}${e.detail ? '\n' + e.detail.split('\n').slice(0, 5).join('\n').slice(0, 600) : ''}\nMovie Royal ${VERSION} · ${new Date(e.at).toLocaleString()}\n\`\`\``; };
 errlog.setOnNew(e => {
+  try { reports.soon(); } catch {} // 📮 the maker's command center hears about it
   broadcast({ type: 'errorLogged' }, 'control');
   if (['discord', '24/7', 'cloud'].includes(e.source) || db.settings.discordDebugAll) discord.postDebug(debugText(e)); // 🐞 Discord problems go to the mods-only #movie-royal-debug channel too
 });

@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.143.0: What's new
+- ⚠️ The Errors list moved to **⚙️ Settings → ⚠️ Errors** (its count shows on the Settings tab).
+- 📮 Error reports: when something goes wrong, the app now sends a short report to the app's maker so it can be fixed (version, edition, your channel name and the problem; never passwords, keys or chat). Turn it off any time in Settings → 👤 Account → 📮 Error reports, where 👀 See what is sent shows exactly what goes out.
+- {ed:derek} 📮 Command center: the server app's Errors tab shows every app's problems in its own tab, and 🧹 Clear clears them on that person's app too. Update your 24/7 bot once to switch the mailbox on.
+
 ## v1.142.0: What's new
 - {ed:derek} 🔴 Live edition switches: ticks on the Editions tab now reach installed apps by themselves (within about 5 minutes, or when the app opens). No new version needed.
 

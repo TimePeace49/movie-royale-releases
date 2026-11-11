@@ -1,5 +1,5 @@
 // ⚠️ Error history: everything that went wrong, kept in data/errors.json (last 300).
-// Shown in the 🧪 Test tab → ⚠️ Errors, in plain words and as a tech report Derek can paste to Claude.
+// Shown in the ⚙️ Settings → ⚠️ Errors, in plain words and as a tech report Derek can paste to Claude.
 import fs from 'fs';
 import path from 'path';
 import { DATA } from './store.js';
