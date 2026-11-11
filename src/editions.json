@@ -56,6 +56,7 @@
    "chat:sitout",
    "chat:skip",
    "chat:respin",
+   "chat:vote",
    "chat:addcom"
   ]
  },
@@ -89,6 +90,7 @@
    "sec:bans:also-blocked-automatically",
    "dash:night",
    "hist:spins",
+   "guide:omdb",
    "guide:letterboxd",
    "guide:choice",
    "chat:mymovies",
@@ -96,6 +98,7 @@
    "chat:sitout",
    "chat:skip",
    "chat:respin",
+   "chat:vote",
    "chat:addcom"
   ]
  },
@@ -137,6 +140,9 @@
    "test:edTestCard",
    "test:clipTestCard",
    "dash:night",
+   "guide:chatbot",
+   "guide:omdb",
+   "chat:vote",
    "chat:addcom"
   ]
  },
@@ -207,7 +213,12 @@
    "test:clipTestCard",
    "dash:night",
    "hist:spins",
+   "guide:chatbot",
+   "guide:tmdb",
+   "guide:omdb",
    "guide:letterboxd",
+   "guide:discord",
+   "guide:cloud",
    "guide:chars",
    "guide:choice",
    "chat:id",
@@ -217,6 +228,7 @@
    "chat:sitout",
    "chat:skip",
    "chat:respin",
+   "chat:vote",
    "chat:addcom"
   ],
   "note": "Streams on Kick and Twitch. No movie battles, no Kirb wheels. Gets the egg game (not built yet).",
@@ -245,11 +257,13 @@
    "movies",
    "kirbWheel",
    "void",
+   "points",
    "voidSetup",
    "chaos",
    "game",
    "luck",
    "costream",
+   "set:prices",
    "sec:game:the-battle",
    "sec:game:inactive-people-s-movies",
    "sec:game:characters-id",
@@ -314,7 +328,11 @@
    "test:edTestCard",
    "test:clipTestCard",
    "hist:spins",
+   "guide:chatbot",
+   "guide:rewards",
+   "guide:tmdb",
    "guide:letterboxd",
+   "guide:discord",
    "guide:cloud",
    "guide:backup",
    "guide:chars",
@@ -328,10 +346,7 @@
    "chat:sitout",
    "chat:skip",
    "chat:respin",
-   "chat:addcom",
-   "points",
-   "set:prices",
-   "guide:rewards"
+   "chat:addcom"
   ],
   "note": "No battles (Battle, Battle pool, Chat battle), no People tab, no movie battles, no Kirb wheels, no card battles. Songs + Movie night live in the Chat bot tab.",
   "app": "Birx & Jess Chatbot",
