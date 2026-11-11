@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.143.2: What's new
+- 🎂 New birthday pop-up sound: a little music-box birthday tune instead of the party whistle. Your own sound file still wins.
+- {kick} 🟢 Signed in to Kick and nothing picked = both chats (Twitch + Kick) show by themselves, each name with its mark.
+- {ed:derek} 🎥 The demo guide bar can pop out into its own window for another screen.
+
 ## v1.143.1: What's new
 - {ed:derek} 🛡️ The server app (Backup Bots) keeps its own shield icon when it's pinned to the taskbar. After updating, unpin it and pin it again.
 

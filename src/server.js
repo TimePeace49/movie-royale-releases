@@ -5823,7 +5823,7 @@ app.post('/api/test/bday-sound', wTry(b => { /* 🧪 own birthday sound: a gener
 }));
 /** 🥳 (1.126.1, Derek: "the party sound can happen on stream") the birthday party whistle through OBS: the sound alert page (in every scene) or the battle screen in OBS. Never the app (it plays its own). */
 function bdayStreamSound(vol = 35) {
-  const msg = { type: 'sfxCmd', url: bdaySoundUrl() || '/sounds/party-whistle.wav', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
+  const msg = { type: 'sfxCmd', url: bdaySoundUrl() || '/sounds/birthday-tune.wav', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
   const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : null; if (where) broadcast(msg, where); return { ok: !!where, where };
 }
 app.post('/api/test/bday-stream-sound', wTry(b => bdayStreamSound(b.vol ?? birthdays.opts().streamVol)));

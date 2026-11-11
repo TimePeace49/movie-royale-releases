@@ -23,8 +23,10 @@ export const status = { chat: 'off', chatError: null, live: null, startedAt: 0, 
 export function data() { const d = (db.kick ||= {}); return d; }
 /* (1.139.2, Derek: "see kick chat and twitch chat… in case of multi platform streaming") three ways: Twitch only, Kick only (`on`), or BOTH (`both`: Twitch stays the main platform for live / clips / rewards; Kick's chat is read too and the bot answers in both chats). */
 /* (1.139.2, Derek: "kick stuff only unlocks if you sign into kick") the Kick and Both choices only count while you're signed in with Kick; signed out = Twitch, and the saved choice comes back when you sign in again. */
-export const both = () => H.dev() && !!data().both && signedIn();
-export const on = () => H.dev() && !!data().on && !data().both && signedIn();
+// (1.143.2, Derek signed in to Kick and saw no Kick chat: nothing was picked) signed in and never picked a platform = BOTH chats
+const bothWant = d => d.both == null ? !d.on : !!d.both;
+export const both = () => H.dev() && bothWant(data()) && signedIn();
+export const on = () => H.dev() && !!data().on && !bothWant(data()) && signedIn();
 export const reading = () => on() || both();
 export const signedIn = () => !!data().token?.access;
 export const canSay = () => reading() && signedIn();
@@ -187,7 +189,7 @@ export function setCfg(b) {
   if (b.chatroomId != null) { const n = Math.round(Number(b.chatroomId)); d.chatroomId = n > 0 ? n : null; d.chatroomFor = n > 0 ? slug() : null; re = true; }
   if ((b.on === true || b.both === true) && !signedIn()) throw new Error('Sign in with Kick first (🔑 below): the Kick choices unlock once you are signed in.');
   if (b.on != null && !!b.on !== !!d.on) { d.on = !!b.on; re = true; }
-  if (b.both != null && !!b.both !== !!d.both) { d.both = !!b.both; re = true; }
+  if (b.both != null && (d.both == null || !!b.both !== !!d.both)) { d.both = !!b.both; re = true; }
   save(); if (re) restart(); H.changed(); return info();
 }
 export const info = () => { const d = data(); return { on: on(), both: both(), dev: H.dev(), clientId: notKey(d.clientId) ? '' : d.clientId || '', badId: notKey(d.clientId), hasSecret: !!d.secret && !notKey(d.secret), signedIn: signedIn(), user: d.user ? { name: d.user.name, slug: d.user.slug } : null, slug: slug(), chatroomId: d.chatroomId || null, chat: status.chat, chatError: status.chatError, live: status.live, lastMsgAt: status.lastMsgAt, lines: status.lines, sayError: status.sayError, scopes: SCOPES, canRewards: canRewards(), needsResign: needsResign(), rewardError: status.rewardError || null, redeems: status.redeems || 0, watch: d.watch || {} }; };

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo guide</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  html, body { margin:0; height:100%; background:#120a24; color:#f1eefc; font-family:Inter, system-ui, sans-serif; }
+  body { display:flex; flex-direction:column; padding:12px 14px; box-sizing:border-box; gap:8px; }
+  #top { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  #ttl { font-weight:800; font-size:16px; flex:1; min-width:160px; }
+  #say { font-size:15px; line-height:1.45; color:#d9d2f3; overflow:auto; flex:1; }
+  button { font:inherit; font-weight:700; border-radius:10px; border:1px solid #4a3b7a; background:#231a45; color:#f1eefc; padding:7px 12px; cursor:pointer; }
+  button.primary { background:#9146ff; border-color:#9146ff; }
+  button:disabled { opacity:.4; cursor:default; }
+  #off { color:#b8aee0; }
+</style></head><body>
+<div id="top"><div id="ttl">🎥 Demo guide</div>
+  <button id="bBack" title="The part before">◀ Back</button><button id="bAgain" title="Set this part up again">↺ Again</button><button id="bNext" class="primary" title="The next part">Next ▶</button><button id="bMine" title="Stop the tour and go back to your own version of the app" style="display:none">↩ Back to mine</button><button id="bDock" title="Put the guide bar back inside the app and close this window">↙ Put back</button></div>
+<div id="say"><span id="off">Waiting for the app… Start the tour on the Test tab (🎥 Demo tour).</span></div>
+<script>
+const ch = new BroadcastChannel('mr-demo'); let st = null, seen = 0;
+const $ = id => document.getElementById(id), send = m => ch.postMessage({ from: 'bar', ...m });
+function draw() {
+  if (!st || st.i < 0) { $('ttl').textContent = '🎥 Demo guide'; $('say').innerHTML = '<span id="off">The tour is not running. Start it on the Test tab (🎥 Demo tour).</span>'; for (const b of ['bBack', 'bAgain', 'bNext']) $(b).disabled = true; $('bMine').style.display = 'none'; return; }
+  const last = st.i >= st.n - 1; $('ttl').textContent = `🎥 ${st.i + 1} / ${st.n} · ${st.t}`; $('say').textContent = '💬 ' + st.say;
+  $('bBack').disabled = !st.i; $('bAgain').disabled = false; $('bNext').disabled = false; $('bNext').textContent = last ? '🧹 Clean up + finish' : 'Next ▶'; $('bMine').style.display = st.look ? '' : 'none';
+  document.title = `Demo guide ${st.i + 1} / ${st.n}`;
+}
+ch.onmessage = e => { const m = e.data || {}; if (m.from !== 'app') return; seen = Date.now(); if (m.close) { window.close(); return; } st = m; draw(); };
+$('bBack').onclick = () => st && send({ cmd: 'go', i: st.i - 1 });
+$('bAgain').onclick = () => st && send({ cmd: 'go', i: st.i });
+$('bNext').onclick = () => st && send(st.i >= st.n - 1 ? { cmd: 'clean' } : { cmd: 'go', i: st.i + 1 });
+$('bMine').onclick = () => send({ cmd: 'mine' });
+$('bDock').onclick = () => { send({ cmd: 'dock' }); window.close(); };
+document.addEventListener('keydown', e => { if (!st || st.i < 0) return; if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); $('bNext').click(); } else if (e.key === 'ArrowLeft') { e.preventDefault(); $('bBack').click(); } });
+window.addEventListener('pagehide', () => send({ cmd: 'gone' }));
+send({ cmd: 'here' }); setInterval(() => send({ cmd: 'here' }), 3000); draw();
+</script></body></html>

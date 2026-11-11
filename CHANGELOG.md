@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.2
+- 🟢 **Kick chat shows up once you're signed in to Kick.** Before, signing in wasn't enough: you also had to press 💜🟢 Both, so Kick chat never came in and Twitch names had no mark. Now, signed in to Kick and nothing picked = **both chats** by themselves (💜 Twitch only and 🟢 Kick only are still there in Settings → Twitch → Kick). If Kick chat still doesn't come in, that box shows why (usually the chat room number couldn't be found).
+- 🎂 **New birthday sound.** The party whistle is gone: the built-in sound is now a little music-box birthday tune with a sparkle at the end (in the app and on stream). 🎵 Use my own sound file still wins.
+- 🎥 **Demo guide bar pops out.** ↗ Pop out on the guide bar opens it as its own small window you can drag to another screen (Back / Again / Next work from there; → and ← keys too). ↙ Put back, or closing it, brings the bar back into the app.
+
 ## 1.143.1
 - 🛡️ **The server app keeps its own icon on the taskbar.** Pinning Movie Royal Backup Bots to the taskbar used to switch it to the main app's icon, because the picture inside the program was still the main one. The backup program now has its own shield icon inside it. After updating: unpin it, open it from the Start menu, and pin it again (Windows remembers the old picture on the old pin).
 

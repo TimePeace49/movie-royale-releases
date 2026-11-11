@@ -55,6 +55,8 @@ function hardenWindow(w) {
   // links to other sites (TMDB, Discord, Twitch sign-in…) open in your normal browser
   w.webContents.setWindowOpenHandler(({ url }) => {
     if (isOurs(url) && popOf(url)) return { action: 'allow', overrideBrowserWindowOptions: { ...popPlace(popOf(url)), minWidth: 480, minHeight: 320, frame: true, resizable: true, movable: true, minimizable: true, maximizable: true, fullscreenable: true, fullscreen: false, alwaysOnTop: false, transparent: false, skipTaskbar: false, show: true, title: SHOWN, icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { backgroundThrottling: false } } };
+    if (isOurs(url) && /\/demobar\.html/.test(url)) { const b = popAll().demobar ? popPlace('demobar') : { width: 780, height: 210 }; /* 🎥 (1.143.2, Derek) the demo guide bar as its own small window for another screen */
+      return { action: 'allow', overrideBrowserWindowOptions: { ...b, minWidth: 420, minHeight: 150, frame: true, resizable: true, movable: true, minimizable: true, maximizable: false, fullscreen: false, alwaysOnTop: false, transparent: false, skipTaskbar: false, show: true, title: 'Demo guide', icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { backgroundThrottling: false } } }; }
     if (isOurs(url) && /\/game\.html/.test(url)) {
       return { action: 'allow', overrideBrowserWindowOptions: { width: 1280, height: 720, title: SHOWN + ' — Game', icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { backgroundThrottling: false } } };
     }
@@ -66,7 +68,7 @@ function hardenWindow(w) {
     e.preventDefault();
     shell.openExternal(url); // Twitch sign-in happens in your browser, where you're probably already logged in
   });
-  w.webContents.on('did-create-window', (child, d) => { hardenWindow(child); const t = popOf(d && d.url); if (t) { popKeep(child, t); try { child.setResizable(true); child.setMovable(true); child.setMinimizable(true); child.setMaximizable(true); child.setAlwaysOnTop(false); child.setSkipTaskbar(false); } catch {} } }); /* (↗ 1.132.2, Derek: a popped-out tab is a normal Windows window: title bar, drag to move, drag the edges to resize, minimize / maximize, even when the main window is borderless) */
+  w.webContents.on('did-create-window', (child, d) => { hardenWindow(child); if (/\/demobar\.html/.test(String(d && d.url))) popKeep(child, 'demobar'); const t = popOf(d && d.url); if (t) { popKeep(child, t); try { child.setResizable(true); child.setMovable(true); child.setMinimizable(true); child.setMaximizable(true); child.setAlwaysOnTop(false); child.setSkipTaskbar(false); } catch {} } }); /* (↗ 1.132.2, Derek: a popped-out tab is a normal Windows window: title bar, drag to move, drag the edges to resize, minimize / maximize, even when the main window is borderless) */
 }
 
 // 🖥️ window mode (Settings → Graphics): 'window' (normal), 'borderless' (fills the whole screen, no frame, like a game's
