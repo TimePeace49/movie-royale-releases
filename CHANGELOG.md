@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.140.2
+- 📅 **The start-up birthday reminder is now only in the Birx & Jess edition.** Other editions don't get the "birthdays coming up" step when the app opens (and don't show its settings). Birthday wishes, the birthday pop-up and `!bday` stay in every edition. It's a switch on the server app's Editions tab (📅 Birthday reminder at start-up), so it can be given to another edition later.
+
 ## 1.140.1
 - 🎵 **Song request music keeps playing when you tab out.** A song that's playing in the app now keeps playing when you click over to another program, whatever 🔇 Mute when unfocused says. (While that happens the battle screen still goes quiet by itself if Mute when unfocused is on.) Chat bot → 🎵 Songs → Settings has a new tick box, off by default: **Mute the music too when I tab out**. Test tab → Songs → 🎵 Music when tabbed out.
 

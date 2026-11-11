@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.140.2: What's new
+- {!bdremind} 📅 The birthday reminder no longer pops up when the app opens. (Birthday wishes, the birthday pop-up and !bday are unchanged.)
+
 ## v1.140.1: What's new
 - {songs} 🎵 A song request that's playing keeps playing when you click over to another program, even with Mute when unfocused on. To have it muted too, tick **Mute the music too when I tab out** in Chat bot → 🎵 Songs → Settings.
 

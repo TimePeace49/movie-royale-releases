@@ -5275,7 +5275,7 @@ app.post('/api/test/songs', sgTry(async b => {
 }));
 // 🎂 Birthdays (1.96.0, every edition): !bday in chat (never a year), a happy-birthday wish, the list in Settings → 💜 Twitch. See src/birthdays.js
 birthdays.setHooks({ pop: async p => { const o = birthdays.opts(), send = x => broadcast({ type: 'bdayPop', ...p, ...x, sound: o.popSound !== false, vol: o.popVol, file: bdaySoundUrl() }, 'control'); if (!p.first) return send({}); if (o.popStream !== false) bdayStreamSound(o.streamVol); let avatar = ''; try { avatar = p.test ? '' : (await Promise.race([twitch.getUsers([p.login]), new Promise(r => setTimeout(() => r(null), 1500))]))?.get?.(p.login)?.avatar || ''; } catch {} send({ avatar }); }, say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
-app.get('/api/birthdays', (req, res) => res.json({ ...birthdays.state(), sound: bdaySoundUrl() }));
+app.get('/api/birthdays', (req, res) => res.json({ ...birthdays.state(), sound: bdaySoundUrl(), remindOk: feat('bdremind') })); /* (📅 the start-up reminder: an edition extra, Birx & Jess's) */
 app.post('/api/birthdays', wTry(b => birthdays.set(b.login, b.day)));
 app.post('/api/birthdays/opts', wTry(b => { const r = birthdays.setOpts(b, String(db.movieNight?.opts?.command || '!vote')); broadcast({ type: 'movieNight' }, 'control'); return r; }));
 app.post('/api/test/birthday', wTry(b => {
