@@ -32,7 +32,52 @@ export function infoWhy(info, title, o) {
   if (o.minViews > 0 && info.views != null && info.views < o.minViews) return 'views';
   return '';
 }
-export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, solo: false, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', skipPerm: 'all', vetoPerm: 'mods', reqInfo: '', skipInfo: '', vetoInfo: '', perVip: 0, perMod: 0, onlyKnown: false, showVideo: false, quality: 'auto', perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
+/** 🔎 (1.131.0, Derek: "make the request song search as smart as possible… look for recorded lyric videos before live versions").
+ * YouTube's own order is only a starting point: every result gets points, the best one that passes the request rules wins.
+ * + every word you typed that's in the title / channel, the artist's own channel (Topic = the studio recording, VEVO, official artist), the kind you prefer
+ *   (lyric video / official audio / official video), lots of views, a normal song length, YouTube's own rank (a little).
+ * − live, covers / karaoke, remixes / sped up / nightcore / slowed / 8D / loops, reactions / tutorials / shorts: each only when the request didn't ask for it
+ *   ("africa toto live" still finds a live one), a missing word, too short / very long. Pure, so 🧪 can walk it through. */
+const SW = new Set(['the', 'a', 'an', 'by', 'and', 'of', 'to', 'in', 'on', 'ft', 'feat', 'featuring', 'song', 'music', 'official', 'video', 'lyrics', 'lyric', 'audio', 'hd', 'hq', 'please', 'pls', 'plz']);
+const wordsOf = t => norm0(t).split(' ').filter(w => w && !SW.has(w));
+const norm0 = t => String(t || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
+export const SEARCH_KINDS = {
+  live: { re: /[([][^)\]]*\blive\b[^)\]]*[)\]]|\blive (at|from|in|on|version|performance|session|stream)\b|\b(in concert|concert|unplugged|tiny desk|live lounge|kexp|full show|world tour|on tour|festival|glastonbury|coachella|lollapalooza|bbc session|audience|fan ?cam|soundcheck|rehearsal)\b/i, ask: /\b(live|concert|unplugged|tour|session|tiny desk)\b/i, pts: 60, label: 'live' },
+  covers: { re: /\b(cover|covers|covered by|karaoke|instrumental|tribute|piano version|guitar version|piano tutorial|8 ?bit|lullaby|parody|a cappella|acapella|backing track|sing along|music box)\b/i, ask: /\b(cover|karaoke|instrumental|tribute|piano|acoustic|8 ?bit|lullaby|parody|a ?cappella|backing)\b/i, pts: 55, label: 'cover / karaoke' },
+  edits: { re: /\b(sped up|speed up|nightcore|slowed|reverb|8d|bass ?boost(ed)?|remix|mashup|mash up|loop|looped|\d+ ?hours?|1 ?hr|extended|edit audio|tiktok version|clean version|radio edit|mix)\b/i, ask: /\b(sped|speed|nightcore|slowed|reverb|8d|bass|remix|mashup|mash|loop|hour|extended|edit|mix|tiktok)\b/i, pts: 45, label: 'remix / sped up / loop' },
+  junk: { re: /\b(reaction|reacts?|reacting|first time hearing|tutorial|lesson|how to (play|sing)|review|explained|meaning|breakdown|behind the|interview|making of|trailer|teaser|snippet|preview|#shorts|shorts|tiktok compilation|vocals only|isolated|drum cover|bass cover)\b/i, ask: /\b(reaction|tutorial|lesson|review|interview|isolated|vocals only)\b/i, pts: 70, label: 'reaction / tutorial / clip' } };
+export const PREFER = { lyrics: { re: /\blyrics?\b|\blyric video\b/i, label: '📝 lyric video' }, audio: { re: /\bofficial audio\b|\(audio\)|\[audio\]|\baudio\b/i, label: '🎧 official audio' }, video: { re: /\bofficial (music )?video\b|\bmusic video\b|\bofficial mv\b|\bmv\b/i, label: '🎬 official video' }, any: { re: /$^/, label: 'any' } };
+/** points for one search result (higher = better) + the reasons, for the 🧪 table */
+export function scoreResult(r, query, o = {}, rank = 0) {
+  const title = String(r.title || ''), who = String(r.author || ''), q = String(query || ''), why = [], add = (n, t) => { if (n) { s += n; why.push((n > 0 ? '+' : '') + Math.round(n) + ' ' + t); } }; let s = 0;
+  const qw = [...new Set(wordsOf(q))], hay = ' ' + norm0(title + ' ' + who.replace(/ - topic$/i, '')) + ' ', hit = qw.filter(w => hay.includes(' ' + w + ' ') || (w.length > 4 && hay.includes(' ' + w.slice(0, -1))));
+  const cover = qw.length ? hit.length / qw.length : 1; add(Math.round(cover * 40), `of the words you typed are there (${hit.length}/${qw.length})`); if (qw.length >= 2 && cover < .5) add(-40, 'most of the words are missing');
+  const a = norm0(who.replace(/ - topic$/i, '').replace(/vevo$/i, '')), artistIn = a && a.length > 1 && (' ' + norm0(q) + ' ').includes(' ' + a + ' ');
+  if (/ - topic$/i.test(who)) add(artistIn ? 22 : 12, 'studio recording (a “Topic” channel)'); else if (/vevo$/i.test(who.replace(/\s+/g, ''))) add(16, 'the artist’s VEVO channel');
+  else if (r.artist) add(16, 'official artist channel'); else if (artistIn) add(12, 'the artist’s own channel'); else if (r.verified) add(4, 'verified channel');
+  const p = PREFER[o.searchPrefer || 'lyrics']; if (p && o.searchPrefer !== 'any' && p.re.test(title)) add(35, p.label + ' (what you prefer)');
+  else if ((o.searchPrefer || 'lyrics') !== 'any' && /\bofficial\b/i.test(title) && !/\b(live|teaser|trailer)\b/i.test(title)) add(6, 'official upload');
+  if (/ - topic$/i.test(who) && (o.searchPrefer || 'lyrics') === 'audio') add(10, 'Topic = the plain studio audio');
+  for (const [k, K] of Object.entries(SEARCH_KINDS)) { const on = k === 'junk' ? o.avoidJunk !== false : k === 'live' ? o.avoidLive !== false : k === 'covers' ? o.avoidCovers !== false : o.avoidEdits !== false;
+    const m = title.match(K.re); if (o._asked ? o._asked.has(k) : K.ask.test(q)) { if (m) add(40, `${K.label}: what was asked for`); continue; } if (!on) continue; if (m) add(-K.pts, `${K.label} (“${m[0].replace(/[()[\]]/g, '').trim()}”)`); }
+  const secs = r.secs || 0; if (secs) { if (secs < 60) add(-40, 'under a minute (a clip?)'); else if (secs > 15 * 60 && !/\b(hour|hours|album|mix|full)\b/i.test(q)) add(-35, 'over 15 min'); else if (secs >= 100 && secs <= 480) add(5, 'normal song length'); }
+  if (r.views != null && r.views > 0) add(Math.min(12, Math.max(0, Math.log10(r.views) - 3) * 2), 'views (' + (r.views >= 1e6 ? Math.round(r.views / 1e5) / 10 + 'M' : r.views >= 1e3 ? Math.round(r.views / 100) / 10 + 'K' : r.views) + ')');
+  add(Math.max(0, 8 - rank) * 1.2, 'YouTube’s own order (#' + (rank + 1) + ')');
+  return { score: Math.round(s), why };
+}
+/** the results best first (same video only once). `o.smartSearch === false` = YouTube's own order, like before. */
+export function pickBest(results, query, o = {}) {
+  const seen = new Set(), list = (results || []).filter(r => r && r.id && !seen.has(r.id) && seen.add(r.id));
+  if (o.smartSearch === false) return list.map((r, i) => ({ ...r, score: 0, why: ['YouTube’s own order (#' + (i + 1) + ')'] }));
+  /* a kind's word in the request that is really part of the song's name ("Live Forever", "Cover Me") shows up in most results: then it wasn't a wish for that kind */
+  const _asked = new Set(Object.entries(SEARCH_KINDS).filter(([, K]) => { const w = String(query || '').match(K.ask); if (!w) return false; const re = new RegExp('\\b' + w[0].replace(/[^a-z0-9 ]/gi, '') + '\\b', 'i'); return list.filter(r => re.test(r.title || '')).length < Math.max(2, list.length * .6); }).map(([k]) => k));
+  return list.map((r, i) => ({ ...r, ...scoreResult(r, query, { ...o, _asked }, r.rank ?? i) })).sort((a, b) => b.score - a.score);
+}
+/** what to look up on YouTube for a typed name: the name itself, plus the name + "lyrics" / "official audio" / "official video" (the kind you prefer) */
+export const searchQueries = (q, o = {}) => { const p = o.smartSearch === false ? 'any' : (o.searchPrefer || 'lyrics'), x = { lyrics: ' lyrics', audio: ' official audio', video: ' official video' }[p];
+  return x && !new RegExp(x.trim().split(' ').pop(), 'i').test(q) ? [q, q + x] : [q]; };
+
+export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, solo: false, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', skipPerm: 'all', vetoPerm: 'mods', reqInfo: '', skipInfo: '', vetoInfo: '', perVip: 0, perMod: 0, onlyKnown: false, showVideo: false, quality: 'auto', smartSearch: true, searchPrefer: 'lyrics', avoidLive: true, avoidCovers: true, avoidEdits: true, avoidJunk: true, level: true, levelDown: false, levelMax: 2.5, perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
 
 // ---------- what a request is ----------
 /** A YouTube link or id → the 11-character video id ('' when it isn't one). */
@@ -89,8 +134,8 @@ export async function request(m, arg, { hand = false, test = false, now = Date.n
   let yt = ytId(arg), title = yt ? '' : String(arg).replace(/\s+/g, ' ').trim().slice(0, 140), found = null;
   if (!yt && /^https?:\/\//i.test(title)) return no('link', 'I can only take YouTube links (or the name of a song).');
   if (!yt && title && !hand && o.search !== false && !d.lib['t:' + norm(title)]) { /* 🔎 a typed name is looked up on YouTube: the first result that fits the rules is the song (a name you already have in your songs stays that song) */
-    let res = []; try { res = (await H.search(title)) || []; } catch {}
-    for (const r of res.slice(0, 4)) { if (!r || !r.id) continue; let info = { secs: r.secs || 0, views: r.views ?? null, author: r.author || '', category: '', title: r.title || '' };
+    let res = []; try { const qs = searchQueries(title, o), got = await Promise.all(qs.map(q => Promise.resolve(H.search(q)).catch(() => []))); res = pickBest(got.flatMap(l => (l || []).map((r, i) => ({ ...r, rank: i }))), title, o); } catch {}
+    for (const r of res.slice(0, 5)) { if (!r || !r.id) continue; let info = { secs: r.secs || 0, views: r.views ?? null, author: r.author || '', category: '', title: r.title || '' };
       if (o.musicOnly) { try { const full = await H.info(r.id); if (full) info = { ...info, ...full, title: full.title || info.title }; } catch {} }
       if (!infoWhy(info, info.title, o) && !bannedWhy({ yt: r.id, title: info.title }, d)) { found = info; yt = r.id; title = ''; break; } }
     if (!found && res.length && (o.dmcaFree || o.links === 'youtube')) return no('nofit', "I couldn't find a version of that song that fits the request rules.");
@@ -170,12 +215,13 @@ export function setOpts(b) {
   for (const k of ['perm', 'skipPerm', 'vetoPerm']) if (k in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b[k])) x[k] = b[k];
   for (const k of ['reqInfo', 'skipInfo', 'vetoInfo']) if (k in b) x[k] = String(b[k] || '').replace(/\s+/g, ' ').trim().slice(0, 300);
   for (const k of ['perVip', 'perMod']) if (k in b) x[k] = Math.round(clampN(b[k], 0, 50, 0));
+  if ('searchPrefer' in b && PREFER[b.searchPrefer]) x.searchPrefer = b.searchPrefer; if ('levelMax' in b) x.levelMax = clampN(b.levelMax, 1, 4, 2.5);
   if ('quality' in b) x.quality = ['auto', 'small', 'medium', 'large', 'hd720', 'hd1080'].includes(b.quality) ? b.quality : 'auto';
   if ('perUser' in b) x.perUser = Math.round(clampN(b.perUser, 0, 50, 2)); if ('max' in b) x.max = Math.round(clampN(b.max, 1, 500, 50));
   if ('reply' in b) x.reply = !!b.reply; if ('overlay' in b) x.overlay = !!b.overlay; if ('links' in b) x.links = b.links === 'youtube' ? 'youtube' : 'any';
   if ('perUserSub' in b) x.perUserSub = Math.round(clampN(b.perUserSub, 0, 50, 0)); if ('cd' in b) x.cd = Math.round(clampN(b.cd, 0, 86400, 0)); if ('maxMins' in b) x.maxMins = clampN(b.maxMins, 0, 600, 10); if ('minViews' in b) x.minViews = Math.round(clampN(b.minViews, 0, 1e9, 0));
   if ('skipVotes' in b) x.skipVotes = Math.round(clampN(b.skipVotes, 0, 500, 0)); if ('vol' in b) x.vol = Math.round(clampN(b.vol, 0, 100, 60));
-  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo', 'noRate', 'onlyKnown', 'showVideo']) if (k in b) x[k] = !!b[k]; /* (noRate = no song ratings at all: the stars are hidden everywhere, saved ratings are kept) */ /* (solo = only one person rates: the second rating is hidden everywhere) */
+  for (const k of ['sayNow', 'musicOnly', 'dmcaFree', 'search', 'solo', 'noRate', 'onlyKnown', 'showVideo', 'smartSearch', 'avoidLive', 'avoidCovers', 'avoidEdits', 'avoidJunk', 'level', 'levelDown']) if (k in b) x[k] = !!b[k]; /* (noRate = no song ratings at all: the stars are hidden everywhere, saved ratings are kept) */ /* (solo = only one person rates: the second rating is hidden everywhere) */
   if ('dmcaList' in b) { const l = (Array.isArray(b.dmcaList) ? b.dmcaList : String(b.dmcaList || '').split(/[\n,]+/)).map(s => String(s).trim().slice(0, 60)).filter(Boolean).slice(0, 200); if (l.length) x.dmcaList = l; else delete x.dmcaList; }
   if ('scale' in b) x.scale = [5, 10, 100].includes(Number(b.scale)) ? Number(b.scale) : 10;
   if ('raters' in b && Array.isArray(b.raters)) x.raters = [0, 1].map(i => String(b.raters[i] || '').trim().slice(0, 20) || opts(d).raters[i]);
@@ -314,4 +360,40 @@ export async function demo() {
     add('A pasted banned-songs list is read (names, links, both)', b.songs.length === 3 && b.songs[0].title === 'Baby Shark' && b.songs[1].yt === 'XqZsoesa55w' && b.songs[2].yt === 'dQw4w9WgXcQ' && b.songs[2].title === 'Never Gonna Give You Up');
   } finally { Object.assign(H, keep); }
   return { ok: rows.every(r => r.ok), rows };
+}
+
+/** 🔊 (1.131.0, Derek: "look at volume and try to keep volume the same: turning up quieter songs and vice versa"). YouTube measures every video's loudness
+ * (loudnessDb on its page: 0 = its normal level, + = louder, − = quieter) and already turns LOUD videos down by itself, but never turns quiet ones up.
+ * So the app turns quiet songs up by the missing amount (up to levelMax ×), and with levelDown also turns loud ones down itself (for when they still stand out).
+ * Returns how many times the song volume to play at (1 = as is). The boost needs room: at a song volume of 100 nothing can go louder. */
+export function levelGain(db, o = opts()) {
+  if (o.level === false || db == null || !Number.isFinite(Number(db))) return 1; db = Number(db);
+  if (db > 0 && !o.levelDown) return 1;
+  return Math.max(0.25, Math.min(o.levelMax || 2.5, Math.pow(10, -db / 20)));
+}
+/** 🧪 the smart search + volume levelling on pretend YouTube results (nothing is looked up) */
+export function searchDemo(o0 = {}) {
+  const o = { ...opts(), ...o0 }, rows = [], add = (what, ok, extra) => rows.push({ what, ok: !!ok, ...(extra || {}) });
+  const R = (id, title, author, secs, views, x) => ({ id: id.padEnd(11, 'x').slice(0, 11), title, author, secs, views, ...(x || {}) });
+  const africa = [R('live1', 'Toto - Africa (Live at Montreux 1991)', 'Toto', 330, 8e6), R('cov1', 'Africa - Toto (Cover by Pretend Band)', 'Pretend Band', 270, 2e6), R('sped1', 'toto - africa (sped up)', 'speed songs', 190, 3e6),
+    R('lyr1', 'Toto - Africa (Lyrics)', '7clouds', 295, 9e7), R('vid1', 'Toto - Africa (Official HD Video)', 'TotoVEVO', 275, 9e8, { artist: true }), R('top1', 'Africa', 'Toto - Topic', 296, 1.2e8), R('react1', 'FIRST TIME HEARING Toto - Africa | REACTION', 'Pretend Reacts', 720, 4e5)];
+  const best = (q, x, list = africa) => pickBest(list, q, { ...o, ...x })[0]?.id.replace(/x+$/, '');
+  add('📝 Prefer lyric videos: the lyric video wins over the live one that YouTube listed first', best('africa toto', { searchPrefer: 'lyrics' }) === 'lyr1');
+  add('🎧 Prefer official audio: the studio recording (Topic channel) wins', best('africa toto', { searchPrefer: 'audio' }) === 'top1');
+  add('🎬 Prefer the official video: the VEVO video wins', best('toto africa', { searchPrefer: 'video' }) === 'vid1');
+  add('🎤 Asking for “live” finds the live one', best('africa toto live', {}) === 'live1');
+  add('🎸 Asking for a “cover” finds the cover', best('africa toto cover', {}) === 'cov1');
+  add('⏩ Asking for “sped up” finds the sped up one', best('africa sped up', {}) === 'sped1');
+  add('🚫 A reaction video never wins', !pickBest(africa, 'africa toto', o).slice(0, 3).some(r => r.id.startsWith('react')));
+  const oasis = [R('olive', 'Oasis - Live Forever (Live at Knebworth)', 'Oasis', 290, 5e6), R('ostu', 'Oasis - Live Forever (Official Video)', 'Oasis', 276, 6e7, { artist: true })];
+  add('🎶 A song with “live” in its name (Live Forever) isn’t treated as a live version, but the concert one still loses', best('live forever oasis', {}, oasis) === 'ostu');
+  add('↩️ Smart search off = YouTube’s own order (the live one first)', best('africa toto', { smartSearch: false }) === 'live1');
+  const qs = searchQueries('africa toto', { ...o, searchPrefer: 'lyrics' }); add('🔎 Two searches: the name, and the name + “lyrics”', qs.length === 2 && qs[1] === 'africa toto lyrics');
+  const g = (db, x) => levelGain(db, { ...o, level: true, levelDown: false, levelMax: 2.5, ...x });
+  add('🔉 A quiet song (−6 dB) is turned up about 2×', Math.abs(g(-6) - 1.995) < .01);
+  add('🔊 A loud song is left to YouTube (it turns loud ones down by itself)', g(5) === 1);
+  add('🔊 …or turned down by the app too, with “Turn loud songs down” on', Math.abs(g(6, { levelDown: true }) - .501) < .01);
+  add('📏 Never more than the most it may boost (2.5×)', g(-20) === 2.5);
+  add('❔ A song YouTube says nothing about stays as is', g(null) === 1);
+  return { ok: rows.every(r => r.ok), rows, table: pickBest(africa, 'africa toto', o).map(r => ({ title: r.title, author: r.author, score: r.score, why: r.why })) };
 }

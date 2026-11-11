@@ -5008,8 +5008,8 @@ async function ytTitle(id) { // (the only thing looked up: a YouTube link's titl
 }
 // 🎼 What a song request rule needs to know about a YouTube video (music only, length, views, DMCA-free channel): its public page, read the way a browser would, no key.
 function ytWatchParse(html) { const s = String(html || ''), g = re => { const m = s.match(re); return m ? m[1] : ''; }, num = v => (v === '' ? null : Number(v));
-  const secs = num(g(/"lengthSeconds":"(\d+)"/)), views = num(g(/"viewCount":"(\d+)"/)), category = g(/"category":"([^"]{1,40})"/), author = g(/"ownerChannelName":"([^"]{1,100})"/) || g(/"author":"([^"]{1,100})"/), live = /"isLiveContent":true/.test(s);
-  return secs == null && views == null && !category && !author ? null : { secs: secs || 0, views, category, author, live }; }
+  const secs = num(g(/"lengthSeconds":"(\d+)"/)), views = num(g(/"viewCount":"(\d+)"/)), category = g(/"category":"([^"]{1,40})"/), author = g(/"ownerChannelName":"([^"]{1,100})"/) || g(/"author":"([^"]{1,100})"/), live = /"isLiveContent":true/.test(s), loudS = g(/"loudnessDb":(-?[\d.]+)/), loud = loudS === '' ? null : Number(loudS); /* (🔊 loudnessDb: how much louder (+) or quieter (−) than YouTube's normal level) */
+  return secs == null && views == null && !category && !author ? null : { secs: secs || 0, views, category, author, live, loud: Number.isFinite(loud) ? loud : null }; }
 const ytInfos = new Map();
 async function ytInfo(id) {
   if (ytInfos.has(id)) return ytInfos.get(id);
@@ -5022,10 +5022,11 @@ async function ytInfo(id) {
 }
 // 🔎 A typed song name is looked up on YouTube's own search page (no key): the videos it lists, in order, with their length and views when shown.
 function ytSearchParse(html) { const s = String(html || ''), out = [], seen = new Set(), secsOf = t => { const p = String(t || '').split(':').map(Number); return p.some(isNaN) ? 0 : p.reduce((a, b) => a * 60 + b, 0); };
-  for (const m of s.matchAll(/"videoRenderer":\{"videoId":"([\w-]{11})"/g)) { const id = m[1]; if (seen.has(id)) continue; seen.add(id); const part = s.slice(m.index, m.index + 6000), g = re => { const x = part.match(re); return x ? x[1] : ''; };
+  const all = [...s.matchAll(/"videoRenderer":\{"videoId":"([\w-]{11})"/g)];
+  for (const [n, m] of all.entries()) { const id = m[1]; if (seen.has(id)) continue; seen.add(id); const part = s.slice(m.index, Math.min(m.index + 9000, all[n + 1] ? all[n + 1].index : s.length)), g = re => { const x = part.match(re); return x ? x[1] : ''; };
     const title = g(/"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/), author = g(/"(?:ownerText|longBylineText)":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/), len = g(/"lengthText":\{.{0,400}?"simpleText":"([\d:]+)"/), views = g(/"viewCountText":\{"simpleText":"([\d,.]+)/);
     let t = title, a = author; try { t = JSON.parse('"' + title + '"'); a = JSON.parse('"' + author + '"'); } catch {}
-    out.push({ id, title: t, author: a, secs: secsOf(len), views: views ? Number(views.replace(/[,.]/g, '')) : null }); if (out.length >= 8) break; }
+    out.push({ id, title: t, author: a, secs: secsOf(len), views: views ? Number(views.replace(/[,.]/g, '')) : null, artist: /OFFICIAL_ARTIST_BADGE/.test(part) || undefined, verified: /BADGE_STYLE_TYPE_VERIFIED/.test(part) || undefined }); if (out.length >= 15) break; }
   return out; }
 const ytSearches = new Map();
 async function ytSearch(q) { const k = String(q || '').trim().toLowerCase(); if (!k) return []; if (ytSearches.has(k)) return ytSearches.get(k);
@@ -5033,9 +5034,17 @@ async function ytSearch(q) { const k = String(q || '').trim().toLowerCase(); if 
   if (res.length) { ytSearches.set(k, res); if (ytSearches.size > 300) ytSearches.delete(ytSearches.keys().next().value); }
   return res; }
 app.get('/api/test/yt-parse', (req, res) => { /* 🧪 the two YouTube page readers, on small sample pages (no internet) */
-  const w = ytWatchParse('x"lengthSeconds":"275","ownerChannelName":"TotoVEVO","viewCount":"912345","category":"Music","isLiveContent":false y'), sr = ytSearchParse('{"videoRenderer":{"videoId":"FTQbiNvZqaY","thumbnail":{},"title":{"runs":[{"text":"Toto - Africa (Official HD Video)"}]},"longBylineText":{"runs":[{"text":"TotoVEVO"}]},"lengthText":{"accessibility":{"label":"4 minutes"},"simpleText":"4:35"},"viewCountText":{"simpleText":"1,012,345 views"}}}{"videoRenderer":{"videoId":"aaaaaaaaaaa","title":{"runs":[{"text":"Other \\"one\\""}]}}}');
-  const ok = !!w && w.secs === 275 && w.category === 'Music' && w.views === 912345 && w.author === 'TotoVEVO' && sr.length === 2 && sr[0].id === 'FTQbiNvZqaY' && sr[0].secs === 275 && sr[0].views === 1012345 && sr[0].author === 'TotoVEVO' && sr[1].title === 'Other "one"';
+  const w = ytWatchParse('x"lengthSeconds":"275","ownerChannelName":"TotoVEVO","viewCount":"912345","category":"Music","isLiveContent":false,"audioConfig":{"loudnessDb":-4.5,"perceptualLoudnessDb":-18.5} y'), sr = ytSearchParse('{"videoRenderer":{"videoId":"FTQbiNvZqaY","thumbnail":{},"title":{"runs":[{"text":"Toto - Africa (Official HD Video)"}]},"longBylineText":{"runs":[{"text":"TotoVEVO"}]},"lengthText":{"accessibility":{"label":"4 minutes"},"simpleText":"4:35"},"viewCountText":{"simpleText":"1,012,345 views"}}}{"videoRenderer":{"videoId":"aaaaaaaaaaa","title":{"runs":[{"text":"Other \\"one\\""}]}}}');
+  const ok = !!w && w.secs === 275 && w.loud === -4.5 && w.category === 'Music' && w.views === 912345 && w.author === 'TotoVEVO' && sr.length === 2 && sr[0].id === 'FTQbiNvZqaY' && sr[0].secs === 275 && sr[0].views === 1012345 && sr[0].author === 'TotoVEVO' && sr[1].title === 'Other "one"';
   res.json({ ok, watch: w, search: sr }); });
+app.get('/api/test/song-search', (req, res) => res.json(songs.searchDemo())); /* 🧪 (1.131.0) the smart search + volume levelling on pretend results */
+app.post('/api/songs/search-try', async (req, res) => { /* 🔎 a real YouTube search, ranked the way a !sr would be (nothing is added) */
+  try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.'); const q = String(req.body?.q || '').trim().slice(0, 140); if (!q) throw new Error('Type a song to look for.'); const o = songs.opts(), qs = songs.searchQueries(q, o);
+    const got = await Promise.all(qs.map(x => ytSearch(x).catch(() => []))), list = songs.pickBest(got.flatMap(l => l.map((r, i) => ({ ...r, rank: i }))), q, o).slice(0, 10);
+    res.json({ q, searches: qs, found: got.reduce((a, l) => a + l.length, 0), list }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.get('/api/songs/level', async (req, res) => { /* 🔊 how loud one YouTube video is, and how many times the song volume it should play at */
+  const yt = String(req.query.yt || ''); if (!/^[\w-]{11}$/.test(yt)) return res.json({ db: null, gain: 1 });
+  let info = null; try { info = await ytInfo(yt); } catch {} const db = info && info.loud != null ? info.loud : null; res.json({ yt, db, gain: songs.levelGain(db) }); });
 songs.setHooks({ movieSkip: () => edHas('movies'), note: pstats.note, info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
 const sgTry = fn => async (req, res) => { try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.queue ? { state: r } : { ...(r || {}), state: songs.state() }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/songs', (req, res) => res.json(feat('songs') ? songs.state({ q: String(req.query.q || ''), sort: String(req.query.sort || 'last') }) : { on: false }));

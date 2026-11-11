@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.131.0
+- 🧠 **Smarter song search.** When chat types a song's name with !sr, the app now looks at all of YouTube's results (and searches the name + "lyrics" too) and picks the best version instead of just the first one. It prefers the kind you pick in 🎵 Songs → Settings (📝 lyric videos by default, or 🎧 official audio / 🎬 official music videos), likes the artist's own channels and studio recordings, and skips live versions, covers and karaoke, remixes / sped up / nightcore / 8D / hour-long loops, and reactions / tutorials, each with its own tick box. If the request asks for one ("africa toto live", "… sped up") it finds that one. A song with "live" in its name, like Live Forever, isn't mistaken for a live version. Type a song in the new 🔎 Try it box to see which version it would pick and why.
+- 🔊 **Even volume.** YouTube measures how loud every video is: quiet songs are now turned up to match the others in the music box (YouTube already turns loud ones down; tick "Turn loud songs down too" if they still stand out). The music box shows 🔊 +dB next to the volume when a song is boosted. Keep the music volume around 60 so there's room to boost.
+- 🧪 Test tab → 🎵 Song requests → 🧠 Smart search & even volume.
+
 ## 1.130.0
 - 🎥 Test tab → 🎥 Demo for Birx & Jess: a guided tour of every feature in their version for a demo video. ▶ Start the demo switches the app to their look (tabs, names, their song raters and 6 AM day, profiles the way they see them), fills in pretend songs, movies, votes, birthdays and raid channels, and a guide bar at the bottom shows what to talk about in each of the 17 parts. Ctrl+Alt+→ / ← move through it, Ctrl+Alt+H hides the bar while recording, 🧹 Clean up + finish and ↩ Back to mine at the end.
 - 👀 Seeing the app as another edition now uses that edition's own defaults too (Birx & Jess's raters and guesser, their 6 AM day start).

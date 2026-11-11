@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.131.0: What's new
+- {songs} 🧠 Smarter song search: when chat types a song's name, the app picks the best version on YouTube instead of the first one: lyric videos (or official audio / official videos, your pick) before live versions, and no covers, karaoke, sped up / nightcore versions, loops or reaction videos unless the request asks for one. Try any song name in 🎵 Songs → Settings → 🔎 Try it.
+- {songs} 🔊 Even volume: quiet songs are turned up so every song plays at about the same loudness (Songs → Settings → 🔊 Even volume).
+
 ## v1.130.0: What's new
 - {ed:derek} 🎥 **Demo for Birx & Jess:** a guided tour in 🧪 Test that shows their version the way they see it, with pretend data and a guide bar, for recording a demo video.
 
