@@ -1,0 +1,7 @@
+Sounds in this folder
+
+birthday-horn.mp3  "Birthday Party Horn" by Universfield, from Pixabay (Pixabay Content License)
+                   https://pixabay.com/sound-effects/film-special-effects-birthday-party-horn-250238/
+bike-bell.mp3      "Bike bell" by freesound_community, from Pixabay (Pixabay Content License)
+                   https://pixabay.com/sound-effects/film-special-effects-bike-bell-100665/
+party-whistle.wav  made for this app

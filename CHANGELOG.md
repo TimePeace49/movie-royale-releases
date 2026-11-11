@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.4
+- 🎂🚲 **New built-in sounds (picked by Derek, from Pixabay).** The birthday pop-up now plays a **party horn**, and the movie night 5-minute timer rings a **real bike bell**. Both are the defaults for everyone; 🎵 Use my own sound file still wins, and the timer's old alarm clock is still a choice.
+
 ## 1.143.3
 - 🖱️ **Chat tab right-click menus close when you click away.** A left click anywhere off the menu now closes it, also when the click lands inside another box (chat, alerts, the stream preview) or, for the menu inside the chat box, anywhere else on the tab.
 

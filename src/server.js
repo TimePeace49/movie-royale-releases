@@ -5442,7 +5442,7 @@ app.post('/api/movienight/bell', wTry(b => {
 }));
 app.get('/api/test/mn-bell', (req, res) => { /* 🧪 the timer sound choices (your own choice is put back) */
   const o = movienight.opts(), was = { bellKind: o.bellKind, bellFile: o.bellFile || '' }, rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) });
-  add('The bicycle bell sound is in the app', fs.existsSync(path.join(ROOT, 'public', 'sounds', 'bike-bell.wav')), 'bike-bell.wav');
+  add('The bicycle bell sound is in the app', fs.existsSync(path.join(ROOT, 'public', 'sounds', 'bike-bell.mp3')), 'bike-bell.mp3');
   movienight.setOpts({ bellKind: 'nonsense', bellFile: '' }); add('The bicycle bell is the default', movienight.opts().bellKind === 'bike' && !mnBellUrl(), movienight.opts().bellKind);
   movienight.setOpts({ bellKind: 'clock' }); add('The old alarm clock can be picked', movienight.opts().bellKind === 'clock', movienight.opts().bellKind);
   movienight.setOpts({ bellFile: 'not-there.mp3' }); add('A file of your own that is gone = the picked bell (never silence)', mnBellUrl() === '', mnBellUrl() || 'the picked bell');
@@ -5823,7 +5823,7 @@ app.post('/api/test/bday-sound', wTry(b => { /* 🧪 own birthday sound: a gener
 }));
 /** 🥳 (1.126.1, Derek: "the party sound can happen on stream") the birthday party whistle through OBS: the sound alert page (in every scene) or the battle screen in OBS. Never the app (it plays its own). */
 function bdayStreamSound(vol = 35) {
-  const msg = { type: 'sfxCmd', url: bdaySoundUrl() || '/sounds/birthday-tune.wav', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
+  const msg = { type: 'sfxCmd', url: bdaySoundUrl() || '/sounds/birthday-horn.mp3', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
   const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : null; if (where) broadcast(msg, where); return { ok: !!where, where };
 }
 app.post('/api/test/bday-stream-sound', wTry(b => bdayStreamSound(b.vol ?? birthdays.opts().streamVol)));

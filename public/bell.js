@@ -21,6 +21,6 @@
   window.timerBell = function (m, secs) {
     m = m || {}; const v = Math.max(0, Math.min(100, m.vol == null ? 60 : Number(m.vol))) / 100;
     if (!m.file && m.kind === 'clock') return window.oldBell(m.vol, secs || 4.5);
-    try { const au = new Audio(m.file || '/sounds/bike-bell.wav'); au.volume = v; au.play().catch(() => {}); return () => { try { au.pause(); } catch {} }; } catch { return () => {}; }
+    try { const au = new Audio(m.file || '/sounds/bike-bell.mp3'); au.volume = v; au.play().catch(() => {}); return () => { try { au.pause(); } catch {} }; } catch { return () => {}; }
   };
 })();
