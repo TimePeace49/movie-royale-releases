@@ -7,7 +7,8 @@
   "on": [
    "raids",
    "dash",
-   "songs"
+   "songs",
+   "kick"
   ],
   "off": [
    "movies",
@@ -69,7 +70,8 @@
   "on": [
    "raids",
    "dash",
-   "songs"
+   "songs",
+   "kick"
   ],
   "off": [
    "movies",
