@@ -17,7 +17,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', myCommand: '!myvotes', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, timerPop: true, bell: true, bellVol: 60, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', myCommand: '!myvotes', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, timerPop: true, bell: true, bellVol: 60, firstSay: true, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -97,6 +97,7 @@ export async function fillRatings(d = data()) {
     if (m.title !== title) continue; m.rateFor = title; if (!m.imdbHand) m.imdb = r && r.imdb > 0 ? r.imdb : 0; if (!m.rtHand) m.rt = r && r.rtHas ? r.rt : null; m.poster = r && r.poster ? r.poster : ''; m.year = r && r.year ? r.year : ''; n++; } } finally { rateBusy = false; }
   if (n) { changed(); pinSoon(); } /* (a year just came in: the pinned list gets it) */ return n;
 }
+const whoSuggested = t => { try { return String((H.suggestedBy && H.suggestedBy(t)) || '').trim().replace(/^@/, ''); } catch { return ''; } };
 export function setMovies(list) { // [{title, by}] or lines "Title | who asked" / "Title - who asked"
   const d = data(); if (d.open) throw new Error('Voting is open: close it first (adding one movie with ➕ still works).');
   const rows = (Array.isArray(list) ? list : String(list || '').split(/\r?\n/)).map(x => typeof x === 'string' ? (() => { const m = x.match(/^\s*(?:\d+[.)]\s*)?(.*?)\s*(?:\||\s[-–—]\s|\t)\s*(.*)$/); return m && m[1] ? { title: m[1], by: m[2] } : { title: x.replace(/^\s*\d+[.)]\s*/, ''), by: '' }; })() : x)
@@ -109,7 +110,7 @@ export function addMovie(title, by) {
   const d = data(), t = String(title || '').trim().slice(0, 120); if (!t) throw new Error('Type the movie first.');
   if (d.movies.some(m => plain(m.title) === plain(t))) throw new Error('That movie is already on the list.');
   if (d.movies.length >= 60) throw new Error('60 movies is the most one night can have.');
-  d.movies.push({ id: uid(), title: t, by: String(by || '').trim().replace(/^@/, '').slice(0, 40) }); changed(); pinSoon(); setTimeout(() => fillRatings().catch(() => {}), 50); return state();
+  d.movies.push({ id: uid(), title: t, by: (String(by || '').trim().replace(/^@/, '') || whoSuggested(t)).slice(0, 40) }); changed(); /* 📋 nobody typed in: the person who suggested it for the watchlist (you can still change it) */ pinSoon(); setTimeout(() => fillRatings().catch(() => {}), 50); return state();
 }
 export function editMovie(id, o) {
   const d = data(), i = d.movies.findIndex(m => m.id === id); if (i < 0) throw new Error("That movie isn't on the list.");
@@ -218,6 +219,7 @@ export function noteChat(m) { // the first person to type in chat tonight gets t
   if (!on() || !m || m.self) return; const d = data(); if (d.first) return;
   const l = low(m.login); if (!l || l === low(H.me()) || m.badges?.broadcaster || H.isBot(l)) return;
   d.first = l; d.firstName = m.name || l; changed();
+  { const o = opts(d); if (o.firstSay !== false) H.say(`🥇 @${m.name || l} was first in chat tonight: you get 2 votes on movie night! 🍿`).catch(() => {}); } /* (1.133.0, Derek) tell chat who was first, and that it means two votes */
   H.act(`was the first one in chat: two votes for movie night`, { icon: '🍿', who: m.name || l, kind: 'first', test: !!m.pretend });
 }
 export function onAlert(a) { // a raid tonight = two votes for the raider
@@ -286,7 +288,7 @@ export function setOpts(o) {
   if ('bg' in o) x.bg = Math.max(0, Math.min(100, Math.round(Number(o.bg) || 0))); /* how solid the board's background is on stream: 0 = see-through */
   if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
   if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';
-  for (const k of ['timerPop', 'bell']) if (k in o) x[k] = !!o[k]; if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0)));
+  for (const k of ['timerPop', 'bell', 'firstSay']) if (k in o) x[k] = !!o[k]; if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0)));
   if ('lastMins' in o) x.lastMins = Math.max(0.25, Math.min(60, Number(o.lastMins) || 5));
   changed(); return state();
 }

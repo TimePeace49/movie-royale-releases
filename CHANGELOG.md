@@ -2,6 +2,20 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.133.0
+- 📋 New: the movie watchlist (History → 📋 Watchlist, in editions with movie night).
+  - Bring in your IMDb watchlist and your IMDb ratings with the two buttons at the top (on IMDb: Your Watchlist → Export, Your Ratings → Export, then pick the file). Bringing a file in again never adds a movie twice.
+  - Chat suggests a movie with `!suggest movie name`. It lands under "Suggested, not on IMDb yet" with who suggested it. A movie that's already on the watchlist, or one you already rated, is refused (with the rating).
+  - Chat asks `!rating movie name`: if you watched it, the bot says your rating; if it's on the watchlist, it says so; if it's neither, it says how to suggest it.
+  - IMDb doesn't let apps add to a watchlist, so after the stream press ↗ Open on IMDb next to a suggestion (it opens that movie's IMDb page in your browser), click IMDb's own Watchlist button, then ✅ Added. You can also add a movie yourself, and search everything with the box at the top.
+  - ✅ All added and 🗑 Remove all clear the suggestions in one go (✅ Added and 🗑 on each row do one at a time).
+  - 🔄 Keep it up to date from IMDb: paste the links to your IMDb watchlist and ratings pages (both set to public on IMDb) and the app reads them every time it opens, plus when you press 🔄 Update from IMDb now. It only ever adds. If IMDb refuses the app, the two file buttons still work.
+  - 🍿 When you add a movie to tonight's movie night list and leave "who asked" empty, the app fills in the person who suggested it for the watchlist. You can still change or clear the name.
+  - Once a watchlist movie shows up in your ratings file, it comes off the watchlist by itself.
+  - ⚙️ Chat commands at the bottom: the two command names, who can suggest, how many waiting suggestions one person can have, and whether the bot answers. Both commands are also in 🤖 Chat bot → Commands → the app's own commands (cooldowns, who can use them).
+- 🥇 Movie night: when the first person types in chat after you go live, the bot now tells chat who it was and that they get 2 votes tonight. Switch: Movie night tab → 🥇 Announce who was first in chat. Test: 🍿 Movie night tests → 🥇 First in chat.
+- 🧪 Test tab → 🍿 Movie night tests → 📋 Check the watchlist rules, 📋 Pretend suggestion, 🧹 Clear test suggestions. The demo tour has a 📋 Movie watchlist part.
+
 ## 1.132.10
 - 🙋 Movie night: the "who asked" boxes (when adding a movie and in the list) now suggest names as you type: people chatting right now first, then your most regular chatters, plus names you typed on earlier movie nights. Pick one with the arrow keys or the mouse. The "who asked" box for adding a song does the same.
 - 🧪 Test tab → 🍿 Movie night tests → 🙋 Name suggestions.

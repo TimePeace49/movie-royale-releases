@@ -20,7 +20,7 @@ import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
-import { getRatings, testOmdb, ratingsByTitle, omdbWhere } from './ratings.js';
+import { getRatings, testOmdb, ratingsByTitle, omdbWhere, omdbFind } from './ratings.js';
 import * as shared from './shared.js';
 import { ruleBan } from './banrules.js';
 import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
@@ -34,6 +34,7 @@ import { renameUser } from './rename.js';
 import * as donations from './donations.js';
 import * as obs from './obs.js';
 import * as movienight from './movienight.js';
+import * as watchlist from './watchlist.js';
 import * as raids from './raids.js';
 import * as birthdays from './birthdays.js';
 import * as songs from './songs.js';
@@ -41,6 +42,7 @@ import * as pstats from './pstats.js';
 import * as eggs from './eggs.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
+import { is as edition_is } from './edition.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, appNow as edAppNow, scrubNow as edScrubNow, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
@@ -1163,6 +1165,7 @@ const twitchHandlers = {
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
     try { if (birthdays.onChat(m)) return; } catch (e) { console.error('[birthdays]', e.message); } // 🎂 !bday 3/14, and a happy birthday the first time they chat that day
     if (movienight.onChat(m)) return; // 🍿 !vote 3 on a movie night
+    try { if (await watchlist.onChat(m)) return; } catch (e) { console.error('[watchlist]', e.message); } // 📋 !suggest a movie / !rating a movie
     try { if (songs.onChat(m)) return; } catch (e) { console.error('[songs]', e.message); } // 🎵 !sr a song
     try { eggs.onChatPoints(m); if (eggs.onChat(m)) return; } catch (e) { console.error('[eggs]', e.message); } // 🥚 chatting fills your egg; !egg, !pet, !battle…
     if (clipChatCmd(m)) return; // 🎬 !clip: anyone can clip the last minute
@@ -2222,6 +2225,7 @@ const APP_CMDS = () => { const L = [], has = id => edHas(id), A = (key, group, l
   A('clip', '💬 Chat', 'Clip', 'Clips the last minute of the stream', has('chat:clip'), () => db.settings.clipCommand, sSet('clipCommand'), 'Who can !clip also has its own boxes in Settings → 💜 Twitch → Clips');
   A('bday', '🎂 Birthdays', 'Save my birthday', 'Saves their birthday (month + day)', has('chat:bday') && bo.on !== false, () => bo.command, c => birthdays.setOpts({ command: c }, mo.command));
   A('vote', '🍿 Movie night', 'Vote', "Votes for one of tonight's movies", has('chat:vote') && feat('movienight'), () => mo.command, c => movienight.setOpts({ command: c }));
+  { const wo = watchlist.opts(); A('suggest', '🍿 Movie night', 'Suggest a movie', 'Adds a movie to the watchlist (History → 📋 Watchlist)', feat('movienight') && !!wo.command, () => wo.command, c => watchlist.setOpts({ command: c })); A('rating', '🍿 Movie night', 'Movie rating', 'Says what the movie was rated on IMDb', feat('movienight') && !!wo.rateCommand, () => wo.rateCommand, c => watchlist.setOpts({ rateCommand: c })); }
   A('myvotes', '🍿 Movie night', 'My votes', 'Who they voted for + votes / changes left', has('chat:vote') && feat('movienight'), () => mo.myCommand, c => movienight.setOpts({ myCommand: c }));
   for (const [k, label, why] of [['command', 'Song request', 'Asks for a song'], ['nowCommand', 'Song playing', "Says what's playing"], ['queueCommand', 'Song queue', "What's coming up"], ['mineCommand', 'My songs', 'Their songs in the queue'], ['wrongCommand', 'Wrong song', 'Takes their last song back out']])
     A('song:' + k, '🎵 Songs', label, why, has('chat:sr') && feat('songs') && !!so[k], () => so[k], c => songs.setOpts({ [k]: c }));
@@ -5103,6 +5107,34 @@ app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
 app.post('/api/songs/playlist', sgTry(b => songs.playlist(b))); // 📻 add / rename / remove one of your YouTube playlists
+/* 📋 (1.133.0) Movie watchlist + IMDb ratings (feat movienight): History → 📋 Watchlist, chat !suggest / !rating */
+const wlLookup = async (title, year) => { let f; try { f = await omdbFind(title, year); } catch { f = undefined; } if (f) return f; if (f === null) return null;
+  try { const l = await searchMovies(title + (year ? ' ' + year : '')); const m = (year && l.find(x => String(x.year) === String(year))) || l[0]; return m ? { title: m.title, year: m.year ? String(m.year) : '', imdb: '' } : null; } catch { return null; } };
+watchlist.setHooks({ linkOk: u => !!listsrc.imdbUserUrl(u), read: u => listsrc.readImdbUser(u), on: () => feat('movienight'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), lookup: wlLookup, act: (text, o = {}) => act('chat', text, { icon: '📋', ...o }), send: (msg, role) => broadcast(msg, role), names: () => (edition_is('birx') ? 'Birx & Jess' : streamerName()) });
+const wlTry = fn => wTry(async (b, req) => { if (!feat('movienight')) throw new Error('The movie watchlist is not part of this edition.'); const r = await fn(b, req); return r && r.counts ? { state: r, n: r.n } : { ...(r || {}), state: watchlist.state() }; });
+app.get('/api/watchlist', (req, res) => res.json(feat('movienight') ? watchlist.state() : { on: false }));
+app.post('/api/watchlist/import', wlTry(b => { const p = watchlist.readFile(String(b.text || ''), ['watch', 'rated'].includes(b.kind) ? b.kind : 'auto'); if (!p.items.length) throw new Error(p.note || "No movies found in that file. Use the Export button on your IMDb watchlist or ratings page."); if (b.dry) return { found: { kind: p.kind, n: p.items.length, note: p.note || '', sample: p.items.slice(0, 5) } }; return { result: watchlist.applyImport(p, { replace: !!b.replace }) }; }));
+app.post('/api/watchlist/suggest', wlTry(async b => { const r = await watchlist.suggest({ login: '', name: String(b.by || '').trim() }, String(b.title || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'rated' ? `Already watched: ${r.movie.title} was rated ${r.movie.rate}/10.` : r.why === 'dupe' ? `${r.movie.title} is already on the watchlist.` : 'Type a movie name first.'); return { movie: r.movie }; }));
+app.post('/api/watchlist/edit', wlTry(b => watchlist.edit(b)));
+app.post('/api/watchlist/opts', wlTry(b => watchlist.setOpts(b)));
+app.post('/api/watchlist/sync', wlTry(async () => ({ sync: await watchlist.sync('you') }))); // 🔄 read the IMDb watchlist + ratings links again now
+setTimeout(() => { try { const o = watchlist.opts(); if (feat('movienight') && o.auto !== false && (o.listUrl || o.ratedUrl)) watchlist.sync('open').then(r => { const bad = [r.list, r.rated].filter(x => x && x.err); if (bad.length) console.error('[watchlist] could not read IMDb on open: ' + bad[0].err); }).catch(() => {}); } catch {} }, 60000); /* 📋 every time the app opens: bring the watchlist + ratings up to date from the IMDb links */
+app.get('/api/test/watchlist-read', (req, res) => { /* 🧪 the IMDb page readers on sample pages (no internet) */
+  const page = `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { mainColumnData: { advancedTitleSearch: { edges: [{ node: { title: { id: 'tt0073195', titleText: { text: 'Jaws' }, releaseYear: { year: 1975 }, titleType: { id: 'movie' } }, userRating: { value: 9, date: '2025-10-31' } } }, { node: { title: { id: 'tt0078748', titleText: { text: 'Alien' }, releaseYear: { year: 1979 }, titleType: { id: 'movie' } }, userRating: { value: 10 } } }] } } } } })}</script><ul><li class="ipc-metadata-list-summary-item"><a href="/title/tt0087363/?ref_=x">3. Gremlins</a><span>1984</span><span class="ipc-rating-star ipc-rating-star--otherUserAlt"><svg></svg><span class="ipc-rating-star--rating">6</span></span></li></ul></html>`;
+  const r = listsrc.imdbUserRatings(page), rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) });
+  add("Ratings from the page's own data", r.get('tt0073195')?.rate === 9 && r.get('tt0078748')?.rate === 10, [...r].map(([k, v]) => k + ' ' + v.rate).join(', '));
+  add('A rating from the star on a row', r.get('tt0087363')?.rate === 6, r.get('tt0087363')?.rate);
+  for (const [u, k] of [['https://www.imdb.com/user/ur12345678/watchlist', 'watch'], ['https://m.imdb.com/user/ur12345678/ratings/?ref_=x', 'rated'], ['https://www.imdb.com/list/ls012345678/', 'watch']]) add('Link understood: ' + u, listsrc.imdbUserUrl(u)?.kind === k, listsrc.imdbUserUrl(u)?.kind);
+  for (const u of ['https://www.imdb.com/title/tt0073195/', 'https://example.com/user/ur1/watchlist', 'jaws']) add('Refused (not a watchlist / ratings link): ' + u, !listsrc.imdbUserUrl(u), listsrc.imdbUserUrl(u) ? 'taken' : 'refused');
+  res.json({ ok: rows.every(x => x.ok), rows });
+});
+app.get('/api/test/watchlist', async (req, res) => { try { res.json(await watchlist.demo()); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/test/watchlist', wTry(async b => { /* 🧪 a pretend chatter suggests a movie + asks for a rating (kept as a test row), or the test rows are cleared */
+  if (b.action === 'clear') return { cleared: watchlist.clearTests() };
+  const o = watchlist.opts(), replies = [], f = t => replies.push(t); twitch.pretend.until = Date.now() + 10 * 60000; twitch.sayListeners.add(f);
+  try { for (const t of [`${o.command} ${b.title || 'Pretend Movie About Sharks'}`, `${o.rateCommand} ${b.title || 'Pretend Movie About Sharks'}`]) await twitchHandlers.chat({ login: 'pretend_ash', name: 'Pretend_Ash', text: t, userId: 'p-ash', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 700)); } finally { twitch.sayListeners.delete(f); }
+  return { replies, state: watchlist.state() };
+}));
 app.get('/api/chatters/common', (req, res) => { // 🙋 (1.132.10) names to suggest while typing who asked for something: who is chatting now first, then your most regular chatters (no bots)
   const seen = new Set(), out = [], add = n => { const k = String(n || '').toLowerCase(); if (!k || seen.has(k) || isChatBot(k) || /^pretend_/.test(k) && !req.query.tests) return; seen.add(k); out.push(n); };
   for (const n of chattersForWheel()) add(n);
@@ -5215,7 +5247,7 @@ const mnTimer = m => { /* ⏳⏰ (1.132.6) the last-call timer pop-up; the bell 
   const obs = [...wss.clients].some(c => c.readyState === 1 && c.role === 'movienight');
   broadcast({ type: 'mnTimer', ...m, bell: !!m.bell }, 'movienight'); broadcast({ type: 'mnTimer', ...m, bell: !!m.bell && !obs }, 'control');
 };
-movienight.setHooks({ timer: mnTimer, rating: t => mnRating(t), note: pstats.note,
+movienight.setHooks({ suggestedBy: t => (feat('movienight') ? watchlist.suggestedBy(t) : ''), timer: mnTimer, rating: t => mnRating(t), note: pstats.note,
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
   isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
   act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),
@@ -5260,6 +5292,7 @@ app.post('/api/movienight/opts', mnTry(b => movienight.setOpts(b)));
 app.get('/api/test/movienight-rules', (req, res) => res.json(movienight.rulesDemo()));
 app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote through the pretend chat (nothing is sent to Twitch); 'clear' takes them out again
   const d = movienight.data();
+  if (b.action === 'first') { const dd = db.movieNight || {}, keep = [dd.first, dd.firstName], replies = [], f = t => replies.push(t); dd.first = ''; twitch.pretend.until = Date.now() + 10 * 60000; twitch.sayListeners.add(f); try { await twitchHandlers.chat({ login: 'pretend_early', name: 'Pretend_EarlyBird', text: 'first!', userId: 'p-early', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 400)); } finally { twitch.sayListeners.delete(f); if (db.movieNight) { db.movieNight.first = keep[0] || ''; db.movieNight.firstName = keep[1] || ''; save(); } } return { ok: true, replies }; } /* 🧪 🥇 who was first: the real one is put back */
   if (b.action === 'night') return movienight.testNight(); /* 🕰️ a pretend earlier night for the History tab + replay */
   if (b.action === 'clear') return movienight.clearTests();
   if (b.action === 'fill') { if (d.movies.length) throw new Error('Your list already has movies: this only fills an empty list.'); return movienight.setMovies([{ title: 'Jaws (1975)', by: 'pretend_ana', imdb: 8.1, rt: 97, poster: '/deck/home.png' }, { title: 'Alien (1979)', by: '', imdb: 8.5, rt: 93 }, { title: 'The Thing (1982)', by: 'pretend_bo', imdb: 8.2, rt: 85 }, { title: 'Clue (1985)', by: '', imdb: 7.2, rt: 72 }]); }

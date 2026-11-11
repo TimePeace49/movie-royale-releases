@@ -78,6 +78,32 @@ async function readImdb(url, want, onPage) {
   return out;
 }
 
+/* 📋 (1.133.0) Someone's own IMDb pages: their watchlist (imdb.com/user/ur…/watchlist) and their ratings (…/ratings). Both have to be PUBLIC on IMDb.
+   The ratings page carries what THEY rated each movie: read from the page's own data (userRating next to a title), else from the star shown on each row. */
+export const imdbUserUrl = u => { try { const x = new URL(String(u || '').trim()); if (!/(^|\.)imdb\.com$/i.test(x.hostname)) return null; const m = x.pathname.match(/^\/user\/(ur\d+)\/(watchlist|ratings)\/?/i) || x.pathname.match(/^\/(list)\/(ls\d+)\/?/i); return m ? { url: `https://www.imdb.com${x.pathname.replace(/\/$/, '')}/`, kind: /ratings/i.test(m[2]) ? 'rated' : 'watch' } : null; } catch { return null; } };
+export function imdbUserRatings(html) {
+  const out = new Map(), put = (tt, rate, at) => { const r = Math.round(Number(rate)); if (/^tt\d+$/.test(tt || '') && r >= 1 && r <= 10 && !out.has(tt)) out.set(tt, { rate: r, at: at ? Date.parse(at) || 0 : 0 }); };
+  const m = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (m) { let data = null; try { data = JSON.parse(m[1]); } catch {}
+    const idOf = o => (o && typeof o === 'object' ? [o.id, o.titleId, o.const].find(x => typeof x === 'string' && /^tt\d+$/.test(x)) : null);
+    const walk = (o, depth = 0) => { if (!o || typeof o !== 'object' || depth > 40) return; if (Array.isArray(o)) { for (const x of o) walk(x, depth + 1); return; }
+      const ur = o.userRating || o.otherUserRating || o.authorRating; const val = ur && typeof ur === 'object' ? ur.value ?? ur.rating : typeof ur === 'number' ? ur : null;
+      if (val != null) { const tt = idOf(o) || idOf(o.title) || idOf(o.node) || idOf(o.item) || idOf(o.listItem); if (tt) put(tt, val, ur && (ur.date || ur.ratedOn)); }
+      for (const k in o) walk(o[k], depth + 1); };
+    walk(data); }
+  /* the rows on the page (also the ones a "more" press added): the title link + the rater's own star */
+  for (const row of html.split(/(?=<li[^>]*ipc-metadata-list-summary-item)/).slice(1)) { const tt = (row.match(/\/title\/(tt\d+)\//) || [])[1], st = row.match(/ipc-rating-star--(?:otherUserAlt|otherUser|currentUser|user)[^>]*>[\s\S]{0,400}?<span[^>]*ipc-rating-star--rating[^>]*>\s*(\d{1,2})\s*</) || row.match(/aria-label="(?:User|Their|Your) rating:\s*(\d{1,2})"/i); if (tt && st) put(tt, st[1]); }
+  return out;
+}
+export async function readImdbUser(url, want = 3000) {
+  const u = imdbUserUrl(url); if (!u) throw new Error("That isn't an IMDb watchlist or ratings link. It looks like imdb.com/user/ur12345678/watchlist (or …/ratings).");
+  const html = await getHtml(u.url, { render: true, wait: '.ipc-metadata-list-summary-item, a[href*="/title/tt"]', timeout: 120000, more: { click: 'button.ipc-see-more__button, .ipc-see-more button', count: '.ipc-metadata-list-summary-item', want } });
+  if (/private|isn't public|is not public|sign in to/i.test(html.slice(0, 200000)) && !/\/title\/tt\d+/.test(html)) throw new Error('IMDb says that page is private. Set it to public on IMDb (Your account → Privacy), or use the Export file instead.');
+  const titles = imdbParse(html), items = titles.map(t => ({ title: t.title, year: t.year ? String(t.year) : '', imdb: t.imdbId || '', rate: null, at: 0 }));
+  if (u.kind === 'rated') { const r = imdbUserRatings(html); for (const it of items) { const x = r.get(it.imdb); if (x) { it.rate = x.rate; it.at = x.at; } } return { kind: 'rated', items: items.filter(x => x.rate), seen: items.length }; }
+  return { kind: 'watch', items, seen: items.length };
+}
+
 // ---------- 🍅 Rotten Tomatoes ----------
 function rtParse(html) {
   const out = [], seen = new Map(), push = (slug, title, year, rt) => { slug = slug.replace(/\/$/, ''); if (!slug || !title) return; const i = seen.get(slug); if (i != null) { if (out[i].rt == null && rt != null) out[i].rt = rt; return; } seen.set(slug, out.length); out.push({ key: 'rt:' + slug, title, year: year || null, rt: rt ?? null }); };

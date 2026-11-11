@@ -19,6 +19,13 @@ async function omdb(imdbId) {
 }
 
 /** ⭐🍅 By the movie's name (+ year), for the movie night leaderboard: { imdb: 7.7, rt: 97 } (numbers; 0 = not listed), null = not found, undefined = no OMDb key. Cached a week. */
+/** 📋 The real name, year and IMDb id of a movie someone typed (for watchlist suggestions). null = not found; undefined = no OMDb key. */
+export async function omdbFind(title, year) {
+  if (!omdbWhere()) return undefined;
+  const r = await fetch(omdbUrl(`t=${encodeURIComponent(title)}${year ? '&y=' + encodeURIComponent(year) : ''}&type=movie`), { signal: AbortSignal.timeout(9000) }), j = await r.json();
+  if (j.Response === 'False' || !j.Title) return null;
+  return { title: j.Title, year: /^\d{4}/.test(j.Year || '') ? String(j.Year).slice(0, 4) : '', imdb: /^tt\d+$/.test(j.imdbID || '') ? j.imdbID : '' };
+}
 export async function ratingsByTitle(title, year) {
   if (!omdbWhere()) return undefined;
   db.ratingsT ||= {}; const k = `${String(title).trim().toLowerCase()}|${year || ''}`, hit = db.ratingsT[k];

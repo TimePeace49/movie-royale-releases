@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.133.0: What's new
+- {movienight} 🥇 Movie night: the bot now tells chat who was first to type after you went live, and that they get 2 votes tonight.
+- {movienight} 📋 New movie watchlist in History → 📋 Watchlist. Bring in your IMDb watchlist and ratings files, and chat can suggest movies with !suggest (anything already on your watchlist or already rated is refused) and ask what you rated a movie with !rating. New suggestions wait there with a button that opens each one on IMDb, so you can add them to your IMDb watchlist after the stream. Paste your IMDb watchlist and ratings links and the app brings both up to date every time it opens.
+
 ## v1.132.10: What's new
 - {movienight} 🙋 Movie night: the "who asked" boxes suggest names as you type (people chatting now, your regular chatters, and names from earlier nights).
 
