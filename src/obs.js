@@ -201,8 +201,11 @@ export async function rollSource(on, url, pick = null) {
 }
 /* 🍿 movie night leaderboard (1.116.0) */
 export const MN_NAME = 'Movie Royal movie night';
-export async function mnSource(on, url, pick = null) {
-  return browserSource(MN_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick);
+/* (1.139.2, Derek: "make sure the leaderboard source can be resizable in OBS") the source is just the board now (MN_W × MN_H; the page scales itself to whatever size the source has), in a keep-its-shape box at the corner, so dragging it bigger / smaller in OBS never squashes it. */
+export const MN_W = 560, MN_H = 800;
+export function mnPlace(W, H, side = 'right', at = 'top') { const k = Math.min(W / 1920, H / 1080), w = Math.round(MN_W * k), h = Math.round(MN_H * k), m = Math.round(24 * k); return { positionX: side === 'left' ? m : W - m - w, positionY: at === 'bottom' ? H - m - h : m, alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: (side === 'left' ? 1 : 2) | (at === 'bottom' ? 8 : 4), boundsWidth: w, boundsHeight: h, rotation: 0 }; }
+export async function mnSource(on, url, pick = null, { side = 'right', at = 'top' } = {}) {
+  return browserSource(MN_NAME, on, () => ({ is_local_file: false, url, width: MN_W, height: MN_H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick, { place: (W, H) => mnPlace(W, H, side, at) });
 }
 export const SFX_NAME = 'Movie Royal sound alerts';
 /** 🔊 (1.124.1, Derek: "sound effects should play on every scene") the sound alert page as ONE browser source put in EVERY scene:
@@ -249,7 +252,7 @@ export async function tickerState() {
   });
 }
 /** A browser source on top of the scenes you picked (taken out of the others); off = removed from OBS. */
-async function browserSource(name, on, mkSettings, pick = null, { noReload = false } = {}) {
+async function browserSource(name, on, mkSettings, pick = null, { noReload = false, place = null } = {}) {
   return session(async call => {
     const inputs = (await call('GetInputList')).inputs || [], have = inputs.find(i => i.inputName === name);
     if (!on) { if (have) await call('RemoveInput', { inputName: name }); return { on: false, removed: !!have }; }
@@ -269,8 +272,10 @@ async function browserSource(name, on, mkSettings, pick = null, { noReload = fal
     for (const sc of target) {
       let id = await inScene(sc), fresh = false;
       if (id == null) { id = (await call('CreateSceneItem', { sceneName: sc, sourceName: name, sceneItemEnabled: true })).sceneItemId; added++; fresh = true; }
-      if (!fresh && have) continue; // (already in this scene: left how you have it)
-      await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: { positionX: 0, positionY: 0, alignment: 5, boundsType: 'OBS_BOUNDS_STRETCH', boundsAlignment: 0, boundsWidth: W, boundsHeight: H, rotation: 0 } }).catch(() => {});
+      if (!fresh && have) { /* (already in this scene: left how you have it… except (1.139.2) a source that now has its own small box and still sits stretched over the whole screen, untouched: that one gets the new box) */
+        if (place) { const t = (await call('GetSceneItemTransform', { sceneName: sc, sceneItemId: id }).catch(() => null))?.sceneItemTransform; if (t && t.boundsType === 'OBS_BOUNDS_STRETCH' && Math.abs(t.boundsWidth - W) < 2 && Math.abs(t.boundsHeight - H) < 2 && Math.abs(t.positionX) < 2 && Math.abs(t.positionY) < 2) await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: place(W, H) }).catch(() => {}); }
+        continue; }
+      await call('SetSceneItemTransform', { sceneName: sc, sceneItemId: id, sceneItemTransform: place ? place(W, H) : { positionX: 0, positionY: 0, alignment: 5, boundsType: 'OBS_BOUNDS_STRETCH', boundsAlignment: 0, boundsWidth: W, boundsHeight: H, rotation: 0 } }).catch(() => {});
       const n = ((await call('GetSceneItemList', { sceneName: sc })).sceneItems || []).length;
       await call('SetSceneItemIndex', { sceneName: sc, sceneItemId: id, sceneItemIndex: Math.max(0, n - 1) }).catch(() => {}); // on top of everything
       await call('SetSceneItemEnabled', { sceneName: sc, sceneItemId: id, sceneItemEnabled: true });

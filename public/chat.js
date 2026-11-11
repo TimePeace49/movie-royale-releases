@@ -5,7 +5,9 @@ window.ChatUI = (() => {
   const PAL = ['#ff7a7a', '#7ad0ff', '#9dff8a', '#ffd36b', '#d59bff', '#ff9ad5', '#6bffd3', '#ffb36b'];
   const colorFor = m => m.color || PAL[[...String(m.login || '')].reduce((a, c) => a + c.charCodeAt(0), 0) % PAL.length];
   async function load() { try { const r = await fetch('/api/chat/recent?n=1').then(r => r.json()); A = { badges: r.badges || {}, emotes: r.emotes || {} }; } catch {} return A; }
-  function setAssets(a) { A = { badges: a.badges || A.badges, emotes: a.emotes || A.emotes }; }
+  function setAssets(a) { A = { badges: a.badges || A.badges, emotes: a.emotes || A.emotes, both: a.both != null ? !!a.both : !!A.both }; }
+  /* 💜🟢 (1.139.2) which platform a chatter is on: a green K for Kick (always), a purple T for Twitch while both chats are being read */
+  function plat(m) { return m.kick ? '<span class="plat pk" title="Chatting on Kick">K</span>' : A.both ? '<span class="plat pt" title="Chatting on Twitch">T</span>' : ''; }
   const img = (src, alt, cls = 'emote') => `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}" title="${esc(alt)}" loading="lazy">`;
   function words(t) { return t.split(/(\s+)/).map(w => A.emotes[w] ? img(A.emotes[w], w) : esc(w)).join(''); }
   function text(t, emotes) { // Twitch emotes come as "id:start-end,start-end/id2:…" (by character)
@@ -19,7 +21,7 @@ window.ChatUI = (() => {
   function badges(list) { return String(list || '').split(',').filter(Boolean).map(b => A.badges[b] ? img(A.badges[b], b.split('/')[0], 'badge') : '').join(''); }
   function row(m, opts = {}) {
     const t = new Date(m.at || Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    return `<div class="cm${m.gone ? ' gone' : ''}" data-id="${esc(m.id || '')}" data-login="${esc(m.login || '')}">${opts.time !== false ? `<span class="ct">${t}</span>` : ''}${badges(m.badges)}<b class="cn" data-user="${esc(m.login || '')}" style="color:${esc(colorFor(m))}">${esc(m.name || m.login)}</b><span class="cx">: ${text(m.text, m.emotes)}</span>${m.gone ? `<i class="cg"> (${esc(m.gone)})</i>` : ''}${opts.tools ? `<span class="ctools"><button title="Profile" onclick="Profile.open('${esc(m.login)}')">👤</button><button title="Delete message" onclick="ChatUI.mod('delete','${esc(m.login)}','${esc(m.id || '')}')">🗑</button><button title="Timeout 10 minutes" onclick="ChatUI.mod('timeout','${esc(m.login)}')">⏱</button><button title="Ban" onclick="ChatUI.mod('ban','${esc(m.login)}')">🔨</button></span>` : ''}</div>`;
+    return `<div class="cm${m.gone ? ' gone' : ''}" data-id="${esc(m.id || '')}" data-login="${esc(m.login || '')}">${opts.time !== false ? `<span class="ct">${t}</span>` : ''}${plat(m)}${badges(m.badges)}<b class="cn" data-user="${esc(m.login || '')}" style="color:${esc(colorFor(m))}">${esc(m.name || m.login)}</b><span class="cx">: ${text(m.text, m.emotes)}</span>${m.gone ? `<i class="cg"> (${esc(m.gone)})</i>` : ''}${opts.tools ? `<span class="ctools"><button title="Profile" onclick="Profile.open('${esc(m.login)}')">👤</button><button title="Delete message" onclick="ChatUI.mod('delete','${esc(m.login)}','${esc(m.id || '')}')">🗑</button><button title="Timeout 10 minutes" onclick="ChatUI.mod('timeout','${esc(m.login)}')">⏱</button><button title="Ban" onclick="ChatUI.mod('ban','${esc(m.login)}')">🔨</button></span>` : ''}</div>`;
   }
   const ICON = { sub: '⭐', gift: '🎁', bits: '💎', raid: '🚀', follow: '💜', redeem: '🎟️', streak: '🔥', tip: '💵', announce: '📣' };
   function alertRow(a) { return `<div class="ca ca-${esc(a.kind)}"><span class="ct">${new Date(a.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span> ${ICON[a.kind] || '🔔'} <b data-user="${esc(a.login || '')}">${esc(a.name || '')}</b> ${text(a.text || '')}</div>`; }
@@ -32,7 +34,7 @@ window.ChatUI = (() => {
     if (r.error) alert('⚠️ ' + r.error);
   }
   const CSS = `.cm{padding:3px 6px;border-radius:6px;line-height:1.5;word-wrap:break-word;position:relative}.cm:hover{background:#ffffff0d}.cm.gone{opacity:.45}.cm.gone .cx{text-decoration:line-through}
-    .ct{color:#8f86a8;font-size:11px;margin-right:6px}.cn{cursor:pointer}.emote{height:26px;vertical-align:middle;margin:-4px 1px}.badge{height:16px;vertical-align:-2px;margin-right:3px}
+    .ct{color:#8f86a8;font-size:11px;margin-right:6px}.cn{cursor:pointer}.emote{height:26px;vertical-align:middle;margin:-4px 1px}.badge{height:16px;vertical-align:-2px;margin-right:3px}.plat{display:inline-block;width:16px;height:16px;line-height:16px;border-radius:4px;font:800 11px/16px Inter,Arial,sans-serif;text-align:center;margin-right:4px;vertical-align:-2px}.plat.pk{background:#53fc18;color:#06200a}.plat.pt{background:#9146ff;color:#fff}
     .ctools{display:none;position:absolute;right:4px;top:1px;background:#1b1230;border-radius:8px;padding:1px 3px}.cm:hover .ctools{display:inline-flex;gap:2px}.ctools button{background:none;border:0;cursor:pointer;font-size:14px;padding:2px 4px;color:#fff}
     .ca{padding:6px 8px;margin:3px 0;border-radius:8px;background:#ffffff0a;border-left:3px solid #9b4dff;font-size:14px}.ca-sub,.ca-gift{border-color:#ffc94a}.ca-bits{border-color:#4fc3ff}.ca-raid{border-color:#ff6a3d}.ca-tip{border-color:#5ce1a7}.ca-follow{border-color:#d59bff}`;
   return { load, setAssets, row, alertRow, text, mod, CSS, colorFor, esc };

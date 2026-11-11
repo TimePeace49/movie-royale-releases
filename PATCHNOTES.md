@@ -4,6 +4,12 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.139.2: What's new
+- {kick} 💜🟢 Twitch and Kick chat together: pick **Both at once** in Settings → Twitch → Kick. The Chat tab shows both chats with a purple T or green K next to each name, commands work from both, and the bot answers in both.
+- {kick} 🔒 The Kick choices unlock once you're signed in with Kick.
+- {movienight} 📐 The movie night leaderboard in OBS is now just the board: move it and drag it to any size and it keeps its shape.
+- {movienight} 🗳️ Fixed the pretend vote tests not popping up after a few tries.
+
 ## v1.139.1: What's new
 - {movienight} 🚲 The movie night timer now ends with a bicycle bell. You can switch back to the old alarm clock or use your own sound file (next to the bell's volume).
 

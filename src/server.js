@@ -1147,7 +1147,7 @@ const twitchHandlers = {
   raidOut(t) { try { raids.note(t); } catch (e) { console.error('[raid tab]', e.message); } }, // 🚀 you raided someone (Twitch says so, also for /raid typed by hand)
   async chat(m) {
     if (m.self) return; // 🤖 Movie Royal's own chat bot talking: not a viewer
-    if (!m.pretend && kick.on() !== !!m.kick) return; // 🟢 the platform switch: only chat from the platform you picked counts
+    if (!m.pretend && !kick.both() && kick.on() !== !!m.kick) return; // 🟢 the platform switch: only chat from the platform you picked counts (💜🟢 both: everyone counts)
     if (!m.kick && spamCheck(m)) return; // 🛡️ a spam bot selling viewers / followers / art: banned, nothing else looks at it
     try { chatlog.onChat(m); } catch (e) { console.error('[chatlog]', e.message); }
     const newFace = !live.chatLog.some(x => x.login === m.login && Date.now() - x.at < 5 * 60000);
@@ -1464,11 +1464,11 @@ app.post('/api/twitch-bot/test', async (req, res) => { try { await twitch.say(`�
 // ---------- 🟢 Kick (1.90.0, dev mode only): chat from / to Kick, one switch ----------
 kick.setHooks({ redeem: r => { if (r.key === 'egg' && feat('eggs')) eggs.buy({ login: r.login, name: r.name, kick: true }); }, /* 🟢🥚 Kick channel points: Buy an egg (never accepted / rejected / refunded by the app) */ dev: () => feat('kick'), /* 🟢 True's edition has Kick (he streams on both); Derek's with dev mode on */ chat: m => twitchHandlers.chat(m), live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
   getPage: async url => { const g = globalThis.__desktop?.getPage; if (!g) return ''; const r = await g(url); return r?.text || ''; } });
-twitch.route.on = () => kick.on(); twitch.route.say = t => kick.say(t); twitch.route.canSay = () => kick.canSay();
+twitch.route.on = () => kick.on(); twitch.route.both = () => kick.both(); twitch.route.say = t => kick.say(t); twitch.route.canSay = () => kick.canSay();
 setTimeout(() => kick.start(), 4000);
 const kickDev = (req, res) => { if (feat('kick')) return true; res.status(400).json({ error: 'Kick is not part of this edition.' }); return false; };
 app.get('/api/kick', (req, res) => res.json({ ...kick.info(), redirect: kick.redirectUri(PORT) }));
-app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(); let r; try { r = kick.setCfg(req.body || {}); } catch (e) { return res.status(400).json({ error: e.message }); } if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
+app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(), wasB = kick.both(); let r; try { r = kick.setCfg(req.body || {}); } catch (e) { return res.status(400).json({ error: e.message }); } if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); if (wasB !== kick.both()) broadcast({ type: 'chatBoth', both: kick.both() }, 'chatview'); if (wasB !== kick.both()) act('stream', kick.both() ? 'Both chats on: Twitch 💜 + Kick 🟢' : `Both chats off: back to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'} only`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
 app.get('/auth/kick', (req, res) => { try { if (!feat('kick')) throw new Error('Kick is not part of this edition.'); res.redirect(kick.authUrl(PORT)); } catch (e) { res.status(400).send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>🟢 Kick sign-in</h2><p>${hEsc(e.message)}</p><p>Close this tab and go back to Movie Royal.</p></body>`); } });
 app.get('/kick/callback', async (req, res) => {
   const page = (ok, msg) => res.send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>${ok ? '✅ Signed in with Kick' : '⚠️ Kick sign-in did not work'}</h2><p>${hEsc(msg)}</p><p>You can close this tab and go back to Movie Royal.</p></body>`);
@@ -1478,6 +1478,13 @@ app.get('/kick/callback', async (req, res) => {
 app.post('/api/kick/signout', (req, res) => { kick.signOut(); res.json({ ok: true }); });
 app.post('/api/kick/say-test', async (req, res) => { if (!kickDev(req, res)) return; try { await kick.say('🟢 Movie Royal is connected to this Kick chat!'); res.json({ ok: true }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 🧪 a pretend Kick chat message, read the same way a real one is (replies show in the pretend chat window)
+app.post('/api/test/both-chats', async (req, res) => { /* 🧪 (1.139.2) a pretend Twitch viewer and a pretend Kick viewer chat: both lines land in the chat log, the Kick one marked */
+  twitch.pretend.until = Date.now() + 10 * 60000; const t = Date.now();
+  await twitchHandlers.chat({ login: 'pretend_twitchy', name: 'Pretend_Twitchy', text: 'hello from Twitch!', userId: 'p-tw', badges: {}, pretend: true, id: 'tw' + t });
+  await twitchHandlers.chat({ ...kick.toChat({ id: 'kk' + t, content: 'hello from Kick!', sender: { id: 4243, username: 'Pretend_Kicky', slug: 'pretend_kicky', identity: { color: '#53fc18', badges: [] } } }), pretend: true });
+  const rec = chatlog.getRecent(20), a = rec.find(x => x.id === 'tw' + t), b = rec.find(x => x.id === 'kk' + t), rows = [{ what: 'The Twitch viewer\'s message is in the chat', ok: !!a && !a.kick }, { what: 'The Kick viewer\'s message is in the chat, marked as Kick', ok: !!b && !!b.kick }];
+  res.json({ ok: rows.every(x => x.ok), rows, both: kick.both() });
+});
 app.post('/api/test/kick-chat', (req, res) => {
   const b = req.body || {}, role = String(b.role || '');
   const m = kick.toChat({ id: 'test' + Date.now(), content: String(b.text || '!hello'), sender: { id: 4242, username: String(b.name || 'KickViewer'), slug: String(b.name || 'KickViewer').toLowerCase(), identity: { color: '#53fc18', badges: role ? [{ type: role, text: role }] : [] } } });
@@ -1963,7 +1970,7 @@ async function mnObsSource(on, scenes) {
   if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
   if (on && Array.isArray(scenes)) { if (!scenes.length) throw new Error('Pick at least one OBS scene for it.'); db.settings.mnScenes = scenes.map(String).slice(0, 200); }
   const pick = Array.isArray(db.settings.mnScenes) && db.settings.mnScenes.length ? db.settings.mnScenes : null;
-  const r = await obs.mnSource(!!on, mnUrl(), pick);
+  const mo = movienight.opts(), r = await obs.mnSource(!!on, mnUrl(), pick, { side: mo.side, at: mo.at });
   db.settings.mnObs = !!on; save(); pushState(); return r;
 }
 app.post('/api/obs/mn-source', async (req, res) => { try { res.json({ ok: true, url: mnUrl(), ...(await mnObsSource(!!req.body?.on, req.body?.scenes)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
@@ -2142,7 +2149,7 @@ app.get('/api/chat/recent', async (req, res) => {
   const emotes = await chatlog.thirdPartyEmotes(twitch.broadcasterId()).catch(() => ({}));
   const sc = twitch.status.scopes || [];
   res.json({ messages: chatlog.getRecent(Number(req.query.n) || 400), alerts: chatlog.getAlerts(150), badges: badgeCache.map, emotes, channel: twitch.status.login || db.settings.twitchChannel || '',
-    canChat: !!twitch.status.canChat, canMod: sc.includes('moderator:manage:banned_users'), canDelete: sc.includes('moderator:manage:chat_messages'), canWatch: sc.includes('moderator:read:chatters') });
+    canChat: !!twitch.status.canChat, canMod: sc.includes('moderator:manage:banned_users'), canDelete: sc.includes('moderator:manage:chat_messages'), canWatch: sc.includes('moderator:read:chatters'), both: kick.both(), kick: kick.on() });
 });
 app.get('/api/chat/search', (req, res) => res.json(chatlog.search({ q: req.query.q, login: req.query.login, days: Math.min(365, Number(req.query.days) || 30) })));
 app.get('/api/chat/names', (req, res) => res.json(chatlog.names(String(req.query.q || ''))));
@@ -5370,6 +5377,7 @@ app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote 
   const names = ['pretend_ana', 'pretend_bo', 'pretend_cy', 'pretend_raider', 'pretend_dee'], who = b.name || names[Math.floor(Math.random() * names.length)], n = b.n || 1 + Math.floor(Math.random() * d.movies.length);
   twitch.pretend.until = Date.now() + 600000;
   if (b.action === 'timer') { const secs = Math.max(5, Math.min(60, Number(b.secs) || 12)), o = movienight.opts(); mnTimer({ endsAt: Date.now() + secs * 1000, pop: true, test: true }); setTimeout(() => mnTimer({ endsAt: 0, done: true, bell: o.bell !== false, vol: o.bellVol, pop: true, test: true }), secs * 1000); return { ok: true, secs }; } /* 🧪 a short pretend countdown: nothing is said in chat, voting isn't touched */
+  for (const nm of b.action === 'three' ? names.slice(0, 3) : [who]) if (/^pretend_/.test(nm)) delete d.votes[nm]; /* (1.139.2: a pretend voter who already used their vote + change got no pop-up; each test starts them fresh) */
   if (b.action === 'three') { const said = ['', 'this one has to win!!', 'ok fine, changing my mind']; for (let i = 0; i < 3; i++) await twitchHandlers.chat({ login: names[i], name: names[i], text: `${movienight.opts().command} ${1 + ((n - 1 + i) % d.movies.length)} ${said[i]}`.trim(), badges: {}, pretend: true, userId: 'p-' + names[i] }); return { who: names.slice(0, 3).join(', '), n }; } // (three pop-ups, shown one after another in the order they voted)
   await twitchHandlers.chat({ login: who, name: who, text: `${movienight.opts().command} ${n}`, badges: {}, pretend: true, userId: 'p-' + who });
   return { who, n };

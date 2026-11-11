@@ -81,7 +81,7 @@ export function onChat(m, opts = {}) {
   if (!opts.imported || t >= (v.badgesAt || 0)) { v.sub = !!m.badges?.sub; v.mod = !!m.badges?.mod; v.vip = !!m.badges?.vip; v.badgesAt = t; }
   if (!v.first || t < v.first) v.first = t;
   }
-  const msg = { id: m.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: m.at || Date.now(), login: m.login, name: m.name, text: m.text, color: m.color || null, emotes: m.emotes || '', badges: m.badgeList || '', ...(opts.imported ? { offline: 1 } : {}) };
+  const msg = { id: m.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: m.at || Date.now(), login: m.login, name: m.name, text: m.text, color: m.color || null, emotes: m.emotes || '', badges: m.badgeList || '', ...(m.kick ? { kick: 1 } : {}), ...(opts.imported ? { offline: 1 } : {}) };
   if (!opts.imported) { recent.push(msg); if (recent.length > MAX) recent.splice(0, recent.length - MAX); }
   try { fs.appendFileSync(path.join(DIR, day(msg.at) + '.jsonl'), JSON.stringify(msg) + '\n'); } catch {}
   if (!opts.imported) { hooks.send({ type: 'chatmsg', msg }); markWatched(m.login, m.name, liveKey()); }

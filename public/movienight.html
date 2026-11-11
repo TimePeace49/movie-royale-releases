@@ -23,6 +23,8 @@
   #big { display: none; position: fixed; left: 50%; top: 26px; transform: translateX(-50%); z-index: 50; text-align: center; padding: 14px 34px 12px; border-radius: 22px; background: rgba(8, 10, 22, .9); border: 3px solid #fff36b; box-shadow: 0 0 30px rgba(255, 243, 107, .35); font-family: Bungee, Consolas, monospace; color: #fff36b; } #big.on { display: block; animation: bigIn .5s cubic-bezier(.2, 1.4, .4, 1); } #big .bl { font-size: 26px; letter-spacing: 2px; } #big .bt { font-size: 112px; line-height: 1; color: #fff; text-shadow: 0 0 18px rgba(255, 243, 107, .7); font-variant-numeric: tabular-nums; } #big .bs { font-size: 17px; color: #9fe8c9; margin-top: 4px; } #big.hot { border-color: #ff6b6b; color: #ff6b6b; box-shadow: 0 0 34px rgba(255, 107, 107, .5); } #big.hot .bt { animation: blink 1s steps(2) infinite; } #big.done { border-color: #ff6b6b; animation: shake .09s linear infinite; } #big.done .bt { font-size: 76px; color: #ffd0d0; } @keyframes bigIn { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } } @keyframes shake { 0% { margin-left: -5px; } 50% { margin-left: 5px; } 100% { margin-left: -5px; } }
   #clock { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(64, 255, 170, .45); text-align: center; font-family: Bungee, Consolas, monospace; font-size: 19px; color: #fff36b; } #clock.on { display: block; } #clock.hot { color: #ff6b6b; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: .35; } }
+  /* 📐 (1.139.2) a small source (just the board): the board hugs the corner and is scaled to fill the source, so any size you give it in OBS looks right */
+  body.fit #box { right: 6px; top: 6px; } body.fit.left #box { right: auto; left: 6px; } body.fit.bottom #box { top: auto; bottom: 6px; } body.fit #big { top: 8px; }
   #foot { white-space: pre-line; line-height: 1.45; margin-top: 5px; font-size: 12px; color: #7fe6c0; opacity: .85; text-align: center; letter-spacing: 1px; }
 </style></head>
 <body>
@@ -64,8 +66,16 @@ function draw() {
     SLOT.set(k, i); VOTES.set(k, m.votes); });
   for (const [k, el] of EL) if (!live.has(k)) { el.remove(); EL.delete(k); SLOT.delete(k); VOTES.delete(k); }
   $('foot').textContent = s.closed ? (s.leaders && s.leaders.length ? '★ WINNER: ' + s.leaders.join(' / ').toUpperCase() + ' ★' : 'VOTING IS CLOSED') : s.open ? `TYPE ${String(s.command || '!vote').toUpperCase()} + MOVIE NUMBER + ANYTHING YOU WANT TO SAY\nLIKE: ${String(s.command || '!vote').toUpperCase()} 1 I LOVE THIS MOVIE` : '';
-  tick();
+  tick(); fit();
 }
+/* 📐 (1.139.2, Derek: resizable in OBS) when the page is smaller than a whole stream screen it is "just the board": scaled to fill the width (and never taller than the page). A full-screen-size source stays as it was. */
+function fit() {
+  const box = $('box'), big = $('big'), small = innerWidth < 1100 && Q.get('fit') !== '0'; document.body.classList.toggle('fit', small);
+  if (!small) { if (box.style.zoom) box.style.zoom = ''; if (big.style.zoom) big.style.zoom = ''; return; }
+  const was = box.style.zoom; box.style.zoom = '1'; const w = box.offsetWidth + 12, h = box.offsetHeight + 12; const z = Math.max(.15, Math.min(innerWidth / w, innerHeight / h, 4));
+  const zs = String(Math.round(z * 1000) / 1000); box.style.zoom = zs; big.style.zoom = String(Math.round(Math.min(1, innerWidth / 600) * 1000) / 1000); window.__fit = { z: Number(zs), w, h, was };
+}
+addEventListener('resize', fit); setInterval(fit, 1000);
 /* ⏳ (1.132.6) the last-call timer: a big pop-up on stream; at 0 an old alarm clock rings and it says TIME'S UP */
 let TM = { test: 0, done: 0, hide: false };
 function timerMsg(m) { if (m.test) TM.test = m.endsAt || 0; if (m.done) { TM.test = 0; TM.done = Date.now() + 6500; if (m.bell && window.timerBell) window.timerBell(m, 4.5); } else TM.done = 0; TM.hide = m.pop === false; tick(); }

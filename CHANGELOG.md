@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.139.2
+- 💜🟢 **Twitch and Kick chat together** (editions with Kick). Settings → Twitch → Kick has a third choice: **💜🟢 Both at once**, for streaming on both. The Chat tab then shows both chats in one list with a purple **T** or a green **K** next to each name, chat commands work from both, and the bot answers in both chats. Twitch stays in charge of going live, clips, raids and channel points. Test tab → Kick → 💜🟢 Both chats shows it with two pretend viewers.
+- 🔒 **Kick unlocks when you sign in.** The 🟢 Kick and 💜🟢 Both choices are locked until you're signed in with Kick. Editions without Kick don't show any Kick sign-in at all (same as before).
+- 📐 **Movie night leaderboard: easy to move and resize in OBS.** The OBS source is now just the board (not a see-through layer over the whole screen), it keeps its shape when you drag it bigger or smaller, and the board scales itself to whatever size you give it. A source that was added before and never moved is switched to the new box by itself (🔄 Check OBS now does it right away); one you already moved is left alone.
+- 🗳️ **Fix: the pretend vote tests always pop up.** After a few tries the pretend voters had used their vote and their change, so nothing popped up any more. Each test now starts them fresh.
+- 🙋 **Fix:** the "who asked" name suggestions test no longer opens the battle preview window.
+
 ## 1.139.1
 - 🚲 **Bicycle bell for the movie night timer.** When the last-call timer runs out it now rings a bicycle bell (the new default) instead of the alarm clock. Next to the bell's volume (Movie night tab, and Settings → 🍿 Movie night) there is a menu: 🚲 Bicycle bell / ⏰ Old alarm clock, a 🔊 Hear it button, and 🎵 Use my own sound file. Test tab → Movie night → 🚲 Timer sound checks it.
 
