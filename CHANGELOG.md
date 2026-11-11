@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.136.0
+- 🧭 The Setup guide now has steps for movie night (they show in editions that have it, like Birx & Jess's):
+  - 🎬 Movie look-up keys: how to get the free TMDB key (and the OMDb one, if the shared one isn't enough), with Save & test.
+  - 📋 IMDb watchlist & ratings: paste the two IMDb links (or use IMDb's Export files) and read them right there.
+  - 🍿 Movie night on stream: adds the vote board to OBS, with a preview.
+  They pop up once as 🆕 new steps when the app opens.
+- 🔗 Settings → Connections has the same things for adding or fixing later: 🎬 Movie look-up (TMDB) and 🍅 Ratings + posters (OMDb) with a paste-my-key button each, and 📋 IMDb watchlist + ratings, which opens History → Watchlist.
+- 🍿 Movie night voting can be switched off on its own: the tick box at the top of the Movie night tab. Off = no vote command, no first-in-chat announcement, no vote board on stream, no pinned list. The watchlist keeps working: chat can still suggest movies and ask for ratings.
+
 ## 1.135.0
 - 🔎 Help me pick now looks things up online first, so actor, director and subject searches work right away instead of waiting for every watchlist movie's details to come in. Type a name and it fetches that person's films; type a subject (sharks, heist, vampire) and it fetches movies tagged with it. Then it shows which of those are on your watchlist. A line above the results says what was looked up ("🎭 Kurt Russell: 3 on your watchlist"), and each movie says how it was found. It uses the movie database (TMDB), which needs the free TMDB key; without it the search works the old way and offers to add the key.
 

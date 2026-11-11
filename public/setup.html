@@ -81,7 +81,7 @@ async function api(url, body, method = 'POST') {
 const copyBox = v => `<div class="copy"><input readonly value="${esc(v)}" onclick="this.select()"><button onclick="navigator.clipboard.writeText(${esc(JSON.stringify(v))});this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button></div>`;
 const link = (url, text) => `<a href="${esc(url)}" target="_blank">${text} ↗</a>`;
 
-let STEPS = [];
+let STEPS = [], WLS = null; /* WLS = the movie watchlist's state (for the IMDb step) */
 const ALL_STEPS = [
   { id: 'twitch', title: 'Sign in with Twitch', sub: 'Your account, chat & !join', done: () => !!S.owner && !(A.twitchMissing || []).length },
   { id: 'chatbot', title: 'Chat bot account', sub: 'Talk in chat as a bot (optional)', done: () => !!S.chatBot },
@@ -93,9 +93,12 @@ const ALL_STEPS = [
   { id: 'cloud', title: '24/7 Discord bot', sub: 'Picks while your PC is off', done: () => !!S.cloud?.enabled },
   { id: 'backup', title: 'Backup bots', sub: 'Keeps Discord answering (optional)', done: () => !!(S.backup?.watching || S.backup?.active) },
   { id: 'chars', title: 'Characters', sub: 'People instead of balls, !id, /character', done: () => !!(S.settings.featAsk?.ids && S.settings.featAsk?.looks) },
+  { id: 'mnkeys', feat: 'movienight', title: 'Movie look-up keys', sub: 'Movie names, posters, ratings, Help me pick', done: () => !!S.settings.tmdbKey && (!!S.settings.omdbKey || !!S.omdb?.via) },
+  { id: 'imdb', feat: 'movienight', title: 'IMDb watchlist & ratings', sub: '!suggest, !rating, Help me pick', done: () => !!(WLS && (WLS.counts.list || WLS.counts.rated || WLS.opts.listUrl || WLS.opts.ratedUrl)) },
   { id: 'donations', title: 'Donations', sub: 'Tips pop up for the wheel', done: () => !!(S.settings.seJwt || S.settings.slToken) },
   { id: 'stream', title: 'Put it on stream', sub: 'OBS window + sound', done: () => !!S.settings.streamSetup },
   { id: 'obs', title: 'OBS control', sub: 'Doomsday, capture window, confetti', done: () => !!(S.settings.obsMic || S.settings.obsCam) },
+  { id: 'mnobs', feat: 'movienight', title: 'Movie night on stream', sub: 'The vote board + timer in OBS', done: () => !!S.settings.mnObs },
   { id: 'choice', title: 'Viewer\'s Choice in OBS', sub: 'Confetti on stream', done: () => !!S.choiceObs },
   { id: 'rollcall', title: 'Roll call in OBS', sub: 'Roll call in any scene (optional)', done: () => !!S.settings.rollObs },
   { id: 'botimport', title: 'Bring everything over from Streamlabs Chatbot', sub: 'Commands, sound alerts, timers, quotes', done: () => (S.botCount || 0) > 0 },
@@ -106,7 +109,8 @@ const ALL_STEPS = [
 async function load() {
   [S, A] = await Promise.all([fetch('/api/state').then(r => r.json()), fetch('/api/app').then(r => r.json())]);
   const edOffs = A.edition?.off || [], noMovies = edOffs.includes('movies'); document.body.classList.toggle('noVoidSetup', edOffs.includes('voidSetup'));
-  STEPS = ALL_STEPS.filter(x => !edOffs.includes('guide:' + x.id) && (!x.dev || S.settings?.betaUpdates) && !(noMovies && ['tmdb', 'omdb', 'letterboxd', 'discord', 'cloud', 'backup'].includes(x.id))); // 🛠️ dev mode steps (🌐 viewer website) only in dev mode
+  const feats = S.edition?.on || A.edition?.on || []; if (feats.includes('movienight')) { try { WLS = await fetch('/api/watchlist').then(r => r.json()); if (!WLS.on) WLS = null; } catch { WLS = null; } }
+  STEPS = ALL_STEPS.filter(x => !edOffs.includes('guide:' + x.id) && (!x.feat || feats.includes(x.feat)) && (!x.dev || S.settings?.betaUpdates) && !(noMovies && ['tmdb', 'omdb', 'letterboxd', 'discord', 'cloud', 'backup'].includes(x.id))); // 🛠️ dev mode steps (🌐 viewer website) only in dev mode
   if (step && !STEPS.some(x => x.id === step)) step = null;
   if (!NEW_IDS) NEW_IDS = new Set(S.settings.setupSeen ? A.guideNew || [] : []); // 🆕 = added to the guide since you last opened it (remembered for this visit)
   if (!S.settings.setupSeen) api('/api/settings', { setupSeen: true }).catch(() => {});
@@ -236,6 +240,68 @@ const PAGES = {
     </ol>
     ${note('tmdb')}
     <button class="primary big" onclick="testTmdb(this)">Save &amp; test</button>
+    ${nav()}`;
+  },
+  mnkeys() { /* 🎬 (1.136.0) editions with movie night but no movie battles: the two free keys, on one page */
+    const om = S.settings.omdbKey ? 'own' : S.omdb?.via === 'shared' ? 'shared' : '';
+    return `<h2>🎬 Movie look-up keys</h2><p class="why">Two free movie databases make movie night smarter. <b>TMDB</b> finishes movie names as you type, finds the right movie when chat suggests one, and powers 🎲 Help me pick (an actor, a director, a subject). <b>OMDb</b> gives the IMDb and Rotten Tomatoes ratings and the posters on the vote board. The keys stay on this PC.</p>
+    <h3>1. TMDB ${S.settings.tmdbKey ? '<span style="color:#7ee787">✅ saved</span>' : ''}</h3>
+    <ol class="steps">
+      <li>Make a free account at ${link('https://www.themoviedb.org/signup', 'themoviedb.org/signup')} and confirm the email they send you.</li>
+      <li>Go to ${link('https://www.themoviedb.org/settings/api', 'Settings → API')} and click <b>Create</b> (or "click here" under Request an API Key). Choose <b>Developer</b> and accept the terms.</li>
+      <li>Fill in the form: <b>Type of use:</b> Personal · <b>Application name:</b> Movie Royal · <b>URL:</b> <code>http://localhost</code> · <b>Summary:</b> "Picking movies with my stream". Submit.</li>
+      <li>Copy the long <b>API Read Access Token</b> (starts with <code>eyJ</code>) and paste it here:<div class="field"><input id="tmdb" placeholder="${S.settings.tmdbKey ? 'Saved ' + esc(S.settings.tmdbKey) + ' — paste a new one to replace it' : 'eyJ…'}" autocomplete="off"></div></li>
+    </ol>
+    ${note('tmdb')}
+    <button class="primary big" onclick="testTmdb(this)">Save &amp; test TMDB</button>
+    <h3 style="margin-top:22px">2. OMDb ${om ? `<span style="color:#7ee787">✅ ${om === 'shared' ? 'works already (the shared key)' : 'saved'}</span>` : ''}</h3>
+    ${om === 'shared' ? '<p class="why">Nothing to do: ratings and posters already work with the shared key. Only add your own if you want to.</p>' : ''}
+    <ol class="steps">
+      <li>Go to ${link('https://www.omdbapi.com/apikey.aspx', 'omdbapi.com/apikey.aspx')}, choose <b>FREE</b>, fill in your email and name. Press <b>Submit</b>.</li>
+      <li>Open the email from OMDb and <b>click the activation link</b> in it.</li>
+      <li>Paste the key from that email here:<div class="field"><input id="omdb" placeholder="${S.settings.omdbKey ? 'Saved ' + esc(S.settings.omdbKey) + ' — paste a new one to replace it' : 'e.g. a1b2c3d4'}" autocomplete="off"></div></li>
+    </ol>
+    ${note('omdb')}
+    <button class="${om ? '' : 'primary'} big" onclick="testOmdbKey(this)">Save &amp; test OMDb</button>
+    <p class="help">Later: Settings → 🔗 Connections has both keys (🎬 Movie look-up and 🍅 Ratings), to add or fix them.</p>
+    ${nav()}`;
+  },
+  imdb() {
+    const o = WLS?.opts || {}, c = WLS?.counts || { list: 0, rated: 0, waiting: 0 }, sy = WLS?.sync;
+    return `<h2>📋 Your IMDb watchlist &amp; ratings</h2><p class="why">Bring in the movies you want to watch and the ones you already rated. Then chat can suggest movies with <code>${esc(o.command || '!suggest')}</code> (anything already on your watchlist or already rated is refused), ask what you rated a movie with <code>${esc(o.rateCommand || '!rating')}</code>, and 🎲 Help me pick can search your watchlist on movie night.</p>
+    ${status(!!(c.list || c.rated), `${c.list} movie${c.list === 1 ? '' : 's'} on the watchlist, ${c.rated} rated.`)}
+    <h3>Easy way: paste the two links</h3>
+    <ol class="steps">
+      <li>On IMDb, make both pages public: ${link('https://www.imdb.com/registration/accountsettings/', 'Account settings')} → <b>Privacy</b> → turn off "private" for your <b>watchlist</b> and your <b>ratings</b>.</li>
+      <li>Open ${link('https://www.imdb.com/list/watchlist', 'Your Watchlist')} on IMDb, copy the address from the top of your browser, and paste it here:<div class="field"><input id="wlUrl1" value="${esc(o.listUrl || '')}" placeholder="https://www.imdb.com/user/ur…/watchlist" autocomplete="off"></div></li>
+      <li>Open ${link('https://www.imdb.com/list/ratings', 'Your Ratings')}, copy its address, and paste it here:<div class="field"><input id="wlUrl2" value="${esc(o.ratedUrl || '')}" placeholder="https://www.imdb.com/user/ur…/ratings" autocomplete="off"></div></li>
+      <li>Press <b>Save &amp; read IMDb</b>. The app reads both again every time it opens.</li>
+    </ol>
+    ${note('imdb')}
+    <button class="primary big" onclick="imdbLinks(this)">Save &amp; read IMDb</button>
+    ${sy ? `<p class="help">Last read: ${[['list', 'watchlist'], ['rated', 'ratings']].filter(([k]) => sy[k]).map(([k, n]) => sy[k].err ? `⚠️ ${n}: ${esc(sy[k].err)}` : `✅ ${n}: ${sy[k].n} read`).join(' · ')}</p>` : ''}
+    <h3 style="margin-top:22px">If IMDb refuses the app: use its Export files</h3>
+    <ol class="steps">
+      <li>On Your Watchlist (and on Your Ratings) press <b>Export</b>. IMDb makes a file; download it from ${link('https://www.imdb.com/exports/', 'imdb.com/exports')}.</li>
+      <li>Pick the file here: <button onclick="$('wlF1').click()">📥 Watchlist file</button> <button onclick="$('wlF2').click()">⭐ Ratings file</button><input id="wlF1" type="file" accept=".csv,.txt" style="display:none" onchange="imdbFile(this.files[0],'watch');this.value=''"><input id="wlF2" type="file" accept=".csv,.txt" style="display:none" onchange="imdbFile(this.files[0],'rated');this.value=''"></li>
+    </ol>
+    <p class="help">Later: Movie Royal → 📜 History → 📋 Watchlist has all of this (links, files, the suggestions chat made), and Settings → 🔗 Connections points there.</p>
+    ${nav()}`;
+  },
+  mnobs() {
+    const url = `${location.protocol}//${location.host}/movienight.html`;
+    return `<h2>🍿 Movie night on stream</h2><p class="why">The vote board shows tonight's movies climbing as chat votes, with the big ⏳ last-call timer and the alarm bell when time is up. It's see-through until a movie night is on.</p>
+    ${status(!!S.settings.mnObs, "It's in OBS.")}
+    ${note('mnobs')}
+    <h3>Easy way: Movie Royal adds it</h3>
+    <p class="help">Needs the <b>OBS control</b> step done, with OBS open. It goes into the scene that's on screen right now; pick other scenes later on the Movie night tab (🎥).</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary big" onclick="mnObsSetup(this)">${S.settings.mnObs ? '🔄 Add it again' : '🍿 Add it to my OBS'}</button><button onclick="window.open('/movienight.html?demo=1&timer=20','_blank','width=960,height=560')">👀 Preview</button></div>
+    <h3 style="margin-top:22px">Or add it by hand</h3>
+    <ol class="steps">
+      <li>In OBS, pick the scene, then <b>Sources → + → Browser</b>. Name it <b>Movie night</b>.</li>
+      <li>URL: ${copyBox(url)} Width <b>1920</b>, Height <b>1080</b> (the size of your canvas), so the timer sits at the top middle.</li>
+      <li>Leave "Control audio via OBS" off unless you want the alarm bell on its own mixer strip.</li>
+    </ol>
     ${nav()}`;
   },
   donations() {
@@ -517,6 +583,13 @@ async function charAns(k, yes) {
   catch (e) { msg.ch = { ok: false, text: esc(e.message) }; }
   await load();
 }
+async function imdbLinks(btn) { btn.disabled = true; btn.textContent = 'Reading IMDb… (up to a minute)';
+  try { await api('/api/watchlist/opts', { listUrl: $('wlUrl1').value.trim(), ratedUrl: $('wlUrl2').value.trim() }); const r = await api('/api/watchlist/sync', {}), s = r.sync || {}, bad = [s.list, s.rated].filter(x => x && x.err);
+    msg.imdb = bad.length ? { ok: false, text: 'The links are saved, but IMDb could not be read: ' + esc(bad[0].err) + '. Check that both pages are public, or use the Export files below.' } : { ok: true, text: `Read from IMDb: ${s.list ? s.list.n + ' on the watchlist' : ''}${s.list && s.rated ? ', ' : ''}${s.rated ? s.rated.n + ' ratings' : ''}.` }; }
+  catch (e) { msg.imdb = { ok: false, text: esc(e.message) }; }
+  await load(); }
+async function imdbFile(file, kind) { if (!file) return; try { const r = await api('/api/watchlist/import', { text: await file.text(), kind }); msg.imdb = { ok: true, text: kind === 'rated' ? `${r.result.added} rating${r.result.added === 1 ? '' : 's'} brought in.` : `${r.result.added} movie${r.result.added === 1 ? '' : 's'} added to the watchlist.` }; } catch (e) { msg.imdb = { ok: false, text: esc(e.message) }; } await load(); }
+async function mnObsSetup(btn) { btn.disabled = true; btn.textContent = 'Adding…'; try { await api('/api/obs/mn-source', { on: true }); msg.mnobs = { ok: true, text: 'Added to OBS.' }; } catch (e) { msg.mnobs = { ok: false, text: esc(e.message) }; } await load(); }
 async function testTmdb(btn) {
   const k = $('tmdb').value.trim();
   if (!k && !S.settings.tmdbKey) { msg.tmdb = { ok: false, text: 'Paste your API Read Access Token first.' }; return render(); }

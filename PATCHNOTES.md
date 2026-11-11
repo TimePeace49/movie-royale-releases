@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.136.0: What's new
+- {movienight} 🧭 The Setup guide has new steps for movie night: the free movie look-up keys, your IMDb watchlist and ratings, and putting the vote board in OBS. Settings → Connections has the same things for adding or fixing them later.
+- {movienight} 🍿 Movie night voting can be switched off on its own (top of the Movie night tab); chat can still suggest movies and ask for ratings.
+
 ## v1.135.0: What's new
 - {movienight} 🔎 Help me pick looks actors, directors and subjects up online first and matches them against your watchlist, so those searches work right away (needs the free TMDB key).
 

@@ -10,6 +10,8 @@ import { is } from './edition.js';
 const H = { say: async () => {}, pin: async () => null, act: () => {}, send: () => {}, on: () => false, isBot: () => false, me: () => '', info: async () => null, note: () => {}, rating: async () => null };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
+/** 🍿 (1.136.0, Derek: "turn off movie night but still do the suggestion thing") voting can be switched off on its own: no !vote, no first-in-chat, no vote board, no pin. The watchlist (!suggest / !rating) keeps working. */
+export const live = () => on() && (db.movieNight?.opts || {}).enabled !== false;
 
 export function data(d = (db.movieNight ||= {})) {
   d.movies ||= []; d.votes ||= {}; d.raiders ||= []; d.extra ||= {}; d.birthdays ||= {}; d.guesses ||= [];
@@ -74,7 +76,7 @@ export function state() {
   const right = d.guesses.filter(g => g.right === true).length, wrong = d.guesses.filter(g => g.right === false).length;
   return {
     byNames: [...new Set((d.past || []).flatMap(n => (n.movies || []).map(m => String(m.by || '').trim())).filter(Boolean))].slice(0, 200), /* 🙋 names typed as "who asked" on earlier nights (for the suggestions) */
-    on: on(), open: !!d.open, openedAt: d.openedAt || 0, endsAt: d.open ? d.endsAt || 0 : 0, movies: d.movies, tally: tally(d).map(t => ({ ...t, right: d.guesses.filter(g => g.movie === t.id && g.right === true).length, wrong: d.guesses.filter(g => g.movie === t.id && g.right === false).length })), leaders: leaders(d).map(x => x.title), total: Object.values(d.votes).reduce((a, v) => a + v.list.length, 0),
+    on: on(), enabled: live(), open: !!d.open, openedAt: d.openedAt || 0, endsAt: d.open ? d.endsAt || 0 : 0, movies: d.movies, tally: tally(d).map(t => ({ ...t, right: d.guesses.filter(g => g.movie === t.id && g.right === true).length, wrong: d.guesses.filter(g => g.movie === t.id && g.right === false).length })), leaders: leaders(d).map(x => x.title), total: Object.values(d.votes).reduce((a, v) => a + v.list.length, 0),
     voters: Object.entries(d.votes).map(([login, v]) => ({ login, name: v.name, changes: v.changes, allowed: votesAllowed(login, d, now), why: bonusWhy(login, d, now), picks: v.list.map(x => ({ n: d.movies.findIndex(m => m.id === x.movie) + 1, title: d.movies.find(m => m.id === x.movie)?.title || '(removed)', changed: !!x.changed })) })).sort((a, b) => a.name.localeCompare(b.name)),
     pending: d.guesses.filter(g => g.right == null && !g.skip).slice(0, 30), guess: { right, wrong, total: right + wrong }, guesses: d.guesses.slice(-60).reverse(),
     stats: { right: d.stats.right, wrong: d.stats.wrong, per: Object.entries(d.stats.per).map(([login, s]) => ({ login, ...s })).sort((a, b) => (b.right + b.wrong) - (a.right + a.wrong)) },
@@ -83,7 +85,7 @@ export function state() {
 }
 export function screen() { // what the on-stream box shows
   const d = data(), s = state();
-  return { type: 'mnState', timerPop: opts(d).timerPop !== false, show: opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, ratings: opts(d).ratings !== false, posters: opts(d).posters !== false, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
+  return { type: 'mnState', timerPop: opts(d).timerPop !== false, show: live() && opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, ratings: opts(d).ratings !== false, posters: opts(d).posters !== false, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
 }
 function changed() { save(); H.send({ type: 'movieNight' }, 'control'); H.send(screen(), 'movienight'); }
 
@@ -136,7 +138,7 @@ export function pinText(d = data()) {
 }
 /* 📌 a new or changed list pins itself in chat (after 20 quiet seconds, so typing a whole list pins once) */
 let pinT = null;
-export function pinSoon(ms = 20000) { clearTimeout(pinT); pinT = null; const d = data(); if (opts(d).autoPin === false || !d.movies.length || !H.on()) return; pinT = setTimeout(() => { pinT = null; const dd = data(); if (!dd.movies.length || pinTextKey(dd) === dd.pinnedKey) return; pin().catch(() => {}); }, ms); }
+export function pinSoon(ms = 20000) { clearTimeout(pinT); pinT = null; const d = data(); if (opts(d).autoPin === false || !d.movies.length || !live()) return; pinT = setTimeout(() => { pinT = null; const dd = data(); if (!dd.movies.length || pinTextKey(dd) === dd.pinnedKey) return; pin().catch(() => {}); }, ms); }
 const pinTextKey = d => pinText(d);
 export async function pin() {
   const d = data(); if (!d.movies.length) throw new Error('Add tonight\'s movies first.');
@@ -147,6 +149,7 @@ export async function pin() {
 export async function open(yes, { quiet = false } = {}) {
   const d = data();
   if (yes) {
+    if (!live()) throw new Error('Movie night voting is switched off. Turn it on at the top of the Movie night tab first.');
     if (d.movies.length < 2) throw new Error('Add at least two movies first.');
     d.open = true; d.openedAt = Date.now(); delete d.closedAt; delete d.endsAt; changed();
     H.act(`Movie night voting opened: ${d.movies.length} movies`, { icon: '🍿', kind: 'open' });
@@ -216,18 +219,18 @@ export function streamStart() { const d = data(); if (!on()) return; d.first = '
 
 // ---- chat ----
 export function noteChat(m) { // the first person to type in chat tonight gets two votes
-  if (!on() || !m || m.self) return; const d = data(); if (d.first) return;
+  if (!live() || !m || m.self) return; const d = data(); if (d.first) return;
   const l = low(m.login); if (!l || l === low(H.me()) || m.badges?.broadcaster || H.isBot(l)) return;
   d.first = l; d.firstName = m.name || l; changed();
   { const o = opts(d); if (o.firstSay !== false) H.say(`🥇 @${m.name || l} was first in chat tonight: you get 2 votes on movie night! 🍿`).catch(() => {}); } /* (1.133.0, Derek) tell chat who was first, and that it means two votes */
   H.act(`was the first one in chat: two votes for movie night`, { icon: '🍿', who: m.name || l, kind: 'first', test: !!m.pretend });
 }
 export function onAlert(a) { // a raid tonight = two votes for the raider
-  if (!on() || !a || a.kind !== 'raid') return; const d = data(), l = low(a.login || a.name); if (!l || d.raiders.includes(l)) return;
+  if (!live() || !a || a.kind !== 'raid') return; const d = data(), l = low(a.login || a.name); if (!l || d.raiders.includes(l)) return;
   d.raiders.push(l); changed(); H.act(`raided: two votes for movie night`, { icon: '🍿', who: a.name || l, kind: 'raid' });
 }
 export function onChat(m) {
-  if (!on()) return false; const d = data(), o = opts(d), cmd = low(o.command);
+  if (!live()) return false; const d = data(), o = opts(d), cmd = low(o.command);
   const text = String(m.text || '').trim(), sp = text.split(/\s+/);
   if (o.myCommand && low(sp[0]) === low(o.myCommand) && d.movies.length) { H.say(myVotesText(m.login, m.name || m.login, d)).catch(() => {}); return true; } /* 🗳️ (1.129.0) !myvotes */
   if (!cmd || low(sp[0]) !== cmd) return false;
@@ -288,7 +291,8 @@ export function setOpts(o) {
   if ('bg' in o) x.bg = Math.max(0, Math.min(100, Math.round(Number(o.bg) || 0))); /* how solid the board's background is on stream: 0 = see-through */
   if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
   if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';
-  for (const k of ['timerPop', 'bell', 'firstSay']) if (k in o) x[k] = !!o[k]; if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0)));
+  for (const k of ['timerPop', 'bell', 'firstSay']) if (k in o) x[k] = !!o[k];
+  if ('enabled' in o) { x.enabled = !!o.enabled; if (!x.enabled && d.open) { d.open = false; d.closedAt = Date.now(); delete d.endsAt; H.timer && H.timer({ endsAt: 0 }); } H.act(x.enabled ? 'Movie night voting switched on' : 'Movie night voting switched off (the watchlist commands still work)', { icon: '🍿', kind: 'mnSwitch' }); } if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0)));
   if ('lastMins' in o) x.lastMins = Math.max(0.25, Math.min(60, Number(o.lastMins) || 5));
   changed(); return state();
 }
