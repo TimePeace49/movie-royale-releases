@@ -307,6 +307,10 @@ app.whenReady().then(async () => {
       const r = await dialog.showOpenDialog(win && !win.isDestroyed() ? win : undefined, { title: title || 'Pick a file', properties: ['openFile'], defaultPath: app.getPath('videos'), filters: exts ? [{ name: 'Videos', extensions: exts }, { name: 'All files', extensions: ['*'] }] : undefined });
       return r.canceled ? null : (r.filePaths || [])[0] || null;
     },
+    pickFolder: async title => { // 🔎 (1.128.0) pick a folder on this PC (the sound alerts' folder): remembered by the app
+      const r = await dialog.showOpenDialog(win && !win.isDestroyed() ? win : undefined, { title: title || 'Pick a folder', properties: ['openDirectory'], defaultPath: app.getPath('documents') });
+      return r.canceled ? null : (r.filePaths || [])[0] || null;
+    },
     // 🎉 Viewer's choice: confetti + a big pop-up over whatever you're using, on the screen your mouse is on (clicks go through it; it doesn't take your keyboard)
     celebrate: url => {
       const { screen } = require('electron'), d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()), b = d.bounds;

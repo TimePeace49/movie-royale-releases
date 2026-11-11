@@ -1,12 +1,17 @@
 // Ratings for the winner screen: Rotten Tomatoes + IMDb (via OMDb, free key) and Letterboxd (read from letterboxd.com).
 import { db, save } from './store.js';
+import { omdbProxy } from './shared.js';
+
+/** ⭐🍅 (1.128.0) where to ask OMDb: your own key, else the key the app's maker shares through his 24/7 bot (no key in the app), else nowhere */
+export const omdbWhere = () => (db.settings.omdbKey || '').trim() ? 'own' : omdbProxy() ? 'shared' : '';
+function omdbUrl(q) { const key = (db.settings.omdbKey || '').trim(); if (key) return `https://www.omdbapi.com/?${q}&apikey=${encodeURIComponent(key)}`; const p = omdbProxy(); return p ? `${p}?${q}` : ''; }
 
 const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' };
 
 async function omdb(imdbId) {
-  const key = (db.settings.omdbKey || '').trim();
-  if (!key || !imdbId) return {};
-  const r = await fetch(`https://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&apikey=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(6000) });
+  const u = imdbId ? omdbUrl(`i=${encodeURIComponent(imdbId)}`) : '';
+  if (!u) return {};
+  const r = await fetch(u, { signal: AbortSignal.timeout(8000) });
   const j = await r.json();
   if (j.Response === 'False') throw new Error(j.Error || 'OMDb error');
   const rt = (j.Ratings || []).find(x => x.Source === 'Rotten Tomatoes')?.Value || null;
@@ -15,10 +20,10 @@ async function omdb(imdbId) {
 
 /** ⭐🍅 By the movie's name (+ year), for the movie night leaderboard: { imdb: 7.7, rt: 97 } (numbers; 0 = not listed), null = not found, undefined = no OMDb key. Cached a week. */
 export async function ratingsByTitle(title, year) {
-  const key = (db.settings.omdbKey || '').trim(); if (!key) return undefined;
+  if (!omdbWhere()) return undefined;
   db.ratingsT ||= {}; const k = `${String(title).trim().toLowerCase()}|${year || ''}`, hit = db.ratingsT[k];
   if (hit && Date.now() - hit.at < 7 * 864e5) return hit.v;
-  const r = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(title)}${year ? '&y=' + encodeURIComponent(year) : ''}&type=movie&apikey=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(7000) });
+  const r = await fetch(omdbUrl(`t=${encodeURIComponent(title)}${year ? '&y=' + encodeURIComponent(year) : ''}&type=movie`), { signal: AbortSignal.timeout(9000) });
   const j = await r.json(); let v = null;
   if (j.Response === 'False') { if (!/not found/i.test(j.Error || '')) throw new Error(j.Error || 'OMDb error'); }
   else { const rt = parseInt((j.Ratings || []).find(x => x.Source === 'Rotten Tomatoes')?.Value || '', 10), im = parseFloat(j.imdbRating); v = { year: /^\d{4}/.test(j.Year || '') ? String(j.Year).slice(0, 4) : '', imdb: im > 0 ? Math.round(im * 10) / 10 : 0, rt: rt >= 0 ? rt : 0, rtHas: rt >= 0, poster: /^https:\/\//.test(j.Poster || '') ? j.Poster : '' }; }
@@ -48,7 +53,7 @@ export async function getRatings({ tmdbId, imdbId }, force = false) {
 }
 
 export async function testOmdb() {
-  if (!db.settings.omdbKey) return { ok: false, error: 'Paste your OMDb key first.' };
-  try { const v = await omdb('tt0120737'); return { ok: !!(v.imdb || v.rt), sample: `The Fellowship of the Ring: IMDb ${v.imdb || '?'} · Rotten Tomatoes ${v.rt || '?'}` }; }
+  if (!omdbWhere()) return { ok: false, error: 'Paste your OMDb key first.' };
+  try { const v = await omdb('tt0120737'); return { ok: !!(v.imdb || v.rt), via: omdbWhere(), sample: `The Fellowship of the Ring: IMDb ${v.imdb || '?'} · Rotten Tomatoes ${v.rt || '?'}` }; }
   catch (e) { return { ok: false, error: /invalid api key/i.test(e.message) ? "OMDb says that key isn't valid yet. Did you click the activation link in their email?" : e.message }; }
 }

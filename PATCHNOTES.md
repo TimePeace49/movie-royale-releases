@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.128.0: What's new
+- ⭐🍅 **IMDb + Rotten Tomatoes ratings work without setting up a key:** if you don't have your own OMDb key, the app uses a shared one.
+- 📣 **!so for everyone:** anyone in chat can type `!so name` for a shout-out (plus Twitch's shout-out box while you're live). It's in 🤖 Chat bot → Commands under ⭐ Ready-made commands, with !watchtime and !followage: a tick to turn each on or off and their cooldowns.
+- 🔎 **Sound files from Streamlabs Chatbot:** 🔎 Find them on this PC on the Sound alerts tab finds your sound files by name and remembers the folders they're in.
+
 ## v1.127.0: What's new
 - 🎂 **Birthdays tab:** all the birthday settings are now in 🤖 Chat bot → 🎂 Birthdays, with a calendar of the next 7 days.
 - 📅 **Birthday reminder** when the app opens, showing whose birthday is coming up this week. Mute it for 24 hours, a week or forever (turn it back on in the Birthdays tab).

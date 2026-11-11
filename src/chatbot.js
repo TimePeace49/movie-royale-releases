@@ -7,7 +7,7 @@ import { db, save } from './store.js';
 import { act } from './activity.js';
 
 export const PERMS = { all: 'Everyone', followers: 'Followers', subs: 'Subs', vips: 'VIPs', mods: 'Mods', streamer: 'Only me' };
-const H = { say: async () => {}, canSay: () => true, follows: async () => false, live: () => false, startedAt: () => 0, channel: () => '', chatters: () => [], reserved: () => [], dev: () => false, changed: () => {}, sound: () => {}, soundIn: () => null, watchTime: () => null, followAge: async () => undefined };
+const H = { say: async () => {}, canSay: () => true, follows: async () => false, live: () => false, startedAt: () => 0, channel: () => '', chatters: () => [], reserved: () => [], dev: () => false, changed: () => {}, sound: () => {}, soundIn: () => null, watchTime: () => null, followAge: async () => undefined, shoutout: async () => '' };
 export const setHooks = h => Object.assign(H, h);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clampN = (v, lo, hi, d) => { v = Math.round(Number(v)); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -16,7 +16,32 @@ export function data() {
   const d = (db.chatbot ||= {});
   d.commands ||= []; d.timers ||= []; d.quotes ||= []; d.opts ||= {};
   if (d.on === undefined) d.on = true;
+  if (!d.readyMade) readyMake(d);
   return d;
+}
+/** ⭐ (1.128.0, Derek) ready-made commands: made once in the Commands tab (on), each with an on/off tick + cooldowns. A command you already had with that name becomes the ready-made one (its own answer kept). */
+export const READY = {
+  so: { name: '!so', text: '$shoutout', cd: 10, ucd: 60, label: '📣 Shout-out', why: 'Anyone types !so and a name: "go check them out" in chat (+ Twitch’s shout-out box while you’re live)' },
+  watchtime: { name: '!watchtime', text: '⏱️ $target has watched the stream for $watchtime.', cd: 5, ucd: 30, label: '⏱️ Watch time', why: 'How long someone has watched (theirs, or a name typed after it)' },
+  followage: { name: '!followage', text: '💜 $target has followed $channel for $followage.', cd: 5, ucd: 30, label: '💜 Follow age', why: 'How long someone has followed (theirs, or a name typed after it)' }
+};
+function readyMake(d) {
+  d.readyMade = Date.now();
+  for (const [k, r] of Object.entries(READY)) {
+    const have = d.commands.find(c => c.ready === k) || d.commands.find(c => c.name === r.name || (c.aliases || []).includes(r.name));
+    if (have) { have.ready = k; continue; }
+    d.commands.push({ id: uid(), uses: 0, on: true, at: Date.now(), name: r.name, text: r.text, aliases: [], perm: 'all', cd: r.cd, ucd: r.ucd, ready: k });
+  }
+  d.commands.sort((x, y) => x.name.localeCompare(y.name)); save();
+}
+export const readyList = () => Object.entries(READY).map(([k, r]) => { const c = data().commands.find(x => x.ready === k); return { key: k, label: r.label, why: r.why, name: r.name, id: c?.id || '', on: !!c && c.on !== false, cd: c?.cd ?? r.cd, ucd: c?.ucd ?? r.ucd, have: !!c }; });
+/** turn a ready-made command on / off or change its cooldowns (making it again if it was deleted) */
+export function setReady(key, b = {}) {
+  const r = READY[key]; if (!r) throw new Error('Unknown ready-made command'); const d = data();
+  let c = d.commands.find(x => x.ready === key);
+  if (!c) { const clash = d.commands.find(x => x.name === r.name || (x.aliases || []).includes(r.name)); if (clash) { clash.ready = key; c = clash; } else { c = { id: uid(), uses: 0, on: true, at: Date.now(), name: r.name, text: r.text, aliases: [], perm: 'all', cd: r.cd, ucd: r.ucd, ready: key }; d.commands.push(c); d.commands.sort((x, y) => x.name.localeCompare(y.name)); } }
+  if (b.on != null) c.on = !!b.on; if (b.cd != null) c.cd = clampN(b.cd, 0, 86400, c.cd); if (b.ucd != null) c.ucd = clampN(b.ucd, 0, 86400, c.ucd);
+  save(); H.changed(); return readyList();
 }
 export const on = () => H.dev() && data().on !== false;
 export const cleanName = n => { n = String(n || '').trim().toLowerCase().split(/\s+/)[0] || ''; if (!n) return ''; return (/^[!?.$~+\-]/.test(n) ? n : '!' + n).slice(0, 40); };
@@ -52,11 +77,12 @@ export function fill(text, m, cmd, args, extra = {}) {
   out = out.replace(/\$(?:mychannel|channel)\b/gi, H.channel()).replace(/\{channel(?:\.name)?\}/gi, H.channel());
   out = out.replace(/\$uptime\b/gi, up).replace(/\{uptime\}/gi, up);
   out = out.replace(/\$watchtime\b/gi, () => extra.watchtime ?? '0 minutes').replace(/\$followage\b/gi, () => extra.followage ?? 'unknown'); /* ⏱️ (1.125.1) worked out before fill, see needExtra */
+  out = out.replace(/\$shoutout\b/gi, () => extra.shoutout ?? `📣 Go check out ${target} at https://twitch.tv/${String(target).toLowerCase()}!`); /* 📣 (1.128.0) worked out before fill (it also shows Twitch's shout-out box) */
   out = out.replace(/\$randusr\b/gi, someone).replace(/\{random\.chatter\}/gi, someone);
   out = out.replace(/\$date\b/gi, now.toLocaleDateString()).replace(/\$time\b/gi, now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
   return out.replace(/\s+/g, ' ').trim().slice(0, 480);
 }
-export const WORDS = [['$user', 'who typed it'], ['$target', 'the name they typed after it (else themselves)'], ['$arg1 … $arg9', 'the 1st … 9th word they typed after it'], ['$msg', 'everything they typed after it'], ['$count', 'how many times the command was used'], ['$randnum(1,100)', 'a random number'], ['$randusr', 'a random recent chatter'], ['$uptime', 'how long you have been live'], ['$watchtime', "how long they (or the name typed after it) have watched your streams"], ['$followage', 'how long they (or the name typed after it) have followed you'], ['$channel', 'your channel name'], ['$date / $time', "today's date / the time"]];
+export const WORDS = [['$user', 'who typed it'], ['$target', 'the name they typed after it (else themselves)'], ['$arg1 … $arg9', 'the 1st … 9th word they typed after it'], ['$msg', 'everything they typed after it'], ['$count', 'how many times the command was used'], ['$randnum(1,100)', 'a random number'], ['$randusr', 'a random recent chatter'], ['$uptime', 'how long you have been live'], ['$shoutout', 'a shout-out for the name typed after it (also shows Twitch’s shout-out box)'], ['$watchtime', "how long they (or the name typed after it) have watched your streams"], ['$followage', 'how long they (or the name typed after it) have followed you'], ['$channel', 'your channel name'], ['$date / $time', "today's date / the time"]];
 
 // ---------- commands ----------
 const byName = n => data().commands.find(c => c.name === n || (c.aliases || []).includes(n));
@@ -133,7 +159,8 @@ function quotes(m, w0, rest) {
 /** ⏱️ (1.125.1, Derek: "watchtime and followage") words that need looking up before the answer is made */
 export const timeWords = (ms, parts = 2) => { const s = Math.max(0, Math.floor(ms / 1000)), U = [['year', 31557600], ['month', 2629800], ['day', 86400], ['hour', 3600], ['minute', 60]], out = []; let r = s; for (const [n, v] of U) { const k = Math.floor(r / v); if (k) { out.push(`${k} ${n}${k === 1 ? '' : 's'}`); r -= k * v; } if (out.length >= parts) break; } return out.join(', ') || 'less than a minute'; };
 async function extrasFor(text, m, args) {
-  const ex = {}; if (!/\$(watchtime|followage)\b/i.test(text)) return ex;
+  const ex = {}; if (!/\$(watchtime|followage|shoutout)\b/i.test(text)) return ex;
+  if (/\$shoutout\b/i.test(text)) { const t = String(args[0] || '').replace(/^@/, ''); if (!/^\w{2,25}$/.test(t)) ex.shoutout = `@${m.name || m.login} type the name after it, like !so ${H.channel() || 'somebody'}`; else { try { ex.shoutout = await H.shoutout(t, m); } catch (e) { ex.shoutout = `@${m.name || m.login} ${e.message || e}`; } } }
   const t1 = String(args[0] || '').replace(/^@/, '').toLowerCase(), who = t1 && /^\w{2,30}$/.test(t1) ? t1 : String(m.login || '').toLowerCase(), self = who === String(m.login || '').toLowerCase();
   if (/\$watchtime\b/i.test(text)) { const mins = H.watchTime(who); ex.watchtime = mins == null || mins <= 0 ? '0 minutes' : timeWords(mins * 60000); }
   if (/\$followage\b/i.test(text)) { let at; try { at = await H.followAge(who, self ? m : null); } catch { at = undefined; } ex.followage = at === undefined ? '(unknown: the streamer has to sign in to Twitch again to allow follower checks)' : at === null ? '0 days (not following yet)' : timeWords(Date.now() - at); }
@@ -219,7 +246,7 @@ export function applyImport(p, { replace = false } = {}) {
   return r;
 }
 export function exportAll() { const d = data(); return { movieRoyal: 'chatbot', v: 1, commands: d.commands.map(({ id, at, ...c }) => c), timers: d.timers.map(({ id, last, lineAt, ...t }) => t), quotes: d.quotes }; }
-export const info = () => { const d = data(); return { on: d.on !== false, opts: { quoteOn: d.opts.quoteOn !== false, timersLive: d.opts.timersLive !== false }, commands: d.commands, timers: d.timers.map(t => ({ ...t, due: timerDue(t) })), quotes: d.quotes.slice().sort((a, b) => b.n - a.n), perms: PERMS, words: WORDS, lines }; };
+export const info = () => { const d = data(); return { on: d.on !== false, ready: readyList(), opts: { quoteOn: d.opts.quoteOn !== false, timersLive: d.opts.timersLive !== false }, commands: d.commands, timers: d.timers.map(t => ({ ...t, due: timerDue(t) })), quotes: d.quotes.slice().sort((a, b) => b.n - a.n), perms: PERMS, words: WORDS, lines }; };
 export function setOpts(b) { const d = data(); if (b.on != null) d.on = !!b.on; for (const k of ['quoteOn', 'timersLive']) if (b[k] != null) d.opts[k] = !!b[k]; save(); H.changed(); return info(); }
 // 🧪 a pretend run of one command (nothing is sent to chat)
-export function preview(text, who = 'TestViewer', typed = '') { return fill(text, { name: who }, { uses: 7 }, String(typed || '').trim().split(/\s+/).filter(Boolean), { watchtime: '12 hours, 30 minutes', followage: '1 year, 2 months' }); } /* (pretend watch time / follow age in the preview) */
+export function preview(text, who = 'TestViewer', typed = '') { return fill(text, { name: who }, { uses: 7 }, String(typed || '').trim().split(/\s+/).filter(Boolean), { watchtime: '12 hours, 30 minutes', followage: '1 year, 2 months', shoutout: `📣 Go check out ${String(typed || '').trim().split(/\s+/)[0] || 'SomeStreamer'} at https://twitch.tv/${(String(typed || '').trim().split(/\s+/)[0] || 'somestreamer').toLowerCase()} (last seen playing Just Chatting)! Give them a follow 💜` }); } /* (pretend watch time / follow age in the preview) */

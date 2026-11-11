@@ -87,7 +87,7 @@ const ALL_STEPS = [
   { id: 'chatbot', title: 'Chat bot account', sub: 'Talk in chat as a bot (optional)', done: () => !!S.chatBot },
   { id: 'rewards', title: 'Channel points & bits', sub: 'Chaos, wheel & viewer rewards', done: () => !!S.settings.rewardsCreated && S.status.twitch.state === 'online' },
   { id: 'tmdb', title: 'Movie search', sub: 'Title, year, poster, cast', done: () => !!S.settings.tmdbKey },
-  { id: 'omdb', title: 'Ratings', sub: 'Rotten Tomatoes + IMDb', done: () => !!S.settings.omdbKey },
+  { id: 'omdb', title: 'Ratings', sub: 'Rotten Tomatoes + IMDb', done: () => !!S.settings.omdbKey || !!S.omdb?.via },
   { id: 'letterboxd', title: 'Letterboxd', sub: 'Skip movies you\'ve seen', done: () => S.status.letterboxd.count > 0 },
   { id: 'discord', title: 'Discord bot', sub: '/suggest movies', done: () => S.status.discord.state === 'online' && (A.guilds || []).length > 0 },
   { id: 'cloud', title: '24/7 Discord bot', sub: 'Picks while your PC is off', done: () => !!S.cloud?.enabled },
@@ -261,7 +261,7 @@ const PAGES = {
     ${nav()}`;
   },
   omdb() {
-    return `<h2>Ratings on the winner screen</h2><p class="why">The winner screen shows the movie's Rotten Tomatoes, IMDb and Letterboxd ratings. Letterboxd works by itself. Rotten Tomatoes and IMDb come from OMDb, which is free.</p>
+    return `<h2>Ratings on the winner screen</h2><p class="why">The winner screen shows the movie's Rotten Tomatoes, IMDb and Letterboxd ratings. Letterboxd works by itself. Rotten Tomatoes and IMDb come from OMDb, which is free.</p>${S.omdb?.via === 'shared' && !S.settings.omdbKey ? `<p class="why" style="color:#7ee787">✅ <b>Nothing to do here:</b> ratings already work with the shared key. You can skip this step, or add your own key below if you'd rather use yours.</p>` : ''}
     <ol class="steps">
       <li>Go to ${link('https://www.omdbapi.com/apikey.aspx', 'omdbapi.com/apikey.aspx')}, choose <b>FREE! (1,000 daily limit)</b>, type your email, first and last name, and in <b>Use</b> write "Movie ratings for my stream". Press <b>Submit</b>.</li>
       <li>Open the email from OMDb. <b>Click the activation link</b> in it (the key doesn't work until you do).</li>

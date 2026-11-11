@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.128.0
+- ⭐🍅 IMDb + Rotten Tomatoes ratings work without a key: apps with no OMDb key use the one the app's maker shares through his 24/7 bot (the key itself never goes in the app or on GitHub). In the dev edition, Settings → 🎬 Movie info has 🌐 Share my key with every edition (your 24/7 bot needs updating first, and the 🛡️ Backup Bots app has to be open: it saves the bot's address to GitHub).
+- ⭐ Ready-made chat commands in 🤖 Chat bot → Commands: !so (anyone: "!so name" gives a shout-out in chat + Twitch's shout-out box while live), !watchtime and !followage. Each has an on/off tick and two waits (everyone / same person). New special word $shoutout.
+- 🔎 Sound alerts: 🔎 Find them on this PC looks for sound files named like your alerts (Documents, Music, Downloads, Desktop, Videos, OneDrive) and remembers the folders it found them in; 📁 Pick the folder (remembered). Remembered folders are looked in again after every import and when the app opens.
+- 🧪 Test tab → 🤖 Chat bot: 📣 Pretend !so + !watchtime, 🔎 Find sound files check, 🍅 Shared ratings key check.
+
 ## 1.127.0
 - 🎂 Birthdays have their own tab now: 🤖 Chat bot → 🎂 Birthdays. All the birthday settings moved there (out of Settings → Twitch), with a calendar of the next 7 days.
 - 📅 Birthday reminder when the app opens: a calendar of the coming days with everyone's birthdays (only when someone has one coming up). Mute it for 24 hours, a week or forever; turn it back on in the Birthdays tab.

@@ -20,7 +20,8 @@ import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
-import { getRatings, testOmdb, ratingsByTitle } from './ratings.js';
+import { getRatings, testOmdb, ratingsByTitle, omdbWhere } from './ratings.js';
+import * as shared from './shared.js';
 import { ruleBan } from './banrules.js';
 import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
 import { parseImport, toLines, importLink } from './importer.js';
@@ -309,6 +310,7 @@ function publicState() { applyCharsDefault();
     edition: { hide: editionInfo().hide, id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
     mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
     botCount: (db.chatbot?.commands || []).length,
+    omdb: { via: omdbWhere(), shared: !!shared.omdbProxy(), dev: !!EDITION.dev, mine: !!EDITION.dev && !!shared.omdbProxy() && !!db.settings.cloud?.url && shared.omdbProxy().startsWith(String(db.settings.cloud.url).replace(/\/+$/, '')) }, /* ⭐🍅 (1.128.0) own key / the shared one */
     clip: { who: clipWho(), canFollow: (twitch.status.scopes || []).includes('moderator:read:followers'), signedIn: !!twitch.status.userId, ok: twitch.canClip(), live: !!db.live, kick: kick.on(), list: (db.clips || []).slice(0, 10) },
     spam: { ...spamban.cfg(), list: spamban.list().slice(0, 30), canBan: (twitch.status.scopes || []).includes('moderator:manage:banned_users'), signedIn: !!twitch.status.userId },
     backup: { ...backuplink.status, _ref: undefined, watching: backuplink.backupWatching(), active: backuplink.backupActive() },
@@ -1674,7 +1676,7 @@ app.post('/api/test/clip-who', async (req, res) => { // 🧪 would these people 
 });
 // 📣 (1.127.0, Derek) shout-out button (Chat tab tools box + profile pop-ups): a chat line "go check out …" + Twitch's own shout-out box (on Kick: only the chat line, Kick has no shout-out for apps)
 const soLast = new Map(); let soAt = 0;
-async function shoutOut(name, via, test) {
+async function shoutOut(name, via, test, opt = {}) {
   const login = String(name || '').trim().replace(/^@/, '').toLowerCase(); if (!/^[a-z0-9_]{2,25}$/.test(login)) throw new Error('Type their channel name.');
   const o = db.settings, text0 = o.soText || '📣 Go check out {name} at https://twitch.tv/{login}{game}! Give them a follow 💜';
   let u = null, info = null;
@@ -1683,16 +1685,51 @@ async function shoutOut(name, via, test) {
   if (test) info = { game: 'Just Chatting' };
   const shown = u?.name || login, line = text0.replace(/\{name\}/g, shown).replace(/\{login\}/g, login).replace(/\{game\}/g, info?.game ? ` (last seen playing ${info.game})` : '');
   const r = { ok: true, name: shown, login, line, twitch: null, test: !!test };
-  if (test) { r.twitch = 'pretend'; act('chat', `Pretend shout-out for ${shown}`, { icon: '📣', kind: 'shoutout', test: true }); return r; }
-  if (o.soChat !== false) await twitch.say(line).catch(() => {});
+  if (test) { r.twitch = 'pretend'; act('chat', `Pretend shout-out for ${shown}${opt.by ? ' by ' + opt.by : ''}`, { icon: '📣', kind: 'shoutout', test: true }); return r; }
+  if (o.soChat !== false && opt.say !== false) await twitch.say(line).catch(() => {});
   if (!kick.on() && u?.id && o.soTwitch !== false) {
     if (Date.now() - soAt < 120000) r.twitch = 'Twitch only allows one shout-out box every 2 minutes, so this time it was just the chat line.';
     else if ((soLast.get(login) || 0) > Date.now() - 3600000) r.twitch = `Twitch allows the shout-out box for ${shown} once an hour, so this time it was just the chat line.`;
     else { try { await twitch.shoutout(u.id); soAt = Date.now(); soLast.set(login, soAt); r.twitch = 'ok'; } catch (e) { r.twitch = e.message || String(e); } }
   }
-  act('chat', `shouted out ${shown}${r.twitch === 'ok' ? ' (with the Twitch shout-out box)' : ''}`, { icon: '📣', kind: 'shoutout', who: 'You' });
+  act('chat', `shouted out ${shown}${opt.by ? ' with !so' : ''}${r.twitch === 'ok' ? ' (with the Twitch shout-out box)' : ''}`, { icon: '📣', kind: 'shoutout', who: opt.by || 'You' });
   return r;
 }
+// ⭐🍅 (1.128.0, Derek) share YOUR OMDb key with every edition: the key goes to your 24/7 bot (only it uses it), and the bot's address is saved in src/shared.json on GitHub
+// by the Backup Bots app (it has the GitHub key). Every Movie Royal without its own key then asks your bot. Dev edition only.
+async function omdbShare(on) {
+  if (!EDITION.dev) throw new Error('Only the dev edition can share its key.');
+  const key = String(db.settings.omdbKey || '').trim(); if (on && !key) throw new Error('Save your own OMDb key first (Settings → 🎬 Movie info).');
+  if (!cloud.enabled()) throw new Error('Set up your 24/7 bot first (Setup guide): the shared key lives on it.');
+  const base = String(db.settings.cloud.url || '').replace(/\/+$/, ''), proxy = base + '/omdb', steps = [];
+  const r = await fetch(base + '/omdb/key', { method: 'PUT', headers: { Authorization: `Bearer ${db.settings.cloud.syncKey}`, 'content-type': 'application/json' }, body: JSON.stringify({ key: on ? key : '' }), signal: AbortSignal.timeout(15000) }).catch(e => ({ ok: false, status: 0, e }));
+  if (r.status === 404) throw new Error('Your 24/7 bot needs an update first (Settings → 🤖 Discord & picks → Update the 24/7 bot), then press this again.');
+  if (!r.ok) throw new Error(`Your 24/7 bot didn't take it (${r.status || r.e?.message || 'no answer'}).`);
+  steps.push(on ? '✅ Your key is on your 24/7 bot (only it uses the key)' : '✅ Your 24/7 bot stopped sharing the key');
+  if (on) { const t = await fetch(`${proxy}?i=tt0120737`, { signal: AbortSignal.timeout(15000) }).then(x => x.json()).catch(() => null); if (t?.imdbRating) steps.push(`✅ It works: The Fellowship of the Ring = IMDb ${t.imdbRating}`); else steps.push('⚠️ Your bot asked OMDb but got no rating back: ' + (t?.Error || 'no answer')); }
+  const want = on ? proxy : '', now = shared.get().omdb || '';
+  if (want !== now) {
+    const b = await fetch('http://127.0.0.1:3747/api/shared/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ omdb: want }), signal: AbortSignal.timeout(20000) }).then(async x => ({ ok: x.ok, j: await x.json().catch(() => ({})) })).catch(() => null);
+    if (!b) { steps.push('⚠️ Open the 🛡️ Backup Bots app (it has your GitHub key) and press this again, so every edition learns your bot’s address.'); return { ok: false, steps, proxy, needBackup: true }; }
+    if (!b.ok) { steps.push('⚠️ ' + (b.j.error || 'The Backup Bots app could not save it to GitHub')); return { ok: false, steps, proxy }; }
+    steps.push(on ? '✅ Saved on GitHub: every edition picks it up within 6 hours (or when it opens)' : '✅ Taken off GitHub'); db.shared = { at: Date.now(), v: { ...shared.get(), omdb: want } }; save();
+  } else steps.push(on ? '✅ GitHub already has your bot’s address' : '✅ GitHub already had nothing shared');
+  act('stream', on ? 'Shared the OMDb (IMDb + Rotten Tomatoes) key with every edition through the 24/7 bot' : 'Stopped sharing the OMDb key', { icon: '🍅', kind: 'omdb' }); pushState();
+  return { ok: true, steps, proxy };
+}
+app.post('/api/omdb/share', async (req, res) => { try { res.json({ ok: true, ...(await omdbShare(req.body?.on !== false)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/omdb/refresh', async (req, res) => { await shared.refresh(); pushState(); res.json({ via: omdbWhere(), shared: shared.omdbProxy(), error: shared.status.error }); });
+app.get('/api/test/omdb-share', async (req, res) => { // 🧪 which OMDb address the app asks in each case (nothing is sent)
+  const keepK = db.settings.omdbKey, keepS = db.shared, rows = [], add = (what, ok) => rows.push({ what, ok: !!ok });
+  try {
+    db.settings.omdbKey = 'abc12345'; db.shared = { at: Date.now(), v: { omdb: 'https://pretend-bot.workers.dev/omdb' } };
+    add('Your own key saved → the app asks OMDb with your key', omdbWhere() === 'own');
+    db.settings.omdbKey = ''; add('No key, but one is shared → the app asks the sharer’s 24/7 bot (no key in the app)', omdbWhere() === 'shared');
+    db.shared = { at: Date.now(), v: { omdb: '' } }; add('No key and nothing shared → no ratings (it asks for a key)', omdbWhere() === '');
+    db.shared = { at: Date.now(), v: { omdb: 'https://evil.example.com/steal' } }; add('A strange address is never used', omdbWhere() === '');
+  } finally { db.settings.omdbKey = keepK; db.shared = keepS; }
+  res.json({ ok: rows.every(r => r.ok), rows, now: { via: omdbWhere(), shared: shared.omdbProxy(), checked: shared.status.at, error: shared.status.error } });
+});
 app.post('/api/shoutout', async (req, res) => { try { res.json(await shoutOut(req.body?.name, req.body?.via, false)); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 app.post('/api/test/shoutout', async (req, res) => { try { res.json(await shoutOut(req.body?.name || 'pretend_friend', 'test', true)); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 app.post('/api/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip(req.body?.via) }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
@@ -4165,7 +4202,7 @@ const SELF_CHECKS = {
     const r = await within(searchMovies('Jaws'), 15000, 'TMDB').catch(e => { throw new Error(/401/.test(e.message) ? 'TMDB says the key is wrong: paste the long "API Read Access Token" again' : e.message); });
     return r.length ? { ok: true, note: `found ${r[0].title} (${r[0].year})` } : { ok: false, note: 'TMDB found nothing for "Jaws"' };
   },
-  async omdb() { if (!(db.settings.omdbKey || '').trim()) return { ok: null, note: 'no OMDb key (only needed for Rotten Tomatoes + IMDb ratings)' }; const r = await within(testOmdb(), 15000, 'OMDb'); return r.ok ? { ok: true, note: r.sample || 'works' } : { ok: false, note: r.error || 'OMDb said no' }; },
+  async omdb() { if (!omdbWhere()) return { ok: null, note: 'no OMDb key (only needed for Rotten Tomatoes + IMDb ratings)' }; const r = await within(testOmdb(), 15000, 'OMDb'); return r.ok ? { ok: true, note: r.sample || 'works' } : { ok: false, note: r.error || 'OMDb said no' }; },
   async letterboxd() {
     if (!db.settings.letterboxdUser) return { ok: null, note: 'no Letterboxd username' };
     const st = lb.stats();
@@ -5034,6 +5071,7 @@ function safetyReport(req) {
   add((() => { try { return cloud.enabled(); } catch { return false; } })(), 'Your Cloudflare account', 'the 24/7 bot: picks, bans and settings it needs (never your passwords or sign-ins)');
   add(st.tmdbKey, 'TMDB', 'movie titles you search for');
   add(st.omdbKey, 'OMDb', 'the movie that won, to get its ratings');
+  add(!st.omdbKey && omdbWhere() === 'shared', 'The app maker’s 24/7 bot (shared OMDb key)', 'a movie’s name and year (or IMDb id), to get its IMDb + Rotten Tomatoes ratings: no key and nothing about you');
   add(st.letterboxdUser, 'Letterboxd', 'reads your public watched list');
   add(st.seJwt, 'StreamElements', 'listens for tips'); add(st.slToken, 'Streamlabs', 'listens for tips');
   add(st.obsOn !== false && st.obsPassword, 'OBS on this PC', 'adds and switches sources');
@@ -5093,7 +5131,7 @@ app.get('/api/movienight/suggest', async (req, res) => {
     res.json({ list: out, key: key || !!req.query.fake });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.post('/api/movienight/ratings', mnTry(async () => { for (const m of movienight.data().movies) m.rateFor = ''; const n = await movienight.fillRatings(); return { looked: n, key: !!String(db.settings.omdbKey || '').trim() }; })); /* 🔄 look every movie's ratings + poster up again (numbers typed by hand stay) */
+app.post('/api/movienight/ratings', mnTry(async () => { for (const m of movienight.data().movies) m.rateFor = ''; const n = await movienight.fillRatings(); return { looked: n, key: !!omdbWhere() }; })); /* 🔄 look every movie's ratings + poster up again (numbers typed by hand stay) */
 app.post('/api/movienight/movies', mnTry(b => 'text' in b || Array.isArray(b.list) ? movienight.setMovies(b.list || b.text) : b.id ? movienight.editMovie(b.id, b) : movienight.addMovie(b.title, b.by)));
 app.post('/api/movienight/open', mnTry(b => movienight.open(!!b.on)));
 app.post('/api/movienight/lastcall', mnTry(b => movienight.lastCall(b.on !== false, b.mins)));
@@ -5364,6 +5402,7 @@ chatbot.setHooks({
   reserved: () => [...new Set([...BOT_RESERVED, ...Object.entries(db.settings).filter(([k, v]) => /Command$/.test(k) && typeof v === 'string').map(([, v]) => v.trim().toLowerCase())])],
   changed: () => broadcast({ type: 'chatbot' }, 'control'),
   sound: (file, vol) => sfxPlay(file, vol), soundIn: from => sfxTake(from),
+  shoutout: async (name, m) => (await shoutOut(name, 'chat', !!m?.pretend, { say: false, by: m?.name || m?.login || '' })).line, /* 📣 (1.128.0) !so: the bot's answer is the shout-out line; the Twitch box is tried too */
   watchTime: login => { const v = db.viewers?.[String(login || '').toLowerCase()]; return v ? (v.watchMins || 0) + (v.watchOld || 0) : null; }, /* (watchOld = hours brought over from Streamlabs Chatbot) */
   followAge: async (login, m) => { if (m?.pretend) return m.follows === false ? null : Date.now() - 432 * 864e5; /* (🧪 pretend chat: a pretend follow date) */ let id = m?.userId || db.viewers?.[login]?.id; if (!id && !m) { try { id = (await twitch.getUsers([login])).get(login)?.id; } catch {} } if (!id) return undefined; return twitch.followedAt(id); }
 });
@@ -5377,6 +5416,75 @@ const sfxFree = (name, buf) => { const f = path.join(SFXDIR, name); try { if (!f
 function sfxTake(from) { // (import: the old bot's sound file is on this same PC → copy it in; not there → the command says so until you pick the file)
   try { from = String(from || '').trim().replace(/^"|"$/g, ''); if (!SFX_OK.test(from) || !fs.existsSync(from)) return null; const st = fs.statSync(from); if (!st.isFile() || st.size > 25e6) return null; const buf = fs.readFileSync(from), name = sfxFree(sfxName(from), buf); fs.writeFileSync(path.join(SFXDIR, name), buf); return name; } catch { return null; }
 }
+/* 🔎 (1.128.0, Derek: "is there a way the app remembers where the sound files are from the Streamlabs bot") Streamlabs Chatbot keeps each sound's place only in its locked
+   storage, so the app can't read it. Instead it REMEMBERS the folders the sounds were found in (settings.sfxFolders) and looks there first; it can also search this PC's
+   usual folders (Documents, Music, Downloads, Desktop, Videos, OneDrive) for files named like the alerts that still need one. Every sound it finds is copied in, so it
+   works even if the old folder moves later. */
+const sndKeyS = n => String(n || '').replace(/^.*[\\/]/, '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/^[!?.$~+\-]/, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+function sfxSearchRoots() { const h = os.homedir(), L = ['Documents', 'Music', 'Downloads', 'Desktop', 'Videos', 'OneDrive', path.join('OneDrive', 'Documents'), path.join('OneDrive', 'Desktop'), path.join('AppData', 'Roaming', 'Streamlabs')]; return L.map(x => path.join(h, x)); }
+const sfxFindRun = { running: false, last: null };
+async function sfxWalk(roots, want, { maxFiles = 40000, depth = 6 } = {}) {
+  const got = new Map(), seen = new Set(); let n = 0;
+  const walk = async (dir, d) => {
+    if (d > depth || n > maxFiles || got.size >= want.size || seen.has(dir)) return; seen.add(dir);
+    let ents; try { ents = await fs.promises.readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      if (++n > maxFiles || got.size >= want.size) return; const p = path.join(dir, e.name);
+      if (e.isDirectory()) { if (!/^(\.|node_modules$|\$|System Volume|Windows$|Program Files|AppData$|Movie Royal$)/i.test(e.name)) await walk(p, d + 1); }
+      else if (SFX_OK.test(e.name)) { const k = sndKeyS(e.name); if (want.has(k) && !got.has(k)) got.set(k, p); }
+    }
+  };
+  for (const r of roots) { if (got.size >= want.size) break; await walk(r, 0); }
+  return got;
+}
+/** find files for the sound alerts that still need one: in the remembered folders (+ a folder just picked), and with search: true this PC's usual folders */
+async function sfxFind({ search = false, folder = '', why = 'button' } = {}) {
+  if (sfxFindRun.running) return { busy: true };
+  const cmds = chatbot.data().commands.filter(c => !c.sound && (c.soundMissing || c.soundOnly)); const want = new Map();
+  for (const c of cmds) { const k = sndKeyS(c.soundMissing) || sndKeyS(c.name); if (k && !want.has(k)) want.set(k, c); const k2 = sndKeyS(c.name); if (k2 && !want.has(k2)) want.set(k2, c); }
+  const saved = (db.settings.sfxFolders || []).filter(Boolean);
+  if (folder) { db.settings.sfxFolders = [...new Set([folder, ...saved])].slice(0, 12); save(); }
+  if (!want.size) { sfxFindRun.last = { at: Date.now(), found: 0, left: 0, why }; return { found: 0, left: 0, folders: db.settings.sfxFolders || [] }; }
+  sfxFindRun.running = true;
+  try {
+    const roots = [...new Set([folder, ...saved, ...(search ? sfxSearchRoots() : [])].filter(Boolean))].filter(r => { try { return fs.statSync(r).isDirectory(); } catch { return false; } });
+    const hit = await sfxWalk(roots, want), names = [], dirs = new Set();
+    for (const c of cmds) {
+      if (c.sound) continue; const p = hit.get(sndKeyS(c.soundMissing)) || hit.get(sndKeyS(c.name)); if (!p) continue;
+      const got = sfxTake(p); if (!got) continue; c.sound = got; delete c.soundMissing; names.push(c.name); dirs.add(path.dirname(p));
+    }
+    if (dirs.size) db.settings.sfxFolders = [...new Set([...(db.settings.sfxFolders || []), ...dirs])].slice(0, 12);
+    const left = chatbot.data().commands.filter(c => !c.sound && c.soundMissing).length;
+    save(); if (names.length) { broadcast({ type: 'chatbot' }, 'control'); sfxSoon(); act('chat', `Found ${names.length} sound file${names.length === 1 ? '' : 's'} for the sound alerts on this PC (${names.slice(0, 6).join(', ')}${names.length > 6 ? '…' : ''})`, { icon: '🔎', kind: 'sfx' }); if (why !== 'button') broadcast({ type: 'toast', text: `🔎 Found ${names.length} sound file${names.length === 1 ? '' : 's'} for your sound alerts on this PC${left ? ` (${left} still missing)` : ''}` }, 'control'); }
+    sfxFindRun.last = { at: Date.now(), found: names.length, left, why, names: names.slice(0, 30) };
+    return { found: names.length, left, names, folders: db.settings.sfxFolders || [], looked: roots.length };
+  } finally { sfxFindRun.running = false; }
+}
+app.get('/api/chatbot/sound-find', (req, res) => res.json({ folders: db.settings.sfxFolders || [], last: sfxFindRun.last, running: sfxFindRun.running, canPick: !!globalThis.__desktop?.pickFolder, roots: sfxSearchRoots().filter(r => fs.existsSync(r)) }));
+app.post('/api/chatbot/sound-find', wTry(async b => {
+  let folder = String(b.folder || '').trim();
+  if (b.pick) { if (!globalThis.__desktop?.pickFolder) throw new Error('Picking a folder this way only works in the Windows app.'); folder = await globalThis.__desktop.pickFolder('Pick the folder your sound files are in'); if (!folder) return { canceled: true }; }
+  if (b.forget) { db.settings.sfxFolders = (db.settings.sfxFolders || []).filter(f => f !== b.forget); save(); return { folders: db.settings.sfxFolders }; }
+  return sfxFind({ search: !!b.search, folder });
+}));
+app.post('/api/test/sound-find', wTry(async () => { // 🧪 pretend: two sound files in a test folder → two alerts that need them → found + remembered; then cleaned up
+  const dir = path.join(DATA, 'test-sounds'), sub = path.join(dir, 'Streamlabs sounds'); fs.mkdirSync(sub, { recursive: true });
+  const wav = Buffer.from('RIFF$\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00@\x1f\x00\x00\x80>\x00\x00\x02\x00\x10\x00data\x00\x00\x00\x00', 'binary');
+  fs.writeFileSync(path.join(sub, 'Pretend Airhorn.mp3'), wav); fs.writeFileSync(path.join(sub, 'pretendtada.wav'), wav);
+  const d = chatbot.data(), mk = (name, from) => { const c = { id: 'test' + Math.random().toString(36).slice(2, 8), uses: 0, on: true, at: Date.now(), name, text: '', aliases: [], perm: 'all', cd: 0, ucd: 0, soundMissing: from, test: true }; d.commands.push(c); return c; };
+  const a = mk('!pretendairhorn', 'C:\\Old PC\\Sounds\\Pretend Airhorn.mp3'), t = mk('!pretendtada', 'Pretend Tada');
+  const keep = db.settings.sfxFolders; db.settings.sfxFolders = [];
+  try {
+    const r = await sfxFind({ folder: dir, why: 'test' }), rows = [];
+    rows.push({ what: 'Both sound alerts got their file from the picked folder (inside a sub-folder, matched by name)', ok: !!a.sound && !!t.sound });
+    rows.push({ what: 'The folder the sounds were in is remembered for next time', ok: (db.settings.sfxFolders || []).includes(sub) });
+    return { ok: rows.every(x => x.ok), rows, found: r.found };
+  } finally {
+    for (const c of [a, t]) { if (c.sound) try { fs.unlinkSync(path.join(SFXDIR, c.sound)); } catch {} const i = d.commands.indexOf(c); if (i >= 0) d.commands.splice(i, 1); }
+    db.settings.sfxFolders = keep; save(); try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
+  }
+}));
+setTimeout(() => { try { if ((db.settings.sfxFolders || []).length && chatbot.data().commands.some(c => !c.sound && c.soundMissing)) sfxFind({ why: 'start' }).catch(() => {}); } catch {} }, 40000); // (on open: look in the remembered folders again)
 /** 🥳 (1.126.1, Derek: "the party sound can happen on stream") the birthday party whistle through OBS: the sound alert page (in every scene) or the battle screen in OBS. Never the app (it plays its own). */
 function bdayStreamSound(vol = 35) {
   const msg = { type: 'sfxCmd', url: '/sounds/party-whistle.wav', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
@@ -5393,6 +5501,7 @@ setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot
 const botDev = fn => wTry(fn); /* (every edition since 1.108.0) */
 app.get('/api/chatbot', (req, res) => res.json(chatbot.info()));
 app.post('/api/chatbot/opts', botDev(b => chatbot.setOpts(b)));
+app.post('/api/chatbot/ready', botDev(b => ({ ready: chatbot.setReady(b.key, b) }))); // ⭐ (1.128.0) ready-made !so / !watchtime / !followage: on/off + cooldowns
 app.post('/api/chatbot/command', botDev(b => ({ command: chatbot.saveCommand(b) })));
 app.post('/api/chatbot/sound', botDev(b => {
   const c = db.chatbot?.commands?.find(x => x.id === b.id); if (!c) throw new Error('Save the command first.');
@@ -5450,7 +5559,7 @@ app.post('/api/chatbot/import-all', botDev(b => {
   if (p.songs.length) done.songs = songs.applyImport({ songs: p.songs }, { kind: 'songs', replace: !!b.replace });
   if (p.banned.length) done.bannedSongs = songs.applyImport({ songs: p.banned }, { kind: 'banned' });
   if (p.hours.length) { let n = 0; for (const x of p.hours) { const v = chatlog.viewer(x.login, x.name); if (v && (v.watchOld || 0) < x.mins) { v.watchOld = x.mins; n++; } } done.hours = n; save(); } /* (kept apart from the app's own count, never added twice: the bigger import wins) */
-  sfxSoon(); return { found, done };
+  sfxSoon(); if (done.soundsMissing || chatbot.data().commands.some(c => c.soundMissing && !c.sound)) setTimeout(() => sfxFind({ search: true, why: 'import' }).catch(() => {}), 500); return { found, done };
 }));
 app.post('/api/test/chatbot-sound', botDev(async () => { // 🧪 a !testbeep sound alert (a short beep made here), used by a pretend viewer
   const name = 'test-beep.wav', file = path.join(SFXDIR, name);

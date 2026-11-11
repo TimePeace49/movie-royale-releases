@@ -413,6 +413,15 @@ export async function startBackup(opts = {}) {
     const r = await fetch(`${GH}/repos/${ED_REPO}/contents/${ED_PATH}`, { method: 'PUT', headers: { ...ghHead(), 'content-type': 'application/json' }, body: JSON.stringify({ message: 'Editions: feature switches changed from the Backup Bots app\n\n' + changes.map(c => `${c.edition}: ${c.feature} ${c.on ? 'on' : 'off'}`).join('\n'), content: Buffer.from(JSON.stringify(f.all, null, 1) + '\n').toString('base64'), sha: f.sha, branch: 'main' }) });
     if (!r.ok) throw new Error(r.status === 409 ? 'The file changed on GitHub just now. Press 🔄 Reload and try again.' : r.status === 403 || r.status === 404 ? `GitHub refused (${r.status}): the key needs "Contents: Read and write" on ${ED_REPO}.` : 'GitHub answered ' + r.status);
     log(`Editions: saved ${changes.length} change${changes.length === 1 ? '' : 's'} to GitHub`); return { ok: true, changes, saved: true }; }));
+  // ⭐🍅 (1.128.0) the dev edition's Movie Royal asks this to save what it shares with every edition (its 24/7 bot's OMDb helper address) into src/shared.json on GitHub
+  web.post('/api/shared/save', wrap(async b => { edNeedDev(); if (!conf.ghKey) throw new Error('Paste your GitHub key in the Backup Bots app first (🎭 Editions tab → 🔑).');
+    const omdb = String(b.omdb || '').trim(); if (omdb && !/^https:\/\/[a-z0-9.-]+\/omdb$/i.test(omdb)) throw new Error("That address doesn't look like a 24/7 bot's.");
+    let cur = {}, sha; const g = await fetch(`${GH}/repos/${ED_REPO}/contents/src/shared.json?ref=main`, { headers: ghHead() }); if (g.ok) { const j = await g.json(); sha = j.sha; try { cur = JSON.parse(Buffer.from(j.content || '', 'base64').toString('utf8')); } catch {} } else if (g.status !== 404) throw new Error('GitHub answered ' + g.status);
+    if ((cur.omdb || '') === omdb) return { ok: true, same: true };
+    const next = { ...cur, omdb };
+    const r = await fetch(`${GH}/repos/${ED_REPO}/contents/src/shared.json`, { method: 'PUT', headers: { ...ghHead(), 'content-type': 'application/json' }, body: JSON.stringify({ message: omdb ? 'Shared: the OMDb ratings helper on the 24/7 bot (from the app)' : 'Shared: OMDb ratings helper switched off (from the app)', content: Buffer.from(JSON.stringify(next, null, 1) + '\n').toString('base64'), ...(sha ? { sha } : {}), branch: 'main' }) });
+    if (!r.ok) throw new Error(r.status === 403 || r.status === 404 ? `GitHub refused (${r.status}): the key needs "Contents: Read and write" on ${ED_REPO}.` : 'GitHub answered ' + r.status);
+    log('Shared settings saved to GitHub (OMDb helper ' + (omdb ? 'on' : 'off') + ')'); return { ok: true, saved: true }; }));
   web.get('/api/log', (req, res) => { const after = Number(req.query.after) || 0; res.json({ logs: LOGS.filter(l => l.id > after).slice(-500), last: logId }); });
   web.get('/api/errors', (req, res) => res.json({ errors: errs().slice(0, 200) }));
   web.post('/api/errors/clear', wrap(async () => { ERRS = []; saveErrs(); return { ok: true }; }));

@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 20;
+export const WORKER_V = 21;
 export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
@@ -21,6 +21,7 @@ export default {
       if (url.pathname.startsWith('/co/')) return await coRoom(req, env, url); // 🤝 co-stream room (17): two streamers' Movie Royals linked
       if (url.pathname === '/live' || url.pathname === '/live/' || url.pathname.startsWith('/site/')) return await siteRoute(req, env, url); // 🌐 the viewer website (18)
       if (url.pathname === '/eggs' || url.pathname === '/eggs/' || url.pathname.startsWith('/eggs/') || url.pathname === '/creatures.js') return await eggRoute(req, env, url); // 🥚 the egg game's public page (20)
+      if (url.pathname === '/omdb' || url.pathname === '/omdb/key') return await omdbRoute(req, env, url, ctx); // ⭐🍅 (21) the streamer's OMDb key, shared with every edition's app (the key itself never leaves here)
       if (url.pathname === '/sync') return await sync(req, env);
       if (url.pathname === '/sync/pic') return await putPic(req, env, url); // 🎨 the app uploads the /character picture sheets from the streamer's PC
       if (url.pathname === '/characters' || url.pathname === '/characters/' || url.pathname === '/characters.html') { const b = await env.KV.get('pic:sitehtml'); return new Response(b || 'The parts website is not uploaded yet: the streamer opens Movie Royal once.', { status: b ? 200 : 404, headers: { 'content-type': b ? 'text/html; charset=utf-8' : 'text/plain', 'cache-control': 'public, max-age=300' } }); } // 🌐 the parts website (uploaded from the streamer's PC)
@@ -470,6 +471,26 @@ export class CoRoom {
 // The page itself is uploaded from the PC into KV (only when it changes). Everything else lives in the room's free SQLite storage.
 // 🥚 The egg game's public page (20): the streamer's PC uploads the page + the creature drawings once (when they change) and a copy of
 // names + creatures every few minutes (only when something changed: KV writes are limited). Viewers only read.
+// ⭐🍅 (WORKER_V 21, Derek: "everyone just uses my IMDb and Rotten Tomatoes key so they don't have to set one up"): Movie Royal apps without their own OMDb key ask here;
+// this adds the key that the streamer's own app stored (PUT /omdb/key with the sync key) and asks OMDb. Answers are cached a day, so the same movie isn't asked twice.
+async function omdbRoute(req, env, url, ctx) {
+  if (url.pathname === '/omdb/key') {
+    if ((req.headers.get('authorization') || '') !== `Bearer ${env.SYNC_KEY}`) return json({ error: 'bad key' }, 401);
+    if (req.method === 'GET') return json({ ok: true, shared: !!(await env.KV.get('omdb:key')) });
+    if (req.method !== 'PUT') return json({ error: 'PUT only' }, 405);
+    const b = await req.json().catch(() => ({})), k = String(b.key || '').trim();
+    if (!k) { await env.KV.delete('omdb:key'); return json({ ok: true, shared: false }); }
+    if (!/^[A-Za-z0-9]{6,40}$/.test(k)) return json({ error: "That doesn't look like an OMDb key" }, 400);
+    await env.KV.put('omdb:key', k); return json({ ok: true, shared: true });
+  }
+  const q = new URLSearchParams(); for (const n of ['i', 't', 'y', 'type']) { const v = url.searchParams.get(n); if (v) q.set(n, v.slice(0, 200)); }
+  if (!q.get('i') && !q.get('t')) return json({ Response: 'False', Error: 'Ask with ?i= (an IMDb id) or ?t= (a title)' }, 400);
+  const key = await env.KV.get('omdb:key'); if (!key) return json({ Response: 'False', Error: 'The shared OMDb key is switched off' }, 503);
+  const cache = globalThis.caches?.default, ck = new Request('https://omdb.cache/?' + q.toString()); const hit = cache && await cache.match(ck); if (hit) return hit;
+  q.set('apikey', key); const r = await fetch('https://www.omdbapi.com/?' + q.toString()); const body = await r.text();
+  const out = new Response(body, { status: r.ok ? 200 : r.status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=86400' } });
+  if (cache && r.ok && !/Request limit|Invalid API key/i.test(body)) ctx?.waitUntil?.(cache.put(ck, out.clone())); return out;
+}
 async function eggRoute(req, env, url) {
   const p = url.pathname, text = (b, type, age) => new Response(b || 'The egg game page is not uploaded yet: the streamer opens Movie Royal once.', { status: b ? 200 : 404, headers: { 'content-type': b ? type : 'text/plain; charset=utf-8', 'cache-control': b ? `public, max-age=${age}` : 'no-store' } });
   if (p === '/eggs' || p === '/eggs/') return text(await env.KV.get('eggs:page'), 'text/html; charset=utf-8', 120);
