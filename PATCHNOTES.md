@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.141.1: What's new
+- {ed:derek} 🛠️ With dev mode on, your edition has every part and chat command (for testing); with dev mode off it shows only what's ticked for it on the Editions tab.
+
 ## v1.141.0: What's new
 - 📖 The Help tab now only shows the parts your edition has.
 - 💬 Test tab: the pretend chat's quick buttons now match the chat commands your edition has.

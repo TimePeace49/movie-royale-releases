@@ -42,7 +42,7 @@ import * as pstats from './pstats.js';
 import * as eggs from './eggs.js';
 import * as safety from './safety.js';
 import * as xlsx from './xlsx.js';
-import { is as edition_is } from './edition.js';
+import { is as edition_is, setDevMode as edSetDevMode } from './edition.js';
 import { EDITION, APP as APP_NAME, brand, brandFile, feat as edFeat, FEATS as ED_FEATS, has as edHas, scrub as edScrub, appNow as edAppNow, scrubNow as edScrubNow, info as editionInfo, offNow as edOffNow, setLookAs as edLookAs, lookingAs as edLooking } from './edition.js';
 import * as costream from './costream.js';
 import * as site from './site.js';
@@ -1083,6 +1083,7 @@ function activityBackfill() {
 }
 /** 🎭 an extra made for an edition (or everything, in the dev edition with dev mode on) */
 const feat = name => edFeat(name, db.settings.betaUpdates);
+edSetDevMode(() => !!db.settings.betaUpdates); /* 🛠️ the dev edition with dev mode on has every part (edition.js) */
 const twitchHandlers = {
   adBreak: x => adBreakIn(x), // 📺 ad warnings
   change: pushState,

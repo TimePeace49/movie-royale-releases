@@ -12,7 +12,11 @@ const id = ALL[want] ? want : 'public';
 export const EDITION = { id, name: ALL[id]?.name || 'Public', streamer: ALL[id]?.streamer || '', repo: ALL[id]?.repo || '', dev: !!ALL[id]?.dev, off: Array.isArray(ALL[id]?.off) ? ALL[id].off : [] };
 /** Is this part of the app in this edition? (`off` in editions.json: movies, kirbWheel, cards, voidSetup) */
 let lookAs = null; /* 👀 Derek's (dev) edition can look like another edition for a while, to try it before handing it over (not saved) */
-export const offNow = () => (lookAs && ALL[lookAs] ? (Array.isArray(ALL[lookAs].off) ? ALL[lookAs].off : []) : EDITION.off);
+/* 🛠️ (1.141.1, Derek: "when in dev mode on my edition I can do everything. This is for testing; when I turn off dev mode it will only show what I have turned on") the dev edition with dev mode ON has every part, whatever its own tick boxes say; dev mode OFF = exactly its tick boxes. (Looking like another edition still shows that edition's set.) */
+let devMode = () => false;
+export const setDevMode = fn => { if (typeof fn === 'function') devMode = fn; };
+const allOn = () => { try { return !lookAs && !!EDITION.dev && !!devMode(); } catch { return false; } };
+export const offNow = () => (lookAs && ALL[lookAs] ? (Array.isArray(ALL[lookAs].off) ? ALL[lookAs].off : []) : allOn() ? [] : EDITION.off);
 export const has = f => !offNow().includes(f);
 export function setLookAs(id) { lookAs = EDITION.dev && ALL[id] && id !== EDITION.id ? id : null; return lookAs; }
 export const lookingAs = () => lookAs;
@@ -46,5 +50,5 @@ export const brand = t => { const A = appNow(); return scrubOut(A === 'Movie Roy
 /** For page files: also the lower-case spelling (help mode's word patterns match what's on screen). */
 export const brandFile = t => { const A = appNow(); return scrubOut(A === 'Movie Royal' ? t : t.replace(SEEN, A).replace(SEEN_LOW, A.toLowerCase()).replace(/MOVIE ROYAL/g, A.toUpperCase())); };
 /** What the pages have to hide right now: the `hide` notes of every part this edition (or the one being looked at) doesn't have. */
-export const hideNow = () => FEATURES.filter(f => f.hide && (f.kind === 'on' ? !onNow().includes(f.id) : !has(f.id))).map(f => f.hide);
+export const hideNow = () => FEATURES.filter(f => f.hide && (f.kind === 'on' ? !(onNow().includes(f.id) || allOn()) : !has(f.id))).map(f => f.hide);
 export const info = () => ({ hide: hideNow(), id: EDITION.id, name: EDITION.name, app: appNow(), dev: EDITION.dev && !lookAs, realDev: EDITION.dev, off: offNow(), lookAs, lookName: lookAs ? ALL[lookAs].name : '', repo: EDITION.repo, all: Object.entries(ALL).map(([k, v]) => ({ id: k, name: v.name, app: v.app || 'Movie Royal', repo: v.repo, dev: !!v.dev, scrub: !!v.scrub })) });

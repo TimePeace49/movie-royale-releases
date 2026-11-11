@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.141.1
+- 🛠️ **Your dev edition: dev mode on = everything.** With dev mode on, your own edition now has every part and every chat command, whatever its tick boxes on the Editions tab say, so you can test anything. With dev mode off it shows exactly what you ticked for it. (👀 Looking like another edition still shows that edition's set.)
+
 ## 1.141.0
 - 🗳️ **Fix: the pretend vote tests work in every edition.** In an edition where the vote command is switched off on the server app's Editions tab (your own dev edition has it off), the pretend votes were thrown away, so the pretend chat opened and nothing else happened. The tests now go through anyway and say when the command is switched off for real chat. Typing a switched-off command in the pretend chat now answers with a test note instead of silence.
 - 💬 **Pretend chat buttons per edition.** The quick buttons in the pretend chat window are now made from the chat commands that edition really has, in groups (Chat, Birthdays, Movie night, Songs, Eggs, Quotes, Chat bot, Battles, Movies, Wheel…), each with something sensible typed after it (like `!vote 1`, `!sr never gonna give you up`, `!bday 3/14`). The channel point Redeem row, the Add a movie row and the 🏆 Winner button only show in editions that have those.
