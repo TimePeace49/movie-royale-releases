@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.136.2: What's new
+- {movienight} 📋 A long IMDb watchlist is now read all the way (before, only the first 250 movies came in), and the ratings page is read in more ways.
+
 ## v1.136.1: What's new
 - {movienight} 📋 IMDb's newer watchlist and ratings links (the ones with p. in them) are accepted now.
 

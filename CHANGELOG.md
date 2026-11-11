@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.136.2
+- 📋 Reading a long IMDb watchlist now gets all of it. IMDb shows 250 movies a page, and the app only read the first page (a 1,700-movie watchlist came in as 250). It now reads page after page until the end, so a long list can take a few minutes.
+- ⭐ Reading the IMDb ratings page: the app looked for each rating in too small a spot on the page and found none. It now looks further along each row, in three different ways. If it still can't read them, the message says what it saw on the page so it can be fixed, and the Export file still works.
+
 ## 1.136.1
 - 📋 IMDb's newer profile links (imdb.com/user/p.…/watchlist and …/ratings) are now accepted for the watchlist and ratings. Before, only the older ur… style links were.
 

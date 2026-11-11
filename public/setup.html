@@ -583,9 +583,9 @@ async function charAns(k, yes) {
   catch (e) { msg.ch = { ok: false, text: esc(e.message) }; }
   await load();
 }
-async function imdbLinks(btn) { btn.disabled = true; btn.textContent = 'Reading IMDb… (up to a minute)';
+async function imdbLinks(btn) { btn.disabled = true; btn.textContent = 'Reading IMDb… (a long list can take a few minutes)';
   try { await api('/api/watchlist/opts', { listUrl: $('wlUrl1').value.trim(), ratedUrl: $('wlUrl2').value.trim() }); const r = await api('/api/watchlist/sync', {}), s = r.sync || {}, bad = [s.list, s.rated].filter(x => x && x.err);
-    msg.imdb = bad.length ? { ok: false, text: 'The links are saved, but IMDb could not be read: ' + esc(bad[0].err) + '. Check that both pages are public, or use the Export files below.' } : { ok: true, text: `Read from IMDb: ${s.list ? s.list.n + ' on the watchlist' : ''}${s.list && s.rated ? ', ' : ''}${s.rated ? s.rated.n + ' ratings' : ''}.` }; }
+    msg.imdb = bad.length ? { ok: false, text: 'The links are saved, but ' + (bad.length === 1 && s.list && !s.list.err ? 'only the watchlist (' + s.list.n + ' movies) could be read. The ratings: ' : 'IMDb could not be read: ') + esc(bad[0].err) + '. Check that both pages are public, or use the Export files below.' } : { ok: true, text: `Read from IMDb: ${s.list ? s.list.n + ' on the watchlist' : ''}${s.list && s.rated ? ', ' : ''}${s.rated ? s.rated.n + ' ratings' : ''}.` }; }
   catch (e) { msg.imdb = { ok: false, text: esc(e.message) }; }
   await load(); }
 async function imdbFile(file, kind) { if (!file) return; try { const r = await api('/api/watchlist/import', { text: await file.text(), kind }); msg.imdb = { ok: true, text: kind === 'rated' ? `${r.result.added} rating${r.result.added === 1 ? '' : 's'} brought in.` : `${r.result.added} movie${r.result.added === 1 ? '' : 's'} added to the watchlist.` }; } catch (e) { msg.imdb = { ok: false, text: esc(e.message) }; } await load(); }

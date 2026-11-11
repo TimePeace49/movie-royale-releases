@@ -91,17 +91,42 @@ export function imdbUserRatings(html) {
       if (val != null) { const tt = idOf(o) || idOf(o.title) || idOf(o.node) || idOf(o.item) || idOf(o.listItem); if (tt) put(tt, val, ur && (ur.date || ur.ratedOn)); }
       for (const k in o) walk(o[k], depth + 1); };
     walk(data); }
-  /* the rows on the page (also the ones a "more" press added): the title link + the rater's own star */
-  for (const row of html.split(/(?=<li[^>]*ipc-metadata-list-summary-item)/).slice(1)) { const tt = (row.match(/\/title\/(tt\d+)\//) || [])[1], st = row.match(/ipc-rating-star--(?:otherUserAlt|otherUser|currentUser|user)[^>]*>[\s\S]{0,400}?<span[^>]*ipc-rating-star--rating[^>]*>\s*(\d{1,2})\s*</) || row.match(/aria-label="(?:User|Their|Your) rating:\s*(\d{1,2})"/i); if (tt && st) put(tt, st[1]); }
+  /* the rows on the page (also the ones a "more" press added): the title link + the rater's own star (1.136.2: the star's drawing sits between its name and its number, and it is long) */
+  for (const row of imdbRows(html)) { const tt = (row.match(/\/title\/(tt\d+)\//) || [])[1]; if (!tt) continue; const st = rowRating(row); if (st) put(tt, st); }
   return out;
+}
+const imdbRows = html => { let rows = html.split(/(?=<li[^>]*ipc-metadata-list-summary-item)/).slice(1); if (!rows.length) rows = html.split(/(?=<a[^>]+href="\/title\/tt\d+\/[^"]*"[^>]*ipc-title-link)/).slice(1); return rows; };
+function rowRating(row) {
+  const lab = [...row.matchAll(/aria-label="([^"]{0,80}?rating:?\s*(\d{1,2}))"/gi)].find(m => !/imdb/i.test(m[1])); if (lab) return lab[2];
+  const st = row.match(/ipc-rating-star--(?:otherUserAlt|otherUser|currentUser|user|rate)\b[^>]*>[\s\S]{0,3000}?<span[^>]*ipc-rating-star--rating[^>]*>\s*(\d{1,2})\s*</i) || row.match(/(?:user-rating|userRating|ratingGroup--user)[^>]*>[\s\S]{0,3000}?<span[^>]*ipc-rating-star--rating[^>]*>\s*(\d{1,2})\s*</i); if (st) return st[1];
+  const all = [...row.matchAll(/ipc-rating-star--rating[^>]*>\s*([\d.]{1,4})\s*</g)].map(m => m[1]); /* IMDb's own score has a decimal ("7.4"); a second, whole number on the row is the person's */
+  if (all.length >= 2) { const whole = all.filter(x => /^\d{1,2}$/.test(x)); if (whole.length) return whole[whole.length - 1]; }
+  return null;
+}
+/** What a ratings page looks like when nothing could be read from it (short, no personal data): it goes in the error line so a screenshot shows what to fix. */
+export function imdbShape(html) {
+  const rows = imdbRows(html), cls = [...new Set([...html.matchAll(/ipc-rating-star--([\w-]+)/g)].map(m => m[1]))].filter(x => !/^(base|rating|voteCount|maxRating)$/.test(x)).slice(0, 8);
+  const labs = [...new Set([...html.matchAll(/aria-label="([^"]{0,60}rating[^"]{0,20})"/gi)].map(m => m[1].replace(/\d+(\.\d+)?/g, '#')))].slice(0, 4);
+  const keys = [...new Set([...html.matchAll(/"(\w*[rR]ating\w*)"\s*:/g)].map(m => m[1]))].filter(x => !/^(ratingsSummary|aggregateRating|ratingSummary|canRate|voteCount)$/.test(x)).slice(0, 8);
+  return `rows ${rows.length}; stars ${cls.join(',') || 'none'}; labels ${labs.join(' | ') || 'none'}; data ${keys.join(',') || 'none'}`;
+}
+/** Reads every page of someone's watchlist / ratings (IMDb shows 250 a page: ?page=2, 3…) until a page brings nothing new. `get(url)` gives a page's HTML. */
+export async function imdbUserPages(base, kind, get, want = 3000) {
+  const items = [], seen = new Set(), rates = new Map(); let shape = '', pages = 0;
+  for (let pg = 1; pg <= Math.ceil(want / 250) + 1 && items.length < want; pg++) {
+    let html; try { html = await get(pg === 1 ? base : `${base}?page=${pg}`, pg); } catch (e) { if (pg === 1) throw e; break; }
+    if (pg === 1 && /private|isn't public|is not public|sign in to/i.test(html.slice(0, 200000)) && !/\/title\/tt\d+/.test(html)) throw new Error('IMDb says that page is private. Set it to public on IMDb (Your account → Privacy), or use the Export file instead.');
+    const titles = imdbParse(html); let fresh = 0;
+    for (const t of titles) { const k = t.imdbId || (t.title + '|' + t.year); if (seen.has(k)) continue; seen.add(k); fresh++; items.push({ title: t.title, year: t.year ? String(t.year) : '', imdb: t.imdbId || '', rate: null, at: 0 }); }
+    if (kind === 'rated') { for (const [k, v] of imdbUserRatings(html)) if (!rates.has(k)) rates.set(k, v); if (pg === 1) shape = imdbShape(html); }
+    pages = pg; if (!fresh || titles.length < 200) break; /* a short page is the last one; a page with nothing new means IMDb gave the same page again */
+  }
+  if (kind === 'rated') { for (const it of items) { const x = rates.get(it.imdb); if (x) { it.rate = x.rate; it.at = x.at; } } return { kind: 'rated', items: items.filter(x => x.rate), seen: items.length, pages, shape }; }
+  return { kind: 'watch', items, seen: items.length, pages };
 }
 export async function readImdbUser(url, want = 3000) {
   const u = imdbUserUrl(url); if (!u) throw new Error("That isn't an IMDb watchlist or ratings link. It looks like imdb.com/user/…/watchlist (or …/ratings).");
-  const html = await getHtml(u.url, { render: true, wait: '.ipc-metadata-list-summary-item, a[href*="/title/tt"]', timeout: 120000, more: { click: 'button.ipc-see-more__button, .ipc-see-more button', count: '.ipc-metadata-list-summary-item', want } });
-  if (/private|isn't public|is not public|sign in to/i.test(html.slice(0, 200000)) && !/\/title\/tt\d+/.test(html)) throw new Error('IMDb says that page is private. Set it to public on IMDb (Your account → Privacy), or use the Export file instead.');
-  const titles = imdbParse(html), items = titles.map(t => ({ title: t.title, year: t.year ? String(t.year) : '', imdb: t.imdbId || '', rate: null, at: 0 }));
-  if (u.kind === 'rated') { const r = imdbUserRatings(html); for (const it of items) { const x = r.get(it.imdb); if (x) { it.rate = x.rate; it.at = x.at; } } return { kind: 'rated', items: items.filter(x => x.rate), seen: items.length }; }
-  return { kind: 'watch', items, seen: items.length };
+  return imdbUserPages(u.url, u.kind, page => getHtml(page, { render: true, wait: '.ipc-metadata-list-summary-item, a[href*="/title/tt"]', timeout: 120000, more: { click: 'button.ipc-see-more__button, .ipc-see-more button', count: '.ipc-metadata-list-summary-item', want: 250 } }), want);
 }
 
 // ---------- 🍅 Rotten Tomatoes ----------
