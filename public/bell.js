@@ -16,4 +16,11 @@
       return () => { try { out.gain.setTargetAtTime(0, ctx.currentTime, .02); } catch {} };
     } catch { return () => {}; }
   };
+  /* 🚲 (1.139.1, Derek) what rings when the movie night timer ends: your own sound file, else a bicycle bell (the default), else the old alarm clock.
+     window.timerBell({vol 0–100, kind 'bike'|'clock', file url}, secs) → stop function. */
+  window.timerBell = function (m, secs) {
+    m = m || {}; const v = Math.max(0, Math.min(100, m.vol == null ? 60 : Number(m.vol))) / 100;
+    if (!m.file && m.kind === 'clock') return window.oldBell(m.vol, secs || 4.5);
+    try { const au = new Audio(m.file || '/sounds/bike-bell.wav'); au.volume = v; au.play().catch(() => {}); return () => { try { au.pause(); } catch {} }; } catch { return () => {}; }
+  };
 })();

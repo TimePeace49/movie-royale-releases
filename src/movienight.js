@@ -19,7 +19,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', myCommand: '!myvotes', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, timerPop: true, bell: true, bellVol: 60, firstSay: true, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', myCommand: '!myvotes', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, timerPop: true, bell: true, bellVol: 60, bellKind: 'bike', bellFile: '', firstSay: true, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -72,7 +72,7 @@ export function cast(login, name, movie, d = data(), now = Date.now()) {
 let lastNo = 0;
 const sayOnce = (text, gap = 15000) => { if (Date.now() - lastNo < gap) return; lastNo = Date.now(); H.say(text).catch(() => {}); };
 export function state() {
-  const d = data(), o = opts(d), now = Date.now();
+  const d = data(), o = opts(d), now = Date.now(); try { o.bellUrl = (H.bellUrl && H.bellUrl()) || ''; } catch { o.bellUrl = ''; } /* (1.139.1: your own timer sound, when its file is there) */
   const right = d.guesses.filter(g => g.right === true).length, wrong = d.guesses.filter(g => g.right === false).length;
   return {
     byNames: [...new Set((d.past || []).flatMap(n => (n.movies || []).map(m => String(m.by || '').trim())).filter(Boolean))].slice(0, 200), /* 🙋 names typed as "who asked" on earlier nights (for the suggestions) */
@@ -292,7 +292,7 @@ export function setOpts(o) {
   if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
   if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';
   for (const k of ['timerPop', 'bell', 'firstSay']) if (k in o) x[k] = !!o[k];
-  if ('enabled' in o) { x.enabled = !!o.enabled; if (!x.enabled && d.open) { d.open = false; d.closedAt = Date.now(); delete d.endsAt; H.timer && H.timer({ endsAt: 0 }); } H.act(x.enabled ? 'Movie night voting switched on' : 'Movie night voting switched off (the watchlist commands still work)', { icon: '🍿', kind: 'mnSwitch' }); } if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0)));
+  if ('enabled' in o) { x.enabled = !!o.enabled; if (!x.enabled && d.open) { d.open = false; d.closedAt = Date.now(); delete d.endsAt; H.timer && H.timer({ endsAt: 0 }); } H.act(x.enabled ? 'Movie night voting switched on' : 'Movie night voting switched off (the watchlist commands still work)', { icon: '🍿', kind: 'mnSwitch' }); } if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0))); if ('bellKind' in o) x.bellKind = o.bellKind === 'clock' ? 'clock' : 'bike'; if ('bellFile' in o) x.bellFile = String(o.bellFile || '').replace(/[\\/]/g, '').slice(0, 120);
   if ('lastMins' in o) x.lastMins = Math.max(0.25, Math.min(60, Number(o.lastMins) || 5));
   changed(); return state();
 }

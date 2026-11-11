@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.139.1
+- 🚲 **Bicycle bell for the movie night timer.** When the last-call timer runs out it now rings a bicycle bell (the new default) instead of the alarm clock. Next to the bell's volume (Movie night tab, and Settings → 🍿 Movie night) there is a menu: 🚲 Bicycle bell / ⏰ Old alarm clock, a 🔊 Hear it button, and 🎵 Use my own sound file. Test tab → Movie night → 🚲 Timer sound checks it.
+
 ## 1.139.0
 - 🎵 **Your own birthday sound.** Chat bot → 🎂 Birthdays has a new **🎵 Use my own sound file** button: pick any sound file (mp3, wav, ogg…) and the birthday pop-up plays that instead of the party whistle, in the app and on stream. **↩ Back to the party whistle** undoes it. The volume sliders and 🔊 Hear it / 📺 Play it on stream work with your file. Test tab → Birthdays → 🎵 Own birthday sound checks it.
 

@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.139.1: What's new
+- {movienight} 🚲 The movie night timer now ends with a bicycle bell. You can switch back to the old alarm clock or use your own sound file (next to the bell's volume).
+
 ## v1.139.0: What's new
 - 🎵 Your own birthday sound: in Chat bot → 🎂 Birthdays, **Use my own sound file** plays any sound you pick for the birthday pop-up (in the app and on stream) instead of the party whistle.
 

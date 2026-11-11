@@ -5292,9 +5292,10 @@ async function mnRating(title) {
 setInterval(() => { if (feat('movienight')) movienight.fillRatings().catch(() => {}); }, 120000);
 const mnTimer = m => { /* ⏳⏰ (1.132.6) the last-call timer pop-up; the bell rings on the stream's vote box when OBS has it, else in the app (never both: no double sound) */
   const obs = [...wss.clients].some(c => c.readyState === 1 && c.role === 'movienight');
+  if (m.bell) m = { ...m, kind: movienight.opts().bellKind, file: mnBellUrl() }; /* (1.139.1: which sound rings) */
   broadcast({ type: 'mnTimer', ...m, bell: !!m.bell }, 'movienight'); broadcast({ type: 'mnTimer', ...m, bell: !!m.bell && !obs }, 'control');
 };
-movienight.setHooks({ suggestedBy: t => (feat('movienight') ? watchlist.suggestedBy(t) : ''), timer: mnTimer, rating: t => mnRating(t), note: pstats.note,
+movienight.setHooks({ bellUrl: () => mnBellUrl(), suggestedBy: t => (feat('movienight') ? watchlist.suggestedBy(t) : ''), timer: mnTimer, rating: t => mnRating(t), note: pstats.note,
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
   isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
   act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),
@@ -5336,6 +5337,25 @@ app.post('/api/movienight/guess', mnTry(b => movienight.guess(String(b.id || '')
 app.post('/api/movienight/vote', mnTry(b => { const d = movienight.data(), m = movienight.findMovie(String(b.movie || ''), d); if (!m || m.many) throw new Error('Pick a movie from the list (its number works).'); const who = String(b.name || '').trim().replace(/^@/, ''); if (!who) throw new Error('Type who is voting.'); if (!d.open) throw new Error('Open voting first.'); const r = movienight.vote(who, who, m, { via: 'you', quiet: true }); if (!r.ok) throw new Error(r.why === 'same' ? 'They already voted for that one.' : 'They have used their votes and their change.'); return {}; }));
 app.post('/api/movienight/people', mnTry(b => b.kind === 'bday' ? movienight.setBirthday(b.name, b.remove ? '' : b.day) : b.kind === 'extra' ? movienight.setExtra(b.name, b.remove ? 0 : b.n) : b.kind === 'raid' ? movienight.setRaider(b.name, !b.remove) : b.kind === 'first' ? movienight.setFirst(b.remove ? '' : b.name) : (() => { throw new Error('bad kind'); })()));
 app.post('/api/movienight/opts', mnTry(b => movienight.setOpts(b)));
+/** 🚲 (1.139.1, Derek: "for end of 5 min timer use this one… options to change them") the timer's sound: a bicycle bell (built in, the default), the old alarm clock, or your own file (kept with the sound alert files). */
+function mnBellUrl() { const f = String(movienight.opts().bellFile || ''); try { return f && fs.existsSync(path.join(SFXDIR, f)) ? '/sfx/' + encodeURIComponent(f) : ''; } catch { return ''; } }
+app.get('/api/movienight/bell', (req, res) => { const o = movienight.opts(); res.json({ kind: o.bellKind, file: mnBellUrl() ? o.bellFile : '', url: mnBellUrl(), vol: o.bellVol }); });
+app.post('/api/movienight/bell', wTry(b => {
+  if (b.remove) movienight.setOpts({ bellFile: '' });
+  else if (b.kind) movienight.setOpts({ bellKind: b.kind, bellFile: '' });
+  else { let name = String(b.name || '').replace(/[\\/:*?"<>|]/g, '').trim().slice(-100); if (!SFX_OK.test(name)) throw new Error('Pick a sound file (mp3, wav, ogg, m4a, flac, aac or opus).');
+    const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]*,/, ''), 'base64'); if (!buf.length) throw new Error('That file is empty.'); if (buf.length > 25e6) throw new Error('That file is too big (25 MB at most).');
+    fs.mkdirSync(SFXDIR, { recursive: true }); name = sfxFree(name, buf); fs.writeFileSync(path.join(SFXDIR, name), buf); movienight.setOpts({ bellFile: name }); }
+  broadcast({ type: 'movieNight' }, 'control'); const o = movienight.opts(); return { kind: o.bellKind, file: mnBellUrl() ? o.bellFile : '', url: mnBellUrl() };
+}));
+app.get('/api/test/mn-bell', (req, res) => { /* 🧪 the timer sound choices (your own choice is put back) */
+  const o = movienight.opts(), was = { bellKind: o.bellKind, bellFile: o.bellFile || '' }, rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) });
+  add('The bicycle bell sound is in the app', fs.existsSync(path.join(ROOT, 'public', 'sounds', 'bike-bell.wav')), 'bike-bell.wav');
+  movienight.setOpts({ bellKind: 'nonsense', bellFile: '' }); add('The bicycle bell is the default', movienight.opts().bellKind === 'bike' && !mnBellUrl(), movienight.opts().bellKind);
+  movienight.setOpts({ bellKind: 'clock' }); add('The old alarm clock can be picked', movienight.opts().bellKind === 'clock', movienight.opts().bellKind);
+  movienight.setOpts({ bellFile: 'not-there.mp3' }); add('A file of your own that is gone = the picked bell (never silence)', mnBellUrl() === '', mnBellUrl() || 'the picked bell');
+  movienight.setOpts(was); res.json({ ok: rows.every(x => x.ok), rows });
+});
 app.get('/api/test/movienight-rules', (req, res) => res.json(movienight.rulesDemo()));
 app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote through the pretend chat (nothing is sent to Twitch); 'clear' takes them out again
   const d = movienight.data();

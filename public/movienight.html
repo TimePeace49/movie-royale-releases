@@ -68,7 +68,7 @@ function draw() {
 }
 /* ⏳ (1.132.6) the last-call timer: a big pop-up on stream; at 0 an old alarm clock rings and it says TIME'S UP */
 let TM = { test: 0, done: 0, hide: false };
-function timerMsg(m) { if (m.test) TM.test = m.endsAt || 0; if (m.done) { TM.test = 0; TM.done = Date.now() + 6500; if (m.bell && window.oldBell) window.oldBell(m.vol, 4.5); } else TM.done = 0; TM.hide = m.pop === false; tick(); }
+function timerMsg(m) { if (m.test) TM.test = m.endsAt || 0; if (m.done) { TM.test = 0; TM.done = Date.now() + 6500; if (m.bell && window.timerBell) window.timerBell(m, 4.5); } else TM.done = 0; TM.hide = m.pop === false; tick(); }
 function tick() {
   const c = $('clock'), b = $('big'), s = S, end = TM.test || (s && s.open && s.endsAt) || 0, pop = !TM.hide && (TM.test || !s || s.timerPop !== false);
   if (TM.done > Date.now() && pop) { b.className = 'on done'; $('bigL').textContent = '⏰ TIME\'S UP!'; $('bigT').textContent = 'VOTING IS CLOSED'; $('bigS').textContent = ''; c.classList.remove('on'); return; }
