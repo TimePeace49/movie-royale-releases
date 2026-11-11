@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.6
+- 📝 New box for the Chat tab: Stream details. It shows your Twitch title, category and tags, and you can change them right there (💾 Save to Twitch). It starts switched off: right-click the Chat tab and tick 📝 Stream details. The first time, sign in with Twitch again (Settings → 💜 Twitch) so the app is allowed to change them. Test: 🧪 Test tab → Chat tab tests → 📝 Stream details box.
+- 🕰️ History has two new tabs: 🎵 Music (songs played, different songs, who asks the most, the most asked-for and best rated songs, and every song that was played, day by day) and 💬 Chat stats (messages all time / this year / this month, chat by month, top chatters, most hours watched, newest faces, most used commands). Click a name to open their profile; the search box filters each tab. In the Birx & Jess edition, History is now 🍿 Movie nights, 🎵 Music and 💬 Chat stats.
+- 🧪 Test tab → Chat tab tests → 🕰️ History: Music and 🕰️ History: Chat stats.
+- ⏳⏰ Movie night last call: a big timer now pops up on stream (on the vote box) and a timer pop-up shows in the app on any tab. When it hits 0 it says TIME'S UP and an old-school alarm clock bell rings: on stream when OBS has the vote box, otherwise in the app (never both, so no double sound). Movie night tab: ⏳ Big timer pop-up, ⏰ Alarm bell at 0 and its volume. Test: 🍿 Movie night tests → ⏰ Timer + alarm bell.
+- 🚀 Raid tab: a search box. Type a name to find any channel that is live right now, even one you don't follow; pick it and raid it like the others. Empty the box to see the channels you follow again.
+- 🚀 Raid tab: the wait before a raid now starts at 3 minutes. Under the slider, "Usual wait" sets what the slider starts at; the slider itself is only for this one raid. Test: 🚀 Raid tab → 🔎 Try the search.
+- 🎁 Giveaway tab: "Pieces" is now a menu (⚪ Balls / 🧍 Characters) instead of a tick box. In the Birx & Jess edition the Giveaway tab also has a Map menu (the list fits the pieces you picked), its own battle screen so the giveaway battle plays right there, and the "use chat's !id" box is gone.
+
 ## 1.132.5
 - 🔤 Chat bot: the Special words button (now called 🔤 Special words guide) moved from the top right to the Commands tab, right after the !addcom / !editcom / !delcom line. It's on the Timers tab too.
 - ⭐ Song ratings out of 10 now show 10 stars (out of 5 shows 5). Half stars still work.

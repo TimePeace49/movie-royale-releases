@@ -17,7 +17,7 @@ export function data(d = (db.movieNight ||= {})) {
   d.stats ||= { right: 0, wrong: 0, per: {} }; d.past ||= []; d.opts ||= {};
   return d;
 }
-export const opts = (d = data()) => ({ command: '!vote', myCommand: '!myvotes', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
+export const opts = (d = data()) => ({ command: '!vote', myCommand: '!myvotes', changes: 1, reply: true, overlay: true, ratings: true, posters: true, autoPin: true, bg: 85, side: 'right', at: 'top', lastMins: 5, timerPop: true, bell: true, bellVol: 60, bonusDays: [0, 3], guesser: is('birx') ? 'Birx' : 'Guess', ...d.opts });
 /** Which day a moment belongs to: the shared birthday rule (Birx & Jess: a new day starts at 6 AM, so live at 1:30 AM Tuesday = Monday). A pretend night (`d.dayStart`) brings its own. */
 export const dayOf = (now = Date.now(), d = data()) => (d !== db.movieNight ? now - (d.dayStart ?? 6) * 3600000 : bdays.dayOf(now));
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -82,7 +82,7 @@ export function state() {
 }
 export function screen() { // what the on-stream box shows
   const d = data(), s = state();
-  return { type: 'mnState', show: opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, ratings: opts(d).ratings !== false, posters: opts(d).posters !== false, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
+  return { type: 'mnState', timerPop: opts(d).timerPop !== false, show: opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, ratings: opts(d).ratings !== false, posters: opts(d).posters !== false, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
 }
 function changed() { save(); H.send({ type: 'movieNight' }, 'control'); H.send(screen(), 'movienight'); }
 
@@ -163,8 +163,8 @@ export async function open(yes, { quiet = false } = {}) {
 /** ⏳ Last call (Birx: "a 5 min countdown at the end for people to change votes"): a countdown on screen; voting closes by itself at 0. */
 export function lastCall(yes, mins) {
   const d = data(), o = opts(d); if (!d.open) throw new Error('Open voting first.');
-  if (!yes) { if (d.endsAt) { delete d.endsAt; changed(); H.say('🍿 The countdown is off: voting stays open.').catch(() => {}); } return state(); }
-  const m = Math.max(0.25, Math.min(60, Number(mins) || o.lastMins || 5)); d.endsAt = Date.now() + Math.round(m * 60000); changed();
+  if (!yes) { if (d.endsAt) { delete d.endsAt; changed(); H.timer && H.timer({ endsAt: 0 }); H.say('🍿 The countdown is off: voting stays open.').catch(() => {}); } return state(); }
+  const m = Math.max(0.25, Math.min(60, Number(mins) || o.lastMins || 5)); d.endsAt = Date.now() + Math.round(m * 60000); changed(); H.timer && H.timer({ endsAt: d.endsAt, pop: o.timerPop !== false }); /* ⏳ the timer pop-up on stream + in the app */
   const word = m >= 1 ? `${Math.round(m * 10) / 10} minute${m === 1 ? '' : 's'}` : `${Math.round(m * 60)} seconds`;
   H.say(`⏳ Last call! Voting closes in ${word}. Vote or change your vote now with ${o.command} and a number.`).catch(() => {});
   H.act(`Movie night: last call, voting closes in ${word}`, { icon: '⏳', kind: 'lastcall' }); return state();
@@ -173,7 +173,7 @@ let warned = 0;
 export function tick() { // every second from the server
   const d = db.movieNight; if (!d || !d.open || !d.endsAt) return;
   const left = d.endsAt - Date.now();
-  if (left <= 0) { open(false).catch(() => {}); return; }
+  if (left <= 0) { const o = opts(d); H.timer && H.timer({ endsAt: 0, done: true, bell: o.bell !== false, vol: o.bellVol, pop: o.timerPop !== false }); open(false).catch(() => {}); return; } /* ⏰ time's up: the old alarm clock rings */
   if (left <= 60000 && left > 58000 && warned !== d.endsAt && opts(d).lastMins > 1) { warned = d.endsAt; H.say('⏳ One minute left to vote or change your vote!').catch(() => {}); }
 }
 /** A fresh night: tonight goes into the list of past nights, votes + bonus votes are wiped. The movie list is kept unless `clear`. */
@@ -285,6 +285,7 @@ export function setOpts(o) {
   if ('bg' in o) x.bg = Math.max(0, Math.min(100, Math.round(Number(o.bg) || 0))); /* how solid the board's background is on stream: 0 = see-through */
   if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
   if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';
+  for (const k of ['timerPop', 'bell']) if (k in o) x[k] = !!o[k]; if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0)));
   if ('lastMins' in o) x.lastMins = Math.max(0.25, Math.min(60, Number(o.lastMins) || 5));
   changed(); return state();
 }

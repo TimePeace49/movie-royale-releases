@@ -4,6 +4,15 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.132.6: What's new
+- {dash} 📝 New Stream details box for the Chat tab: see and change your Twitch title, category and tags without leaving the app. It starts off: right-click the Chat tab and tick 📝 Stream details. Sign in with Twitch again once so the app may change them.
+- {songs} 🕰️ History → 🎵 Music: songs played, who asks the most, the most asked-for and best rated songs, and every song that was played.
+- {movienight} ⏳⏰ Movie night last call: a big timer pops up on stream and in the app, and an old-school alarm clock bell rings when time is up. You can turn the pop-up and the bell off, and set the bell's volume, on the Movie night tab.
+- {raids} 🚀 Raid tab: search for any live channel by name, even one you don't follow. The wait before a raid now starts at 3 minutes, and "Usual wait" under the slider sets what it starts at.
+- 🎁 Giveaway: "Pieces" is now a menu (⚪ Balls / 🧍 Characters).
+- {ed:birx} 🎁 The Giveaway tab has a Map menu and its own battle screen, so the giveaway battle plays right there.
+- 🕰️ History → 💬 Chat stats: top chatters (all time, this year, this month), chat by month, most hours watched, newest faces and the most used commands.
+
 ## v1.132.5: What's new
 - {songs} ⭐ Song ratings out of 10 now show 10 stars (out of 5 shows 5), and "out of 100" is gone. Switching between 5 and 10 moves your saved ratings over to the new scale.
 

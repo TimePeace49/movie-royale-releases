@@ -2157,6 +2157,35 @@ app.post('/api/chat/say', wTry(async b => { /* 💬 the app's own chat box. (1.1
   await twitch.sayAsMe(text); /* Twitch chat sends it back to the app like any chat message, from you (the streamer), and the command runs */
   return { command: true, as: me };
 }));
+/* 📝 (1.132.5, Derek: "a stream detail dock… change title, category, those type of things") Chat tab box 📝 Stream details */
+const SD_CATS = [['509658', 'Just Chatting'], ['26936', 'Music'], ['509663', 'Special Events'], ['417752', 'Talk Shows & Podcasts'], ['27471', 'Minecraft'], ['509660', 'Art'], ['488190', 'Poker'], ['518203', 'Sports']];
+const sdTags = t => { const l = (Array.isArray(t) ? t : String(t || '').split(/[,\n]+/)).map(x => String(x).replace(/[^\p{L}\p{N}]/gu, '').slice(0, 25)).filter(Boolean); return [...new Set(l.map(x => x.toLowerCase()))].map(k => l.find(x => x.toLowerCase() === k)).slice(0, 10); }; /* Twitch: up to 10 tags, 25 letters each, no spaces or symbols */
+const sdPretend = () => (live.sdTest && Date.now() < live.sdTest.until ? live.sdTest : null);
+app.get('/api/stream/details', async (req, res) => {
+  const t = sdPretend(); if (t) return res.json({ ok: true, pretend: true, can: true, signedIn: true, details: t.d });
+  if (kick.on()) return res.json({ ok: false, why: 'kick', msg: "Kick is picked as your platform: the title and category can only be changed for Twitch from here." });
+  if (!twitch.status.userId) return res.json({ ok: false, why: 'signin', msg: 'Sign in with Twitch first (Settings → 💜 Twitch).' });
+  try { res.json({ ok: true, can: twitch.canDetails(), signedIn: true, details: await twitch.streamDetails() }); } catch (e) { res.json({ ok: false, why: 'error', msg: e.message }); }
+});
+app.post('/api/stream/details', wTry(async b => {
+  const d = {}; if ('title' in b) { d.title = String(b.title || '').trim().slice(0, 140); if (!d.title) throw new Error('The title is empty: type a title first.'); }
+  if ('gameId' in b) d.gameId = String(b.gameId || ''); if ('tags' in b) d.tags = sdTags(b.tags);
+  const t = sdPretend(); if (t) { Object.assign(t.d, d, 'game' in b ? { game: String(b.game || '') } : {}); return { pretend: true, details: t.d }; }
+  if (kick.on()) throw new Error('Kick is picked as your platform: the title and category can only be changed for Twitch from here.');
+  await twitch.setStreamDetails(d); const now = await twitch.streamDetails();
+  act('stream', `Stream details changed: “${now.title}”${now.game ? ' · ' + now.game : ''}`, { icon: '📝', kind: 'streamDetails' });
+  return { details: now };
+}));
+app.get('/api/stream/categories', async (req, res) => {
+  const q = String(req.query.q || '').trim(); if (!q) return res.json({ list: [] });
+  if (sdPretend()) return res.json({ list: SD_CATS.filter(c => c[1].toLowerCase().includes(q.toLowerCase())).map(([id, name]) => ({ id, name, box: '' })), pretend: true });
+  try { res.json({ list: await twitch.searchCategories(q) }); } catch (e) { res.json({ list: [], error: e.message }); }
+});
+app.post('/api/test/stream-details', (req, res) => { /* 🧪 10 minutes of pretend details: nothing goes to Twitch */
+  if (req.body?.off) { live.sdTest = null; return res.json({ ok: true, off: true }); }
+  live.sdTest = { until: Date.now() + 10 * 60000, d: { title: '🧪 Pretend stream title (test)', game: 'Just Chatting', gameId: '509658', tags: ['English', 'Chill', 'Test'], lang: 'en' } };
+  res.json({ ok: true, tags: sdTags('Family Friendly, chill!!, CHILL, ' + 'x'.repeat(40)) });
+});
 app.post('/api/chat/mod', wTry(async b => {
   const login = String(b.login || '').replace(/^@/, '').toLowerCase();
   if (b.action === 'delete') await twitch.deleteMessage(b.id);
@@ -5074,6 +5103,17 @@ app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
 app.post('/api/songs/playlist', sgTry(b => songs.playlist(b))); // 📻 add / rename / remove one of your YouTube playlists
+app.get('/api/history/music', (req, res) => { if (!feat('songs')) return res.json({ on: false }); res.json({ on: true, ...songs.history() }); }); // 🕰️ History → 🎵 Music
+app.get('/api/history/chat', (req, res) => { // 🕰️ History → 💬 Chat stats: who chats and watches the most, and which commands get used
+  const skip = new Set([...BOT_NAMES, String(db.twitchBot?.user?.login || '').toLowerCase()].filter(Boolean)), now = new Date(), mk = now.toISOString().slice(0, 7), yk = mk.slice(0, 4);
+  const all = Object.values(db.viewers || {}).filter(v => v && v.login && !skip.has(v.login) && (req.query.tests || !/^pretend_/.test(v.login)));
+  const row = (v, n) => ({ login: v.login, name: v.name || v.login, n }), top = (f, k = 25) => all.map(v => row(v, f(v))).filter(x => x.n > 0).sort((a, b) => b.n - a.n).slice(0, k);
+  const months = []; for (let i = 11; i >= 0; i--) { const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)), k = d.toISOString().slice(0, 7); months.push({ k, n: all.reduce((a, v) => a + ((v.byMonth || {})[k] || 0), 0), people: all.filter(v => (v.byMonth || {})[k]).length }); }
+  const cmds = {}; for (const [login, p] of Object.entries(db.pstats || {})) { if (skip.has(login) || (!req.query.tests && /^pretend_/.test(login))) continue; for (const [c, x] of Object.entries(p.cmd || {})) { const y = (cmds[c] ||= { cmd: c, n: 0, people: 0, last: 0 }); y.n += x.n || 0; y.people++; y.last = Math.max(y.last, x.last || 0); } }
+  res.json({ people: all.length, msgs: all.reduce((a, v) => a + (v.msgs || 0), 0), month: months[11].n, monthPeople: months[11].people, year: all.reduce((a, v) => a + ((v.byYear || {})[yk] || 0), 0), hours: Math.round(all.reduce((a, v) => a + (v.watchMins || 0) + (v.watchOld || 0), 0) / 60),
+    topAll: top(v => v.msgs || 0), topMonth: top(v => (v.byMonth || {})[mk] || 0), topYear: top(v => (v.byYear || {})[yk] || 0), topWatch: top(v => Math.round(((v.watchMins || 0) + (v.watchOld || 0)) / 6) / 10),
+    newest: [...all].filter(v => v.first).sort((a, b) => b.first - a.first).slice(0, 15).map(v => ({ login: v.login, name: v.name || v.login, at: v.first })), months, commands: Object.values(cmds).sort((a, b) => b.n - a.n).slice(0, 40) });
+});
 app.post('/api/songs/playlist-song', sgTry(b => songs.plSong(b))); // ⭐ save a song to (or take it out of) your own saved-songs playlist
 app.post('/api/songs/backup', sgTry(b => songs.setBackup(String(b.id || '')))); // 📻 the playlist that plays when no requests are left
 app.post('/api/songs/hold', sgTry(b => songs.setHold(String(b.id || '')))); // ⏸ pause the requests and play a playlist ('' = back to requests)
@@ -5145,12 +5185,14 @@ app.get('/api/safety', (req, res) => res.json(safetyReport(req)));
 app.get('/api/test/safety', (req, res) => { const t = safety.selfTest(), a = server.address(), onlyHere = !!a && (a.address === '127.0.0.1' || a.address === '::1'); t.rows.unshift({ what: 'The app listens on this PC only', ok: onlyHere || safety.lan(), note: safety.lan() ? 'network access was switched on by hand (ALLOW_LAN)' : '' }); res.json({ ...t, ok: t.ok && (onlyHere || safety.lan()), report: safetyReport(req) }); });
 // 🚀 Raid tab (1.95.0; Birx's, Kirb's and Derek's editions): the live channels you follow, the ones you raided most recently first. See src/raids.js
 raids.setHooks({
-  on: () => feat('raids'), signedIn: () => !!twitch.status.userId, canSee: () => twitch.canSeeFollows(), followed: () => twitch.followedLive(),
+  on: () => feat('raids'), signedIn: () => !!twitch.status.userId, canSee: () => twitch.canSeeFollows(), followed: () => twitch.followedLive(), search: q => twitch.searchLive(q),
   start: id => twitch.startRaid(id), cancel: () => twitch.cancelRaid(), say: t => twitch.say(t), act: (cat, text, o) => act(cat, text, o), changed: () => broadcast({ type: 'raids' }, 'control'),
 });
 const rdTry = fn => wTry(async (b, req) => { if (!feat('raids')) throw new Error('The Raid tab is not part of this edition.'); return fn(b, req); });
 app.get('/api/raids', async (req, res) => { if (!feat('raids')) return res.json({ on: false }); try { res.json(await raids.list({ fresh: req.query.fresh === '1', sort: req.query.sort })); } catch (e) { res.status(400).json({ error: e.message }); } });
-app.post('/api/raids/go', rdTry(b => raids.plan({ ...b, secs: b.secs != null ? b.secs : db.settings.raidDelay })));
+if (!db.settings.raidDelay3) { db.settings.raidDelay3 = true; if (!db.settings.raidDelay) db.settings.raidDelay = 180; save(); } /* ⏱️ (1.132.6, Derek) the raid wait starts at 3 minutes (once: a wait of 0 from before becomes 3 min; the slider still goes to 0) */
+app.get('/api/raids/search', async (req, res) => { if (!feat('raids')) return res.json({ rows: [] }); try { res.json(await raids.search(req.query.q)); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🔎 live channels by name, followed or not
+app.post('/api/raids/go', rdTry(b => raids.plan({ ...b, secs: b.secs != null ? b.secs : (db.settings.raidDelay ?? 180) })));
 app.post('/api/raids/delay', rdTry(b => { db.settings.raidDelay = Math.max(0, Math.min(600, Math.round(Number(b.secs) || 0))); save(); return { ok: true, secs: db.settings.raidDelay }; })); /* ⏱️ the slider */
 app.post('/api/raids/cancel', rdTry(() => raids.cancel()));
 app.post('/api/raids/sort', rdTry(b => ({ ok: true, sort: raids.setSort(b.sort) })));
@@ -5163,7 +5205,11 @@ async function mnRating(title) {
   try { return await ratingsByTitle(m ? m[1] : String(title), m ? m[2] : ''); } catch { return undefined; }
 }
 setInterval(() => { if (feat('movienight')) movienight.fillRatings().catch(() => {}); }, 120000);
-movienight.setHooks({ rating: t => mnRating(t), note: pstats.note,
+const mnTimer = m => { /* ⏳⏰ (1.132.6) the last-call timer pop-up; the bell rings on the stream's vote box when OBS has it, else in the app (never both: no double sound) */
+  const obs = [...wss.clients].some(c => c.readyState === 1 && c.role === 'movienight');
+  broadcast({ type: 'mnTimer', ...m, bell: !!m.bell }, 'movienight'); broadcast({ type: 'mnTimer', ...m, bell: !!m.bell && !obs }, 'control');
+};
+movienight.setHooks({ timer: mnTimer, rating: t => mnRating(t), note: pstats.note,
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
   isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
   act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),
@@ -5216,6 +5262,7 @@ app.post('/api/test/movienight', mnTry(async b => { // 🧪 pretend people vote 
   if (b.action === 'raid') { movienight.onAlert({ kind: 'raid', login: 'pretend_raider', name: 'pretend_raider' }); return {}; }
   const names = ['pretend_ana', 'pretend_bo', 'pretend_cy', 'pretend_raider', 'pretend_dee'], who = b.name || names[Math.floor(Math.random() * names.length)], n = b.n || 1 + Math.floor(Math.random() * d.movies.length);
   twitch.pretend.until = Date.now() + 600000;
+  if (b.action === 'timer') { const secs = Math.max(5, Math.min(60, Number(b.secs) || 12)), o = movienight.opts(); mnTimer({ endsAt: Date.now() + secs * 1000, pop: true, test: true }); setTimeout(() => mnTimer({ endsAt: 0, done: true, bell: o.bell !== false, vol: o.bellVol, pop: true, test: true }), secs * 1000); return { ok: true, secs }; } /* 🧪 a short pretend countdown: nothing is said in chat, voting isn't touched */
   if (b.action === 'three') { const said = ['', 'this one has to win!!', 'ok fine, changing my mind']; for (let i = 0; i < 3; i++) await twitchHandlers.chat({ login: names[i], name: names[i], text: `${movienight.opts().command} ${1 + ((n - 1 + i) % d.movies.length)} ${said[i]}`.trim(), badges: {}, pretend: true, userId: 'p-' + names[i] }); return { who: names.slice(0, 3).join(', '), n }; } // (three pop-ups, shown one after another in the order they voted)
   await twitchHandlers.chat({ login: who, name: who, text: `${movienight.opts().command} ${n}`, badges: {}, pretend: true, userId: 'p-' + who });
   return { who, n };

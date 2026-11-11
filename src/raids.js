@@ -30,12 +30,19 @@ export function sortRows(rows, sort = 'recent') {
   return r.sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0) || v(a, b)); // the ones you raided most recently first, then never raided by viewers
 }
 export async function list({ fresh, sort } = {}) {
-  const d = D(), base = { on: true, sort: SORTS.includes(sort) ? sort : (db.settings.raidSort || 'recent'), going: going && Date.now() - going.at < 120000 && !going.done ? going : null, planned: planned ? { login: planned.login, name: planned.name, at: planned.at, secs: planned.secs, test: planned.test } : null, delay: Math.max(0, Math.min(600, Number(db.settings.raidDelay) || 0)), history: Object.entries(d).map(([login, x]) => ({ login, ...x })).sort((a, b) => b.at - a.at).slice(0, 30) };
+  const d = D(), base = { on: true, sort: SORTS.includes(sort) ? sort : (db.settings.raidSort || 'recent'), going: going && Date.now() - going.at < 120000 && !going.done ? going : null, planned: planned ? { login: planned.login, name: planned.name, at: planned.at, secs: planned.secs, test: planned.test } : null, delay: Math.max(0, Math.min(600, Number(db.settings.raidDelay ?? 180) || 0)), history: Object.entries(d).map(([login, x]) => ({ login, ...x })).sort((a, b) => b.at - a.at).slice(0, 30) };
   if (fake) return { ...base, test: true, signedIn: true, canSee: true, at: Date.now(), rows: sortRows(fake.map(x => row(x, { ...d, ...fakeLast })), base.sort) };
   if (!hooks.signedIn()) return { ...base, signedIn: false, canSee: false, rows: [] };
   if (!hooks.canSee()) return { ...base, signedIn: true, canSee: false, rows: [] };
   if (fresh || !cache || Date.now() - cache.at > 45000) cache = { at: Date.now(), list: await hooks.followed() };
   return { ...base, signedIn: true, canSee: true, at: cache.at, rows: sortRows(cache.list.map(x => row(x, d)), base.sort) };
+}
+/** 🔎 Search for a live channel by name (you don't have to follow it). Only live channels come back. */
+export async function search(q) {
+  q = String(q || '').trim().toLowerCase(); if (!q) return { q, rows: [] }; const d = D();
+  if (fake) return { q, test: true, rows: sortRows(fake.filter(x => (x.login + ' ' + x.name).toLowerCase().includes(q)).map(x => row(x, { ...d, ...fakeLast })), 'viewers') };
+  if (!hooks.signedIn()) throw new Error('Sign in with Twitch first: Settings → 💜 Twitch.');
+  return { q, rows: sortRows((await hooks.search(q)).map(x => row(x, d)), 'viewers') };
 }
 export function setSort(sort) { if (!SORTS.includes(sort)) throw new Error('Pick one of the ways to sort.'); db.settings.raidSort = sort; save(); return sort; }
 /** 🚀 Start the raid. Twitch then counts down about 90 seconds (or you press Raid Now on Twitch); ✖ Cancel stops it. */

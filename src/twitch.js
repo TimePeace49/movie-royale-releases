@@ -3,8 +3,8 @@ import WebSocket from 'ws';
 import { db, save } from './store.js';
 
 import { brand as brandOut } from './edition.js';
-export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit', 'user:read:follows', 'moderator:manage:shoutouts'];
-export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit', 'user:read:follows', 'moderator:manage:shoutouts']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
+export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit', 'user:read:follows', 'moderator:manage:shoutouts', 'channel:manage:broadcast'];
+export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit', 'user:read:follows', 'moderator:manage:shoutouts', 'channel:manage:broadcast']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
 
 let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {}, raidOut: () => {} };
@@ -399,12 +399,37 @@ export async function shoutout(toId) {
   try { await helix(`chat/shoutouts?from_broadcaster_id=${status.userId}&to_broadcaster_id=${encodeURIComponent(toId)}&moderator_id=${status.userId}`, { method: 'POST' }); }
   catch (e) { const t = e.message || ''; if (/not live|offline/i.test(t)) throw new Error("Twitch only does its shout-out box while you're live"); if (/too many|429|cooldown|rate/i.test(t)) throw new Error('Twitch allows one shout-out every 2 minutes, and the same person once an hour'); if (/yourself|same/i.test(t)) throw new Error("You can't shout yourself out"); throw new Error('Twitch could not do the shout-out: ' + t); }
 }
+/* 📝 (1.132.5) Stream details box: your title, category and tags, read and changed from the app */
+export const canDetails = () => (status.scopes || []).includes('channel:manage:broadcast');
+export async function streamDetails() {
+  if (!status.userId) throw new Error('Sign in with Twitch first (Settings → 💜 Twitch)');
+  const c = (await helix('channels?broadcaster_id=' + status.userId)).data?.[0] || {};
+  return { title: c.title || '', game: c.game_name || '', gameId: c.game_id || '', tags: Array.isArray(c.tags) ? c.tags : [], lang: c.broadcaster_language || '' };
+}
+export async function setStreamDetails(b) {
+  if (!status.userId) throw new Error('Sign in with Twitch first (Settings → 💜 Twitch)');
+  if (!canDetails()) throw new Error('Sign in with Twitch again so the app can change your title and category (a new permission): Settings → 💜 Twitch → Sign in');
+  const body = {}; if ('title' in b) body.title = String(b.title).slice(0, 140); if ('gameId' in b) body.game_id = String(b.gameId || '0'); if ('tags' in b) body.tags = b.tags;
+  await helix('channels?broadcaster_id=' + status.userId, { method: 'PATCH', body: JSON.stringify(body) }); return true;
+}
+export async function searchCategories(q) {
+  const j = await helix('search/categories?first=8&query=' + encodeURIComponent(String(q).slice(0, 80)));
+  return (j.data || []).map(c => ({ id: c.id, name: c.name, box: c.box_art_url || '' }));
+}
 /** the game / title someone last streamed (for the shout-out chat line) */
 export async function channelInfo(id) { try { const j = await helix('channels?broadcaster_id=' + encodeURIComponent(id)); const c = j.data?.[0]; return c ? { game: c.game_name || '', title: c.title || '' } : null; } catch { return null; } }
 /** 🚀 Raid tab: stop a raid that hasn't gone yet */
 export async function cancelRaid() { if (!status.userId) throw new Error('Sign in with Twitch first'); await helix(`raids?broadcaster_id=${status.userId}`, { method: 'DELETE' }); }
 export const canSeeFollows = () => !!status.userId && (status.scopes || []).includes('user:read:follows');
 /** 🚀 Raid tab: the channels YOU follow that are live right now (needs the "see who you follow" permission) */
+/** 🔎 (1.132.6) Raid tab search: live channels whose name matches, followed or not (Twitch's channel search, live only). */
+export async function searchLive(q) {
+  if (!status.userId) throw new Error('Sign in with Twitch first');
+  const j = await helix('search/channels?live_only=true&first=20&query=' + encodeURIComponent(String(q).slice(0, 60)));
+  const found = (j.data || []).filter(c => c.is_live !== false && String(c.id) !== String(status.userId)); if (!found.length) return [];
+  let st = {}; try { const k = await helix('streams?first=100&' + found.map(c => 'user_id=' + encodeURIComponent(c.id)).join('&')); for (const d of k.data || []) st[String(d.user_id)] = d; } catch {}
+  return found.map(c => { const d = st[String(c.id)] || {}; return { id: String(c.id), login: c.broadcaster_login, name: c.display_name || c.broadcaster_login, title: d.title || c.title || '', game: d.game_name || c.game_name || '', viewers: d.viewer_count || 0, startedAt: Date.parse(d.started_at || c.started_at) || 0, thumb: d.thumbnail_url || '', mature: !!d.is_mature }; });
+}
 export async function followedLive() {
   if (!status.userId) throw new Error('Sign in with Twitch first');
   if (!canSeeFollows()) throw new Error('Sign in with Twitch again so Movie Royal can see which channels you follow (a new permission): Settings → 💜 Twitch → Sign in');

@@ -20,12 +20,15 @@
   .row.jump { z-index: 5; } .row.jump .t, .row.jump .v { color: #fff; text-shadow: 0 0 10px #fff, 0 0 18px #5fffc8; }
   .row.flash .v { animation: pop .5s; } @keyframes pop { 40% { transform: scale(1.7); color: #fff; } }
   #box.tiny { } #box.tiny .row { font-size: 14px; }
+  #big { display: none; position: fixed; left: 50%; top: 26px; transform: translateX(-50%); z-index: 50; text-align: center; padding: 14px 34px 12px; border-radius: 22px; background: rgba(8, 10, 22, .9); border: 3px solid #fff36b; box-shadow: 0 0 30px rgba(255, 243, 107, .35); font-family: Bungee, Consolas, monospace; color: #fff36b; } #big.on { display: block; animation: bigIn .5s cubic-bezier(.2, 1.4, .4, 1); } #big .bl { font-size: 26px; letter-spacing: 2px; } #big .bt { font-size: 112px; line-height: 1; color: #fff; text-shadow: 0 0 18px rgba(255, 243, 107, .7); font-variant-numeric: tabular-nums; } #big .bs { font-size: 17px; color: #9fe8c9; margin-top: 4px; } #big.hot { border-color: #ff6b6b; color: #ff6b6b; box-shadow: 0 0 34px rgba(255, 107, 107, .5); } #big.hot .bt { animation: blink 1s steps(2) infinite; } #big.done { border-color: #ff6b6b; animation: shake .09s linear infinite; } #big.done .bt { font-size: 76px; color: #ffd0d0; } @keyframes bigIn { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } } @keyframes shake { 0% { margin-left: -5px; } 50% { margin-left: 5px; } 100% { margin-left: -5px; } }
   #clock { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(64, 255, 170, .45); text-align: center; font-family: Bungee, Consolas, monospace; font-size: 19px; color: #fff36b; } #clock.on { display: block; } #clock.hot { color: #ff6b6b; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: .35; } }
   #foot { white-space: pre-line; line-height: 1.45; margin-top: 5px; font-size: 12px; color: #7fe6c0; opacity: .85; text-align: center; letter-spacing: 1px; }
 </style></head>
 <body>
 <div id="box"><div id="head"></div><div id="rows"></div><div id="clock"></div><div id="foot"></div></div>
+<div id="big"><div class="bl" id="bigL">⏳ LAST CALL TO VOTE</div><div class="bt" id="bigT">5:00</div><div class="bs" id="bigS"></div></div>
+<script src="/bell.js"></script>
 <script>
 const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let S = null; const EL = new Map(), SLOT = new Map(), VOTES = new Map();
@@ -63,10 +66,16 @@ function draw() {
   $('foot').textContent = s.closed ? (s.leaders && s.leaders.length ? '★ WINNER: ' + s.leaders.join(' / ').toUpperCase() + ' ★' : 'VOTING IS CLOSED') : s.open ? `TYPE ${String(s.command || '!vote').toUpperCase()} + MOVIE NUMBER + ANYTHING YOU WANT TO SAY\nLIKE: ${String(s.command || '!vote').toUpperCase()} 1 I LOVE THIS MOVIE` : '';
   tick();
 }
+/* ⏳ (1.132.6) the last-call timer: a big pop-up on stream; at 0 an old alarm clock rings and it says TIME'S UP */
+let TM = { test: 0, done: 0, hide: false };
+function timerMsg(m) { if (m.test) TM.test = m.endsAt || 0; if (m.done) { TM.test = 0; TM.done = Date.now() + 6500; if (m.bell && window.oldBell) window.oldBell(m.vol, 4.5); } else TM.done = 0; TM.hide = m.pop === false; tick(); }
 function tick() {
-  const c = $('clock'), s = S; if (!s || !s.open || !s.endsAt) { c.classList.remove('on'); return; }
-  const left = Math.max(0, Math.ceil((s.endsAt - Date.now()) / 1000)); c.classList.add('on'); c.classList.toggle('hot', left <= 30);
-  c.textContent = `LAST CALL ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  const c = $('clock'), b = $('big'), s = S, end = TM.test || (s && s.open && s.endsAt) || 0, pop = !TM.hide && (TM.test || !s || s.timerPop !== false);
+  if (TM.done > Date.now() && pop) { b.className = 'on done'; $('bigL').textContent = '⏰ TIME\'S UP!'; $('bigT').textContent = 'VOTING IS CLOSED'; $('bigS').textContent = ''; c.classList.remove('on'); return; }
+  if (!end) { c.classList.remove('on'); b.className = ''; return; }
+  const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)), t = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  if (pop) { b.classList.add('on'); b.classList.remove('done'); b.classList.toggle('hot', left <= 30); $('bigL').textContent = '⏳ LAST CALL TO VOTE'; $('bigT').textContent = t; $('bigS').textContent = s && s.command ? `VOTE OR CHANGE YOUR VOTE: ${String(s.command).toUpperCase()} + NUMBER` : ''; c.classList.remove('on'); return; }
+  b.className = ''; c.classList.add('on'); c.classList.toggle('hot', left <= 30); c.textContent = `LAST CALL ${t}`;
 }
 setInterval(tick, 250);
 if (Q.get('replay')) {
@@ -93,6 +102,7 @@ if (Q.get('replay')) {
   S = { show: true, open: true, endsAt: 0, command: '!vote', total: 0, leaders: [], guesser: Q.get('who') || 'Birx', guess: { right: 0, wrong: 0, total: 0 }, bg: 85, ratings: Q.get('ratings') !== '0', posters: Q.get('posters') !== '0',
     movies: ['Jaws (1975)', 'Alien (1979)', 'The Thing (1982)', 'Clue (1985)', 'Big Trouble in Little China (1986)', 'Tremors (1990)', 'Hackers (1995)', 'The Mummy (1999)'].map((t, i) => ({ id: 'd' + i, n: i + 1, title: t, votes: 0, imdb: [8.1, 8.5, 8.2, 7.2, 7.2, 7.1, 6.2, 7.1][i], rt: [97, 93, 85, 72, 76, 88, 33, 62][i], poster: Q.get('posters') === '0' ? '' : 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='60' height='90'><rect width='60' height='90' fill='hsl(${i * 45},55%,32%)'/><text x='30' y='56' font-size='34' text-anchor='middle' fill='#fff' font-family='Arial'>${t[0]}</text></svg>`) })) };
   draw(); window.__vote = i => { const m = S.movies[i]; if (!m) return; m.votes++; S.total++; if (Math.random() < .6) S.guess.right++; else S.guess.wrong++; draw(); };
+  if (Q.get('timer')) { const secs = Math.max(3, Number(Q.get('timer')) || 15); timerMsg({ test: true, endsAt: Date.now() + secs * 1000 }); setTimeout(() => timerMsg({ test: true, done: true, bell: true, vol: 60 }), secs * 1000); } /* ?demo=1&timer=15 = the timer pop-up + the bell */
   if (Q.get('demo') !== 'still') setInterval(() => { if (S.total >= 40) { S.movies.forEach(m => m.votes = 0); S.total = 0; S.guess.right = 0; } window.__vote(Math.floor(Math.random() * S.movies.length)); }, 1500);
-} else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } }; ws.onclose = () => setTimeout(go, 2000); })();
+} else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } else if (m.type === 'mnTimer') timerMsg(m); }; ws.onclose = () => setTimeout(go, 2000); })();
 </script></body></html>
