@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.141.0
+- 🗳️ **Fix: the pretend vote tests work in every edition.** In an edition where the vote command is switched off on the server app's Editions tab (your own dev edition has it off), the pretend votes were thrown away, so the pretend chat opened and nothing else happened. The tests now go through anyway and say when the command is switched off for real chat. Typing a switched-off command in the pretend chat now answers with a test note instead of silence.
+- 💬 **Pretend chat buttons per edition.** The quick buttons in the pretend chat window are now made from the chat commands that edition really has, in groups (Chat, Birthdays, Movie night, Songs, Eggs, Quotes, Chat bot, Battles, Movies, Wheel…), each with something sensible typed after it (like `!vote 1`, `!sr never gonna give you up`, `!bday 3/14`). The channel point Redeem row, the Add a movie row and the 🏆 Winner button only show in editions that have those.
+- 📖 **Help tab per edition.** The Help tab leaves out the parts an edition doesn't have: movie picks / Discord / bans, the Battle tab, the pool, People, chat battles, luck, card battles, co-stream, channel points and chat powers. (Birx & Jess's Help goes from 119 parts to 62.)
+
 ## 1.140.2
 - 📅 **The start-up birthday reminder is now only in the Birx & Jess edition.** Other editions don't get the "birthdays coming up" step when the app opens (and don't show its settings). Birthday wishes, the birthday pop-up and `!bday` stay in every edition. It's a switch on the server app's Editions tab (📅 Birthday reminder at start-up), so it can be given to another edition later.
 

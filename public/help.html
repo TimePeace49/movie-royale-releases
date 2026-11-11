@@ -51,7 +51,7 @@
     </ol>
   </section>
 
-  <section data-k="battle start royal countdown fullscreen timer fight">
+  <section data-k="battle start royal countdown fullscreen timer fight" data-has="battle">
     <h2>⚔️ Running a battle</h2>
     <ol>
       <li>Go to the <b>⚔️ Battle</b> tab and pick which battle you're playing from the <b>Playing</b> dropdown under the game.</li>
@@ -123,29 +123,29 @@
     <p>In <b>Settings → 🔊 Sounds</b>, choose a map in <b>Sounds for</b> and upload sounds just for that map, like a different battle music for every map. A map's own sounds win over the all-maps ones. <b>Reset</b> takes the map back to the all-maps sound.</p>
   </section>
 
-  <section data-k="vote map chat vote 1 2 3 4">
+  <section data-k="vote map chat vote 1 2 3 4" data-any="battle chatBattle">
     <h2>🗳️ Chat votes on the map</h2>
     <p>Press <b>🗳️ Chat vote</b> under the battle screen. Four random maps show on screen, and chat types <b>1</b>, <b>2</b>, <b>3</b> or <b>4</b>. Each viewer has one vote and can change it. When time's up (30 seconds, change it in Settings → Game) the winner is announced on screen and in chat. Press <b>End vote now</b> to finish early.</p>
   </section>
 
-  <section data-k="powers buttons chaos trigger manually battle screen">
+  <section data-k="powers buttons chaos trigger manually battle screen" data-any="battle chatBattle">
     <h2>⚡ Using powers yourself</h2>
     <p>Every power is a button in the <b>⚡ Powers</b> row under the battle screen, and they're free for you. In fullscreen, move the mouse to show the power bar on the left (it fades away again so it isn't on stream). Drag it by its title to put it anywhere; it remembers where, or press <b>1</b>–<b>9</b> and <b>0</b> for the first ten powers. Press one during a fight and it hits right away. Press one before the fight and it waits, then hits once the fight starts.</p>
   </section>
 
-  <section data-k="shuffle random move balls pieces start">
+  <section data-k="shuffle random move balls pieces start" data-has="battle">
     <h2>🔀 Shuffle</h2>
     <p>Before the battle, <b>🔀 Shuffle</b> moves every piece to a random new spot on the cliff. Press it as often as you like.</p>
   </section>
 
-  <section data-k="battle list entries add manually quick add wheel state watched delete pause disable luck">
+  <section data-k="battle list entries add manually quick add wheel state watched delete pause disable luck" data-has="battle">
     <h2>📋 The list under the battle</h2>
     <p>Scroll down on the Battle tab to see who's <b>really in the battle</b>: the pieces waiting on the cliff for the next battle (or fighting in the one that's running), with luck, odds, chance and each movie's ⏱️ length (and its ⭐ rating on IMDb / Rotten Tomatoes battles; the 🎬 Movie Pool shows both too). Everything else (movies sitting out, people who haven't typed in Twitch chat yet, entries that didn't fit on the cliff) is hidden under <b>👀 Show the … not in</b>, with a tag saying why. The <b>🔎 Search a person or movie</b> box finds anyone or any movie in the battle, in or out, by their Discord or Twitch name or the title. Each row has buttons:</p>
     <ul><li><b>✅</b> marks a movie watched.</li><li><b>⏸</b> sits it out for now, and <b>▶</b> puts it back.</li><li><b>✕</b> deletes it.</li></ul>
     <p><b>➕ Add</b> at the top makes the battle match your old wheel. For Discord movies, type the person's name (or Twitch name), then start typing their movie and click it. New people are added for you, and pick limits don't apply when you add by hand. For text or chat battles, type items separated by commas.</p>
   </section>
 
-  <section data-k="owner who picked tag change person movie added for someone discord">
+  <section data-k="owner who picked tag change person movie added for someone discord" data-has="movies">
     <h2>👤 Changing who picked a movie</h2>
     <p>Press <b>👤</b> on a movie (in the list under the battle or in the 🎬 Movie Pool tab), then type a name. You can pick someone Movie Royal already knows, anyone in your Discord server, or type a new name. The movie and the pick move to that person, their <code>/mymovies</code> and <code>!mymovies</code> update, and the bot posts it in your Discord movies channel. Choose <b>Nobody</b> to make it your own pick.</p>
   </section>
@@ -157,12 +157,12 @@
     <p class="tip">Why not a Twitch extension? An extension has to be hosted online and reviewed by Twitch, and viewers on phones often can't see it. A silent command does the same job without any of that.</p>
   </section>
 
-  <section data-k="title screen name heading battle">
+  <section data-k="title screen name heading battle" data-has="battle">
     <h2>🏷️ Putting a title on the battle screen</h2>
     <p>On the <b>⚔️ Battle</b> tab, type in the <b>Screen title</b> box under the game (e.g. <i>Spooky Movie Night</i>). It shows at the top of the battle. Leave it empty to show the battle's name. Each battle remembers its own title.</p>
   </section>
 
-  <section data-k="chat timer 2 minute gather wait start">
+  <section data-k="chat timer 2 minute gather wait start" data-has="battle">
     <h2>⏱️ 2-minute chat timer</h2>
     <p>Press <b>⏱️ 2-min chat timer, then start</b> to give chat time to type before the battle. When it runs out, the battle starts by itself. Press it again to cancel.</p>
     <p><b>🎬 Discord movie battle:</b> the button is <b>⏱️ 2-min join timer + chat vote</b> and works differently:</p>
@@ -184,14 +184,14 @@
     </ul>
   </section>
 
-  <section data-k="winner screen poster rating rotten tomatoes imdb letterboxd genre year omdb">
+  <section data-k="winner screen poster rating rotten tomatoes imdb letterboxd genre year omdb" data-has="movies">
     <h2>🎬 The winner screen</h2>
     <p>For movies it shows, top to bottom: <b>WINNER</b>, the poster, the title, year, ⏱️ how long the movie is and genre, the <b>Rotten Tomatoes</b>, <b>IMDb</b> and <b>Letterboxd</b> ratings, then who picked it.</p>
     <p>Rotten Tomatoes and IMDb need a free OMDb key: get one at <a href="https://www.omdbapi.com/apikey.aspx" target="_blank">omdbapi.com/apikey.aspx</a> (choose FREE), click the link in their email to turn it on, then paste it in <b>Settings → Movie info</b>. The Letterboxd rating works without a key. A rating shows <b>—</b> if a site doesn't have one.</p>
       <p>⭐🍅 <b>No key needed:</b> if you don't paste your own OMDb key, the IMDb and Rotten Tomatoes ratings use the key the app's maker shares (through his 24/7 bot: the key itself is never in the app). Your own key always wins if you paste one.</p>
 </section>
 
-  <section data-k="discord bot commands suggest swap mymovies mine list help linktwitch channel pinned pin wild spot kirb tonight">
+  <section data-k="discord bot commands suggest swap mymovies mine list help linktwitch channel pinned pin wild spot kirb tonight" data-has="movies">
     <h2>🤖 Discord commands</h2>
     <p><b>📁 Channel folder:</b> every channel the bot makes goes in one channel folder called <b>Movie Royal</b>: the picks channel, <b>#character-creation</b>, and the hidden <b>#movie-royal-debug</b> (mods and owner only) and <b>#movie-royal-sync</b> (bot only), which stay hidden. <b>#character-creation</b> has a pinned message with how to make a character and every numbered picture (hair, outfits, makeup, facial hair, body, skin and hair colors); <code>/character</code> only works there, and new characters are shown off in it. Settings → Discord has the names and switches (and 🔄 Restart the Discord bot moves everything in again).</p>
     <p>The bot makes a channel called <b>#movies-royal</b> and pins a message listing every command (it also lists tonight's movies: #1, #2… as they get watched). When a winner claims their movie, Movie Royal also pins it in Twitch chat: “Movie #2 of tonight's stream: Heat (1995) — Lucy's movie”, followed by the movies watched earlier tonight and whose they were. <b>🎟️ Wild spots:</b> when a wild (Kirb) spot wins, nothing is pinned yet. The next battle you run (any battle that isn't a chat battle or giveaway) is that wild spot battle: its winner gets the movie number, shows “MOVIE #2 TONIGHT” on stream, and is pinned as the wild spot's pick. If that winner is a text entry (not a movie), nothing is pinned: you pin it yourself. Pass on it and the next battle picks again. Try it in 🧪 Test → 📌 Movie winner pin. <code>/suggest</code> and <code>/swap</code> only work in that channel.</p>
@@ -206,7 +206,7 @@
     <p class="tip">Already added the bot before this update? Go to <b>Settings → Discord &amp; picks</b> and press <b>Re-invite it</b> so it can make the channel and pin the message. Rename the channel in the same place.</p>
   </section>
 
-  <section data-k="blocked grey greyed watched banned series year already unselectable discord">
+  <section data-k="blocked grey greyed watched banned series year already unselectable discord" data-has="movies">
     <h2>🚫 Why a movie can't be picked</h2>
     <p>Discord can't grey out choices, so blocked movies still show up in the list with a <b>🚫</b> and the reason — people can see they spelled it right. Picking one just explains why. A movie is blocked when:</p>
     <ul>
@@ -218,7 +218,7 @@
     </ul>
   </section>
 
-  <section data-k="24/7 cloud cloudflare always on pc off discord bot hosting free offline">
+  <section data-k="24/7 cloud cloudflare always on pc off discord bot hosting free offline" data-has="movies">
     <h2>☁️ 24/7 mode (Discord works when your PC is off)</h2>
     <p>Normally the Discord bot only answers while Movie Royal is running. Turn on <b>24/7 mode</b> in <b>Settings → Discord &amp; picks</b> and a tiny copy of the bot runs free on Cloudflare. <code>/suggest</code>, <code>/swap</code>, <code>/mymovies</code>, <code>/list</code> and <code>/linktwitch</code> work any time, with all your rules (watched, bans, series, picks…).</p>
     <ol>
@@ -228,7 +228,7 @@
     </ol>
     <p>Picks made while Movie Royal is closed come in the next time you open it (and every minute while it's open). If two people grab the same movie at once, the second one gets a DM explaining why it didn't go in. The game, Twitch chat and channel points still need Movie Royal open — that's where your stream happens anyway. While the app is closed the bot shows as offline in the member list, but its commands still work.</p>
     </section>
-  <section data-k="backup bot server backup bots app friend token takeover cloud errors tray startup sync channel">
+  <section data-k="backup bot server backup bots app friend token takeover cloud errors tray startup sync channel" data-has="movies">
     <h2>🛡️ Backup bot server</h2>
     <p><b>Movie Royal Backup Bots</b> is an optional small app. It has its own installer: download <b>MovieRoyalBackupBots-Setup-….exe</b> from the same release page as Movie Royal and run it on the PC that should run the backup. Then it's in the Start menu and on your desktop. Uninstall it like any program (Windows Settings → Apps); Movie Royal isn't touched. It runs Discord bots as a backup: yours, and any friend's who sends you their bot token. It starts with Windows, hidden in the tray by the clock.</p>
     <p>Every minute it checks each streamer's 24/7 cloud bot. If the cloud bot has errors (3 failed checks in a row, or it posts a problem in #movie-royal-debug), the backup takes over: it answers /suggest, /swap, /mymovies, /list and /linktwitch with the same rules. It keeps doing that until the streamer presses <b>☁️ Switch back to the cloud</b> in Movie Royal (Settings → Discord & picks, or the banner at the bottom). If a streamer doesn't use the cloud bot, it answers whenever their Movie Royal is closed. While their Movie Royal is open, Movie Royal answers itself.</p>
@@ -292,12 +292,12 @@
     <p>Movie Royal offers new <b>latest releases</b> when it opens. Want to try new stuff early? Turn on <b>🧪 Also install test builds</b> in Settings → Account &amp; updates. Got a different edition of the app? Just run its installer: it takes the place of the one you have and everything (lists, wheels, history, people, settings) is still there when it opens. Need an older version? <b>🕰️ Run an older version</b> (same place) lists every version still on GitHub. <b>Settings → 📝 Patch notes</b> shows what changed in each latest release. If an update adds something new to set up (like an account), Movie Royal asks once after updating.</p>
   </section>
 
-  <section data-k="ideas doc feedback google doc suggestions">
+  <section data-k="ideas doc feedback google doc suggestions" data-has="movies">
     <h2>💡 The ideas doc</h2>
     <p>The pinned message in your Discord movies channel links to your ideas doc, where anyone can leave a comment with ideas. Change or remove the link in <b>Settings → Discord &amp; picks → 💡 Ideas doc</b>.</p>
   </section>
 
-  <section data-k="best of 3 5 7 9 rounds series">
+  <section data-k="best of 3 5 7 9 rounds series" data-has="battle">
     <h2>🥊 Best of 3, 5, 7 or 9</h2>
     <p>Custom battles (the <b>Rounds</b> box above the list on the Battle tab), chat battles and giveaways can be a series. Whoever wins enough rounds first takes it, for example 2 wins in a best of 3. The battle screen shows the round and the score, and you start each next round yourself. To have it start by itself a few seconds after each winner, turn that on in Settings → Game (it's off at first).</p>
   </section>
@@ -307,13 +307,13 @@
     <p>Viewers type <code>!moviesroyal</code> in Twitch chat, and Movie Royal replies with every command that's turned on (<code>!mymovies</code>, <code>!call</code>, <code>!color</code>, <code>!join</code>, <code>!enter</code>, and the wheel's <code>!respin</code> and <code>!myspins</code>…). It can only be used once every 30 seconds. You can rename it in Settings → Game.</p>
   </section>
 
-  <section data-k="close picks open stop adding movies during stream suggest off toggle">
+  <section data-k="close picks open stop adding movies during stream suggest off toggle" data-has="movies">
     <h2>🎬 Opening and closing movie picks</h2>
     <p>Press <b>🎬 Movie picks OPEN</b> on the Battle tab to close picks, for example during the stream. While picks are closed, <code>/suggest</code> in Discord (and the 24/7 bot) tells people picks are closed. Their movies stay in, <code>/mymovies</code> and <code>/list</code> still work, and you can still add movies yourself. Press it again to open picks.</p>
     <p>By default, picks lock by themselves only while a Discord movie battle is going: from when you press Start until it has its winner. In <b>Settings → 🤖 Discord &amp; picks</b> you can make them lock the whole time you're live, or never, and turn off the bot's "picks are open/closed" posts.</p>
   </section>
 
-  <section data-k="call predict guess winner !call chat luck bet">
+  <section data-k="call predict guess winner !call chat luck bet" data-any="battle chatBattle">
     <h2>🔮 Chat calls the winner</h2>
     <p>Before the fight starts, viewers type <code>!call</code> and a movie, like <code>!call Heat</code> (part of the title is enough, and <code>!call kirb</code> works for the wildcard spots). They can change their call until the fight starts. The command never replies, so it doesn't spam chat.</p>
     <p>If their movie wins, everyone who called it is named in chat after the replay, and their own movies get <b>+1% luck</b>. For the luck part, their Twitch name has to be linked to their Discord with <code>/linktwitch</code>. You can see the calls come in on the Battle tab, and change the command or the amount in Settings → Discord & picks.</p>
@@ -325,7 +325,7 @@
     <p>Movie Royal also makes its own dated safety copies in your data folder's <code>backups</code> folder before anything that wipes something (resetting luck, bringing back old luck, restoring a backup). It keeps the newest 30.</p>
   </section>
 
-  <section data-k="ban banned bans block movie unban">
+  <section data-k="ban banned bans block movie unban" data-has="movies">
     <h2>🚫 Banning a movie</h2>
     <p>Open <b>Settings → 🚫 Banned Movies</b>, type the movie, press <b>🚫 Ban</b>. You can add a reason people will see. Press <b>Unban</b> to undo. Banning a movie that's already in the pool removes it.</p>
     <p><b>Automatic bans</b> (each one can be turned off on that page): 🌍 movies that aren't in English at all (some other languages in the movie is fine; <b>🗣️ movies with an English dub are allowed</b>: cartoons, anime and well-known movies, since TMDB doesn't list dubs Movie Royal guesses by how many TMDB votes a movie has, 1000 by default), ⛪ really religious movies (like <i>The Passion of the Christ</i> or <i>The Ten Commandments</i>) and 🎥 pure documentaries. They go by TMDB's info (spoken languages, genres, keywords). A movie lands in the banned list the first time someone tries to pick it.</p>
@@ -334,12 +334,12 @@
     <p>There can be lots of bans, so the list has a <b>🔍 search box</b> (title, year or reason) and a filter (banned by you / not in English / religious / documentary). <b>🔎 Check movies already picked</b> shows the movies already in the pool that break the rules; nothing happens to them unless you ban them.</p>
   </section>
 
-  <section data-k="current year new release 2026 auto ban allow">
+  <section data-k="current year new release 2026 auto ban allow" data-has="movies">
     <h2>📅 New releases (this year's movies)</h2>
     <p>Every movie from the current year is blocked automatically. To let one through, search it on the <b>🚫 Bans</b> tab and press <b>✅ Allow</b>. Turn the whole rule off with the checkbox on that tab or in <b>Settings → Discord &amp; picks</b>.</p>
   </section>
 
-  <section data-k="series collection sequel harry potter lord of the rings franchise">
+  <section data-k="series collection sequel harry potter lord of the rings franchise" data-has="movies">
     <h2>🎞️ Series rule</h2>
     <p>If someone picks a movie from a series, nobody can pick another movie from that series while it's in the pool. It uses TMDB's series info, so it just works. Once that movie is watched or removed, the series opens up again.</p>
   </section>
@@ -349,7 +349,7 @@
     <p>Your wheels (spots on / off, voided spots, countdowns, sizes, the last landing), battles, pools, luck and Discord picks are saved all the time, so an update or a restart never loses them. When Movie Royal opens again within <b>30 minutes</b> of closing, it also carries on with the things that only live while it's open: the map you picked, a best-of series, the winner card waiting for <b>!accept</b> / <b>!pass</b>, the join timer and chat's votes. A message tells you what came back.</p>
     <p>Two things can't carry on: the wheel's round timer comes back <b>paused</b> (press ▶ to keep going), and a battle that was playing right then starts over (nothing of it counted: press Start again). See what would come back right now: 🧪 Test tab → 🔄 Pick up where you left off.</p>
   </section>
-  <section data-k="picks rules 3 three weekly week sunday benched won inactive gone away months remove movies back">
+  <section data-k="picks rules 3 three weekly week sunday benched won inactive gone away months remove movies back" data-has="movies">
     <h2>📏 Pick rules</h2>
     <ul>
       <li>Everyone gets <b>3</b> movies (change it in <b>Settings → Discord &amp; picks</b>).</li>
@@ -360,43 +360,43 @@
     </ul>
   </section>
 
-  <section data-k="swap change switch movie lock live">
+  <section data-k="swap change switch movie lock live" data-has="movies">
     <h2>🔁 Swapping movies</h2>
     <p>People use <code>/swap</code> in Discord to trade one movie for another, 1 for 1. By default, swaps (and new picks) lock only while a Discord movie battle is going: people can swap right up until you press Start, and again once it has its winner. You can change that to the whole time you're live, or never (Settings → 🤖 Discord &amp; picks → 🔒 When adding and swapping movies lock). You can also lock or unlock them yourself in <b>Settings → 🤖 Discord &amp; picks</b> or on the Pool tab.</p>
   </section>
 
-  <section data-k="pass passed redo sit out sitout imback skip one battle !skip">
+  <section data-k="pass passed redo sit out sitout imback skip one battle !skip" data-has="movies">
     <h2>⏭️ Pass, sit out and skip one battle</h2>
     <p><b>When a winner passes</b> (<code>!pass</code>, or your ⏭️ Pass button), their movie goes back in with its luck, and a <b>🔁 Redo the battle without [movie]</b> button shows on the right of the Battle tab: it starts the battle again right away without that movie (it's back in after that).</p>
     <p>The bot also asks them in chat if they want to <b>sit out the rest of tonight</b>. If they answer <b>yes</b>, all their movies take a break until the next stream; <b>no</b> keeps them in. Anyone who sits out (that way or with <code>!sitout</code>) is told in chat that <code>!imback</code> brings them back.</p>
     <p><b>⏭️ Skip one battle:</b> viewers type <code>!skip 2</code> or <code>!skip Heat</code> and that movie of theirs sits out the <b>next battle only</b>, then it's back. The same again puts it back in. With one movie, <code>!skip</code> is enough; with more, the bot lists them with numbers. Change the command in Settings → 💜 Twitch &amp; channel points. Try both with 🧪 Test tab → <b>⏭️ Pass, sit out and skip a battle</b>.</p>
   </section>
 
-  <section data-k="mymovies command twitch chat !mymovies left cooldown someone else name lookup luck">
+  <section data-k="mymovies command twitch chat !mymovies left cooldown someone else name lookup luck" data-has="movies">
     <h2>💬 <code>!mymovies</code> in Twitch chat (and Discord)</h2>
     <p>Viewers type <code>!mymovies</code> in Twitch chat and Movie Royal replies with their movies and picks left. <code>!mymovies lucy</code> shows Lucy's movies instead. In Discord it's <code>/mymovies</code>, or <code>/mymovies person: Lucy</code>. Each person can use it once every 30 seconds (looking someone up in Discord has the same cooldown). Change the command and cooldown in <b>Settings → Twitch</b>.</p>
     <p><b>🍀 Luck:</b> every movie in the answer shows its luck (Twitch chat: <code>Heat (1995) 🍀9.5%</code>). In Discord it also splits it into the movie's own luck and 👀 watch luck, when watch luck is on. Try it without sending anything: 🧪 Test tab → <b>🍀 !mymovies and /mymovies with luck</b>.</p>
     <p class="tip">If it doesn't reply, sign in with Twitch again — replying in chat needs one extra permission.</p>
   </section>
 
-  <section data-k="kirb spot wildcard spots weekly">
+  <section data-k="kirb spot wildcard spots weekly" data-has="movies">
     <h2>🎟️ Kirb spots (wildcards)</h2>
     <p>3 wildcard spots join the pool every new week. If one wins, all of them leave until the next week, and there's no claim timer — just the winner screen. Add them by hand with the <b>🎟️ spots</b> button on the Pool tab. Rename them or change how many in <b>Settings → Discord &amp; picks</b>.</p>
   </section>
 
-  <section data-k="fun mode chat battle power ups shield mega turbo wacky bouncy disco chaos">
+  <section data-k="fun mode chat battle power ups shield mega turbo wacky bouncy disco chaos" data-has="chatBattle">
     <h2>🎉 Fun mode (chat battles)</h2>
     <p>On the <b>🎲 Chat battle</b> tab, Fun mode makes silly battles. <b>Power-ups:</b> chat spends channel points (never bits) on their own ball: 🛡️ Shield (saves them once), 💪 Mega ball (big and heavy), ⚡ Turbo (faster, harder hits), 👻 Ghost (nobody can bump them for the first 10 seconds), 🦔 Spiky (bumping them hurts) or 🧲 Magnet (pulls everyone close). They have to <code>!join</code> first. Each power-up has its own on/off box; an unticked one stays paused on Twitch. Press <b>✨ Add power-up rewards to Twitch</b> once; the rewards are only on while a chat battle with power-ups is playing, and paused otherwise.</p>
     <p><b>Wacky effects:</b> super bouncy, low gravity, random sizes, big balls, chaos rain, disco lights, 🧊 slippery ice, 🔀 swap-o-rama (everyone swaps places every 10 seconds or so), 💨 speedy (everyone has turbo) and 👀 googly eyes. The winner is still drawn by the odds before the fight; these make it a funnier show. <b>🧪 Try it</b> runs a pretend fun battle with what you ticked.</p>
     <p><b>Chaos fits the map:</b> on maps where the ground never breaks, Edge Collapse and Lightning don't happen, and their rewards are paused on Twitch while that map is up.</p>
   </section>
 
-  <section data-k="export import bans banned list backup csv my bans">
+  <section data-k="export import bans banned list backup csv my bans" data-has="movies">
     <h2>⬇️ Export / ⬆️ import your bans</h2>
     <p>Settings → 🚫 Banned Movies → <b>⬇️ Export my bans</b> downloads the movies <b>you</b> banned (not the automatic ones: not in English, religious, documentaries, this year's, sequels) as a spreadsheet file (.csv: TMDB id, title, year, reason, date). Open it in Excel or keep it as a copy. <b>⬆️ Import bans</b> adds the movies from that file as your own bans (here or on another PC): ones already banned are skipped and nothing is ever removed. Updates never reset the banned list.</p>
   </section>
 
-  <section data-k="series sequel sequels order lock locked collection harry potter next movie claim">
+  <section data-k="series sequel sequels order lock locked collection harry potter next movie claim" data-has="movies">
     <h2>🎞️ Series in order + 🔒 series locks</h2>
     <p><b>In order:</b> a movie in a series (TMDB's series, like <i>Harry Potter</i>) can only be picked once you've watched every movie in that series that came out before it. The later ones go on the 🚫 Banned list as <b>🎞️ sequels</b> and come off by themselves when you watch the one before (Letterboxd, or it wins a Discord battle and gets watched). People are told which movie has to be watched first.</p>
     <p><b>🔒 Locks:</b> whoever picks the next movie to watch in a series gets the series locked: nobody else can pick its next movie. When their movie gets watched, the next one opens <b>only for them</b>. If their next picks (a whole new set) are other movies, or they swap it away, the series opens up for everyone, and whoever picks its next movie gets the lock.</p>
@@ -405,7 +405,7 @@
     <p class="tip">Try it with 🧪 Test tab → <b>🎞️ Series in order + 🔒 series locks</b> (a pretend series, step by step).</p>
   </section>
 
-  <section data-k="luck lucky chance better odds clover reset">
+  <section data-k="luck lucky chance better odds clover reset" data-has="luck">
     <h2>🍀 Luck</h2>
     <p>Turn it on in <b>Settings → 🍀 Luck</b>: every luck setting is there (luck per battle, wildcard spot luck, 👀 watch luck for each battle, saving / resetting luck and chat calling the winner). <b>👀 Watch luck</b> (off by default) has an on/off box for each battle there, with how many hours watched give how much luck. Every battle a Discord movie loses, it gets a bit more likely to win (1% by default — change it in Settings). It builds battle to battle and week to week. Your luck only starts over when one of your movies actually gets watched. A win counts as watched, and if you press “Not watching it — put it back”, the luck comes back too.</p>
     <p><b>Cooldown:</b> once someone's movie gets watched, they don't build luck again until the new week. <b>LUCKY!</b> saves are rare on purpose: only pieces that have luck can get lucky, and only once every several seconds on the whole map.</p>
@@ -419,18 +419,18 @@
       <p><b>Custom battles without luck</b> can save their <b>odds</b> the same way: <b>💾 Save odds</b>, <b>↺ Everyone to 1</b> (saves first), then <b>📂 Saved odds → Bring back</b>. The buttons are above the list on the Battle tab.</p>
   </section>
 
-  <section data-k="active chatters chatting stream tonight cliff join">
+  <section data-k="active chatters chatting stream tonight cliff join" data-has="battle">
     <h2>💬 Only people who are here</h2>
     <p>Someone's Discord movies hop onto the cliff once they type in Twitch chat that stream. It resets every day. Click names on the Pool tab to add or remove people yourself. If someone typed but didn't show up, use <b>Recent chatters</b> to match their Twitch name.</p>
   </section>
 
-  <section data-k="roll call reset no show 3 claim">
+  <section data-k="roll call reset no show 3 claim" data-has="battle">
     <h2>📣 Roll call</h2>
     <p>After 3 winners in a row don't claim, Movie Royal suggests a roll call. Everyone has 2 minutes to type in chat; anyone who doesn't sits out for the night. Sitting out only takes their movies out of the battle: they stay on the 👥 People list (with 🛌), so you still see the whole community.</p>
     <p><b>Roll call in any OBS scene:</b> roll call shows on the game screen, and it can also be its own browser source, so it shows in scenes without the game (like your camera scene). <b>Settings → 🎥 OBS → 📣 Roll call → ➕ Add it to OBS for me</b> picks the scenes, or add a Browser source by hand with the address shown there (<code>/rollcall.html</code>, 1920 × 1080). It's see-through until a roll call starts. If both are in the same scene, switch off <b>📣 Show roll call on the game screen</b> so it doesn't show twice. <b>👀 Preview</b> shows a pretend one.</p>
   </section>
 
-  <section data-k="people wheel import old manual add person twitch link">
+  <section data-k="people wheel import old manual add person twitch link" data-has="people">
     <h2>👥 People &amp; your old wheel</h2>
     <p>The <b>👥 People</b> tab lists everyone who picked a movie or linked their Twitch in Discord (<code>/linktwitch</code>). Press <b>🔄 Refresh</b> to pull in new Discord picks and links right away.</p>
     <p>On the <b>👥 People</b> tab you can add people by hand, give them movies (＋ movie), set picks used, and link their Twitch name. To bring over your whole old wheel, open <b>Import everyone from your old wheel</b> and paste one person per line:</p>
@@ -438,7 +438,7 @@
     <p>If they later use <code>/suggest</code> or <code>/linktwitch</code> in Discord, it all merges into their account.</p>
   </section>
 
-  <section data-k="pause pool remove temporary odds bigger piece weight">
+  <section data-k="pause pool remove temporary odds bigger piece weight" data-has="pool">
     <h2>📋 The pool &amp; odds</h2>
     <ul>
       <li><b>+ / −</b> changes odds. Bigger odds = bigger piece = better chance.</li>
@@ -448,7 +448,7 @@
     </ul>
   </section>
 
-  <section data-k="custom new battle list movies text pictures chat giveaway category">
+  <section data-k="custom new battle list movies text pictures chat giveaway category" data-has="battle">
     <h2>➕ Making a new battle</h2>
     <p>Press <b>+ New battle</b> and pick what goes in it:</p>
     <ul>
@@ -460,12 +460,12 @@
     <p><b>🍀 Luck like the Discord battle</b> (for movies, text and pictures): tick it when you make the battle (or later on the Battle tab / Settings → 🍀 Luck). Everything that loses gets a little luckier every battle, and a winner stays in with its luck starting over. Great for a battle of stuff for you to do.</p>
   </section>
 
-  <section data-k="chat battle join giveaway !join random">
+  <section data-k="chat battle join giveaway !join random" data-has="chatBattle">
     <h2>🎲 Chat battle (!join)</h2>
     <p>Open the <b>🎲 Chat battle</b> tab and press <b>▶ Open joining</b>. Viewers type <code>!join</code> in Twitch chat and pop onto the list with their Twitch picture. Press <b>▶ START CHAT BATTLE</b> when you're ready. The winner screen shows the winner's Twitch name. <b>🧹 Clear entries</b> empties it for next time.</p>
   </section>
 
-  <section data-k="import wheel of names marbles on stream csv file list link">
+  <section data-k="import wheel of names marbles on stream csv file list link" data-has="pool">
     <h2>📥 Importing from Wheel of Names / Marbles on Stream</h2>
     <p>On the <b>📋 Pool</b> tab open <b>📥 Import</b>. Paste a Wheel of Names share link, or drop a file: <code>.wheel</code> (Wheel of Names), <code>.csv</code> (Marbles on Stream or any spreadsheet), <code>.json</code> or <code>.txt</code>. Odds come along if the file has them. The <b>+ New battle</b> box has the same thing.</p>
     <p class="tip">Easiest Wheel of Names trick: click the entries box on the wheel, press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it into the list box. Always works.</p>
@@ -611,7 +611,7 @@
     <p>Turn it on / off and pick what happens (ban, a one-day timeout, or only delete the message) in <b>Settings → 💜 Twitch → 🛡️ Spam bots</b>. Every ban is listed there with <b>↩️ Unban</b> (for when it wasn't a bot), and in History → Everything. Try any message in the 🧪 Test tab → 🛡️ Spam bots (nothing is banned there). It needs you signed in with Twitch.</p>
   </section>
 
-  <section data-k="card battles card pool packs booster kung fu fight wacky gore pirate ships kraken">
+  <section data-k="card battles card pool packs booster kung fu fight wacky gore pirate ships kraken" data-has="cards">
     <h2>🃏 Card battles</h2>
     <p>Your sealed card packs fight each other on stream. Each pack is a fighter with stick arms and legs, a headband and an angry face. They have a martial arts brawl in <b>Kung Fu Town</b>, an old Chinese town like an old kung fu movie, with health bars on top and blood as they get hurt. Every pack has the same chance (no luck) and there are no chat power-ups. Being on the <b>🃏 Card battles</b> tab puts the card battle on stream.</p>
     <p>🪖 <b>WW2 Battlefield</b> (card battles only): every pack has a rifle and shoots it out (up close: rifle butts and kicks). Two tanks shell the field (a red crosshair shows where) and bombers fly over dropping bombs (shadows show where). The last two get a FINAL FIGHT: a one-on-one shootout.</p>
@@ -648,7 +648,7 @@
     <p>The <b>📣 Chat message</b> button is on the Battle, Chat battle, Giveaway and Wheel tabs, and it's one switch for all of them. Turn it on and it posts in Twitch chat right away, then again every hour (change how often in Settings → Twitch → 📣 Chat messages). Each time, it posts the message for <b>the tab you're on</b>: Battle tab = how to add movies in Discord, Chat battle / Giveaway = how to join, Wheel = how respins work. Want it posted right now? Turn it off and on again. It stops when your stream ends.</p>
   </section>
 
-  <section data-k="capture window obs browser youtube video corner top left join timer">
+  <section data-k="capture window obs browser youtube video corner top left join timer" data-has="battle">
     <h2>📺 Capture window</h2>
     <p>Under ⏱️ 2-min chat timer on the Battle tab: <b>📺 Capture window</b> puts a window from your PC (like your browser playing a YouTube video) small in the <b>top-left corner of your live OBS scene</b>, so viewers have something to watch while people join. Press it again to hide it.</p>
     <p>First time: set up OBS in <b>Settings → 🎥 OBS</b>, open the video in your browser, press <b>⚙</b> next to 📺, press 🔄, pick your browser window, and save. Movie Royal makes an OBS source called "Movie Royal capture window" (with the window's sound) and puts it on top. Change its size right away with − / + or the 📏 slider under the button. ⚙ also sets the size and can hide it by itself when the battle starts. Try it in 🧪 Test → 📺 Capture window.</p>
@@ -683,7 +683,7 @@
     <p>The <b>⚔️ Battle</b> tab has a Volume box: mute, sound effects and music sliders. Changes are instant. (Same controls in Settings → 🔊 Sounds.)</p>
   </section>
 
-  <section data-k="turn off disable points bits chaos on off button">
+  <section data-k="turn off disable points bits chaos on off button" data-has="points">
     <h2>⭐ Turning channel points / bits on and off</h2>
     <p>Click <b>⭐ Points ON/OFF</b> or <b>💎 Bits ON/OFF</b> on the Battle tab, the Pool tab, the Chat battle tab or in Settings → 💜 Twitch &amp; channel points. Green = on, red = off. Turning points off also pauses your Movie Royal rewards on Twitch so nobody spends points by accident; turning them on unpauses them.</p>
   </section>
@@ -693,7 +693,7 @@
     <p><b>History → 🎟️ Free spins</b> lists every free (saved) wheel respin: who got one and why (subs, bits, respins that came in at the same time, sneaky auto-spot respins, ones you gave), who used one and on which wheel, and any that went back because they couldn't spin. It also shows who has saved spins right now. Use it to double-check things were done right.</p>
     <p>🔁 <b>Only the first respin counts:</b> if several people redeem a respin at the same time (channel points or saved spins), the first one spins and everyone else gets a free saved respin instead. That covers the time while it's spinning, waiting to spin, and a few seconds after it lands (you set the seconds in the wheel's settings).</p>
   </section>
-  <section>
+  <section data-has="movies">
     <h2>🌐 IMDb / Rotten Tomatoes battles</h2>
     <p>A movie battle made from IMDb and/or Rotten Tomatoes lists, like <b>the 500 worst movies</b>. Make one with <b>+ New battle → 🌐 IMDb / Rotten Tomatoes</b>.</p>
     <ul><li>Tick the ready-made lists (🍅 Rotten Tomatoes' 100 worst movies, 🎬 IMDb's lowest rated movies, 🎬 IMDb's Bottom 100) and/or paste your own links: any IMDb list, chart or search, or a Rotten Tomatoes guide or browse page. They're read in order.</li>
@@ -714,7 +714,7 @@
     <li><b>🖥️ The app:</b> your data saves (and a backup in the last month), the pictures you added are there, no new errors, every button has a help note, no two key binds on the same key.</li></ul>
     <p>Things on the checklist that a check really covers get ticked by themselves (“checked by 🤖 Test all”). The rest of the checklist needs you: things on stream, in Twitch chat, in Discord or in OBS. <b>🤖 Test all not done</b> only runs the checks that haven't passed yet. Shift+T on the Test tab runs it too.</p>
   </section>
-  <section>
+  <section data-has="movies">
     <h2>🔞 Nudity heads-up</h2>
     <p>When a movie wins, Movie Royal checks it for nudity. If it has some, the <b>Winner card</b> on the Battle tab says so <b style="color:#ff5a5a">in red</b> and lists every scene it found, each with <b>about when it is</b> in the movie (like <b>~1 h 12 min in</b>). The winner pop-up on stream just says <b>🔞 This movie has nudity</b> (no times; turn that part off with 📺 in the settings). It's never typed in Twitch chat.</p>
     <ul><li>It reads the movie's <b>IMDb Parents Guide</b> (the "Sex &amp; Nudity" part, written by IMDb users) and TMDB's tags on the movie.</li>
@@ -730,7 +730,7 @@
     <li>Press <b>▶ Run test</b>. The battle plays in the lab screen right there. ⏩ +5 s and ⏭ To the end fast-forward it, and the buttons under it set off chaos events or the map's power during the fight.</li>
     <li>It never goes on stream, nothing is saved, and nothing goes to chat or Discord. Your settings for the lab are remembered.</li></ul>
   </section>
-  <section>
+  <section data-has="luck">
     <h2>👀 Watch luck</h2>
     <p>Each battle can give luck to people who watch your streams (off by default). On the ⚔️ Battle tab, press <b>👀 Watch luck</b> next to the battle's luck buttons: turn it on, and pick <b>every how many hours watched</b> and <b>how much luck</b> (to start: every 10 hours = +1%). It counts watch time from the moment you turn it on (time from before doesn't count); ↺ Count from now starts everyone over. Watch time = every 5 minutes they're in your chat's viewer list while you're live. Discord movies count for the person who picked them once their Twitch is linked; chat battles use their Twitch name. The window shows who has how much luck right now. More luck = better odds (the winner is still drawn by the odds before the fight).</p>
   </section>
@@ -773,7 +773,7 @@
     <p>The winner screen only shows a name when chat picked it: Discord movies show who suggested it, and <code>!join</code> battles show who joined. Lists you typed in yourself just show the winner.</p>
   </section>
 
-  <section data-k="channel points rewards bits chaos events price cost edit">
+  <section data-k="channel points rewards bits chaos events price cost edit" data-has="points">
     <h2>⭐ Channel points, bits &amp; chaos</h2>
     <p>Viewers trigger chaos events (comets, tornadoes, earthquakes…) that hit everyone at random — nobody gets an edge.</p>
     <p>In <b>Settings → 💰 Rewards &amp; prices</b> press <b>✨ Create my channel point rewards</b>. Each reward's price and when it's on are in the list at the top (they save right away); its name, cooldown and what it does are under <b>⭐ Reward names, cooldowns and what they do</b> (press <b>Save</b> on its row: it updates on Twitch instantly). The 💎 Bits → chaos tiers are just below.</p>
@@ -784,7 +784,7 @@
     <p>Open <b>Settings → 🔊 Sounds</b>. Press <b>⬆️ Upload</b> next to any sound to use your own mp3/wav file, <b>▶</b> to hear it, and <b>Reset</b> to go back to the built-in one. Changes are live.</p>
   </section>
 
-  <section data-k="letterboxd watched history download sync csv">
+  <section data-k="letterboxd watched history download sync csv" data-has="movies">
     <h2>📗 Letterboxd</h2>
     <p>Put your username in <b>Settings → Movie info</b>. Movie Royal reads your whole Letterboxd profile on its own (when it starts and every 6 hours), so anything you've watched is blocked automatically — there's nothing to download. Winners count as watched right away, even before you log them.</p>
     <p class="muted">Only if your profile is private: export your data from Letterboxd and drop the CSV files in Settings.</p>
@@ -827,7 +827,7 @@
     <p>Settings → <b>⌨️ Key binds</b> lists every keyboard shortcut, sorted by tab. Click a key, then press the new one (Esc keeps it, Backspace turns it off). It saves right away. <b>↺ Put them all back</b> undoes your changes.</p>
     <p>Each key only works on its own tab (Space spins the wheel only on the 🎡 Wheel tab, G starts the battle only on the ⚔️ Battle tab), and never while you're typing in a box, so typing in chat, names or titles is always safe. Only the Ctrl / Alt ones work everywhere: <b>Ctrl+H</b> turns help mode on and off, <b>Alt+1</b> to <b>Alt+0</b> jump between tabs. If you clicked inside the game screen, click outside it first.</p>
 </section>
-  <section data-k="chat powers reminder banner ticker scrolling top channel points bits chaos">
+  <section data-k="chat powers reminder banner ticker scrolling top channel points bits chaos" data-has="chaos">
     <h2>⚡ Chat powers reminder</h2>
     <p>While a battle is going and chat powers are on (channel points or bits), a slim line scrolls across the top of the battle to remind chat they can use them: "⚡ Chat powers are on! Use channel points or bits to shake up this battle". It goes away when the battle ends, or when you turn chat powers off (the ⚡ channel points / bits switches).</p>
   </section>
@@ -879,7 +879,7 @@
     <p>By default, Movie Royal goes quiet when you click into another program (a game, OBS, your browser…) and its sound comes back when you click back into it. The stream isn't affected: the game screen in OBS plays its own sound. If you capture Movie Royal's window or your desktop sound in OBS, turn it off in <b>Settings → 🔊 Sounds</b>.</p>
     <p>🔇 <b>No double sound:</b> while OBS has a Movie Royal game screen open (a browser source in any scene), the battle inside Movie Royal stays quiet, so you hear each sound once (OBS plays it). Settings → 🔊 Sounds shows how many OBS has open. If you can't hear the battle at all then, the OBS source has "Control audio via OBS" ticked: set it to monitor in OBS (Edit → Advanced Audio Properties → Monitor and Output) or untick it. Turn this off with the <b>🔇 No double sound</b> box.</p>
   </section>
-  <section data-k="rewards prices channel points bits donations pause always on once off">
+  <section data-k="rewards prices channel points bits donations pause always on once off" data-has="points">
     <h2>💰 Rewards & prices</h2>
     <p>Settings → <b>💰 Rewards &amp; prices</b> has every channel point reward, bits amount and donation amount in one place, sorted by tab (Battle, Chat battle, Wheel, Raid). They're still in their usual places too: change them in either place.</p>
     <ul>
@@ -888,12 +888,12 @@
       <li><b>⏸ Pause</b> bits amounts, or subs / bits / donations on the wheel: they do nothing in Movie Royal until you untick it.</li>
     </ul>
   </section>
-  <section data-k="raid reward pick channel points">
+  <section data-k="raid reward pick channel points" data-has="points">
     <h2>🚀 Raid reward</h2>
     <p>A channel point reward that lets a viewer pick who you raid. Movie Royal asks them in chat, they type a Twitch name, a pop-up with a celebration sound shows it (when you're in Movie Royal; otherwise when you come back), and a <b>🚀 Raid → name</b> box shows at the top of the app, left of the connection lights. Click it to start the raid. The reward hides for the rest of the stream once it's used.</p>
     <p>Movie Royal makes the reward itself. If you already had a raid reward, it keeps its price (1500 points if there was none); one you made by hand on Twitch has to be deleted there. Turn it off, rename it or remake it in Settings → 💰 Rewards &amp; prices. Starting raids needs one more Twitch permission: sign in with Twitch again once. Try it with 💬 Pretend chat → 🚀 Raid.</p>
   </section>
-  <section data-k="viewer rewards hydrate stretch hat viewer's choice celebration confetti balloons obs source">
+  <section data-k="viewer rewards hydrate stretch hat viewer's choice celebration confetti balloons obs source" data-has="points">
     <h2>🎁 Viewer rewards</h2>
     <p>Four channel point rewards that are in your menu all the time (unless you switch one off): <b>💧 Hydrate</b>, <b>🙆 Stretch</b>, <b>🎩 Pick a hat</b> and <b>🎉 Viewer's choice</b>. Movie Royal makes them once you're signed in with Twitch. If you already had one (for example a “Hydrate” reward), it keeps its name and price: Movie Royal deletes it and makes it again so it can keep it on. One you made by hand on Twitch can only be deleted on Twitch; it still works until you do. Prices: Settings → 💰 Rewards &amp; prices.</p>
     <ul>
@@ -916,7 +916,7 @@
     </ul>
     <p class="tip">Match OBS: if OBS records 1080p at 60 FPS (OBS → Settings → Video), pick 1080p + 60 FPS lock here, and in the OBS browser source set Width 1920, Height 1080 and tick "Use custom frame rate" with 60.</p>
   </section>
-  <section data-k="test testing try fake practice">
+  <section data-k="test testing try fake practice" data-has="battle">
     <h2>🔢 Number battles</h2>
     <p>+ New battle → <b>🔢 Numbers</b> (next to 📝 Text): type from and to (like 1 to 50) and press Create. Every ball is a number, and the last one standing is the pick. Later, in the 🎬 Movie Pool tab, change the range with <b>Update the numbers</b> (numbers you keep keep their odds), or click any number to change it.</p>
     <p><b>🔢 Worse Movies</b> (1 to 500) comes ready-made in your battle list. Delete it if you don't want it: it won't come back.</p>
@@ -925,7 +925,7 @@
     <h2>✅ Test checklist</h2>
     <p>🧪 Test → <b>✅ Checklist</b> shows what's set up and a list of things to try once. ⚔️ Discord battle tests let you reset cooldowns, put everyone on the cliff and run a battle that changes nothing.</p>
   </section>
-  <section>
+  <section data-has="movies">
     <h2>🤖 Discord self-test</h2>
     <p>🧪 Test → <b>🤖 Run the Discord self-test</b> checks everything about Discord that Movie Royal can check by itself (bot, channels, pins, slash commands, who can see the debug channel, the 24/7 bot), and runs the /suggest and /mymovies code with a pretend user.</p>
     <p><b>🔄 Restart the Discord bot</b> (here, and in Settings → Discord & picks) turns the bot off and on again without closing Movie Royal. It reconnects and fixes its slash commands, channels and pinned messages. Try it when the bot shows offline or commands stop working.</p>
@@ -934,7 +934,7 @@
     <h2>🔴 Pretend I'm live</h2>
     <p>🧪 Test → <b>🔴 Pretend I'm live</b> makes Movie Royal act like a stream just started, without anything changing on Twitch or Discord.</p>
   </section>
-  <section>
+  <section data-has="movies">
     <h2>🐞 Discord debug channel</h2>
     <p>The bot keeps a hidden <code>#movie-royal-debug</code> channel in your Discord that only mods and the server owner can see. Discord problems get posted there automatically (plain words + tech details). Nobody but the bot can type in it. Settings → Discord has the switch and a "Make / fix" button.</p>
   </section>
@@ -946,12 +946,12 @@
     <h2>❤️ Hidden health</h2>
     <p>Every ball can take only so many hard hits (bumps from bigger balls, dash hits, comets, explosions…). When it runs out, it's knocked out (K.O.!). Bigger balls are tougher. There's no health bar: a ball flashes red when it gets hurt.</p>
   </section>
-  <section>
+  <section data-has="movies">
     <h2>✋ Claims, passes and sitting out</h2>
     <p>When the movie winner types in chat, the claim timer stops and Movie Royal asks them in chat: type <b>!accept</b> to watch it now, or <b>!pass</b> to save it for another night. It does whatever they answer (yes / no work too, once they've been asked), and the stream shows it. It always asks first: even if their first message is a happy “YES!”, the movie isn't claimed until they answer the question (or you press ✅ Accept). A pass puts their movie back in the battle, they keep their luck and they aren't benched for the week. The ✅ Accept winner / ⏭️ Pass buttons on the winner card (Battle tab) are for doing it yourself. Accepted movies get pinned in Twitch chat (title, year, who picked it). Viewers can type !sitout to take their movies out of tonight's battles and !imback to put them back. Change the commands in Settings → Twitch.</p>
     <p><b>💬 Pretend chat</b> (🧪 Test tab): a small window where you type as any viewer. ✋ <b>Winner types in chat</b> opens it as the movie winner (if no movie has won, Movie Royal makes a pretend winner that changes nothing): type anything and ✅ Accept / ⏭️ Pass show up on the winner card on the Battle tab. It also has buttons for <b>up</b> / <b>down</b> after a ↕️ Move redeem, !respin, !myspins, !sitout and more, and shows Movie Royal's replies. It stays open on every tab; drag it by its top bar.</p>
   </section>
-  <section data-k="co-stream costream friend kirb partner together shared stream camera vdo ninja virtual camera chaos lag">
+  <section data-k="co-stream costream friend kirb partner together shared stream camera vdo ninja virtual camera chaos lag" data-has="costream">
     <h2>🤝 Co-stream with a friend</h2>
     <p>Stream together with a friend who also has Movie Royal (<b>Settings → 🤝 Co-stream</b>). Voices and watching videos stay on Discord; Movie Royal handles the rest:</p>
     <p>📷 <b>Cameras:</b> each of you sends your camera + your game screen. Your friend's camera shows up in your OBS by itself as a normal source called “🤝 their name (co-stream)”: move it, resize it, crop it, hide it like anything else. Movie Royal won't move it back.</p>
@@ -1039,6 +1039,8 @@
 <script>
 // 🛠️ (1.79.1) parts marked data-dev only show in dev mode (the app opens this page with ?dev=1 then)
 if (!/[?&]dev=1/.test(location.search)) document.querySelectorAll('[data-dev]').forEach(el => el.remove());
+// 🎭 (1.141.0, Derek: "only add stuff that applies to edition") parts marked data-has="movies" are left out in an edition that has that part switched off (?off=movies,cards…); data-any="battle chatBattle" goes only when ALL of those are off
+{ const off = (new URLSearchParams(location.search).get('off') || '').split(',').filter(Boolean); document.querySelectorAll('[data-has]').forEach(el => { if (el.dataset.has.split(' ').some(x => off.includes(x))) el.remove(); }); document.querySelectorAll('[data-any]').forEach(el => { if (el.dataset.any.split(' ').every(x => off.includes(x))) el.remove(); }); }
 // 🎭 parts marked data-feat only show in editions that have that extra (?feat=movienight,raids…)
 { const have = (new URLSearchParams(location.search).get('feat') || '').split(','); document.querySelectorAll('[data-feat]').forEach(el => { if (!have.includes(el.dataset.feat)) el.remove(); }); }
 const secs = [...document.querySelectorAll('section')];
