@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.125.1
+- ⏱️ **!watchtime** and 💜 **!followage** in the recommended commands (they answer for whoever types them, or for a name typed after: `!followage @someone`). New special words `$watchtime` and `$followage` work in any command.
+- Bringing Streamlabs Chatbot over now also brings each viewer's watch hours (its Currency / Points page), so !watchtime counts their old time too. Follow age comes from Twitch (it needs the follower permission from signing in).
+
 ## 1.125.0
 - ⭐ **Recommended commands** on the 🤖 Chat bot → Commands tab: 18 ready-made ones (!lurk, !discord, !socials, !uptime, !so, !hug, !dice, a death counter…). Press ➕ to add one; ones with a part to fill in (like your Discord link) open the editor with that part picked so you just type over it.
 - ⌨️ **Typing finishes it for you:** in ➕ New command, start typing a name (like `!dis`) and press Tab (or click the suggestion) to fill in the whole command and its answer. In the answer, type `$` and press Tab to finish a special word like `$user` or `$uptime`.

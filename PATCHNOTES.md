@@ -4,6 +4,12 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.125.1: What's new
+New in this version.
+
+- ⏱️ **!watchtime** and 💜 **!followage** are in the recommended commands (for whoever types them, or a name typed after). The special words `$watchtime` and `$followage` work in any command.
+- Bringing Streamlabs Chatbot over also brings each viewer's watch hours, so !watchtime includes their old time.
+
 ## v1.125.0: What's new
 New in this version.
 

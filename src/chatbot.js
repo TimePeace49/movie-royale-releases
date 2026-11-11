@@ -7,7 +7,7 @@ import { db, save } from './store.js';
 import { act } from './activity.js';
 
 export const PERMS = { all: 'Everyone', followers: 'Followers', subs: 'Subs', vips: 'VIPs', mods: 'Mods', streamer: 'Only me' };
-const H = { say: async () => {}, canSay: () => true, follows: async () => false, live: () => false, startedAt: () => 0, channel: () => '', chatters: () => [], reserved: () => [], dev: () => false, changed: () => {}, sound: () => {}, soundIn: () => null };
+const H = { say: async () => {}, canSay: () => true, follows: async () => false, live: () => false, startedAt: () => 0, channel: () => '', chatters: () => [], reserved: () => [], dev: () => false, changed: () => {}, sound: () => {}, soundIn: () => null, watchTime: () => null, followAge: async () => undefined };
 export const setHooks = h => Object.assign(H, h);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clampN = (v, lo, hi, d) => { v = Math.round(Number(v)); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -36,7 +36,7 @@ const isMod = m => { const b = m.badges || {}; return !!(b.broadcaster || b.mod)
 
 // ---------- the words in an answer: $user, $target, $arg1, $count, $randnum(1,6)… (Streamlabs Chatbot style) and {user}, {1}, {touser}… (Cloudbot style) ----------
 function ago(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), mi = Math.floor(s % 3600 / 60); return h ? `${h} h ${mi} min` : mi ? `${mi} min` : `${s} s`; }
-export function fill(text, m, cmd, args) {
+export function fill(text, m, cmd, args, extra = {}) {
   const user = m.name || m.login || 'someone', a = args || [], t1 = String(a[0] || '').replace(/^@/, ''), target = t1 || user, rest = a.join(' ');
   const up = () => H.live() && H.startedAt() ? ago(Date.now() - H.startedAt()) : 'not live right now';
   const rnd = (lo, hi) => { lo = Math.round(Number(lo)); hi = Math.round(Number(hi)); if (!Number.isFinite(lo) || !Number.isFinite(hi)) return ''; if (hi < lo) [lo, hi] = [hi, lo]; return String(lo + Math.floor(Math.random() * (hi - lo + 1))); };
@@ -51,11 +51,12 @@ export function fill(text, m, cmd, args) {
   out = out.replace(/\$count\b/gi, String(cmd?.uses ?? 0)).replace(/\{count\}/gi, String(cmd?.uses ?? 0));
   out = out.replace(/\$(?:mychannel|channel)\b/gi, H.channel()).replace(/\{channel(?:\.name)?\}/gi, H.channel());
   out = out.replace(/\$uptime\b/gi, up).replace(/\{uptime\}/gi, up);
+  out = out.replace(/\$watchtime\b/gi, () => extra.watchtime ?? '0 minutes').replace(/\$followage\b/gi, () => extra.followage ?? 'unknown'); /* ⏱️ (1.125.1) worked out before fill, see needExtra */
   out = out.replace(/\$randusr\b/gi, someone).replace(/\{random\.chatter\}/gi, someone);
   out = out.replace(/\$date\b/gi, now.toLocaleDateString()).replace(/\$time\b/gi, now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
   return out.replace(/\s+/g, ' ').trim().slice(0, 480);
 }
-export const WORDS = [['$user', 'who typed it'], ['$target', 'the name they typed after it (else themselves)'], ['$arg1 … $arg9', 'the 1st … 9th word they typed after it'], ['$msg', 'everything they typed after it'], ['$count', 'how many times the command was used'], ['$randnum(1,100)', 'a random number'], ['$randusr', 'a random recent chatter'], ['$uptime', 'how long you have been live'], ['$channel', 'your channel name'], ['$date / $time', "today's date / the time"]];
+export const WORDS = [['$user', 'who typed it'], ['$target', 'the name they typed after it (else themselves)'], ['$arg1 … $arg9', 'the 1st … 9th word they typed after it'], ['$msg', 'everything they typed after it'], ['$count', 'how many times the command was used'], ['$randnum(1,100)', 'a random number'], ['$randusr', 'a random recent chatter'], ['$uptime', 'how long you have been live'], ['$watchtime', "how long they (or the name typed after it) have watched your streams"], ['$followage', 'how long they (or the name typed after it) have followed you'], ['$channel', 'your channel name'], ['$date / $time', "today's date / the time"]];
 
 // ---------- commands ----------
 const byName = n => data().commands.find(c => c.name === n || (c.aliases || []).includes(n));
@@ -129,6 +130,15 @@ function quotes(m, w0, rest) {
   const n = Number(rest.trim().replace(/^#/, '')), q = n ? L.find(x => x.n === n) : rest.trim() ? L.filter(x => x.text.toLowerCase().includes(rest.trim().toLowerCase())).sort(() => Math.random() - .5)[0] : L[Math.floor(Math.random() * L.length)];
   reply(q ? quoteLine(q) : `💬 No quote ${n ? '#' + n : 'with those words'} (there are ${L.length}).`); return true;
 }
+/** ⏱️ (1.125.1, Derek: "watchtime and followage") words that need looking up before the answer is made */
+export const timeWords = (ms, parts = 2) => { const s = Math.max(0, Math.floor(ms / 1000)), U = [['year', 31557600], ['month', 2629800], ['day', 86400], ['hour', 3600], ['minute', 60]], out = []; let r = s; for (const [n, v] of U) { const k = Math.floor(r / v); if (k) { out.push(`${k} ${n}${k === 1 ? '' : 's'}`); r -= k * v; } if (out.length >= parts) break; } return out.join(', ') || 'less than a minute'; };
+async function extrasFor(text, m, args) {
+  const ex = {}; if (!/\$(watchtime|followage)\b/i.test(text)) return ex;
+  const t1 = String(args[0] || '').replace(/^@/, '').toLowerCase(), who = t1 && /^\w{2,30}$/.test(t1) ? t1 : String(m.login || '').toLowerCase(), self = who === String(m.login || '').toLowerCase();
+  if (/\$watchtime\b/i.test(text)) { const mins = H.watchTime(who); ex.watchtime = mins == null || mins <= 0 ? '0 minutes' : timeWords(mins * 60000); }
+  if (/\$followage\b/i.test(text)) { let at; try { at = await H.followAge(who, self ? m : null); } catch { at = undefined; } ex.followage = at === undefined ? '(unknown: the streamer has to sign in to Twitch again to allow follower checks)' : at === null ? '0 days (not following yet)' : timeWords(Date.now() - at); }
+  return ex;
+}
 /** a chat message came in: true = the chat bot handled it */
 export function onChat(m) {
   if (!on() || m.self) return false;
@@ -141,7 +151,7 @@ export function onChat(m) {
   const c = byName(w0); if (!c || !c.on) return false;
   const now = Date.now(), who = m.login || m.name || '', mod = isMod(m);
   if (!mod && ((c.cd && now - (cool.get(c.id) || 0) < c.cd * 1000) || (c.ucd && now - (cool.get(c.id + ':' + who) || 0) < c.ucd * 1000))) return true; // (too soon: quietly skipped)
-  allowed(m, c.perm).then(ok => { if (!ok) return; cool.set(c.id, Date.now()); cool.set(c.id + ':' + who, Date.now()); c.uses = (c.uses || 0) + 1; save(); if (c.sound) H.sound(c.sound, c.vol ?? 80, c); if (c.text) reply(fill(c.text, m, c, args)); H.changed(); }).catch(() => {});
+  allowed(m, c.perm).then(ok => { if (!ok) return; cool.set(c.id, Date.now()); cool.set(c.id + ':' + who, Date.now()); c.uses = (c.uses || 0) + 1; save(); if (c.sound) H.sound(c.sound, c.vol ?? 80, c); if (c.text) { const t = c.text; extrasFor(t, m, args).then(ex => reply(fill(t, m, c, args, ex))).catch(() => reply(fill(t, m, c, args))); } H.changed(); }).catch(() => {});
   return true;
 }
 
@@ -212,4 +222,4 @@ export function exportAll() { const d = data(); return { movieRoyal: 'chatbot', 
 export const info = () => { const d = data(); return { on: d.on !== false, opts: { quoteOn: d.opts.quoteOn !== false, timersLive: d.opts.timersLive !== false }, commands: d.commands, timers: d.timers.map(t => ({ ...t, due: timerDue(t) })), quotes: d.quotes.slice().sort((a, b) => b.n - a.n), perms: PERMS, words: WORDS, lines }; };
 export function setOpts(b) { const d = data(); if (b.on != null) d.on = !!b.on; for (const k of ['quoteOn', 'timersLive']) if (b[k] != null) d.opts[k] = !!b[k]; save(); H.changed(); return info(); }
 // 🧪 a pretend run of one command (nothing is sent to chat)
-export function preview(text, who = 'TestViewer', typed = '') { return fill(text, { name: who }, { uses: 7 }, String(typed || '').trim().split(/\s+/).filter(Boolean)); }
+export function preview(text, who = 'TestViewer', typed = '') { return fill(text, { name: who }, { uses: 7 }, String(typed || '').trim().split(/\s+/).filter(Boolean), { watchtime: '12 hours, 30 minutes', followage: '1 year, 2 months' }); } /* (pretend watch time / follow age in the preview) */

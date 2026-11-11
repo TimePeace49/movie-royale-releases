@@ -844,7 +844,7 @@ async function siteProfile(login) { // 👤 what a signed-in viewer sees about t
   const rows = siteRows(), mine = db.history.filter(h => h.paid && (h.paid.login === login || norm(h.paid.who) === n)).map(h => rows.find(r => r.id === h.id)).filter(Boolean).reverse();
   const ents = getList('movies')?.entries || [], bank = Object.values(wheel.W().bank || {}).find(b => b.login === login || norm(b.name) === n);
   return {
-    name: v?.name || dp?.name || login, streak: v ? chatlog.watchStreak(v) : 0, streams: (v?.watched || []).length, watchHours: Math.round((v?.watchMins || 0) / 6) / 10,
+    name: v?.name || dp?.name || login, streak: v ? chatlog.watchStreak(v) : 0, streams: (v?.watched || []).length, watchHours: Math.round(((v?.watchMins || 0) + (v?.watchOld || 0)) / 6) / 10,
     paid: mine.slice(0, 50).map(r => ({ at: r.at, label: r.label, list: r.list, what: r.paid?.what, vod: r.vod })), paidN: mine.length,
     waiting: paid.queue().filter(x => x.login === login || norm(x.who) === n).length,
     movies: dp ? dp.active.map(m => { const e = ents.find(x => x.id === m.id), L = e ? movieLuck(e) : { total: 0 }; return { label: m.label, sub: m.sub || '', luck: L.total }; }) : null,
@@ -2136,7 +2136,7 @@ app.get('/api/viewer/:login', async (req, res) => {
     login, name: tw?.name || v?.name || bank?.name || dp?.name || login, avatar: tw?.avatar || null, twitchId: tw?.id || v?.id || null, createdAt: tw?.createdAt || null, about: tw?.about || '',
     followedAt: follow === undefined ? (v?.followedAt || undefined) : follow, url: login ? `https://twitch.tv/${login}` : null,
     sub: v ? { now: !!v.sub, months: v.subMonths || 0 } : null, mod: !!v?.mod, vip: !!v?.vip, streak: chatlog.watchStreak(v), twitchStreak: v?.streak || 0, streams: (v?.watched || []).length, lastStreams: chatlog.lastStreams(v), color: v?.color || null,
-    watch: v ? { total: v.watchMins || 0, stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamWatch || 0 : 0 } : null,
+    watch: v ? { total: (v.watchMins || 0) + (v.watchOld || 0), stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamWatch || 0 : 0 } : null,
     chats: v ? { stream: v.streamKey === (db.stream?.startedAt || 0) ? v.streamMsgs || 0 : 0, month: v.byMonth?.[mon] || 0, year: v.byYear?.[yr] || 0, total: v.msgs || 0, first: v.first, last: v.last } : null,
     discord: dp ? (() => { // 🍀 each movie's luck (own luck + 👀 watch luck), like !mymovies shows
       const ents = getList('movies')?.entries || [], on = luckOn(), wl = watchLuckFor(dp.discordId);
@@ -5331,7 +5331,9 @@ chatbot.setHooks({
   chatters: () => [...new Set(live.chatLog.slice(-60).map(x => x.name || x.login))], dev: () => true, /* 🤖 every edition since 1.108.0 (Derek: "the chatbot tab should be on all editions") */
   reserved: () => [...new Set([...BOT_RESERVED, ...Object.entries(db.settings).filter(([k, v]) => /Command$/.test(k) && typeof v === 'string').map(([, v]) => v.trim().toLowerCase())])],
   changed: () => broadcast({ type: 'chatbot' }, 'control'),
-  sound: (file, vol) => sfxPlay(file, vol), soundIn: from => sfxTake(from)
+  sound: (file, vol) => sfxPlay(file, vol), soundIn: from => sfxTake(from),
+  watchTime: login => { const v = db.viewers?.[String(login || '').toLowerCase()]; return v ? (v.watchMins || 0) + (v.watchOld || 0) : null; }, /* (watchOld = hours brought over from Streamlabs Chatbot) */
+  followAge: async (login, m) => { if (m?.pretend) return m.follows === false ? null : Date.now() - 432 * 864e5; /* (🧪 pretend chat: a pretend follow date) */ let id = m?.userId || db.viewers?.[login]?.id; if (!id && !m) { try { id = (await twitch.getUsers([login])).get(login)?.id; } catch {} } if (!id) return undefined; return twitch.followedAt(id); }
 });
 // 🔊 Sound alerts (1.98.0, Derek: Birx's Streamlabs "SFX"): a chat bot command can play a sound file. Files live in the data folder (sounds/sfx).
 // Where it plays: a 🔊 soundboard page in OBS if you added one, else the battle screen in OBS, else the app itself.
@@ -5373,13 +5375,16 @@ app.post('/api/chatbot/import', botDev(b => { const p = b.xlsx ? botXlsx(b.xlsx,
 // commands, timers, quotes, sound alerts → the chat bot; the song list / banned songs → 🎵 Songs (editions that have it); pages there is no
 // place for yet (points, ranks, counters, the viewer queue…) are listed so nothing vanishes silently. dry = only look.
 function botImportAll(files, { cdMins = true } = {}) {
-  const out = { commands: [], timers: [], quotes: [], songs: [], banned: [], pages: [], other: [] }, hasSongs = feat('songs');
+  const out = { commands: [], timers: [], quotes: [], songs: [], banned: [], hours: [], pages: [], other: [] }, hasSongs = feat('songs');
   const kindOf = (name, file) => /quote/i.test(name) ? 'quotes' : /timer/i.test(name) ? 'timers' : /sfx|sound/i.test(name) ? 'sfx' : /black|banned|block/i.test(name) && /song|music|sr\b/i.test(name + ' ' + file) ? 'banned' : /song|playlist|music/i.test(name) || (/song/i.test(file) && !/black|ban/i.test(name)) ? 'songs' : /command/i.test(name) ? 'commands' : null;
   const add = (k, p, label) => { if (k === 'songs' || k === 'banned') { out[k].push(...p.songs); out.pages.push({ label, kind: k, n: p.songs.length }); return; } const n = p.commands.length + p.timers.length + p.quotes.length; out.commands.push(...p.commands); out.timers.push(...p.timers); out.quotes.push(...p.quotes); out.pages.push({ label, kind: k || 'auto', n }); };
   for (const f of (files || []).slice(0, 12)) {
     const name = String(f.name || 'file').slice(0, 80);
     try {
       if (f.xlsx) { for (const sh of xlsx.sheets(Buffer.from(String(f.xlsx), 'base64'))) { const rows = sh.rows.filter(r => r.some(c => String(c ?? '').trim())); if (rows.length < 2) { if (rows.length) (out.empty ||= []).push(sh.name); continue; } const k = kindOf(sh.name, name), label = `${name} → ${sh.name}`;
+          if (!k && /currency|points/i.test(sh.name)) { const head = rows[0].map(h => String(h).trim().toLowerCase()), ni = head.findIndex(h => /^(name|user|username)$/.test(h)), hi = head.findIndex(h => /^hours?$/.test(h)); /* ⏱️ (1.125.1) Streamlabs' Currency page: watch hours → $watchtime */
+            if (ni >= 0 && hi >= 0) { let n = 0; for (const r of rows.slice(1)) { const login = String(r[ni] || '').trim().toLowerCase().replace(/^@/, ''), h = Number(String(r[hi]).replace(',', '.')); if (/^\w{2,30}$/.test(login) && h > 0) { out.hours.push({ login, name: String(r[ni]).trim(), mins: Math.round(h * 60) }); n++; } } out.pages.push({ label, kind: 'hours', n }); if (n) continue; }
+            out.other.push({ label, n: rows.length - 1 }); continue; }
           if (!k) { out.other.push({ label, n: rows.length - 1 }); continue; }
           if (k === 'songs' || k === 'banned') { if (!hasSongs) { out.other.push({ label, n: rows.length - 1, why: 'songs' }); continue; } add(k, songs.readTable(rows, k), label); continue; }
           add(k, chatbot.parseImport(xlsx.toCsv(rows), k, { cdMins }), label); } }
@@ -5399,13 +5404,14 @@ function botImportAll(files, { cdMins = true } = {}) {
 }
 app.post('/api/chatbot/import-all', botDev(b => {
   const p = botImportAll(b.files, { cdMins: b.cdMins !== false }), snd = p.commands.filter(c => c.soundFrom);
-  const found = { commands: p.commands.length - snd.length, sounds: snd.length, soundFiles: snd.filter(c => c.fileHere).length, emptySkipped: p.emptySkipped || [], empty: [...new Set(p.empty || [])], timers: p.timers.length, quotes: p.quotes.length, songs: p.songs.length, banned: p.banned.length, pages: p.pages, other: p.other,
+  const found = { hours: p.hours.length, commands: p.commands.length - snd.length, sounds: snd.length, soundFiles: snd.filter(c => c.fileHere).length, emptySkipped: p.emptySkipped || [], empty: [...new Set(p.empty || [])], timers: p.timers.length, quotes: p.quotes.length, songs: p.songs.length, banned: p.banned.length, pages: p.pages, other: p.other,
     sample: { commands: p.commands.filter(c => !c.soundFrom).slice(0, 8).map(c => ({ name: c.name, text: c.text })), sounds: snd.slice(0, 8).map(c => ({ name: c.name, file: c.soundFrom, here: !!c.fileHere })), timers: p.timers.slice(0, 5).map(t => ({ mins: t.mins, text: t.text })), quotes: p.quotes.slice(0, 5).map(q => ({ text: q.text })), songs: p.songs.slice(0, 5).map(x => ({ title: x.title || 'YouTube video ' + x.yt })) } };
-  if (!(found.commands + found.sounds + found.timers + found.quotes + found.songs + found.banned)) throw new Error(p.other.length ? "I read the file" + (b.files?.length === 1 ? '' : 's') + " but found nothing I can bring over. Pages I saw: " + p.other.map(o => o.label).join(', ') : 'Nothing to read: pick the files Streamlabs Chatbot made (Data.xlsx, Songlist.xlsx) first.');
+  if (!(found.commands + found.sounds + found.timers + found.quotes + found.songs + found.banned + found.hours)) throw new Error(p.other.length ? "I read the file" + (b.files?.length === 1 ? '' : 's') + " but found nothing I can bring over. Pages I saw: " + p.other.map(o => o.label).join(', ') : 'Nothing to read: pick the files Streamlabs Chatbot made (Data.xlsx, Songlist.xlsx) first.');
   if (b.dry) return { found };
   const done = chatbot.applyImport({ commands: p.commands, timers: p.timers, quotes: p.quotes }, { replace: !!b.replace });
   if (p.songs.length) done.songs = songs.applyImport({ songs: p.songs }, { kind: 'songs', replace: !!b.replace });
   if (p.banned.length) done.bannedSongs = songs.applyImport({ songs: p.banned }, { kind: 'banned' });
+  if (p.hours.length) { let n = 0; for (const x of p.hours) { const v = chatlog.viewer(x.login, x.name); if (v && (v.watchOld || 0) < x.mins) { v.watchOld = x.mins; n++; } } done.hours = n; save(); } /* (kept apart from the app's own count, never added twice: the bigger import wins) */
   sfxSoon(); return { found, done };
 }));
 app.post('/api/test/chatbot-sound', botDev(async () => { // 🧪 a !testbeep sound alert (a short beep made here), used by a pretend viewer
