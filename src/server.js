@@ -5141,7 +5141,7 @@ async function wlWeb(words) {
   wlWebCache.set(key, { at: Date.now(), v: groups }); if (wlWebCache.size > 200) wlWebCache.delete(wlWebCache.keys().next().value); return groups;
 }
 const WL_FAKE_WEB = [{ label: '🎭 Kurt Russell', words: ['kurt', 'russell'], movies: [{ title: 'The Thing', year: '1982' }, { title: 'Big Trouble in Little China', year: '1986' }, { title: 'Tombstone', year: '1993' }] }];
-app.get('/api/watchlist/pick', async (req, res) => { if (!feat('movienight')) return res.json({ list: [], total: 0 }); // 🎲 help me pick: up to 20 watchlist movies that fit the words typed
+app.get('/api/watchlist/pick', async (req, res) => { if (!feat('movienight')) return res.json({ list: [], total: 0 }); // 🎲 help me pick: 20 watchlist movies: the ones that fit the words typed, filled up with close ones
   const q = String(req.query.q || ''), words = watchlist.readQuery(q).words; let web = [];
   if (req.query.fake) web = WL_FAKE_WEB.filter(g => g.words.every(w => words.includes(w))); else { try { web = await Promise.race([wlWeb(words), new Promise(r => setTimeout(() => r([]), 7000))]); } catch { web = []; } }
   const r = watchlist.pick(q, { n: Number(req.query.n) || 20, skip: (movienight.data().movies || []).map(m => m.title), web }); res.json({ ...r, key: !!omdbWhere(), tmdb: !!(db.settings.tmdbKey || '').trim() }); if (r.info.have < r.info.all) watchlist.fillInfo(40).catch(() => {}); });

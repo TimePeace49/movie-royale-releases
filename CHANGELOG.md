@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.137.0
+- 🎲 Help me pick now tries to always give 20 movies. The ones that fit everything you typed come first. If that's fewer than 20, it adds 🔸 close ones (they fit part of what you typed, and each says which part), then 🔹 more of the same kind of movie, then other movies from the watchlist. Each group has its own heading so you can tell them apart.
+
 ## 1.136.2
 - 📋 Reading a long IMDb watchlist now gets all of it. IMDb shows 250 movies a page, and the app only read the first page (a 1,700-movie watchlist came in as 250). It now reads page after page until the end, so a long list can take a few minutes.
 - ⭐ Reading the IMDb ratings page: the app looked for each rating in too small a spot on the page and found none. It now looks further along each row, in three different ways. If it still can't read them, the message says what it saw on the page so it can be fixed, and the Export file still works.
