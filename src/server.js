@@ -5117,7 +5117,30 @@ app.post('/api/watchlist/import', wlTry(b => { const p = watchlist.readFile(Stri
 app.post('/api/watchlist/suggest', wlTry(async b => { const r = await watchlist.suggest({ login: '', name: String(b.by || '').trim() }, String(b.title || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'rated' ? `Already watched: ${r.movie.title} was rated ${r.movie.rate}/10.` : r.why === 'dupe' ? `${r.movie.title} is already on the watchlist.` : 'Type a movie name first.'); return { movie: r.movie }; }));
 app.post('/api/watchlist/edit', wlTry(b => watchlist.edit(b)));
 app.post('/api/watchlist/opts', wlTry(b => watchlist.setOpts(b)));
-app.get('/api/watchlist/pick', (req, res) => { if (!feat('movienight')) return res.json({ list: [], total: 0 }); const r = watchlist.pick(String(req.query.q || ''), { n: Number(req.query.n) || 20, skip: (movienight.data().movies || []).map(m => m.title) }); res.json({ ...r, key: !!omdbWhere() }); if (r.info.have < r.info.all) watchlist.fillInfo(40).catch(() => {}); }); // 🎲 help me pick: up to 20 watchlist movies that fit the words typed
+/* 🔎 (1.135.0, Derek: "can you google it to find the answer faster and compare that to the watchlist") Help me pick looks the words up online first (TMDB):
+   a name = that actor's / director's films, a subject = movies tagged with it. The watchlist is then matched against those lists, so it works at once
+   instead of waiting for every watchlist movie's own actors and plot to come in. */
+const wlWebCache = new Map(), WL_GENRES = new Set(['action', 'adventure', 'animation', 'animated', 'comedy', 'crime', 'documentary', 'drama', 'family', 'fantasy', 'history', 'horror', 'music', 'musical', 'mystery', 'romance', 'romantic', 'scifi', 'sci', 'fi', 'thriller', 'war', 'western']);
+async function wlWeb(words) {
+  if (!(db.settings.tmdbKey || '').trim() || !words.length) return []; const key = words.join(' '), hit = wlWebCache.get(key); if (hit && Date.now() - hit.at < 6 * 3600000) return hit.v;
+  const groups = [], mv = l => (l || []).filter(m => m && m.title).map(m => ({ title: m.title, year: String(m.release_date || '').slice(0, 4) })).concat((l || []).filter(m => m && m.original_title && m.original_title !== m.title).map(m => ({ title: m.original_title, year: String(m.release_date || '').slice(0, 4) })));
+  let rest = [...words]; const tries = [words.join(' ')]; for (let i = 0; i + 1 < words.length && tries.length < 4; i++) if (words.length > 2) tries.push(words[i] + ' ' + words[i + 1]);
+  for (const t of tries) { const tw = t.split(' '); if (tw.every(w => WL_GENRES.has(w))) continue; let p = null;
+    try { const r = await tmdbGet('/search/person?query=' + encodeURIComponent(t) + '&include_adult=false'); p = (r.results || []).find(x => { const nw = watchlist.norm(x.name).split(' '); return tw.every(w => nw.includes(w)) && (tw.length >= 2 || nw.length === 1); }) || null; } catch { break; }
+    if (!p) continue;
+    try { const c = await tmdbGet(`/person/${p.id}/movie_credits`); groups.push({ label: `${p.known_for_department === 'Directing' ? '🎬' : '🎭'} ${p.name}`, words: tw, movies: mv([...(c.cast || []), ...(c.crew || []).filter(x => ['Director', 'Writer', 'Screenplay', 'Producer'].includes(x.job))]) }); rest = rest.filter(w => !tw.includes(w)); } catch {}
+    break; }
+  for (const w of rest.filter(x => x.length >= 3 && !WL_GENRES.has(x)).slice(0, 3)) { /* a subject: sharks, heist, vampire… */
+    try { const k = ((await tmdbGet('/search/keyword?query=' + encodeURIComponent(w))).results || []).filter(x => (' ' + watchlist.norm(x.name) + ' ').includes(' ' + w)).slice(0, 5); if (!k.length) continue; const all = [];
+      for (let pg = 1; pg <= 3; pg++) { const d = await tmdbGet(`/discover/movie?with_keywords=${k.map(x => x.id).join('|')}&sort_by=vote_count.desc&include_adult=false&page=${pg}`); all.push(...(d.results || [])); if (pg >= (d.total_pages || 1)) break; }
+      if (all.length) groups.push({ label: `🔑 ${w}`, words: [w], movies: mv(all) }); } catch {} }
+  wlWebCache.set(key, { at: Date.now(), v: groups }); if (wlWebCache.size > 200) wlWebCache.delete(wlWebCache.keys().next().value); return groups;
+}
+const WL_FAKE_WEB = [{ label: '🎭 Kurt Russell', words: ['kurt', 'russell'], movies: [{ title: 'The Thing', year: '1982' }, { title: 'Big Trouble in Little China', year: '1986' }, { title: 'Tombstone', year: '1993' }] }];
+app.get('/api/watchlist/pick', async (req, res) => { if (!feat('movienight')) return res.json({ list: [], total: 0 }); // 🎲 help me pick: up to 20 watchlist movies that fit the words typed
+  const q = String(req.query.q || ''), words = watchlist.readQuery(q).words; let web = [];
+  if (req.query.fake) web = WL_FAKE_WEB.filter(g => g.words.every(w => words.includes(w))); else { try { web = await Promise.race([wlWeb(words), new Promise(r => setTimeout(() => r([]), 7000))]); } catch { web = []; } }
+  const r = watchlist.pick(q, { n: Number(req.query.n) || 20, skip: (movienight.data().movies || []).map(m => m.title), web }); res.json({ ...r, key: !!omdbWhere(), tmdb: !!(db.settings.tmdbKey || '').trim() }); if (r.info.have < r.info.all) watchlist.fillInfo(40).catch(() => {}); });
 setInterval(() => { if (feat('movienight')) watchlist.fillInfo(40).catch(() => {}); }, 5 * 60000); setTimeout(() => { if (feat('movienight')) watchlist.fillInfo(40).catch(() => {}); }, 90000); /* (actors + plots come in a few at a time, so "help me pick" can search them) */
 app.post('/api/watchlist/sync', wlTry(async () => ({ sync: await watchlist.sync('you') }))); // 🔄 read the IMDb watchlist + ratings links again now
 setTimeout(() => { try { const o = watchlist.opts(); if (feat('movienight') && o.auto !== false && (o.listUrl || o.ratedUrl)) watchlist.sync('open').then(r => { const bad = [r.list, r.rated].filter(x => x && x.err); if (bad.length) console.error('[watchlist] could not read IMDb on open: ' + bad[0].err); }).catch(() => {}); } catch {} }, 60000); /* 📋 every time the app opens: bring the watchlist + ratings up to date from the IMDb links */

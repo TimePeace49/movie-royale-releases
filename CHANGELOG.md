@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.135.0
+- 🔎 Help me pick now looks things up online first, so actor, director and subject searches work right away instead of waiting for every watchlist movie's details to come in. Type a name and it fetches that person's films; type a subject (sharks, heist, vampire) and it fetches movies tagged with it. Then it shows which of those are on your watchlist. A line above the results says what was looked up ("🎭 Kurt Russell: 3 on your watchlist"), and each movie says how it was found. It uses the movie database (TMDB), which needs the free TMDB key; without it the search works the old way and offers to add the key.
+
 ## 1.134.0
 - 🎲 Movie night: new **Help me pick** button (next to 📋 Paste a list). Type what you're in the mood for and it shows up to 20 movies from your watchlist, each with ➕ Add to tonight. You can type a genre (horror), a year or decade (1984, 80s, 1990-1995), an actor, a director, a subject (sharks, heist), or who suggested it, and mix them: "80s horror carpenter". 🎲 Show others gives a different 20. Movies already on tonight's list are left out, and who suggested the movie is filled in when you add it.
   - Genres, directors and years come from your IMDb watchlist file right away. Actors and plots are looked up a few movies at a time in the background (needs the movie look-up key), so those searches get better over the first hour.

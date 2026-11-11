@@ -146,10 +146,19 @@ export function readQuery(q) {
 }
 const hay = x => ' ' + norm([x.title, x.g, x.dir, x.act, x.plot, x.by].filter(Boolean).join(' ')) + ' ';
 /** Up to n watchlist movies that fit, in a mixed-up order (ask again for another 20). `skip` = titles already on tonight's list. */
-export function pick(q, { n = 20, skip = [], d = data(), rnd = Math.random } = {}) {
-  const Q = readQuery(q), out = new Set(skip.map(norm)), fits = d.list.filter(x => { if (out.has(norm(x.title))) return false; if (Q.from && !(Number(x.year) >= Q.from && Number(x.year) <= Q.to)) return false; if (!Q.words.length) return true; const h = hay(x); return Q.words.every(w => h.includes(' ' + w) ); });
+/** `web` = what a quick online look-up found for some of the typed words (1.135.0): [{label, words[], movies[{title, year}]}]. Those words count as found when the movie is in that list
+ *  (an actor's or director's films, movies about a subject), even before its own actors / plot have come in. */
+export function pick(q, { n = 20, skip = [], d = data(), rnd = Math.random, web = [] } = {}) {
+  const Q = readQuery(q), out = new Set(skip.map(norm));
+  const groups = web.map(g => ({ label: g.label, words: g.words, ny: new Set(g.movies.map(m => norm(m.title) + '|' + (m.year || ''))), nn: new Set(g.movies.map(m => norm(m.title))), hits: 0 }));
+  const inGroup = (g, x) => (x.year ? g.ny.has(norm(x.title) + '|' + x.year) : g.nn.has(norm(x.title))), used = new Set(groups.flatMap(g => g.words)), rest = Q.words.filter(w => !used.has(w));
+  const fits = d.list.filter(x => { if (out.has(norm(x.title))) return false; if (Q.from && !(Number(x.year) >= Q.from && Number(x.year) <= Q.to)) return false; if (!Q.words.length) return true; const h = hay(x); x._via = [];
+    if (!rest.every(w => h.includes(' ' + w))) return false;
+    for (const g of groups) { if (inGroup(g, x)) x._via.push(g.label); else if (!g.words.every(w => h.includes(' ' + w))) return false; } return true; });
+  for (const x of fits) for (const g of groups) if ((x._via || []).includes(g.label)) g.hits++;
   const mixed = fits.map(x => [rnd(), x]).sort((a, b) => a[0] - b[0]).map(a => a[1]).slice(0, Math.max(1, Math.min(50, n)));
-  return { total: fits.length, query: Q, list: mixed.map(x => ({ id: x.id, title: x.title, year: x.year || '', by: x.by || '', g: x.g || '', dir: x.dir || '', act: x.act || '', plot: x.plot || '', ir: x.ir || 0, onImdb: !!x.onImdb, link: imdbLink(x) })), info: infoCount(d) };
+  const res = { total: fits.length, query: Q, web: groups.map(g => ({ label: g.label, n: g.hits, found: g.nn.size })), list: mixed.map(x => ({ id: x.id, title: x.title, year: x.year || '', by: x.by || '', g: x.g || '', dir: x.dir || '', act: x.act || '', plot: x.plot || '', ir: x.ir || 0, onImdb: !!x.onImdb, via: x._via || [], link: imdbLink(x) })), info: infoCount(d) };
+  for (const x of d.list) delete x._via; return res;
 }
 export const infoCount = (d = data()) => ({ all: d.list.length, have: d.list.filter(x => x.act || x.plot).length, tried: d.list.filter(x => x.infoAt).length });
 /** Fills in what the movies are about (actors, plot, genres, director) a few at a time, so the search can find them. Each movie is asked for once a month at most. */
@@ -209,6 +218,7 @@ export async function demo() {
     add('🎲 Help me pick: a genre', names('horror') === 'The Thing, Tremors', names('horror')); add('…a decade', names('80s') === 'Big Trouble in Little China, Clue, The Thing', names('80s')); add('…a year', names('1990') === 'Tremors', names('1990'));
     add('…a director', names('john carpenter') === 'Big Trouble in Little China, The Thing', names('john carpenter')); add('…an actor plus a genre', names('kurt russell comedy') === 'Big Trouble in Little China', names('kurt russell comedy'));
     add('…a subject from the plot', names('alien antarctica') === 'The Thing', names('alien antarctica')); add('…who suggested it', names('nightowl') === 'Clue', names('nightowl'));
-    add("…movies already on tonight's list are left out", names('comedy', { skip: ['Clue (1985)'] }) === 'Big Trouble in Little China, Tremors', names('comedy', { skip: ['Clue (1985)'] })); add('…and nothing typed gives a mixed handful', pick('', { d: P }).total === 4, pick('', { d: P }).total + ' movies'); }
+    add("…movies already on tonight's list are left out", names('comedy', { skip: ['Clue (1985)'] }) === 'Big Trouble in Little China, Tremors', names('comedy', { skip: ['Clue (1985)'] })); { const bare2 = { opts: {}, rated: [], list: P.list.map(x => ({ id: x.id, title: x.title, year: x.year, by: x.by })) }, web = [{ label: '🎭 Kurt Russell', words: ['kurt', 'russell'], movies: [{ title: 'The Thing', year: '1982' }, { title: 'Big Trouble in Little China', year: '1986' }, { title: 'Escape from New York', year: '1981' }] }], r = pick('kurt russell 1982', { d: bare2, web }); add("…an online look-up finds an actor's movies even before the watchlist's own details came in", r.list.map(x => x.title).join() === 'The Thing' && r.web[0].n === 1, r.list.map(x => x.title).join(', ') + ' (via ' + r.web[0].label + ')'); }
+    add('…and nothing typed gives a mixed handful', pick('', { d: P }).total === 4, pick('', { d: P }).total + ' movies'); }
   return { ok: rows.every(x => x.ok), rows };
 }

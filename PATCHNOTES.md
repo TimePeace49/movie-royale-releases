@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.135.0: What's new
+- {movienight} 🔎 Help me pick looks actors, directors and subjects up online first and matches them against your watchlist, so those searches work right away (needs the free TMDB key).
+
 ## v1.134.0: What's new
 - {movienight} 🎲 Movie night → Help me pick: type a genre, year, decade, actor, director, subject or who suggested it, and get up to 20 movies from your watchlist to add to tonight's list.
 
