@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.126.0: What's new
+New in this version.
+
+- 🎉 **Birthday pop-up:** when someone whose birthday is today chats, a pop-up shows up in the app with their chats until you close it, with a quiet party-whistle sound. Turn it (and the sound) on or off in Settings → Twitch → 🎂 Birthdays.
+
 ## v1.125.1: What's new
 New in this version.
 

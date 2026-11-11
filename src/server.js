@@ -4973,7 +4973,7 @@ app.post('/api/test/songs', sgTry(async b => {
   const n = PRE[Math.floor(Math.random() * PRE.length)]; twitchHandlers.chat({ login: 'pretend_dj', name: 'Pretend_DJ', text: `${songs.opts().command} ${b.song || n}`, userId: 'pretend-dj', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 300)); for (const q of songs.data().queue) if (q.login === 'pretend_dj') { q.test = true; if (songs.data().lib[q.key]) songs.data().lib[q.key].test = true; } return { ok: true };
 }));
 // 🎂 Birthdays (1.96.0, every edition): !bday in chat (never a year), a happy-birthday wish, the list in Settings → 💜 Twitch. See src/birthdays.js
-birthdays.setHooks({ say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
+birthdays.setHooks({ pop: async p => { const o = birthdays.opts(), send = x => broadcast({ type: 'bdayPop', ...p, ...x, sound: o.popSound !== false, vol: o.popVol }, 'control'); if (!p.first) return send({}); let avatar = ''; try { avatar = p.test ? '' : (await Promise.race([twitch.getUsers([p.login]), new Promise(r => setTimeout(() => r(null), 1500))]))?.get?.(p.login)?.avatar || ''; } catch {} send({ avatar }); }, say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
 app.get('/api/birthdays', (req, res) => res.json(birthdays.state()));
 app.post('/api/birthdays', wTry(b => birthdays.set(b.login, b.day)));
 app.post('/api/birthdays/opts', wTry(b => { const r = birthdays.setOpts(b, String(db.movieNight?.opts?.command || '!vote')); broadcast({ type: 'movieNight' }, 'control'); return r; }));
@@ -4981,6 +4981,7 @@ app.post('/api/test/birthday', wTry(b => {
   if (b.action === 'rules') return birthdays.demo();
   if (b.action === 'clear') return birthdays.clearTests();
   const today = birthdays.mmdd(birthdays.dayOf()).replace('-', '/'), name = 'pretend_birthday'; twitch.pretend.until = Date.now() + 10 * 60000; // a pretend viewer whose birthday is today: saves it with the command, then says hi
+  if (b.action === 'pop') { birthdays.set(name, today); const d = db.bdays; if (d?.popped) delete d.popped[name]; if (d?.wished) delete d.wished[name]; const say = t => twitchHandlers.chat({ login: name, name: 'Pretend_Birthday', text: t, userId: 'pretend-bday', badges: {}, pretend: true }); say('hey chat, guess what day it is 🥳'); setTimeout(() => say('thanks for the wishes everyone!'), 2500); setTimeout(() => say('this is my second message after the pop-up opened'), 5000); return { ok: true, did: 'pop', today }; }
   if (b.action === 'wish') { birthdays.set(name, today); const d = db.bdays; if (d?.wished) delete d.wished[name]; twitchHandlers.chat({ login: name, name: 'Pretend_Birthday', text: 'hi everyone!', userId: 'pretend-bday', badges: {}, pretend: true }); return { ok: true, did: 'wish', today }; }
   twitchHandlers.chat({ login: name, name: 'Pretend_Birthday', text: `${birthdays.opts().command} ${b.text || today}`, userId: 'pretend-bday', badges: {}, pretend: true }); return { ok: true, did: 'save', state: birthdays.state() };
 }));

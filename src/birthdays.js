@@ -3,12 +3,12 @@
 import { db, save } from './store.js';
 import { is } from './edition.js';
 
-const H = { say: async () => {}, act: () => {}, changed: () => {}, isBot: () => false };
+const H = { say: async () => {}, act: () => {}, changed: () => {}, isBot: () => false, pop: () => {} };
 export const setHooks = h => Object.assign(H, h);
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
-const D = () => { const d = (db.bdays ||= {}); d.days ||= {}; d.at ||= {}; d.wished ||= {}; d.opts ||= {}; return d; };
+const D = () => { const d = (db.bdays ||= {}); d.days ||= {}; d.at ||= {}; d.wished ||= {}; d.popped ||= {}; d.opts ||= {}; return d; };
 /** dayStart: the hour a new day starts. Birx & Jess go live around 1:30 AM and count that as the day before, so theirs starts at 6 AM; everyone else's at midnight. */
-export const opts = () => ({ on: true, command: '!bday', days: 30, wish: true, text: '🎂 Happy birthday, {name}! 🎉', dayStart: is('birx') ? 6 : 0, ...D().opts });
+export const opts = () => ({ on: true, command: '!bday', days: 30, wish: true, pop: true, popSound: true, popVol: 25, text: '🎂 Happy birthday, {name}! 🎉', dayStart: is('birx') ? 6 : 0, ...D().opts });
 export const days = () => D().days;
 export const dayOf = (now = Date.now(), o = opts()) => now - (Number(o.dayStart) || 0) * 3600000;
 export const mmdd = t => { const x = new Date(t); return String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
@@ -40,7 +40,15 @@ export function chat(m, arg, d = D(), o = opts(), now = Date.now()) {
 export function onChat(m, now = Date.now()) {
   const o = opts(); if (o.on === false || !m?.login) return false; const d = D(), text = String(m.text || '').trim(), sp = text.split(/\s+/);
   if (o.command && low(sp[0]) === low(o.command)) { chat(m, text.slice(sp[0].length).trim(), d, o, now); return true; }
-  wish(m, d, o, now); return false;
+  wish(m, d, o, now); popCheck(m, d, o, now); return false;
+}
+/** 🎉 (1.126.0, Derek) a birthday person chats: the first time that day the app shows a pop-up about them (with a quiet party-whistle sound); every chat of theirs that day is sent too, so an open pop-up keeps showing what they say. */
+export function popCheck(m, d = D(), o = opts(), now = Date.now()) {
+  const l = low(m.login), day = dayOf(now, o); if (o.pop === false || !d.days[l] || d.days[l] !== mmdd(day) || H.isBot(l)) return null;
+  const key = ymd(day), first = d.popped[l] !== key;
+  if (first) { d.popped ||= {}; d.popped[l] = key; if (d === D()) { for (const k of Object.keys(d.popped)) if (d.popped[k] !== key) delete d.popped[k]; save(); } }
+  const msg = { login: l, name: m.name || m.login, day: nice(d.days[l]), text: String(m.text || '').slice(0, 500), first, userId: m.userId || '', test: !!m.pretend, at: now };
+  if (d === D()) H.pop(msg); return msg;
 }
 export function wish(m, d = D(), o = opts(), now = Date.now()) {
   const l = low(m.login), day = dayOf(now, o); if (o.wish === false || !d.days[l] || d.days[l] !== mmdd(day) || H.isBot(l)) return false;
@@ -59,7 +67,7 @@ export function set(name, day) {
 }
 export function setOpts(b, voteCommand = '') {
   const x = D().opts;
-  if ('on' in b) x.on = !!b.on; if ('wish' in b) x.wish = !!b.wish;
+  if ('on' in b) x.on = !!b.on; if ('wish' in b) x.wish = !!b.wish; if ('pop' in b) x.pop = !!b.pop; if ('popSound' in b) x.popSound = !!b.popSound; if ('popVol' in b) x.popVol = Math.max(0, Math.min(100, Math.round(Number(b.popVol) || 0)));
   if ('days' in b) x.days = Math.max(0, Math.min(365, Math.round(Number(b.days) || 0)));
   if ('dayStart' in b) x.dayStart = Math.max(0, Math.min(12, Math.round(Number(b.dayStart) || 0)));
   if ('text' in b) x.text = String(b.text || '').trim().slice(0, 300) || '🎂 Happy birthday, {name}! 🎉';
@@ -67,7 +75,7 @@ export function setOpts(b, voteCommand = '') {
   save(); H.changed(); return state();
 }
 export const state = (now = Date.now()) => { const d = D(), o = opts(), t = dayOf(now, o), today = mmdd(t); return { opts: o, today, dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(t).getDay()], list: Object.entries(d.days).map(([login, day]) => ({ login, day, nice: nice(day), byChat: !!d.at[login], today: day === today, wished: d.wished[login] === ymd(t) })).sort((a, b) => a.day.localeCompare(b.day) || a.login.localeCompare(b.login)) }; };
-export function clearTests() { const d = D(); for (const l of Object.keys(d.days)) if (/^pretend_/.test(l)) { delete d.days[l]; delete d.at[l]; delete d.wished[l]; } save(); H.changed(); return state(); }
+export function clearTests() { const d = D(); for (const l of Object.keys(d.days)) if (/^pretend_/.test(l)) { delete d.days[l]; delete d.at[l]; delete d.wished[l]; delete d.popped[l]; } save(); H.changed(); return state(); }
 /** 🧪 walked through with pretend people (nothing saved, nothing said) */
 export function demo() {
   const keep = H.say; H.say = async () => {}; const rows = [], add = (what, ok) => rows.push({ what, ok: !!ok });
@@ -79,6 +87,9 @@ export function demo() {
     add("A date it can't read is refused", go('banana', t0).why === 'date' && readDay('2/30') === null);
     add('Wished happy birthday the first time they chat that day', wish({ login: 'newbie', name: 'Newbie' }, d, o, t0) === true);
     add('…and only once that day', wish({ login: 'newbie', name: 'Newbie' }, d, o, t0 + 3600000) === false);
+    { const dd = { days: { newbie: mmdd(t0) }, at: {}, wished: {}, popped: {} }, a = popCheck({ login: 'newbie', name: 'Newbie', text: 'hi' }, dd, o, t0), b = popCheck({ login: 'newbie', name: 'Newbie', text: 'again' }, dd, o, t0 + 60000), c = popCheck({ login: 'newbie', name: 'Newbie', text: 'x' }, dd, o, t0 + 86400000);
+      add('🎉 Pop-up: the first chat on their birthday opens it, later chats that day are added to it, not on other days', !!a && a.first === true && !!b && b.first === false && b.text === 'again' && c === null);
+      add('🎉 Pop-up can be switched off', popCheck({ login: 'newbie', name: 'Newbie', text: 'hi' }, { ...dd, popped: {} }, { ...o, pop: false }, t0) === null); }
     add('No wish on other days', wish({ login: 'newbie', name: 'Newbie' }, { ...d, wished: {} }, o, t0 + 86400000) === false);
     const late = new Date(2026, 2, 15, 1, 30).getTime();
     add('Late-night rule (a new day starts at 6 AM): chatting at 1:30 AM on March 15 still counts as March 14', wish({ login: 'newbie', name: 'Newbie' }, { ...d, wished: {} }, { ...o, dayStart: 6 }, late) === true && wish({ login: 'newbie', name: 'Newbie' }, { ...d, wished: {} }, o, late) === false);

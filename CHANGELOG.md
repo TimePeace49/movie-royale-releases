@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.126.0
+- 🎉 **Birthday pop-up:** when someone whose saved birthday is today chats, a pop-up opens in the app (top right, on any tab) with their picture, "It's their birthday today!" and what they said. Everything else they say keeps showing in it until you close it. A quiet party-whistle sound plays when it opens (only you hear it). The chat "happy birthday" still happens too.
+- Settings → Twitch → 🎂 Birthdays: switches for the pop-up and the whistle, a volume slider and 🔊 Hear it. Test tab → 🎂 Birthdays → 🎉 Birthday pop-up tries it with a pretend viewer.
+
 ## 1.125.1
 - ⏱️ **!watchtime** and 💜 **!followage** in the recommended commands (they answer for whoever types them, or for a name typed after: `!followage @someone`). New special words `$watchtime` and `$followage` work in any command.
 - Bringing Streamlabs Chatbot over now also brings each viewer's watch hours (its Currency / Points page), so !watchtime counts their old time too. Follow age comes from Twitch (it needs the follower permission from signing in).
