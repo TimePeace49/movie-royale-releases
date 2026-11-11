@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.139.3: What's new
+- {ed:derek} 🎭 Backup Bots app → Editions tab: the search / Reload / Check / Save bar stays on top while you scroll.
+
 ## v1.139.2: What's new
 - {kick} 💜🟢 Twitch and Kick chat together: pick **Both at once** in Settings → Twitch → Kick. The Chat tab shows both chats with a purple T or green K next to each name, commands work from both, and the bot answers in both.
 - {kick} 🔒 The Kick choices unlock once you're signed in with Kick.
