@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.143.1: What's new
+- {ed:derek} 🛡️ The server app (Backup Bots) keeps its own shield icon when it's pinned to the taskbar. After updating, unpin it and pin it again.
+
 ## v1.143.0: What's new
 - ⚠️ The Errors list moved to **⚙️ Settings → ⚠️ Errors** (its count shows on the Settings tab).
 - 📮 Error reports: when something goes wrong, the app now sends a short report to the app's maker so it can be fixed (version, edition, your channel name and the problem; never passwords, keys or chat). Turn it off any time in Settings → 👤 Account → 📮 Error reports, where 👀 See what is sent shows exactly what goes out.

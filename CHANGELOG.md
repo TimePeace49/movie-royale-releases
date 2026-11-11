@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.1
+- 🛡️ **The server app keeps its own icon on the taskbar.** Pinning Movie Royal Backup Bots to the taskbar used to switch it to the main app's icon, because the picture inside the program was still the main one. The backup program now has its own shield icon inside it. After updating: unpin it, open it from the Start menu, and pin it again (Windows remembers the old picture on the old pin).
+
 ## 1.143.0
 - 📮 **Command center in the server app.** The Backup Bots app's ⚠️ Errors tab now has **📮 Command center: every app's problems**: one tab per app that reports in (yours and your friends'), with its edition, version, channel, whether it's live, when it was last heard from, and its problems in plain words. 🛠️ Copy its report (for Claude) copies that app's tech report.
   - **🧹 Clear** clears that app's problems in the command center AND inside that person's app (their app notices within about 5 minutes while it's open, and tells them the maker looked at it). ✕ Forget takes an app off the list until it reports again.

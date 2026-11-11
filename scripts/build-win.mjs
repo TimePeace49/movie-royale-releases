@@ -25,19 +25,26 @@ console.log('\n▶ Stamping icon + version into MovieRoyal.exe…');
 const ResEdit = await import('resedit');
 const PELibrary = await import('pe-library');
 const exePath = path.join(UNPACKED, 'MovieRoyal.exe');
-const exe = PELibrary.NtExecutable.from(fs.readFileSync(exePath), { ignoreCert: true });
-const res = PELibrary.NtExecutableResource.from(exe);
-const ico = ResEdit.Data.IconFile.from(fs.readFileSync(path.join(ROOT, 'build', 'icon.ico')));
-const groups = ResEdit.Resource.IconGroupEntry.fromEntries(res.entries);
-const groupId = groups.length ? groups[0].id : 1, lang = groups.length ? groups[0].lang : 1033;
-ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, groupId, lang, ico.icons.map(i => i.data));
-const vi = ResEdit.Resource.VersionInfo.fromEntries(res.entries)[0] || ResEdit.Resource.VersionInfo.createEmpty();
-const [a, b, c] = VER.split('.').map(Number);
-vi.setFileVersion(a, b, c, 0, 1033); vi.setProductVersion(a, b, c, 0, 1033);
-vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: BRAND, FileDescription: BRAND, CompanyName: 'Movie Royal', FileVersion: VER, ProductVersion: VER, OriginalFilename: 'MovieRoyal.exe', InternalName: 'MovieRoyal', LegalCopyright: 'Movie Royal' });
-vi.outputToResourceEntries(res.entries);
-res.outputResource(exe);
-fs.writeFileSync(exePath, Buffer.from(exe.generate()));
+// stamps an icon + names into a copy of the program (the taskbar, pinned items and Task Manager show the icon that is INSIDE the exe)
+const stamp = (from, to, icoFile, name, file) => {
+  const exe = PELibrary.NtExecutable.from(fs.readFileSync(from), { ignoreCert: true });
+  const res = PELibrary.NtExecutableResource.from(exe);
+  const ico = ResEdit.Data.IconFile.from(fs.readFileSync(path.join(ROOT, 'build', icoFile)));
+  const groups = ResEdit.Resource.IconGroupEntry.fromEntries(res.entries);
+  const groupId = groups.length ? groups[0].id : 1, lang = groups.length ? groups[0].lang : 1033;
+  ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, groupId, lang, ico.icons.map(i => i.data));
+  const vi = ResEdit.Resource.VersionInfo.fromEntries(res.entries)[0] || ResEdit.Resource.VersionInfo.createEmpty();
+  const [a, b, c] = VER.split('.').map(Number);
+  vi.setFileVersion(a, b, c, 0, 1033); vi.setProductVersion(a, b, c, 0, 1033);
+  vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: name, FileDescription: name, CompanyName: 'Movie Royal', FileVersion: VER, ProductVersion: VER, OriginalFilename: file + '.exe', InternalName: file, LegalCopyright: 'Movie Royal' });
+  vi.outputToResourceEntries(res.entries);
+  res.outputResource(exe);
+  fs.writeFileSync(to, Buffer.from(exe.generate()));
+};
+// 🛡️ the backup app's program gets its OWN icon inside it (made from the untouched program, before the main icon goes in)
+const BEXE = path.join(ROOT, 'dist', 'MovieRoyalBackup.exe');
+stamp(exePath, BEXE, 'icon-backup.ico', 'Movie Royal Backup Bots', 'MovieRoyalBackup');
+stamp(exePath, exePath, 'icon.ico', BRAND, 'MovieRoyal');
 
 console.log('\n▶ Building the installer with NSIS…');
 const cache = process.env.ELECTRON_BUILDER_CACHE || (process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA, 'electron-builder', 'Cache') : path.join(os.homedir(), process.platform === 'darwin' ? 'Library/Caches/electron-builder' : '.cache/electron-builder'));
@@ -63,7 +70,8 @@ run(makensis, ['-V2', `-DVER=${VER}`, `-DBRAND=${BRAND}`, `-DSRC=${UNPACKED}`, `
 // 🛡️ the Movie Royal Backup Bots installer: same program files, its own install folder, shortcut and uninstaller
 const OUT_B = path.join(ROOT, 'dist', `MovieRoyalBackupBots-Setup-${VER}.exe`);
 fs.rmSync(OUT_B, { force: true });
-run(makensis, ['-V2', `-DVER=${VER}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT_B}`, path.join(ROOT, 'build', 'backup.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
+run(makensis, ['-V2', `-DVER=${VER}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT_B}`, `-DBEXE=${BEXE}`, path.join(ROOT, 'build', 'backup.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
 
+fs.rmSync(BEXE, { force: true });
 for (const f of [OUT, OUT_B]) console.log(`\n✅ Done: ${path.relative(ROOT, f)} (${(fs.statSync(f).size / 1048576).toFixed(0)} MB)`);
 console.log('');

@@ -1,6 +1,6 @@
 ; Movie Royal Backup Bots: its own installer / uninstaller (NSIS)
 ; Same program files as Movie Royal, but the program is called MovieRoyalBackup.exe, which always starts as the backup app.
-; Built by scripts/build-win.mjs — run with -DVER=x.y.z -DSRC=<win-unpacked dir> -DOUT=<setup.exe>
+; Built by scripts/build-win.mjs — run with -DVER=x.y.z -DSRC=<win-unpacked dir> -DOUT=<setup.exe> -DBEXE=<MovieRoyalBackup.exe with its own icon>
 Unicode true
 SetCompressor /SOLID lzma
 
@@ -52,8 +52,10 @@ Section "Movie Royal Backup Bots"
   RMDir /r "$INSTDIR\locales"
   File /r "${SRC}\*.*"
   ; the program is renamed so it always opens as the backup (and Movie Royal's updates don't close it)
+  ; (its own copy of the program, with the backup icon inside it, so a pinned taskbar button shows the right icon)
   Delete "$INSTDIR\${EXE}"
-  Rename "$INSTDIR\MovieRoyal.exe" "$INSTDIR\${EXE}"
+  Delete "$INSTDIR\MovieRoyal.exe"
+  File "/oname=${EXE}" "${BEXE}"
   File "/oname=icon.ico" "icon-backup.ico"
   WriteUninstaller "$INSTDIR\${UNINST}"
   CreateShortCut "$SMPROGRAMS\Movie Royal Backup Bots.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\icon.ico" 0
