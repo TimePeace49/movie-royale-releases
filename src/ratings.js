@@ -26,6 +26,15 @@ export async function omdbFind(title, year) {
   if (j.Response === 'False' || !j.Title) return null;
   return { title: j.Title, year: /^\d{4}/.test(j.Year || '') ? String(j.Year).slice(0, 4) : '', imdb: /^tt\d+$/.test(j.imdbID || '') ? j.imdbID : '' };
 }
+/** 🎲 What a movie is about, for the watchlist's "help me pick" search: genres, director, actors, plot, IMDb rating. undefined = no OMDb key; null = not found. */
+export async function omdbDetails({ imdb, title, year }) {
+  if (!omdbWhere()) return undefined;
+  const q = imdb ? `i=${encodeURIComponent(imdb)}` : `t=${encodeURIComponent(title)}${year ? '&y=' + encodeURIComponent(year) : ''}&type=movie`;
+  const r = await fetch(omdbUrl(q + '&plot=short'), { signal: AbortSignal.timeout(9000) }), j = await r.json();
+  if (j.Response === 'False' || !j.Title) { if (/limit|key/i.test(j.Error || '')) throw new Error(j.Error); return null; }
+  const na = v => (v && v !== 'N/A' ? String(v) : ''), im = parseFloat(j.imdbRating);
+  return { genres: na(j.Genre), directors: na(j.Director), actors: na(j.Actors), plot: na(j.Plot).slice(0, 400), rating: im > 0 ? Math.round(im * 10) / 10 : 0, year: /^\d{4}/.test(j.Year || '') ? String(j.Year).slice(0, 4) : '', imdb: /^tt\d+$/.test(j.imdbID || '') ? j.imdbID : '' };
+}
 export async function ratingsByTitle(title, year) {
   if (!omdbWhere()) return undefined;
   db.ratingsT ||= {}; const k = `${String(title).trim().toLowerCase()}|${year || ''}`, hit = db.ratingsT[k];

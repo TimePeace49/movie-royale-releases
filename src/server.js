@@ -20,7 +20,7 @@ import * as listsrc from './listsrc.js';
 import { undoMovieWin, resetCooldowns, movieLuck, watchLuckFor, spotLuckMode, spotLuckGain } from './movies.js';
 import { setBattleCheck, lockMode, autoLocked } from './movies.js';
 import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePerson, watchedElsewhere, unwatchedElsewhere, setWatchedElsewhereHook, wonThisWeek, freePicks } from './movies.js';
-import { getRatings, testOmdb, ratingsByTitle, omdbWhere, omdbFind } from './ratings.js';
+import { getRatings, testOmdb, ratingsByTitle, omdbWhere, omdbFind, omdbDetails } from './ratings.js';
 import * as shared from './shared.js';
 import { ruleBan } from './banrules.js';
 import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
@@ -5110,13 +5110,15 @@ app.post('/api/songs/playlist', sgTry(b => songs.playlist(b))); // 📻 add / re
 /* 📋 (1.133.0) Movie watchlist + IMDb ratings (feat movienight): History → 📋 Watchlist, chat !suggest / !rating */
 const wlLookup = async (title, year) => { let f; try { f = await omdbFind(title, year); } catch { f = undefined; } if (f) return f; if (f === null) return null;
   try { const l = await searchMovies(title + (year ? ' ' + year : '')); const m = (year && l.find(x => String(x.year) === String(year))) || l[0]; return m ? { title: m.title, year: m.year ? String(m.year) : '', imdb: '' } : null; } catch { return null; } };
-watchlist.setHooks({ linkOk: u => !!listsrc.imdbUserUrl(u), read: u => listsrc.readImdbUser(u), on: () => feat('movienight'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), lookup: wlLookup, act: (text, o = {}) => act('chat', text, { icon: '📋', ...o }), send: (msg, role) => broadcast(msg, role), names: () => (edition_is('birx') ? 'Birx & Jess' : streamerName()) });
+watchlist.setHooks({ details: x => omdbDetails(x), linkOk: u => !!listsrc.imdbUserUrl(u), read: u => listsrc.readImdbUser(u), on: () => feat('movienight'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), lookup: wlLookup, act: (text, o = {}) => act('chat', text, { icon: '📋', ...o }), send: (msg, role) => broadcast(msg, role), names: () => (edition_is('birx') ? 'Birx & Jess' : streamerName()) });
 const wlTry = fn => wTry(async (b, req) => { if (!feat('movienight')) throw new Error('The movie watchlist is not part of this edition.'); const r = await fn(b, req); return r && r.counts ? { state: r, n: r.n } : { ...(r || {}), state: watchlist.state() }; });
 app.get('/api/watchlist', (req, res) => res.json(feat('movienight') ? watchlist.state() : { on: false }));
 app.post('/api/watchlist/import', wlTry(b => { const p = watchlist.readFile(String(b.text || ''), ['watch', 'rated'].includes(b.kind) ? b.kind : 'auto'); if (!p.items.length) throw new Error(p.note || "No movies found in that file. Use the Export button on your IMDb watchlist or ratings page."); if (b.dry) return { found: { kind: p.kind, n: p.items.length, note: p.note || '', sample: p.items.slice(0, 5) } }; return { result: watchlist.applyImport(p, { replace: !!b.replace }) }; }));
 app.post('/api/watchlist/suggest', wlTry(async b => { const r = await watchlist.suggest({ login: '', name: String(b.by || '').trim() }, String(b.title || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'rated' ? `Already watched: ${r.movie.title} was rated ${r.movie.rate}/10.` : r.why === 'dupe' ? `${r.movie.title} is already on the watchlist.` : 'Type a movie name first.'); return { movie: r.movie }; }));
 app.post('/api/watchlist/edit', wlTry(b => watchlist.edit(b)));
 app.post('/api/watchlist/opts', wlTry(b => watchlist.setOpts(b)));
+app.get('/api/watchlist/pick', (req, res) => { if (!feat('movienight')) return res.json({ list: [], total: 0 }); const r = watchlist.pick(String(req.query.q || ''), { n: Number(req.query.n) || 20, skip: (movienight.data().movies || []).map(m => m.title) }); res.json({ ...r, key: !!omdbWhere() }); if (r.info.have < r.info.all) watchlist.fillInfo(40).catch(() => {}); }); // 🎲 help me pick: up to 20 watchlist movies that fit the words typed
+setInterval(() => { if (feat('movienight')) watchlist.fillInfo(40).catch(() => {}); }, 5 * 60000); setTimeout(() => { if (feat('movienight')) watchlist.fillInfo(40).catch(() => {}); }, 90000); /* (actors + plots come in a few at a time, so "help me pick" can search them) */
 app.post('/api/watchlist/sync', wlTry(async () => ({ sync: await watchlist.sync('you') }))); // 🔄 read the IMDb watchlist + ratings links again now
 setTimeout(() => { try { const o = watchlist.opts(); if (feat('movienight') && o.auto !== false && (o.listUrl || o.ratedUrl)) watchlist.sync('open').then(r => { const bad = [r.list, r.rated].filter(x => x && x.err); if (bad.length) console.error('[watchlist] could not read IMDb on open: ' + bad[0].err); }).catch(() => {}); } catch {} }, 60000); /* 📋 every time the app opens: bring the watchlist + ratings up to date from the IMDb links */
 app.get('/api/test/watchlist-read', (req, res) => { /* 🧪 the IMDb page readers on sample pages (no internet) */

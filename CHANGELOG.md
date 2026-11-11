@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.134.0
+- 🎲 Movie night: new **Help me pick** button (next to 📋 Paste a list). Type what you're in the mood for and it shows up to 20 movies from your watchlist, each with ➕ Add to tonight. You can type a genre (horror), a year or decade (1984, 80s, 1990-1995), an actor, a director, a subject (sharks, heist), or who suggested it, and mix them: "80s horror carpenter". 🎲 Show others gives a different 20. Movies already on tonight's list are left out, and who suggested the movie is filled in when you add it.
+  - Genres, directors and years come from your IMDb watchlist file right away. Actors and plots are looked up a few movies at a time in the background (needs the movie look-up key), so those searches get better over the first hour.
+- 🧪 Test tab → 🍿 Movie night tests → 🎲 Help me pick (its rules are checked by 📋 Check the watchlist rules).
+
 ## 1.133.0
 - 📋 New: the movie watchlist (History → 📋 Watchlist, in editions with movie night).
   - Bring in your IMDb watchlist and your IMDb ratings with the two buttons at the top (on IMDb: Your Watchlist → Export, Your Ratings → Export, then pick the file). Bringing a file in again never adds a movie twice.

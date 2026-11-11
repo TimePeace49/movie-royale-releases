@@ -4,7 +4,7 @@
 // opens the movie's IMDb page, where the streamer clicks IMDb's own Watchlist button. Nothing here signs in to IMDb.
 import { db, save } from './store.js';
 
-let H = { linkOk: () => true, read: async () => { throw new Error('Reading IMDb is not set up.'); }, on: () => false, say: async () => {}, allowed: () => true, lookup: async () => null, act: () => {}, send: () => {}, isBot: () => false, names: () => 'They' };
+let H = { details: async () => undefined, linkOk: () => true, read: async () => { throw new Error('Reading IMDb is not set up.'); }, on: () => false, say: async () => {}, allowed: () => true, lookup: async () => null, act: () => {}, send: () => {}, isBot: () => false, names: () => 'They' };
 export const setHooks = h => { H = { ...H, ...h }; };
 const uid = () => 'w' + Date.now().toString(36) + Math.floor(Math.random() * 1e5).toString(36);
 const low = s => String(s || '').trim().toLowerCase();
@@ -55,7 +55,7 @@ export function csvRows(text) {
 export function readFile(text, kind = 'auto') {
   const rows = csvRows(text); if (!rows.length) return { kind: kind === 'auto' ? 'watch' : kind, items: [], note: 'The file is empty.' };
   const head = rows[0].map(h => low(h)), col = (...names) => head.findIndex(h => names.includes(h));
-  const cId = col('const', 'imdb id', 'tconst'), cT = col('title', 'original title', 'name'), cY = col('year', 'release year'), cR = col('your rating', 'rating', 'my rating'), cD = col('date rated', 'created', 'date added'), cType = col('title type', 'type'), cPos = col('position');
+  const cId = col('const', 'imdb id', 'tconst'), cT = col('title', 'original title', 'name'), cY = col('year', 'release year'), cR = col('your rating', 'rating', 'my rating'), cD = col('date rated', 'created', 'date added'), cType = col('title type', 'type'), cPos = col('position'), cG = col('genres', 'genre'), cDir = col('directors', 'director'), cIR = col('imdb rating');
   if (cT < 0 && cId < 0) { /* no header we know: one movie per line, "Name (1999)" or "Name | 8" */
     const items = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => { const [t, r] = l.split('|').map(x => x.trim()); return { title: bare(t), year: yearOf(t), imdb: '', rate: Number(r) > 0 ? Math.min(10, Number(r)) : null, at: 0 }; }).filter(x => x.title);
     const k = kind === 'auto' ? (items.some(x => x.rate) ? 'rated' : 'watch') : kind; return { kind: k, items: k === 'rated' ? items.filter(x => x.rate) : items, note: 'No header row found: read it as one movie per line.' };
@@ -65,7 +65,8 @@ export function readFile(text, kind = 'auto') {
     const title = bare(cT >= 0 ? r[cT] : ''), imdb = cId >= 0 && /^tt\d+$/.test(String(r[cId]).trim()) ? String(r[cId]).trim() : ''; if (!title && !imdb) continue;
     const type = cType >= 0 ? low(r[cType]) : ''; if (type && !/movie|film|video|special|short/.test(type)) { skipped.push(title); continue; } /* (TV series / episodes / games are left out: this is a movie list) */
     const rate = cR >= 0 && Number(r[cR]) > 0 ? Math.min(10, Number(r[cR])) : null, dv = cD >= 0 ? String(r[cD]).trim() : '', at = dv ? Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(dv) ? dv + 'T12:00:00' : dv) || 0 : 0; /* (a bare date is that day here, not the evening before) */
-    items.push({ title: title || imdb, year: cY >= 0 && /^\d{4}/.test(String(r[cY]).trim()) ? String(r[cY]).trim().slice(0, 4) : '', imdb, rate, at });
+    const extra = { ...(cG >= 0 && String(r[cG]).trim() ? { g: String(r[cG]).trim().slice(0, 120) } : {}), ...(cDir >= 0 && String(r[cDir]).trim() ? { dir: String(r[cDir]).trim().slice(0, 120) } : {}), ...(cIR >= 0 && Number(r[cIR]) > 0 ? { ir: Math.round(Number(r[cIR]) * 10) / 10 } : {}) }; /* 🎲 genres, director and IMDb's own rating ride along for "help me pick" */
+    items.push({ ...extra, title: title || imdb, year: cY >= 0 && /^\d{4}/.test(String(r[cY]).trim()) ? String(r[cY]).trim().slice(0, 4) : '', imdb, rate, at });
   }
   const k = kind === 'auto' ? (cPos < 0 && cR >= 0 && items.length && items.filter(x => x.rate).length >= items.length * .8 ? 'rated' : 'watch') : kind;
   return { kind: k, items: k === 'rated' ? items.filter(x => x.rate) : items, skipped: skipped.length, note: skipped.length ? `${skipped.length} that aren't movies (TV shows, episodes…) were left out.` : '' };
@@ -79,7 +80,7 @@ export function applyImport(p, { replace = false, d = data(), quiet = false } = 
     const before = d.list.length; d.list = d.list.filter(x => !ratedAs(x, d)); r.offList = before - d.list.length; /* watched = no longer "to watch" */
   } else {
     if (replace) d.list = d.list.filter(x => !x.onImdb);
-    for (const it of p.items) { const have = onList(it, d); if (have) { if (!have.onImdb) { have.onImdb = true; r.onImdb++; } have.imdb ||= it.imdb; have.year ||= it.year; r.same++; } else if (ratedAs(it, d)) r.offList++; else { d.list.push({ id: uid(), title: it.title, year: it.year, imdb: it.imdb, by: '', login: '', at: it.at || Date.now(), src: 'imdb', onImdb: true }); r.added++; } }
+    for (const it of p.items) { const have = onList(it, d); if (have) { if (!have.onImdb) { have.onImdb = true; r.onImdb++; } have.imdb ||= it.imdb; have.year ||= it.year; for (const k of ['g', 'dir', 'ir']) if (it[k] && !have[k]) have[k] = it[k]; r.same++; } else if (ratedAs(it, d)) r.offList++; else { d.list.push({ ...(it.g ? { g: it.g } : {}), ...(it.dir ? { dir: it.dir } : {}), ...(it.ir ? { ir: it.ir } : {}), id: uid(), title: it.title, year: it.year, imdb: it.imdb, by: '', login: '', at: it.at || Date.now(), src: 'imdb', onImdb: true }); r.added++; } }
   }
   if (d === data()) { d[p.kind === 'rated' ? 'ratedAt' : 'listAt'] = Date.now(); if (!quiet) H.act(p.kind === 'rated' ? `IMDb ratings brought in: ${r.added} new, ${r.same} already there` : `IMDb watchlist brought in: ${r.added} new, ${r.same} already there`, { kind: 'watchImport' }); changed(); }
   return r;
@@ -133,6 +134,34 @@ export async function onChat(m) {
   return true;
 }
 
+/* 🎲 (1.134.0, Derek: "type in a subject, genre, year, decade, actor, director, suggester name and it will give me a list of 20 movies in the watchlist to choose from") */
+/** What the words typed mean: a decade (80s, 1990s), a year or a span of years (1984, 1990-1995), and words that must all be found somewhere on the movie. */
+export function readQuery(q) {
+  let t = ' ' + String(q || '').toLowerCase() + ' ', from = 0, to = 0;
+  t = t.replace(/\b((?:19|20)\d{2})\s*(?:-|–|to)\s*((?:19|20)\d{2})\b/, (_, a, b) => { from = Math.min(+a, +b); to = Math.max(+a, +b); return ' '; });
+  if (!from) t = t.replace(/\b((?:19|20)\d)0'?s\b/, (_, a) => { from = +(a + '0'); to = from + 9; return ' '; });
+  if (!from) t = t.replace(/(^|\s)(\d)0'?s\b/, (_, s, a) => { from = (+a >= 3 ? 1900 : 2000) + +a * 10; to = from + 9; return ' '; }); /* 80s = the 1980s, 10s = the 2010s */
+  if (!from) t = t.replace(/\b((?:19|20)\d{2})\b/, (_, a) => { from = to = +a; return ' '; });
+  return { from, to, words: norm(t).split(' ').filter(w => w && !['the', 'a', 'an', 'of', 'and', 'movies', 'movie', 'films', 'film', 'from', 'with', 'by', 'in', 'about'].includes(w)) };
+}
+const hay = x => ' ' + norm([x.title, x.g, x.dir, x.act, x.plot, x.by].filter(Boolean).join(' ')) + ' ';
+/** Up to n watchlist movies that fit, in a mixed-up order (ask again for another 20). `skip` = titles already on tonight's list. */
+export function pick(q, { n = 20, skip = [], d = data(), rnd = Math.random } = {}) {
+  const Q = readQuery(q), out = new Set(skip.map(norm)), fits = d.list.filter(x => { if (out.has(norm(x.title))) return false; if (Q.from && !(Number(x.year) >= Q.from && Number(x.year) <= Q.to)) return false; if (!Q.words.length) return true; const h = hay(x); return Q.words.every(w => h.includes(' ' + w) ); });
+  const mixed = fits.map(x => [rnd(), x]).sort((a, b) => a[0] - b[0]).map(a => a[1]).slice(0, Math.max(1, Math.min(50, n)));
+  return { total: fits.length, query: Q, list: mixed.map(x => ({ id: x.id, title: x.title, year: x.year || '', by: x.by || '', g: x.g || '', dir: x.dir || '', act: x.act || '', plot: x.plot || '', ir: x.ir || 0, onImdb: !!x.onImdb, link: imdbLink(x) })), info: infoCount(d) };
+}
+export const infoCount = (d = data()) => ({ all: d.list.length, have: d.list.filter(x => x.act || x.plot).length, tried: d.list.filter(x => x.infoAt).length });
+/** Fills in what the movies are about (actors, plot, genres, director) a few at a time, so the search can find them. Each movie is asked for once a month at most. */
+let filling = false;
+export async function fillInfo(max = 40) {
+  if (filling || !H.on()) return 0; const d = data(), todo = d.list.filter(x => !(x.act || x.plot) && !(x.infoAt && Date.now() - x.infoAt < 30 * 864e5)).slice(0, max); if (!todo.length) return 0;
+  filling = true; let n = 0;
+  try { for (const x of todo) { let f; try { f = await H.details({ imdb: x.imdb, title: x.title, year: x.year }); } catch { break; } if (f === undefined) break; /* no movie key: nothing to ask */
+      x.infoAt = Date.now(); if (f) { x.g = f.genres || x.g || ''; x.dir = f.directors || x.dir || ''; x.act = f.actors || ''; x.plot = f.plot || ''; if (f.rating) x.ir = f.rating; x.year ||= f.year; x.imdb ||= f.imdb; n++; } await new Promise(r => setTimeout(r, 350)); }
+  } finally { filling = false; }
+  save(); return n;
+}
 /** 🍿 Who suggested this movie (for movie night's "who asked" box): only an exact name match counts. */
 export function suggestedBy(title) { const d = data(), n = norm(title), y = yearOf(title); if (!n) return ''; const x = d.list.filter(m => m.by && norm(m.title) === n && (!y || !m.year || String(m.year) === y)).sort((a, b) => b.at - a.at)[0]; return x ? x.by : ''; }
 export function edit(b) {
@@ -146,7 +175,7 @@ export function edit(b) {
 export const imdbLink = x => (x.imdb ? `https://www.imdb.com/title/${x.imdb}/` : `https://www.imdb.com/find/?s=tt&ttype=ft&q=${encodeURIComponent(x.title + (x.year ? ' ' + x.year : ''))}`);
 export function clearTests() { const d = data(), n = d.list.length; d.list = d.list.filter(x => !x.test); if (d.list.length !== n) changed(); return n - d.list.length; }
 export function state() {
-  const d = data(), o = opts(d), row = x => ({ ...x, link: imdbLink(x) });
+  const d = data(), o = opts(d), row = x => { const { plot, act, ...r } = x; return { ...r, link: imdbLink(x) }; };
   return { on: H.on(), opts: o, names: H.names(), sync: d.sync || null, syncing, listAt: d.listAt || 0, ratedAt: d.ratedAt || 0,
     waiting: d.list.filter(x => !x.onImdb).sort((a, b) => b.at - a.at).map(row), list: d.list.filter(x => x.onImdb).sort((a, b) => a.title.localeCompare(b.title)).map(row),
     rated: [...d.rated].sort((a, b) => (b.at || 0) - (a.at || 0)), counts: { waiting: d.list.filter(x => !x.onImdb).length, list: d.list.filter(x => x.onImdb).length, rated: d.rated.length } };
@@ -175,5 +204,11 @@ export async function demo() {
   const t1 = ratingText('alien', 'Pretend_Bee', d), t2 = ratingText('clue', 'Pretend_Bee', d), t3 = ratingText('nothing like it', 'Pretend_Bee', d);
   add('⭐ The rating command says what a watched movie was rated', /Alien \(1979\) 10\/10/.test(t1), t1); add("…that a watchlist movie isn't rated yet", /isn't rated yet/.test(t2), t2); add('…and that an unknown movie has no rating', /no rating found/.test(t3), t3);
   const rated2 = applyImport(readFile('Const,Your Rating,Date Rated,Title,Title Type,Year\ntt0100814,8,2026-11-10,Tremors,Movie,1990\n'), { d }); add('Once a watchlist movie shows up in the ratings file, it comes off the watchlist', rated2.offList === 1 && !findIn(d.list, 'tremors') && ratedAs({ title: 'Tremors', year: '1990' }, d), `${rated2.offList} taken off`);
+  { const P = { opts: {}, rated: [], list: [{ id: 'a', title: 'The Thing', year: '1982', g: 'Horror, Mystery, Sci-Fi', dir: 'John Carpenter', act: 'Kurt Russell, Wilford Brimley', plot: 'A research team in Antarctica is hunted by a shape-shifting alien.', by: '' }, { id: 'b', title: 'Clue', year: '1985', g: 'Comedy, Crime, Mystery', dir: 'Jonathan Lynn', act: 'Tim Curry, Madeline Kahn', plot: 'Six guests are invited to a strange house and must cooperate to find a killer.', by: 'NightOwl' }, { id: 'c', title: 'Big Trouble in Little China', year: '1986', g: 'Action, Comedy', dir: 'John Carpenter', act: 'Kurt Russell, Kim Cattrall', plot: 'A trucker gets dragged into a mystical battle in Chinatown.', by: '' }, { id: 'e', title: 'Tremors', year: '1990', g: 'Comedy, Horror', dir: 'Ron Underwood', act: 'Kevin Bacon, Fred Ward', plot: 'Giant worms attack a desert town.', by: 'Pretend_Ash' }] };
+    const names = (q, o) => pick(q, { d: P, ...o }).list.map(x => x.title).sort().join(', ');
+    add('🎲 Help me pick: a genre', names('horror') === 'The Thing, Tremors', names('horror')); add('…a decade', names('80s') === 'Big Trouble in Little China, Clue, The Thing', names('80s')); add('…a year', names('1990') === 'Tremors', names('1990'));
+    add('…a director', names('john carpenter') === 'Big Trouble in Little China, The Thing', names('john carpenter')); add('…an actor plus a genre', names('kurt russell comedy') === 'Big Trouble in Little China', names('kurt russell comedy'));
+    add('…a subject from the plot', names('alien antarctica') === 'The Thing', names('alien antarctica')); add('…who suggested it', names('nightowl') === 'Clue', names('nightowl'));
+    add("…movies already on tonight's list are left out", names('comedy', { skip: ['Clue (1985)'] }) === 'Big Trouble in Little China, Tremors', names('comedy', { skip: ['Clue (1985)'] })); add('…and nothing typed gives a mixed handful', pick('', { d: P }).total === 4, pick('', { d: P }).total + ' movies'); }
   return { ok: rows.every(x => x.ok), rows };
 }
