@@ -213,6 +213,39 @@ export const SFX_NAME = 'Movie Royal sound alerts';
 export async function sfxSource(on, url) {
   return browserSource(SFX_NAME, on, (W, H) => ({ is_local_file: false, url, width: 64, height: 64, fps: 10, reroute_audio: true, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), on ? 'all' : null, { noReload: true });
 }
+/* 🎚️ (1.140.0, Derek: keep song request music off the Twitch VOD, the live stream still hears it) the music plays in its own browser source (every scene, sound through OBS's mixer), with the Twitch VOD track unticked for it. */
+export const MUSIC_NAME = 'Movie Royal music';
+const param = async (call, cat, name) => (await call('GetProfileParameter', { parameterCategory: cat, parameterName: name }).catch(() => null))?.parameterValue ?? null;
+async function vodInfo(call) {
+  const adv = /^adv/i.test(String(await param(call, 'Output', 'Mode') || 'Simple')), cat = adv ? 'AdvOut' : 'SimpleOutput';
+  const on = String(await param(call, cat, 'VodTrackEnabled')) === 'true', index = adv ? Math.max(1, Math.min(6, Number(await param(call, 'AdvOut', 'VodTrackIndex')) || 2)) : 2, streamTrack = adv ? Math.max(1, Math.min(6, Number(await param(call, 'AdvOut', 'TrackIndex')) || 1)) : 1;
+  return { adv, cat, on, index, streamTrack };
+}
+export async function musicState() {
+  return session(async call => {
+    const inputs = (await call('GetInputList')).inputs || [], have = inputs.some(i => i.inputName === MUSIC_NAME), vod = await vodInfo(call), out = { have, vod: { on: vod.on, index: vod.index, same: vod.index === vod.streamTrack }, version: (await call('GetVersion').catch(() => ({}))).obsVersion || '' };
+    out.streaming = !!(await call('GetStreamStatus').catch(() => ({}))).outputActive;
+    if (have) { const t = (await call('GetInputAudioTracks', { inputName: MUSIC_NAME }).catch(() => null))?.inputAudioTracks || {}; out.offVod = t[String(vod.index)] === false; out.onStream = t[String(vod.streamTrack)] !== false; out.monitor = (await call('GetInputAudioMonitorType', { inputName: MUSIC_NAME }).catch(() => ({}))).monitorType === 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT'; }
+    /* 🎧 hearing it yourself goes through OBS's monitoring device; if Desktop Audio records that same device, the music would sneak back in (and onto the VOD) */
+    const mon = String(await param(call, 'Audio', 'MonitoringDeviceId') || 'default'), sp = await call('GetSpecialInputs').catch(() => ({})), desks = [sp.desktop1, sp.desktop2].filter(Boolean), dev = [];
+    for (const d of desks) { const st = (await call('GetInputSettings', { inputName: d }).catch(() => null))?.inputSettings || {}; dev.push(String(st.device_id || 'default')); }
+    out.monDevice = String(await param(call, 'Audio', 'MonitoringDeviceName') || 'Default'); out.loop = dev.includes(mon); out.desktop = desks.length;
+    return out;
+  });
+}
+export async function musicSource(on, url, { monitor = true, fixVod = false } = {}) {
+  const r = await browserSource(MUSIC_NAME, on, () => ({ is_local_file: false, url, width: 320, height: 180, fps: 10, reroute_audio: true, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), on ? 'all' : null, { noReload: true });
+  if (!on) return r;
+  await session(async call => {
+    let vod = await vodInfo(call);
+    if (fixVod && (!vod.on || vod.index === vod.streamTrack)) { if ((await call('GetStreamStatus').catch(() => ({}))).outputActive) throw new Error("You're live: the Twitch VOD track can only be switched on while OBS isn't streaming. Do it after the stream.");
+      await call('SetProfileParameter', { parameterCategory: vod.cat, parameterName: 'VodTrackEnabled', parameterValue: 'true' }); if (vod.adv && vod.index === vod.streamTrack) await call('SetProfileParameter', { parameterCategory: 'AdvOut', parameterName: 'VodTrackIndex', parameterValue: String(vod.streamTrack === 2 ? 3 : 2) }); vod = await vodInfo(call); }
+    const t = { ...((await call('GetInputAudioTracks', { inputName: MUSIC_NAME }).catch(() => null))?.inputAudioTracks || {}) }; if (vod.index !== vod.streamTrack) t[String(vod.index)] = false; t[String(vod.streamTrack)] = true;
+    await call('SetInputAudioTracks', { inputName: MUSIC_NAME, inputAudioTracks: t });
+    await call('SetInputAudioMonitorType', { inputName: MUSIC_NAME, monitorType: monitor ? 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT' : 'OBS_MONITORING_TYPE_NONE' });
+  });
+  return { ...r, state: await musicState() };
+}
 export const MARA_NAME = 'Movie Royal marathon';
 /** 🏃 the marathon overlay (battles owed counter + the pop-up when someone gets a battle), 1.76.0 */
 export async function maraSource(on, url, pick = null) {

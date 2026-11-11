@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.140.0
+- 🎚️ **Keep song request music off the Twitch VOD** (editions with song requests). Chat bot → 🎵 Songs → Settings has a new box: **Play the music through OBS, not on the VOD**. With it on, the song plays inside OBS as its own sound source ("Movie Royal music", added to every scene) with OBS's Twitch VOD track unticked for it. The live stream hears the music; the saved VOD doesn't, so it doesn't get muted. Battle sounds, sound alerts and everything else stay on the VOD.
+  - The music box on the Chat tab becomes the remote control: play, pause, skip, seek, volume, playlists and even volume all work the same. With OBS closed the song plays in the app like before.
+  - **🎧 Let me hear it too** plays it for you through OBS's monitoring. The box warns when OBS's monitoring device is one that Desktop Audio also records (the music could slip back onto the VOD that way).
+  - The box shows what OBS has: the music source, whether OBS's **Twitch VOD Track** is switched on (with a 🔧 Switch it on for me button, only while not live), and whether the music is off the VOD track. 🔄 Keep OBS up to date looks after it too.
+  - Do a short test stream and play the VOD back the first time. This only stops the VOD being muted: Twitch's rules about music on the live stream still apply.
+  - Test tab → Songs → 🎚️ Music off the VOD.
+- 🔊 **Birx & Jess edition:** the app's sound now stays on when its window isn't the one in front (🔇 Mute when unfocused starts off there; it can be turned back on in Settings → 🔊 Sounds).
+
 ## 1.139.3
 - 🎭 **Backup Bots app → Editions tab:** the top bar (category menu, search, Reload, Check, Save and the "changes not saved" line) now stays on top while you scroll the list, with the edition names right under it.
 

@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal music</title>
+<style>html, body { margin: 0; background: transparent; overflow: hidden; } #pl { position: absolute; left: 0; top: 0; width: 320px; height: 180px; opacity: .01; pointer-events: none; border: 0; }</style></head>
+<body>
+<div id="box"></div>
+<script>
+/* 🎚️ (1.140.0, Derek: "auto route out music to vod so can play dmca music without getting muted vod… but stream can still hear it")
+   The song request music plays HERE, inside OBS, as its own sound source: OBS then keeps it off the Twitch VOD track while the live stream still hears it.
+   The app's Chat tab is the remote control: it sends what to play (spLoad) and the player commands (spCmd); this page sends back what YouTube's player reports (spInfo). Nothing is shown. */
+let ws = null, src = '';
+const frame = () => document.querySelector('#pl');
+function load(s) { s = String(s || ''); if (s && !/^https:\/\/www\.youtube(-nocookie)?\.com\/embed\//.test(s)) return; if (s === src) return; src = s; document.getElementById('box').innerHTML = s ? `<iframe id="pl" src="${s.replace(/"/g, '&quot;')}" allow="autoplay; encrypted-media"></iframe>` : ''; }
+function post(o) { const f = frame(); try { if (f) f.contentWindow.postMessage(JSON.stringify(o), '*'); } catch {} }
+setInterval(() => { if (frame()) post({ event: 'listening', id: 'mrmusic', channel: 'widget' }); }, 1500);
+addEventListener('message', e => { if (!/^https:\/\/www\.youtube(-nocookie)?\.com$/.test(e.origin)) return; let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; } if (d && d.info && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'spInfo', info: { duration: d.info.duration, currentTime: d.info.currentTime, playerState: d.info.playerState, videoData: d.info.videoData ? { video_id: d.info.videoData.video_id, title: d.info.videoData.title } : undefined } })); });
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws?role=songplay`);
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'spLoad') load(m.src); else if (m.type === 'spCmd' && m.cmd) post({ event: 'command', func: String(m.cmd.func || ''), args: m.cmd.args || [] }); };
+  ws.onclose = () => { load(''); setTimeout(connect, 2000); }; /* (the app closed: the music stops) */
+}
+connect();
+</script></body></html>

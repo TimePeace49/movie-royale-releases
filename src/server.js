@@ -308,7 +308,7 @@ function publicState() { applyCharsDefault();
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
-    obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
+    songPlayers: songPlayers(), obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
     edition: { hide: editionInfo().hide, id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
     mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
@@ -1392,11 +1392,13 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'overlay') { ws.send(JSON.stringify(audioMsg())); if (/\bOBS\//.test(ws.ua)) { setTimeout(() => broadcast(audioMsg(), 'overlay'), 200); ws.on('close', () => setTimeout(() => { broadcast(audioMsg(), 'overlay'); pushState(); }, 200)); } } // 🔇 an OBS game screen opened / closed: the app's game screen goes quiet / plays again
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
   pushState();
+  if (ws.role === 'songplay') { ws.send(JSON.stringify({ type: 'spLoad', src: live.sp?.src || '' })); setTimeout(pushState, 200); ws.on('close', () => setTimeout(pushState, 200)); }
   if (ws.role === 'chatvoice') { chatvoice.playerJoin(1); ws.on('close', () => chatvoice.playerJoin(-1)); }
   ws.on('close', pushState);
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (ws.role === 'chatvoice') { chatvoice.fromPlayer(m); return; }
+    if (ws.role === 'songplay' && m.type === 'spInfo') { broadcast({ type: 'spInfo', info: m.info || {} }, 'control'); return; } // 🎚️ what the music player in OBS is playing
     if (ws.role === 'mara' && (m.type === 'ytAt' || m.type === 'ytErr')) { ytFromPlayer(m); return; } // 📺 what the BRB / sleeping videos are playing
     if (ws.role !== 'overlay') return;
     if (m.type === 'overlayError') { const t = `${m.msg} ${m.where || ''} (${m.phase || ''})`; console.error('[game screen]', t); live.overlayErrors = [{ at: Date.now(), text: t }, ...(live.overlayErrors || [])].slice(0, 10); broadcast({ type: 'toast', text: `⚠️ Game screen problem: ${String(m.msg).slice(0, 120)}` }, 'control'); return; }
@@ -1422,6 +1424,8 @@ const gfxMsg = () => ({ type: 'gfx', res: String(db.settings.gfxRes || '1080'), 
 // 🔇 (1.84.3, Derek: "double audio with the app and OBS open with a scene with the app on it") how many OBS game screens are open
 // (OBS's browser says "OBS/…"): while there's one, the game screens that AREN'T in OBS (inside the app, popped out) go quiet, so
 // the battle / wheel sounds play once (setting appQuietObs, Settings → 🔊 Sounds)
+/* 🎚️ (1.140.0) the music player page inside OBS (role songplay): the app's Chat tab drives it; `live.sp.src` = what it should be playing (a page that reloads picks it up again) */
+const songPlayers = () => { let n = 0; for (const c of wss.clients) if (c.role === 'songplay' && c.readyState === 1) n++; return n; };
 const obsGames = () => { let n = 0; for (const c of wss.clients) if (c.role === 'overlay' && c.readyState === 1 && /\bOBS\//.test(c.ua || '')) n++; return n; };
 const audioMsg = () => ({ type: 'audio', obsGame: obsGames(), appQuiet: db.settings.appQuietObs !== false, on: db.settings.soundOn !== false, sfx: Number(db.settings.sfxVolume ?? 70) / 100, music: Number(db.settings.musicVolume ?? 35) / 100 });
 
@@ -1957,6 +1961,34 @@ app.post('/api/test/obs-meters', (req, res) => {
 /* 🔊 sound alerts in EVERY OBS scene (1.124.1, Derek: "sound effect should play on every scene"): one shared browser source, kept in new scenes by 🔄 Keep OBS up to date */
 const sfxUrl = () => `http://localhost:${PORT}/soundboard.html`;
 const sfxWanted = () => db.settings.sfxObs === true || (db.settings.sfxObs == null && (db.chatbot?.commands || []).some(c => c.sound || c.soundMissing));
+/* 🎚️ (1.140.0, Derek: "auto route out music to vod so can play dmca music without getting muted vod… stream can still hear it… all the other app sounds play on vod") song request music out of the Twitch VOD: it plays in its own OBS source with the VOD track unticked */
+const musicUrl = () => `http://localhost:${PORT}/songplayer.html`;
+async function musicObs(on, o = {}) {
+  if (on && !feat('songs')) throw new Error('Song requests are not part of this edition.');
+  if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
+  const so = songs.opts(); return obs.musicSource(!!on, musicUrl(), { monitor: so.vodMonitor !== false, fixVod: !!o.fixVod });
+}
+app.get('/api/songs/vod', async (req, res) => { const o = songs.opts(), out = { on: !!o.vodRoute, monitor: o.vodMonitor !== false, players: songPlayers(), url: musicUrl() }; try { out.obs = await obs.musicState(); } catch (e) { out.obsError = e.message; } res.json(out); });
+app.post('/api/songs/vod', async (req, res) => { const b = req.body || {};
+  try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.');
+    if ('monitor' in b) songs.setOpts({ vodMonitor: !!b.monitor }); const want = 'on' in b ? !!b.on : !!songs.opts().vodRoute; let r = {};
+    if (want || 'on' in b) r = await musicObs(want, { fixVod: !!b.fixVod }); /* (OBS first: the switch only flips when OBS took it) */
+    if ('on' in b) { songs.setOpts({ vodRoute: want }); if (!want) { live.sp = { src: '' }; broadcast({ type: 'spLoad', src: '' }, 'songplay'); } act('stream', want ? 'Song request music now plays through OBS, off the Twitch VOD track' : 'Song request music plays in the app again (it is on the VOD)', { icon: '🎚️', kind: 'vodRoute' }); }
+    broadcast({ type: 'songs' }, 'control'); pushState(); res.json({ ok: true, on: !!songs.opts().vodRoute, players: songPlayers(), ...r });
+  } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/songs/player', (req, res) => { const b = req.body || {}; /* the Chat tab's remote control for the music player in OBS */
+  if ('src' in b) { const src = String(b.src || ''); if (src && !/^https:\/\/www\.youtube(-nocookie)?\.com\/embed\//.test(src)) return res.status(400).json({ error: 'Not a YouTube player address.' }); live.sp = { src, at: Date.now() }; broadcast({ type: 'spLoad', src }, 'songplay'); }
+  if (b.cmd && typeof b.cmd.func === 'string' && /^[a-zA-Z]{3,30}$/.test(b.cmd.func)) broadcast({ type: 'spCmd', cmd: { func: b.cmd.func, args: Array.isArray(b.cmd.args) ? b.cmd.args.slice(0, 4) : [] } }, 'songplay');
+  res.json({ ok: true, players: songPlayers() });
+});
+app.get('/api/test/song-vod', (req, res) => { /* 🧪 the parts of "music off the VOD" that can be checked without OBS */
+  const rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) }), page = (() => { try { return fs.readFileSync(path.join(ROOT, 'public', 'songplayer.html'), 'utf8'); } catch { return ''; } })();
+  add('The music player page for OBS is in the app', /role=songplay/.test(page), page ? 'songplayer.html' : 'missing');
+  add('It only ever loads YouTube players', /youtube\(-nocookie\)\?\\\.com\\\/embed/.test(page), 'checked');
+  add('The setting is saved with the song request settings', 'vodRoute' in { vodRoute: songs.opts().vodRoute ?? false }, songs.opts().vodRoute ? 'on' : 'off');
+  add('Music players connected right now (OBS has the source open)', true, songPlayers());
+  res.json({ ok: rows.every(x => x.ok), rows, on: !!songs.opts().vodRoute, players: songPlayers() });
+});
 async function sfxObsSource(on) {
   if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
   const r = await obs.sfxSource(!!on, sfxUrl()); db.settings.sfxObs = !!on; save(); pushState(); return r;
@@ -2592,6 +2624,8 @@ function editionMove() {
   save();
 }
 editionMove();
+/* 🔊 (1.140.0, Derek: "birx ed make it so default sound stays on when not focused on") Birx & Jess's edition: the app's sound keeps playing when its window isn't the one in front (once; they can turn 🔇 Mute when unfocused back on in Settings → Sounds) */
+if (EDITION.id === 'birx' && !db.settings.birxSoundBg) { db.settings.muteUnfocused = false; db.settings.birxSoundBg = true; save(); }
 // 🎭 an edition without movie battles (True's, Birx's): the Discord movie battle is never the one on screen: the first time, a plain battle of your own takes its place
 function editionNoMovies() {
   if (!edHas('battle') && !db.editionClean) { /* 🎭 an edition without battles (Birx & Jess): the ready-made wheels and battles go, once. Things you made yourself stay. */
@@ -6066,6 +6100,7 @@ async function obsSync(why = 'check', force = false) {
     const r1 = (r, what) => r.added ? `added to ${r.added} scene${r.added === 1 ? '' : 's'}` : r.fileChanged ? 'video file updated' : `${what || 'everything'} is there`;
     if (db.settings.choiceObs && twitch.status.userId) { try { const f = await choiceFile(); add('choice', '🎉 Viewer\'s choice celebration', true, r1(await obs.celebrateSource(true, f.file, choicePick()))); } catch (e) { add('choice', '🎉 Viewer\'s choice celebration', false, e.message); } }
     if (db.settings.rollObs) { try { add('roll', '📣 Roll call', true, r1(await obs.rollSource(true, rollUrl(), Array.isArray(db.settings.rollScenes) && db.settings.rollScenes.length ? db.settings.rollScenes : null))); } catch (e) { add('roll', '📣 Roll call', false, e.message); } }
+    if (feat('songs') && songs.opts().vodRoute) { try { const r = await musicObs(true); add('music', '🎚️ Song request music (off the VOD track)', true, r1(r)); if (r.state && (!r.state.vod.on || r.state.vod.same)) add('musicVod', '🎚️ Twitch VOD track', false, 'OBS has no separate Twitch VOD track switched on, so the music still goes on the VOD: open Chat bot → Songs → Settings → 🎚️ and press Set it up.'); } catch (e) { add('music', '🎚️ Song request music (off the VOD track)', false, e.message); } }
     if (sfxWanted()) { try { add('sfx', '🔊 Sound alerts (every scene)', true, r1(await obs.sfxSource(true, sfxUrl()))); } catch (e) { add('sfx', '🔊 Sound alerts (every scene)', false, e.message); } }
     if (db.settings.mnObs && feat('movienight')) { try { add('mnight', '🍿 Movie night leaderboard', true, r1(await obs.mnSource(true, mnUrl(), Array.isArray(db.settings.mnScenes) && db.settings.mnScenes.length ? db.settings.mnScenes : null))); } catch (e) { add('mnight', '🍿 Movie night leaderboard', false, e.message); } }
     const mc = db.settings.marathon || {};
