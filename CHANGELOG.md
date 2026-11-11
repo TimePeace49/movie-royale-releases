@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.138.1
+- ⭐ Reading the IMDb ratings page: only the last, short page of ratings came in (46 of 296). On a full page IMDb fills in the person's own ratings a moment after the list shows, and the app read the page too soon. It now scrolls down the page and waits until the ratings have stopped arriving before reading it.
+- If some ratings still can't be read, the "Last read" line now says how many of how many came in, instead of a plain tick.
+
 ## 1.138.0
 - ⚙️ New Settings page: 🍿 Movie night (only in editions that have movie night). Every movie night setting is there in one place: voting, what shows on stream, the watchlist commands and the IMDb links and files.
 - 🔎 On that page, "What the app has" shows how many movies are on the watchlist, how many are rated and how many suggestions are waiting, with three buttons to look through each list and a search box. Compare the numbers with your IMDb profile to see if everything came in. Rated movies show the rating.

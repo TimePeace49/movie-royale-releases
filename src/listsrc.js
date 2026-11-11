@@ -17,7 +17,7 @@ export const siteOf = url => /imdb\.com/i.test(url) ? 'imdb' : /rottentomatoes\.
 
 async function getHtml(url, opts = {}) {
   const d = globalThis.__desktop;
-  if (d?.getPage) { const r = await d.getPage(url, { render: !!opts.render, wait: opts.wait || 'body', timeout: opts.timeout || 30000, more: opts.more }); if (r.status >= 400) throw new Error(`the page answered ${r.status}`); return r.text; }
+  if (d?.getPage) { const r = await d.getPage(url, { render: !!opts.render, wait: opts.wait || 'body', timeout: opts.timeout || 30000, more: opts.more, settle: opts.settle }); if (r.status >= 400) throw new Error(`the page answered ${r.status}`); return r.text; }
   const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error(`the page answered ${r.status}`); return r.text();
 }
@@ -126,7 +126,7 @@ export async function imdbUserPages(base, kind, get, want = 3000) {
 }
 export async function readImdbUser(url, want = 3000) {
   const u = imdbUserUrl(url); if (!u) throw new Error("That isn't an IMDb watchlist or ratings link. It looks like imdb.com/user/…/watchlist (or …/ratings).");
-  return imdbUserPages(u.url, u.kind, page => getHtml(page, { render: true, wait: '.ipc-metadata-list-summary-item, a[href*="/title/tt"]', timeout: 120000, more: { click: 'button.ipc-see-more__button, .ipc-see-more button', count: '.ipc-metadata-list-summary-item', want: 250 } }), want);
+  return imdbUserPages(u.url, u.kind, page => getHtml(page, { render: true, wait: '.ipc-metadata-list-summary-item, a[href*="/title/tt"]', timeout: 120000, more: { click: 'button.ipc-see-more__button, .ipc-see-more button', count: '.ipc-metadata-list-summary-item', want: 250 }, ...(u.kind === 'rated' ? { settle: { count: '.ipc-rating-star--rating, [class*="ipc-rating-star--"]', ms: 30000 } } : {}) }), want);
 }
 
 // ---------- 🍅 Rotten Tomatoes ----------

@@ -275,7 +275,7 @@ app.whenReady().then(async () => {
     copy: t => { clipboard.writeText(String(t)); return true; }, // copying from the page can fail after a pop-up: Windows' own clipboard always works
     // read a web page like a real browser does (some sites, like Letterboxd's film pages, turn away plain requests)
     // (every step has a time limit, so a page that never finishes loading can't make it hang; stopPages() ends them all right away)
-    getPage: async (url, { render = false, wait = 'body', timeout = 25000, more = null } = {}) => {
+    getPage: async (url, { render = false, wait = 'body', timeout = 25000, more = null, settle = null } = {}) => {
       const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
       const limit = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('took too long')), ms))]);
       if (!render) { const r = await net.fetch(url, { headers: { 'User-Agent': UA, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000) }); return { status: r.status, text: await limit(r.text(), 15000) }; }
@@ -298,6 +298,15 @@ app.whenReady().then(async () => {
             if (n < 0) break;
             if (n === last) { if (++same >= 4) break; } else same = 0; last = n;
             await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+        if (settle && !w.isDestroyed()) { // (1.138.1) some things arrive after the rows do (IMDb fills in a person's own ratings a moment later): scroll down the page bit by bit until their number stops growing
+          const until = Math.min(end, Date.now() + (Number(settle.ms) || 25000)); let last = -1, same = 0, polls = 0;
+          while (Date.now() < until && !w.isDestroyed()) {
+            const n = await limit(w.webContents.executeJavaScript(`(() => { const h = document.documentElement.scrollHeight, y = window.scrollY + window.innerHeight * 3; window.scrollTo(0, y >= h ? 0 : y); return document.querySelectorAll(${JSON.stringify(settle.count)}).length; })()`), 3000).catch(() => -1);
+            polls++; if (n === last) { if (++same >= 4 && polls >= 6) break; } else same = 0; last = n;
+            if (settle.want && n >= settle.want && same >= 2) break;
+            await new Promise(r => setTimeout(r, 700));
           }
         }
         if (w.isDestroyed()) throw new Error('stopped');

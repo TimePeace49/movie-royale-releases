@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.138.1: What's new
+- {movienight} ⭐ Reading your IMDb ratings from the link now waits for the whole page, so all of them come in (before, only the last short page did).
+
 ## v1.138.0: What's new
 - {movienight} ⚙️ New Settings page 🍿 Movie night: every movie night setting in one place, plus a look at what's on the watchlist and what's rated, so you can check that everything from IMDb came in.
 - {movienight} 🎬 Suggested movies are in the stats now (History → Chat stats) and on each person's profile, with the rating next to a movie once it has been watched and rated.
