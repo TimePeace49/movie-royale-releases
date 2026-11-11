@@ -463,10 +463,12 @@
 
   <section data-k="birthday birthdays bday !bday happy birthday wish">
     <h2>🎂 Birthdays</h2>
-    <p>Viewers save their own birthday in chat: <code>!bday 3/14</code> or <code>!bday March 14</code>. <b>Only the month and day: a year is never asked for or kept.</b> <code>!bday</code> alone tells them what is saved. They can change it again after 30 days; you can add, change or remove one any time in <b>Settings → 💜 Twitch → 🎂 Birthdays</b>.</p>
+    <p>Viewers save their own birthday in chat: <code>!bday 3/14</code> or <code>!bday March 14</code>. <b>Only the month and day: a year is never asked for or kept.</b> <code>!bday</code> alone tells them what is saved. They can change it again after 30 days; you can add, change or remove one any time in <b>🤖 Chat bot → 🎂 Birthdays</b>.</p>
     <p>The first time someone chats on their birthday, the bot wishes them a happy birthday (once that day). You can change the message or switch the wishes off. The list stays on your PC.</p>
     <p>🧪 Try it: Test tab → 🎂 Birthdays (a pretend viewer, nothing is sent to Twitch).</p>
-    <p>🎉 <b>Birthday pop-up:</b> when someone whose birthday is today chats, a pop-up opens in the app (top right, any tab) with what they said; their next chats keep showing in it until you press ✕. A quiet party-whistle sound plays when it opens, in the app and on stream (through OBS's sound alert source). Switch the pop-up, the sound and the stream sound on or off, and set both volumes, in Settings → Twitch → 🎂 Birthdays.</p>
+    <p>🎉 <b>Birthday pop-up:</b> when someone whose birthday is today chats, a pop-up opens in the app (top right, any tab) with what they said; their next chats keep showing in it until you press ✕. A quiet party-whistle sound plays when it opens, in the app and on stream (through OBS's sound alert source). Switch the pop-up, the sound and the stream sound on or off, and set both volumes, in 🤖 Chat bot → 🎂 Birthdays.</p>
+    <p>📅 <b>Birthday reminder:</b> when the app opens and someone has a birthday in the next 7 days, a calendar of those days shows who. <b>Mute 24 hours</b>, <b>Mute 1 week</b> or <b>Mute forever</b>; turn it back on (and pick how many days it looks ahead) in 🤖 Chat bot → 🎂 Birthdays.</p>
+    <p>🕐 <b>What counts as the birthday:</b> if you go live after midnight and still call it the night before, set <b>A new day starts at</b> to a time after your stream ends (6 AM for a 1:30 AM stream). Someone chatting at 1:30 AM on the 15th then still gets their 14th birthday wish. Movie night's Wednesday / Sunday votes use the same day.</p>
 </section>
   <section data-k="safety privacy lock 2fa two factor two-step authenticator code backup codes what is sent data safe secure">
     <h2>🔐 Safety &amp; privacy</h2>
@@ -494,7 +496,8 @@
     <p>The <b>💬 Chat</b> tab keeps everything for the stream on one screen, in three columns: on the left 📺 a big muted preview of your own stream (a few seconds behind: that's Twitch's delay) with the 🎵 song box and the 🍿 movie night box under it, in the middle the 🔔 activity feed (subs, bits, raids, follows…), and on the right chat. Untick Preview to save your PC some work.</p>
     <p>🎵 <b>Song box:</b> the song's picture, its name and who asked for it, <b>▶ Play / ⏸ Pause</b>, <b>⏭ Skip</b>, a volume slider, and five stars for each of you. Click the left half of a star for a half star; click the same star again to clear the rating. A song that was rated before shows its stars filled in. The <b>History</b> tab lists the songs that were played, newest first, so you can go back and rate them. <b>💿 RYM</b> looks the song up on RateYourMusic in your browser (the app can't change a RateYourMusic account by itself).</p>
     <p>🍿 <b>Movie box:</b> each movie with its votes and how many of them were guessed right / wrong, and the <b>⏳ 5 min</b> button that starts the last call.</p>
-  </section>
+      <p>🎵 The song box has a <b>🟢 SR on / ⛔ SR off</b> button to open or close song requests, and every song on its <b>History</b> tab has a <b>🚫 Ban</b> button (✅ Unban to undo).</p>
+</section>
   <section data-feat="songs" data-k="song request songs sr !sr queue rating ratings rate banned songs import songlist database now playing stats requesters">
     <h2>🎵 Song requests &amp; ratings</h2>
     <p>Chat asks for a song with <code>!sr</code> and a YouTube link or the song's name. The <b>🎵 Songs</b> tab shows the queue: <b>⏭ Next song</b> starts the next one, ▶ plays one now, ▲ ▼ move it, ✕ takes it out, 🚫 bans it. You can add songs yourself too. Chat also has <code>!song</code> (what's playing), <code>!queue</code> (what's next) and <code>!wrongsong</code> (take my last one back).</p>
@@ -562,7 +565,8 @@
     <p data-dev="1">On the 🎮 Game capture tab in fullscreen there's a faint dot in the bottom right corner: click it to clip. It turns green when the clip is made, red when it couldn't be.</p>
     <p data-dev>🟢 <b>On Kick</b> (dev mode): Kick has no clip button for apps yet, so the same buttons, Ctrl+Alt+C and <code>!clip</code> make OBS save the last minute as a video file on your PC. Switch it on once in OBS: Settings → Output → Replay Buffer → Enable, 60 seconds.</p>
     <p>🧪 Try it: Test tab → 🎬 Clips (pretend, nothing is sent to Twitch).</p>
-  </section>
+      <p>📣 <b>Shout-outs:</b> the 📣 SO button (next to 🎬 Clip on the 💬 Chat tab) and the 📣 Shout out button on anyone's profile pop-up post “Go check out …” in chat with their link and the game they last played, and show Twitch's own shout-out box while you're live. Twitch allows that box once every 2 minutes and for the same person once an hour; in between it's just the chat line. The first time, sign in with Twitch again (a new permission).</p>
+</section>
   <section data-k="twitch bot chat replies winner announce post">
     <h2>🤖 Do I need a Twitch chat bot?</h2>
     <p>No. Movie Royal answers <code>!mymovies</code> and posts the winner from <b>your own Twitch account</b> while you're signed in. Turn the winner post on/off in <b>Settings → Twitch</b>. If it doesn't post, sign in with Twitch again (it needs the chat permission).</p>

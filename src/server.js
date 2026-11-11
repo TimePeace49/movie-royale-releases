@@ -1672,6 +1672,29 @@ app.post('/api/test/clip-who', async (req, res) => { // 🧪 would these people 
   const P = [['the streamer', { badges: { broadcaster: true } }], ['a mod', { badges: { mod: true } }], ['a VIP', { badges: { vip: true } }], ['a sub', { badges: { sub: true } }], ['a follower', { pretend: true, follows: true }], ['someone new', { pretend: true }]];
   const who = clipWho(), rows = []; for (const [name, m] of P) rows.push({ name, ok: await clipAllowed(m, who) }); res.json({ who, rows });
 });
+// 📣 (1.127.0, Derek) shout-out button (Chat tab tools box + profile pop-ups): a chat line "go check out …" + Twitch's own shout-out box (on Kick: only the chat line, Kick has no shout-out for apps)
+const soLast = new Map(); let soAt = 0;
+async function shoutOut(name, via, test) {
+  const login = String(name || '').trim().replace(/^@/, '').toLowerCase(); if (!/^[a-z0-9_]{2,25}$/.test(login)) throw new Error('Type their channel name.');
+  const o = db.settings, text0 = o.soText || '📣 Go check out {name} at https://twitch.tv/{login}{game}! Give them a follow 💜';
+  let u = null, info = null;
+  if (test) u = { login, name: name.replace(/^@/, ''), id: 'pretend' };
+  else { try { u = (await twitch.getUsers([login])).get(login) || null; } catch {} if (!u && !kick.on()) throw new Error(`Twitch doesn't know a channel called “${login}”.`); if (u?.id) info = await twitch.channelInfo(u.id); }
+  if (test) info = { game: 'Just Chatting' };
+  const shown = u?.name || login, line = text0.replace(/\{name\}/g, shown).replace(/\{login\}/g, login).replace(/\{game\}/g, info?.game ? ` (last seen playing ${info.game})` : '');
+  const r = { ok: true, name: shown, login, line, twitch: null, test: !!test };
+  if (test) { r.twitch = 'pretend'; act('chat', `Pretend shout-out for ${shown}`, { icon: '📣', kind: 'shoutout', test: true }); return r; }
+  if (o.soChat !== false) await twitch.say(line).catch(() => {});
+  if (!kick.on() && u?.id && o.soTwitch !== false) {
+    if (Date.now() - soAt < 120000) r.twitch = 'Twitch only allows one shout-out box every 2 minutes, so this time it was just the chat line.';
+    else if ((soLast.get(login) || 0) > Date.now() - 3600000) r.twitch = `Twitch allows the shout-out box for ${shown} once an hour, so this time it was just the chat line.`;
+    else { try { await twitch.shoutout(u.id); soAt = Date.now(); soLast.set(login, soAt); r.twitch = 'ok'; } catch (e) { r.twitch = e.message || String(e); } }
+  }
+  act('chat', `shouted out ${shown}${r.twitch === 'ok' ? ' (with the Twitch shout-out box)' : ''}`, { icon: '📣', kind: 'shoutout', who: 'You' });
+  return r;
+}
+app.post('/api/shoutout', async (req, res) => { try { res.json(await shoutOut(req.body?.name, req.body?.via, false)); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
+app.post('/api/test/shoutout', async (req, res) => { try { res.json(await shoutOut(req.body?.name || 'pretend_friend', 'test', true)); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 app.post('/api/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip(req.body?.via) }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
 app.post('/api/clip/open', (req, res) => { const c = (db.clips || []).find(x => x.id === req.body?.id); if (!c?.file || !globalThis.__desktop?.openPath) return res.status(400).json({ error: 'That clip has no file to show.' }); globalThis.__desktop.openPath(path.dirname(c.file)); res.json({ ok: true }); });
 app.post('/api/test/clip', async (req, res) => { try { res.json({ ok: true, clip: await makeClip('test', req.body?.fail ? 'fail' : req.body?.kick ? 'kick' : 'ok') }); } catch (e) { res.status(400).json({ error: e.message || String(e) }); } });
@@ -4967,6 +4990,14 @@ app.post('/api/test/songs', sgTry(async b => {
   if (b.action === 'rules') return songs.demo();
   if (b.action === 'rym') { const p = songs.readText('RYM Album, First Name,Last Name,First Name localized, Last Name localized,Title,Release_Date,Rating,Ownership,Purchase Date,Media Type,Review\n1,"","Toto","","","Toto IV",1982,9,n,,,""\n2,"Daft","Punk","","","Discovery",2001,10,o,,,""\n3,"","Queen","","","A Night at the Opera",1975,7,n,,,""\n4,"","Nobody","","","Never rated",1999,0,w,,,""\n', 'songs', undefined, Number(b.who) === 1 ? 1 : 0); return { found: p.songs.length, note: p.note, sample: p.songs, raters: songs.opts().raters }; } // (a pretend RateYourMusic file: only read, nothing added)
   if (b.action === 'clear') return songs.clearTests();
+  if (b.action === 'banhist') { // 🧪 (1.127.0) the Chat tab song box: ⛔ SR off refuses requests, 🚫 Ban on a History row blocks that song, ✅ Unban lets it back (nothing said in chat)
+    const rows = [], add = (what, ok) => rows.push({ what, ok: !!ok }), T = 'Pretend History Song ' + Date.now().toString(36), m = { login: 'pretend_amy', name: 'pretend_amy' }, clone = x => JSON.parse(JSON.stringify(x));
+    const off = await songs.request(m, T, { test: true, quiet: true, d: { ...clone(songs.data()), open: false } }); add('⛔ SR off: a request is refused (“song requests are closed”)', off.why === 'closed');
+    const was = songs.data().banned.length; songs.ban({ title: T }); const key = songs.data().banned[0]?.key, ban1 = await songs.request(m, T, { test: true, quiet: true, d: { ...clone(songs.data()), open: true, queue: [] } });
+    add('🚫 Ban: that song is refused from then on', songs.data().banned.length === was + 1 && ban1.ok === false);
+    songs.unban(key); add('✅ Unban: it is off the banned list again', songs.data().banned.length === was && !songs.data().banned.some(x => x.key === key));
+    return { ok: rows.every(r => r.ok), rows };
+  }
   const PRE = ['Pretend Song About Rain', 'Pretend Disco Banger', 'Pretend Slow Ballad', 'Pretend Sea Shanty', 'Pretend Power Anthem', 'Pretend Lo-fi Loop'], who = ['pretend_amy', 'pretend_bob', 'pretend_cat'];
   twitch.pretend.until = Date.now() + 10 * 60000;
   if (b.action === 'fill') { for (let i = 0; i < 4; i++) await songs.request({ login: who[i % 3], name: who[i % 3] }, PRE[i], { test: true, quiet: true }); for (const q of songs.data().queue) if (q.test && songs.data().lib[q.key]) songs.data().lib[q.key].test = true; return songs.next(); }

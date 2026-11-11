@@ -4,6 +4,14 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.127.0: What's new
+- 🎂 **Birthdays tab:** all the birthday settings are now in 🤖 Chat bot → 🎂 Birthdays, with a calendar of the next 7 days.
+- 📅 **Birthday reminder** when the app opens, showing whose birthday is coming up this week. Mute it for 24 hours, a week or forever (turn it back on in the Birthdays tab).
+- 🕐 **What counts as the birthday:** pick when a new day starts, so a late-night stream after midnight still counts as the night before.
+- 📣 **Shout-outs:** a 📣 Shout out button on every profile pop-up: "Go check out …" in chat, plus Twitch's own shout-out box while you're live (sign in with Twitch again once).
+- {dash} 📣 A 📣 SO button next to 🎬 Clip on the 💬 Chat tab.
+- {dash,songs} 🎵 The Chat tab's song box has an SR on / off button, and a 🚫 Ban button on every song in its History.
+
 ## v1.126.1: What's new
 New in this version.
 

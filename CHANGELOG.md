@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.127.0
+- 🎂 Birthdays have their own tab now: 🤖 Chat bot → 🎂 Birthdays. All the birthday settings moved there (out of Settings → Twitch), with a calendar of the next 7 days.
+- 📅 Birthday reminder when the app opens: a calendar of the coming days with everyone's birthdays (only when someone has one coming up). Mute it for 24 hours, a week or forever; turn it back on in the Birthdays tab.
+- 🕐 "What counts as the birthday": pick when a new day starts (midnight, or later for late-night streams: Birx & Jess's 1:30 AM stream counts as the day before). The movie night birthday votes use the same setting.
+- 🎵 The 💬 Chat tab's song box has a 🟢 SR on / ⛔ SR off button, and every song on its History tab has a 🚫 Ban button.
+- 📣 Shout-outs: a 📣 SO button next to 🎬 Clip on the 💬 Chat tab, and a 📣 Shout out button on every profile pop-up. It posts "Go check out …" in chat and shows Twitch's own shout-out box while you're live (sign in with Twitch again once for the new permission).
+- 🧪 Test tab: 📅 Show the start-up reminder (Birthdays card), 📣 Pretend shout-out and 🎵 SR on/off + 🚫 Ban check (Chat tab card).
+
 ## 1.126.1
 - 🥳 The birthday party whistle now also plays **on stream** (through OBS's sound alert source, or the battle screen if that's in OBS), with its own stream volume. Switch it off in Settings → Twitch → 🎂 Birthdays (📺 Play the whistle on stream too); 📺 Play it on stream tries it.
 

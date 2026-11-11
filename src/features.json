@@ -142,6 +142,7 @@
  {"id":"bot:sounds","kind":"off","cat":"Chat bot","name":"🔊 Sound alerts (Chat bot tab)","text":"One of the buttons across the top of the Chat bot tab.","hide":{"sel":"#botTop [onclick=\"botGo('sounds')\"]"}},
  {"id":"bot:timers","kind":"off","cat":"Chat bot","name":"⏰ Timers (Chat bot tab)","text":"One of the buttons across the top of the Chat bot tab.","hide":{"sel":"#botTop [onclick=\"botGo('timers')\"]"}},
  {"id":"bot:quotes","kind":"off","cat":"Chat bot","name":"💬 Quotes (Chat bot tab)","text":"One of the buttons across the top of the Chat bot tab.","hide":{"sel":"#botTop [onclick=\"botGo('quotes')\"]"}},
+ {"id":"bot:bday","kind":"off","cat":"Chat bot","name":"🎂 Birthdays (Chat bot tab)","text":"One of the buttons across the top of the Chat bot tab.","hide":{"sel":"#botTop [onclick=\"botGo('bday')\"]"}},
  {"id":"bot:import","kind":"off","cat":"Chat bot","name":"🧳 Import (Chat bot tab)","text":"One of the buttons across the top of the Chat bot tab.","hide":{"sel":"#botTop [onclick=\"botGo('import')\"]"}},
  {"id":"songs:lib","kind":"off","cat":"Chat bot","name":"🎵 Song database","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('lib')\"]"}},
  {"id":"songs:stats","kind":"off","cat":"Chat bot","name":"📊 Song stats","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('stats')\"]"}},

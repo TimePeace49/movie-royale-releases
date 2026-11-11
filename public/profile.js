@@ -29,7 +29,7 @@ window.Profile = (() => {
   function draw() {
     const p = cur, S = p.spins, C = p.chats, W = p.watch;
     const head = `<div class="ph">${p.avatar ? `<img src="${esc(p.avatar)}">` : '<div style="width:72px;height:72px;border-radius:50%;background:#2a1c47;display:grid;place-items:center;font-size:30px">👤</div>'}
-      <div style="flex:1"><div class="pn" style="color:${esc(p.color || '#fff')}">${esc(p.name)}</div><div class="muted">${p.login ? `@${esc(p.login)} · <a href="${esc(p.url)}" target="_blank">twitch.tv/${esc(p.login)} ↗</a>` : 'No Twitch name linked'}${p.discord ? ` · Discord: <b>${esc(p.discord.name)}</b>` : ''}</div>
+      <div style="flex:1"><div class="pn" style="color:${esc(p.color || '#fff')}">${esc(p.name)}</div><div class="muted">${p.login ? `@${esc(p.login)} · <a href="${esc(p.url)}" target="_blank">twitch.tv/${esc(p.login)} ↗</a> <button style="padding:2px 9px;margin-left:4px" onclick="Profile.so()" title="Shout them out: a “go check them out” line in chat, plus Twitch’s own shout-out box when you're live">📣 Shout out</button><span id="profSo" class="muted" style="margin-left:6px"></span>` : 'No Twitch name linked'}${p.discord ? ` · Discord: <b>${esc(p.discord.name)}</b>` : ''}</div>
       <div class="muted" style="font-size:13px">${p.id && !p.slim ? `<span title="Picked in chat with !id">${p.id === 'm' ? '👨 man' : p.id === 'f' ? '👩 woman' : '🧑 non-binary'}</span> · ` : ''}${p.look && !p.slim ? `<span title="Made their own character in Discord with /character: ${Object.entries(p.look).map(([k, v]) => k + ' ' + v).join(', ')}">🎨 own character</span> · ` : ''}${p.bday ? `<span title="They told chat their birthday (no year is ever kept)">🎂 ${esc(p.bday.day)}${p.bday.today ? ' <b>(today!)</b>' : ''}</span> · ` : ''}${p.mod ? '🛡️ mod · ' : ''}${p.vip ? '💎 VIP · ' : ''}${p.sub?.now ? '⭐ subscriber · ' : ''}${p.streak ? `🔥 ${p.streak}-stream watch streak` : ''}</div>
       <div style="font-size:13px;margin-top:2px${p.slim ? ';display:none' : ''}">${p.linked ? `🔗 Linked to Discord ${p.linkedAt > 0 ? 'on <b>' + new Date(p.linkedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + '</b>' : p.linkedAt < 0 ? 'before ' + new Date(-p.linkedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}` : `<span class="muted">🔗 Not linked to Discord${p.tracked ? '' : ': stats only count once they link their Twitch with <code>/linktwitch</code> in Discord'}</span>`}</div></div>
       <button onclick="Profile.close()">✕</button></div>`;
@@ -99,6 +99,7 @@ window.Profile = (() => {
     if (action === 'ban' && !confirm(`Ban ${cur.name} from your chat?`)) return;
     const r = await post('/api/chat/mod', { action, login: cur.login, seconds }); if (!r.error) alert(action === 'unban' ? '↩️ Unbanned.' : action === 'ban' ? '🔨 Banned.' : '⏱ Timed out.');
   }
+  async function so() { const el = document.getElementById('profSo'); if (el) el.textContent = '📣 …'; const r = await post('/api/shoutout', { name: cur.login, via: 'profile' }); if (el) el.textContent = r.error ? '⚠️ ' + r.error : r.twitch && r.twitch !== 'ok' ? '✅ Chat line sent. ' + r.twitch : r.twitch === 'ok' ? '✅ Shouted out (with Twitch’s shout-out box)' : '✅ Shouted out in chat'; }
   async function spins(sign) { const n = Math.abs(Number(document.getElementById('profN').value) || 1) * sign; const r = await post('/api/wheel/bank', { who: cur.login || cur.name, n, reason: document.getElementById('profWhy').value || (sign > 0 ? 'given' : 'taken away') }); if (!r.error) open(cur.login); }
   // double-click a name anywhere → their profile
   document.addEventListener('dblclick', async e => {
@@ -109,5 +110,5 @@ window.Profile = (() => {
     const r = await fetch('/api/viewer-lookup?name=' + encodeURIComponent(word)); if (!r.ok) return;
     const j = await r.json(); if (j.login || j.discordId) open(j.login, j);
   });
-  return { open, close: () => dlg?.close(), tab: t => { tab = t; draw(); }, mod, spins };
+  return { open, close: () => dlg?.close(), tab: t => { tab = t; draw(); }, mod, spins, so };
 })();

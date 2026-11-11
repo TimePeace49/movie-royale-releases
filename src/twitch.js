@@ -3,8 +3,8 @@ import WebSocket from 'ws';
 import { db, save } from './store.js';
 
 import { brand as brandOut } from './edition.js';
-export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit', 'user:read:follows'];
-export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit', 'user:read:follows']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
+export const SCOPES = ['channel:manage:redemptions', 'channel:read:redemptions', 'bits:read', 'user:write:chat', 'moderator:read:followers', 'moderator:manage:banned_users', 'moderator:manage:chat_messages', 'moderator:read:chatters', 'channel:manage:raids', 'channel:read:ads', 'clips:edit', 'user:read:follows', 'moderator:manage:shoutouts'];
+export const OPTIONAL_SCOPES = ['channel:read:ads', 'clips:edit', 'user:read:follows', 'moderator:manage:shoutouts']; // (📺 ad warnings, 1.76.0: only asked about when that's turned on)
 export const status = { state: 'off', error: null, login: null, chat: 'off' };
 
 let handlers = { redeem: () => {}, cheer: () => {}, chat: () => {}, change: () => {}, live: () => {}, sub: () => {}, alert: () => {}, clear: () => {}, raidOut: () => {} };
@@ -391,6 +391,16 @@ export async function startRaid(toId) {
   if (!(status.scopes || []).includes('channel:manage:raids')) throw new Error('Sign in with Twitch again so Movie Royal can start raids (new permission)');
   await helix(`raids?from_broadcaster_id=${status.userId}&to_broadcaster_id=${encodeURIComponent(toId)}`, { method: 'POST', body: '{}' });
 }
+// 📣 (1.127.0, Derek) Twitch's own /shoutout (the purple "go follow" box in chat). Twitch's limits: one every 2 minutes, the same person once an hour, only while live.
+export const canShoutout = () => (status.scopes || []).includes('moderator:manage:shoutouts');
+export async function shoutout(toId) {
+  if (!status.userId) throw new Error('Sign in with Twitch first (Settings → 💜 Twitch)');
+  if (!canShoutout()) throw new Error('Sign in with Twitch again so the app can do shout-outs (a new permission): Settings → 💜 Twitch → Sign in');
+  try { await helix(`chat/shoutouts?from_broadcaster_id=${status.userId}&to_broadcaster_id=${encodeURIComponent(toId)}&moderator_id=${status.userId}`, { method: 'POST' }); }
+  catch (e) { const t = e.message || ''; if (/not live|offline/i.test(t)) throw new Error("Twitch only does its shout-out box while you're live"); if (/too many|429|cooldown|rate/i.test(t)) throw new Error('Twitch allows one shout-out every 2 minutes, and the same person once an hour'); if (/yourself|same/i.test(t)) throw new Error("You can't shout yourself out"); throw new Error('Twitch could not do the shout-out: ' + t); }
+}
+/** the game / title someone last streamed (for the shout-out chat line) */
+export async function channelInfo(id) { try { const j = await helix('channels?broadcaster_id=' + encodeURIComponent(id)); const c = j.data?.[0]; return c ? { game: c.game_name || '', title: c.title || '' } : null; } catch { return null; } }
 /** 🚀 Raid tab: stop a raid that hasn't gone yet */
 export async function cancelRaid() { if (!status.userId) throw new Error('Sign in with Twitch first'); await helix(`raids?broadcaster_id=${status.userId}`, { method: 'DELETE' }); }
 export const canSeeFollows = () => !!status.userId && (status.scopes || []).includes('user:read:follows');

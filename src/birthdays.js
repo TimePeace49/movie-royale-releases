@@ -8,7 +8,7 @@ export const setHooks = h => Object.assign(H, h);
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
 const D = () => { const d = (db.bdays ||= {}); d.days ||= {}; d.at ||= {}; d.wished ||= {}; d.popped ||= {}; d.opts ||= {}; return d; };
 /** dayStart: the hour a new day starts. Birx & Jess go live around 1:30 AM and count that as the day before, so theirs starts at 6 AM; everyone else's at midnight. */
-export const opts = () => ({ on: true, command: '!bday', days: 30, wish: true, pop: true, popSound: true, popVol: 25, popStream: true, streamVol: 35, text: '🎂 Happy birthday, {name}! 🎉', dayStart: is('birx') ? 6 : 0, ...D().opts });
+export const opts = () => ({ on: true, command: '!bday', days: 30, wish: true, pop: true, popSound: true, popVol: 25, popStream: true, streamVol: 35, text: '🎂 Happy birthday, {name}! 🎉', dayStart: is('birx') ? 6 : 0, remind: true, remindDays: 7, remindMute: 0, ...D().opts });
 export const days = () => D().days;
 export const dayOf = (now = Date.now(), o = opts()) => now - (Number(o.dayStart) || 0) * 3600000;
 export const mmdd = t => { const x = new Date(t); return String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
@@ -69,12 +69,29 @@ export function setOpts(b, voteCommand = '') {
   const x = D().opts;
   if ('on' in b) x.on = !!b.on; if ('wish' in b) x.wish = !!b.wish; if ('pop' in b) x.pop = !!b.pop; if ('popSound' in b) x.popSound = !!b.popSound; if ('popStream' in b) x.popStream = !!b.popStream; if ('streamVol' in b) x.streamVol = Math.max(0, Math.min(100, Math.round(Number(b.streamVol) || 0))); if ('popVol' in b) x.popVol = Math.max(0, Math.min(100, Math.round(Number(b.popVol) || 0)));
   if ('days' in b) x.days = Math.max(0, Math.min(365, Math.round(Number(b.days) || 0)));
+  if ('remind' in b) { x.remind = !!b.remind; if (b.remind) x.remindMute = 0; }
+  if ('remindDays' in b) x.remindDays = Math.max(1, Math.min(31, Math.round(Number(b.remindDays) || 7)));
+  if ('mute' in b) { const k = String(b.mute), now = Date.now(); x.remindMute = k === 'day' ? now + 86400000 : k === 'week' ? now + 7 * 86400000 : k === 'forever' ? -1 : 0; if (k === 'forever') x.remind = false; if (k === 'off') x.remind = true; }
   if ('dayStart' in b) x.dayStart = Math.max(0, Math.min(12, Math.round(Number(b.dayStart) || 0)));
   if ('text' in b) x.text = String(b.text || '').trim().slice(0, 300) || '🎂 Happy birthday, {name}! 🎉';
   if ('command' in b) { const c = String(b.command || '').trim().toLowerCase().split(/\s+/)[0]; if (/^![a-z0-9_]{2,20}$/.test(c) && c !== voteCommand) x.command = c; else throw new Error('The command has to look like !bday'); }
   save(); H.changed(); return state();
 }
-export const state = (now = Date.now()) => { const d = D(), o = opts(), t = dayOf(now, o), today = mmdd(t); return { opts: o, today, dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(t).getDay()], list: Object.entries(d.days).map(([login, day]) => ({ login, day, nice: nice(day), byChat: !!d.at[login], today: day === today, wished: d.wished[login] === ymd(t) })).sort((a, b) => a.day.localeCompare(b.day) || a.login.localeCompare(b.login)) }; };
+const DAYN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const leap = y => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+/** the next n days (today first, by the app's own day: see dayStart) with everyone whose birthday lands on each; Feb 29 birthdays show on Feb 28 in other years */
+export function week(now = Date.now(), n = opts().remindDays || 7, d = D(), o = opts()) {
+  const t0 = dayOf(now, o), base = new Date(t0); base.setHours(12, 0, 0, 0); const out = [];
+  for (let i = 0; i < n; i++) {
+    const x = new Date(base); x.setDate(base.getDate() + i); const md = mmdd(x.getTime()), y = x.getFullYear();
+    const people = Object.entries(d.days).filter(([, day]) => day === md || (day === '02-29' && md === '02-28' && !leap(y))).map(([l]) => l).sort();
+    out.push({ md, nice: nice(md), dayName: DAYN[x.getDay()], i, today: i === 0, people });
+  }
+  return out;
+}
+/** is the start-up birthday reminder muted right now? (-1 = forever, a time = until then) */
+export const remindMuted = (o = opts(), now = Date.now()) => o.remind === false || o.remindMute === -1 || (Number(o.remindMute) > now);
+export const state = (now = Date.now()) => { const d = D(), o = opts(), t = dayOf(now, o), today = mmdd(t); return { week: week(now, o.remindDays || 7, d, o), muted: remindMuted(o, now), mutedUntil: Number(o.remindMute) > now ? Number(o.remindMute) : o.remindMute === -1 || o.remind === false ? -1 : 0, opts: o, today, dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(t).getDay()], list: Object.entries(d.days).map(([login, day]) => ({ login, day, nice: nice(day), byChat: !!d.at[login], today: day === today, wished: d.wished[login] === ymd(t) })).sort((a, b) => a.day.localeCompare(b.day) || a.login.localeCompare(b.login)) }; };
 export function clearTests() { const d = D(); for (const l of Object.keys(d.days)) if (/^pretend_/.test(l)) { delete d.days[l]; delete d.at[l]; delete d.wished[l]; delete d.popped[l]; } save(); H.changed(); return state(); }
 /** 🧪 walked through with pretend people (nothing saved, nothing said) */
 export function demo() {
@@ -93,6 +110,11 @@ export function demo() {
     add('No wish on other days', wish({ login: 'newbie', name: 'Newbie' }, { ...d, wished: {} }, o, t0 + 86400000) === false);
     const late = new Date(2026, 2, 15, 1, 30).getTime();
     add('Late-night rule (a new day starts at 6 AM): chatting at 1:30 AM on March 15 still counts as March 14', wish({ login: 'newbie', name: 'Newbie' }, { ...d, wished: {} }, { ...o, dayStart: 6 }, late) === true && wish({ login: 'newbie', name: 'Newbie' }, { ...d, wished: {} }, o, late) === false);
+    { const dd = { days: { amy: '03-14', bob: '03-16', cat: '03-25', leapy: '02-29' } }, w = week(t0, 7, dd, o), w2 = week(new Date(2027, 1, 27, 20).getTime(), 3, dd, o), wl = week(late, 2, dd, { ...o, dayStart: 6 });
+      add('📅 Reminder calendar: the next 7 days with their birthdays (today, then in 2 days; not 11 days away)', w.length === 7 && w[0].today && w[0].people.join() === 'amy' && w[2].people.join() === 'bob' && !w.some(x => x.people.includes('cat')));
+      add('📅 A Feb 29 birthday shows on Feb 28 when the year has no Feb 29', w2[1].md === '02-28' && w2[1].people.includes('leapy'));
+      add('📅 The calendar follows “a new day starts at” (1:30 AM on the 15th with 6 AM = the 14th is still today)', wl[0].md === '03-14' && wl[0].people.includes('amy'));
+      add('🔕 Mute: 24 hours / forever stop the reminder, off brings it back', remindMuted({ remind: true, remindMute: t0 + 86400000 }, t0) && !remindMuted({ remind: true, remindMute: t0 + 86400000 }, t0 + 2 * 86400000) && remindMuted({ remind: false, remindMute: -1 }, t0) && !remindMuted({ remind: true, remindMute: 0 }, t0)); }
   } finally { H.say = keep; said.clear(); }
   return { ok: rows.every(r => r.ok), rows };
 }
