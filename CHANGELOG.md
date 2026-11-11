@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.9
+- 🎁 Giveaway tab (Birx & Jess edition): the Map menu now only lists maps that work for the pieces you picked. ⚪ Balls shows the ball and car maps; 🧍 Characters shows the character maps plus the ones that work for both. Switching pieces while a map that doesn't fit is picked puts the map back on 🎲 Random.
+
 ## 1.132.8
 - 🎁 Giveaway tab (Birx & Jess edition): picking a map or changing Pieces now redraws the battle screen right away with that map, and there is a 🔄 Refresh map button next to the Map menu.
 
