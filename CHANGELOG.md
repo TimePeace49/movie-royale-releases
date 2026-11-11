@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.138.0
+- ⚙️ New Settings page: 🍿 Movie night (only in editions that have movie night). Every movie night setting is there in one place: voting, what shows on stream, the watchlist commands and the IMDb links and files.
+- 🔎 On that page, "What the app has" shows how many movies are on the watchlist, how many are rated and how many suggestions are waiting, with three buttons to look through each list and a search box. Compare the numbers with your IMDb profile to see if everything came in. Rated movies show the rating.
+- 🎬 Suggested movies are now in the stats: History → Chat stats has "Most movies suggested" (how many each person suggested and how many of those got watched).
+- 👤 Profiles: the Stats tab lists the movies that person suggested. Once a suggested movie has been watched and rated, its rating shows next to it (⭐ 8/10); otherwise it says if it's on the watchlist or still waiting.
+
 ## 1.137.0
 - 🎲 Help me pick now tries to always give 20 movies. The ones that fit everything you typed come first. If that's fewer than 20, it adds 🔸 close ones (they fit part of what you typed, and each says which part), then 🔹 more of the same kind of movie, then other movies from the watchlist. Each group has its own heading so you can tell them apart.
 

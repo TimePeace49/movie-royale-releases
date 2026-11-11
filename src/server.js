@@ -2275,6 +2275,7 @@ app.get('/api/viewer/:login', async (req, res) => {
     id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
     bday: (() => { const md = birthdays.days()[login]; return md ? { day: birthdays.nice(md), today: md === birthdays.mmdd(birthdays.dayOf()) } : null; })(), // 🎂 their birthday, if they told chat (never a year)
     slim: !edHas('battle'), // 🎭 an edition without battles: no character, respins, movies or games on the profile
+    suggested: feat('movienight') ? watchlist.mine(login) : null, // 🙋 the movies they suggested for the watchlist (with the rating once it was watched)
     acts: feat('songs') || feat('movienight') ? pstats.of(login) : null, // 📊 the Stats tab: songs asked for, movie votes, skips, commands (newest first)
     songs: feat('songs') ? songs.mine(login) : null, // 🎵 their songs in the queue, with the place each one has
     look: (() => { const l = looks.lookOf(discordId) || looks.lookOf(looks.discordFor(login)); return l ? looks.nums(l) : null; })(), // 🎨 their own /character
@@ -5185,7 +5186,8 @@ app.get('/api/history/chat', (req, res) => { // 🕰️ History → 💬 Chat st
   const row = (v, n) => ({ login: v.login, name: v.name || v.login, n }), top = (f, k = 25) => all.map(v => row(v, f(v))).filter(x => x.n > 0).sort((a, b) => b.n - a.n).slice(0, k);
   const months = []; for (let i = 11; i >= 0; i--) { const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)), k = d.toISOString().slice(0, 7); months.push({ k, n: all.reduce((a, v) => a + ((v.byMonth || {})[k] || 0), 0), people: all.filter(v => (v.byMonth || {})[k]).length }); }
   const cmds = {}; for (const [login, p] of Object.entries(db.pstats || {})) { if (skip.has(login) || (!req.query.tests && /^pretend_/.test(login))) continue; for (const [c, x] of Object.entries(p.cmd || {})) { const y = (cmds[c] ||= { cmd: c, n: 0, people: 0, last: 0 }); y.n += x.n || 0; y.people++; y.last = Math.max(y.last, x.last || 0); } }
-  res.json({ people: all.length, msgs: all.reduce((a, v) => a + (v.msgs || 0), 0), month: months[11].n, monthPeople: months[11].people, year: all.reduce((a, v) => a + ((v.byYear || {})[yk] || 0), 0), hours: Math.round(all.reduce((a, v) => a + (v.watchMins || 0) + (v.watchOld || 0), 0) / 60),
+  const sugg = feat('movienight') ? watchlist.suggStats((l, s) => skip.has(l) || (!req.query.tests && (s.test || /^pretend_/.test(l)))) : null;
+  res.json({ sugg, people: all.length, msgs: all.reduce((a, v) => a + (v.msgs || 0), 0), month: months[11].n, monthPeople: months[11].people, year: all.reduce((a, v) => a + ((v.byYear || {})[yk] || 0), 0), hours: Math.round(all.reduce((a, v) => a + (v.watchMins || 0) + (v.watchOld || 0), 0) / 60),
     topAll: top(v => v.msgs || 0), topMonth: top(v => (v.byMonth || {})[mk] || 0), topYear: top(v => (v.byYear || {})[yk] || 0), topWatch: top(v => Math.round(((v.watchMins || 0) + (v.watchOld || 0)) / 6) / 10),
     newest: [...all].filter(v => v.first).sort((a, b) => b.first - a.first).slice(0, 15).map(v => ({ login: v.login, name: v.name || v.login, at: v.first })), months, commands: Object.values(cmds).sort((a, b) => b.n - a.n).slice(0, 40) });
 });

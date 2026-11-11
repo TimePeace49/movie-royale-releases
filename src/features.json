@@ -39,6 +39,7 @@
  {"id":"sec:account:safety-privacy","kind":"off","cat":"Settings: 👤 Account & updates","name":"🔐 Safety & privacy","text":"One section of Settings → 👤 Account & updates.","hide":{"sub":"account","h":"🔐 Safety & privacy"}},
  {"id":"sec:account:updates","kind":"off","cat":"Settings: 👤 Account & updates","name":"🔄 Updates","text":"One section of Settings → 👤 Account & updates.","hide":{"sub":"account","h":"🔄 Updates"}},
  {"id":"sec:links:connections","kind":"off","cat":"Settings: 🔗 Connections","name":"🔗 Connections","text":"One section of Settings → 🔗 Connections.","hide":{"sub":"links","h":"🔗 Connections"}},
+ {"id":"sec:mnight:movie-night","kind":"off","cat":"Settings: 🍿 Movie night","name":"🍿 Movie night","text":"One section of Settings → 🍿 Movie night.","hide":{"sub":"mnight","h":"🍿 Movie night"}},
  {"id":"sec:game:the-battle","kind":"off","cat":"Settings: ⚔️ Game","name":"⚔️ The battle","text":"One section of Settings → ⚔️ Game.","hide":{"sub":"game","h":"⚔️ The battle"}},
  {"id":"sec:game:battle-timer-elimination-pacer","kind":"off","cat":"Settings: ⚔️ Game","name":"⏱️ Battle timer & ⏳ Elimination pacer","text":"One section of Settings → ⚔️ Game.","hide":{"sub":"game","h":"⏱️ Battle timer & ⏳ Elimination pacer"}},
  {"id":"sec:game:inactive-people-s-movies","kind":"off","cat":"Settings: ⚔️ Game","name":"🧹 Inactive people's movies","text":"One section of Settings → ⚔️ Game.","hide":{"sub":"game","h":"🧹 Inactive people's movies"}},

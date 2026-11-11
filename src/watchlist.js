@@ -107,7 +107,8 @@ export async function suggest(m, text, { hand = false, test = false, d = data(),
   let found = null; try { found = await lookup(it.title, it.year); } catch {} /* the real name, year and IMDb id (when a movie key is set up) */
   if (found && found.title) { it = { title: found.title, year: found.year || it.year, imdb: found.imdb || '' }; const r2 = ratedAs(it, d); if (r2) return { ok: false, why: 'rated', movie: r2 }; const h2 = onList(it, d); if (h2) return { ok: false, why: 'dupe', movie: h2 }; }
   const row = { id: uid(), title: it.title, year: it.year, imdb: it.imdb, by: m.name || m.login || '', login: low(m.login), at: Date.now(), src: hand ? 'hand' : 'chat', onImdb: false, found: !!found, ...(test ? { test: true } : {}) };
-  d.list.push(row); if (d === data()) { H.act(`${row.by || 'You'} suggested a movie for the watchlist: ${row.title}${row.year ? ` (${row.year})` : ''}`, { who: row.by, kind: 'watchSuggest', test }); changed(); }
+  d.list.push(row); if (row.login) { (d.sugg ||= []).push({ title: row.title, year: row.year, imdb: row.imdb, login: row.login, name: row.by, at: row.at, ...(test ? { test: true } : {}) }); if (d.sugg.length > 5000) d.sugg.splice(0, d.sugg.length - 5000); }
+  if (d === data()) { H.act(`${row.by || 'You'} suggested a movie for the watchlist: ${row.title}${row.year ? ` (${row.year})` : ''}`, { who: row.by, kind: 'watchSuggest', test }); changed(); }
   return { ok: true, movie: row };
 }
 const nice = x => `${x.title}${x.year ? ` (${x.year})` : ''}`;
@@ -194,7 +195,20 @@ export function edit(b) {
 }
 /** Where the "Add on IMDb" button goes: the movie's own page when its id is known, else IMDb's search for it. */
 export const imdbLink = x => (x.imdb ? `https://www.imdb.com/title/${x.imdb}/` : `https://www.imdb.com/find/?s=tt&ttype=ft&q=${encodeURIComponent(x.title + (x.year ? ' ' + x.year : ''))}`);
-export function clearTests() { const d = data(), n = d.list.length; d.list = d.list.filter(x => !x.test); if (d.list.length !== n) changed(); return n - d.list.length; }
+/* 🙋 (1.138.0) Who suggested what, kept for good (a movie leaves the watchlist once it's rated, but the suggestion stays): for profiles and the chat stats. */
+const suggLog = d => { if (!d.suggFilled) { d.suggFilled = true; d.sugg ||= []; for (const x of d.list) if (x.login && !d.sugg.some(s => s.login === x.login && same(s, x))) d.sugg.push({ title: x.title, year: x.year, imdb: x.imdb, login: x.login, name: x.by, at: x.at, ...(x.test ? { test: true } : {}) }); } return d.sugg || []; };
+/** One person's suggestions, newest first: each with where it stands now (rated with the rating / on the watchlist / waiting / taken off). */
+export function mine(login, d = data()) {
+  const k = low(login); if (!k) return [];
+  return suggLog(d).filter(s => s.login === k).sort((a, b) => b.at - a.at).map(s => { const r = ratedAs(s, d), l = r ? null : onList(s, d); return { title: s.title, year: s.year || '', at: s.at, test: !!s.test, rate: r ? r.rate : 0, where: r ? 'rated' : l ? (l.onImdb ? 'list' : 'waiting') : 'gone' }; });
+}
+/** For the chat stats: who suggested the most, and how many of everyone's suggestions got watched. */
+export function suggStats(skip = () => false, d = data()) {
+  const per = new Map(); let all = 0, watched = 0;
+  for (const s of suggLog(d)) { if (skip(s.login, s)) continue; all++; const r = ratedAs(s, d); if (r) watched++; const p = per.get(s.login) || { login: s.login, name: s.name || s.login, n: 0, watched: 0 }; p.n++; if (r) p.watched++; if (s.name) p.name = s.name; per.set(s.login, p); }
+  return { all, watched, top: [...per.values()].sort((a, b) => b.n - a.n || b.watched - a.watched).slice(0, 25) };
+}
+export function clearTests() { const d = data(), n = d.list.length; d.list = d.list.filter(x => !x.test); if (d.sugg) d.sugg = d.sugg.filter(x => !x.test); if (d.list.length !== n) changed(); return n - d.list.length; }
 export function state() {
   const d = data(), o = opts(d), row = x => { const { plot, act, ...r } = x; return { ...r, link: imdbLink(x) }; };
   return { on: H.on(), opts: o, names: H.names(), sync: d.sync || null, syncing, listAt: d.listAt || 0, ratedAt: d.ratedAt || 0,
@@ -233,5 +247,7 @@ export async function demo() {
     add("…movies already on tonight's list are left out", names('comedy', { skip: ['Clue (1985)'] }) === 'Big Trouble in Little China, Tremors', names('comedy', { skip: ['Clue (1985)'] })); { const bare2 = { opts: {}, rated: [], list: P.list.map(x => ({ id: x.id, title: x.title, year: x.year, by: x.by })) }, web = [{ label: '🎭 Kurt Russell', words: ['kurt', 'russell'], movies: [{ title: 'The Thing', year: '1982' }, { title: 'Big Trouble in Little China', year: '1986' }, { title: 'Escape from New York', year: '1981' }] }], r = pick('kurt russell 1982', { d: bare2, web }); add("…an online look-up finds an actor's movies even before the watchlist's own details came in", r.list.filter(x => !x.tier).map(x => x.title).join() === 'The Thing' && r.web[0].n === 1, r.list.filter(x => !x.tier).map(x => x.title).join(', ') + ' (via ' + r.web[0].label + ')'); }
     { const big = { opts: {}, rated: [], list: [...P.list, ...Array.from({ length: 30 }, (_, i) => ({ id: 'x' + i, title: 'Pretend Movie ' + (i + 1), year: String(1970 + i), g: i % 3 ? 'Drama' : 'Horror, Thriller', dir: '', act: '', plot: '', by: '' }))] }, r = pick('kurt russell comedy', { d: big }), t = r.list.map(x => x.tier); add('…too few that fit: it still gives 20, the exact ones first, then close ones, then more like them', r.list.length === 20 && r.total === 1 && r.list[0].title === 'Big Trouble in Little China' && t.join() === [...t].sort().join() && r.list[1].tier === 1 && (r.list[1].fit || []).length > 0, `${r.list.length} shown: ${t.filter(x => !x).length} exact, ${t.filter(x => x === 1).length} close, ${t.filter(x => x > 1).length} more ideas`); }
     add('…and nothing typed gives a mixed handful', pick('', { d: P }).total === 4, pick('', { d: P }).total + ' movies'); }
+  { const P = { opts: {}, rated: [], list: [] }; await suggest({ login: 'Pretend_Ash', name: 'Pretend_Ash' }, 'Tremors (1990)', { d: P, lookup: async () => null }); await suggest({ login: 'pretend_ash', name: 'Pretend_Ash' }, 'Clue (1985)', { d: P, lookup: async () => null }); applyImport(readFile('Const,Your Rating,Date Rated,Title,Title Type,Year\ntt0100814,8,2026-11-10,Tremors,Movie,1990\n'), { d: P });
+    const m = mine('PRETEND_ASH', P), st = suggStats(() => false, P); add("🙋 A person's suggestions are kept, and one that got watched shows its rating", m.length === 2 && m.find(x => x.title === 'Tremors')?.rate === 8 && m.find(x => x.title === 'Clue')?.where === 'waiting', m.map(x => `${x.title}: ${x.rate ? x.rate + '/10' : x.where}`).join(', ')); add('…and the stats count who suggested the most', st.all === 2 && st.watched === 1 && st.top[0].n === 2, `${st.top[0].name}: ${st.top[0].n} suggested, ${st.top[0].watched} watched`); }
   return { ok: rows.every(x => x.ok), rows };
 }
