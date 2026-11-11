@@ -5,6 +5,7 @@ Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a 
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
 ## v1.132.7: What's new
+- {movienight} 🔎 History → 🍿 Movie nights: search for a movie to see every night it was on the list or won, or search a date to find that night.
 - {songs} ⭐ History → 🎵 Music → Songs you rated: every song you gave a rating, with a search box and a sort menu. Click the stars to change a rating.
 
 ## v1.132.6: What's new
