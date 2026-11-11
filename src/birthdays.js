@@ -67,7 +67,7 @@ export function set(name, day) {
 }
 export function setOpts(b, voteCommand = '') {
   const x = D().opts;
-  if ('on' in b) x.on = !!b.on; if ('wish' in b) x.wish = !!b.wish; if ('pop' in b) x.pop = !!b.pop; if ('popSound' in b) x.popSound = !!b.popSound; if ('popStream' in b) x.popStream = !!b.popStream; if ('streamVol' in b) x.streamVol = Math.max(0, Math.min(100, Math.round(Number(b.streamVol) || 0))); if ('popVol' in b) x.popVol = Math.max(0, Math.min(100, Math.round(Number(b.popVol) || 0)));
+  if ('on' in b) x.on = !!b.on; if ('wish' in b) x.wish = !!b.wish; if ('pop' in b) x.pop = !!b.pop; if ('popSound' in b) x.popSound = !!b.popSound; if ('popStream' in b) x.popStream = !!b.popStream; if ('streamVol' in b) x.streamVol = Math.max(0, Math.min(100, Math.round(Number(b.streamVol) || 0))); if ('soundFile' in b) x.soundFile = String(b.soundFile || '').replace(/[\\/]/g, '').slice(0, 120); if ('popVol' in b) x.popVol = Math.max(0, Math.min(100, Math.round(Number(b.popVol) || 0)));
   if ('days' in b) x.days = Math.max(0, Math.min(365, Math.round(Number(b.days) || 0)));
   if ('remind' in b) { x.remind = !!b.remind; if (b.remind) x.remindMute = 0; }
   if ('remindDays' in b) x.remindDays = Math.max(1, Math.min(31, Math.round(Number(b.remindDays) || 7)));

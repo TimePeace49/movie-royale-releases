@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.139.0
+- 🎵 **Your own birthday sound.** Chat bot → 🎂 Birthdays has a new **🎵 Use my own sound file** button: pick any sound file (mp3, wav, ogg…) and the birthday pop-up plays that instead of the party whistle, in the app and on stream. **↩ Back to the party whistle** undoes it. The volume sliders and 🔊 Hear it / 📺 Play it on stream work with your file. Test tab → Birthdays → 🎵 Own birthday sound checks it.
+
 ## 1.138.2
 - 🎬 **Movies only from IMDb links.** TV episodes, TV shows and games on an IMDb ratings page or watchlist are now left out when the app reads the link (a whole season of Kenny vs. Spenny episodes had come in as rated movies). Ones that already came in are taken out by themselves: on the next read, and by a look-up of each rated title shortly after the app opens. TV movies and specials stay. The "Last read" line says how many were left out. Checked by the watchlist rules test on the Test tab.
 - 📋 **Birx & Jess edition:** their IMDb watchlist and ratings links are now filled in by themselves, so the app reads both when it opens with nothing to paste. (You can still change or empty the boxes in Settings → 🍿 Movie night.) The watchlist rules test on the Test tab checks it.

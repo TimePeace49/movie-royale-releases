@@ -5229,8 +5229,8 @@ app.post('/api/test/songs', sgTry(async b => {
   const n = PRE[Math.floor(Math.random() * PRE.length)]; twitchHandlers.chat({ login: 'pretend_dj', name: 'Pretend_DJ', text: `${songs.opts().command} ${b.song || n}`, userId: 'pretend-dj', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 300)); for (const q of songs.data().queue) if (q.login === 'pretend_dj') { q.test = true; if (songs.data().lib[q.key]) songs.data().lib[q.key].test = true; } return { ok: true };
 }));
 // 🎂 Birthdays (1.96.0, every edition): !bday in chat (never a year), a happy-birthday wish, the list in Settings → 💜 Twitch. See src/birthdays.js
-birthdays.setHooks({ pop: async p => { const o = birthdays.opts(), send = x => broadcast({ type: 'bdayPop', ...p, ...x, sound: o.popSound !== false, vol: o.popVol }, 'control'); if (!p.first) return send({}); if (o.popStream !== false) bdayStreamSound(o.streamVol); let avatar = ''; try { avatar = p.test ? '' : (await Promise.race([twitch.getUsers([p.login]), new Promise(r => setTimeout(() => r(null), 1500))]))?.get?.(p.login)?.avatar || ''; } catch {} send({ avatar }); }, say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
-app.get('/api/birthdays', (req, res) => res.json(birthdays.state()));
+birthdays.setHooks({ pop: async p => { const o = birthdays.opts(), send = x => broadcast({ type: 'bdayPop', ...p, ...x, sound: o.popSound !== false, vol: o.popVol, file: bdaySoundUrl() }, 'control'); if (!p.first) return send({}); if (o.popStream !== false) bdayStreamSound(o.streamVol); let avatar = ''; try { avatar = p.test ? '' : (await Promise.race([twitch.getUsers([p.login]), new Promise(r => setTimeout(() => r(null), 1500))]))?.get?.(p.login)?.avatar || ''; } catch {} send({ avatar }); }, say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
+app.get('/api/birthdays', (req, res) => res.json({ ...birthdays.state(), sound: bdaySoundUrl() }));
 app.post('/api/birthdays', wTry(b => birthdays.set(b.login, b.day)));
 app.post('/api/birthdays/opts', wTry(b => { const r = birthdays.setOpts(b, String(db.movieNight?.opts?.command || '!vote')); broadcast({ type: 'movieNight' }, 'control'); return r; }));
 app.post('/api/test/birthday', wTry(b => {
@@ -5682,9 +5682,24 @@ app.post('/api/test/sound-find', wTry(async () => { // 🧪 pretend: two sound f
   }
 }));
 setTimeout(() => { try { if ((db.settings.sfxFolders || []).length && chatbot.data().commands.some(c => !c.sound && c.soundMissing)) sfxFind({ why: 'start' }).catch(() => {}); } catch {} }, 40000); // (on open: look in the remembered folders again)
+/** 🎵 (1.139.0, Derek: "for birthday popup sound use this one instead") your own sound file for the birthday pop-up (app + stream) instead of the built-in party whistle. Kept with the sound alert files. */
+function bdaySoundUrl() { const f = String(birthdays.opts().soundFile || ''); try { return f && fs.existsSync(path.join(SFXDIR, f)) ? '/sfx/' + encodeURIComponent(f) : ''; } catch { return ''; } }
+app.post('/api/birthdays/sound', wTry(b => {
+  if (b.remove) { birthdays.setOpts({ soundFile: '' }); broadcast({ type: 'birthdays' }, 'control'); return { file: '', url: '' }; }
+  let name = String(b.name || '').replace(/[\\/:*?"<>|]/g, '').trim().slice(-100); if (!SFX_OK.test(name)) throw new Error('Pick a sound file (mp3, wav, ogg, m4a, flac, aac or opus).');
+  const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]*,/, ''), 'base64'); if (!buf.length) throw new Error('That file is empty.'); if (buf.length > 25e6) throw new Error('That file is too big (25 MB at most).');
+  fs.mkdirSync(SFXDIR, { recursive: true }); name = sfxFree(name, buf); fs.writeFileSync(path.join(SFXDIR, name), buf); birthdays.setOpts({ soundFile: name }); broadcast({ type: 'birthdays' }, 'control'); return { file: name, url: bdaySoundUrl() };
+}));
+app.post('/api/test/bday-sound', wTry(b => { /* 🧪 own birthday sound: a generated beep is set as the sound, checked, then the old choice is put back */
+  const was = birthdays.opts().soundFile || '', sr = 8000, n = sr / 4, wav = Buffer.alloc(44 + n * 2); wav.write('RIFF', 0); wav.writeUInt32LE(36 + n * 2, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22); wav.writeUInt32LE(sr, 24); wav.writeUInt32LE(sr * 2, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(n * 2, 40); for (let i = 0; i < n; i++) wav.writeInt16LE(Math.round(Math.sin(i / sr * 2 * Math.PI * 880) * 9000), 44 + i * 2);
+  fs.mkdirSync(SFXDIR, { recursive: true }); const f = 'test-birthday-beep.wav'; fs.writeFileSync(path.join(SFXDIR, f), wav); birthdays.setOpts({ soundFile: f }); const url = bdaySoundUrl(), rows = [{ what: 'Your own file becomes the birthday sound (app + stream)', ok: url === '/sfx/' + f, got: url || 'none' }];
+  birthdays.setOpts({ soundFile: '' }); rows.push({ what: 'Taking it off goes back to the party whistle', ok: bdaySoundUrl() === '', got: bdaySoundUrl() || 'party whistle' });
+  birthdays.setOpts({ soundFile: 'not-there.mp3' }); rows.push({ what: 'A file that is gone = the party whistle (never silence)', ok: bdaySoundUrl() === '', got: bdaySoundUrl() || 'party whistle' });
+  birthdays.setOpts({ soundFile: was }); try { fs.unlinkSync(path.join(SFXDIR, f)); } catch {} return { ok: rows.every(x => x.ok), rows };
+}));
 /** 🥳 (1.126.1, Derek: "the party sound can happen on stream") the birthday party whistle through OBS: the sound alert page (in every scene) or the battle screen in OBS. Never the app (it plays its own). */
 function bdayStreamSound(vol = 35) {
-  const msg = { type: 'sfxCmd', url: '/sounds/party-whistle.wav', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
+  const msg = { type: 'sfxCmd', url: bdaySoundUrl() || '/sounds/party-whistle.wav', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
   const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : null; if (where) broadcast(msg, where); return { ok: !!where, where };
 }
 app.post('/api/test/bday-stream-sound', wTry(b => bdayStreamSound(b.vol ?? birthdays.opts().streamVol)));
