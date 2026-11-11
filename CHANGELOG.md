@@ -3,7 +3,7 @@
 What changed in each version of Movie Royal. Newest first.
 
 ## 1.132.5
-- 🔤 Chat bot: the Special words button moved from the top right to the Commands tab, right after the !addcom / !editcom / !delcom line. It's on the Timers tab too.
+- 🔤 Chat bot: the Special words button (now called 🔤 Special words guide) moved from the top right to the Commands tab, right after the !addcom / !editcom / !delcom line. It's on the Timers tab too.
 - ⭐ Song ratings out of 10 now show 10 stars (out of 5 shows 5). Half stars still work.
 - ⭐ "Out of 100" is gone: ratings are out of 5 or out of 10. If you had picked 100, your ratings were turned into out of 10. Switching between 5 and 10 now moves the ratings you already gave over to the new scale.
 
