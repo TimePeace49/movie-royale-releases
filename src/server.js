@@ -4973,7 +4973,7 @@ app.post('/api/test/songs', sgTry(async b => {
   const n = PRE[Math.floor(Math.random() * PRE.length)]; twitchHandlers.chat({ login: 'pretend_dj', name: 'Pretend_DJ', text: `${songs.opts().command} ${b.song || n}`, userId: 'pretend-dj', badges: {}, pretend: true }); await new Promise(r => setTimeout(r, 300)); for (const q of songs.data().queue) if (q.login === 'pretend_dj') { q.test = true; if (songs.data().lib[q.key]) songs.data().lib[q.key].test = true; } return { ok: true };
 }));
 // 🎂 Birthdays (1.96.0, every edition): !bday in chat (never a year), a happy-birthday wish, the list in Settings → 💜 Twitch. See src/birthdays.js
-birthdays.setHooks({ pop: async p => { const o = birthdays.opts(), send = x => broadcast({ type: 'bdayPop', ...p, ...x, sound: o.popSound !== false, vol: o.popVol }, 'control'); if (!p.first) return send({}); let avatar = ''; try { avatar = p.test ? '' : (await Promise.race([twitch.getUsers([p.login]), new Promise(r => setTimeout(() => r(null), 1500))]))?.get?.(p.login)?.avatar || ''; } catch {} send({ avatar }); }, say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
+birthdays.setHooks({ pop: async p => { const o = birthdays.opts(), send = x => broadcast({ type: 'bdayPop', ...p, ...x, sound: o.popSound !== false, vol: o.popVol }, 'control'); if (!p.first) return send({}); if (o.popStream !== false) bdayStreamSound(o.streamVol); let avatar = ''; try { avatar = p.test ? '' : (await Promise.race([twitch.getUsers([p.login]), new Promise(r => setTimeout(() => r(null), 1500))]))?.get?.(p.login)?.avatar || ''; } catch {} send({ avatar }); }, say: t => twitch.say(t), act: (text, o = {}) => act('chat', text, { icon: '🎂', ...o }), changed: () => broadcast({ type: 'birthdays' }, 'control'), isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase() });
 app.get('/api/birthdays', (req, res) => res.json(birthdays.state()));
 app.post('/api/birthdays', wTry(b => birthdays.set(b.login, b.day)));
 app.post('/api/birthdays/opts', wTry(b => { const r = birthdays.setOpts(b, String(db.movieNight?.opts?.command || '!vote')); broadcast({ type: 'movieNight' }, 'control'); return r; }));
@@ -5346,6 +5346,12 @@ const sfxFree = (name, buf) => { const f = path.join(SFXDIR, name); try { if (!f
 function sfxTake(from) { // (import: the old bot's sound file is on this same PC → copy it in; not there → the command says so until you pick the file)
   try { from = String(from || '').trim().replace(/^"|"$/g, ''); if (!SFX_OK.test(from) || !fs.existsSync(from)) return null; const st = fs.statSync(from); if (!st.isFile() || st.size > 25e6) return null; const buf = fs.readFileSync(from), name = sfxFree(sfxName(from), buf); fs.writeFileSync(path.join(SFXDIR, name), buf); return name; } catch { return null; }
 }
+/** 🥳 (1.126.1, Derek: "the party sound can happen on stream") the birthday party whistle through OBS: the sound alert page (in every scene) or the battle screen in OBS. Never the app (it plays its own). */
+function bdayStreamSound(vol = 35) {
+  const msg = { type: 'sfxCmd', url: '/sounds/party-whistle.wav', vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
+  const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : null; if (where) broadcast(msg, where); return { ok: !!where, where };
+}
+app.post('/api/test/bday-stream-sound', wTry(b => bdayStreamSound(b.vol ?? birthdays.opts().streamVol)));
 function sfxPlay(file, vol = 80, test) {
   if (!file || !fs.existsSync(path.join(SFXDIR, sfxName(file)))) return { ok: false, why: 'missing' };
   const msg = { type: 'sfxCmd', url: '/sfx/' + encodeURIComponent(sfxName(file)), vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));

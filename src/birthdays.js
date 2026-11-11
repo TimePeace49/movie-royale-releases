@@ -8,7 +8,7 @@ export const setHooks = h => Object.assign(H, h);
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
 const D = () => { const d = (db.bdays ||= {}); d.days ||= {}; d.at ||= {}; d.wished ||= {}; d.popped ||= {}; d.opts ||= {}; return d; };
 /** dayStart: the hour a new day starts. Birx & Jess go live around 1:30 AM and count that as the day before, so theirs starts at 6 AM; everyone else's at midnight. */
-export const opts = () => ({ on: true, command: '!bday', days: 30, wish: true, pop: true, popSound: true, popVol: 25, text: '🎂 Happy birthday, {name}! 🎉', dayStart: is('birx') ? 6 : 0, ...D().opts });
+export const opts = () => ({ on: true, command: '!bday', days: 30, wish: true, pop: true, popSound: true, popVol: 25, popStream: true, streamVol: 35, text: '🎂 Happy birthday, {name}! 🎉', dayStart: is('birx') ? 6 : 0, ...D().opts });
 export const days = () => D().days;
 export const dayOf = (now = Date.now(), o = opts()) => now - (Number(o.dayStart) || 0) * 3600000;
 export const mmdd = t => { const x = new Date(t); return String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
@@ -67,7 +67,7 @@ export function set(name, day) {
 }
 export function setOpts(b, voteCommand = '') {
   const x = D().opts;
-  if ('on' in b) x.on = !!b.on; if ('wish' in b) x.wish = !!b.wish; if ('pop' in b) x.pop = !!b.pop; if ('popSound' in b) x.popSound = !!b.popSound; if ('popVol' in b) x.popVol = Math.max(0, Math.min(100, Math.round(Number(b.popVol) || 0)));
+  if ('on' in b) x.on = !!b.on; if ('wish' in b) x.wish = !!b.wish; if ('pop' in b) x.pop = !!b.pop; if ('popSound' in b) x.popSound = !!b.popSound; if ('popStream' in b) x.popStream = !!b.popStream; if ('streamVol' in b) x.streamVol = Math.max(0, Math.min(100, Math.round(Number(b.streamVol) || 0))); if ('popVol' in b) x.popVol = Math.max(0, Math.min(100, Math.round(Number(b.popVol) || 0)));
   if ('days' in b) x.days = Math.max(0, Math.min(365, Math.round(Number(b.days) || 0)));
   if ('dayStart' in b) x.dayStart = Math.max(0, Math.min(12, Math.round(Number(b.dayStart) || 0)));
   if ('text' in b) x.text = String(b.text || '').trim().slice(0, 300) || '🎂 Happy birthday, {name}! 🎉';

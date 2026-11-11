@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.126.1
+- 🥳 The birthday party whistle now also plays **on stream** (through OBS's sound alert source, or the battle screen if that's in OBS), with its own stream volume. Switch it off in Settings → Twitch → 🎂 Birthdays (📺 Play the whistle on stream too); 📺 Play it on stream tries it.
+
 ## 1.126.0
 - 🎉 **Birthday pop-up:** when someone whose saved birthday is today chats, a pop-up opens in the app (top right, on any tab) with their picture, "It's their birthday today!" and what they said. Everything else they say keeps showing in it until you close it. A quiet party-whistle sound plays when it opens (only you hear it). The chat "happy birthday" still happens too.
 - Settings → Twitch → 🎂 Birthdays: switches for the pop-up and the whistle, a volume slider and 🔊 Hear it. Test tab → 🎂 Birthdays → 🎉 Birthday pop-up tries it with a pretend viewer.
