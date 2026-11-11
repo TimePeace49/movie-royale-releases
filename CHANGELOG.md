@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.132.3
+- 🔉 Song volume from chat: anyone can now change it with !volume 40 (before, only mods could). 🎵 Songs → Settings → "Who can change the volume" picks who may: everyone, followers, subs, VIPs, mods or only you. Anyone can still type !volume to see what it is.
+- 🧪 Test tab → 🎵 Song requests → 🔉 Volume from chat.
+
 ## 1.132.2
 - ↗ Popped-out tabs are now normal Windows windows: a title bar to drag them around, edges and corners to resize them, and minimize / maximize buttons. This works even when the main window is in borderless or fullscreen mode. They open at normal size (100%) instead of shrinking to fit; Ctrl + mouse wheel still zooms if you want it, and Ctrl+0 goes back to 100%.
 

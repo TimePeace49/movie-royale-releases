@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.132.3: What's new
+- {songs} 🔉 Anyone in chat can change the song volume with !volume 40, and 🎵 Songs → Settings → Who can change the volume picks who may (everyone, followers, subs, VIPs, mods or only you).
+
 ## v1.132.2: What's new
 - ↗ Popped-out tabs are normal windows: drag the title bar to move them, drag the edges to resize, minimize or maximize like any other window (Ctrl + mouse wheel zooms, Ctrl+0 back to normal).
 

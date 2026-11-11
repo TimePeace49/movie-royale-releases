@@ -77,7 +77,7 @@ export function pickBest(results, query, o = {}) {
 export const searchQueries = (q, o = {}) => { const p = o.smartSearch === false ? 'any' : (o.searchPrefer || 'lyrics'), x = { lyrics: ' lyrics', audio: ' official audio', video: ' official video' }[p];
   return x && !new RegExp(x.trim().split(' ').pop(), 'i').test(q) ? [q, q + x] : [q]; };
 
-export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, solo: false, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', skipPerm: 'all', vetoPerm: 'mods', reqInfo: '', skipInfo: '', vetoInfo: '', perVip: 0, perMod: 0, onlyKnown: false, showVideo: false, quality: 'auto', smartSearch: true, searchPrefer: 'lyrics', avoidLive: true, avoidCovers: true, avoidEdits: true, avoidJunk: true, level: true, levelDown: false, levelMax: 2.5, perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
+export const opts = (d = data()) => ({ command: '!sr', nowCommand: '!song', queueCommand: '!queue', wrongCommand: '!wrongsong', mineCommand: '!mysongs', voteCommand: '!skip', skipCommand: '!skipsong', volCommand: '!volume', perUserSub: 0, cd: 0, maxMins: 10, minViews: 0, skipVotes: 3, solo: false, sayNow: false, search: true, vol: 60, musicOnly: true, dmcaFree: false, dmcaList: DMCA_DEFAULT, perm: 'all', skipPerm: 'all', vetoPerm: 'mods', volPerm: 'all', reqInfo: '', skipInfo: '', vetoInfo: '', perVip: 0, perMod: 0, onlyKnown: false, showVideo: false, quality: 'auto', smartSearch: true, searchPrefer: 'lyrics', avoidLive: true, avoidCovers: true, avoidEdits: true, avoidJunk: true, level: true, levelDown: false, levelMax: 2.5, perUser: 2, max: 50, reply: true, overlay: true, links: 'any', raters: is('birx') ? ['Birx', 'Jess'] : ['Rating 1', 'Rating 2'], scale: 10, ...d.opts });
 
 // ---------- what a request is ----------
 /** A YouTube link or id → the 11-character video id ('' when it isn't one). */
@@ -113,7 +113,8 @@ export function onChat(m) {
   if ((o.skipCommand && w === low(o.skipCommand)) || (w === '!skip' && /^song\b/i.test(arg) && (o.skipCommand || o.voteCommand))) { if (!d.now) { say('🎵 Nothing is playing right now.', 5000); return true; } const own = d.now.login === low(m.login);
     H.allowed(m, o.vetoPerm || 'mods').then(ok => { if (!d.now) return; if (ok || own) { const n = d.now; next(); H.note(m.login, name, 'skip', n.title); if (n.login && !own) H.note(n.login, n.by, 'skipped', `${n.title} (by ${name})`); say(`🎵 ${name} skipped: ${n.title}`); } else if (!voteSkip()) say(`🎵 @${name} ${o.vetoInfo || 'only ' + (PW[o.vetoPerm || 'mods'] || 'mods') + ' can skip a song (or the person who asked for it).'}`, 8000); }).catch(() => {}); return true; }
   if (o.voteCommand && w === low(o.voteCommand)) { if (w === '!skip' && arg && H.movieSkip()) return false; /* ("!skip 3" in an edition with movie battles is the movie skip) */ voteSkip(); return true; }
-  if (o.volCommand && w === low(o.volCommand)) { H.allowed(m, 'mods').then(ok => { if (!ok) return; const n = Number(arg); if (!arg || !Number.isFinite(n)) return say(`🔉 The song volume is ${o.vol}.`, 4000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
+  if (o.volCommand && w === low(o.volCommand)) { const n = Number(arg); if (!arg || !Number.isFinite(n)) { say(`🔉 The song volume is ${o.vol}.`, 4000); return true; } /* (1.132.3, Derek: anyone can change the volume by default; volPerm = who may) */
+    H.allowed(m, o.volPerm || 'all').then(ok => { if (!ok) return say(`🔉 @${name} only ${PW[o.volPerm] || 'mods'} can change the song volume.`, 8000); d.opts.vol = Math.round(Math.max(0, Math.min(100, n))); changed(); H.send({ type: 'songVol', vol: d.opts.vol }, 'control'); say(`🔉 Song volume: ${d.opts.vol}`); }).catch(() => {}); return true; }
   if (o.mineCommand && w === low(o.mineCommand)) { const who = arg && /^@?\w{2,30}$/.test(arg) ? arg.replace(/^@/, '') : m.login, own = low(who) === low(m.login), l = mine(who, d), nm = own ? name : who; say(l.length ? `🎵 @${name} ${own ? 'your' : nm + "'s"} song${l.length === 1 ? '' : 's'}: ${l.map(x => x.pos ? `#${x.pos} ${x.title}` : `▶ playing now: ${x.title}`).join(' · ')}`.slice(0, 480) : `🎵 @${name} ${own ? 'you have' : nm + ' has'} no songs in the queue.`, 3000); return true; }
   if (o.wrongCommand && w === low(o.wrongCommand)) { const i = d.queue.map(q => q.login).lastIndexOf(low(m.login)); if (i < 0) say(`🎵 @${name} you have no song in the queue.`, 5000); else { const [q] = d.queue.splice(i, 1); changed(); say(`🎵 @${name} took out: ${q.title}`); } return true; }
   return false;
@@ -212,7 +213,7 @@ export function setHold(id) { const d = data(), p = id ? (d.playlists || []).fin
 export function setOpts(b) {
   const d = data(), x = d.opts;
   for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'mineCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (!c) x[k] = ''; /* (left blank = that command is turned off) */ else if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr (or leave the box empty to turn it off)'); }
-  for (const k of ['perm', 'skipPerm', 'vetoPerm']) if (k in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b[k])) x[k] = b[k];
+  for (const k of ['perm', 'skipPerm', 'vetoPerm', 'volPerm']) if (k in b && ['all', 'followers', 'subs', 'vips', 'mods', 'streamer'].includes(b[k])) x[k] = b[k];
   for (const k of ['reqInfo', 'skipInfo', 'vetoInfo']) if (k in b) x[k] = String(b[k] || '').replace(/\s+/g, ' ').trim().slice(0, 300);
   for (const k of ['perVip', 'perMod']) if (k in b) x[k] = Math.round(clampN(b[k], 0, 50, 0));
   if ('searchPrefer' in b && PREFER[b.searchPrefer]) x.searchPrefer = b.searchPrefer; if ('levelMax' in b) x.levelMax = clampN(b.levelMax, 1, 4, 2.5);
@@ -396,4 +397,19 @@ export function searchDemo(o0 = {}) {
   add('📏 Never more than the most it may boost (2.5×)', g(-20) === 2.5);
   add('❔ A song YouTube says nothing about stays as is', g(null) === 1);
   return { ok: rows.every(r => r.ok), rows, table: pickBest(africa, 'africa toto', o).map(r => ({ title: r.title, author: r.author, score: r.score, why: r.why })) };
+}
+
+/** 🧪 (1.132.3) who can change the song volume from chat, walked through with pretend chatters (nothing said, the real volume is put back) */
+export async function volDemo() {
+  const d = data(), keep = { vol: d.opts.vol, perm: d.opts.volPerm, say: H.say, send: H.send, allowed: H.allowed, on: H.on, reply: d.opts.reply }, said = [], rows = [], add = (what, ok) => rows.push({ what, ok: !!ok });
+  const wait = () => new Promise(r => setTimeout(r, 15)), cmd = opts(d).volCommand || '!volume', m = (login, badges = {}) => ({ login, name: login, text: '', badges, pretend: true });
+  H.say = async t => { said.push(t); }; H.send = () => {}; H.on = () => true; H.allowed = async (x, perm) => perm === 'all' || (perm === 'mods' && !!(x.badges.mod || x.badges.broadcaster)) || (perm === 'subs' && !!(x.badges.subscriber || x.badges.mod || x.badges.broadcaster)); d.opts.reply = true;
+  try {
+    d.opts.volPerm = 'all'; d.opts.vol = 60; lastSay = 0; onChat({ ...m('pretend_viewer'), text: cmd + ' 35' }); await wait(); add('Everyone: a viewer types ' + cmd + ' 35 → the volume is 35', d.opts.vol === 35);
+    d.opts.volPerm = 'mods'; lastSay = 0; onChat({ ...m('pretend_viewer'), text: cmd + ' 90' }); await wait(); add('Mods only: the same viewer can\'t change it (stays 35) and is told who can', d.opts.vol === 35 && said.some(t => /only mods/.test(t)));
+    lastSay = 0; onChat({ ...m('pretend_mod', { mod: '1' }), text: cmd + ' 50' }); await wait(); add('Mods only: a mod sets it to 50', d.opts.vol === 50);
+    lastSay = 0; said.length = 0; onChat({ ...m('pretend_viewer'), text: cmd }); await wait(); add('Anyone can still ask what the volume is', said.some(t => /volume is 50/.test(t)));
+    d.opts.volPerm = 'subs'; lastSay = 0; onChat({ ...m('pretend_sub', { subscriber: '1' }), text: cmd + ' 44' }); await wait(); add('Subs: a sub sets it to 44', d.opts.vol === 44);
+  } finally { if (keep.vol === undefined) delete d.opts.vol; else d.opts.vol = keep.vol; if (keep.perm === undefined) delete d.opts.volPerm; else d.opts.volPerm = keep.perm; if (keep.reply === undefined) delete d.opts.reply; else d.opts.reply = keep.reply; H.say = keep.say; H.send = keep.send; H.allowed = keep.allowed; H.on = keep.on; }
+  return { ok: rows.every(r => r.ok), rows };
 }
