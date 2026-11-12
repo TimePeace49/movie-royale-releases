@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.149.1
+- 💬 **No more "🤖 Movies Royal Bot:" in front of the app's chat messages.** They go out plain again. If you ever want a tag back, type one in Settings → Twitch → Chat bot account (empty = no tag).
+
 ## 1.149.0
 - 🎥 **The demo tour is now a presentation.** It is told in 5 chapters (💬 Home, 🎵 Music, 🍿 Movie night, 🤖 Chat bot, ✨ And more) and stays on one tab for a whole chapter instead of hopping around. Each chapter opens with a short title card, the screen fades softly between steps, the thing being talked about glows for a moment, and pop-up messages stay quiet while you present. The bar at the bottom shows the chapters (click one to jump there) and dots for the steps.
 - 🎥 New parts in the tour for Birx & Jess: a welcome step, 👤 click anyone in chat (profile, Discord name, their own shout-out message), 📻 playlists, 🥇 the winner screen and 💡 suggestions from chat. 22 parts in all.

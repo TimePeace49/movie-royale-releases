@@ -7705,7 +7705,7 @@ function openSettings(force) {
       <div class="grid2">${f('twitchMoviesCommand', '“What movies do I have?” chat command (add a name to see someone else’s)', '!mymovies')}${f('twitchCooldown', 'Cooldown per person (seconds)', '30', 'number')}</div>
       ${f('helpCommand', 'Chat command that lists the chat commands (it lists the ones for the tab you are on)', '!moviesroyal')}
       <h3 style="margin-top:18px">🤖 Chat bot account (Movies Royal Bot)</h3>
-      ${f('chatTag', 'Name tag at the start of Movie Royal\'s chat messages while it talks as you (empty = no tag)', '🤖 Movies Royal Bot:')}
+      ${f('chatTag', 'Name tag at the start of Movie Royal\'s chat messages while it talks as you (empty = no tag)', 'no tag')}
       ${S.chatBot ? `<div class="card soft" style="margin:6px 0"><div class="row" style="align-items:center;gap:10px">${S.chatBot.avatar ? `<img src="${esc(proxy(S.chatBot.avatar))}" style="width:36px;height:36px;border-radius:50%">` : '🤖'}<span class="grow">Movie Royal talks in chat as <b>${esc(S.chatBot.name)}</b>${S.chatBot.on ? '' : ' <span class="muted">(turned off below: it talks as you)</span>'}${S.chatBot.error ? `<br><small style="color:var(--bad)">⚠️ Last time it couldn't talk, so you did: ${esc(S.chatBot.error)}</small>` : ''}</span>
           <button onclick="botTest(this)">💬 Say hi in chat</button><button class="ghost" onclick="location.href='/auth/twitch-bot'">🔁 Sign in again</button><button class="ghost danger" onclick="if(confirm('Stop using the chat bot? Movie Royal talks as you again.')) api('/api/twitch-bot/off',{})">✕ Remove</button></div></div>
         ${ck('useChatBot', 'Talk in chat as the bot (untick to talk as yourself)')}`

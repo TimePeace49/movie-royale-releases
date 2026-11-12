@@ -5106,6 +5106,9 @@ function maraGuess90Once() {
 setTimeout(maraGuess90Once, 1200);
 // 💪 (1.82.9, Derek: "make it default 5 push-ups") once: the marathon battle's "10 push-ups" → "5 push-ups" (runs after the even-odds
 // check above, which still looks for the old name). A thing you renamed yourself stays as it is.
+function chatTagOffOnce() { /* (1.149.1, Derek: the name tag looks tacky) the old default tag is cleared once; a tag someone typed themselves stays */
+  if (db.settings.chatTagOff1) return; db.settings.chatTagOff1 = true; if (/^🤖\s*Movies? Royal Bot:?$/i.test(String(db.settings.chatTag || '').trim())) db.settings.chatTag = ''; save();
+}
 function maraPush5Once() {
   if (db.settings.maraPush5) return; db.settings.maraPush5 = true;
   for (const l of db.lists || []) {
@@ -5115,6 +5118,7 @@ function maraPush5Once() {
   save();
 }
 setTimeout(maraPush5Once, 1300);
+setTimeout(chatTagOffOnce, 900);
 // 😴 (1.83.1, Derek: "for MERCY, if it wins it goes away the next battle so I can't get it twice, but comes back after") once:
 // the marathon battle's MERCY gets "sits out the battle after it wins" (any thing can have it: 🏃 Marathon pool → 😴)
 function maraMercyOnce() {

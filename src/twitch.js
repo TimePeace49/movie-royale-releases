@@ -291,7 +291,7 @@ export const pretend = { until: 0 }; // 🧪 someone is using pretend chat: repl
 export const route = { on: () => false, say: null, canSay: () => false, both: () => false }; // 🟢 (1.90.0, dev) Kick is the platform: what Movie Royal says goes to Kick chat instead
 export const canSay = () => (route.on() ? !!route.canSay() : !!status.canChat) || Date.now() < pretend.until;
 // 🤖 talking as yourself: every message starts with a name tag (Settings → Twitch, default "🤖 Movies Royal Bot:") so chat can tell it's the app
-const tagged = m => { const t = String(s().chatTag ?? '🤖 Movies Royal Bot:').trim(); return botOn() || !t || String(m).startsWith(t) ? String(m) : `${t} ${m}`; };
+const tagged = m => { const t = String(s().chatTag ?? '').trim(); return botOn() || !t || String(m).startsWith(t) ? String(m) : `${t} ${m}`; };
 export async function say(message) {
   message = tagged(brandOut(message)); /* 🏷️ chat lines say the edition's name */
   for (const f of sayListeners) { try { f(String(message)); } catch {} }
