@@ -4652,8 +4652,8 @@ app.post('/api/test/live', (req, res) => { // Test tab: pretend you went live / 
 app.post('/api/test/wheel-redeem-raw', (req, res) => { const b = req.body || {}; const ok = wheel.wheelRedeem({ title: String(b.title || ''), input: b.input, login: String(b.name || 'test').toLowerCase(), name: String(b.name || 'test'), cost: 100 }); res.json({ ok }); });
 app.get('/api/test/wheel-lock', (req, res) => { /* 🧪 the 🔒 Lock this wheel rule on a pretend wheel (nothing is changed) */
   const rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) }), lockW = { opts: { chatLock: true } }, openW = { opts: { chatLock: false } };
-  add('Locked: respin, move, up, down, force stop and double trouble are all off', wheel.LOCK_KINDS.every(k => wheel.lockedKind(lockW, k)), wheel.LOCK_KINDS.join(', '));
-  add('Locked: grow and shrink stay (you pick the spot yourself)', !wheel.lockedKind(lockW, 'grow') && !wheel.lockedKind(lockW, 'shrink'), 'grow, shrink');
+  add('Locked: respin, move, up, down, force stop, double trouble, grow and shrink are all off', wheel.LOCK_KINDS.every(k => wheel.lockedKind(lockW, k)), wheel.LOCK_KINDS.join(', '));
+  add('Locked: grow and shrink with channel points are off too (your + / − still work)', wheel.lockedKind(lockW, 'grow') && wheel.lockedKind(lockW, 'shrink'), 'grow, shrink');
   add('Not locked: nothing is blocked by the lock', wheel.LOCK_KINDS.every(k => !wheel.lockedKind(openW, k)), 'all allowed');
   const W = wheel.W(), wh = W.wheels.find(w => w.id === W.activeId); add('The wheel that is up right now', true, wh ? `${wh.name}: ${wh.opts?.chatLock ? '🔒 locked' : 'not locked'}` : 'no wheel');
   res.json({ ok: rows.every(r => r.ok), rows });

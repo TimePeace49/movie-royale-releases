@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.147.1: What's new
+- 🔒 **Lock a wheel.** In a wheel's settings, one new switch turns off everything chat can do to it: respins (channel points and saved spins), moving a spot up or down, force stop, double trouble, grow and shrink. Your own buttons still work.
+
 ## v1.147.0: What's new
 - 🔒 **Lock a wheel.** In a wheel's settings, one new switch turns off everything chat can do to its spins: respins (channel points and saved spins), moving a spot up or down, force stop and double trouble. Your own buttons still work.
 

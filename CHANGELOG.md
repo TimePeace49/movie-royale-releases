@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.147.1
+- 🔒 The wheel lock now also turns off **grow** and **shrink** with channel points (you can still do those yourself with + / −).
+
 ## 1.147.0
 - 🔒 **Lock a wheel.** Each wheel's settings (⚙ on the Wheel tab) has a new switch at the top of the chat part: **🔒 Chat can't respin, move a spot up or down, force stop or double trouble on this wheel.** One tick turns all of those off for that wheel: the channel point rewards are hidden while the wheel is up, and saved spins (`!respin`) get a friendly "this wheel is locked" answer and stay saved. Your own 🎡 SPIN, 🎟️ streamer respins and + / − still work, and grow / shrink (where you pick the spot) are untouched. Untick it and your per-reward ticks are back as they were.
 - 🧪 Test: Wheel test card → 🔒 Lock rule check.
