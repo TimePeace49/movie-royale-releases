@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.152.0
+- 🟢🤖 **The shared chat bot works on Kick too** (editions with Kick). The app's maker signs the bot in to Kick (Settings → Twitch → Chat bot account → 🟢 Sign in to Kick as the bot, in a private window) and presses Share again. A friend who is signed in with Kick presses **🤝 Ask for Kick too**, gets allowed, and the app's lines in their Kick chat come from the bot.
+- 🟢 You can also use a Kick bot account just for yourself: once signed in as the bot, your own app talks on Kick as it.
+- If the bot can't talk on Kick, the app talks as you, like before. The 24/7 bot needs an update for this.
+- 🧪 Test: Test tab → 🤖🤝 Shared chat bot → Check the shared bot (now 25 checks, 9 of them for Kick; nothing sent).
+
 ## 1.151.0
 - 🤖🤝 **Shared chat bot.** One Twitch bot account can now talk for every copy of the app. The app's maker signs the bot in once and presses **Share this bot with everyone** (Settings → Twitch → Chat bot account); its sign-in stays on his 24/7 bot and never goes into anyone's app. Friends press **🤝 Use the shared bot**, he presses Allow for their channel, and from then on the app's chat lines come from the bot. If the bot can't talk, the app talks as the streamer like before. A bot account of your own, when signed in, still wins.
 - It's locked down: the bot only talks in channels that were allowed, only for the app that asked, and a flood of lines is stopped. The 24/7 bot needs an update for this (the app asks).

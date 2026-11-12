@@ -38,6 +38,7 @@ async function wsPick() {
   return { url: wsAddr(pick[0], pick[1]), key: pick[0], cluster: pick[1] };
 }
 export const SCOPES = ['user:read', 'channel:read', 'chat:write', 'events:subscribe', 'channel:rewards:read', 'channel:rewards:write']; // (rewards = Kick's channel points, 2026)
+export const BOT_SCOPES = ['user:read', 'channel:read', 'chat:write']; // 🤖 (1.152.0) the bot account only talks
 export const redirectUri = port => `http://localhost:${port}/kick/callback`;
 
 const H = { alert: () => {}, chat: () => {}, live: () => {}, changed: () => {}, dev: () => false, getPage: null, redeem: () => {} };
@@ -61,11 +62,11 @@ const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(
 /* a web address is never a Kick key: people paste the Redirect URL into the Client ID box by mistake */
 export const notKey = v => /^https?:|[\/\s]|localhost/i.test(String(v || ''));
 const NOT_KEY = what => `That is a web address, not the ${what}. The Redirect URL goes INTO Kick. The ${what} is the code Kick shows on your app's page (Settings → Developer → your app): copy that one here.`;
-export function authUrl(port) {
+export function authUrl(port, bot = false) {
   const d = data(); if (notKey(d.clientId)) throw new Error(NOT_KEY('Client ID')); if (!d.clientId || !d.secret) throw new Error('Paste your Kick app\'s Client ID and Client Secret first');
   const state = crypto.randomBytes(16).toString('hex'), verifier = b64u(crypto.randomBytes(48)), challenge = b64u(crypto.createHash('sha256').update(verifier).digest());
-  pending.set(state, { verifier, at: Date.now() }); for (const [k, v] of pending) if (Date.now() - v.at > 600000) pending.delete(k);
-  const q = new URLSearchParams({ response_type: 'code', client_id: d.clientId, redirect_uri: redirectUri(port), scope: SCOPES.join(' '), code_challenge: challenge, code_challenge_method: 'S256', state });
+  pending.set(state, { verifier, at: Date.now(), bot: !!bot }); for (const [k, v] of pending) if (Date.now() - v.at > 600000) pending.delete(k);
+  const q = new URLSearchParams({ response_type: 'code', client_id: d.clientId, redirect_uri: redirectUri(port), scope: (bot ? BOT_SCOPES : SCOPES).join(' '), code_challenge: challenge, code_challenge_method: 'S256', state });
   return `${ID}/oauth/authorize?${q}`;
 }
 async function tokenCall(form) {
@@ -77,6 +78,12 @@ async function tokenCall(form) {
 export async function finishAuth(port, code, state) {
   const p = pending.get(state); if (!p) throw new Error('That sign-in is too old. Press Sign in with Kick again.'); pending.delete(state);
   const d = data();
+  if (p.bot) { /* 🤖 (1.152.0) signing in as the BOT account (the one that can be shared with every copy of the app) */
+    const t = await tokenCall({ grant_type: 'authorization_code', code, client_id: d.clientId, client_secret: d.secret, redirect_uri: redirectUri(port), code_verifier: p.verifier });
+    const hd = { Authorization: `Bearer ${t.access}`, Accept: 'application/json' }, get = async q => (await fetch(`${API}/${q}`, { headers: hd, signal: AbortSignal.timeout(15000) }).then(r => r.json()).catch(() => ({}))).data?.[0] || {};
+    const u = await get('users'), c = await get('channels');
+    d.bot = { token: t, user: { id: u.user_id || c.broadcaster_user_id || null, name: u.name || c.slug || '', slug: String(c.slug || u.name || '').toLowerCase() } }; save(); H.changed(); return { ...d.bot.user, bot: true };
+  }
   d.token = await tokenCall({ grant_type: 'authorization_code', code, client_id: d.clientId, client_secret: d.secret, redirect_uri: redirectUri(port), code_verifier: p.verifier });
   save(); await whoAmI().catch(e => { status.sayError = e.message; }); restart(); H.changed(); return d.user;
 }
@@ -102,8 +109,22 @@ export async function whoAmI() {
 export function signOut() { const d = data(); d.token = null; d.user = null; save(); H.changed(); }
 
 // ---------- talking ----------
+export const sharedBot = { use: () => false, say: null, err: '' }; // 🤖🤝 (1.152.0) set by server.js: the shared bot account says it (through the app maker's 24/7 bot)
+export const botInfo = () => { const b = data().bot; return b?.token?.access ? { name: b.user?.name || '', slug: b.user?.slug || '', id: b.user?.id || null, on: data().useBot !== false, error: status.botError || '' } : null; };
+export const botSignOut = () => { const d = data(); d.bot = null; save(); H.changed(); };
+/** what the 24/7 bot needs to talk as the bot account (only ever sent to the streamer's own 24/7 bot) */
+export const botShare = () => { const d = data(), b = d.bot; return b?.token?.access ? { clientId: d.clientId, secret: d.secret, access: b.token.access, refresh: b.token.refresh || '', exp: b.token.exp || 0, botId: b.user?.id || '', botLogin: b.user?.slug || b.user?.name || '' } : null; };
+async function botSay(message) {
+  const d = data(), b = d.bot, send = () => fetch(`${API}/chat`, { method: 'POST', signal: AbortSignal.timeout(15000), headers: { Authorization: `Bearer ${b.token.access}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ content: String(message).slice(0, 500), type: 'user', broadcaster_user_id: Number(d.user.id) || d.user.id }) });
+  const fresh = async () => { const t = await tokenCall({ grant_type: 'refresh_token', refresh_token: b.token.refresh, client_id: d.clientId, client_secret: d.secret }); b.token = { ...t, refresh: t.refresh || b.token.refresh }; save(); };
+  if (b.token.exp && Date.now() > b.token.exp - 60000 && b.token.refresh) await fresh().catch(() => {});
+  let r = await send(); if (r.status === 401 && b.token.refresh) { await fresh(); r = await send(); }
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.message || j.error || `Kick answered ${r.status}`); return j.data?.message_id || true;
+}
 export async function say(message) {
   const d = data(); if (!d.token?.access) throw new Error('Sign in with Kick first');
+  if (d.bot?.token?.access && d.useBot !== false && d.user?.id) { try { const r = await botSay(message); status.botError = null; status.sayError = null; return r; } catch (e) { if (status.botError !== e.message) console.error('[kick] the Kick bot account could not talk, so you did instead:', e.message); status.botError = e.message; } }
+  else if (sharedBot.use()) { try { const r = await sharedBot.say(String(message).slice(0, 500)); status.sayError = null; return r; } catch (e) { if (sharedBot.err !== e.message) console.error('[kick] the shared chat bot could not talk on Kick, so you did instead:', e.message); sharedBot.err = e.message; } }
   const body = { content: String(message).slice(0, 500), type: 'user' }; if (d.user?.id) body.broadcaster_user_id = Number(d.user.id) || d.user.id;
   try { const j = await api('chat', { method: 'POST', body: JSON.stringify(body) }); status.sayError = null; return j.data?.message_id || true; }
   catch (e) { status.sayError = e.message; throw e; }

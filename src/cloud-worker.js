@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 23;
+export const WORKER_V = 24;
 export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
@@ -522,10 +522,23 @@ async function sbHelix(env, pathQ, opts = {}, retry = true) {
   }
   const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.message || 'Twitch answered ' + r.status); return j;
 }
+// 🟢 (WORKER_V 24) the same shared bot on Kick: its own sign-in (`sbot:ktok`), Kick's official API, the same allowed apps
+async function sbKick(env, pathQ, opts = {}, retry = true) {
+  const t = await env.KV.get('sbot:ktok', 'json').catch(() => null); if (!t || !t.access) throw new Error('no Kick bot account is shared right now');
+  if (env.SB_FAKE) return env.SB_FAKE('kick:' + pathQ, opts, t);
+  const fresh = async () => { const j = await fetch((env.KICK_ID || 'https://id.kick.com') + '/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: t.clientId, client_secret: t.secret, grant_type: 'refresh_token', refresh_token: t.refresh }) }).then(x => x.json()).catch(() => null);
+    if (!j || !j.access_token) { t.error = 'the Kick bot account\'s sign-in ran out: share it again'; await env.KV.put('sbot:ktok', JSON.stringify(t)); throw new Error(t.error); }
+    t.access = j.access_token; if (j.refresh_token) t.refresh = j.refresh_token; t.exp = Date.now() + (Number(j.expires_in) || 3600) * 1000; t.error = ''; await env.KV.put('sbot:ktok', JSON.stringify(t)); };
+  if (retry && t.refresh && t.exp && Date.now() > t.exp - 60000) await fresh();
+  const r = await fetch((env.KICK_API || 'https://api.kick.com/public/v1') + '/' + pathQ, { ...opts, headers: { Authorization: 'Bearer ' + t.access, 'Content-Type': 'application/json', Accept: 'application/json' } });
+  if (r.status === 401 && retry && t.refresh) { await fresh(); return sbKick(env, pathQ, opts, false); }
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.message || j.error || 'Kick answered ' + r.status); return j;
+}
 async function sharedBotRoute(req, env, url) {
   const authed = (req.headers.get('authorization') || '') === `Bearer ${env.SYNC_KEY}`, p = url.pathname.slice('/sharedbot'.length) || '/';
   const idOk = s => /^[a-f0-9]{16,40}$/.test(s), keyOk = s => /^[a-f0-9]{32,64}$/.test(s), body = async () => { const t = await req.text(); if (t.length > 6000) return {}; try { return JSON.parse(t) || {}; } catch { return {}; } };
-  const tok = async () => await env.KV.get('sbot:tok', 'json').catch(() => null), pub = t => ({ bot: (t && t.access && t.botLogin) || '', botError: (t && t.error) || '' });
+  const tok0 = async () => await env.KV.get('sbot:tok', 'json').catch(() => null), ktok = async () => await env.KV.get('sbot:ktok', 'json').catch(() => null);
+  const tok = async () => { const t = (await tok0()) || {}, k = await ktok(); return { ...t, kbot: (k && k.access && k.botLogin) || '', kbotError: (k && k.error) || '' }; }, pub = t => ({ bot: (t && t.access && t.botLogin) || '', botError: (t && t.error) || '', kbot: (t && t.kbot) || '', kbotError: (t && t.kbotError) || '' });
   if (p === '/' && req.method === 'GET') { const t = await tok(); return json({ ok: true, v: WORKER_V, shared: !!(t && t.access), bot: pub(t).bot }); }
   if (p === '/token') {
     if (!authed) return json({ error: 'bad key' }, 401);
@@ -536,33 +549,46 @@ async function sharedBotRoute(req, env, url) {
     if (!t.clientId || !t.botId || !t.botLogin) return json({ error: 'not a bot sign-in' }, 400);
     await env.KV.put('sbot:tok', JSON.stringify(t)); return json({ ok: true, shared: true, bot: t.botLogin });
   }
+  if (p === '/ktoken') { /* 🟢 the Kick bot account's sign-in */
+    if (!authed) return json({ error: 'bad key' }, 401); if (req.method !== 'PUT') return json({ error: 'PUT only' }, 405);
+    const b = await body(); if (!b.access) { await env.KV.delete('sbot:ktok'); return json({ ok: true, shared: false }); }
+    const t = { clientId: repStr(b.clientId, 120), secret: repStr(b.secret, 200), access: repStr(b.access, 3000), refresh: repStr(b.refresh, 3000), exp: Number(b.exp) || 0, botId: repStr(b.botId, 30), botLogin: repStr(b.botLogin, 40).toLowerCase(), at: Date.now(), error: '' };
+    if (!t.clientId || !t.botLogin) return json({ error: 'not a bot sign-in' }, 400);
+    await env.KV.put('sbot:ktok', JSON.stringify(t)); return json({ ok: true, shared: true, kbot: t.botLogin });
+  }
   if (p === '/list') { if (!authed) return json({ error: 'bad key' }, 401);
     const keys = ((await env.KV.list({ prefix: 'sbot:app:', limit: 400 })).keys || []).map(k => k.name), apps = [];
-    for (const k of keys) { const a = await env.KV.get(k, 'json').catch(() => null); if (a) apps.push({ id: a.id, channel: a.channel, edition: a.edition, app: a.app, state: a.state, asked: a.asked, allowedAt: a.allowedAt || 0, last: a.last || 0 }); }
-    const t = await tok(); return json({ ok: true, v: WORKER_V, shared: !!(t && t.access), ...pub(t), apps: apps.sort((a, b) => (a.state === 'pending' ? 0 : 1) - (b.state === 'pending' ? 0 : 1) || (b.asked || 0) - (a.asked || 0)) }); }
+    for (const k of keys) { const a = await env.KV.get(k, 'json').catch(() => null); if (a) apps.push({ id: a.id, channel: a.channel, kick: a.kick || '', kickOk: !!a.kickId, edition: a.edition, app: a.app, state: a.state, asked: a.asked, allowedAt: a.allowedAt || 0, last: a.last || 0 }); }
+    const t = await tok(); return json({ ok: true, v: WORKER_V, shared: !!(t && t.access), kshared: !!t.kbot, ...pub(t), apps: apps.sort((a, b) => (a.state === 'pending' ? 0 : 1) - (b.state === 'pending' ? 0 : 1) || (b.asked || 0) - (a.asked || 0)) }); }
   if (p === '/allow') { if (!authed) return json({ error: 'bad key' }, 401); if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
     const b = await body(), id = repStr(b.id, 60); if (!idOk(id)) return json({ error: 'which app?' }, 400);
     if (b.allow === 'forget') { await env.KV.delete('sbot:app:' + id); return json({ ok: true, forgot: true }); }
     const a = await env.KV.get('sbot:app:' + id, 'json').catch(() => null); if (!a) return json({ error: 'that app isn\'t on the list any more' }, 404);
-    if (b.allow) { let u; try { u = await sbHelix(env, 'users?login=' + encodeURIComponent(a.channel)); } catch (e) { return json({ error: 'couldn\'t look the channel up: ' + (e.message || e) }, 502); }
-      const cid = u && u.data && u.data[0] && u.data[0].id; if (!cid) return json({ error: `Twitch has no channel called "${a.channel}"` }, 404);
-      a.channelId = String(cid); a.state = 'allowed'; a.allowedAt = Date.now(); } else { a.state = 'pending'; a.channelId = ''; }
+    if (b.allow) { const note = []; a.channelId = ''; a.kickId = '';
+      if (a.channel && (await tok0())?.access) { let u; try { u = await sbHelix(env, 'users?login=' + encodeURIComponent(a.channel)); } catch (e) { return json({ error: 'couldn\'t look the channel up: ' + (e.message || e) }, 502); }
+        const cid = u && u.data && u.data[0] && u.data[0].id; if (!cid) return json({ error: `Twitch has no channel called "${a.channel}"` }, 404); a.channelId = String(cid); }
+      if (a.kick && (await ktok())?.access) { try { const k = await sbKick(env, 'channels?slug=' + encodeURIComponent(a.kick)), kid = k && k.data && k.data[0] && (k.data[0].broadcaster_user_id || k.data[0].user_id); if (kid) a.kickId = String(kid); else note.push(`Kick has no channel called "${a.kick}"`); } catch (e) { note.push('Kick: ' + (e.message || e)); } }
+      if (!a.channelId && !a.kickId) return json({ error: note[0] || 'no bot account is shared for this app\'s channel yet' }, 404);
+      a.state = 'allowed'; a.allowedAt = Date.now(); await env.KV.put('sbot:app:' + id, JSON.stringify(a)); return json({ ok: true, state: a.state, channel: a.channel, kick: a.kick || '', kickOk: !!a.kickId, note: note.join(' · ') }); }
+    else { a.state = 'pending'; a.channelId = ''; a.kickId = ''; }
     await env.KV.put('sbot:app:' + id, JSON.stringify(a)); return json({ ok: true, state: a.state, channel: a.channel }); }
   if (p === '/join') { if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
-    const b = await body(), id = repStr(b.id, 60), key = repStr(b.key, 80), channel = repStr(b.channel, 30).toLowerCase();
-    if (!idOk(id) || !keyOk(key) || !/^[a-z0-9_]{3,25}$/.test(channel)) return json({ error: 'which app?' }, 400);
+    const b = await body(), id = repStr(b.id, 60), key = repStr(b.key, 80), channel = repStr(b.channel, 30).toLowerCase(), kslug = repStr(b.kick, 40).toLowerCase();
+    if (!idOk(id) || !keyOk(key) || (channel && !/^[a-z0-9_]{3,25}$/.test(channel)) || (kslug && !/^[a-z0-9_-]{2,40}$/.test(kslug)) || (!channel && !kslug)) return json({ error: 'which app?' }, 400);
     const kh = await sbHash(key), old = await env.KV.get('sbot:app:' + id, 'json').catch(() => null), t = await tok();
     if (old && old.kh !== kh) return json({ error: 'which app?' }, 403);
-    if (old && old.channel === channel) return json({ ok: true, state: old.state, channel, ...pub(t) });
+    if (old && old.channel === channel && (old.kick || '') === kslug) return json({ ok: true, state: old.state, channel, kick: kslug, kickOk: !!old.kickId, twitchOk: !!old.channelId, ...pub(t) });
     if (!old) { const n = ((await env.KV.list({ prefix: 'sbot:app:', limit: 400 })).keys || []).length; if (n >= 300) return json({ error: 'the list is full' }, 429); }
-    const a = { id, kh, channel, channelId: '', edition: repStr(b.edition, 20), app: repStr(b.app, 60), state: 'pending', asked: Date.now() }; /* (a new channel always waits for a yes, even from an app that was allowed before) */
-    await env.KV.put('sbot:app:' + id, JSON.stringify(a)); return json({ ok: true, state: 'pending', channel, ...pub(t) }); }
+    const a = { id, kh, channel, channelId: '', kick: kslug, kickId: '', edition: repStr(b.edition, 20), app: repStr(b.app, 60), state: 'pending', asked: Date.now() }; /* (a new channel always waits for a yes, even from an app that was allowed before) */
+    await env.KV.put('sbot:app:' + id, JSON.stringify(a)); return json({ ok: true, state: 'pending', channel, kick: kslug, ...pub(t) }); }
   const mine = async (id, key) => { if (!idOk(id) || !keyOk(key)) return null; const a = await env.KV.get('sbot:app:' + id, 'json').catch(() => null); return a && a.kh === await sbHash(key) ? a : null; };
-  if (p === '/me' && req.method === 'GET') { const a = await mine(repStr(url.searchParams.get('id'), 60), repStr(url.searchParams.get('key'), 80)), t = await tok(); return json({ ok: true, state: a ? a.state : 'none', channel: a ? a.channel : '', ...pub(t) }); }
+  if (p === '/me' && req.method === 'GET') { const a = await mine(repStr(url.searchParams.get('id'), 60), repStr(url.searchParams.get('key'), 80)), t = await tok(); return json({ ok: true, state: a ? a.state : 'none', channel: a ? a.channel : '', kick: a ? a.kick || '' : '', kickOk: !!(a && a.kickId), twitchOk: !!(a && a.channelId), ...pub(t) }); }
   if (p === '/say') { if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
     const b = await body(), a = await mine(repStr(b.id, 60), repStr(b.key, 80)), text = repStr(b.text, 490).trim();
-    if (!a) return json({ error: 'which app?' }, 403); if (a.state !== 'allowed' || !a.channelId) return json({ error: 'not allowed yet' }, 403); if (!text) return json({ error: 'nothing to say' }, 400);
+    const toKick = b.to === 'kick';
+    if (!a) return json({ error: 'which app?' }, 403); if (a.state !== 'allowed' || !(toKick ? a.kickId : a.channelId)) return json({ error: 'not allowed yet' }, 403); if (!text) return json({ error: 'nothing to say' }, 400);
     const now = Date.now(), h = (sbHits.get(a.id) || []).filter(x => now - x < 30000); if (h.length >= 18) return json({ error: 'too many lines at once: slow down' }, 429); h.push(now); sbHits.set(a.id, h);
+    if (toKick) { let j; try { j = await sbKick(env, 'chat', { method: 'POST', body: JSON.stringify({ content: text, type: 'user', broadcaster_user_id: Number(a.kickId) || a.kickId }) }); } catch (e) { return json({ error: String(e.message || e) }, 502); } return json({ ok: true, id: (j && j.data && j.data.message_id) || '' }); }
     const t = await tok(); if (!t || !t.access) return json({ error: 'no bot account is shared right now' }, 503);
     let j; try { j = await sbHelix(env, 'chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: a.channelId, sender_id: t.botId, message: text }) }); } catch (e) { return json({ error: String(e.message || e) }, 502); }
     const r = j && j.data && j.data[0]; if (r && r.is_sent === false) return json({ error: (r.drop_reason && r.drop_reason.message) || 'Twitch dropped the message' }, 502);

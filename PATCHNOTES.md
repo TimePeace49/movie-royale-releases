@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.152.0: What's new
+- {kick} 🟢🤖 **Shared chat bot on Kick:** signed in with Kick and using the shared bot? Settings → Twitch → Chat bot account shows 🤝 Ask for Kick too. Once allowed, the app's lines in your Kick chat come from the bot (make it a moderator there once).
+
 ## v1.151.0: What's new
 - 🤖🤝 **Shared chat bot:** no bot account of your own? When one is shared, Settings → Twitch → Chat bot account shows 🤝 Use the shared bot. Once your channel is allowed, the app's chat lines come from that bot (type /mod and its name once).
 
