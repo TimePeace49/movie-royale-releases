@@ -165,6 +165,9 @@ export async function request(m, arg, { hand = false, test = false, now = Date.n
 export const rateText = (L, o = opts()) => (L?.rate || []).map((r, i) => (r == null ? '' : `${o.raters[i]} ${r}/${o.scale}`)).filter(Boolean).join(', ');
 
 // ---------- the queue ----------
+/** 🎼 (1.150.0) what the small now-playing strip shows for the song that is really playing (a request, or a playlist song) */
+export function nowInfo(yt, title) { const d = data(), o = opts(d), req = d.now && (!yt || d.now.yt === yt) ? d.now : null, key = req ? req.key : yt ? 'yt:' + yt : '', L = key ? d.lib[key] : null, r = o.noRate ? [] : (L?.rate || []).slice(0, o.solo ? 1 : 2);
+  return { title: req ? req.title : String(title || L?.title || ''), by: req ? req.by || '' : '', rate: r.map(x => (x == null ? null : x)), raters: o.raters, scale: o.scale, request: !!req }; }
 function changed() { save(); H.send({ type: 'songs' }, 'control'); H.send(screen(), 'songs'); }
 function finish(d, now) { if (!d.now) return; const L = lib(d, d.now); L.last = now; d.played.unshift({ key: d.now.key, title: d.now.title, by: d.now.by, at: d.now.startedAt || now }); d.played.length = Math.min(d.played.length, 500); d.now = null; }
 /** ⏭ the next song in the queue becomes "now playing" (the one before goes into the history). `id` = play that one now. */

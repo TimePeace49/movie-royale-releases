@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.150.0
+- 🎼 **Now-playing strip for OBS.** One thin line on stream: the song that's playing, who asked for it, its rating (if it has one), and the time, like 1:23 / 3:45, with a hair-thin progress line under it. It works for requests and playlist songs, and hides when nothing plays. Add it in Chat bot → 🎵 Songs → Settings → 🎼 Now-playing strip → ➕ Add it to OBS (pick your scenes). It lands bottom left; move or resize it in OBS and it stays put.
+- 🧪 Test: 👀 Preview and 🧪 Test in OBS right there, and on the Songs test card.
+
 ## 1.149.1
 - 💬 **No more "🤖 Movies Royal Bot:" in front of the app's chat messages.** They go out plain again. If you ever want a tag back, type one in Settings → Twitch → Chat bot account (empty = no tag).
 

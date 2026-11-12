@@ -1433,6 +1433,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
+  if (ws.role === 'nowplay') ws.send(JSON.stringify(npMsg())); // 🎼 the small now-playing strip
   if (ws.role === 'songs') ws.send(JSON.stringify(songs.screen())); // 🎵 the now-playing box
   if (ws.role === 'eggs') ws.send(JSON.stringify({ type: 'eggBadges', badges: feat('eggs') ? eggs.badges() : {} })); // 🥚 the creature chat box
   if (ws.role === 'movienight') ws.send(JSON.stringify(movienight.screen())); // 🍿 the movie night vote box
@@ -1986,7 +1987,7 @@ async function choiceSource(on, scenes) {
   pushState(); return { ...r, note };
 }
 setInterval(() => { if (db.settings.choiceObs && obsOk() && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); }, 10 * 60000); // (keeps it in the scenes you picked, and a new reward or channel is written in)
-app.get('/api/vr/scenes', async (req, res) => { if (req.query.for === 'video') { const v = obsVideos().find(x => x.id === req.query.id); try { return res.json({ ok: true, ...(await obs.sceneList(v ? videoInput(v) : '-')), picked: v?.scenes || [] }); } catch (e) { return res.status(400).json({ error: e.message }); } } const roll = req.query.for === 'roll', mara = req.query.for === 'mara', mnf = req.query.for === 'mn'; try { res.json({ ok: true, ...(await obs.sceneList(mnf ? obs.MN_NAME : mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mnf ? db.settings.mnScenes : mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
+app.get('/api/vr/scenes', async (req, res) => { if (req.query.for === 'video') { const v = obsVideos().find(x => x.id === req.query.id); try { return res.json({ ok: true, ...(await obs.sceneList(v ? videoInput(v) : '-')), picked: v?.scenes || [] }); } catch (e) { return res.status(400).json({ error: e.message }); } } const roll = req.query.for === 'roll', mara = req.query.for === 'mara', mnf = req.query.for === 'mn'; if (req.query.for === 'np') { try { return res.json({ ok: true, ...(await obs.sceneList(obs.NP_NAME)), picked: db.settings.npScenes || null }); } catch (e) { return res.status(400).json({ error: e.message }); } } try { res.json({ ok: true, ...(await obs.sceneList(mnf ? obs.MN_NAME : mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mnf ? db.settings.mnScenes : mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
 app.get('/api/vr/obs-file', (req, res) => res.download(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'viewers-choice.html')); // ⬇️ the file for OBS (it sets itself up when you open it)
 app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 📣 roll call browser source in OBS (1.61.0): Movie Royal adds /rollcall.html to the scenes you pick (or you add it by hand: the address is in Settings → 🎥 OBS)
@@ -2067,6 +2068,25 @@ async function sfxObsSource(on) {
 }
 const sfxSoon = () => { if (db.settings.obsKeep !== false && db.settings.sfxObs == null && sfxWanted()) setTimeout(() => obsSync('sounds').catch(() => {}), 3000); }; /* (the first sound alert: put the sound page in OBS without waiting 10 min) */
 app.post('/api/obs/sfx-source', async (req, res) => { try { res.json({ ok: true, url: sfxUrl(), ...(await sfxObsSource(!!req.body?.on)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+/* 🎼 Now-playing strip (1.150.0, Derek: "a source to OBS that shows the current song playing, who requested it, its rating, the current time and the total… minimal"):
+   the control panel tells the server what its player is really on (a request or a playlist song) every couple of seconds; the page counts on by itself in between. */
+const npUrl = () => `http://localhost:${PORT}/nowplaying.html`;
+function npMsg() { const p = live.np, fresh = p && Date.now() - p.at < 15000 && p.on, t = live.npTest && live.npTest.until > Date.now() ? live.npTest.msg : null; if (t) return t;
+  if (!feat('songs')) return { type: 'songNow', on: false }; const i = songs.nowInfo(fresh ? p.yt : '', fresh ? p.title : '');
+  if (!fresh) return { type: 'songNow', on: false };
+  return { type: 'songNow', on: !!i.title, title: i.title, by: i.by, rate: i.rate, scale: i.scale, t: p.t + (p.paused ? 0 : (Date.now() - p.at) / 1000), dur: p.dur, paused: !!p.paused }; }
+function npSend() { try { broadcast(npMsg(), 'nowplay'); } catch {} }
+setInterval(() => { if (live.np && live.np.on && Date.now() - live.np.at >= 15000) { live.np.on = false; npSend(); } }, 5000); /* (the app stopped telling: the strip hides) */
+app.post('/api/songs/playing', (req, res) => { const b = req.body || {}; live.np = { on: !!b.on, yt: String(b.yt || '').slice(0, 20), title: String(b.title || '').slice(0, 200), t: Math.max(0, Number(b.t) || 0), dur: Math.max(0, Number(b.dur) || 0), paused: !!b.paused, at: Date.now() }; npSend(); res.json({ ok: true }); });
+async function npObsSource(on, scenes) {
+  if (on && !feat('songs')) throw new Error('Song requests are not part of this edition.');
+  if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
+  if (on && Array.isArray(scenes)) { if (!scenes.length) throw new Error('Pick at least one OBS scene for it.'); db.settings.npScenes = scenes.map(String).slice(0, 200); }
+  const pick = Array.isArray(db.settings.npScenes) && db.settings.npScenes.length ? db.settings.npScenes : null;
+  const r = await obs.npSource(!!on, npUrl(), pick); db.settings.npObs = !!on; save(); pushState(); return r;
+}
+app.post('/api/obs/np-source', async (req, res) => { try { res.json({ ok: true, url: npUrl(), ...(await npObsSource(!!req.body?.on, req.body?.scenes)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
+app.post('/api/test/now-playing', (req, res) => { const off = !!req.body?.off; live.npTest = off ? null : { until: Date.now() + 20000, msg: { type: 'songNow', on: true, title: 'Pretend Disco Banger', by: 'NightOwl_44', rate: [8, 9.5], scale: 10, t: 83, dur: 225, paused: false, test: true } }; npSend(); if (!off) setTimeout(() => { live.npTest = null; npSend(); }, 20500); res.json({ ok: true, pages: [...wss.clients].filter(c => c.role === 'nowplay').length, msg: npMsg(), url: npUrl() }); });
 /* 🍿 movie night leaderboard browser source in OBS (1.116.0): added to the scenes you pick, see-through around the board */
 const mnUrl = () => `http://localhost:${PORT}/movienight.html`;
 async function mnObsSource(on, scenes) {
@@ -5273,7 +5293,7 @@ app.post('/api/songs/search-try', async (req, res) => { /* 🔎 a real YouTube s
 app.get('/api/songs/level', async (req, res) => { /* 🔊 how loud one YouTube video is, and how many times the song volume it should play at */
   const yt = String(req.query.yt || ''); if (!/^[\w-]{11}$/.test(yt)) return res.json({ db: null, gain: 1 });
   let info = null; try { info = await ytInfo(yt); } catch {} const db = info && info.loud != null ? info.loud : null; res.json({ yt, db, gain: songs.levelGain(db) }); });
-songs.setHooks({ plRead: l => ytPlaylistRead(l), movieSkip: () => edHas('movies'), note: pstats.note, info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
+songs.setHooks({ plRead: l => ytPlaylistRead(l), movieSkip: () => edHas('movies'), note: pstats.note, info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => { broadcast(msg, role); if (role === 'songs') npSend(); }, isBot: l => BOT_NAMES.includes(l) });
 const sgTry = fn => async (req, res) => { try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.queue ? { state: r } : { ...(r || {}), state: songs.state() }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/songs', (req, res) => res.json(feat('songs') ? songs.state({ q: String(req.query.q || ''), sort: String(req.query.sort || 'last') }) : { on: false }));
 app.post('/api/songs/add', sgTry(async b => { const r = await songs.request({ login: '', name: String(b.by || '').trim() }, String(b.song || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'banned' ? 'That song is on your banned list.' : r.why === 'dupe' ? 'That song is already in the queue.' : r.why === 'link' ? 'Only YouTube links (or a song name).' : 'Type a song name or paste a YouTube link.'); return r; }));
@@ -6274,6 +6294,7 @@ async function obsSync(why = 'check', force = false) {
     if (db.settings.rollObs) { try { add('roll', '📣 Roll call', true, r1(await obs.rollSource(true, rollUrl(), Array.isArray(db.settings.rollScenes) && db.settings.rollScenes.length ? db.settings.rollScenes : null))); } catch (e) { add('roll', '📣 Roll call', false, e.message); } }
     if (feat('songs') && songs.opts().vodRoute) { try { const r = await musicObs(true); add('music', '🎚️ Song request music (off the VOD track)', true, r1(r)); if (r.state && (!r.state.vod.on || r.state.vod.same)) add('musicVod', '🎚️ Twitch VOD track', false, 'OBS has no separate Twitch VOD track switched on, so the music still goes on the VOD: open Chat bot → Songs → Settings → 🎚️ and press Set it up.'); } catch (e) { add('music', '🎚️ Song request music (off the VOD track)', false, e.message); } }
     if (sfxWanted()) { try { add('sfx', '🔊 Sound alerts (every scene)', true, r1(await obs.sfxSource(true, sfxUrl()))); } catch (e) { add('sfx', '🔊 Sound alerts (every scene)', false, e.message); } }
+    if (db.settings.npObs && feat('songs')) { try { add('nowplay', '🎼 Now-playing strip', true, r1(await obs.npSource(true, npUrl(), Array.isArray(db.settings.npScenes) && db.settings.npScenes.length ? db.settings.npScenes : null))); } catch (e) { add('nowplay', '🎼 Now-playing strip', false, e.message); } }
     if (db.settings.mnObs && feat('movienight')) { try { add('mnight', '🍿 Movie night leaderboard', true, r1(await obs.mnSource(true, mnUrl(), Array.isArray(db.settings.mnScenes) && db.settings.mnScenes.length ? db.settings.mnScenes : null))); } catch (e) { add('mnight', '🍿 Movie night leaderboard', false, e.message); } }
     const mc = db.settings.marathon || {};
     if (paid.dev() && mc.obs && Array.isArray(mc.scenes) && mc.scenes.length && mc.obsSetup?.collection !== undefined && setup.collection === mc.obsSetup?.collection) { try { add('mara', '🏃 Marathon counter', true, r1(await obs.maraSource(true, maraUrl(), mc.scenes))); } catch (e) { add('mara', '🏃 Marathon counter', false, e.message); } }

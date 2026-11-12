@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.150.0: What's new
+- {songs} 🎼 **Now-playing strip for OBS:** one thin line with the song, who asked for it, its rating and the time (1:23 / 3:45). Songs → Settings → ➕ Add it to OBS.
+
 ## v1.149.1: What's new
 - 💬 **The "🤖 Movies Royal Bot:" tag is gone** from the app's chat messages: they go out plain again. (Settings → Twitch has the box if you want a tag of your own.)
 

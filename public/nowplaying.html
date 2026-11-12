@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Movie Royal now playing strip</title>
+<link href="/fonts/fonts.css" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #fff; }
+  #np { position: absolute; left: 0; top: 0; max-width: 100%; box-sizing: border-box; display: inline-flex; align-items: center; gap: 12px; padding: 9px 16px 11px; background: rgba(10, 10, 14, .72); border-radius: 12px; font-size: 22px; line-height: 1.2; white-space: nowrap; opacity: 0; transition: opacity .5s; overflow: hidden; }
+  #np.show { opacity: 1; }
+  #note { opacity: .8; } #title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #by, #time { opacity: .75; font-size: 18px; flex: none; } #time { font-variant-numeric: tabular-nums; }
+  #rate { color: #ffd24b; font-weight: 700; font-size: 18px; flex: none; }
+  #bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: #fff; opacity: .8; transition: width .5s linear; }
+  .gone { display: none; }
+</style></head>
+<body><div id="np"><span id="note">♪</span><span id="title"></span><span id="by"></span><span id="rate"></span><span id="time"></span><div id="bar"></div></div>
+<script>
+const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
+const mmss = s => { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
+let N = null, got = 0;
+function set(m) { N = m; got = Date.now(); draw(); }
+function draw() {
+  const n = N, on = !!(n && n.on && n.title); $('np').classList.toggle('show', on); if (!on) return;
+  $('title').textContent = n.title; $('by').textContent = n.by ? '· ' + n.by : ''; $('by').classList.toggle('gone', !n.by);
+  const r = (n.rate || []).filter(x => x != null); $('rate').textContent = r.length ? '★ ' + r.join(' / ') : ''; $('rate').classList.toggle('gone', !r.length);
+  const has = n.dur > 0, t = has ? Math.min(n.dur, (n.t || 0) + (n.paused ? 0 : (Date.now() - got) / 1000)) : 0;
+  $('time').textContent = has ? `${mmss(t)} / ${mmss(n.dur)}` : ''; $('time').classList.toggle('gone', !has); $('bar').style.width = has ? (100 * t / n.dur).toFixed(2) + '%' : '0';
+}
+setInterval(draw, 500);
+window.__np = set;
+if (Q.get('demo')) set({ on: true, title: 'Pretend Disco Banger', by: 'NightOwl_44', rate: Q.get('demo') === 'plain' ? [] : [8, 9.5], t: 83, dur: 225, paused: false });
+else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=nowplay'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'songNow') set(m); }; ws.onclose = () => setTimeout(go, 2000); })();
+</script></body></html>
