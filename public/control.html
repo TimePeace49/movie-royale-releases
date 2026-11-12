@@ -8053,6 +8053,7 @@ async function fillAppBox() {
   const a = await fetch('/api/app').then(r => r.json());
   box.innerHTML = `<div class="row"><span class="grow">Movie Royal <b>v${esc(a.version)}</b>${a.desktop ? '' : ' (running from source)'}</span></div>
     ${a.desktop ? `<div class="row" style="margin-top:8px"><button class="primary" onclick="checkUpdate(this)">🔄 Check for updates</button>
+      <button onclick="botUpdateNow(this)" title="Update the 24/7 Discord bot on Cloudflare to the one that comes with this version of Movie Royal (it never updates by itself). Asks for your Cloudflare API token">☁️ Update my 24/7 bot</button>
       <button onclick="$('updFile').click()">📦 Install update from file…</button><input type="file" id="updFile" accept=".exe" hidden onchange="installFile(this.files[0])"></div><div id="updMsg"></div>` : ''}
     <p class="help" id="edLine" style="margin:0 0 8px">🎭 This is the <b>${esc(a.edition?.name || 'Public')} edition</b> of Movie Royal${a.edition?.id === 'public' ? ' (the one for everyone)' : ': it has its own downloads and updates, and can have things made just for this stream'}.</p>
     <label>Where updates come from (GitHub: <code>username/repo</code>)</label><input id="updRepo" value="${esc(a.updateRepo)}" placeholder="${a.defaultRepo ? esc(a.defaultRepo) + ' (built in)' : 'e.g. derek/movie-royal'}" onchange="api('/api/settings',{updateRepo:this.value.trim()}).then(()=>toast('Saved'))">
@@ -8128,6 +8129,15 @@ async function botStep(test = false) { // the 24/7 Discord bot on Cloudflare is 
       <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&${done})">🔄 Update the bot</button></div>
       <p class="help">No token? Make one at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → <b>Create Token</b> → <b>Edit Cloudflare Workers</b> template → your account + All zones → <b>Create Token</b> → <b>Copy</b>.</p>
       <div class="row" style="justify-content:flex-end;margin-top:10px"><button onclick="${done}" title="Asks again next time Movie Royal opens (until the bot is updated)">Later</button></div>` };
+}
+/* ☁️ (1.143.5, Derek: "add update 24/7 bot next to app update in account settings") the same update box as the start-up one, any time you want it (also when the start-up one doesn't ask, e.g. for the newest extras) */
+async function botUpdateNow(btn, test) {
+  if (btn) btn.disabled = true; let r = {}; try { r = await fetch('/api/cloud/outdated').then(x => x.json()); } catch {} if (btn) btn.disabled = false;
+  const line = !r.on ? 'Your 24/7 bot is not set up yet: pasting the token sets it up.' : r.botV == null ? `Could not reach your 24/7 bot to see its version. This app comes with bot version <b>${esc(r.v)}</b>.` : r.botV >= r.v ? `✅ Your 24/7 bot is already up to date (version <b>${esc(r.botV)}</b>). You can still put it on again.` : `Your 24/7 bot is on version <b>${esc(r.botV)}</b>; this app comes with version <b>${esc(r.v)}</b>.`;
+  sqShow([{ key: 'botNow', html: done => `<h3>☁️ Update my 24/7 bot</h3><p class="help" id="botNowLine">${line}</p><p class="help">The bot on Cloudflare doesn't update by itself, so it needs your Cloudflare API token each time.</p>
+      <div class="row" style="margin-top:8px"><input id="cfToken" class="grow" type="password" placeholder="Paste your Cloudflare API token"><button class="primary" onclick="cloudOn(this).then(ok=>ok&&${done})">🔄 Update the bot</button></div>
+      <p class="help">No token? Make one at <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare → My Profile → API Tokens</a> → <b>Create Token</b> → <b>Edit Cloudflare Workers</b> template → your account + All zones → <b>Create Token</b> → <b>Copy</b>.</p>
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button onclick="${done}">Close</button></div>` }], !!test);
 }
 async function botUpdateOnOpen() { try { const st = await botStep(!!botUpdateOnOpen.test); botUpdateOnOpen.test = false; if (st) sqShow([st]); } catch {} } // (🧪 Test tab: botUpdateOnOpen.test = true)
 async function updCheckStep() { // a newer version is posted (asks each time the app opens, unless you skipped that version)

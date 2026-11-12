@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.5
+- ☁️ **Update my 24/7 bot button.** Settings → 👤 Account & updates now has **☁️ Update my 24/7 bot** next to 🔄 Check for updates. It shows which version your bot is on and which one this app comes with, and updates it with your Cloudflare API token, any time (not only when the start-up pop-up asks).
+- 📌 **Server app icon on the taskbar, second try.** The server app now tells Windows itself which icon and program a taskbar pin stands for, instead of leaving Windows to guess. After updating the server app: close it fully (right-click the shield by the clock → Quit), unpin it, open it again and pin it.
+
 ## 1.143.4
 - 🎂🚲 **New built-in sounds (picked by Derek, from Pixabay).** The birthday pop-up now plays a **party horn**, and the movie night 5-minute timer rings a **real bike bell**. Both are the defaults for everyone; 🎵 Use my own sound file still wins, and the timer's old alarm clock is still a choice.
 

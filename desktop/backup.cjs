@@ -35,6 +35,8 @@ function show() {
   if (!url) return;
   if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); return; }
   win = new BrowserWindow({ width: 1100, height: 780, title: 'Movie Royal Backup Bots', icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { contextIsolation: true } });
+  // 📌 (1.143.5, Derek: pinned to the taskbar it still showed the main app's icon) tell Windows which icon and program a pin of this window stands for
+  try { if (process.platform === 'win32') { const ico = path.join(__dirname, 'icon-backup.ico'), isOwn = /backup/i.test(path.basename(process.execPath)); if (fs.existsSync(ico)) win.setAppDetails({ appId: 'com.movieroyal.backup', appIconPath: ico, appIconIndex: 0, relaunchCommand: isOwn ? `"${process.execPath}"` : `"${process.execPath}" --backup`, relaunchDisplayName: 'Movie Royal Backup Bots' }); } } catch {}
   win.webContents.setWindowOpenHandler(({ url: u }) => { if (/^https?:\/\//.test(u)) shell.openExternal(u); return { action: 'deny' }; });
   win.on('close', e => { // closing the window keeps the backup running in the tray
     if (quitting) return; e.preventDefault(); win.hide();
