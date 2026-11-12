@@ -34,7 +34,7 @@
 <body>
 <div id="app">
   <div class="card" data-panel="chat">
-    <div class="head"><b>💬 <span id="chanName">Chat</span></b><input id="filter" placeholder="🔎 Filter chat…" style="max-width:220px" oninput="drawAll()"><select id="scrollMode" onchange="scrollSet(this.value)" title="How chat scrolls. Auto: follows new messages (scroll up to pause). Pause on hover: stops while your mouse is over chat, catches up when it leaves. Manual: never moves by itself, you scroll it" style="max-width:150px"><option value="auto">⬇ Auto scroll</option><option value="hover">🖱 Pause on hover</option><option value="manual">✋ I scroll it</option></select><button class="pop" onclick="popOut('chat')" title="Open just the chat in its own window">⧉ Pop out</button><button class="pop" id="popAll" onclick="popOut('all')" title="Open chat, alerts and find someone together in their own window">⧉ All 3</button></div>
+    <div class="head"><b>💬 <span id="chanName">Chat</span></b><select id="platSel" style="display:none;max-width:170px" onchange="platSet(this.value)" title="Which chat shows here and counts in the app: only Twitch, only Kick, or both together (each name then gets a T or K mark)"><option value="twitch">💜 Twitch</option><option value="kick">🟢 Kick</option><option value="both">💜🟢 Twitch + Kick</option></select><span id="platStat" style="display:none;font-size:12.5px;cursor:help"></span><input id="filter" placeholder="🔎 Filter chat…" style="max-width:220px" oninput="drawAll()"><select id="scrollMode" onchange="scrollSet(this.value)" title="How chat scrolls. Auto: follows new messages (scroll up to pause). Pause on hover: stops while your mouse is over chat, catches up when it leaves. Manual: never moves by itself, you scroll it" style="max-width:150px"><option value="auto">⬇ Auto scroll</option><option value="hover">🖱 Pause on hover</option><option value="manual">✋ I scroll it</option></select><button class="pop" onclick="popOut('chat')" title="Open just the chat in its own window">⧉ Pop out</button><button class="pop" id="popAll" onclick="popOut('all')" title="Open chat, alerts and find someone together in their own window">⧉ All 3</button></div>
     <div id="permWarn"></div>
     <div id="msgs"></div>
     <div id="paused" onclick="stick=true;scrollDown()"></div>
@@ -110,9 +110,19 @@ const show = m => { const q = $('filter').value.trim().toLowerCase(); return !q 
 function drawAll() { $('msgs').innerHTML = msgs.filter(show).map(m => ChatUI.row(m, { tools: info.canMod || info.canDelete })).join('') || '<div class="muted" style="padding:10px">No chat yet. Messages show up here as they come in.</div>'; scrollDown(); }
 function addMsg(m) { msgs.push(m); if (msgs.length > 1500) msgs.shift(); if (!show(m)) return; const b = $('msgs'); if (b.querySelector('.muted')) b.innerHTML = ''; b.insertAdjacentHTML('beforeend', ChatUI.row(m, { tools: info.canMod || info.canDelete })); if (b.children.length > 1500) b.firstChild.remove(); if (follows()) scrollDown(); else pausedShow(); }
 function drawAlerts() { $('alerts').innerHTML = alerts.map(ChatUI.alertRow).join('') || '<div class="muted">Alerts show up here (subs, gift subs, bits, raids, follows, channel point redemptions, watch streaks and donations).</div>'; }
+/* 💜🟢 (1.143.6, Derek) the platform menu on the chat box + a line that says what the Kick chat connection is doing */
+let PLAT = null;
+function platDraw(p) { if (p) PLAT = p; const sel = $('platSel'), st = $('platStat'); if (!sel || !PLAT) return; sel.style.display = PLAT.can ? '' : 'none'; if (document.activeElement !== sel) sel.value = PLAT.mode;
+  const show = PLAT.can && PLAT.mode !== 'twitch'; st.style.display = show ? '' : 'none'; if (!show) return;
+  const ok = PLAT.chat === 'on', bad = PLAT.chat === 'error' || (PLAT.chat === 'off' && PLAT.err);
+  st.textContent = ok ? `🟢 Kick chat on${PLAT.lines ? ' · ' + PLAT.lines : ''}` : bad ? '🔴 Kick chat not connected' : '🟡 Kick chat connecting…'; st.style.color = ok ? '#7CFC9A' : bad ? '#ff8f8f' : '#ffd866';
+  st.title = ok ? `Reading kick.com/${PLAT.slug} (chat room ${PLAT.room || '?'}). ${PLAT.lines} Kick messages have come in since the app opened.` : bad ? `Kick chat is not coming in: ${PLAT.err || 'no answer from Kick'}. Check the channel name in Settings → Twitch → Kick.` : 'Connecting to Kick chat…'; }
+async function platSet(v) { try { const r = await fetch('/api/kick/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: v === 'kick', both: v === 'both' }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Could not switch'); cNote(v === 'both' ? '💜🟢 Twitch + Kick chat together' : v === 'kick' ? '🟢 Kick chat only' : '💜 Twitch chat only'); } catch (e) { cNote('⚠️ ' + e.message); } $('platSel').blur(); platPoll(); }
+async function platPoll() { try { platDraw(await fetch('/api/chat/platform').then(r => r.json())); if (PLAT) { ChatUI.setAssets({ both: PLAT.mode === 'both' }); } } catch {} }
+setInterval(() => { if (PLAT && PLAT.can && !document.hidden) platPoll(); }, 8000);
 async function load() {
   info = await fetch('/api/chat/recent?n=500').then(r => r.json()); ChatUI.setAssets(info);
-  msgs = info.messages; alerts = info.alerts; $('chanName').textContent = info.channel ? '#' + info.channel : 'Chat';
+  platDraw(info.plat); msgs = info.messages; alerts = info.alerts; $('chanName').textContent = info.channel ? '#' + info.channel : 'Chat';
   $('permWarn').innerHTML = info.canMod && info.canDelete ? '' : `<div class="warn">🛡️ To delete messages, time out and ban from here, sign in with Twitch again once (Settings → Account) so Movie Royal gets the new mod permissions.</div>`;
   drawAll(); drawAlerts();
 }
@@ -120,7 +130,7 @@ function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=chatview`);
   ws.onmessage = e => { const m = JSON.parse(e.data);
     if (m.type === 'chatmsg') addMsg(m.msg);
-    else if (m.type === 'chatBoth') { ChatUI.setAssets({ both: !!m.both }); drawAll(); } /* 💜🟢 both chats switched on / off: the T / K marks follow at once */
+    else if (m.type === 'chatBoth') { ChatUI.setAssets({ both: !!m.both }); if (m.plat) platDraw(m.plat); drawAll(); } /* 💜🟢 both chats switched on / off: the T / K marks follow at once */
     else if (m.type === 'chatalert') { alerts.unshift(m.alert); alerts = alerts.slice(0, 200); drawAlerts(); }
     else if (m.type === 'chatclear') { for (const x of msgs) if ((m.id && x.id === m.id) || (m.login && x.login === m.login)) x.gone = m.id ? 'deleted' : m.duration ? `timed out ${m.duration}s` : 'banned'; drawAll(); } };
   ws.onclose = () => setTimeout(connect, 1500);

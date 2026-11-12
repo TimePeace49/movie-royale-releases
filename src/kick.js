@@ -151,7 +151,11 @@ async function findChatroom(sl) { // the chat room's number, from the channel's 
   const m = text.match(/"chatroom"\s*:\s*\{[^{}]*?"id"\s*:\s*(\d+)/); if (!m) throw new Error(`Could not find the chat room of kick.com/${sl}. Check the channel name, or type the chat room number in by hand.`);
   d.chatroomId = Number(m[1]); d.chatroomFor = sl; save(); return d.chatroomId;
 }
-function setChat(st, err) { if (status.chat === st && status.chatError === (err || null)) return; status.chat = st; status.chatError = err || null; H.changed(); }
+function setChat(st, err) { if (status.chat === st && status.chatError === (err || null)) return; status.chat = st; status.chatError = err || null; diag(); if (st === 'error' && err && err !== lastErrLogged) { lastErrLogged = err; console.error('[kick] chat: ' + err); } H.changed(); }
+/* (1.143.6) what the Kick chat connection is doing, kept in the data file too, so a problem can be looked up afterwards */
+let lastErrLogged = '';
+function diag() { try { const d = data(); d.diag = { chat: status.chat, err: status.chatError || null, lines: status.lines || 0, lastMsgAt: status.lastMsgAt || null, room: d.chatroomId || null, at: Date.now() }; save(); } catch {} }
+export const mode = () => both() ? 'both' : on() ? 'kick' : 'twitch';
 async function connect() {
   clearTimeout(retryT); if (!wantSock) return;
   const sl = slug(); if (!sl) return setChat('off', 'Type your Kick channel name first');
@@ -169,7 +173,7 @@ async function connect() {
     if (m.event !== 'App\\Events\\ChatMessageEvent') return;
     let p; try { p = typeof m.data === 'string' ? JSON.parse(m.data) : m.data; } catch { return; }
     if (!p || !p.sender) return;
-    status.lastMsgAt = Date.now(); status.lines++;
+    status.lastMsgAt = Date.now(); status.lines++; if (status.lines === 1 || status.lines % 50 === 0) diag();
     const c = toChat(p); if (!c.text || !reading()) return;
     try { H.chat(c); } catch (e) { console.error('[kick] chat', e.message); }
   });

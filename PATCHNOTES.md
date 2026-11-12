@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.143.6: What's new
+- {kick} 💜🟢 The chat box has a menu next to the channel name: Twitch, Kick, or Twitch + Kick. A small line beside it says whether Kick chat is connected (hover it for why not).
+
 ## v1.143.5: What's new
 - ☁️ Settings → 👤 Account & updates has a new **☁️ Update my 24/7 bot** button next to 🔄 Check for updates: update the bot any time, and see which version it's on.
 - {ed:derek} 📌 The server app tells Windows its own icon for taskbar pins (close it fully, unpin, open, pin again).

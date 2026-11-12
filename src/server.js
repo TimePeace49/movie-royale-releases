@@ -1501,7 +1501,7 @@ twitch.route.on = () => kick.on(); twitch.route.both = () => kick.both(); twitch
 setTimeout(() => kick.start(), 4000);
 const kickDev = (req, res) => { if (feat('kick')) return true; res.status(400).json({ error: 'Kick is not part of this edition.' }); return false; };
 app.get('/api/kick', (req, res) => res.json({ ...kick.info(), redirect: kick.redirectUri(PORT) }));
-app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(), wasB = kick.both(); let r; try { r = kick.setCfg(req.body || {}); } catch (e) { return res.status(400).json({ error: e.message }); } if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); if (wasB !== kick.both()) broadcast({ type: 'chatBoth', both: kick.both() }, 'chatview'); if (wasB !== kick.both()) act('stream', kick.both() ? 'Both chats on: Twitch 💜 + Kick 🟢' : `Both chats off: back to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'} only`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
+app.post('/api/kick/settings', (req, res) => { if (!kickDev(req, res)) return; const was = kick.on(), wasB = kick.both(); let r; try { r = kick.setCfg(req.body || {}); } catch (e) { return res.status(400).json({ error: e.message }); } if (was !== kick.on()) act('stream', `Platform switched to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'}`, { icon: '🔀', kind: 'platform' }); if (wasB !== kick.both() || was !== kick.on()) broadcast({ type: 'chatBoth', both: kick.both(), plat: chatPlat() }, 'chatview'); if (wasB !== kick.both()) act('stream', kick.both() ? 'Both chats on: Twitch 💜 + Kick 🟢' : `Both chats off: back to ${kick.on() ? 'Kick 🟢' : 'Twitch 💜'} only`, { icon: '🔀', kind: 'platform' }); res.json({ ok: true, ...r }); });
 app.get('/auth/kick', (req, res) => { try { if (!feat('kick')) throw new Error('Kick is not part of this edition.'); res.redirect(kick.authUrl(PORT)); } catch (e) { res.status(400).send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>🟢 Kick sign-in</h2><p>${hEsc(e.message)}</p><p>Close this tab and go back to Movie Royal.</p></body>`); } });
 app.get('/kick/callback', async (req, res) => {
   const page = (ok, msg) => res.send(`<body style="font-family:sans-serif;background:#1a1030;color:#fff;padding:40px"><h2>${ok ? '✅ Signed in with Kick' : '⚠️ Kick sign-in did not work'}</h2><p>${hEsc(msg)}</p><p>You can close this tab and go back to Movie Royal.</p></body>`);
@@ -2209,12 +2209,15 @@ app.get('/api/renames', (req, res) => res.json(db.renames || []));
 chatlog.initChat({ send: m => { broadcast(m, 'control'); broadcast(m, 'chatview'); } });
 setInterval(() => { if (db.live) twitch.chatters().then(list => { chatlog.tickWatch(list); try { eggs.onWatch(list); } catch (e) { console.error('[eggs]', e.message); } }).catch(() => {}); }, 5 * 60000); // watch time while live (+ 🥚 eggs)
 let badgeCache = { at: 0, map: {} };
+/* 💜🟢 (1.143.6, Derek: "give me an option to choose twitch, kick, twitch and kick" right on the chat box) what the chat box's platform menu shows: only with Kick in this edition AND signed in to Kick */
+function chatPlat() { const k = kick.info(); return { can: feat('kick') && !!k.signedIn, mode: kick.mode(), chat: k.chat || 'off', err: k.chatError || '', lines: k.lines || 0, room: k.chatroomId || null, slug: k.slug || '' }; }
+app.get('/api/chat/platform', (req, res) => res.json(chatPlat()));
 app.get('/api/chat/recent', async (req, res) => {
   if (Date.now() - badgeCache.at > 3600000) { badgeCache = { at: Date.now(), map: await twitch.badges().catch(() => ({})) }; }
   const emotes = await chatlog.thirdPartyEmotes(twitch.broadcasterId()).catch(() => ({}));
   const sc = twitch.status.scopes || [];
   res.json({ messages: chatlog.getRecent(Number(req.query.n) || 400), alerts: chatlog.getAlerts(150), badges: badgeCache.map, emotes, channel: twitch.status.login || db.settings.twitchChannel || '',
-    canChat: !!twitch.status.canChat, canMod: sc.includes('moderator:manage:banned_users'), canDelete: sc.includes('moderator:manage:chat_messages'), canWatch: sc.includes('moderator:read:chatters'), both: kick.both(), kick: kick.on() });
+    canChat: !!twitch.status.canChat, canMod: sc.includes('moderator:manage:banned_users'), canDelete: sc.includes('moderator:manage:chat_messages'), canWatch: sc.includes('moderator:read:chatters'), both: kick.both(), kick: kick.on(), plat: chatPlat() });
 });
 app.get('/api/chat/search', (req, res) => res.json(chatlog.search({ q: req.query.q, login: req.query.login, days: Math.min(365, Number(req.query.days) || 30) })));
 app.get('/api/chat/names', (req, res) => res.json(chatlog.names(String(req.query.q || ''))));

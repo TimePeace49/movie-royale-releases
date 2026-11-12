@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.6
+- 💜🟢 **Pick the chat right on the chat box.** Next to the channel name in the app's chat box there's now a menu: **💜 Twitch**, **🟢 Kick** or **💜🟢 Twitch + Kick** (shows once you're signed in to Kick, in editions that have Kick). Beside it a small line says what Kick chat is doing: 🟢 on (with how many Kick messages came in), 🟡 connecting, or 🔴 not connected. Hover it for the reason.
+- If Kick chat can't connect, the reason now also lands in ⚙️ Settings → ⚠️ Errors.
+
 ## 1.143.5
 - ☁️ **Update my 24/7 bot button.** Settings → 👤 Account & updates now has **☁️ Update my 24/7 bot** next to 🔄 Check for updates. It shows which version your bot is on and which one this app comes with, and updates it with your Cloudflare API token, any time (not only when the start-up pop-up asks).
 - 📌 **Server app icon on the taskbar, second try.** The server app now tells Windows itself which icon and program a taskbar pin stands for, instead of leaving Windows to guess. After updating the server app: close it fully (right-click the shield by the clock → Quit), unpin it, open it again and pin it.
