@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.144.2
+- 📺 **The battle preview stays away when it has nothing to show.** It popped up during the demo tour (a pretend chat message was treated as a battle test). Now it never pops up during the 🎥 demo tour, never in an edition without battles, and a pretend chat message only brings it up when it's a battle or wheel command (like !join or !respin).
+
 ## 1.144.1
 - 🪟 **The profile box is a movable window.** Click a name and the profile now floats on top of everything: drag it by its top part to anywhere, and the app under it keeps working (chat keeps scrolling, buttons still click). It never pushes or squeezes other boxes. Opened from one of the Chat tab's boxes, it opens over the whole app instead of inside that box. It remembers where you left it; ✕ or Esc closes it.
 - 💬 **!mydiscordname (Birx & Jess edition).** A viewer types `!mydiscordname` and their Discord name in chat, and it shows on their profile under their name. `!mydiscordname remove` takes it off; `!mydiscordname` alone shows what's saved. Only what they typed is kept; nothing is looked up on Discord. The command can be renamed or limited in Chat bot → Commands → the app's own commands.

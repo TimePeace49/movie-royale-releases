@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.144.2: What's new
+- {ed:derek} 📺 The battle preview no longer pops up during the demo tour or for pretend chat messages that have nothing to do with battles.
+
 ## v1.144.1: What's new
 - 🪟 **Profiles are a movable window.** Click a name and the profile floats on top of everything: drag it anywhere by its top part, and the app under it keeps working. It remembers its spot; ✕ or Esc closes it.
 - {discordname} 💬 **!mydiscordname:** a viewer types `!mydiscordname` and their Discord name in chat, and it shows on their profile. `!mydiscordname remove` takes it off.
