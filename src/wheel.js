@@ -20,13 +20,16 @@ const rnd = () => crypto.randomInt(0, 1e9) / 1e9;
 export const PAL = ['#ff4f6d', '#ffb547', '#ffe066', '#5ce1a7', '#4fc3ff', '#7c6cff', '#ff7ad9', '#46d6c7', '#ff8a4c', '#a4e05a', '#5d8bff', '#e05ad0'];
 const REWARDS = { respin: 'Wheel: Respin', move: 'Wheel: Move a spot', up: 'Wheel: Move up a spot', down: 'Wheel: Move down a spot', grow: 'Wheel: Grow a spot', shrink: 'Wheel: Shrink a spot', double: 'Wheel: Double trouble', stop: 'Wheel: Force stop' };
 // every wheel has its own settings (shrink, void and doomsday are off until you turn them on)
-export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true, recent: true, showPct: true, chat: true, bankRespin: true, growPct: 10,
+export const DEF_OPTS = { speed: 1, confetti: true, ticks: true, winSound: true, recent: true, showPct: true, chat: true, bankRespin: true, chatLock: false, growPct: 10,
   rules: true, // off = a plain wheel: no spot types, no rules, no round timer, no void
   round: { on: true, len: 2, unit: 'min' }, // the round timer: starts when the first spin lands, runs out = that's the winner
   collide: { on: true, secs: 5 }, // respins that come in at almost the same time: the first spins, the rest are saved for later
   points: { respin: true, move: true, up: true, down: true, grow: true, shrink: false, double: true, stop: true },
   void: { on: false, label: 'VOID', weight: 1, color: '#0b0b12', landings: 5, doomsday: false, monthly: true },
   pop: { on: true, sub: true, gift: true, bits: true, money: true, grow: true, shrink: false, spins: true, unvoid: true } };
+/* 🔒 (1.147.0, Derek: "a wheel option that will turn off all wheel spins, up and down, force stop, or double trouble") one switch per wheel: chat can't respin (channel points or saved spins), move a spot up / down, force stop or double trouble. Grow / shrink stay (you pick the spot yourself). */
+export const LOCK_KINDS = ['respin', 'move', 'up', 'down', 'stop', 'double'];
+export const lockedKind = (wh, kind) => !!(wh && wh.opts && wh.opts.chatLock && LOCK_KINDS.includes(kind));
 export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS.round, ...(o?.round || {}) }, collide: { ...DEF_OPTS.collide, ...(o?.collide || {}) }, points: { ...DEF_OPTS.points, ...(o?.points || {}) }, void: { ...DEF_OPTS.void, ...(o?.void || {}) }, pop: { ...DEF_OPTS.pop, ...(o?.pop || {}) } });
 export const TYPES = { timer: '⏱️ Timer', mystery: '🎁⚡ Hidden reveal (auto)', timerlink: '⏱️🔀 Timer + Link', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', autocount: '⚡🔢 Auto + countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' }; // (1.61.4, Derek: every spot rule in the menu: ⏱️🔀 timer + link is a timer spot with the link on; 🎁 mystery = an ⚡ auto spot with the reveal on since 1.67.1)
 // ⚡ auto behaviour (the round timer pauses, nobody can respin it): every auto kind, and 🎁 mystery spots (1.67.1, Derek: "for hidden spot it is a auto spot no timer")
@@ -702,6 +705,7 @@ export function wheelChat(m) {
   if (mv && /^(up|down)\b/.test(t)) {
     movers.delete(m.login);
     const kind = t.startsWith('up') ? 'up' : 'down';
+    if (lockedKind(lastWheel(), kind)) { logRedeem(mv.r, 'the wheel is locked'); sayW(lastWheel(), `🎡 Sorry @${m.name}, this wheel is locked right now 💜`); return true; }
     try { request(kind, { name: m.name, login: m.login, source: 'points', cost: mv.cost }); logRedeem(mv.r, `moved it ${kind} (typed "${t.slice(0, 10)}")`); }
     catch (e) { note(`${m.name}: ${e.message}`); logRedeem(mv.r, e.message); sayW(lastWheel(), `🎡 Sorry @${m.name}, ${e.message} 💜`); }
     return true;
@@ -709,6 +713,7 @@ export function wheelChat(m) {
   if (cmd === String(st.cmd.spins || '').toLowerCase()) { const b = st.bank[bkey(m.login)]; say(b?.spins ? `🎡 @${m.name} you have ${b.spins} wheel respin${b.spins === 1 ? '' : 's'} saved up! Type ${st.cmd.respin} to use one.` : `🎡 @${m.name} you don't have any wheel respins right now — but stick around, they come your way! 💜`); return true; }
   if (cmd !== String(st.cmd.respin || '').toLowerCase()) return false;
   const b = st.bank[bkey(m.login)], lw = lastWheel();
+  if (lockedKind(lw, 'respin')) { say(`🎡 @${m.name} this wheel is locked right now, so no respins — yours ${b && b.spins > 1 ? 'are' : 'is'} safe for later! 💜`); return true; }
   if (lw && lw.opts.bankRespin === false) { say(`🎡 @${m.name} saved respins can't be used on this wheel tonight — yours are safe for later! 💜`); return true; }
   if (!b || b.spins <= 0) { say(`🎡 Aw @${m.name}, you don't have any wheel respins right now! 💜 Keep hanging out and you might earn some.`); return true; }
   if (!st.last) { say(`🎡 @${m.name} hang tight, the wheel hasn't been spun yet! Your ${b.spins} respin${b.spins === 1 ? ' is' : 's are'} safe.`); return true; }
@@ -885,6 +890,7 @@ export function wheelRedeem(r) {
   if (st.pointsOn === false) { logIt('wheel channel points are switched off'); return false; }
   const giveBack = msg => { note(msg + ' (refund it in your Twitch reward queue if you want)'); logIt(msg); }; // refunds are yours to do on Twitch
   const cost = r.cost || st.costs?.[kind] || 0, wh = lastWheel();
+  if (lockedKind(wh, kind)) { giveBack(`${r.name} redeemed "${r.title}" but “${wh.name}” is locked (🔒 in its settings).`); sayW(wh, `🎡 Sorry @${r.name}, this wheel is locked right now 💜`); return true; }
   if (wh.opts.points[kind] === false) { giveBack(`${r.name} redeemed "${r.title}" but that's off for “${wh.name}”.`); sayW(wh, `🎡 Sorry @${r.name}, that one is turned off for this wheel 💜`); return true; }
   if (kind === 'grow' || kind === 'shrink') { // you pick the spot (type it in the pop-up), chat doesn't
     addBoost({ kind: 'points', only: kind, login: r.login, name: r.name, icon: kind === 'grow' ? '📈' : '📉', title: `${r.name} redeemed “${r.title}” — pick a spot to ${kind}`, suggest: 1, reason: 'channel points', cost });

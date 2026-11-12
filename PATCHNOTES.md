@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.147.0: What's new
+- 🔒 **Lock a wheel.** In a wheel's settings, one new switch turns off everything chat can do to its spins: respins (channel points and saved spins), moving a spot up or down, force stop and double trouble. Your own buttons still work.
+
 ## v1.146.0: What's new
 - {kick} 🟢 **Kick chat connects again.** Kick changed its chat address; the app now finds the current one by itself.
 - {songs} 📻 **Playlists got smarter.** While a playlist plays you can rate the song with the stars, see the next 10 songs, and ban a song. New **🎵 Play between requests** in the ⏸📻 pop-up: the playlist fills the quiet, a request plays after the current song, then the playlist carries on. With **⏸ Pause requests**, requests still come in and wait.

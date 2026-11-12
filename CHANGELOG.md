@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.147.0
+- 🔒 **Lock a wheel.** Each wheel's settings (⚙ on the Wheel tab) has a new switch at the top of the chat part: **🔒 Chat can't respin, move a spot up or down, force stop or double trouble on this wheel.** One tick turns all of those off for that wheel: the channel point rewards are hidden while the wheel is up, and saved spins (`!respin`) get a friendly "this wheel is locked" answer and stay saved. Your own 🎡 SPIN, 🎟️ streamer respins and + / − still work, and grow / shrink (where you pick the spot) are untouched. Untick it and your per-reward ticks are back as they were.
+- 🧪 Test: Wheel test card → 🔒 Lock rule check.
+
 ## 1.146.0
 - 🟢 **Kick chat connects again.** Kick changed the address of its chat feed in October, so the app kept saying "the chat connection dropped". The app now asks Kick for the current one each time it connects (and knows the new one by heart as a fallback), and if Kick ever changes it again it tries the next one by itself.
 - 📻 **Playlists play one song at a time, so the app knows what's on.** That makes all of this work while a playlist plays:
