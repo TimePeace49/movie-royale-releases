@@ -16,6 +16,7 @@ export function renameUser(oldName, newName) {
   // ball color
   if (db.colors?.[ol] && !db.colors[nl]) { db.colors[nl] = db.colors[ol]; delete db.colors[ol]; }
   if (db.discordNames?.[ol] && !db.discordNames[nl]) { db.discordNames[nl] = db.discordNames[ol]; delete db.discordNames[ol]; } // 💬 their !mydiscordname
+  if (db.soCustom?.[ol] && !db.soCustom[nl]) { db.soCustom[nl] = db.soCustom[ol]; delete db.soCustom[ol]; } // 📣 their own shout-out message
   if (db.ids?.[ol] && !db.ids[nl]) { db.ids[nl] = db.ids[ol]; delete db.ids[ol]; } // 🧍 their !id character
   // movies (the name shown on their picks) and chat / giveaway entries
   for (const l of db.lists || []) for (const e of l.entries || []) {

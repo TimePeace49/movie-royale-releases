@@ -1742,15 +1742,25 @@ app.post('/api/test/clip-who', async (req, res) => { // 🧪 would these people 
 });
 // 📣 (1.127.0, Derek) shout-out button (Chat tab tools box + profile pop-ups): a chat line "go check out …" + Twitch's own shout-out box (on Kick: only the chat line, Kick has no shout-out for apps)
 const soLast = new Map(); let soAt = 0;
+/* 📣✏️ (1.144.4, Derek: "under profiles add an option to make a custom so message for that user") one shout-out message per person, used instead of the usual one whenever they are shouted out (button, profile, !so). {name} {login} {game} work in it. */
+const soOwn = login => String(db.soCustom?.[String(login || '').toLowerCase()] || '');
+app.post('/api/shoutout/custom', (req, res) => { try {
+  const login = String(req.body?.login || '').trim().replace(/^@/, '').toLowerCase(); if (!/^[a-z0-9_]{2,40}$/.test(login)) throw new Error('Open someone\'s profile first.');
+  const text = String(req.body?.text || '').replace(/\s+/g, ' ').trim().slice(0, 400); db.soCustom ||= {};
+  if (text) db.soCustom[login] = text; else delete db.soCustom[login]; save();
+  act('chat', text ? `Own shout-out message saved for ${login}` : `Own shout-out message removed for ${login}`, { icon: '📣', kind: 'shoutout' });
+  const shown = req.body?.name || login, sample = (text || db.settings.soText || '📣 Go check out {name} at https://twitch.tv/{login}{game}! Give them a follow 💜').replace(/\{name\}/g, shown).replace(/\{login\}/g, login).replace(/\{game\}/g, ' (last seen playing Just Chatting)');
+  res.json({ ok: true, login, text, sample });
+} catch (e) { res.status(400).json({ error: e.message }); } });
 async function shoutOut(name, via, test, opt = {}) {
   const login = String(name || '').trim().replace(/^@/, '').toLowerCase(); if (!/^[a-z0-9_]{2,25}$/.test(login)) throw new Error('Type their channel name.');
-  const o = db.settings, text0 = o.soText || '📣 Go check out {name} at https://twitch.tv/{login}{game}! Give them a follow 💜';
+  const o = db.settings, own = soOwn(login), text0 = own || o.soText || '📣 Go check out {name} at https://twitch.tv/{login}{game}! Give them a follow 💜'; /* (1.144.4: this person's own shout-out message wins) */
   let u = null, info = null;
   if (test) u = { login, name: name.replace(/^@/, ''), id: 'pretend' };
   else { try { u = (await twitch.getUsers([login])).get(login) || null; } catch {} if (!u && !kick.on()) throw new Error(`Twitch doesn't know a channel called “${login}”.`); if (u?.id) info = await twitch.channelInfo(u.id); }
   if (test) info = { game: 'Just Chatting' };
   const shown = u?.name || login, line = text0.replace(/\{name\}/g, shown).replace(/\{login\}/g, login).replace(/\{game\}/g, info?.game ? ` (last seen playing ${info.game})` : '');
-  const r = { ok: true, name: shown, login, line, twitch: null, test: !!test };
+  const r = { ok: true, name: shown, login, line, twitch: null, test: !!test, custom: !!own };
   if (test) { r.twitch = 'pretend'; act('chat', `Pretend shout-out for ${shown}${opt.by ? ' by ' + opt.by : ''}`, { icon: '📣', kind: 'shoutout', test: true }); return r; }
   if (o.soChat !== false && opt.say !== false) await twitch.say(line).catch(() => {});
   if (!kick.on() && u?.id && o.soTwitch !== false) {
@@ -2380,6 +2390,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   res.json({
     linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
     id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
+    soText: soOwn(login), soDefault: db.settings.soText || '📣 Go check out {name} at https://twitch.tv/{login}{game}! Give them a follow 💜', // 📣✏️ their own shout-out message (and the usual one, shown as the hint)
     discordName: feat('discordname') ? dnOf(login) : '', // 💬 the Discord name they typed with !mydiscordname
     bday: (() => { const md = birthdays.days()[login]; return md ? { day: birthdays.nice(md), today: md === birthdays.mmdd(birthdays.dayOf()) } : null; })(), // 🎂 their birthday, if they told chat (never a year)
     slim: !edHas('battle'), // 🎭 an edition without battles: no character, respins, movies or games on the profile

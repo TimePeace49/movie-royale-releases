@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.144.4
+- 📣✏️ **A shout-out message of their own, per person.** Open someone's profile: at the top of the Overview there's **📣 Their own shout-out message**. Type a message just for them and press 💾 Save; from then on that message is used whenever you shout them out (the 📣 buttons, their profile's Shout out, or the shout-out chat command), instead of your usual one. `{name}`, `{login}` and `{game}` get filled in, and after saving it shows exactly what chat will see. **↩ Use my usual one** takes it away again. Twitch's own shout-out box is not changed by this, only the chat line.
+
 ## 1.144.3
 - ⏱️ **Movie night with voting off = list, pin and a plain timer.** With 🍿 Movie night voting switched off, the Movie night tab now has **⏳ Start the timer** and **📌 Pin the list**. The timer is just a countdown: the big timer pop-up on stream and in the app, the bell at 0, and "Time's up!" in chat. Nothing about votes, and no winner screen. The pinned list (and the automatic re-pin when you change the list) works with voting off too.
 - 🚫 **Voting off = the vote commands are off.** `!vote` and `!myvotes` don't answer at all while voting is switched off, and they leave the app's command list.

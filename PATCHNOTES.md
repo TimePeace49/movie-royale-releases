@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.144.4: What's new
+- 📣✏️ **Shout-out messages per person.** On someone's profile, 📣 Their own shout-out message lets you save a shout-out line just for them. It's used whenever you shout them out, instead of your usual one.
+
 ## v1.144.3: What's new
 - {movienight} ⏱️ With movie night voting switched off you can still keep the list, 📌 pin it and run the ⏳ timer: it's then a plain countdown with the bell, with nothing about votes and no winner screen. The vote commands don't answer while voting is off.
 - {songs} 🎵 With song requests switched off, every song command is off (request, now playing, queue, skip, volume…), not only the request one.

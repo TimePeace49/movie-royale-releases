@@ -49,7 +49,11 @@ window.Profile = (() => {
     const tb = `<div class="tabs">${tabs.map(([k, n]) => `<button class="${tab === k ? 'on' : ''}" onclick="Profile.tab('${k}')">${n}</button>`).join('')}</div>`;
     let body = '';
     const songBox = p.songs ? `<div style="margin:0 0 10px;padding:8px 10px;border:1px solid #ffffff22;border-radius:10px"><b>🎵 Songs in the queue</b>${p.songs.length ? p.songs.map(x => `<div style="margin-top:4px">${x.pos ? `<b>#${x.pos}</b>` : '<b>▶ playing now</b>'} ${esc(x.title)}</div>`).join('') : '<div class="muted" style="margin-top:4px">None right now.</div>'}</div>` : '';
-    if (tab === 'overview') body = (p.slim ? '' : lookBox(p)) + songBox + `<div class="grid">
+    /* 📣✏️ (1.144.4) this person's own shout-out message */
+    const soBox = p.login ? `<details id="profSoBox" ${p.soText ? 'open' : ''} style="margin:0 0 10px;background:#ffffff0d;border-radius:12px;padding:8px 10px"><summary style="cursor:pointer" title="A shout-out message only for this person: it is used instead of your usual one whenever you shout them out (the 📣 buttons, their profile, or the shout-out chat command)">📣 Their own shout-out message ${p.soText ? '<b style="color:#7CFC9A">(set)</b>' : '<span class="muted">(uses your usual one)</span>'}</summary>
+      <textarea id="profSoTx" rows="2" maxlength="400" placeholder="${esc(p.soDefault || '')}" title="What chat is told when you shout this person out. {name} = their name, {login} = their channel, {game} = what they last played. Leave empty to use your usual shout-out message" style="width:100%;box-sizing:border-box;margin-top:8px;background:#0f0820;color:#f3edff;border:1px solid #3a2a5c;border-radius:10px;padding:8px;font:inherit;resize:vertical">${esc(p.soText || '')}</textarea>
+      <div class="row" style="margin-top:6px"><button class="pri" onclick="Profile.soSave()" title="Save this shout-out message for this person">💾 Save</button><button onclick="Profile.soSave(true)" title="Take their own message away: your usual shout-out message is used again">↩ Use my usual one</button><span class="muted" style="font-size:13px">{name} {login} {game} get filled in</span></div><div id="profSoOut" class="muted" style="font-size:13px;margin-top:4px"></div></details>` : '';
+    if (tab === 'overview') body = soBox + (p.slim ? '' : lookBox(p)) + songBox + `<div class="grid">
         <div class="st"><b>${dt(p.createdAt)}</b><small>Twitch account made${p.createdAt ? ` (${ago(Date.parse(p.createdAt))} ago)` : ''}</small></div>
         <div class="st"><b>${p.followedAt === null ? 'Not following' : p.followedAt ? dt(p.followedAt) : '—'}</b><small>Following since${p.followedAt ? ` (${ago(p.followedAt)})` : ''}</small></div>
         <div class="st"><b>${p.sub?.months ? `${p.sub.months} month${p.sub.months === 1 ? '' : 's'}` : p.sub?.now ? 'yes' : '—'}</b><small>Subscribed</small></div>
@@ -113,6 +117,7 @@ window.Profile = (() => {
     const r = await post('/api/chat/mod', { action, login: cur.login, seconds }); if (!r.error) alert(action === 'unban' ? '↩️ Unbanned.' : action === 'ban' ? '🔨 Banned.' : '⏱ Timed out.');
   }
   async function so() { const el = document.getElementById('profSo'); if (el) el.textContent = '📣 …'; const r = await post('/api/shoutout', { name: cur.login, via: 'profile' }); if (el) el.textContent = r.error ? '⚠️ ' + r.error : r.twitch && r.twitch !== 'ok' ? '✅ Chat line sent. ' + r.twitch : r.twitch === 'ok' ? '✅ Shouted out (with Twitch’s shout-out box)' : '✅ Shouted out in chat'; }
+  async function soSave(clear) { const tx = document.getElementById('profSoTx'), out = document.getElementById('profSoOut'); if (!tx || !cur) return; if (clear) tx.value = ''; const r = await post('/api/shoutout/custom', { login: cur.login, name: cur.name, text: tx.value }); if (r.error) { if (out) out.textContent = '⚠️ ' + r.error; return; } cur.soText = r.text; const sum = document.querySelector('#profSoBox summary'); if (sum) sum.innerHTML = '📣 Their own shout-out message ' + (r.text ? '<b style="color:#7CFC9A">(set)</b>' : '<span class="muted">(uses your usual one)</span>'); if (out) out.innerHTML = (r.text ? '✅ Saved. Chat will see: ' : '↩ Back to your usual one. Chat will see: ') + '<i>' + esc(r.sample) + '</i>'; }
   async function spins(sign) { const n = Math.abs(Number(document.getElementById('profN').value) || 1) * sign; const r = await post('/api/wheel/bank', { who: cur.login || cur.name, n, reason: document.getElementById('profWhy').value || (sign > 0 ? 'given' : 'taken away') }); if (!r.error) open(cur.login); }
   // double-click a name anywhere → their profile
   document.addEventListener('dblclick', async e => {
@@ -123,5 +128,5 @@ window.Profile = (() => {
     const r = await fetch('/api/viewer-lookup?name=' + encodeURIComponent(word)); if (!r.ok) return;
     const j = await r.json(); if (j.login || j.discordId) open(j.login, j);
   });
-  return { open, close: () => dlg?.close(), tab: t => { tab = t; draw(); }, mod, spins, so };
+  return { open, close: () => dlg?.close(), tab: t => { tab = t; draw(); }, mod, spins, so, soSave };
 })();
