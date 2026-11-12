@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.148.0
+- ✏️ **Your own chat message for a skipped song.** Chat bot → 🎵 Songs → Settings → Skipping, limits and chat help has two new boxes: **Chat voted to skip** (said when chat votes a song off) and **Someone skipped it** (said when a mod or the person who asked skips it from chat). Leave a box empty for the usual line. You can put `{song}`, `{name}` (who skipped it / cast the last vote), `{by}` (who asked for the song) and `{votes}` in the message.
+- 🧪 Test: the 🧪 Check these rules button there has a new check for it.
+
 ## 1.147.1
 - 🔒 The wheel lock now also turns off **grow** and **shrink** with channel points (you can still do those yourself with + / −).
 
