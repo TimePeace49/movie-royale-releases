@@ -5803,7 +5803,7 @@ window.__royalEvent = e => runEvent({ event: e, by: { name: 'test' }, source: 't
 window.__royalSim = secs => { const dt = 1 / 60; for (let i = 0; i < secs * 60 && phase === 'running'; i++) { runStep(dt); updateFalling(dt); if (MAP.cars) for (const f of fighters) CARS.smoke(f, dt); for (const q of parts) q.life -= dt; for (const q of floaters) q.life -= dt; } parts = parts.filter(q => q.life > 0); floaters = floaters.filter(q => q.life > 0); return { phase, t, alive: alive().length, winner: winner?.label, destined: destined?.label, parts: parts.length }; }; // (fast test runs)
 function frame(now) {
   requestAnimationFrame(frame); // (asked for first: one bad frame can never stop the game screen for good)
-  const cap = saving() && (GFX.hidden || obsOff()) ? 30 : GFX.fps; // (the hidden game inside the app only needs 30 frames a second)
+  const cap = saving() && (GFX.hidden || obsOff()) ? (phase === 'idle' && !replay ? 4 : 30) : GFX.fps; /* 🧹 (1.153.0) hidden with no battle on: 4 frames a second is plenty */ // (the hidden game inside the app only needs 30 frames a second)
   if (cap && last && now - last < 1000 / cap - 1.5) return; // 🎨 frame rate cap / lock
   dtReal = Math.max(0, Math.min(.05, (now - last) / 1000)); last = now; clock += dtReal; // (never backwards: the first frame's time can be from before the page finished loading)
   fpsN++; if (now - fpsAt >= 1000) { fpsShow = Math.round(fpsN * 1000 / (now - fpsAt || 1000)); fpsN = 0; fpsAt = now; }

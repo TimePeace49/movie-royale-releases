@@ -133,6 +133,7 @@
  {"id":"test:wTestCard","kind":"off","cat":"Test tab cards","name":"🎡 Wheel tests · on “My wheel” (pick another wheel in the 🎡 Wheel tab)","text":"One card on the 🧪 Test tab.","hide":{"sel":"#wTestCard"}},
  {"id":"test:obsKeepTestCard","kind":"off","cat":"Test tab cards","name":"🔄 OBS up to date + 🎬 My videos","text":"One card on the 🧪 Test tab.","hide":{"sel":"#obsKeepTestCard"}},
  {"id":"test:linksTestCard","kind":"off","cat":"Test tab cards","name":"🔗 Connections page","text":"One card on the 🧪 Test tab.","hide":{"sel":"#linksTestCard"}},
+ {"id":"test:memTestCard","kind":"off","cat":"Test tab cards","name":"🧹 Running in the background","text":"One card on the 🧪 Test tab.","hide":{"sel":"#memTestCard"}},
  {"id":"test:popTestCard","kind":"off","cat":"Test tab cards","name":"↗ Pop out a tab","text":"One card on the 🧪 Test tab.","hide":{"sel":"#popTestCard"}},
  {"id":"test:kickTestCard","kind":"off","cat":"Test tab cards","name":"🟢 Kick","text":"One card on the 🧪 Test tab.","hide":{"sel":"#kickTestCard"}},
  {"id":"test:botTestCard","kind":"off","cat":"Test tab cards","name":"🤖 Chat bot","text":"One card on the 🧪 Test tab.","hide":{"sel":"#botTestCard"}},

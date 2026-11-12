@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.153.0
+- 🧹 **Lighter on your PC.** Every time the app opened, it quietly started a second, hidden game screen (the Test tab's lab) and left it running all day, even if you never opened the Test tab. That's gone: the lab screen now opens only when you use it and closes when you leave the Test tab.
+- 🧹 The hidden battle screen rests when no battle is on (4 pictures a second instead of 30) until you go back to it or a battle starts.
+- Measured here: with the app just sitting on the Chat tab, the work it does dropped from about 5% to almost nothing, and it holds 30 to 65 MB less.
+- 🧪 Test: Test tab → 🧹 Running in the background (also in Settings → Graphics).
+
 ## 1.152.0
 - 🟢🤖 **The shared chat bot works on Kick too** (editions with Kick). The app's maker signs the bot in to Kick (Settings → Twitch → Chat bot account → 🟢 Sign in to Kick as the bot, in a private window) and presses Share again. A friend who is signed in with Kick presses **🤝 Ask for Kick too**, gets allowed, and the app's lines in their Kick chat come from the bot.
 - 🟢 You can also use a Kick bot account just for yourself: once signed in as the bot, your own app talks on Kick as it.
