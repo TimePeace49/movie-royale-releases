@@ -17,12 +17,24 @@ window.Profile = (() => {
       #profDlg .line{padding:3px 0;border-bottom:1px solid #ffffff10;font-size:14px}#profDlg a{color:#c9a8ff}`;
     document.head.appendChild(st);
     dlg = document.createElement('dialog'); dlg.id = 'profDlg'; document.body.appendChild(dlg);
-    dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+    /* 🪟 (1.144.1, Derek: "make profile box moveable and it covers anything it's over so won't mess with other boxes") a floating window: drag it by its top part, it sits on top of everything and the app under it keeps working. Its spot is remembered. */
+    st.textContent += `#profDlg{position:fixed;margin:0;z-index:9700;box-shadow:0 18px 60px rgba(0,0,0,.75);max-height:92vh;overflow:hidden}#profDlg::backdrop{background:transparent}#profDlg .ph{cursor:move;user-select:none;padding-right:54px}#profDlg .ph a,#profDlg .ph button{cursor:pointer}#profDlg.drag{opacity:.93}#profX{position:absolute;top:10px;right:10px;z-index:3;width:32px;height:32px;padding:0!important;border-radius:50%!important;font-size:16px}`;
+    let dr = null;
+    dlg.addEventListener('pointerdown', e => { if (e.target.closest('#profX')) { dlg.close(); return; } if (!e.target.closest('.ph') || e.target.closest('a,button,input,select,textarea')) return; const r = dlg.getBoundingClientRect(); dr = { dx: e.clientX - r.left, dy: e.clientY - r.top }; dlg.classList.add('drag'); try { dlg.setPointerCapture(e.pointerId); } catch {} e.preventDefault(); });
+    dlg.addEventListener('pointermove', e => { if (!dr) return; place(e.clientX - dr.dx, e.clientY - dr.dy); });
+    const drop = () => { if (!dr) return; dr = null; dlg.classList.remove('drag'); const r = dlg.getBoundingClientRect(); try { localStorage.profAt = JSON.stringify({ x: r.left / innerWidth, y: r.top / innerHeight }); } catch {} };
+    dlg.addEventListener('pointerup', drop); dlg.addEventListener('pointercancel', drop);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && dlg.open && !document.querySelector('dialog[open]:not(#profDlg)')) dlg.close(); });
+    addEventListener('resize', () => { if (dlg.open) spot(); });
     return dlg;
   }
+  function place(x, y) { const w = dlg.offsetWidth, h = dlg.offsetHeight; x = Math.max(8 - w + 120, Math.min(innerWidth - 120, x)); y = Math.max(0, Math.min(innerHeight - 60, y)); dlg.style.left = Math.round(x) + 'px'; dlg.style.top = Math.round(y) + 'px'; } /* (never off the screen: at least a handful of it stays reachable) */
+  function spot() { let at = null; try { at = JSON.parse(localStorage.profAt || 'null'); } catch {} const w = dlg.offsetWidth, h = dlg.offsetHeight; if (at && isFinite(at.x) && isFinite(at.y)) place(at.x * innerWidth, at.y * innerHeight); else place((innerWidth - w) / 2, Math.max(10, (innerHeight - h) / 2)); }
+  function showIt() { if (!dlg.open) { if (document.querySelector('dialog[open]')) dlg.showModal(); /* (opened from inside another pop-up: it has to go on top of that one) */ else dlg.show(); } if (!dlg.querySelector('#profX')) dlg.insertAdjacentHTML('afterbegin', '<button id="profX" title="Close this profile (Esc)">✕</button>'); spot(); }
   async function open(login, extra = {}) {
     if (!login && !extra.discordId) return;
-    ensure(); dlg.innerHTML = `<div class="pb">Loading ${esc(login)}…</div>`; if (!dlg.open) dlg.showModal();
+    try { if (window.parent !== window && window.parent.Profile && window.parent.location.origin === location.origin) return window.parent.Profile.open(login, extra); } catch {} /* (inside one of the Chat tab's boxes: the profile opens in the app itself, so it floats over every box instead of being squeezed into this one) */
+    ensure(); dlg.innerHTML = `<div class="pb">Loading ${esc(login)}…</div>`; showIt();
     const q = extra.discordId ? '?discordId=' + encodeURIComponent(extra.discordId) : '';
     cur = await fetch('/api/viewer/' + encodeURIComponent(login || '_') + q).then(r => r.json()); tab = 'overview'; draw();
   }
@@ -30,7 +42,7 @@ window.Profile = (() => {
     const p = cur, S = p.spins, C = p.chats, W = p.watch;
     const head = `<div class="ph">${p.avatar ? `<img src="${esc(p.avatar)}">` : '<div style="width:72px;height:72px;border-radius:50%;background:#2a1c47;display:grid;place-items:center;font-size:30px">👤</div>'}
       <div style="flex:1"><div class="pn" style="color:${esc(p.color || '#fff')}">${esc(p.name)}</div><div class="muted">${p.login ? `@${esc(p.login)} · <a href="${esc(p.url)}" target="_blank">twitch.tv/${esc(p.login)} ↗</a> <button style="padding:2px 9px;margin-left:4px" onclick="Profile.so()" title="Shout them out: a “go check them out” line in chat, plus Twitch’s own shout-out box when you're live">📣 Shout out</button><span id="profSo" class="muted" style="margin-left:6px"></span>` : 'No Twitch name linked'}${p.discord ? ` · Discord: <b>${esc(p.discord.name)}</b>` : ''}</div>
-      <div class="muted" style="font-size:13px">${p.id && !p.slim ? `<span title="Picked in chat with !id">${p.id === 'm' ? '👨 man' : p.id === 'f' ? '👩 woman' : '🧑 non-binary'}</span> · ` : ''}${p.look && !p.slim ? `<span title="Made their own character in Discord with /character: ${Object.entries(p.look).map(([k, v]) => k + ' ' + v).join(', ')}">🎨 own character</span> · ` : ''}${p.bday ? `<span title="They told chat their birthday (no year is ever kept)">🎂 ${esc(p.bday.day)}${p.bday.today ? ' <b>(today!)</b>' : ''}</span> · ` : ''}${p.mod ? '🛡️ mod · ' : ''}${p.vip ? '💎 VIP · ' : ''}${p.sub?.now ? '⭐ subscriber · ' : ''}${p.streak ? `🔥 ${p.streak}-stream watch streak` : ''}</div>
+      <div class="muted" style="font-size:13px">${p.id && !p.slim ? `<span title="Picked in chat with !id">${p.id === 'm' ? '👨 man' : p.id === 'f' ? '👩 woman' : '🧑 non-binary'}</span> · ` : ''}${p.look && !p.slim ? `<span title="Made their own character in Discord with /character: ${Object.entries(p.look).map(([k, v]) => k + ' ' + v).join(', ')}">🎨 own character</span> · ` : ''}${p.discordName ? `<span title="The Discord name they typed in chat with !mydiscordname (not checked with Discord)">💬 Discord: <b>${esc(p.discordName)}</b></span> · ` : ''}${p.bday ? `<span title="They told chat their birthday (no year is ever kept)">🎂 ${esc(p.bday.day)}${p.bday.today ? ' <b>(today!)</b>' : ''}</span> · ` : ''}${p.mod ? '🛡️ mod · ' : ''}${p.vip ? '💎 VIP · ' : ''}${p.sub?.now ? '⭐ subscriber · ' : ''}${p.streak ? `🔥 ${p.streak}-stream watch streak` : ''}</div>
       <div style="font-size:13px;margin-top:2px${p.slim ? ';display:none' : ''}">${p.linked ? `🔗 Linked to Discord ${p.linkedAt > 0 ? 'on <b>' + new Date(p.linkedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + '</b>' : p.linkedAt < 0 ? 'before ' + new Date(-p.linkedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}` : `<span class="muted">🔗 Not linked to Discord${p.tracked ? '' : ': stats only count once they link their Twitch with <code>/linktwitch</code> in Discord'}</span>`}</div></div>
       <button onclick="Profile.close()">✕</button></div>`;
     const tabs = [['overview', '📋 Overview'], ...(p.acts ? [['stats', '📊 Stats']] : []), ...(p.slim ? [] : [['respins', '🎟️ Respins'], ['games', '🏆 Games']]), ['chat', '💬 Chat log']];
@@ -64,7 +76,7 @@ window.Profile = (() => {
     if (tab === 'games') body = `${p.stats ? `<div class="grid"><div class="st"><b>${p.stats.battles}</b><small>battles</small></div><div class="st"><b>${p.stats.wins}</b><small>wins</small></div><div class="st"><b>${p.stats.p2} / ${p.stats.p3}</b><small>2nds / 3rds</small></div><div class="st"><b>${p.stats.top5} / ${p.stats.top10}</b><small>top 5 / top 10</small></div><div class="st"><b>${p.stats.luck}%</b><small>luck spent</small></div></div>` : '<div class="muted">No battle stats yet.</div>'}
       <h4>🏆 Wins</h4>${p.wins.length ? p.wins.map(h => `<div class="line">${esc(dt(h.at))} · <b>${esc(h.label)}</b>${h.sub ? ` (${esc(h.sub)})` : ''} <span class="muted">${esc(h.list || '')}</span></div>`).join('') : '<div class="muted">No wins yet.</div>'}`;
     if (tab === 'chat') body = p.log.length ? `<div style="font-size:14px">${p.log.map(m => window.ChatUI ? ChatUI.row(m) : `<div class="line">${esc(m.text)}</div>`).join('')}</div>` : '<div class="muted">Nothing they said is saved yet (chat is saved from version 1.12 on).</div>';
-    dlg.innerHTML = head + tb + `<div class="pb">${body}</div>`;
+    dlg.innerHTML = head + tb + `<div class="pb">${body}</div>`; showIt();
     if (tab === 'overview') drawLook(p);
   }
   // 🎨 their own character (made in Discord with /character): a preview with their picture as the chest badge

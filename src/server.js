@@ -437,6 +437,26 @@ async function buildFighters(list, keepIds = null) {
 const ID_WORDS = { m: /^(man|male|boy|guy|he|him|m)$/, f: /^(woman|women|female|girl|she|her|f|w)$/, n: /^(none|nonbinary|non-binary|nb|enby|they|them|neither|other|n)$/ };
 const ID_LABEL = { m: '👨 man', f: '👩 woman', n: '🧑 non-binary' };
 function genderOf(list, login) { if (db.settings.charGenders === false || db.settings.idOn === false || list?.charIds === false || !login) return 'n'; return db.ids?.[String(login).toLowerCase()] || 'n'; }
+/* 💬 (1.144.1, feat `discordname`, Derek for Birx & Jess: "allow people to add discord name to profile !mydiscordname name") a viewer tells chat their Discord name: it shows on their profile. Only what they type is kept (nothing is looked up on Discord). */
+const dnCmd = () => String(db.settings.discordNameCommand == null ? '!mydiscordname' : db.settings.discordNameCommand).trim().toLowerCase();
+function dnClean(t) { const n = String(t || '').trim().replace(/^@/, '').replace(/\s+/g, ' '); return /^[\w.]{2,32}(#\d{4})?$/.test(n) ? n : ''; } /* (Discord names: letters, numbers, _ and . ; old ones end in #1234) */
+function dnSet(login, name, by) { const k = String(login || '').trim().replace(/^@/, '').toLowerCase(); if (!/^[a-z0-9_]{2,40}$/.test(k)) throw new Error('Type their Twitch name.'); db.discordNames ||= {}; if (!name) { delete db.discordNames[k]; save(); return { login: k, name: '' }; } const n = dnClean(name); if (!n) throw new Error('That doesn\'t look like a Discord name (letters, numbers, _ and . only, 2 to 32 long).'); db.discordNames[k] = { name: n, at: Date.now(), by: by || 'chat' }; save(); return { login: k, name: n }; }
+const dnOf = login => db.discordNames?.[String(login || '').toLowerCase()]?.name || '';
+function discordNameChat(m, out) {
+  if (!feat('discordname')) return false; const cmd = dnCmd(), parts = m.text.trim().split(/\s+/); if (!cmd || String(parts[0]).toLowerCase() !== cmd) return false;
+  const say = t => { if (out) out.push(t); else if (twitch.canSay()) twitch.say(`@${m.name} ${t}`).catch(() => {}); }, rest = parts.slice(1).join(' ').trim(), cur = dnOf(m.login);
+  if (!rest) { say(cur ? `your Discord name on your profile is ${cur}. Change it: ${cmd} newname · take it off: ${cmd} remove` : `add your Discord name to your profile: ${cmd} yourname`); return true; }
+  if (/^(remove|clear|delete|off|none)$/i.test(rest)) { if (!out) dnSet(m.login, ''); say(cur ? '💬 your Discord name is off your profile.' : 'you had no Discord name on your profile.'); if (!out && cur) act('chat', 'took their Discord name off their profile', { icon: '💬', who: m.name, kind: 'discordName', test: !!m.pretend }); return true; }
+  const n = dnClean(rest); if (!n) { say(`that doesn't look like a Discord name. Use letters, numbers, _ and . (like ${cmd} cool_viewer)`); return true; }
+  if (!out) { dnSet(m.login, n); act('chat', `put their Discord name on their profile: ${n}`, { icon: '💬', who: m.name, kind: 'discordName', test: !!m.pretend }); }
+  say(`💬 saved! Your Discord name on your profile is ${n}.`); return true;
+}
+app.post('/api/discord-name', (req, res) => { try { if (!feat('discordname')) throw new Error('Discord names on profiles are not part of this edition.'); res.json({ ok: true, ...dnSet(req.body?.login, req.body?.name, 'you') }); } catch (e) { res.status(400).json({ error: e.message }); } }); /* (you, by hand: set or clear someone's) */
+app.get('/api/test/discord-name', (req, res) => { /* 🧪 the rules walked through with a pretend viewer: nothing is saved or said */
+  const cmd = dnCmd() || '!mydiscordname', T = (text, want) => { const out = []; const hit = discordNameChat({ login: 'pretend_ana', name: 'Pretend_Ana', text, pretend: true }, out); return { what: text, got: out[0] || (hit ? '' : '(not this command)'), ok: want.test(out[0] || '') }; };
+  const rows = feat('discordname') ? [T(cmd, /add your Discord name|your Discord name on your profile is/), T(cmd + ' cool_viewer', /saved! Your Discord name on your profile is cool_viewer/), T(cmd + ' @Old.Name#1234', /is Old\.Name#1234/), T(cmd + ' not a name!!', /doesn't look like a Discord name/), T(cmd + ' remove', /off your profile|no Discord name/), T('hello chat', /^$/)] : [];
+  res.json({ ok: rows.length > 0 && rows.every(r => r.ok), on: feat('discordname'), command: cmd, rows });
+});
 function idChat(m) {
   if (db.settings.idOn === false) return false; // (Settings: the !id command is off)
   const cmd = String(db.settings.idCommand || '!id').trim().toLowerCase(), words = m.text.trim().toLowerCase().split(/\s+/); if (!cmd || words[0] !== cmd) return false;
@@ -1189,6 +1209,7 @@ const twitchHandlers = {
     try { chatvoice.chat(m); } catch (e) { console.error('[chat voice]', e.message); } // 🔈 read chat out loud to you only (not cheers / channel point messages)
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
     if (idChat(m)) return; // 🧍 !id man / woman / none / remove
+    if (discordNameChat(m)) return; // 💬 !mydiscordname cool_viewer: their Discord name on their profile
     if (hatChat(m)) return; // 🎩 picking a hat
     wheel.wheelChat(m); // 🎡 !respin / !spins
     if (passAskAnswer(m)) return; // ⏭️ yes / no: sit out the rest of tonight after a pass
@@ -2298,6 +2319,7 @@ const APP_CMDS = () => { const L = [], has = id => edHas(id), A = (key, group, l
   A('respin', '🎡 Wheel', 'Use a saved respin', 'Spends one of their saved respins', has('chat:respin') && has('wheel'), () => '!respin', null);
   A('myspins', '🎡 Wheel', 'My respins', 'How many saved respins they have', has('chat:respin') && has('wheel'), () => '!myspins', null);
   A('clip', '💬 Chat', 'Clip', 'Clips the last minute of the stream', has('chat:clip'), () => db.settings.clipCommand, sSet('clipCommand'), 'Who can !clip also has its own boxes in Settings → 💜 Twitch → Clips');
+  A('discordname', '💬 Chat', 'My Discord name', 'Puts the Discord name they type on their profile', feat('discordname'), () => dnCmd(), sSet('discordNameCommand'));
   A('bday', '🎂 Birthdays', 'Save my birthday', 'Saves their birthday (month + day)', has('chat:bday') && bo.on !== false, () => bo.command, c => birthdays.setOpts({ command: c }, mo.command));
   A('vote', '🍿 Movie night', 'Vote', "Votes for one of tonight's movies", has('chat:vote') && feat('movienight') && movienight.live(), () => mo.command, c => movienight.setOpts({ command: c }));
   { const wo = watchlist.opts(); A('suggest', '🍿 Movie night', 'Suggest a movie', 'Adds a movie to the watchlist (History → 📋 Watchlist)', feat('movienight') && !!wo.command, () => wo.command, c => watchlist.setOpts({ command: c })); A('rating', '🍿 Movie night', 'Movie rating', 'Says what the movie was rated on IMDb', feat('movienight') && !!wo.rateCommand, () => wo.rateCommand, c => watchlist.setOpts({ rateCommand: c })); }
@@ -2320,7 +2342,7 @@ app.post('/api/appcmds', (req, res) => { try { res.json({ ok: true, list: appcmd
 app.get('/api/test/appcmds', async (req, res) => res.json({ ...(await appcmds.demo()), count: appcmds.list().length })); // 🧪 the rules with a pretend command (nothing said or saved)
 function chatCmdOff(m) { const w = String(m?.text || '').trim().split(/\s+/)[0].toLowerCase(); if (w[0] !== '!') return false; try { return CHAT_CMDS.some(([id, get]) => !edHas(id) && [].concat(get()).some(c => c && String(c).toLowerCase() === w)); } catch { return false; } }
 /* 💬 (1.141.0, Derek: "update buttons on test chat for everything that is needed and make them per edition") the pretend chat's quick buttons: one per chat command THIS edition has (with something sensible typed after it), grouped */
-const PC_SAMPLE = { skip: ' 1', call: ' 1', id: ' woman', color: ' red', bday: ' 3/14', vote: ' 1', suggest: ' Jaws', rating: ' Jaws', 'song:command': ' never gonna give you up', 'song:volCommand': ' 50', 'egg:equipCommand': ' 1', 'egg:battleCommand': ' pretend_bo', 'egg:powerCommand': ' 1', addquote: ' This is a test quote', delquote: ' 1' };
+const PC_SAMPLE = { discordname: ' cool_viewer', skip: ' 1', call: ' 1', id: ' woman', color: ' red', bday: ' 3/14', vote: ' 1', suggest: ' Jaws', rating: ' Jaws', 'song:command': ' never gonna give you up', 'song:volCommand': ' 50', 'egg:equipCommand': ' 1', 'egg:battleCommand': ' pretend_bo', 'egg:powerCommand': ' 1', addquote: ' This is a test quote', delquote: ' 1' };
 app.get('/api/test/chat-buttons', (req, res) => { const out = [], seen = new Set(), add = (group, label, text, tip) => { const k = text.toLowerCase(); if (!text || seen.has(k)) return; seen.add(k); out.push({ group, label, text, tip: tip || '' }); };
   if (edHas('movies') || edHas('battle') || edHas('chatBattle')) add('⚔️ Battles', "✋ I'm here!", "I'm here! 🍿", 'A plain chat message (counts as being here)');
   for (const c of APP_CMDS()) { let w = ''; try { w = [].concat(c.words()).filter(Boolean)[0] || ''; } catch {} if (!w || chatCmdOff({ text: w })) continue; if (c.key === 'addcom') { add(c.group, '!addcom', '!addcom !testhello Hello from a test command!', c.why); continue; } add(c.group, w, w + (PC_SAMPLE[c.key] || ''), c.why); }
@@ -2358,6 +2380,7 @@ app.get('/api/viewer/:login', async (req, res) => {
   res.json({
     linked: !!(discordId && db.links?.[discordId]), linkedAt, tracked: chatlog.tracked(login),
     id: db.settings.idOn !== false ? (db.ids?.[login] || null) : null,
+    discordName: feat('discordname') ? dnOf(login) : '', // 💬 the Discord name they typed with !mydiscordname
     bday: (() => { const md = birthdays.days()[login]; return md ? { day: birthdays.nice(md), today: md === birthdays.mmdd(birthdays.dayOf()) } : null; })(), // 🎂 their birthday, if they told chat (never a year)
     slim: !edHas('battle'), // 🎭 an edition without battles: no character, respins, movies or games on the profile
     suggested: feat('movienight') ? watchlist.mine(login) : null, // 🙋 the movies they suggested for the watchlist (with the rating once it was watched)

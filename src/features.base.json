@@ -14,6 +14,7 @@
  {"id": "dash", "kind": "on", "cat": "Chat tab", "name": "💬 Chat dashboard", "text": "Movable boxes: stream preview, music box, movie night, alerts, stream tools, chat."},
  {"id": "songs", "kind": "on", "cat": "Chat bot", "name": "🎵 Song requests", "text": "!sr, queue, ratings, playlists, song database, imports."},
  {"id": "movienight", "kind": "on", "cat": "Chat bot", "name": "🍿 Movie night voting", "text": "!vote, last call, guess pop-ups, on-screen count."},
+ {"id": "discordname", "kind": "on", "cat": "Chat commands", "name": "💬 !mydiscordname: Discord name on profiles", "text": "Viewers type !mydiscordname and their Discord name: it shows on their profile in the app."},
  {"id": "bdremind", "kind": "on", "cat": "Start-up pop-up", "name": "📅 Birthday reminder at start-up", "text": "When the app opens, a step shows whose birthday is coming up in the next days (with its settings on the Birthdays tab)."},
  {"id": "movies", "kind": "off", "cat": "Movies", "name": "🎬 Discord movie picks", "text": "The Discord movies list, Banned Movies, Discord & Movie info settings, movie setup steps."},
  {"id": "kirbWheel", "kind": "off", "cat": "Wheel", "name": "🎡 Ready-made Wheel of Kirbportions", "text": "Added once on a fresh install."},

@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.144.1
+- 🪟 **The profile box is a movable window.** Click a name and the profile now floats on top of everything: drag it by its top part to anywhere, and the app under it keeps working (chat keeps scrolling, buttons still click). It never pushes or squeezes other boxes. Opened from one of the Chat tab's boxes, it opens over the whole app instead of inside that box. It remembers where you left it; ✕ or Esc closes it.
+- 💬 **!mydiscordname (Birx & Jess edition).** A viewer types `!mydiscordname` and their Discord name in chat, and it shows on their profile under their name. `!mydiscordname remove` takes it off; `!mydiscordname` alone shows what's saved. Only what they typed is kept; nothing is looked up on Discord. The command can be renamed or limited in Chat bot → Commands → the app's own commands.
+- Test tab → Birthdays card: 💬 Check !mydiscordname and 💬 Try it + open the profile.
+
 ## 1.144.0
 - 🏆 **Movie night winner screen on stream.** When voting closes (the countdown runs out, or you press Close voting), the vote box on stream shows the winner big in the middle: poster, title and year, how many votes it got, IMDb and Rotten Tomatoes scores, who asked for it, and confetti. A tie shows every tied movie. After a countdown it comes right after the TIME'S UP pop-up. It leaves by itself after 20 seconds.
   - On the Movie night tab: a tick box to turn it off, a box for how many seconds it stays, and **🏆 Show winner again**.
