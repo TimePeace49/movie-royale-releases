@@ -1517,7 +1517,7 @@ app.get('/auth/twitch-bot', (req, res) => {
 app.post('/api/twitch-bot/off', (req, res) => { db.twitchBot = null; save(); pushState(); res.json({ ok: true }); });
 app.post('/api/twitch-bot/test', async (req, res) => { try { await twitch.say(`🤖 ${db.twitchBot?.user?.name || 'Movie Royal'} here! Movie Royal's chat messages come from me now. Type ${db.settings.helpCommand || '!moviesroyal'} to see the commands.`); res.json({ ok: true, as: twitch.botOn() && !twitch.botStatus.error ? db.twitchBot.user.name : (db.owner?.name || 'you'), error: twitch.botStatus.error }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // ---------- 🟢 Kick (1.90.0, dev mode only): chat from / to Kick, one switch ----------
-kick.setHooks({ redeem: r => { if (r.key === 'egg' && feat('eggs')) eggs.buy({ login: r.login, name: r.name, kick: true }); }, /* 🟢🥚 Kick channel points: Buy an egg (never accepted / rejected / refunded by the app) */ dev: () => feat('kick'), /* 🟢 True's edition has Kick (he streams on both); Derek's with dev mode on */ chat: m => twitchHandlers.chat(m), live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
+kick.setHooks({ redeem: r => { if (r.key === 'egg' && feat('eggs')) eggs.buy({ login: r.login, name: r.name, kick: true }); }, /* 🟢🥚 Kick channel points: Buy an egg (never accepted / rejected / refunded by the app) */ dev: () => feat('kick'), /* 🟢 True's edition has Kick (he streams on both); Derek's with dev mode on */ chat: m => twitchHandlers.chat(m), alert: a => twitchHandlers.alert(a), /* 🟢🔔 Kick subs / gift subs / hosts / Kicks → the alerts box (only while Kick chat is being read) */ live: isLive => twitchHandlers.live(isLive, 'kick'), changed: () => pushState(),
   getPage: async url => { const g = globalThis.__desktop?.getPage; if (!g) return ''; const r = await g(url); return r?.text || ''; } });
 twitch.route.on = () => kick.on(); twitch.route.both = () => kick.both(); twitch.route.say = t => kick.say(t); twitch.route.canSay = () => kick.canSay();
 setTimeout(() => kick.start(), 4000);
@@ -1539,6 +1539,13 @@ app.post('/api/test/both-chats', async (req, res) => { /* 🧪 (1.139.2) a prete
   await twitchHandlers.chat({ ...kick.toChat({ id: 'kk' + t, content: 'hello from Kick!', sender: { id: 4243, username: 'Pretend_Kicky', slug: 'pretend_kicky', identity: { color: '#53fc18', badges: [] } } }), pretend: true });
   const rec = chatlog.getRecent(20), a = rec.find(x => x.id === 'tw' + t), b = rec.find(x => x.id === 'kk' + t), rows = [{ what: 'The Twitch viewer\'s message is in the chat', ok: !!a && !a.kick }, { what: 'The Kick viewer\'s message is in the chat, marked as Kick', ok: !!b && !!b.kick }];
   res.json({ ok: rows.every(x => x.ok), rows, both: kick.both() });
+});
+app.post('/api/test/kick-alert', (req, res) => { /* 🧪 pretend Kick alerts, read from Kick-shaped events exactly like real ones; they only go to the alerts box (no eggs, votes or pop-ups) */
+  const RAW = { sub: ['App\\Events\\SubscriptionEvent', { chatroom_id: 1, username: 'Kick_Test', months: 3 }], gift: ['App\\Events\\GiftedSubscriptionsEvent', { chatroom_id: 1, gifter_username: 'Kick_Test', gifted_usernames: ['a', 'b', 'c', 'd', 'e'] }], raid: ['App\\Events\\StreamHostEvent', { chatroom_id: 1, host_username: 'Kick_Test', number_viewers: 42 }], kicks: ['KicksGifted', { sender: { username: 'Kick_Test' }, gift: { amount: 100, name: 'Hype' }, message: 'love the stream' }] };
+  const kinds = req.body?.kind ? [String(req.body.kind)] : Object.keys(RAW), rows = [];
+  for (const k of kinds) { const r = RAW[k]; if (!r) continue; const a = kick.toAlert(r[0], r[1]); rows.push({ kind: k, ok: !!a && a.kick === true && a.kind === k, text: a ? `${a.name} ${a.text}` : 'not read' }); if (a && !req.body?.dry) { const { key, ...out } = a; chatlog.onAlert(out); } }
+  rows.push({ kind: 'followers', ok: kick.toAlert('App\\Events\\FollowersUpdated', { followersCount: 10 }) === null, text: 'a follower count (no name) is not an alert' });
+  res.json({ ok: rows.every(r => r.ok), rows, reading: kick.reading() });
 });
 app.post('/api/test/kick-chat', (req, res) => {
   const b = req.body || {}, role = String(b.role || '');

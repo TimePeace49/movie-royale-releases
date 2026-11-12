@@ -23,8 +23,8 @@ window.ChatUI = (() => {
     const t = new Date(m.at || Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     return `<div class="cm${m.gone ? ' gone' : ''}" data-id="${esc(m.id || '')}" data-login="${esc(m.login || '')}">${opts.time !== false ? `<span class="ct">${t}</span>` : ''}${plat(m)}${badges(m.badges)}<b class="cn" data-user="${esc(m.login || '')}" style="color:${esc(colorFor(m))}">${esc(m.name || m.login)}</b><span class="cx">: ${text(m.text, m.emotes)}</span>${m.gone ? `<i class="cg"> (${esc(m.gone)})</i>` : ''}${opts.tools ? `<span class="ctools"><button title="Profile" onclick="Profile.open('${esc(m.login)}')">👤</button><button title="Delete message" onclick="ChatUI.mod('delete','${esc(m.login)}','${esc(m.id || '')}')">🗑</button><button title="Timeout 10 minutes" onclick="ChatUI.mod('timeout','${esc(m.login)}')">⏱</button><button title="Ban" onclick="ChatUI.mod('ban','${esc(m.login)}')">🔨</button></span>` : ''}</div>`;
   }
-  const ICON = { sub: '⭐', gift: '🎁', bits: '💎', raid: '🚀', follow: '💜', redeem: '🎟️', streak: '🔥', tip: '💵', announce: '📣' };
-  function alertRow(a) { return `<div class="ca ca-${esc(a.kind)}"><span class="ct">${new Date(a.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span> ${ICON[a.kind] || '🔔'} <b data-user="${esc(a.login || '')}">${esc(a.name || '')}</b> ${text(a.text || '')}</div>`; }
+  const ICON = { sub: '⭐', gift: '🎁', bits: '💎', raid: '🚀', follow: '💜', redeem: '🎟️', streak: '🔥', tip: '💵', announce: '📣', kicks: '💚' };
+  function alertRow(a) { return `<div class="ca ca-${esc(a.kind)}"><span class="ct">${new Date(a.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span> ${plat(a)}${ICON[a.kind] || '🔔'} <b data-user="${esc(a.login || '')}">${esc(a.name || '')}</b> ${text(a.text || '')}</div>`; }
   async function mod(action, login, id) {
     let seconds = 600, reason = '';
     if (action === 'timeout') { const s = await ask(`Time out ${login} for how many minutes?`, '10'); if (s === null) return; seconds = Math.max(1, Number(s) || 10) * 60; reason = await ask('Reason (optional)', '') || ''; }

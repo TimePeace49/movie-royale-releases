@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.149.0
+- 🎥 **The demo tour is now a presentation.** It is told in 5 chapters (💬 Home, 🎵 Music, 🍿 Movie night, 🤖 Chat bot, ✨ And more) and stays on one tab for a whole chapter instead of hopping around. Each chapter opens with a short title card, the screen fades softly between steps, the thing being talked about glows for a moment, and pop-up messages stay quiet while you present. The bar at the bottom shows the chapters (click one to jump there) and dots for the steps.
+- 🎥 New parts in the tour for Birx & Jess: a welcome step, 👤 click anyone in chat (profile, Discord name, their own shout-out message), 📻 playlists, 🥇 the winner screen and 💡 suggestions from chat. 22 parts in all.
+- 🟢🔔 **Kick alerts in the Alerts box.** When Kick is unlocked and its chat is being read, Kick subs, gift subs, hosts and Kicks gifts show up in the Alerts box with the green K, next to the Twitch ones. Without Kick nothing changes. (Kick follows only come as a number without a name, so they aren't shown.) I couldn't try this against the real Kick from here: tell me if one doesn't show.
+- 🧪 Test: Kick card → 🔔 Kick alerts (pretend ones in the Alerts box); the 🎥 Demo card runs the new tour.
+
 ## 1.148.0
 - ✏️ **Your own chat message for a skipped song.** Chat bot → 🎵 Songs → Settings → Skipping, limits and chat help has two new boxes: **Chat voted to skip** (said when chat votes a song off) and **Someone skipped it** (said when a mod or the person who asked skips it from chat). Leave a box empty for the usual line. You can put `{song}`, `{name}` (who skipped it / cast the last vote), `{by}` (who asked for the song) and `{votes}` in the message.
 - 🧪 Test: the 🧪 Check these rules button there has a new check for it.

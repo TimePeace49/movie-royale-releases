@@ -40,7 +40,7 @@ async function wsPick() {
 export const SCOPES = ['user:read', 'channel:read', 'chat:write', 'events:subscribe', 'channel:rewards:read', 'channel:rewards:write']; // (rewards = Kick's channel points, 2026)
 export const redirectUri = port => `http://localhost:${port}/kick/callback`;
 
-const H = { chat: () => {}, live: () => {}, changed: () => {}, dev: () => false, getPage: null, redeem: () => {} };
+const H = { alert: () => {}, chat: () => {}, live: () => {}, changed: () => {}, dev: () => false, getPage: null, redeem: () => {} };
 export const setHooks = h => Object.assign(H, h);
 export const status = { chat: 'off', chatError: null, live: null, startedAt: 0, lastMsgAt: 0, sayError: null, lines: 0 };
 export function data() { const d = (db.kick ||= {}); return d; }
@@ -172,8 +172,27 @@ async function findChatroom(sl) { // the chat room's number, from the channel's 
   try { const r = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' }, signal: AbortSignal.timeout(15000) }); if (r.ok) text = await r.text(); } catch {}
   if (!/"chatroom"/.test(text) && H.getPage) { try { text = String(await H.getPage(url)) || text; } catch {} } // (Kick's site sometimes only answers a real browser: the app's hidden window asks)
   const m = text.match(/"chatroom"\s*:\s*\{[^{}]*?"id"\s*:\s*(\d+)/); if (!m) throw new Error(`Could not find the chat room of kick.com/${sl}. Check the channel name, or type the chat room number in by hand.`);
-  d.chatroomId = Number(m[1]); d.chatroomFor = sl; save(); return d.chatroomId;
+  d.chatroomId = Number(m[1]); d.chatroomFor = sl; const c = text.match(/^\s*\{\s*"id"\s*:\s*(\d+)/); if (c) { d.channelId = Number(c[1]); d.channelFor = sl; } save(); return d.chatroomId;
 }
+/* 🟢🔔 (1.149.0, Derek: "add kick to alerts box too, but only if kick is unlocked") Kick's subs, gift subs, hosts and Kicks arrive on the channel's own feed, which needs the channel's number (not the chat room's). Asked once, quietly. */
+let chanAsked = 0;
+async function findChannel(sl) { const d = data(); if (d.channelId && d.channelFor === sl) return d.channelId; if (Date.now() - chanAsked < 30 * 60000) return 0; chanAsked = Date.now();
+  const url = `${WEB}/api/v2/channels/${encodeURIComponent(sl)}`; let text = '';
+  try { const r = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' }, signal: AbortSignal.timeout(12000) }); if (r.ok) text = await r.text(); } catch {}
+  if (!/"chatroom"/.test(text) && H.getPage) { try { text = String(await H.getPage(url)) || text; } catch {} }
+  const j = text.indexOf('{'), c = (j >= 0 ? text.slice(j) : '').match(/^\{\s*"id"\s*:\s*(\d+)/); if (!c) return 0; d.channelId = Number(c[1]); d.channelFor = sl; save(); return d.channelId; }
+/** One Kick event → an alert for the alerts box (null = not one). Pure. Event names + fields are from Kick's site feed (unofficial). */
+export function toAlert(event, p) {
+  const ev = String(event || '').replace(/^App\\Events\\/, ''), nm = v => String(v || '').trim(), lg = v => nm(v).toLowerCase(), n = v => Math.max(0, Math.round(Number(v) || 0)); if (!p || typeof p !== 'object') return null;
+  if (ev === 'SubscriptionEvent' || ev === 'ChannelSubscriptionEvent') { const u = nm(p.username); if (!u) return null; const mo = n(p.months); return { kick: true, kind: 'sub', login: lg(u), name: u, amount: mo || 1, months: mo || 1, text: `subscribed on Kick${mo > 1 ? ` · ${mo} months` : ''}`, key: 'sub:' + lg(u) }; }
+  if (ev === 'GiftedSubscriptionsEvent' || ev === 'LuckyUsersWhoGotGiftSubscriptionsEvent') { const u = nm(p.gifter_username), list = p.gifted_usernames || p.usernames || []; if (!u) return null; const k = Math.max(1, list.length || n(p.gifter_total) && 1); return { kick: true, kind: 'gift', login: lg(u), name: u, amount: k, text: `gifted ${k} sub${k === 1 ? '' : 's'} on Kick!`, key: 'gift:' + lg(u) + ':' + k }; }
+  if (ev === 'StreamHostEvent' || ev === 'StreamHostedEvent') { const u = nm(p.host_username || p.username || (p.host && p.host.username)); if (!u) return null; const v = n(p.number_viewers || p.viewers_count); return { kick: true, kind: 'raid', login: lg(u), name: u, amount: v, text: `hosted with ${v} viewer${v === 1 ? '' : 's'} on Kick`, key: 'raid:' + lg(u) }; }
+  if (ev === 'KicksGifted') { const u = nm(p.sender && p.sender.username || p.username), a = n(p.gift && p.gift.amount || p.amount); if (!u || !a) return null; const g = nm(p.gift && p.gift.name), msg = nm(p.message).slice(0, 200); return { kick: true, kind: 'kicks', login: lg(u), name: u, amount: a, text: `sent ${a} Kicks${g ? ` (${g})` : ''}${msg ? ': ' + msg : ''}`, key: 'kicks:' + lg(u) + ':' + a + ':' + msg }; }
+  return null;
+}
+const alertSeen = new Map();
+function alertIn(event, p) { const a = toAlert(event, p); if (!a || !reading()) return; const now = Date.now(); for (const [k, t] of alertSeen) if (now - t > 20000) alertSeen.delete(k); if (alertSeen.has(a.key)) return; alertSeen.set(a.key, now); /* (Kick says some things twice, on two feeds) */
+  const { key, ...out } = a; try { H.alert(out); } catch (e) { console.error('[kick] alert', e.message); } }
 function setChat(st, err) { if (status.chat === st && status.chatError === (err || null)) return; status.chat = st; status.chatError = err || null; diag(); if (st === 'error' && err && err !== lastErrLogged) { lastErrLogged = err; console.error('[kick] chat: ' + err); } H.changed(); }
 /* (1.143.6) what the Kick chat connection is doing, kept in the data file too, so a problem can be looked up afterwards */
 let lastErrLogged = '';
@@ -191,12 +210,14 @@ async function connect() {
   ws.on('open', () => { lastData = Date.now(); clearInterval(pingT); pingT = setInterval(() => { if (ws.readyState !== 1) return; if (Date.now() - lastData > 150000) { try { ws.terminate(); } catch {} return; } try { ws.send(JSON.stringify({ event: 'pusher:ping', data: {} })); } catch {} }, 45000); });
   ws.on('message', raw => {
     lastData = Date.now(); let m; try { m = JSON.parse(String(raw)); } catch { return; }
-    if (m.event === 'pusher:connection_established') { try { ws.send(JSON.stringify({ event: 'pusher:subscribe', data: { auth: '', channel: `chatrooms.${room}.v2` } })); } catch {} return; }
+    if (m.event === 'pusher:connection_established') { try { ws.send(JSON.stringify({ event: 'pusher:subscribe', data: { auth: '', channel: `chatrooms.${room}.v2` } })); } catch {}
+      findChannel(sl).then(ch => { if (!ch || sock !== ws || ws.readyState !== 1) return; for (const c of [`channel.${ch}`, `channel_${ch}`, `chatrooms.${room}`]) { try { ws.send(JSON.stringify({ event: 'pusher:subscribe', data: { auth: '', channel: c } })); } catch {} } }).catch(() => {}); /* 🔔 the feeds Kick's subs / gifts / hosts / Kicks come in on */
+      return; }
     if (m.event === 'pusher_internal:subscription_succeeded') { if (pk.key !== 'env') { const d = data(); if (d.wsKey !== pk.key) { d.wsKey = pk.key; d.wsCluster = pk.cluster; save(); } } return setChat('on'); }
     if (m.event === 'pusher:error') { let e = m.data; try { if (typeof e === 'string') e = JSON.parse(e); } catch {} const code = Number(e && e.code) || 0; if (code >= 4000 && code < 4100) { wsBad.add(pk.key); try { ws.close(); } catch {} again('Kick changed its chat address: trying the next one'); } return; }
     if (m.event === 'pusher:ping') { try { ws.send(JSON.stringify({ event: 'pusher:pong', data: {} })); } catch {} return; }
-    if (m.event !== 'App\\Events\\ChatMessageEvent') return;
     let p; try { p = typeof m.data === 'string' ? JSON.parse(m.data) : m.data; } catch { return; }
+    if (m.event !== 'App\\Events\\ChatMessageEvent') { if (!/^pusher/.test(String(m.event || ''))) alertIn(m.event, p); return; }
     if (!p || !p.sender) return;
     status.lastMsgAt = Date.now(); status.lines++; if (status.lines === 1 || status.lines % 50 === 0) diag();
     const c = toChat(p); if (!c.text || !reading()) return;

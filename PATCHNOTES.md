@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.149.0: What's new
+- {kick} 🟢🔔 **Kick alerts in the Alerts box:** Kick subs, gift subs, hosts and Kicks gifts now show up next to the Twitch ones, marked with the green K.
+- {ed:derek} 🎥 **The demo tour is a presentation now:** 5 chapters, soft fades, a glow on what you're talking about, and new parts (profiles, playlists, winner screen, suggestions).
+
 ## v1.148.0: What's new
 - {songs} ✏️ **Your own chat message for a skipped song:** Songs → Settings has two new boxes, one for when chat votes a song off and one for when someone skips it from chat. You can use {song}, {name}, {by} and {votes}.
 - 🔒 **Lock a wheel.** In a wheel's settings, one switch turns off everything chat can do to it: respins (channel points and saved spins), moving a spot up or down, force stop, double trouble, grow and shrink. Your own buttons still work.
