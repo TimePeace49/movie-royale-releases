@@ -311,6 +311,7 @@ function publicState() { applyCharsDefault();
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
     songPlayers: songPlayers(), obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
+    sfxHear: sfxHearOn(),
     edition: { hide: editionInfo().hide, id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
     mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
     botCount: (db.chatbot?.commands || []).length,
@@ -2254,7 +2255,12 @@ app.get('/api/chat/search', (req, res) => res.json(chatlog.search({ q: req.query
 app.get('/api/chat/names', (req, res) => res.json(chatlog.names(String(req.query.q || ''))));
 app.post('/api/chat/say', wTry(async b => { /* 💬 the app's own chat box. (1.132.4) A command (!sr …) goes out exactly as typed, as you: with the bot's name tag in front (or from the bot account) nothing recognised it as a command */
   const text = String(b.text || '').trim().slice(0, 490); if (!text) return {};
-  if (!/^!\S/.test(text)) { await twitch.say(text); return { command: false }; }
+  if (!/^!\S/.test(text)) { /* (1.146.0, Derek: "when chatting in chat don't add the bot thing to the message, just have the streamer type") what YOU type in the chat box goes out as you: no name tag, never the bot account */
+    if (b.test) return { command: false, as: twitch.status.login || db.owner?.login || 'streamer', text, tagged: false };
+    if (twitch.route.on()) { await twitch.route.say(text); return { command: false }; }
+    if (twitch.route.both() && twitch.route.canSay()) Promise.resolve().then(() => twitch.route.say(text)).catch(() => {});
+    await twitch.sayAsMe(text); return { command: false };
+  }
   const me = twitch.status.login || db.owner?.login || 'streamer', mine = () => twitchHandlers.chat({ pretend: true, login: String(me).toLowerCase(), name: db.owner?.name || me, text, userId: twitch.status.userId || null, emotes: '', badgeList: 'broadcaster/1', badges: { broadcaster: true, mod: false, vip: false, sub: false, tier: 0, months: 0 } });
   if (b.test) { /* 🧪 nothing goes to the real chat: run it as you and collect what the app answers */
     twitch.pretend.until = Date.now() + 10 * 60000; const replies = [], f = t => replies.push(t); twitch.sayListeners.add(f);
@@ -5215,11 +5221,18 @@ function ytPlaylistParse(html) { const s = String(html || ''), out = [], seen = 
     const id = (part.match(/"videoId":"([A-Za-z0-9_-]{11})"/) || [])[1]; if (!id || seen.has(id)) continue; seen.add(id);
     let t = (part.match(/"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/) || part.match(/"title":\{"simpleText":"((?:[^"\\]|\\.)*)"/) || [])[1] || ''; try { t = JSON.parse('"' + t + '"'); } catch {}
     out.push({ yt: id, title: String(t) }); }
+  if (!out.length) { i = 0; while ((i = s.indexOf('"lockupViewModel"', i)) >= 0) { const end = s.indexOf('"lockupViewModel"', i + 20), part = s.slice(i, end < 0 ? Math.min(s.length, i + 8000) : end); i += 20; /* (YouTube's newer page layout) */
+    const id = (part.match(/"contentId":"([A-Za-z0-9_-]{11})"/) || part.match(/"videoId":"([A-Za-z0-9_-]{11})"/) || [])[1]; if (!id || seen.has(id)) continue; seen.add(id);
+    let t = (part.match(/"title":\{"content":"((?:[^"\\]|\\.)*)"/) || [])[1] || ''; try { t = JSON.parse('"' + t + '"'); } catch {} out.push({ yt: id, title: String(t) }); } }
+  if (!out.length) { const re = /"playlistPanelVideoRenderer":\{[^]{0,1500}?"videoId":"([A-Za-z0-9_-]{11})"/g; let m; while ((m = re.exec(s))) if (!seen.has(m[1])) { seen.add(m[1]); out.push({ yt: m[1], title: '' }); } }
   let title = (s.match(/"playlistMetadataRenderer":\{"title":"((?:[^"\\]|\\.)*)"/) || s.match(/<meta property="og:title" content="([^"]*)"/) || [])[1] || ''; try { title = JSON.parse('"' + title + '"'); } catch {}
   const cont = (s.match(/"continuationCommand":\{"token":"([^"]{20,})"/) || [])[1] || '', key = (s.match(/"INNERTUBE_API_KEY":"([^"]+)"/) || [])[1] || '', ver = (s.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/) || [])[1] || '';
   return { title, tracks: out, cont, key, ver }; }
 async function ytPlaylistRead(list) { const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
   let page = null; try { const r = await fetch('https://www.youtube.com/playlist?hl=en&list=' + encodeURIComponent(list), { headers: { 'accept-language': 'en-US,en;q=0.8', 'user-agent': UA, cookie: 'CONSENT=YES+1; SOCS=CAI' }, signal: AbortSignal.timeout(10000) }); if (r.ok) page = ytPlaylistParse(await r.text()); } catch {}
+  if ((!page || !page.tracks.length) && globalThis.__desktop?.getPage) { try { const r = await globalThis.__desktop.getPage('https://www.youtube.com/playlist?hl=en&list=' + encodeURIComponent(list)); const got = ytPlaylistParse((r && (r.html || r.text)) || ''); if (got.tracks.length) page = got; } catch {} } /* (1.146.0) YouTube sometimes only answers a real browser: the app's hidden window asks */
+  if (!page || !page.tracks.length) { /* last try: YouTube's own feed of the playlist (its newest 15 songs, with names) */
+    try { const r = await fetch('https://www.youtube.com/feeds/videos.xml?playlist_id=' + encodeURIComponent(list), { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(10000) }); if (r.ok) { const x = await r.text(), tr = [], un = t => t.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'"); for (const e of x.split('<entry>').slice(1)) { const id = (e.match(/<yt:videoId>([A-Za-z0-9_-]{11})<\/yt:videoId>/) || [])[1]; if (id && !tr.some(q => q.yt === id)) tr.push({ yt: id, title: un((e.match(/<title>([^<]*)<\/title>/) || [])[1] || '') }); } if (tr.length) return { title: un((x.match(/<title>([^<]*)<\/title>/) || [])[1] || ''), tracks: tr, partial: true }; } } catch {} }
   if (!page || !page.tracks.length) return null; const tracks = page.tracks.slice(), seen = new Set(tracks.map(x => x.yt)); let cont = page.cont;
   for (let n = 0; n < 9 && cont && page.key && tracks.length < 1000; n++) { /* (the next 100 songs, up to 1000) */
     try { const r = await fetch('https://www.youtube.com/youtubei/v1/browse?prettyPrint=false&key=' + encodeURIComponent(page.key), { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': UA }, body: JSON.stringify({ context: { client: { clientName: 'WEB', clientVersion: page.ver || '2.20240101.00.00', hl: 'en' } }, continuation: cont }), signal: AbortSignal.timeout(10000) }); if (!r.ok) break; const more = ytPlaylistParse(await r.text()); let added = 0; for (const t of more.tracks) if (!seen.has(t.yt)) { seen.add(t.yt); tracks.push(t); added++; } cont = more.cont; if (!added) break; } catch { break; } }
@@ -5251,7 +5264,10 @@ app.post('/api/songs/remove', sgTry(b => songs.remove(b.id)));
 app.post('/api/songs/move', sgTry(b => songs.move(b.id, b.dir)));
 app.post('/api/songs/clear', sgTry(() => songs.clear()));
 app.post('/api/songs/open', sgTry(b => songs.setOpen(!!b.on)));
-app.post('/api/songs/rate', sgTry(b => songs.rate(b.key, b.who, b.value)));
+app.post('/api/songs/rate', sgTry(b => songs.rate(b.key, b.who, b.value, b.title)));
+app.post('/api/songs/playlist-title', sgTry(b => songs.playlistTitle(b.yt, b.title)));
+app.post('/api/songs/playlist-read-all', sgTry(async b => ({ ...(await songs.playlistReadAll(!!b.force)), state: songs.state() }))); /* 📥 read the playlists the app doesn't know the songs of yet */
+setTimeout(() => { if (feat('songs')) songs.playlistReadAll().catch(() => {}); }, 50000); setInterval(() => { if (feat('songs')) songs.playlistReadAll().catch(() => {}); }, 3600000);
 app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
@@ -5266,6 +5282,10 @@ app.get('/api/test/playlist-read', (req, res) => { /* 🧪 the playlist page rea
   const m = songs.mainIds(d); add('Main playlist = the ticked playlists together, each song once', m.join() === 'aaaaaaaaaa1,aaaaaaaaaa2,cccccccccc1', m.join(', '));
   const o = songs.playOf('main', false, d); add('In order = the songs in the order of the playlists', o.ids.join() === m.join() && !o.shuffle, o.ids.join(', '));
   const sh = songs.playOf('main', true, d); add('Shuffle = the same songs, mixed', sh.shuffle && sh.ids.slice().sort().join() === m.slice().sort().join(), sh.ids.join(', '));
+  { const d2 = { ...d, banned: [{ yt: 'aaaaaaaaaa2', key: 'yt:aaaaaaaaaa2', title: 'x' }], playlists: d.playlists.map((p, i) => i ? p : { ...p, tracks: [{ yt: 'aaaaaaaaaa1', title: 'First song' }, { yt: 'aaaaaaaaaa2' }] }) }, b2 = songs.playOf('main', false, d2);
+    add('(1.146.0) The player gets the songs one by one with their names, and banned songs are left out', b2.items.length === 2 && b2.items[0].title === 'First song' && !b2.ids.includes('aaaaaaaaaa2'), b2.items.map(x => x.title || x.yt).join(', '));
+    const nw = ytPlaylistParse('{"lockupViewModel":{"contentId":"FTQbiNvZqaY","metadata":{"lockupMetadataViewModel":{"title":{"content":"Toto - Africa"}}}}},{"lockupViewModel":{"contentId":"dQw4w9WgXcQ","metadata":{"lockupMetadataViewModel":{"title":{"content":"Never"}}}}}');
+    add("(1.146.0) YouTube's newer playlist page is read too", nw.tracks.length === 2 && nw.tracks[0].title === 'Toto - Africa', nw.tracks.map(x => x.title).join(' | ')); }
   const y = songs.playOf('y', true, d); add('A playlist whose songs are not known yet plays straight from YouTube', y.ids === null && y.list === 'PLy', y.list);
   let empty = ''; try { songs.playOf('main', true, { playlists: [{ id: 'y', list: 'PLy', main: true }] }); } catch (e) { empty = e.message; } add('An empty main playlist says so', /empty/.test(empty), empty);
   res.json({ ok: rows.every(r => r.ok), rows });
@@ -5897,8 +5917,12 @@ app.post('/api/test/bday-stream-sound', wTry(b => bdayStreamSound(b.vol ?? birth
 function sfxPlay(file, vol = 80, test) {
   if (!file || !fs.existsSync(path.join(SFXDIR, sfxName(file)))) return { ok: false, why: 'missing' };
   const msg = { type: 'sfxCmd', url: '/sfx/' + encodeURIComponent(sfxName(file)), vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
-  const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : 'control'; broadcast(msg, where); return { ok: true, where };
+  const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : 'control'; broadcast(msg, where);
+  const hear = where !== 'control' && sfxHearOn(); if (hear) broadcast({ ...msg, hear: true }, 'control'); /* 🎧 (1.146.0, Derek: "I want to hear the sound alerts too") the sound plays on stream through OBS, and in the app as well so you hear it */
+  return { ok: true, where, hear };
 }
+const sfxHearOn = () => db.settings.sfxHear ?? ['derek', 'birx'].includes(EDITION.id);
+app.post('/api/chatbot/hear', wTry(b => { db.settings.sfxHear = !!b.on; save(); pushState(); return { on: sfxHearOn() }; }));
 
 setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot] timer', e.message); } }, 30000);
 const botDev = fn => wTry(fn); /* (every edition since 1.108.0) */

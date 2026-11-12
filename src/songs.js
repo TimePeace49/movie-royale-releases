@@ -179,7 +179,9 @@ export const isOpen = () => !!data().open;
 export function setOpen(yes) { const d = data(); d.open = !!yes; changed(); if (opts(d).reply !== false) H.say(yes ? `🎵 Song requests are open! Type ${opts(d).command} and a YouTube link or a song name.` : '🎵 Song requests are closed for now.').catch(() => {}); return state(); }
 /** A rating: who = 0 or 1 (the two people), value = a number up to the scale, or null to clear it. */
 export function rate(key, who, value) {
-  const d = data(), o = opts(d), L = d.lib[key]; if (!L) throw new Error("That song isn't in the database."); who = who ? 1 : 0;
+  const d = data(), o = opts(d); let L = d.lib[key]; const ym = /^yt:([A-Za-z0-9_-]{11})$/.exec(String(key || ''));
+  if (!L && ym) L = lib(d, { key, yt: ym[1], title: String(arguments[3] || '').trim().slice(0, 140) || titleMap(d)[ym[1]] || 'YouTube video ' + ym[1] }); /* (1.146.0) a playlist song can be rated too: it joins the song database when you rate it */
+  if (!L) throw new Error("That song isn't in the database."); if (ym && arguments[3] && /^YouTube video /.test(L.title)) L.title = String(arguments[3]).trim().slice(0, 140) || L.title; who = who ? 1 : 0;
   L.rate ||= [null, null]; L.rate[who] = value === null || value === '' || value === undefined ? null : Math.round(clampN(value, 0, o.scale, 0) * 2) / 2; L.ratedAt = Date.now(); changed(); return state();
 }
 export function editSong(key, b) {
@@ -190,11 +192,14 @@ export function editSong(key, b) {
   changed(); return state();
 }
 export function ban(b) {
-  const d = data(), title = String(b.title || '').trim().slice(0, 140), yt = ytId(b.yt || b.link || title) || (b.key && d.lib[b.key]?.yt) || '';
+  const d = data(), title = String(b.title || '').trim().slice(0, 140), yt = (/^[A-Za-z0-9_-]{11}$/.test(String(b.yt || '')) ? String(b.yt) : '') || ytId(b.yt || b.link || title) || (b.key && d.lib[b.key]?.yt) || '';
   const t = (b.key && d.lib[b.key]?.title) || (yt && d.lib['yt:' + yt]?.title) || (yt && yt === ytId(title) ? '' : title); if (!t && !yt) throw new Error('Type a song name or paste a YouTube link.');
   const e = { title: t || 'YouTube video ' + yt, yt, key: yt ? 'yt:' + yt : 't:' + norm(t), words: !!b.words && !yt, at: Date.now() };
   if (!d.banned.some(x => x.key === e.key && !!x.words === e.words)) d.banned.unshift(e);
-  d.queue = d.queue.filter(q => !bannedWhy(q, d)); changed(); return state();
+  d.queue = d.queue.filter(q => !bannedWhy(q, d));
+  for (const k of ['holdPlay', 'backupPlay']) { const hp = d[k]; if (hp && hp.ids) { hp.items = (hp.items || hp.ids.map(y => ({ yt: y, title: '' }))).filter(x => !ytBanned(d, x.yt)); hp.ids = hp.items.map(x => x.yt); } } /* (a playlist that is playing loses the song too) */
+  if (d.now && bannedWhy(d.now, d)) { H.act(`Banned while it played, so it was skipped: ${d.now.title}`, { kind: 'songSkip' }); const st = next(); return { ...st, skipped: true }; } /* (1.146.0, Derek: "when a song gets banned while playing it skips it") */
+  changed(); return state();
 }
 export function unban(key) { const d = data(); d.banned = d.banned.filter(b => b.key !== key); changed(); return state(); }
 export function banUser(name, yes = true) { const d = data(), l = low(name); if (!/^[a-z0-9_]{2,25}$/.test(l)) throw new Error('Type their chat name.'); d.bannedUsers = d.bannedUsers.filter(x => x !== l); if (yes) { d.bannedUsers.push(l); d.queue = d.queue.filter(q => q.login !== l); } changed(); return state(); }
@@ -226,14 +231,19 @@ export function plSong(b) {
 /* 📻 (1.145.0, Derek: "import youtube playlist and make them my playlist… a way to combine playlist… check marks and if they are checked they will be added to main playlist… play in order or by default random")
    A playlist can now carry its songs (`tracks`, read from YouTube when it is added, or learned from the player the first time it plays). Ticked playlists (`main !== false`) together are the MAIN playlist. */
 const tracksOf = p => (p && (p.tracks || p.songs) || []).map(x => x.yt).filter(y => /^[A-Za-z0-9_-]{11}$/.test(String(y || '')));
+/* (1.146.0) the player now gets the songs one by one (`items`: link + name), so the app knows which playlist song is on: it can be rated, banned, and shown as a queue. Banned songs are left out. */
+const ytBanned = (d, yt) => (d.banned || []).some(b => b.yt === yt || b.key === 'yt:' + yt);
+const titleMap = d => { const m = {}; for (const p of d.playlists || []) for (const x of p.tracks || p.songs || []) if (x && x.yt && x.title && !m[x.yt]) m[x.yt] = x.title; return m; };
+const playItems = (d, ids) => { const tm = titleMap(d); return ids.filter(yt => !ytBanned(d, yt)).map(yt => ({ yt, title: tm[yt] || ((d.lib || {})['yt:' + yt] && !/^YouTube video /.test(d.lib['yt:' + yt].title) ? d.lib['yt:' + yt].title : '') || '' })); };
+const withItems = (d, o) => { if (o.ids) { o.items = playItems(d, o.ids); o.ids = o.items.map(x => x.yt); } return o; };
 const PLAY_MAX = 150; /* (how many songs one go of the player gets: YouTube's player takes a list of about that many) */
 export function mainIds(d = data()) { return [...new Set((d.playlists || []).filter(p => p.main !== false).flatMap(tracksOf))]; }
 const mix = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 /** What the player gets for a playlist ('main' or a playlist id): the songs to play (shuffled or in order), or, for a YouTube playlist whose songs the app doesn't know, just its list id. */
 export function playOf(id, shuffle, d = data()) {
-  if (id === 'main') { const all = mainIds(d); if (!all.length) throw new Error('Your main playlist is empty. Tick at least one playlist whose songs the app knows (Chat bot → 🎵 Song requests → 📻 Playlists).'); return { id, key: Date.now().toString(36), name: '⭐ Main playlist', ids: (shuffle ? mix(all) : all).slice(0, PLAY_MAX), n: all.length, shuffle: !!shuffle }; }
+  if (id === 'main') { const all = mainIds(d); if (!all.length) throw new Error('Your main playlist is empty. Tick at least one playlist whose songs the app knows (Chat bot → 🎵 Song requests → 📻 Playlists).'); return withItems(d, { id, key: Date.now().toString(36), name: '⭐ Main playlist', ids: (shuffle ? mix(all) : all).slice(0, PLAY_MAX), n: all.length, shuffle: !!shuffle }); }
   const p = (d.playlists || []).find(x => x.id === id); if (!p) throw new Error("That playlist isn't in your list any more.");
-  const all = tracksOf(p); if (all.length) return { id, key: Date.now().toString(36), name: p.name, ids: (shuffle ? mix(all) : all).slice(0, PLAY_MAX), n: all.length, shuffle: !!shuffle };
+  const all = tracksOf(p); if (all.length) return withItems(d, { id, key: Date.now().toString(36), name: p.name, ids: (shuffle ? mix(all) : all).slice(0, PLAY_MAX), n: all.length, shuffle: !!shuffle });
   if (p.songs) throw new Error('That playlist has no songs in it yet.');
   return { id, key: Date.now().toString(36), name: p.name, ids: null, list: p.list, n: 0, shuffle: !!shuffle };
 }
@@ -348,6 +358,22 @@ export function albumsFor(title, d = data()) {
   return Object.values(d.lib).filter(L => L.album && L.artist && norm(L.artist).length >= 3 && t.includes(' ' + norm(L.artist) + ' ') && norm(L.title) !== t.trim()).sort((a, b) => avg(b) - avg(a)).slice(0, 5).map(L => ({ title: L.artist && L.title.startsWith(L.artist + ' - ') ? L.title.slice(L.artist.length + 3) : L.title, artist: L.artist, year: L.year || '', rate: L.rate || [null, null] }));
 }
 const view = (d, q, o) => (q ? { ...q, albums: albumsFor(q.title, d), lib: (L => (L ? { plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, old: !!L.old } : null))(d.lib[q.key]) } : null);
+function plRates(d) { const out = {}; for (const hp of [d.holdPlay, d.backupPlay]) for (const yt of (hp && hp.ids) || []) { const L = d.lib['yt:' + yt]; if (L && (L.rate || []).some(x => x != null)) out[yt] = L.rate; } return out; }
+/** 📥 (1.146.0, Derek: "won't let me add these to main list") playlists whose songs the app doesn't know yet are read from YouTube by themselves (when the app opens, when the Playlists tab opens, every hour). */
+let readingAll = false;
+export async function playlistReadAll(force) {
+  const d = data(); if (readingAll) return { busy: true }; const noNames = p => !!p.learned && (p.tracks || []).some(x => !x.title) && Date.now() - (p.nameTry || 0) > 86400000; /* (songs the player told us about come without names: read the playlist once more for them) */
+  const todo = (d.playlists || []).filter(p => !p.songs && ((!tracksOf(p).length && (force || !p.readFail || Date.now() - p.readFail > 50 * 60000)) || noNames(p))); if (!todo.length) return { read: 0, failed: 0 };
+  readingAll = true; let read = 0, failed = 0;
+  try { for (const p of todo) { const had = tracksOf(p).length > 0; if (had) p.nameTry = Date.now(); let got = null; try { got = await H.plRead(p.list); } catch {} if (had && !(got && got.tracks && got.tracks.length && !got.partial)) continue; if (got && got.tracks && got.tracks.length) { delete p.learned; p.tracks = got.tracks.slice(0, 1000).map(x => ({ yt: x.yt, title: String(x.title || '').slice(0, 140) })); p.readAt = Date.now(); delete p.readFail; read++; H.act(`Playlist read: “${p.name}” (${p.tracks.length} songs)`, { icon: '📻', kind: 'playlist' }); } else { p.readFail = Date.now(); failed++; } } }
+  finally { readingAll = false; }
+  if (read) refill(d); changed(); return { read, failed };
+}
+/** The player told us a playlist song's name: kept, so the list of what's next shows names. */
+export function playlistTitle(yt, title) { const d = data(); title = String(title || '').trim().slice(0, 140); if (!/^[A-Za-z0-9_-]{11}$/.test(String(yt || '')) || !title) return {}; let n = 0;
+  for (const p of d.playlists || []) for (const x of p.tracks || []) if (x.yt === yt && !x.title) { x.title = title; n++; }
+  for (const hp of [d.holdPlay, d.backupPlay]) for (const x of (hp && hp.items) || []) if (x.yt === yt && !x.title) { x.title = title; n++; }
+  if (n) save(); return { n }; }
 export function state({ q = '', sort = 'last', limit = 200 } = {}) {
   const d = data(), o = opts(d), all = Object.values(d.lib), s = norm(q);
   let rows = s ? all.filter(L => norm(L.title).includes(s) || Object.keys(L.by || {}).some(l => l.includes(low(q)))) : all;
@@ -355,7 +381,7 @@ export function state({ q = '', sort = 'last', limit = 200 } = {}) {
   rows = rows.sort(sort === 'title' ? (a, b) => a.title.localeCompare(b.title) : sort === 'plays' ? (a, b) => b.plays - a.plays || a.title.localeCompare(b.title) : sort === 'rating' ? (a, b) => avg(b) - avg(a) || b.plays - a.plays : sort === 'a' ? (a, b) => (b.rate?.[0] ?? -1) - (a.rate?.[0] ?? -1) : sort === 'b' ? (a, b) => (b.rate?.[1] ?? -1) - (a.rate?.[1] ?? -1) : (a, b) => (b.last || 0) - (a.last || 0) || a.title.localeCompare(b.title));
   const rated = all.filter(L => (L.rate || []).some(x => x != null));
   const plOk = id => id === 'main' ? mainIds(d).length > 0 : (d.playlists || []).some(p => p.id === id);
-  return { on: true, open: d.open, playlists: (d.playlists || []).map(p => ({ ...p, tracks: undefined, n: tracksOf(p).length, known: tracksOf(p).length > 0, main: p.main !== false })), mainN: mainIds(d).length, mainOrder: d.mainOrder === 'order' ? 'order' : 'shuffle', backup: plOk(d.backup) ? d.backup : '', hold: plOk(d.hold) && d.holdPlay ? d.hold : '', holdPlay: plOk(d.hold) ? d.holdPlay || null : null, backupPlay: plOk(d.backup) ? d.backupPlay || null : null, opts: o, now: view(d, d.now, o), queue: d.queue.map(x => view(d, x, o)), played: d.played.slice(0, 40).map(x => ({ ...x, rate: (d.lib[x.key] && d.lib[x.key].rate) || [null, null], yt: (d.lib[x.key] && d.lib[x.key].yt) || '' })), banned: d.banned, bannedUsers: d.bannedUsers,
+  return { on: true, open: d.open, playlists: (d.playlists || []).map(p => ({ ...p, tracks: undefined, n: tracksOf(p).length, known: tracksOf(p).length > 0, main: p.main !== false })), mainN: mainIds(d).length, mainOrder: d.mainOrder === 'order' ? 'order' : 'shuffle', backup: plOk(d.backup) ? d.backup : '', hold: plOk(d.hold) && d.holdPlay ? d.hold : '', holdPlay: plOk(d.hold) ? d.holdPlay || null : null, backupPlay: plOk(d.backup) ? d.backupPlay || null : null, plRate: plRates(d), unread: (d.playlists || []).filter(p => !p.songs && !tracksOf(p).length).length, reading: !!readingAll, opts: o, now: view(d, d.now, o), queue: d.queue.map(x => view(d, x, o)), played: d.played.slice(0, 40).map(x => ({ ...x, rate: (d.lib[x.key] && d.lib[x.key].rate) || [null, null], yt: (d.lib[x.key] && d.lib[x.key].yt) || '' })), banned: d.banned, bannedUsers: d.bannedUsers,
     lib: rows.slice(0, limit).map(L => ({ key: L.key, title: L.title, yt: L.yt, plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, album: !!L.album, year: L.year || '', who: Object.entries(L.by || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]) })), found: rows.length, total: all.length, q, sort,
     stats: { albums: all.filter(L => L.album).length, songs: all.length, plays: all.reduce((n, L) => n + (L.plays || 0), 0), rated: rated.length, avg: [0, 1].map(i => { const v = all.map(L => L.rate?.[i]).filter(x => x != null); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : null; }),
       requesters: Object.entries(d.req).map(([login, x]) => ({ login, name: x.name || login, n: x.n, last: x.last || 0 })).sort((a, b) => b.n - a.n).slice(0, 25),

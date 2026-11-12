@@ -175,6 +175,7 @@
  {"id":"hist:all","kind":"off","cat":"History","name":"🧾 Everything","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='all';drawHistory()\"]"}},
  {"id":"hist:mnight","kind":"off","cat":"History","name":"🍿 Movie nights","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='mnight';drawHistory()\"]"}},
  {"id":"hist:watch","kind":"off","cat":"History","name":"📋 Watchlist","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='watch';drawHistory()\"]"}},
+ {"id":"hist:sugg","kind":"off","cat":"History","name":"💡 Suggested","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='sugg';drawHistory()\"]"}},
  {"id":"hist:music","kind":"off","cat":"History","name":"🎵 Music","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='music';drawHistory()\"]"}},
  {"id":"hist:chatstats","kind":"off","cat":"History","name":"💬 Chat stats","text":"One of the buttons across the top of the History tab.","hide":{"sel":"[onclick=\"histMode='chatstats';drawHistory()\"]"}},
  {"id":"clip:buttons","kind":"off","cat":"Clips","name":"🎬 Clip buttons","text":"Every 🎬 Clip button in the app (the chat command is its own switch).","hide":{"sel":".clipBtn, #clipBox"}},

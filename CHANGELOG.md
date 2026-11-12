@@ -2,6 +2,23 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.146.0
+- 🟢 **Kick chat connects again.** Kick changed the address of its chat feed in October, so the app kept saying "the chat connection dropped". The app now asks Kick for the current one each time it connects (and knows the new one by heart as a fallback), and if Kick ever changes it again it tries the next one by itself.
+- 📻 **Playlists play one song at a time, so the app knows what's on.** That makes all of this work while a playlist plays:
+  - ⭐ **Rate the playlist song** with the stars, like a request (it joins your song database when you rate it).
+  - **The next 10 songs are listed** under the song, like the request queue.
+  - **🎵 Play between requests** (new button in the ⏸📻 pop-up): the playlist fills the quiet. When someone asks for a song, the playlist song finishes, all the requests play, then the playlist carries on where it was. The list shows the requests first and fills up to 10 with playlist songs.
+  - **⏸ Pause requests + play it** (the old way): only the playlist plays. Requests still come in and are listed as waiting; none play until you press ↩ Back to song requests.
+- 🚫 **Ban button in the music box**, next to ⏸📻: bans the song that's playing (request or playlist song) and skips it. Banning the playing song from anywhere else (History, the Songs tab) skips it too, and banned songs are left out of your playlists.
+- ☑ **Any playlist can be ticked into the main playlist now.** Playlists that said "from YouTube" couldn't be ticked because the app had never read their songs. The app now reads those by itself (when it opens, when you open the Playlists tab, and every hour), in three different ways, and there's a 📥 Read them now button. The tick box is never greyed out: a ticked playlist joins in as soon as it has been read. (A playlist has to be Public or Unlisted on YouTube.)
+- 🎧 **Hear the sound alerts yourself.** Chat bot → 🔊 Sound alerts → **Let me hear them too**: when a sound alert plays on stream through OBS, it plays in the app as well.
+- 💬 **What you type in the app's chat box goes out as you**, without the bot's name tag in front.
+- 💡 **History → Suggested** (next to Watchlist): every movie chat suggested. Click one to open its IMDb page, **↗ Open all on IMDb** opens each in its own browser tab, ✅ Added / 🗑 Clear for each one, and ✅ All added / 🗑 Clear all.
+- 🎥 **The demo tour no longer messes up your Chat tab boxes.** Your box layout is kept when the tour starts and put back when it ends.
+- 🧰 The ▦ Boxes and ↺ Boxes buttons are gone from the Stream tools box (right-click the Chat tab for the boxes menu).
+- A song skipped from somewhere else (chat's skip, a ban) no longer stops the music: the next one starts.
+- 🧪 Test: Songs → 📻 Playlists → 🧪 Check the playlist rules has two new checks.
+
 ## 1.145.0
 - ⏸📻 **Pause requests and play a playlist, from the music box.** The small **⏸📻** button in the music box opens a pop-up: pick **⭐ Main playlist** (picked by default) or any of your playlists from the drop-down, choose **🔀 Shuffle** or **➡ In order**, and press ▶ Play it. Song requests are paused while it plays (new ones still come in and wait). The same pop-up has ↩ Back to song requests.
 - 📻 **Playlists tab in Song requests.** Chat bot → 🎵 Song requests → **📻 Playlists** is where your playlists live now:

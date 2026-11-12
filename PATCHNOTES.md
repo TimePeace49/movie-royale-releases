@@ -4,6 +4,16 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.146.0: What's new
+- {kick} 🟢 **Kick chat connects again.** Kick changed its chat address; the app now finds the current one by itself.
+- {songs} 📻 **Playlists got smarter.** While a playlist plays you can rate the song with the stars, see the next 10 songs, and ban a song. New **🎵 Play between requests** in the ⏸📻 pop-up: the playlist fills the quiet, a request plays after the current song, then the playlist carries on. With **⏸ Pause requests**, requests still come in and wait.
+- {songs} 🚫 **Ban button in the music box:** bans the song that's playing and skips it. Banned songs are left out of playlists.
+- {songs} ☑ **Any playlist can be ticked into your main playlist.** The app now reads the songs of your YouTube playlists by itself.
+- 🎧 **Hear sound alerts yourself:** Chat bot → 🔊 Sound alerts → Let me hear them too.
+- 💬 What you type in the app's chat box goes out as you, without the bot's name tag.
+- {movienight} 💡 **History → Suggested:** every movie chat suggested, each one a link to its IMDb page, with ↗ Open all on IMDb, and clear one or all.
+- {dash} The ▦ Boxes buttons left the Stream tools box (right-click the Chat tab instead).
+
 ## v1.145.0: What's new
 - {songs} ⏸📻 **Play a playlist instead of requests.** The ⏸📻 button in the music box opens a pop-up: pick your ⭐ main playlist or another one, 🔀 shuffle or ➡ in order, and play. Requests wait while it plays.
 - {songs} 📻 **Playlists tab** (Chat bot → 🎵 Song requests → 📻 Playlists): import YouTube playlists by their link, and tick the ones that get mixed together into your main playlist. The fill-in playlist can be the main playlist too.

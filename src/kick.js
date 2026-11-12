@@ -13,7 +13,30 @@ import { db, save } from './store.js';
 const ID = process.env.KICK_ID_URL || 'https://id.kick.com';
 const API = process.env.KICK_API_URL || 'https://api.kick.com/public/v1';
 const WEB = process.env.KICK_WEB_URL || 'https://kick.com';
-const WS = process.env.KICK_WS_URL || 'wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0&flash=false';
+const WS = process.env.KICK_WS_URL || '';
+/* (1.146.0) Kick changed its chat feed's key in October 2026 (the old one answers "not in this cluster"). The app now asks Kick for the current one, and falls back to the known ones. */
+const WS_KEYS = [['34bf7a0ff419a2a775b9', 'us2'], ['32cbd69e4b950bf97679', 'us2']];
+const REALTIME = process.env.KICK_REALTIME_URL || 'https://web.kick.com/api/v1/realtime/connection';
+const wsAddr = (key, cluster) => `wss://ws-${cluster || 'us2'}.pusher.com/app/${key}?protocol=7&client=js&version=8.4.0&flash=false`;
+let wsBad = new Set(), wsAsked = 0, wsFromKick = null;
+async function askKey() {
+  if (Date.now() - wsAsked < 10 * 60000) return wsFromKick; wsAsked = Date.now();
+  try {
+    const r = await fetch(REALTIME, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, body: JSON.stringify({ accepted_providers: ['pusher'] }), signal: AbortSignal.timeout(7000) });
+    const t = await r.text(); const k = t.match(/"(?:app_key|appKey|key)"\s*:\s*"([0-9a-f]{16,32})"/i); const c = t.match(/"cluster"\s*:\s*"([a-z0-9-]{2,12})"/i);
+    wsFromKick = k ? [k[1], c ? c[1] : 'us2'] : null;
+  } catch { wsFromKick = null; }
+  return wsFromKick;
+}
+async function wsPick() {
+  if (WS) return { url: WS, key: 'env' };
+  const d = data(); const list = [];
+  const got = await askKey(); if (got) list.push(got);
+  if (d.wsKey && /^[0-9a-f]{16,32}$/i.test(d.wsKey)) list.push([d.wsKey, d.wsCluster || 'us2']);
+  list.push(...WS_KEYS);
+  let pick = list.find(x => !wsBad.has(x[0])); if (!pick) { wsBad = new Set(); wsAsked = 0; pick = list[0]; }
+  return { url: wsAddr(pick[0], pick[1]), key: pick[0], cluster: pick[1] };
+}
 export const SCOPES = ['user:read', 'channel:read', 'chat:write', 'events:subscribe', 'channel:rewards:read', 'channel:rewards:write']; // (rewards = Kick's channel points, 2026)
 export const redirectUri = port => `http://localhost:${port}/kick/callback`;
 
@@ -162,13 +185,15 @@ async function connect() {
   let room; try { room = await findChatroom(sl); } catch (e) { setChat('error', e.message); retryT = setTimeout(connect, 60000); return; }
   if (!wantSock) return;
   setChat('connecting');
-  const ws = sock = new WebSocket(WS);
+  const pk = await wsPick(); if (!wantSock) return;
+  const ws = sock = new WebSocket(pk.url);
   const again = why => { if (sock !== ws) return; sock = null; clearInterval(pingT); if (wantSock) { setChat('error', why || 'The chat connection dropped: trying again'); retryT = setTimeout(connect, 5000); } };
   ws.on('open', () => { lastData = Date.now(); clearInterval(pingT); pingT = setInterval(() => { if (ws.readyState !== 1) return; if (Date.now() - lastData > 150000) { try { ws.terminate(); } catch {} return; } try { ws.send(JSON.stringify({ event: 'pusher:ping', data: {} })); } catch {} }, 45000); });
   ws.on('message', raw => {
     lastData = Date.now(); let m; try { m = JSON.parse(String(raw)); } catch { return; }
     if (m.event === 'pusher:connection_established') { try { ws.send(JSON.stringify({ event: 'pusher:subscribe', data: { auth: '', channel: `chatrooms.${room}.v2` } })); } catch {} return; }
-    if (m.event === 'pusher_internal:subscription_succeeded') return setChat('on');
+    if (m.event === 'pusher_internal:subscription_succeeded') { if (pk.key !== 'env') { const d = data(); if (d.wsKey !== pk.key) { d.wsKey = pk.key; d.wsCluster = pk.cluster; save(); } } return setChat('on'); }
+    if (m.event === 'pusher:error') { let e = m.data; try { if (typeof e === 'string') e = JSON.parse(e); } catch {} const code = Number(e && e.code) || 0; if (code >= 4000 && code < 4100) { wsBad.add(pk.key); try { ws.close(); } catch {} again('Kick changed its chat address: trying the next one'); } return; }
     if (m.event === 'pusher:ping') { try { ws.send(JSON.stringify({ event: 'pusher:pong', data: {} })); } catch {} return; }
     if (m.event !== 'App\\Events\\ChatMessageEvent') return;
     let p; try { p = typeof m.data === 'string' ? JSON.parse(m.data) : m.data; } catch { return; }
