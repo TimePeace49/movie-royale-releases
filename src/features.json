@@ -154,6 +154,7 @@
  {"id":"songs:lib","kind":"off","cat":"Chat bot","name":"🎵 Song database","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('lib')\"]"}},
  {"id":"songs:stats","kind":"off","cat":"Chat bot","name":"📊 Song stats","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('stats')\"]"}},
  {"id":"songs:ban","kind":"off","cat":"Chat bot","name":"🚫 Banned songs","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('ban')\"]"}},
+ {"id":"songs:pl","kind":"off","cat":"Chat bot","name":"📻 Song playlists","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('pl')\"]"}},
  {"id":"songs:imp","kind":"off","cat":"Chat bot","name":"🧳 Song import","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('imp')\"]"}},
  {"id":"songs:set","kind":"off","cat":"Chat bot","name":"⚙ Song settings","text":"One of the buttons inside Song requests.","hide":{"sel":"[onclick=\"sgTabSet('set')\"]"}},
  {"id":"songs:playlists","kind":"off","cat":"Chat bot","name":"📻 Playlists","text":"The playlist button in the music box and in Song settings.","hide":{"sel":"[onclick=\"dashPlMenu()\"]"}},

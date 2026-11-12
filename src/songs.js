@@ -6,7 +6,7 @@
 import { db, save } from './store.js';
 import { is } from './edition.js';
 
-const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', info: async () => null, search: async () => [], isBot: () => false, note: () => {}, movieSkip: () => false };
+const H = { say: async () => {}, act: () => {}, send: () => {}, on: () => false, allowed: async () => true, title: async () => '', info: async () => null, search: async () => [], isBot: () => false, note: () => {}, movieSkip: () => false, plRead: async () => null };
 export const setHooks = h => Object.assign(H, h);
 export const on = () => !!H.on();
 const low = s => String(s || '').trim().toLowerCase().replace(/^@/, '');
@@ -203,7 +203,7 @@ export function banUser(name, yes = true) { const d = data(), l = low(name); if 
 export const plId = s => { const t = String(s || '').trim(), m = t.match(/[?&]list=([A-Za-z0-9_-]{10,80})/); return m ? m[1] : /^[A-Za-z0-9_-]{10,80}$/.test(t) ? t : ''; };
 export function playlist(b) {
   const d = data(), L = (d.playlists ||= []);
-  if (b.remove) { const i = L.findIndex(p => p.id === b.id); if (i >= 0) L.splice(i, 1); if (d.backup === b.id) d.backup = ''; if (d.hold === b.id) d.hold = ''; changed(); return state(); }
+  if (b.remove) { const i = L.findIndex(p => p.id === b.id); if (i >= 0) L.splice(i, 1); if (d.backup === b.id) d.backup = ''; if (d.hold === b.id) { d.hold = ''; delete d.holdPlay; } refill(d); changed(); return state(); }
   if (b.id) { const p = L.find(x => x.id === b.id); if (!p) throw new Error("That playlist isn't in your list any more."); if ('name' in b) p.name = String(b.name || '').trim().slice(0, 60) || p.name; if ('shuffle' in b) p.shuffle = !!b.shuffle; if ('link' in b) { const l = plId(b.link); if (!l) throw new Error("That doesn't look like a YouTube playlist link (it has list= in it)."); p.list = l; } changed(); return state(); }
   const list = plId(b.link); if (!list) throw new Error("That doesn't look like a YouTube playlist link. Open the playlist on YouTube and copy the address (it has list= in it).");
   if (L.length >= 40) throw new Error('That is a lot of playlists: remove one first.'); if (L.some(p => p.list === list)) throw new Error('That playlist is already in your list.');
@@ -221,12 +221,42 @@ export function plSong(b) {
   if (i >= 0) { if (b.add !== true) p.songs.splice(i, 1); }
   else if (!b.remove) { if (p.songs.length >= 150) throw new Error('That playlist is full (150 songs): take one out first.'); p.songs.push({ yt, title: String(b.title || (d.lib['yt:' + yt] && d.lib['yt:' + yt].title) || 'Song').slice(0, 140) }); added = true; }
   if (!p.songs.length) { if (d.backup === p.id) d.backup = ''; if (d.hold === p.id) d.hold = ''; }
-  changed(); return { ...state(), added, playlist: p.name, n: p.songs.length };
+  refill(d); changed(); return { ...state(), added, playlist: p.name, n: p.songs.length };
 }
+/* 📻 (1.145.0, Derek: "import youtube playlist and make them my playlist… a way to combine playlist… check marks and if they are checked they will be added to main playlist… play in order or by default random")
+   A playlist can now carry its songs (`tracks`, read from YouTube when it is added, or learned from the player the first time it plays). Ticked playlists (`main !== false`) together are the MAIN playlist. */
+const tracksOf = p => (p && (p.tracks || p.songs) || []).map(x => x.yt).filter(y => /^[A-Za-z0-9_-]{11}$/.test(String(y || '')));
+const PLAY_MAX = 150; /* (how many songs one go of the player gets: YouTube's player takes a list of about that many) */
+export function mainIds(d = data()) { return [...new Set((d.playlists || []).filter(p => p.main !== false).flatMap(tracksOf))]; }
+const mix = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+/** What the player gets for a playlist ('main' or a playlist id): the songs to play (shuffled or in order), or, for a YouTube playlist whose songs the app doesn't know, just its list id. */
+export function playOf(id, shuffle, d = data()) {
+  if (id === 'main') { const all = mainIds(d); if (!all.length) throw new Error('Your main playlist is empty. Tick at least one playlist whose songs the app knows (Chat bot → 🎵 Song requests → 📻 Playlists).'); return { id, key: Date.now().toString(36), name: '⭐ Main playlist', ids: (shuffle ? mix(all) : all).slice(0, PLAY_MAX), n: all.length, shuffle: !!shuffle }; }
+  const p = (d.playlists || []).find(x => x.id === id); if (!p) throw new Error("That playlist isn't in your list any more.");
+  const all = tracksOf(p); if (all.length) return { id, key: Date.now().toString(36), name: p.name, ids: (shuffle ? mix(all) : all).slice(0, PLAY_MAX), n: all.length, shuffle: !!shuffle };
+  if (p.songs) throw new Error('That playlist has no songs in it yet.');
+  return { id, key: Date.now().toString(36), name: p.name, ids: null, list: p.list, n: 0, shuffle: !!shuffle };
+}
+/** ➕ Add a YouTube playlist and read its songs (so it can be mixed into the main playlist). `reread` reads an existing one again. */
+export async function playlistAdd(b) {
+  const d = data(); let p;
+  if (b.reread) { p = (d.playlists || []).find(x => x.id === b.id); if (!p || p.songs) throw new Error("That playlist can't be read again."); }
+  else { playlist(b); p = d.playlists[d.playlists.length - 1]; p.main = true; }
+  let got = null; try { got = await H.plRead(p.list); } catch {}
+  if (got && got.tracks && got.tracks.length) { p.tracks = got.tracks.slice(0, 1000).map(x => ({ yt: x.yt, title: String(x.title || '').slice(0, 140) })); p.readAt = Date.now(); if (!String(b.name || '').trim() && got.title && !b.reread) p.name = String(got.title).slice(0, 60); }
+  else p.readFail = Date.now();
+  refill(d); changed(); H.act(`Playlist ${b.reread ? 'read again' : 'added'}: “${p.name}”${p.tracks ? ` (${p.tracks.length} songs)` : ' (its songs could not be read yet)'}`, { icon: '📻', kind: 'playlist' });
+  return { ...state(), added: p.name, n: (p.tracks || []).length, read: !!(p.tracks && p.tracks.length) };
+}
+/** The player learned what is in a YouTube playlist (it tells us the song ids while it plays): kept, so the playlist can join the main one. */
+export function playlistTracks(id, ids) { const d = data(), p = (d.playlists || []).find(x => x.id === id); if (!p || p.songs || (p.tracks && p.tracks.length)) return state(); const ok = [...new Set((Array.isArray(ids) ? ids : []).filter(y => /^[A-Za-z0-9_-]{11}$/.test(String(y || ''))))].slice(0, 1000); if (!ok.length) return state(); p.tracks = ok.map(yt => ({ yt, title: (d.lib['yt:' + yt] && d.lib['yt:' + yt].title) || '' })); p.readAt = Date.now(); p.learned = true; refill(d); changed(); return state(); }
+/** ☑ in / out of the main playlist, and how the main playlist plays (🔀 shuffle is the default). */
+export function playlistMain(b) { const d = data(); if (b.id) { const p = (d.playlists || []).find(x => x.id === b.id); if (!p) throw new Error("That playlist isn't in your list any more."); p.main = !!b.main; } if (b.order) d.mainOrder = b.order === 'order' ? 'order' : 'shuffle'; refill(d); changed(); return state(); }
+function refill(d) { if (d.backup) { try { d.backupPlay = playOf(d.backup, d.backup === 'main' ? d.mainOrder !== 'order' : !!((d.playlists || []).find(x => x.id === d.backup) || {}).shuffle, d); } catch { d.backup = ''; delete d.backupPlay; } } else delete d.backupPlay; } /* (the fill-in playlist's songs are worked out again when the playlists change) */
 /** 📻 The playlist that plays by itself when no song requests are left ('' = none). */
-export function setBackup(id) { const d = data(); if (id && !(d.playlists || []).some(p => p.id === id)) throw new Error("That playlist isn't in your list any more."); d.backup = id || ''; changed(); return state(); }
+export function setBackup(id) { const d = data(); if (id && id !== 'main' && !(d.playlists || []).some(p => p.id === id)) throw new Error("That playlist isn't in your list any more."); if (id) d.backupPlay = playOf(id, id === 'main' ? d.mainOrder !== 'order' : !!((d.playlists || []).find(x => x.id === id) || {}).shuffle, d); else delete d.backupPlay; d.backup = id || ''; changed(); return state(); }
 /** ⏸ Pause the song requests and play a playlist ('' = back to the requests). Requests still come in and wait their turn. */
-export function setHold(id) { const d = data(), p = id ? (d.playlists || []).find(x => x.id === id) : null; if (id && !p) throw new Error("That playlist isn't in your list any more."); d.hold = id || ''; H.act(p ? `Song requests paused: playing the playlist “${p.name}”` : 'Back to the song requests', { kind: 'songHold' }); changed(); return state(); }
+export function setHold(id, shuffle) { const d = data(), p = id && id !== 'main' ? (d.playlists || []).find(x => x.id === id) : null; if (id && id !== 'main' && !p) throw new Error("That playlist isn't in your list any more."); if (id) { const sh = shuffle == null ? (id === 'main' ? d.mainOrder !== 'order' : !!p.shuffle) : !!shuffle; d.holdPlay = playOf(id, sh, d); if (p) p.shuffle = sh; else d.mainOrder = sh ? 'shuffle' : 'order'; } else delete d.holdPlay; d.hold = id || ''; H.act(id ? `Song requests paused: playing ${p ? `the playlist “${p.name}”` : 'the main playlist'}${d.holdPlay && d.holdPlay.shuffle ? ' (shuffled)' : ' (in order)'}` : 'Back to the song requests', { kind: 'songHold' }); changed(); return state(); }
 export function setOpts(b) {
   const d = data(), x = d.opts;
   for (const k of ['command', 'nowCommand', 'queueCommand', 'wrongCommand', 'mineCommand', 'voteCommand', 'skipCommand', 'volCommand']) if (k in b) { const c = String(b[k] || '').trim().toLowerCase().split(/\s+/)[0]; if (!c) x[k] = ''; /* (left blank = that command is turned off) */ else if (/^![a-z0-9_]{2,20}$/.test(c)) x[k] = c; else throw new Error('A command has to look like !sr (or leave the box empty to turn it off)'); }
@@ -324,7 +354,8 @@ export function state({ q = '', sort = 'last', limit = 200 } = {}) {
   const avg = L => { const r = (L.rate || []).filter(x => x != null); return r.length ? r.reduce((a, b) => a + b, 0) / r.length : -1; };
   rows = rows.sort(sort === 'title' ? (a, b) => a.title.localeCompare(b.title) : sort === 'plays' ? (a, b) => b.plays - a.plays || a.title.localeCompare(b.title) : sort === 'rating' ? (a, b) => avg(b) - avg(a) || b.plays - a.plays : sort === 'a' ? (a, b) => (b.rate?.[0] ?? -1) - (a.rate?.[0] ?? -1) : sort === 'b' ? (a, b) => (b.rate?.[1] ?? -1) - (a.rate?.[1] ?? -1) : (a, b) => (b.last || 0) - (a.last || 0) || a.title.localeCompare(b.title));
   const rated = all.filter(L => (L.rate || []).some(x => x != null));
-  return { on: true, open: d.open, playlists: d.playlists || [], backup: (d.playlists || []).some(p => p.id === d.backup) ? d.backup : '', hold: (d.playlists || []).some(p => p.id === d.hold) ? d.hold : '', opts: o, now: view(d, d.now, o), queue: d.queue.map(x => view(d, x, o)), played: d.played.slice(0, 40).map(x => ({ ...x, rate: (d.lib[x.key] && d.lib[x.key].rate) || [null, null], yt: (d.lib[x.key] && d.lib[x.key].yt) || '' })), banned: d.banned, bannedUsers: d.bannedUsers,
+  const plOk = id => id === 'main' ? mainIds(d).length > 0 : (d.playlists || []).some(p => p.id === id);
+  return { on: true, open: d.open, playlists: (d.playlists || []).map(p => ({ ...p, tracks: undefined, n: tracksOf(p).length, known: tracksOf(p).length > 0, main: p.main !== false })), mainN: mainIds(d).length, mainOrder: d.mainOrder === 'order' ? 'order' : 'shuffle', backup: plOk(d.backup) ? d.backup : '', hold: plOk(d.hold) && d.holdPlay ? d.hold : '', holdPlay: plOk(d.hold) ? d.holdPlay || null : null, backupPlay: plOk(d.backup) ? d.backupPlay || null : null, opts: o, now: view(d, d.now, o), queue: d.queue.map(x => view(d, x, o)), played: d.played.slice(0, 40).map(x => ({ ...x, rate: (d.lib[x.key] && d.lib[x.key].rate) || [null, null], yt: (d.lib[x.key] && d.lib[x.key].yt) || '' })), banned: d.banned, bannedUsers: d.bannedUsers,
     lib: rows.slice(0, limit).map(L => ({ key: L.key, title: L.title, yt: L.yt, plays: L.plays, requests: L.requests, rate: L.rate || [null, null], last: L.last, album: !!L.album, year: L.year || '', who: Object.entries(L.by || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]) })), found: rows.length, total: all.length, q, sort,
     stats: { albums: all.filter(L => L.album).length, songs: all.length, plays: all.reduce((n, L) => n + (L.plays || 0), 0), rated: rated.length, avg: [0, 1].map(i => { const v = all.map(L => L.rate?.[i]).filter(x => x != null); return v.length ? Math.round(10 * v.reduce((a, b) => a + b, 0) / v.length) / 10 : null; }),
       requesters: Object.entries(d.req).map(([login, x]) => ({ login, name: x.name || login, n: x.n, last: x.last || 0 })).sort((a, b) => b.n - a.n).slice(0, 25),

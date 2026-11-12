@@ -5209,6 +5209,21 @@ function ytSearchParse(html) { const s = String(html || ''), out = [], seen = ne
     out.push({ id, title: t, author: a, secs: secsOf(len), views: views ? Number(views.replace(/[,.]/g, '')) : null, artist: /OFFICIAL_ARTIST_BADGE/.test(part) || undefined, verified: /BADGE_STYLE_TYPE_VERIFIED/.test(part) || undefined }); if (out.length >= 15) break; }
   return out; }
 const ytSearches = new Map();
+/* 📻 (1.145.0) what is in a YouTube playlist: its page lists the first songs, and "continuation" pages give the rest. Read once when the playlist is added. */
+function ytPlaylistParse(html) { const s = String(html || ''), out = [], seen = new Set(); let i = 0;
+  while ((i = s.indexOf('"playlistVideoRenderer"', i)) >= 0) { const end = s.indexOf('"playlistVideoRenderer"', i + 20), part = s.slice(i, end < 0 ? Math.min(s.length, i + 6000) : end); i += 20;
+    const id = (part.match(/"videoId":"([A-Za-z0-9_-]{11})"/) || [])[1]; if (!id || seen.has(id)) continue; seen.add(id);
+    let t = (part.match(/"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/) || part.match(/"title":\{"simpleText":"((?:[^"\\]|\\.)*)"/) || [])[1] || ''; try { t = JSON.parse('"' + t + '"'); } catch {}
+    out.push({ yt: id, title: String(t) }); }
+  let title = (s.match(/"playlistMetadataRenderer":\{"title":"((?:[^"\\]|\\.)*)"/) || s.match(/<meta property="og:title" content="([^"]*)"/) || [])[1] || ''; try { title = JSON.parse('"' + title + '"'); } catch {}
+  const cont = (s.match(/"continuationCommand":\{"token":"([^"]{20,})"/) || [])[1] || '', key = (s.match(/"INNERTUBE_API_KEY":"([^"]+)"/) || [])[1] || '', ver = (s.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/) || [])[1] || '';
+  return { title, tracks: out, cont, key, ver }; }
+async function ytPlaylistRead(list) { const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+  let page = null; try { const r = await fetch('https://www.youtube.com/playlist?hl=en&list=' + encodeURIComponent(list), { headers: { 'accept-language': 'en-US,en;q=0.8', 'user-agent': UA, cookie: 'CONSENT=YES+1; SOCS=CAI' }, signal: AbortSignal.timeout(10000) }); if (r.ok) page = ytPlaylistParse(await r.text()); } catch {}
+  if (!page || !page.tracks.length) return null; const tracks = page.tracks.slice(), seen = new Set(tracks.map(x => x.yt)); let cont = page.cont;
+  for (let n = 0; n < 9 && cont && page.key && tracks.length < 1000; n++) { /* (the next 100 songs, up to 1000) */
+    try { const r = await fetch('https://www.youtube.com/youtubei/v1/browse?prettyPrint=false&key=' + encodeURIComponent(page.key), { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': UA }, body: JSON.stringify({ context: { client: { clientName: 'WEB', clientVersion: page.ver || '2.20240101.00.00', hl: 'en' } }, continuation: cont }), signal: AbortSignal.timeout(10000) }); if (!r.ok) break; const more = ytPlaylistParse(await r.text()); let added = 0; for (const t of more.tracks) if (!seen.has(t.yt)) { seen.add(t.yt); tracks.push(t); added++; } cont = more.cont; if (!added) break; } catch { break; } }
+  return { title: page.title, tracks }; }
 async function ytSearch(q) { const k = String(q || '').trim().toLowerCase(); if (!k) return []; if (ytSearches.has(k)) return ytSearches.get(k);
   let res = []; try { const r = await fetch('https://www.youtube.com/results?hl=en&search_query=' + encodeURIComponent(k), { headers: { 'accept-language': 'en-US,en;q=0.8', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' }, signal: AbortSignal.timeout(8000) }); if (r.ok) res = ytSearchParse(await r.text()); } catch {}
   if (res.length) { ytSearches.set(k, res); if (ytSearches.size > 300) ytSearches.delete(ytSearches.keys().next().value); }
@@ -5226,7 +5241,7 @@ app.post('/api/songs/search-try', async (req, res) => { /* 🔎 a real YouTube s
 app.get('/api/songs/level', async (req, res) => { /* 🔊 how loud one YouTube video is, and how many times the song volume it should play at */
   const yt = String(req.query.yt || ''); if (!/^[\w-]{11}$/.test(yt)) return res.json({ db: null, gain: 1 });
   let info = null; try { info = await ytInfo(yt); } catch {} const db = info && info.loud != null ? info.loud : null; res.json({ yt, db, gain: songs.levelGain(db) }); });
-songs.setHooks({ movieSkip: () => edHas('movies'), note: pstats.note, info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
+songs.setHooks({ plRead: l => ytPlaylistRead(l), movieSkip: () => edHas('movies'), note: pstats.note, info: ytInfo, search: ytSearch, on: () => feat('songs'), say: t => twitch.say(t), allowed: (m, perm) => chatbot.allowed(m, perm), title: ytTitle, act: (text, o = {}) => act('chat', text, { icon: '🎵', ...o }), send: (msg, role) => broadcast(msg, role), isBot: l => BOT_NAMES.includes(l) });
 const sgTry = fn => async (req, res) => { try { if (!feat('songs')) throw new Error('Song requests are not part of this edition.'); const r = await fn(req.body || {}, req); res.json(r && r.queue ? { state: r } : { ...(r || {}), state: songs.state() }); } catch (e) { res.status(400).json({ error: e.message }); } };
 app.get('/api/songs', (req, res) => res.json(feat('songs') ? songs.state({ q: String(req.query.q || ''), sort: String(req.query.sort || 'last') }) : { on: false }));
 app.post('/api/songs/add', sgTry(async b => { const r = await songs.request({ login: '', name: String(b.by || '').trim() }, String(b.song || ''), { hand: true }); if (!r.ok) throw new Error(r.why === 'banned' ? 'That song is on your banned list.' : r.why === 'dupe' ? 'That song is already in the queue.' : r.why === 'link' ? 'Only YouTube links (or a song name).' : 'Type a song name or paste a YouTube link.'); return r; }));
@@ -5240,7 +5255,21 @@ app.post('/api/songs/rate', sgTry(b => songs.rate(b.key, b.who, b.value)));
 app.post('/api/songs/song', sgTry(b => songs.editSong(b.key, b)));
 app.post('/api/songs/ban', sgTry(b => (b.user ? songs.banUser(b.user, !b.remove) : b.remove ? songs.unban(b.key) : songs.ban(b))));
 app.post('/api/songs/opts', sgTry(b => songs.setOpts(b)));
-app.post('/api/songs/playlist', sgTry(b => songs.playlist(b))); // 📻 add / rename / remove one of your YouTube playlists
+app.post('/api/songs/playlist', sgTry(b => (b.remove || (b.id && !b.reread) ? songs.playlist(b) : songs.playlistAdd(b)))); /* (1.145.0: adding one also reads its songs from YouTube) */
+app.post('/api/songs/playlist-main', sgTry(b => songs.playlistMain(b))); // ☑ which playlists make up the main playlist + shuffle / in order
+app.post('/api/songs/playlist-tracks', sgTry(b => songs.playlistTracks(String(b.id || ''), b.ids))); // (the player told us what is in a YouTube playlist)
+app.get('/api/test/playlist-read', (req, res) => { /* 🧪 the playlist page reader on a small sample page + the main playlist rules on a pretend list (no internet, nothing saved) */
+  const pg = ytPlaylistParse('x{"playlistMetadataRenderer":{"title":"Road trip"} {"playlistVideoRenderer":{"videoId":"FTQbiNvZqaY","title":{"runs":[{"text":"Toto - Africa"}]}}},{"playlistVideoRenderer":{"videoId":"dQw4w9WgXcQ","title":{"runs":[{"text":"Rick \\"Astley\\""}]}}},{"playlistVideoRenderer":{"videoId":"FTQbiNvZqaY","title":{"runs":[{"text":"again"}]}}} "continuationCommand":{"token":"4qmFsgI0EiRWTFBMYWJjZGVmZ2hpajEyMzQ1"} "INNERTUBE_API_KEY":"AIzaTest"');
+  const d = { playlists: [{ id: 'a', name: 'A', list: 'PLa', main: true, tracks: [{ yt: 'aaaaaaaaaa1' }, { yt: 'aaaaaaaaaa2' }] }, { id: 'b', name: 'B', list: 'PLb', main: false, tracks: [{ yt: 'bbbbbbbbbb1' }] }, { id: 'c', name: 'C', list: 'PLc', main: true, tracks: [{ yt: 'aaaaaaaaaa2' }, { yt: 'cccccccccc1' }] }, { id: 'y', name: 'Y', list: 'PLy', main: true }] };
+  const rows = [], add = (what, ok, got) => rows.push({ what, ok: !!ok, got: String(got) });
+  add('The playlist page gives its name, its songs (no doubles) and the next-page mark', pg.title === 'Road trip' && pg.tracks.length === 2 && pg.tracks[1].title === 'Rick "Astley"' && !!pg.cont && pg.key === 'AIzaTest', `${pg.title}: ${pg.tracks.map(x => x.title).join(' | ')}`);
+  const m = songs.mainIds(d); add('Main playlist = the ticked playlists together, each song once', m.join() === 'aaaaaaaaaa1,aaaaaaaaaa2,cccccccccc1', m.join(', '));
+  const o = songs.playOf('main', false, d); add('In order = the songs in the order of the playlists', o.ids.join() === m.join() && !o.shuffle, o.ids.join(', '));
+  const sh = songs.playOf('main', true, d); add('Shuffle = the same songs, mixed', sh.shuffle && sh.ids.slice().sort().join() === m.slice().sort().join(), sh.ids.join(', '));
+  const y = songs.playOf('y', true, d); add('A playlist whose songs are not known yet plays straight from YouTube', y.ids === null && y.list === 'PLy', y.list);
+  let empty = ''; try { songs.playOf('main', true, { playlists: [{ id: 'y', list: 'PLy', main: true }] }); } catch (e) { empty = e.message; } add('An empty main playlist says so', /empty/.test(empty), empty);
+  res.json({ ok: rows.every(r => r.ok), rows });
+}); // 📻 add / rename / remove one of your YouTube playlists
 /* 📋 (1.133.0) Movie watchlist + IMDb ratings (feat movienight): History → 📋 Watchlist, chat !suggest / !rating */
 const wlLookup = async (title, year) => { let f; try { f = await omdbFind(title, year); } catch { f = undefined; } if (f) return f; if (f === null) return null;
   try { const l = await searchMovies(title + (year ? ' ' + year : '')); const m = (year && l.find(x => String(x.year) === String(year))) || l[0]; return m ? { title: m.title, year: m.year ? String(m.year) : '', imdb: '' } : null; } catch { return null; } };
@@ -5330,7 +5359,7 @@ app.get('/api/history/chat', (req, res) => { // 🕰️ History → 💬 Chat st
 });
 app.post('/api/songs/playlist-song', sgTry(b => songs.plSong(b))); // ⭐ save a song to (or take it out of) your own saved-songs playlist
 app.post('/api/songs/backup', sgTry(b => songs.setBackup(String(b.id || '')))); // 📻 the playlist that plays when no requests are left
-app.post('/api/songs/hold', sgTry(b => songs.setHold(String(b.id || '')))); // ⏸ pause the requests and play a playlist ('' = back to requests)
+app.post('/api/songs/hold', sgTry(b => songs.setHold(String(b.id || ''), b.shuffle == null ? null : !!b.shuffle))); // ⏸ pause the requests and play a playlist ('' = back to requests)
 app.post('/api/songs/import', sgTry(b => { // a spreadsheet (.xlsx as base64), a CSV / text file, or pasted lines; kind: songs | banned; dry = only show what was found
   const kind = b.kind === 'banned' ? 'banned' : 'songs', who = Number(b.who) === 1 ? 1 : 0; let p;
   if (b.xlsx) { const all = xlsx.sheets(Buffer.from(String(b.xlsx), 'base64')).filter(sh => sh.rows.length), want = all.filter(sh => (kind === 'banned' ? /ban|black|block/i : /song|queue|rating|list|played|request|sheet/i).test(sh.name)), use = want.length ? want : all.slice(0, 1); p = { songs: [], note: '' }; for (const sh of use) { const t = songs.readTable(sh.rows, kind, undefined, who); p.songs.push(...t.songs); if (t.rym) p.rymNote = t.note; } p.note = `Read as an Excel file (page${use.length === 1 ? '' : 's'}: ${use.map(x => x.name).join(', ')}).`; }

@@ -2,6 +2,18 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.145.0
+- ⏸📻 **Pause requests and play a playlist, from the music box.** The small **⏸📻** button in the music box opens a pop-up: pick **⭐ Main playlist** (picked by default) or any of your playlists from the drop-down, choose **🔀 Shuffle** or **➡ In order**, and press ▶ Play it. Song requests are paused while it plays (new ones still come in and wait). The same pop-up has ↩ Back to song requests.
+- 📻 **Playlists tab in Song requests.** Chat bot → 🎵 Song requests → **📻 Playlists** is where your playlists live now:
+  - **📥 Import a YouTube playlist:** paste its link (Public or Unlisted). The app reads its songs and names it after the YouTube name unless you type your own.
+  - **☑ In main:** tick the playlists you want mixed together. All ticked playlists make up your **⭐ main playlist** (a song that's in two of them counts once).
+  - **🔀 Shuffle / ➡ In order** for the main playlist. Shuffle is the usual way.
+  - ▶ plays one playlist by itself, 🔄 reads its songs again (after you changed it on YouTube), 🗑 takes it off your list.
+  - The **fill-in playlist** (plays when no requests are left) can now be the main playlist too.
+- If YouTube doesn't give a playlist's song list, it still plays straight from YouTube. Press ▶ on it once and the app learns its songs from the player; after that you can tick it into the main playlist.
+- One go of a playlist plays up to 150 songs and then starts over (shuffled = a random 150 of them each time you start it).
+- Test: 📻 Playlists → 🧪 Check the playlist rules.
+
 ## 1.144.4
 - 📣✏️ **A shout-out message of their own, per person.** Open someone's profile: at the top of the Overview there's **📣 Their own shout-out message**. Type a message just for them and press 💾 Save; from then on that message is used whenever you shout them out (the 📣 buttons, their profile's Shout out, or the shout-out chat command), instead of your usual one. `{name}`, `{login}` and `{game}` get filled in, and after saving it shows exactly what chat will see. **↩ Use my usual one** takes it away again. Twitch's own shout-out box is not changed by this, only the chat line.
 

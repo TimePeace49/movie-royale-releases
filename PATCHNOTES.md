@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.145.0: What's new
+- {songs} ⏸📻 **Play a playlist instead of requests.** The ⏸📻 button in the music box opens a pop-up: pick your ⭐ main playlist or another one, 🔀 shuffle or ➡ in order, and play. Requests wait while it plays.
+- {songs} 📻 **Playlists tab** (Chat bot → 🎵 Song requests → 📻 Playlists): import YouTube playlists by their link, and tick the ones that get mixed together into your main playlist. The fill-in playlist can be the main playlist too.
+
 ## v1.144.4: What's new
 - 📣✏️ **Shout-out messages per person.** On someone's profile, 📣 Their own shout-out message lets you save a shout-out line just for them. It's used whenever you shout them out, instead of your usual one.
 
