@@ -23,6 +23,7 @@ import { resetLuckFor, giveLuckBack, picksClosed, setOwner, claimManual, mergePe
 import { getRatings, testOmdb, ratingsByTitle, omdbWhere, omdbFind, omdbDetails } from './ratings.js';
 import * as shared from './shared.js';
 import * as reports from './reports.js';
+import * as sharedbot from './sharedbot.js';
 import { ruleBan } from './banrules.js';
 import { checkNudity, parseGuide as nudeParse, judge as nudeJudge } from './nudity.js';
 import { parseImport, toLines, importLink } from './importer.js';
@@ -1394,7 +1395,7 @@ const BOT_NAMES = ['nightbot', 'streamelements', 'streamlabs', 'moobot', 'fossab
 function isChatBot(login) {
   login = String(login || '').toLowerCase(); if (!login) return true;
   const extra = String(giveawaySettings?.().bots || '').toLowerCase().split(/[\s,]+/).filter(Boolean);
-  return BOT_NAMES.includes(login) || extra.includes(login) || login === String(db.twitchBot?.login || '').toLowerCase(); // only KNOWN bots (Derek: a real person can have "bot" in their name)
+  return BOT_NAMES.includes(login) || extra.includes(login) || login === String(db.twitchBot?.login || '').toLowerCase() || login === String(db.twitchBot?.user?.login || '').toLowerCase() || (!!sharedbot.botLogin() && login === sharedbot.botLogin()); // only KNOWN bots (Derek: a real person can have "bot" in their name)
 }
 function chattersForWheel() { const seen = new Set(), out = []; for (const m of [...live.chatLog].reverse()) { const k = String(m.login || '').toLowerCase(); if (!k || seen.has(k) || isChatBot(k)) continue; seen.add(k); out.push(m.name || m.login); if (out.length >= 40) break; } return out; }
 function recentChatters() {
@@ -1782,6 +1783,55 @@ async function shoutOut(name, via, test, opt = {}) {
 }
 // ⭐🍅 (1.128.0, Derek) share YOUR OMDb key with every edition: the key goes to your 24/7 bot (only it uses it), and the bot's address is saved in src/shared.json on GitHub
 // by the Backup Bots app (it has the GitHub key). Every Movie Royal without its own key then asks your bot. Dev edition only.
+/* 🤖🤝 Shared chat bot (1.151.0, Derek: "if I make a Twitch bot can it be used by everyone that uses the app"): see sharedbot.js. */
+sharedbot.setHooks({ channel: () => twitch.status.login || db.owner?.login || '', edition: () => EDITION.id, app: () => editionInfo().app || '', ownBot: () => twitch.botOn() });
+twitch.sharedBot.use = () => sharedbot.use(); twitch.sharedBot.say = t => sharedbot.say(t);
+setTimeout(() => sharedbot.check().catch(() => {}), 30000);
+const sbMine = () => { if (!EDITION.dev) throw new Error('Only the dev edition can share its bot account.'); if (!cloud.enabled()) throw new Error('Set up your 24/7 bot first (Setup guide): the shared bot lives on it.'); return { base: String(db.settings.cloud.url || '').replace(/\/+$/, '') + '/sharedbot', key: db.settings.cloud.syncKey }; };
+async function sbCall(pathQ, body, method = body ? 'POST' : 'GET') { const m = sbMine(), r = await fetch(m.base + pathQ, { method, headers: { Authorization: `Bearer ${m.key}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) }).catch(e => ({ ok: false, status: 0, json: async () => ({ error: e.message }) }));
+  const j = await r.json().catch(() => ({})); if (r.status === 404 && !j.error) throw new Error('Your 24/7 bot needs an update first (Settings → Account → ☁️ Update the 24/7 bot), then press this again.'); if (!r.ok) throw new Error(j.error || `Your 24/7 bot didn't take it (${r.status || 'no answer'}).`); return j; }
+async function sbShare(on) {
+  sbMine(); const tb = db.twitchBot, steps = [];
+  if (on && !(tb?.tokens?.access && tb?.user?.id)) throw new Error('Sign in as the bot account first (Settings → 💜 Twitch → 🤖 Chat bot account → 🔑 Sign in as the bot).');
+  const j = await sbCall('/token', on ? { clientId: db.settings.twitchClientId, secret: db.settings.twitchClientSecret, access: tb.tokens.access, refresh: tb.tokens.refresh || '', botId: tb.user.id, botLogin: tb.user.login } : { access: '' }, 'PUT');
+  steps.push(on ? `✅ @${j.bot} is on your 24/7 bot (its sign-in never goes into anyone's app)` : '✅ Your 24/7 bot stopped sharing the bot account');
+  const want = on ? sbMine().base : '', now = shared.get().bot || '';
+  if (want !== now) {
+    const b = await fetch('http://127.0.0.1:3747/api/shared/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bot: want }), signal: AbortSignal.timeout(20000) }).then(async x => ({ ok: x.ok, j: await x.json().catch(() => ({})) })).catch(() => null);
+    if (b?.ok) { steps.push(on ? '✅ Every copy of the app now knows where the shared bot is (they pick it up within 6 hours, or when they restart)' : '✅ Taken off the list every copy of the app reads'); await shared.refresh().catch(() => {}); }
+    else steps.push('⚠️ Couldn\'t tell the other copies of the app where it is: ' + (b?.j?.error || 'open the Backup Bots app (it needs its GitHub key), then press this again'));
+  } else steps.push('✅ The other copies of the app already know the address');
+  act('stream', on ? 'Shared the chat bot account with every copy of the app' : 'Stopped sharing the chat bot account', { icon: '🤖' }); return { ok: true, on, steps };
+}
+app.get('/api/sharedbot', async (req, res) => { const out = { ...sharedbot.info(), dev: !!EDITION.dev, myBot: db.twitchBot?.user?.login || '' }; if (EDITION.dev && req.query.mine) { try { out.mine = await sbCall('/list'); } catch (e) { out.mineError = e.message; } } res.json(out); });
+app.post('/api/sharedbot', async (req, res) => { try { const b = req.body || {}; const r = b.leave ? sharedbot.leave() : b.check ? await sharedbot.check() : await sharedbot.join(); if (b.leave || !b.check) act('stream', b.leave ? 'Stopped using the shared chat bot' : 'Asked to use the shared chat bot', { icon: '🤖' }); pushState(); res.json({ ok: true, ...r }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/sharedbot/hi', async (req, res) => { try { await twitch.say('🤖 Hi chat! Movie Royal\'s messages come from me now.'); const i = sharedbot.info(); res.json({ ok: true, as: i.using && !i.sayError ? i.bot : 'you', error: i.sayError }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/sharedbot/share', async (req, res) => { try { res.json(await sbShare(!!req.body?.on)); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/sharedbot/allow', async (req, res) => { try { res.json(await sbCall('/allow', { id: String(req.body?.id || ''), allow: req.body?.allow })); } catch (e) { res.status(400).json({ error: e.message }); } });
+/* 🧪 the whole thing walked through against the real 24/7 bot code with pretend storage and a pretend Twitch (nothing sent anywhere) */
+app.get('/api/test/sharedbot', async (req, res) => { const rows = [], add = (what, ok, got = '') => rows.push({ what, ok: !!ok, got: String(got) });
+  try { const w = await import('./cloud-worker.js'), M = new Map(), said = [];
+    const KV = { get: async (k, t) => { const v = M.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { M.set(k, String(v)); }, delete: async k => { M.delete(k); }, list: async ({ prefix = '' } = {}) => ({ keys: [...M.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })) }) };
+    const env = { KV, SYNC_KEY: 'k', SB_FAKE: async (pq, o) => { if (pq.startsWith('users?login=')) { const l = decodeURIComponent(pq.slice(12)); return { data: l === 'nobody_here' ? [] : [{ id: 'id_' + l }] }; } const m = JSON.parse(o.body); said.push(m); return { data: [{ is_sent: true, message_id: 'm' + said.length }] }; } };
+    const go = async (pq, { method = 'GET', body, key } = {}) => { const r = await w.default.fetch(new Request('https://bot.test/sharedbot' + pq, { method, headers: { 'content-type': 'application/json', ...(key ? { authorization: 'Bearer ' + key } : {}) }, body: body ? JSON.stringify(body) : undefined }), env, { waitUntil() {} }); return { s: r.status, j: await r.json().catch(() => ({})) }; };
+    const A = { id: 'a'.repeat(32), key: '1'.repeat(48) }, B = { id: 'b'.repeat(32), key: '2'.repeat(48) }; let r;
+    r = await go('/say', { method: 'POST', body: { ...A, text: 'hi' } }); add('An app nobody knows can\'t make the bot talk', r.s === 403, r.j.error);
+    r = await go('/token', { method: 'PUT', body: { clientId: 'c', secret: 's', access: 'a', refresh: 'r', botId: '99', botLogin: 'Pretend_Bot' } }); add('Putting the bot\'s sign-in on the 24/7 bot needs the streamer\'s key', r.s === 401, r.s);
+    r = await go('/token', { method: 'PUT', key: 'k', body: { clientId: 'c', secret: 's', access: 'a', refresh: 'r', botId: '99', botLogin: 'Pretend_Bot' } }); add('The streamer shares the bot account', r.s === 200 && r.j.bot === 'pretend_bot', r.j.bot);
+    r = await go('/join', { method: 'POST', body: { ...A, channel: 'pretend_amy', edition: 'kirb' } }); add('A friend\'s app asks: it waits for a yes', r.j.state === 'pending' && r.j.bot === 'pretend_bot', r.j.state);
+    r = await go('/say', { method: 'POST', body: { ...A, text: 'hi' } }); add('Waiting = the bot stays quiet', r.s === 403 && !said.length, r.j.error);
+    r = await go('/list'); add('Only the streamer sees who asked', r.s === 401, r.s); r = await go('/list', { key: 'k' }); add('The streamer sees the request', r.j.apps?.length === 1 && r.j.apps[0].channel === 'pretend_amy' && !('kh' in r.j.apps[0]), r.j.apps?.[0]?.state);
+    r = await go('/allow', { method: 'POST', key: 'k', body: { id: A.id, allow: true } }); add('The streamer allows it', r.j.state === 'allowed', r.j.state || r.j.error);
+    r = await go('/say', { method: 'POST', body: { ...A, text: 'Hello chat!' } }); add('Now the bot says the line in THAT channel only', r.s === 200 && said.length === 1 && said[0].broadcaster_id === 'id_pretend_amy' && said[0].sender_id === '99' && said[0].message === 'Hello chat!', JSON.stringify(said[0] || r.j));
+    r = await go('/say', { method: 'POST', body: { id: A.id, key: '9'.repeat(48), text: 'x' } }); add('Someone who knows the app\'s id but not its secret gets nowhere', r.s === 403 && said.length === 1, r.j.error);
+    r = await go('/join', { method: 'POST', body: { ...A, channel: 'someone_else' } }); const r2 = await go('/say', { method: 'POST', body: { ...A, text: 'x' } }); add('Switching to another channel has to be allowed again', r.j.state === 'pending' && r2.s === 403, r.j.state);
+    r = await go('/join', { method: 'POST', body: { ...B, channel: 'nobody_here' } }); r = await go('/allow', { method: 'POST', key: 'k', body: { id: B.id, allow: true } }); add('A channel Twitch doesn\'t know can\'t be allowed', r.s === 404, r.j.error);
+    await go('/join', { method: 'POST', body: { ...B, channel: 'pretend_bo' } }); await go('/allow', { method: 'POST', key: 'k', body: { id: B.id, allow: true } }); let last; for (let i = 0; i < 20; i++) last = await go('/say', { method: 'POST', body: { ...B, text: 'line ' + i } }); add('A flood of lines is stopped (18 per 30 seconds)', last.s === 429, last.j.error);
+    r = await go('/allow', { method: 'POST', key: 'k', body: { id: B.id, allow: false } }); r = await go('/say', { method: 'POST', body: { ...B, text: 'x' } }); add('The streamer can take the yes back', r.s === 403, r.j.error);
+    r = await go('/token', { method: 'PUT', key: 'k', body: { access: '' } }); r = await go('/me?id=' + A.id + '&key=' + A.key); add('Stopping the share: apps see there is no bot', r.j.bot === '', JSON.stringify(r.j));
+    add('Nothing in what an app gets back holds the sign-in', !/"access"|"refresh"|"secret"/.test(JSON.stringify([await go('/'), await go('/me?id=' + A.id + '&key=' + A.key)])), '');
+  } catch (e) { add('The check ran', false, e.message); }
+  res.json({ ok: rows.every(x => x.ok), rows, mine: sharedbot.info() }); });
 async function omdbShare(on) {
   if (!EDITION.dev) throw new Error('Only the dev edition can share its key.');
   const key = String(db.settings.omdbKey || '').trim(); if (on && !key) throw new Error('Save your own OMDb key first (Settings → 🎬 Movie info).');

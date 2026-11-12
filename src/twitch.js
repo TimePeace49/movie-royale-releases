@@ -289,6 +289,7 @@ export async function followedAt(userId) {
 export const sayListeners = new Set(); // 💬 the pretend chat window shows what Movie Royal says in chat
 export const pretend = { until: 0 }; // 🧪 someone is using pretend chat: replies show in the window even when you're not signed in
 export const route = { on: () => false, say: null, canSay: () => false, both: () => false }; // 🟢 (1.90.0, dev) Kick is the platform: what Movie Royal says goes to Kick chat instead
+export const sharedBot = { use: () => false, say: null, err: '' }; // 🤖🤝 (1.151.0) set by server.js: one bot account shared by every copy of the app
 export const canSay = () => (route.on() ? !!route.canSay() : !!status.canChat) || Date.now() < pretend.until;
 // 🤖 talking as yourself: every message starts with a name tag (Settings → Twitch, default "🤖 Movies Royal Bot:") so chat can tell it's the app
 const tagged = m => { const t = String(s().chatTag ?? '').trim(); return botOn() || !t || String(m).startsWith(t) ? String(m) : `${t} ${m}`; };
@@ -299,6 +300,9 @@ export async function say(message) {
   if (route.both() && route.canSay()) Promise.resolve().then(() => route.say(String(message))).catch(() => {}); /* 💜🟢 (1.139.2) both platforms: the line also goes to Kick chat (a Kick hiccup never stops the Twitch one) */
   if (!status.canChat && Date.now() < pretend.until) return true; // testing while signed out: shown in the pretend chat window only
   if (!status.userId) throw new Error('Sign in with Twitch first');
+  if (!botOn() && sharedBot.use()) { // 🤖🤝 (1.151.0) the shared chat bot says it (through the app maker's 24/7 bot); if that fails, you say it
+    try { return await sharedBot.say(String(message).slice(0, 490)); } catch (e) { if (sharedBot.err !== e.message) console.error('[twitch] the shared chat bot could not talk, so you did instead:', e.message); sharedBot.err = e.message; }
+  }
   if (botOn()) { // 🤖 say it as the chat bot account; if that fails, say it as you so nothing gets lost
     try {
       const j = await botHelix('chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: status.userId, sender_id: db.twitchBot.user.id, message: String(message).slice(0, 490) }) });

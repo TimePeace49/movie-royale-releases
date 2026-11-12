@@ -421,8 +421,9 @@ export async function startBackup(opts = {}) {
   web.post('/api/shared/save', wrap(async b => { edNeedDev(); if (!conf.ghKey) throw new Error('Paste your GitHub key in the Backup Bots app first (🎭 Editions tab → 🔑).');
     const omdb = String(b.omdb || '').trim(); if (omdb && !/^https:\/\/[a-z0-9.-]+\/omdb$/i.test(omdb)) throw new Error("That address doesn't look like a 24/7 bot's.");
     let cur = {}, sha; const g = await fetch(`${GH}/repos/${ED_REPO}/contents/src/shared.json?ref=main`, { headers: ghHead() }); if (g.ok) { const j = await g.json(); sha = j.sha; try { cur = JSON.parse(Buffer.from(j.content || '', 'base64').toString('utf8')); } catch {} } else if (g.status !== 404) throw new Error('GitHub answered ' + g.status);
-    if ((cur.omdb || '') === omdb) return { ok: true, same: true };
-    const next = { ...cur, omdb };
+    const hasBot = typeof b.bot === 'string', bot = hasBot ? b.bot.trim() : (cur.bot || ''), hasOmdb = typeof b.omdb === 'string'; if (bot && !/^https:\/\/[a-z0-9.-]+\/sharedbot$/i.test(bot)) throw new Error("That address doesn't look like a 24/7 bot's."); /* 🤖🤝 (1.151.0) the shared chat bot's address rides in the same file */
+    if ((!hasOmdb || (cur.omdb || '') === omdb) && (cur.bot || '') === bot) return { ok: true, same: true };
+    const next = { ...cur, omdb: hasOmdb ? omdb : (cur.omdb || ''), ...(bot || cur.bot ? { bot } : {}) };
     const r = await fetch(`${GH}/repos/${ED_REPO}/contents/src/shared.json`, { method: 'PUT', headers: { ...ghHead(), 'content-type': 'application/json' }, body: JSON.stringify({ message: omdb ? 'Shared: the OMDb ratings helper on the 24/7 bot (from the app)' : 'Shared: OMDb ratings helper switched off (from the app)', content: Buffer.from(JSON.stringify(next, null, 1) + '\n').toString('base64'), ...(sha ? { sha } : {}), branch: 'main' }) });
     if (!r.ok) throw new Error(r.status === 403 || r.status === 404 ? `GitHub refused (${r.status}): the key needs "Contents: Read and write" on ${ED_REPO}.` : 'GitHub answered ' + r.status);
     log('Shared settings saved to GitHub (OMDb helper ' + (omdb ? 'on' : 'off') + ')'); return { ok: true, saved: true }; }));

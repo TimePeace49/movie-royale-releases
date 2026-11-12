@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.151.0: What's new
+- 🤖🤝 **Shared chat bot:** no bot account of your own? When one is shared, Settings → Twitch → Chat bot account shows 🤝 Use the shared bot. Once your channel is allowed, the app's chat lines come from that bot (type /mod and its name once).
+
 ## v1.150.1: What's new
 - 📺 **The wheel as its own OBS source:** Wheel → ⚙️ Wheel settings has the address and a 📋 Copy button. Paste it into an OBS Browser source (1920 × 1080) to make a wheel-only scene.
 

@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.151.0
+- 🤖🤝 **Shared chat bot.** One Twitch bot account can now talk for every copy of the app. The app's maker signs the bot in once and presses **Share this bot with everyone** (Settings → Twitch → Chat bot account); its sign-in stays on his 24/7 bot and never goes into anyone's app. Friends press **🤝 Use the shared bot**, he presses Allow for their channel, and from then on the app's chat lines come from the bot. If the bot can't talk, the app talks as the streamer like before. A bot account of your own, when signed in, still wins.
+- It's locked down: the bot only talks in channels that were allowed, only for the app that asked, and a flood of lines is stopped. The 24/7 bot needs an update for this (the app asks).
+- 🧪 Test: Test tab → 🤖🤝 Shared chat bot → Check the shared bot (16 checks with pretend apps, nothing sent).
+
 ## 1.150.1
 - 📺 **The wheel as its own OBS source.** Wheel → ⚙️ Wheel settings has a new box with the address of a wheel-only page and a 📋 Copy button. In OBS: Sources → ＋ → Browser, paste it, 1920 × 1080. It always shows the wheel that's open on the Wheel tab and plays the wheel's sounds while that scene is on stream. Handy for a "wheel" scene you switch to and back from.
 

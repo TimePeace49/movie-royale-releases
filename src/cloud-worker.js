@@ -11,7 +11,7 @@ const DISCORD = 'https://discord.com/api/v10';
 const IMG = 'https://image.tmdb.org/t/p/w342';
 const EPH = 64;
 
-export const WORKER_V = 22;
+export const WORKER_V = 23;
 export const WORKER_NEED = 16; // (1.71.0) the oldest 24/7 bot this app still works with: the "Update your 24/7 bot" pop-up only asks below this. 17 = the 🤝 co-stream room, only needed by whoever invites (they're asked in Settings → 🤝 Co-stream), so a friend who only joins isn't nagged
 export const __test = { myMoviesText: (...a) => myMoviesText(...a), luckTxt: (...a) => luckTxt(...a), blockReason: (...a) => blockReason(...a), seriesRule: (...a) => seriesRule(...a) }; // (🧪 Movie Royal's Test tab shows what this bot would answer) // bump when this file changes: the app offers to update the bot
 export default {
@@ -21,6 +21,7 @@ export default {
       if (url.pathname.startsWith('/co/')) return await coRoom(req, env, url); // 🤝 co-stream room (17): two streamers' Movie Royals linked
       if (url.pathname === '/live' || url.pathname === '/live/' || url.pathname.startsWith('/site/')) return await siteRoute(req, env, url); // 🌐 the viewer website (18)
       if (url.pathname === '/eggs' || url.pathname === '/eggs/' || url.pathname.startsWith('/eggs/') || url.pathname === '/creatures.js') return await eggRoute(req, env, url); // 🥚 the egg game's public page (20)
+      if (url.pathname.startsWith('/sharedbot')) return await sharedBotRoute(req, env, url); // 🤖🤝 (23) one Twitch bot account for every copy of the app: its sign-in lives here, apps the streamer allowed pass their chat lines through
       if (url.pathname === '/reports') return await reportsRoute(req, env, url); // 📮 (22) the error-report mailbox: every edition's app drops its report here, only the streamer's server app (sync key) reads them
       if (url.pathname === '/omdb' || url.pathname === '/omdb/key') return await omdbRoute(req, env, url, ctx); // ⭐🍅 (21) the streamer's OMDb key, shared with every edition's app (the key itself never leaves here)
       if (url.pathname === '/sync') return await sync(req, env);
@@ -503,6 +504,70 @@ async function reportsRoute(req, env, url) {
   const keys = ((await env.KV.list({ prefix: 'rep:', limit: 400 })).keys || []).map(k => k.name), apps = [];
   for (const k of keys) { const r = await env.KV.get(k, 'json').catch(() => null); if (r) apps.push(r); }
   return json({ ok: true, v: WORKER_V, apps: apps.sort((a, b) => (b.got || 0) - (a.got || 0)) });
+}
+// 🤖🤝 (WORKER_V 23, Derek: "if I make a Twitch bot can it be used by everyone that uses the app")
+// The bot account's sign-in is put here by the streamer's own app (sync key) and never leaves. Another copy of the app asks to
+// use it (/join, with its install id + a secret it made up); the streamer allows that channel (/allow); after that the app's
+// chat lines (/say) are said in ITS OWN channel only, as the bot. Not allowed = nothing is said.
+const sbHits = new Map(); // (per app: how many lines lately; kept in memory, so no storage is used up)
+async function sbHash(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+async function sbHelix(env, pathQ, opts = {}, retry = true) {
+  const t = await env.KV.get('sbot:tok', 'json').catch(() => null); if (!t || !t.access) throw new Error('no bot account is shared right now');
+  if (env.SB_FAKE) return env.SB_FAKE(pathQ, opts, t);
+  const r = await fetch((env.TWITCH_API || 'https://api.twitch.tv/helix/') + pathQ, { ...opts, headers: { 'Client-Id': t.clientId, Authorization: 'Bearer ' + t.access, 'Content-Type': 'application/json' } });
+  if (r.status === 401 && retry && t.refresh) {
+    const j = await fetch((env.TWITCH_ID || 'https://id.twitch.tv/') + 'oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: t.clientId, client_secret: t.secret, grant_type: 'refresh_token', refresh_token: t.refresh }) }).then(x => x.json()).catch(() => null);
+    if (!j || !j.access_token) { t.error = 'the bot account\'s sign-in ran out: share it again'; await env.KV.put('sbot:tok', JSON.stringify(t)); throw new Error(t.error); }
+    t.access = j.access_token; if (j.refresh_token) t.refresh = j.refresh_token; t.error = ''; await env.KV.put('sbot:tok', JSON.stringify(t)); return sbHelix(env, pathQ, opts, false);
+  }
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.message || 'Twitch answered ' + r.status); return j;
+}
+async function sharedBotRoute(req, env, url) {
+  const authed = (req.headers.get('authorization') || '') === `Bearer ${env.SYNC_KEY}`, p = url.pathname.slice('/sharedbot'.length) || '/';
+  const idOk = s => /^[a-f0-9]{16,40}$/.test(s), keyOk = s => /^[a-f0-9]{32,64}$/.test(s), body = async () => { const t = await req.text(); if (t.length > 6000) return {}; try { return JSON.parse(t) || {}; } catch { return {}; } };
+  const tok = async () => await env.KV.get('sbot:tok', 'json').catch(() => null), pub = t => ({ bot: (t && t.access && t.botLogin) || '', botError: (t && t.error) || '' });
+  if (p === '/' && req.method === 'GET') { const t = await tok(); return json({ ok: true, v: WORKER_V, shared: !!(t && t.access), bot: pub(t).bot }); }
+  if (p === '/token') {
+    if (!authed) return json({ error: 'bad key' }, 401);
+    if (req.method === 'GET') { const t = await tok(); return json({ ok: true, shared: !!(t && t.access), ...pub(t) }); }
+    if (req.method !== 'PUT') return json({ error: 'PUT only' }, 405);
+    const b = await body(); if (!b.access) { await env.KV.delete('sbot:tok'); return json({ ok: true, shared: false }); }
+    const t = { clientId: repStr(b.clientId, 80), secret: repStr(b.secret, 120), access: repStr(b.access, 400), refresh: repStr(b.refresh, 400), botId: repStr(b.botId, 30), botLogin: repStr(b.botLogin, 40).toLowerCase(), at: Date.now(), error: '' };
+    if (!t.clientId || !t.botId || !t.botLogin) return json({ error: 'not a bot sign-in' }, 400);
+    await env.KV.put('sbot:tok', JSON.stringify(t)); return json({ ok: true, shared: true, bot: t.botLogin });
+  }
+  if (p === '/list') { if (!authed) return json({ error: 'bad key' }, 401);
+    const keys = ((await env.KV.list({ prefix: 'sbot:app:', limit: 400 })).keys || []).map(k => k.name), apps = [];
+    for (const k of keys) { const a = await env.KV.get(k, 'json').catch(() => null); if (a) apps.push({ id: a.id, channel: a.channel, edition: a.edition, app: a.app, state: a.state, asked: a.asked, allowedAt: a.allowedAt || 0, last: a.last || 0 }); }
+    const t = await tok(); return json({ ok: true, v: WORKER_V, shared: !!(t && t.access), ...pub(t), apps: apps.sort((a, b) => (a.state === 'pending' ? 0 : 1) - (b.state === 'pending' ? 0 : 1) || (b.asked || 0) - (a.asked || 0)) }); }
+  if (p === '/allow') { if (!authed) return json({ error: 'bad key' }, 401); if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+    const b = await body(), id = repStr(b.id, 60); if (!idOk(id)) return json({ error: 'which app?' }, 400);
+    if (b.allow === 'forget') { await env.KV.delete('sbot:app:' + id); return json({ ok: true, forgot: true }); }
+    const a = await env.KV.get('sbot:app:' + id, 'json').catch(() => null); if (!a) return json({ error: 'that app isn\'t on the list any more' }, 404);
+    if (b.allow) { let u; try { u = await sbHelix(env, 'users?login=' + encodeURIComponent(a.channel)); } catch (e) { return json({ error: 'couldn\'t look the channel up: ' + (e.message || e) }, 502); }
+      const cid = u && u.data && u.data[0] && u.data[0].id; if (!cid) return json({ error: `Twitch has no channel called "${a.channel}"` }, 404);
+      a.channelId = String(cid); a.state = 'allowed'; a.allowedAt = Date.now(); } else { a.state = 'pending'; a.channelId = ''; }
+    await env.KV.put('sbot:app:' + id, JSON.stringify(a)); return json({ ok: true, state: a.state, channel: a.channel }); }
+  if (p === '/join') { if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+    const b = await body(), id = repStr(b.id, 60), key = repStr(b.key, 80), channel = repStr(b.channel, 30).toLowerCase();
+    if (!idOk(id) || !keyOk(key) || !/^[a-z0-9_]{3,25}$/.test(channel)) return json({ error: 'which app?' }, 400);
+    const kh = await sbHash(key), old = await env.KV.get('sbot:app:' + id, 'json').catch(() => null), t = await tok();
+    if (old && old.kh !== kh) return json({ error: 'which app?' }, 403);
+    if (old && old.channel === channel) return json({ ok: true, state: old.state, channel, ...pub(t) });
+    if (!old) { const n = ((await env.KV.list({ prefix: 'sbot:app:', limit: 400 })).keys || []).length; if (n >= 300) return json({ error: 'the list is full' }, 429); }
+    const a = { id, kh, channel, channelId: '', edition: repStr(b.edition, 20), app: repStr(b.app, 60), state: 'pending', asked: Date.now() }; /* (a new channel always waits for a yes, even from an app that was allowed before) */
+    await env.KV.put('sbot:app:' + id, JSON.stringify(a)); return json({ ok: true, state: 'pending', channel, ...pub(t) }); }
+  const mine = async (id, key) => { if (!idOk(id) || !keyOk(key)) return null; const a = await env.KV.get('sbot:app:' + id, 'json').catch(() => null); return a && a.kh === await sbHash(key) ? a : null; };
+  if (p === '/me' && req.method === 'GET') { const a = await mine(repStr(url.searchParams.get('id'), 60), repStr(url.searchParams.get('key'), 80)), t = await tok(); return json({ ok: true, state: a ? a.state : 'none', channel: a ? a.channel : '', ...pub(t) }); }
+  if (p === '/say') { if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
+    const b = await body(), a = await mine(repStr(b.id, 60), repStr(b.key, 80)), text = repStr(b.text, 490).trim();
+    if (!a) return json({ error: 'which app?' }, 403); if (a.state !== 'allowed' || !a.channelId) return json({ error: 'not allowed yet' }, 403); if (!text) return json({ error: 'nothing to say' }, 400);
+    const now = Date.now(), h = (sbHits.get(a.id) || []).filter(x => now - x < 30000); if (h.length >= 18) return json({ error: 'too many lines at once: slow down' }, 429); h.push(now); sbHits.set(a.id, h);
+    const t = await tok(); if (!t || !t.access) return json({ error: 'no bot account is shared right now' }, 503);
+    let j; try { j = await sbHelix(env, 'chat/messages', { method: 'POST', body: JSON.stringify({ broadcaster_id: a.channelId, sender_id: t.botId, message: text }) }); } catch (e) { return json({ error: String(e.message || e) }, 502); }
+    const r = j && j.data && j.data[0]; if (r && r.is_sent === false) return json({ error: (r.drop_reason && r.drop_reason.message) || 'Twitch dropped the message' }, 502);
+    return json({ ok: true, id: (r && r.message_id) || '' }); }
+  return json({ error: 'not found' }, 404);
 }
 async function omdbRoute(req, env, url, ctx) {
   if (url.pathname === '/omdb/key') {
