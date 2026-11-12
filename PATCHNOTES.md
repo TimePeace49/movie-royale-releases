@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.150.1: What's new
+- 📺 **The wheel as its own OBS source:** Wheel → ⚙️ Wheel settings has the address and a 📋 Copy button. Paste it into an OBS Browser source (1920 × 1080) to make a wheel-only scene.
+
 ## v1.150.0: What's new
 - {songs} 🎼 **Now-playing strip for OBS:** one thin line with the song, who asked for it, its rating and the time (1:23 / 3:45). Songs → Settings → ➕ Add it to OBS.
 

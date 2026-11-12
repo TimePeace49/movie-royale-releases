@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.150.1
+- 📺 **The wheel as its own OBS source.** Wheel → ⚙️ Wheel settings has a new box with the address of a wheel-only page and a 📋 Copy button. In OBS: Sources → ＋ → Browser, paste it, 1920 × 1080. It always shows the wheel that's open on the Wheel tab and plays the wheel's sounds while that scene is on stream. Handy for a "wheel" scene you switch to and back from.
+
 ## 1.150.0
 - 🎼 **Now-playing strip for OBS.** One thin line on stream: the song that's playing, who asked for it, its rating (if it has one), and the time, like 1:23 / 3:45, with a hair-thin progress line under it. It works for requests and playlist songs, and hides when nothing plays. Add it in Chat bot → 🎵 Songs → Settings → 🎼 Now-playing strip → ➕ Add it to OBS (pick your scenes). It lands bottom left; move or resize it in OBS and it stays put.
 - 🧪 Test: 👀 Preview and 🧪 Test in OBS right there, and on the Songs test card.
