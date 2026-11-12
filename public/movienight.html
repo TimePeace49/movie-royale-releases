@@ -98,14 +98,15 @@ function fit() {
 addEventListener('resize', fit); setInterval(fit, 1000);
 /* ⏳ (1.132.6) the last-call timer: a big pop-up on stream; at 0 an old alarm clock rings and it says TIME'S UP */
 let TM = { test: 0, done: 0, hide: false };
-function timerMsg(m) { if (m.test) TM.test = m.endsAt || 0; if (m.done) { TM.test = 0; TM.done = Date.now() + 6500; if (m.bell && window.timerBell) window.timerBell(m, 4.5); } else TM.done = 0; TM.hide = m.pop === false; tick(); }
+function timerMsg(m) { TM.plainMsg = !!m.plain; if (m.plain) TM.plain = m.done ? 0 : m.endsAt || 0; if (m.test) TM.test = m.endsAt || 0; if (m.done) { TM.test = 0; TM.plain = 0; if (S) S.plainEnds = 0; TM.done = Date.now() + 6500; if (m.bell && window.timerBell) window.timerBell(m, 4.5); } else TM.done = 0; TM.hide = m.pop === false; tick(); }
 function tick() {
-  const c = $('clock'), b = $('big'), s = S, end = TM.test || (s && s.open && s.endsAt) || 0, pop = !TM.hide && (TM.test || !s || s.timerPop !== false);
-  if (TM.done > Date.now() && pop) { b.className = 'on done'; $('bigL').textContent = '⏰ TIME\'S UP!'; $('bigT').textContent = 'VOTING IS CLOSED'; $('bigS').textContent = ''; c.classList.remove('on'); return; }
+  const pe = TM.plain || (S && S.plainEnds) || 0, plain = pe > Date.now() || (TM.plainMsg && TM.done > Date.now()); /* ⏱️ (1.144.3) voting off = a plain timer: no words about votes */
+  const c = $('clock'), b = $('big'), s = S, end = TM.test || (plain ? pe : 0) || (s && s.open && s.endsAt) || 0, pop = !TM.hide && (TM.test || !s || s.timerPop !== false);
+  if (TM.done > Date.now() && pop) { b.className = 'on done'; $('bigL').textContent = '⏰ TIME\'S UP!'; $('bigT').textContent = plain ? '0:00' : 'VOTING IS CLOSED'; $('bigS').textContent = ''; c.classList.remove('on'); return; }
   if (!end) { c.classList.remove('on'); b.className = ''; return; }
   const left = Math.max(0, Math.ceil((end - Date.now()) / 1000)), t = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-  if (pop) { b.classList.add('on'); b.classList.remove('done'); b.classList.toggle('hot', left <= 30); $('bigL').textContent = '⏳ LAST CALL TO VOTE'; $('bigT').textContent = t; $('bigS').textContent = s && s.command ? `VOTE OR CHANGE YOUR VOTE: ${String(s.command).toUpperCase()} + NUMBER` : ''; c.classList.remove('on'); return; }
-  b.className = ''; c.classList.add('on'); c.classList.toggle('hot', left <= 30); c.textContent = `LAST CALL ${t}`;
+  if (pop) { b.classList.add('on'); b.classList.remove('done'); b.classList.toggle('hot', left <= 30); $('bigL').textContent = plain ? '⏳ TIMER' : '⏳ LAST CALL TO VOTE'; $('bigT').textContent = t; $('bigS').textContent = plain ? '' : s && s.command ? `VOTE OR CHANGE YOUR VOTE: ${String(s.command).toUpperCase()} + NUMBER` : ''; c.classList.remove('on'); return; }
+  b.className = ''; c.classList.add('on'); c.classList.toggle('hot', left <= 30); c.textContent = plain ? `TIMER ${t}` : `LAST CALL ${t}`;
 }
 setInterval(tick, 250);
 /* 🏆 (1.144.0, Derek: "when voting is closed add a winner screen for stream") the winner card: poster, title, votes, ratings, who asked for it, confetti; goes away by itself */

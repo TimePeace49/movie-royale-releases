@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.144.3
+- ⏱️ **Movie night with voting off = list, pin and a plain timer.** With 🍿 Movie night voting switched off, the Movie night tab now has **⏳ Start the timer** and **📌 Pin the list**. The timer is just a countdown: the big timer pop-up on stream and in the app, the bell at 0, and "Time's up!" in chat. Nothing about votes, and no winner screen. The pinned list (and the automatic re-pin when you change the list) works with voting off too.
+- 🚫 **Voting off = the vote commands are off.** `!vote` and `!myvotes` don't answer at all while voting is switched off, and they leave the app's command list.
+- 🎵 **Song requests off = every song command is off.** With song requests switched off, `!sr`, `!song`, `!queue`, `!skip`, `!volume`, `!mysongs` and the rest don't answer (before, `!sr` said "requests are closed" and the others still worked). They come back the moment you switch requests on. Your own buttons in the app (skip, play, volume) are not affected.
+
 ## 1.144.2
 - 📺 **The battle preview stays away when it has nothing to show.** It popped up during the demo tour (a pretend chat message was treated as a battle test). Now it never pops up during the 🎥 demo tour, never in an edition without battles, and a pretend chat message only brings it up when it's a battle or wheel command (like !join or !respin).
 

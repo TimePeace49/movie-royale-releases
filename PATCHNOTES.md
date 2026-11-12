@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.144.3: What's new
+- {movienight} ⏱️ With movie night voting switched off you can still keep the list, 📌 pin it and run the ⏳ timer: it's then a plain countdown with the bell, with nothing about votes and no winner screen. The vote commands don't answer while voting is off.
+- {songs} 🎵 With song requests switched off, every song command is off (request, now playing, queue, skip, volume…), not only the request one.
+
 ## v1.144.2: What's new
 - {ed:derek} 📺 The battle preview no longer pops up during the demo tour or for pretend chat messages that have nothing to do with battles.
 

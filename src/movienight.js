@@ -90,7 +90,7 @@ export function state() {
   const right = d.guesses.filter(g => g.right === true).length, wrong = d.guesses.filter(g => g.right === false).length;
   return {
     byNames: [...new Set((d.past || []).flatMap(n => (n.movies || []).map(m => String(m.by || '').trim())).filter(Boolean))].slice(0, 200), /* 🙋 names typed as "who asked" on earlier nights (for the suggestions) */
-    on: on(), enabled: live(), open: !!d.open, openedAt: d.openedAt || 0, endsAt: d.open ? d.endsAt || 0 : 0, movies: d.movies, tally: tally(d).map(t => ({ ...t, right: d.guesses.filter(g => g.movie === t.id && g.right === true).length, wrong: d.guesses.filter(g => g.movie === t.id && g.right === false).length })), leaders: leaders(d).map(x => x.title), total: Object.values(d.votes).reduce((a, v) => a + v.list.length, 0),
+    on: on(), enabled: live(), open: !!d.open, openedAt: d.openedAt || 0, endsAt: d.open ? d.endsAt || 0 : 0, timerEnds: d.timerEnds > now ? d.timerEnds : 0, /* ⏱️ the plain timer while voting is off */ movies: d.movies, tally: tally(d).map(t => ({ ...t, right: d.guesses.filter(g => g.movie === t.id && g.right === true).length, wrong: d.guesses.filter(g => g.movie === t.id && g.right === false).length })), leaders: leaders(d).map(x => x.title), total: Object.values(d.votes).reduce((a, v) => a + v.list.length, 0),
     voters: Object.entries(d.votes).map(([login, v]) => ({ login, name: v.name, changes: v.changes, allowed: votesAllowed(login, d, now), why: bonusWhy(login, d, now), picks: v.list.map(x => ({ n: d.movies.findIndex(m => m.id === x.movie) + 1, title: d.movies.find(m => m.id === x.movie)?.title || '(removed)', changed: !!x.changed })) })).sort((a, b) => a.name.localeCompare(b.name)),
     pending: d.guesses.filter(g => g.right == null && !g.skip).slice(0, 30), guess: { right, wrong, total: right + wrong }, guesses: d.guesses.slice(-60).reverse(),
     stats: { right: d.stats.right, wrong: d.stats.wrong, per: Object.entries(d.stats.per).map(([login, s]) => ({ login, ...s })).sort((a, b) => (b.right + b.wrong) - (a.right + a.wrong)) },
@@ -99,7 +99,7 @@ export function state() {
 }
 export function screen() { // what the on-stream box shows
   const d = data(), s = state();
-  return { type: 'mnState', timerPop: opts(d).timerPop !== false, show: live() && opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, ratings: opts(d).ratings !== false, posters: opts(d).posters !== false, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
+  return { type: 'mnState', plainEnds: d.timerEnds > Date.now() ? d.timerEnds : 0, timerPop: opts(d).timerPop !== false, show: live() && opts(d).overlay !== false && (d.open || s.total > 0 || !!d.closedAt), open: s.open, endsAt: s.endsAt, movies: s.tally, total: s.total, guess: s.guess, leaders: s.leaders, closed: !!d.closedAt && !d.open, command: opts(d).command, guesser: opts(d).guesser, ratings: opts(d).ratings !== false, posters: opts(d).posters !== false, bg: opts(d).bg, side: opts(d).side, at: opts(d).at };
 }
 function changed() { save(); H.send({ type: 'movieNight' }, 'control'); H.send(screen(), 'movienight'); }
 
@@ -152,7 +152,7 @@ export function pinText(d = data()) {
 }
 /* 📌 a new or changed list pins itself in chat (after 20 quiet seconds, so typing a whole list pins once) */
 let pinT = null;
-export function pinSoon(ms = 20000) { clearTimeout(pinT); pinT = null; const d = data(); if (opts(d).autoPin === false || !d.movies.length || !live()) return; pinT = setTimeout(() => { pinT = null; const dd = data(); if (!dd.movies.length || pinTextKey(dd) === dd.pinnedKey) return; pin().catch(() => {}); }, ms); }
+export function pinSoon(ms = 20000) { clearTimeout(pinT); pinT = null; const d = data(); if (opts(d).autoPin === false || !d.movies.length || !on()) return; /* (1.144.3: the pinned list works with voting off too) */ pinT = setTimeout(() => { pinT = null; const dd = data(); if (!dd.movies.length || pinTextKey(dd) === dd.pinnedKey) return; pin().catch(() => {}); }, ms); }
 const pinTextKey = d => pinText(d);
 export async function pin() {
   const d = data(); if (!d.movies.length) throw new Error('Add tonight\'s movies first.');
@@ -182,7 +182,15 @@ export async function open(yes, { quiet = false } = {}) {
 }
 /** ⏳ Last call (Birx: "a 5 min countdown at the end for people to change votes"): a countdown on screen; voting closes by itself at 0. */
 export function lastCall(yes, mins) {
-  const d = data(), o = opts(d); if (!d.open) throw new Error('Open voting first.');
+  const d = data(), o = opts(d);
+  if (!live()) { /* ⏱️ (1.144.3, Derek: "if voting is off and last call is still used then just do timer and skip the winner screen") voting switched off = a plain countdown: the timer pop-up and the bell, nothing about votes, no winner screen */
+    if (!on()) throw new Error('Movie night is not part of this edition.');
+    if (!yes) { if (d.timerEnds) { delete d.timerEnds; changed(); H.timer && H.timer({ endsAt: 0, plain: true }); } return state(); }
+    const m = Math.max(0.25, Math.min(60, Number(mins) || o.lastMins || 5)); d.timerEnds = Date.now() + Math.round(m * 60000); changed(); H.timer && H.timer({ endsAt: d.timerEnds, pop: o.timerPop !== false, plain: true });
+    const word = m >= 1 ? `${Math.round(m * 10) / 10} minute${m === 1 ? '' : 's'}` : `${Math.round(m * 60)} seconds`;
+    H.say(`⏳ ${word} on the clock!`).catch(() => {}); H.act(`Movie night timer started: ${word} (voting is off)`, { icon: '⏳', kind: 'lastcall' }); return state();
+  }
+  if (!d.open) throw new Error('Open voting first.');
   if (!yes) { if (d.endsAt) { delete d.endsAt; changed(); H.timer && H.timer({ endsAt: 0 }); H.say('🍿 The countdown is off: voting stays open.').catch(() => {}); } return state(); }
   const m = Math.max(0.25, Math.min(60, Number(mins) || o.lastMins || 5)); d.endsAt = Date.now() + Math.round(m * 60000); changed(); H.timer && H.timer({ endsAt: d.endsAt, pop: o.timerPop !== false }); /* ⏳ the timer pop-up on stream + in the app */
   const word = m >= 1 ? `${Math.round(m * 10) / 10} minute${m === 1 ? '' : 's'}` : `${Math.round(m * 60)} seconds`;
@@ -191,7 +199,9 @@ export function lastCall(yes, mins) {
 }
 let warned = 0;
 export function tick() { // every second from the server
-  const d = db.movieNight; if (!d || !d.open || !d.endsAt) return;
+  const d = db.movieNight; if (!d) return;
+  if (d.timerEnds) { if (d.timerEnds <= Date.now()) { const o = opts(d); delete d.timerEnds; changed(); H.timer && H.timer({ endsAt: 0, done: true, bell: o.bell !== false, vol: o.bellVol, pop: o.timerPop !== false, plain: true }); H.say('⏰ Time\'s up!').catch(() => {}); } return; } /* ⏱️ the plain timer (voting off): the bell, and that's all */
+  if (!d.open || !d.endsAt) return;
   const left = d.endsAt - Date.now();
   if (left <= 0) { const o = opts(d); H.timer && H.timer({ endsAt: 0, done: true, bell: o.bell !== false, vol: o.bellVol, pop: o.timerPop !== false }); closingByTimer = o.timerPop !== false; open(false).catch(() => {}); return; } /* ⏰ time's up: the old alarm clock rings */
   if (left <= 60000 && left > 58000 && warned !== d.endsAt && opts(d).lastMins > 1) { warned = d.endsAt; H.say('⏳ One minute left to vote or change your vote!').catch(() => {}); }

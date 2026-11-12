@@ -103,6 +103,7 @@ const say = (t, gap = 0) => { if (gap && Date.now() - lastSay < gap) return; las
 export function mine(login, d = data()) { const l = low(login), out = []; if (!l) return out; if (d.now && d.now.login === l) out.push({ title: d.now.title, pos: 0, yt: d.now.yt || '' }); d.queue.forEach((q, i) => { if (q.login === l) out.push({ title: q.title, pos: i + 1, yt: q.yt || '' }); }); return out; }
 export function onChat(m) {
   if (!on() || !m?.login) return false; const d = data(), o = opts(d), text = String(m.text || '').trim(), sp = text.split(/\s+/), w = low(sp[0]), arg = text.slice(sp[0].length).trim(), name = m.name || m.login;
+  if (!d.open) return false; /* (1.144.3, Derek: "sr is off turn off all the commands for it") song requests switched off = every song command is off (request, now playing, queue, skip, volume, my songs…), with no answer in chat */
   if (o.command && w === low(o.command)) { if (!arg) { say(o.reqInfo ? `🎵 @${name} ${o.reqInfo}` : `🎵 @${name} type ${o.command} and a YouTube link${o.links === 'any' ? ' or the name of a song' : ''}.`, 6000); return true; } request(m, arg).catch(e => console.error('[songs]', e.message)); return true; }
   if (o.nowCommand && w === low(o.nowCommand)) { say(d.now ? `🎵 Now playing: ${d.now.title}${d.now.by ? ` (asked by ${d.now.by})` : ''}` : '🎵 Nothing is playing right now.', 5000); return true; }
   if (o.queueCommand && w === low(o.queueCommand)) { say(d.queue.length ? `🎵 Next up (${d.queue.length}): ${d.queue.slice(0, 5).map((q, i) => `${i + 1}. ${q.title}`).join(' · ')}${d.queue.length > 5 ? ' …' : ''}`.slice(0, 480) : '🎵 The song queue is empty.', 8000); return true; }
@@ -174,6 +175,7 @@ export function stop() { const d = data(); finish(d, Date.now()); changed(); ret
 export function remove(id) { const d = data(), i = d.queue.findIndex(q => q.id === id); if (i >= 0) d.queue.splice(i, 1); changed(); return state(); }
 export function move(id, dir) { const d = data(), i = d.queue.findIndex(q => q.id === id); if (i < 0) return state(); const j = dir === 'top' ? 0 : Math.max(0, Math.min(d.queue.length - 1, i + (dir === 'up' ? -1 : 1))); const [q] = d.queue.splice(i, 1); d.queue.splice(j, 0, q); changed(); return state(); }
 export function clear() { const d = data(); d.queue = []; changed(); return state(); }
+export const isOpen = () => !!data().open;
 export function setOpen(yes) { const d = data(); d.open = !!yes; changed(); if (opts(d).reply !== false) H.say(yes ? `🎵 Song requests are open! Type ${opts(d).command} and a YouTube link or a song name.` : '🎵 Song requests are closed for now.').catch(() => {}); return state(); }
 /** A rating: who = 0 or 1 (the two people), value = a number up to the scale, or null to clear it. */
 export function rate(key, who, value) {
