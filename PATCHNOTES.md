@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.143.7: What's new
+- ↔️ The chat, alerts and find boxes never scroll sideways any more: everything resizes and wraps to fit, however narrow the box.
+
 ## v1.143.6: What's new
 - {kick} 💜🟢 The chat box has a menu next to the channel name: Twitch, Kick, or Twitch + Kick. A small line beside it says whether Kick chat is connected (hover it for why not).
 

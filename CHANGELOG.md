@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.143.7
+- ↔️ **The chat box never scrolls sideways.** However narrow you make the chat, alerts or find box (in the Chat tab, popped out, or the whole chat page), everything now fits: the top row wraps onto more lines, long words and links break, and small boxes get slightly smaller text.
+
 ## 1.143.6
 - 💜🟢 **Pick the chat right on the chat box.** Next to the channel name in the app's chat box there's now a menu: **💜 Twitch**, **🟢 Kick** or **💜🟢 Twitch + Kick** (shows once you're signed in to Kick, in editions that have Kick). Beside it a small line says what Kick chat is doing: 🟢 on (with how many Kick messages came in), 🟡 connecting, or 🔴 not connected. Hover it for the reason.
 - If Kick chat can't connect, the reason now also lands in ⚙️ Settings → ⚠️ Errors.
