@@ -23,12 +23,32 @@
   #big { display: none; position: fixed; left: 50%; top: 26px; transform: translateX(-50%); z-index: 50; text-align: center; padding: 14px 34px 12px; border-radius: 22px; background: rgba(8, 10, 22, .9); border: 3px solid #fff36b; box-shadow: 0 0 30px rgba(255, 243, 107, .35); font-family: Bungee, Consolas, monospace; color: #fff36b; } #big.on { display: block; animation: bigIn .5s cubic-bezier(.2, 1.4, .4, 1); } #big .bl { font-size: 26px; letter-spacing: 2px; } #big .bt { font-size: 112px; line-height: 1; color: #fff; text-shadow: 0 0 18px rgba(255, 243, 107, .7); font-variant-numeric: tabular-nums; } #big .bs { font-size: 17px; color: #9fe8c9; margin-top: 4px; } #big.hot { border-color: #ff6b6b; color: #ff6b6b; box-shadow: 0 0 34px rgba(255, 107, 107, .5); } #big.hot .bt { animation: blink 1s steps(2) infinite; } #big.done { border-color: #ff6b6b; animation: shake .09s linear infinite; } #big.done .bt { font-size: 76px; color: #ffd0d0; } @keyframes bigIn { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } } @keyframes shake { 0% { margin-left: -5px; } 50% { margin-left: 5px; } 100% { margin-left: -5px; } }
   #clock { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(64, 255, 170, .45); text-align: center; font-family: Bungee, Consolas, monospace; font-size: 19px; color: #fff36b; } #clock.on { display: block; } #clock.hot { color: #ff6b6b; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: .35; } }
+  /* 🏆 (1.144.0) the winner screen when voting closes */
+  #win { display: none; position: fixed; inset: 0; z-index: 60; align-items: center; justify-content: center; pointer-events: none; }
+  #win.on { display: flex; }
+  #winCard { position: relative; width: min(620px, 94vw); max-height: 96vh; box-sizing: border-box; text-align: center; padding: 22px 26px 20px; border-radius: 26px; background: rgba(8, 10, 22, .94); border: 4px solid #fff36b; box-shadow: 0 0 60px rgba(255, 243, 107, .55), inset 0 0 40px rgba(255, 243, 107, .08); animation: winIn .7s cubic-bezier(.2, 1.5, .4, 1); overflow: hidden; }
+  #win.out #winCard { animation: winOut .6s ease-in forwards; }
+  @keyframes winIn { from { transform: scale(.2) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes winOut { to { transform: scale(.6); opacity: 0; } }
+  #winTop { font-size: 30px; letter-spacing: 3px; color: #fff36b; text-shadow: 0 0 14px rgba(255, 243, 107, .8); animation: blink 1.1s infinite; }
+  #winPics { display: flex; gap: 14px; justify-content: center; margin: 14px 0 8px; }
+  #winPics img { height: min(300px, 36vh); border-radius: 12px; border: 3px solid #fff; box-shadow: 0 8px 26px rgba(0, 0, 0, .7); }
+  #winPics.many img { height: min(190px, 24vh); }
+  .winT { font-size: 44px; line-height: 1.08; color: #fff; text-shadow: 0 0 18px rgba(120, 220, 255, .8); margin-top: 6px; overflow-wrap: anywhere; }
+  .winT .y { font-size: .55em; color: #9fe8ff; }
+  #win.many .winT { font-size: 30px; }
+  .winM { font-size: 19px; color: #9fe8ff; margin-top: 4px; letter-spacing: 1px; }
+  #winV { font-size: 24px; color: #7CFC9A; margin-top: 12px; letter-spacing: 2px; }
+  #winTop, #winPics, #winNames, #winV { position: relative; z-index: 2; }
+  .conf { z-index: 1; position: absolute; top: -20px; width: 10px; height: 16px; opacity: .95; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
   /* 📐 (1.139.2) a small source (just the board): the board hugs the corner and is scaled to fill the source, so any size you give it in OBS looks right */
   body.fit #box { right: 6px; top: 6px; } body.fit.left #box { right: auto; left: 6px; } body.fit.bottom #box { top: auto; bottom: 6px; } body.fit #big { top: 8px; }
   #foot { white-space: pre-line; line-height: 1.45; margin-top: 5px; font-size: 12px; color: #7fe6c0; opacity: .85; text-align: center; letter-spacing: 1px; }
 </style></head>
 <body>
 <div id="box"><div id="head"></div><div id="rows"></div><div id="clock"></div><div id="foot"></div></div>
+<div id="win"><div id="winCard"><div id="winTop">🏆 TONIGHT'S MOVIE 🏆</div><div id="winPics"></div><div id="winNames"></div><div id="winV"></div></div></div>
 <div id="big"><div class="bl" id="bigL">⏳ LAST CALL TO VOTE</div><div class="bt" id="bigT">5:00</div><div class="bs" id="bigS"></div></div>
 <script src="/bell.js"></script>
 <script>
@@ -88,6 +108,26 @@ function tick() {
   b.className = ''; c.classList.add('on'); c.classList.toggle('hot', left <= 30); c.textContent = `LAST CALL ${t}`;
 }
 setInterval(tick, 250);
+/* 🏆 (1.144.0, Derek: "when voting is closed add a winner screen for stream") the winner card: poster, title, votes, ratings, who asked for it, confetti; goes away by itself */
+let WIN = { t1: 0, t2: 0, t3: 0 };
+function winnerMsg(m) {
+  clearTimeout(WIN.t1); clearTimeout(WIN.t2); clearTimeout(WIN.t3); const w = $('win');
+  if (!m || !m.winners || !m.winners.length) { w.className = ''; return; }
+  WIN.t1 = setTimeout(() => {
+    TM.done = 0; tick(); const many = m.winners.length > 1, pics = m.winners.map(x => x.poster ? (/^https:/.test(x.poster) ? '/img?u=' + encodeURIComponent(x.poster) : x.poster) : '').filter(Boolean);
+    $('winTop').textContent = many ? "🏆 IT'S A TIE! 🏆" : "🏆 TONIGHT'S MOVIE 🏆";
+    $('winPics').className = many ? 'many' : ''; $('winPics').innerHTML = pics.map(p => `<img src="${esc(p)}" alt="" onerror="this.remove()">`).join(''); $('winPics').style.display = pics.length ? '' : 'none';
+    $('winNames').innerHTML = m.winners.map(x => { const [t, y] = split(x.title), r = [x.imdb > 0 ? `IMDb ${Number(x.imdb).toFixed(1)}` : '', x.rt != null ? `🍅 ${x.rt}%` : '', x.by ? `ASKED FOR BY ${esc(String(x.by).toUpperCase())}` : ''].filter(Boolean).join(' · '); return `<div class="winT">${esc(t.toUpperCase())}${y ? ` <span class="y">${y}</span>` : ''}</div>${r ? `<div class="winM">${r}</div>` : ''}`; }).join('');
+    const v = m.winners[0].votes || 0; $('winV').textContent = `★ ${v} VOTE${v === 1 ? '' : 'S'}${many ? ' EACH' : ''}${m.total ? ` OF ${m.total}` : ''} ★`;
+    w.className = 'on' + (many ? ' many' : ''); const card = $('winCard'); card.querySelectorAll('.conf').forEach(c => c.remove());
+    for (let i = 0; i < 46; i++) { const c = document.createElement('i'); c.className = 'conf'; c.style.left = Math.random() * 100 + '%'; c.style.background = ['#fff36b', '#7CFC9A', '#9fe8ff', '#ff8fd0', '#ffa94d'][i % 5]; c.style.animationDuration = 2.2 + Math.random() * 3 + 's'; c.style.animationDelay = Math.random() * 2.5 + 's'; card.appendChild(c); }
+    winFit(); const secs = Math.max(3, Number(m.secs) || 20);
+    WIN.t2 = setTimeout(() => { w.classList.add('out'); WIN.t3 = setTimeout(() => { w.className = ''; }, 650); }, secs * 1000);
+  }, Math.max(0, Number(m.delay) || 0));
+}
+function winFit() { const c = $('winCard'); c.style.zoom = '1'; const z = Math.min(1, (innerWidth * .96) / Math.max(1, c.offsetWidth), (innerHeight * .96) / Math.max(1, c.offsetHeight)); c.style.zoom = String(Math.round(z * 1000) / 1000); }
+addEventListener('resize', () => { if ($('win').classList.contains('on')) winFit(); });
+window.__win = winnerMsg;
 if (Q.get('replay')) {
   /* 🕰️ Replay (1.119.0): an earlier night's votes played back in about a minute. replay=<night id>, or replay=demo for a made-up night. */
   const SECS = Math.max(10, Math.min(300, Number(Q.get('secs')) || 60)), fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -113,6 +153,7 @@ if (Q.get('replay')) {
     movies: ['Jaws (1975)', 'Alien (1979)', 'The Thing (1982)', 'Clue (1985)', 'Big Trouble in Little China (1986)', 'Tremors (1990)', 'Hackers (1995)', 'The Mummy (1999)'].map((t, i) => ({ id: 'd' + i, n: i + 1, title: t, votes: 0, imdb: [8.1, 8.5, 8.2, 7.2, 7.2, 7.1, 6.2, 7.1][i], rt: [97, 93, 85, 72, 76, 88, 33, 62][i], poster: Q.get('posters') === '0' ? '' : 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='60' height='90'><rect width='60' height='90' fill='hsl(${i * 45},55%,32%)'/><text x='30' y='56' font-size='34' text-anchor='middle' fill='#fff' font-family='Arial'>${t[0]}</text></svg>`) })) };
   draw(); window.__vote = i => { const m = S.movies[i]; if (!m) return; m.votes++; S.total++; if (Math.random() < .6) S.guess.right++; else S.guess.wrong++; draw(); };
   if (Q.get('timer')) { const secs = Math.max(3, Number(Q.get('timer')) || 15); timerMsg({ test: true, endsAt: Date.now() + secs * 1000 }); setTimeout(() => timerMsg({ test: true, done: true, bell: true, vol: 60 }), secs * 1000); } /* ?demo=1&timer=15 = the timer pop-up + the bell */
+  if (Q.get('win')) setTimeout(() => winnerMsg({ winners: Q.get('win') === 'tie' ? [{ title: 'The Thing (1982)', votes: 7, imdb: 8.2, rt: 85, by: 'pretend_viewer' }, { title: 'Tremors (1990)', votes: 7, imdb: 7.1, rt: 88 }] : [{ title: 'The Thing (1982)', votes: 7, imdb: 8.2, rt: 85, by: 'pretend_viewer' }], tie: Q.get('win') === 'tie', total: 19, secs: Number(Q.get('secs')) || 20 }), 800); /* ?demo=still&win=1 (or win=tie) = the winner screen */
   if (Q.get('demo') !== 'still') setInterval(() => { if (S.total >= 40) { S.movies.forEach(m => m.votes = 0); S.total = 0; S.guess.right = 0; } window.__vote(Math.floor(Math.random() * S.movies.length)); }, 1500);
-} else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } else if (m.type === 'mnTimer') timerMsg(m); }; ws.onclose = () => setTimeout(go, 2000); })();
+} else (function go() { const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?role=movienight'); ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'mnState') { S = m; draw(); } else if (m.type === 'mnTimer') timerMsg(m); else if (m.type === 'mnWinner') winnerMsg(m); }; ws.onclose = () => setTimeout(go, 2000); })();
 </script></body></html>

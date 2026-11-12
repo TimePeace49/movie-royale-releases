@@ -55,6 +55,20 @@ export function tally(d = data()) {
   const n = {}; for (const v of Object.values(d.votes)) for (const x of v.list) n[x.movie] = (n[x.movie] || 0) + 1;
   return d.movies.map((m, i) => ({ id: m.id, n: i + 1, title: m.title, by: m.by || '', votes: n[m.id] || 0, imdb: m.imdb || 0, rt: m.rt == null ? null : m.rt, poster: m.poster || '' }));
 }
+/* 🏆 (1.144.0, Derek: "when voting is closed add a winner screen for stream") what the stream's vote box shows when voting closes: the winner (or the tied ones) with poster, votes, ratings and who asked for it */
+let closingByTimer = false;
+export function winnerMsg(d = data(), { delay = 0, test = false } = {}) {
+  let top = leaders(d), total = Object.values(d.votes).reduce((n, v) => n + v.list.length, 0);
+  if (!top.length && test) { const t = tally(d); top = t.length ? [{ ...t[0], votes: 7 }] : [{ title: 'The Thing (1982)', votes: 7, imdb: 8.2, rt: 85, poster: '', by: 'pretend_viewer' }]; total = total || 19; }
+  const o = opts(d);
+  return { type: 'mnWinner', winners: top.map(x => ({ title: x.title, votes: x.votes, imdb: o.ratings !== false ? x.imdb || 0 : 0, rt: o.ratings !== false ? (x.rt == null ? null : x.rt) : null, poster: o.posters !== false ? x.poster || '' : '', by: x.by || '' })), tie: top.length > 1, total, secs: Math.max(5, Math.min(120, Number(o.winSecs) || 20)), delay, test: !!test };
+}
+/** Show the winner screen (again): after voting closed, or as a test. */
+export function winnerShow({ test = false } = {}) {
+  const d = data(); if (!test && d.open) throw new Error('Voting is still open. Close it first: the winner screen shows by itself then.');
+  const m = winnerMsg(d, { delay: 0, test }); if (!m.winners.length) throw new Error('Nobody has voted yet, so there is no winner to show.');
+  if (H.winner) H.winner(m); return { ok: true, winners: m.winners.map(x => x.title), test: !!test };
+}
 export function leaders(d = data()) { const t = tally(d), top = Math.max(0, ...t.map(x => x.votes)); return top ? t.filter(x => x.votes === top) : []; }
 
 /** One vote from chat (or typed in by hand). Pure on `d`: returns what happened. */
@@ -163,6 +177,7 @@ export async function open(yes, { quiet = false } = {}) {
   const line = !top.length ? '🍿 Voting is closed. Nobody voted!' : top.length === 1 ? `🍿 Voting is closed! Tonight's movie: ${top[0].title} (${n} vote${n === 1 ? '' : 's'})` : `🍿 Voting is closed! It's a tie at ${n}: ${top.map(x => x.title).join(' / ')}`;
   H.act(line.replace(/^🍿 /, ''), { icon: '🍿', kind: 'close', items: t.map(x => ({ label: x.title, n: x.votes })) });
   if (!quiet) H.say(line).catch(() => {});
+  if (top.length && opts(d).winScreen !== false && H.winner) { const byTimer = closingByTimer; closingByTimer = false; H.winner(winnerMsg(d, { delay: byTimer ? 4000 : 600 })); } /* 🏆 (1.144.0) the winner screen on stream (after the TIME'S UP pop-up when the countdown closed it) */
   return { open: false, line };
 }
 /** ⏳ Last call (Birx: "a 5 min countdown at the end for people to change votes"): a countdown on screen; voting closes by itself at 0. */
@@ -178,7 +193,7 @@ let warned = 0;
 export function tick() { // every second from the server
   const d = db.movieNight; if (!d || !d.open || !d.endsAt) return;
   const left = d.endsAt - Date.now();
-  if (left <= 0) { const o = opts(d); H.timer && H.timer({ endsAt: 0, done: true, bell: o.bell !== false, vol: o.bellVol, pop: o.timerPop !== false }); open(false).catch(() => {}); return; } /* ⏰ time's up: the old alarm clock rings */
+  if (left <= 0) { const o = opts(d); H.timer && H.timer({ endsAt: 0, done: true, bell: o.bell !== false, vol: o.bellVol, pop: o.timerPop !== false }); closingByTimer = o.timerPop !== false; open(false).catch(() => {}); return; } /* ⏰ time's up: the old alarm clock rings */
   if (left <= 60000 && left > 58000 && warned !== d.endsAt && opts(d).lastMins > 1) { warned = d.endsAt; H.say('⏳ One minute left to vote or change your vote!').catch(() => {}); }
 }
 /** A fresh night: tonight goes into the list of past nights, votes + bonus votes are wiped. The movie list is kept unless `clear`. */
@@ -291,7 +306,8 @@ export function setOpts(o) {
   if ('bg' in o) x.bg = Math.max(0, Math.min(100, Math.round(Number(o.bg) || 0))); /* how solid the board's background is on stream: 0 = see-through */
   if ('side' in o) x.side = o.side === 'left' ? 'left' : 'right';
   if ('at' in o) x.at = o.at === 'bottom' ? 'bottom' : 'top';
-  for (const k of ['timerPop', 'bell', 'firstSay']) if (k in o) x[k] = !!o[k];
+  for (const k of ['timerPop', 'bell', 'firstSay', 'winScreen']) if (k in o) x[k] = !!o[k];
+  if ('winSecs' in o) x.winSecs = Math.max(5, Math.min(120, Math.round(Number(o.winSecs) || 20)));
   if ('enabled' in o) { x.enabled = !!o.enabled; if (!x.enabled && d.open) { d.open = false; d.closedAt = Date.now(); delete d.endsAt; H.timer && H.timer({ endsAt: 0 }); } H.act(x.enabled ? 'Movie night voting switched on' : 'Movie night voting switched off (the watchlist commands still work)', { icon: '🍿', kind: 'mnSwitch' }); } if ('bellVol' in o) x.bellVol = Math.max(0, Math.min(100, Math.round(Number(o.bellVol) || 0))); if ('bellKind' in o) x.bellKind = o.bellKind === 'clock' ? 'clock' : 'bike'; if ('bellFile' in o) x.bellFile = String(o.bellFile || '').replace(/[\\/]/g, '').slice(0, 120);
   if ('lastMins' in o) x.lastMins = Math.max(0.25, Math.min(60, Number(o.lastMins) || 5));
   changed(); return state();

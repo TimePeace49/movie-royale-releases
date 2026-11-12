@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.144.0: What's new
+- {movienight} 🏆 **Winner screen on stream.** When movie night voting closes, the vote box shows the winning movie big in the middle: poster, votes, IMDb and Rotten Tomatoes scores, who asked for it, and confetti (a tie shows all the tied ones). It leaves by itself; 🏆 Show winner again on the Movie night tab brings it back, and a tick box there turns it off.
+
 ## v1.143.7: What's new
 - ↔️ The chat, alerts and find boxes never scroll sideways any more: everything resizes and wraps to fit, however narrow the box.
 

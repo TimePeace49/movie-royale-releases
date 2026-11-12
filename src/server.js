@@ -5390,7 +5390,7 @@ const mnTimer = m => { /* ⏳⏰ (1.132.6) the last-call timer pop-up; the bell 
   if (m.bell) m = { ...m, kind: movienight.opts().bellKind, file: mnBellUrl() }; /* (1.139.1: which sound rings) */
   broadcast({ type: 'mnTimer', ...m, bell: !!m.bell }, 'movienight'); broadcast({ type: 'mnTimer', ...m, bell: !!m.bell && !obs }, 'control');
 };
-movienight.setHooks({ bellUrl: () => mnBellUrl(), suggestedBy: t => (feat('movienight') ? watchlist.suggestedBy(t) : ''), timer: mnTimer, rating: t => mnRating(t), note: pstats.note,
+movienight.setHooks({ winner: m => { broadcast(m, 'movienight'); broadcast({ ...m, type: 'mnWinnerNote', onStream: [...wss.clients].some(c => c.readyState === 1 && c.role === 'movienight') }, 'control'); }, /* 🏆 the winner screen on the stream's vote box (+ a note in the app) */ bellUrl: () => mnBellUrl(), suggestedBy: t => (feat('movienight') ? watchlist.suggestedBy(t) : ''), timer: mnTimer, rating: t => mnRating(t), note: pstats.note,
   on: () => feat('movienight'), say: t => twitch.say(t), pin: t => twitch.sayAndPin(t), me: () => db.owner?.login || twitch.status.login || '',
   isBot: l => BOT_NAMES.includes(l) || l === String(db.twitchBot?.login || '').toLowerCase(),
   act: (text, o = {}) => act('chat', text, { icon: '🍿', ...o }), send: (msg, role) => broadcast(msg, role),
@@ -5424,6 +5424,7 @@ app.get('/api/movienight/suggest', async (req, res) => {
 app.post('/api/movienight/ratings', mnTry(async () => { for (const m of movienight.data().movies) m.rateFor = ''; const n = await movienight.fillRatings(); return { looked: n, key: !!omdbWhere() }; })); /* 🔄 look every movie's ratings + poster up again (numbers typed by hand stay) */
 app.post('/api/movienight/movies', mnTry(b => 'text' in b || Array.isArray(b.list) ? movienight.setMovies(b.list || b.text) : b.id ? movienight.editMovie(b.id, b) : movienight.addMovie(b.title, b.by)));
 app.post('/api/movienight/open', mnTry(b => movienight.open(!!b.on)));
+app.post('/api/movienight/winner', mnTry(b => movienight.winnerShow({ test: !!b.test }))); /* 🏆 show the winner screen again (test: a pretend winner when nobody voted) */
 app.post('/api/movienight/lastcall', mnTry(b => movienight.lastCall(b.on !== false, b.mins)));
 app.post('/api/movienight/pin', mnTry(() => movienight.pin()));
 app.get('/api/test/movienight-pin', (req, res) => res.json(feat('movienight') ? { text: movienight.pinText(), auto: movienight.opts().autoPin !== false } : { error: 'Movie night voting is not part of this edition.' })); /* 🧪 what would be pinned (nothing is sent) */

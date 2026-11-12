@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.144.0
+- 🏆 **Movie night winner screen on stream.** When voting closes (the countdown runs out, or you press Close voting), the vote box on stream shows the winner big in the middle: poster, title and year, how many votes it got, IMDb and Rotten Tomatoes scores, who asked for it, and confetti. A tie shows every tied movie. After a countdown it comes right after the TIME'S UP pop-up. It leaves by itself after 20 seconds.
+  - On the Movie night tab: a tick box to turn it off, a box for how many seconds it stays, and **🏆 Show winner again**.
+  - The app shows a note with the winner, and says if no vote box is open in OBS (then nothing shows on stream).
+  - Test tab → Movie night: **🏆 Winner screen (pretend)**, **👀 See it here** and **👀 A tie**.
+
 ## 1.143.7
 - ↔️ **The chat box never scrolls sideways.** However narrow you make the chat, alerts or find box (in the Chat tab, popped out, or the whole chat page), everything now fits: the top row wraps onto more lines, long words and links break, and small boxes get slightly smaller text.
 
