@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.154.0: What's new
+- {xmashist} 🎄 **Christmas songs, month by month:** History has a new 🎄 Christmas songs tab next to 🎵 Music. It shows how many Christmas songs chat requested each month, which ones and who asked. ✕ takes a wrong one out, and you can mark a missed one yourself at the bottom.
+
 ## v1.153.0: What's new
 - 🧹 **Lighter on your PC:** the app no longer keeps a hidden test screen running all day, and the hidden battle screen rests when no battle is on. Less memory, and much less work for your PC while it just sits there.
 

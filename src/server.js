@@ -5473,6 +5473,9 @@ app.get('/api/chatters/common', (req, res) => { // 🙋 (1.132.10) names to sugg
   for (const v of Object.values(db.viewers || {}).filter(v => v && v.login && (v.msgs || 0) > 0).sort((a, b) => (b.msgs || 0) - (a.msgs || 0)).slice(0, 150)) add(v.name || v.login);
   res.json({ names: out.slice(0, 160) });
 });
+app.get('/api/history/xmas', (req, res) => { if (!feat('songs') || !feat('xmashist')) return res.json({ on: false }); res.json({ on: true, ...songs.xmasHist() }); }); // 🎄 (1.154.0) History → Christmas songs, month by month
+app.post('/api/history/xmas/mark', (req, res) => { try { if (!feat('songs') || !feat('xmashist')) throw new Error('Not part of this edition.'); const b = req.body || {}; res.json({ on: true, ...songs.xmasMark(String(b.key || ''), b.xmas == null ? null : !!b.xmas) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/test/xmas-songs', (req, res) => { try { res.json({ on: true, ...songs.xmasTest((req.body || {}).action !== 'clear') }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.get('/api/history/music', (req, res) => { if (!feat('songs')) return res.json({ on: false }); res.json({ on: true, ...songs.history() }); }); // 🕰️ History → 🎵 Music
 app.get('/api/history/chat', (req, res) => { // 🕰️ History → 💬 Chat stats: who chats and watches the most, and which commands get used
   const skip = new Set([...BOT_NAMES, String(db.twitchBot?.user?.login || '').toLowerCase()].filter(Boolean)), now = new Date(), mk = now.toISOString().slice(0, 7), yk = mk.slice(0, 4);

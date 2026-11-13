@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.154.0
+- 🎄 **Christmas songs, month by month** (Birx & Jess's edition). History has a new tab next to 🎵 Music: how many Christmas songs chat requested each month, which songs, and who asked, plus the most requested ones and who asks the most.
+- A song counts when its name has a Christmas word in it (Christmas, Xmas, Santa, Jingle, Let It Snow…). ✕ takes a wrong one out, and "A Christmas song is missing?" at the bottom lets you mark one yourself.
+- The app now keeps a lasting list of every song request, so the months keep adding up. It starts from the songs already played (the last 500).
+- 🧪 Test: Test tab → Chat tab card → 🎄 Christmas songs by month (pretend requests; 🧹 takes them out).
+
 ## 1.153.0
 - 🧹 **Lighter on your PC.** Every time the app opened, it quietly started a second, hidden game screen (the Test tab's lab) and left it running all day, even if you never opened the Test tab. That's gone: the lab screen now opens only when you use it and closes when you leave the Test tab.
 - 🧹 The hidden battle screen rests when no battle is on (4 pictures a second instead of 30) until you go back to it or a battle starts.
