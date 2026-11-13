@@ -275,6 +275,11 @@ export const NP_NAME = 'Movie Royal now playing', NP_W = 900, NP_H = 54;
 export async function npSource(on, url, pick = null) {
   return browserSource(NP_NAME, on, () => ({ is_local_file: false, url, width: NP_W, height: NP_H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick, { noReload: true, place: (W, H) => { const k = Math.min(W / 1920, H / 1080), w = Math.round(NP_W * k), h = Math.round(NP_H * k), m = Math.round(24 * k); return { positionX: m, positionY: H - m - h, alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 1 | 8, boundsWidth: w, boundsHeight: h, rotation: 0 }; } });
 }
+/** 📣 (1.156.6, Derek: "a scrolling white text in the GTA gameplay scene telling chat about buying battles and messing with the screen") the ticker page with ?role=promo, over the whole screen, in the scenes picked */
+export const PROMO_NAME = 'Movie Royal sell message';
+export async function promoSource(on, url, pick) {
+  return browserSource(PROMO_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 60, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), pick, { noReload: true });
+}
 /** 🌀⏱️ (1.156.4) the screen effect timer (effect name + time left, top left, see-through) as one browser source over the whole screen, in EVERY scene */
 export const FXT_NAME = 'Movie Royal screen effect timer';
 export async function fxTimerSource(on, url) {

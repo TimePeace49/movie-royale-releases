@@ -16,6 +16,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 <div id="band"><div id="line"></div></div>
 <script>
 'use strict';
+const ROLE = new URLSearchParams(location.search).get('role') === 'promo' ? 'promo' : 'ticker'; /* (1.156.6) ?role=promo = the 📣 sell message in the gameplay scene, same look */
 const DEMO = /[?&]demo/.test(location.search), band = document.getElementById('band'), line = document.getElementById('line');
 let cfg = { text: "⏸️ Battles are paused right now, but don't worry: every battle is added to the queue, and we'll run them as soon as they're back on! Can't stick around? No worries, come say hi any other time during the stream to redeem your battles. If you can't make it back, they'll be run in the last part of the stream, and the VOD will be up to watch later. 🎟️", speed: 140, size: 44, pos: 'bottom', band: false };
 let x = 1920, w = 0, last = 0;
@@ -32,13 +33,13 @@ function frame(t) {
   line.style.transform = `translate(${x.toFixed(1)}px, -50%)`;
 }
 function connect() {
-  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=ticker`);
-  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === 'ticker') apply(m); };
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?role=${ROLE}`);
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m.type === ROLE) apply(m); };
   ws.onclose = () => setTimeout(connect, 2000);
 }
 apply(cfg); (document.fonts?.ready || Promise.resolve()).then(() => { w = line.offsetWidth; });
 requestAnimationFrame(frame);
-if (DEMO) { document.body.style.background = '#2a2f3a'; const p = new URLSearchParams(location.search); apply({ ...(p.get('size') ? { size: +p.get('size') } : {}), ...(p.get('pos') ? { pos: p.get('pos') } : {}), band: p.get('band') === '1' }); if (p.get('live') === '1') connect(); }
+if (DEMO) { document.body.style.background = '#2a2f3a'; const p = new URLSearchParams(location.search); if (p.get('text')) apply({ text: p.get('text') }); apply({ ...(p.get('size') ? { size: +p.get('size') } : {}), ...(p.get('pos') ? { pos: p.get('pos') } : {}), band: p.get('band') === '1' }); if (p.get('live') === '1') connect(); }
 else connect();
 </script>
 </body></html>

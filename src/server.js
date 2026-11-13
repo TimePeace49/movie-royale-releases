@@ -1440,6 +1440,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
+  if (ws.role === 'promo') ws.send(JSON.stringify(promoMsg())); // 📣 the sell message
   if (ws.role === 'fxtimer') { const st = screenfx.state(); ws.send(JSON.stringify({ type: 'screenFx', fx: st.now, queue: st.queue.length, now: Date.now() })); } // 🌀⏱️ the screen effect timer
   if (ws.role === 'nowplay') ws.send(JSON.stringify(npMsg())); // 🎼 the small now-playing strip
   if (ws.role === 'songs') ws.send(JSON.stringify(songs.screen())); // 🎵 the now-playing box
@@ -2064,7 +2065,7 @@ async function choiceSource(on, scenes) {
   pushState(); return { ...r, note };
 }
 setInterval(() => { if (db.settings.choiceObs && obsOk() && twitch.status.userId) choiceFile().then(f => obs.celebrateSource(true, f.file, choicePick())).catch(() => {}); }, 10 * 60000); // (keeps it in the scenes you picked, and a new reward or channel is written in)
-app.get('/api/vr/scenes', async (req, res) => { if (req.query.for === 'video') { const v = obsVideos().find(x => x.id === req.query.id); try { return res.json({ ok: true, ...(await obs.sceneList(v ? videoInput(v) : '-')), picked: v?.scenes || [] }); } catch (e) { return res.status(400).json({ error: e.message }); } } const roll = req.query.for === 'roll', mara = req.query.for === 'mara', mnf = req.query.for === 'mn'; if (req.query.for === 'np') { try { return res.json({ ok: true, ...(await obs.sceneList(obs.NP_NAME)), picked: db.settings.npScenes || null }); } catch (e) { return res.status(400).json({ error: e.message }); } } try { res.json({ ok: true, ...(await obs.sceneList(mnf ? obs.MN_NAME : mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mnf ? db.settings.mnScenes : mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
+app.get('/api/vr/scenes', async (req, res) => { if (req.query.for === 'video') { const v = obsVideos().find(x => x.id === req.query.id); try { return res.json({ ok: true, ...(await obs.sceneList(v ? videoInput(v) : '-')), picked: v?.scenes || [] }); } catch (e) { return res.status(400).json({ error: e.message }); } } const roll = req.query.for === 'roll', mara = req.query.for === 'mara', mnf = req.query.for === 'mn'; if (req.query.for === 'promo') { try { return res.json({ ok: true, ...(await obs.sceneList(obs.PROMO_NAME)), picked: promoCfg().scenes }); } catch (e) { return res.status(400).json({ error: e.message }); } } if (req.query.for === 'np') { try { return res.json({ ok: true, ...(await obs.sceneList(obs.NP_NAME)), picked: db.settings.npScenes || null }); } catch (e) { return res.status(400).json({ error: e.message }); } } try { res.json({ ok: true, ...(await obs.sceneList(mnf ? obs.MN_NAME : mara ? obs.MARA_NAME : roll ? obs.ROLL_NAME : undefined)), picked: (mnf ? db.settings.mnScenes : mara ? db.settings.marathon?.scenes : roll ? db.settings.rollScenes : db.settings.choiceScenes) || null }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎬 your OBS scenes, to pick where it goes
 app.get('/api/vr/obs-file', (req, res) => res.download(path.join(ROOT, 'public', 'obs', 'viewers-choice.html'), 'viewers-choice.html')); // ⬇️ the file for OBS (it sets itself up when you open it)
 app.post('/api/vr/setup', async (req, res) => { try { res.json({ ok: true, ...(await vrSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 📣 roll call browser source in OBS (1.61.0): Movie Royal adds /rollcall.html to the scenes you pick (or you add it by hand: the address is in Settings → 🎥 OBS)
@@ -2149,6 +2150,38 @@ app.post('/api/obs/sfx-source', async (req, res) => { try { res.json({ ok: true,
    the control panel tells the server what its player is really on (a request or a playlist song) every couple of seconds; the page counts on by itself in between. */
 const npUrl = () => `http://localhost:${PORT}/nowplaying.html`;
 const fxtUrl = () => `http://localhost:${PORT}/fxtimer.html`;
+// ---------- 📣 Sell message (1.156.6, Derek: "a scrolling white text in the GTA gameplay scene, tell chat about buying battles and messing with the screen… nice and short and sweet; pin the same message in chat when I switch to the capture tab") ----------
+const promoUrl = () => `http://localhost:${PORT}/ticker.html?role=promo`;
+const promoCfg = () => { const p = db.settings.promo || {}; return { on: p.on !== false, text: String(p.text || ''), pin: p.pin !== false, pinMins: Math.max(5, Math.min(600, Number(p.pinMins) || 30)), speed: Math.max(40, Math.min(400, Number(p.speed) || 130)), size: Math.max(20, Math.min(90, Number(p.size) || 40)), pos: p.pos === 'top' ? 'top' : 'bottom', band: p.band !== false, scenes: Array.isArray(p.scenes) && p.scenes.length ? p.scenes : null }; };
+const money$ = n => '$' + (Number(n) % 1 ? Number(n).toFixed(2) : Number(n));
+/** the words, made from what's switched on right now (pure on its inputs: P = paid battle settings, F = screen effect settings, pts = channel points usable) */
+function promoAutoFrom(P, F, pts) {
+  const or = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' or ' + a[a.length - 1] : a[0] || '', parts = [];
+  if (P?.on) { const w = [Number(P.tip) > 0 && money$(P.tip) + ' tip', Number(P.bits) > 0 && Number(P.bits).toLocaleString('en-US') + ' bits', Number(P.subs) > 0 && (Number(P.subs) === 1 ? 'a sub' : P.subs + ' subs')].filter(Boolean); if (w.length) parts.push('🎟️ Buy a battle: ' + or(w)); }
+  if (F?.on) { const w = [pts && F.points && F.pts > 0 && Number(F.pts).toLocaleString('en-US') + ' channel points', F.bits && F.bitsCost > 0 && Number(F.bitsCost).toLocaleString('en-US') + ' bits', F.tips && F.tip > 0 && money$(F.tip) + ' tip'].filter(Boolean); const mins = Math.round((Object.values(F.fx || {}).find(x => x.on)?.secs || 120) / 60);
+    if (w.length) parts.push(`🎲 Mess with my screen for ${mins} min: ` + or(w)); }
+  return parts;
+}
+const promoParts = () => promoAutoFrom(paid.dev() ? paid.cfg() : null, feat('screenfx') ? screenfx.cfg() : null, pointsOn());
+const promoText = (forChat) => { const c = promoCfg(); if (c.text.trim()) return c.text.trim(); const p = promoParts(); return p.join(forChat ? '  |  ' : '        ✦        '); };
+const promoMsg = () => { const c = promoCfg(); return { type: 'promo', text: c.on ? promoText(false) : '', speed: c.speed, size: c.size, pos: c.pos, band: c.band }; };
+let promoKey = ''; const promoSend = () => { const m = promoMsg(), k = JSON.stringify(m); if (k !== promoKey) { promoKey = k; broadcast(m, 'promo'); } };
+setInterval(promoSend, 5000); // (prices / switches changed somewhere: the words follow)
+async function promoScenes() { const c = promoCfg(); if (c.scenes) return c.scenes; const l = await obs.sceneList(obs.PROMO_NAME); if (l.has.length) return l.has; const g = l.scenes.filter(s => /gta|gameplay/i.test(s) && !/co-?stream/i.test(s)); if (!g.length) throw new Error("couldn't find your GTA gameplay scene: press 🎬 Scenes… and tick it"); return g; }
+async function promoObs(on, scenes) { if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
+  if (Array.isArray(scenes)) { (db.settings.promo ||= {}).scenes = scenes; save(); }
+  return obs.promoSource(!!on, promoUrl(), on ? await promoScenes() : null); }
+let promoPinAt = 0;
+async function promoPin(why, { test = false, force = false } = {}) { // 📌 the same words, pinned in Twitch chat
+  const c = promoCfg(), text = promoText(true);
+  if (!text) return { ok: false, why: 'nothing to sell right now (paid battles and screen effects are both off)' };
+  if (test) return { ok: true, test: true, text };
+  if (!force && (!c.pin || !(db.live || live.fakeLive) || Date.now() - promoPinAt < c.pinMins * 60000)) return { ok: false, why: !c.pin ? 'pinning is off' : !(db.live || live.fakeLive) ? 'not live' : 'pinned it a moment ago' };
+  if (!twitch.canSay()) return { ok: false, why: 'not signed in to Twitch' };
+  promoPinAt = Date.now(); let pinned = true;
+  try { await twitch.sayAndPin(text); } catch (e) { pinned = false; try { await twitch.say(text); } catch {} console.error('[twitch] sell message pin:', e.message); }
+  act('stream', `Sell message ${pinned ? 'pinned' : 'said'} in chat (${why})`, { icon: '📌', kind: 'promo' }); return { ok: true, pinned, text };
+}
 const fxtWanted = () => { const c = screenfx.cfg(); return feat('screenfx') && c.on && c.stream && c.timer; };
 async function fxtObs(on) { if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.'); return obs.fxTimerSource(!!on, fxtUrl()); }
 function npMsg() { const p = live.np, fresh = p && Date.now() - p.at < 15000 && p.on, t = live.npTest && live.npTest.until > Date.now() ? live.npTest.msg : null; if (t) return t;
@@ -3948,8 +3981,25 @@ app.post('/api/screenfx', async (req, res) => { try { if (!feat('screenfx')) thr
 app.post('/api/screenfx/start', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}; res.json({ ...screenfx.start({ kind: String(b.kind || ''), secs: b.secs, by: 'you', via: 'you', dry: !!b.dry }), state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 🎮 (1.156.5, Derek: "these should only pop up in the channel points menu if on the capture card tab, or full screen on it") the control panel (main window or a pop-out) says every 20 s while the Game capture tab shows
 let fxCapAt = 0; const fxCapOn = () => Date.now() - fxCapAt < 45000;
-app.post('/api/screenfx/capture-tab', (req, res) => { const was = fxCapOn(); fxCapAt = req.body?.on ? Date.now() : 0; if (was !== fxCapOn()) { rewardKey = ''; syncRewards().catch(() => {}); } res.json({ ok: true, on: fxCapOn() }); });
+app.post('/api/screenfx/capture-tab', (req, res) => { const was = fxCapOn(); fxCapAt = req.body?.on ? Date.now() : 0; if (was !== fxCapOn()) { rewardKey = ''; syncRewards().catch(() => {}); if (fxCapOn()) promoPin('you opened the Game capture tab').catch(() => {}); } res.json({ ok: true, on: fxCapOn() }); });
 setInterval(() => { if (fxCapAt && !fxCapOn()) { fxCapAt = 0; rewardKey = ''; syncRewards().catch(() => {}); } }, 15000); // (the window closed without saying so)
+app.get('/api/promo', (req, res) => res.json({ cfg: promoCfg(), auto: promoParts(), text: promoText(false), chat: promoText(true), url: promoUrl(), pinAgo: promoPinAt ? Date.now() - promoPinAt : null }));
+app.post('/api/promo', async (req, res) => { try { const b = req.body || {}, p = (db.settings.promo ||= {}), was = promoCfg().on;
+  for (const k of ['on', 'pin', 'band']) if (typeof b[k] === 'boolean') p[k] = b[k];
+  if (typeof b.text === 'string') p.text = b.text.slice(0, 400); for (const k of ['speed', 'size', 'pinMins']) if (b[k] != null) p[k] = Number(b[k]); if (b.pos) p.pos = b.pos === 'top' ? 'top' : 'bottom';
+  save(); promoSend(); let obsR = null;
+  if (typeof b.on === 'boolean' && b.on !== was && obsOk()) obsR = await promoObs(b.on).catch(e => ({ error: e.message }));
+  res.json({ ok: true, obs: obsR, cfg: promoCfg(), text: promoText(false), chat: promoText(true) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/promo/obs', async (req, res) => { try { res.json({ ok: true, ...(await promoObs(req.body?.on !== false, req.body?.scenes)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/promo/pin', async (req, res) => { try { res.json(await promoPin('pinned by hand', { force: true, test: !!req.body?.test })); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.get('/api/test/promo', (req, res) => { const rows = [], T = (label, got, ok) => rows.push({ label, got, ok });
+  const P = { on: true, tip: 5, bits: 500, subs: 1 }, F = { on: true, points: true, bits: true, tips: true, pts: 3000, bitsCost: 300, tip: 3, fx: { bw: { on: true, secs: 120 } } };
+  let a = promoAutoFrom(P, F, true); T('Both on: battles + screen', a.join(' | '), a.length === 2 && /\$5 tip, 500 bits or a sub/.test(a[0]) && /2 min: 3,000 channel points, 300 bits or \$3 tip/.test(a[1]));
+  a = promoAutoFrom({ ...P, on: false }, F, false); T('No paid battles, no channel points: only the screen part, without points', a.join(' | '), a.length === 1 && !/points/.test(a[0]));
+  a = promoAutoFrom(P, { ...F, on: false }, true); T('Screen effects off: only battles', a.join(' | '), a.length === 1 && /battle/.test(a[0]));
+  a = promoAutoFrom(null, null, true); T('Nothing on: no message', '(empty)', a.length === 0);
+  T('Short: fits one Twitch message', promoAutoFrom(P, F, true).join('  |  ').length + ' letters', promoAutoFrom(P, F, true).join('  |  ').length < 200);
+  res.json({ ok: rows.every(r => r.ok), rows, now: promoText(false), chat: promoText(true) }); });
 app.post('/api/screenfx/timer', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); res.json({ ok: true, url: fxtUrl(), ...(await fxtObs(req.body?.on !== false)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/screenfx/stop', (req, res) => res.json({ ...screenfx.stop(!!req.body?.all), state: screenfx.state() }));
 app.post('/api/screenfx/rewards', async (req, res) => { try { if (!twitch.status.userId) throw new Error('Sign in with Twitch first.'); res.json({ ok: true, ...(await fxSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
@@ -6443,6 +6493,7 @@ async function obsSync(why = 'check', force = false) {
     if (db.settings.choiceObs && twitch.status.userId) { try { const f = await choiceFile(); add('choice', '🎉 Viewer\'s choice celebration', true, r1(await obs.celebrateSource(true, f.file, choicePick()))); } catch (e) { add('choice', '🎉 Viewer\'s choice celebration', false, e.message); } }
     if (db.settings.rollObs) { try { add('roll', '📣 Roll call', true, r1(await obs.rollSource(true, rollUrl(), Array.isArray(db.settings.rollScenes) && db.settings.rollScenes.length ? db.settings.rollScenes : null))); } catch (e) { add('roll', '📣 Roll call', false, e.message); } }
     if (feat('songs') && songs.opts().vodRoute) { try { const r = await musicObs(true); add('music', '🎚️ Song request music (off the VOD track)', true, r1(r)); if (r.state && (!r.state.vod.on || r.state.vod.same)) add('musicVod', '🎚️ Twitch VOD track', false, 'OBS has no separate Twitch VOD track switched on, so the music still goes on the VOD: open Chat bot → Songs → Settings → 🎚️ and press Set it up.'); } catch (e) { add('music', '🎚️ Song request music (off the VOD track)', false, e.message); } }
+    if (promoCfg().on && promoParts().length && obsOk() && (promoCfg().scenes || (await promoScenes().catch(() => null)))) { try { add('promo', '📣 Sell message (gameplay scene)', true, r1(await promoObs(true))); } catch (e) { add('promo', '📣 Sell message (gameplay scene)', false, e.message); } } // (only where a GTA / gameplay scene is, or you picked scenes)
     if (fxtWanted()) { try { add('fxtimer', '🌀 Screen effect timer (every scene)', true, r1(await fxtObs(true))); } catch (e) { add('fxtimer', '🌀 Screen effect timer (every scene)', false, e.message); } }
     if (sfxWanted()) { try { add('sfx', '🔊 Sound alerts (every scene)', true, r1(await obs.sfxSource(true, sfxUrl()))); } catch (e) { add('sfx', '🔊 Sound alerts (every scene)', false, e.message); } }
     if (db.settings.npObs && feat('songs')) { try { add('nowplay', '🎼 Now-playing strip', true, r1(await obs.npSource(true, npUrl(), Array.isArray(db.settings.npScenes) && db.settings.npScenes.length ? db.settings.npScenes : null))); } catch (e) { add('nowplay', '🎼 Now-playing strip', false, e.message); } }

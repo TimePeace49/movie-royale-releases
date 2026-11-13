@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.6
+- 📣 **Sell message.** White text scrolls along the bottom of your **GTA gameplay** scene in OBS, telling chat what they can buy. Short and to the point, for example: "🎟️ Buy a battle: $5 tip, 500 bits or a sub ✦ 🎲 Mess with my screen for 2 min: 3,000 channel points, 300 bits or $3 tip".
+- The words are made from your real prices, so they're always right (change a price and the message follows). Paid battles only show while those are on, screen effects only while those are on. You can type your own words instead.
+- The app finds your GTA gameplay scene by itself (or pick scenes with 🎬 Scenes…). It's the OBS source "Movie Royal sell message".
+- 📌 When you open the **🎮 Game capture** tab while you're live, the same message is **pinned in Twitch chat** (at most once every 30 minutes). 📌 Pin it now does it by hand.
+- Find it in Settings → 🎥 OBS → 🌀 Screen effects, at the bottom: speed, size, a dark band behind it, on / off.
+- 🧪 Test: Test tab → 🌀 Screen effects → 📣 Check the sell message (checks the words and shows how it looks; nothing is sent).
+
 ## 1.156.5
 - 💎 The **🎲 Random effect** channel point reward now only shows in the Twitch menu while the **🎮 Game capture** tab is open in the app (also when it's full screen, or popped out into its own window). Switch to another tab and it's hidden again within a few seconds. (Bits and tips still work any time while screen effects are on.)
 - 🧪 Test: Settings → 🎥 OBS → 🌀 Screen effects shows whether the reward is showing right now; open the 🎮 Game capture tab, come back, and the line changes.
