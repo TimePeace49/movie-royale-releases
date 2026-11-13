@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.5
+- 💎 The **🎲 Random effect** channel point reward now only shows in the Twitch menu while the **🎮 Game capture** tab is open in the app (also when it's full screen, or popped out into its own window). Switch to another tab and it's hidden again within a few seconds. (Bits and tips still work any time while screen effects are on.)
+- 🧪 Test: Settings → 🎥 OBS → 🌀 Screen effects shows whether the reward is showing right now; open the 🎮 Game capture tab, come back, and the line changes.
+
 ## 1.156.4
 - ⏱️ **Screen effect timer.** While a screen effect plays, a small see-through tag in the **top left corner** shows which effect it is and the time left (it turns red for the last 10 seconds), plus how many are next in line.
 - 📺 It's on your 🎮 Game capture view (smaller and see-through now) and **on stream**: the app puts a browser source called "Movie Royal screen effect timer" in every OBS scene. It shows nothing when no effect is playing. Untick **⏱️ Timer on stream** in Settings → 🎥 OBS → 🌀 Screen effects if you don't want it there.

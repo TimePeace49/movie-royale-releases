@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.156.5: What's new
+- {screenfx} 💎 The screen effect channel point reward only shows in the Twitch menu while the Game capture tab is open (or full screen).
+
 ## v1.156.4: What's new
 - {screenfx} ⏱️ A small see-through timer in the top left corner of the stream shows the screen effect that's playing and the time left.
 
