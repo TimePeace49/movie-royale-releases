@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.8
+- 🧰 **Right-click a Stream tools button** (💬 Chat tab: 🎬 Clip, 📣 SO and your scene buttons) to **✏️ Edit** or **🗑 Delete** it.
+- 🗑 Delete always asks first in its own window ("No, keep it" is the default). Deleting a scene button only takes the button off: the OBS scene itself is never touched.
+- ✏️ Edit changes the words on the button (emoji welcome), and for scene buttons also which OBS scene it switches to. ↺ Normal words puts the old words back.
+- ↩ A deleted 🎬 Clip or 📣 SO button can be brought back from the same right-click menu or ⚙ Pick scenes.
+- 🧪 Test: Test tab → 🧰 Chat tab: stream tools → ✏️🗑 Right-click edit / delete (uses pretend buttons, puts yours back).
+
 ## 1.156.7
 - 📣 The sell message now says what a battle does: "🎟️ Buy a battle to make me try a food or do a workout: $5 tip, 500 bits or a sub". (Scrolling in OBS and pinned in chat.)
 - 🧪 Test: Test tab → 🌀 Screen effects → 📣 Check the sell message.
