@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.7
+- 📣 The sell message now says what a battle does: "🎟️ Buy a battle to make me try a food or do a workout: $5 tip, 500 bits or a sub". (Scrolling in OBS and pinned in chat.)
+- 🧪 Test: Test tab → 🌀 Screen effects → 📣 Check the sell message.
+
 ## 1.156.6
 - 📣 **Sell message.** White text scrolls along the bottom of your **GTA gameplay** scene in OBS, telling chat what they can buy. Short and to the point, for example: "🎟️ Buy a battle: $5 tip, 500 bits or a sub ✦ 🎲 Mess with my screen for 2 min: 3,000 channel points, 300 bits or $3 tip".
 - The words are made from your real prices, so they're always right (change a price and the message follows). Paid battles only show while those are on, screen effects only while those are on. You can type your own words instead.

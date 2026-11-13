@@ -2157,7 +2157,7 @@ const money$ = n => '$' + (Number(n) % 1 ? Number(n).toFixed(2) : Number(n));
 /** the words, made from what's switched on right now (pure on its inputs: P = paid battle settings, F = screen effect settings, pts = channel points usable) */
 function promoAutoFrom(P, F, pts) {
   const or = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' or ' + a[a.length - 1] : a[0] || '', parts = [];
-  if (P?.on) { const w = [Number(P.tip) > 0 && money$(P.tip) + ' tip', Number(P.bits) > 0 && Number(P.bits).toLocaleString('en-US') + ' bits', Number(P.subs) > 0 && (Number(P.subs) === 1 ? 'a sub' : P.subs + ' subs')].filter(Boolean); if (w.length) parts.push('🎟️ Buy a battle: ' + or(w)); }
+  if (P?.on) { const w = [Number(P.tip) > 0 && money$(P.tip) + ' tip', Number(P.bits) > 0 && Number(P.bits).toLocaleString('en-US') + ' bits', Number(P.subs) > 0 && (Number(P.subs) === 1 ? 'a sub' : P.subs + ' subs')].filter(Boolean); if (w.length) parts.push('🎟️ Buy a battle to make me try a food or do a workout: ' + or(w)); } // (1.156.7, Derek: "mention battles can make me try food things or workout")
   if (F?.on) { const w = [pts && F.points && F.pts > 0 && Number(F.pts).toLocaleString('en-US') + ' channel points', F.bits && F.bitsCost > 0 && Number(F.bitsCost).toLocaleString('en-US') + ' bits', F.tips && F.tip > 0 && money$(F.tip) + ' tip'].filter(Boolean); const mins = Math.round((Object.values(F.fx || {}).find(x => x.on)?.secs || 120) / 60);
     if (w.length) parts.push(`🎲 Mess with my screen for ${mins} min: ` + or(w)); }
   return parts;
@@ -3998,6 +3998,7 @@ app.get('/api/test/promo', (req, res) => { const rows = [], T = (label, got, ok)
   a = promoAutoFrom({ ...P, on: false }, F, false); T('No paid battles, no channel points: only the screen part, without points', a.join(' | '), a.length === 1 && !/points/.test(a[0]));
   a = promoAutoFrom(P, { ...F, on: false }, true); T('Screen effects off: only battles', a.join(' | '), a.length === 1 && /battle/.test(a[0]));
   a = promoAutoFrom(null, null, true); T('Nothing on: no message', '(empty)', a.length === 0);
+  T('Battles say what they win: food or a workout', promoAutoFrom(P, null, true)[0], /try a food or do a workout/.test(promoAutoFrom(P, null, true)[0]));
   T('Short: fits one Twitch message', promoAutoFrom(P, F, true).join('  |  ').length + ' letters', promoAutoFrom(P, F, true).join('  |  ').length < 200);
   res.json({ ok: rows.every(r => r.ok), rows, now: promoText(false), chat: promoText(true) }); });
 app.post('/api/screenfx/timer', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); res.json({ ok: true, url: fxtUrl(), ...(await fxtObs(req.body?.on !== false)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
