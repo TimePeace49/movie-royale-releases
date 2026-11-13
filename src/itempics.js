@@ -45,7 +45,7 @@ async function download(url, name) {
     fs.mkdirSync(UPLOADS, { recursive: true }); const file = `${name}.${ext}`; fs.writeFileSync(path.join(UPLOADS, file), buf); return '/uploads/' + file;
   } catch { return null; }
 }
-const wanted = (e, kindOf) => e.status === 'active' && kindOf(e) !== 'workout';
+const wanted = (e, kindOf) => e.status === 'active' && !e.fx && kindOf(e) !== 'workout'; /* (🌀 screen effects in the marathon battle aren't products: no picture search) */
 /** Find (or with next: step to the next) picture for one thing. Returns {ok, image} or {error}. */
 export async function findOne(e, { next = false } = {}) {
   let alts = Array.isArray(e.picAlts) ? e.picAlts : null, i = next ? (Number(e.picIdx) || 0) + 1 : 0;

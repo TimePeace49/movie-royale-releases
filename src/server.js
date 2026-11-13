@@ -50,6 +50,7 @@ import * as costream from './costream.js';
 import * as site from './site.js';
 import * as paid from './paid.js';
 import * as marathon from './marathon.js';
+import * as screenfx from './screenfx.js';
 import * as itempics from './itempics.js';
 import * as cards from './cards.js';
 import * as inactive from './inactive.js';
@@ -229,6 +230,7 @@ function gameResult(m) {
         f.viaSpot = true; live.lastWinner.viaSpot = true; live.lastWinner.movieNo = t.n; rec.viaSpot = true;
         if (f.tmdbId) pinSpotMovie(t); else { t.text = true; discord.refreshPinned?.(); }
       }
+      if (list && list.id === paid.cfg().listId && paid.dev()) { const fe = list.entries.find(x => x.id === f.id); if (fe?.fx && screenfx.FX[fe.fx] && feat('screenfx')) { try { screenfx.start({ kind: fe.fx, by: live.game?.paid?.who || '', via: 'mara', test: !!live.game.test }); } catch (e) { console.error('[screen effects]', e.message); } } } // 🌀 a screen effect won the marathon battle: it plays
       if (list && list.id === paid.cfg().listId && paid.dev()) maraTimerWin(list, f, !!live.game.test); // ⏱️ a timed thing won: its timer waits for your click
       if (list && !live.game.test) { marathon.won(list.id, f.id); maraGuessResult(live.game, f.id); } // 🏃 (+ 🎯 the guessers who called it win a battle) the chat-given 🍀 on the winner starts over
       if (ownLuck(list)) ownLuckAfter(list, f.id, live.game.fighters); // 🍀 your own battle with luck: the ones that lost get luckier, the winner's luck starts over (it stays in)
@@ -313,6 +315,8 @@ function publicState() { applyCharsDefault();
     songPlayers: songPlayers(), obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
     sfxHear: sfxHearOn(),
+    screenFx: feat('screenfx') ? { on: screenfx.cfg().on, now: screenfx.now() } : null, // 🌀
+
     edition: { hide: editionInfo().hide, id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
     mnight: feat('movienight') ? { open: !!db.movieNight?.open, pending: (db.movieNight?.guesses || []).filter(g => g.right == null && !g.skip).length } : null,
     botCount: (db.chatbot?.commands || []).length,
@@ -574,6 +578,7 @@ function rewardWants() {
   for (const [title, kind] of Object.entries(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn || !!l?.fun?.powersOff?.[kind]; // (each power-up can be switched off on the Chat battle tab)
   const raceOn = on && !wheelUp && racePowersOn(l); // 🏁 race power-ups: a chat battle on a race map with them ticked
   for (const [title, kind] of Object.entries(st.raceRewards || {})) want[title.toLowerCase()] = !raceOn || (kind === 'nuke' && !!(live.game?.nuked && live.game.listId === l?.id && (live.phase === 'lobby' || live.phase === 'running')));
+  { const fc = screenfx.cfg(), fxNow = inUse && screenfx.on() && fc.points; for (const [title, k] of Object.entries(screenfx.rewards())) want[title.toLowerCase()] = !(fxNow && fc.fx[k].on); } // 🌀 screen effects: only while they're switched on (and that effect is)
   const stormNow = on && !wheelUp && stormOn(); // ⛈️ storm powers: only while a Pirate Battle is playing
   for (const title of Object.keys(st.stormRewards || {})) want[title.toLowerCase()] = !stormNow;
   for (const [title, who] of Object.entries(st.monkeyRewards || {})) want[title.toLowerCase()] = !(stormNow && MONKEY_INFO[who] && cards.monkeyIn(MONKEY_INFO[who].i)); // 🐒 (only while that monkey is still in the rowboat)
@@ -1171,6 +1176,7 @@ const twitchHandlers = {
     if (feat('eggs') && r.title.toLowerCase() === eggs.opts().buyTitle.toLowerCase()) return void eggs.buy({ login: r.login, name: r.name }, { test: !!r.test }); // 🥚 buy an egg
     if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
     if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
+    { const fk = screenfx.kindOfTitle(r.title); if (fk) return void screenfx.redeem(r, fk); } // 🌀 a screen effect
     if (db.settings.pointsOn === false) return; // channel point chaos switched off
     const pw = Object.entries(db.settings.powerRewards || {}).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
     if (pw) return powerUp(r, pw[1]); // 🎉 chat battle power-up for their own ball
@@ -1193,7 +1199,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } try { if (a.kind === 'bits') screenfx.money({ kind: 'bits', amount: a.amount, name: a.name, text: a.text }); } catch (e) { console.error('[screen effects]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   raidOut(t) { try { raids.note(t); } catch (e) { console.error('[raid tab]', e.message); } }, // 🚀 you raided someone (Twitch says so, also for /raid typed by hand)
   async chat(m) {
@@ -1620,10 +1626,11 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { eggs.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase().replace(/[^a-z0-9_]/g, ''), name: t.name, amount: t.amount }); } catch {} try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { eggs.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase().replace(/[^a-z0-9_]/g, ''), name: t.name, amount: t.amount }); } catch {} try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } try { screenfx.money({ kind: 'tip', amount: t.amount, name: t.name, text: t.message || '' }); } catch (e) { console.error('[screen effects]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
+if (db.fxRestore) setTimeout(() => obs.fxRestore().catch(() => {}), 15000); // 🌀 the app closed in the middle of a screen effect: put the game source back
 if (db.doomRestore) setTimeout(() => obs.restoreDoom().catch(() => {}), 20000); // ☠️ Doomsday turned your mic / camera off and Movie Royal closed before it could turn them back on: do it now (once the stream is over)
 // 🃏 card battles (Card pool + Card battles tabs)
 cards.initCards({ broadcast, pushState, shipIcons: () => shipIcons(), stormTips: () => stormTips(), rewardsNow: () => setTimeout(() => syncRewards().catch(() => {}), 400), // (⛈️🐒 a card fight started / ended: the Pirate Battle rewards follow it)
@@ -2192,6 +2199,7 @@ async function pricesInfo() {
   if (st.colorReward) rewards.push(R('battle', 'color', st.colorReward, '🎨 Pick your ball color' + (st.colorMode === 'points' ? '' : ' (only used when ball colors are set to channel points)'), null));
   for (const [title, kind] of Object.entries(st.powerRewards || {})) rewards.push(R('chat', 'power:' + kind, title, ({ shield: '🛡️ Shield', mega: '💪 Mega ball', turbo: '⚡ Turbo', ghost: '👻 Ghost ball', spiky: '🦔 Spiky ball', magnet: '🧲 Magnet ball' })[kind] || kind, st.powerCosts?.[kind]));
   for (const [title, kind] of Object.entries(st.raceRewards || {})) rewards.push(R('chat', 'race:' + kind, title, ({ boost: '💨 Race: boost', shield: '🛡️ Race: shield', oil: '🛢️ Race: drop oil', rocket: '🚀 Race: rocket straight ahead', nuke: '☢️ Race: NUKE (wipes out everyone else)' })[kind] || kind, st.raceCosts?.[kind]));
+  if (feat('screenfx')) for (const [title, kind] of Object.entries(screenfx.rewards())) rewards.push(R('screen', 'fx:' + kind, title, `${screenfx.FX[kind].icon} Screen effect: ${screenfx.FX[kind].what}`, screenfx.cfg().fx[kind].pts)); // 🌀
   for (const [title, kind] of Object.entries(st.stormRewards || {})) rewards.push(R('battle', 'storm:' + kind, title, STORM_INFO[kind]?.what || kind, st.stormCosts?.[kind]));
   for (const [title, who] of Object.entries(st.monkeyRewards || {})) rewards.push(R('battle', 'monkey:' + who, title, MONKEY_INFO[who]?.what || who, st.monkeyCosts?.[who]));
   const WN = { respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down', grow: '📈 Grow a spot', shrink: '📉 Shrink a spot', double: '✌️ Double trouble', stop: '🛑 Force stop' };
@@ -2217,6 +2225,7 @@ app.post('/api/prices/reward', async (req, res) => {
       else if (key.startsWith('power:')) { (db.settings.powerCosts ||= {})[key.slice(6)] = cost; }
       else if (key.startsWith('race:')) { (db.settings.raceCosts ||= {})[key.slice(5)] = cost; }
       else if (key.startsWith('storm:')) { (db.settings.stormCosts ||= {})[key.slice(6)] = cost; }
+      else if (key.startsWith('fx:')) screenfx.setCfg({ fx: { [key.slice(3)]: { pts: cost } } });
       else if (key.startsWith('monkey:')) { (db.settings.monkeyCosts ||= {})[key.slice(7)] = cost; }
       else if (key === 'raid') db.settings.raidCost = cost;
       else if (key.startsWith('vr:')) (db.settings.vrCosts ||= {})[key.slice(3)] = cost;
@@ -3895,6 +3904,58 @@ app.post('/api/racepowers/rewards', async (req, res) => { // 🏁 add the race p
     res.json({ ok: true, made });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+// ---- 🌀 Screen effects (1.155.0): chat messes with the game picture (the app's Game capture tab + the game source in OBS) ----
+screenfx.setHooks({
+  on: () => feat('screenfx'),
+  send: m => broadcast(m, 'control'),
+  say: t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); },
+  act: (text, o) => act('stream', text, o),
+  obsOk: () => obsOk(),
+  play: async o => { let source = o.source; if (!source) source = (await obs.fxSources()).guess; if (!source) throw new Error("couldn't tell which OBS source is your game: pick it in Settings → OBS → Screen effects"); return obs.fxPlay({ ...o, source }); },
+  stop: () => obs.fxStop(),
+  changed: () => { rewardKey = ''; syncRewards().catch(() => {}); pushState(); }
+});
+async function fxSetup() { // make the channel point rewards (switched off on Twitch until screen effects are on and usable)
+  if (!pointsOn()) return { made: [], skipped: true };
+  const c = screenfx.cfg(), made = [];
+  for (const [title, k] of Object.entries(screenfx.rewards())) if (await twitch.createReward({ title, cost: c.fx[k].pts, prompt: `Messes with the streamer's game for ${c.fx[k].secs} seconds: ${screenfx.FX[k].what}.`, color: '#B04CFF', queue: true })) made.push(title);
+  db.fxSetup = { at: Date.now(), made }; save(); rewardKey = ''; await syncRewards(); return { made };
+}
+function fxMaraSync() { // 🏃 the effects as things in the marathon battle (only while that switch is on): added once, hidden again when it's off
+  const l = getList(paid.rawCfg().listId); if (!l) return { n: 0, noList: true };
+  const c = screenfx.cfg(), want = c.mara && feat('screenfx') && paid.dev(); let n = 0;
+  for (const [k, F] of Object.entries(screenfx.FX)) {
+    let e = l.entries.find(x => x.fx === k); const use = want && c.fx[k].on, label = `${F.icon} ${F.name} (${c.fx[k].secs} s)`;
+    if (use && !e) { e = addEntry(l, { label, weight: 1, sub: 'Screen effect: ' + F.what }); e.fx = k; e.picTried = Date.now() + 3650 * 86400000; }
+    if (!e) continue;
+    if (use) { if (e.status !== 'active') e.status = 'active'; e.label = label; n++; } else if (e.status === 'active') e.status = 'removed';
+  }
+  save(); pushState(); return { n };
+}
+const fxInfo = async (withObs) => { const c = screenfx.cfg(); let srcs = null, obsErr = '';
+  if (withObs && obsOk()) try { srcs = await obs.fxSources(); } catch (e) { obsErr = e.message; }
+  return { on: c.on, feat: feat('screenfx'), cfg: c, list: Object.entries(screenfx.FX).map(([k, F]) => ({ k, ...F, title: screenfx.title(k), moves: !!globalThis.SCREENFX.MOVES[k] })), state: screenfx.state(), sources: srcs, obsErr, obsOn: obsOk(), points: pointsOn(), rewardsMade: !!db.fxSetup, twitch: !!twitch.status.userId, dev: paid.dev(), maraList: !!getList(paid.rawCfg().listId), maraN: (getList(paid.rawCfg().listId)?.entries || []).filter(e => e.fx && e.status === 'active').length }; };
+app.get('/api/screenfx', async (req, res) => res.json(await fxInfo(req.query.obs === '1')));
+app.post('/api/screenfx', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}, was = screenfx.cfg(); const c = screenfx.setCfg(b);
+  if (c.on && c.points && !db.fxSetup && twitch.status.userId && pointsOn()) fxSetup().catch(e => console.error('[twitch] screen effect rewards:', e.message));
+  if (c.mara !== was.mara || (c.mara && b.fx)) fxMaraSync(); if (!c.on && was.on) screenfx.stop(true);
+  res.json(await fxInfo(false)); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/screenfx/start', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}; res.json({ ...screenfx.start({ kind: String(b.kind || ''), secs: b.secs, by: 'you', via: 'you', dry: !!b.dry }), state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/screenfx/stop', (req, res) => res.json({ ...screenfx.stop(!!req.body?.all), state: screenfx.state() }));
+app.post('/api/screenfx/rewards', async (req, res) => { try { if (!twitch.status.userId) throw new Error('Sign in with Twitch first.'); res.json({ ok: true, ...(await fxSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.get('/api/test/screenfx-rules', (req, res) => { const d = screenfx.demo(), F = globalThis.SCREENFX, T = (label, got, ok) => d.rows.push({ label, got, ok });
+  const box = { positionX: 0, positionY: 0, alignment: 5, rotation: 0, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsWidth: 1920, boundsHeight: 1080, boundsAlignment: 0, width: 1920, height: 1080 };
+  const a = obs.fxTransform(box, F.frame('flip', 5, 30)), m = obs.fxTransform({ ...box, boundsType: 'OBS_BOUNDS_NONE', boundsWidth: 0, boundsHeight: 0 }, F.frame('mirror', 5, 30)), t = obs.fxTransform(box, F.frame('tiny', 5, 30));
+  T('OBS: upside down turns the game round its own middle', `middle ${a.positionX}, ${a.positionY} · ${a.rotation}°`, a.positionX === 960 && a.positionY === 540 && a.rotation === 180 && a.alignment === 0);
+  T('OBS: mirror flips it in place', `size × ${m.scaleX}`, m.scaleX === -1 && m.positionX === 960);
+  T('OBS: tiny screen shrinks it in the middle', `${Math.round(t.boundsWidth)} × ${Math.round(t.boundsHeight)}`, Math.round(t.boundsWidth) === 614 && t.positionX === 960);
+  T('OBS: a source that is already turned is only recoloured, not moved', String(obs.fxTransform({ ...box, rotation: 90 }, F.frame('flip', 5, 30))), obs.fxTransform({ ...box, rotation: 90 }, F.frame('flip', 5, 30)) === null);
+  res.json({ ok: d.rows.every(r => r.ok), rows: d.rows }); });
+app.post('/api/test/screenfx', (req, res) => { try { const b = req.body || {}, via = String(b.via || 'you'); let r;
+  if (via === 'bits' || via === 'tip') { r = screenfx.money({ kind: via, amount: Number(b.amount) || 0, name: 'Pretend_Viewer', text: String(b.text || '') }, { test: true }); if (!r) throw new Error(`${via === 'bits' ? b.amount + ' bits' : '$' + b.amount} isn't enough for any effect that's switched on (or its ${via === 'bits' ? 'bits' : 'tip'} price is 0).`); }
+  else if (via === 'points') r = screenfx.redeem({ name: 'Pretend_Viewer', test: true }, String(b.kind || 'bw'));
+  else r = screenfx.start({ kind: String(b.kind || 'bw'), secs: b.secs, by: 'Pretend_Viewer', via: 'test', test: true, dry: b.dry !== false });
+  res.json({ ...r, state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/stormpowers/rewards', async (req, res) => { try { res.json({ ok: true, ...(await stormSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } }); // ⛈️ add the storm power rewards to Twitch
 setInterval(() => { if (twitch.status.userId && !db.stormSetup && !stormSetup.busy) { stormSetup.busy = true; stormSetup().catch(e => console.error('[twitch] storm rewards:', e.message)).finally(() => { stormSetup.busy = false; }); } }, 30000); // (made once by itself after signing in)
 app.post('/api/test/monkey', (req, res) => { const who = String(req.body?.who || 'T').toUpperCase(), err = monkeyRedeem({ name: 'test_viewer', login: 'test_viewer' }, who, true); err ? res.status(400).json({ error: err }) : res.json({ ok: true }); }); // 🧪 a pretend Take out Time / Kirb

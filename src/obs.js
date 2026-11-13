@@ -115,6 +115,69 @@ export async function restoreDoom() {
 // 📺 Capture window (Battle tab): a small window capture (e.g. your browser playing a YouTube video) in the top-left corner
 // of whatever scene is live. Movie Royal makes the OBS source the first time ("Movie Royal capture window"), puts it on top,
 // sizes it, and shows / hides it. You pick which window it captures from Movie Royal (or in OBS, the source's properties).
+// 🌀 Screen effects (1.155.0): chat messes with the GAME source for a while: one colour filter + the source's place / turn / size in the scene on air, then everything goes back exactly as it was.
+export const FX_FILTER = 'Movie Royal screen effect';
+const FX_GAME = /game|capture|elgato|hd60|4k60|cam link|console|gta/i, FX_KINDS = /^(game_capture|dshow_input|window_capture|monitor_capture|av_capture|v4l2|ndi_source)/;
+/** the sources that could be "the game" (video inputs), the scene on air's ones first */
+export async function fxSources() {
+  return session(async call => {
+    const scene = (await call('GetCurrentProgramScene')).currentProgramSceneName, here = new Set(((await call('GetSceneItemList', { sceneName: scene })).sceneItems || []).map(i => i.sourceName));
+    const all = ((await call('GetInputList')).inputs || []).filter(i => FX_KINDS.test(i.inputKind || '') && i.inputName !== CAP_NAME).map(i => ({ name: i.inputName, kind: i.inputKind, here: here.has(i.inputName), game: FX_GAME.test(i.inputName) || /^game_capture/.test(i.inputKind) }));
+    all.sort((a, b) => (b.here - a.here) || (b.game - a.game) || a.name.localeCompare(b.name));
+    return { scene, sources: all, guess: (all.find(x => x.here && x.game) || all.find(x => x.game) || all.find(x => x.here) || {}).name || '' };
+  });
+}
+const fxBox = t => { // where the source sits on screen right now: middle + size
+  const bounded = t.boundsType && t.boundsType !== 'OBS_BOUNDS_NONE', w = bounded ? Number(t.boundsWidth) : Math.abs(Number(t.width)) || 0, h = bounded ? Number(t.boundsHeight) : Math.abs(Number(t.height)) || 0, a = Number(t.alignment) || 0;
+  const ax = a & 1 ? 0 : a & 2 ? 1 : 0.5, ay = a & 4 ? 0 : a & 8 ? 1 : 0.5;
+  return { bounded, w, h, cx: Number(t.positionX) - ax * w + w / 2, cy: Number(t.positionY) - ay * h + h / 2, ok: w > 1 && h > 1 && Math.abs(Number(t.rotation) || 0) < 0.01 };
+};
+const fxBack = t => { const o = { positionX: t.positionX, positionY: t.positionY, alignment: t.alignment, rotation: t.rotation, scaleX: t.scaleX, scaleY: t.scaleY, boundsType: t.boundsType };
+  if (t.boundsType && t.boundsType !== 'OBS_BOUNDS_NONE') Object.assign(o, { boundsWidth: t.boundsWidth, boundsHeight: t.boundsHeight, boundsAlignment: t.boundsAlignment }); return o; }; // (OBS refuses a bounds size of 0, so those only go back when the source has a box)
+/** the transform for one frame of an effect (pure: tests use it) */
+export function fxTransform(t0, f) {
+  const B = fxBox(t0); if (!B.ok) return null;
+  const o = { alignment: 0, positionX: B.cx + f.dx * B.w, positionY: B.cy + f.dy * B.h, rotation: ((f.rot % 360) + 360) % 360 };
+  if (B.bounded) { o.boundsAlignment = 0; o.boundsWidth = Math.max(2, B.w * f.s * Math.abs(f.sx)); o.boundsHeight = Math.max(2, B.h * f.s); o.scaleX = Math.abs(Number(t0.scaleX) || 1) * (f.sx < 0 ? -1 : 1); o.scaleY = Number(t0.scaleY) || 1; }
+  else { o.scaleX = (Number(t0.scaleX) || 1) * f.s * f.sx; o.scaleY = (Number(t0.scaleY) || 1) * f.s; }
+  return o;
+}
+let fxRun = null;
+/** Play one effect on the game source until `secs` are over or fxStop() is called. frame(t) comes from public/screenfx.js. Never leaves the source changed. */
+export async function fxPlay({ source, secs, frame, moves }) {
+  if (fxRun) fxRun.stop = true;
+  const run = fxRun = { stop: false, source };
+  return session(async call => {
+    const scene = (await call('GetCurrentProgramScene')).currentProgramSceneName, items = (await call('GetSceneItemList', { sceneName: scene })).sceneItems || [];
+    const it = items.find(i => i.sourceName === source && i.sceneItemEnabled !== false), t0 = it ? it.sceneItemTransform : null, canMove = !!(moves && it && fxBox(t0).ok);
+    if (canMove) { db.fxRestore = { scene, id: it.sceneItemId, source, t: fxBack(t0), at: Date.now() }; save(); } else { db.fxRestore = { source, at: Date.now() }; save(); }
+    const out = { scene, inScene: !!it, moved: canMove, frames: 0, errors: [] }, note = e => { if (out.errors.length < 4 && !out.errors.includes(e.message)) out.errors.push(e.message); };
+    try { await call('CreateSourceFilter', { sourceName: source, filterName: FX_FILTER, filterKind: 'color_filter_v2', filterSettings: {} }); } catch (e) { if (!/exist/i.test(e.message)) throw new Error(`couldn't put the effect on “${source}” in OBS: ${e.message}`); }
+    const t1 = Date.now();
+    try {
+      while (!run.stop) {
+        const t = (Date.now() - t1) / 1000; if (t >= secs) break;
+        const f = frame(t);
+        try { await call('SetSourceFilterSettings', { sourceName: source, filterName: FX_FILTER, overlay: true, filterSettings: { saturation: f.sat, contrast: f.con, brightness: f.bri, gamma: 0, hue_shift: f.hue > 180 ? f.hue - 360 : f.hue, opacity: 1 } }); } catch (e) { note(e); }
+        if (canMove) { const x = fxTransform(t0, f); if (x) try { await call('SetSceneItemTransform', { sceneName: scene, sceneItemId: it.sceneItemId, sceneItemTransform: x }); } catch (e) { note(e); } }
+        out.frames++; await new Promise(r => setTimeout(r, 70));
+      }
+    } finally {
+      try { await call('RemoveSourceFilter', { sourceName: source, filterName: FX_FILTER }); } catch (e) { note(e); }
+      if (canMove) try { await call('SetSceneItemTransform', { sceneName: scene, sceneItemId: it.sceneItemId, sceneItemTransform: fxBack(t0) }); } catch (e) { note(e); }
+      delete db.fxRestore; save(); if (fxRun === run) fxRun = null;
+    }
+    return out;
+  });
+}
+export const fxStop = () => { if (fxRun) fxRun.stop = true; };
+export const fxPlaying = () => !!fxRun;
+/** the app closed in the middle of an effect: put the game source back */
+export async function fxRestore() {
+  const r = db.fxRestore; if (!r) return false;
+  await session(async call => { try { await call('RemoveSourceFilter', { sourceName: r.source, filterName: FX_FILTER }); } catch {} if (r.t) try { await call('SetSceneItemTransform', { sceneName: r.scene, sceneItemId: r.id, sceneItemTransform: r.t }); } catch {} });
+  delete db.fxRestore; save(); return true;
+}
 export const CAP_NAME = 'Movie Royal capture window';
 const capName = () => String(db.settings.capName || '').trim() || CAP_NAME;
 async function capInput(call) { // the source: make it if it isn't there (window capture, with sound)

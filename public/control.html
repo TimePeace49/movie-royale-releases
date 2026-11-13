@@ -527,7 +527,10 @@
   #gcStage { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; max-height: calc(calc(100 * var(--vh1, 1vh)) - 290px); margin: 0 auto; }
   #gcStage:fullscreen { border-radius: 0; max-height: none; aspect-ratio: auto; width: calc(100 * var(--vw1, 1vw)); height: calc(100 * var(--vh1, 1vh)); }
   #gcStage.gcHideCur { cursor: none; }
-  #gcVideo { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+  #gcVideo { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; transform-origin: 50% 50%; will-change: transform, filter; }
+  #gcFxTag { position: absolute; left: 12px; top: 10px; padding: 5px 12px; border-radius: 999px; background: rgba(20,10,40,.72); color: #fff; font: 700 15px/1.2 Inter, sans-serif; pointer-events: none; display: none; z-index: 3; text-shadow: 0 1px 2px #000; }
+  #gcStage:fullscreen #gcFxTag { font-size: 20px; top: 16px; left: 18px; }
+  #fxBody .fxRow input[type=number] { width: 82px; } #fxBody table td { vertical-align: middle; }
   #gcFps { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.35); color: #7dff8a; font: 800 22px/1.15 Inter, sans-serif; text-align: right; pointer-events: none; display: none; text-shadow: 0 1px 2px #000; }
   #gcFps small { display: block; font-size: 12px; font-weight: 700; color: #cfd3dc; }
   #gcStage:fullscreen #gcFps { font-size: 30px; top: 16px; right: 18px; } #gcStage:fullscreen #gcFps small { font-size: 15px; }
@@ -837,7 +840,7 @@
       <div><label>👻 FPS see-through <span id="gcFpsAN"></span></label><input type="range" id="gcFpsA" min="0" max="90" step="5" oninput="gcSet({fpsA:Number(this.value)})" title="Game capture: how see-through the FPS number is (0% = solid, 90% = barely there)" style="width:120px"></div>
     </div>
     <p class="help" id="gcNote" style="margin:6px 0 8px"></p>
-    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
+    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFxTag"></div><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
     <p class="help" style="margin:8px 0 0">While you're on this tab the battles inside Movie Royal make no sound (your stream still hears them from OBS). Double-click the picture or press <b>F</b> for fullscreen. The big FPS number is the game's own speed (how many different pictures a second); the small one is what the capture card sends. A still picture (a menu, a pause screen) reads low.</p>
   </div>
 </section>
@@ -1491,6 +1494,16 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span class="help" style="margin:0">🚚 Installing this edition over another one:</span><select id="edMoveFrom" style="width:auto" title="Pick the edition someone had before installing this one"><option value="public">from Public</option><option value="derek">from Derek's</option><option value="kirb">from Kirb's</option><option value="true">from True's</option><option value="birx">from Birx &amp; Jess's</option></select><button onclick="edMoveTest()" title="Show what moves over when this edition is installed on top of the one you picked (pretend: nothing is changed)">🚚 What moves over?</button></div>
     <div id="tEdOut" class="help" style="margin-top:8px"></div>
   </div>
+  <div class="card edOff" id="fxTestCard" data-feat="screenfx">
+    <h3>🌀 Screen effects</h3>
+    <p class="help">Chat messes with your game picture: black and white, drunk view, upside down… ▶ Try it opens the Game capture tab with a pretend game and plays the effect on your view only (OBS is left alone). The pretend ones show which effect a redeem, bits or a tip would start.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="fxTKind" title="Screen effects test: which effect to try"></select><input id="fxTSecs" type="number" min="3" max="120" value="12" style="width:70px" title="Screen effects test: how many seconds the test effect plays"> s
+      <button class="primary" onclick="fxTry()" title="Screen effects test: play this effect on your Game capture view only (a pretend game starts if the capture is off; OBS is not touched)">▶ Try it on my view</button>
+      <button onclick="fxTry(true)" title="Screen effects test: play it for real: on your view AND on the game source in OBS (needs OBS open)">▶ Try it on stream too</button>
+      <button class="ghost" onclick="fxStop(true)" title="Screen effects: stop the effect that is playing and empty the line">🛑 Stop</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="ghost" onclick="fxPretend('points')" title="Screen effects test: a pretend viewer redeems the picked effect with channel points">💎 Pretend redeem</button><button class="ghost" onclick="fxPretend('bits')" title="Screen effects test: a pretend viewer cheers bits (asks how many): shows which effect that buys">💜 Pretend bits</button><button class="ghost" onclick="fxPretend('tip')" title="Screen effects test: a pretend viewer tips (asks how much): shows which effect that buys">💵 Pretend tip</button><button class="ghost" onclick="fxRules()" title="Screen effects test: checks the rules (which effect an amount buys, the maths for OBS); nothing plays">🧪 Check the rules</button></div>
+    <div id="fxTOut" class="help"></div>
+  </div>
   <div class="card" id="clipTestCard">
     <h3>🎬 Clips</h3>
     <p class="help">The 🎬 Clip button makes a Twitch clip of the last minute of your stream (it only works while you're live). These pretend, so nothing is sent to Twitch.</p>
@@ -1718,6 +1731,7 @@ not a link</textarea>
 <script src="chat.js"></script>
 <script src="profile.js"></script>
 <script src="charparts.js"></script>
+<script src="screenfx.js"></script>
 <script>
 let S = null, sock = null, filter = '', showOut = false, view = 'people', sub = 'account', hist = null, histFor = null, histVer = -1, histList = null, settingsDirty = false;
 const $ = id => document.getElementById(id);
@@ -1835,6 +1849,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ...['battle', 'pool', 'chat', 'giveaway', 'wheel', 'tchat', 'people', 'history', 'test', 'settings'].map((v, i) => [`go-${v}`, 'any', `Go to the ${TAB_NAMES[v]} tab`, `Alt+${(i + 1) % 10}`, () => setView(v), true]),
   ['b-start', 'battle', '▶ START ROYAL', 'G', () => kbClick('#v-battle', /START ROYAL/, 'START ROYAL')],
   ['clip', 'any', '🎬 Clip the last minute (Twitch clip)', 'Ctrl+Alt+C', () => clipNow(), true],
+  ['fx-stop', 'any', '🛑 Stop the screen effect that is playing', 'Ctrl+Alt+X', () => { if (featOn('screenfx')) fxStop(); }, true],
   ['pop', 'any', '↗ Pop the tab you\'re on out into its own window', 'Ctrl+Alt+P', () => popTab(), true],
   ['gc-full', 'capture', '⛶ Fullscreen on / off', 'F', () => gcFull()],
   ['gc-go', 'capture', '▶ Start / ⏹ stop the capture card', 'S', () => gcToggle()],
@@ -2244,7 +2259,7 @@ async function pinSim(step) {
 }
 function arrangeTests() { // put the Test tab's cards into categories (once)
   const box = $('v-test'); if (!box || box.dataset.arranged) return; box.dataset.arranged = '1';
-  const map = [[/stream deck/i, 'tools'], [/^↗ pop out a tab$/i, 'screen'], [/running in the background/i, 'screen'], [/obs up to date/i, 'screen'], [/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
+  const map = [[/stream deck/i, 'tools'], [/^↗ pop out a tab$/i, 'screen'], [/running in the background/i, 'screen'], [/screen effects/i, 'screen'], [/obs up to date/i, 'screen'], [/read chat to me|spam bots/i, 'chat'], [/youtube videos/i, 'scenes'], [/sits out after a win/i, 'battles'], [/^🌐 viewer website$/i, 'scenes'], [/^🏃 test marathon battle$/i, 'battles'], [/paid battles|viewer website|watch .*battle|ad warnings|marathon fighters/i, 'chat'], [/characters &amp; !id|characters & !id|custom characters/i, 'battles'], [/ban rules/i, 'movies'], [/holiday app style/i, 'screen'], [/card price/i, 'battles'], [/preview window|pretend i'm live/i, 'tools'], [/discord battle tests|practice battle|number battle|ball power-up/i, 'battles'], [/movie winner|would discord allow/i, 'movies'], [/pretend to be a chatter|channel points \/ bits/i, 'chat'], [/discord self-test|debug channel/i, 'discord'], [/connections/i, 'connect'], [/^🔊 sounds/i, 'screen'], [/capture window/i, 'screen'], [/mystery spot/i, 'wheel'], [/!mymovies and \/mymovies/i, 'movies'], [/wild spot luck/i, 'movies'], [/^⬇️ export my bans$/i, 'movies'], [/^🔞 nudity heads-up$/i, 'movies'], [/^↺ reset wheel$/i, 'wheel'], [/^⏭️ pass, sit out and skip a battle$/i, 'movies'], [/^🔍 settings search$/i, 'tools'], [/^📏 map size$/i, 'battles'], [/series in order/i, 'movies'], [/battle timer &amp; ⏳ pacer|battle timer & ⏳ pacer/i, 'battles'], [/obs switches/i, 'screen'], [/battle list, /i, 'battles'], [/card battle tests/i, 'battles'], [/^⏳ no long waits$/i, 'battles'], [/^🏴‍☠️ pirate battle$/i, 'battles'], [/co-stream/i, 'chat'], [/^⏪ undo all the way back$/i, 'wheel'], [/^🍀 luck in your own battles$/i, 'battles'], [/^🧹 inactive people's movies$/i, 'movies'], [/^🔄 pick up where you left off$/i, 'other'], [/^🧾 complete history$/i, 'other']];
   const cards = [...box.children].filter(c => c.classList.contains('card') && !c.classList.contains('ttabs') && c.id !== 'tCheck' && c.id !== 'tErr');
   const groups = {};
   for (const c of cards) {
@@ -2657,6 +2672,7 @@ function connect() {
     if (m.type === 'spInfo') { if (dashPl.remote) dashYtInfo(m.info); }
     if (m.type === 'bdayPop') bdPop(m);
     if (m.type === 'obsMeters') dashMeters(m);
+    if (m.type === 'screenFx') { fxMsg(m.fx, m.queue); return; }
     if (m.type === 'adAlert') { try { if (window.SFX && S?.settings?.soundOn !== false) { SFX.init(); SFX.setVolume({ on: true, sfx: Number(S.settings.sfxVolume ?? 70) / 100, music: 0 }); SFX.play('ding'); } } catch {} } // 📺 so you hear it too
     if (m.type === 'wheelSpin') wheelSpinMsg(m);
     if (m.type === 'updProgress') updBar(m);
@@ -2672,7 +2688,7 @@ function connect() {
     if (m.type === 'wheelReveal') ctlReveal(m);
     if (m.type === 'cliff' && S) { S.cliff = m.cliff; if (view === 'battle') renderBattleList(); } // 📋 who's really in the battle changed
     if (m.type === 'state') {
-      const was = S?.phase; S = m.state; if (S?.edition?.lookAs && S.settings) S.settings.betaUpdates = false; /* 👀 looking like another edition: its people have no dev mode */ render();
+      const was = S?.phase; S = m.state; { const fn = S.screenFx?.now || null; if ((fn && (!FXC || FXC.id !== fn.id)) || (!fn && FXC && Date.now() - FXC.at > 3000)) fxMsg(fn); } if (S?.edition?.lookAs && S.settings) S.settings.betaUpdates = false; /* 👀 looking like another edition: its people have no dev mode */ render();
     }
   };
   sock.onclose = () => { applyStyle.sent = undefined; setTimeout(connect, 1500); }; // (Movie Royal restarted: tell it the app style again)
@@ -2785,7 +2801,7 @@ function setView(v) {
   if (v === 'tchat') dashLoad(); else dashLeave();
   placeStage(); renderView(); requestAnimationFrame(placeStage); if (typeof drawBoosts === 'function') { drawBoosts(); drawRound(); }
 }
-function setSub(s) { if (s === 'twitch') setTimeout(() => sbLoad(true), 0); if (s === 'links') setTimeout(linksDraw, 0); if (s === 'mnight') setTimeout(mnSetDraw, 0); if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); } if (s === 'account') { fillAppBox(); setTimeout(repDraw, 0); } if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'errors') { const c = $('tErr'), slot = $('errSlot'); if (c && slot && c.parentElement !== slot) slot.appendChild(c); errSeen(); drawErrors(); } if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
+function setSub(s) { if (s === 'twitch') setTimeout(() => sbLoad(true), 0); if (s === 'links') setTimeout(linksDraw, 0); if (s === 'mnight') setTimeout(mnSetDraw, 0); if (s === 'app') setTimeout(deckDraw, 0); if (s === 'obs') setTimeout(vidDraw, 0); if (s === 'obs') setTimeout(() => fxDraw(true), 0); if (s === 'costream') setTimeout(() => coDraw(true), 0); if (s === 'site') setTimeout(() => siteDraw(true), 0); if (s === 'prices') setTimeout(() => paidSetDraw(true), 0); if (s === 'keys') setTimeout(drawKeybinds, 0); if (s === 'prices') setTimeout(() => { drawPrices(); loadRewards(); }, 0); sub = s; document.querySelectorAll('#subnav button[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === s)); document.querySelectorAll('.sub').forEach(d => d.classList.toggle('on', d.dataset.s === s)); if (s === 'twitch') { loadRewards(); } if (s === 'account') { fillAppBox(); setTimeout(repDraw, 0); } if (s === 'names') loadRenames(); if (s === 'notes') loadNotes(); if (s === 'errors') { const c = $('tErr'), slot = $('errSlot'); if (c && slot && c.parentElement !== slot) slot.appendChild(c); errSeen(); drawErrors(); } if (s === 'bans') { const vb = $('v-bans'), slot = $('bansSlot'); if (vb && slot && vb.parentElement !== slot) slot.appendChild(vb); vb.classList.add('on', 'inset'); loadBans(); } if (s === 'sounds') { const vs = $('v-sounds'), slot = $('soundsSlot'); if (vs && slot && vs.parentElement !== slot) slot.appendChild(vs); vs.classList.add('on', 'inset'); loadSounds(); } }
 
 // ---------- the game screen (one iframe, moved with CSS so it never reloads) ----------
 let popWin = null;
@@ -3800,6 +3816,59 @@ $('game').addEventListener('load', () => { if (GC.quiet) setTimeout(() => gcQuie
 document.addEventListener('mousemove', () => { const st = $('gcStage'); if (!st || document.fullscreenElement !== st) return; st.classList.remove('gcHideCur'); clearTimeout(GC.hideT); GC.hideT = setTimeout(() => st.classList.add('gcHideCur'), 2500); });
 document.addEventListener('fullscreenchange', () => { const st = $('gcStage'); if (st && document.fullscreenElement !== st) st.classList.remove('gcHideCur'); });
 navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (view === 'capture') gcDevices(false); });
+/* 🌀 Screen effects (1.155.0): the effect on YOUR view = the Game capture tab's picture (same maths as the OBS side: screenfx.js) */
+let FXC = null, FXI = null, fxRaf = 0;
+function fxMsg(fx, queue) {
+  if (S) S.screenFx = { ...(S.screenFx || {}), now: fx };
+  if (fx && (!FXC || FXC.id !== fx.id)) { FXC = fx; if (!fxRaf) fxRaf = requestAnimationFrame(fxLoop); if (view !== 'capture' || !GC.stream) toast(`${fx.icon} <b>${esc(fx.name)}</b>${fx.by && fx.via !== 'you' ? ' from ' + esc(fx.by) : ''} for ${fx.secs} s${fx.test ? ' (test)' : ''}. It shows on the 🎮 Game capture tab. <button onclick="fxStop()">🛑 Stop</button>`, 6000); }
+  if (!fx) { FXC = null; fxClear(); }
+  if (FXI && $('fxBody') && view === 'settings') fxDraw(); fxTestNow();
+}
+function fxClear() { const v = $('gcVideo'), t = $('gcFxTag'); if (v) { v.style.transform = ''; v.style.filter = ''; } if (t) t.style.display = 'none'; }
+function fxLoop() {
+  fxRaf = 0; const fx = FXC; if (!fx) return fxClear();
+  const t = (Date.now() - fx.at) / 1000, v = $('gcVideo'), tag = $('gcFxTag');
+  if (t >= fx.secs + 0.5) { FXC = null; return fxClear(); } // (the server says when it's over; this is only in case that message got lost)
+  if (v) { const c = SCREENFX.css(SCREENFX.frame(fx.kind, Math.min(t, fx.secs), fx.secs)); v.style.transform = c.transform; v.style.filter = c.filter; }
+  if (tag) { const left = Math.max(0, Math.ceil(fx.secs - t)); tag.style.display = 'block'; tag.textContent = `${fx.icon} ${fx.name}${fx.by && fx.via !== 'you' ? ' · ' + fx.by : ''} · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; }
+  fxRaf = requestAnimationFrame(fxLoop);
+}
+async function fxStop(all) { try { const r = await api('/api/screenfx/stop', { all: !!all }); toast(r.had ? '🛑 Screen effect stopped' + (all ? ' and the line emptied' : r.queue ? ` (${r.queue} more waiting)` : '') : all ? 'Nothing was playing. The line is empty.' : 'No screen effect is playing.'); } catch {} }
+async function fxDraw(withObs) {
+  const box = $('fxBody'); if (!box || !featOn('screenfx')) return;
+  if (box.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName) && !withObs) return;
+  let I; try { I = await fetch('/api/screenfx' + (withObs || !FXI?.sources ? '?obs=1' : '')).then(r => r.json()); } catch { box.innerHTML = '⚠️ Couldn\'t load.'; return; }
+  if (!I.sources && FXI?.sources) { I.sources = FXI.sources; I.obsErr = FXI.obsErr; } FXI = I;
+  const c = I.cfg, ck = (k, label, tip, extra = '') => `<label style="display:inline-flex;gap:6px;align-items:center;margin-right:14px" title="${tip}"><input type="checkbox" ${c[k] ? 'checked' : ''} onchange="fxSet({${k}:this.checked})" ${extra}> ${label}</label>`;
+  const n = I.state.now, srcs = I.sources?.sources || [], guess = I.sources?.guess || '';
+  box.innerHTML = `<p style="margin:0 0 8px">Viewers can mess with your game picture for a while: black and white, drunk view, upside down and more. It changes <b>what you see</b> on the 🎮 Game capture tab, and the game source in OBS so the stream sees it too. One plays at a time; more wait in a line. <b>Ctrl+Alt+X</b> stops the one playing.</p>
+    <div style="margin:6px 0">${ck('on', '<b>Screen effects on</b>', 'Screen effects: the main switch. Off = nothing can start them (rewards are hidden on Twitch)')}${n ? `<span class="pill">${n.icon} ${esc(n.name)} playing · ${n.left} s left${I.state.queue.length ? ' · ' + I.state.queue.length + ' waiting' : ''}</span> <button onclick="fxStop()" title="Screen effects: stop the effect that is playing (the next one in the line starts)">🛑 Stop</button> <button class="ghost" onclick="fxStop(true)" title="Screen effects: stop it and empty the line">🛑 Stop all</button>` : ''}</div>
+    <div style="margin:8px 0"><b>How viewers start one</b> (pick any):<br>
+      <span class="ptsOnly">${ck('points', '💎 Channel points', 'Screen effects: each effect is its own channel point reward (made by the app, shown on Twitch only while screen effects are on)')}</span>${ck('bits', '💜 Bits', 'Screen effects: a cheer starts an effect: the dearest one the bits cover, or the one named in the cheer message')}${ck('tips', '💵 Tips (donations)', 'Screen effects: a tip starts an effect: the dearest one the amount covers, or the one named in the tip message')}
+      <div class="muted" style="margin-top:2px">With bits and tips: the viewer gets the dearest effect their amount covers. If their message names one (for example “drunk”) and they sent enough for it, they get that one. A price of 0 = can't be bought that way.</div>
+      ${c.points && I.points ? `<div style="margin-top:4px">${I.rewardsMade ? '✅ The channel point rewards are on Twitch.' : I.twitch ? '⚠️ The rewards aren\'t on Twitch yet.' : 'Sign in with Twitch to make the rewards.'} <button class="ghost" onclick="fxRewards()" title="Screen effects: make (or re-make missing) channel point rewards on Twitch, one per effect, at the prices below">${I.rewardsMade ? '🔁 Check / re-make them' : '💎 Make the rewards'}</button></div>` : ''}</div>
+    <div style="margin:8px 0">${ck('stream', '📺 Show it on stream too (OBS)', 'Screen effects: also change the game source in OBS, so viewers see the effect. Off = only your own view changes')}${ck('say', '💬 Say it in chat', 'Screen effects: the bot says who started which effect')}
+      ${c.stream ? `<div style="margin-top:4px">Your game in OBS: <select style="width:auto;max-width:340px;display:inline-block" onchange="fxSet({source:this.value})" title="Screen effects: which OBS source is your game (the effect goes on this one). Automatic = the app picks the game / capture card source in the scene on air"><option value="">Automatic${guess ? ' (now: ' + esc(guess) + ')' : ''}</option>${[...new Set([...(c.source ? [c.source] : []), ...srcs.map(s => s.name)])].map(s => `<option ${s === c.source ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select> <button class="ghost" onclick="fxDraw(true)" title="Screen effects: ask OBS for its sources again">🔄</button>${!I.obsOn ? ' <span class="muted">OBS is switched off in the app.</span>' : I.obsErr ? ` <span class="muted">⚠️ ${esc(I.obsErr)}</span>` : !srcs.length && I.sources ? ' <span class="muted">No game / capture source found in OBS.</span>' : ''}${I.state.last?.obsErr ? `<br><span style="color:var(--bad)">⚠️ Last time on stream: ${esc(I.state.last.obsErr)}</span>` : ''}</div>` : ''}</div>
+    <table class="tbl" style="width:100%"><thead><tr><th>On</th><th>Effect</th><th>Seconds</th><th class="ptsOnly">💎 Points</th><th>💜 Bits</th><th>💵 Tip $</th><th></th></tr></thead><tbody>${I.list.map(F => { const x = c.fx[F.k], num = (key, min, tip) => `<input type="number" min="${min}" value="${x[key]}" onchange="fxSet({fx:{${F.k}:{${key}:this.value}}})" title="${tip}">`;
+      return `<tr class="fxRow"><td><input type="checkbox" ${x.on ? 'checked' : ''} onchange="fxSet({fx:{${F.k}:{on:this.checked}}})" title="Screen effects: can viewers use ${esc(F.name)}"></td><td><b>${F.icon} ${esc(F.name)}</b><br><small class="muted">${esc(F.what)}</small></td><td>${num('secs', 5, 'Screen effects: how many seconds ' + esc(F.name) + ' lasts')}</td><td class="ptsOnly">${num('pts', 1, 'Screen effects: its channel point price (also changed on Twitch)')}</td><td>${num('bits', 0, 'Screen effects: bits needed for it (0 = can\'t be bought with bits)')}</td><td>${num('tip', 0, 'Screen effects: tip needed for it, in dollars (0 = can\'t be bought with a tip)')}</td><td style="white-space:nowrap"><button class="ghost" onclick="fxGo('${F.k}')" title="Screen effects: start ${esc(F.name)} now yourself (on your view, and on stream if that is ticked)">▶</button></td></tr>`; }).join('')}</tbody></table>
+    <div class="devOnly" style="margin-top:10px">${I.maraList ? `${ck('mara', '🏃 Put the effects in the marathon battle', 'Screen effects: adds every switched-on effect to the marathon battle as a thing that can win. When one wins, it plays. Off = they are taken out again (hidden, not deleted)')}<span class="muted">${c.mara ? `${I.maraN} in the battle now. When one wins, it plays for its seconds.` : 'Off: the effects are not in the marathon battle.'}</span>` : '<span class="muted">🏃 No marathon battle yet, so the effects can\'t be added to it.</span>'}</div>`;
+  if (typeof edApply === 'function') try { edApply(); } catch {}
+}
+async function fxSet(o) { try { FXI = { ...(await api('/api/screenfx', o)), sources: FXI?.sources, obsErr: FXI?.obsErr }; if (o.on != null || o.points != null || o.bits != null || o.tips != null || o.stream != null || o.mara != null || o.say != null) fxDraw(); if (o.mara != null) toast(o.mara ? '🏃 The effects are in the marathon battle now' : '🏃 The effects were taken out of the marathon battle'); } catch { fxDraw(true); } }
+async function fxRewards() { try { const r = await api('/api/screenfx/rewards', {}); toast(r.skipped ? 'This edition has no channel points.' : r.made.length ? `💎 Made ${r.made.length} reward${r.made.length === 1 ? '' : 's'} on Twitch` : '✅ They were all on Twitch already'); fxDraw(); } catch {} }
+async function fxGo(kind) { try { const r = await api('/api/screenfx/start', { kind }); toast(r.waiting ? `${esc(r.name)} is in the line (${r.ahead} waiting)` : `▶ ${esc(r.name)} for ${r.secs} s`); } catch {} }
+function fxTestNow() { const sel = $('fxTKind'); if (sel && !sel.options.length && window.SCREENFX) sel.innerHTML = Object.entries(SCREENFX.FX).map(([k, F]) => `<option value="${k}">${F.icon} ${F.name}</option>`).join(''); }
+async function fxTry(real) {
+  fxTestNow(); const kind = $('fxTKind').value || 'bw', secs = Number($('fxTSecs').value) || 12;
+  if (!GC.stream) { setView('capture'); await gcStart(60); await new Promise(r => setTimeout(r, 700)); } else setView('capture');
+  try { const r = await api('/api/test/screenfx', { kind, secs, dry: !real }); $('fxTOut').innerHTML = `▶ ${esc(r.name)} for ${r.secs} s on your view${real ? ' and on stream (if OBS is open and it found your game)' : ' only (OBS untouched)'}.${r.waiting ? ' It is waiting behind another one.' : ''}`; } catch {}
+}
+async function fxPretend(via) {
+  fxTestNow(); const kind = $('fxTKind').value || 'bw'; let amount = 0, text = '';
+  if (via !== 'points') { amount = Number(await ask(via === 'bits' ? 'How many bits does the pretend viewer cheer?' : 'How many dollars does the pretend viewer tip?', via === 'bits' ? '400' : '5')); if (!(amount > 0)) return; text = (await ask('Their message (name an effect to ask for that one, or leave it empty):', '')) || ''; }
+  try { const r = await api('/api/test/screenfx', { via, kind, amount, text }); $('fxTOut').innerHTML = `${via === 'points' ? '💎 The redeem' : via === 'bits' ? `💜 ${amount} bits` : `💵 $${amount}`} started <b>${esc(r.name)}</b> for ${r.secs} s${r.waiting ? ' (waiting in the line)' : ''}. It also runs on stream if OBS is open. Open the 🎮 Game capture tab to see it on your view.`; } catch (e) { $('fxTOut').innerHTML = '⚠️ ' + esc(e.message || 'That bought nothing.'); }
+}
+async function fxRules() { try { const r = await api('/api/test/screenfx-rules', null, 'GET'); $('fxTOut').innerHTML = `${r.ok ? '✅ All the rules check out' : '❌ Something is off'}<table class="tbl" style="width:100%;margin-top:4px"><tbody>${r.rows.map(x => `<tr><td>${x.ok ? '✅' : '❌'}</td><td>${esc(x.label)}</td><td class="muted">${esc(String(x.got))}</td></tr>`).join('')}</tbody></table>`; } catch {} }
 function gcTest(fps) { setView('capture'); setTimeout(() => gcStart(fps), 300); }
 function gcQuietTest() { let q = null; try { q = $('game').contentWindow.__audioQuiet?.(); } catch {} const el = $('tGcOut'); if (el) el.innerHTML = `<p class="help" style="margin:8px 0 0">Battle sound inside Movie Royal right now: <b>${q === null || q === undefined ? 'the battle screen is not open yet (it opens with the ⚔️ Battle tab)' : q ? '🔇 quiet' : '🔊 on'}</b>. Open the 🎮 Game capture tab and it goes quiet; any other tab and it is back on.</p>`; }
 // ---------- 🟢 Kick (1.90.0, dev only): one switch between Twitch and Kick ----------
@@ -7866,6 +7935,7 @@ function openSettings(force) {
       <h3 style="margin-top:18px">🔌 What Movie Royal may do in OBS</h3>
       ${cki('obsOn', '🎥 Let Movie Royal use OBS (off = it never touches OBS, and takes out what it added)', true, "$('obsParts').style.opacity=this.checked?'':'.45'")}
       <div id="obsParts" style="${s.obsOn === false ? 'opacity:.45' : ''}">
+      <div class="card soft obsBox edOff" id="fxBox" data-feat="screenfx"><h4>🌀 Screen effects: chat messes with your game</h4><div id="fxBody" class="help">Loading…</div></div>
       <div class="card soft obsBox" id="obsKeepBox"><h4>🔄 Keep OBS up to date</h4><div id="obsKeepBody" class="help">Loading…</div></div>
       <div class="card soft obsBox" id="vidBox"><h4>🎬 My videos</h4><div id="vidBody" class="help">Loading…</div></div>
       <div class="card soft obsBox"><h4>☠️ Doomsday</h4>
@@ -7966,6 +8036,7 @@ function openSettings(force) {
   edTrim();
   if (sub === 'app') setTimeout(deckDraw, 0); // 🎛️
   if (sub === 'obs') setTimeout(vidDraw, 0); // 🔄 🎬
+  if (sub === 'obs') setTimeout(() => fxDraw(true), 0); // 🌀
   $('settingsBody').oninput = $('settingsBody').onchange = e => { if (e.target.matches('[data-k], .rt, .re')) dirty(); };
   settingsDirty = false; $('saveHint').textContent = 'Change anything, then press Save.';
   const lbd = $('lbdrop');
@@ -8017,7 +8088,7 @@ const MODE_OPTS = [['rules', '📏 Follow the rules'], ['on', '✅ Always on'], 
 async function drawPrices() {
   const box = $('pricesBody'); if (!box) return;
   let P; try { P = await fetch('/api/prices').then(r => r.json()); } catch { box.innerHTML = '<p class="help">⚠️ Couldn\'t load them.</p>'; return; }
-  const groups = [['battle', '⚔️ Battle tab'], ['chat', '🎲 Chat battle tab'], ['wheel', '🎡 Wheel tab'], ['raid', '🚀 Raid'], ['viewer', '🎁 Viewer rewards (always on)']];
+  const groups = [['battle', '⚔️ Battle tab'], ['chat', '🎲 Chat battle tab'], ['wheel', '🎡 Wheel tab'], ['raid', '🚀 Raid'], ['viewer', '🎁 Viewer rewards (always on)'], ['screen', '🌀 Screen effects (only while they are switched on)']];
   const rwRow = r => `<tr><td>${esc(r.what)}<br><small class="muted">${esc(r.title)}${r.onTwitch ? (r.mine ? '' : ' · made by hand on Twitch') : ' · not on Twitch yet'}${r.enabled === false ? ' · hidden right now' : r.enabled ? ' · showing on Twitch now' : ''}</small></td>
       <td><input type="number" min="1" style="width:100px" value="${r.cost ?? ''}" placeholder="price" onchange="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {cost:this.value})"></td>
       <td><select onchange="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {mode:this.value})">${MODE_OPTS.map(([v, n]) => `<option value="${v}" ${r.mode === v ? 'selected' : ''}>${n}</option>`).join('')}</select>${r.mode === 'count' ? `<div class="row" style="gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap"><input type="number" min="1" max="999" style="width:70px" value="${r.count}" title="How many times it can be used each stream" onchange="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {count:this.value})"> <span class="muted">per stream · <b>${Math.max(0, r.left)} left</b></span><button class="ghost" style="padding:2px 8px" title="Start this stream's countdown over" onclick="priceSet(${esc(JSON.stringify({ title: r.title, key: r.key }))}, {resetCount:true})">↺</button></div>` : ''}</td></tr>`;

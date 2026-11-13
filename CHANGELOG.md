@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.155.0
+- 🌀 **Screen effects: chat can mess with your game.** Viewers turn your game picture black and white, drunk (it sways and blurs), upside down, mirrored, tiny, zoomed way in, dark, rainbow, deep fried, shaking or slowly spinning, for a set number of seconds.
+- It changes **what you see** on the 🎮 Game capture tab, and the game source in OBS so the stream sees it too. When it ends everything goes back exactly as it was (also if the app closes in the middle).
+- Three ways for viewers to start one, each with its own switch: 💎 channel points (one reward per effect), 💜 bits, 💵 tips. With bits and tips they get the dearest effect their amount covers, or the one they name in their message if they sent enough for it.
+- Every effect has its own on / off, seconds and prices. One plays at a time; the rest wait in a line. **Ctrl+Alt+X** (or 🛑 Stop) stops the one playing.
+- 🏃 A switch puts the effects in the marathon battle as things that can win (when one wins, it plays). It is off for now.
+- Where: Settings → 🎥 OBS → 🌀 Screen effects. It is off until you switch it on, and only in your edition with Dev mode on for now.
+- 🧪 Test: Test tab → 🌀 Screen effects: try any effect on a pretend game, pretend a redeem / bits / a tip, and check the rules.
+
 ## 1.154.0
 - 🎄 **Christmas songs, month by month** (Birx & Jess's edition). History has a new tab next to 🎵 Music: how many Christmas songs chat requested each month, which songs, and who asked, plus the most requested ones and who asks the most.
 - A song counts when its name has a Christmas word in it (Christmas, Xmas, Santa, Jingle, Let It Snow…). ✕ takes a wrong one out, and "A Christmas song is missing?" at the bottom lets you mark one yourself.
