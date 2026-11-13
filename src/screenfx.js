@@ -44,7 +44,7 @@ function next() {
   const it = q.shift(), c = cfg(), F = FX[it.kind];
   cur = { ...it, at: Date.now(), stream: null };
   H.send({ type: 'screenFx', fx: now(), queue: q.length });
-  if (!it.test) { if (c.say && it.via !== 'you') H.say(`${F.icon} ${it.by ? '@' + it.by : 'Someone'} hit the screen with ${F.name.toUpperCase()} for ${it.secs} seconds!`); H.act(`${F.name} on the screen for ${it.secs} s${it.via === 'mara' ? ' (it won the battle)' : it.via === 'you' ? ' (started by hand)' : ''}`, { icon: F.icon, who: it.via === 'you' || it.via === 'mara' ? undefined : it.by, kind: 'screenfx' }); }
+  if (!it.test) { if (c.say && it.via !== 'you') H.say(`${F.icon} ${it.by ? '@' + it.by : 'Someone'} hit the screen with ${F.name.toUpperCase()} for ${it.secs >= 120 && it.secs % 60 === 0 ? it.secs / 60 + ' minutes' : it.secs + ' seconds'}!`); H.act(`${F.name} on the screen for ${it.secs} s${it.via === 'mara' ? ' (it won the battle)' : it.via === 'you' ? ' (started by hand)' : ''}`, { icon: F.icon, who: it.via === 'you' || it.via === 'mara' ? undefined : it.by, kind: 'screenfx' }); }
   const mine = cur;
   if (c.stream && !it.dry && H.play && H.obsOk()) {
     mine.stream = 'on';

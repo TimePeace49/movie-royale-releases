@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.1
+- 📺 The **Old TV** screen effect now lasts **5 minutes** (it was 1 minute). You can still change it in Settings → 🎥 OBS → 🌀 Screen effects. The chat line says "5 minutes" instead of "300 seconds".
+- 🧪 Test: Test tab → 🌀 Screen effects → 🧪 Check the rules.
+
 ## 1.156.0
 - 📺 **New screen effect: Old TV.** Your game looks like a fuzzy old TV: faded almost to black and white, flickering, with scan lines, static, dark corners, a soft bar drifting down, and the picture "rolls" every few seconds like a set losing its hold.
 - On stream (OBS) viewers get the faded, flickering, rolling picture. The lines and static only show on your own view, because OBS has no built-in filter for them.

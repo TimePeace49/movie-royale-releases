@@ -14,7 +14,7 @@
     fried: { icon: '🍟', name: 'Deep fried', secs: 45, pts: 2000, bits: 200, tip: 3, what: 'colours and contrast turned way up' },
     shake: { icon: '🫨', name: 'Earthquake', secs: 20, pts: 3500, bits: 350, tip: 4, what: 'the game shakes' },
     spin: { icon: '🌀', name: 'Slow spin', secs: 30, pts: 7000, bits: 700, tip: 8, what: 'the game slowly turns all the way round, again and again' },
-    tv: { icon: '📺', name: 'Old TV', secs: 60, pts: 2500, bits: 250, tip: 3, what: 'a fuzzy old TV: faded, flickering, with lines, static and a picture that rolls now and then' }
+    tv: { icon: '📺', name: 'Old TV', secs: 300, pts: 2500, bits: 250, tip: 3, what: 'a fuzzy old TV: faded, flickering, with lines, static and a picture that rolls now and then' }
   };
   const MOVES = { drunk: 1, flip: 1, mirror: 1, tiny: 1, zoom: 1, shake: 1, spin: 1, tv: 1 }; // these move / turn the picture (the others only change its colours)
   const ease = x => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));

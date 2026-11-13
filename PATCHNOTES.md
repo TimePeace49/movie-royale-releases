@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.156.1: What's new
+- {screenfx} 📺 The Old TV screen effect now lasts 5 minutes.
+
 ## v1.156.0: What's new
 - {screenfx} 📺 **New screen effect: Old TV.** A fuzzy old TV look: faded, flickering, scan lines, static and a picture that rolls now and then. Press 🔁 Check / re-make them in Settings → OBS → Screen effects to add its channel point reward.
 
