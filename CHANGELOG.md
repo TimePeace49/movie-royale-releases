@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.3
+- 🎲 **Screen effects are random now.** Viewers don't pick one: every redeem, cheer or tip gets a random effect (never the same one twice in a row). Untick an effect in Settings → 🎥 OBS → 🌀 Screen effects to keep it out of the mix.
+- 💎 There is **one** channel point reward now, "Screen: 🎲 Random effect", with one price (3,000 points to start). The app makes it on its own once you're signed in; the old one-per-effect rewards are switched off on Twitch (they aren't deleted, so you can delete them yourself on Twitch if you like).
+- 💜💵 Bits and tips have one price each too (300 bits / $3 to start). Sending 3 × the price gets 3 effects, one after another (up to 10).
+- ⏭️ **They line up and play right after each other**, with no pause in between. When someone redeems while one is playing, the bot says theirs is in line.
+- ⏱️ Every effect lasts **2 minutes** by default (lengths you had saved are moved to 2 minutes once; change them any time).
+- 🧪 Test: Test tab → 🌀 Screen effects → 🧪 Check the rules (random picks, prices, 2 minutes), 💎 Pretend redeem two or three times in a row (they line up), 💜 Pretend bits with 900.
+
 ## 1.156.2
 - 🌀 **Every screen effect now lasts 5 minutes** (they were 20 to 60 seconds). Lengths you had set before are moved to 5 minutes once; after that, whatever you set in Settings → 🎥 OBS → 🌀 Screen effects stays.
 - 🧪 Test: Test tab → 🌀 Screen effects → 🧪 Check the rules, or ▶ Try it on my view (the test uses the seconds you type there).

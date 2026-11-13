@@ -578,7 +578,7 @@ function rewardWants() {
   for (const [title, kind] of Object.entries(st.powerRewards || {})) want[title.toLowerCase()] = !powersOn || !!l?.fun?.powersOff?.[kind]; // (each power-up can be switched off on the Chat battle tab)
   const raceOn = on && !wheelUp && racePowersOn(l); // 🏁 race power-ups: a chat battle on a race map with them ticked
   for (const [title, kind] of Object.entries(st.raceRewards || {})) want[title.toLowerCase()] = !raceOn || (kind === 'nuke' && !!(live.game?.nuked && live.game.listId === l?.id && (live.phase === 'lobby' || live.phase === 'running')));
-  { const fc = screenfx.cfg(), fxNow = inUse && screenfx.on() && fc.points; for (const [title, k] of Object.entries(screenfx.rewards())) want[title.toLowerCase()] = !(fxNow && fc.fx[k].on); } // 🌀 screen effects: only while they're switched on (and that effect is)
+  { const fc = screenfx.cfg(), fxNow = inUse && screenfx.on() && fc.points; for (const title of Object.keys(screenfx.oldRewards())) want[title.toLowerCase()] = true; for (const title of Object.keys(screenfx.rewards())) want[title.toLowerCase()] = !(fxNow && screenfx.onKinds(fc).length); } // 🌀 screen effects: only while they're switched on (and that effect is)
   const stormNow = on && !wheelUp && stormOn(); // ⛈️ storm powers: only while a Pirate Battle is playing
   for (const title of Object.keys(st.stormRewards || {})) want[title.toLowerCase()] = !stormNow;
   for (const [title, who] of Object.entries(st.monkeyRewards || {})) want[title.toLowerCase()] = !(stormNow && MONKEY_INFO[who] && cards.monkeyIn(MONKEY_INFO[who].i)); // 🐒 (only while that monkey is still in the rowboat)
@@ -1176,7 +1176,7 @@ const twitchHandlers = {
     if (feat('eggs') && r.title.toLowerCase() === eggs.opts().buyTitle.toLowerCase()) return void eggs.buy({ login: r.login, name: r.name }, { test: !!r.test }); // 🥚 buy an egg
     if (wheel.wheelRedeem(r)) return; // 🎡 wheel respin / move up / move down
     if (db.settings.colorReward && r.title.toLowerCase() === db.settings.colorReward.toLowerCase()) { if (db.settings.colorMode === 'points') setColor(r.login, r.input); return; }
-    { const fk = screenfx.kindOfTitle(r.title); if (fk) return void screenfx.redeem(r, fk); } // 🌀 a screen effect
+    { const fk = screenfx.kindOfTitle(r.title); if (fk) return void screenfx.redeem(r); } // 🌀 a screen effect
     if (db.settings.pointsOn === false) return; // channel point chaos switched off
     const pw = Object.entries(db.settings.powerRewards || {}).find(([t]) => t.toLowerCase() === r.title.toLowerCase());
     if (pw) return powerUp(r, pw[1]); // 🎉 chat battle power-up for their own ball
@@ -2199,7 +2199,7 @@ async function pricesInfo() {
   if (st.colorReward) rewards.push(R('battle', 'color', st.colorReward, '🎨 Pick your ball color' + (st.colorMode === 'points' ? '' : ' (only used when ball colors are set to channel points)'), null));
   for (const [title, kind] of Object.entries(st.powerRewards || {})) rewards.push(R('chat', 'power:' + kind, title, ({ shield: '🛡️ Shield', mega: '💪 Mega ball', turbo: '⚡ Turbo', ghost: '👻 Ghost ball', spiky: '🦔 Spiky ball', magnet: '🧲 Magnet ball' })[kind] || kind, st.powerCosts?.[kind]));
   for (const [title, kind] of Object.entries(st.raceRewards || {})) rewards.push(R('chat', 'race:' + kind, title, ({ boost: '💨 Race: boost', shield: '🛡️ Race: shield', oil: '🛢️ Race: drop oil', rocket: '🚀 Race: rocket straight ahead', nuke: '☢️ Race: NUKE (wipes out everyone else)' })[kind] || kind, st.raceCosts?.[kind]));
-  if (feat('screenfx')) for (const [title, kind] of Object.entries(screenfx.rewards())) rewards.push(R('screen', 'fx:' + kind, title, `${screenfx.FX[kind].icon} Screen effect: ${screenfx.FX[kind].what}`, screenfx.cfg().fx[kind].pts)); // 🌀
+  if (feat('screenfx')) for (const title of Object.keys(screenfx.rewards())) rewards.push(R('screen', 'fx:random', title, '🎲 Screen effect: a random one (they line up and play one after another)', screenfx.cfg().pts)); // 🌀
   for (const [title, kind] of Object.entries(st.stormRewards || {})) rewards.push(R('battle', 'storm:' + kind, title, STORM_INFO[kind]?.what || kind, st.stormCosts?.[kind]));
   for (const [title, who] of Object.entries(st.monkeyRewards || {})) rewards.push(R('battle', 'monkey:' + who, title, MONKEY_INFO[who]?.what || who, st.monkeyCosts?.[who]));
   const WN = { respin: '🔁 Respin', move: '↕️ Move a spot', up: '⬆️ Move up', down: '⬇️ Move down', grow: '📈 Grow a spot', shrink: '📉 Shrink a spot', double: '✌️ Double trouble', stop: '🛑 Force stop' };
@@ -2225,7 +2225,7 @@ app.post('/api/prices/reward', async (req, res) => {
       else if (key.startsWith('power:')) { (db.settings.powerCosts ||= {})[key.slice(6)] = cost; }
       else if (key.startsWith('race:')) { (db.settings.raceCosts ||= {})[key.slice(5)] = cost; }
       else if (key.startsWith('storm:')) { (db.settings.stormCosts ||= {})[key.slice(6)] = cost; }
-      else if (key.startsWith('fx:')) screenfx.setCfg({ fx: { [key.slice(3)]: { pts: cost } } });
+      else if (key.startsWith('fx:')) screenfx.setCfg({ pts: cost });
       else if (key.startsWith('monkey:')) { (db.settings.monkeyCosts ||= {})[key.slice(7)] = cost; }
       else if (key === 'raid') db.settings.raidCost = cost;
       else if (key.startsWith('vr:')) (db.settings.vrCosts ||= {})[key.slice(3)] = cost;
@@ -3918,14 +3918,14 @@ screenfx.setHooks({
 async function fxSetup() { // make the channel point rewards (switched off on Twitch until screen effects are on and usable)
   if (!pointsOn()) return { made: [], skipped: true };
   const c = screenfx.cfg(), made = [];
-  for (const [title, k] of Object.entries(screenfx.rewards())) if (await twitch.createReward({ title, cost: c.fx[k].pts, prompt: `Messes with the streamer's game for ${c.fx[k].secs} seconds: ${screenfx.FX[k].what}.`, color: '#B04CFF', queue: true })) made.push(title);
-  db.fxSetup = { at: Date.now(), made }; save(); rewardKey = ''; await syncRewards(); return { made };
+  for (const title of Object.keys(screenfx.rewards())) if (await twitch.createReward({ title, cost: c.pts, prompt: 'Messes with the streamer\'s game with a RANDOM screen effect (black & white, drunk view, upside down, old TV…). If one is already playing, yours goes next.', color: '#B04CFF', queue: true })) made.push(title);
+  db.fxSetup = { at: Date.now(), made, v2: true }; save(); rewardKey = ''; await syncRewards(); return { made };
 }
 function fxMaraSync() { // 🏃 the effects as things in the marathon battle (only while that switch is on): added once, hidden again when it's off
   const l = getList(paid.rawCfg().listId); if (!l) return { n: 0, noList: true };
   const c = screenfx.cfg(), want = c.mara && feat('screenfx') && paid.dev(); let n = 0;
   for (const [k, F] of Object.entries(screenfx.FX)) {
-    let e = l.entries.find(x => x.fx === k); const use = want && c.fx[k].on, label = `${F.icon} ${F.name} (${c.fx[k].secs} s)`;
+    let e = l.entries.find(x => x.fx === k); const use = want && c.fx[k].on, label = `${F.icon} ${F.name} (${c.fx[k].secs % 60 === 0 ? c.fx[k].secs / 60 + ' min' : c.fx[k].secs + ' s'})`;
     if (use && !e) { e = addEntry(l, { label, weight: 1, sub: 'Screen effect: ' + F.what }); e.fx = k; e.picTried = Date.now() + 3650 * 86400000; }
     if (!e) continue;
     if (use) { if (e.status !== 'active') e.status = 'active'; e.label = label; n++; } else if (e.status === 'active') e.status = 'removed';
@@ -3934,10 +3934,10 @@ function fxMaraSync() { // 🏃 the effects as things in the marathon battle (on
 }
 const fxInfo = async (withObs) => { const c = screenfx.cfg(); let srcs = null, obsErr = '';
   if (withObs && obsOk()) try { srcs = await obs.fxSources(); } catch (e) { obsErr = e.message; }
-  return { on: c.on, feat: feat('screenfx'), cfg: c, list: Object.entries(screenfx.FX).map(([k, F]) => ({ k, ...F, title: screenfx.title(k), moves: !!globalThis.SCREENFX.MOVES[k] })), state: screenfx.state(), sources: srcs, obsErr, obsOn: obsOk(), points: pointsOn(), rewardsMade: !!db.fxSetup, twitch: !!twitch.status.userId, dev: paid.dev(), maraList: !!getList(paid.rawCfg().listId), maraN: (getList(paid.rawCfg().listId)?.entries || []).filter(e => e.fx && e.status === 'active').length }; };
+  return { on: c.on, feat: feat('screenfx'), cfg: c, list: Object.entries(screenfx.FX).map(([k, F]) => ({ k, ...F, title: screenfx.title(k), moves: !!globalThis.SCREENFX.MOVES[k] })), state: screenfx.state(), sources: srcs, obsErr, obsOn: obsOk(), points: pointsOn(), rewardsMade: !!db.fxSetup?.v2, twitch: !!twitch.status.userId, dev: paid.dev(), maraList: !!getList(paid.rawCfg().listId), maraN: (getList(paid.rawCfg().listId)?.entries || []).filter(e => e.fx && e.status === 'active').length }; };
 app.get('/api/screenfx', async (req, res) => res.json(await fxInfo(req.query.obs === '1')));
 app.post('/api/screenfx', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}, was = screenfx.cfg(); const c = screenfx.setCfg(b);
-  if (c.on && c.points && !db.fxSetup && twitch.status.userId && pointsOn()) fxSetup().catch(e => console.error('[twitch] screen effect rewards:', e.message));
+  if (c.on && c.points && !db.fxSetup?.v2 && twitch.status.userId && pointsOn()) fxSetup().catch(e => console.error('[twitch] screen effect rewards:', e.message));
   if (c.mara !== was.mara || (c.mara && b.fx)) fxMaraSync(); if (!c.on && was.on) screenfx.stop(true);
   res.json(await fxInfo(false)); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/screenfx/start', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}; res.json({ ...screenfx.start({ kind: String(b.kind || ''), secs: b.secs, by: 'you', via: 'you', dry: !!b.dry }), state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } });
@@ -3952,8 +3952,8 @@ app.get('/api/test/screenfx-rules', (req, res) => { const d = screenfx.demo(), F
   T('OBS: a source that is already turned is only recoloured, not moved', String(obs.fxTransform({ ...box, rotation: 90 }, F.frame('flip', 5, 30))), obs.fxTransform({ ...box, rotation: 90 }, F.frame('flip', 5, 30)) === null);
   res.json({ ok: d.rows.every(r => r.ok), rows: d.rows }); });
 app.post('/api/test/screenfx', (req, res) => { try { const b = req.body || {}, via = String(b.via || 'you'); let r;
-  if (via === 'bits' || via === 'tip') { r = screenfx.money({ kind: via, amount: Number(b.amount) || 0, name: 'Pretend_Viewer', text: String(b.text || '') }, { test: true }); if (!r) throw new Error(`${via === 'bits' ? b.amount + ' bits' : '$' + b.amount} isn't enough for any effect that's switched on (or its ${via === 'bits' ? 'bits' : 'tip'} price is 0).`); }
-  else if (via === 'points') r = screenfx.redeem({ name: 'Pretend_Viewer', test: true }, String(b.kind || 'bw'));
+  if (via === 'bits' || via === 'tip') { r = screenfx.money({ kind: via, amount: Number(b.amount) || 0, name: 'Pretend_Viewer', text: String(b.text || '') }, { test: true }); if (!r) throw new Error(`${via === 'bits' ? b.amount + ' bits' : '$' + b.amount} isn't enough for a screen effect (or the ${via === 'bits' ? 'bits' : 'tip'} price is 0, or every effect is switched off).`); }
+  else if (via === 'points') r = screenfx.redeem({ name: 'Pretend_Viewer', test: true });
   else r = screenfx.start({ kind: String(b.kind || 'bw'), secs: b.secs, by: 'Pretend_Viewer', via: 'test', test: true, dry: b.dry !== false });
   res.json({ ...r, state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/stormpowers/rewards', async (req, res) => { try { res.json({ ok: true, ...(await stormSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } }); // ⛈️ add the storm power rewards to Twitch
@@ -5272,6 +5272,10 @@ setTimeout(chatTagOffOnce, 900);
 function fx5minOnce() { /* (1.156.2, Derek: "all the effects are 5 mins") saved lengths from before are moved to 5 minutes once; later changes stay */
   if (db.settings.fx5min) return; db.settings.fx5min = true; const f = db.settings.screenFx?.fx; if (f) for (const x of Object.values(f)) if (x && x.secs != null) x.secs = 300; save(); }
 setTimeout(fx5minOnce, 950);
+function fx2minOnce() { /* (1.156.3, Derek: "lets make them 2 mins by default", one random effect, right after each other) saved lengths → 2 minutes and no wait between them, once */
+  if (db.settings.fx2min) return; db.settings.fx2min = true; const c = db.settings.screenFx; if (c) { for (const x of Object.values(c.fx || {})) if (x && x.secs != null) x.secs = 120; delete c.gap; } save(); }
+setTimeout(fx2minOnce, 960);
+setTimeout(() => { try { const c = screenfx.cfg(); if (feat('screenfx') && c.on && c.points && db.fxSetup && !db.fxSetup.v2 && twitch.status.userId && pointsOn()) fxSetup().catch(e => console.error('[twitch] screen effect rewards:', e.message)); } catch {} }, 25000); // 🎲 the new single random reward, for people who had the old one-per-effect ones
 // 😴 (1.83.1, Derek: "for MERCY, if it wins it goes away the next battle so I can't get it twice, but comes back after") once:
 // the marathon battle's MERCY gets "sits out the battle after it wins" (any thing can have it: 🏃 Marathon pool → 😴)
 function maraMercyOnce() {

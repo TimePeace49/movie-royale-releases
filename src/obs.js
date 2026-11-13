@@ -145,8 +145,8 @@ export function fxTransform(t0, f) {
 let fxRun = null;
 /** Play one effect on the game source until `secs` are over or fxStop() is called. frame(t) comes from public/screenfx.js. Never leaves the source changed. */
 export async function fxPlay({ source, secs, frame, moves }) {
-  if (fxRun) fxRun.stop = true;
-  const run = fxRun = { stop: false, source };
+  const before = fxRun; if (before) { before.stop = true; try { await before.done; } catch {} } // (1.156.3: effects now play right after each other: wait until the last one has put the source back, or this one would remember its changed size / turn as "normal")
+  const run = fxRun = { stop: false, source }; let fin; run.done = new Promise(r => { fin = r; });
   return session(async call => {
     const scene = (await call('GetCurrentProgramScene')).currentProgramSceneName, items = (await call('GetSceneItemList', { sceneName: scene })).sceneItems || [];
     const it = items.find(i => i.sourceName === source && i.sceneItemEnabled !== false), t0 = it ? it.sceneItemTransform : null, canMove = !!(moves && it && fxBox(t0).ok);
@@ -168,7 +168,7 @@ export async function fxPlay({ source, secs, frame, moves }) {
       delete db.fxRestore; save(); if (fxRun === run) fxRun = null;
     }
     return out;
-  });
+  }).finally(() => fin());
 }
 export const fxStop = () => { if (fxRun) fxRun.stop = true; };
 export const fxPlaying = () => !!fxRun;
