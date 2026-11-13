@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.0
+- 📺 **New screen effect: Old TV.** Your game looks like a fuzzy old TV: faded almost to black and white, flickering, with scan lines, static, dark corners, a soft bar drifting down, and the picture "rolls" every few seconds like a set losing its hold.
+- On stream (OBS) viewers get the faded, flickering, rolling picture. The lines and static only show on your own view, because OBS has no built-in filter for them.
+- It works like the other effects: its own on / off, seconds and prices in Settings → 🎥 OBS → 🌀 Screen effects, and its own channel point reward (press 🔁 Check / re-make them there to add it on Twitch).
+- 🧪 Test: Test tab → 🌀 Screen effects → pick 📺 Old TV → ▶ Try it on my view.
+
 ## 1.155.0
 - 🌀 **Screen effects: chat can mess with your game.** Viewers turn your game picture black and white, drunk (it sways and blurs), upside down, mirrored, tiny, zoomed way in, dark, rainbow, deep fried, shaking or slowly spinning, for a set number of seconds.
 - It changes **what you see** on the 🎮 Game capture tab, and the game source in OBS so the stream sees it too. When it ends everything goes back exactly as it was (also if the app closes in the middle).

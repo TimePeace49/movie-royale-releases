@@ -13,12 +13,13 @@
     rainbow: { icon: '🌈', name: 'Rainbow trip', secs: 45, pts: 2000, bits: 200, tip: 3, what: 'the colours keep cycling' },
     fried: { icon: '🍟', name: 'Deep fried', secs: 45, pts: 2000, bits: 200, tip: 3, what: 'colours and contrast turned way up' },
     shake: { icon: '🫨', name: 'Earthquake', secs: 20, pts: 3500, bits: 350, tip: 4, what: 'the game shakes' },
-    spin: { icon: '🌀', name: 'Slow spin', secs: 30, pts: 7000, bits: 700, tip: 8, what: 'the game slowly turns all the way round, again and again' }
+    spin: { icon: '🌀', name: 'Slow spin', secs: 30, pts: 7000, bits: 700, tip: 8, what: 'the game slowly turns all the way round, again and again' },
+    tv: { icon: '📺', name: 'Old TV', secs: 60, pts: 2500, bits: 250, tip: 3, what: 'a fuzzy old TV: faded, flickering, with lines, static and a picture that rolls now and then' }
   };
-  const MOVES = { drunk: 1, flip: 1, mirror: 1, tiny: 1, zoom: 1, shake: 1, spin: 1 }; // these move / turn the picture (the others only change its colours)
+  const MOVES = { drunk: 1, flip: 1, mirror: 1, tiny: 1, zoom: 1, shake: 1, spin: 1, tv: 1 }; // these move / turn the picture (the others only change its colours)
   const ease = x => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
   function frame(kind, t, dur) {
-    const k = ease(Math.min(t / 0.6, (dur - t) / 0.6)), sin = Math.sin, f = { sat: 0, con: 0, bri: 0, hue: 0, blur: 0, rot: 0, s: 1, sx: 1, dx: 0, dy: 0 };
+    const k = ease(Math.min(t / 0.6, (dur - t) / 0.6)), sin = Math.sin, f = { sat: 0, con: 0, bri: 0, hue: 0, blur: 0, rot: 0, s: 1, sx: 1, dx: 0, dy: 0, tv: 0 };
     switch (kind) {
       case 'bw': f.sat = -1 * k; break;
       case 'dark': f.bri = -0.62 * k; f.con = -0.2 * k; break;
@@ -30,6 +31,8 @@
       case 'tiny': f.s = 1 - 0.68 * k; break;
       case 'zoom': f.s = 1 + 0.8 * k; break;
       case 'shake': f.dx = k * 0.022 * sin(t * 47) * sin(t * 13); f.dy = k * 0.03 * sin(t * 53 + 2) * sin(t * 17); f.rot = k * 1.2 * sin(t * 39); f.s = 1 + 0.06 * k; break;
+      case 'tv': { f.sat = -0.82 * k; f.con = 0.35 * k; f.bri = k * (-0.06 + 0.07 * sin(t * 31) * sin(t * 7.3)); f.dx = k * 0.004 * sin(t * 90) + k * 0.012 * Math.max(0, sin(t * 1.7) - 0.93) * 14 * sin(t * 61); f.s = 1 - 0.04 * k; f.blur = 0.6 * k; f.tv = k;
+        const ph = t % 7.5; if (t > 2 && ph < 0.55 && dur - t > 1.2) { const r = ph / 0.55; f.dy = k * (r < 0.5 ? r : r - 1); } break; } // (the picture "rolls" every few seconds, like a TV losing its hold)
       case 'spin': { const turns = Math.max(1, Math.round(dur / 10)); f.rot = 360 * turns * ease(t / dur); f.s = 1 - 0.25 * k; break; }
     }
     if (Math.abs(f.sx) < 0.02) f.sx = f.sx < 0 ? -0.02 : 0.02; // (never exactly flat: OBS refuses a size of 0)
