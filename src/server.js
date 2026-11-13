@@ -5269,6 +5269,9 @@ function maraPush5Once() {
 }
 setTimeout(maraPush5Once, 1300);
 setTimeout(chatTagOffOnce, 900);
+function fx5minOnce() { /* (1.156.2, Derek: "all the effects are 5 mins") saved lengths from before are moved to 5 minutes once; later changes stay */
+  if (db.settings.fx5min) return; db.settings.fx5min = true; const f = db.settings.screenFx?.fx; if (f) for (const x of Object.values(f)) if (x && x.secs != null) x.secs = 300; save(); }
+setTimeout(fx5minOnce, 950);
 // 😴 (1.83.1, Derek: "for MERCY, if it wins it goes away the next battle so I can't get it twice, but comes back after") once:
 // the marathon battle's MERCY gets "sits out the battle after it wins" (any thing can have it: 🏃 Marathon pool → 😴)
 function maraMercyOnce() {

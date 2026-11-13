@@ -3,17 +3,17 @@
    frame(kind, t, dur) -> { sat, con, bri, hue, blur, rot, s, sx, dx, dy }  (sat/con/bri: 0 = normal, hue in degrees, rot in degrees, s = size, sx = -1 mirrors, dx/dy = slide as a part of the picture's size) */
 (function (g) {
   const FX = {
-    bw: { icon: '⚫', name: 'Black & white', secs: 60, pts: 1500, bits: 150, tip: 2, what: 'all the colour drains out of the game' },
-    drunk: { icon: '🥴', name: 'Drunk view', secs: 45, pts: 4000, bits: 400, tip: 5, what: 'the game sways, drifts and goes a bit blurry' },
-    flip: { icon: '🙃', name: 'Upside down', secs: 30, pts: 6000, bits: 600, tip: 7, what: 'the game turns upside down' },
-    mirror: { icon: '🪞', name: 'Mirror world', secs: 45, pts: 5000, bits: 500, tip: 6, what: 'left and right swap places' },
-    tiny: { icon: '🔬', name: 'Tiny screen', secs: 30, pts: 3000, bits: 300, tip: 4, what: 'the game shrinks to a small box in the middle' },
-    zoom: { icon: '🔍', name: 'Way too close', secs: 30, pts: 3000, bits: 300, tip: 4, what: 'zoomed in so far the edges are gone' },
-    dark: { icon: '🌑', name: 'Lights out', secs: 30, pts: 2500, bits: 250, tip: 3, what: 'the game goes very dark' },
-    rainbow: { icon: '🌈', name: 'Rainbow trip', secs: 45, pts: 2000, bits: 200, tip: 3, what: 'the colours keep cycling' },
-    fried: { icon: '🍟', name: 'Deep fried', secs: 45, pts: 2000, bits: 200, tip: 3, what: 'colours and contrast turned way up' },
-    shake: { icon: '🫨', name: 'Earthquake', secs: 20, pts: 3500, bits: 350, tip: 4, what: 'the game shakes' },
-    spin: { icon: '🌀', name: 'Slow spin', secs: 30, pts: 7000, bits: 700, tip: 8, what: 'the game slowly turns all the way round, again and again' },
+    bw: { icon: '⚫', name: 'Black & white', secs: 300, pts: 1500, bits: 150, tip: 2, what: 'all the colour drains out of the game' },
+    drunk: { icon: '🥴', name: 'Drunk view', secs: 300, pts: 4000, bits: 400, tip: 5, what: 'the game sways, drifts and goes a bit blurry' },
+    flip: { icon: '🙃', name: 'Upside down', secs: 300, pts: 6000, bits: 600, tip: 7, what: 'the game turns upside down' },
+    mirror: { icon: '🪞', name: 'Mirror world', secs: 300, pts: 5000, bits: 500, tip: 6, what: 'left and right swap places' },
+    tiny: { icon: '🔬', name: 'Tiny screen', secs: 300, pts: 3000, bits: 300, tip: 4, what: 'the game shrinks to a small box in the middle' },
+    zoom: { icon: '🔍', name: 'Way too close', secs: 300, pts: 3000, bits: 300, tip: 4, what: 'zoomed in so far the edges are gone' },
+    dark: { icon: '🌑', name: 'Lights out', secs: 300, pts: 2500, bits: 250, tip: 3, what: 'the game goes very dark' },
+    rainbow: { icon: '🌈', name: 'Rainbow trip', secs: 300, pts: 2000, bits: 200, tip: 3, what: 'the colours keep cycling' },
+    fried: { icon: '🍟', name: 'Deep fried', secs: 300, pts: 2000, bits: 200, tip: 3, what: 'colours and contrast turned way up' },
+    shake: { icon: '🫨', name: 'Earthquake', secs: 300, pts: 3500, bits: 350, tip: 4, what: 'the game shakes' },
+    spin: { icon: '🌀', name: 'Slow spin', secs: 300, pts: 7000, bits: 700, tip: 8, what: 'the game slowly turns all the way round, again and again' },
     tv: { icon: '📺', name: 'Old TV', secs: 300, pts: 2500, bits: 250, tip: 3, what: 'a fuzzy old TV: faded, flickering, with lines, static and a picture that rolls now and then' }
   };
   const MOVES = { drunk: 1, flip: 1, mirror: 1, tiny: 1, zoom: 1, shake: 1, spin: 1, tv: 1 }; // these move / turn the picture (the others only change its colours)

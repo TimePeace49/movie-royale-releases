@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.2
+- 🌀 **Every screen effect now lasts 5 minutes** (they were 20 to 60 seconds). Lengths you had set before are moved to 5 minutes once; after that, whatever you set in Settings → 🎥 OBS → 🌀 Screen effects stays.
+- 🧪 Test: Test tab → 🌀 Screen effects → 🧪 Check the rules, or ▶ Try it on my view (the test uses the seconds you type there).
+
 ## 1.156.1
 - 📺 The **Old TV** screen effect now lasts **5 minutes** (it was 1 minute). You can still change it in Settings → 🎥 OBS → 🌀 Screen effects. The chat line says "5 minutes" instead of "300 seconds".
 - 🧪 Test: Test tab → 🌀 Screen effects → 🧪 Check the rules.
