@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.156.4: What's new
+- {screenfx} ⏱️ A small see-through timer in the top left corner of the stream shows the screen effect that's playing and the time left.
+
 ## v1.156.3: What's new
 - {screenfx} 🎲 Screen effects are random now: one channel point reward ("Screen: 🎲 Random effect"), one bits price and one tip price. They line up and play right after each other, and each lasts 2 minutes by default.
 

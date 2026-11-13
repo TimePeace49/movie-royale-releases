@@ -1440,6 +1440,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'celebrate') ws.send(JSON.stringify(audioMsg()));
   if (ws.role === 'mara') { ws.send(JSON.stringify({ type: 'maraCount', ...marathon.counter() })); ws.send(JSON.stringify(clockMsg())); if (live.maraGuess) ws.send(JSON.stringify(maraGuessMsg())); if (live.maraTimer) ws.send(JSON.stringify(mtMsg())); ws.send(JSON.stringify(cardsMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(ytMsg())); } // 🏃 the marathon overlay (counter + pop-ups) + 📺 the YouTube players
   if (ws.role === 'rollcall' && live.rollcall && !live.rollcall.done) ws.send(JSON.stringify(rollStartMsg()));
+  if (ws.role === 'fxtimer') { const st = screenfx.state(); ws.send(JSON.stringify({ type: 'screenFx', fx: st.now, queue: st.queue.length, now: Date.now() })); } // 🌀⏱️ the screen effect timer
   if (ws.role === 'nowplay') ws.send(JSON.stringify(npMsg())); // 🎼 the small now-playing strip
   if (ws.role === 'songs') ws.send(JSON.stringify(songs.screen())); // 🎵 the now-playing box
   if (ws.role === 'eggs') ws.send(JSON.stringify({ type: 'eggBadges', badges: feat('eggs') ? eggs.badges() : {} })); // 🥚 the creature chat box
@@ -2147,6 +2148,9 @@ app.post('/api/obs/sfx-source', async (req, res) => { try { res.json({ ok: true,
 /* 🎼 Now-playing strip (1.150.0, Derek: "a source to OBS that shows the current song playing, who requested it, its rating, the current time and the total… minimal"):
    the control panel tells the server what its player is really on (a request or a playlist song) every couple of seconds; the page counts on by itself in between. */
 const npUrl = () => `http://localhost:${PORT}/nowplaying.html`;
+const fxtUrl = () => `http://localhost:${PORT}/fxtimer.html`;
+const fxtWanted = () => { const c = screenfx.cfg(); return feat('screenfx') && c.on && c.stream && c.timer; };
+async function fxtObs(on) { if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.'); return obs.fxTimerSource(!!on, fxtUrl()); }
 function npMsg() { const p = live.np, fresh = p && Date.now() - p.at < 15000 && p.on, t = live.npTest && live.npTest.until > Date.now() ? live.npTest.msg : null; if (t) return t;
   if (!feat('songs')) return { type: 'songNow', on: false }; const i = songs.nowInfo(fresh ? p.yt : '', fresh ? p.title : '');
   if (!fresh) return { type: 'songNow', on: false };
@@ -3907,7 +3911,7 @@ app.post('/api/racepowers/rewards', async (req, res) => { // 🏁 add the race p
 // ---- 🌀 Screen effects (1.155.0): chat messes with the game picture (the app's Game capture tab + the game source in OBS) ----
 screenfx.setHooks({
   on: () => feat('screenfx'),
-  send: m => broadcast(m, 'control'),
+  send: m => { broadcast(m, 'control'); broadcast({ ...m, now: Date.now() }, 'fxtimer'); },
   say: t => { if (twitch.canSay()) twitch.say(t).catch(() => {}); },
   act: (text, o) => act('stream', text, o),
   obsOk: () => obsOk(),
@@ -3939,8 +3943,10 @@ app.get('/api/screenfx', async (req, res) => res.json(await fxInfo(req.query.obs
 app.post('/api/screenfx', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}, was = screenfx.cfg(); const c = screenfx.setCfg(b);
   if (c.on && c.points && !db.fxSetup?.v2 && twitch.status.userId && pointsOn()) fxSetup().catch(e => console.error('[twitch] screen effect rewards:', e.message));
   if (c.mara !== was.mara || (c.mara && b.fx)) fxMaraSync(); if (!c.on && was.on) screenfx.stop(true);
+  { const wantT = c.on && c.stream && c.timer, hadT = was.on && was.stream && was.timer; if (wantT !== hadT && obsOk()) fxtObs(wantT).catch(e => console.error('[obs] screen effect timer:', e.message)); } // 🌀⏱️ put the timer in OBS (or take it out) right away
   res.json(await fxInfo(false)); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/screenfx/start', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}; res.json({ ...screenfx.start({ kind: String(b.kind || ''), secs: b.secs, by: 'you', via: 'you', dry: !!b.dry }), state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/screenfx/timer', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); res.json({ ok: true, url: fxtUrl(), ...(await fxtObs(req.body?.on !== false)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/screenfx/stop', (req, res) => res.json({ ...screenfx.stop(!!req.body?.all), state: screenfx.state() }));
 app.post('/api/screenfx/rewards', async (req, res) => { try { if (!twitch.status.userId) throw new Error('Sign in with Twitch first.'); res.json({ ok: true, ...(await fxSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.get('/api/test/screenfx-rules', (req, res) => { const d = screenfx.demo(), F = globalThis.SCREENFX, T = (label, got, ok) => d.rows.push({ label, got, ok });
@@ -6433,6 +6439,7 @@ async function obsSync(why = 'check', force = false) {
     if (db.settings.choiceObs && twitch.status.userId) { try { const f = await choiceFile(); add('choice', '🎉 Viewer\'s choice celebration', true, r1(await obs.celebrateSource(true, f.file, choicePick()))); } catch (e) { add('choice', '🎉 Viewer\'s choice celebration', false, e.message); } }
     if (db.settings.rollObs) { try { add('roll', '📣 Roll call', true, r1(await obs.rollSource(true, rollUrl(), Array.isArray(db.settings.rollScenes) && db.settings.rollScenes.length ? db.settings.rollScenes : null))); } catch (e) { add('roll', '📣 Roll call', false, e.message); } }
     if (feat('songs') && songs.opts().vodRoute) { try { const r = await musicObs(true); add('music', '🎚️ Song request music (off the VOD track)', true, r1(r)); if (r.state && (!r.state.vod.on || r.state.vod.same)) add('musicVod', '🎚️ Twitch VOD track', false, 'OBS has no separate Twitch VOD track switched on, so the music still goes on the VOD: open Chat bot → Songs → Settings → 🎚️ and press Set it up.'); } catch (e) { add('music', '🎚️ Song request music (off the VOD track)', false, e.message); } }
+    if (fxtWanted()) { try { add('fxtimer', '🌀 Screen effect timer (every scene)', true, r1(await fxtObs(true))); } catch (e) { add('fxtimer', '🌀 Screen effect timer (every scene)', false, e.message); } }
     if (sfxWanted()) { try { add('sfx', '🔊 Sound alerts (every scene)', true, r1(await obs.sfxSource(true, sfxUrl()))); } catch (e) { add('sfx', '🔊 Sound alerts (every scene)', false, e.message); } }
     if (db.settings.npObs && feat('songs')) { try { add('nowplay', '🎼 Now-playing strip', true, r1(await obs.npSource(true, npUrl(), Array.isArray(db.settings.npScenes) && db.settings.npScenes.length ? db.settings.npScenes : null))); } catch (e) { add('nowplay', '🎼 Now-playing strip', false, e.message); } }
     if (db.settings.mnObs && feat('movienight')) { try { add('mnight', '🍿 Movie night leaderboard', true, r1(await obs.mnSource(true, mnUrl(), Array.isArray(db.settings.mnScenes) && db.settings.mnScenes.length ? db.settings.mnScenes : null))); } catch (e) { add('mnight', '🍿 Movie night leaderboard', false, e.message); } }

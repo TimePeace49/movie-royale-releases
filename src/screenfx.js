@@ -13,7 +13,7 @@ export function cfg() {
   const c = db.settings.screenFx || {}, fx = {};
   for (const [k, d] of Object.entries(FX)) { const o = c.fx?.[k] || {}; fx[k] = { on: o.on !== false, secs: clamp(o.secs, 5, 600, d.secs) }; }
   // (1.156.3, Derek: "it will be random, they do not get to choose") ONE price for a random effect, not one per effect
-  return { on: !!c.on, points: c.points !== false, bits: !!c.bits, tips: !!c.tips, stream: c.stream !== false, source: String(c.source || ''), say: c.say !== false, mara: !!c.mara, gap: clamp(c.gap, 0, 120, 0),
+  return { on: !!c.on, points: c.points !== false, bits: !!c.bits, tips: !!c.tips, stream: c.stream !== false, source: String(c.source || ''), say: c.say !== false, timer: c.timer !== false, mara: !!c.mara, gap: clamp(c.gap, 0, 120, 0),
     pts: clamp(c.pts, 1, 10000000, PRICE.pts), bitsCost: clamp(c.bitsCost, 0, 1000000, PRICE.bits), tip: clamp(c.tip, 0, 100000, PRICE.tip), fx };
 }
 export const PRICE = { pts: 3000, bits: 300, tip: 3 };
@@ -33,7 +33,7 @@ export const oldRewards = () => Object.fromEntries(Object.keys(FX).map(k => [tit
 export const kindOfTitle = t => { t = String(t || '').toLowerCase(); return t === RANDOM_TITLE.toLowerCase() || Object.keys(FX).some(k => title(k).toLowerCase() === t) ? 'random' : null; };
 export function setCfg(b = {}) {
   const c = (db.settings.screenFx ||= {});
-  for (const k of ['on', 'points', 'bits', 'tips', 'stream', 'say', 'mara']) if (typeof b[k] === 'boolean') c[k] = b[k];
+  for (const k of ['on', 'points', 'bits', 'tips', 'stream', 'say', 'timer', 'mara']) if (typeof b[k] === 'boolean') c[k] = b[k];
   if (typeof b.source === 'string') c.source = b.source.slice(0, 120);
   if (b.gap != null) c.gap = clamp(b.gap, 0, 120, 0);
   if (b.pts != null) c.pts = clamp(b.pts, 1, 10000000, PRICE.pts); if (b.bitsCost != null) c.bitsCost = clamp(b.bitsCost, 0, 1000000, PRICE.bits); if (b.tip != null) c.tip = clamp(b.tip, 0, 100000, PRICE.tip);
@@ -52,8 +52,8 @@ export function start({ kind, secs, by = '', via = 'you', test = false, dry = fa
   else if (!FX[kind]) throw new Error('Which effect?');
   const item = { id: Math.random().toString(36).slice(2, 10), kind, secs: kind === 'random' ? (secs != null ? clamp(secs, 3, 600, 120) : null) : clamp(secs, 3, 600, c.fx[kind].secs), by: String(by || '').slice(0, 40), via, test: !!test, dry: !!dry };
   if (q.length >= 40) q.shift();
-  q.push(item); const waiting = !!cur; if (!cur) next();
-  else if (c.say && !test && via !== 'you') H.say(`🎲 @${item.by || 'Someone'}'s screen effect is in line (${q.length} waiting). It starts right after the one playing now.`);
+  q.push(item); const waiting = !!cur; if (!cur) next(); else H.send({ type: 'screenFx', fx: now(), queue: q.length }); // (the timers show how many are next)
+  if (waiting && c.say && !test && via !== 'you') H.say(`🎲 @${item.by || 'Someone'}'s screen effect is in line (${q.length} waiting). It starts right after the one playing now.`);
   const shown = waiting ? item : (cur?.id === item.id ? cur : item);
   return { ok: true, id: item.id, waiting, ahead: waiting ? q.length : 0, kind: shown.kind, name: shown.kind === 'random' ? 'a random effect' : FX[shown.kind].name, secs: shown.secs };
 }

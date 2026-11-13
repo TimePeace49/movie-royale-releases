@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.156.4
+- ⏱️ **Screen effect timer.** While a screen effect plays, a small see-through tag in the **top left corner** shows which effect it is and the time left (it turns red for the last 10 seconds), plus how many are next in line.
+- 📺 It's on your 🎮 Game capture view (smaller and see-through now) and **on stream**: the app puts a browser source called "Movie Royal screen effect timer" in every OBS scene. It shows nothing when no effect is playing. Untick **⏱️ Timer on stream** in Settings → 🎥 OBS → 🌀 Screen effects if you don't want it there.
+- 🧪 Test: Test tab → 🌀 Screen effects → ⏱️ See the timer (a demo), or ▶ Try it on stream too with OBS open.
+
 ## 1.156.3
 - 🎲 **Screen effects are random now.** Viewers don't pick one: every redeem, cheer or tip gets a random effect (never the same one twice in a row). Untick an effect in Settings → 🎥 OBS → 🌀 Screen effects to keep it out of the mix.
 - 💎 There is **one** channel point reward now, "Screen: 🎲 Random effect", with one price (3,000 points to start). The app makes it on its own once you're signed in; the old one-per-effect rewards are switched off on Twitch (they aren't deleted, so you can delete them yourself on Twitch if you like).
