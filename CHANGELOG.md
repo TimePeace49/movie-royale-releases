@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.159.1
+- 🍿 **New night empties the movie list.** The 🆕 New night button now asks first in a small window: New night (empty the list), Keep the movie list, or Cancel. Tonight's votes are still saved under Past nights.
+- 🎁 **Giveaway: 🔄 Refresh map works after a battle.** In editions without the Battle tab, a finished battle stayed on the screen and the map never changed. Refresh map (and picking a map) now clears it first.
+
 ## 1.159.0
 - ⏸ **Screen effects pause when you leave the Game capture screen.** Switch to another tab and the effect that is playing stops with its time left kept; new ones from chat wait in the line. Go back to the Game capture tab (or full screen on it) and it carries on where it was. A tick box in Settings → OBS → Screen effects turns this off. Effects you start yourself are never held.
 - ⏸▶ **A small pause / play button on the effect timer** on the Game capture screen. The on-stream timer shows ⏸ while it is paused.

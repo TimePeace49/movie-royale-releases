@@ -274,7 +274,7 @@ H(/^tip:(?:stop the countdown: voting stays open)/i, '✋ Stop the countdown', '
 H(/^tip:(?:close voting now)/i, '⏹ Close voting', 'Closes voting right away. The bot tells chat the winner (or the tie) and the on-stream box shows it.');
 H(/^tip:(?:post and pin the list of movies)/i, '📌 Pin again', "Posts the list of tonight's movies in chat again and pins it, for people who came late.");
 H(/^tip:(?:open voting: the list of movies)/i, '▶ Open voting', "Opens voting: the numbered list of tonight's movies is posted and pinned in chat, and chat can vote with !vote and a number or a name.");
-H(/^tip:(?:start a fresh night)/i, '🆕 New night', "Starts a fresh night. Tonight's votes and result are saved under Past nights, then everyone's votes, the raiders and the first-in-chat are wiped. Your movie list stays unless you type CLEAR.");
+H(/^tip:(?:start a fresh night)/i, '🆕 New night', "Starts a fresh night. Tonight's votes and result are saved under Past nights, then everyone's votes, the raiders and the first-in-chat are wiped and the movie list is emptied. It asks first: pick Keep the movie list to keep the same movies.");
 H(/^tip:(?:the guess for this vote was right|change this vote's guess to right)/i, '✅ Right', "Click when the guess for this person's vote was right. It counts on the on-stream guess counter and in the stats for tonight, all time and that chatter.");
 H(/^tip:(?:the guess for this vote was wrong|change this vote's guess to wrong)/i, '❌ Wrong', "Click when the guess for this person's vote was wrong. It counts in the stats for tonight, all time and that chatter.");
 H(/^tip:(?:no guess was made for this vote)/i, 'Skip', 'Leaves this vote out of the guess count (nobody guessed it).');

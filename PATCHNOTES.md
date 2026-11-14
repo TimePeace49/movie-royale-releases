@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.159.1: What's new
+- {movienight} 🍿 **New night empties the movie list.** 🆕 New night asks first, and you can pick Keep the movie list instead.
+- {!has:battle} 🎁 **Giveaway: 🔄 Refresh map now works after a battle** (the finished battle used to stay on the screen).
+
 ## v1.159.0: What's new
 - {screenfx} ⏸ **Screen effects pause when you leave the Game capture screen** and carry on when you are back on it (or full screen on it). The time left is kept and new ones wait in line. There is also a small ⏸ / ▶ button on the effect timer.
 
