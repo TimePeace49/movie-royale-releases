@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.157.3
+- 🌀 **Screen effects cost 2,500 channel points now** (was 3,000). The price in the app and the "Screen: 🎲 Random effect" reward on Twitch are moved down once, by themselves; if you had set your own price it is left alone. Bits (300) and tips ($3) stay the same.
+
 ## 1.157.2
 - 🔍 **Wheel zoom is off unless you turn it on.** The magnifying glass no longer comes on by itself for big wheels. When a wheel gets big, turn it on in Wheel settings → 🎨 Looks → 🔍 Zoom in at the pointer → On (or "On only when there are lots of spots"). Wheels that got the zoom by themselves in the last two versions are back to off.
 

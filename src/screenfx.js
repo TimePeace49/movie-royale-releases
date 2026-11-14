@@ -16,7 +16,7 @@ export function cfg() {
   return { on: !!c.on, points: c.points !== false, bits: !!c.bits, tips: !!c.tips, stream: c.stream !== false, source: String(c.source || ''), say: c.say !== false, timer: c.timer !== false, mara: !!c.mara, gap: clamp(c.gap, 0, 120, 0),
     pts: clamp(c.pts, 1, 10000000, PRICE.pts), bitsCost: clamp(c.bitsCost, 0, 1000000, PRICE.bits), tip: clamp(c.tip, 0, 100000, PRICE.tip), fx };
 }
-export const PRICE = { pts: 3000, bits: 300, tip: 3 };
+export const PRICE = { pts: 2500, bits: 300, tip: 3 };
 export const on = () => H.on() && cfg().on;
 export const RANDOM_TITLE = 'Screen: 🎲 Random effect';
 export const onKinds = (c = cfg()) => Object.keys(FX).filter(k => c.fx[k].on);

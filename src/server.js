@@ -5336,6 +5336,16 @@ setTimeout(fx5minOnce, 950);
 function fx2minOnce() { /* (1.156.3, Derek: "lets make them 2 mins by default", one random effect, right after each other) saved lengths → 2 minutes and no wait between them, once */
   if (db.settings.fx2min) return; db.settings.fx2min = true; const c = db.settings.screenFx; if (c) { for (const x of Object.values(c.fx || {})) if (x && x.secs != null) x.secs = 120; delete c.gap; } save(); }
 setTimeout(fx2minOnce, 960);
+// (1.157.3, Derek: "let's make it 2500 points to mess with screen") once: a price still at the old 3,000 → 2,500, here and on the Twitch reward (a price you changed yourself is left alone)
+async function fx2500Once() {
+  if (db.settings.fx2500) return; const c = db.settings.screenFx;
+  if (c && c.pts != null && Number(c.pts) !== 3000) { db.settings.fx2500 = true; save(); return; }
+  if (c && c.pts != null) { c.pts = 2500; save(); }
+  if (!feat('screenfx') || !db.fxSetup) { db.settings.fx2500 = true; save(); return; }
+  if (!twitch.status.userId) return; // not signed in yet: try again later
+  try { const t = (await twitch.listRewards()).find(x => x.title === screenfx.RANDOM_TITLE); if (t && Number(t.cost) === 3000) await twitch.updateReward(t.id, { cost: 2500 }); db.settings.fx2500 = true; save(); } catch (e) { console.error('[twitch] screen effect price:', e.message); }
+}
+setTimeout(() => fx2500Once().catch(() => {}), 20000); setInterval(() => { if (!db.settings.fx2500) fx2500Once().catch(() => {}); }, 120000);
 setTimeout(() => { try { const c = screenfx.cfg(); if (feat('screenfx') && c.on && c.points && db.fxSetup && !db.fxSetup.v2 && twitch.status.userId && pointsOn()) fxSetup().catch(e => console.error('[twitch] screen effect rewards:', e.message)); } catch {} }, 25000); // 🎲 the new single random reward, for people who had the old one-per-effect ones
 // 😴 (1.83.1, Derek: "for MERCY, if it wins it goes away the next battle so I can't get it twice, but comes back after") once:
 // the marathon battle's MERCY gets "sits out the battle after it wins" (any thing can have it: 🏃 Marathon pool → 😴)

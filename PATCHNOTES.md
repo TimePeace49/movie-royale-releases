@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.157.3: What's new
+- {screenfx} 🌀 A random screen effect now costs 2,500 channel points (was 3,000). Bits and tips are unchanged.
+
 ## v1.157.2: What's new
 - 🔎 **A magnifying glass for big wheels.** When a wheel has so many spots the names are hard to read, turn on the zoom in the wheel's settings → 🎨 Looks → 🔍 Zoom in at the pointer. A magnifying glass at the pointer blows up the spot it is on plus the one above and the one below, and follows along as the wheel spins. It spins and lands the same. It is off until you turn it on; you can also have it come on only when the wheel has lots of spots, or pick "Whole wheel bigger" instead of the glass.
 
