@@ -19,12 +19,12 @@ let FX = null, Q = 0, skew = 0;
 function set(fx, queue) { if (fx && (!FX || FX.id !== fx.id)) { tag.classList.remove('on'); void tag.offsetWidth; } FX = fx; Q = queue || 0; draw(); }
 function draw() {
   if (!FX) { tag.classList.remove('on'); return; }
-  const left = Math.max(0, Math.ceil(FX.secs - (Date.now() + skew - FX.at) / 1000));
-  if (left <= 0) { tag.classList.remove('on'); return; }
+  const left = FX.paused ? FX.left : Math.max(0, Math.ceil(FX.secs - (Date.now() + skew - FX.at) / 1000));
+  if (left <= 0 && !FX.paused) { tag.classList.remove('on'); return; }
   tag.querySelector('.ic').textContent = FX.icon; tag.querySelector('.n').textContent = FX.name;
-  tag.querySelector('.t').textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+  tag.querySelector('.t').textContent = (FX.paused ? '⏸ ' : '') + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
   tag.querySelector('.q').textContent = Q ? '+' + Q + ' next' : '';
-  tag.classList.toggle('low', left <= 10); tag.classList.add('on');
+  tag.classList.toggle('low', left <= 10 && !FX.paused); tag.classList.add('on');
 }
 setInterval(draw, 250);
 window.__fx = set;

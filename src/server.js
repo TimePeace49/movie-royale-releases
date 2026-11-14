@@ -4021,8 +4021,11 @@ app.post('/api/screenfx', async (req, res) => { try { if (!feat('screenfx')) thr
 app.post('/api/screenfx/start', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}; res.json({ ...screenfx.start({ kind: String(b.kind || ''), secs: b.secs, by: 'you', via: 'you', dry: !!b.dry }), state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } });
 // 🎮 (1.156.5, Derek: "these should only pop up in the channel points menu if on the capture card tab, or full screen on it") the control panel (main window or a pop-out) says every 20 s while the Game capture tab shows
 let fxCapAt = 0; const fxCapOn = () => Date.now() - fxCapAt < 45000;
-app.post('/api/screenfx/capture-tab', (req, res) => { const was = fxCapOn(); fxCapAt = req.body?.on ? Date.now() : 0; if (was !== fxCapOn()) { rewardKey = ''; syncRewards().catch(() => {}); if (fxCapOn()) promoPin('you opened the Game capture tab').catch(() => {}); } res.json({ ok: true, on: fxCapOn() }); });
-setInterval(() => { if (fxCapAt && !fxCapOn()) { fxCapAt = 0; rewardKey = ''; syncRewards().catch(() => {}); } }, 15000); // (the window closed without saying so)
+app.post('/api/screenfx/capture-tab', (req, res) => { const was = fxCapOn(); fxCapAt = req.body?.on ? Date.now() : 0; if (was !== fxCapOn()) { screenfx.setAway(!fxCapOn()); rewardKey = ''; syncRewards().catch(() => {}); if (fxCapOn()) promoPin('you opened the Game capture tab').catch(() => {}); } res.json({ ok: true, on: fxCapOn() }); });
+screenfx.setAway(true); // ⏸ (1.159.0) effects from chat wait until the Game capture screen shows
+app.post('/api/screenfx/pause', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const on = req.body?.on; res.json(screenfx.pause(on === true || on === false ? on : 'toggle')); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.get('/api/test/screenfx-pause', async (req, res) => { try { res.json(await screenfx.pauseDemo()); } catch (e) { res.status(400).json({ error: e.message }); } });
+setInterval(() => { if (fxCapAt && !fxCapOn()) { fxCapAt = 0; screenfx.setAway(true); rewardKey = ''; syncRewards().catch(() => {}); } }, 15000); // (the window closed without saying so)
 app.get('/api/promo', (req, res) => res.json({ cfg: promoCfg(), auto: promoParts(), text: promoText(false), chat: promoText(true), url: promoUrl(), pinAgo: promoPinAt ? Date.now() - promoPinAt : null }));
 app.post('/api/promo', async (req, res) => { try { const b = req.body || {}, p = (db.settings.promo ||= {}), was = promoCfg().on;
   for (const k of ['on', 'pin', 'band']) if (typeof b[k] === 'boolean') p[k] = b[k];
