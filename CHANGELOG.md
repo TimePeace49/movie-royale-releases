@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.157.1
+- 🔎 **Wheel: magnifying glass on 3 spots.** Big wheels now keep their whole shape, and a round magnifying glass at the pointer blows up the spot it is on plus the one above and the one below. It follows along as the wheel spins. This is now the usual way a wheel with 30 or more spots zooms; the "whole wheel bigger" zoom from 1.157.0 is still there as a choice (Wheel settings → 🎨 Looks → 🔍 Zoom in at the pointer). The 🔍 Zoom check on the Test tab shows all three side by side.
+
 ## 1.157.0
 - 🔍 **Wheel: zoom in at the pointer.** A wheel with lots of spots was hard to read because every name got tiny. Now a wheel with 30 or more spots is drawn much bigger and slid over, so you only see the part next to the pointer, with big readable names. It spins and lands the same as before. Wheel settings → 🎨 Looks → 🔍 Zoom in at the pointer: only with lots of spots (you pick how many), always, or never, and how much. Test tab → wheel tests → 🔍 Zoom check (80 spots).
 

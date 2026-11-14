@@ -11,11 +11,14 @@ window.WheelView = (() => {
     let a = 0;
     return on.map((e, i) => { const w = Number(e.weight || 1) / tot * TAU, s = { e, i, a0: a, a1: a + w, color: e.color || PAL[i % PAL.length], pct: Number(e.weight || 1) / tot * 100 }; a += w; return s; });
   }
-  // how much to zoom: look.zoom 'auto' (default: only with look.zoomAt spots or more), 'on' or 'off'; look.zoomX = how much
-  function zoomOf(L, n) { const m = (L && L.zoom) || 'auto'; if (m === 'off' || (m !== 'on' && n < (Number(L && L.zoomAt) || 30))) return 1; return Math.min(5, Math.max(1.2, Number(L && L.zoomX) || 2.5)); }
+  // 🔍 zoom at the pointer. look.zoom 'auto' (default: only with look.zoomAt spots or more), 'on' or 'off';
+  // look.zoomStyle 'lens' (default: a magnifying glass over the spot at the pointer + the one above and below) or 'wheel' (the whole wheel drawn look.zoomX bigger)
+  function zoomOn(L, n) { const m = (L && L.zoom) || 'auto'; return !(m === 'off' || (m !== 'on' && n < (Number(L && L.zoomAt) || 30))); }
+  function lensOn(L, n) { return zoomOn(L, n) && ((L && L.zoomStyle) || 'lens') !== 'wheel' && n > 2; }
+  function zoomOf(L, n) { if (!zoomOn(L, n) || ((L && L.zoomStyle) || 'lens') !== 'wheel') return 1; return Math.min(5, Math.max(1.2, Number(L && L.zoomX) || 2.5)); }
   function create(canvas, opts = {}) {
     const g = canvas.getContext('2d');
-    let wheel = null, sl = [], rot = 0, anim = null, last = -1, hi = -1, hiT = 0, L = {};
+    let wheel = null, sl = [], rot = 0, anim = null, last = -1, hi = -1, hiT = 0, L = {}, lensZ = 0;
     const imgs = new Map(); const img = src => { if (!src) return null; if (!imgs.has(src)) { const im = new Image(); im.onload = () => draw(); im.src = src; imgs.set(src, im); } const im = imgs.get(src); return im.complete && im.naturalWidth ? im : null; };
     const api = {
       onTick: null, onDone: null,
@@ -48,8 +51,9 @@ window.WheelView = (() => {
       // rim
       g.save(); g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = R * .08; g.fillStyle = L.rim || '#2a1846'; g.beginPath(); g.arc(cx, cy, R + R * .045, 0, TAU); g.fill(); g.restore();
       const blink = Math.floor(performance.now() / 250) % 2;
-      for (const s of sl) {
+      const slices = (cx, R, fit) => { for (const s of sl) {
         const a0 = s.a0 + rot, a1 = s.a1 + rot;
+        let room = 0; if (fit) { const m = mod((a0 + a1) / 2 + Math.PI, TAU) - Math.PI; if (Math.abs(m) - (a1 - a0) / 2 > 1.1) continue; const dy = Math.abs(Math.sin(m)) * R * .8; room = dy < fit ? (.96 * fit + Math.sqrt(fit * fit - dy * dy)) * .93 - R * .07 : 0; } // the lens only needs the slices by the pointer
         g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, R, a0, a1); g.closePath();
         g.fillStyle = s.color; g.fill();
         if (s.i === hi) { const p = .35 + .25 * Math.sin((performance.now() - hiT) / 120); g.fillStyle = `rgba(255,255,255,${p})`; g.fill(); }
@@ -62,11 +66,14 @@ window.WheelView = (() => {
         const txt = String(s.e.label || s.e.text || ''); /* countdown spots show (3), auto spots show (auto) */ const fs = Math.min(R * .085, chord * .8, (R * .78) / Math.max(4, txt.length) * 1.8) * (Number(L.textScale) || 1);
         if (fs >= 6) {
           g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = `800 ${fs}px ${L.font || 'Inter'}, Inter, sans-serif`; g.fillStyle = L.textColor || ink(s.color);
-          let t = txt; const max = outer - R * .18; while (t.length > 1 && g.measureText(t).width > max) t = t.slice(0, -2) + '…';
+          let t = txt; const max = fit ? Math.max(0, room - (R * .93 - outer)) : outer - R * .18;
+          if (fit) { const w = g.measureText(t).width; if (w > max) { const f2 = Math.max(9, fs * max / w * .97); g.font = `800 ${f2}px ${L.font || 'Inter'}, Inter, sans-serif`; } }
+          while (t.length > 1 && g.measureText(t).width > max) t = t.slice(0, -2) + '…';
           g.fillText(t, outer, 0);
         }
         g.restore();
-      }
+      } };
+      slices(cx, R, 0);
       // bulbs
       const nb = L.bulbs === false ? 0 : Math.round(36 * Z); for (let i = 0; i < nb; i++) { const a = i / nb * TAU; g.fillStyle = (i + blink) % 2 ? '#fff7c2' : '#ffc94a'; g.beginPath(); g.arc(cx + Math.cos(a) * (R + R * .022), cy + Math.sin(a) * (R + R * .022), R * .012, 0, TAU); g.fill(); }
       // hub
@@ -75,6 +82,21 @@ window.WheelView = (() => {
       const hubPic = img(L.hubImage);
       if (hubPic) { g.save(); g.beginPath(); g.arc(cx, cy, hr * .92, 0, TAU); g.clip(); g.drawImage(hubPic, cx - hr, cy - hr, hr * 2, hr * 2); g.restore(); }
       else { g.fillStyle = L.rim || '#2a1846'; g.font = `${hr * .9}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(L.hub || '🎡', cx, cy + 2); }
+      // 🔎 magnifying glass: the spot at the pointer and the ones above and below it, big enough to read
+      if (lensOn(L, sl.length) && Z === 1) {
+        const i = api.indexAt(), n = sl.length, s3 = i < 0 ? TAU / n * 3 : (sl[i].a1 - sl[i].a0) + (sl[(i + 1) % n].a1 - sl[(i + 1) % n].a0) + (sl[(i - 1 + n) % n].a1 - sl[(i - 1 + n) % n].a0);
+        const lr = R0 * .47, tip = cx + R, want = Math.min(14, Math.max(1.25, 1.62 * lr / (Math.max(.004, s3) * R0)));
+        lensZ = lensZ ? lensZ + (want - lensZ) * (anim ? .12 : .35) : want;
+        const RL = R0 * lensZ, lx = tip - lr * .96;
+        g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = R0 * .06; g.fillStyle = L.rim || '#2a1846'; g.beginPath(); g.arc(lx, cy, lr + R0 * .02, 0, TAU); g.fill(); g.restore();
+        g.save(); g.beginPath(); g.arc(lx, cy, lr, 0, TAU); g.clip();
+        g.fillStyle = L.rim || '#2a1846'; g.fillRect(lx - lr, cy - lr, lr * 2, lr * 2);
+        slices(tip - RL, RL, lr);
+        const gl = g.createLinearGradient(lx - lr, cy - lr, lx + lr * .4, cy + lr * .6); gl.addColorStop(0, 'rgba(255,255,255,.22)'); gl.addColorStop(.45, 'rgba(255,255,255,0)'); g.fillStyle = gl; g.fillRect(lx - lr, cy - lr, lr * 2, lr * 2);
+        g.restore();
+        g.strokeStyle = '#fff7c2'; g.lineWidth = Math.max(2, R0 * .014); g.beginPath(); g.arc(lx, cy, lr, 0, TAU); g.stroke();
+        if (Math.abs(want - lensZ) > .02 && !anim) requestAnimationFrame(draw);
+      } else lensZ = 0;
       // pointer (right side)
       const px = cx + R + R0 * .02, ps = R0 * .09;
       g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 8; g.fillStyle = L.pointer || '#ffffff'; g.beginPath(); g.moveTo(px - ps * 1.1, cy); g.lineTo(px + ps * .7, cy - ps * .7); g.lineTo(px + ps * .7, cy + ps * .7); g.closePath(); g.fill(); g.restore();
@@ -83,5 +105,5 @@ window.WheelView = (() => {
     }
     return api;
   }
-  return { create, layout, PAL, zoomOf };
+  return { create, layout, PAL, zoomOf, zoomOn, lensOn };
 })();
