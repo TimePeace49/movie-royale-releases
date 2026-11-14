@@ -1079,7 +1079,7 @@ H(/^([Rr]im|[Pp]ointer|[Ll]ines between spots|Text)$/, 'Wheel colors', 'The colo
 H(/light bulbs/i, '💡 Light bulbs', 'Little lights around the rim that blink while it spins.');
 H(/^font/i, 'Font', 'The font of the words on the wheel.');
 H(/text size/i, 'Text size', 'How big the words on the wheel are.');
-H(/zoom in at the pointer|zoom check|magnifying glass|whole wheel bigger/i, '🔍 Zoom in at the pointer', 'For wheels with lots of spots. 🔎 Magnifying glass: the wheel stays whole and a round glass at the pointer blows up the spot it is on plus the one above and the one below, so you can read them. 🔍 Whole wheel bigger: the whole wheel is drawn bigger and slid over so only the part by the pointer shows. Either way it spins and lands the same. You pick when it zooms (only with lots of spots, always, or never).');
+H(/zoom in at the pointer|zoom check|magnifying glass|whole wheel bigger/i, '🔍 Zoom in at the pointer', 'Off unless you turn it on; made for wheels with lots of spots. 🔎 Magnifying glass: the wheel stays whole and a round glass at the pointer blows up the spot it is on plus the one above and the one below, so you can read them. 🔍 Whole wheel bigger: the whole wheel is drawn bigger and slid over so only the part by the pointer shows. Either way it spins and lands the same. Pick Off, On, or On only when there are lots of spots.');
 H(/picture in the middle|^middle$/i, '🖼️ Middle picture', 'A picture in the middle of the wheel (like your logo).');
 H(/background on stream|picture or video/i, '🖼️ Background', 'A picture or video behind the wheel on stream.');
 H(/use my own/i, '⬆️ Use my own', 'Upload your own sound or picture for this.');

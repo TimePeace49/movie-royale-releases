@@ -34,7 +34,7 @@ export const mergeOpts = o => ({ ...DEF_OPTS, ...(o || {}), round: { ...DEF_OPTS
 export const TYPES = { timer: '⏱️ Timer', mystery: '🎁⚡ Hidden reveal (auto)', timerlink: '⏱️🔀 Timer + Link', auto: '⚡ Auto', autolink: '⚡🔀 Auto + Link', countdown: '🔢 Countdown', autocount: '⚡🔢 Auto + countdown', timercount: '⏱️🔢 Timer + countdown', timermax: '⏱️🏆 Timer + max wins a night', void: '🕳️ Void' }; // (1.61.4, Derek: every spot rule in the menu: ⏱️🔀 timer + link is a timer spot with the link on; 🎁 mystery = an ⚡ auto spot with the reveal on since 1.67.1)
 // ⚡ auto behaviour (the round timer pauses, nobody can respin it): every auto kind, and 🎁 mystery spots (1.67.1, Derek: "for hidden spot it is a auto spot no timer")
 export const isAutoType = t => /^auto/.test(t || '') || t === 'mystery';
-const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#ffffff', hub: '🎡', hubImage: '', lines: '#ffffff', font: 'Inter', textScale: 1, textColor: '', zoom: 'auto', zoomStyle: 'lens', zoomAt: 30, zoomX: 2.5 };
+const DEF_LOOK = { bg: '', bgImage: '', rim: '#2a1846', bulbs: true, pointer: '#ffffff', hub: '🎡', hubImage: '', lines: '#ffffff', font: 'Inter', textScale: 1, textColor: '', zoom: 'off', zoomStyle: 'lens', zoomAt: 30, zoomX: 2.5 };
 
 export function W() {
   const w = db.wheel ||= {};
@@ -47,9 +47,11 @@ export function W() {
   if (!w.wheels.length) w.wheels.push(newWheel('My wheel', ['Spot 1', 'Spot 2', 'Spot 3', 'Spot 4', 'Spot 5', 'Spot 6'].map(t => ({ text: t }))));
   for (const x of w.wheels) {
     x.look = { ...DEF_LOOK, ...(x.look || {}) }; x.opts = mergeOpts(x.opts); x.folder ||= '';
+    if (!w.zoomOff1 && x.look.zoom === 'auto') x.look.zoom = 'off'; // 1.157.2 (Derek): the zoom is off unless you turn it on (1.157.0 / .1 had it on by itself for big wheels)
     if (x.opts.void.label !== 'VOID' && x.opts.void.label.replace(/[^A-Z]/g, '') === 'VOID') x.opts.void.label = 'VOID';
     for (const e of x.entries) { if (!TYPES[e.type]) e.type = 'timer'; if (e.image === '/gauntlet.svg') e.image = ''; } // old "normal" spots are timer spots now
   }
+  w.zoomOff1 = true;
   if (!w.wheels.some(x => x.id === w.activeId)) w.activeId = w.wheels[0].id;
   return w;
 }

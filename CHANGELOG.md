@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.157.2
+- 🔍 **Wheel zoom is off unless you turn it on.** The magnifying glass no longer comes on by itself for big wheels. When a wheel gets big, turn it on in Wheel settings → 🎨 Looks → 🔍 Zoom in at the pointer → On (or "On only when there are lots of spots"). Wheels that got the zoom by themselves in the last two versions are back to off.
+
 ## 1.157.1
 - 🔎 **Wheel: magnifying glass on 3 spots.** Big wheels now keep their whole shape, and a round magnifying glass at the pointer blows up the spot it is on plus the one above and the one below. It follows along as the wheel spins. This is now the usual way a wheel with 30 or more spots zooms; the "whole wheel bigger" zoom from 1.157.0 is still there as a choice (Wheel settings → 🎨 Looks → 🔍 Zoom in at the pointer). The 🔍 Zoom check on the Test tab shows all three side by side.
 

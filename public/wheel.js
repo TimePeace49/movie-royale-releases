@@ -11,9 +11,9 @@ window.WheelView = (() => {
     let a = 0;
     return on.map((e, i) => { const w = Number(e.weight || 1) / tot * TAU, s = { e, i, a0: a, a1: a + w, color: e.color || PAL[i % PAL.length], pct: Number(e.weight || 1) / tot * 100 }; a += w; return s; });
   }
-  // 🔍 zoom at the pointer. look.zoom 'auto' (default: only with look.zoomAt spots or more), 'on' or 'off';
+  // 🔍 zoom at the pointer. look.zoom 'off' (default), 'on', or 'auto' (only with look.zoomAt spots or more);
   // look.zoomStyle 'lens' (default: a magnifying glass over the spot at the pointer + the one above and below) or 'wheel' (the whole wheel drawn look.zoomX bigger)
-  function zoomOn(L, n) { const m = (L && L.zoom) || 'auto'; return !(m === 'off' || (m !== 'on' && n < (Number(L && L.zoomAt) || 30))); }
+  function zoomOn(L, n) { const m = (L && L.zoom) || 'off'; return !(m === 'off' || (m !== 'on' && n < (Number(L && L.zoomAt) || 30))); }
   function lensOn(L, n) { return zoomOn(L, n) && ((L && L.zoomStyle) || 'lens') !== 'wheel' && n > 2; }
   function zoomOf(L, n) { if (!zoomOn(L, n) || ((L && L.zoomStyle) || 'lens') !== 'wheel') return 1; return Math.min(5, Math.max(1.2, Number(L && L.zoomX) || 2.5)); }
   function create(canvas, opts = {}) {
