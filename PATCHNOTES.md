@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.157.0: What's new
+- 🔍 **Big wheels are readable now.** A wheel with 30 or more spots zooms in at the pointer: it is drawn much bigger so the spots next to the pointer have big names you can read. It spins and lands the same. Change when and how much it zooms in the wheel's settings → 🎨 Looks → 🔍 Zoom in at the pointer.
+
 ## v1.156.8: What's new
 - {dash} 🧰 Right-click a Stream tools button on the Chat tab to edit or delete it (delete asks first).
 

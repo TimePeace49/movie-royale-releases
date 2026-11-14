@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.157.0
+- 🔍 **Wheel: zoom in at the pointer.** A wheel with lots of spots was hard to read because every name got tiny. Now a wheel with 30 or more spots is drawn much bigger and slid over, so you only see the part next to the pointer, with big readable names. It spins and lands the same as before. Wheel settings → 🎨 Looks → 🔍 Zoom in at the pointer: only with lots of spots (you pick how many), always, or never, and how much. Test tab → wheel tests → 🔍 Zoom check (80 spots).
+
 ## 1.156.8
 - 🧰 **Right-click a Stream tools button** (💬 Chat tab: 🎬 Clip, 📣 SO and your scene buttons) to **✏️ Edit** or **🗑 Delete** it.
 - 🗑 Delete always asks first in its own window ("No, keep it" is the default). Deleting a scene button only takes the button off: the OBS scene itself is never touched.

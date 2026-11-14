@@ -11,6 +11,8 @@ window.WheelView = (() => {
     let a = 0;
     return on.map((e, i) => { const w = Number(e.weight || 1) / tot * TAU, s = { e, i, a0: a, a1: a + w, color: e.color || PAL[i % PAL.length], pct: Number(e.weight || 1) / tot * 100 }; a += w; return s; });
   }
+  // how much to zoom: look.zoom 'auto' (default: only with look.zoomAt spots or more), 'on' or 'off'; look.zoomX = how much
+  function zoomOf(L, n) { const m = (L && L.zoom) || 'auto'; if (m === 'off' || (m !== 'on' && n < (Number(L && L.zoomAt) || 30))) return 1; return Math.min(5, Math.max(1.2, Number(L && L.zoomX) || 2.5)); }
   function create(canvas, opts = {}) {
     const g = canvas.getContext('2d');
     let wheel = null, sl = [], rot = 0, anim = null, last = -1, hi = -1, hiT = 0, L = {};
@@ -37,7 +39,9 @@ window.WheelView = (() => {
       draw
     };
     function draw() {
-      const W = canvas.width, H = canvas.height, cx = W / 2 - (opts.pointerRoom ?? 18), cy = H / 2, R = Math.min(cx, cy) - 14;
+      const W = canvas.width, H = canvas.height, cx0 = W / 2 - (opts.pointerRoom ?? 18), cy = H / 2, R0 = Math.min(cx0, cy) - 14;
+      /* 🔍 zoom in at the pointer: the wheel is drawn bigger and slid left, so the pointer stays where it is and the slices next to it are big enough to read */
+      const Z = zoomOf(L, sl.length), R = R0 * Z, cx = cx0 + R0 - R;
       if (hi >= 0 && !anim && performance.now() - hiT > 4000) hi = -1; // the winner flash fades after a few seconds
       g.clearRect(0, 0, W, H);
       if (!sl.length) { g.fillStyle = '#ffffff22'; g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.font = `700 ${R * .1}px Inter, sans-serif`; g.textAlign = 'center'; g.fillText('Add some spots!', cx, cy); return; }
@@ -64,7 +68,7 @@ window.WheelView = (() => {
         g.restore();
       }
       // bulbs
-      const nb = L.bulbs === false ? 0 : 36; for (let i = 0; i < nb; i++) { const a = i / nb * TAU; g.fillStyle = (i + blink) % 2 ? '#fff7c2' : '#ffc94a'; g.beginPath(); g.arc(cx + Math.cos(a) * (R + R * .022), cy + Math.sin(a) * (R + R * .022), R * .012, 0, TAU); g.fill(); }
+      const nb = L.bulbs === false ? 0 : Math.round(36 * Z); for (let i = 0; i < nb; i++) { const a = i / nb * TAU; g.fillStyle = (i + blink) % 2 ? '#fff7c2' : '#ffc94a'; g.beginPath(); g.arc(cx + Math.cos(a) * (R + R * .022), cy + Math.sin(a) * (R + R * .022), R * .012, 0, TAU); g.fill(); }
       // hub
       const hr = R * .14; const hg = g.createRadialGradient(cx - hr * .3, cy - hr * .3, 2, cx, cy, hr); hg.addColorStop(0, '#fff3c4'); hg.addColorStop(1, '#ffb800');
       g.fillStyle = hg; g.beginPath(); g.arc(cx, cy, hr, 0, TAU); g.fill(); g.strokeStyle = '#2a1846'; g.lineWidth = R * .015; g.stroke();
@@ -72,12 +76,12 @@ window.WheelView = (() => {
       if (hubPic) { g.save(); g.beginPath(); g.arc(cx, cy, hr * .92, 0, TAU); g.clip(); g.drawImage(hubPic, cx - hr, cy - hr, hr * 2, hr * 2); g.restore(); }
       else { g.fillStyle = L.rim || '#2a1846'; g.font = `${hr * .9}px 'Lilita One', Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(L.hub || '🎡', cx, cy + 2); }
       // pointer (right side)
-      const px = cx + R + R * .02, ps = R * .09;
+      const px = cx + R + R0 * .02, ps = R0 * .09;
       g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 8; g.fillStyle = L.pointer || '#ffffff'; g.beginPath(); g.moveTo(px - ps * 1.1, cy); g.lineTo(px + ps * .7, cy - ps * .7); g.lineTo(px + ps * .7, cy + ps * .7); g.closePath(); g.fill(); g.restore();
       g.strokeStyle = '#2a1846'; g.lineWidth = 3; g.beginPath(); g.moveTo(px - ps * 1.1, cy); g.lineTo(px + ps * .7, cy - ps * .7); g.lineTo(px + ps * .7, cy + ps * .7); g.closePath(); g.stroke();
       if (hi >= 0 && !anim) requestAnimationFrame(draw);
     }
     return api;
   }
-  return { create, layout, PAL };
+  return { create, layout, PAL, zoomOf };
 })();

@@ -1079,6 +1079,7 @@ H(/^([Rr]im|[Pp]ointer|[Ll]ines between spots|Text)$/, 'Wheel colors', 'The colo
 H(/light bulbs/i, '💡 Light bulbs', 'Little lights around the rim that blink while it spins.');
 H(/^font/i, 'Font', 'The font of the words on the wheel.');
 H(/text size/i, 'Text size', 'How big the words on the wheel are.');
+H(/zoom in at the pointer|zoom check/i, '🔍 Zoom in at the pointer', 'For wheels with lots of spots: the wheel is drawn much bigger and slid over, so only the part next to the pointer shows and its names are big enough to read. It spins the same and lands the same. You pick when it zooms (only with lots of spots, always, or never) and how much.');
 H(/picture in the middle|^middle$/i, '🖼️ Middle picture', 'A picture in the middle of the wheel (like your logo).');
 H(/background on stream|picture or video/i, '🖼️ Background', 'A picture or video behind the wheel on stream.');
 H(/use my own/i, '⬆️ Use my own', 'Upload your own sound or picture for this.');
