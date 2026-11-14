@@ -1609,14 +1609,54 @@ function autoBackup(why) {
 db.firstRunAt ||= Date.now();
 const backupDue = () => Date.now() - (db.lastBackupAt || db.firstRunAt) > 30 * 864e5 && Date.now() > (db.backupSnooze || 0);
 app.post('/api/backup/snooze', (req, res) => { db.backupSnooze = Date.now() + 7 * 864e5; save(); pushState(); res.json({ ok: true }); });
+// 🔒 (1.158.0, Derek: "can we encrypt backups… there would be user info in those") a backup locked with a password you pick:
+// the whole file is scrambled (AES-256-GCM, key from the password with scrypt), so without the password nobody can read the people, chat names or sign-ins in it.
+// The password is never saved anywhere: forget it and that file can't be opened.
+const bkKey = (pw, salt) => crypto.scryptSync(String(pw), salt, 32, { N: 1 << 15, r: 8, p: 1, maxmem: 256 * 1024 * 1024 });
+function bkLock(obj, pw) {
+  const salt = crypto.randomBytes(16), iv = crypto.randomBytes(12), c = crypto.createCipheriv('aes-256-gcm', bkKey(pw, salt), iv);
+  const data = Buffer.concat([c.update(Buffer.from(JSON.stringify(obj), 'utf8')), c.final()]);
+  return { movieRoyalBackup: 2, locked: true, how: 'aes-256-gcm, key: scrypt', made: new Date().toISOString(), salt: salt.toString('base64'), iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'), data: data.toString('base64') };
+}
+function bkUnlock(file, pw) {
+  try {
+    const d = crypto.createDecipheriv('aes-256-gcm', bkKey(pw, Buffer.from(String(file.salt), 'base64')), Buffer.from(String(file.iv), 'base64')); d.setAuthTag(Buffer.from(String(file.tag), 'base64'));
+    return JSON.parse(Buffer.concat([d.update(Buffer.from(String(file.data), 'base64')), d.final()]).toString('utf8'));
+  } catch { throw new Error("That password doesn't open this backup (or the file is damaged)."); }
+}
+let bkPass = null; // the password for the download that's about to start: kept in memory for a minute, used once
+app.post('/api/backup/lock', (req, res) => {
+  const pw = String(req.body?.password || ''); if (pw.length < 6) return res.status(400).json({ error: 'Pick a password with at least 6 letters or numbers.' });
+  bkPass = { token: crypto.randomBytes(16).toString('hex'), pw, until: Date.now() + 60000 }; res.json({ ok: true, token: bkPass.token });
+});
 app.get('/api/backup', (req, res) => {
+  const { twitchToken, ...rest } = db; let out, name = `movie-royal-backup-${stamp()}`;
+  if (req.query.lock) {
+    const p = bkPass; bkPass = null;
+    if (!p || p.token !== String(req.query.lock) || Date.now() > p.until) return res.status(400).type('text/plain').send('That download ran out of time. Press Download backup again.');
+    out = JSON.stringify(bkLock(rest, p.pw)); name += '-locked';
+  } else out = JSON.stringify(rest, null, 1);
   db.lastBackupAt = Date.now(); save(); setTimeout(pushState, 200);
-  const { twitchToken, ...rest } = db;
-  res.setHeader('Content-Disposition', `attachment; filename="movie-royal-backup-${stamp()}.json"`);
-  res.type('application/json').send(JSON.stringify(rest, null, 1));
+  res.setHeader('Content-Disposition', `attachment; filename="${name}.json"`);
+  res.type('application/json').send(out);
+});
+app.get('/api/test/backup-lock', (req, res) => { // 🧪 lock + unlock a pretend backup (nothing is saved or downloaded)
+  const rows = [], T = (what, got, ok) => rows.push({ what, got: String(got), ok: !!ok });
+  try {
+    const fake = { settings: { secretThing: 'SECRET-123' }, lists: [{ id: 'a', entries: [] }], viewers: { some_viewer: { name: 'Some_Viewer' } } };
+    const f = bkLock(fake, 'correct horse'), text = JSON.stringify(f);
+    T('The locked file hides what is inside (no names, no sign-ins)', /SECRET-123|Some_Viewer|settings/.test(text) ? 'readable!' : 'scrambled', !/SECRET-123|Some_Viewer|"settings"/.test(text));
+    T('The right password opens it, and it is the same as before', JSON.stringify(bkUnlock(f, 'correct horse')) === JSON.stringify(fake) ? 'same' : 'different', JSON.stringify(bkUnlock(f, 'correct horse')) === JSON.stringify(fake));
+    let w = 'opened!'; try { bkUnlock(f, 'wrong horse'); } catch (e) { w = 'refused'; } T('A wrong password is refused', w, w === 'refused');
+    let t2 = 'opened!'; try { bkUnlock({ ...f, data: f.data.slice(0, -8) + 'AAAAAA==' }, 'correct horse'); } catch { t2 = 'refused'; } T('A changed file is refused', t2, t2 === 'refused');
+    const g = bkLock(fake, 'correct horse'); T('Two backups with the same password still look different', g.data === f.data ? 'same' : 'different', g.data !== f.data);
+  } catch (e) { T('Lock check', e.message, false); }
+  res.json({ ok: rows.every(r => r.ok), rows });
 });
 app.post('/api/restore', (req, res) => {
-  const b = req.body;
+  let b = req.body;
+  if (b && b.locked && b.file) { try { b = bkUnlock(b.file, b.password); } catch (e) { return res.status(400).json({ error: e.message }); } }
+  else if (b && b.locked) return res.status(400).json({ error: 'This backup is locked: type its password.' });
   if (!b || !Array.isArray(b.lists) || !b.settings) return res.status(400).json({ error: "That doesn't look like a Movie Royal backup." });
   autoBackup('before-restore');
   for (const k of ['settings', 'lists', 'activeListId', 'history', 'links', 'picks', 'pendingEffects', 'bans', 'manualPeople', 'yearAllow', 'colors', 'luckSaves']) if (k in b) db[k] = b[k];

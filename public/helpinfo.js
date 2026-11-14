@@ -1277,8 +1277,9 @@ H(/banned movies/i, '🚫 Banned Movies', 'Movies nobody can pick, with an optio
 H(/^🔊 sounds$/i, '🔊 Sounds', 'Volume, muting Movie Royal while you\'re in another program, and every sound (with your own uploads) for all maps, one map or one wheel.');
 H(/patch notes/i, '📝 Patch notes', 'What changed in each latest release.');
 H(/your name in the app/i, 'Your name', 'Your name as Movie Royal shows it (like "[name] will return for Doomsday"). Blank = your Twitch name.');
-H(/download backup/i, '⬇️ Download backup', 'Saves one file with everything: lists, odds, luck, history, people, settings. Keep it somewhere other than this PC.');
-H(/restore from backup/i, '⬆️ Restore from backup', 'Loads a backup file (on this or another computer). What you had is saved first.');
+H(/download backup|locked backup|download without a password|backup window/i, '⬇️ Download backup', 'Saves one file with everything: lists, odds, luck, history, people, settings and your sign-ins. It asks for a password first: with one, the file is locked (scrambled) and nobody can read it without that password. The password is not saved anywhere, so if you forget it that backup cannot be opened. Keep the file somewhere other than this PC.');
+H(/backup password|show what i.?m typing|unlock and restore/i, '🔒 Backup password', 'The password that locks a backup file. You type it when you download the backup and again when you bring it back. The app never saves it: write it down somewhere safe.');
+H(/restore from backup/i, '⬆️ Restore from backup', 'Loads a backup file (on this or another computer). A locked backup asks for its password. What you had is saved first.');
 H(/where updates come from/i, 'Where updates come from', 'The GitHub page Movie Royal checks for updates. Leave it unless you know you need to change it.');
 H(/also install test builds/i, '🧪 Test builds', 'On = you also get test builds (new stuff that\'s still being tried). Off = only latest releases.');
 H(/undo changes/i, 'Undo changes', 'Puts the settings back to how they were before you changed them.');

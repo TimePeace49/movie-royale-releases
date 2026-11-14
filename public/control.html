@@ -1446,7 +1446,7 @@ not a link</textarea>
   <div class="card" id="safeTestCard">
     <h3>🔐 Safety &amp; privacy</h3>
     <p class="help">Checks that only this PC can reach the app, that pages on other websites are turned away, and that the lock's codes work the way authenticator apps expect. Nothing is changed.</p>
-    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="safeCheck('tSafeOut')" title="Runs the safety checks now and lists each one (nothing is changed)">🛡️ Run the safety check</button><button onclick="safePrivacy()" title="A plain list of everything the app sends, where to, and when (and what never leaves this PC)">📄 What is sent where</button><button class="ghost" onclick="setView('settings');setSub('account')" title="Open Settings → Account & updates, where the lock is set up">🔐 Open the lock settings</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="safeCheck('tSafeOut')" title="Runs the safety checks now and lists each one (nothing is changed)">🛡️ Run the safety check</button><button onclick="safePrivacy()" title="A plain list of everything the app sends, where to, and when (and what never leaves this PC)">📄 What is sent where</button><button onclick="backupLockTest()" title="Backup test: lock and unlock a pretend backup with a password, and check a wrong password is refused. Nothing is saved or downloaded">🔒 Locked backup check</button><button onclick="backupAsk()" title="Download backup: opens the window that asks for a backup password">⬇️ Try the backup window</button><button class="ghost" onclick="setView('settings');setSub('account')" title="Open Settings → Account & updates, where the lock is set up">🔐 Open the lock settings</button></div>
     <div id="tSafeOut" style="margin-top:8px"></div>
   </div>
   <div class="card edOff" id="rdTestCard" data-feat="raids">
@@ -3690,14 +3690,14 @@ function backupStep() { // 📦 once a month: download a backup (a start-up step
   if (!S.backupDue) return null;
   return { key: 'backup', html: done => `<div class="holBig">📦</div><h3 style="text-align:center">Monthly backup</h3>
     <p class="help" style="text-align:center">Download a backup of Movie Royal (your lists, people, history and settings) and keep it somewhere other than this PC, like a USB stick or cloud drive.${S.lastBackupAt ? ` Last one: ${new Date(S.lastBackupAt).toLocaleDateString()}.` : ''}</p>
-    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="${SQ.test ? "toast('🧪 Test: this downloads the backup')" : "location.href='/api/backup'"};${done}">⬇️ Download backup</button><button onclick="${SQ.test ? '' : "api('/api/backup/snooze').catch(()=>{});"}${done}">Remind me in a week</button><button onclick="${done}" title="Asks again next time Movie Royal opens">Later</button></div>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="primary" onclick="${SQ.test ? "toast('🧪 Test: this downloads the backup')" : "backupAsk()"};${done}">⬇️ Download backup</button><button onclick="${SQ.test ? '' : "api('/api/backup/snooze').catch(()=>{});"}${done}">Remind me in a week</button><button onclick="${done}" title="Asks again next time Movie Royal opens">Later</button></div>
     <p class="help" style="text-align:center;margin-top:8px">To bring one back: Settings → 👤 Account &amp; updates → ⬆️ Restore from backup.</p>` };
 }
 function renderBackupNag() {
   const b = $('backupNag'); b.style.display = 'none'; return; // (1.60.1: it's a step in the start-up pop-up now, not a bar)
   if (!S.backupDue) { b.style.display = 'none'; return; }
   b.style.display = 'flex';
-  b.innerHTML = `📦 Monthly reminder: download a backup of Movie Royal${S.lastBackupAt ? ` (last one ${new Date(S.lastBackupAt).toLocaleDateString()})` : ''}. <button class="primary" onclick="location.href='/api/backup'">⬇️ Download backup</button><button class="ghost" onclick="api('/api/backup/snooze')">Remind me in a week</button>`;
+  b.innerHTML = `📦 Monthly reminder: download a backup of Movie Royal${S.lastBackupAt ? ` (last one ${new Date(S.lastBackupAt).toLocaleDateString()})` : ''}. <button class="primary" onclick="backupAsk()">⬇️ Download backup</button><button class="ghost" onclick="api('/api/backup/snooze')">Remind me in a week</button>`;
 }
 // ---------- 🍀 luck saves ----------
 function luckBattlesHTML() { // Settings → 🍀 Luck: every battle's watch luck (on/off + how much) + save / reset / bring back
@@ -7866,8 +7866,8 @@ function openSettings(force) {
         : `<div class="row"><span class="grow muted">Not signed in. Everything is still saved on this computer.</span><button class="twitch" onclick="location.href='/auth/twitch'">Sign in with Twitch</button></div>`}
       ${f('streamerName', 'Your name in the app (blank = your Twitch name)', S.owner?.name || 'your Twitch name')}
       <h3 style="margin-top:18px">💾 Backup</h3>
-      <p class="help">Everything saves automatically. Download a backup to keep a copy or move to another computer.</p>
-      <div class="row"><button onclick="location.href='/api/backup'">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
+      <p class="help">Everything saves automatically. Download a backup to keep a copy or move to another computer. 🔒 You can lock the backup with a password, so nobody else can read the people, chat names and sign-ins in it.</p>
+      <div class="row"><button onclick="backupAsk()">⬇️ Download backup</button><button onclick="$('restoreFile').click()">⬆️ Restore from backup</button><input type="file" id="restoreFile" accept=".json" hidden onchange="restore(this.files[0])"></div>
       <h3 style="margin-top:18px">🔐 Safety &amp; privacy</h3><div id="safeBox" class="help">Loading…</div>
       <h3 style="margin-top:18px">📮 Error reports</h3><div id="repBox" class="help">Loading…</div>
       <h3 style="margin-top:18px">🔄 Updates</h3><div id="appBox" class="help">Loading…</div>`,
@@ -8513,10 +8513,50 @@ async function installFile(file) {
 }
 async function restore(file) {
   if (!file) return;
-  if (!confirm('Replace your current lists, history and settings with this backup?')) return;
   let data; try { data = JSON.parse(await file.text()); } catch { return toast("⚠️ That file isn't a backup."); }
+  if (data && data.locked) return restoreAsk(data); // 🔒 a locked backup: ask for its password first
+  if (!confirm('Replace your current lists, history and settings with this backup?')) return;
   await api('/api/restore', data); toast('✅ Backup restored');
 }
+// 🔒 (1.158.0) backups locked with a password
+let BK_FILE = null;
+function backupAsk() {
+  const d = $('botDlg'); if (!d) return void (location.href = '/api/backup');
+  $('botDlgBody').innerHTML = `<div style="padding:18px 20px"><h3 style="margin-top:0">⬇️ Download backup</h3>
+    <p class="help">A backup holds everything: your lists, history and settings, and also <b>people's names, chat info and your sign-ins</b>. 🔒 Lock it with a password so nobody else can read it.</p>
+    <label style="display:block;margin-top:8px">Password for this backup <input id="bkPw1" type="password" autocomplete="new-password" style="width:100%" title="Backup password: you need it to bring this backup back. At least 6 letters or numbers" onkeydown="if(event.key==='Enter')$('bkPw2').focus()"></label>
+    <label style="display:block;margin-top:8px">Type it again <input id="bkPw2" type="password" autocomplete="new-password" style="width:100%" title="Backup password again: to catch typing mistakes" onkeydown="if(event.key==='Enter')backupGo(true)"></label>
+    <label class="ck" style="margin-top:8px"><input type="checkbox" onchange="for(const i of ['bkPw1','bkPw2'])$(i).type=this.checked?'text':'password'"> <span>Show what I'm typing</span></label>
+    <p class="help" style="margin-top:8px">⚠️ The password isn't saved anywhere. <b>If you forget it, that backup can't be opened</b>, not by you, not by anyone. Write it down somewhere safe.</p>
+    <div id="bkMsg" class="help" style="color:#ff9a9a;min-height:1.2em"></div>
+    <div class="row" style="justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="ghost" onclick="backupGo(false)" title="Download backup without a password: anyone who gets the file can read everything in it">Download without a password</button><button onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="backupGo(true)" title="Download backup locked with the password you typed">🔒 Download locked backup</button></div></div>`;
+  if (!d.open) d.showModal(); setTimeout(() => $('bkPw1')?.focus(), 50);
+}
+async function backupGo(lock) {
+  if (!lock) { $('botDlg').close(); location.href = '/api/backup'; return; }
+  const a = $('bkPw1').value, b = $('bkPw2').value, say = t => { $('bkMsg').textContent = t; };
+  if (a.length < 6) return say('Pick a password with at least 6 letters or numbers.');
+  if (a !== b) return say("The two passwords don't match.");
+  let r; try { r = await (await fetch('/api/backup/lock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: a }) })).json(); } catch { return say("Couldn't start the download. Try again."); }
+  if (!r.token) return say(r.error || "Couldn't start the download.");
+  $('botDlg').close(); location.href = '/api/backup?lock=' + r.token; toast('🔒 Locked backup downloading. Keep the password somewhere safe.');
+}
+function restoreAsk(data) {
+  BK_FILE = data; const d = $('botDlg');
+  $('botDlgBody').innerHTML = `<div style="padding:18px 20px"><h3 style="margin-top:0">🔒 This backup is locked</h3>
+    <p class="help">Type the password it was made with${data.made ? ' (backup from ' + esc(new Date(data.made).toLocaleString()) + ')' : ''}. Restoring replaces your current lists, history and settings; what you have now is saved first.</p>
+    <label style="display:block;margin-top:8px">Backup password <input id="bkPw3" type="password" autocomplete="off" style="width:100%" title="Backup password: the one typed when this backup was downloaded" onkeydown="if(event.key==='Enter')restoreGo()"></label>
+    <div id="bkMsg" class="help" style="color:#ff9a9a;min-height:1.2em"></div>
+    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:6px"><button onclick="$('botDlg').close()">Cancel</button><button class="primary" onclick="restoreGo()" title="Restore from backup: open the locked backup with this password and load it">⬆️ Unlock and restore</button></div></div>`;
+  if (!d.open) d.showModal(); setTimeout(() => $('bkPw3')?.focus(), 50);
+}
+async function restoreGo() {
+  const pw = $('bkPw3').value; if (!pw) return;
+  let r, j; try { r = await fetch('/api/restore', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ locked: true, file: BK_FILE, password: pw }) }); j = await r.json(); } catch { $('bkMsg').textContent = "Couldn't reach the app. Try again."; return; }
+  if (!r.ok) { $('bkMsg').textContent = j.error || "That didn't work."; return; }
+  BK_FILE = null; $('botDlg').close(); toast('✅ Backup restored');
+}
+async function backupLockTest() { let r; try { r = await api('/api/test/backup-lock', null, 'GET'); } catch { return; } toast((r.ok ? '✅ ' : '⚠️ ') + '🔒 Locked backups<br>' + r.rows.map(x => `${x.ok ? '✔' : '✖'} ${esc(x.what)} <span class="muted">(${esc(x.got)})</span>`).join('<br>'), 12000); }
 async function whatsNewStep(test = false) { // an update added something to set up? one step each (1.59.7, Derek: every start-up pop-up is a step)
   const r = test ? { steps: [{ id: 'chatbot', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (pretend step for the test).', how: ['Make a second Twitch account for the bot.', 'Open the sign-in link in a private window and log in as the bot.', 'In your Twitch chat, type /mod and the bot\'s name.'], guide: true }] } : await fetch('/api/whatsnew').then(r => r.json());
   const list = (r.steps || []).filter(x => test || !(x.id === 'chars' && Object.keys(FEAT_Q).some(k => !S.settings.featAsk?.[k]))); if (!list.length) return null; // (🧍 the character questions are asked as their own steps already)

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.158.0
+- 🔒 **Backups can be locked with a password.** A backup file holds people's names, chat info and your sign-ins. ⬇️ Download backup now asks for a password and scrambles the whole file with it, so nobody can read it without that password. ⬆️ Restore from backup asks for the password when the file is locked. The password isn't saved anywhere: if you forget it, that backup can't be opened, so write it down. "Download without a password" is still there, and old backups still restore. Test tab → 🔐 Safety & privacy → 🔒 Locked backup check.
+
 ## 1.157.3
 - 🌀 **Screen effects cost 2,500 channel points now** (was 3,000). The price in the app and the "Screen: 🎲 Random effect" reward on Twitch are moved down once, by themselves; if you had set your own price it is left alone. Bits (300) and tips ($3) stay the same.
 

@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.158.0: What's new
+- 🔒 **Lock your backups with a password.** A backup holds people's names, chat info and your sign-ins. Download backup now asks for a password and scrambles the file with it, so nobody else can read it. Restore asks for the same password. The app doesn't save the password: if you forget it, that backup can't be opened, so write it down. Old backups still work.
+- {screenfx} 🌀 A random screen effect now costs 2,500 channel points (was 3,000). Bits and tips are unchanged.
+
 ## v1.157.3: What's new
 - {screenfx} 🌀 A random screen effect now costs 2,500 channel points (was 3,000). Bits and tips are unchanged.
 
