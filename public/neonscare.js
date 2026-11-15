@@ -260,21 +260,23 @@
     job.t0 = now();
     const base = { 1: 2.0, 2: 2.6, 3: 3.4, voice: 0, info: 0 }[job.lvl];
     const after = { 1: 4.0, 2: 4.8, 3: 5.8, voice: 3.2, info: 4.5 }[job.lvl];
-    job.B = base + (base ? Math.random() * 1.2 : 0);
+    // (1.167.1, Derek: "have the sound go off and then the popup comes up", for every jump scare) no build-up at all: the sound hits first, the picture follows .4 s later
+    job.quick = !!base && !!fv('noBuild', true);
+    job.B = job.quick ? .4 : base + (base ? Math.random() * 1.2 : 0);
     job.T = job.B + after;
     job.parts = []; job.seed = Math.floor(Math.random() * 1e9);
     job.speakAt = job.lvl === 'voice' ? .7 : job.B + 1.5;
     if (au() && SND[job.lvl]) {
       const t = A.ctx.currentTime + .03;
       job.build = bus(); job.bus = bus();
-      if (!fv('noBuild', false)) SND[job.lvl].build(job.build, t, job.B); // (1.167.0, Derek: "all the sound at the same time as the jump scare so I have no warning")
+      if (!job.quick && SND[job.lvl].build) SND[job.lvl].build(job.build, t, job.B);
       const own = !!fv('sound' + job.lvl, '');
-      if (job.lvl === 3) { // a beat of dead silence right before the scare
+      if (job.lvl === 3 && !job.quick) { // a beat of dead silence right before the scare
         job.build.gain.setValueAtTime(1, t + job.B - .55);
         job.build.gain.linearRampToValueAtTime(0, t + job.B - .45);
       }
-      SND[job.lvl].scare(job.bus, t + job.B, own);
-      if (own) setTimeout(() => { if (cur === job) playOwn(job.lvl); }, job.B * 1000);
+      SND[job.lvl].scare(job.bus, job.quick ? t : t + job.B, own);
+      if (own) { if (job.quick) playOwn(job.lvl); else setTimeout(() => { if (cur === job) playOwn(job.lvl); }, job.B * 1000); }
     }
     if (!raf) { lastT = now(); raf = requestAnimationFrame(frame); }
   }
@@ -294,6 +296,7 @@
     }
     if (cur.talking) cur.T = Math.max(cur.T, s + 1.2);
     if (s >= cur.T) { finish(); return; }
+    if (cur.quick && s < cur.B) return; // nothing on screen until the sound has gone off
     draw(cur, s, dt);
   }
 
