@@ -6424,7 +6424,7 @@ async function maraObsSetup(b) { // (also used by 🔄 Keep OBS up to date with 
   const extra = [];
   if (!b.dry && db.settings.choiceObs && obsOk()) { try { const f = await choiceFile(); extra.push({ name: 'Movie Royal celebration', url: f.file, local: true }); } catch {} } // 🎉 Viewer's Choice, if you have it in OBS
   if (!b.dry && db.settings.rollObs && obsOk()) extra.push({ name: obs.ROLL_NAME, url: rollUrl() }); // 📣 roll call, if you have it in OBS
-  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, keepScene: !!b.keepScene, coSide: costream.mySide(), urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), maraMini: maraUrl() + '?mini=1', card: k => `http://localhost:${PORT}/scenecard.html?k=${k}`, yt: k => `http://localhost:${PORT}/ytplay.html?k=${k}` } });
+  const r = await obs.marathonSetup({ profile, collection, dry: !!b.dry, extra, keepScene: !!b.keepScene, cookBig: db.settings.marathon?.cookBig || 1, coSide: costream.mySide(), urls: { game: `http://localhost:${PORT}/game.html`, mara: maraUrl(), maraMini: maraUrl() + '?mini=1', maraPlain: maraUrl() + '?plain=1', cook: `http://localhost:${PORT}/cookcard.html`, card: k => `http://localhost:${PORT}/scenecard.html?k=${k}`, yt: k => `http://localhost:${PORT}/ytplay.html?k=${k}` } });
   if (!b.dry) {
     o.profile = profile; o.collection = collection; o.madeAt = Date.now(); if (r.prev && (r.prev.profile !== profile || r.prev.collection !== collection)) o.prev = r.prev;
     c.obsSetup = o; c.obs = true; c.scenes = r.scenes; db.settings.marathon = c;

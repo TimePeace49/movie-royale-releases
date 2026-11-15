@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.164.0
+- 🍳 **Cooking scene filled in (dev mode, marathon).** The old background is gone. Now the big camera sits top left, the two small cameras top right, a box under them shows your total live time and the battles waiting, and a bar along the bottom has the 🍳 COOKING title and the song that's playing (with no song on, your sell message shows there instead). The cameras get lined up with the frame once. Pop-ups (battle picks, guesses, the workout timer) still show in the cooking scene; only its clock and counter moved into the frame. 👀 See the frame is on the Marathon tab and on a new Test card.
+
 ## 1.163.1
 - 🎛️ **My effects box: tall and movable.** The Ctrl+Alt+D box is now a narrow list (one effect per row), and you can drag it by its title to anywhere on the game picture. It remembers where you put it.
 

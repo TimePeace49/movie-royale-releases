@@ -62,6 +62,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .count .ck { display: none; } .count.mini .ck { display: flex; align-items: center; gap: 6px; margin-left: 6px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,.25); font: 400 22px/1 'Lilita One', sans-serif; font-variant-numeric: tabular-nums; }
 .count.mini .ck i { width: 10px; height: 10px; border-radius: 50%; background: #ff3a4a; box-shadow: 0 0 8px #ff3a4a; animation: ckDot 1.6s ease-in-out infinite; }
 .count.mini .ck.paused i { background: #9a8ab8; box-shadow: none; animation: none; }
+body.plain .clock, body.plain .count { display: none !important; } /* 🍳 ?plain=1 (the cooking scene): pop-ups only, its frame shows the clock + battles */
 .count.mini.ckOnly .n, .count.mini.ckOnly .t { display: none; } .count.mini.ckOnly .ck { margin: 0; padding: 0; border: 0; }
 .count.mini.ckOnly.off { opacity: 1; transform: translateX(-50%); }
 /* 🎯 (1.77.0) the big guess pop-up in the middle when guessing starts, then it slides over to the side panel */
@@ -96,6 +97,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 <script>
 'use strict';
 const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+if (/[?&]plain=1/.test(location.search)) document.body.classList.add('plain');
 const DEMO = /[?&]demo/.test(location.search), MINI = /[?&]mini=1/.test(location.search), Q = []; let showing = false, last = null, audio = { on: true, sfx: .7 };
 // ⏱️ total live time: the server sends the total + whether you're live; this page counts on by itself between messages
 const CK = { on: false, ms: 0, live: false, at: 0, corner: 'tr' }; let lastCount = null;

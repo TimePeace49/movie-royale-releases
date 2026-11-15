@@ -559,6 +559,7 @@ export const YT_NAMES = { brb: '📺 BRB videos (YouTube)', sleep: '📺 Sleepin
 export const COOK_CAMS = ['📷 Cooking cam 1', '📷 Cooking cam 2', '📷 Cooking cam 3'];
 const COOK_BOXES = [[0, 0, .75, .75], [.75, 0, .25, .25], [.75, .25, .25, .25]];
 export const MARA_MINI = 'Movie Royal marathon (small)';
+export const COOK_CARD = 'Movie Royal cooking card', MARA_PLAIN = 'Movie Royal marathon (cooking)'; // 🍳 (1.164.0) the cooking scene's frame (info box + bottom bar, behind the cameras) + the overlay without its clock / counter (the frame shows those)
 export const COOK_MIC = '🎙️ Cooking mics (wireless)'; // (1.82.7) the USB receiver of Derek's wireless mics: only in the 🍳 Cooking scene
 const GAME_CAM = [.81, .785, .175, .19];
 /** 🍳 make cooking camera n (1–3) the big one; the other two go small in order. */
@@ -596,7 +597,7 @@ export async function setFps(n) {
   });
 }
 /** urls: {game, mara, card(kind)}; extra: [{name, url}] browser sources to put in every scene too (celebration, roll call). dry = only say what it would do. */
-export async function marathonSetup({ profile, collection, urls, extra = [], dry = false, coSide = 'right', keepScene = false }) {
+export async function marathonSetup({ profile, collection, urls, extra = [], dry = false, coSide = 'right', keepScene = false, cookBig: cookBigN = 1 }) {
   return session(async call => {
     const out = [], say = (icon, text) => out.push({ icon, text });
     if ((await call('GetStreamStatus').catch(() => ({}))).outputActive || (await call('GetRecordStatus').catch(() => ({}))).outputActive) throw new Error("OBS is streaming or recording right now: OBS doesn't let anyone switch profiles then. Do this before you go live.");
@@ -681,7 +682,9 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
     await put(CO_SCENE, BATTLE, 'browser_source', browser(urls.game), [0, 0, .75, .75]);
     await put(CO_SCENE, CAM, ...cam, [.75, 0, .25, .25]);
     // 🍳 cooking: a background with the title, 3 cameras (1 big + 2 small), the battle hidden
-    await put(S.cook, 'Movie Royal background (cooking)', 'browser_source', browser(urls.card('chat'), { shut: true }), FULL);
+    // (1.164.0, Derek: "the background you had for it just didn't work… I need to fill up the space"; he picked the info-bar layout) the frame page fills what the cameras leave; the old title background is switched off once
+    const newCard = urls.cook ? await put(S.cook, COOK_CARD, 'browser_source', browser(urls.cook), FULL) : false;
+    if (newCard) { await toBottom(S.cook, COOK_CARD); await hide(S.cook, 'Movie Royal background (cooking)'); }
     const newCook = [];
     for (let i = 0; i < 3; i++) { const had = inputs.has(COOK_CAMS[i]); await put(S.cook, COOK_CAMS[i], ...cam, COOK_BOXES[i]); if (!had && inputs.has(COOK_CAMS[i])) newCook.push(COOK_CAMS[i]); }
     if (newCook.length) { // pick the cameras your stream camera ISN'T using (each new cooking camera gets the next free one)
@@ -693,6 +696,11 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
         if (got.length) say('🍳', `Cooking cameras: ${got.join(', ')}.${got.length < newCook.length ? ` OBS found only ${got.length} free camera${got.length === 1 ? '' : 's'}: pick the rest in OBS (double-click them).` : ' (Wrong one? Double-click it in OBS and pick another.)'}`);
         else say('🍳', "OBS didn't list any free cameras: plug them in, then double-click each 📷 Cooking cam in OBS and pick it.");
       } catch { say('🍳', 'Double-click each 📷 Cooking cam in OBS and pick its camera.'); }
+    }
+    if (newCard) { // the frame is new: line the three cameras up with it once (big one top-left, two small ones top-right)
+      const k = Math.max(1, Math.min(3, Number(cookBigN) || 1)) - 1, order = [k, ...[0, 1, 2].filter(i => i !== k)];
+      for (let j = 0; j < 3; j++) { const id = await itemOf(S.cook, COOK_CAMS[order[j]]); if (id == null) continue; const b = COOK_BOXES[j]; await call('SetSceneItemTransform', { sceneName: S.cook, sceneItemId: id, sceneItemTransform: { positionX: Math.round(b[0] * W), positionY: Math.round(b[1] * H), alignment: 5, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: Math.round(b[2] * W), boundsHeight: Math.round(b[3] * H), rotation: 0 } }).catch(() => {}); }
+      say('🍳', 'Cooking scene: new frame added behind the cameras (live time + battles under the small cameras, title + song along the bottom), and the cameras lined up with it.');
     }
     await put(S.cook, BATTLE, 'browser_source', browser(urls.game), [.03, .05, .69, .65], false);
     // 🎙️ (1.82.7, Derek: "GoXLR on the PC, wireless mics for cooking", USB receiver) the wireless mics live in the cooking scene
@@ -723,6 +731,7 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
     const mini = [S.game, S.co];
     for (const sc of Object.values(S)) {
       if (mini.includes(sc)) { const had = (await itemOf(sc, MARA_MINI)) != null; await put(sc, MARA_MINI, 'browser_source', browser(urls.maraMini), FULL); if (!had) { const big = await itemOf(sc, MARA_NAME); if (big != null) await call('SetSceneItemEnabled', { sceneName: sc, sceneItemId: big, sceneItemEnabled: false }).catch(() => {}); } }
+      else if (sc === S.cook && urls.maraPlain) { const had = (await itemOf(sc, MARA_PLAIN)) != null; await put(sc, MARA_PLAIN, 'browser_source', browser(urls.maraPlain), FULL); if (!had) { const big = await itemOf(sc, MARA_NAME); if (big != null) await call('SetSceneItemEnabled', { sceneName: sc, sceneItemId: big, sceneItemEnabled: false }).catch(() => {}); } } // 🍳 pop-ups only: the frame has the clock + battles
       else await put(sc, MARA_NAME, 'browser_source', browser(urls.mara), FULL);
       for (const x of extra) await put(sc, x.name, 'browser_source', x.local ? { ...browser(''), is_local_file: true, local_file: x.url } : browser(x.url), FULL);
     }
