@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.166.0
+- 🩺 **Game capture: Speed check.** A new button on the Game capture tab tries every picture size on your capture card for a couple of seconds each, counts how many pictures a second really arrive, shows the list, and switches to the biggest size that is smooth. If the picture is slow it now runs this by itself once. It also tells you when the numbers point at a slow USB port (smaller picture = faster) instead of the cable.
+- New smallest picture size, 540p 60, for when the card is stuck on a slow USB port.
+- The FPS counter no longer slows the picture down on big (4K) pictures.
+- 🧪 Test tab → Game capture: two pretend speed checks + the real one.
+
 ## 1.165.0
 - 🚀 **Stream check: the pre-stream test.** A new button next to 🤖 Test all (and a card on the Test tab) opens one window with the steps on the left and a preview of your stream picture on the right. It goes through, one at a time: your connections (Twitch, chat, OBS, donations), every chat command (run as you, nothing goes to the real chat), the alerts box, the "bought a battle" pop-up, the sell message and the paused message scrolling on the picture, a screen effect, your lights for each kind of alert, your sound alerts (every file is there + you hear one), the jump scares and a practice battle. Steps it can judge tick themselves; for the rest it asks "did you see it / hear it". At the end it says whether you're good to go live and lists what to fix; 📋 copies the result. No wheel or movie steps. Commands that would change something real (skip, delete a quote…) are listed but not run.
 - 🎮 **Game capture: asks the card for 30+ a second.** The capture tab now asks for a mode that sends at least 30 pictures a second first, shows what the card offers on this connection, and tells you plainly when the card is on a slow USB link (10–15 a second is a slow cable or port).

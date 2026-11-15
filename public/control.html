@@ -846,12 +846,13 @@
     <div class="row" id="gcBar" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
       <div style="min-width:0;flex:1 1 220px"><label>📺 Capture card (picture)</label><select id="gcVid" onchange="gcSet({vid:this.value})" title="Game capture: which capture card or camera to show"></select></div>
       <div style="min-width:0;flex:1 1 220px"><label>🔊 Game sound</label><select id="gcAud" onchange="gcSet({aud:this.value})" title="Game capture: where the game's sound comes from (usually the same capture card)"></select></div>
-      <div><label>🖼️ Picture</label><select id="gcRes" onchange="gcSet({res:this.value})" title="Game capture: the picture size and speed to ask the capture card for" style="width:auto"><option value="1080p60">1080p 60</option><option value="1440p60">1440p 60</option><option value="2160p60">4K 60</option><option value="1080p120">1080p 120</option><option value="720p60">720p 60</option></select></div>
+      <div><label>🖼️ Picture</label><select id="gcRes" onchange="gcSet({res:this.value})" title="Game capture: the picture size and speed to ask the capture card for" style="width:auto"><option value="1080p60">1080p 60</option><option value="1440p60">1440p 60</option><option value="2160p60">4K 60</option><option value="1080p120">1080p 120</option><option value="720p60">720p 60</option><option value="540p60">540p 60 (slow USB)</option></select></div>
       <div><label>🔈 Volume <span id="gcVolN"></span></label><input type="range" id="gcVol" min="0" max="100" step="1" oninput="gcSet({vol:Number(this.value)})" title="Game capture: how loud the game's sound is" style="width:130px"></div>
       <button class="primary" id="gcGo" onclick="gcToggle()" title="Game capture: start or stop showing the capture card">▶ Start</button>
       <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Ctrl+Alt+C)">🎬 Clip</button>
       <button onclick="gcFull()" title="Game capture: fill the whole screen with the game (Esc or F leaves)">⛶ Fullscreen</button>
       <button class="edOff" data-feat="screenfx" onclick="fxOwn()" title="My effects: open the box where you switch your own screen effects on and off (Ctrl+Alt+D, also in fullscreen). They stay on until you turn them off; you see them and so does the stream">🎛️ My effects</button>
+      <button onclick="gcSpeedTest()" title="Game capture: speed check. Tries every picture size on your capture card for a few seconds each, shows how many pictures a second each one really gets, and switches to the biggest one that is smooth">🩺 Speed check</button>
       <button class="ghost" onclick="gcDevices(true)" title="Game capture: look again for capture cards (after you plugged one in)">🔄 Find my capture card</button>
       <label style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><input type="checkbox" id="gcFpsOn" onchange="gcSet({fps:this.checked})" title="Game capture: show the game's FPS in the upper right corner"> 📈 Show FPS</label>
       <div><label>👻 FPS see-through <span id="gcFpsAN"></span></label><input type="range" id="gcFpsA" min="0" max="90" step="5" oninput="gcSet({fpsA:Number(this.value)})" title="Game capture: how see-through the FPS number is (0% = solid, 90% = barely there)" style="width:120px"></div>
@@ -1547,6 +1548,7 @@ not a link</textarea>
     <h3>🎮 Game capture</h3>
     <p class="help">The 🎮 Game capture tab shows your capture card so you can play through Movie Royal. These use a pretend game picture (no capture card needed) to check the FPS number.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="gcTest(30)" title="Open the Game capture tab with a pretend game that runs at 30 frames a second: the big FPS number should read about 30">🧪 Pretend game at 30 FPS</button><button onclick="gcTest(60)" title="Open the Game capture tab with a pretend game that runs at 60 frames a second: the big FPS number should read about 60">🧪 Pretend game at 60 FPS</button><button onclick="gcQuietTest()" title="Check whether the battle sound inside Movie Royal is quiet right now (it is while the Game capture tab is open)">🔇 Is the battle quiet?</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="gcSpeedPretend('usb2')" title="Game capture speed check with pretend numbers for a card on a slow USB port: it should pick the small picture and say the port is slow (nothing is changed)">🩺 Pretend speed check: slow USB port</button><button onclick="gcSpeedPretend('big')" title="Game capture speed check with pretend numbers where only 4K is slow: it should pick 1440p (nothing is changed)">🩺 Pretend: only 4K is slow</button><button class="ghost" onclick="setView('capture');gcSpeedTest()" title="Run the real speed check on your capture card (about 15 seconds; switches to the best picture size)">🩺 Real speed check</button></div>
     <div id="tGcOut"></div>
   </div>
   <div class="card devOnly" id="mtTestCard">
@@ -3818,7 +3820,7 @@ async function nightTest() { let r; try { r = await api('/api/test/stream-night'
 // ---------- 🎮 Game capture tab (1.87.0, Derek, dev only): play the console through Movie Royal ----------
 // the capture card is just a camera + a microphone to the browser: getUserMedia → <video>. Settings are per PC (localStorage gcSet).
 const GC = { stream: null, set: null, raf: 0, n: 0, uniq: 0, at: 0, prev: null, cv: null, g: null, fps: 0, sig: 0, fake: null, hideT: 0, quiet: null };
-const GC_RES = { '720p60': [1280, 720, 60], '1080p60': [1920, 1080, 60], '1080p120': [1920, 1080, 120], '1440p60': [2560, 1440, 60], '2160p60': [3840, 2160, 60] };
+const GC_RES = { '540p60': [960, 540, 60], '720p60': [1280, 720, 60], '1080p60': [1920, 1080, 60], '1080p120': [1920, 1080, 120], '1440p60': [2560, 1440, 60], '2160p60': [3840, 2160, 60] };
 function gcCfg() { if (!GC.set) { try { GC.set = JSON.parse(localStorage.gcSet || '{}'); } catch { GC.set = {}; } GC.set = { vid: '', aud: '', res: '1080p60', vol: 100, fps: true, fpsA: 50, on: false, ...GC.set }; } return GC.set; }
 function gcSave() { try { localStorage.gcSet = JSON.stringify(gcCfg()); } catch {} }
 const GC_SLOW = '<br>⚠️ <b>That is too slow, and it comes from the USB link, not from this app.</b> A capture card on a slow (USB 2) cable or port can only send a few pictures a second. Use the cable that came with the card or one marked USB 3 / 5Gbps / 10Gbps, in a blue or “SS” port on the back of the PC (not a hub, and many front USB-C ports are slow). Then press ⏹ Stop and ▶ Start. You can also try 🖼️ Picture: 720p 60, which needs much less.';
@@ -3867,7 +3869,7 @@ async function gcStart(fake) {
     if (!fake) { c.on = true; gcSave(); gcKeep(true); }
     const st = GC.stream.getVideoTracks()[0]?.getSettings?.() || {};
     gcNote(fake ? `🧪 A pretend game picture that changes ${fake} times a second (no capture card used). The big number should read about ${fake}.` : `✅ Showing ${st.width || '?'}×${st.height || '?'} at ${Math.round(st.frameRate || 0) || '?'} a second${c.aud === 'none' ? ', no sound' : ''}.` + gcSpeedNote(st));
-    GC.low = 0; GC.lowSaid = false; GC.base = $('gcNote')?.innerHTML || '';
+    GC.low = 0; GC.lowSaid = false; GC.heavy = false; GC.cost = 0; GC.costN = 0; GC.base = $('gcNote')?.innerHTML || '';
     GC.n = GC.uniq = 0; GC.at = performance.now(); GC.prev = null; gcLoop(); gcDraw();
   } catch (e) {
     GC.stream = null; gcDraw();
@@ -3875,6 +3877,48 @@ async function gcStart(fake) {
     gcNote('⚠️ Could not show the capture card: ' + esc(why) + '.');
   }
 }
+// 🩺 Speed check (1.166.0, Derek: 10 fps with a new USB 3 cable): open the card at every size, COUNT the pictures that really arrive, keep the best
+const GC_TRY = ['2160p60', '1440p60', '1080p60', '720p60', '540p60'];
+const gcWait = ms => new Promise(r => setTimeout(r, ms));
+function gcCount(v, ms) { return new Promise(res => { if (!v.requestVideoFrameCallback) return res(0); let n = 0, t0 = 0, done = false; const end = () => { if (done) return; done = true; res(t0 && n ? Math.round(n * 1000 / Math.max(1, performance.now() - t0)) : 0); }; const tick = () => { if (done) return; if (!t0) t0 = performance.now(); else n++; if (performance.now() - t0 >= ms) return end(); v.requestVideoFrameCallback(tick); }; v.requestVideoFrameCallback(tick); setTimeout(end, ms + 2500); }); }
+function gcPick(rows) { // biggest smooth one, else biggest playable one, else the fastest (rows are biggest first)
+  const ok = rows.filter(r => r.fps != null); if (!ok.length) return null;
+  return ok.find(r => r.fps >= 50) || ok.find(r => r.fps >= 28) || (() => { const top = Math.max(...ok.map(r => r.fps)), near = ok.filter(r => r.fps >= top - 2); return near.find(r => r.key === '1080p60') || near[0]; })();
+}
+function gcVerdict(rows, pick) {
+  const ok = rows.filter(r => r.fps != null); if (!pick) return '⚠️ The card did not send a picture at any size. Is another program showing it (the Elgato app, an OBS source)?';
+  const name = $('gcRes')?.querySelector(`option[value="${pick.key}"]`)?.textContent || pick.key;
+  if (pick.fps >= 28) return `✅ <b>Switched to ${esc(name)}</b>: the biggest picture your card sends smoothly here (${pick.fps} a second).` + (ok[0] !== pick ? ' The bigger sizes are slow on this connection.' + (pick.key === '540p60' || pick.key === '720p60' ? ' <b>Smaller = faster like this is the sign of a slow (USB 2) port</b>, whatever the cable is (many front USB-C ports are). For a full-size smooth picture, plug the card into a blue or “SS” port on the back of the PC (a USB-C to USB-A 3.0 cable does it), no hub in between, then press 🩺 Speed check again.' : '') : '');
+  const big = ok[0], small = ok[ok.length - 1];
+  return small.fps >= big.fps * 1.5 && ok.length > 1
+    ? `⚠️ <b>No size reaches 30 a second, and the smaller the picture the faster it gets.</b> That is the sign of a slow (USB 2) link: the <b>port</b> the card is plugged into is the slow kind, whatever the cable is (many front USB-C ports are). Switched to ${esc(name)} (${pick.fps} a second), the best there is on this port. For full speed the card needs a blue or “SS” port on the back of the PC (a USB-C to USB-A 3.0 cable does it), with no hub in between.`
+    : `⚠️ <b>Every size is slow by about the same amount</b> (best: ${esc(name)}, ${pick.fps} a second), so it isn't the picture size. Check that no other program is showing the card at the same time (Elgato Studio, an OBS source of it), then press 🩺 Speed check again. If the Elgato app is smooth on this same cable and port, send Claude this table.`;
+}
+async function gcSpeedTest(fake, auto) {
+  if (GC.testing) return; const c = gcCfg(), v = $('gcVideo'), rows = [], seen = new Set();
+  if (!fake && !c.vid) { await gcDevices(true); if (!c.vid) return gcNote('⚠️ No capture card found. Plug it in, then press 🔄 Find my capture card.'); }
+  GC.testing = true; if (!fake) gcStop(true);
+  const table = () => '<table style="margin:6px 0;border-collapse:collapse">' + rows.map(r => `<tr><td style="padding:1px 12px 1px 0">${esc($('gcRes')?.querySelector(`option[value="${r.key}"]`)?.textContent || r.key)}</td><td style="padding:1px 12px 1px 0">${r.fps == null ? esc(r.why) : `<b>${r.fps}</b> a second really arrive` + (r.got ? ` <span class="muted">(card says ${r.got})</span>` : '')}</td></tr>`).join('') + '</table>';
+  try {
+    for (const key of GC_TRY) {
+      const [w, h] = GC_RES[key]; gcNote(`🩺 ${auto ? 'The picture is slow, so Movie Royal is checking' : 'Checking'} every picture size (about 15 seconds)… now ${w}×${h}` + (rows.length ? table() : ''));
+      if (fake) { rows.push({ key, fps: fake[key] ?? null, why: 'not offered', got: fake[key] != null ? `${w}×${h} at 60` : '' }); await gcWait(150); continue; }
+      let s = null;
+      try {
+        s = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: c.vid }, width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: 60 } }, audio: false });
+        const st = s.getVideoTracks()[0].getSettings(), id = st.width + 'x' + st.height;
+        if (seen.has(id) || Math.abs((st.height || 0) - h) > h * .15) { rows.push({ key, fps: null, why: 'the card does not offer this size here' }); }
+        else { seen.add(id); v.srcObject = s; v.muted = true; await v.play().catch(() => {}); await gcWait(900); const fps = await gcCount(v, 2200); rows.push({ key, fps, got: `${st.width}×${st.height} at ${Math.round(st.frameRate || 0)}` }); }
+      } catch (e) { rows.push({ key, fps: null, why: e?.name === 'NotReadableError' ? 'another program is using the card' : 'could not open (' + (e?.name || e) + ')' }); }
+      finally { try { s?.getTracks().forEach(t => t.stop()); } catch {} v.srcObject = null; await gcWait(250); }
+    }
+  } finally { GC.testing = false; v.muted = false; }
+  const pick = gcPick(rows), out = table() + gcVerdict(rows, pick); GC.lastTest = { rows, pick: pick?.key || '' };
+  if (fake) return gcNote('🧪 Pretend speed check (nothing changed, no capture card used):' + out);
+  if (pick) { c.res = pick.key; gcSave(); $('gcRes').value = c.res; }
+  await gcStart(); GC.lowSaid = true; gcNote(($('gcNote')?.innerHTML || '').replace(GC_SLOW, '') + '<br>🩺 Speed check:' + out); GC.base = $('gcNote')?.innerHTML || '';
+}
+function gcSpeedPretend(kind) { setView('capture'); return gcSpeedTest(kind === 'usb2' ? { '1080p60': 10, '720p60': 22, '540p60': 41 } : { '2160p60': 14, '1440p60': 59, '1080p60': 60, '720p60': 60, '540p60': 60 }); }
 function gcStop(quietly) { const v = $('gcVideo'); try { GC.stream?.getTracks().forEach(t => t.stop()); } catch {} if (GC.fake) { clearInterval(GC.fake.timer); GC.fake = null; } else if (GC.stream && !quietly) { gcCfg().on = false; gcSave(); } if (GC.stream && !quietly) gcKeep(false); GC.stream = null; if (v) { try { v.pause(); } catch {} v.srcObject = null; } if (!quietly) { gcNote(''); gcDraw(); } }
 function gcToggle() { if (GC.stream) gcStop(); else gcStart(); }
 function gcFull() { const st = $('gcStage'); if (document.fullscreenElement === st) document.exitFullscreen?.(); else st.requestFullscreen?.().catch(() => toast('Fullscreen did not start: click the picture once and try again.')); }
@@ -3885,10 +3929,11 @@ function gcLoop() {
   const tick = () => {
     if (GC.stream !== mine) return;
     GC.n++;
-    if (gcCfg().fps !== false && v.videoWidth) { try { GC.g.drawImage(v, 0, 0, 64, 36); const d = GC.g.getImageData(0, 0, 64, 36).data, p = GC.prev; let diff = 0; if (p) for (let i = 0; i < d.length; i += 4) diff += Math.abs(d[i] - p[i]) + Math.abs(d[i + 1] - p[i + 1]) + Math.abs(d[i + 2] - p[i + 2]); if (!p || diff > 64 * 36 * .35) GC.uniq++; GC.prev = d; } catch {} }
+    if (GC.heavy) GC.uniq++; // (1.166.0) reading the picture cost too much on this PC at this size: the big number follows the card's own count
+    else if (gcCfg().fps !== false && v.videoWidth) { const c0 = performance.now(); try { GC.g.drawImage(v, 0, 0, 64, 36); const d = GC.g.getImageData(0, 0, 64, 36).data, p = GC.prev; let diff = 0; if (p) for (let i = 0; i < d.length; i += 4) diff += Math.abs(d[i] - p[i]) + Math.abs(d[i + 1] - p[i + 1]) + Math.abs(d[i + 2] - p[i + 2]); if (!p || diff > 64 * 36 * .35) GC.uniq++; GC.prev = d; } catch {} GC.cost = (GC.cost || 0) * .9 + (performance.now() - c0) * .1; if (GC.cost > 6 && (GC.costN = (GC.costN || 0) + 1) > 20) GC.heavy = true; }
     const now = performance.now(), el = now - GC.at;
     if (el >= 1000) { GC.sig = Math.round(GC.n * 1000 / el); GC.fps = Math.round(GC.uniq * 1000 / el); GC.n = GC.uniq = 0; GC.at = now; const b = $('gcFps'); if (b) b.innerHTML = `${GC.fps} FPS<small>card sends ${GC.sig}</small>`;
-      if (!GC.fake && !document.hidden) { GC.low = GC.sig < 25 ? (GC.low || 0) + 1 : 0; if (GC.low >= 6 && !GC.lowSaid) { GC.lowSaid = true; gcNote((GC.base || '').replace(GC_SLOW, '') + `<br>📉 The card has been sending only about ${GC.sig} pictures a second.` + GC_SLOW); } } }
+      if (!GC.fake && !document.hidden) { GC.low = GC.sig < 25 ? (GC.low || 0) + 1 : 0; if (GC.low >= 6 && !GC.lowSaid && !GC.autoTried && !GC.testing) { GC.autoTried = true; GC.lowSaid = true; gcSpeedTest(null, true); } else if (GC.low >= 6 && !GC.lowSaid) { GC.lowSaid = true; gcNote((GC.base || '').replace(GC_SLOW, '') + `<br>📉 The card has been sending only about ${GC.sig} pictures a second.` + GC_SLOW); } } }
     v.requestVideoFrameCallback ? v.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
   };
   v.requestVideoFrameCallback ? v.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
