@@ -503,6 +503,14 @@
     <p>🌐 <b>The viewer website</b> lives on your own 24/7 bot: viewers look up their egg and creatures, see the leaderboard and browse all 120. Only names, eggs and creatures are sent there (what chat already sees). 📺 The <b>creature chat box</b> is a chat overlay for OBS that shows each chatter's creature next to their name (Twitch and Kick can't do that in their own chat) and pops up battles.</p>
     <p>🧪 Try it: Test tab → 🥚 The egg game (pretend players, nothing is sent to Twitch or Kick).</p>
   </section>
+  <section data-feat="dualstream" data-k="twitch kick both stream simulcast multistream restream obs stream key rtmp">
+    <h2>📡 Stream to Twitch + Kick at once</h2>
+    <p><b>Settings → 📡 Twitch + Kick.</b> OBS can only stream to one place. With this, OBS streams to the app on your PC, and the app passes the very same stream on to Twitch and to Kick. The picture isn't changed, so it costs almost no extra computer power, but it does use your upload speed twice. It is off until you switch it on.</p>
+    <p><b>Setting it up (once):</b> 1) download the helper program (a free program called FFmpeg). 2) Paste your Twitch stream key and your Kick Stream URL + Stream Key (Kick → Creator Dashboard → Settings → Stream URL &amp; Key). 3) Press 🎥 Point OBS at the app. 4) Switch it on.</p>
+    <p><b>Going live:</b> press Start Streaming in OBS like always. The page shows 🔴 LIVE and which places are getting the stream. Keep the app open: closing it ends both streams. If one side drops, the other keeps going; 🔄 Reconnect brings it back (both blip for a moment).</p>
+    <p><b>Going back:</b> ↩ Put OBS back restores OBS's own stream settings (straight to Twitch) and switches this off.</p>
+    <p>A stream key is like a password. Never show this page on stream while you paste one. Use 6000 kbps or less and a 2 second keyframe in OBS so both sites accept the stream, and check Twitch's rules about streaming to another site at the same time.</p>
+  </section>
   <section data-feat="tts" data-k="tts text to speech voice donation donations bits cheer read out loud voices skip mute">
     <h2>🗣️ Text to speech</h2>
     <p><b>Settings → 🗣️ Text to speech</b> has every text to speech setting in one place.</p>

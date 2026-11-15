@@ -862,3 +862,26 @@ export async function saveReplay() {
     return { file };
   });
 }
+
+// 📡 Stream to Twitch + Kick (1.171.0, src/dualstream.js): point OBS's Stream settings at the app on this PC, and put them back.
+// Never while OBS is streaming. The old settings are handed back so the caller can keep them for ↩ Put OBS back.
+export async function dualPoint(server, key) {
+  return session(async call => {
+    const st = await call('GetStreamStatus').catch(() => ({})); if (st.outputActive) throw new Error('OBS is streaming right now. Stop the stream first, then press this again.');
+    const prev = await call('GetStreamServiceSettings');
+    const mine = prev?.streamServiceType === 'rtmp_custom' && prev.streamServiceSettings?.server === server;
+    await call('SetStreamServiceSettings', { streamServiceType: 'rtmp_custom', streamServiceSettings: { server, key, use_auth: false, bwtest: false } });
+    return { prev: mine ? null : { streamServiceType: prev.streamServiceType, streamServiceSettings: prev.streamServiceSettings } };
+  });
+}
+export async function dualBack(prev) {
+  return session(async call => {
+    const st = await call('GetStreamStatus').catch(() => ({})); if (st.outputActive) throw new Error('OBS is streaming right now. Stop the stream first, then press this again.');
+    if (!prev?.streamServiceType) throw new Error('The app doesn\'t know what OBS had before. Set it yourself in OBS: Settings → Stream.');
+    await call('SetStreamServiceSettings', { streamServiceType: prev.streamServiceType, streamServiceSettings: prev.streamServiceSettings });
+    return { ok: true };
+  });
+}
+export async function dualCheck(server) {
+  return session(async call => { const s = await call('GetStreamServiceSettings'), st = await call('GetStreamStatus').catch(() => ({})); return { pointed: s?.streamServiceType === 'rtmp_custom' && s.streamServiceSettings?.server === server, streaming: !!st.outputActive }; });
+}

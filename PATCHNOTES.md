@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.171.0: What's new
+- {dualstream} 📡 **Stream to Twitch and Kick at the same time.** New page: Settings → 📡 Twitch + Kick. OBS streams to the app on your PC, and the app passes the same stream on to Twitch and to Kick. It is off until you switch it on. The page walks you through it: download the helper program, paste your stream keys, press 🎥 Point OBS at the app, switch it on, then press Start Streaming in OBS like always. ↩ Put OBS back undoes it.
+  - Keep the app open while you're live (closing it ends both streams). Use 6000 kbps or less and a 2 second keyframe in OBS. It uses your upload speed twice.
+  - Your stream keys are saved on your PC and never shown again.
+
 ## v1.170.0: What's new
 - {tts} 🗣️ **Text to speech for donations.** New page: Settings → 🗣️ Text to speech. Switch on "Read donations out loud" and a voice reads the message of a donation, a cheer or a resub on stream. You set the smallest donation and cheer that get read, whether it says who sent it first, the longest message, and words that are never read. ⏭️ Skip and 🔇 Mute buttons; you and your mods can type !skiptts, !ttsoff and !ttson. It is off until you switch it on. If StreamElements or Streamlabs already reads your donations, keep only one of them on.
   - Pick one of your PC's Windows voices, or press ⬇️ More voices… to download free ones that sound more like real people (about 60 MB each). They run on your own PC and nothing is sent anywhere. Each voice's licence is checked, and only voices that are free to use on a stream can be downloaded.

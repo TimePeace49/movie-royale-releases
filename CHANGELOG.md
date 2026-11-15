@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.171.0
+- 📡 Stream to Twitch + Kick at once (True's edition; yours with dev mode): new page Settings → 📡 Twitch + Kick. OBS streams to the app on the PC and the app passes the same stream on to Twitch and to Kick. Off until it is switched on.
+  - Set-up on the page: download the helper program (FFmpeg, checked before it runs), paste the stream keys, press 🎥 Point OBS at the app (↩ Put OBS back undoes it), switch it on.
+  - Shows 🔴 LIVE, how long, and which places are getting the stream. If one drops the other keeps going; 🔄 Reconnect brings it back.
+  - Stream keys are saved on the PC and never shown again.
+- Test tab: 📡 Stream to Twitch + Kick card.
+
 ## 1.170.0
 - 🗣️ New Settings page: **Settings → 🗣️ Text to speech**. Every text to speech setting in one place: voice, speed, volume and what gets read.
 - 💵 Read donations out loud (Birx & Jess's and True's editions, and yours with dev mode): the app itself reads the message of a donation, cheer or resub on stream. Smallest donation / cheer, say who first, longest message, never-read words, skip messages with links. ⏭️ Skip, 🔇 Mute, 🧪 Test it; you and your mods can type !skiptts / !ttsoff / !ttson. It is off until you switch it on (if StreamElements already reads your donations, keep only one on).

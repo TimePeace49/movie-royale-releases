@@ -60,6 +60,7 @@ import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
 import * as piper from './piper.js';
 import * as tts from './tts.js';
+import * as dualstream from './dualstream.js';
 import * as spamban from './spamban.js';
 import * as chatbot from './chatbot.js';
 import * as appcmds from './appcmds.js';
@@ -6166,6 +6167,23 @@ app.post('/api/tts', wTry(async b => {
 }));
 app.get('/api/test/tts', (req, res) => res.json(tts.demo())); // 🧪 the rules on pretend alerts (nothing is read)
 app.post('/api/test/tts', wTry(b => { const a = { kind: ['tip', 'bits', 'sub'].includes(b.kind) ? b.kind : 'tip', name: b.name || 'TestViewer', amount: Number(b.amount ?? 5), msg: String(b.text ?? 'This is a test donation message!') }, l = tts.lineFor(a, { ...tts.cfg() }); if (b.say && l.say) { if (!feat('tts')) throw new Error('Donation text to speech isn\'t part of this edition.'); tts.test(l.say); } return { ...l, on: tts.on(), muted: tts.cfg().muted }; }));
+// 📡 Stream to Twitch + Kick at once (1.171.0, src/dualstream.js; edition extra `dualstream` = True's edition): OBS streams to the app on this PC,
+// the app passes the same stream on to both. Off until it's switched on. Keys are saved but never sent back to the page.
+dualstream.setHooks({ on: () => feat('dualstream'), pushState, act, broadcast, toast: t => broadcast({ type: 'toast', text: t, ms: 14000 }, 'control') });
+setTimeout(() => { try { dualstream.sync(); } catch (e) { console.error('[twitch + kick]', e.message); } }, 5000);
+setInterval(() => { try { dualstream.sync(); } catch {} }, 20000);
+process.on('exit', () => { try { dualstream.quit(); } catch {} });
+const dualOk = () => { if (!feat('dualstream')) throw new Error('Streaming to Twitch + Kick isn\'t part of this edition.'); };
+app.get('/api/dual', async (req, res) => { try { const st = dualstream.state(); let obsNow = null; if (req.query.obs === '1' && st.allowed) obsNow = await obs.dualCheck(st.server).catch(e => ({ err: e.message })); res.json({ ok: true, ...st, obsNow }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/dual', wTry(async b => {
+  dualOk();
+  if (b.helper) { await dualstream.installHelper(); return dualstream.state(); }
+  if (b.reconnect) return dualstream.reconnect();
+  if (b.obs === 'point') { const st = dualstream.state(), r = await obs.dualPoint(st.server, dualstream.obsKey()); const took = r.prev ? dualstream.takeTwitchKey(r.prev) : false; dualstream.obsNote({ pointed: true, at: Date.now(), ...(r.prev ? { prev: r.prev } : {}) }); act('stream', 'pointed OBS at the app for 📡 Twitch + Kick', { icon: '📡', who: streamerName(), kind: 'dual' }); return { ...dualstream.state(), tookTwitchKey: took }; }
+  if (b.obs === 'back') { await obs.dualBack(dualstream.obsPrev()); dualstream.obsNote({ pointed: false, at: Date.now() }); if (dualstream.state().on) dualstream.setCfg({ on: false }); act('stream', 'put OBS\'s own stream settings back', { icon: '📡', who: streamerName(), kind: 'dual' }); return dualstream.state(); }
+  return dualstream.setCfg(b);
+}));
+app.get('/api/test/dual', (req, res) => res.json(dualstream.demo())); // 🧪 the rules with pretend keys (nothing is started)
 app.get('/api/test/piper', (req, res) => res.json(piper.demo())); // 🧪 the licence rules on sample pages (nothing downloaded)
 // 🧪 what the chat voice would say for a pretend message (or why it'd skip it). say:true = read it out too
 app.post('/api/test/chatvoice', wTry(b => {
