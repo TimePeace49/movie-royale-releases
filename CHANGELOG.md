@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.170.0
+- 🗣️ New Settings page: **Settings → 🗣️ Text to speech**. Every text to speech setting in one place: voice, speed, volume and what gets read.
+- 💵 Read donations out loud (Birx & Jess's and True's editions, and yours with dev mode): the app itself reads the message of a donation, cheer or resub on stream. Smallest donation / cheer, say who first, longest message, never-read words, skip messages with links. ⏭️ Skip, 🔇 Mute, 🧪 Test it; you and your mods can type !skiptts / !ttsoff / !ttson. It is off until you switch it on (if StreamElements already reads your donations, keep only one on).
+- ⬇️ More voices works for donations too, and for Birx & Jess and True.
+- 🔈 Read chat to me is now in True's edition as well (on the same Settings page). Not in Birx & Jess's.
+- Test tab: 🗣️ Donation text to speech card.
+
 ## 1.169.0
 - 🗣️ More voices for 🔈 Read chat to me: press ⬇️ More voices… next to the voice menu on the Marathon tab. It lists free voices (from the open-source Piper project) that sound more like real people than the Windows ones: American, British, Scottish, Irish and more, and a few that hold lots of different speakers (type a speaker number to pick one).
   - Press ⬇️ Download (about 60 MB each; the first time it also downloads the small voice maker), then ▶ Hear to listen and Use to read chat with it. Downloaded voices also show up in the voice menu.

@@ -174,7 +174,7 @@ function connectEventSub(url, subscribe) {
       if (t === 'channel.raid' && String(e.from_broadcaster_user_id) === String(status.userId)) handlers.raidOut({ id: String(e.to_broadcaster_user_id), login: e.to_broadcaster_user_login, name: e.to_broadcaster_user_name, viewers: e.viewers }); // 🚀 YOU raided someone (also when you typed /raid yourself)
       else if (t === 'channel.raid') handlers.alert({ kind: 'raid', login: e.from_broadcaster_user_login, name: e.from_broadcaster_user_name, amount: e.viewers, text: `raided with ${e.viewers} viewers` });
       if (t === 'channel.follow') handlers.alert({ kind: 'follow', login: e.user_login, name: e.user_name, text: 'followed', at: Date.parse(e.followed_at) || Date.now() });
-      if (t === 'channel.cheer') handlers.alert({ kind: 'bits', login: e.user_login, name: e.is_anonymous ? 'Anonymous' : e.user_name, amount: e.bits, text: `cheered ${e.bits} bits${e.message ? ': ' + e.message : ''}` });
+      if (t === 'channel.cheer') handlers.alert({ kind: 'bits', login: e.user_login, name: e.is_anonymous ? 'Anonymous' : e.user_name, amount: e.bits, text: `cheered ${e.bits} bits${e.message ? ': ' + e.message : ''}`, msg: e.message || '' });
       if (t === 'channel.channel_points_custom_reward_redemption.add')
         handlers.redeem({ title: e.reward.title, login: e.user_login, name: e.user_name, input: e.user_input, id: e.id, rewardId: e.reward.id, cost: e.reward.cost });
       else if (t === 'channel.ad_break.begin') handlers.adBreak?.({ secs: Number(e.duration_seconds) || 0, at: Date.parse(e.started_at) || Date.now(), auto: !!e.is_automatic });
@@ -216,7 +216,7 @@ function startChat() {
         const tg = Object.fromEntries(un[1].split(';').map(kv => kv.split('='))), id = tg['msg-id'], plan = tg['msg-param-sub-plan'] || '1000';
         const tier = plan === '3000' ? 3 : plan === '2000' ? 2 : 1, dn = s => String(s || '').replace(/\\s/g, ' '), name = dn(tg['display-name']) || tg.login;
         const months = Number(tg['msg-param-cumulative-months']) || 0;
-        if (id === 'sub' || id === 'resub') { handlers.sub({ kind: id, login: tg.login, name, tier, months }); handlers.alert({ kind: 'sub', login: tg.login, name, amount: months, text: `${id === 'resub' ? 'resubscribed' : 'subscribed'}${tier > 1 ? ` (tier ${tier})` : plan === 'Prime' ? ' with Prime' : ''}${months > 1 ? ` · ${months} months` : ''}${un[2] ? ': ' + un[2] : ''}`, months }); }
+        if (id === 'sub' || id === 'resub') { handlers.sub({ kind: id, login: tg.login, name, tier, months }); handlers.alert({ kind: 'sub', login: tg.login, name, amount: months, text: `${id === 'resub' ? 'resubscribed' : 'subscribed'}${tier > 1 ? ` (tier ${tier})` : plan === 'Prime' ? ' with Prime' : ''}${months > 1 ? ` · ${months} months` : ''}${un[2] ? ': ' + un[2] : ''}`, months, msg: un[2] || '' }); }
         else if (id === 'subgift' || id === 'anonsubgift') handlers.sub({ kind: 'gift', login: id === 'anonsubgift' ? null : tg.login, name, tier, recipient: dn(tg['msg-param-recipient-display-name']) });
         else if (id === 'submysterygift') handlers.alert({ kind: 'gift', login: tg.login, name, amount: Number(tg['msg-param-mass-gift-count']) || 1, text: `gifted ${tg['msg-param-mass-gift-count'] || 1} subs!` });
         else if (id === 'viewermilestone' && tg['msg-param-category'] === 'watch-streak') handlers.alert({ kind: 'streak', login: tg.login, name, amount: Number(tg['msg-param-value']) || 0, text: `is on a ${tg['msg-param-value']}-stream watch streak!${un[2] ? ' ' + un[2] : ''}` });

@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.170.0: What's new
+- {tts} 🗣️ **Text to speech for donations.** New page: Settings → 🗣️ Text to speech. Switch on "Read donations out loud" and a voice reads the message of a donation, a cheer or a resub on stream. You set the smallest donation and cheer that get read, whether it says who sent it first, the longest message, and words that are never read. ⏭️ Skip and 🔇 Mute buttons; you and your mods can type !skiptts, !ttsoff and !ttson. It is off until you switch it on. If StreamElements or Streamlabs already reads your donations, keep only one of them on.
+  - Pick one of your PC's Windows voices, or press ⬇️ More voices… to download free ones that sound more like real people (about 60 MB each). They run on your own PC and nothing is sent anywhere. Each voice's licence is checked, and only voices that are free to use on a stream can be downloaded.
+- {chatvoice} 🔈 **Read chat to me.** On the same page: a voice reads every chat message on a speaker only you hear (pick your headphones), never on stream. Cheers and channel point messages are left out.
+
 ## v1.167.0: What's new
 - 🔔 **Alert sounds.** Chat bot → 🔊 Sound alerts has a new box at the top: pick a sound for a follow, a sub, gifted subs, bits, a donation or a raid. Nothing plays until you add one. For gifted subs, bits and donations you set the amount and choose **exactly**, **up to** or **that much or more**. 🎁 Add gift tiers makes the 1 · 5 · 10 · 20 · 50 · 100 gifted-sub sounds in one go.
 - 💵 **Check my StreamElements tips + PayPal.** A button next to the StreamElements token in Settings (and a step in the 🚀 Stream check) shows whether the tip feed is connected, your tip page link, and whether StreamElements says PayPal is linked.

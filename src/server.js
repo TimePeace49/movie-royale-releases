@@ -59,6 +59,7 @@ import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
 import * as piper from './piper.js';
+import * as tts from './tts.js';
 import * as spamban from './spamban.js';
 import * as chatbot from './chatbot.js';
 import * as appcmds from './appcmds.js';
@@ -1202,7 +1203,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } try { smart.onAlert(a); } catch (e) { console.error('[smart lights]', e.message); } try { eventsounds.onAlert(a); } catch (e) { console.error('[alert sounds]', e.message); } try { if (a.kind === 'bits') screenfx.money({ kind: 'bits', amount: a.amount, name: a.name, text: a.text }); } catch (e) { console.error('[screen effects]', e.message); } },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } try { smart.onAlert(a); } catch (e) { console.error('[smart lights]', e.message); } try { eventsounds.onAlert(a); } catch (e) { console.error('[alert sounds]', e.message); } try { tts.onAlert(a); } catch (e) { console.error('[text to speech]', e.message); } try { if (a.kind === 'bits') screenfx.money({ kind: 'bits', amount: a.amount, name: a.name, text: a.text }); } catch (e) { console.error('[screen effects]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   raidOut(t) { try { raids.note(t); } catch (e) { console.error('[raid tab]', e.message); } }, // 🚀 you raided someone (Twitch says so, also for /raid typed by hand)
   async chat(m) {
@@ -1217,6 +1218,7 @@ const twitchHandlers = {
     try { pstats.chat(m); } catch (e) { console.error('[stats]', e.message); } // 📊 which commands each person uses
     try { movienight.noteChat(m); } catch (e) { console.error('[movie night]', e.message); } // 🍿 the first one in chat gets two movie night votes
     try { maraWaitChat(m); } catch (e) { console.error('[marathon reminder]', e.message); } // 🔔 someone with a battle waiting 30+ min is here
+    try { tts.onChat(m); } catch (e) { console.error('[text to speech]', e.message); } // 🗣️ mods: skip / mute the donation text to speech
     try { chatvoice.chat(m); } catch (e) { console.error('[chat voice]', e.message); } // 🔈 read chat out loud to you only (not cheers / channel point messages)
     if (raidChat(m)) return; // 🚀 the raid picker typing who to raid
     if (idChat(m)) return; // 🧍 !id man / woman / none / remove
@@ -1681,7 +1683,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { eggs.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase().replace(/[^a-z0-9_]/g, ''), name: t.name, amount: t.amount }); } catch {} try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } try { screenfx.money({ kind: 'tip', amount: t.amount, name: t.name, text: t.message || '' }); } catch (e) { console.error('[screen effects]', e.message); } try { smart.onAlert({ kind: 'tip', amount: Number(t.amount) || 0, name: t.name }); } catch (e) { console.error('[smart lights]', e.message); } try { eventsounds.onAlert({ kind: 'tip', amount: Number(t.amount) || 0, name: t.name }); } catch (e) { console.error('[alert sounds]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { eggs.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase().replace(/[^a-z0-9_]/g, ''), name: t.name, amount: t.amount }); } catch {} try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { tts.onAlert({ kind: 'tip', name: t.name, amount: Number(t.amount) || 0, currency: t.currency, msg: t.message || '' }); } catch (e) { console.error('[text to speech]', e.message); } try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } try { screenfx.money({ kind: 'tip', amount: t.amount, name: t.name, text: t.message || '' }); } catch (e) { console.error('[screen effects]', e.message); } try { smart.onAlert({ kind: 'tip', amount: Number(t.amount) || 0, name: t.name }); } catch (e) { console.error('[smart lights]', e.message); } try { eventsounds.onAlert({ kind: 'tip', amount: Number(t.amount) || 0, name: t.name }); } catch (e) { console.error('[alert sounds]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
@@ -2164,7 +2166,7 @@ app.post('/api/test/obs-meters', (req, res) => {
 });
 /* 🔊 sound alerts in EVERY OBS scene (1.124.1, Derek: "sound effect should play on every scene"): one shared browser source, kept in new scenes by 🔄 Keep OBS up to date */
 const sfxUrl = () => `http://localhost:${PORT}/soundboard.html`;
-const sfxWanted = () => db.settings.sfxObs === true || (db.settings.sfxObs == null && (db.chatbot?.commands || []).some(c => c.sound || c.soundMissing));
+const sfxWanted = () => db.settings.sfxObs === true || (db.settings.sfxObs == null && ((db.chatbot?.commands || []).some(c => c.sound || c.soundMissing) || !!(db.tts?.on && edFeat('tts', db.settings.betaUpdates)))); // (🗣️ 1.170.0: the donation text to speech plays through the same source)
 /* 🎚️ (1.140.0, Derek: "auto route out music to vod so can play dmca music without getting muted vod… stream can still hear it… all the other app sounds play on vod") song request music out of the Twitch VOD: it plays in its own OBS source with the VOD track unticked */
 const musicUrl = () => `http://localhost:${PORT}/songplayer.html`;
 async function musicObs(on, o = {}) {
@@ -6108,10 +6110,10 @@ app.post('/api/mara/tts', wTry(async b => {
 app.get('/api/test/mara-tts', wTry(() => { const c = ttsCfg(); return { skip: c.skip, mute: c.off, unmute: c.on, muted: c.muted, canChat: !!twitch.status?.canChat }; }));
 // 🔈 (1.83.0, Derek: "tts for all chat on and off… only so I hear it, not chat"; separate from the tip / channel point TTS and
 // never reads those) src/chatvoice.js + desktop/main.cjs chatVoice + public/chatvoice.html (a hidden window that plays it).
-chatvoice.setHooks({ broadcast, pushState, isBot: l => isChatBot(l), dev: () => paid.dev(), act });
+chatvoice.setHooks({ broadcast, pushState, isBot: l => isChatBot(l), dev: () => feat('chatvoice'), act }); // (1.170.0: an edition extra now: True's edition has it; Derek's with dev mode)
 setTimeout(() => chatvoice.ensurePlayer(), 4000);
 app.post('/api/mara/chatvoice', wTry(async b => {
-  if (!paid.dev()) throw new Error('Reading chat out loud is a 🛠️ dev mode feature.');
+  if (!feat('chatvoice')) throw new Error('Reading chat out loud isn\'t part of this edition.');
   if (b.skip) { chatvoice.skip(); return chatvoice.state(); }
   if (b.clear) { chatvoice.stop(); return chatvoice.state(); }
   if (b.test) { const c = chatvoice.cfg(); chatvoice.ensurePlayer(); chatvoice.test(c.names ? `${chatvoice.spokenName(streamerName())}: This is how chat sounds. Only you can hear this.` : 'This is how chat sounds. Only you can hear this.'); return chatvoice.state(); }
@@ -6124,17 +6126,46 @@ app.post('/api/mara/chatvoice', wTry(async b => {
 // 🗣️ (1.169.0, Derek: more voices than Windows' own) Piper voices: the list with each one's licence verdict, the one-time download of the voice maker,
 // downloading / removing a voice, and picking one. Dev mode only, like the chat voice itself.
 piper.setHooks({ broadcast, pushState, act });
-const piperDev = fn => wTry(async b => { if (!paid.dev()) throw new Error('Reading chat out loud is a 🛠️ dev mode feature.'); return fn(b); });
-app.get('/api/mara/voices', async (req, res) => { try { if (!paid.dev()) throw new Error('Reading chat out loud is a 🛠️ dev mode feature.'); const st = piper.state(); if (req.query.check === '1' || (!st.checkedAt && !st.checking)) piper.check(req.query.force === '1').catch(() => {}); res.json({ ok: true, ...piper.state(), voice: chatvoice.cfg().voice }); } catch (e) { res.status(400).json({ error: e.message }); } });
+const voicesOk = () => feat('chatvoice') || feat('tts'), piperDev = fn => wTry(async b => { if (!voicesOk()) throw new Error('Extra voices aren\'t part of this edition.'); return fn(b); });
+app.get('/api/mara/voices', async (req, res) => { try { if (!voicesOk()) throw new Error('Extra voices aren\'t part of this edition.'); const st = piper.state(); if (req.query.check === '1' || (!st.checkedAt && !st.checking)) piper.check(req.query.force === '1').catch(() => {}); res.json({ ok: true, ...piper.state(), voice: chatvoice.cfg().voice }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/mara/voices', piperDev(async b => {
   if (b.check) { await piper.check(true); return { ...piper.state(), voice: chatvoice.cfg().voice }; }
   if (b.runtime) await piper.installRuntime();
   if (b.install) { await piper.installRuntime(); await piper.install(String(b.install)); }
-  if (b.remove) { const id = String(b.remove); if (piper.parse(chatvoice.cfg().voice)?.id === id) chatvoice.setCfg({ voice: '' }); piper.remove(id); }
+  if (b.remove) { const id = String(b.remove); if (piper.parse(chatvoice.cfg().voice)?.id === id) chatvoice.setCfg({ voice: '' }); if (piper.parse(tts.cfg().voice)?.id === id) tts.setCfg({ voice: '' }); piper.remove(id); }
   if (b.use != null) { const id = String(b.use); if (id && !piper.have(id)) throw new Error('Download that voice first.'); chatvoice.setCfg({ voice: id ? `piper:${id}${Number(b.speaker) > 0 ? '#' + Math.round(Number(b.speaker)) : ''}` : '' }); }
   if (b.hear) { const id = String(b.hear); if (!piper.ready('piper:' + id)) throw new Error('Download that voice first.'); const w = await piper.wav(String(b.text || 'Hello chat! This is how I sound when I read your messages.'), { voice: `piper:${id}${Number(b.speaker) > 0 ? '#' + Math.round(Number(b.speaker)) : ''}`, rate: chatvoice.cfg().rate }); return { ...piper.state(), voice: chatvoice.cfg().voice, wav: w.toString('base64') }; }
   return { ...piper.state(), voice: chatvoice.cfg().voice };
 }));
+// 🗣️ Donation text to speech (1.170.0, src/tts.js; edition extra `tts`): the app reads donation / cheer / resub messages out loud on stream.
+const ttsWavs = new Map(); // id → the wav being played (served to the page that plays it)
+const voiceWav = async (text, { voice, rate }) => {
+  if (piper.ready(voice)) return piper.wav(text, { voice, rate });
+  const dk = globalThis.__desktop?.chatVoice; if (dk?.ok?.()) return dk.wav(text, { voice: piper.isPiper(voice) ? '' : voice, rate });
+  throw new Error('No voice to read with: download one in ⬇️ More voices (the Windows voices only work in the Windows app).');
+};
+tts.setHooks({
+  on: () => feat('tts'), pushState, act, wav: voiceWav, clean: (t, max) => chatvoice.words({ text: t }, { names: false, max }),
+  say: t => { try { twitch.say(t); } catch {} },
+  play(id, buf, vol, hear) {
+    ttsWavs.set(id, buf); for (const k of ttsWavs.keys()) if (k < id - 3) ttsWavs.delete(k);
+    const msg = { type: 'ttsPlay', id, url: `/api/tts/wav/${id}`, vol: Math.max(0, Math.min(100, Number(vol) || 0)) / 100 }, has = role => [...wss.clients].some(c => c.readyState === 1 && c.role === role && (role !== 'overlay' || /OBS\//.test(c.ua || '')));
+    const where = has('sfx') ? 'sfx' : has('overlay') ? 'overlay' : 'control'; broadcast(msg, where);
+    if (where !== 'control' && (hear ?? sfxHearOn())) broadcast({ ...msg, hear: true }, 'control');
+    return { where };
+  },
+  stop(id) { broadcast({ type: 'ttsStop', id }); }
+});
+app.get('/api/tts/wav/:id', (req, res) => { const b = ttsWavs.get(Number(req.params.id)); if (!b) return res.status(404).end(); res.setHeader('Content-Type', 'audio/wav'); res.setHeader('Cache-Control', 'no-store'); res.end(b); });
+const ttsState = async () => ({ ...tts.state(), voices: await chatvoice.loadVoices().catch(() => []), piper: piper.mine(), windows: !!globalThis.__desktop?.chatVoice?.ok?.(), obs: [...wss.clients].some(c => c.readyState === 1 && (c.role === 'sfx' || (c.role === 'overlay' && /OBS\//.test(c.ua || '')))), chatVoice: feat('chatvoice') });
+app.get('/api/tts', async (req, res) => { try { res.json(await ttsState()); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/tts', wTry(async b => {
+  if (!feat('tts')) throw new Error('Donation text to speech isn\'t part of this edition.');
+  if (b.skip) tts.skip(); else if (b.clear) tts.stop(); else if (b.test) { tts.test(b.text); } else { const was = tts.cfg().on; tts.setCfg(b); if ('on' in b && tts.cfg().on !== was) { act('money', tts.cfg().on ? 'turned on 🗣️ donation text to speech' : 'turned off 🗣️ donation text to speech', { icon: '🗣️', who: streamerName(), kind: 'tts' }); sfxSoon(); } }
+  return ttsState();
+}));
+app.get('/api/test/tts', (req, res) => res.json(tts.demo())); // 🧪 the rules on pretend alerts (nothing is read)
+app.post('/api/test/tts', wTry(b => { const a = { kind: ['tip', 'bits', 'sub'].includes(b.kind) ? b.kind : 'tip', name: b.name || 'TestViewer', amount: Number(b.amount ?? 5), msg: String(b.text ?? 'This is a test donation message!') }, l = tts.lineFor(a, { ...tts.cfg() }); if (b.say && l.say) { if (!feat('tts')) throw new Error('Donation text to speech isn\'t part of this edition.'); tts.test(l.say); } return { ...l, on: tts.on(), muted: tts.cfg().muted }; }));
 app.get('/api/test/piper', (req, res) => res.json(piper.demo())); // 🧪 the licence rules on sample pages (nothing downloaded)
 // 🧪 what the chat voice would say for a pretend message (or why it'd skip it). say:true = read it out too
 app.post('/api/test/chatvoice', wTry(b => {

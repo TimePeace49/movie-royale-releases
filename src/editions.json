@@ -242,7 +242,9 @@
    "eggs",
    "dash",
    "songs",
-   "kick"
+   "kick",
+   "tts",
+   "chatvoice"
   ],
   "scrub": true
  },
@@ -360,7 +362,8 @@
    "movienight",
    "bdremind",
    "discordname",
-   "xmashist"
+   "xmashist",
+   "tts"
   ],
   "scrub": true
  }
