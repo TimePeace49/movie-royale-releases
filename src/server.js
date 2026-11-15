@@ -5925,12 +5925,18 @@ app.get('/api/test/edition-live', (req, res) => { /* 🧪 a pretend "switch flip
 app.get('/api/test/edition', (req, res) => res.json({ ...editionInfo(), updatesFrom: repoName(), devMode: !!db.settings.betaUpdates, testBuilds: wantTests(), version: VERSION }));
 app.get('/api/test/mara-prizes', (req, res) => { const l = maraList(); if (!l) return res.status(400).json({ error: 'There is no marathon battle yet (dev mode makes it).' }); res.json({ name: l.name, things: l.entries.filter(e => e.status === 'active').map((e, i) => ({ n: i + 1, label: e.label, sub: e.sub || '', desc: e.desc || '' })), would: maraPrizes(l, true) }); });
 // 😱 (1.82.5, Derek: "do it to every screen") once: the scare pop-ups go on every screen
+function scareSoundOnce() { // (1.166.1, Derek: "no sound on jumpscare") the sound used to be off by default: switch it on once
+  if (db.settings.scareSoundOn1) return; db.settings.scareSoundOn1 = true;
+  const m = db.settings.marathon; if (m?.scare) m.scare.sound = true;
+  save();
+}
 function scareAllOnce() {
   if (db.settings.scareAllScreens) return; db.settings.scareAllScreens = true;
   const m = db.settings.marathon; if (m?.scare) m.scare.where = 'all';
   save();
 }
 setTimeout(scareAllOnce, 1200);
+setTimeout(scareSoundOnce, 1300);
 app.post('/api/mara/add-battle', wTry(b => { // ➕ a fresh copy of Derek's marathon battle (Marathon pool tab), made the marathon battle
   if (!paid.dev()) throw new Error('This is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.');
   const l = maraBattleMake(); db.settings.madeMaraBattle = true; (db.settings.paidBattles ||= {}).listId = l.id;
@@ -5997,7 +6003,8 @@ app.post('/api/test/mara-guess', wTry(b => { if (!live.maraGuess) throw new Erro
 // 😱 (1.82.3, Derek: "make the scare pop-ups pop up on whatever screen I am focused on so it will scare me. I might be in game")
 // The StreamElements jump-scare alerts play on stream / the phone; this plays the same scare in a see-through window on top of
 // whatever you're using (the screen your mouse is on, or every screen). Same small / medium / big rules as the alerts' defaults.
-const SCARE_DEF = { on: true, where: 'all', sound: false, vol: 70, flash: true, kinds: { follow: true, sub: true, gift: true, bits: true, tip: true, raid: true }, bitsMed: 500, bitsBig: 2500, tipMed: 5, tipBig: 25, giftMed: 2, giftBig: 10, raidMed: 10, raidBig: 50 };
+const SCARE_SCREAM = '/sounds/scare-scream.mp3'; // (1.166.1, Derek's pick from Pixabay)
+const SCARE_DEF = { on: true, where: 'all', sound: true, scream: true, vol: 70, flash: true, kinds: { follow: true, sub: true, gift: true, bits: true, tip: true, raid: true }, bitsMed: 500, bitsBig: 2500, tipMed: 5, tipBig: 25, giftMed: 2, giftBig: 10, raidMed: 10, raidBig: 50 };
 function scareCfg() { const c = { ...SCARE_DEF, ...(db.settings.marathon?.scare || {}) }; c.kinds = { ...SCARE_DEF.kinds, ...(c.kinds || {}) }; return c; }
 function scareJob(a) {
   const c = scareCfg(), n = Number(a.amount) || 0, nm = a.name || 'Someone', lv = (v, m, b) => v >= b ? 3 : v >= m ? 2 : 1;
@@ -6024,14 +6031,14 @@ function scareFor(a, force) {
 function scareNext() {
   if (scareBusy || !scareQ.length) return;
   const j = scareQ.shift(), c = scareCfg(); scareBusy = true;
-  const msg = { ...j, vol: c.sound ? Math.max(0, Math.min(100, Number(c.vol) || 0)) : 0, flash: c.flash !== false, shake: true, pos: 'bottom' };
+  const msg = { ...j, own: c.scream !== false ? SCARE_SCREAM : '', vol: c.sound ? Math.max(0, Math.min(100, Number(c.vol) || 0)) : 0, flash: c.flash !== false, shake: true, pos: 'bottom' };
   try { globalThis.__desktop.scarePop(`http://127.0.0.1:${PORT}/scare.html#${encodeURIComponent(JSON.stringify(msg))}`, c.where === 'all' ? 'all' : 'mouse', 12500); } catch (e) { console.error('[scare pop-up]', e.message); }
   setTimeout(() => { scareBusy = false; scareNext(); }, 12800); // one at a time, like the alerts
 }
 app.post('/api/mara/scare', wTry(b => {
   if (!paid.dev()) throw new Error('The scare pop-ups are a 🛠️ dev mode feature.');
   const c = { ...(db.settings.marathon?.scare || {}) };
-  for (const k of ['on', 'sound', 'flash']) if (typeof b[k] === 'boolean') c[k] = b[k];
+  for (const k of ['on', 'sound', 'flash', 'scream']) if (typeof b[k] === 'boolean') c[k] = b[k];
   if (['mouse', 'all'].includes(b.where)) c.where = b.where;
   if (b.vol != null) c.vol = Math.max(0, Math.min(100, Math.round(Number(b.vol) || 0)));
   if (b.kinds && typeof b.kinds === 'object') { c.kinds = { ...scareCfg().kinds }; for (const k of Object.keys(SCARE_DEF.kinds)) if (typeof b.kinds[k] === 'boolean') c.kinds[k] = b.kinds[k]; }

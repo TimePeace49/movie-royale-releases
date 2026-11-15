@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.166.1
+- 😱 **Jump scares on your screen now have sound**: a scream (the one you picked from Pixabay) at the moment of the scare, on top of the build-up. The sound is switched on once for you; the 😱 card on the Marathon tab has the sound switch, the volume and a new "Scream" tick box (off = the old made-up scare sound).
+
 ## 1.166.0
 - 🩺 **Game capture: Speed check.** A new button on the Game capture tab tries every picture size on your capture card for a couple of seconds each, counts how many pictures a second really arrive, shows the list, and switches to the biggest size that is smooth. If the picture is slow it now runs this by itself once. It also tells you when the numbers point at a slow USB port (smaller picture = faster) instead of the cable.
 - New smallest picture size, 540p 60, for when the card is stuck on a slow USB port.

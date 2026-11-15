@@ -4,4 +4,6 @@ birthday-horn.mp3  "Birthday Party Horn" by Universfield, from Pixabay (Pixabay 
                    https://pixabay.com/sound-effects/film-special-effects-birthday-party-horn-250238/
 bike-bell.mp3      "Bike bell" by freesound_community, from Pixabay (Pixabay Content License)
                    https://pixabay.com/sound-effects/film-special-effects-bike-bell-100665/
+scare-scream.mp3   "Girl scream" by freesound_community, from Pixabay (Pixabay Content License)
+                   https://pixabay.com/sound-effects/girl-scream-45657/
 party-whistle.wav  made for this app
