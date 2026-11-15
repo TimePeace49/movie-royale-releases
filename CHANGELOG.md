@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.162.1
+- ⚡ **Fast flash with a speed box for subs, gift subs and raids too (Derek's edition).** All five light shows (sub, gift subs, raid, bits, donation) now start on Fast flash, each with its own speed box. A style you already picked yourself stays as it is.
+
 ## 1.162.0
 - ⭐ **My tests.** A new first tab on the left of the Test tab. Press ☆ on any test card to put it on your own list; ⭐ My tests then shows only those, each with a "checked" tick box, a count of how many are done, a ⏭ Next one not checked button and ↺ Untick all for the next run-through. In Derek's edition it starts with the tests for the marathon stream (paid battles, marathon battle, timers, game capture, screen effects, smart lights, scares, TTS, chat voice, mics, YouTube, OBS, Stream Deck, clips, ads, spam, chat bot, Kick, co-stream); star or unstar from there.
 

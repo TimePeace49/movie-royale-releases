@@ -27,7 +27,7 @@ function data() {
 }
 export const on = () => H.on() && data().on !== false;
 export function events() { const d = data(), out = {};
-  for (const [k, [, col]] of Object.entries(EVENTS)) { const e = d.events[k] || {}; out[k] = { on: e.on !== false, ...(MINS[k] != null ? { min: clamp(e.min, 0, 1000000, MINS[k]) } : {}), style: STYLES[e.style] ? e.style : (k === 'raid' ? 'rainbow' : MINS[k] != null ? 'quick' : 'flash'), color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : col, secs: clamp(e.secs, 3, 60, k === 'raid' ? 12 : 8), speed: clamp(e.speed, 0, 100, QUICK_SPEED) }; }
+  for (const [k, [, col]] of Object.entries(EVENTS)) { const e = d.events[k] || {}; out[k] = { on: e.on !== false, ...(MINS[k] != null ? { min: clamp(e.min, 0, 1000000, MINS[k]) } : {}), style: STYLES[e.style] ? e.style : 'quick', /* (1.162.1, Derek: "add speed to raid, sub, and gifted subs too": every event starts on Fast flash; a style he picked himself stays) */ color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : col, secs: clamp(e.secs, 3, 60, k === 'raid' ? 12 : 8), speed: clamp(e.speed, 0, 100, QUICK_SPEED) }; }
   return out; }
 
 // ── colours ────────────────────────────────────────────────────────────────────────────────────────
@@ -346,7 +346,7 @@ export async function demo() {
     T('Donations: $3 or more set the lights off, $2.99 doesn\'t', `3 → ${F('tip', 3)} · 2.99 → ${F('tip', 2.99)}`, F('tip', 3) === 'tip' && F('tip', 2.99) === null);
     T('Follows and channel point redeems leave the lights alone', `${F('follow')} · ${F('redeem')}`, F('follow') === null && F('redeem') === null);
     T('A switched-off event does nothing', String(eventFor({ kind: 'raid' }, { ...E, raid: { ...E.raid, on: false } })), eventFor({ kind: 'raid' }, { ...E, raid: { ...E.raid, on: false } }) === null); }
-  const ev = events(); T('Subs, gift subs and raids each have a show (raid = rainbow, 12 s)', Object.entries(ev).map(([k, e]) => `${k}: ${e.style} ${e.secs}s`).join(' · '), ev.raid.secs >= 3 && !!STYLES[ev.sub.style]);
+  const ev = events(); T('Subs, gift subs, raids, bits and donations each have a show with a speed (Fast flash unless you picked another style)', Object.entries(ev).map(([k, e]) => `${k}: ${e.style} ${e.secs}s speed ${e.speed}`).join(' · '), ev.raid.secs >= 3 && Object.values(ev).every(e => STYLES[e.style] && e.speed >= 0 && e.speed <= 100) && Object.keys(ev).every(k => D.events[k]?.style || ev[k].style === 'quick'));
   const st = JSON.stringify(state()); T('The Settings page never gets the keys', 'checked', !(D.govee.key && st.includes(D.govee.key)) && !(D.tuya.secret && st.includes(D.tuya.secret)));
   return { rows, ok: rows.every(r => r.ok) };
 }
