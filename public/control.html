@@ -857,6 +857,7 @@
       <label style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><input type="checkbox" id="gcFpsOn" onchange="gcSet({fps:this.checked})" title="Game capture: show the game's FPS in the upper right corner"> 📈 Show FPS</label>
       <div><label>👻 FPS see-through <span id="gcFpsAN"></span></label><input type="range" id="gcFpsA" min="0" max="90" step="5" oninput="gcSet({fpsA:Number(this.value)})" title="Game capture: how see-through the FPS number is (0% = solid, 90% = barely there)" style="width:120px"></div>
     </div>
+    <div class="row" id="gcQuick" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"></div>
     <p class="help" id="gcNote" style="margin:6px 0 8px"></p>
     <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFxTv"></div><div id="gcFxTag"></div><div id="gcOwn" onclick="event.stopPropagation()" ondblclick="event.stopPropagation()"></div><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
     <p class="help" style="margin:8px 0 0">While you're on this tab the battles inside Movie Royal make no sound (your stream still hears them from OBS). Double-click the picture or press <b>F</b> for fullscreen. The big FPS number is the game's own speed (how many different pictures a second); the small one is what the capture card sends. A still picture (a menu, a pause screen) reads low.</p>
@@ -1554,7 +1555,7 @@ not a link</textarea>
     <h3>🎮 Game capture</h3>
     <p class="help">The 🎮 Game capture tab shows your capture card so you can play through Movie Royal. These use a pretend game picture (no capture card needed) to check the FPS number.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="gcTest(30)" title="Open the Game capture tab with a pretend game that runs at 30 frames a second: the big FPS number should read about 30">🧪 Pretend game at 30 FPS</button><button onclick="gcTest(60)" title="Open the Game capture tab with a pretend game that runs at 60 frames a second: the big FPS number should read about 60">🧪 Pretend game at 60 FPS</button><button onclick="gcQuietTest()" title="Check whether the battle sound inside Movie Royal is quiet right now (it is while the Game capture tab is open)">🔇 Is the battle quiet?</button></div>
-    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="gcSpeedPretend('usb2')" title="Game capture speed check with pretend numbers for a card on a slow USB port: it should pick the small picture and say the port is slow (nothing is changed)">🩺 Pretend speed check: slow USB port</button><button onclick="gcSpeedPretend('big')" title="Game capture speed check with pretend numbers where only 4K is slow: it should pick 1440p (nothing is changed)">🩺 Pretend: only 4K is slow</button><button class="ghost" onclick="setView('capture');gcSpeedTest()" title="Run the real speed check on your capture card (about 15 seconds; switches to the best picture size)">🩺 Real speed check</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="gcQuickTest()" title="Check the quick buttons on the Game capture tab (Skip TTS, Mute TTS, Reading chat, Pin message) and show what the pinned message would say. Nothing is sent">⚡ Quick buttons + pin message check</button><button onclick="gcSpeedPretend('usb2')" title="Game capture speed check with pretend numbers for a card on a slow USB port: it should pick the small picture and say the port is slow (nothing is changed)">🩺 Pretend speed check: slow USB port</button><button onclick="gcSpeedPretend('big')" title="Game capture speed check with pretend numbers where only 4K is slow: it should pick 1440p (nothing is changed)">🩺 Pretend: only 4K is slow</button><button class="ghost" onclick="setView('capture');gcSpeedTest()" title="Run the real speed check on your capture card (about 15 seconds; switches to the best picture size)">🩺 Real speed check</button></div>
     <div id="tGcOut"></div>
   </div>
   <div class="card devOnly" id="mtTestCard">
@@ -1897,6 +1898,10 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['fx-own', 'capture', '🎛️ My own screen effects (open / close the box)', 'Ctrl+Alt+D', () => { if (featOn('screenfx')) fxOwn(); }, true],
   ['gc-full', 'capture', '⛶ Fullscreen on / off', 'F', () => gcFull()],
   ['gc-go', 'capture', '▶ Start / ⏹ stop the capture card', 'S', () => gcToggle()],
+  ['gc-ttsskip', 'capture', '⏭️ Skip the text to speech that is talking', 'K', () => ttsCmd('skip')],
+  ['gc-ttsmute', 'capture', '🔇 Mute / 🔊 unmute text to speech', 'M', () => ttsCmd(S?.mara?.tts?.muted ? 'unmute' : 'mute')],
+  ['gc-voice', 'capture', '🔈 Read chat to me on / off', 'V', () => cvSet({ on: !S?.mara?.voice?.cfg?.on })],
+  ['gc-pin', 'capture', '📌 Pin the battles + screen effects message in chat', 'P', () => promoPinNow()],
   ['m-ticker', 'mara', '⏸ Pause / ▶ resume battles (📜 paused message)', 'P', () => tickerToggle()],
   ['m-wait', 'mara', '🔔 Chat reminders for people waiting on / off', 'R', () => maraCfg({ waitRemind: S?.mara?.cfg?.waitRemind === false })],
   ['m-ttsskip', 'mara', '⏭️ Skip the text to speech that is talking', 'K', () => ttsCmd('skip')],
@@ -3214,7 +3219,7 @@ function cvCard(V) {
 }
 async function luckStartTest() { const o = $('paidTestOut'); try { const r = await api('/api/test/mara-luck-start', {}); o.innerHTML = `${r.ok ? '✅' : '⚠️'} <b>${esc(r.label)}</b>: picked → ${esc(r.picked)}% (nothing yet) · ▶ Run → ${esc(r.run)}% · ✕ Cancel → ${esc(r.cancel)}%. Picks can be changed until you press ▶ Run.`; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
 async function restTest() { const o = $('restTestOut'); try { const r = await api('/api/test/mara-rest', {}); o.innerHTML = `${r.ok ? '✅' : '⚠️'} <b>${esc(r.label)}</b> after a win: next battle ${r.nextBattle ? '⚠️ still in' : '😴 sits out'} · the one after ${r.afterThat ? '🙋 back in' : '⚠️ still out'}${r.rests ? '' : ' <span class="muted">(😴 isn\'t ticked for it right now: tick it in the 🏃 Marathon pool)</span>'}`; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
-async function cvSet(o) { try { const r = await api('/api/mara/chatvoice', o); if (S?.mara) S.mara.voice = r; renderMara(); } catch (e) { toast('⚠️ ' + e.message); } }
+async function cvSet(o) { try { const r = await api('/api/mara/chatvoice', o); if (S?.mara) S.mara.voice = r; renderMara(); gcQuickDraw(); } catch (e) { toast('⚠️ ' + e.message); } }
 function cvSink(sel) { const o = sel.options[sel.selectedIndex]; cvSet({ sink: sel.value, sinkLabel: sel.value ? o.textContent.replace(/ \(not plugged in\)$/, '') : '' }); }
 async function cvDo(k) { try { const r = await api('/api/mara/chatvoice', { [k]: true }); if (S?.mara) S.mara.voice = r; renderMara(); if (k === 'test') toast(r.engine === 'windows' ? '🔊 Playing the chat voice on your speaker' : '🔊 Playing (this is the browser voice: the Windows app picks the speaker)', 2500); } catch (e) { toast('⚠️ ' + e.message); } }
 async function cvTest(kind, text) { const o = $('cvTestOut'); try { const r = await api('/api/test/chatvoice', { kind, text: text ?? $('cvTestText').value, say: kind === 'say' }); o.innerHTML = r.skip ? `🙈 Not read: <b>${esc(r.skip)}</b>` : r.say ? `🔈 Would say: <b>${esc(r.say)}</b>${kind === 'say' ? (r.on ? ' (reading it now)' : ' (reading it now, even though it\'s off)') : ''}` : '🙈 Nothing to read (only emotes / symbols)'; } catch (e) { o.textContent = '⚠️ ' + e.message; } }
@@ -3302,7 +3307,7 @@ async function clockTest() { const o = $('ckTestOut'); try { const r = await api
 let ttsBusy = false;
 async function ttsCmd(cmd) {
   if (ttsBusy) return; ttsBusy = true;
-  try { const r = await api('/api/mara/tts', { cmd }); if (S?.mara) S.mara.tts = { ...(S.mara.tts || {}), ...r }; toast(cmd === 'skip' ? `⏭️ Voice skipped (${esc(r.said)})` : cmd === 'mute' ? `🔇 Text to speech muted (${esc(r.said)})` : `🔊 Text to speech is back on (${esc(r.said)})`, 2500); renderMara(); }
+  try { const r = await api('/api/mara/tts', { cmd }); if (S?.mara) S.mara.tts = { ...(S.mara.tts || {}), ...r }; toast(cmd === 'skip' ? `⏭️ Voice skipped (${esc(r.said)})` : cmd === 'mute' ? `🔇 Text to speech muted (${esc(r.said)})` : `🔊 Text to speech is back on (${esc(r.said)})`, 2500); renderMara(); gcQuickDraw(); }
   catch (e) { toast('⚠️ ' + e.message); } finally { ttsBusy = false; }
 }
 async function ttsWords() {
@@ -3763,7 +3768,7 @@ async function coTest(a) { // 🧪 Test tab: pretend partner
   } catch (e) { out.textContent = '⚠️ ' + e.message; }
 }
 function render() { applyStyle(); if (gameNeeded()) gameLoad(); { const t = S.mara?.timer || null, k = t ? t.id + t.state : ''; if (k !== (MT ? MT.id + MT.state : '')) { MT = t; mtDraw(); } } holTestInit(); sceneInit(); if (view === 'test') mbtMaps(); if (view === 'settings' && sub === 'costream') coDraw(false); if (view === 'settings' && sub === 'site') siteDraw(false); if (view === 'settings' && sub === 'prices') paidSetDraw(false); coWatchCheck(); if ($('tTmList') && document.activeElement !== $('tTmList')) tmTestShow(); msTestInit(); if (view === 'wheel' && peekOn) placeStage(); drawPrevBtns(); if ($('peekGo')) $('peekGo').textContent = S.wheelShow ? '↗ Go to the Wheel tab' : '↗ Go to the Battle tab';
-  renderHeader(); renderBattle(); renderView(); luckBattlesSync(); inactSync(); kickSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
+  renderHeader(); renderBattle(); renderView(); gcQuickDraw(); luckBattlesSync(); inactSync(); kickSync(); renderBackupNag(); renderHandNag(); renderBkNag(); if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); if (view === 'test' && $('v-test').classList.contains('checkmode')) drawChecklist(); }
 let handNagHide = '';
 function renderHandNag() {
   const b = $('handNag'), t = S.rewardsByHand || [], k = t.join('|'); if (!t.length || handNagHide === k) { b.style.display = 'none'; return; }
@@ -3857,6 +3862,16 @@ async function gcDevices(ask) { // the list of capture cards / sound inputs (nam
 }
 function gcSet(o) { const c = gcCfg(), re = ('vid' in o && o.vid !== c.vid) || ('aud' in o && o.aud !== c.aud) || ('res' in o && o.res !== c.res); Object.assign(c, o); gcSave(); $('gcVolN').textContent = c.vol + '%'; $('gcVideo').volume = Math.max(0, Math.min(1, c.vol / 100)); gcDraw(); if (re && GC.stream && !GC.fake) gcStart(); }
 function gcDraw() { const on = !!GC.stream, c = gcCfg(); $('gcGo').textContent = on ? '⏹ Stop' : '▶ Start'; $('gcGo').classList.toggle('primary', !on); $('gcIdle').style.display = on ? 'none' : 'flex'; $('gcFps').style.display = on && c.fps !== false ? 'block' : 'none'; $('gcFps').style.opacity = String(1 - Math.max(0, Math.min(90, Number(c.fpsA ?? 50))) / 100); if ($('gcFpsAN')) $('gcFpsAN').textContent = (c.fpsA ?? 50) + '%'; }
+// ⌨️ (1.168.0, Derek: "add keybinds for skip tts, mute tts, and reading chat so I can turn them on and off quick while gaming… buttons on the non-fullscreen capture tab… a pin message button")
+// The quick row under the capture bar: the same things as the Marathon tab's buttons, here so you don't have to leave the game. Keys K / M / V / P work on this tab, in fullscreen too.
+let GCQ = '';
+function gcQuickDraw() {
+  const el = $('gcQuick'); if (!el) return; const T = S?.mara?.tts || {}, V = S?.mara?.voice || {}, m = !!T.muted, on = !!V.cfg?.on;
+  const h = `<b style="margin-right:2px">⚡ Quick</b><button id="gcqSkip" onclick="ttsCmd('skip')" title="Skip TTS: stop the text to speech that's talking right now (types ${esc(T.skip || '!skiptts')} in chat as you). Key on this tab: K">⏭️ Skip TTS</button><button id="gcqMute" class="${m ? 'primary' : ''}" onclick="ttsCmd('${m ? 'unmute' : 'mute'}')" title="Mute TTS: stop the text to speech from reading messages until you turn it back on (alerts still play). Press again to unmute. Key on this tab: M">${m ? '🔊 Unmute TTS (it is muted)' : '🔇 Mute TTS'}</button><button id="gcqVoice" class="${on ? 'primary' : ''}" onclick="cvSet({on:${!on}})" title="Read chat to me: a voice reads every chat message on your own speaker (not on stream). Press again to turn it off. Key on this tab: V">${on ? '🔈 Reading chat: ON' : '🔇 Reading chat: OFF'}</button><button id="gcqPin" onclick="promoPinNow()" title="Pin message: pins a message in your Twitch chat telling viewers how to buy a battle and how to mess with your screen (the same words as the scrolling sell message). Key on this tab: P">📌 Pin battles + screen effects message</button><span class="muted" style="font-size:12px">Keys here and in fullscreen: K · M · V · P</span>`;
+  if (h !== GCQ) { GCQ = h; el.innerHTML = h; }
+}
+async function gcQuickTest() { const o = $('tGcOut'); gcQuickDraw(); const have = ['gcqSkip', 'gcqMute', 'gcqVoice', 'gcqPin'].every(i => $(i)), keys = ['gc-ttsskip', 'gc-ttsmute', 'gc-voice', 'gc-pin'].every(i => KEYBINDS.some(k => k[0] === i)); let pin = null; try { pin = await api('/api/promo/pin', { test: true }); } catch (e) { pin = { ok: false, why: e.message }; }
+  if (o) o.innerHTML = `<p class="help" style="margin:8px 0 0">${have ? '✅' : '⚠️'} The four quick buttons are on the Game capture tab · ${keys ? '✅' : '⚠️'} keys K / M / V / P are set up · 📌 the pinned message would say: ${pin?.ok ? '<b>' + esc(pin.text) + '</b>' : '⚠️ ' + esc(pin?.why || 'nothing')} <span class="muted">(nothing was sent)</span></p>`; }
 function gcKeep(on) { fetch('/api/gamecap/sound', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }) }).catch(() => {}); }
 async function gcStart(fake) {
   gcStop(true); const c = gcCfg(), v = $('gcVideo');

@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.168.0
+- ⚡ Game capture tab: a row of quick buttons under the top row: ⏭️ Skip TTS, 🔇 Mute TTS, 🔈 Reading chat on / off, and 📌 Pin battles + screen effects message (pins a chat message telling viewers how to buy a battle and mess with your screen).
+- ⌨️ Keys for them on the Game capture tab, also in fullscreen: K = skip TTS, M = mute / unmute TTS, V = reading chat on / off, P = pin the message. Change them in Settings → Key binds.
+
 ## 1.167.2
 - 📜 The paused battles message now scrolls across the TOP of the screen instead of the bottom (you can still pick bottom in ✏️ on the Marathon tab).
 
