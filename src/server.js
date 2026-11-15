@@ -2528,9 +2528,9 @@ const APP_CMDS = () => { const L = [], has = id => edHas(id), A = (key, group, l
     A('song:' + k, '🎵 Songs', label, why, has('chat:songskip') && feat('songs') && songs.isOpen() && !!so[k], () => so[k], c => songs.setOpts({ [k]: c }));
   for (const [k, label, why] of [['eggCommand', 'My egg', 'How close their egg is to hatching'], ['petCommand', 'My creature', 'The creature they have out'], ['petsCommand', 'All my creatures', 'Every creature they have'], ['equipCommand', 'Pick my creature', 'Sends a different creature out'], ['battleCommand', 'Creature battle', 'Challenges someone'], ['linkCommand', 'Link Twitch + Kick', 'Joins their two profiles'], ['topCommand', 'Top players', 'The best creature trainers'], ['skillsCommand', 'Skills', "Their creature's skills"], ['powersCommand', 'Powers', 'The powers they can equip'], ['powerCommand', 'Equip a power', 'Puts a power on their creature']])
     A('egg:' + k, '🥚 Eggs', label, why, feat('eggs'), () => eo[k], c => eggs.setOpts({ [k]: c }));
-  A('quote', '📝 Quotes', 'Quote', 'Shows a quote', has('chat:quote'), () => '!quote', null);
-  A('addquote', '📝 Quotes', 'Add a quote', 'Mods: adds a quote', has('chat:quote'), () => '!addquote', null, 'Only mods, always');
-  A('delquote', '📝 Quotes', 'Remove a quote', 'Mods: removes a quote', has('chat:quote'), () => '!delquote', null, 'Only mods, always');
+  A('quote', '📝 Quotes', 'Quote', 'Shows a quote', has('chat:quote') && chatbot.quotesOn(), () => '!quote', null);
+  A('addquote', '📝 Quotes', 'Add a quote', 'Mods: adds a quote', has('chat:quote') && chatbot.quotesOn(), () => '!addquote', null, 'Only mods, always');
+  A('delquote', '📝 Quotes', 'Remove a quote', 'Mods: removes a quote', has('chat:quote') && chatbot.quotesOn(), () => '!delquote', null, 'Only mods, always');
   A('addcom', '🤖 Chat bot', 'Add / change / remove a command', 'Mods: !addcom / !editcom / !delcom / !command', has('chat:addcom'), () => ['!addcom', '!editcom', '!delcom', '!command'], null, 'Only mods, always');
   return L; };
 appcmds.setHooks({ list: APP_CMDS, allowed: (m, p) => chatbot.allowed(m, p), say: t => twitch.say(t), channel: () => db.owner?.login || twitch.status.login || '', sound: (f, v) => sfxPlay(f, v), kick: () => feat('kick'), changed: () => broadcast({ type: 'chatbot' }, 'control'),

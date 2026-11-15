@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.159.2
+- 📝 **Quotes can be turned off, and are off by default in Kirb's edition** (he has his own quote system). The switch is on Chat bot → 📝 Quotes: untick "Quotes on" and !quote, !addquote and !delquote do nothing in chat. Saved quotes stay. Everyone else keeps quotes on.
+
 ## 1.159.1
 - 🍿 **New night empties the movie list.** The 🆕 New night button now asks first in a small window: New night (empty the list), Keep the movie list, or Cancel. Tonight's votes are still saved under Past nights.
 - 🎁 **Giveaway: 🔄 Refresh map works after a battle.** In editions without the Battle tab, a finished battle stayed on the screen and the map never changed. Refresh map (and picking a map) now clears it first.

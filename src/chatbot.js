@@ -5,6 +5,9 @@
 //                      quotes [{n, text, by, at}], opts {quoteOn, quotePerm, timersLive} }
 import { db, save } from './store.js';
 import { act } from './activity.js';
+import { is } from './edition.js';
+// (1.159.2, Derek: Kirb has his own quote system) quotes in chat are OFF by default in Kirb's edition until he ticks the box; on everywhere else
+export const quotesOn = () => { const v = data().opts.quoteOn; return v == null ? !is('kirb') : !!v; };
 
 export const PERMS = { all: 'Everyone', followers: 'Followers', subs: 'Subs', vips: 'VIPs', mods: 'Mods', streamer: 'Only me' };
 const H = { say: async () => {}, canSay: () => true, follows: async () => false, live: () => false, startedAt: () => 0, channel: () => '', chatters: () => [], reserved: () => [], dev: () => false, changed: () => {}, sound: () => {}, soundIn: () => null, watchTime: () => null, followAge: async () => undefined, shoutout: async () => '' };
@@ -148,7 +151,7 @@ function manage(m, w0, rest) { // mods: !command add|edit|remove !name words… 
   return true;
 }
 function quotes(m, w0, rest) {
-  const o = data().opts; if (o.quoteOn === false) return false;
+  if (!quotesOn()) return false;
   if (w0 === '!addquote' || (w0 === '!quote' && /^add\b/i.test(rest))) { if (!isMod(m)) return true; try { const q = addQuote(rest.replace(/^add\s*/i, ''), m.name || m.login); reply(`✅ Quote #${q.n} saved.`); } catch (e) { reply(`⚠️ ${e.message}`); } return true; }
   if (w0 === '!delquote' || (w0 === '!quote' && /^(remove|delete|del)\b/i.test(rest))) { if (!isMod(m)) return true; try { const q = removeQuote(rest.replace(/^\D+/, '')); reply(`🗑️ Quote #${q.n} is gone.`); } catch (e) { reply(`⚠️ ${e.message}`); } return true; }
   if (w0 !== '!quote') return false;
@@ -246,7 +249,7 @@ export function applyImport(p, { replace = false } = {}) {
   return r;
 }
 export function exportAll() { const d = data(); return { movieRoyal: 'chatbot', v: 1, commands: d.commands.map(({ id, at, ...c }) => c), timers: d.timers.map(({ id, last, lineAt, ...t }) => t), quotes: d.quotes }; }
-export const info = () => { const d = data(); return { on: d.on !== false, ready: readyList(), opts: { quoteOn: d.opts.quoteOn !== false, timersLive: d.opts.timersLive !== false }, commands: d.commands, timers: d.timers.map(t => ({ ...t, due: timerDue(t) })), quotes: d.quotes.slice().sort((a, b) => b.n - a.n), perms: PERMS, words: WORDS, lines }; };
+export const info = () => { const d = data(); return { on: d.on !== false, ready: readyList(), opts: { quoteOn: quotesOn(), timersLive: d.opts.timersLive !== false }, commands: d.commands, timers: d.timers.map(t => ({ ...t, due: timerDue(t) })), quotes: d.quotes.slice().sort((a, b) => b.n - a.n), perms: PERMS, words: WORDS, lines }; };
 export function setOpts(b) { const d = data(); if (b.on != null) d.on = !!b.on; for (const k of ['quoteOn', 'timersLive']) if (b[k] != null) d.opts[k] = !!b[k]; save(); H.changed(); return info(); }
 // 🧪 a pretend run of one command (nothing is sent to chat)
 export function preview(text, who = 'TestViewer', typed = '') { return fill(text, { name: who }, { uses: 7 }, String(typed || '').trim().split(/\s+/).filter(Boolean), { watchtime: '12 hours, 30 minutes', followage: '1 year, 2 months', shoutout: `📣 Go check out ${String(typed || '').trim().split(/\s+/)[0] || 'SomeStreamer'} at https://twitch.tv/${(String(typed || '').trim().split(/\s+/)[0] || 'somestreamer').toLowerCase()} (last seen playing Just Chatting)! Give them a follow 💜` }); } /* (pretend watch time / follow age in the preview) */
