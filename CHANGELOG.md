@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.163.0
+- 🎛️ **My own screen effects (Ctrl+Alt+D on the Game capture tab).** A box pops up over the game picture (also in fullscreen) with every screen effect. Click one to switch it on, click again to switch it off; several can be on at once. They stay on until you turn them off, on your view and on the stream. If a viewer's effect comes in while yours are on, yours step aside, theirs plays, and yours come back right after. There's also a 🎛️ My effects button next to ⛶ Fullscreen, and two test buttons on the 🌀 Screen effects test card.
+
 ## 1.162.1
 - ⚡ **Fast flash with a speed box for subs, gift subs and raids too (Derek's edition).** All five light shows (sub, gift subs, raid, bits, donation) now start on Fast flash, each with its own speed box. A style you already picked yourself stays as it is.
 

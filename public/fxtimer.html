@@ -18,7 +18,7 @@ const P = new URLSearchParams(location.search), tag = document.getElementById('t
 let FX = null, Q = 0, skew = 0;
 function set(fx, queue) { if (fx && (!FX || FX.id !== fx.id)) { tag.classList.remove('on'); void tag.offsetWidth; } FX = fx; Q = queue || 0; draw(); }
 function draw() {
-  if (!FX) { tag.classList.remove('on'); return; }
+  if (!FX || FX.forever) { tag.classList.remove('on'); return; } // (the streamer's own stay-on effects have no countdown: nothing to show)
   const left = FX.paused ? FX.left : Math.max(0, Math.ceil(FX.secs - (Date.now() + skew - FX.at) / 1000));
   if (left <= 0 && !FX.paused) { tag.classList.remove('on'); return; }
   tag.querySelector('.ic').textContent = FX.icon; tag.querySelector('.n').textContent = FX.name;

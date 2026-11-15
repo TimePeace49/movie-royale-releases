@@ -19,7 +19,7 @@
   const MOVES = { drunk: 1, flip: 1, mirror: 1, tiny: 1, zoom: 1, shake: 1, spin: 1, tv: 1 }; // these move / turn the picture (the others only change its colours)
   const ease = x => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
   function frame(kind, t, dur) {
-    const k = ease(Math.min(t / 0.6, (dur - t) / 0.6)), sin = Math.sin, f = { sat: 0, con: 0, bri: 0, hue: 0, blur: 0, rot: 0, s: 1, sx: 1, dx: 0, dy: 0, tv: 0 };
+    const k = ease(Math.min(t / 0.6, (dur - t) / 0.6)), /* (dur = Infinity: an effect that stays on, see mix) */ sin = Math.sin, f = { sat: 0, con: 0, bri: 0, hue: 0, blur: 0, rot: 0, s: 1, sx: 1, dx: 0, dy: 0, tv: 0 };
     switch (kind) {
       case 'bw': f.sat = -1 * k; break;
       case 'dark': f.bri = -0.62 * k; f.con = -0.2 * k; break;
@@ -33,9 +33,18 @@
       case 'shake': f.dx = k * 0.022 * sin(t * 47) * sin(t * 13); f.dy = k * 0.03 * sin(t * 53 + 2) * sin(t * 17); f.rot = k * 1.2 * sin(t * 39); f.s = 1 + 0.06 * k; break;
       case 'tv': { f.sat = -0.82 * k; f.con = 0.35 * k; f.bri = k * (-0.06 + 0.07 * sin(t * 31) * sin(t * 7.3)); f.dx = k * 0.004 * sin(t * 90) + k * 0.012 * Math.max(0, sin(t * 1.7) - 0.93) * 14 * sin(t * 61); f.s = 1 - 0.04 * k; f.blur = 0.6 * k; f.tv = k;
         const ph = t % 7.5; if (t > 2 && ph < 0.55 && dur - t > 1.2) { const r = ph / 0.55; f.dy = k * (r < 0.5 ? r : r - 1); } break; } // (the picture "rolls" every few seconds, like a TV losing its hold)
-      case 'spin': { const turns = Math.max(1, Math.round(dur / 10)); f.rot = 360 * turns * ease(t / dur); f.s = 1 - 0.25 * k; break; }
+      case 'spin': { if (!isFinite(dur)) f.rot = (t * 36) % 360; else { const turns = Math.max(1, Math.round(dur / 10)); f.rot = 360 * turns * ease(t / dur); } f.s = 1 - 0.25 * k; break; }
     }
     if (Math.abs(f.sx) < 0.02) f.sx = f.sx < 0 ? -0.02 : 0.02; // (never exactly flat: OBS refuses a size of 0)
+    return f;
+  }
+  /** 🎛️ (1.163.0) several effects at once, staying on (the streamer's own effects): colours add up, turns add up, sizes multiply */
+  function mix(kinds, t, dur) {
+    const f = { sat: 0, con: 0, bri: 0, hue: 0, blur: 0, rot: 0, s: 1, sx: 1, dx: 0, dy: 0, tv: 0 };
+    for (const kind of kinds || []) { if (!FX[kind]) continue; const a = frame(kind, t, dur == null ? Infinity : dur);
+      f.sat += a.sat; f.con += a.con; f.bri += a.bri; f.hue += a.hue; f.blur += a.blur; f.rot += a.rot; f.s *= a.s; f.sx *= a.sx; f.dx += a.dx; f.dy += a.dy; f.tv = Math.max(f.tv, a.tv); }
+    f.sat = Math.max(-1, Math.min(4, f.sat)); f.con = Math.max(-1, Math.min(2, f.con)); f.bri = Math.max(-0.85, Math.min(1, f.bri)); f.hue = ((f.hue % 360) + 360) % 360; f.s = Math.max(0.2, Math.min(2.4, f.s));
+    if (Math.abs(f.sx) < 0.02) f.sx = f.sx < 0 ? -0.02 : 0.02;
     return f;
   }
   /** the same frame as CSS, for a <video> in the app */
@@ -49,5 +58,5 @@
     const moved = f.rot || f.s !== 1 || f.sx !== 1 || f.dx || f.dy;
     return { filter: fl.join(' '), transform: moved ? `translate(${(f.dx * 100).toFixed(2)}%, ${(f.dy * 100).toFixed(2)}%) rotate(${f.rot.toFixed(2)}deg) scale(${(f.s * f.sx).toFixed(4)}, ${f.s.toFixed(4)})` : '' };
   }
-  g.SCREENFX = { FX, MOVES, frame, css };
+  g.SCREENFX = { FX, MOVES, frame, mix, css };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

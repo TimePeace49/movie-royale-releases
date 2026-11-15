@@ -538,6 +538,12 @@
   @keyframes gcTvBar { from { top: -16%; } to { top: 104%; } }
   #gcFxTag { position: absolute; left: 10px; top: 8px; padding: 3px 10px; border-radius: 9px; background: rgba(10,6,24,.36); color: rgba(255,255,255,.86); font: 700 13px/1.2 Inter, sans-serif; pointer-events: none; display: none; z-index: 3; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
   #gcFxPp { pointer-events: auto; margin-left: 7px; padding: 0 5px; min-width: 0; height: 18px; line-height: 16px; font-size: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.12); color: rgba(255,255,255,.9); cursor: pointer; vertical-align: 1px; } #gcFxPp:hover { background: rgba(255,255,255,.3); }
+  #gcOwn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; display: none; width: min(560px, 92%); max-height: 88%; overflow-y: auto; padding: 14px 16px; border-radius: 14px; background: rgba(16,10,34,.93); border: 1px solid rgba(255,255,255,.2); color: #fff; box-shadow: 0 12px 40px rgba(0,0,0,.6); cursor: default; }
+  #gcOwn.show { display: block; } #gcOwn h4 { margin: 0 0 4px; font-size: 16px; } #gcOwn p { margin: 0 0 10px; font-size: 12px; opacity: .8; }
+  #gcOwn .ownGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  #gcOwn .ownGrid button { text-align: left; padding: 7px 9px; border-radius: 9px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); color: #fff; cursor: pointer; font-size: 13px; }
+  #gcOwn .ownGrid button.on { background: #7c4dff; border-color: #b9a2ff; font-weight: 700; }
+  #gcOwn .ownRow { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; } #gcOwn .ownRow span { font-size: 12px; opacity: .8; flex: 1; }
   #gcFxTag b { color: rgba(255,226,120,.95); font-variant-numeric: tabular-nums; } #gcFxTag small { opacity: .75; }
   #gcStage:fullscreen #gcFxTag { font-size: 18px; top: 14px; left: 16px; }
   #fxBody .fxRow input[type=number] { width: 82px; } #fxBody table td { vertical-align: middle; }
@@ -845,12 +851,13 @@
       <button class="primary" id="gcGo" onclick="gcToggle()" title="Game capture: start or stop showing the capture card">▶ Start</button>
       <button class="clipBtn" onclick="clipNow()" title="Clip: make a Twitch clip of the last minute of your stream (Ctrl+Alt+C)">🎬 Clip</button>
       <button onclick="gcFull()" title="Game capture: fill the whole screen with the game (Esc or F leaves)">⛶ Fullscreen</button>
+      <button class="edOff" data-feat="screenfx" onclick="fxOwn()" title="My effects: open the box where you switch your own screen effects on and off (Ctrl+Alt+D, also in fullscreen). They stay on until you turn them off; you see them and so does the stream">🎛️ My effects</button>
       <button class="ghost" onclick="gcDevices(true)" title="Game capture: look again for capture cards (after you plugged one in)">🔄 Find my capture card</button>
       <label style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><input type="checkbox" id="gcFpsOn" onchange="gcSet({fps:this.checked})" title="Game capture: show the game's FPS in the upper right corner"> 📈 Show FPS</label>
       <div><label>👻 FPS see-through <span id="gcFpsAN"></span></label><input type="range" id="gcFpsA" min="0" max="90" step="5" oninput="gcSet({fpsA:Number(this.value)})" title="Game capture: how see-through the FPS number is (0% = solid, 90% = barely there)" style="width:120px"></div>
     </div>
     <p class="help" id="gcNote" style="margin:6px 0 8px"></p>
-    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFxTv"></div><div id="gcFxTag"></div><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
+    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFxTv"></div><div id="gcFxTag"></div><div id="gcOwn" onclick="event.stopPropagation()" ondblclick="event.stopPropagation()"></div><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
     <p class="help" style="margin:8px 0 0">While you're on this tab the battles inside Movie Royal make no sound (your stream still hears them from OBS). Double-click the picture or press <b>F</b> for fullscreen. The big FPS number is the game's own speed (how many different pictures a second); the small one is what the capture card sends. A still picture (a menu, a pause screen) reads low.</p>
   </div>
 </section>
@@ -1516,7 +1523,7 @@ not a link</textarea>
     <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><select id="fxTKind" title="Screen effects test: which effect to try"></select><input id="fxTSecs" type="number" min="3" max="120" value="12" style="width:70px" title="Screen effects test: how many seconds the test effect plays"> s
       <button class="primary" onclick="fxTry()" title="Screen effects test: play this effect on your Game capture view only (a pretend game starts if the capture is off; OBS is not touched)">▶ Try it on my view</button>
       <button onclick="fxTry(true)" title="Screen effects test: play it for real: on your view AND on the game source in OBS (needs OBS open)">▶ Try it on stream too</button><button class="ghost" onclick="fxTimerPeek()" title="Screen effects test: see the timer that shows in the top left corner of the stream (a demo)">⏱️ See the timer</button><button class="ghost" onclick="promoTest()" title="Sell message test: check the words it makes from your prices (nothing is sent)">📣 Check the sell message</button>
-      <button class="ghost" onclick="fxPause()" title="Screen effects: pause the effect that is playing, or carry on with a paused one (same as the small button on the timer)">⏸ / ▶ Pause</button><button class="ghost" onclick="fxPauseTest()" title="Screen effects test: checks that effects pause when you leave the Game capture screen and carry on when you are back, and the pause button (3 seconds, only in the app)">🧪 Check pause</button><button class="ghost" onclick="fxStop(true)" title="Screen effects: stop the effect that is playing and empty the line">🛑 Stop</button></div>
+      <button onclick="fxOwnTry()" title="My effects test: opens the Game capture tab with a pretend game and the My effects box (Ctrl+Alt+D), where you switch your own stay-on effects on and off. In this test only your view changes">🎛️ My own effects</button><button class="ghost" onclick="fxOwnTest()" title="My effects test: checks that your own effects stay on, mix together, step aside for a viewer's effect and come back after it (5 seconds, only in the app)">🧪 Check my own effects</button><button class="ghost" onclick="fxPause()" title="Screen effects: pause the effect that is playing, or carry on with a paused one (same as the small button on the timer)">⏸ / ▶ Pause</button><button class="ghost" onclick="fxPauseTest()" title="Screen effects test: checks that effects pause when you leave the Game capture screen and carry on when you are back, and the pause button (3 seconds, only in the app)">🧪 Check pause</button><button class="ghost" onclick="fxStop(true)" title="Screen effects: stop the effect that is playing and empty the line">🛑 Stop</button></div>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button class="ghost" onclick="fxPretend('points')" title="Screen effects test: a pretend viewer redeems the 🎲 Random effect reward">💎 Pretend redeem</button><button class="ghost" onclick="fxPretend('bits')" title="Screen effects test: a pretend viewer cheers bits (asks how many): shows how many random effects that buys">💜 Pretend bits</button><button class="ghost" onclick="fxPretend('tip')" title="Screen effects test: a pretend viewer tips (asks how much): shows how many random effects that buys">💵 Pretend tip</button><button class="ghost" onclick="fxRules()" title="Screen effects test: checks the rules (which effect an amount buys, the maths for OBS); nothing plays">🧪 Check the rules</button></div>
     <div id="fxTOut" class="help"></div>
   </div>
@@ -1868,6 +1875,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['clip', 'any', '🎬 Clip the last minute (Twitch clip)', 'Ctrl+Alt+C', () => clipNow(), true],
   ['fx-stop', 'any', '🛑 Stop the screen effect that is playing', 'Ctrl+Alt+X', () => { if (featOn('screenfx')) fxStop(); }, true],
   ['pop', 'any', '↗ Pop the tab you\'re on out into its own window', 'Ctrl+Alt+P', () => popTab(), true],
+  ['fx-own', 'capture', '🎛️ My own screen effects (open / close the box)', 'Ctrl+Alt+D', () => { if (featOn('screenfx')) fxOwn(); }, true],
   ['gc-full', 'capture', '⛶ Fullscreen on / off', 'F', () => gcFull()],
   ['gc-go', 'capture', '▶ Start / ⏹ stop the capture card', 'S', () => gcToggle()],
   ['m-ticker', 'mara', '⏸ Pause / ▶ resume battles (📜 paused message)', 'P', () => tickerToggle()],
@@ -3883,8 +3891,9 @@ function fxMsg(fx, queue) {
   if (queue != null) FXQ = queue;
   if (S) S.screenFx = { ...(S.screenFx || {}), now: fx };
   if (fx && FXC && FXC.id === fx.id) { FXC = fx; if (!fxRaf) fxRaf = requestAnimationFrame(fxLoop); } // (same effect: paused / playing again / time moved)
-  if (fx && (!FXC || FXC.id !== fx.id)) { FXC = fx; if (!fxRaf) fxRaf = requestAnimationFrame(fxLoop); if (view !== 'capture' || !GC.stream) toast(`${fx.icon} <b>${esc(fx.name)}</b>${fx.by && fx.via !== 'you' ? ' from ' + esc(fx.by) : ''} for ${fx.secs} s${fx.test ? ' (test)' : ''}. It shows on the 🎮 Game capture tab. <button onclick="fxStop()">🛑 Stop</button>`, 6000); }
+  if (fx && (!FXC || FXC.id !== fx.id)) { FXC = fx; if (!fxRaf) fxRaf = requestAnimationFrame(fxLoop); if (!fx.forever && (view !== 'capture' || !GC.stream)) toast(`${fx.icon} <b>${esc(fx.name)}</b>${fx.by && fx.via !== 'you' ? ' from ' + esc(fx.by) : ''} for ${fx.secs} s${fx.test ? ' (test)' : ''}. It shows on the 🎮 Game capture tab. <button onclick="fxStop()">🛑 Stop</button>`, 6000); }
   if (!fx) { FXC = null; fxClear(); }
+  if (fx?.forever) { FXOWN = fx.kinds.slice(); FXOWN_WAIT = false; } else if (fx) FXOWN_WAIT = FXOWN.length > 0; else { FXOWN = []; FXOWN_WAIT = false; } fxOwnDraw();
   if (FXI && $('fxBody') && view === 'settings') fxDraw(); fxTestNow();
 }
 function fxClear() { const v = $('gcVideo'), t = $('gcFxTag'); if (v) { v.style.transform = ''; v.style.filter = ''; } if (t) t.style.display = 'none'; const o = $('gcFxTv'); if (o) o.style.display = 'none'; }
@@ -3892,6 +3901,11 @@ function fxLoop() {
   fxRaf = 0; const fx = FXC; if (!fx) return fxClear();
   const v = $('gcVideo'), tag = $('gcFxTag'), t = fx.paused ? fx.secs - fx.left : (Date.now() - fx.at) / 1000;
   if (tag && !tag.firstChild) tag.innerHTML = '<span id="gcFxTxt"></span><button id="gcFxPp" onclick="event.stopPropagation();fxPause()" ondblclick="event.stopPropagation()"></button>';
+  if (fx.forever) { // 🎛️ your own effects: no end, no countdown
+    if (v) { const f = SCREENFX.mix(fx.kinds, t, Infinity), c = SCREENFX.css(f); v.style.transform = c.transform; v.style.filter = c.filter; const o = $('gcFxTv'); if (o) { o.style.display = f.tv > 0.01 ? 'block' : 'none'; o.style.opacity = f.tv.toFixed(2); } }
+    if (tag) { tag.style.display = 'block'; fxTagPut(fx, 0, false); }
+    fxRaf = requestAnimationFrame(fxLoop); return;
+  }
   if (fx.paused) { // ⏸ the picture is normal while it waits; the tag keeps the time left
     if (v) { v.style.transform = ''; v.style.filter = ''; } const o = $('gcFxTv'); if (o) o.style.display = 'none';
     if (tag) { tag.style.display = 'block'; fxTagPut(fx, fx.left, true); }
@@ -3903,10 +3917,30 @@ function fxLoop() {
   fxRaf = requestAnimationFrame(fxLoop);
 }
 function fxTagPut(fx, left, paused) { // (only touches the page when something changed, so the small button stays clickable)
-  const h = `${fx.icon} ${esc(fx.name)} <b>${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</b>${paused ? ' <small>paused</small>' : ''}${FXQ ? ` <small>+${FXQ} next</small>` : ''}`, x = $('gcFxTxt'), b = $('gcFxPp'); if (!x || !b) return;
+  const h = fx.forever ? `${fx.icon} ${esc(fx.name)} <small>yours · Ctrl+Alt+D</small>` : `${fx.icon} ${esc(fx.name)} <b>${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}</b>${paused ? ' <small>paused</small>' : ''}${FXQ ? ` <small>+${FXQ} next</small>` : ''}`, x = $('gcFxTxt'), b = $('gcFxPp'); if (!x || !b) return;
+  b.style.display = fx.forever ? 'none' : '';
   if (x._h !== h) { x._h = h; x.innerHTML = h; } const k = paused ? 'p' : 'r';
   if (b._k !== k) { b._k = k; b.textContent = paused ? '▶' : '⏸'; b.title = paused ? 'Screen effects: carry on with the paused effect (it also pauses by itself when you leave the Game capture screen, and carries on when you are back)' : 'Screen effects: pause the effect. Its time left is kept, and the ones waiting stay in line'; }
 }
+/* 🎛️ (1.163.0, Derek: "ctrl+alt+d in capture screen and a popup… my own effects. these last forever until I turn them off") the box sits inside the picture, so it also shows in fullscreen */
+let FXOWN = [], FXOWN_WAIT = false, FXOWN_DRY = false;
+function fxOwnDraw() {
+  const b = $('gcOwn'); if (!b || !b.classList.contains('show') || !window.SCREENFX) return;
+  const h = `<h4>🎛️ My screen effects${FXOWN_DRY ? ' <small>(test: only your view)</small>' : ''}</h4><p>Click an effect to switch it on or off. You can have several on at once. They stay on until you turn them off.${FXOWN_WAIT ? ' <b>A viewer\'s effect is playing now: yours come back right after it.</b>' : ''}</p>
+    <div class="ownGrid">${Object.entries(SCREENFX.FX).map(([k, F]) => `<button class="${FXOWN.includes(k) ? 'on' : ''}" onclick="fxOwnSet('${k}')" title="My effects: ${esc(F.what)}. Click to switch it ${FXOWN.includes(k) ? 'off' : 'on'}">${F.icon} ${esc(F.name)}${FXOWN.includes(k) ? ' ✓' : ''}</button>`).join('')}</div>
+    <div class="ownRow"><span>${FXOWN.length ? FXOWN.length + ' on' : 'None on'} · Ctrl+Alt+D opens and closes this box</span><button onclick="fxOwnSet(null)" title="My effects: switch all of your own effects off (the picture goes back to normal)">🛑 All off</button><button onclick="fxOwn(false)" title="My effects: close this box (your effects stay as they are)">✕ Close</button></div>`;
+  if (b._h !== h) { b._h = h; b.innerHTML = h; }
+}
+async function fxOwn(open, dry) {
+  const b = $('gcOwn'); if (!b) return; const want = open == null ? !b.classList.contains('show') : !!open;
+  if (dry != null) FXOWN_DRY = !!dry; if (!want) { b.classList.remove('show'); FXOWN_DRY = false; return; }
+  if (view !== 'capture') setView('capture');
+  b.classList.add('show'); fxOwnDraw();
+  try { const r = await api('/api/screenfx', null, 'GET'); FXOWN = r.state?.own?.kinds || []; FXOWN_WAIT = !!r.state?.own?.waiting; fxOwnDraw(); } catch {}
+}
+async function fxOwnSet(kind) { try { const r = await api('/api/screenfx/own', kind ? { kind, dry: FXOWN_DRY } : { kinds: [] }); FXOWN = r.own.kinds; FXOWN_WAIT = !!r.own.waiting; fxOwnDraw(); } catch {} }
+async function fxOwnTry() { fxTestNow(); if (!GC.stream) { setView('capture'); await gcStart(60); await new Promise(r => setTimeout(r, 700)); } await fxOwn(true, true); const o = $('fxTOut'); if (o) o.innerHTML = '🎛️ The box is open on the 🎮 Game capture tab (a pretend game is playing). Click effects on and off: in this test they only change your view, OBS is left alone.'; }
+async function fxOwnTest() { const o = $('fxTOut'); if (o) o.innerHTML = '⏳ Checking your own effects (about 5 seconds)…'; try { const r = await api('/api/test/screenfx-own', null, 'GET'); if (o) o.innerHTML = `${r.ok ? '✅ Your own effects work' : '❌ Something is off'}<table class="tbl" style="width:100%;margin-top:4px"><tbody>${r.rows.map(x => `<tr><td>${x.ok ? '✅' : '❌'}</td><td>${esc(x.label)}</td><td class="muted">${esc(x.got)}</td></tr>`).join('')}</tbody></table>`; } catch (e) { if (o) o.innerHTML = '❌ ' + esc(e.message || 'Could not check'); } }
 async function fxPause(on) { try { const r = await api('/api/screenfx/pause', on == null ? {} : { on }); if (r.now) fxMsg(r.now); } catch {} }
 async function fxPauseTest() { const o = $('fxTOut'); if (o) o.innerHTML = '⏳ Checking pause and play (about 3 seconds)…'; try { const r = await api('/api/test/screenfx-pause', null, 'GET'); if (o) o.innerHTML = `${r.ok ? '✅ Pause and play work' : '❌ Something is off'}<table class="tbl" style="width:100%;margin-top:4px"><tbody>${r.rows.map(x => `<tr><td>${x.ok ? '✅' : '❌'}</td><td>${esc(x.label)}</td><td class="muted">${esc(x.got)}</td></tr>`).join('')}</tbody></table>`; } catch (e) { if (o) o.innerHTML = '❌ ' + esc(e.message || 'Could not check'); } }
 async function fxStop(all) { try { const r = await api('/api/screenfx/stop', { all: !!all }); toast(r.had ? '🛑 Screen effect stopped' + (all ? ' and the line emptied' : r.queue ? ` (${r.queue} more waiting)` : '') : all ? 'Nothing was playing. The line is empty.' : 'No screen effect is playing.'); } catch {} }
