@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.159.3: What's new
+- {has:movies} 🌙 **The movie week waits for your stream to end.** A stream that runs past midnight on the last day of the week no longer brings the earlier winners' other movies back mid-stream, and late wins no longer keep people benched the following week. The new week starts once you have been offline for over an hour.
+
 ## v1.159.2: What's new
 - {ed:kirb} 📝 **The app's quote commands are off** so they don't clash with your own quote system. To use them, tick **Quotes on** in Chat bot → 📝 Quotes.
 

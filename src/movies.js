@@ -244,7 +244,13 @@ export function weekStartDate(d = new Date()) {
   return x;
 }
 export const weekKey = (d = new Date()) => { const x = weekStartDate(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-export const nextWeekDate = () => new Date(weekStartDate().getTime() + 7 * DAY + 3600e3); // +1h guards DST
+// (1.159.3) counted from the week the app is really in (db.week.key), which can lag the calendar while a stream night that began last week is still going
+const weekOpenDate = () => { const m = String(db.week?.key || '').match(/^(\d+)-(\d+)-(\d+)$/); const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; return d && weekStartDate().getTime() - d.getTime() <= 7 * DAY ? d : weekStartDate(); };
+export const nextWeekDate = () => new Date(weekOpenDate().getTime() + 7 * DAY + 3600e3); // +1h guards DST
+// 🌙 (1.159.3, Derek: Kirb's Saturday stream ran past midnight, the week rolled mid-stream and the first two winners' other movies came back for movie #3)
+// The server tells us when a stream night that started BEFORE the new week is still going; the week only rolls once that night is over.
+let weekHold = () => false;
+export const setWeekHold = fn => { weekHold = fn; };
 export const backOn = () => nextWeekDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 const week = () => { db.week ||= { key: weekKey(), winners: [], spotWon: false }; return db.week; };
 export const wonThisWeek = discordId => week().winners.includes(discordId);
@@ -254,6 +260,7 @@ export const isSpot = e => e?.kind === 'spot';
 export function rollWeek(force = false) {
   const k = weekKey();
   if (!force && db.week?.key === k) return null;
+  if (!force && db.week?.key) { try { if (weekHold()) return null; } catch {} }
   const l = moviesList();
   let back = 0;
   l.entries = l.entries.filter(e => !(isSpot(e) && !['active', 'benched', 'paused'].includes(e.status))); // clean up used spots (old saves)

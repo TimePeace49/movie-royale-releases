@@ -64,7 +64,7 @@ import * as deck from './deck.js';
 import { recordRound, getResults, listResults, statsView, statsReady } from './stats.js';
 import { getMovie as tmdbMovie } from './tmdb.js';
 import { blockReason, banMovie, unbanMovie, unapprove, autoBan, isBanned as isBannedId, allowThisYear, addLuck, luckMultiplier, luckOn, swapsLocked } from './movies.js';
-import { suggest, sweepWatched, picksUsed, addSpots, resetSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey } from './movies.js';
+import { suggest, sweepWatched, picksUsed, addSpots, resetSpots, afterMovieWin, newWeek, isSpot, rollWeek, weekStartDate, backOn, weekKey, setWeekHold } from './movies.js';
 
 import * as errlog from './errlog.js';
 import * as activity from './activity.js';
@@ -1370,6 +1370,16 @@ function nightOver(st, now = Date.now(), liveNow = db.live, day = todayKey()) {
   if (st.offAt) return now - st.offAt > NIGHT_GAP;
   return st.day !== day;
 }
+// 🌙 (1.159.3) the week waits for the stream night: a night that began before the new week started (a Saturday stream running past midnight) keeps the old week
+// (winners' other movies stay benched, wins count for that week) until the night is over; then the week rolls as usual. Never held longer than 18 h.
+const WEEK_HOLD_MAX = 18 * 3600000;
+function weekHeld(st, now = Date.now(), liveNow = db.live, weekStart = weekStartDate(new Date(now)).getTime()) {
+  if (!st || !st.day) return false;
+  if (!liveNow && !(st.offAt && now - st.offAt <= NIGHT_GAP)) return false; // (not live and not just a short drop: the night is over)
+  const began = new Date(st.day).getTime(); if (!Number.isFinite(began) || began >= weekStart) return false; // (this night began in the new week)
+  return now - weekStart < WEEK_HOLD_MAX;
+}
+setWeekHold(() => weekHeld(db.stream));
 function stream() {
   if (nightOver(db.stream)) { db.stream = { day: todayKey(), active: [] }; save(); }
   return db.stream;
@@ -3403,6 +3413,18 @@ app.post('/api/chatters/link', (req, res) => { // "this chatter is that person"
   save(); pushState(); refreshPreview(); res.json({ ok: true });
 });
 // 🧪 🌙 stream night walk-through (pretend times, nothing saved)
+app.get('/api/test/week-hold', (req, res) => { // 🧪 pretend Saturday night stream that runs past midnight (weeks start Sunday here); nothing saved
+  const H = 3600000, sat = new Date(2026, 10, 14, 21, 0).getTime(), sun0 = new Date(2026, 10, 15).getTime(), day = t => new Date(t).toDateString();
+  const st = { day: day(sat) }, rows = [], T = (what, t, liveNow, want, s = st) => { const got = weekHeld(s, t, liveNow, sun0); rows.push({ what, held: got, ok: got === want }); };
+  T('Saturday 11:30 pm, live (still the old week anyway)', sat + 2.5 * H, true, true);
+  T('Sunday 12:40 am, still live: the week waits, winners stay benched', sun0 + 40 * 60000, true, true);
+  T('Sunday 1:10 am, internet dropped 5 minutes ago', sun0 + 70 * 60000, false, true, { ...st, offAt: sun0 + 65 * 60000 });
+  T('Sunday 3:30 am, offline for over an hour: new week, benched movies come back', sun0 + 3.5 * H, false, false, { ...st, offAt: sun0 + 2 * H });
+  T('A stream that starts Sunday 12:30 am: already the new week', sun0 + 45 * 60000, true, false, { day: day(sun0 + 30 * 60000) });
+  T('Left "live" by mistake until Sunday evening: stops waiting after 18 hours', sun0 + 19 * H, true, false);
+  T('Not live and no stream tonight: rolls at midnight as before', sun0 + 5 * 60000, false, false);
+  res.json({ ok: rows.every(r => r.ok), rows, heldNow: weekHeld(db.stream), week: db.week?.key || '' });
+});
 app.get('/api/test/stream-night', (req, res) => {
   const H = 3600000, t0 = new Date(2026, 10, 7, 22, 30).getTime(), dayOf = t => new Date(t).toDateString();
   const steps = [], st = { day: dayOf(t0), startedAt: t0, movies: 0 };

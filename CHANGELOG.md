@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.159.3
+- 🌙 **The movie week no longer flips in the middle of a stream.** A new week used to start at midnight on the dot (Sunday by default), even mid-stream: a Saturday stream that ran past midnight got the earlier winners' other movies back for the next battle, and wins after midnight counted for the NEW week, so those people were still benched the next Saturday. Now a stream night that began before the new week keeps the old week until the night is over (offline for more than an hour), then the week rolls. Test tab → 🌙 stream night card → 🗓️ Week vs. midnight.
+
 ## 1.159.2
 - 📝 **Quotes can be turned off, and are off by default in Kirb's edition** (he has his own quote system). The switch is on Chat bot → 📝 Quotes: untick "Quotes on" and !quote, !addquote and !delquote do nothing in chat. Saved quotes stay. Everyone else keeps quotes on.
 
