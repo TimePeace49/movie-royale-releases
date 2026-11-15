@@ -5428,6 +5428,8 @@ function maraPush5Once() {
   save();
 }
 setTimeout(maraPush5Once, 1300);
+function tickerTopOnce() { if (db.settings.tickerTop1) return; db.settings.tickerTop1 = true; const t = db.settings.marathon?.ticker; if (t && t.pos === 'bottom') t.pos = 'top'; save(); } // 📜 (1.167.2, Derek: "the text for paused battles should be the top of the screen not the bottom") a saved bottom moves up once; he can still pick bottom after
+setTimeout(tickerTopOnce, 1400);
 setTimeout(chatTagOffOnce, 900);
 function fx5minOnce() { /* (1.156.2, Derek: "all the effects are 5 mins") saved lengths from before are moved to 5 minutes once; later changes stay */
   if (db.settings.fx5min) return; db.settings.fx5min = true; const f = db.settings.screenFx?.fx; if (f) for (const x of Object.values(f)) if (x && x.secs != null) x.secs = 300; save(); }
@@ -6570,7 +6572,7 @@ app.post('/api/mara/cards', wTry(b => { if (!paid.dev()) throw new Error('The ma
 // 📜 (1.78.0, Derek) "battles are paused" message for OBS: one line of white text scrolling right to left (public/ticker.html).
 // Marathon tab → 📜 Paused message: ▶ Show / ⏸ Hide in the scene you're in; ✏️ the words, speed, size, top or bottom.
 const TICKER_TEXT = "⏸️ Battles are paused right now, but don't worry: every battle is added to the queue, and we'll run them as soon as they're back on! Can't stick around? No worries, come say hi any other time during the stream to redeem your battles. If you can't make it back, they'll be run in the last part of the stream, and the VOD will be up to watch later. 🎟️";
-const tickerCfg = () => { const t = db.settings.marathon?.ticker || {}; return { text: String(t.text || '').trim() || TICKER_TEXT, own: !!String(t.text || '').trim(), speed: Math.max(40, Math.min(400, Number(t.speed) || 140)), size: Math.max(20, Math.min(90, Number(t.size) || 44)), pos: t.pos === 'top' ? 'top' : 'bottom', band: !!t.band }; };
+const tickerCfg = () => { const t = db.settings.marathon?.ticker || {}; return { text: String(t.text || '').trim() || TICKER_TEXT, own: !!String(t.text || '').trim(), speed: Math.max(40, Math.min(400, Number(t.speed) || 140)), size: Math.max(20, Math.min(90, Number(t.size) || 44)), pos: t.pos === 'bottom' ? 'bottom' : 'top', band: !!t.band }; }; // (1.167.2, Derek: top of the screen by default)
 const tickerMsg = () => ({ type: 'ticker', ...tickerCfg() });
 const tickerUrl = () => `http://localhost:${PORT}/ticker.html`;
 live.ticker = { on: false, scene: '', checkedAt: 0 };

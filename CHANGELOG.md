@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.167.2
+- 📜 The paused battles message now scrolls across the TOP of the screen instead of the bottom (you can still pick bottom in ✏️ on the Marathon tab).
+
 ## 1.167.1
 - 😱 Jump scares: the sound now goes off FIRST and the pop-up shows up right after it (about half a second). No more picture building up before the sound, so there is no warning. This is how every jump scare works now (the "🎵 Build-up sound first" tick on the Marathon tab brings the old slow build-up back).
 
