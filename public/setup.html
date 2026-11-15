@@ -187,16 +187,16 @@ const PAGES = {
   backup() {
     const b = S.backup || {}, k = b.backup || {};
     const rel = 'https://github.com/TimePeace49/movie-royale-releases/releases/latest';
-    return `<h2>🛡️ Backup bots (optional)</h2><p class="why"><b>Movie Royal Backup Bots</b> is a second, small app. It checks your 24/7 Discord bot every minute, and if that bot has problems, it answers <b>/suggest</b>, <b>/swap</b>, <b>/mymovies</b>… instead. If you don't use the 24/7 bot, it answers whenever Movie Royal is closed. It also keeps reading your Twitch chat while Movie Royal is closed, so viewer profiles and watch streaks keep counting. It can run on your PC or on a friend's.</p>
+    return `<h2>🛡️ Backup bots (optional)</h2><p class="why"><b>TimePeace Chatbot Control Center</b> is a second, small app. It checks your 24/7 Discord bot every minute, and if that bot has problems, it answers <b>/suggest</b>, <b>/swap</b>, <b>/mymovies</b>… instead. If you don't use the 24/7 bot, it answers whenever Movie Royal is closed. It also keeps reading your Twitch chat while Movie Royal is closed, so viewer profiles and watch streaks keep counting. It can run on your PC or on a friend's.</p>
     ${!S.settings.discordToken ? `<div class="bad">Set up the <b>Discord bot</b> step first.</div>` : ''}
     ${b.active ? `<div class="info">🛡️ ${esc(k.by || 'The backup')} is running your Discord bot right now. Switch back in Movie Royal: Settings → 🤖 Discord &amp; picks.</div>` : b.watching ? status(true, `${esc(k.by || 'A backup')} is watching your bot.`) : ''}
     <ol class="steps">
       <li>Download <b>MovieRoyalBackupBots-Setup</b> from the ${link(rel, 'latest release page')} (under <b>Assets</b>) and install it. It has its own installer, separate from Movie Royal.</li>
-      <li>Open <b>Movie Royal Backup Bots</b> (Start menu). Leave it open: it starts by itself with Windows from then on, hidden in the background.</li>
+      <li>Open <b>TimePeace Chatbot Control Center</b> (Start menu). Leave it open: it starts by itself with Windows from then on, hidden in the background.</li>
       <li>Press <b>🛡️ Add my bot to the backup on this PC</b>. No copy and paste: it takes your bot from Movie Royal.<div class="row" style="margin-top:8px"><button class="primary" ${S.settings.discordToken ? '' : 'disabled'} onclick="backupAdd(this)">🛡️ Add my bot to the backup on this PC</button></div>${note('bk')}</li>
       <li><b>A friend running your backup instead?</b> They install the same app and paste your Discord bot token in it (Movie Royal → Settings → 🤖 Discord &amp; picks → 📋 Copy my bot token). Whoever has the token fully controls your bot, so only give it to someone you trust, privately.</li>
     </ol>
-    <p class="help">Movie Royal Backup Bots updates itself. Picks it takes come into Movie Royal when you open it.</p>
+    <p class="help">TimePeace Chatbot Control Center updates itself. Picks it takes come into Movie Royal when you open it.</p>
     ${nav()}`;
   },
   chars() {
@@ -572,8 +572,8 @@ async function makeRewards(btn) { // 💥 chaos + 🎡 wheel + 🎉 power-ups + 
 async function botHi(btn) { btn.disabled = true; try { const r = await api('/api/twitch-bot/test', {}); msg.bot = { ok: true, text: r.as ? `Said hi in your chat as <b>${esc(r.as)}</b>.` : 'Said hi in your chat.' }; } catch (e) { msg.bot = { ok: false, text: esc(e.message) }; } await load(); }
 async function backupAdd(btn) {
   btn.disabled = true; btn.textContent = 'Adding…';
-  try { const r = await api('/api/backup/add-here', {}); msg.bk = { ok: true, text: `Added ${esc(r.tag || 'your bot')} to Movie Royal Backup Bots. It connects in a few seconds.` }; }
-  catch (e) { msg.bk = { ok: false, text: /fetch failed|ECONNREFUSED|abort|timed? ?out/i.test(e.message) ? 'Couldn\'t reach Movie Royal Backup Bots on this PC. Install it and open it first (steps 1 and 2).' : esc(e.message) }; }
+  try { const r = await api('/api/backup/add-here', {}); msg.bk = { ok: true, text: `Added ${esc(r.tag || 'your bot')} to TimePeace Chatbot Control Center. It connects in a few seconds.` }; }
+  catch (e) { msg.bk = { ok: false, text: /fetch failed|ECONNREFUSED|abort|timed? ?out/i.test(e.message) ? 'Couldn\'t reach TimePeace Chatbot Control Center on this PC. Install it and open it first (steps 1 and 2).' : esc(e.message) }; }
   await load();
 }
 const CHAR_ANS = { ids: { yes: { idOn: true, charGenders: true }, no: { idOn: false, charGenders: false } }, looks: { yes: { looksOn: true }, no: { looksOn: false } } }; // (same as the start-up questions)

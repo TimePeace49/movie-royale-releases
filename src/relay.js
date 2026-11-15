@@ -1,4 +1,4 @@
-// 🛡️ The hidden #movie-royal-sync channel: how Movie Royal and the "Movie Royal Backup Bots" app talk to each other.
+// 🛡️ The hidden #movie-royal-sync channel: how Movie Royal and the "TimePeace Chatbot Control Center" app talk to each other.
 // Both sides use the SAME Discord bot (the streamer's), so no router setup or web address is needed.
 // Only the bot can see the channel (server admins can too, so the bot token is never put in it).
 //

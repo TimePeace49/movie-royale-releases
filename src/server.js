@@ -1849,7 +1849,7 @@ async function shoutOut(name, via, test, opt = {}) {
   return r;
 }
 // ⭐🍅 (1.128.0, Derek) share YOUR OMDb key with every edition: the key goes to your 24/7 bot (only it uses it), and the bot's address is saved in src/shared.json on GitHub
-// by the Backup Bots app (it has the GitHub key). Every Movie Royal without its own key then asks your bot. Dev edition only.
+// by the Control Center app (it has the GitHub key). Every Movie Royal without its own key then asks your bot. Dev edition only.
 /* 🤖🤝 Shared chat bot (1.151.0, Derek: "if I make a Twitch bot can it be used by everyone that uses the app"): see sharedbot.js. */
 sharedbot.setHooks({ channel: () => twitch.status.login || db.owner?.login || '', edition: () => EDITION.id, app: () => editionInfo().app || '', ownBot: () => twitch.botOn(), kick: () => (feat('kick') && kick.signedIn() ? kick.slug() : ''), ownKickBot: () => !!kick.botInfo()?.on });
 twitch.sharedBot.use = () => sharedbot.use(); twitch.sharedBot.say = t => sharedbot.say(t);
@@ -1870,7 +1870,7 @@ async function sbShare(on) {
   if (want !== now) {
     const b = await fetch('http://127.0.0.1:3747/api/shared/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bot: want }), signal: AbortSignal.timeout(20000) }).then(async x => ({ ok: x.ok, j: await x.json().catch(() => ({})) })).catch(() => null);
     if (b?.ok) { steps.push(on ? '✅ Every copy of the app now knows where the shared bot is (they pick it up within 6 hours, or when they restart)' : '✅ Taken off the list every copy of the app reads'); await shared.refresh().catch(() => {}); }
-    else steps.push('⚠️ Couldn\'t tell the other copies of the app where it is: ' + (b?.j?.error || 'open the Backup Bots app (it needs its GitHub key), then press this again'));
+    else steps.push('⚠️ Couldn\'t tell the other copies of the app where it is: ' + (b?.j?.error || 'open the Control Center app (it needs its GitHub key), then press this again'));
   } else steps.push('✅ The other copies of the app already know the address');
   act('stream', on ? 'Shared the chat bot account with every copy of the app' : 'Stopped sharing the chat bot account', { icon: '🤖' }); return { ok: true, on, steps };
 }
@@ -1929,8 +1929,8 @@ async function omdbShare(on) {
   const want = on ? proxy : '', now = shared.get().omdb || '';
   if (want !== now) {
     const b = await fetch('http://127.0.0.1:3747/api/shared/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ omdb: want }), signal: AbortSignal.timeout(20000) }).then(async x => ({ ok: x.ok, j: await x.json().catch(() => ({})) })).catch(() => null);
-    if (!b) { steps.push('⚠️ Open the 🛡️ Backup Bots app (it has your GitHub key) and press this again, so every edition learns your bot’s address.'); return { ok: false, steps, proxy, needBackup: true }; }
-    if (!b.ok) { steps.push('⚠️ ' + (b.j.error || 'The Backup Bots app could not save it to GitHub')); return { ok: false, steps, proxy }; }
+    if (!b) { steps.push('⚠️ Open the 🛡️ Control Center app (it has your GitHub key) and press this again, so every edition learns your bot’s address.'); return { ok: false, steps, proxy, needBackup: true }; }
+    if (!b.ok) { steps.push('⚠️ ' + (b.j.error || 'The Control Center app could not save it to GitHub')); return { ok: false, steps, proxy }; }
     steps.push(on ? '✅ Saved on GitHub: every edition picks it up within 6 hours (or when it opens)' : '✅ Taken off GitHub'); db.shared = { at: Date.now(), v: { ...shared.get(), omdb: want } }; save();
   } else steps.push(on ? '✅ GitHub already has your bot’s address' : '✅ GitHub already had nothing shared');
   act('stream', on ? 'Shared the OMDb (IMDb + Rotten Tomatoes) key with every edition through the 24/7 bot' : 'Stopped sharing the OMDb key', { icon: '🍅', kind: 'omdb' }); pushState();
@@ -2949,15 +2949,15 @@ app.post('/api/backup/token', (req, res) => { // only for you to give to a frien
   let copied = false; try { copied = !!globalThis.__desktop?.copy?.(db.settings.discordToken); } catch {}
   res.json({ token: db.settings.discordToken, copied });
 });
-app.post('/api/backup/add-here', async (req, res) => { // 🛡️ one click: put my bot in Movie Royal Backup Bots on this PC (it reads the token from Movie Royal itself)
+app.post('/api/backup/add-here', async (req, res) => { // 🛡️ one click: put my bot in TimePeace Chatbot Control Center on this PC (it reads the token from Movie Royal itself)
   if (!db.settings.discordToken) return res.status(400).json({ error: 'Set up the Discord bot first.' });
   try {
     const r = await fetch('http://127.0.0.1:3747/api/add-mine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(20000) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) return res.status(400).json({ error: /already on the list/.test(j.error || '') ? 'Your bot is already in Movie Royal Backup Bots on this PC.' : j.error || 'The backup app said no.' });
+    if (!r.ok) return res.status(400).json({ error: /already on the list/.test(j.error || '') ? 'Your bot is already in TimePeace Chatbot Control Center on this PC.' : j.error || 'The backup app said no.' });
     setTimeout(() => backuplink.tick({ force: true }).then(pushState).catch(() => {}), 15000);
     res.json({ ok: true, tag: j.tag });
-  } catch { res.status(400).json({ error: "Movie Royal Backup Bots isn't open on this PC. Install it (its own installer on the release page), open it, then press this again." }); }
+  } catch { res.status(400).json({ error: "TimePeace Chatbot Control Center isn't open on this PC. Install it (its own installer on the release page), open it, then press this again." }); }
 });
 app.post('/api/cloud/check', async (req, res) => { const st = await cloud.checkLink(true); pushState(); res.json({ enabled: cloud.enabled(), linked: st.linked, botUp: st.botUp, error: st.linkError || st.lastError || null, lastSync: st.lastSync, botV: st.botV || null, relinked: st.relinked || null }); }); // the Discord bot stops when the app closes
 app.post('/api/app/quit', (req, res) => { if (req.body?.dontAsk) { db.settings.closeAskBot = false; save(); } res.json({ ok: true }); setTimeout(() => globalThis.__desktop?.quit(), 300); });
@@ -3023,7 +3023,7 @@ const GUIDE_STEPS = [
   // 1.59.7 (Derek: keep the Setup guide up to date): three new steps
   { id: 'chatbot', since: '1.59.7', title: '🤖 Chat bot account', why: 'Movie Royal can talk in your Twitch chat as a bot account (like MoviesRoyalBot) instead of as you.', how: ['Make a second Twitch account for the bot, like MoviesRoyalBot (Twitch names can\'t have spaces).', 'Open the sign-in link below in a private (incognito) browser window, log in there as the BOT, and press Authorize. (Or press 🔑 Sign in as the bot: if Twitch shows your own account, press "Not you?" and log in as the bot.)', 'In your Twitch chat, type /mod and the bot\'s name (like /mod MoviesRoyalBot).'], done: () => !!db.twitchBot },
   { id: 'chars', since: '1.59.7', title: '🧍 Characters', why: 'Battles with people instead of balls: chat picks man / woman with !id, and people make their own character in Discord with /character.', how: ['Press 🧭 Set it up and answer the two questions (men and women characters, character creation).', 'Or later: Settings → ⚔️ Game → 🧍 Characters.'], done: () => !!(db.settings.featAsk?.ids && db.settings.featAsk?.looks) },
-  { id: 'backup', since: '1.59.7', title: '🛡️ Backup bots', why: 'A second app that keeps your Discord bot answering if the 24/7 bot has problems (on your PC or a friend\'s).', how: ['Download MovieRoyalBackupBots-Setup from the latest release page on GitHub (under Assets) and install it.', 'Open Movie Royal Backup Bots, then in Movie Royal: Settings → 🤖 Discord & picks → 🛡️ Add my bot to the backup on this PC.'], done: () => backuplink.backupWatching() || backuplink.backupActive() }
+  { id: 'backup', since: '1.59.7', title: '🛡️ Backup bots', why: 'A second app that keeps your Discord bot answering if the 24/7 bot has problems (on your PC or a friend\'s).', how: ['Download MovieRoyalBackupBots-Setup from the latest release page on GitHub (under Assets) and install it.', 'Open TimePeace Chatbot Control Center, then in Movie Royal: Settings → 🤖 Discord & picks → 🛡️ Add my bot to the backup on this PC.'], done: () => backuplink.backupWatching() || backuplink.backupActive() }
 ];
 function guideSeen() {
   if (!Array.isArray(db.settings.setupStepsSeen)) { const was = db.settings.lastSeenVersion || '1.10.0'; db.settings.setupStepsSeen = GUIDE_STEPS.filter(x => !x.since || !newer(x.since, was)).map(x => x.id); save(); } // (first time: the steps you already had count as seen)
@@ -4741,7 +4741,7 @@ const SELF_CHECKS = {
   async backup() {
     if (!db.backupSeen && !backuplink.backupWatching()) return { ok: null, note: 'no backup bot server (it\'s optional)' };
     await within(backuplink.tick({ force: true }), 20000, 'The backup check').catch(() => {});
-    return backuplink.backupWatching() ? { ok: true, note: 'a backup bot server is watching your Discord bot' } : { ok: false, note: "the backup bot server hasn't checked in lately: is Movie Royal Backup Bots running?" };
+    return backuplink.backupWatching() ? { ok: true, note: 'a backup bot server is watching your Discord bot' } : { ok: false, note: "the backup bot server hasn't checked in lately: is TimePeace Chatbot Control Center running?" };
   },
   async tmdb() {
     if (!(db.settings.tmdbKey || '').trim()) return { ok: false, note: 'no TMDB key: Settings → 🎬 Movie info' };
@@ -6182,6 +6182,29 @@ app.post('/api/dual', wTry(async b => {
   if (b.obs === 'point') { const st = dualstream.state(), r = await obs.dualPoint(st.server, dualstream.obsKey()); const took = r.prev ? dualstream.takeTwitchKey(r.prev) : false; dualstream.obsNote({ pointed: true, at: Date.now(), ...(r.prev ? { prev: r.prev } : {}) }); act('stream', 'pointed OBS at the app for 📡 Twitch + Kick', { icon: '📡', who: streamerName(), kind: 'dual' }); return { ...dualstream.state(), tookTwitchKey: took }; }
   if (b.obs === 'back') { await obs.dualBack(dualstream.obsPrev()); dualstream.obsNote({ pointed: false, at: Date.now() }); if (dualstream.state().on) dualstream.setCfg({ on: false }); act('stream', 'put OBS\'s own stream settings back', { icon: '📡', who: streamerName(), kind: 'dual' }); return dualstream.state(); }
   return dualstream.setCfg(b);
+}));
+// 🔴 (1.172.0, Derek: "a go live button for kick, twitch, both on stream tools") picks where the stream goes, then presses Start Streaming in OBS.
+// {test:true} = only says what would happen / what is missing. The control panel always asks "are you sure" first.
+const GO_LIVE = { twitch: ['twitch'], kick: ['kick'], both: ['twitch', 'kick'] };
+function goLivePlan(to) {
+  const want = GO_LIVE[to]; if (!want) throw new Error('Go live where? Twitch, Kick or both.');
+  const st = dualstream.state(), miss = [];
+  if (!st.on) miss.push('📡 Twitch + Kick is switched off (Settings → 📡 Twitch + Kick)');
+  if (!st.helper) miss.push('The stream helper isn\'t downloaded yet (Settings → 📡 Twitch + Kick)');
+  if (!st.obs?.pointed) miss.push('OBS isn\'t pointed at the app yet (Settings → 📡 Twitch + Kick → Point OBS at the app)');
+  for (const k of want) if (!st.outs[k].hasKey) miss.push(`No ${st.outs[k].name} stream key saved yet`);
+  return { to, names: want.map(k => st.outs[k].name), miss, ok: !miss.length, live: st.live };
+}
+app.post('/api/dual/golive', wTry(async b => {
+  dualOk(); const p = goLivePlan(String(b.to || ''));
+  if (b.test) return p;
+  if (!p.ok) throw new Error('Can\'t go live yet: ' + p.miss.join('; ') + '.');
+  if (p.live || await obs.streaming().catch(() => false)) throw new Error('You\'re already live. Stop the stream in OBS first to change where it goes.');
+  dualstream.setCfg({ twitch: { on: GO_LIVE[p.to].includes('twitch') }, kick: { on: GO_LIVE[p.to].includes('kick') } }); dualstream.sync('now');
+  await new Promise(r => setTimeout(r, 1800)); // (the app has to be listening before OBS starts sending)
+  await obs.startStream();
+  act('stream', `pressed 🔴 Go live: ${p.names.join(' + ')}`, { icon: '🔴', who: streamerName(), kind: 'dual' });
+  return { ...p, started: true };
 }));
 app.get('/api/test/dual', (req, res) => res.json(dualstream.demo())); // 🧪 the rules with pretend keys (nothing is started)
 app.get('/api/test/piper', (req, res) => res.json(piper.demo())); // 🧪 the licence rules on sample pages (nothing downloaded)

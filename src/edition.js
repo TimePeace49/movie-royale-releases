@@ -33,10 +33,10 @@ export const onNow = () => { const e = lookAs && ALL[lookAs] ? ALL[lookAs] : ALL
 export const feat = (name, devMode) => onNow().includes(name) || (!lookAs && EDITION.dev && !!devMode); /* (👀 while looking like another edition: only that edition's extras) */
 export const FEATS = ['movienight', 'chatbot', 'kick', 'songs', 'dash', 'eggs', 'raids', 'xmashist', 'screenfx', 'smart', 'tts', 'chatvoice', 'dualstream'];
 export const is = (...ids) => ids.includes(lookAs || EDITION.id); /* (👀 1.130.0: while looking like another edition, its own defaults too: Birx & Jess's raters, guesser, 6 AM day start) */
-/** 🎭 Every part that can be switched per edition (the Backup Bots app's Editions tab lists these). kind 'off' = on unless listed in `off`; kind 'on' = an extra, only when listed in `on`. */
+/** 🎭 Every part that can be switched per edition (the Control Center app's Editions tab lists these). kind 'off' = on unless listed in `off`; kind 'on' = an extra, only when listed in `on`. */
 export const FEATURES = (() => { let f = read('src/features.json'); if (!Array.isArray(f)) f = read('src/features.base.json'); return Array.isArray(f) ? f : []; })();
 // 🏷️ The name people see (1.92.0, Derek: "rename the whole project to TimePeace Chatbot"; True's + Birx's editions carry their own name).
-// Only what people SEE changes: the data folder, program file, installer file, OBS source names, Stream Deck page names and the Backup Bots
+// Only what people SEE changes: the data folder, program file, installer file, OBS source names, Stream Deck page names and the Control Center
 // app keep "Movie Royal", so nobody loses data and updates keep working. The code keeps saying "Movie Royal"; `brand()` swaps it on the way out.
 export const APP = String(process.env.MOVIE_ROYAL_APP || ALL[id]?.app || 'Movie Royal');
 const KEEP = '(?:e\\b| celebration| capture window| paused message| battle\\b| marathon\\b| roll call| Backup| starting soon| sleeping banner| be right back| background| sync channel| debug channel| [–—] |\\\\(?!\'))';
@@ -47,7 +47,7 @@ export const scrub = !!ALL[id]?.scrub;
 /** 👀 The name + the name scrub of the edition being shown right now (the dev edition can look like another one, 1.106.0). */
 export const appNow = () => (lookAs && ALL[lookAs] ? String(ALL[lookAs].app || 'Movie Royal') : APP);
 export const scrubNow = () => (lookAs && ALL[lookAs] ? !!ALL[lookAs].scrub : scrub);
-const SCRUB = [[/(?<!github\.com\/)TimePeace49/g, 'Red Kraken'], [/Kirbgames/g, 'Blue Serpent'], [/timepeace49 and kirbgames/g, 'red kraken and blue serpent'],
+const SCRUB = [[/TimePeace Chatbot Control Center/g, 'Chatbot Control Center'], [/(?<!github\.com\/)TimePeace49/g, 'Red Kraken'], [/Kirbgames/g, 'Blue Serpent'], [/timepeace49 and kirbgames/g, 'red kraken and blue serpent'],
   [/Take out Time/g, 'Take out Red'], [/Take out Kirb/g, 'Take out Blue'], [/take out kirb/g, 'take out blue'], [/'KIRB' : 'TIME'/g, "'BLUE' : 'RED'"], [/letter: 'T'/g, "letter: 'R'"], [/letter: 'K'/g, "letter: 'B'"],
   [/Kirb \(the blue K monkey\)/g, 'Blue (the blue B monkey)'], [/Time \(the red T monkey\)/g, 'Red (the red R monkey)'], [/blue K monkey/g, 'blue B monkey'], [/red T monkey/g, 'red R monkey'], [/ \((?:Kirb|Time)\)/g, ''],
   [/Kirb spots/g, 'Wild spots'], [/\(Kirb\) /g, ''], [/, kirb, luck/g, ', wheel, luck'], [/Wheel of Kirbportions/g, 'the ready-made wheel'], [/\bKirb's\b/g, "the streamer's"], [/\bKirb\b/g, 'the streamer'],

@@ -1,4 +1,4 @@
-// 🛡️ Movie Royal's side of the backup bot server (the "Movie Royal Backup Bots" app, on your PC or a friend's).
+// 🛡️ Movie Royal's side of the backup bot server (the "TimePeace Chatbot Control Center" app, on your PC or a friend's).
 // Every minute, in the hidden #movie-royal-sync channel: say "I'm open", upload the rules + pool, bring in picks the backup
 // took while Movie Royal was closed, and read what the backup is doing. See relay.js for the messages.
 import * as discord from './discord.js';

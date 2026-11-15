@@ -5,7 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 
-app.setName('Movie Royal Backup Bots');
+// 🏷️ (1.172.0, Derek) shown as "TimePeace Chatbot Control Center" (editions that hide his name: "Chatbot Control Center"). The settings folder keeps its old name.
+const CC = (() => { try { const p = require('../package.json'), all = require('../src/editions.json'); return (all[String(process.env.MOVIE_ROYAL_EDITION || p.edition || 'public').toLowerCase()] || {}).scrub ? 'Chatbot Control Center' : 'TimePeace Chatbot Control Center'; } catch { return 'TimePeace Chatbot Control Center'; } })();
+app.setName(CC);
 app.setPath('userData', path.join(app.getPath('appData'), 'Movie Royal Backup'));
 if (process.platform === 'win32') app.setAppUserModelId('com.movieroyal.backup');
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
@@ -22,7 +24,7 @@ const savePrefs = () => { try { fs.mkdirSync(DATA, { recursive: true }); fs.writ
 const loginArgs = () => app.isPackaged ? ['--backup', '--hidden'] : [app.getAppPath(), '--backup', '--hidden'];
 function setStartup(on) {
   prefs.startup = !!on; savePrefs();
-  try { app.setLoginItemSettings({ openAtLogin: !!on, path: process.execPath, args: loginArgs(), name: 'Movie Royal Backup Bots' }); } catch {}
+  try { app.setLoginItemSettings({ openAtLogin: !!on, path: process.execPath, args: loginArgs(), name: CC }); } catch {}
 }
 if (prefs.startup === undefined) setStartup(true); // starts with Windows (hidden in the tray) unless you turn it off
 else setStartup(prefs.startup); // (keeps the Windows entry pointing at the current install)
@@ -34,9 +36,9 @@ beat(); setInterval(beat, 60000);
 function show() {
   if (!url) return;
   if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); return; }
-  win = new BrowserWindow({ width: 1100, height: 780, title: 'Movie Royal Backup Bots', icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { contextIsolation: true } });
+  win = new BrowserWindow({ width: 1100, height: 780, title: CC, icon: ICON, autoHideMenuBar: true, backgroundColor: '#120a24', webPreferences: { contextIsolation: true } });
   // 📌 (1.143.5, Derek: pinned to the taskbar it still showed the main app's icon) tell Windows which icon and program a pin of this window stands for
-  try { if (process.platform === 'win32') { const ico = path.join(__dirname, 'icon-backup.ico'), isOwn = /backup/i.test(path.basename(process.execPath)); if (fs.existsSync(ico)) win.setAppDetails({ appId: 'com.movieroyal.backup', appIconPath: ico, appIconIndex: 0, relaunchCommand: isOwn ? `"${process.execPath}"` : `"${process.execPath}" --backup`, relaunchDisplayName: 'Movie Royal Backup Bots' }); } } catch {}
+  try { if (process.platform === 'win32') { const ico = path.join(__dirname, 'icon-backup.ico'), isOwn = /backup|controlcenter/i.test(path.basename(process.execPath)); if (fs.existsSync(ico)) win.setAppDetails({ appId: 'com.movieroyal.backup', appIconPath: ico, appIconIndex: 0, relaunchCommand: isOwn ? `"${process.execPath}"` : `"${process.execPath}" --backup`, relaunchDisplayName: CC }); } } catch {}
   win.webContents.setWindowOpenHandler(({ url: u }) => { if (/^https?:\/\//.test(u)) shell.openExternal(u); return { action: 'deny' }; });
   win.on('close', e => { // closing the window keeps the backup running in the tray
     if (quitting) return; e.preventDefault(); win.hide();
@@ -46,9 +48,9 @@ function show() {
 }
 function makeTray() {
   tray = new Tray(nativeImage.createFromPath(ICON).resize({ width: 16, height: 16 }));
-  tray.setToolTip('Movie Royal Backup Bots');
+  tray.setToolTip(CC);
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open Movie Royal Backup Bots', click: show },
+    { label: 'Open ' + CC, click: show },
     { label: 'Start with Windows', type: 'checkbox', checked: prefs.startup !== false, click: m => setStartup(m.checked) },
     { type: 'separator' },
     { label: 'Quit (the backup stops)', click: () => { quitting = true; app.quit(); } }

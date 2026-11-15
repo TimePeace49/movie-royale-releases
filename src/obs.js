@@ -885,3 +885,6 @@ export async function dualBack(prev) {
 export async function dualCheck(server) {
   return session(async call => { const s = await call('GetStreamServiceSettings'), st = await call('GetStreamStatus').catch(() => ({})); return { pointed: s?.streamServiceType === 'rtmp_custom' && s.streamServiceSettings?.server === server, streaming: !!st.outputActive }; });
 }
+
+// 🔴 (1.172.0) the Chat tab's Go live buttons: press OBS's Start Streaming (refused when it is already streaming)
+export async function startStream() { return session(async call => { if ((await call('GetStreamStatus')).outputActive) throw new Error('OBS is already streaming.'); await call('StartStream'); return true; }); }

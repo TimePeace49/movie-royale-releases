@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.172.0
+- 🏷️ The app's name is in the program files now. The program file is named after your edition (TimePeaceChatbot.exe, KirbChatbot.exe, TrueChatbot.exe, BirxAndJessChatbot.exe), so that's what Task Manager shows. Kirb's edition is now called Kirb’s Chatbot. The old MovieRoyal.exe is taken away by the update.
+- 🛡️ The server app (was "Movie Royal Backup Bots") is now **TimePeace Chatbot Control Center**: its window, tray icon, shortcuts, installer, Task Manager name and program file.
+- Left alone on purpose so nothing breaks: your data folder, the install folder, the installer's file name (old versions look for it to update), OBS source names, and everything in Discord (still Movie Royal).
+- 🚪 The app opens on the 💬 Chat tab. Settings → 🖥️ App → "The tab it opens on" picks another.
+- 🔴 Go live buttons (True's edition; yours with dev mode): on the 💬 Chat tab, right-click the 🧰 Stream tools box → ➕ Add Go live: Twitch / Kick / Twitch + Kick. They aren't there until you add them, and every press asks if you're sure before it presses Start Streaming in OBS.
+- Test tab: 🚪 Which tab does it open on? (Pop out card), 🧪 Check the Go live buttons (📡 card).
+
 ## 1.171.0
 - 📡 Stream to Twitch + Kick at once (True's edition; yours with dev mode): new page Settings → 📡 Twitch + Kick. OBS streams to the app on the PC and the app passes the same stream on to Twitch and to Kick. Off until it is switched on.
   - Set-up on the page: download the helper program (FFmpeg, checked before it runs), paste the stream keys, press 🎥 Point OBS at the app (↩ Put OBS back undoes it), switch it on.

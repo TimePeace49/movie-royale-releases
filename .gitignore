@@ -5,3 +5,5 @@ data/
 .DS_Store
 Thumbs.db
 build/editions.nsh
+build/oldexe.nsh
+build/oldexe-kill.nsh

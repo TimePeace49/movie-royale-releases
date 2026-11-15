@@ -6,7 +6,7 @@ const { pathToFileURL } = require('url');
 
 // 🛡️ "Movie Royal Backup Bots" is the same program started with --backup: its own window, tray icon and settings
 // (its own installer copies the program as MovieRoyalBackup.exe, which always starts as the backup)
-if (process.argv.includes('--backup') || /backup/i.test(require('path').basename(process.execPath))) { require('./backup.cjs'); return; }
+if (process.argv.includes('--backup') || /backup|controlcenter/i.test(require('path').basename(process.execPath))) { require('./backup.cjs'); return; }
 
 app.setName('Movie Royal');
 // 🏷️ the name people see (window title, tray): the edition's own (src/editions.json). The app's real name above stays: it's the data folder.
@@ -109,6 +109,13 @@ function setWindowMode(mode) {
   win.__mode = mode; setTimeout(() => !win.isDestroyed() && placeWindow(win, mode), 50);
 }
 function showWindow() { if (!win) return createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+// 🏷️ (1.172.0) the program file was renamed (MovieRoyal.exe → the edition's name). An update from the old name leaves one copy under the
+// old name for the old app's "open it again" helper; it's taken away here, a minute after opening.
+setTimeout(() => { try {
+  const dir = path.dirname(process.execPath), me = path.basename(process.execPath).toLowerCase(); if (!app.isPackaged) return;
+  const names = ['MovieRoyal', ...Object.values(require('../src/editions.json')).map(e => String(e.exe || ''))].filter(Boolean);
+  for (const n of new Set(names)) { const f = n + '.exe'; if (f.toLowerCase() !== me) { try { fs.unlinkSync(path.join(dir, f)); } catch {} } }
+} catch {} }, 60000);
 // 🛡️ an update closes every Movie Royal window, including the backup bots app: open it again if it was running
 function reopenBackup() {
   try {

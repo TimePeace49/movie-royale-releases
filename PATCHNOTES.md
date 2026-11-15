@@ -4,6 +4,11 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.172.0: What's new
+- 🏷️ **The name is everywhere now.** The program itself is named after your edition, so Task Manager shows it too. Your shortcuts are replaced by the update, and nothing you saved moves or changes. If you pinned the app to your taskbar, unpin it and pin it again.
+- 🚪 **The app opens on the 💬 Chat tab.** Want another tab first? Settings → 🖥️ App → "The tab it opens on".
+- {dualstream} 🔴 **Go live buttons.** On the 💬 Chat tab, right-click the 🧰 Stream tools box → ➕ Add, and pick Go live: Twitch, Kick, or Twitch + Kick. Each press asks if you're sure, then starts your stream there. Set up Settings → 📡 Twitch + Kick first.
+
 ## v1.171.0: What's new
 - {dualstream} 📡 **Stream to Twitch and Kick at the same time.** New page: Settings → 📡 Twitch + Kick. OBS streams to the app on your PC, and the app passes the same stream on to Twitch and to Kick. It is off until you switch it on. The page walks you through it: download the helper program, paste your stream keys, press 🎥 Point OBS at the app, switch it on, then press Start Streaming in OBS like always. ↩ Put OBS back undoes it.
   - Keep the app open while you're live (closing it ends both streams). Use 6000 kbps or less and a 2 second keyframe in OBS. It uses your upload speed twice.

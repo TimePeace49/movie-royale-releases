@@ -8,7 +8,9 @@ SetCompressor /SOLID lzma
 !ifndef BRAND
 !define BRAND "Movie Royal"
 !endif
+!ifndef EXE
 !define EXE "MovieRoyal.exe"
+!endif
 !define UNINST "Uninstall Movie Royal.exe"
 ; older versions used a misspelled name; these are only used to clean that copy up
 !define OLDNAME "Movie Royale"
@@ -28,7 +30,7 @@ VIAddVersionKey "ProductName" "${BRAND}"
 VIAddVersionKey "FileDescription" "${BRAND} Setup"
 VIAddVersionKey "FileVersion" "${VER}"
 VIAddVersionKey "ProductVersion" "${VER}"
-VIAddVersionKey "LegalCopyright" "Movie Royal"
+VIAddVersionKey "LegalCopyright" "${BRAND}"
 
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
@@ -44,6 +46,17 @@ VIAddVersionKey "LegalCopyright" "Movie Royal"
 
 ; in-app updates (/UPDATE): skip the questions and just show the progress bar, then close by itself
 Var IsUpdate
+; (1.172.0) the program file used to be MovieRoyal.exe (or another edition's): it's taken away. During an in-app update the OLD app's
+; helper still opens the old file name once the installer is done, so a copy under that name is left for that one start (the app
+; removes it the next time it opens).
+!macro OldExe NAME
+  ${If} ${FileExists} "$INSTDIR\${NAME}"
+    Delete "$INSTDIR\${NAME}"
+    ${If} $IsUpdate == "1"
+      CopyFiles /SILENT "$INSTDIR\${EXE}" "$INSTDIR\${NAME}"
+    ${EndIf}
+  ${EndIf}
+!macroend
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
 !insertmacro MUI_PAGE_WELCOME
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipOnUpdate
@@ -70,6 +83,7 @@ Section "Movie Royal" SecMain
   RMDir /r "$INSTDIR\resources"
   RMDir /r "$INSTDIR\locales"
   File /r "${SRC}\*.*"
+  !include /NONFATAL /CHARSET=UTF8 "oldexe.nsh"
   File "/oname=icon.ico" "icon.ico"
   WriteUninstaller "$INSTDIR\${UNINST}"
 
@@ -89,7 +103,7 @@ Section "Movie Royal" SecMain
   ; shows up in Windows Settings > Apps so it can be uninstalled like any program
   WriteRegStr HKCU "${REGKEY}" "DisplayName" "${BRAND}"
   WriteRegStr HKCU "${REGKEY}" "DisplayVersion" "${VER}"
-  WriteRegStr HKCU "${REGKEY}" "Publisher" "Movie Royal"
+  WriteRegStr HKCU "${REGKEY}" "Publisher" "${BRAND}"
   WriteRegStr HKCU "${REGKEY}" "DisplayIcon" "$INSTDIR\icon.ico"
   WriteRegStr HKCU "${REGKEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${REGKEY}" "UninstallString" '"$INSTDIR\${UNINST}"'
@@ -120,6 +134,7 @@ Function .onInit
   ; close a running copy so its files can be replaced (updates)
   nsExec::Exec 'taskkill /F /IM "${EXE}"'
   nsExec::Exec 'taskkill /F /IM "${OLDEXE}"'
+  !include /NONFATAL /CHARSET=UTF8 "oldexe-kill.nsh"
   Sleep 700
 FunctionEnd
 

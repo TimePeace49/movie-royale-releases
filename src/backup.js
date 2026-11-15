@@ -1,4 +1,4 @@
-// 🛡️ Movie Royal Backup Bots: runs streamers' Discord bots (yours and friends') as a backup.
+// 🛡️ TimePeace Chatbot Control Center: runs streamers' Discord bots (yours and friends') as a backup.
 //  • Every minute, for each bot: read the hidden #movie-royal-sync channel that the streamer's Movie Royal keeps (relay.js),
 //    and check their 24/7 cloud bot (Cloudflare) is healthy.
 //  • Cloud bot down or posting errors → take over: Discord stops sending commands to the cloud, and this app answers them
@@ -17,7 +17,7 @@ import worker from './cloud-worker.js';
 import { SYNC_NAME, readSync, putStatus, appOpen } from './relay.js';
 import { watchChat, isLive } from './twitchirc.js';
 import { spawn } from 'child_process';
-import { EDITION, ALL as ED_ALL, FEATURES } from './edition.js';
+import { EDITION, ALL as ED_ALL, FEATURES, brandFile } from './edition.js';
 
 const DISCORD = 'https://discord.com/api/v10';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -375,7 +375,9 @@ export async function startBackup(opts = {}) {
   const web = express();
   web.use(express.json({ limit: '1mb' }));
   web.use((req, res, next) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress) ? next() : res.status(403).end());
-  web.get('/', (req, res) => res.sendFile(path.join(ROOT, 'public', 'backup.html')));
+  // 🏷️ (1.172.0) the page says the app's shown names (TimePeace Chatbot Control Center + the edition's own app name)
+  const ccName = () => (ED_ALL[EDITION.id]?.scrub ? 'Chatbot Control Center' : 'TimePeace Chatbot Control Center');
+  web.get('/', (req, res) => { try { res.type('html').send(brandFile(fs.readFileSync(path.join(ROOT, 'public', 'backup.html'), 'utf8').replace(/TimePeace Chatbot Control Center/g, ccName()))); } catch { res.sendFile(path.join(ROOT, 'public', 'backup.html')); } });
   web.use(express.static(path.join(ROOT, 'public'), { index: false }));
   const wrap = fn => async (req, res) => { try { res.json(await fn(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); } };
   web.get('/api/state', (req, res) => { const k = twitchKeys(); res.json({ twitch: { id: conf.twitch?.id || '', set: !!(conf.twitch?.id && conf.twitch?.secret), using: k.id ? (k.mine ? 'yours' : 'movie royal') : 'none', ok: conf.twitch?.ok ?? null }, name: conf.name, startup: hooks.getStartup ? hooks.getStartup() : null, version: opts.version || pkg.version || '', running: !conf.stopped, mrBot: mrBot(), update: { ...upd, beta: !!conf.betaUpdates }, bots: [...bots.values()].map(b => b.view()) }); });
@@ -410,7 +412,7 @@ export async function startBackup(opts = {}) {
     if (b.dry) return { ok: true, dry: true, changes, from: f.from };
     if (!changes.length) return { ok: true, changes, same: true };
     if (!conf.ghKey) throw new Error('Paste your GitHub key first (the 🔑 box).'); if (f.from !== 'github') throw new Error("Couldn't read the editions file from GitHub (" + (f.why || 'no answer') + '), so nothing was saved.');
-    const r = await fetch(`${GH}/repos/${ED_REPO}/contents/${ED_PATH}`, { method: 'PUT', headers: { ...ghHead(), 'content-type': 'application/json' }, body: JSON.stringify({ message: 'Editions: feature switches changed from the Backup Bots app\n\n' + changes.map(c => `${c.edition}: ${c.feature} ${c.on ? 'on' : 'off'}`).join('\n'), content: Buffer.from(JSON.stringify(f.all, null, 1) + '\n').toString('base64'), sha: f.sha, branch: 'main' }) });
+    const r = await fetch(`${GH}/repos/${ED_REPO}/contents/${ED_PATH}`, { method: 'PUT', headers: { ...ghHead(), 'content-type': 'application/json' }, body: JSON.stringify({ message: 'Editions: feature switches changed from the Control Center app\n\n' + changes.map(c => `${c.edition}: ${c.feature} ${c.on ? 'on' : 'off'}`).join('\n'), content: Buffer.from(JSON.stringify(f.all, null, 1) + '\n').toString('base64'), sha: f.sha, branch: 'main' }) });
     if (!r.ok) throw new Error(r.status === 409 ? 'The file changed on GitHub just now. Press 🔄 Reload and try again.' : r.status === 403 || r.status === 404 ? `GitHub refused (${r.status}): the key needs "Contents: Read and write" on ${ED_REPO}.` : 'GitHub answered ' + r.status);
     log(`Editions: saved ${changes.length} change${changes.length === 1 ? '' : 's'} to GitHub`); return { ok: true, changes, saved: true }; }));
   // ⭐🍅 (1.128.0) the dev edition's Movie Royal asks this to save what it shares with every edition (its 24/7 bot's OMDb helper address) into src/shared.json on GitHub
@@ -418,7 +420,7 @@ export async function startBackup(opts = {}) {
   const mailbox = () => { let c = null; try { c = JSON.parse(fs.readFileSync(mrDbFile(), 'utf8')).settings?.cloud || null; } catch {} const url = process.env.REPORTS_BOX || (c && c.url ? String(c.url).replace(/\/$/, '') + '/reports' : ''); if (!url || !(c && c.syncKey) && !process.env.REPORTS_KEY) throw new Error('Your 24/7 bot isn\'t set up in Movie Royal on this PC yet (Settings → ☁️ 24/7), so there is no mailbox to read.'); return { url, key: process.env.REPORTS_KEY || c.syncKey }; };
   web.get('/api/reports', async (req, res) => { try { edNeedDev(); const m = mailbox(), r = await fetch(m.url, { headers: { Authorization: `Bearer ${m.key}` }, signal: AbortSignal.timeout(15000) }); const j = await r.json().catch(() => ({})); if (r.status === 404 || (r.ok && !Array.isArray(j.apps))) throw new Error('Your 24/7 bot is too old for the mailbox: open Movie Royal and press Update your 24/7 bot.'); if (!r.ok) throw new Error(j.error || 'The mailbox answered ' + r.status); res.json({ ok: true, apps: j.apps, at: Date.now() }); } catch (e) { res.status(400).json({ error: e.message }); } });
   web.post('/api/reports/clear', wrap(async b => { edNeedDev(); const m = mailbox(), id = String(b.id || ''); if (!/^[a-f0-9]{16,40}$/.test(id)) throw new Error('Which app?'); const r = await fetch(m.url + '?id=' + id + (b.forget ? '&forget=1' : ''), { method: 'DELETE', headers: { Authorization: `Bearer ${m.key}` }, signal: AbortSignal.timeout(15000) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'The mailbox answered ' + r.status); return { ok: true, ...j }; }));
-  web.post('/api/shared/save', wrap(async b => { edNeedDev(); if (!conf.ghKey) throw new Error('Paste your GitHub key in the Backup Bots app first (🎭 Editions tab → 🔑).');
+  web.post('/api/shared/save', wrap(async b => { edNeedDev(); if (!conf.ghKey) throw new Error('Paste your GitHub key in the Control Center app first (🎭 Editions tab → 🔑).');
     const omdb = String(b.omdb || '').trim(); if (omdb && !/^https:\/\/[a-z0-9.-]+\/omdb$/i.test(omdb)) throw new Error("That address doesn't look like a 24/7 bot's.");
     let cur = {}, sha; const g = await fetch(`${GH}/repos/${ED_REPO}/contents/src/shared.json?ref=main`, { headers: ghHead() }); if (g.ok) { const j = await g.json(); sha = j.sha; try { cur = JSON.parse(Buffer.from(j.content || '', 'base64').toString('utf8')); } catch {} } else if (g.status !== 404) throw new Error('GitHub answered ' + g.status);
     const hasBot = typeof b.bot === 'string', bot = hasBot ? b.bot.trim() : (cur.bot || ''), hasOmdb = typeof b.omdb === 'string'; if (bot && !/^https:\/\/[a-z0-9.-]+\/sharedbot$/i.test(bot)) throw new Error("That address doesn't look like a 24/7 bot's."); /* 🤖🤝 (1.151.0) the shared chat bot's address rides in the same file */
@@ -431,7 +433,7 @@ export async function startBackup(opts = {}) {
   web.get('/api/errors', (req, res) => res.json({ errors: errs().slice(0, 200) }));
   web.post('/api/errors/clear', wrap(async () => { ERRS = []; saveErrs(); return { ok: true }; }));
   web.get('/api/debug-report', (req, res) => { // for Claude: what the backup has and is doing (no tokens)
-    const lines = [`Movie Royal Backup Bots ${opts.version || pkg.version || ''} · ${process.platform} ${os.release()} · node ${process.version} · ${new Date().toString()}`, `name=${conf.name} running=${!conf.stopped} twitchKeys=${twitchKeys().id ? (conf.twitch?.id ? 'own' : 'movie royal') : 'none'} update=${upd.latest || '-'}${upd.error ? ' err=' + upd.error : ''}`];
+    const lines = [`TimePeace Chatbot Control Center ${opts.version || pkg.version || ''} · ${process.platform} ${os.release()} · node ${process.version} · ${new Date().toString()}`, `name=${conf.name} running=${!conf.stopped} twitchKeys=${twitchKeys().id ? (conf.twitch?.id ? 'own' : 'movie royal') : 'none'} update=${upd.latest || '-'}${upd.error ? ' err=' + upd.error : ''}`];
     for (const b of bots.values()) { const v = b.view(); lines.push(`- bot ${v.tag || v.id} state=${v.state} on=${v.on} mode=${v.mode}${v.since ? ' since=' + new Date(v.since).toISOString() : ''} streamer=${v.streamer || '-'} appOpen=${v.appOpen} cloud=${v.cloud.url ? (v.cloud.ok === false ? 'FAIL(' + v.cloud.fails + ') ' + v.cloud.error : v.cloud.ok ? 'ok' : '?') : 'none'} config=${v.configAt ? new Date(v.configAt).toISOString() : 'none'} chat=${v.chat.state} #${v.chat.channel || '-'} saved=${v.chat.saved} waiting=${v.chat.waiting} live=${v.chat.live} handled=${v.handled} picksWaiting=${v.waitingPicks}${v.warning ? ' warning=' + v.warning : ''}`); }
     lines.push('--- errors (newest first) ---', ...errs().slice(0, 25).map(e => `${new Date(e.at).toISOString()} ${e.text}`), '--- console (last 60) ---', ...LOGS.slice(-60).map(l => `${new Date(l.at).toISOString()} ${l.level === 'error' ? 'ERR ' : ''}${l.text}`));
     res.type('text/plain').send(lines.join('\n'));
@@ -473,7 +475,7 @@ export async function startBackup(opts = {}) {
     await bot.handBack(); return bot.view();
   }));
   const port = await new Promise(ok => { const srv = web.listen(opts.port || 3747, '127.0.0.1', () => ok(srv.address().port)).on('error', () => { const s2 = web.listen(0, '127.0.0.1', () => ok(s2.address().port)); }); });
-  log(`Movie Royal Backup Bots ${opts.version || pkg.version || ''} is running (window at http://127.0.0.1:${port})`);
+  log(`TimePeace Chatbot Control Center ${opts.version || pkg.version || ''} is running (window at http://127.0.0.1:${port})`);
   process.on('unhandledRejection', e => logErr('app:', e?.message || String(e)));
   return { port, url: `http://127.0.0.1:${port}/` };
 }

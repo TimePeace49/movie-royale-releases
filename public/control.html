@@ -1144,7 +1144,7 @@
     <p class="help">Checks everything about Discord that Movie Royal can check by itself: the bot, the channels, the pinned messages, the slash commands, who can see the debug channel, and the 24/7 bot. It runs the same code /suggest and /mymovies use, with a pretend user (nothing gets added). The results go to #movie-royal-debug too.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="discordSelfTest(this)">🤖 Run the Discord self-test</button><button onclick="discordRestart(this)">🔄 Restart the Discord bot</button><button onclick="botUpdateOnOpen.test=true;botUpdateOnOpen()">☁️ Show the 24/7 bot update pop-up</button></div><div id="dSelf" style="margin-top:8px"></div>
     <h3 style="margin-top:16px">🛡️ Backup bot server</h3>
-    <p class="help">Checks the hidden <code>#movie-royal-sync</code> channel: Movie Royal leaves its notes there, and shows whether a <b>Movie Royal Backup Bots</b> app (yours or a friend's) is watching your bot. Add your bot with one click (the button below, or 🍿 Add my bot in the backup app). To test a takeover, press ▶ Run this bot now in the backup app, then try /mymovies in Discord with Movie Royal closed.</p>
+    <p class="help">Checks the hidden <code>#movie-royal-sync</code> channel: Movie Royal leaves its notes there, and shows whether a <b>TimePeace Chatbot Control Center</b> app (yours or a friend's) is watching your bot. Add your bot with one click (the button below, or 🍿 Add my bot in the backup app). To test a takeover, press ▶ Run this bot now in the backup app, then try /mymovies in Discord with Movie Royal closed.</p>
     <div class="row" style="gap:6px"><button onclick="bkCheck(this)">🛡️ Check the backup link</button><button onclick="bkAddHere(this)">🛡️ Add my bot to the backup on this PC</button></div>
   </div>
   <div class="card">
@@ -1386,6 +1386,9 @@ not a link</textarea>
     <p class="help">OBS streams to the app on this PC and the app passes the same stream on to Twitch and Kick (Settings → 📡 Twitch + Kick). This checks the rules with pretend keys; nothing is started and nothing goes live.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="dualTest()" title="Check how the pass-on is built: one stream to both places, one dropping doesn't stop the other, it only listens on this PC. Nothing is started">🧪 Check the rules</button><button class="ghost" onclick="setView('settings');setSub('dual')" title="Open Settings → Twitch + Kick">⚙️ Its settings</button></div>
     <div id="dualTestOut" class="help" style="margin-top:8px"></div>
+    <p class="help" style="margin-top:10px">🔴 Go live buttons (Twitch, Kick, or both) can be added to 🧰 Stream tools on the 💬 Chat tab: right-click the Stream tools box → ➕ Add. They always ask "are you sure" first.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="goLiveTest()" title="Checks whether each Go live button could start the stream right now, and says what's missing. Nothing is started">🧪 Check the Go live buttons</button><button onclick="goLiveAsk('goB', true)" title="Shows the are-you-sure window of the Go live: Twitch + Kick button. Its Yes button does nothing in this test">👀 Show the are-you-sure window</button></div>
+    <div id="goLiveTestOut" class="help" style="margin-top:8px"></div>
   </div>
   <div class="card edOff" id="ttsAppTestCard" data-feat="tts">
     <h3>🗣️ Donation text to speech</h3>
@@ -1513,6 +1516,8 @@ not a link</textarea>
     <p class="help">Any tab can go in its own window, to drag it to another screen: the ↗ button at the top right (the tab you're on), right-click any tab, or Ctrl+Alt+P. This opens the 👥 People tab in its own window for a moment and checks it.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="popTest()" title="Opens the People tab in its own window, checks that it shows only that tab and that the main window marks it ↗, then closes it">🧪 Check pop-out windows</button><button onclick="popTab('wheel')" title="Opens the Wheel tab in its own window (↩ Put back at its top brings it home)">↗ Pop out the Wheel tab</button></div>
     <div id="tPopOut"></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><button onclick="startTabTest()" title="Shows which tab the app will open on next time, and the tabs you can pick in Settings → App">🚪 Which tab does it open on?</button><button onclick="setView('settings');setTimeout(()=>{setSub('app');setTimeout(()=>$('startTabSel')?.scrollIntoView({block:'center'}),200)},50)" title="Jumps to the setting: Settings → App → The tab it opens on">⚙️ Change it</button></div>
+    <div id="tStartOut"></div>
   </div>
   <div class="card edOff" id="dashTestCard" data-feat="dash">
     <h3>🧰 Chat tab: stream tools + my songs</h3>
@@ -2477,7 +2482,7 @@ function drawChecklist() {
     ['winModes', '🖥️ Window mode: Window, Fullscreen window or Fullscreen (Settings → Graphics)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setTimeout(()=>setSub('gfx'),100)">Try it</button>`],
     ['capture', '📺 Capture window: ⚙ next to 📺 on the Battle tab, pick your browser window, then 📺 shows it small in the top-left of your OBS scene (press again to hide)', `<button class="ghost" style="padding:3px 9px" onclick="setView('battle');setTimeout(capOpen,300)">Try it</button>`],
     ['pinSpots', '📌 The movie pin in Twitch chat says which movie of the night it is, lists the earlier ones and whose they were; a wild spot win pins nothing; the wild spot battle\'s winner gets pinned as the movie (a text entry isn\'t pinned: you pin it yourself)', `<button class="ghost" style="padding:3px 9px" onclick="testGo('pinSimOut')">Try it</button>`],
-    ['backupLink', '🛡️ A backup bot server (Movie Royal Backup Bots) is watching your Discord bot', T('Check', "bkCheck()", false)],
+    ['backupLink', '🛡️ A backup bot server (TimePeace Chatbot Control Center) is watching your Discord bot', T('Check', "bkCheck()", false)],
     ['wheelLink', '🔀 A linked wheel spot spins another wheel (or plays a battle), then comes back', `<button class="ghost" style="padding:3px 9px" onclick="testGo('wtSpot');toast('Link a spot in its ⚙ on the Wheel tab, then pick it here in 🎯 Land on a spot and press Spin onto it',8000)">How</button>`],
     ['keys', '⌨️ Key binds work (Space spins on the Wheel tab, Ctrl+H help mode…)', `<button class="ghost" style="padding:3px 9px" onclick="setView('settings');setSub('keys')">See them</button>`],
     ['money', 'A sub / bits / donation pop-up shows up on the wheel', T('Try it', "api('/api/wheel/show',{show:true}).then(()=>api('/api/test/wheel-boost',{kind:'bits',bits:500})).then(()=>toast('💎 Test 500 bits: the pop-up shows on the left of the Wheel tab'))")],
@@ -4866,29 +4871,50 @@ async function dashSo(name) {
   name = name || await ask('📣 Shout out which channel? (their Twitch name)', ''); if (!name) return; name = String(name).trim().replace(/^@/, ''); if (!name) return;
   try { const r = await api('/api/shoutout', { name, via: 'button' }); toast(`📣 Shouted out <b>${esc(r.name)}</b>${r.twitch && r.twitch !== 'ok' ? `<br><span class="muted">${esc(r.twitch)}</span>` : r.twitch === 'ok' ? ' (with Twitch’s shout-out box)' : ''}`); } catch {}
 }
-const DT_TOOLS = { clip: { def: '🎬 Clip', what: 'the 🎬 Clip button' }, so: { def: '📣 SO', what: 'the 📣 SO (shout-out) button' } };
+const DT_TOOLS = { clip: { def: '🎬 Clip', what: 'the 🎬 Clip button' }, so: { def: '📣 SO', what: 'the 📣 SO (shout-out) button' },
+  // 🔴 (1.172.0) Go live buttons: not there until you add them with a right-click; only where 📡 Twitch + Kick is part of the edition
+  goT: { def: '🔴 Go live: Twitch', what: 'the 🔴 Go live: Twitch button', add: 'twitch' }, goK: { def: '🔴 Go live: Kick', what: 'the 🔴 Go live: Kick button', add: 'kick' }, goB: { def: '🔴 Go live: Twitch + Kick', what: 'the 🔴 Go live: Twitch + Kick button', add: 'both' } };
+const dtAdded = k => featOn('dualstream') && (S?.settings?.dashToolsOn || []).includes(k), dtCanAdd = () => featOn('dualstream') ? Object.keys(DT_TOOLS).filter(k => DT_TOOLS[k].add && !dtAdded(k)) : [];
+async function dtAdd(k) { await dtSave({ dashToolsOn: [...new Set([...(S.settings.dashToolsOn || []), k])] }); toast(`➕ ${esc(DT_TOOLS[k].def)} is on your Stream tools. It asks before it goes live.`); }
+// asks first, every time (Derek: "make sure you ask if they are sure")
+async function goLiveAsk(k, test) {
+  const to = DT_TOOLS[k].add; let p = null, err = '';
+  try { p = await (await fetch('/api/dual/golive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to, test: true }) })).json(); if (p.error) { err = p.error; p = null; } } catch (e) { err = e.message; }
+  if (test && p) { p.ok = true; p.live = false; } // (🧪 the test always shows the are-you-sure window)
+  const where = p ? p.names.join(' + ') : to, bad = !p || !p.ok || p.live;
+  $('botDlgBody').innerHTML = `<h3 style="margin:0 0 6px">🔴 Go live on ${esc(where)}?</h3>`
+    + (err ? `<p class="help">⚠️ ${esc(err)}</p>` : p.live ? '<p class="help">⚠️ You\'re already live. Stop the stream in OBS first to change where it goes.</p>' : !p.ok ? `<p style="margin:6px 0">It can't go live yet:</p><ul class="help" style="margin:4px 0 4px 18px">${p.miss.map(m => '<li>' + esc(m) + '</li>').join('')}</ul>` : `<p style="margin:6px 0"><b>Are you sure?</b> This presses Start Streaming in OBS and your stream goes out to <b>${esc(where)}</b> right away.</p>${test ? '<p class="help">🧪 This is the test: the Yes button below does nothing.</p>' : ''}`)
+    + `<div class="row" style="gap:8px;justify-content:flex-end;margin-top:10px"><button class="primary" id="goNo" onclick="$('botDlg').close()" title="Close this without going live">${bad ? 'Close' : 'No, not yet'}</button>${bad ? `<button onclick="$('botDlg').close();setView('settings');setSub('dual')" title="Open Settings → Twitch + Kick">⚙️ Its settings</button>` : `<button class="danger" id="goYes" onclick="goLiveGo('${k}', ${test ? 'true' : 'false'})" title="Yes: start the stream now">🔴 Yes, go live</button>`}</div>`;
+  $('botDlg').showModal(); setTimeout(() => $('goNo')?.focus(), 30); // (Enter = not yet)
+}
+async function goLiveGo(k, test) { $('botDlg').close(); if (test) { toast('🧪 Test: this is where it would go live. Nothing was started.'); return; }
+  try { const r = await api('/api/dual/golive', { to: DT_TOOLS[k].add }); toast('🔴 Going live on ' + esc(r.names.join(' + ')) + '!', 8000); } catch {} }
+async function goLiveTest() { const o = $('goLiveTestOut'); if (o) o.innerHTML = 'Checking…'; const rows = [];
+  for (const to of ['twitch', 'kick', 'both']) { try { const p = await (await fetch('/api/dual/golive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to, test: true }) })).json(); rows.push(p.error ? `⚠️ ${esc(to)}: ${esc(p.error)}` : `${p.ok ? '✅' : '⚠️'} <b>${esc(p.names.join(' + '))}</b>: ${p.ok ? 'ready to go live' : esc(p.miss.join('; '))}`); } catch (e) { rows.push('⚠️ ' + esc(e.message)); } }
+  if (o) o.innerHTML = rows.join('<br>') + '<br>Nothing was started. Add the buttons with a right-click on 🧰 Stream tools (💬 Chat tab).'; }
 const dtName = k => (S?.settings?.dashToolNames || {})[k] || DT_TOOLS[k].def, dtOff = k => (S?.settings?.dashToolsOff || []).includes(k), dtScName = n => (S?.settings?.dashSceneLabels || {})[n] || n;
 function dashTools() { /* (the ▦ Boxes button opens the same menu as a right-click: the chat and feed boxes are their own pages, so a right-click inside them can't reach it) */
   const el = $('dashTools'); if (!el) return; const sc = (S?.settings?.dashScenes || []).filter(Boolean), rc = ' Right-click to rename or delete it.';
-  dashPut('dashTools', `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>🧰 Stream tools</b><span style="flex:1"></span>${dtOff('clip') ? '' : `<button class="clipBtn" data-dt="clip" onclick="clipNow('chat tab')" title="Clip the last minute of your stream (a Twitch clip).${rc}">${esc(dtName('clip'))}</button>`}${dtOff('so') ? '' : `<button data-dt="so" onclick="dashSo()" title="Shout out another streamer: a “go check them out” line in chat, plus Twitch’s own shout-out box when you're live.${rc}">${esc(dtName('so'))}</button>`}</div>
+  dashPut('dashTools', `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>🧰 Stream tools</b><span style="flex:1"></span>${dtOff('clip') ? '' : `<button class="clipBtn" data-dt="clip" onclick="clipNow('chat tab')" title="Clip the last minute of your stream (a Twitch clip).${rc}">${esc(dtName('clip'))}</button>`}${dtOff('so') ? '' : `<button data-dt="so" onclick="dashSo()" title="Shout out another streamer: a “go check them out” line in chat, plus Twitch’s own shout-out box when you're live.${rc}">${esc(dtName('so'))}</button>`}${Object.keys(DT_TOOLS).filter(dtAdded).map(k => `<button class="danger" data-dt="${k}" onclick="goLiveAsk('${k}')" title="Start your stream on ${k === 'goB' ? 'Twitch and Kick' : k === 'goT' ? 'Twitch only' : 'Kick only'} (it asks if you're sure first).${rc}">${esc(dtName(k))}</button>`).join('')}</div>
     <div class="row" style="gap:8px;align-items:center;margin-top:12px"><b>🎞️ Scenes</b><span class="muted" style="font-size:13px">${sc.length ? 'click one to switch OBS to it' : ''}</span><span style="flex:1"></span><button class="ghost" onclick="dashScenePick()" title="Pick which of your OBS scenes get a button here">⚙ Pick scenes</button></div>
     ${sc.length ? `<div class="dashSc">${sc.map(n => `<button onclick="dashScene(this.dataset.n)" data-n="${esc(n)}" data-dt="scene" title="Switch OBS to the scene “${esc(n)}”.${rc}">${esc(dtScName(n))}</button>`).join('')}</div>` : `<p class="help" style="margin:8px 0 0">No scene buttons yet. Press <b>⚙ Pick scenes</b> (OBS has to be open) and tick the scenes you want here.</p>`}`);
 }
 // ✏️🗑 (1.156.8, Derek: "right click on a button in stream tools: an option to delete, and make sure the streamer confirms… or edit it")
 function dtMenuClose() { const m = $('dtMenu'); if (m) m.remove(); }
 function dtMenu(x, y, b) {
-  dtMenuClose(); dashMenuClose(); const k = b.dataset.dt, n = b.dataset.n || '', lab = k === 'scene' ? dtScName(n) : dtName(k), m = document.createElement('div');
+  dtMenuClose(); dashMenuClose(); const k = b ? b.dataset.dt : '', n = b ? b.dataset.n || '' : '', lab = !b ? '🧰 Stream tools' : k === 'scene' ? dtScName(n) : dtName(k), m = document.createElement('div');
   m.id = 'dtMenu'; m.style.cssText = 'position:fixed;z-index:9600;min-width:220px;background:#1d1238;border:1px solid rgba(255,255,255,.22);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.6);padding:6px 0;font-size:14.5px';
   const row = (txt, fn, tip) => `<div class="dtMi" onclick="dtMenuClose();${fn}" title="${tip}" style="padding:8px 16px;cursor:pointer">${txt}</div>`, js = s => esc(JSON.stringify(s));
-  const hidden = Object.keys(DT_TOOLS).filter(dtOff);
+  const hidden = Object.keys(DT_TOOLS).filter(h => !DT_TOOLS[h].add && dtOff(h));
   m.innerHTML = `<div style="padding:4px 16px 8px;font-weight:800;opacity:.8;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:4px">${esc(lab)}</div>`
-    + row('✏️ Edit…', `dtEdit('${k}', ${js(n)})`, 'Stream tools: change this button\'s words' + (k === 'scene' ? ' or which OBS scene it switches to' : ''))
-    + row('🗑 Delete…', `dtDel('${k}', ${js(n)})`, 'Stream tools: take this button off (asks first)')
+    + (!b ? '' : row('✏️ Edit…', `dtEdit('${k}', ${js(n)})`, 'Stream tools: change this button\'s words' + (k === 'scene' ? ' or which OBS scene it switches to' : ''))
+    + row('🗑 Delete…', `dtDel('${k}', ${js(n)})`, 'Stream tools: take this button off (asks first)'))
+    + dtCanAdd().map(h => row('➕ Add ' + esc(DT_TOOLS[h].def), `dtAdd('${h}')`, 'Stream tools: add a button that starts your stream there (it asks if you\'re sure every time)')).join('')
     + hidden.map(h => row('↩ Bring back ' + esc(DT_TOOLS[h].def), `dtBack('${h}')`, 'Stream tools: put this button back')).join('');
   document.body.appendChild(m); m.querySelectorAll('.dtMi').forEach(d => { d.onmouseenter = () => d.style.background = 'rgba(255,255,255,.08)'; d.onmouseleave = () => d.style.background = ''; });
   m.style.left = Math.max(6, Math.min(innerWidth - m.offsetWidth - 6, x)) + 'px'; m.style.top = Math.max(6, Math.min(innerHeight - m.offsetHeight - 6, y)) + 'px';
 }
-document.addEventListener('contextmenu', e => { const b = e.target.closest?.('#dashTools [data-dt]'); if (!b || document.body.classList.contains('helpmode')) return; e.preventDefault(); e.stopPropagation(); dtMenu(e.clientX, e.clientY, b); }, true); // (capture: before the Chat tab's ▦ boxes menu)
+document.addEventListener('contextmenu', e => { const b = e.target.closest?.('#dashTools [data-dt]'); if (document.body.classList.contains('helpmode')) return; if (!b && !(e.target.closest?.('#dashTools') && dtCanAdd().length)) return; e.preventDefault(); e.stopPropagation(); dtMenu(e.clientX, e.clientY, b); }, true); // (capture: before the Chat tab's ▦ boxes menu)
 document.addEventListener('pointerdown', e => { if (!e.target.closest?.('#dtMenu')) dtMenuClose(); }, true); addEventListener('blur', dtMenuClose); document.addEventListener('keydown', e => { if (e.key === 'Escape') dtMenuClose(); });
 async function dtSave(o) { try { await api('/api/settings', o); Object.assign(S.settings, o); dashTools(); } catch {} }
 function dtDel(k, n) { // asks first, in its own window (Derek: make sure the streamer means it)
@@ -4899,6 +4925,7 @@ function dtDel(k, n) { // asks first, in its own window (Derek: make sure the st
 }
 async function dtDelGo(k, n) { $('botDlg').close();
   if (k === 'scene') { const list = (S.settings.dashScenes || []).filter(x => x !== n), lb = { ...(S.settings.dashSceneLabels || {}) }; delete lb[n]; await dtSave({ dashScenes: list, dashSceneLabels: lb }); toast(`🗑 Took the “${esc(dtScName(n) || n)}” button off`); }
+  else if (DT_TOOLS[k].add) { await dtSave({ dashToolsOn: (S.settings.dashToolsOn || []).filter(x => x !== k) }); toast(`🗑 Took ${esc(DT_TOOLS[k].what)} off. Right-click 🧰 Stream tools to add it again.`); }
   else { await dtSave({ dashToolsOff: [...new Set([...(S.settings.dashToolsOff || []), k])] }); toast(`🗑 Took ${esc(DT_TOOLS[k].what)} off. Right-click another button or use ⚙ Pick scenes to bring it back.`); } }
 async function dtBack(k) { await dtSave({ dashToolsOff: (S.settings.dashToolsOff || []).filter(x => x !== k) }); toast(`↩ ${esc(DT_TOOLS[k].def)} is back`); }
 async function dtEdit(k, n) {
@@ -6099,6 +6126,14 @@ function tmRefresh() { // the "🌐 Same as all battles (…)" words follow the 
   document.querySelectorAll('#tmBox .tmRow[data-tm^="list:"]').forEach(r => { const [t, p] = r.querySelectorAll('input[type=range]'); r.querySelector('.tmTV').textContent = tmTW(t.value); r.querySelector('.tmPV').textContent = tmPW(p.value); });
 }
 const pacerWord = v => { v = Number(v); return v <= 0 ? 'Off' : v < 35 ? `Light (${v})` : v < 65 ? `Normal (${v})` : v < 90 ? `Strong (${v})` : `Very strong (${v})`; };
+// 🚪 (1.172.0, Derek: "the screen everyone opens up on by default is chat tab… option in settings to pick a tab") the tab the app opens on
+const startTabOk = v => { const b = document.querySelector('#nav [data-v="' + v + '"]'); return !!b && !b.classList.contains('edOff') && !b.classList.contains('edHid') && !(b.classList.contains('devOnly') && !S?.settings?.betaUpdates) && b.style.display !== 'none'; };
+const startTabList = () => [...document.querySelectorAll('#nav [data-v]')].map(b => b.dataset.v).filter(v => v !== 'help' && startTabOk(v));
+const startTabName = v => { const b = document.querySelector('#nav [data-v="' + v + '"]'); return b ? b.textContent.replace(/↗/g, '').replace(/\s+/g, ' ').trim().replace(/ \d+$/, '') : v; };
+function startTabPick() { const want = String(S?.settings?.startTab || 'tchat'); return startTabOk(want) ? want : startTabOk('tchat') ? 'tchat' : edHome(); }
+function startTabGo() { try { const v = startTabPick(); if (v && v !== view) setView(v); } catch {} }
+async function startTabSet(v) { try { S.settings.startTab = v; await api('/api/settings', { startTab: v }); toast('🚪 Saved: the app opens on ' + startTabName(v)); } catch {} }
+function startTabTest() { const o = $('tStartOut'), want = String(S?.settings?.startTab || 'tchat'), got = startTabPick(), list = startTabList(); if (o) o.innerHTML = `<div class="help" style="margin-top:8px">${got === want ? '✅' : '⚠️'} Next time it opens on <b>${esc(startTabName(got))}</b>${got === want ? '' : ' (the tab you picked isn\'t in this edition right now)'}.<br>Tabs you can pick: ${list.map(v => esc(startTabName(v))).join(' · ')}</div>`; }
 async function winMode(v) { try { await api('/api/window', { action: v }); } catch {} }
 async function capSave() {
   try { await api('/api/capture/settings', { window: $('capWin').value, size: Number($('capSize').value), autoHide: $('capAuto').checked, autoShow: $('capAutoShow').checked }); $('capDlg').close(); toast('📺 Saved.'); if (sub === 'obs' && view === 'settings') setTimeout(() => openSettings(true), 300); } catch {}
@@ -8566,6 +8601,7 @@ function openSettings(force) {
       </div>
       <h3 style="margin-top:16px">🖥️ Window</h3>
       <div class="grid2"><div><label>🖥️ Movie Royal window mode (changes right away)</label><select data-k="windowMode" onchange="winMode(this.value)">${[['window', '🪟 Window: a normal window'], ['borderless', '🔲 Fullscreen window: fills the screen, no border (like a game\'s borderless mode)'], ['fullscreen', '⛶ Fullscreen: covers everything']].map(([v, t]) => `<option value="${v}" ${String(s.windowMode ?? 'window') === String(v) ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+      <div class="grid2"><div><label>🚪 The tab Movie Royal opens on</label><select id="startTabSel" title="Which tab shows first when you open the app (the Chat tab unless you pick another)" onchange="startTabSet(this.value)">${startTabList().map(v => `<option value="${v}" ${startTabPick() === v ? 'selected' : ''}>${esc(startTabName(v))}</option>`).join('')}</select></div></div>
       <p class="help">Fullscreen window has no title bar: use the 🗕 and ✕ buttons at the top right of Movie Royal (or Alt+Tab) to leave it.</p>
       <h3 style="margin-top:16px">🔬 Advanced graphics</h3>
       <div class="grid2">
@@ -8607,7 +8643,7 @@ function openSettings(force) {
   setSub(sub);
 }
 function dirty() { settingsDirty = true; $('saveHint').innerHTML = '<b style="color:var(--gold)">Unsaved changes</b>'; }
-// 🛡️ the backup bot server (the "Movie Royal Backup Bots" app, on your PC or a friend's)
+// 🛡️ the backup bot server (the "TimePeace Chatbot Control Center" app, on your PC or a friend's)
 function bkStateHTML() {
   const b = S.backup || {}, k = b.backup || {}, ago = t => t ? Math.max(0, Math.round((Date.now() - t) / 60000)) + ' min ago' : 'never';
   const state = !S.settings.discordToken ? '<span class="muted">Set up the Discord bot first.</span>'
@@ -8619,12 +8655,12 @@ function bkStateHTML() {
     ${b.active ? `<div class="row" style="margin-bottom:8px"><button class="primary" onclick="bkSwitchBack(this)">☁️ Switch back to the cloud</button></div>` : ''}`;
 }
 function bkHTML() {
-  return `<p class="help">The <b>Movie Royal Backup Bots</b> app (optional, its own installer: <a href="https://github.com/TimePeace49/movie-royale-releases/releases" target="_blank">MovieRoyalBackupBots-Setup</a> on the release page) can run your Discord bot as a backup, on your PC or a friend's. It checks your 24/7 cloud bot every minute. If the cloud bot has errors, the backup answers /suggest, /swap, /mymovies… instead, until you switch back here. If you don't use the 24/7 cloud bot, it answers whenever Movie Royal is closed. Picks it takes come into Movie Royal when you open it. It also reads your Twitch chat (live or offline) while Movie Royal is closed, so viewer profiles keep counting chats.</p>
+  return `<p class="help">The <b>TimePeace Chatbot Control Center</b> app (optional, its own installer: <a href="https://github.com/TimePeace49/movie-royale-releases/releases" target="_blank">MovieRoyalBackupBots-Setup</a> on the release page) can run your Discord bot as a backup, on your PC or a friend's. It checks your 24/7 cloud bot every minute. If the cloud bot has errors, the backup answers /suggest, /swap, /mymovies… instead, until you switch back here. If you don't use the 24/7 cloud bot, it answers whenever Movie Royal is closed. Picks it takes come into Movie Royal when you open it. It also reads your Twitch chat (live or offline) while Movie Royal is closed, so viewer profiles keep counting chats.</p>
     <div id="bkState">${bkStateHTML()}</div>
     <label class="ck"><input type="checkbox" data-k="backupRelay" ${S.settings.backupRelay !== false ? 'checked' : ''}> <span>Keep a hidden <code>#movie-royal-sync</code> channel (only the bot can see it) so a backup bot server can work with Movie Royal</span></label>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button onclick="bkCheck(this)">🔍 Check the backup link now</button><button class="primary" onclick="bkAddHere(this)">🛡️ Add my bot to the backup on this PC</button><button class="ghost" onclick="bkCopyToken()">📋 Copy my bot token (for a friend running my backup)</button></div>
-    <p class="help"><b>🛡️ Add my bot to the backup on this PC</b> = one click, no copy and paste (Movie Royal Backup Bots has to be open on this PC). It also has its own <b>🍿 Add my bot</b> button.</p>
-    <p class="help">To have a friend run your backup: they open <b>Movie Royal Backup Bots</b> on their PC and paste your bot token there. Your bot token lets them fully control your bot, so only give it to someone you trust. You can reset it any time in the Discord Developer Portal (then set the new one here).</p>`;
+    <p class="help"><b>🛡️ Add my bot to the backup on this PC</b> = one click, no copy and paste (TimePeace Chatbot Control Center has to be open on this PC). It also has its own <b>🍿 Add my bot</b> button.</p>
+    <p class="help">To have a friend run your backup: they open <b>TimePeace Chatbot Control Center</b> on their PC and paste your bot token there. Your bot token lets them fully control your bot, so only give it to someone you trust. You can reset it any time in the Discord Developer Portal (then set the new one here).</p>`;
 }
 async function resetEntries() { // ↺ empty the battle on the Battle tab
   const l = S.lists.find(x => x.id === S.activeListId); if (!l) return;
@@ -8750,11 +8786,11 @@ async function discordRestart(btn) {
   try { const r = await api('/api/discord/restart', {}); toast(r.state === 'online' ? '✅ The Discord bot restarted and is online' : r.state === 'connecting' ? '🔄 The Discord bot is still connecting: give it a few seconds' : '⚠️ The Discord bot didn\'t come back: ' + esc(r.error || r.state), 8000); } catch {}
   if (btn) { btn.disabled = false; btn.textContent = '🔄 Restart the Discord bot'; }
 }
-async function bkCheck(btn) { if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; } try { const r = await api('/api/backup/check', {}); toast(!r.channels ? '⚠️ No #movie-royal-sync channel yet: the Discord bot has to be online (and the box above ticked)' : r.watching ? `✅ The backup link works: ${esc(r.backup?.by || 'a backup')} is watching your bot` : '✅ Movie Royal left its notes for a backup. No backup bot server is watching yet: open Movie Royal Backup Bots on the PC that runs it.', 8000); } catch {} if (btn) { btn.disabled = false; btn.textContent = '🔍 Check the backup link now'; } if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); }
+async function bkCheck(btn) { if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; } try { const r = await api('/api/backup/check', {}); toast(!r.channels ? '⚠️ No #movie-royal-sync channel yet: the Discord bot has to be online (and the box above ticked)' : r.watching ? `✅ The backup link works: ${esc(r.backup?.by || 'a backup')} is watching your bot` : '✅ Movie Royal left its notes for a backup. No backup bot server is watching yet: open TimePeace Chatbot Control Center on the PC that runs it.', 8000); } catch {} if (btn) { btn.disabled = false; btn.textContent = '🔍 Check the backup link now'; } if ($('bkState')) $('bkState').innerHTML = bkStateHTML(); }
 async function bkSwitchBack(btn) { btn.disabled = true; try { const r = await api('/api/backup/switch-back', {}); toast(r.linked === false ? '⚠️ Told the backup to stand by, but Discord isn\'t pointing at the cloud bot yet: ' + esc(r.error || '') : '☁️ Back on the 24/7 cloud bot. The backup is standing by again.', 8000); } catch {} btn.disabled = false; }
 async function bkAddHere(btn) {
   btn.disabled = true; const was = btn.textContent; btn.textContent = 'Adding…';
-  try { const r = await api('/api/backup/add-here', {}); toast(`✅ Added ${esc(r.tag || 'your bot')} to Movie Royal Backup Bots on this PC. It connects in a few seconds.`, 8000); } catch {}
+  try { const r = await api('/api/backup/add-here', {}); toast(`✅ Added ${esc(r.tag || 'your bot')} to TimePeace Chatbot Control Center on this PC. It connects in a few seconds.`, 8000); } catch {}
   btn.disabled = false; btn.textContent = was;
 }
 async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch { await ask('Copying didn\'t work here, so copy it yourself (Ctrl+A, then Ctrl+C):', t); return false; } } // (never prompt(): the Windows app blocks it)
@@ -9277,7 +9313,7 @@ function holStyleHTML() {
 if (new URLSearchParams(location.search).get('twitch') === 'ok') { history.replaceState(null, '', '/control.html'); setTimeout(() => toast('✅ Signed in with Twitch!'), 500); }
 if (PC_ONLY) { document.body.classList.add('pcOnly'); document.title = '💬 Pretend chat · Movie Royal'; }
 popInit(); if (POP) { document.body.classList.add('popOnly'); }
-fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (POP) { S = s; render(); setView(POP); popZoomApply(); placeStage(); const t = popName(POP); document.title = t + ' · Movie Royal'; const h = document.querySelector('header h1'); if (h) h.textContent = t; return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
+fetch('/api/state').then(r => r.json()).then(s => { if (PC_ONLY) { S = s; render(); pchat(true); return; } if (POP) { S = s; render(); setView(POP); popZoomApply(); placeStage(); const t = popName(POP); document.title = t + ' · Movie Royal'; const h = document.querySelector('header h1'); if (h) h.textContent = t; return; } if (!s.settings.setupSeen) return location.replace('/setup.html'); S = s; render(); startTabGo(); placeStage(); setTimeout(startPops, 2500); /* 🧭 one start-up pop-up with steps */ setTimeout(loadErrors, 3000); setTimeout(newBadge, 1500); setTimeout(fitNav, 100); setTimeout(fitNav, 1500); /* only pops up when the bot on Cloudflare needs an update */ if ((view === 'battle' || view === 'people') && S.wheelShow) api('/api/wheel/show', { show: false }).catch(() => {}); });
 connect(); loadWheel().catch(() => {});
 </script>
 <script src="spell.js"></script>

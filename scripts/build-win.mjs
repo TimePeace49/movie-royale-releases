@@ -13,6 +13,10 @@ const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const VER = pkg.version;
 // 🏷️ the name people see in the installer (the edition's own, src/editions.json); file and folder names stay "Movie Royal"
 const BRAND = (() => { try { const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'editions.json'), 'utf8')); return String((all[pkg.edition || 'public'] || all.public).app || 'Movie Royal').replace(/"/g, ''); } catch { return 'Movie Royal'; } })();
+const ED = (() => { try { const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'editions.json'), 'utf8')); return { all, me: all[pkg.edition || 'public'] || all.public }; } catch { return { all: {}, me: {} }; } })();
+// 🏷️ (1.172.0, Derek: "when seeing it in Task Manager that is the name") the program FILE carries the edition's name too
+const EXE = String(ED.me.exe || 'MovieRoyal').replace(/[^A-Za-z0-9]/g, '') || 'MovieRoyal';
+const CC = ED.me.scrub ? 'Chatbot Control Center' : 'TimePeace Chatbot Control Center', CCEXE = CC.replace(/ /g, '');
 const UNPACKED = path.join(ROOT, 'dist', 'win-unpacked');
 const OUT = path.join(ROOT, 'dist', `MovieRoyal-Setup-${VER}.exe`);
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts });
@@ -36,15 +40,16 @@ const stamp = (from, to, icoFile, name, file) => {
   const vi = ResEdit.Resource.VersionInfo.fromEntries(res.entries)[0] || ResEdit.Resource.VersionInfo.createEmpty();
   const [a, b, c] = VER.split('.').map(Number);
   vi.setFileVersion(a, b, c, 0, 1033); vi.setProductVersion(a, b, c, 0, 1033);
-  vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: name, FileDescription: name, CompanyName: 'Movie Royal', FileVersion: VER, ProductVersion: VER, OriginalFilename: file + '.exe', InternalName: file, LegalCopyright: 'Movie Royal' });
+  vi.setStringValues({ lang: 1033, codepage: 1200 }, { ProductName: name, FileDescription: name, CompanyName: BRAND, FileVersion: VER, ProductVersion: VER, OriginalFilename: file + '.exe', InternalName: file, LegalCopyright: BRAND });
   vi.outputToResourceEntries(res.entries);
   res.outputResource(exe);
   fs.writeFileSync(to, Buffer.from(exe.generate()));
 };
 // 🛡️ the backup app's program gets its OWN icon inside it (made from the untouched program, before the main icon goes in)
-const BEXE = path.join(ROOT, 'dist', 'MovieRoyalBackup.exe');
-stamp(exePath, BEXE, 'icon-backup.ico', 'Movie Royal Backup Bots', 'MovieRoyalBackup');
-stamp(exePath, exePath, 'icon.ico', BRAND, 'MovieRoyal');
+const BEXE = path.join(ROOT, 'dist', CCEXE + '.exe');
+stamp(exePath, BEXE, 'icon-backup.ico', CC, CCEXE);
+stamp(exePath, exePath, 'icon.ico', BRAND, EXE);
+if (EXE !== 'MovieRoyal') fs.renameSync(exePath, path.join(UNPACKED, EXE + '.exe')); // the installed program file = the edition's name
 
 console.log('\n▶ Building the installer with NSIS…');
 const cache = process.env.ELECTRON_BUILDER_CACHE || (process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA, 'electron-builder', 'Cache') : path.join(os.homedir(), process.platform === 'darwin' ? 'Library/Caches/electron-builder' : '.cache/electron-builder'));
@@ -63,14 +68,18 @@ const makensis = process.platform === 'win32' ? path.join(nsisDir, 'Bin', 'maken
 fs.chmodSync(makensis, 0o755);
 // 🚚 installing one edition over another: the installer takes the other editions' shortcuts away (their names come from editions.json)
 { const all = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'editions.json'), 'utf8')), names = [...new Set(Object.values(all).map(e => String(e.app || '')).filter(n => n && n !== BRAND && n !== 'Movie Royal' && !/["$\\]/.test(n)))];
-  fs.writeFileSync(path.join(ROOT, 'build', 'editions.nsh'), '\uFEFF' + names.map(n => `  Delete "$SMPROGRAMS\\${n}.lnk"\r\n  Delete "$DESKTOP\\${n}.lnk"\r\n`).join('')); }
+  fs.writeFileSync(path.join(ROOT, 'build', 'editions.nsh'), '\uFEFF' + names.map(n => `  Delete "$SMPROGRAMS\\${n}.lnk"\r\n  Delete "$DESKTOP\\${n}.lnk"\r\n`).join(''));
+  // the program files of the old name and of the other editions: closed before installing, taken away after (see OldExe in installer.nsi)
+  const olds = [...new Set(['MovieRoyal', ...Object.values(all).map(e => String(e.exe || '').replace(/[^A-Za-z0-9]/g, ''))].filter(n => n && n !== EXE))];
+  fs.writeFileSync(path.join(ROOT, 'build', 'oldexe-kill.nsh'), '\uFEFF' + olds.map(n => `  nsExec::Exec 'taskkill /F /IM "${n}.exe"'\r\n`).join(''));
+  fs.writeFileSync(path.join(ROOT, 'build', 'oldexe.nsh'), '\uFEFF' + olds.map(n => `  !insertmacro OldExe "${n}.exe"\r\n`).join('')); }
 fs.rmSync(OUT, { force: true });
-run(makensis, ['-V2', `-DVER=${VER}`, `-DBRAND=${BRAND}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT}`, path.join(ROOT, 'build', 'installer.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
+run(makensis, ['-V2', `-DVER=${VER}`, `-DBRAND=${BRAND}`, `-DEXE=${EXE}.exe`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT}`, path.join(ROOT, 'build', 'installer.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
 
 // 🛡️ the Movie Royal Backup Bots installer: same program files, its own install folder, shortcut and uninstaller
 const OUT_B = path.join(ROOT, 'dist', `MovieRoyalBackupBots-Setup-${VER}.exe`);
 fs.rmSync(OUT_B, { force: true });
-run(makensis, ['-V2', `-DVER=${VER}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT_B}`, `-DBEXE=${BEXE}`, path.join(ROOT, 'build', 'backup.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
+run(makensis, ['-V2', `-DVER=${VER}`, `-DSRC=${UNPACKED}`, `-DOUT=${OUT_B}`, `-DBEXE=${BEXE}`, `-DAPP=${CC}`, `-DEXE=${CCEXE}.exe`, path.join(ROOT, 'build', 'backup.nsi')], { env: { ...process.env, NSISDIR: nsisDir }, cwd: path.join(ROOT, 'build') });
 
 fs.rmSync(BEXE, { force: true });
 for (const f of [OUT, OUT_B]) console.log(`\n✅ Done: ${path.relative(ROOT, f)} (${(fs.statSync(f).size / 1048576).toFixed(0)} MB)`);

@@ -59,7 +59,8 @@
    "chat:respin",
    "chat:vote",
    "chat:addcom"
-  ]
+  ],
+  "exe": "TimePeaceChatbot"
  },
  "derek": {
   "name": "Derek",
@@ -103,7 +104,8 @@
    "chat:respin",
    "chat:vote",
    "chat:addcom"
-  ]
+  ],
+  "exe": "TimePeaceChatbot"
  },
  "kirb": {
   "name": "Kirb",
@@ -111,7 +113,7 @@
   "repo": "TimePeace49/TimePeaceChatbotKirbEdtion",
   "dev": false,
   "note": "Everything in the latest version.",
-  "app": "TimePeace Chatbot",
+  "app": "Kirb’s Chatbot",
   "on": [
    "raids",
    "dash",
@@ -147,7 +149,8 @@
    "guide:omdb",
    "chat:vote",
    "chat:addcom"
-  ]
+  ],
+  "exe": "KirbChatbot"
  },
  "true": {
   "name": "True",
@@ -247,7 +250,8 @@
    "chatvoice",
    "dualstream"
   ],
-  "scrub": true
+  "scrub": true,
+  "exe": "TrueChatbot"
  },
  "birx": {
   "name": "Birx & Jess",
@@ -366,6 +370,7 @@
    "xmashist",
    "tts"
   ],
-  "scrub": true
+  "scrub": true,
+  "exe": "BirxAndJessChatbot"
  }
 }
