@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.162.0: What's new
+- {ed:derek} ⭐ **My tests.** The Test tab has a new ⭐ My tests tab: star the test cards you use, then run through just those before a stream and tick each one off.
+
 ## v1.161.0: What's new
 - {smart} ⚡ **Fast flash for your lights.** A new style for subs and raids in Settings → 🔌 Smart plug controls: the bulb does the flashing itself, so it goes much quicker than the slow flash. Try a few numbers in its speed box to find the pace you like.
 - {smart} 💎💵 **Lights for bits and donations.** Bits of 300 or more and donations of $3 or more set your ticked lights off too. You can change both amounts.

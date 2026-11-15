@@ -386,6 +386,9 @@
   #tSide button .pill { margin-left:auto; flex:none; }
   #tMain { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; align-content:start; min-width:0; }
   #tMain > .tOff { display:none !important; }
+  .myStar { float:right; padding:2px 9px; font-size:15px; line-height:1.3; margin:-2px 0 0 8px; opacity:.55; } .myStar.on, .myStar:hover { opacity:1; }
+  #tMain .myTick { display:none; float:right; margin:0 0 0 10px; font-size:13px; font-weight:400; } #tMain[data-cat="mine"] .myTick { display:inline-flex; }
+  #tMain[data-cat="mine"] > .card.myDone { outline:2px solid #2f9e5b; outline-offset:-2px; }
   #v-test.checkmode > #tWrap, #v-test.errmode > #tWrap { display:none; }
   @media (max-width:1500px) { #tMain { grid-template-columns:repeat(2, minmax(0,1fr)); } }
   @media (max-width:1150px) { #tWrap { grid-template-columns:190px minmax(0,1fr); } }
@@ -2290,14 +2293,55 @@ function arrangeTests() { // put the Test tab's cards into categories (once)
   wrap.append(side, main); box.appendChild(wrap);
   const cats = TEST_CATS.filter(([c]) => groups[c]);
   for (const [c, n] of cats) { const hd = document.createElement('div'); hd.className = 'card tcat'; hd.id = 'tcat-' + c; hd.dataset.tcat = c; hd.style.cssText = 'grid-column:1 / -1'; hd.innerHTML = `<h2 style="margin:0">${n}</h2>`; main.appendChild(hd); for (const card of groups[c]) { card.dataset.tcat = c; main.appendChild(card); } }
-  side.innerHTML = cats.map(([c, n]) => `<button data-tc="${c}" title="Show the tests for ${esc(n)}" onclick="testCat('${c}')"><span>${n}</span><span class="pill">${groups[c].length}</span></button>`).join('') + `<button data-tc="all" title="Show every test on one page" onclick="testCat('all')"><span>📋 All tests</span></button>`;
+  side.innerHTML = `<button data-tc="mine" title="My tests: only the test cards you starred, with a tick box on each, so you can run through everything you use before a stream" onclick="testCat('mine')"><span>⭐ My tests</span><span class="pill" id="myN">0</span></button>` + cats.map(([c, n]) => `<button data-tc="${c}" title="Show the tests for ${esc(n)}" onclick="testCat('${c}')"><span>${n}</span><span class="pill">${groups[c].length}</span></button>`).join('') + `<button data-tc="all" title="Show every test on one page" onclick="testCat('all')"><span>📋 All tests</span></button>`;
+  myInit(main);
   let tc = ''; try { tc = localStorage.testCat || ''; } catch {}
-  testCat(tc === 'all' || groups[tc] ? tc : cats[0]?.[0] || 'all', true);
+  testCat(tc === 'all' || tc === 'mine' || groups[tc] ? tc : cats[0]?.[0] || 'all', true);
 }
+/* ⭐ My tests (1.162.0, Derek: "build me a mytest tab in test to test everything I will be using"): star any test card; the ⭐ My tests side tab shows only those,
+   each with a tick box, so he can run through his own list before a stream. Stars + ticks are kept on this PC (localStorage myTests / myTestsDone). */
+const MY = { set: new Set(), done: {} };
+const MY_START = ['paidTestCard', 'maraBattleTestCard', 'mtTestCard', 'restTestCard', 'waitTestCard', 'ckTestCard', 'gcTestCard', 'fxTestCard', 'smTestCard', 'scareTestCard', 'ttsTestCard', 'cvTestCard', 'micTestCard', 'ytTestCard', 'obsKeepTestCard', 'deckTestCard', 'clipTestCard', 'adTestCard', 'spamTestCard', 'botTestCard', 'sbTestCard', 'kickTestCard', 'coTestCard']; // (the starter list for Derek's marathon stream; he stars / unstars from there)
+const mySave = () => { try { localStorage.myTests = JSON.stringify([...MY.set]); localStorage.myTestsDone = JSON.stringify(MY.done); } catch {} };
+const myCards = () => [...($('tMain')?.children || [])].filter(c => c.dataset.my);
+const myShown = c => !c.classList.contains('edOff') && !c.classList.contains('edHid') && !(c.classList.contains('devOnly') && !document.body.classList.contains('dev'));
+function myInit(main) {
+  let saved = null; try { saved = JSON.parse(localStorage.myTests || 'null'); MY.done = JSON.parse(localStorage.myTestsDone || '{}') || {}; } catch {}
+  const seen = new Set();
+  for (const c of main.children) { if (c.classList.contains('tcat')) continue; const h = c.querySelector('h3'); if (!h) continue;
+    let k = c.id || 'h:' + h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50); while (seen.has(k)) k += '-2'; seen.add(k); c.dataset.my = k;
+    const name = esc(h.textContent.trim());
+    h.insertAdjacentHTML('beforeend', ` <label class="ck myTick" title="My tests: tick this once you have tried ${name} and it works. Ticks stay until you press ↺ Untick all"><input type="checkbox" onchange="myTick(this)" title="My tests: tick this once you have tried ${name} and it works. Ticks stay until you press ↺ Untick all"> <span>checked</span></label><button class="ghost myStar" onclick="myStar(this)" title="My tests: add ${name} to (or take it off) your own list under ⭐ My tests">☆</button>`); }
+  MY.set = new Set(Array.isArray(saved) ? saved : (S.edition?.realDev ?? S.edition?.dev) ? MY_START : []);
+  const head = document.createElement('div'); head.className = 'card tOff'; head.id = 'myHead'; head.style.cssText = 'grid-column:1 / -1'; main.prepend(head);
+  myPaint();
+}
+function myPaint() { // stars, ticks and the count on the side tab
+  for (const c of myCards()) { const on = MY.set.has(c.dataset.my), b = c.querySelector('.myStar'), t = c.querySelector('.myTick input'); if (b) { b.textContent = on ? '⭐' : '☆'; b.classList.toggle('on', on); } if (t) t.checked = !!MY.done[c.dataset.my]; c.classList.toggle('myDone', on && !!MY.done[c.dataset.my]); }
+  const n = $('myN'); if (n) n.textContent = myCards().filter(c => MY.set.has(c.dataset.my) && myShown(c)).length;
+  if ($('tMain')?.dataset.cat === 'mine') myHead();
+}
+function myHead() {
+  const el = $('myHead'); if (!el) return; const mine = myCards().filter(c => MY.set.has(c.dataset.my) && myShown(c)), done = mine.filter(c => MY.done[c.dataset.my]).length, left = mine.filter(c => !MY.done[c.dataset.my]);
+  el.innerHTML = `<h2 style="margin:0 0 4px">⭐ My tests</h2><p class="help" style="margin:0 0 8px">Your own list of tests, for running through everything you use before a stream. Press <b>☆</b> on any test card (in the other tabs on the left) to add it here, and <b>⭐</b> to take it off. Try each one, then tick <b>checked</b> on its card.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b style="font-size:18px">${mine.length ? `${done} of ${mine.length} checked${done === mine.length ? ' ✅' : ''}` : 'Nothing starred yet'}</b>
+      ${left.length && done ? `<button onclick="myNext()" title="My tests: scroll to the first test on your list that isn't ticked yet">⏭ Next one not checked</button>` : ''}
+      ${done ? `<button class="ghost" onclick="myReset()" title="My tests: untick every test on your list, for the next run-through (the stars stay)">↺ Untick all</button>` : ''}
+      <button class="ghost" onclick="testCat('all')" title="My tests: show every test card so you can star more of them">☆ Add more tests</button>
+      ${(S.edition?.realDev ?? S.edition?.dev) ? `<button class="ghost" onclick="myStarter()" title="My tests: put the starter list for the marathon stream back (paid battles, marathon battle, timers, game capture, screen effects, smart lights, scares, TTS, chat voice, mics, YouTube, OBS, Stream Deck, clips, ads, spam, chat bot, Kick, co-stream). Your own stars are kept">⭐ Add the stream starter list</button>` : ''}</div>
+    ${mine.length ? `<div class="help" style="margin-top:8px">${mine.map(c => `<a href="#" onclick="event.preventDefault();myJump('${c.dataset.my.replace(/'/g, '')}')" title="My tests: scroll to this test" style="display:inline-block;margin:2px 10px 2px 0;${MY.done[c.dataset.my] ? 'opacity:.55' : ''}">${MY.done[c.dataset.my] ? '✅' : '⬜'} ${esc((c.querySelector('h3')?.firstChild?.textContent || c.querySelector('h3')?.textContent || '').trim())}</a>`).join('')}</div>` : ''}`;
+}
+function myStar(b) { const c = b.closest('[data-my]'); if (!c) return; const k = c.dataset.my; if (MY.set.has(k)) MY.set.delete(k); else MY.set.add(k); mySave(); myPaint(); if ($('tMain').dataset.cat === 'mine') testCat('mine', true); toast(MY.set.has(k) ? '⭐ Added to My tests' : 'Taken off My tests', 2500); }
+function myTick(i) { const c = i.closest('[data-my]'); if (!c) return; if (i.checked) MY.done[c.dataset.my] = Date.now(); else delete MY.done[c.dataset.my]; mySave(); myPaint(); }
+function myReset() { MY.done = {}; mySave(); myPaint(); toast('↺ All unticked. Ready for the next run-through.', 3000); }
+function myStarter() { for (const k of MY_START) MY.set.add(k); mySave(); myPaint(); testCat('mine', true); toast('⭐ The stream starter list is on your My tests', 3000); }
+function myJump(k) { const c = myCards().find(x => x.dataset.my === k); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+function myNext() { const c = myCards().find(x => MY.set.has(x.dataset.my) && myShown(x) && !MY.done[x.dataset.my]); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 function testCat(c, quiet) { // 🗂️ show one category of tests (or 'all'); remembered for next time
   const main = $('tMain'); if (!main) return;
   main.dataset.cat = c;
-  for (const el of main.children) el.classList.toggle('tOff', c !== 'all' && el.dataset.tcat !== c);
+  for (const el of main.children) el.classList.toggle('tOff', c === 'mine' ? !(el.id === 'myHead' || (el.dataset.my && MY.set.has(el.dataset.my))) : el.id === 'myHead' || (c !== 'all' && el.dataset.tcat !== c));
+  if (c === 'mine') myHead();
   document.querySelectorAll('#tSide button[data-tc]').forEach(b => b.classList.toggle('on', b.dataset.tc === c));
   try { localStorage.testCat = c; } catch {}
   testSideTop();
@@ -2312,7 +2356,7 @@ function testCatStep(d) { // [ / ] keys: the side tab above / below (🧪 Tests 
 function testGo(el, block = 'center') { // open the Test tab at this card (or something in it): switches to its category first
   el = typeof el === 'string' ? $(el) : el; if (!el) return;
   if (view !== 'test') setView('test'); testTab('tests');
-  const c = el.closest('[data-tcat]')?.dataset.tcat; if (c && $('tMain')?.dataset.cat !== 'all') testCat(c, true);
+  const card = el.closest('[data-tcat]'), c = card?.dataset.tcat, now = $('tMain')?.dataset.cat; if (c && now !== 'all' && !(now === 'mine' && card.dataset.my && MY.set.has(card.dataset.my))) testCat(c, true);
   setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block }), 60);
 }
 function testSideTop() { const t = document.querySelector('#v-test > .ttabs'); if (!t?.offsetHeight) return; const top = Math.max(0, t.offsetHeight - 14 + 12) + 'px'; for (const sd of [$('tSide'), document.querySelector('#tCheck .ckSide')]) if (sd) sd.style.top = top; } // (just under the 🧪 Tests / ✅ Checklist / ⚠️ Errors bar)
