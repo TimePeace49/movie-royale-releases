@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.167.0
+- 🔔 **Alert sounds.** Chat bot → 🔊 Sound alerts now starts with a new box: a sound for a follow, a sub, gifted subs, bits, a donation or a raid. None exist until you add one. For gifted subs, bits and donations you set the amount and pick **exactly**, **up to** or **that much or more**. 🎁 Add gift tiers makes the 1 · 5 · 10 · 20 · 50 · 100 gifted-sub sounds at once. ▶ Pretend it happened tries one; 🧪 Check the rules shows which sound each amount picks.
+- 💵 **Check my StreamElements tips + PayPal** (Settings next to the StreamElements token, the Test tab, and a step in the 🚀 Stream check): is the tip feed connected, whose channel it is, your tip page link, and what StreamElements says about PayPal.
+- 😱 Jump scares: no more build-up sound. It's silent until the scare hits, then everything plays at once. (A "Build-up sound first" tick box on the 😱 card brings it back.)
+
 ## 1.166.1
 - 😱 **Jump scares on your screen now have sound**: a scream (the one you picked from Pixabay) at the moment of the scare, on top of the build-up. The sound is switched on once for you; the 😱 card on the Marathon tab has the sound switch, the volume and a new "Scream" tick box (off = the old made-up scare sound).
 

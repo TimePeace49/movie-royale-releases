@@ -52,6 +52,7 @@ import * as paid from './paid.js';
 import * as marathon from './marathon.js';
 import * as screenfx from './screenfx.js';
 import * as smart from './smart.js';
+import * as eventsounds from './eventsounds.js';
 import * as itempics from './itempics.js';
 import * as cards from './cards.js';
 import * as inactive from './inactive.js';
@@ -1200,7 +1201,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } try { smart.onAlert(a); } catch (e) { console.error('[smart lights]', e.message); } try { if (a.kind === 'bits') screenfx.money({ kind: 'bits', amount: a.amount, name: a.name, text: a.text }); } catch (e) { console.error('[screen effects]', e.message); } },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } try { smart.onAlert(a); } catch (e) { console.error('[smart lights]', e.message); } try { eventsounds.onAlert(a); } catch (e) { console.error('[alert sounds]', e.message); } try { if (a.kind === 'bits') screenfx.money({ kind: 'bits', amount: a.amount, name: a.name, text: a.text }); } catch (e) { console.error('[screen effects]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   raidOut(t) { try { raids.note(t); } catch (e) { console.error('[raid tab]', e.message); } }, // 🚀 you raided someone (Twitch says so, also for /raid typed by hand)
   async chat(m) {
@@ -1679,7 +1680,7 @@ app.post('/api/restore', (req, res) => {
 // history
 const normHist = h => h.winner ? h : { ...h, id: h.id || 'old-' + h.at, winner: { label: h.label, sub: h.sub, owner: h.owner }, top: [], events: [] };
 // ---------- 🎡 wheel ----------
-const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { eggs.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase().replace(/[^a-z0-9_]/g, ''), name: t.name, amount: t.amount }); } catch {} try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } try { screenfx.money({ kind: 'tip', amount: t.amount, name: t.name, text: t.message || '' }); } catch (e) { console.error('[screen effects]', e.message); } try { smart.onAlert({ kind: 'tip', amount: Number(t.amount) || 0, name: t.name }); } catch (e) { console.error('[smart lights]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
+const startDonationFeed = () => donations.startDonations({ tip: t => { try { alertAct({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency, text: t.message || '' }); try { eggs.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase().replace(/[^a-z0-9_]/g, ''), name: t.name, amount: t.amount }); } catch {} try { scareFor({ kind: 'tip', name: t.name, amount: t.amount, currency: t.currency }); } catch (e) { console.error('[scare pop-up]', e.message); } chatlog.onAlert({ kind: 'tip', login: String(t.name || '').toLowerCase(), name: t.name, amount: t.amount, text: `donated ${t.currency && t.currency !== 'USD' ? t.amount + ' ' + t.currency : '$' + t.amount}${t.message ? ': ' + t.message : ''}` }); try { paid.onTip(t); } catch (e) { console.error('[paid battles]', e.message); } try { screenfx.money({ kind: 'tip', amount: t.amount, name: t.name, text: t.message || '' }); } catch (e) { console.error('[screen effects]', e.message); } try { smart.onAlert({ kind: 'tip', amount: Number(t.amount) || 0, name: t.name }); } catch (e) { console.error('[smart lights]', e.message); } try { eventsounds.onAlert({ kind: 'tip', amount: Number(t.amount) || 0, name: t.name }); } catch (e) { console.error('[alert sounds]', e.message); } if (!db.moneyPaused?.donations) wheel.onMoney(t); } catch (e) { console.error('[donation]', e.message); } }, change: pushState });
 setTimeout(startDonationFeed, 1500);
 setTimeout(() => { const r = wheel.W().rewards; twitch.noInput([r.grow, r.shrink]).catch(() => {}); }, 20000); // grow/shrink rewards made by older versions asked chat to type a spot
 wheel.initWheel({ broadcast, pushState, say: t => twitch.canSay() && db.wheel?.chatOn !== false ? twitch.say(t) : Promise.resolve(), obsDoom: () => obsOk('Doom') ? obs.doomsday() : Promise.resolve(null), theme: () => db.settings.revealThemed !== false ? live.appStyle || null : null, openBattle: (id, auto, why) => openBattleFromWheel(id, auto, why), openCards: (id, auto, why) => cards.openFromWheel(id, auto, why), goView: v => broadcast({ type: 'goView', view: v }, 'control') });
@@ -6004,7 +6005,7 @@ app.post('/api/test/mara-guess', wTry(b => { if (!live.maraGuess) throw new Erro
 // The StreamElements jump-scare alerts play on stream / the phone; this plays the same scare in a see-through window on top of
 // whatever you're using (the screen your mouse is on, or every screen). Same small / medium / big rules as the alerts' defaults.
 const SCARE_SCREAM = '/sounds/scare-scream.mp3'; // (1.166.1, Derek's pick from Pixabay)
-const SCARE_DEF = { on: true, where: 'all', sound: true, scream: true, vol: 70, flash: true, kinds: { follow: true, sub: true, gift: true, bits: true, tip: true, raid: true }, bitsMed: 500, bitsBig: 2500, tipMed: 5, tipBig: 25, giftMed: 2, giftBig: 10, raidMed: 10, raidBig: 50 };
+const SCARE_DEF = { on: true, where: 'all', sound: true, scream: true, build: false, vol: 70, flash: true, kinds: { follow: true, sub: true, gift: true, bits: true, tip: true, raid: true }, bitsMed: 500, bitsBig: 2500, tipMed: 5, tipBig: 25, giftMed: 2, giftBig: 10, raidMed: 10, raidBig: 50 };
 function scareCfg() { const c = { ...SCARE_DEF, ...(db.settings.marathon?.scare || {}) }; c.kinds = { ...SCARE_DEF.kinds, ...(c.kinds || {}) }; return c; }
 function scareJob(a) {
   const c = scareCfg(), n = Number(a.amount) || 0, nm = a.name || 'Someone', lv = (v, m, b) => v >= b ? 3 : v >= m ? 2 : 1;
@@ -6031,14 +6032,14 @@ function scareFor(a, force) {
 function scareNext() {
   if (scareBusy || !scareQ.length) return;
   const j = scareQ.shift(), c = scareCfg(); scareBusy = true;
-  const msg = { ...j, own: c.scream !== false ? SCARE_SCREAM : '', vol: c.sound ? Math.max(0, Math.min(100, Number(c.vol) || 0)) : 0, flash: c.flash !== false, shake: true, pos: 'bottom' };
+  const msg = { ...j, quiet: !c.build, own: c.scream !== false ? SCARE_SCREAM : '', vol: c.sound ? Math.max(0, Math.min(100, Number(c.vol) || 0)) : 0, flash: c.flash !== false, shake: true, pos: 'bottom' };
   try { globalThis.__desktop.scarePop(`http://127.0.0.1:${PORT}/scare.html#${encodeURIComponent(JSON.stringify(msg))}`, c.where === 'all' ? 'all' : 'mouse', 12500); } catch (e) { console.error('[scare pop-up]', e.message); }
   setTimeout(() => { scareBusy = false; scareNext(); }, 12800); // one at a time, like the alerts
 }
 app.post('/api/mara/scare', wTry(b => {
   if (!paid.dev()) throw new Error('The scare pop-ups are a 🛠️ dev mode feature.');
   const c = { ...(db.settings.marathon?.scare || {}) };
-  for (const k of ['on', 'sound', 'flash', 'scream']) if (typeof b[k] === 'boolean') c[k] = b[k];
+  for (const k of ['on', 'sound', 'flash', 'scream', 'build']) if (typeof b[k] === 'boolean') c[k] = b[k];
   if (['mouse', 'all'].includes(b.where)) c.where = b.where;
   if (b.vol != null) c.vol = Math.max(0, Math.min(100, Math.round(Number(b.vol) || 0)));
   if (b.kinds && typeof b.kinds === 'object') { c.kinds = { ...scareCfg().kinds }; for (const k of Object.keys(SCARE_DEF.kinds)) if (typeof b.kinds[k] === 'boolean') c.kinds[k] = b.kinds[k]; }
@@ -6278,6 +6279,60 @@ function sfxPlay(file, vol = 80, test) {
 }
 const sfxHearOn = () => db.settings.sfxHear ?? ['derek', 'birx'].includes(EDITION.id);
 app.post('/api/chatbot/hear', wTry(b => { db.settings.sfxHear = !!b.on; save(); pushState(); return { on: sfxHearOn() }; }));
+
+// 🔔 Alert sounds (1.167.0): a sound per follow / sub / gift subs / bits / donation / raid, with amount rules (src/eventsounds.js). Same sound files + player as the sound alerts.
+eventsounds.setHooks({ play: (file, vol) => sfxPlay(file, vol), has: file => { try { return fs.existsSync(path.join(SFXDIR, sfxName(file))); } catch { return false; } }, changed: () => { try { broadcast({ type: 'eventSounds' }, 'control'); } catch {} } });
+app.get('/api/eventsounds', (req, res) => res.json(eventsounds.state()));
+app.post('/api/eventsounds', wTry(b => {
+  if (typeof b.allOn === 'boolean') return eventsounds.setOn(b.allOn);
+  if (b.tiers) return eventsounds.addGiftTiers();
+  if (b.remove) return eventsounds.removeRule(b.remove);
+  if (b.play) { const r = eventsounds.ruleOf(b.play); if (!r?.file) throw new Error('Pick a sound file for it first.'); const p = sfxPlay(r.file, b.vol ?? r.vol ?? 80, true); if (!p.ok) throw new Error('That sound file is gone: pick it again.'); return p; }
+  const o = { id: b.id, kind: b.kind, mode: b.mode, amount: b.amount, vol: b.vol, on: b.on };
+  if (b.clearFile) o.file = '';
+  if (b.data) { let name = sfxName(b.name); if (!SFX_OK.test(name)) throw new Error('Pick a sound file (mp3, wav, ogg, m4a, flac).'); const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]*,/, ''), 'base64'); if (!buf.length) throw new Error('That file is empty.'); if (buf.length > 25e6) throw new Error('That sound is too big (25 MB at most).'); name = sfxFree(name, buf); fs.writeFileSync(path.join(SFXDIR, name), buf); o.file = name; sfxSoon(); }
+  return { rule: eventsounds.saveRule(o), ...eventsounds.state() };
+}));
+app.get('/api/test/eventsounds', (req, res) => res.json(eventsounds.demo())); // 🧪 the amount rules, walked through (nothing saved or played)
+app.post('/api/test/eventsound', wTry(b => { const r = eventsounds.onAlert({ kind: b.kind, amount: Number(b.amount) || 0, name: 'Tester' }, { test: true, dry: !!b.dry }); return r || { played: false, why: 'no rule fits' }; })); // 🧪 a pretend follow / sub / gift / bits / donation: plays the sound that fits
+
+// 💵 (1.167.0, Derek: "do a check to make sure my StreamElements PayPal link is working") What the app CAN see: is the tip feed connected, which channel the token
+// belongs to, and what StreamElements says about that channel's tipping set-up. Whether PayPal really takes money can only be proven by a real tip.
+async function seTipCheck() {
+  const out = { feed: donations.status.se, last: donations.status.last ? { name: donations.status.last.name, amount: donations.status.last.amount, at: donations.status.last.at, source: donations.status.last.source } : null, token: !!db.settings.seJwt, items: [] };
+  const add = (ok, what, note) => out.items.push({ ok, what, note });
+  if (!db.settings.seJwt) { add(false, 'StreamElements token', 'No StreamElements token is saved, so the app can\'t hear tips. Type StreamElements in the Settings search to find the box for it.'); return out; }
+  add(out.feed === 'online', 'Tip feed', out.feed === 'online' ? 'Connected: a tip made on your StreamElements page reaches this app.' : 'Not connected (' + out.feed + ').');
+  const get = async p => { const r = await fetch((process.env.SE_API_URL || 'https://api.streamelements.com') + p, { headers: { Authorization: 'Bearer ' + db.settings.seJwt, Accept: 'application/json' }, signal: AbortSignal.timeout(9000) }); let j = null; try { j = await r.json(); } catch {} return { status: r.status, j }; };
+  let ch = null;
+  try { const r = await get('/kappa/v2/channels/me'); if (r.status === 200 && r.j?._id) ch = r.j; else add(false, 'Your StreamElements channel', r.status === 401 ? 'StreamElements did not accept the saved token (it may have been reset). Paste the new JWT token.' : 'StreamElements answered ' + r.status + '.'); }
+  catch (e) { add(null, 'Your StreamElements channel', 'Could not reach StreamElements (' + (e.name === 'TimeoutError' ? 'no answer' : e.message) + ').'); }
+  if (!ch) return out;
+  out.channel = ch.username || ch.alias || ch.displayName || ''; out.page = out.channel ? 'https://streamelements.com/' + encodeURIComponent(out.channel) + '/tip' : '';
+  add(true, 'Your StreamElements channel', (ch.displayName || out.channel) + (out.page ? ': tip page ' + out.page : ''));
+  try {
+    const r = await get('/kappa/v2/tipping/' + ch._id);
+    if (r.status === 200 && r.j) { const v = seTipRead(r.j); out.paypal = v.paypal; add(v.paypal === true ? true : v.paypal === false ? false : null, 'PayPal on the tip page', v.note); }
+    else add(null, 'PayPal on the tip page', 'StreamElements would not show the tipping set-up to the app (answer ' + r.status + '), so this part has to be checked by eye on streamelements.com → Revenue → Tipping settings.');
+  } catch (e) { add(null, 'PayPal on the tip page', 'Could not read the tipping set-up (' + e.message + ').'); }
+  return out;
+}
+function seTipRead(j) { // look through whatever StreamElements sends for the PayPal part (the exact shape isn't documented, so this reads it loosely and never shows an address in full)
+  const hits = []; const walk = (o, p, d) => { if (!o || typeof o !== 'object' || d > 6) return; for (const [k, v] of Object.entries(o)) { const path2 = p ? p + '.' + k : k; if (/paypal/i.test(path2) && (v === null || typeof v !== 'object')) hits.push([path2, v]); if (v && typeof v === 'object') walk(v, path2, d + 1); } }; walk(j, '', 0);
+  if (!hits.length) return { paypal: null, note: 'StreamElements\' answer has no PayPal part the app can read. Check it by eye: streamelements.com → Revenue → Tipping settings.' };
+  const mail = hits.find(([k, v]) => typeof v === 'string' && /@/.test(v)), flagOff = hits.find(([k, v]) => /enabled|active|connected|linked/i.test(k) && v === false), flagOn = hits.find(([k, v]) => /enabled|active|connected|linked/i.test(k) && v === true);
+  const mask = m => String(m).replace(/^(.).*?(@.).*?(\.[a-z.]+)$/i, '$1…$2…$3');
+  if (flagOff && !flagOn) return { paypal: false, note: 'StreamElements says PayPal is switched OFF or not linked on your tip page.' };
+  if (mail) return { paypal: true, note: 'A PayPal account is linked (' + mask(mail[1]) + ').' + (flagOn ? ' It is switched on.' : '') };
+  if (flagOn) return { paypal: true, note: 'StreamElements says PayPal is switched on for your tip page.' };
+  return { paypal: null, note: 'StreamElements mentions PayPal but the app can\'t tell if it is linked. Check it by eye: streamelements.com → Revenue → Tipping settings.' };
+}
+app.get('/api/donations/check', async (req, res) => { try { res.json(await seTipCheck()); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/test/se-tip-read', (req, res) => { // 🧪 the PayPal reader on sample answers (nothing is asked from StreamElements)
+  const T = [['linked + on', { paypal: { enabled: true, email: 'someone@example.com' } }, true], ['switched off', { providers: { paypal: { enabled: false } } }, false], ['an address only', { paypalEmail: 'a.person@mail.co.uk' }, true], ['nothing about PayPal', { currency: 'USD', minAmount: 1 }, null], ['mentioned, unclear', { paypal: { mode: 'x' } }, null]];
+  const rows = T.map(([what, j, want]) => { const v = seTipRead(j); return { what, got: v.paypal, want, note: v.note, ok: v.paypal === want && !/someone@example\.com|a\.person@mail/.test(v.note) }; });
+  res.json({ ok: rows.every(r => r.ok), rows });
+});
 
 setInterval(() => { try { chatbot.tick(); } catch (e) { console.error('[chat bot] timer', e.message); } }, 30000);
 const botDev = fn => wTry(fn); /* (every edition since 1.108.0) */

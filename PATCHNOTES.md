@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.167.0: What's new
+- 🔔 **Alert sounds.** Chat bot → 🔊 Sound alerts has a new box at the top: pick a sound for a follow, a sub, gifted subs, bits, a donation or a raid. Nothing plays until you add one. For gifted subs, bits and donations you set the amount and choose **exactly**, **up to** or **that much or more**. 🎁 Add gift tiers makes the 1 · 5 · 10 · 20 · 50 · 100 gifted-sub sounds in one go.
+- 💵 **Check my StreamElements tips + PayPal.** A button next to the StreamElements token in Settings (and a step in the 🚀 Stream check) shows whether the tip feed is connected, your tip page link, and whether StreamElements says PayPal is linked.
+
 ## v1.165.0: What's new
 - 🚀 **Stream check before you go live.** Test tab → ✅ Checklist → 🚀 Stream check (next to 🤖 Test all) runs your chat commands, alerts, sound alerts and the rest one step at a time, with a preview so you can see each one. It ticks what it can judge by itself and asks you about the rest, then tells you whether you're ready.
 

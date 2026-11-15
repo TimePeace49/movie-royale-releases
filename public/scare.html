@@ -24,7 +24,7 @@
   const vol = Math.max(0, Math.min(100, Number(job.vol ?? 0)));
   dispatchEvent(new CustomEvent('onWidgetLoad', { detail: { fieldData: {
     volume: vol, soundWhere: 'all', flash: job.flash !== false, shake: job.shake !== false, position: job.pos || 'bottom',
-    showMessage: true, ttsOn: false, sound1: job.own || '', sound2: job.own || '', sound3: job.own || ''
+    showMessage: true, ttsOn: false, noBuild: job.quiet !== false, sound1: job.own || '', sound2: job.own || '', sound3: job.own || ''
   } } }));
   const go = () => window.__neonPlay && window.__neonPlay({ lvl: [1, 2, 3].includes(job.lvl) ? job.lvl : 1, label: job.label || 'Boo!', line: job.line || 'Someone', sub: job.sub || '', msg: job.msg || '', plate: job.plate || '' });
   if (document.fonts && document.fonts.load) Promise.race([Promise.all(['50px Pacifico', '40px Bungee'].map(f => document.fonts.load(f).catch(() => {}))), new Promise(r => setTimeout(r, 700))]).then(go);

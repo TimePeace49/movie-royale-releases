@@ -136,6 +136,7 @@
  {"id":"test:wTestCard","kind":"off","cat":"Test tab cards","name":"🎡 Wheel tests · on “My wheel” (pick another wheel in the 🎡 Wheel tab)","text":"One card on the 🧪 Test tab.","hide":{"sel":"#wTestCard"}},
  {"id":"test:obsKeepTestCard","kind":"off","cat":"Test tab cards","name":"🔄 OBS up to date + 🎬 My videos","text":"One card on the 🧪 Test tab.","hide":{"sel":"#obsKeepTestCard"}},
  {"id":"test:linksTestCard","kind":"off","cat":"Test tab cards","name":"🔗 Connections page","text":"One card on the 🧪 Test tab.","hide":{"sel":"#linksTestCard"}},
+ {"id":"test:evsTestCard","kind":"off","cat":"Test tab cards","name":"🔔 Alert sounds + 💵 tip check","text":"One card on the 🧪 Test tab.","hide":{"sel":"#evsTestCard"}},
  {"id":"test:scTestCard","kind":"off","cat":"Test tab cards","name":"🚀 Stream check (before you go live)","text":"One card on the 🧪 Test tab.","hide":{"sel":"#scTestCard"}},
  {"id":"test:cookTestCard","kind":"off","cat":"Test tab cards","name":"🍳 Cooking scene","text":"One card on the 🧪 Test tab.","hide":{"sel":"#cookTestCard"}},
  {"id":"test:fxTestCard","kind":"off","cat":"Test tab cards","name":"🌀 Screen effects","text":"One card on the 🧪 Test tab.","hide":{"sel":"#fxTestCard"}},

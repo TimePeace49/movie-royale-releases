@@ -267,7 +267,7 @@
     if (au() && SND[job.lvl]) {
       const t = A.ctx.currentTime + .03;
       job.build = bus(); job.bus = bus();
-      SND[job.lvl].build(job.build, t, job.B);
+      if (!fv('noBuild', false)) SND[job.lvl].build(job.build, t, job.B); // (1.167.0, Derek: "all the sound at the same time as the jump scare so I have no warning")
       const own = !!fv('sound' + job.lvl, '');
       if (job.lvl === 3) { // a beat of dead silence right before the scare
         job.build.gain.setValueAtTime(1, t + job.B - .55);
