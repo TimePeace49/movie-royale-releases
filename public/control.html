@@ -538,12 +538,12 @@
   @keyframes gcTvBar { from { top: -16%; } to { top: 104%; } }
   #gcFxTag { position: absolute; left: 10px; top: 8px; padding: 3px 10px; border-radius: 9px; background: rgba(10,6,24,.36); color: rgba(255,255,255,.86); font: 700 13px/1.2 Inter, sans-serif; pointer-events: none; display: none; z-index: 3; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
   #gcFxPp { pointer-events: auto; margin-left: 7px; padding: 0 5px; min-width: 0; height: 18px; line-height: 16px; font-size: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.12); color: rgba(255,255,255,.9); cursor: pointer; vertical-align: 1px; } #gcFxPp:hover { background: rgba(255,255,255,.3); }
-  #gcOwn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; display: none; width: min(560px, 92%); max-height: 88%; overflow-y: auto; padding: 14px 16px; border-radius: 14px; background: rgba(16,10,34,.93); border: 1px solid rgba(255,255,255,.2); color: #fff; box-shadow: 0 12px 40px rgba(0,0,0,.6); cursor: default; }
-  #gcOwn.show { display: block; } #gcOwn h4 { margin: 0 0 4px; font-size: 16px; } #gcOwn p { margin: 0 0 10px; font-size: 12px; opacity: .8; }
-  #gcOwn .ownGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-  #gcOwn .ownGrid button { text-align: left; padding: 7px 9px; border-radius: 9px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); color: #fff; cursor: pointer; font-size: 13px; }
+  #gcOwn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; display: none; width: min(236px, 92%); max-height: 94%; overflow-y: auto; padding: 14px 16px; border-radius: 14px; background: rgba(16,10,34,.93); border: 1px solid rgba(255,255,255,.2); color: #fff; box-shadow: 0 12px 40px rgba(0,0,0,.6); cursor: default; }
+  #gcOwn.show { display: block; padding: 10px 12px; } #gcOwn h4 { margin: -4px -6px 6px; padding: 4px 6px; font-size: 15px; cursor: move; user-select: none; border-radius: 8px; touch-action: none; } #gcOwn h4:hover { background: rgba(255,255,255,.08); } #gcOwn p { margin: 0 0 7px; font-size: 11px; opacity: .8; line-height: 1.3; }
+  #gcOwn .ownGrid { display: grid; grid-template-columns: 1fr; gap: 5px; }
+  #gcOwn .ownGrid button { text-align: left; padding: 4px 9px; min-height: 0; line-height: 1.25; border-radius: 9px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); color: #fff; cursor: pointer; font-size: 13px; }
   #gcOwn .ownGrid button.on { background: #7c4dff; border-color: #b9a2ff; font-weight: 700; }
-  #gcOwn .ownRow { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; } #gcOwn .ownRow span { font-size: 12px; opacity: .8; flex: 1; }
+  #gcOwn .ownRow { display: flex; gap: 6px; margin-top: 9px; align-items: center; flex-wrap: wrap; } #gcOwn .ownRow span { font-size: 11px; opacity: .8; flex: 1 1 100%; } #gcOwn .ownRow button { flex: 1; }
   #gcFxTag b { color: rgba(255,226,120,.95); font-variant-numeric: tabular-nums; } #gcFxTag small { opacity: .75; }
   #gcStage:fullscreen #gcFxTag { font-size: 18px; top: 14px; left: 16px; }
   #fxBody .fxRow input[type=number] { width: 82px; } #fxBody table td { vertical-align: middle; }
@@ -3926,16 +3926,33 @@ function fxTagPut(fx, left, paused) { // (only touches the page when something c
 let FXOWN = [], FXOWN_WAIT = false, FXOWN_DRY = false;
 function fxOwnDraw() {
   const b = $('gcOwn'); if (!b || !b.classList.contains('show') || !window.SCREENFX) return;
-  const h = `<h4>🎛️ My screen effects${FXOWN_DRY ? ' <small>(test: only your view)</small>' : ''}</h4><p>Click an effect to switch it on or off. You can have several on at once. They stay on until you turn them off.${FXOWN_WAIT ? ' <b>A viewer\'s effect is playing now: yours come back right after it.</b>' : ''}</p>
+  const h = `<h4 title="My effects: drag this title to move the box anywhere on the picture (it remembers where you put it)">🎛️ My effects ⠿${FXOWN_DRY ? ' <small>(test)</small>' : ''}</h4><p>Click = on / off. They stay on until you turn them off.${FXOWN_WAIT ? ' <b>A viewer\'s effect is playing now: yours come back right after it.</b>' : ''}</p>
     <div class="ownGrid">${Object.entries(SCREENFX.FX).map(([k, F]) => `<button class="${FXOWN.includes(k) ? 'on' : ''}" onclick="fxOwnSet('${k}')" title="My effects: ${esc(F.what)}. Click to switch it ${FXOWN.includes(k) ? 'off' : 'on'}">${F.icon} ${esc(F.name)}${FXOWN.includes(k) ? ' ✓' : ''}</button>`).join('')}</div>
-    <div class="ownRow"><span>${FXOWN.length ? FXOWN.length + ' on' : 'None on'} · Ctrl+Alt+D opens and closes this box</span><button onclick="fxOwnSet(null)" title="My effects: switch all of your own effects off (the picture goes back to normal)">🛑 All off</button><button onclick="fxOwn(false)" title="My effects: close this box (your effects stay as they are)">✕ Close</button></div>`;
+    <div class="ownRow"><span>${FXOWN.length ? FXOWN.length + ' on' : 'None on'} · Ctrl+Alt+D opens / closes</span><button onclick="fxOwnSet(null)" title="My effects: switch all of your own effects off (the picture goes back to normal)">🛑 All off</button><button onclick="fxOwn(false)" title="My effects: close this box (your effects stay as they are)">✕ Close</button></div>`;
   if (b._h !== h) { b._h = h; b.innerHTML = h; }
 }
+// (1.163.1, Derek: "make it more vertical and allow me to move it") one column; drag it by its title; the spot is kept as a part of the picture's size, so it fits windowed and fullscreen
+function fxOwnPlace(at) {
+  const b = $('gcOwn'), st = $('gcStage'); if (!b || !st) return;
+  if (!at) { try { at = JSON.parse(localStorage.getItem('fxOwnAt') || 'null'); } catch {} }
+  if (!at || !(at.x >= 0) || !(at.y >= 0)) at = { x: 0.5, y: 0.5 };
+  const W = st.clientWidth || 1, Hh = st.clientHeight || 1, hw = Math.min(0.5, b.offsetWidth / 2 / W), hh = Math.min(0.5, b.offsetHeight / 2 / Hh);
+  at = { x: Math.max(hw, Math.min(1 - hw, at.x)), y: Math.max(hh, Math.min(1 - hh, at.y)) };
+  b.style.left = (at.x * 100).toFixed(2) + '%'; b.style.top = (at.y * 100).toFixed(2) + '%'; return at;
+}
+document.addEventListener('pointerdown', e => {
+  const h = e.target.closest?.('#gcOwn h4'); if (!h) return; e.preventDefault();
+  const b = $('gcOwn'), st = $('gcStage'), r = st.getBoundingClientRect(), br = b.getBoundingClientRect(), ox = e.clientX - (br.left + br.width / 2), oy = e.clientY - (br.top + br.height / 2); let at = null;
+  const mv = ev => { at = fxOwnPlace({ x: (ev.clientX - ox - r.left) / r.width, y: (ev.clientY - oy - r.top) / r.height }); };
+  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); if (at) try { localStorage.setItem('fxOwnAt', JSON.stringify(at)); } catch {} };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+});
+addEventListener('resize', () => fxOwnPlace()); document.addEventListener('fullscreenchange', () => setTimeout(fxOwnPlace, 60));
 async function fxOwn(open, dry) {
   const b = $('gcOwn'); if (!b) return; const want = open == null ? !b.classList.contains('show') : !!open;
   if (dry != null) FXOWN_DRY = !!dry; if (!want) { b.classList.remove('show'); FXOWN_DRY = false; return; }
   if (view !== 'capture') setView('capture');
-  b.classList.add('show'); fxOwnDraw();
+  b.classList.add('show'); fxOwnDraw(); fxOwnPlace();
   try { const r = await api('/api/screenfx', null, 'GET'); FXOWN = r.state?.own?.kinds || []; FXOWN_WAIT = !!r.state?.own?.waiting; fxOwnDraw(); } catch {}
 }
 async function fxOwnSet(kind) { try { const r = await api('/api/screenfx/own', kind ? { kind, dry: FXOWN_DRY } : { kinds: [] }); FXOWN = r.own.kinds; FXOWN_WAIT = !!r.own.waiting; fxOwnDraw(); } catch {} }

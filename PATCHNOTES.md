@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.163.1: What's new
+- {screenfx} 🎛️ **My effects box is a narrow list you can move.** Drag it by its title; it remembers the spot.
+
 ## v1.163.0: What's new
 - {screenfx} 🎛️ **Your own screen effects.** On the Game capture tab press Ctrl+Alt+D (or 🎛️ My effects) to switch effects on and off yourself. They stay on until you turn them off, and several can be on at once. A viewer's effect still plays: yours step aside and come back after it.
 

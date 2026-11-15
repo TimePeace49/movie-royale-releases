@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.163.1
+- 🎛️ **My effects box: tall and movable.** The Ctrl+Alt+D box is now a narrow list (one effect per row), and you can drag it by its title to anywhere on the game picture. It remembers where you put it.
+
 ## 1.163.0
 - 🎛️ **My own screen effects (Ctrl+Alt+D on the Game capture tab).** A box pops up over the game picture (also in fullscreen) with every screen effect. Click one to switch it on, click again to switch it off; several can be on at once. They stay on until you turn them off, on your view and on the stream. If a viewer's effect comes in while yours are on, yours step aside, theirs plays, and yours come back right after. There's also a 🎛️ My effects button next to ⛶ Fullscreen, and two test buttons on the 🌀 Screen effects test card.
 
