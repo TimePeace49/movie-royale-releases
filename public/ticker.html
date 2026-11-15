@@ -39,7 +39,7 @@ function connect() {
 }
 apply(cfg); (document.fonts?.ready || Promise.resolve()).then(() => { w = line.offsetWidth; });
 requestAnimationFrame(frame);
-if (DEMO) { document.body.style.background = '#2a2f3a'; const p = new URLSearchParams(location.search); if (p.get('text')) apply({ text: p.get('text') }); apply({ ...(p.get('size') ? { size: +p.get('size') } : {}), ...(p.get('pos') ? { pos: p.get('pos') } : {}), band: p.get('band') === '1' }); if (p.get('live') === '1') connect(); }
+if (DEMO) { const p = new URLSearchParams(location.search); if (!p.get('clear')) document.body.style.background = '#2a2f3a'; /* (&clear=1: see-through, for the 🚀 Stream check preview) */ if (p.get('text')) apply({ text: p.get('text') }); apply({ ...(p.get('size') ? { size: +p.get('size') } : {}), ...(p.get('pos') ? { pos: p.get('pos') } : {}), band: p.get('band') === '1' }); if (p.get('live') === '1') connect(); }
 else connect();
 </script>
 </body></html>

@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.165.0
+- 🚀 **Stream check: the pre-stream test.** A new button next to 🤖 Test all (and a card on the Test tab) opens one window with the steps on the left and a preview of your stream picture on the right. It goes through, one at a time: your connections (Twitch, chat, OBS, donations), every chat command (run as you, nothing goes to the real chat), the alerts box, the "bought a battle" pop-up, the sell message and the paused message scrolling on the picture, a screen effect, your lights for each kind of alert, your sound alerts (every file is there + you hear one), the jump scares and a practice battle. Steps it can judge tick themselves; for the rest it asks "did you see it / hear it". At the end it says whether you're good to go live and lists what to fix; 📋 copies the result. No wheel or movie steps. Commands that would change something real (skip, delete a quote…) are listed but not run.
+- 🎮 **Game capture: asks the card for 30+ a second.** The capture tab now asks for a mode that sends at least 30 pictures a second first, shows what the card offers on this connection, and tells you plainly when the card is on a slow USB link (10–15 a second is a slow cable or port).
+
 ## 1.164.0
 - 🍳 **Cooking scene filled in (dev mode, marathon).** The old background is gone. Now the big camera sits top left, the two small cameras top right, a box under them shows your total live time and the battles waiting, and a bar along the bottom has the 🍳 COOKING title and the song that's playing (with no song on, your sell message shows there instead). The cameras get lined up with the frame once. Pop-ups (battle picks, guesses, the workout timer) still show in the cooking scene; only its clock and counter moved into the frame. 👀 See the frame is on the Marathon tab and on a new Test card.
 

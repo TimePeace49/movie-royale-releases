@@ -1336,6 +1336,11 @@
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="clockTest()" title="Show the total live time and the live times it adds up (nothing changes)">⏱️ Show the counter</button><button class="ghost" onclick="window.open('/marathon.html?demo=1','mara-overlay','width=960,height=560')" title="See the overlay with the live time (a pretend one)">👀 Preview</button><button class="ghost" onclick="window.open('/marathon.html?demo=1&mini=1','mara-mini','width=960,height=560')" title="See the small gameplay counter with the live time next to it (a pretend one)">🎮 Small one</button><button class="ghost" onclick="vodCheck()" title="Which stream new battles link to on the website, and the newest battles' VOD spots (nothing changes)">▶ VOD links</button></div>
     <div id="ckTestOut" class="help" style="margin-top:8px"></div>
   </div>
+  <div class="card" id="scTestCard">
+    <h3>🚀 Stream check (before you go live)</h3>
+    <p class="help">The big one. It goes through everything for your stream one step at a time and shows each thing in a preview of your stream picture: chat commands, alerts, the text that scrolls on the stream, screen effects, your lights, sound alerts, jump scares and a practice battle. Steps it can judge by itself tick themselves; for the rest it asks whether you saw or heard it. Nothing goes to your real chat. No wheel or movie steps.</p>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="streamCheck()" title="Stream check: open the pre-stream check window (pick the parts, then ▶ Start)">🚀 Open the stream check</button></div>
+  </div>
   <div class="card devOnly" id="cookTestCard">
     <h3>🍳 Cooking scene</h3>
     <p class="help">The cooking scene's frame: the big camera top left, the two small ones top right, your live time and battles under them, and a bar along the bottom with the title and the song. This only shows a picture of it; OBS gets the frame the next time 🧰 Make it runs (or by itself after an update, while OBS is on the marathon setup and you're not live).</p>
@@ -1761,6 +1766,7 @@ not a link</textarea>
 <script src="profile.js"></script>
 <script src="charparts.js"></script>
 <script src="screenfx.js"></script>
+<script src="streamcheck.js" defer></script>
 <script>
 let S = null, sock = null, filter = '', showOut = false, view = 'people', sub = 'account', hist = null, histFor = null, histVer = -1, histList = null, settingsDirty = false;
 const $ = id => document.getElementById(id);
@@ -2314,7 +2320,7 @@ function arrangeTests() { // put the Test tab's cards into categories (once)
 /* ⭐ My tests (1.162.0, Derek: "build me a mytest tab in test to test everything I will be using"): star any test card; the ⭐ My tests side tab shows only those,
    each with a tick box, so he can run through his own list before a stream. Stars + ticks are kept on this PC (localStorage myTests / myTestsDone). */
 const MY = { set: new Set(), done: {} };
-const MY_START = ['paidTestCard', 'maraBattleTestCard', 'mtTestCard', 'restTestCard', 'waitTestCard', 'ckTestCard', 'gcTestCard', 'fxTestCard', 'smTestCard', 'scareTestCard', 'ttsTestCard', 'cvTestCard', 'micTestCard', 'ytTestCard', 'obsKeepTestCard', 'deckTestCard', 'clipTestCard', 'adTestCard', 'spamTestCard', 'botTestCard', 'sbTestCard', 'kickTestCard', 'coTestCard', 'cookTestCard']; // (the starter list for Derek's marathon stream; he stars / unstars from there)
+const MY_START = ['scTestCard', 'paidTestCard', 'maraBattleTestCard', 'mtTestCard', 'restTestCard', 'waitTestCard', 'ckTestCard', 'gcTestCard', 'fxTestCard', 'smTestCard', 'scareTestCard', 'ttsTestCard', 'cvTestCard', 'micTestCard', 'ytTestCard', 'obsKeepTestCard', 'deckTestCard', 'clipTestCard', 'adTestCard', 'spamTestCard', 'botTestCard', 'sbTestCard', 'kickTestCard', 'coTestCard', 'cookTestCard']; // (the starter list for Derek's marathon stream; he stars / unstars from there)
 const mySave = () => { try { localStorage.myTests = JSON.stringify([...MY.set]); localStorage.myTestsDone = JSON.stringify(MY.done); } catch {} };
 const myCards = () => [...($('tMain')?.children || [])].filter(c => c.dataset.my);
 const myShown = c => !c.classList.contains('edOff') && !c.classList.contains('edHid') && !(c.classList.contains('devOnly') && !document.body.classList.contains('dev'));
@@ -2521,7 +2527,7 @@ const taDone = c => TA.res[c.id]?.s === 'ok' || (!!c.ck && !!ckDone[c.ck]);
 function taPill() { const L = taList(), n = s => L.filter(c => TA.res[c.id]?.s === s).length; if (TA.run) return `${TA.run.i}/${TA.run.ids.length}`; return TA.at ? `✅${n('ok')}${n('bad') ? ` ❌${n('bad')}` : ''}` : ''; }
 function taBtns() {
   return TA.run ? `<span class="pill" style="align-self:center">🔄 ${TA.run.i}/${TA.run.ids.length}</span><button class="danger" onclick="taStop()">⏹ Stop testing</button>`
-    : `<button class="primary" title="Check everything Movie Royal can check by itself, in the background: nothing goes on stream, in chat or in Discord" onclick="taRun(false)">🤖 Test all</button><button title="Only the checks that haven't passed yet (and not the ones whose checklist item is already ticked)" onclick="taRun(true)">🤖 Test all not done</button>`;
+    : `<button class="primary" title="Check everything Movie Royal can check by itself, in the background: nothing goes on stream, in chat or in Discord" onclick="taRun(false)">🤖 Test all</button><button title="Stream check: the pre-stream run. Goes through your chat commands, alerts, the text on the stream, screen effects, lights, sound alerts and jump scares one by one, with a preview picture so you can see each one. No wheel or movie steps" onclick="streamCheck()">🚀 Stream check</button><button title="Only the checks that haven't passed yet (and not the ones whose checklist item is already ticked)" onclick="taRun(true)">🤖 Test all not done</button>`;
 }
 function taHTML() {
   const L = taList(), r = TA.run, n = s => L.filter(c => TA.res[c.id]?.s === s).length;
@@ -3815,6 +3821,13 @@ const GC = { stream: null, set: null, raf: 0, n: 0, uniq: 0, at: 0, prev: null, 
 const GC_RES = { '720p60': [1280, 720, 60], '1080p60': [1920, 1080, 60], '1080p120': [1920, 1080, 120], '1440p60': [2560, 1440, 60], '2160p60': [3840, 2160, 60] };
 function gcCfg() { if (!GC.set) { try { GC.set = JSON.parse(localStorage.gcSet || '{}'); } catch { GC.set = {}; } GC.set = { vid: '', aud: '', res: '1080p60', vol: 100, fps: true, fpsA: 50, on: false, ...GC.set }; } return GC.set; }
 function gcSave() { try { localStorage.gcSet = JSON.stringify(gcCfg()); } catch {} }
+const GC_SLOW = '<br>⚠️ <b>That is too slow, and it comes from the USB link, not from this app.</b> A capture card on a slow (USB 2) cable or port can only send a few pictures a second. Use the cable that came with the card or one marked USB 3 / 5Gbps / 10Gbps, in a blue or “SS” port on the back of the PC (not a hub, and many front USB-C ports are slow). Then press ⏹ Stop and ▶ Start. You can also try 🖼️ Picture: 720p 60, which needs much less.';
+function gcSpeedNote(st) { // what the card itself says it can do right now
+  let caps = null; try { caps = GC.stream.getVideoTracks()[0].getCapabilities(); } catch {}
+  const max = Math.round(caps?.frameRate?.max || 0), got = Math.round(st.frameRate || 0);
+  const can = caps?.width?.max ? ` The card offers up to ${caps.width.max}×${caps.height?.max || '?'}${max ? ' and ' + max + ' a second' : ''} on this connection.` : '';
+  return can + (GC.slowMode || (got && got < 30) || (max && max < 30) ? GC_SLOW : '');
+}
 function gcNote(t) { const n = $('gcNote'); if (n) n.innerHTML = t || ''; }
 const gcIsCard = l => /elgato|game capture|cam link|hd60|4k60|4k x|4k s|4k pro|capture|avermedia|live gamer|usb video/i.test(l || '');
 async function gcDevices(ask) { // the list of capture cards / sound inputs (names only show once the app may use them)
@@ -3841,14 +3854,20 @@ async function gcStart(fake) {
       if (!c.vid) { await gcDevices(true); if (!c.vid) return gcNote('⚠️ No capture card found. Plug it in (and close other programs that are showing it, like the Elgato app or an OBS source of it), then press 🔄 Find my capture card.'); }
       const [w, h, f] = GC_RES[c.res] || GC_RES['1080p60'];
       const want = { video: { deviceId: { exact: c.vid }, width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: f } }, audio: c.aud && c.aud !== 'none' ? { deviceId: { exact: c.aud }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 }, sampleRate: { ideal: 48000 }, latency: { ideal: 0 } } : false };
-      try { GC.stream = await navigator.mediaDevices.getUserMedia(want); }
-      catch (e) { if (!want.audio) throw e; GC.stream = await navigator.mediaDevices.getUserMedia({ ...want, audio: false }); toast('🎮 The picture works, but that sound input could not be opened (' + esc(e.name || e.message || e) + '). Pick another one under 🔊 Game sound.'); }
+      // (1.165.0, Derek: "only getting 10 to 15 fps… need at least 30") ask for a mode that does 30 a second or more first: without a floor the
+      // browser may pick the right SIZE in a slow mode. If the card has no such mode at this size, take what it has (and say so below).
+      const fast = { ...want, video: { ...want.video, frameRate: { min: 30, ideal: f } } }; GC.slowMode = false;
+      try { GC.stream = await navigator.mediaDevices.getUserMedia(fast); }
+      catch (e0) { if (e0?.name !== 'OverconstrainedError') { try { GC.stream = await navigator.mediaDevices.getUserMedia(want); } catch (e) { if (!want.audio) throw e; GC.stream = await navigator.mediaDevices.getUserMedia({ ...want, audio: false }); toast('🎮 The picture works, but that sound input could not be opened (' + esc(e.name || e.message || e) + '). Pick another one under 🔊 Game sound.'); } }
+        else { GC.slowMode = true; try { GC.stream = await navigator.mediaDevices.getUserMedia(want); }
+      catch (e) { if (!want.audio) throw e; GC.stream = await navigator.mediaDevices.getUserMedia({ ...want, audio: false }); toast('🎮 The picture works, but that sound input could not be opened (' + esc(e.name || e.message || e) + '). Pick another one under 🔊 Game sound.'); } } }
       GC.stream.getVideoTracks()[0]?.addEventListener('ended', () => { if (GC.stream) { gcStop(); gcNote('⚠️ The capture card stopped sending a picture (unplugged, or another program took it).'); } });
     }
     v.srcObject = GC.stream; v.muted = !!fake; v.volume = Math.max(0, Math.min(1, c.vol / 100)); await v.play().catch(() => {});
     if (!fake) { c.on = true; gcSave(); gcKeep(true); }
     const st = GC.stream.getVideoTracks()[0]?.getSettings?.() || {};
-    gcNote(fake ? `🧪 A pretend game picture that changes ${fake} times a second (no capture card used). The big number should read about ${fake}.` : `✅ Showing ${st.width || '?'}×${st.height || '?'} at ${Math.round(st.frameRate || 0) || '?'} a second${c.aud === 'none' ? ', no sound' : ''}.`);
+    gcNote(fake ? `🧪 A pretend game picture that changes ${fake} times a second (no capture card used). The big number should read about ${fake}.` : `✅ Showing ${st.width || '?'}×${st.height || '?'} at ${Math.round(st.frameRate || 0) || '?'} a second${c.aud === 'none' ? ', no sound' : ''}.` + gcSpeedNote(st));
+    GC.low = 0; GC.lowSaid = false; GC.base = $('gcNote')?.innerHTML || '';
     GC.n = GC.uniq = 0; GC.at = performance.now(); GC.prev = null; gcLoop(); gcDraw();
   } catch (e) {
     GC.stream = null; gcDraw();
@@ -3868,7 +3887,8 @@ function gcLoop() {
     GC.n++;
     if (gcCfg().fps !== false && v.videoWidth) { try { GC.g.drawImage(v, 0, 0, 64, 36); const d = GC.g.getImageData(0, 0, 64, 36).data, p = GC.prev; let diff = 0; if (p) for (let i = 0; i < d.length; i += 4) diff += Math.abs(d[i] - p[i]) + Math.abs(d[i + 1] - p[i + 1]) + Math.abs(d[i + 2] - p[i + 2]); if (!p || diff > 64 * 36 * .35) GC.uniq++; GC.prev = d; } catch {} }
     const now = performance.now(), el = now - GC.at;
-    if (el >= 1000) { GC.sig = Math.round(GC.n * 1000 / el); GC.fps = Math.round(GC.uniq * 1000 / el); GC.n = GC.uniq = 0; GC.at = now; const b = $('gcFps'); if (b) b.innerHTML = `${GC.fps} FPS<small>card sends ${GC.sig}</small>`; }
+    if (el >= 1000) { GC.sig = Math.round(GC.n * 1000 / el); GC.fps = Math.round(GC.uniq * 1000 / el); GC.n = GC.uniq = 0; GC.at = now; const b = $('gcFps'); if (b) b.innerHTML = `${GC.fps} FPS<small>card sends ${GC.sig}</small>`;
+      if (!GC.fake && !document.hidden) { GC.low = GC.sig < 25 ? (GC.low || 0) + 1 : 0; if (GC.low >= 6 && !GC.lowSaid) { GC.lowSaid = true; gcNote((GC.base || '').replace(GC_SLOW, '') + `<br>📉 The card has been sending only about ${GC.sig} pictures a second.` + GC_SLOW); } } }
     v.requestVideoFrameCallback ? v.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);
   };
   v.requestVideoFrameCallback ? v.requestVideoFrameCallback(tick) : requestAnimationFrame(tick);

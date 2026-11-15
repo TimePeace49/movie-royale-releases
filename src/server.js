@@ -4535,6 +4535,17 @@ app.post('/api/test/alert', (req, res) => { chatlog.onAlert({ kind: String(req.b
 // 🏃🧪 (1.81.2, Derek: "a test marathon battle in Test, only in dev mode") your real Marathon Battle (its things, pictures, odds and
 // chat luck) on a character map, as a practice round: nobody's battle is used, nothing wins, no luck changes, no history. A timed
 // thing that wins shows its ⏱️ timer (a 🧪 one) so you can try that too.
+// 🚀 (1.165.0, Derek: "the ultimate test… make sure everything works before going live") what the Stream check needs to plan its steps: read-only
+app.get('/api/test/stream-check', (req, res) => { try {
+  const cmds = (db.chatbot?.commands || []).filter(c => c.on !== false), sc = scareCfg(), P = promoCfg();
+  res.json({ ok: true, dev: paid.dev(), live: !!db.live,
+    sounds: cmds.filter(c => c.sound || c.soundMissing).map(c => ({ id: c.id, name: c.name, file: c.sound || '', ok: !!c.sound && fs.existsSync(path.join(SFXDIR, c.sound)) })),
+    own: cmds.filter(c => !c.sound && !c.soundMissing && !c.ready).map(c => c.name),
+    sfx: { pages: [...wss.clients].filter(c => c.role === 'sfx').length, hear: sfxHearOn() },
+    scare: { on: paid.dev() && !!sc.on, where: sc.where, desktop: !!globalThis.__desktop?.scarePop, kinds: sc.kinds },
+    mara: { on: paid.dev() && !!paid.cfg().on, list: !!maraList(), paused: !!db.paidPaused, clock: clockMsg().on },
+    srOpen: feat('songs') && songs.isOpen(), promo: { on: !!P.on, text: promoText(false) }, fx: { feat: feat('screenfx'), on: screenfx.on() }, smart: feat('smart') });
+} catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/test/mara-battle', async (req, res) => {
   if (!paid.dev()) return res.status(400).json({ error: 'The test marathon battle is a 🛠️ dev mode feature: turn on Dev mode in Settings → 👤 Account & updates.' });
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going.' });
