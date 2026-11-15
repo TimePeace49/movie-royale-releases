@@ -2,6 +2,13 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.169.0
+- 🗣️ More voices for 🔈 Read chat to me: press ⬇️ More voices… next to the voice menu on the Marathon tab. It lists free voices (from the open-source Piper project) that sound more like real people than the Windows ones: American, British, Scottish, Irish and more, and a few that hold lots of different speakers (type a speaker number to pick one).
+  - Press ⬇️ Download (about 60 MB each; the first time it also downloads the small voice maker), then ▶ Hear to listen and Use to read chat with it. Downloaded voices also show up in the voice menu.
+  - They run on your own PC. Nothing you or chat says is sent anywhere, and they work without the internet once downloaded.
+  - Every voice has its own licence. The app reads each one's licence page and only offers the ones that are free to use on a stream. The rest are greyed out with the reason (for example "research / non-commercial use only").
+  - Test tab → 🔈 Read chat to me: ⬇️ More voices… and 🧪 Voice licence rules.
+
 ## 1.168.0
 - ⚡ Game capture tab: a row of quick buttons under the top row: ⏭️ Skip TTS, 🔇 Mute TTS, 🔈 Reading chat on / off, and 📌 Pin battles + screen effects message (pins a chat message telling viewers how to buy a battle and mess with your screen).
 - ⌨️ Keys for them on the Game capture tab, also in fullscreen: K = skip TTS, M = mute / unmute TTS, V = reading chat on / off, P = pin the message. Change them in Settings → Key binds.

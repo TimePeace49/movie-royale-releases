@@ -6,6 +6,7 @@
 // Left out: cheers (bits), channel point messages, highlighted / paid messages, commands (!…), known bots, links (said as
 // "a link"), emotes. Deleted messages and timed-out people come out of the line.
 import { db, save } from './store.js';
+import * as piper from './piper.js'; // 🗣️ downloaded voices (1.169.0): a voice saved as "piper:<id>" is made by Piper on this PC instead of by Windows
 
 let H = { broadcast() {}, pushState() {}, isBot: () => false, dev: () => false, act() {} };
 export function setHooks(h) { H = { ...H, ...h }; }
@@ -64,7 +65,7 @@ export function words(m, c = cfg()) {
 
 // ── the line + the player ─────────────────────────────────────────────────────────────────────────
 let q = [], playing = null, n = 0, recent = [], dropped = 0, lastErr = null, players = 0;
-export const state = () => ({ cfg: cfg(), waiting: q.length, playing: playing ? playing.say : null, recent: recent.slice(0, 6), dropped, err: lastErr, player: players > 0, engine: engine(), needSink: needSink(), voices: voiceList, devices: devList, windows: !!globalThis.__desktop?.chatVoice?.ok?.() });
+export const state = () => ({ cfg: cfg(), waiting: q.length, playing: playing ? playing.say : null, recent: recent.slice(0, 6), dropped, err: lastErr, player: players > 0, engine: engine(), piper: piper.mine(), piperOn: piper.ready(cfg().voice), needSink: needSink(), voices: voiceList, devices: devList, windows: !!globalThis.__desktop?.chatVoice?.ok?.() });
 const engine = () => globalThis.__desktop?.chatVoice?.ok?.() ? 'windows' : 'browser';
 let voiceList = [], devList = [];
 export async function loadVoices() {
@@ -102,7 +103,8 @@ async function next() {
   playing = { ...it, t: setTimeout(() => done(it.id), 45000) };
   recent.unshift({ say: it.say, at: Date.now(), test: !!it.test }); recent = recent.slice(0, 20);
   let wav = null;
-  if (engine() === 'windows') { try { wav = (await globalThis.__desktop.chatVoice.wav(it.say, { voice: c.voice, rate: c.rate })).toString('base64'); lastErr = null; } catch (e) { lastErr = e.message; } }
+  if (piper.ready(c.voice)) { try { wav = (await piper.wav(it.say, { voice: c.voice, rate: c.rate })).toString('base64'); lastErr = null; } catch (e) { lastErr = e.message; } if (!wav && playing && playing.id === it.id) { done(it.id); return; } }
+  else if (engine() === 'windows') { try { wav = (await globalThis.__desktop.chatVoice.wav(it.say, { voice: piper.isPiper(c.voice) ? '' : c.voice, rate: c.rate })).toString('base64'); lastErr = null; } catch (e) { lastErr = e.message; } }
   if (!playing || playing.id !== it.id) return; // (skipped while the voice was being made)
   if (engine() === 'windows' && !wav) { done(it.id); return; } // (never falls back to a voice that might play on the stream's speaker)
   H.broadcast({ type: 'cvPlay', id: it.id, say: it.say, wav, voice: c.voice, rate: c.rate, vol: c.vol, sink: c.sink, sinkLabel: c.sinkLabel }, 'chatvoice');

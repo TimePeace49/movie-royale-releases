@@ -58,6 +58,7 @@ import * as cards from './cards.js';
 import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
+import * as piper from './piper.js';
 import * as spamban from './spamban.js';
 import * as chatbot from './chatbot.js';
 import * as appcmds from './appcmds.js';
@@ -6120,6 +6121,21 @@ app.post('/api/mara/chatvoice', wTry(async b => {
   if (o.on || o.voice != null) chatvoice.loadVoices().then(() => pushState());
   return chatvoice.state();
 }));
+// 🗣️ (1.169.0, Derek: more voices than Windows' own) Piper voices: the list with each one's licence verdict, the one-time download of the voice maker,
+// downloading / removing a voice, and picking one. Dev mode only, like the chat voice itself.
+piper.setHooks({ broadcast, pushState, act });
+const piperDev = fn => wTry(async b => { if (!paid.dev()) throw new Error('Reading chat out loud is a 🛠️ dev mode feature.'); return fn(b); });
+app.get('/api/mara/voices', async (req, res) => { try { if (!paid.dev()) throw new Error('Reading chat out loud is a 🛠️ dev mode feature.'); const st = piper.state(); if (req.query.check === '1' || (!st.checkedAt && !st.checking)) piper.check(req.query.force === '1').catch(() => {}); res.json({ ok: true, ...piper.state(), voice: chatvoice.cfg().voice }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/mara/voices', piperDev(async b => {
+  if (b.check) { await piper.check(true); return { ...piper.state(), voice: chatvoice.cfg().voice }; }
+  if (b.runtime) await piper.installRuntime();
+  if (b.install) { await piper.installRuntime(); await piper.install(String(b.install)); }
+  if (b.remove) { const id = String(b.remove); if (piper.parse(chatvoice.cfg().voice)?.id === id) chatvoice.setCfg({ voice: '' }); piper.remove(id); }
+  if (b.use != null) { const id = String(b.use); if (id && !piper.have(id)) throw new Error('Download that voice first.'); chatvoice.setCfg({ voice: id ? `piper:${id}${Number(b.speaker) > 0 ? '#' + Math.round(Number(b.speaker)) : ''}` : '' }); }
+  if (b.hear) { const id = String(b.hear); if (!piper.ready('piper:' + id)) throw new Error('Download that voice first.'); const w = await piper.wav(String(b.text || 'Hello chat! This is how I sound when I read your messages.'), { voice: `piper:${id}${Number(b.speaker) > 0 ? '#' + Math.round(Number(b.speaker)) : ''}`, rate: chatvoice.cfg().rate }); return { ...piper.state(), voice: chatvoice.cfg().voice, wav: w.toString('base64') }; }
+  return { ...piper.state(), voice: chatvoice.cfg().voice };
+}));
+app.get('/api/test/piper', (req, res) => res.json(piper.demo())); // 🧪 the licence rules on sample pages (nothing downloaded)
 // 🧪 what the chat voice would say for a pretend message (or why it'd skip it). say:true = read it out too
 app.post('/api/test/chatvoice', wTry(b => {
   const m = { login: 'pretend_viewer', name: b.name || 'Pretend_Viewer42', text: String(b.text || ''), emotes: b.emotes || '', bits: b.kind === 'bits' ? 100 : 0, reward: b.kind === 'reward' ? 'test-reward' : null, paidMsg: b.kind === 'highlight', badges: { broadcaster: b.kind === 'me' } };
