@@ -51,6 +51,7 @@ import * as site from './site.js';
 import * as paid from './paid.js';
 import * as marathon from './marathon.js';
 import * as screenfx from './screenfx.js';
+import * as smart from './smart.js';
 import * as itempics from './itempics.js';
 import * as cards from './cards.js';
 import * as inactive from './inactive.js';
@@ -1199,7 +1200,7 @@ const twitchHandlers = {
     if (!tiers.length) return;
     triggerEvent(tiers[0][1], { name: c.name, avatar: await avatarFor(c.login), bits: c.bits }, 'bits');
   },
-  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } try { if (a.kind === 'bits') screenfx.money({ kind: 'bits', amount: a.amount, name: a.name, text: a.text }); } catch (e) { console.error('[screen effects]', e.message); } },
+  alert(a) { try { chatlog.onAlert(a); } catch (e) { console.error('[alert]', e.message); } alertAct(a); try { eggs.onAlert(a); } catch (e) { console.error('[eggs]', e.message); } try { movienight.onAlert(a); } catch (e) { console.error('[movie night]', e.message); } try { scareFor(a); } catch (e) { console.error('[scare pop-up]', e.message); } try { smart.onAlert(a); } catch (e) { console.error('[smart lights]', e.message); } try { if (a.kind === 'bits') screenfx.money({ kind: 'bits', amount: a.amount, name: a.name, text: a.text }); } catch (e) { console.error('[screen effects]', e.message); } },
   clear(c) { try { chatlog.onClear(c); } catch {} try { chatvoice.clear(c); } catch {} },
   raidOut(t) { try { raids.note(t); } catch (e) { console.error('[raid tab]', e.message); } }, // 🚀 you raided someone (Twitch says so, also for /raid typed by hand)
   async chat(m) {
@@ -4069,6 +4070,24 @@ app.get('/api/test/promo', (req, res) => { const rows = [], T = (label, got, ok)
 app.post('/api/screenfx/timer', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); res.json({ ok: true, url: fxtUrl(), ...(await fxtObs(req.body?.on !== false)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/screenfx/stop', (req, res) => res.json({ ...screenfx.stop(!!req.body?.all), state: screenfx.state() }));
 app.post('/api/screenfx/rewards', async (req, res) => { try { if (!twitch.status.userId) throw new Error('Sign in with Twitch first.'); res.json({ ok: true, ...(await fxSetup()) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+// 🔌 Smart plug controls (1.160.0, Derek's edition only: extra `smart`): Govee + Tuya (Gosund, Energizer) plugs and lights straight from the app, no Alexa in between
+smart.setHooks({ on: () => feat('smart'), act: (text, o) => act('stream', text, o), changed: () => broadcast({ type: 'smart' }, 'control') });
+const smartNeed = () => { if (!feat('smart')) throw new Error('Smart plug controls are not part of this edition.'); };
+const smartInfo = () => ({ ...smart.state(), deck: `${deck.urlFor('smart')}` });
+app.get('/api/smart', (req, res) => res.json(smartInfo()));
+app.post('/api/smart', (req, res) => { try { smartNeed(); smart.setCfg(req.body || {}); res.json({ ok: true, ...smartInfo() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/smart/find', async (req, res) => { try { smartNeed(); const r = await smart.find(); res.json({ ok: true, found: r, ...smartInfo() }); } catch (e) { res.status(400).json({ error: e.message, ...smartInfo() }); } });
+app.post('/api/smart/power', async (req, res) => { try { smartNeed(); const b = req.body || {}; const r = await smart.power(String(b.id || ''), b.to === true || b.to === false ? b.to : 'toggle'); res.json({ ok: true, did: r, ...smartInfo() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/smart/look', async (req, res) => { try { smartNeed(); const b = req.body || {}; const r = await smart.look(String(b.id || ''), { color: b.color, bright: b.bright }); res.json({ ok: true, did: r, ...smartInfo() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/smart/device', (req, res) => { try { smartNeed(); const b = req.body || {}; smart.edit(String(b.id || ''), b); res.json({ ok: true, ...smartInfo() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/smart/show', (req, res) => { try { smartNeed(); const b = req.body || {}; if (!smart.EVENTS[b.kind]) throw new Error('Which one: sub, gift or raid?'); const r = smart.show(String(b.kind), { by: 'you (a try)', test: !!b.test }); if (r.skipped) throw new Error('Nothing played: ' + r.skipped + '.'); res.json({ ok: true, did: r, ...smartInfo() }); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/smart/stop', (req, res) => res.json({ ...smart.stopShow(true), ...smartInfo() }));
+app.get('/api/test/smart', async (req, res) => { try { res.json(await smart.demo()); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/test/smart', async (req, res) => { try { smartNeed(); const a = String(req.body?.action || 'fill'); let r = {};
+  if (a === 'fill') r = await smart.find({ fake: true }); else if (a === 'clear') r = smart.clearTests();
+  else if (a === 'sub' || a === 'gift' || a === 'raid') { if (!smart.state().devices.some(d => d.test)) await smart.find({ fake: true }); r = smart.show(a, { by: 'Pretend_Viewer', test: true, bulbs: smart.state().devices.filter(d => d.test && d.fx && d.type === 'bulb').map(d => d.id) }); }
+  else throw new Error('Unknown test.');
+  res.json({ ok: true, did: r, ...smartInfo() }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.get('/api/test/screenfx-rules', (req, res) => { const d = screenfx.demo(), F = globalThis.SCREENFX, T = (label, got, ok) => d.rows.push({ label, got, ok });
   const box = { positionX: 0, positionY: 0, alignment: 5, rotation: 0, scaleX: 1, scaleY: 1, boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsWidth: 1920, boundsHeight: 1080, boundsAlignment: 0, width: 1920, height: 1080 };
   const a = obs.fxTransform(box, F.frame('flip', 5, 30)), m = obs.fxTransform({ ...box, boundsType: 'OBS_BOUNDS_NONE', boundsWidth: 0, boundsHeight: 0 }, F.frame('mirror', 5, 30)), t = obs.fxTransform(box, F.frame('tiny', 5, 30));
@@ -4601,6 +4620,7 @@ errlog.setOnNew(e => {
 deck.setHooks({
   port: PORT, data: DATA, root: ROOT, dev: () => paid.dev(),
   scenes: () => { if (db.settings.obsOn === false) throw new Error('Movie Royal isn\'t allowed to use OBS (Settings → 🎥 OBS).'); return obs.scenesNow(); },
+  smart: async (id, to) => { if (!feat('smart')) throw new Error('Smart plug controls are not part of this edition.'); const r = await smart.power(id, to, 'deck'); return `${r.name}: ${r.on ? 'on' : 'off'}`; },
   scene: (name, preview) => { if (db.settings.obsOn === false) throw new Error('Movie Royal isn\'t allowed to use OBS (Settings → 🎥 OBS), so it can\'t switch scenes.'); return obs.goScene(name, preview); },
   call: async (method, p, body) => {
     if (method === 'GOVIEW') { await deck_call('/api/view', { view: p }); broadcast({ type: 'goView', view: p, force: true }, 'control'); return {}; }

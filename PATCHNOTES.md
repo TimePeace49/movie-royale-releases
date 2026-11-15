@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.160.0: What's new
+- {smart} 🔌 **Smart plug controls.** Settings → 🔌 Smart plug controls switches your Govee, Gosund and Energizer plugs and lights from the app (Alexa keeps working as before), makes the lights you tick put on a show for subs and raids and then go back to how they were, and gives you links for Stream Deck keys.
+
 ## v1.159.3: What's new
 - {has:movies} 🌙 **The movie week waits for your stream to end.** A stream that runs past midnight on the last day of the week no longer brings the earlier winners' other movies back mid-stream, and late wins no longer keep people benched the following week. The new week starts once you have been offline for over an hour.
 

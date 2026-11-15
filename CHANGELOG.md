@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.160.0
+- 🔌 **Smart plug controls (Derek's edition only).** A new Settings page, 🔌 Smart plug controls, switches your smart plugs and lights straight from the app: Govee with the key from the Govee Home app, and Gosund + Energizer through a free Tuya project (both brands run on Tuya). Alexa isn't involved and keeps working as before. Each plug and light gets On / off buttons; lights also get a colour picker and brightness.
+- 💡 **Lights react to subs and raids.** The lights you tick (your Energizer bulbs by default) flash, go rainbow or hold a colour for a sub, gift subs or a raid, then go back to exactly how they were. Each one has its own switch, style, colour and length, and a ▶ Try it button.
+- 🎛️ **Stream Deck links.** 🎛️ next to a plug or light copies a link for a Stream Deck Website key that switches it on / off.
+- 🧪 Test tab → 🔌 Smart plug controls: checks the rules on pretend lights, adds pretend plugs to try the buttons, pretend sub and raid shows. Not tested against real Govee / Tuya devices yet.
+
 ## 1.159.3
 - 🌙 **The movie week no longer flips in the middle of a stream.** A new week used to start at midnight on the dot (Sunday by default), even mid-stream: a Saturday stream that ran past midnight got the earlier winners' other movies back for the next battle, and wins after midnight counted for the NEW week, so those people were still benched the next Saturday. Now a stream night that began before the new week keeps the old week until the night is over (offline for more than an hour), then the week rolls. Test tab → 🌙 stream night card → 🗓️ Week vs. midnight.
 

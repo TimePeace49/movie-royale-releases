@@ -169,6 +169,11 @@ export async function press(id, via = 'deck', q = {}) {
     try { const r = await H.scene(name, cfg().sceneTarget === 'preview'); const msg = `${r?.studio ? 'In the preview' : 'Switched to'}: ${name}`; lastPress = { id, label: sceneLook(name).label, ok: true, msg, at: Date.now(), via }; return msg; }
     catch (e) { lastPress = { id, label: sceneLook(name).label, ok: false, msg: e.message, at: Date.now(), via }; throw Object.assign(e, { code: 409 }); }
   }
+  if (id === 'smart') { // 🔌 /deck/<key>/smart?id=<plug or light>&do=toggle|on|off (1.160.0)
+    const dev = String(q.id || '').slice(0, 120), to = q.do === 'on' ? true : q.do === 'off' ? false : 'toggle'; if (!dev) throw Object.assign(new Error('Which plug or light?'), { code: 400 });
+    try { const msg = await H.smart(dev, to); lastPress = { id, label: 'Smart plug', ok: true, msg, at: Date.now(), via }; return msg; }
+    catch (e) { lastPress = { id, label: 'Smart plug', ok: false, msg: e.message, at: Date.now(), via }; throw Object.assign(e, { code: 409 }); }
+  }
   const b = BUTTONS[id]; if (!b) throw Object.assign(new Error(`There's no Stream Deck button called "${id}". Make the pages again in Settings → 🖥️ App → 🎛️ Stream Deck.`), { code: 404 });
   if (b.dev && !H.dev()) throw Object.assign(new Error(`${b.label} is a 🛠️ dev mode button.`), { code: 409 });
   try { const msg = await b.run(); lastPress = { id, label: b.label, ok: true, msg, at: Date.now(), via }; return msg; }
