@@ -2,6 +2,10 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.161.0
+- ⚡ **Fast flash for smart lights (Derek's edition).** A new style for subs, gift subs and raids: the app sends one command and the bulb does the flashing itself, so it isn't held to one change a second. It has a speed box (0 to 100; which end is fastest depends on the bulb, so try a few with ▶ Try it). Bulbs that can't do it, and Govee bulbs, do the slow flash instead. Afterwards the bulb goes back to how it was, including its own saved scene. Not tried on real bulbs yet.
+- 💎💵 **Lights for bits and donations (Derek's edition).** Bits of 300 or more and donations of $3 or more now set the ticked lights off too (fast flash by default). Each has its own switch, amount, style, colour and length.
+
 ## 1.160.0
 - 🔌 **Smart plug controls (Derek's edition only).** A new Settings page, 🔌 Smart plug controls, switches your smart plugs and lights straight from the app: Govee with the key from the Govee Home app, and Gosund + Energizer through a free Tuya project (both brands run on Tuya). Alexa isn't involved and keeps working as before. Each plug and light gets On / off buttons; lights also get a colour picker and brightness.
 - 💡 **Lights react to subs and raids.** The lights you tick (your Energizer bulbs by default) flash, go rainbow or hold a colour for a sub, gift subs or a raid, then go back to exactly how they were. Each one has its own switch, style, colour and length, and a ▶ Try it button.

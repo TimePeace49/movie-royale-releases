@@ -14,8 +14,10 @@ const clamp = (v, lo, hi, d) => { v = Number(v); return Number.isFinite(v) ? Mat
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export const REGIONS = { us: ['Western America', 'openapi.tuyaus.com'], ue: ['Eastern America', 'openapi-ueaz.tuyaus.com'], eu: ['Central Europe', 'openapi.tuyaeu.com'], we: ['Western Europe', 'openapi-weaz.tuyaeu.com'], in: ['India', 'openapi.tuyain.com'], cn: ['China', 'openapi.tuyacn.com'] };
-export const EVENTS = { sub: ['💜 Sub', '#9146ff'], gift: ['🎁 Gift subs', '#ff4fa3'], raid: ['🚀 Raid', '#ff3b30'] };
-export const STYLES = { flash: 'Flash (colour ↔ dim)', rainbow: 'Rainbow', solid: 'Hold the colour' };
+export const EVENTS = { sub: ['💜 Sub', '#9146ff'], gift: ['🎁 Gift subs', '#ff4fa3'], raid: ['🚀 Raid', '#ff3b30'], bits: ['💎 Bits', '#ffd400'], tip: ['💵 Donation', '#22c55e'] };
+export const MINS = { bits: 300, tip: 3 }; // (1.161.0, Derek: "any bits over 300 or donations over 3 bucks": that amount or more)
+export const STYLES = { flash: 'Flash (colour ↔ dim)', quick: 'Fast flash (the bulb does it itself)', rainbow: 'Rainbow', solid: 'Hold the colour' };
+export const QUICK_SPEED = 100; // the bulb's own 0–100 flash setting (which end is fastest differs by bulb: ▶ Try it shows)
 const STEP = 1100; // (Tuya's online service: about one change a second per bulb, or it starts dropping them)
 
 function data() {
@@ -25,7 +27,7 @@ function data() {
 }
 export const on = () => H.on() && data().on !== false;
 export function events() { const d = data(), out = {};
-  for (const [k, [, col]] of Object.entries(EVENTS)) { const e = d.events[k] || {}; out[k] = { on: e.on !== false, style: STYLES[e.style] ? e.style : (k === 'raid' ? 'rainbow' : 'flash'), color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : col, secs: clamp(e.secs, 3, 60, k === 'raid' ? 12 : 8) }; }
+  for (const [k, [, col]] of Object.entries(EVENTS)) { const e = d.events[k] || {}; out[k] = { on: e.on !== false, ...(MINS[k] != null ? { min: clamp(e.min, 0, 1000000, MINS[k]) } : {}), style: STYLES[e.style] ? e.style : (k === 'raid' ? 'rainbow' : MINS[k] != null ? 'quick' : 'flash'), color: /^#[0-9a-f]{6}$/i.test(e.color || '') ? e.color : col, secs: clamp(e.secs, 3, 60, k === 'raid' ? 12 : 8), speed: clamp(e.speed, 0, 100, QUICK_SPEED) }; }
   return out; }
 
 // ── colours ────────────────────────────────────────────────────────────────────────────────────────
@@ -99,16 +101,24 @@ const parseVal = v => { if (typeof v === 'string') { try { return JSON.parse(v);
 /** which command names this Tuya device uses (bulbs come in an older and a newer flavour; plugs say switch_1 or switch). Pure. */
 export function tuyaCodes(st) {
   const has = k => k in st, sw = ['switch_led', 'switch_1', 'switch', 'led_switch'].find(has) || null;
-  return { sw, colour: has('colour_data_v2') ? 'colour_data_v2' : has('colour_data') ? 'colour_data' : null, v2: has('colour_data_v2') || has('bright_value_v2'), bright: has('bright_value_v2') ? 'bright_value_v2' : has('bright_value') ? 'bright_value' : null, mode: has('work_mode') ? 'work_mode' : null, temp: has('temp_value_v2') ? 'temp_value_v2' : has('temp_value') ? 'temp_value' : null };
+  return { sw, colour: has('colour_data_v2') ? 'colour_data_v2' : has('colour_data') ? 'colour_data' : null, v2: has('colour_data_v2') || has('bright_value_v2'), bright: has('bright_value_v2') ? 'bright_value_v2' : has('bright_value') ? 'bright_value' : null, mode: has('work_mode') ? 'work_mode' : null, temp: has('temp_value_v2') ? 'temp_value_v2' : has('temp_value') ? 'temp_value' : null, scene: has('scene_data_v2') ? 'scene_data_v2' : null };
 }
 /** the commands that turn a Tuya bulb a colour (hex) at a brightness (0–1). Pure. */
 export function tuyaColour(codes, hex, v = 1) {
   if (!codes.colour) return null; const { h, s } = rgbHsv(hexRgb(hex)), top = codes.v2 ? 1000 : 255;
   return [...(codes.sw ? [{ code: codes.sw, value: true }] : []), ...(codes.mode ? [{ code: codes.mode, value: 'colour' }] : []), { code: codes.colour, value: { h, s: Math.round(s * top), v: Math.max(codes.v2 ? 10 : 25, Math.round(v * top)) } }];
 }
-/** the commands that put a Tuya device back the way `st` says it was. Pure. */
-export function tuyaRestore(codes, st) {
+/** ⚡ Fast flash (1.161.0, Derek: "no way to make it go faster?"): ONE command that starts the bulb's own scene mode, jumping between the colour and near-dark.
+ *  The bulb does the flashing itself, so it isn't held to one change a second. Only bulbs with scene_data_v2. Pure. */
+export function tuyaQuick(codes, hex, speed = QUICK_SPEED) {
+  if (!codes.scene) return null; const { h, s } = rgbHsv(hexRgb(hex)), sp = clamp(speed, 0, 100, QUICK_SPEED);
+  const unit = v => ({ unit_change_mode: 'jump', unit_switch_duration: sp, unit_gradient_duration: sp, bright: 0, temperature: 0, h, s: Math.round(s * 1000), v });
+  return [...(codes.sw ? [{ code: codes.sw, value: true }] : []), ...(codes.mode ? [{ code: codes.mode, value: 'scene' }] : []), { code: codes.scene, value: { scene_num: 1, scene_units: [unit(1000), unit(10)] } }];
+}
+/** the commands that put a Tuya device back the way `st` says it was (`scene` = its scene setting was changed too, put that back first). Pure. */
+export function tuyaRestore(codes, st, scene) {
   const out = [];
+  if (scene && codes.scene) { const v = parseVal(st[codes.scene]); if (v && typeof v === 'object') out.push({ code: codes.scene, value: v }); }
   if (codes.mode && st[codes.mode] != null) out.push({ code: codes.mode, value: st[codes.mode] });
   if (st[codes.mode] === 'colour' && codes.colour) { const v = parseVal(st[codes.colour]); if (v) out.push({ code: codes.colour, value: v }); }
   else { if (codes.bright && st[codes.bright] != null) out.push({ code: codes.bright, value: st[codes.bright] }); if (codes.temp && st[codes.temp] != null) out.push({ code: codes.temp, value: st[codes.temp] }); }
@@ -146,7 +156,7 @@ const FAKE = [
   { id: 'g:test-govee-2', src: 'govee', dev: 'test-govee-2', sku: 'H5080', name: 'Pretend Govee plug', type: 'plug' }
 ];
 const fakeSt = new Map(); // pretend devices: what they'd be showing (so tests can check "back the way it was")
-const fakeOf = d => { if (!fakeSt.has(d.id)) fakeSt.set(d.id, d.type === 'bulb' ? { switch_led: false, work_mode: 'white', bright_value_v2: 600, temp_value_v2: 400, colour_data_v2: '{"h":0,"s":1000,"v":1000}' } : { switch_1: false }); return fakeSt.get(d.id); };
+const fakeOf = d => { if (!fakeSt.has(d.id)) fakeSt.set(d.id, d.type === 'bulb' ? { switch_led: false, work_mode: 'white', bright_value_v2: 600, temp_value_v2: 400, colour_data_v2: '{"h":0,"s":1000,"v":1000}', scene_data_v2: '{"scene_num":1,"scene_units":[]}' } : { switch_1: false }); return fakeSt.get(d.id); };
 export const fakeLog = []; // what the pretend devices were told (tests read it)
 const fakeDo = (d, commands) => { const st = fakeOf(d); for (const c of commands) st[c.code] = typeof c.value === 'object' ? JSON.stringify(c.value) : c.value; fakeLog.push({ id: d.id, at: Date.now(), commands }); if (fakeLog.length > 400) fakeLog.shift(); };
 
@@ -197,7 +207,7 @@ export function setCfg(b = {}) { const d = data();
     if (t.off) { d.tuya.id = d.tuya.secret = undefined; d.devices = d.devices.filter(x => x.src !== 'tuya' || x.test); }
     d.tuya.ok = undefined; d.tuya.err = ''; }
   if (b.events && typeof b.events === 'object') for (const [k, o] of Object.entries(b.events)) { if (!EVENTS[k] || !o) continue; const e = (d.events[k] ||= {});
-    if (typeof o.on === 'boolean') e.on = o.on; if (STYLES[o.style]) e.style = o.style; if (/^#[0-9a-f]{6}$/i.test(o.color || '')) e.color = o.color; if (o.secs != null) e.secs = clamp(o.secs, 3, 60, 8); }
+    if (typeof o.on === 'boolean') e.on = o.on; if (STYLES[o.style]) e.style = o.style; if (/^#[0-9a-f]{6}$/i.test(o.color || '')) e.color = o.color; if (o.secs != null) e.secs = clamp(o.secs, 3, 60, 8); if (o.speed != null) e.speed = clamp(o.speed, 0, 100, QUICK_SPEED); if (o.min != null && MINS[k] != null) e.min = clamp(o.min, 0, 1000000, MINS[k]); }
   save(); H.changed(); return state();
 }
 
@@ -219,7 +229,7 @@ export function show(kind, { by = '', test = false, bulbs, secs, style, color } 
   const ev = events()[kind] || { on: true, style: 'flash', color: '#ffffff', secs: 8 };
   const ids = bulbs || data().devices.filter(x => x.fx && x.type === 'bulb' && !x.hidden && (test ? true : !x.test)).map(x => x.id);
   if (!ids.length) return { skipped: 'no lights are ticked to react (Settings → Smart plug controls)' };
-  const job = { kind, by, test, ids, secs: clamp(secs, 2, 60, ev.secs), style: STYLES[style] ? style : ev.style, color: color || ev.color };
+  const job = { kind, by, test, ids, secs: clamp(secs, 2, 60, ev.secs), style: STYLES[style] ? style : ev.style, color: color || ev.color, speed: ev.speed ?? QUICK_SPEED };
   if (showing) { if (line.length >= 3) return { skipped: 'the lights are busy (3 shows already waiting)' }; line.push(job); return { queued: line.length }; }
   run(job); return { started: true, bulbs: ids.length, secs: job.secs };
 }
@@ -231,9 +241,15 @@ async function run(job) {
   for (const id of job.ids) { try { const d = dev(id); if (d.src === 'govee' && !d.test) { sets.push({ d, govee: await goveeState(d) }); } else { const { st, codes } = await codesOf(d); if (codes.colour) sets.push({ d, st, codes }); } } catch (e) { me.err = e.message; } }
   try {
     if (!sets.length) throw new Error(me.err || 'none of the ticked lights can change colour');
-    for (const s of showSteps(job.style, job.color, job.secs)) {
+    // ⚡ Fast flash: bulbs that have a scene mode get ONE command and flash by themselves; the rest (Govee, older bulbs) do the slow flash alongside
+    let slow = sets;
+    if (job.style === 'quick') { slow = [];
+      await Promise.all(sets.map(async x => { const c = x.govee ? null : tuyaQuick(x.codes, job.color, job.speed); if (!c) return void slow.push(x);
+        try { x.scene = true; if (x.d.test) fakeDo(x.d, c); else await tuyaCmd(x.d, c); } catch (e) { me.err = e.message; } }));
+      me.quick = sets.length - slow.length; }
+    for (const s of showSteps(job.style === 'quick' ? 'flash' : job.style, job.color, job.secs)) {
       if (me.stop) break; const t0 = Date.now();
-      await Promise.all(sets.map(async x => { try {
+      await Promise.all(slow.map(async x => { try {
         if (x.govee) { const [r, g, b] = hexRgb(s.hex); if (!x.lit) { await goveeCap(x.d, 'on_off', 'powerSwitch', 1); x.lit = true; } await goveeCap(x.d, 'color_setting', 'colorRgb', (Math.round(r * s.v) << 16) | (Math.round(g * s.v) << 8) | Math.round(b * s.v)); }
         else { const c = tuyaColour(x.codes, s.hex, s.v); if (x.d.test) fakeDo(x.d, c); else await tuyaCmd(x.d, c); }
       } catch (e) { me.err = e.message; } }));
@@ -244,7 +260,7 @@ async function run(job) {
   await sleep(job.fast ? 5 : 400);
   for (const x of sets) { try {
     if (x.govee) { const g = x.govee; if (g.rgb != null && g.rgb > 0) await goveeCap(x.d, 'color_setting', 'colorRgb', g.rgb); else if (g.kelvin) await goveeCap(x.d, 'color_setting', 'colorTemperatureK', g.kelvin); if (g.bright != null && x.d.dim) await goveeCap(x.d, 'range', 'brightness', Math.max(1, g.bright)); if (!g.on) await goveeCap(x.d, 'on_off', 'powerSwitch', 0); }
-    else { const c = tuyaRestore(x.codes, x.st); if (x.d.test) fakeDo(x.d, c); else await tuyaCmd(x.d, c); }
+    else { const c = tuyaRestore(x.codes, x.st, x.scene); if (x.d.test) fakeDo(x.d, c); else await tuyaCmd(x.d, c); }
   } catch (e) { me.err = e.message; } }
   if (me.err) { data().lastErr = { at: Date.now(), msg: me.err }; save(); if (!job.test) console.error('[smart lights] ' + me.err); }
   job.done?.(me.err || '');
@@ -252,10 +268,16 @@ async function run(job) {
   const nx = line.shift(); if (nx) run(nx);
 }
 export function stopShow(all) { if (all) line.length = 0; if (showing) showing.stop = true; return { ok: true }; }
-/** a Twitch / Kick alert came in */
+/** which light show an alert sets off (null = none): subs, gift subs, raids, and bits / donations of at least their amount. Pure. */
+export function eventFor(a, evs = events()) {
+  if (!a) return null; const k = ['sub', 'gift', 'raid', 'bits', 'tip'].includes(a.kind) ? a.kind : null; if (!k) return null;
+  const ev = evs[k]; if (!ev || !ev.on) return null;
+  if (ev.min != null && !(Number(a.amount) >= ev.min)) return null;
+  return k;
+}
+/** a Twitch / Kick alert or a donation came in */
 export function onAlert(a) {
-  if (!on() || !a) return null; const k = a.kind === 'sub' ? 'sub' : a.kind === 'gift' ? 'gift' : a.kind === 'raid' ? 'raid' : null; if (!k) return null;
-  const ev = events()[k]; if (!ev.on) return null;
+  if (!on()) return null; const k = eventFor(a); if (!k) return null;
   return show(k, { by: a.name || a.login || '' });
 }
 
@@ -304,6 +326,26 @@ export async function demo() {
     const p = await power('t:test-plug-1', 'toggle', 'quiet'), p2 = await power('t:test-plug-1', 'toggle', 'quiet');
     T('Toggle a plug: on, then off', `${p.on ? 'on' : 'off'} → ${p2.on ? 'on' : 'off'}`, p.on === true && p2.on === false);
   } finally { D.devices = keep; fakeSt.clear(); save(); }
+  // ⚡ fast flash
+  const qB = tuyaCodes({ switch_led: true, work_mode: 'white', bright_value_v2: 500, colour_data_v2: '{}', scene_data_v2: '{}' }), q = tuyaQuick(qB, '#ff0000', 100), qv = q.at(-1).value;
+  T('Fast flash = one command: scene mode, jumping between the colour and near-dark', q.map(c => c.code).join(' → '), q.length === 3 && q[1].value === 'scene' && qv.scene_units.length === 2 && qv.scene_units[0].unit_change_mode === 'jump' && qv.scene_units[0].v === 1000 && qv.scene_units[1].v === 10 && qv.scene_units[0].h === 0);
+  T('A bulb without a scene mode can\'t fast flash (it does the slow flash instead)', String(tuyaQuick(newB, '#ff0000')), tuyaQuick(newB, '#ff0000') === null);
+  const qBack = tuyaRestore(qB, { switch_led: false, work_mode: 'white', bright_value_v2: 500, scene_data_v2: '{"scene_num":3,"scene_units":[{"h":5}]}' }, true);
+  T('After a fast flash the bulb\'s own saved scene is put back too', qBack.map(c => c.code).join(' → '), qBack[0].code === 'scene_data_v2' && qBack[0].value.scene_num === 3 && qBack.at(-1).code === 'switch_led');
+  { const D2 = data(), keep2 = D2.devices; D2.devices = FAKE.map(x => ({ ...x, test: true, fx: x.src === 'tuya' && x.type === 'bulb' })); fakeSt.clear(); fakeLog.length = 0;
+    try { delete fakeOf(D2.devices[1]).scene_data_v2; // (pretend bulb 2 is an older one)
+      const was2 = JSON.stringify([fakeOf(D2.devices[0]), fakeOf(D2.devices[1])].map(f => { const g = { ...f }; delete g.colour_data_v2; return g; }));
+      const err2 = await new Promise(res => { const job = { kind: 'sub', by: 'Pretend_Sub', test: true, ids: D2.devices.filter(x => x.fx).map(x => x.id), secs: 4, style: 'quick', color: '#9146ff', speed: 100, fast: true, done: res }; if (showing) res('busy'); else run(job); });
+      const sc = fakeLog.filter(x => x.id === 't:test-bulb-1' && x.commands.some(c => c.code === 'scene_data_v2' && c.value.scene_units?.length === 2)).length, col1 = fakeLog.filter(x => x.id === 't:test-bulb-1' && x.commands.some(c => c.code === 'colour_data_v2')).length, col2 = fakeLog.filter(x => x.id === 't:test-bulb-2' && x.commands.some(c => c.code === 'colour_data_v2')).length;
+      T('A pretend fast flash: the newer bulb gets 1 scene command and no colour steps, the older one flashes slowly', `scene ${sc} · colour steps ${col1} / ${col2}${err2 ? ' · ' + err2 : ''}`, sc === 1 && col1 === 0 && col2 >= 3 && !err2);
+      const now2 = JSON.stringify([fakeOf(D2.devices[0]), fakeOf(D2.devices[1])].map(f => { const g = { ...f }; delete g.colour_data_v2; return g; }));
+      T('…and both end up as they were (white, off, their own scene)', now2 === was2 ? 'same as before' : 'different', now2 === was2);
+    } finally { D2.devices = keep2; fakeSt.clear(); save(); } }
+  { const E = events(), F = (kind, amount) => eventFor({ kind, amount }, E);
+    T('Bits: 300 or more set the lights off, 299 don\'t', `300 → ${F('bits', 300)} · 299 → ${F('bits', 299)} · 5000 → ${F('bits', 5000)}`, F('bits', 300) === 'bits' && F('bits', 299) === null && F('bits', 5000) === 'bits');
+    T('Donations: $3 or more set the lights off, $2.99 doesn\'t', `3 → ${F('tip', 3)} · 2.99 → ${F('tip', 2.99)}`, F('tip', 3) === 'tip' && F('tip', 2.99) === null);
+    T('Follows and channel point redeems leave the lights alone', `${F('follow')} · ${F('redeem')}`, F('follow') === null && F('redeem') === null);
+    T('A switched-off event does nothing', String(eventFor({ kind: 'raid' }, { ...E, raid: { ...E.raid, on: false } })), eventFor({ kind: 'raid' }, { ...E, raid: { ...E.raid, on: false } }) === null); }
   const ev = events(); T('Subs, gift subs and raids each have a show (raid = rainbow, 12 s)', Object.entries(ev).map(([k, e]) => `${k}: ${e.style} ${e.secs}s`).join(' · '), ev.raid.secs >= 3 && !!STYLES[ev.sub.style]);
   const st = JSON.stringify(state()); T('The Settings page never gets the keys', 'checked', !(D.govee.key && st.includes(D.govee.key)) && !(D.tuya.secret && st.includes(D.tuya.secret)));
   return { rows, ok: rows.every(r => r.ok) };
