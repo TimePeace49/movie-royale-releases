@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.173.0
+- 💡 Nanoleaf panels in 🔌 Smart plug controls (Settings). No account or key: press 🔎 Look for my Nanoleaf, hold the panels' power button 5 to 7 seconds until it blinks, press Pair. Then it's in your list like the other lights: on / off, colour, brightness, a Stream Deck link, and it can join the light shows for subs, raids, bits and donations (tick "subs + raids"). After a show it goes back to the scene it was playing.
+  - Works for Nanoleaf panels (Shapes, Canvas, Light Panels, Lines, Elements), over your home Wi-Fi. Nanoleaf's "Essentials" bulbs and light strips don't have this kind of control.
+- Test tab: 🔌 Smart plug controls → 🧪 Check the rules has the Nanoleaf checks.
+
 ## 1.172.0
 - 🏷️ The app's name is in the program files now. The program file is named after your edition (TimePeaceChatbot.exe, KirbChatbot.exe, TrueChatbot.exe, BirxAndJessChatbot.exe), so that's what Task Manager shows. Kirb's edition is now called Kirb’s Chatbot. The old MovieRoyal.exe is taken away by the update.
 - 🛡️ The server app (was "Movie Royal Backup Bots") is now **TimePeace Chatbot Control Center**: its window, tray icon, shortcuts, installer, Task Manager name and program file.

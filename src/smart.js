@@ -5,6 +5,8 @@
 //   Tuya   = Gosund + Energizer (both are built on Tuya): a free Tuya developer project's Access ID + Secret → openapi.tuya<region>.com
 // Keys are typed in by the user in Settings, kept in db.smart, and never leave in state(), the debug report or a toast.
 // UNTESTED against the real services from the cloud session (pretend servers only): env GOVEE_API_URL / TUYA_API_URL point at a pretend one.
+import os from 'os';
+import net from 'net';
 import crypto from 'crypto';
 import { db, save } from './store.js';
 
@@ -22,7 +24,7 @@ const STEP = 1100; // (Tuya's online service: about one change a second per bulb
 
 function data() {
   const d = (db.smart ||= {});
-  d.govee ||= {}; d.tuya ||= {}; d.devices ||= []; d.events ||= {};
+  d.govee ||= {}; d.tuya ||= {}; d.devices ||= []; d.events ||= {}; d.nano ||= {}; d.nano.units ||= [];
   return d;
 }
 export const on = () => H.on() && data().on !== false;
@@ -128,6 +130,64 @@ export function tuyaRestore(codes, st, scene) {
 
 // ── the device list ────────────────────────────────────────────────────────────────────────────────
 const dev = id => { const d = data().devices.find(x => x.id === id); if (!d) throw new Error('That plug / light isn\'t in the list any more. Press 🔎 Find my plugs and lights.'); return d; };
+// ── Nanoleaf (1.173.0, Derek: "can we get so nano lights can work and be controlled by app") ─────────────────────
+// Nanoleaf panels (Shapes, Canvas, Light Panels, Lines, Elements) answer on the HOME NETWORK, port 16021: no account and no internet.
+// Pairing = hold the panels' power button 5–7 s (its light blinks), then within 30 s ask it for a key. The key stays on this PC.
+const NANO_PORT = Number(process.env.NANO_PORT) || 16021;
+export const nanoIpOk = ip => { const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(String(ip || '').trim()); if (!m) return false; const [a, b, c, e] = m.slice(1).map(Number); if ([a, b, c, e].some(n => n > 255)) return false;
+  return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254); }; // (only addresses inside the home network)
+async function nanoRaw(ip, method, path, body, ms = 4000) {
+  let r; try { r = await fetch(`http://${ip}:${NANO_PORT}/api/v1${path}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(ms) }); }
+  catch { throw new Error(`Couldn't reach the Nanoleaf at ${ip}. Is it plugged in and on the same Wi-Fi as this PC?`); }
+  const t = await r.text(); let j = null; try { j = t ? JSON.parse(t) : {}; } catch { j = {}; }
+  return { status: r.status, j };
+}
+const nanoUnit = d => { const u = data().nano.units.find(x => x.ip === d.dev); if (!u) throw new Error(`${d.label || d.name} isn't paired any more. Pair it again in Settings → 🔌 Smart plug controls.`); return u; };
+async function nano(d, method, path, body) { const u = nanoUnit(d), r = await nanoRaw(u.ip, method, `/${u.token}${path}`, body);
+  if (r.status === 401 || r.status === 403) throw new Error(`${d.label || d.name} doesn't accept the app's key any more. Forget it and pair it again.`);
+  if (r.status >= 400) throw new Error(`${d.label || d.name} said no (${r.status}).`);
+  return r.j; }
+/** hex colour + strength (0–1) → Nanoleaf's hue / sat / brightness. Pure */
+export function nanoHsb(hex, v = 1) { const c = rgbHsv(hexRgb(hex)); return { hue: { value: Math.round(c.h) % 360 }, sat: { value: Math.round(c.s * 100) }, brightness: { value: Math.max(1, Math.min(100, Math.round(c.v * v * 100))), duration: 0 } }; }
+/** how to put a Nanoleaf back the way it was. Pure → [[path, body]] */
+export function nanoRestore(st) { const out = [];
+  if (st.effect && st.mode === 'effect' && !/^\*/.test(st.effect)) out.push(['/effects', { select: st.effect }]);
+  else if (st.mode === 'ct' && st.ct) out.push(['/state', { ct: { value: st.ct } }]);
+  else out.push(['/state', { hue: { value: st.hue || 0 }, sat: { value: st.sat || 0 } }]);
+  out.push(['/state', { brightness: { value: Math.max(1, st.bright || 100), duration: 0 } }]);
+  if (!st.on) out.push(['/state', { on: { value: false } }]);
+  return out; }
+async function nanoState(d) { const s = await nano(d, 'GET', '/state'); let effect = ''; try { effect = String(await nano(d, 'GET', '/effects/select') || ''); } catch {}
+  return { on: !!s.on?.value, bright: s.brightness?.value ?? 100, hue: s.hue?.value ?? 0, sat: s.sat?.value ?? 0, ct: s.ct?.value || 0, mode: String(s.colorMode || ''), effect: typeof effect === 'string' ? effect : '' }; }
+const nanoRow = u => ({ id: 'n:' + (u.serial || u.ip), src: 'nano', dev: u.ip, name: String(u.name || 'Nanoleaf').slice(0, 60), type: 'bulb', product: u.model || 'Nanoleaf', dim: true, color: true, online: u.ok !== false });
+/** look for Nanoleaf panels on this PC's home network (which addresses answer on Nanoleaf's port) */
+export async function nanoScan() {
+  const nets = Object.values(os.networkInterfaces()).flat().filter(n => n && n.family === 'IPv4' && !n.internal && nanoIpOk(n.address)), ips = [];
+  for (const n of nets) { const base = n.address.split('.').slice(0, 3).join('.'); for (let i = 1; i < 255; i++) { const ip = `${base}.${i}`; if (ip !== n.address && !ips.includes(ip)) ips.push(ip); } }
+  if (process.env.NANO_PORT) ips.unshift('127.0.0.1'); // (tests: a pretend Nanoleaf on this PC)
+  const open = ip => new Promise(res => { const s = net.connect({ host: ip, port: NANO_PORT }); const done = v => { s.destroy(); res(v); }; s.setTimeout(450, () => done(false)); s.once('connect', () => done(true)); s.once('error', () => done(false)); });
+  const found = []; for (let i = 0; i < ips.length; i += 64) { const part = ips.slice(i, i + 64), r = await Promise.all(part.map(open)); part.forEach((ip, k) => { if (r[k]) found.push(ip); }); }
+  const have = new Set(data().nano.units.map(u => u.ip));
+  return { found: found.map(ip => ({ ip, paired: have.has(ip) })), looked: ips.length };
+}
+/** pair with one (its power button has to have been held 5–7 s in the last 30 s) */
+export async function nanoAdd(ip) { ip = String(ip || '').trim(); if (!nanoIpOk(ip)) throw new Error('That isn\'t a home-network address (it looks like 192.168.1.23).');
+  const d = data(), r = await nanoRaw(ip, 'POST', '/new', null, 6000);
+  if (r.status === 403 || r.status === 401) throw new Error('The Nanoleaf isn\'t in pairing mode. Hold its power button for 5 to 7 seconds until its light starts blinking, then press Pair again within 30 seconds.');
+  const token = String(r.j?.auth_token || ''); if (!token) throw new Error(`That address answered, but not like a Nanoleaf (${r.status}).`);
+  let info = {}; try { info = (await nanoRaw(ip, 'GET', '/' + token + '/')).j || {}; } catch {}
+  const u = { ip, token, name: String(info.name || 'Nanoleaf').slice(0, 60), model: String(info.model || '').slice(0, 30), serial: String(info.serialNo || '').slice(0, 40), ok: true, at: Date.now() };
+  d.nano.units = d.nano.units.filter(x => x.ip !== ip && !(u.serial && x.serial === u.serial)); d.nano.units.push(u);
+  const row = nanoRow(u), o = d.devices.find(x => x.id === row.id); if (o) Object.assign(o, row, { label: o.label, hidden: o.hidden, fx: o.fx }); else d.devices.push({ ...row, fx: false });
+  save(); H.changed(); H.act(`Nanoleaf “${u.name}” paired`, { icon: '💡', kind: 'smart' });
+  return { name: u.name, id: row.id };
+}
+export function nanoForget(ip) { const d = data(), u = d.nano.units.find(x => x.ip === ip); if (!u) return state();
+  d.nano.units = d.nano.units.filter(x => x !== u); d.devices = d.devices.filter(x => !(x.src === 'nano' && x.dev === ip)); save(); H.changed(); return state(); }
+async function nanoList() { const d = data(), out = [];
+  for (const u of d.nano.units) { try { const r = await nanoRaw(u.ip, 'GET', '/' + u.token + '/', null, 3000); u.ok = r.status < 400; if (u.ok && r.j?.name) u.name = String(r.j.name).slice(0, 60); } catch { u.ok = false; } out.push(nanoRow(u)); }
+  return out; }
+
 /** ask both services what they have; keeps your names, hidden ticks and "reacts to subs and raids" ticks */
 export async function find({ fake } = {}) {
   const d = data(), errors = [], got = [];
@@ -135,7 +195,8 @@ export async function find({ fake } = {}) {
   else {
     if (d.govee.key) { try { got.push(...await goveeList()); d.govee.ok = true; d.govee.err = ''; } catch (e) { errors.push(e.message); d.govee.ok = false; d.govee.err = e.message; } }
     if (d.tuya.id && d.tuya.secret) { try { got.push(...await tuyaList()); d.tuya.ok = true; d.tuya.err = ''; } catch (e) { errors.push(e.message); d.tuya.ok = false; d.tuya.err = e.message; } }
-    if (!d.govee.key && !(d.tuya.id && d.tuya.secret)) throw new Error('Connect Govee or Tuya first (the boxes above).');
+    if (d.nano.units.length) got.push(...await nanoList());
+    if (!d.govee.key && !(d.tuya.id && d.tuya.secret) && !d.nano.units.length) throw new Error('Connect Govee, Tuya or a Nanoleaf first (the boxes above).');
   }
   const old = new Map(d.devices.map(x => [x.id, x])); let added = 0;
   for (const x of got) { const o = old.get(x.id);
@@ -166,6 +227,7 @@ const codesOf = async d => { if (d.test) return { st: { ...fakeOf(d) }, codes: t
 export async function isOn(id) { const d = dev(id);
   if (d.test) { const st = fakeOf(d); return !!st[tuyaCodes(st).sw]; }
   if (d.src === 'govee') return (await goveeState(d)).on;
+  if (d.src === 'nano') return (await nanoState(d)).on;
   const { st, codes } = await codesOf(d); if (!codes.sw) throw new Error(`${d.label || d.name} doesn't have an on / off switch the app knows.`); return !!st[codes.sw];
 }
 /** on / off / toggle */
@@ -173,6 +235,7 @@ export async function power(id, to = 'toggle', via = 'you') { const d = dev(id);
   let want = to; if (to === 'toggle' || to == null) want = !(await isOn(id)); want = !!want;
   if (d.test) fakeDo(d, [{ code: tuyaCodes(fakeOf(d)).sw, value: want }]);
   else if (d.src === 'govee') await goveeCap(d, 'on_off', 'powerSwitch', want ? 1 : 0);
+  else if (d.src === 'nano') await nano(d, 'PUT', '/state', { on: { value: want } });
   else { const { codes } = await codesOf(d); if (!codes.sw) throw new Error(`${d.label || d.name} doesn't have an on / off switch the app knows.`); await tuyaCmd(d, [{ code: codes.sw, value: want }]); }
   d.isOn = want; d.seenAt = Date.now(); save(); H.changed();
   if (via !== 'quiet') H.act(`${d.label || d.name} switched ${want ? 'on' : 'off'}${via === 'deck' ? ' (Stream Deck)' : ''}`, { icon: d.type === 'plug' ? '🔌' : '💡', kind: 'smart', test: !!d.test });
@@ -182,6 +245,7 @@ export async function power(id, to = 'toggle', via = 'you') { const d = dev(id);
 export async function look(id, { color, bright } = {}) { const d = dev(id); if (d.type !== 'bulb') throw new Error(`${d.label || d.name} isn't a light.`);
   const b = bright != null ? clamp(bright, 1, 100, 100) : null, hex = /^#[0-9a-f]{6}$/i.test(color || '') ? color : null;
   if (d.src === 'govee' && !d.test) { if (hex) { const [r, g, bl] = hexRgb(hex); await goveeCap(d, 'color_setting', 'colorRgb', (r << 16) | (g << 8) | bl); } if (b != null) await goveeCap(d, 'range', 'brightness', b); }
+  else if (d.src === 'nano' && !d.test) { if (hex) { const h = nanoHsb(hex, 1); await nano(d, 'PUT', '/state', { on: { value: true }, hue: h.hue, sat: h.sat, ...(b != null ? { brightness: { value: b, duration: 0 } } : {}) }); } else if (b != null) await nano(d, 'PUT', '/state', { brightness: { value: b, duration: 0 } }); else throw new Error('Nothing to change.'); }
   else { const { codes } = await codesOf(d), cmds = [];
     if (hex) { const c = tuyaColour(codes, hex, b != null ? b / 100 : 1); if (!c) throw new Error(`${d.label || d.name} can't change colour.`); cmds.push(...c); }
     else if (b != null && codes.bright) cmds.push({ code: codes.bright, value: Math.round((codes.v2 ? 10 : 25) + (b / 100) * ((codes.v2 ? 1000 : 255) - (codes.v2 ? 10 : 25))) });
@@ -238,19 +302,20 @@ async function run(job) {
   const name = (EVENTS[job.kind] || ['Lights'])[0];
   H.act(`${name} light show${job.by ? ' for ' + job.by : ''} (${job.ids.length} light${job.ids.length === 1 ? '' : 's'}, ${job.secs} s)`, { icon: '💡', kind: 'smart', test: !!job.test });
   const sets = []; // each bulb: how it was + its command names
-  for (const id of job.ids) { try { const d = dev(id); if (d.src === 'govee' && !d.test) { sets.push({ d, govee: await goveeState(d) }); } else { const { st, codes } = await codesOf(d); if (codes.colour) sets.push({ d, st, codes }); } } catch (e) { me.err = e.message; } }
+  for (const id of job.ids) { try { const d = dev(id); if (d.src === 'govee' && !d.test) { sets.push({ d, govee: await goveeState(d) }); } else if (d.src === 'nano' && !d.test) { sets.push({ d, nano: await nanoState(d) }); } else { const { st, codes } = await codesOf(d); if (codes.colour) sets.push({ d, st, codes }); } } catch (e) { me.err = e.message; } }
   try {
     if (!sets.length) throw new Error(me.err || 'none of the ticked lights can change colour');
     // ⚡ Fast flash: bulbs that have a scene mode get ONE command and flash by themselves; the rest (Govee, older bulbs) do the slow flash alongside
     let slow = sets;
     if (job.style === 'quick') { slow = [];
-      await Promise.all(sets.map(async x => { const c = x.govee ? null : tuyaQuick(x.codes, job.color, job.speed); if (!c) return void slow.push(x);
+      await Promise.all(sets.map(async x => { const c = x.govee || x.nano ? null : tuyaQuick(x.codes, job.color, job.speed); if (!c) return void slow.push(x);
         try { x.scene = true; if (x.d.test) fakeDo(x.d, c); else await tuyaCmd(x.d, c); } catch (e) { me.err = e.message; } }));
       me.quick = sets.length - slow.length; }
     for (const s of showSteps(job.style === 'quick' ? 'flash' : job.style, job.color, job.secs)) {
       if (me.stop) break; const t0 = Date.now();
       await Promise.all(slow.map(async x => { try {
         if (x.govee) { const [r, g, b] = hexRgb(s.hex); if (!x.lit) { await goveeCap(x.d, 'on_off', 'powerSwitch', 1); x.lit = true; } await goveeCap(x.d, 'color_setting', 'colorRgb', (Math.round(r * s.v) << 16) | (Math.round(g * s.v) << 8) | Math.round(b * s.v)); }
+        else if (x.nano) await nano(x.d, 'PUT', '/state', { on: { value: true }, ...nanoHsb(s.hex, s.v) });
         else { const c = tuyaColour(x.codes, s.hex, s.v); if (x.d.test) fakeDo(x.d, c); else await tuyaCmd(x.d, c); }
       } catch (e) { me.err = e.message; } }));
       const wait = STEP - (Date.now() - t0); if (wait > 0) await sleep(job.fast ? 5 : wait);
@@ -260,6 +325,7 @@ async function run(job) {
   await sleep(job.fast ? 5 : 400);
   for (const x of sets) { try {
     if (x.govee) { const g = x.govee; if (g.rgb != null && g.rgb > 0) await goveeCap(x.d, 'color_setting', 'colorRgb', g.rgb); else if (g.kelvin) await goveeCap(x.d, 'color_setting', 'colorTemperatureK', g.kelvin); if (g.bright != null && x.d.dim) await goveeCap(x.d, 'range', 'brightness', Math.max(1, g.bright)); if (!g.on) await goveeCap(x.d, 'on_off', 'powerSwitch', 0); }
+    else if (x.nano) { for (const [pt, bd] of nanoRestore(x.nano)) await nano(x.d, 'PUT', pt, bd); }
     else { const c = tuyaRestore(x.codes, x.st, x.scene); if (x.d.test) fakeDo(x.d, c); else await tuyaCmd(x.d, c); }
   } catch (e) { me.err = e.message; } }
   if (me.err) { data().lastErr = { at: Date.now(), msg: me.err }; save(); if (!job.test) console.error('[smart lights] ' + me.err); }
@@ -287,6 +353,7 @@ export function state() { const d = data();
   return { on: d.on !== false, feat: H.on(),
     govee: { has: !!d.govee.key, tail: tail(d.govee.key), ok: d.govee.ok ?? null, err: d.govee.err || '' },
     tuya: { has: !!(d.tuya.id && d.tuya.secret), idTail: tail(d.tuya.id), region: d.tuya.region || 'us', ok: d.tuya.ok ?? null, err: d.tuya.err || '' },
+    nano: { units: d.nano.units.map(u => ({ ip: u.ip, name: u.name, model: u.model || '', ok: u.ok !== false })) },
     regions: Object.entries(REGIONS).map(([k, [n]]) => [k, n]),
     devices: d.devices.map(x => ({ id: x.id, src: x.src, name: x.name, label: x.label || '', type: x.type, product: x.product || x.sku || '', online: x.online ?? null, hidden: !!x.hidden, fx: !!x.fx, isOn: x.isOn ?? null, lastColor: x.lastColor || '', test: !!x.test })),
     events: events(), eventNames: Object.fromEntries(Object.entries(EVENTS).map(([k, [n]]) => [k, n])), styles: STYLES,
@@ -297,6 +364,9 @@ export function state() { const d = data();
 export async function demo() {
   const rows = [], T = (label, got, ok) => rows.push({ label, got: String(got), ok: !!ok });
   T('Tuya signing matches a worked example', tuyaSign('id123', 'secret456', '', '1700000000000', 'n1', 'GET', '/v1.0/token?grant_type=1', '').length, tuyaSign('id123', 'secret456', '', '1700000000000', 'n1', 'GET', '/v1.0/token?grant_type=1', '') === crypto.createHmac('sha256', 'secret456').update('id123' + '1700000000000' + 'n1' + 'GET\n' + crypto.createHash('sha256').update('').digest('hex') + '\n\n/v1.0/token?grant_type=1').digest('hex').toUpperCase());
+  { const n = nanoHsb('#00ff00', .5); T('Nanoleaf: green at half strength', `hue ${n.hue.value} sat ${n.sat.value} bright ${n.brightness.value}`, n.hue.value === 120 && n.sat.value === 100 && n.brightness.value === 50);
+    T('Nanoleaf: only home-network addresses are accepted', `${nanoIpOk('192.168.1.23')} / ${nanoIpOk('8.8.8.8')} / ${nanoIpOk('evil.com')}`, nanoIpOk('192.168.1.23') && nanoIpOk('10.0.0.5') && !nanoIpOk('8.8.8.8') && !nanoIpOk('evil.com'));
+    const back = nanoRestore({ on: false, bright: 40, mode: 'effect', effect: 'Northern Lights' }); T('Nanoleaf: after a show its scene comes back and it goes off again if it was off', back.map(x => Object.keys(x[1])[0]).join(' → '), back[0][1].select === 'Northern Lights' && back[back.length - 1][1].on?.value === false); }
   const hsv = rgbHsv(hexRgb('#ff0000')); T('Red is hue 0, full colour', `h ${hsv.h} s ${hsv.s} v ${hsv.v}`, hsv.h === 0 && hsv.s === 1 && hsv.v === 1);
   const g = rgbHsv(hexRgb('#00ff00')); T('Green is hue 120', g.h, g.h === 120);
   T('Colour → and back', rgbHex(hsvRgb(210, 1, 1)), rgbHex(hsvRgb(210, 1, 1)) === '#0080ff');

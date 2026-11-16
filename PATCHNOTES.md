@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.173.0: What's new
+- {smart} 💡 **Nanoleaf panels.** Settings → 🔌 Smart plug controls has a Nanoleaf box: look for your panels, hold their power button until it blinks, press Pair. Then switch them, change colour and brightness, put them on a Stream Deck key, and tick them to join the light shows for subs, raids, bits and donations.
+
 ## v1.172.0: What's new
 - 🏷️ **The name is everywhere now.** The program itself is named after your edition, so Task Manager shows it too. Your shortcuts are replaced by the update, and nothing you saved moves or changes. If you pinned the app to your taskbar, unpin it and pin it again.
 - 🚪 **The app opens on the 💬 Chat tab.** Want another tab first? Settings → 🖥️ App → "The tab it opens on".
