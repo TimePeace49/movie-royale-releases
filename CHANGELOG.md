@@ -2,6 +2,15 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.176.0
+- 🦶 Foot pedal for the headphone chat voice (editions with 🔈 Read chat to me; dev mode).
+  - 🏃 Marathon tab (and Settings → 🗣️ Text to speech) → 🔈 Read chat to me → 🦶 Set my pedal…: step on the pedal once and the app remembers the key it sends.
+  - From then on one press turns reading chat on or off in every window, even inside a game or with the app minimized.
+  - The voice says "Chat voice on" / "Chat voice off" in your headphones so you know without looking (tick box).
+  - The pedal can instead skip the chat message being read, or mute / skip the tip TTS (menu next to it).
+  - Best key: F13 to F24 or a combination like Ctrl+Alt+F12, set in the pedal's own program. Another program already using the key = the app tells you.
+- Test tab: 🔈 Read chat to me → 🦶 Pretend pedal press / 🦶 Pedal check.
+
 ## 1.175.0
 - ⏱️ The total live time survives updates and crashes (dev mode, marathon).
   - Update or reopen the app while you're live: the time it was closed is counted, because the stream kept going. A note tells you when it opens again.

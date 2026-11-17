@@ -318,7 +318,7 @@ function publicState() { applyCharsDefault();
     paid: paid.info(),
     ads: { on: !!db.settings.adBot, scope: (twitch.status.scopes || []).includes('channel:read:ads'), signedIn: !!twitch.status.userId, now: ad.on },
     mara: { guess: live.maraGuess ? { endsAt: live.maraGuess.endsAt, who: live.maraGuess.item.who, count: live.maraGuess.guesses.length, last: live.maraGuess.guesses.slice(-8).map(x => `${x.name} #${x.n}`) } : null, seen: maraSeen(), maps: marathon.maps(), items: marathon.items(), tokens: marathon.tokens().map(t => ({ who: t.who, test: t.test })), cfg: marathon.cfg(), listId: paid.cfg().listId || '', obs: !!db.settings.marathon?.obs, dev: !!db.settings.betaUpdates, timer: live.maraTimer || null, items2: itemLook(maraList()), ticker: { ...(live.ticker || {}), cfg: tickerCfg() }, paused: !!db.paidPaused, cards: cardsCfg(), obsSetup: obsSetupCfg(), tts: ttsCfg(), scare: scareCfg(), mics: micState(), clock: clockState(), voice: chatvoice.state(), yt: paid.dev() ? ytState() : null },
-    songPlayers: songPlayers(), obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
+    pedal: pedalState(), songPlayers: songPlayers(), obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
     sfxHear: sfxHearOn(),
     screenFx: feat('screenfx') ? { on: screenfx.cfg().on, now: screenfx.now() } : null, // 🌀
@@ -6140,6 +6140,52 @@ app.get('/api/test/mara-tts', wTry(() => { const c = ttsCfg(); return { skip: c.
 // never reads those) src/chatvoice.js + desktop/main.cjs chatVoice + public/chatvoice.html (a hidden window that plays it).
 chatvoice.setHooks({ broadcast, pushState, isBot: l => isChatBot(l), dev: () => feat('chatvoice'), act }); // (1.170.0: an edition extra now: True's edition has it; Derek's with dev mode)
 setTimeout(() => chatvoice.ensurePlayer(), 4000);
+// 🦶 (1.176.0, Derek: "I also have a foot pedal. I want to use that to turn on and off my headphone tts") one key that works in
+// every window (Electron globalShortcut through __desktop.hotkey): the pedal sends a key, the app does `does`.
+const PEDAL_DOES = { voice: '🔈 Read chat to me on / off', cvskip: '⏭️ Skip the chat message being read', ttsmute: '🔇 Mute / unmute the tip TTS', ttsskip: '⏭️ Skip the tip TTS' };
+const PEDAL_KEY = /^((Ctrl|Alt|Shift)\+){0,3}(F([1-9]|1\d|2[0-4])|[A-Z0-9]|num[0-9]|numadd|numsub|nummult|numdiv|numdec|Space|Tab|Insert|Delete|Home|End|PageUp|PageDown|Up|Down|Left|Right|Pause|Scrolllock|Capslock|Numlock|PrintScreen|MediaPlayPause|MediaNextTrack|MediaPreviousTrack|MediaStop|VolumeMute|[`\-=\[\];',./\\])$/;
+const pedalCfg = () => ({ key: '', does: 'voice', say: true, ...(db.settings.marathon?.pedal || {}) });
+let pedalOk = null, pedalLast = null, pedalOffT = null;
+function pedalApply() { const c = pedalCfg(), hk = globalThis.__desktop?.hotkey; if (!hk) { pedalOk = null; return; } pedalOk = hk(feat('chatvoice') || paid.dev() ? c.key : '', () => pedalPress('pedal').catch(() => {})); }
+const pedalState = () => ({ ...pedalCfg(), ok: pedalOk, app: !!globalThis.__desktop?.hotkey, does_list: PEDAL_DOES, last: pedalLast, voiceOn: chatvoice.cfg().on && !pedalOffT });
+async function pedalPress(via) {
+  const c = pedalCfg(); let did = '';
+  if (c.does === 'voice') {
+    if (!feat('chatvoice')) throw new Error('Reading chat out loud isn\'t part of this edition.');
+    const on = chatvoice.cfg().on && !pedalOffT; clearTimeout(pedalOffT); pedalOffT = null;
+    const off = () => { pedalOffT = null; chatvoice.setCfg({ on: false }); pushState(); };
+    if (on) { // going off: say so on your speaker first (only you hear it), then stop
+      chatvoice.stop(); let said = false; if (c.say) { try { chatvoice.test('Chat voice off'); said = true; } catch {} }
+      if (said) pedalOffT = setTimeout(off, 2600); else off();
+      did = 'off';
+    } else { chatvoice.setCfg({ on: true }); if (c.say) { try { chatvoice.test('Chat voice on'); } catch {} } did = 'on'; }
+    act('chat', did === 'on' ? 'turned on 🔈 reading chat out loud with the 🦶 foot pedal' : 'turned off 🔈 reading chat out loud with the 🦶 foot pedal', { icon: '🦶', who: streamerName(), kind: 'chatvoice' });
+    broadcast({ type: 'toast', text: did === 'on' ? '🦶 Foot pedal: 🔈 reading chat is ON' : '🦶 Foot pedal: 🔇 reading chat is OFF' }, 'control');
+  }
+  else if (c.does === 'cvskip') { chatvoice.skip(); did = 'skipped'; }
+  else if (c.does === 'ttsskip') { await deck_call('/api/mara/tts', { cmd: 'skip' }); did = 'skipped'; }
+  else if (c.does === 'ttsmute') { const m = !!ttsCfg().muted; await deck_call('/api/mara/tts', { cmd: m ? 'unmute' : 'mute' }); did = m ? 'unmuted' : 'muted'; }
+  pedalLast = { at: Date.now(), via, did }; pushState();
+  return pedalState();
+}
+app.get('/api/mara/pedal', wTry(() => pedalState()));
+app.post('/api/mara/pedal', wTry(async b => {
+  if (!feat('chatvoice') && !paid.dev()) throw new Error('The foot pedal isn\'t part of this edition.');
+  if (b.press) return pedalPress('button');
+  const c = pedalCfg(), was = c.key;
+  if ('key' in b) { const k = String(b.key || '').trim(); if (k && !PEDAL_KEY.test(k)) throw new Error(`The app can't listen for "${k}" in every window. Set the pedal to send a key like F13 to F24, or a combination like Ctrl+Alt+F12.`); c.key = k; }
+  if ('does' in b && PEDAL_DOES[b.does]) c.does = b.does;
+  if ('say' in b) c.say = !!b.say;
+  db.settings.marathon = { ...(db.settings.marathon || {}), pedal: { key: c.key, does: c.does, say: c.say } };
+  pedalApply();
+  if (c.key && pedalOk === false) { db.settings.marathon.pedal.key = was; pedalApply(); throw new Error(`Windows wouldn't give the app "${c.key}": another program is using that key. Pick another one.`); }
+  save(); pushState(); return pedalState();
+}));
+setTimeout(pedalApply, 4000);
+app.get('/api/test/pedal', wTry(() => { // 🧪 which keys can be a pedal key (nothing changes)
+  const rows = [['F13', true], ['F24', true], ['Ctrl+Alt+F12', true], ['Shift+F9', true], ['num0', true], ['Pause', true], ['V', true], ['Ctrl+', false], ['Mouse1', false], ['F25', false], ['Enter', false], ['Escape', false]].map(([k, want]) => ({ k, want, got: PEDAL_KEY.test(k) }));
+  return { ...pedalState(), rulesOk: rows.every(r => r.want === r.got), rows };
+}));
 app.post('/api/mara/chatvoice', wTry(async b => {
   if (!feat('chatvoice')) throw new Error('Reading chat out loud isn\'t part of this edition.');
   if (b.skip) { chatvoice.skip(); return chatvoice.state(); }

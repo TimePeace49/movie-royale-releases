@@ -147,7 +147,7 @@ function applySettings(p) {
 }
 // 🔇 sounds only while you're in Movie Royal (Settings → App & background, on by default): clicking into another
 // program mutes every Movie Royal window (the stream in OBS keeps its own sound); coming back turns it on again
-let keepSound = false;
+let keepSound = false, pedalAcc = '';
 function muteCheck() {
   setTimeout(() => { // (wait a moment: going from one Movie Royal window to another isn't leaving the app)
     const mute = prefs.muteUnfocused !== false && !keepSound && !BrowserWindow.getFocusedWindow(); // (🎮 game capture playing: its sound stays on)
@@ -222,7 +222,7 @@ const chatVoice = {
   },
   playing: () => !!(cvWin && !cvWin.isDestroyed())
 };
-app.on('will-quit', () => { try { cvPs && cvPs.kill(); } catch {} });
+app.on('will-quit', () => { try { cvPs && cvPs.kill(); } catch {} try { require('electron').globalShortcut.unregisterAll(); } catch {} });
 
 app.on('second-instance', () => showWindow());
 // Quitting: if the Discord bot only runs inside this app (24/7 mode is off), ask first. The control panel shows the question (closeAsk).
@@ -274,6 +274,8 @@ app.whenReady().then(async () => {
     return pageSes;
   };
   globalThis.__desktop = {
+    // 🦶 (1.176.0) a foot pedal / key that works in every window: one global key at a time ('' = none). false = Windows said no
+    hotkey: (acc, fn) => { const { globalShortcut } = require('electron'); try { if (pedalAcc) globalShortcut.unregister(pedalAcc); } catch {} pedalAcc = ''; if (!acc) return true; try { const ok = globalShortcut.register(acc, () => { try { fn(); } catch {} }); if (ok) pedalAcc = acc; return !!ok; } catch { return false; } },
     // 🎮 (1.87.0) the Game capture tab is playing: don't mute Movie Royal when another window is clicked
     keepSound: on => { keepSound = !!on; muteCheck(); return keepSound; },
     // Windows + Electron: after a confirm() pop-up, text boxes can stop taking typing until the window is re-focused
