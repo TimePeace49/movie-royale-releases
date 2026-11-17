@@ -59,6 +59,7 @@ import * as inactive from './inactive.js';
 import * as chatlog from './chat.js';
 import * as chatvoice from './chatvoice.js';
 import * as piper from './piper.js';
+import * as livelog from './livelog.js';
 import * as tts from './tts.js';
 import * as dualstream from './dualstream.js';
 import * as spamban from './spamban.js';
@@ -758,11 +759,35 @@ function maraSeen() { // 👀 when the people with a battle waiting last chatted
 // started (settings.marathon.clock.from; null = this stream only), counting only the time you were live, + any fix you made.
 function liveLogMark(on) {
   const L = (db.liveLog ||= []), last = L[L.length - 1], now = Date.now();
-  if (on) { if (!last || last.e) L.push({ s: now, e: null }); }
-  else if (last && !last.e) last.e = now;
+  if (on) { if (!last || last.e) L.push({ s: now, e: null }); liveSure = true; db.liveSeenAt = now; setTimeout(() => liveReconcile('live').catch(() => {}), 3000); }
+  else if (last && !last.e) { last.e = livelog.endAt(last, { now, seen: db.liveSeenAt || db.stream?.liveSeen, sure: liveSure }); if (!liveSure && now - last.e > 90000) liveNote(`⏱️ The stream ended while the app was closed: total live time stops at ${new Date(last.e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (the last time it saw you live).`); }
   if (L.length > 2000) L.splice(0, L.length - 2000);
   setTimeout(() => clockSend(true), 0);
 }
+// ⏱️ (1.175.0, Derek: "keep track of total live time when I need to update while live or if the app crashes") the time the
+// app last KNEW you were live is saved every 30 s (db.liveSeenAt); when the app opens, the list is lined up with Twitch's own
+// start time of the stream (livelog.js): time while the app was closed counts if the stream kept going, a stream that
+// ended while it was closed stops at the last time it saw you live, a stream that started while it was closed counts from its start.
+let liveSure = false; // (true once this run of the app has seen you live itself)
+const BOOT_AT = Date.now();
+function liveNote(text) { live.liveNote = { at: Date.now(), text }; broadcast({ type: 'toast', text }, 'control'); act('stream', text.replace(/^⏱️ /, ''), { icon: '⏱️', kind: 'live' }); }
+async function liveReconcile(why) {
+  if (!db.live || kick.on() || !twitch.status.userId) return null;
+  const s2 = await twitch.streamInfo(); if (!s2 || !db.live) return null;
+  const now = Date.now(), L = (db.liveLog ||= []), seen = db.liveSeenAt || db.stream?.liveSeen || 0, first = !liveSure;
+  const notes = livelog.fixLive(L, { now, start: s2.startedAt, seen });
+  liveSure = true; db.liveSeenAt = now;
+  const mins = ms => Math.max(1, Math.round(ms / 60000));
+  for (const n of notes) {
+    if (n.k === 'newer') liveNote(`⏱️ A new stream started while the app was closed: the ${mins(n.start - n.ended)} min in between aren't counted as live time.`);
+    else if (n.k === 'earlier') liveNote(`⏱️ You went live ${mins(n.ms)} min before the app noticed: added to the total live time.`);
+  }
+  if (first && !notes.length && seen && BOOT_AT - seen > 45000 && seen > s2.startedAt) liveNote(`⏱️ Still live: the ${mins(BOOT_AT - seen)} min the app was closed are counted in the total live time.`);
+  if (notes.length) { save(); clockSend(true); }
+  return { why, notes };
+}
+setInterval(() => { if (db.live && liveSure) { db.liveSeenAt = Date.now(); save(); } }, 30000);
+let liveTick = 0; setInterval(() => { if (!liveSure || ++liveTick % 5 === 0) liveReconcile('timer').catch(() => {}); }, 2 * 60000); // (every 2 min until Twitch has answered once, then every 10)
 (function liveLogSeed() { const L = (db.liveLog ||= []), last = L[L.length - 1]; if (db.live && (!last || last.e)) L.push({ s: db.stream?.startedAt || Date.now(), e: null }); else if (!db.live && last && !last.e) last.e = Date.now(); })();
 // mode 'auto' (default) = this stream + the ones right before it with less than CLOCK_GAP offline between (restarts for the
 // co-stream etc. count as one marathon); 'from' = since you pressed 🏁 Start counting now; 'stream' = this stream only.
@@ -1150,7 +1175,7 @@ const twitchHandlers = {
   live(isLive, from) {
     if (kick.on() !== (from === 'kick')) return; // 🟢 the platform switch: only the platform you picked says when you're live
     if (isLive && from === 'kick' && db.settings.obsOn !== false) obs.replayReady(true).catch(() => {}); /* 🎬 Kick clips come from OBS's Replay Buffer: have it running */
-    if (!!db.live === !!isLive) return;
+    if (!!db.live === !!isLive) { if (isLive && !liveSure) { if (from === 'kick') liveSure = true; else liveReconcile('start').catch(() => {}); } return; } // ⏱️ (still live after the app was closed: line the live time up with Twitch)
     if (!isLive && db.live) announceOff(); // 📣 the stream ended: hourly chat messages stop
     act('stream', isLive ? 'You went live 🔴' : 'The stream ended ⚫', { icon: isLive ? '🔴' : '⚫', kind: isLive ? 'live' : 'offline' }); // 🧾
     liveLogMark(!!isLive); // ⏱️ the marathon's total live time
@@ -1465,6 +1490,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
   if (ws.role === 'control' && live.editionNote && Date.now() - live.editionNote.at < 300000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: brand(live.editionNote.text), ms: 12000 })); } catch {} }, 2500); /* 🚚 moved over from another edition */
+  if (ws.role === 'control' && live.liveNote && Date.now() - live.liveNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.liveNote.text })); } catch {} }, 2500); // ⏱️ what happened to the live time while the app was closed
   if (ws.role === 'control' && live.resumeNote && Date.now() - live.resumeNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.resumeNote.text })); } catch {} }, 1500); // 🔄 what came back after a restart
   if (ws.role === 'overlay') { ws.send(JSON.stringify(audioMsg())); if (/\bOBS\//.test(ws.ua)) { setTimeout(() => broadcast(audioMsg(), 'overlay'), 200); ws.on('close', () => setTimeout(() => { broadcast(audioMsg(), 'overlay'); pushState(); }, 200)); } } // 🔇 an OBS game screen opened / closed: the app's game screen goes quiet / plays again
   if (ws.role === 'overlay') { ws.send(JSON.stringify(cards.sceneMsg())); if (live.board) ws.send(JSON.stringify({ type: 'gatherBoard', board: { rows: boardRows(), bonus: db.settings.callsOn === false ? 0 : Number(db.settings.callLuck ?? 1), endsAt: live.gather?.endsAt || 0, open: true } })); if (live.phase === 'ended' && !live.claim && !new URL(req.url, 'http://x').searchParams.get('side')) leaveEnded(); /* a popped-out wheel window doesn't count */ ws.send(JSON.stringify(wheel.wheelMsg())); ws.send(JSON.stringify(audioMsg())); ws.send(JSON.stringify(camMsg())); ws.send(JSON.stringify(gfxMsg())); refreshPreview(true); if (live.gather) setTimeout(() => ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather?.endsAt })), 500); }
@@ -6556,7 +6582,8 @@ app.post('/api/mara/clock', wTry(b => {
 // 🧪 ▶ which stream new battles link to right now, and the newest battles' VOD spots (nothing changes)
 app.get('/api/test/vod-check', wTry(() => { const si = site.streamInfoNow(), seg = liveSegStart(); return { live: !!db.live, liveSince: seg, twitchStream: si ? { id: si.id, startedAt: si.startedAt } : null, linksTo: db.live ? site.vodNow(seg) : null, recent: (db.history || []).slice(-8).reverse().map(h => ({ label: h.winner?.label, at: h.started || h.at, sid: h.vod?.sid || null, vod: h.vod ? (db.vodIds || {})[h.vod.sid] === 0 ? 'gone' : (db.vodIds || {})[h.vod.sid] ? 'found' : 'not found yet' : 'none' })) }; }));
 // 🧪 the counter right now + the live times it adds up (nothing changes)
-app.get('/api/test/mara-clock', wTry(() => ({ ...clockState(), segs: (db.liveLog || []).slice(-8).map(x => ({ s: x.s, e: x.e })) })));
+app.get('/api/test/live-time', wTry(() => ({ ...livelog.demo(), seen: db.liveSeenAt || null, sure: liveSure }))); // ⏱️ pretend cases: update / crash / closed while live (nothing saved)
+app.get('/api/test/mara-clock', wTry(() => ({ ...clockState(), seen: db.liveSeenAt || null, segs: (db.liveLog || []).slice(-8).map(x => ({ s: x.s, e: x.e })) })));
 app.post('/api/mara/settings', wTry(b => { const c = { ...(db.settings.marathon || {}) }; if (b.luckPer != null) c.luckPer = Math.max(0.1, Math.min(50, Number(b.luckPer) || 1)); if (b.popSecs != null) c.popSecs = Math.max(10, Math.min(120, Number(b.popSecs) || 40)); if (b.guessSecs != null) c.guessSecs = Math.max(0, Math.min(300, Math.round(Number(b.guessSecs) || 0))); for (const k of ['counter', 'popup', 'itemLook', 'timerOn', 'waitRemind']) if (typeof b[k] === 'boolean') c[k] = b[k]; if (b.waitMins != null) c.waitMins = Math.max(1, Math.min(600, Math.round(Number(b.waitMins) || 30))); if (b.alarmSecs != null) c.alarmSecs = Math.max(1, Math.min(30, Math.round(Number(b.alarmSecs) || 5))); if (['tl', 'tr', 'bl', 'br'].includes(b.corner)) c.corner = b.corner; if (typeof b.defMap === 'string') { if (b.defMap && !marathon.maps().some(m => m.id === b.defMap)) throw new Error('That map isn\'t one of the marathon\'s maps.'); c.defMap = b.defMap; if (live.phase !== 'lobby' && live.phase !== 'running' && maraCharList(getList(db.activeListId)) && !live.maraGuess) { live.map = null; live.mapPick = false; setTimeout(() => refreshPreview(true), 0); } act('battle', b.defMap ? `set the marathon map to ${mapLabel(b.defMap)} (for battles where nobody picked one)` : 'set the marathon map back to 🎲 random', { icon: '🗺️', who: streamerName(), kind: 'setting' }); } db.settings.marathon = c; save(); pushState(); maraCount(true); if ('itemLook' in b) { refreshPreview(); if (b.itemLook) maraPicsAuto().catch(() => {}); } return marathon.cfg(); }));
 app.post('/api/mara/set', wTry(b => { // you change someone's picks yourself (Marathon tab: the map / 🍀 menus on a battle in the line)
   const it = paid.queue().find(x => x.id === b.id); if (!it) throw new Error('That battle already ran or was taken out.');

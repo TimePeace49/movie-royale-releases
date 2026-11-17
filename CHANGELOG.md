@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.175.0
+- ⏱️ The total live time survives updates and crashes (dev mode, marathon).
+  - Update or reopen the app while you're live: the time it was closed is counted, because the stream kept going. A note tells you when it opens again.
+  - The app now saves a "still live" mark every 30 seconds. If the stream ended while the app was closed, the count stops at that mark instead of when you reopened it.
+  - When it opens it asks Twitch when the stream really started: going live before opening the app counts from the real start, and a brand-new stream that began while it was closed doesn't count the offline time in between.
+  - ✏️ Set the total by hand is still there if you ever need it.
+- Test tab: ⏱️ Total live time → 🛟 Update / crash check.
+
 ## 1.174.0
 - 🍲 Crockpot timer on the 🎮 Game capture tab (dev mode). A small countdown on the game picture: bottom right until you drag it somewhere else, and as see-through as the FPS number (the same slider). Point at it for its buttons.
   - 🍲 Crockpot timer above the picture shows / hides it; ⏲ Set the time… takes 4:00 (four hours), 2:30, 45 (minutes), 4h 30m… and lets you name it.
