@@ -548,6 +548,13 @@
   #gcStage:fullscreen #gcFxTag { font-size: 18px; top: 14px; left: 16px; }
   #fxBody .fxRow input[type=number] { width: 82px; } #fxBody table td { vertical-align: middle; }
   #gcFps { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.35); color: #7dff8a; font: 800 22px/1.15 Inter, sans-serif; text-align: right; pointer-events: none; display: none; text-shadow: 0 1px 2px #000; }
+  /* 🍲 crockpot timer (1.174.0): small, bottom right until dragged, as see-through as the FPS number */
+  #gcPot { position: absolute; right: 12px; bottom: 12px; z-index: 5; display: none; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.35); color: #ffd27d; font: 800 18px/1.2 Inter, sans-serif; text-shadow: 0 1px 2px #000; cursor: move; user-select: none; touch-action: none; white-space: nowrap; transition: opacity .15s; }
+  #gcPot.show { display: block; } #gcPot:hover, #gcPot.done { opacity: 1 !important; } #gcPot small { display: block; font-size: 11px; font-weight: 700; color: #cfd3dc; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  #gcPot .potBtns { display: none; gap: 4px; margin-top: 4px; } #gcPot:hover .potBtns, #gcPot.done .potBtns { display: flex; }
+  #gcPot .potBtns button { min-height: 0; padding: 2px 7px; font-size: 12px; border-radius: 7px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.1); color: #fff; cursor: pointer; }
+  #gcPot.done { background: #b3261e; color: #fff; animation: potBlink 1s steps(2) infinite; } @keyframes potBlink { 50% { background: #ff7a1a; } }
+  #gcStage:fullscreen #gcPot { font-size: 24px; right: 38px; } #gcStage:fullscreen #gcPot small { font-size: 13px; }
   #gcFps small { display: block; font-size: 12px; font-weight: 700; color: #cfd3dc; }
   #gcStage:fullscreen #gcFps { font-size: 30px; top: 16px; right: 18px; } #gcStage:fullscreen #gcFps small { font-size: 15px; }
   #gcClipDot { position: absolute; right: 14px; bottom: 14px; width: 12px; height: 12px; border-radius: 50%; background: #fff; opacity: .1; cursor: pointer; display: none; transition: opacity .2s, background .2s, transform .2s; }
@@ -857,9 +864,10 @@
       <label style="display:flex;gap:6px;align-items:center;margin:0 0 8px"><input type="checkbox" id="gcFpsOn" onchange="gcSet({fps:this.checked})" title="Game capture: show the game's FPS in the upper right corner"> 📈 Show FPS</label>
       <div><label>👻 FPS see-through <span id="gcFpsAN"></span></label><input type="range" id="gcFpsA" min="0" max="90" step="5" oninput="gcSet({fpsA:Number(this.value)})" title="Game capture: how see-through the FPS number is (0% = solid, 90% = barely there)" style="width:120px"></div>
     </div>
+    <div class="row" id="gcPotRow" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"><button id="gcPotBtn" onclick="potShow()" title="Game capture: show or hide the small crockpot timer on the picture (bottom right until you drag it somewhere else; as see-through as the FPS number)">🍲 Crockpot timer</button><button onclick="potSetAsk()" title="Game capture: set how long the crockpot timer runs and what it says (for example 4:00 for four hours)">⏲ Set the time…</button><span class="muted" id="gcPotInfo" style="font-size:12px"></span></div>
     <div class="row" id="gcQuick" style="gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"></div>
     <p class="help" id="gcNote" style="margin:6px 0 8px"></p>
-    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFxTv"></div><div id="gcFxTag"></div><div id="gcOwn" onclick="event.stopPropagation()" ondblclick="event.stopPropagation()"></div><div id="gcFps"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
+    <div id="gcStage" ondblclick="gcFull()" title=""><video id="gcVideo" autoplay playsinline></video><div id="gcFxTv"></div><div id="gcFxTag"></div><div id="gcOwn" onclick="event.stopPropagation()" ondblclick="event.stopPropagation()"></div><div id="gcFps"></div><div id="gcPot" onclick="event.stopPropagation()" ondblclick="event.stopPropagation()"></div><div id="gcClipMsg"></div><div id="gcClipDot" onclick="event.stopPropagation();clipNow('capture')" ondblclick="event.stopPropagation()" title="Clip: make a Twitch clip of the last minute"></div><div id="gcIdle">🎮 Pick your capture card and press ▶ Start</div></div>
     <p class="help" style="margin:8px 0 0">While you're on this tab the battles inside Movie Royal make no sound (your stream still hears them from OBS). Double-click the picture or press <b>F</b> for fullscreen. The big FPS number is the game's own speed (how many different pictures a second); the small one is what the capture card sends. A still picture (a menu, a pause screen) reads low.</p>
   </div>
 </section>
@@ -1573,7 +1581,7 @@ not a link</textarea>
     <h3>🎮 Game capture</h3>
     <p class="help">The 🎮 Game capture tab shows your capture card so you can play through Movie Royal. These use a pretend game picture (no capture card needed) to check the FPS number.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="primary" onclick="gcTest(30)" title="Open the Game capture tab with a pretend game that runs at 30 frames a second: the big FPS number should read about 30">🧪 Pretend game at 30 FPS</button><button onclick="gcTest(60)" title="Open the Game capture tab with a pretend game that runs at 60 frames a second: the big FPS number should read about 60">🧪 Pretend game at 60 FPS</button><button onclick="gcQuietTest()" title="Check whether the battle sound inside Movie Royal is quiet right now (it is while the Game capture tab is open)">🔇 Is the battle quiet?</button></div>
-    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="gcQuickTest()" title="Check the quick buttons on the Game capture tab (Skip TTS, Mute TTS, Reading chat, Pin message) and show what the pinned message would say. Nothing is sent">⚡ Quick buttons + pin message check</button><button onclick="gcSpeedPretend('usb2')" title="Game capture speed check with pretend numbers for a card on a slow USB port: it should pick the small picture and say the port is slow (nothing is changed)">🩺 Pretend speed check: slow USB port</button><button onclick="gcSpeedPretend('big')" title="Game capture speed check with pretend numbers where only 4K is slow: it should pick 1440p (nothing is changed)">🩺 Pretend: only 4K is slow</button><button class="ghost" onclick="setView('capture');gcSpeedTest()" title="Run the real speed check on your capture card (about 15 seconds; switches to the best picture size)">🩺 Real speed check</button></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><button onclick="potTest(true)" title="Crockpot timer test: checks how it reads times (4:00, 45, 4h 30m…) and runs a 6-second pretend timer on the Game capture tab so you see it count down, turn red and ring. Your own timer is put back after">🍲 Crockpot timer (6-second try)</button><button onclick="gcQuickTest()" title="Check the quick buttons on the Game capture tab (Skip TTS, Mute TTS, Reading chat, Pin message) and show what the pinned message would say. Nothing is sent">⚡ Quick buttons + pin message check</button><button onclick="gcSpeedPretend('usb2')" title="Game capture speed check with pretend numbers for a card on a slow USB port: it should pick the small picture and say the port is slow (nothing is changed)">🩺 Pretend speed check: slow USB port</button><button onclick="gcSpeedPretend('big')" title="Game capture speed check with pretend numbers where only 4K is slow: it should pick 1440p (nothing is changed)">🩺 Pretend: only 4K is slow</button><button class="ghost" onclick="setView('capture');gcSpeedTest()" title="Run the real speed check on your capture card (about 15 seconds; switches to the best picture size)">🩺 Real speed check</button></div>
     <div id="tGcOut"></div>
   </div>
   <div class="card devOnly" id="mtTestCard">
@@ -1917,6 +1925,7 @@ const KEYBINDS = [ // [id, tab, what it does, default key, run, works while typi
   ['pop', 'any', '↗ Pop the tab you\'re on out into its own window', 'Ctrl+Alt+P', () => popTab(), true],
   ['fx-own', 'capture', '🎛️ My own screen effects (open / close the box)', 'Ctrl+Alt+D', () => { if (featOn('screenfx')) fxOwn(); }, true],
   ['gc-full', 'capture', '⛶ Fullscreen on / off', 'F', () => gcFull()],
+  ['gc-pot', 'capture', '🍲 Crockpot timer: start / pause', 'T', () => potCmd('toggle')],
   ['gc-go', 'capture', '▶ Start / ⏹ stop the capture card', 'S', () => gcToggle()],
   ['gc-ttsskip', 'capture', '⏭️ Skip the text to speech that is talking', 'K', () => ttsCmd('skip')],
   ['gc-ttsmute', 'capture', '🔇 Mute / 🔊 unmute text to speech', 'M', () => ttsCmd(S?.mara?.tts?.muted ? 'unmute' : 'mute')],
@@ -3978,7 +3987,7 @@ async function gcDevices(ask) { // the list of capture cards / sound inputs (nam
   return vids.length;
 }
 function gcSet(o) { const c = gcCfg(), re = ('vid' in o && o.vid !== c.vid) || ('aud' in o && o.aud !== c.aud) || ('res' in o && o.res !== c.res); Object.assign(c, o); gcSave(); $('gcVolN').textContent = c.vol + '%'; $('gcVideo').volume = Math.max(0, Math.min(1, c.vol / 100)); gcDraw(); if (re && GC.stream && !GC.fake) gcStart(); }
-function gcDraw() { const on = !!GC.stream, c = gcCfg(); $('gcGo').textContent = on ? '⏹ Stop' : '▶ Start'; $('gcGo').classList.toggle('primary', !on); $('gcIdle').style.display = on ? 'none' : 'flex'; $('gcFps').style.display = on && c.fps !== false ? 'block' : 'none'; $('gcFps').style.opacity = String(1 - Math.max(0, Math.min(90, Number(c.fpsA ?? 50))) / 100); if ($('gcFpsAN')) $('gcFpsAN').textContent = (c.fpsA ?? 50) + '%'; }
+function gcDraw() { const on = !!GC.stream, c = gcCfg(); $('gcGo').textContent = on ? '⏹ Stop' : '▶ Start'; $('gcGo').classList.toggle('primary', !on); $('gcIdle').style.display = on ? 'none' : 'flex'; $('gcFps').style.display = on && c.fps !== false ? 'block' : 'none'; $('gcFps').style.opacity = String(1 - Math.max(0, Math.min(90, Number(c.fpsA ?? 50))) / 100); if ($('gcFpsAN')) $('gcFpsAN').textContent = (c.fpsA ?? 50) + '%'; potDraw(); }
 // ⌨️ (1.168.0, Derek: "add keybinds for skip tts, mute tts, and reading chat so I can turn them on and off quick while gaming… buttons on the non-fullscreen capture tab… a pin message button")
 // The quick row under the capture bar: the same things as the Marathon tab's buttons, here so you don't have to leave the game. Keys K / M / V / P work on this tab, in fullscreen too.
 let GCQ = '';
@@ -4063,6 +4072,61 @@ async function gcSpeedTest(fake, auto) {
 function gcSpeedPretend(kind) { setView('capture'); return gcSpeedTest(kind === 'usb2' ? { '1080p60': 10, '720p60': 22, '540p60': 41 } : { '2160p60': 14, '1440p60': 59, '1080p60': 60, '720p60': 60, '540p60': 60 }); }
 function gcStop(quietly) { const v = $('gcVideo'); try { GC.stream?.getTracks().forEach(t => t.stop()); } catch {} if (GC.fake) { clearInterval(GC.fake.timer); GC.fake = null; } else if (GC.stream && !quietly) { gcCfg().on = false; gcSave(); } if (GC.stream && !quietly) gcKeep(false); GC.stream = null; if (v) { try { v.pause(); } catch {} v.srcObject = null; } if (!quietly) { gcNote(''); gcDraw(); } }
 function gcToggle() { if (GC.stream) gcStop(); else gcStart(); }
+// 🍲 Crockpot timer (1.174.0, Derek: "a custom crockpot timer on the capture screen… small, lower right corner by default but I can move it,
+// same transparent as the fps counter"). Lives on this PC (localStorage `gcPot`): it keeps counting on other tabs and after the app restarts.
+const POT_DEF = { show: false, secs: 4 * 3600, label: 'Crockpot', state: 'idle', endsAt: 0, left: 0, at: null };
+let POT = (() => { try { return { ...POT_DEF, ...(JSON.parse(localStorage.getItem('gcPot') || '{}') || {}) }; } catch { return { ...POT_DEF }; } })(), potStop = null, POT_TEST = false;
+const potSave = () => { if (POT_TEST) return; try { localStorage.setItem('gcPot', JSON.stringify(POT)); } catch {} };
+/** "4:00" = 4 hours, "2:30" = 2 h 30 min, "1:30:00" = h:m:s, "45" = 45 minutes, "4h", "90m", "4h 30m", "30s" → seconds (0 = can't read it). Pure */
+function potParse(t) { t = String(t || '').trim().toLowerCase(); if (!t) return 0; let s = 0;
+  if (/^\d+(:\d{1,2}){1,2}$/.test(t)) { const p = t.split(':').map(Number); s = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 3600 + p[1] * 60; }
+  else if (/^\d+(\.\d+)?$/.test(t)) s = Math.round(Number(t) * 60);
+  else { let hit = false; t.replace(/(\d+(?:\.\d+)?)\s*(h(?:ours?|rs?)?|m(?:in(?:ute)?s?)?|s(?:ec(?:ond)?s?)?)(?![a-z])/g, (_, n, u) => { hit = true; s += Number(n) * (u[0] === 'h' ? 3600 : u[0] === 'm' ? 60 : 1); return ''; }); if (!hit) return 0; s = Math.round(s); }
+  return s > 0 && s <= 48 * 3600 ? s : 0; }
+const potClock = s => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' + String(x).padStart(2, '0'); };
+const potLeft = () => POT.state === 'run' ? Math.max(0, (POT.endsAt - Date.now()) / 1000) : POT.state === 'pause' ? POT.left : POT.state === 'done' ? 0 : POT.secs;
+function potPlace(at) { const b = $('gcPot'), st = $('gcStage'); if (!b || !st) return;
+  at = at || POT.at; if (!at || !(at.x >= 0) || !(at.y >= 0)) { b.style.left = b.style.top = b.style.right = b.style.bottom = b.style.transform = ''; return null; }
+  const W = st.clientWidth || 1, Hh = st.clientHeight || 1, hw = Math.min(.5, b.offsetWidth / 2 / W), hh = Math.min(.5, b.offsetHeight / 2 / Hh);
+  at = { x: Math.max(hw, Math.min(1 - hw, at.x)), y: Math.max(hh, Math.min(1 - hh, at.y)) };
+  b.style.right = b.style.bottom = 'auto'; b.style.left = (at.x * 100).toFixed(2) + '%'; b.style.top = (at.y * 100).toFixed(2) + '%'; b.style.transform = 'translate(-50%, -50%)'; return at; }
+let potKey = '';
+function potDraw() { const b = $('gcPot'); if (!b) return; const st = POT.state, c = gcCfg();
+  b.classList.toggle('show', !!POT.show || st === 'done'); b.classList.toggle('done', st === 'done'); b.style.opacity = String(1 - Math.max(0, Math.min(90, Number(c.fpsA ?? 50))) / 100);
+  const k = [st, POT.label, POT.show].join('|');
+  if (k !== potKey) { potKey = k; const T = 'Crockpot timer: ';
+    b.innerHTML = `<span id="gcPotT"></span><small>${esc(POT.label || 'Crockpot')}${st === 'pause' ? ' · paused' : st === 'idle' ? ' · not started' : ''}</small><div class="potBtns">${st === 'done' ? `<button onclick="potCmd('ok')" title="${T}stop the bell and clear the timer">✅ Got it</button>` : `<button onclick="potCmd('${st === 'run' ? 'pause' : 'start'}')" title="${T}${st === 'run' ? 'pause it' : st === 'pause' ? 'carry on' : 'start it'}">${st === 'run' ? '⏸' : '▶'}</button><button onclick="potCmd('reset')" title="${T}back to the full time, not running">↺</button><button onclick="potSetAsk()" title="${T}set how long it runs and what it says">⏲</button><button onclick="potShow(false)" title="${T}hide it (it keeps counting; 🍲 Crockpot timer above the picture shows it again)">✕</button>`}</div>`;
+    b.title = st === 'done' ? '' : 'Crockpot timer: drag it anywhere on the picture. Point at it for its buttons.'; }
+  const t = $('gcPotT'); if (t) t.textContent = st === 'done' ? '🍲 DONE!' : '🍲 ' + potClock(potLeft());
+  const btn = $('gcPotBtn'); if (btn) btn.classList.toggle('primary', !!POT.show);
+  const info = $('gcPotInfo'); if (info) info.textContent = st === 'run' ? `running: ${potClock(potLeft())} left (ready about ${new Date(POT.endsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })})` : st === 'pause' ? `paused at ${potClock(POT.left)}` : st === 'done' ? 'done!' : `set to ${potClock(POT.secs)}`;
+  potPlace(); }
+function potShow(on) { POT.show = on == null ? !POT.show : !!on; potSave(); potDraw(); }
+function potCmd(cmd) { const now = Date.now();
+  if (cmd === 'toggle') cmd = POT.state === 'run' ? 'pause' : POT.state === 'done' ? 'ok' : 'start';
+  if (cmd === 'start') { const left = POT.state === 'pause' ? POT.left : POT.secs; POT.state = 'run'; POT.endsAt = now + left * 1000; POT.show = true; }
+  else if (cmd === 'pause' && POT.state === 'run') { POT.left = potLeft(); POT.state = 'pause'; }
+  else if (cmd === 'reset' || cmd === 'ok') { POT.state = 'idle'; POT.endsAt = 0; POT.left = 0; try { potStop?.(); } catch {} potStop = null; }
+  potSave(); potDraw(); }
+async function potSetAsk() { const t = await ask('How long should the crockpot timer run?\n4:00 = four hours · 2:30 = two and a half hours · 45 = 45 minutes · 1:30:00 = hours:minutes:seconds', potClock(POT.secs).replace(/^(\d+:\d\d):00$/, '$1')); if (t == null) return;
+  const s = potParse(t); if (!s) return toast('⚠️ Couldn\'t read that time. Try 4:00 (four hours) or 45 (minutes).');
+  const l = await ask('What should it say under the time?', POT.label || 'Crockpot'); POT.secs = s; if (l != null) POT.label = String(l).trim().slice(0, 30) || 'Crockpot';
+  POT.state = 'idle'; POT.endsAt = 0; POT.left = 0; POT.show = true; potSave(); potDraw(); toast(`🍲 Set to ${potClock(s)}. Press ▶ on the timer (or T on the Game capture tab) to start it.`); }
+function potDone() { POT.state = 'done'; POT.show = true; potSave(); potDraw(); toast(`🍲 <b>${esc(POT.label || 'Crockpot')}</b> timer is done!`, 20000);
+  try { potStop?.(); potStop = window.oldBell ? window.oldBell(Number(S?.settings?.sfxVolume ?? 70), POT_TEST ? 2 : 8) : null; } catch {} }
+setInterval(() => { if (POT.state === 'run' && Date.now() >= POT.endsAt) potDone(); else if (POT.show || POT.state === 'run') potDraw(); }, 500);
+document.addEventListener('pointerdown', e => { const b = e.target.closest?.('#gcPot'); if (!b || e.target.closest('button')) return; e.preventDefault();
+  const st = $('gcStage'), r = st.getBoundingClientRect(), br = b.getBoundingClientRect(), ox = e.clientX - (br.left + br.width / 2), oy = e.clientY - (br.top + br.height / 2); let at = null;
+  const mv = ev => { at = potPlace({ x: (ev.clientX - ox - r.left) / r.width, y: (ev.clientY - oy - r.top) / r.height }); };
+  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); if (at) { POT.at = at; potSave(); } };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up); });
+addEventListener('resize', () => potPlace()); document.addEventListener('fullscreenchange', () => setTimeout(potPlace, 60));
+/** 🧪 the time reading + a 6-second pretend timer on the Game capture tab (your own timer is put back after) */
+async function potTest(run) { const o = $('tGcOut'), T = [['4:00', 14400], ['2:30', 9000], ['1:30:00', 5400], ['45', 2700], ['4h', 14400], ['4h 30m', 16200], ['90m', 5400], ['30s', 30], ['soon', 0], ['', 0]];
+  const rows = T.map(([t, want]) => { const got = potParse(t); return `<tr><td>${got === want ? '✅' : '❌'}</td><td>“${esc(t)}”</td><td class="muted">${got ? potClock(got) : 'not a time'}</td></tr>`; }).join('');
+  if (o) o.innerHTML = `<div class="help" style="margin-top:8px"><b>🍲 Crockpot timer: reading times</b><table class="tbl" style="margin-top:6px"><tbody>${rows}</tbody></table>${run ? 'A 6-second pretend timer is running on the Game capture tab: it should count down bottom right (or where you dragged it), then turn red, say DONE! and ring. Your own timer comes back after.' : ''}</div>`;
+  if (!run) return; const keep = { ...POT }; POT_TEST = true; setView('capture'); POT = { ...POT, show: true, secs: 6, label: 'Test', state: 'run', endsAt: Date.now() + 6000 }; potKey = ''; potDraw();
+  setTimeout(() => { try { potStop?.(); } catch {} potStop = null; POT = keep; POT_TEST = false; potKey = ''; potDraw(); }, 11000); }
 function gcFull() { const st = $('gcStage'); if (document.fullscreenElement === st) document.exitFullscreen?.(); else st.requestFullscreen?.().catch(() => toast('Fullscreen did not start: click the picture once and try again.')); }
 // 📈 FPS: every picture the card delivers is counted (the small number); a picture that differs from the one before = a new game frame (the big number)
 function gcLoop() {

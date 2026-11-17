@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.174.0
+- 🍲 Crockpot timer on the 🎮 Game capture tab (dev mode). A small countdown on the game picture: bottom right until you drag it somewhere else, and as see-through as the FPS number (the same slider). Point at it for its buttons.
+  - 🍲 Crockpot timer above the picture shows / hides it; ⏲ Set the time… takes 4:00 (four hours), 2:30, 45 (minutes), 4h 30m… and lets you name it.
+  - ▶ / ⏸ on the timer or the T key starts and pauses it. It keeps counting on other tabs, in fullscreen, and after the app restarts.
+  - When it's done it turns red, says DONE!, rings and shows a pop-up note on any tab. ✅ Got it stops it.
+  - Only you see it: it isn't on stream.
+- Test tab: 🎮 Game capture → 🍲 Crockpot timer (6-second try).
+
 ## 1.173.0
 - 💡 Nanoleaf panels in 🔌 Smart plug controls (Settings). No account or key: press 🔎 Look for my Nanoleaf, hold the panels' power button 5 to 7 seconds until it blinks, press Pair. Then it's in your list like the other lights: on / off, colour, brightness, a Stream Deck link, and it can join the light shows for subs, raids, bits and donations (tick "subs + raids"). After a show it goes back to the scene it was playing.
   - Works for Nanoleaf panels (Shapes, Canvas, Light Panels, Lines, Elements), over your home Wi-Fi. Nanoleaf's "Essentials" bulbs and light strips don't have this kind of control.
