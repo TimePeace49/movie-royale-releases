@@ -43,20 +43,26 @@ export function setCfg(b = {}) {
 }
 // ---- playing: one at a time, the rest wait in a line (a redeem is never thrown away: the app never refunds) ----
 let cur = null, timer = null, last = null; const q = [];
+export const QMAX = 10000; // (1.179.0, Derek: "queue of 10k" in case of a big raid; a paid effect is never thrown away)
+// the line is kept on disk, so an app update / restart mid-stream doesn't lose what people paid for (tests + app-only ones aren't kept)
+let keepT = null;
+const keep = () => { if (keepT) return; keepT = setTimeout(() => { keepT = null; try { db.fxQueue = q.filter(x => !x.test && !x.dry).map(x => ({ id: x.id, kind: x.kind, secs: x.secs, by: x.by, via: x.via })); save(); } catch {} }, 800); };
+/** put the saved line back (once, at start). Nothing plays until the usual rules let it (the capture tab hold) */
+export function restore() { const L = Array.isArray(db.fxQueue) ? db.fxQueue : []; let n = 0; for (const x of L.slice(0, QMAX)) { if (!x || (x.kind !== 'random' && !FX[x.kind])) continue; q.push({ id: String(x.id || Math.random().toString(36).slice(2, 10)), kind: x.kind, secs: x.secs == null ? null : clamp(x.secs, 3, 600, 120), by: String(x.by || '').slice(0, 40), via: String(x.via || 'points'), test: false, dry: false }); n++; } if (n && !cur) next(); return n; }
 const ownName = ks => ks.map(k => FX[k].name).join(' + '), ownIcon = ks => ks.map(k => FX[k].icon).join('');
 export const now = () => (cur && cur.forever ? { id: cur.id, kind: cur.kind, kinds: cur.kinds, forever: true, name: ownName(cur.kinds), icon: ownIcon(cur.kinds), secs: null, at: cur.at, left: null, paused: false, pausedBy: '', by: 'you', via: 'you', test: !!cur.test, stream: cur.stream }
   : cur ? { id: cur.id, kind: cur.kind, name: FX[cur.kind].name, icon: FX[cur.kind].icon, secs: cur.secs, at: cur.at, left: Math.max(0, Math.round((cur.pl != null ? cur.pl : cur.at + cur.secs * 1000 - Date.now()) / 1000)), paused: cur.pl != null, pausedBy: cur.pl != null ? (hold.hand ? 'you' : 'away') : '', by: cur.by, via: cur.via, test: !!cur.test, stream: cur.stream } : null);
-export const state = () => ({ own: ownState(), now: now(), paused: !!cur && cur.pl != null, away: hold.auto, waiting: !cur && !!q.length && blockedNext(), queue: q.map(x => x.kind === 'random' ? { kind: 'random', name: 'Random', icon: '🎲', secs: null, by: x.by, via: x.via } : { kind: x.kind, name: FX[x.kind].name, icon: FX[x.kind].icon, secs: x.secs, by: x.by, via: x.via }), last });
+export const state = () => ({ own: ownState(), now: now(), paused: !!cur && cur.pl != null, away: hold.auto, waiting: !cur && !!q.length && blockedNext(), queueN: q.length, queue: q.slice(0, 20).map(x => x.kind === 'random' ? { kind: 'random', name: 'Random', icon: '🎲', secs: null, by: x.by, via: x.via } : { kind: x.kind, name: FX[x.kind].name, icon: FX[x.kind].icon, secs: x.secs, by: x.by, via: x.via }), last });
 /** start (or line up) an effect. kind 'random' = picked when its turn comes (Derek: viewers don't choose). via: points | bits | tip | mara | you | test. dry = only in the app, OBS is left alone */
-export function start({ kind, secs, by = '', via = 'you', test = false, dry = false } = {}) {
+export function start({ kind, secs, by = '', via = 'you', test = false, dry = false, quiet = false } = {}) {
   const c = cfg();
   if (kind === 'random') { if (!onKinds(c).length) throw new Error('Every screen effect is switched off.'); }
   else if (!FX[kind]) throw new Error('Which effect?');
   const item = { id: Math.random().toString(36).slice(2, 10), kind, secs: kind === 'random' ? (secs != null ? clamp(secs, 3, 600, 120) : null) : clamp(secs, 3, 600, c.fx[kind].secs), by: String(by || '').slice(0, 40), via, test: !!test, dry: !!dry };
-  if (q.length >= 40) q.shift();
-  q.push(item); const waiting = !!cur && !cur.forever; if (!waiting) next(); // (your own stay-on effect steps aside for it: see next)
+  if (q.length >= QMAX) throw new Error(`The screen effect line is full (${QMAX.toLocaleString('en-US')}).`);
+  q.push(item); keep(); const waiting = !!cur && !cur.forever; if (!waiting) next(); // (your own stay-on effect steps aside for it: see next)
   if (waiting) H.send({ type: 'screenFx', fx: now(), queue: q.length }); // (the timers show how many are next)
-  if (waiting && c.say && !test && via !== 'you') H.say(`🎲 @${item.by || 'Someone'}'s screen effect is in line (${q.length} waiting). It starts right after the one playing now.`);
+  if (waiting && c.say && !test && !quiet && via !== 'you') H.say(`🎲 @${item.by || 'Someone'}'s screen effect is in line (${q.length} waiting). It starts right after the one playing now.`);
   const shown = waiting ? item : (cur?.id === item.id ? cur : item);
   return { ok: true, id: item.id, waiting, ahead: waiting ? q.length : 0, kind: shown.kind, name: shown.kind === 'random' ? 'a random effect' : FX[shown.kind].name, secs: shown.secs };
 }
@@ -94,7 +100,7 @@ function next() {
   if ((cur && !cur.forever) || !q.length) return;
   if (blockedNext()) return void ownBack(); // (waits in the line until the Game capture screen is back)
   if (cur?.forever) { ownKeep = { kinds: cur.kinds, dry: cur.dry, test: cur.test }; cur = null; try { H.stop(); } catch {} } // 🎛️ your own effect steps aside for chat's, and comes back after the line is empty
-  const it = q.shift(), c = cfg();
+  const it = q.shift(), c = cfg(); keep();
   if (it.kind === 'random') { it.kind = pickRandom(c, [cur?.kind, last?.kind].filter(Boolean)) || 'bw'; if (it.secs == null) it.secs = c.fx[it.kind].secs; it.random = true; }
   const F = FX[it.kind];
   cur = { ...it, at: Date.now(), stream: null };
@@ -134,10 +140,10 @@ export function own({ kinds, kind, on = 'toggle', dry = false, test = false } = 
   return { ok: true, own: ownState(), now: now() };
 }
 /** 🛑 stop what's playing (all = and empty the line) */
-export function stop(all = false) { if (all) { q.length = 0; ownKeep = null; } const had = !!cur; if (cur) end(cur, true); return { ok: true, had, queue: q.length }; }
+export function stop(all = false) { if (all) { q.length = 0; ownKeep = null; keep(); } const had = !!cur; if (cur) end(cur, true); return { ok: true, had, queue: q.length }; }
 // ---- the ways in ----
 /** money: bits or a tip. How many random effects does it buy? One per full price (up to 10); 0 = not enough (or that price is 0 = off). Pure. */
-export const MAX_BUY = 10;
+export const MAX_BUY = 10000; // (was 10: with the long line, big money buys them all)
 export function howMany(kindOfMoney, amount, c = cfg()) {
   const price = kindOfMoney === 'bits' ? c.bitsCost : c.tip, n = Number(amount) || 0;
   return price > 0 && n >= price ? Math.min(MAX_BUY, Math.floor(n / price + 1e-9)) : 0;
@@ -145,8 +151,9 @@ export function howMany(kindOfMoney, amount, c = cfg()) {
 export function money(a, { test = false } = {}) {
   const c = cfg(); if (!test && (!on() || (a.kind === 'bits' ? !c.bits : !c.tips))) return null;
   const n = howMany(a.kind, a.amount, c); if (!n || !onKinds(c).length) return null;
-  let r = null; for (let i = 0; i < n; i++) { const x = start({ kind: 'random', by: a.name, via: a.kind === 'bits' ? 'bits' : 'tip', test }); if (!r) r = x; }
-  return { ...r, count: n };
+  let r = null, got = 0; for (let i = 0; i < n; i++) { try { const x = start({ kind: 'random', by: a.name, via: a.kind === 'bits' ? 'bits' : 'tip', test, quiet: i > 0 }); if (!r) r = x; got++; } catch { break; } }
+  if (got > 1 && c.say && !test) H.say(`🎲 @${a.name || 'Someone'} bought ${got} screen effects! ${q.length} waiting in line.`);
+  return r ? { ...r, count: got } : null;
 }
 export function redeem(r) {
   const c = cfg(); if (!r.test && (!on() || !c.points || !onKinds(c).length)) return null; // (switched off: the redeem is left alone for the streamer, never refunded by the app)
@@ -203,7 +210,8 @@ export function demo() {
   T('300 bits: one random effect', howMany('bits', 300, c), howMany('bits', 300, c) === 1);
   T('950 bits: three, one after another', howMany('bits', 950, c), howMany('bits', 950, c) === 3);
   T('$5 tip (price $3): one', howMany('tip', 5, c), howMany('tip', 5, c) === 1);
-  T('$100 tip: at most ' + MAX_BUY, howMany('tip', 100, c), howMany('tip', 100, c) === MAX_BUY);
+  T('$100 tip: 33, all of them go in the line', howMany('tip', 100, c), howMany('tip', 100, c) === 33);
+  T('The line holds 10,000', QMAX, QMAX === 10000 && MAX_BUY === 10000);
   T('Tip price $0 = tips can\'t buy one', howMany('tip', 50, { ...c, tip: 0 }), howMany('tip', 50, { ...c, tip: 0 }) === 0);
   const seen = new Set(); let twice = 0, prev = null, off = 0; for (let i = 0; i < 600; i++) { const k = pickRandom(c, prev ? [prev] : []); seen.add(k); if (k === prev) twice++; if (k === 'flip') off++; prev = k; }
   T('Random: every switched-on effect comes up', `${seen.size} of ${onKinds(c).length}`, seen.size === onKinds(c).length);

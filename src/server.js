@@ -2246,7 +2246,7 @@ function promoAutoFrom(P, F, pts) {
     if (w.length) parts.push(`🎲 Mess with my screen for ${mins} min: ` + or(w)); }
   return parts;
 }
-const promoParts = () => promoAutoFrom(paid.dev() ? paid.cfg() : null, feat('screenfx') ? screenfx.cfg() : null, pointsOn());
+const promoParts = () => promoAutoFrom(paid.dev() && paid.cfg().buy !== false ? paid.cfg() : null, feat('screenfx') ? screenfx.cfg() : null, pointsOn());
 const promoText = (forChat) => { const c = promoCfg(); if (c.text.trim()) return c.text.trim(); const p = promoParts(); return p.join(forChat ? '  |  ' : '        ✦        '); };
 const promoMsg = () => { const c = promoCfg(); return { type: 'promo', text: c.on ? promoText(false) : '', speed: c.speed, size: c.size, pos: c.pos, band: c.band }; };
 let promoKey = ''; const promoSend = () => { const m = promoMsg(), k = JSON.stringify(m); if (k !== promoKey) { promoKey = k; broadcast(m, 'promo'); } };
@@ -4076,7 +4076,7 @@ function fxMaraSync() { // 🏃 the effects as things in the marathon battle (on
 }
 const fxInfo = async (withObs) => { const c = screenfx.cfg(); let srcs = null, obsErr = '';
   if (withObs && obsOk()) try { srcs = await obs.fxSources(); } catch (e) { obsErr = e.message; }
-  return { on: c.on, feat: feat('screenfx'), cfg: c, list: Object.entries(screenfx.FX).map(([k, F]) => ({ k, ...F, title: screenfx.title(k), moves: !!globalThis.SCREENFX.MOVES[k] })), state: screenfx.state(), sources: srcs, obsErr, obsOn: obsOk(), points: pointsOn(), rewardsMade: !!db.fxSetup?.v2, capTab: fxCapOn(), twitch: !!twitch.status.userId, dev: paid.dev(), maraList: !!getList(paid.rawCfg().listId), maraN: (getList(paid.rawCfg().listId)?.entries || []).filter(e => e.fx && e.status === 'active').length }; };
+  return { on: c.on, feat: feat('screenfx'), qmax: screenfx.QMAX, cfg: c, list: Object.entries(screenfx.FX).map(([k, F]) => ({ k, ...F, title: screenfx.title(k), moves: !!globalThis.SCREENFX.MOVES[k] })), state: screenfx.state(), sources: srcs, obsErr, obsOn: obsOk(), points: pointsOn(), rewardsMade: !!db.fxSetup?.v2, capTab: fxCapOn(), twitch: !!twitch.status.userId, dev: paid.dev(), maraList: !!getList(paid.rawCfg().listId), maraN: (getList(paid.rawCfg().listId)?.entries || []).filter(e => e.fx && e.status === 'active').length }; };
 app.get('/api/screenfx', async (req, res) => res.json(await fxInfo(req.query.obs === '1')));
 app.post('/api/screenfx', async (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}, was = screenfx.cfg(); const c = screenfx.setCfg(b);
   if (c.on && c.points && !db.fxSetup?.v2 && twitch.status.userId && pointsOn()) fxSetup().catch(e => console.error('[twitch] screen effect rewards:', e.message));
@@ -4089,7 +4089,7 @@ let fxCapAt = 0; const fxCapOn = () => Date.now() - fxCapAt < 45000;
 app.post('/api/screenfx/own', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const b = req.body || {}; res.json({ ...screenfx.own({ kinds: Array.isArray(b.kinds) ? b.kinds : undefined, kind: b.kind ? String(b.kind) : undefined, on: b.on == null ? 'toggle' : !!b.on, dry: !!b.dry }), state: screenfx.state() }); } catch (e) { res.status(400).json({ error: e.message }); } }); // 🎛️ (1.163.0) his own stay-on effects
 app.get('/api/test/screenfx-own', async (req, res) => { try { res.json(await screenfx.ownDemo()); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/screenfx/capture-tab', (req, res) => { const was = fxCapOn(); fxCapAt = req.body?.on ? Date.now() : 0; if (was !== fxCapOn()) { screenfx.setAway(!fxCapOn()); rewardKey = ''; syncRewards().catch(() => {}); if (fxCapOn()) promoPin('you opened the Game capture tab').catch(() => {}); } res.json({ ok: true, on: fxCapOn() }); });
-screenfx.setAway(true); // ⏸ (1.159.0) effects from chat wait until the Game capture screen shows
+screenfx.setAway(true); setTimeout(() => { try { const n = screenfx.restore(); if (n) act('stream', `🌀 ${n} screen effect${n === 1 ? '' : 's'} still in line from before the app closed`, { icon: '🌀' }); } catch (e) { console.error('[screen effects]', e.message); } }, 3000); // ⏸ (1.159.0) effects from chat wait until the Game capture screen shows
 app.post('/api/screenfx/pause', (req, res) => { try { if (!feat('screenfx')) throw new Error('Screen effects are not part of this edition.'); const on = req.body?.on; res.json(screenfx.pause(on === true || on === false ? on : 'toggle')); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.get('/api/test/screenfx-pause', async (req, res) => { try { res.json(await screenfx.pauseDemo()); } catch (e) { res.status(400).json({ error: e.message }); } });
 setInterval(() => { if (fxCapAt && !fxCapOn()) { fxCapAt = 0; screenfx.setAway(true); rewardKey = ''; syncRewards().catch(() => {}); } }, 15000); // (the window closed without saying so)
@@ -5291,7 +5291,7 @@ app.post('/api/co/preview', (req, res) => { // 👀 see a picture in its own win
 });
 // 🎟️ Paid battles (1.75.0)
 app.get('/api/paid', (req, res) => res.json(paid.info()));
-app.post('/api/paid/settings', wTry(b => { const c = { ...paid.rawCfg() }; if (typeof b.on === 'boolean') c.on = b.on; if (typeof b.say === 'boolean') c.say = b.say; if (typeof b.listId === 'string') c.listId = b.listId; for (const k of ['tip', 'bits', 'subs']) if (b[k] !== undefined) c[k] = Math.max(0, Number(b[k]) || 0); db.settings.paidBattles = c; save(); pushState(); return paid.info(); }));
+app.post('/api/paid/settings', wTry(b => { const c = { ...paid.rawCfg() }; if (typeof b.on === 'boolean') c.on = b.on; if (typeof b.buy === 'boolean' && (c.buy !== false) !== b.buy) { c.buy = b.buy; act('stream', b.buy ? '🎟️ New battles are back on: tips, bits and subs add battles to the line again' : '🎟️ New battles switched off: tips, bits and subs don\'t add battles (the ones in the line stay)', { icon: '🎟️' }); } if (typeof b.say === 'boolean') c.say = b.say; if (typeof b.listId === 'string') c.listId = b.listId; for (const k of ['tip', 'bits', 'subs']) if (b[k] !== undefined) c[k] = Math.max(0, Number(b[k]) || 0); db.settings.paidBattles = c; save(); pushState(); return paid.info(); }));
 app.post('/api/paid/start', async (req, res) => { // ▶ the next paid battle (or a picked one): 🎯 a guess countdown first (marathon), then its battle goes on, logged with who paid
   if (live.phase === 'lobby' || live.phase === 'running') return res.status(400).json({ error: 'A battle is already going. Start the next one when it ends.' });
   if (live.maraGuess) return res.status(400).json({ error: 'Chat is still guessing for the next battle: ▶ Start now or ✕ Cancel it first.' });
@@ -6906,6 +6906,7 @@ app.post('/api/test/mara-pop', wTry(b => { broadcast(maraPopMsg({ who: String(b.
 app.post('/api/paid/remove', wTry(b => { paid.remove(b.id); return paid.info(); }));
 app.post('/api/paid/move', wTry(b => { paid.move(b.id, Number(b.dir)); return paid.info(); }));
 app.post('/api/paid/add', wTry(b => { paid.byHand(b.who, b.what, b.n); return paid.info(); }));
+app.get('/api/test/paid-buy', wTry(() => { if (paid.rawCfg().buy !== false) throw new Error('Switch new battles off first (the test button does that by itself).'); const a = paid.onBits({ login: 'pretend_buyer', name: 'Pretend_Buyer', bits: 500 }).length + paid.onSub({ kind: 'gift', login: 'pretend_buyer', name: 'Pretend_Buyer', recipient: 'someone' }).length + paid.onTip({ name: 'Pretend_Buyer', amount: 5 }).length; return { added: a, ok: a === 0 }; })); // 🧪 with new battles off, money adds nothing
 app.post('/api/test/paid', wTry(b => { const name = String(b.name || 'Test_Viewer'), login = name.toLowerCase(), k = String(b.kind || 'tip'); const items = k === 'bits' ? paid.onBits({ login, name, bits: Number(b.amount) || 500, test: true }) : k === 'sub' || k === 'gift' ? paid.onSub({ kind: k, login, name, recipient: k === 'gift' ? 'someone' : null, test: true }) : paid.onTip({ name, amount: Number(b.amount) || 5, test: true }); return { added: items.length, ...paid.info() }; }));
 app.post('/api/test/paid-clear', wTry(() => { paid.clearTests(); return paid.info(); }));
 // 🌐 Viewer website (1.75.0)

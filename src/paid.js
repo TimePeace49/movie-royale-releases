@@ -39,17 +39,17 @@ function count(key, kind, amount, per) {
   return n;
 }
 export function onTip({ name, amount, currency = 'USD', test }) {
-  const c = cfg(); if (!c.on && !arguments[0]?.test) return [];
+  const c = cfg(); if ((!c.on || c.buy === false) && !arguments[0]?.test) return []; // (buy off = no NEW battles; the line and everything else carries on)
   const a = Number(amount) || 0, key = keyOf(null, name), before = carryOf(key).tip || 0, n = count(key, 'tip', a, Number(c.tip));
   return n ? add({ who: name, login: null, kind: 'tip', what: `a ${currency && currency !== 'USD' ? a + ' ' + currency : money(a)} tip${before ? ` (+ ${money(before)} from before)` : ''}`, n, test }) : [];
 }
 export function onBits({ login, name, bits, test }) {
-  const c = cfg(); if (!c.on && !arguments[0]?.test) return [];
+  const c = cfg(); if ((!c.on || c.buy === false) && !arguments[0]?.test) return []; // (buy off = no NEW battles; the line and everything else carries on)
   const b = Number(bits) || 0, before = carryOf(keyOf(login, name)).bits || 0, n = count(keyOf(login, name), 'bits', b, Number(c.bits));
   return n ? add({ who: name || login, login, kind: 'bits', what: `${b} bits${before ? ` (+ ${before} from before)` : ''}`, n, test }) : [];
 }
 export function onSub({ kind, login, name, recipient, test }) {
-  const c = cfg(); if (!c.on && !arguments[0]?.test) return [];
+  const c = cfg(); if ((!c.on || c.buy === false) && !arguments[0]?.test) return []; // (buy off = no NEW battles; the line and everything else carries on)
   const gift = kind === 'gift', who = name || (gift ? 'Anonymous' : login), n = count(keyOf(login, who), 'subs', 1, Number(c.subs));
   return n ? add({ who, login, kind: gift ? 'gift' : 'sub', what: gift ? `a gift sub${recipient ? ' to ' + recipient : ''}` : kind === 'resub' ? 'a resub' : 'a sub', n, test }) : [];
 }

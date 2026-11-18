@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.179.0
+- 🎟️ New battles on / off (dev mode, Marathon tab). A new 🎟️ New battles card with 🚫 Stop taking new battles: for a big raid or gift bomb, tips, bits and subs stop adding battles until you switch it back on. The battles already in the line stay and still run. The scrolling sell message and the pinned line stop mentioning battles while it's off.
+- 🌀 The screen effect line now holds 10,000 (was 40), and one big tip or cheer buys as many as it pays for (was 10 at most), with one chat line instead of one per effect.
+  - The line is saved, so updating or restarting the app mid-stream doesn't lose effects people paid for.
+- Test tab: 🎟️ New battles off + 🌀 long effect line.
+
 ## 1.178.0
 - 📊 Stream report (dev mode, Marathon tab). A list of everyone who was in your viewer list or chatted this stream: how many times they chatted, how long they watched, how many channel points they used and what they gave (tips, bits, subs, gift subs), with Top 50 lists for watching, chatting, giving and channel points.
   - It also shows the whole stream: hours live, total hours watched, total chats, biggest and average viewership, new followers (how many and who), money from bits / subs / gifted subs / donations, and money per live hour.
