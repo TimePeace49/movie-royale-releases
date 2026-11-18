@@ -285,6 +285,19 @@ export const FXT_NAME = 'Movie Royal screen effect timer';
 export async function fxTimerSource(on, url) {
   return browserSource(FXT_NAME, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), on ? 'all' : null, { noReload: true });
 }
+/** 👋 (1.177.1, Derek: "just add button to add it on obs in settings tab") the big total live time on your ending scene: the scene
+ * named like an ending (👋 Thanks for Watching first), made if there is none; a full-canvas source on top; nothing else is touched. */
+export async function endClock(on, url) {
+  let scene = null;
+  if (on) scene = await session(async call => {
+    const all = ((await call('GetSceneList')).scenes || []).map(s => s.sceneName);
+    let sc = all.includes(END_SCENE) ? END_SCENE : all.find(n => /thanks|ending|\bend\b|outro|goodbye|signing off/i.test(n));
+    if (!sc) { await call('CreateScene', { sceneName: END_SCENE }); sc = END_SCENE; }
+    return sc;
+  });
+  const r = await browserSource(MARA_END, on, (W, H) => ({ is_local_file: false, url, width: W, height: H, fps: 30, reroute_audio: false, shutdown: false, restart_when_active: false, css: 'body { background-color: rgba(0,0,0,0); margin: 0; overflow: hidden; }' }), on ? [scene] : null, { noReload: true });
+  return { ...r, scene };
+}
 export const SFX_NAME = 'Movie Royal sound alerts';
 /** 🔊 (1.124.1, Derek: "sound effects should play on every scene") the sound alert page as ONE browser source put in EVERY scene:
  * one source shared by all scenes plays each sound once, and OBS sends its sound out with the stream (shows nothing). */

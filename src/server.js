@@ -2280,6 +2280,15 @@ async function npObsSource(on, scenes) {
   const pick = Array.isArray(db.settings.npScenes) && db.settings.npScenes.length ? db.settings.npScenes : null;
   const r = await obs.npSource(!!on, npUrl(), pick); db.settings.npObs = !!on; save(); pushState(); return r;
 }
+// 👋 (1.177.1) the ending scene's big total live time, added from Settings → 🎥 OBS
+app.post('/api/obs/end-clock', async (req, res) => { try {
+  const on = req.body?.on !== false;
+  if (on && !paid.dev()) throw new Error('The total live time is a 🛠️ dev mode feature.');
+  if (on && !obsOk()) throw new Error('Movie Royal is switched off for OBS: turn on 🎥 Let Movie Royal use OBS in Settings → 🎥 OBS first.');
+  const r = await obs.endClock(on, maraUrl() + '?end=1');
+  if (on) act('stream', `Added the big total live time to the OBS scene ${r.scene}`, { icon: '👋', kind: 'obs' });
+  res.json({ ok: true, ...r });
+} catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/obs/np-source', async (req, res) => { try { res.json({ ok: true, url: npUrl(), ...(await npObsSource(!!req.body?.on, req.body?.scenes)) }); } catch (e) { pushState(); res.status(400).json({ error: e.message }); } });
 app.post('/api/test/now-playing', (req, res) => { const off = !!req.body?.off; live.npTest = off ? null : { until: Date.now() + 20000, msg: { type: 'songNow', on: true, title: 'Pretend Disco Banger', by: 'NightOwl_44', rate: [8, 9.5], scale: 10, t: 83, dur: 225, paused: false, test: true } }; npSend(); if (!off) setTimeout(() => { live.npTest = null; npSend(); }, 20500); res.json({ ok: true, pages: [...wss.clients].filter(c => c.role === 'nowplay').length, msg: npMsg(), url: npUrl() }); });
 /* 🍿 movie night leaderboard browser source in OBS (1.116.0): added to the scenes you pick, see-through around the board */

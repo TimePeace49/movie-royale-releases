@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.177.1
+- 👋 Settings → 🎥 OBS has a new box, **Ending scene: total live time**, with 👋 Add it to OBS (dev mode). One click puts the big live time on your ending scene; ✕ Take it out removes it; 👀 Preview shows it.
+
 ## 1.177.0
 - 👋 Ending scene shows your total live time (dev mode, marathon). The 👋 Thanks for Watching scene gets the total live time twice as big, in the middle at the bottom, so chat sees how long you were live before you raid out. Nothing else in your scenes is moved.
   - It's added by itself the next time the app checks OBS while you're on your marathon setup and not live, or right away with 🧰 Make it on the Marathon tab.
