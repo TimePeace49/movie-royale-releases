@@ -62,6 +62,9 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 .count .ck { display: none; } .count.mini .ck { display: flex; align-items: center; gap: 6px; margin-left: 6px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,.25); font: 400 22px/1 'Lilita One', sans-serif; font-variant-numeric: tabular-nums; }
 .count.mini .ck i { width: 10px; height: 10px; border-radius: 50%; background: #ff3a4a; box-shadow: 0 0 8px #ff3a4a; animation: ckDot 1.6s ease-in-out infinite; }
 .count.mini .ck.paused i { background: #9a8ab8; box-shadow: none; animation: none; }
+/* 👋 ?end=1 (the ending scene, 1.177.0): only the total live time, twice as big, bottom middle */
+body.end > div:not(.clock) { display: none !important; }
+body.end .clock { left: 50% !important; right: auto !important; top: auto !important; bottom: 70px !important; transform: translateX(-50%) scale(2); transform-origin: 50% 100%; opacity: 1 !important; }
 body.plain .clock, body.plain .count { display: none !important; } /* 🍳 ?plain=1 (the cooking scene): pop-ups only, its frame shows the clock + battles */
 .count.mini.ckOnly .n, .count.mini.ckOnly .t { display: none; } .count.mini.ckOnly .ck { margin: 0; padding: 0; border: 0; }
 .count.mini.ckOnly.off { opacity: 1; transform: translateX(-50%); }
@@ -98,6 +101,7 @@ body.plain .clock, body.plain .count { display: none !important; } /* 🍳 ?plai
 'use strict';
 const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 if (/[?&]plain=1/.test(location.search)) document.body.classList.add('plain');
+const END = /[?&]end=1/.test(location.search); if (END) document.body.classList.add('end');
 const DEMO = /[?&]demo/.test(location.search), MINI = /[?&]mini=1/.test(location.search), Q = []; let showing = false, last = null, audio = { on: true, sfx: .7 };
 // ⏱️ total live time: the server sends the total + whether you're live; this page counts on by itself between messages
 const CK = { on: false, ms: 0, live: false, at: 0, corner: 'tr' }; let lastCount = null;
@@ -105,6 +109,7 @@ function hms(ms) { const t = Math.max(0, Math.floor(ms / 1000)); return `${Math.
 function clock(m) { Object.assign(CK, m, { got: Date.now() }); if (lastCount) count(lastCount); clockTick(); }
 function clockTick() {
   const ms = CK.ms + (CK.live ? Date.now() - CK.got : 0), t = hms(ms), el = $('clock');
+  if (END) { el.className = 'clock' + (CK.live ? '' : ' paused'); $('clt').textContent = t; $('cll').textContent = 'total time live'; return; } // 👋 always shows in the ending scene
   if (MINI) { el.className = 'clock gone'; const k = $('ckm'); k.style.display = CK.on ? '' : 'none'; k.className = 'ck' + (CK.live ? '' : ' paused'); $('ckmt').textContent = t; return; }
   el.className = 'clock ' + (CK.corner || 'tr') + (CK.live ? '' : ' paused') + (CK.on ? '' : ' gone'); $('clt').textContent = t; $('cll').textContent = CK.live ? 'total live time' : 'total live time (paused)';
 }
@@ -189,6 +194,7 @@ if (DEMO) {
   count({ on: true, owed: 4, next: ['SpicyPanda', 'mx_rae', 'NightOwl_44'], corner: 'bl' }); clock({ on: true, ms: (26 * 3600 + 14 * 60 + 3) * 1000, live: true, corner: 'tr' });
   if (/guess/.test(location.search)) { guess({ on: true, at: Date.now(), endsAt: Date.now() + 90000, who: 'SpicyPanda', map: '🏯 Kung Fu Town', items: items.map(x => x.n === 4 ? { ...x, plus: 1 } : x), count: 3, last: ['SpicyPanda', 'mx_rae', 'Kirbgames'] }); if (!/big/.test(location.search)) setTimeout(() => win({ n: 4, label: 'Toxic Waste', names: ['mx_rae'], total: 3 }), 16000); }
   else if (/timer/.test(location.search)) timer({ t: { id: 'd', label: '45-second plank', secs: 45, state: 'running', endsAt: Date.now() + 45000, who: 'SpicyPanda', alarmSecs: 5 }, now: Date.now() });
+  else if (END) {}
   else pop({ who: 'SpicyPanda', n: 1, what: 'a $5 tip', owed: 4, luckPer: 1, secs: 600, site: 'movie-royal.example.workers.dev/live', maps, items });
 } else connect();
 </script>

@@ -2,6 +2,12 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.177.0
+- 👋 Ending scene shows your total live time (dev mode, marathon). The 👋 Thanks for Watching scene gets the total live time twice as big, in the middle at the bottom, so chat sees how long you were live before you raid out. Nothing else in your scenes is moved.
+  - It's added by itself the next time the app checks OBS while you're on your marathon setup and not live, or right away with 🧰 Make it on the Marathon tab.
+  - It always shows there, even if the small live time is switched off on the other scenes. You can drag or resize it in OBS like any source.
+- Test tab: ⏱️ Total live time → 👋 Ending scene.
+
 ## 1.176.0
 - 🦶 Foot pedal for the headphone chat voice (editions with 🔈 Read chat to me; dev mode).
   - 🏃 Marathon tab (and Settings → 🗣️ Text to speech) → 🔈 Read chat to me → 🦶 Set my pedal…: step on the pedal once and the app remembers the key it sends.

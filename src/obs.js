@@ -559,6 +559,7 @@ export const YT_NAMES = { brb: '📺 BRB videos (YouTube)', sleep: '📺 Sleepin
 export const COOK_CAMS = ['📷 Cooking cam 1', '📷 Cooking cam 2', '📷 Cooking cam 3'];
 const COOK_BOXES = [[0, 0, .75, .75], [.75, 0, .25, .25], [.75, .25, .25, .25]];
 export const MARA_MINI = 'Movie Royal marathon (small)';
+export const END_SCENE = '👋 Thanks for Watching', MARA_END = 'Movie Royal marathon (ending)'; // 👋 (1.177.0, Derek: "ending stream scene have the counter twice as big in the middle bottom") the total live time, big, on the ending scene
 export const COOK_CARD = 'Movie Royal cooking card', MARA_PLAIN = 'Movie Royal marathon (cooking)'; // 🍳 (1.164.0) the cooking scene's frame (info box + bottom bar, behind the cameras) + the overlay without its clock / counter (the frame shows those)
 export const COOK_MIC = '🎙️ Cooking mics (wireless)'; // (1.82.7) the USB receiver of Derek's wireless mics: only in the 🍳 Cooking scene
 const GAME_CAM = [.81, .785, .175, .19];
@@ -735,6 +736,8 @@ export async function marathonSetup({ profile, collection, urls, extra = [], dry
       else await put(sc, MARA_NAME, 'browser_source', browser(urls.mara), FULL);
       for (const x of extra) await put(sc, x.name, 'browser_source', x.local ? { ...browser(''), is_local_file: true, local_file: x.url } : browser(x.url), FULL);
     }
+    // 👋 the ending scene (made here if the ready-made video didn't make it): the total live time, twice as big, bottom middle, on top of what's there
+    if (urls.maraEnd) { if (!have.includes(END_SCENE)) await call('CreateScene', { sceneName: END_SCENE }).catch(() => {}); if (await put(END_SCENE, MARA_END, 'browser_source', browser(urls.maraEnd), FULL)) say('👋', `Added the big total live time to ${END_SCENE} (bottom middle).`); }
     if (!keepScene) await call('SetCurrentProgramScene', { sceneName: S.soon }).catch(() => {}); // (not when 🔄 Keep OBS up to date tops it up)
     say('🎬', `Filled in the scenes ${Object.values(S).join(', ')} (${made} new piece${made === 1 ? '' : 's'}${made ? '' : ': everything was there already'}).`);
     if (skipped.length) say('⚠️', `Couldn't add ${skipped.join(', ')} (this OBS doesn't have that kind of source): add your own instead.`);
