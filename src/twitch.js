@@ -355,7 +355,7 @@ export async function adSchedule() {
   return { next: t(d.next_ad_at), secs: Number(d.duration) || 0, last: t(d.last_ad_at) };
 }
 /** ▶ (1.75.0) the stream that's live right now: { id, startedAt } (null = offline / not signed in) */
-export async function streamInfo() { if (!status.userId) return null; const j = await helix(`streams?user_id=${status.userId}`); const d = j.data?.[0]; return d ? { id: String(d.id), startedAt: Date.parse(d.started_at) } : null; }
+export async function streamInfo() { if (!status.userId) return null; const j = await helix(`streams?user_id=${status.userId}`); const d = j.data?.[0]; return d ? { id: String(d.id), startedAt: Date.parse(d.started_at), viewers: Number(d.viewer_count) || 0 } : null; }
 /** ▶ the VOD ("past broadcast") of a stream, found by its stream id (null = not there: past broadcasts off, or deleted) */
 export async function vodFor(streamId) { if (!status.userId) return null; const j = await helix(`videos?user_id=${status.userId}&type=archive&first=20`); const v = (j.data || []).find(x => String(x.stream_id) === String(streamId)); return v ? String(v.id) : null; }
 export async function meCheck() { const j = await helix('users'); return j.data?.[0]?.login || null; }

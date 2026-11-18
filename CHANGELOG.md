@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.178.0
+- 📊 Stream report (dev mode, Marathon tab). A list of everyone who was in your viewer list or chatted this stream: how many times they chatted, how long they watched, how many channel points they used and what they gave (tips, bits, subs, gift subs), with Top 50 lists for watching, chatting, giving and channel points.
+  - It also shows the whole stream: hours live, total hours watched, total chats, biggest and average viewership, new followers (how many and who), money from bits / subs / gifted subs / donations, and money per live hour.
+  - It starts counting by itself the first time this version opens, and keeps counting across stream restarts until you press ⏹ Stop counting or 🆕 Start a new one.
+  - 📊 Open the report shows it any time; ⬇️ Spreadsheet file saves it for Excel. A fresh copy is saved in your data folder (stream-report) every 5 minutes.
+  - Subs and gift subs are valued at $5 each and 100 bits at $1 for the money numbers.
+- Test tab: 📊 Stream report (check the counting, see a pretend report).
+
 ## 1.177.1
 - 👋 Settings → 🎥 OBS has a new box, **Ending scene: total live time**, with 👋 Add it to OBS (dev mode). One click puts the big live time on your ending scene; ✕ Take it out removes it; 👀 Preview shows it.
 
