@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.181.0
+- 🔘 On / off buttons in Stream tools (dev mode). Right-click the 🧰 Stream tools box on the 💬 Chat tab → ➕ Add: 🗣️ Stream TTS, 🎧 Chat to headphones, 🎟️ New battles, 🌀 Screen effects, 😱 Jump scares, 📣 Scrolling message, and 📌 Tell chat everything (posts and pins the message about buying battles and messing with your screen). ➕ Add all the on / off buttons adds them in one go. A lit button is on; one press flips it. Right-click a button to rename or delete it.
+- ↗ Game capture in its own window (dev mode): a new ↗ Own window button on the Game capture tab. The capture and its sound move to the new window, so it doesn't play twice.
+- Test tab: Chat tab card → 🔘 On / off buttons.
+
 ## 1.180.0
 - 💬 Chat tab: a box you switch on from the right-click menu (like 📊 Stream stats) now always shows up. Before, if its old spot was taken it could end up hidden underneath the chat box. Now it goes back to its old spot when that's free, and otherwise takes half of the biggest box. Nothing else moves.
 - 💬 Derek's edition: the Chat tab now starts in the layout from his sketch: Stream preview top left, Song requests and Audio levels under it, Alerts / Stream tools / Stream stats down the middle, Chat on the right. It's put on once when you update, and ↺ Back to the start (right-click menu) goes back to it.

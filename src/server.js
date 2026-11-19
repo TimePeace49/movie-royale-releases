@@ -322,6 +322,7 @@ function publicState() { applyCharsDefault();
     pedal: pedalState(), songPlayers: songPlayers(), obsGames: obsGames(), obsKeep: { on: db.settings.obsKeep !== false, last: live.obsSync }, obsVideoN: obsVideos().length,
     kick: kick.info(),
     sfxHear: sfxHearOn(),
+    promo: { on: promoCfg().on }, // 📣 (the Stream tools switch reads this)
     screenFx: feat('screenfx') ? { on: screenfx.cfg().on, now: screenfx.now() } : null, // 🌀
 
     edition: { hide: editionInfo().hide, id: EDITION.id, name: EDITION.name, app: edAppNow(), dev: EDITION.dev && !edLooking(), realDev: EDITION.dev, off: edOffNow(), lookAs: edLooking(), all: EDITION.dev ? editionInfo().all.map(x => ({ id: x.id, name: x.name, app: x.app })) : undefined, on: ED_FEATS.filter(feat) },
