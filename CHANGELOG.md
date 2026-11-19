@@ -2,6 +2,11 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.180.0
+- 💬 Chat tab: a box you switch on from the right-click menu (like 📊 Stream stats) now always shows up. Before, if its old spot was taken it could end up hidden underneath the chat box. Now it goes back to its old spot when that's free, and otherwise takes half of the biggest box. Nothing else moves.
+- 💬 Derek's edition: the Chat tab now starts in the layout from his sketch: Stream preview top left, Song requests and Audio levels under it, Alerts / Stream tools / Stream stats down the middle, Chat on the right. It's put on once when you update, and ↺ Back to the start (right-click menu) goes back to it.
+- Test tab: Chat tab card → ▦ Boxes always show.
+
 ## 1.179.0
 - 🎟️ New battles on / off (dev mode, Marathon tab). A new 🎟️ New battles card with 🚫 Stop taking new battles: for a big raid or gift bomb, tips, bits and subs stop adding battles until you switch it back on. The battles already in the line stay and still run. The scrolling sell message and the pinned line stop mentioning battles while it's off.
 - 🌀 The screen effect line now holds 10,000 (was 40), and one big tip or cheer buys as many as it pays for (was 10 at most), with one chat line instead of one per effect.

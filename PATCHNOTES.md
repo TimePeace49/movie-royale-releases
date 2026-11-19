@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.180.0: What's new
+- {dash} 💬 **Chat tab boxes always show up.** A box you switch on from the right-click menu (like 📊 Stream stats) could end up hidden under the chat box. Now it goes back to its old spot when that's free, and otherwise takes half of the biggest box.
+- {ed:derek} 💬 **Your Chat tab starts in your sketched layout**: Stream preview top left, Song requests and Audio levels under it, Alerts, Stream tools and Stream stats down the middle, Chat on the right.
+
 ## v1.173.0: What's new
 - {smart} 💡 **Nanoleaf panels.** Settings → 🔌 Smart plug controls has a Nanoleaf box: look for your panels, hold their power button until it blinks, press Pair. Then switch them, change colour and brightness, put them on a Stream Deck key, and tick them to join the light shows for subs, raids, bits and donations.
 
