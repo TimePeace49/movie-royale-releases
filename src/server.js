@@ -6,9 +6,10 @@ import path from 'path';
 import crypto from 'crypto';
 import { WebSocketServer } from 'ws';
 import os from 'os';
+import zlib from 'zlib';
 import { spawn } from 'child_process';
 import { streamerName } from './store.js';
-import { db, save, saveNow, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS, saveInfo, DB_FILE } from './store.js';
+import { db, save, saveNow, uid, getList, norm, ROOT, DATA, UPLOADS, IMGCACHE, EVENTS, saveInfo, DB_FILE, loadInfo, snapshot, safeCopies, readGood, SAFE } from './store.js';
 import * as lb from './letterboxd.js';
 import * as series from './series.js';
 import * as discord from './discord.js';
@@ -1492,6 +1493,7 @@ wss.on('connection', (ws, req) => {
   if (ws.role === 'movienight') ws.send(JSON.stringify(movienight.screen())); // 🍿 the movie night vote box
   if (ws.role === 'ticker') ws.send(JSON.stringify(tickerMsg())); // 📜 the paused message page gets its words + look // (a roll call browser source opened late: it joins in)
   if (ws.role === 'overlay' && live.gather) ws.send(JSON.stringify({ type: 'gather', endsAt: live.gather.endsAt, seconds: Math.max(1, Math.round((live.gather.endsAt - Date.now()) / 1000)), discord: !!live.gather.discord })); // (⏱️ a game screen that opens / comes back during the join timer)
+  if (ws.role === 'control' && safeNote()) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: brand(safeNote()), ms: 60000 })); } catch {} }, 3000); /* 🛟 the data file was damaged */
   if (ws.role === 'control' && live.editionNote && Date.now() - live.editionNote.at < 300000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: brand(live.editionNote.text), ms: 12000 })); } catch {} }, 2500); /* 🚚 moved over from another edition */
   if (ws.role === 'control' && live.liveNote && Date.now() - live.liveNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.liveNote.text })); } catch {} }, 2500); // ⏱️ what happened to the live time while the app was closed
   if (ws.role === 'control' && live.resumeNote && Date.now() - live.resumeNote.at < 120000) setTimeout(() => { try { ws.send(JSON.stringify({ type: 'toast', text: live.resumeNote.text })); } catch {} }, 1500); // 🔄 what came back after a restart
@@ -1698,6 +1700,23 @@ app.get('/api/test/backup-lock', (req, res) => { // 🧪 lock + unlock a pretend
   } catch (e) { T('Lock check', e.message, false); }
   res.json({ ok: rows.every(r => r.ok), rows });
 });
+// 🛟 (1.182.0) the data file's safety net: see store.js. A copy each time the app opens + one a day; a note when a damaged file was replaced by a copy.
+const safeWhen = t => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+function safeNote() { return loadInfo.recovered ? `🛟 Your data file was damaged (a crash or freeze?), so ${'Movie Royal'} opened the newest good copy, from <b>${safeWhen(loadInfo.recovered.at)}</b>. Anything you changed after that is gone. The damaged file was kept in the data folder's "safety" folder.` : loadInfo.lost ? '🛟 Your data file was damaged and there was no good copy to open, so this is a fresh start. The damaged file was kept in the data folder\'s "safety" folder: send it to Claude.' : ''; }
+if (loadInfo.recovered || loadInfo.lost) { console.error('[store] the data file was damaged' + (loadInfo.recovered ? ': opened the copy ' + loadInfo.recovered.from : ' and no good copy was found')); setTimeout(() => { try { act('stream', loadInfo.recovered ? `The data file was damaged: opened the copy from ${safeWhen(loadInfo.recovered.at)}` : 'The data file was damaged and no copy was found', { icon: '🛟', kind: 'safety' }); } catch {} }, 9000); }
+setTimeout(() => { saveNow(); snapshot('open'); snapshot('day'); }, 20000); setInterval(() => snapshot('day'), 3600000);
+const safeList = () => safeCopies().map(c => ({ name: path.basename(c.file), at: c.at, kb: Math.round((() => { try { return fs.statSync(c.file).size; } catch { return 0; } })() / 1024) }));
+app.get('/api/safety/copies', (req, res) => res.json({ copies: safeList().slice(0, 40), folder: SAFE, recovered: loadInfo.recovered, lost: loadInfo.lost }));
+app.post('/api/safety/copy-now', (req, res) => { try { saveNow(); const n = snapshot('open'); res.json({ ok: !!n, name: n, copies: safeList().slice(0, 40) }); } catch (e) { res.status(400).json({ error: e.message }); } });
+// 🧪 in a scratch folder: a damaged file is never replaced by a blank one, the newest good copy is found, an empty / half-written file counts as damaged
+app.get('/api/test/data-safety', (req, res) => { const rows = [], dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-safe-')), ok = (name, pass, got) => rows.push({ name, ok: !!pass, got });
+  try { const good = JSON.stringify({ lists: [{ id: 'a' }], settings: { x: 1 } }), f = n => path.join(dir, n);
+    fs.writeFileSync(f('good.json'), good); fs.writeFileSync(f('empty.json'), ''); fs.writeFileSync(f('zeros.json'), Buffer.alloc(4000)); fs.writeFileSync(f('half.json'), good.slice(0, 20)); fs.writeFileSync(f('other.json'), '{"hello":1}'); fs.writeFileSync(f('zip.json.gz'), zlib.gzipSync(good));
+    ok('A whole data file reads fine', readGood(f('good.json')), 'read'); ok('An empty file counts as damaged', !readGood(f('empty.json')), 'damaged'); ok('A file of zeros (what a freeze leaves) counts as damaged', !readGood(f('zeros.json')), 'damaged');
+    ok('A half-written file counts as damaged', !readGood(f('half.json')), 'damaged'); ok('Some other JSON file is not taken for your data', !readGood(f('other.json')), 'refused'); ok('A zipped safety copy reads fine', readGood(f('zip.json.gz')), 'read');
+    const c = safeList(); ok('Your real data file is readable right now', readGood(DB_FILE), readGood(DB_FILE) ? 'yes' : 'NO'); ok('There are safety copies of your data', c.length > 0, c.length + ' cop' + (c.length === 1 ? 'y' : 'ies') + (c[0] ? ', newest ' + safeWhen(c[0].at) : ''));
+  } catch (e) { ok('The check ran', false, e.message); } finally { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
+  res.json({ ok: rows.every(r => r.ok), rows, copies: safeList().slice(0, 12), folder: SAFE }); });
 app.post('/api/restore', (req, res) => {
   let b = req.body;
   if (b && b.locked && b.file) { try { b = bkUnlock(b.file, b.password); } catch (e) { return res.status(400).json({ error: e.message }); } }
@@ -3211,7 +3230,7 @@ app.post('/api/settings', (req, res) => {
   if ('betaUpdates' in body) chatvoice.ensurePlayer(); // 🔈 the chat voice is dev mode only
   if ('betaUpdates' in body) site.connect(); // 🌐 the viewer website is a dev mode thing for now (Derek, 1.81.2): on/off with dev mode // 🏃 dev mode on: Derek's marathon battle comes with it (once)
   save();
-  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
+  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window', gfxVideoOverlay: !!db.settings.gfxVideoOverlay });
   broadcast(audioMsg(), 'overlay'); broadcast(audioMsg(), 'celebrate'); broadcast(camMsg(), 'overlay'); broadcast(gfxMsg(), 'overlay');
   if (rd) discord.start(pushState);
   if (rt) twitch.start(twitchHandlers);
@@ -7097,7 +7116,7 @@ server.on('error', e => {
 if (!process.env.ALLOW_LAN) { const s6 = http.createServer(app); s6.on('upgrade', (req, sock, head) => { if (!wss.shouldHandle(req)) return sock.destroy(); wss.handleUpgrade(req, sock, head, ws => wss.emit('connection', ws, req)); }); s6.on('error', () => {}); s6.listen(PORT, '::1'); } // ("localhost" can mean ::1 on Windows)
 server.listen(PORT, process.env.ALLOW_LAN ? '0.0.0.0' : '127.0.0.1', async () => {
   resumeLoad(); // 🔄 opened again soon after closing (an update while live): put back what was going on
-  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window' });
+  globalThis.__desktop?.applySettings?.({ runInBackground: db.settings.runInBackground !== false, startWithWindows: !!db.settings.startWithWindows, muteUnfocused: db.settings.muteUnfocused !== false, windowMode: db.settings.windowMode || 'window', gfxVideoOverlay: !!db.settings.gfxVideoOverlay });
   globalThis.__desktop?.ready(`http://localhost:${PORT}/`);
   console.log(`\n  🍿 Movie Royal is running!\n  Open http://localhost:${PORT} in your browser (keep this window open while you stream)\n`);
   const n = lb.loadCsvs();

@@ -2,6 +2,14 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.182.0
+- 🛟 Your data can't be wiped by a crash any more. Before: if the PC froze or lost power at the wrong moment, the data file could come back damaged, and the app started blank and saved the blank over everything. Now:
+  - a damaged data file is never replaced by a blank one: the app keeps it and opens the newest good copy, and tells you it did;
+  - every save is written all the way to the disk before it replaces the old file;
+  - the app keeps its own copies: the file from about a minute ago, one from each of the last 8 times it opened, and one a day for two weeks (data folder → safety).
+- 🖥️ Video (Game capture, popped-out tabs) is now drawn by the app itself instead of being handed to Windows as its own screen layer. That hand-off is a known way for graphics drivers to freeze when a window with video moves between monitors. Settings → Graphics has a switch to go back to the old way.
+- Test tab: 🔐 Safety & privacy → 🛟 Data safety check and 🛟 Make a safety copy now.
+
 ## 1.181.0
 - 🔘 On / off buttons in Stream tools (dev mode). Right-click the 🧰 Stream tools box on the 💬 Chat tab → ➕ Add: 🗣️ Stream TTS, 🎧 Chat to headphones, 🎟️ New battles, 🌀 Screen effects, 😱 Jump scares, 📣 Scrolling message, and 📌 Tell chat everything (posts and pins the message about buying battles and messing with your screen). ➕ Add all the on / off buttons adds them in one go. A lit button is on; one press flips it. Right-click a button to rename or delete it.
 - ↗ Game capture in its own window (dev mode): a new ↗ Own window button on the Game capture tab. The capture and its sound move to the new window, so it doesn't play twice.

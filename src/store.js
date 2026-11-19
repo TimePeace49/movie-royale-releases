@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 import { has as edHas, scrub as edScrub } from './edition.js';
 
@@ -45,7 +46,7 @@ const defaults = () => ({
     soundOn: true, sfxVolume: 70, musicVolume: 35,
     spotName: edScrub ? 'Wild' : 'Kirb', spotTwitch: '', spotMax: 3, weekStart: 0, autoSpots: true,
     runInBackground: false, startWithWindows: false, chatGate: true, autoFullscreen: true,
-    banCurrentYear: true, banRules: { english: true, religious: true, documentary: true, dubbed: true, dubVotes: 1000 }, banAsk: edScrub ? 'the streamer' : 'Kirb', featAsk: {}, charsDefault: false, startTab: 'tchat', dashToolsOn: [], dashScenes: [] /* 🎞️ the Chat tab's scene buttons (OBS scene names) */, dashSceneLabels: {} /* (1.156.8) scene name → the button's own words */, dashToolsOff: [] /* 'clip' | 'so' buttons taken off Stream tools */, dashToolNames: {} /* clip / so → own words */, raidDelay: 180 /* ⏱️ the Raid tab's wait before a raid starts, in seconds */, testTab: null /* 🧪 the Test tab's tests + checklist: null = on only in the dev edition, else just ⚠️ Errors */, toastSecs: 8, choiceScenes: null, vrHydrateOn: true, vrStretchOn: true, vrHatOn: true, vrChoiceOn: true, choiceShowPick: false, obsOn: true, obsDoomOn: true, obsCapOn: true, capAutoShow: true, capAutoHide: false, capWindow: '', capSize: 30, rollOnGame: true, rollObs: false, rollScenes: null, revealThemed: true, idOn: true, idCommand: '!id', charGenders: true, looksOn: true, lookPost: true, spotLooks: [], discordFolder: true, discordCategory: 'Movie Royal', charChannel: true, charChannelName: 'character-creation', appStyle: 'auto', holTheme: {}, holFx: true, luckOn: true, luckPerBattle: 1, muteUnfocused: true, appQuietObs: true, raidOn: true, raidTitle: '🚀 Pick who we raid!', raidCost: 1500, chatTag: '', pickLock: 'battle', trackLinkedOnly: true, useChatBot: true, discordServerLink: '', announceMins: 60, announceBattle: '', announceChat: '', announceGiveaway: '', announceWheel: '', gfxRes: '1080', gfxFps: 0, gfxQuality: 'high', gfxShowFps: false, gfxAppSaver: true, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, spotLuckMode: 'night', spotLuckNight: 1, helpCommand: '!moviesroyal', seriesAuto: false, omdbKey: '',
+    banCurrentYear: true, banRules: { english: true, religious: true, documentary: true, dubbed: true, dubVotes: 1000 }, banAsk: edScrub ? 'the streamer' : 'Kirb', featAsk: {}, charsDefault: false, startTab: 'tchat', gfxVideoOverlay: false /* 🖥️ (1.182.0) false = the app draws video itself (safer when a video window moves between monitors) */, dashToolsOn: [], dashScenes: [] /* 🎞️ the Chat tab's scene buttons (OBS scene names) */, dashSceneLabels: {} /* (1.156.8) scene name → the button's own words */, dashToolsOff: [] /* 'clip' | 'so' buttons taken off Stream tools */, dashToolNames: {} /* clip / so → own words */, raidDelay: 180 /* ⏱️ the Raid tab's wait before a raid starts, in seconds */, testTab: null /* 🧪 the Test tab's tests + checklist: null = on only in the dev edition, else just ⚠️ Errors */, toastSecs: 8, choiceScenes: null, vrHydrateOn: true, vrStretchOn: true, vrHatOn: true, vrChoiceOn: true, choiceShowPick: false, obsOn: true, obsDoomOn: true, obsCapOn: true, capAutoShow: true, capAutoHide: false, capWindow: '', capSize: 30, rollOnGame: true, rollObs: false, rollScenes: null, revealThemed: true, idOn: true, idCommand: '!id', charGenders: true, looksOn: true, lookPost: true, spotLooks: [], discordFolder: true, discordCategory: 'Movie Royal', charChannel: true, charChannelName: 'character-creation', appStyle: 'auto', holTheme: {}, holFx: true, luckOn: true, luckPerBattle: 1, muteUnfocused: true, appQuietObs: true, raidOn: true, raidTitle: '🚀 Pick who we raid!', raidCost: 1500, chatTag: '', pickLock: 'battle', trackLinkedOnly: true, useChatBot: true, discordServerLink: '', announceMins: 60, announceBattle: '', announceChat: '', announceGiveaway: '', announceWheel: '', gfxRes: '1080', gfxFps: 0, gfxQuality: 'high', gfxShowFps: false, gfxAppSaver: true, lockSwapsWhenLive: true, closePicksWhenLive: true, announcePicks: true, callsOn: true, callCommand: '!call', callLuck: 1, spotLuck: false, spotLuckMode: 'night', spotLuckNight: 1, helpCommand: '!moviesroyal', seriesAuto: false, omdbKey: '',
     twitchMoviesCommand: '!mymovies', twitchCooldown: 30, discordChannelName: 'movies-royal',
     pointsOn: true, bitsOn: true, cloud: {}, map: 'random', voteSeconds: 120, colorsOn: true, colorMode: 'free', colorCommand: '!color', colorReward: 'Royal: Ball color',
     ideasDoc: 'https://docs.google.com/document/d/1bcgwJP3jX2ixkwlaRS19mUdGvotVIDAppZ6AkFOTRck/edit?usp=sharing', // 💡 linked in the pinned Discord message
@@ -95,12 +96,29 @@ const defaults = () => ({
   twitchToken: null
 });
 
+// 🛟 (1.182.0, Derek: his PC froze, the data file came back damaged, the app started blank and saved the blank over everything)
+// A data file that can't be read is NEVER replaced by a blank one: the damaged file is kept, and the newest good copy is used
+// (db.json.bak = the file as it was about a minute before, then the copies in data/safety, then the dated ones in data/backups).
+export const SAFE = path.join(DATA, 'safety');
+export const loadInfo = { recovered: null, damaged: null, lost: false };
+const stampNow = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`; };
+export function readGood(file) { // → the data in that file, or null when it isn't a whole Movie Royal data file
+  try { let buf = fs.readFileSync(file); if (/\.gz$/.test(file)) buf = zlib.gunzipSync(buf); const t = buf.toString('utf8'); if (!t.trim()) return null; const o = JSON.parse(t); return o && typeof o === 'object' && Array.isArray(o.lists) && o.settings && typeof o.settings === 'object' ? o : null; } catch { return null; }
+}
+export function safeCopies() { // newest first: [{file, at}]
+  const out = [], add = (dir, re) => { try { for (const f of fs.readdirSync(dir)) if (re.test(f)) { const full = path.join(dir, f); out.push({ file: full, at: fs.statSync(full).mtimeMs }); } } catch {} };
+  try { if (fs.existsSync(FILE + '.bak')) out.push({ file: FILE + '.bak', at: fs.statSync(FILE + '.bak').mtimeMs }); } catch {}
+  add(SAFE, /^db-.*\.json(\.gz)?$/); add(path.join(DATA, 'backups'), /\.json$/);
+  return out.filter(x => !/damaged/.test(path.basename(x.file))).sort((a, b) => b.at - a.at);
+}
 function load() {
-  const d = defaults();
-  try {
-    const saved = JSON.parse(fs.readFileSync(FILE, 'utf8'));
-    return { ...d, ...saved, settings: { ...d.settings, ...(saved.settings || {}) } };
-  } catch { return d; }
+  const d = defaults(), merge = saved => ({ ...d, ...saved, settings: { ...d.settings, ...(saved.settings || {}) } });
+  const there = fs.existsSync(FILE), good = there ? readGood(FILE) : null;
+  if (good) return merge(good);
+  if (there) { try { fs.mkdirSync(SAFE, { recursive: true }); const keep = path.join(SAFE, `db-damaged-${stampNow()}.json`); fs.copyFileSync(FILE, keep); loadInfo.damaged = keep; } catch {} }
+  for (const c of safeCopies()) { const g = readGood(c.file); if (g) { loadInfo.recovered = { from: path.basename(c.file), at: c.at }; return merge(g); } }
+  if (there) loadInfo.lost = true; // (damaged and no copy anywhere: starts blank, the damaged file is kept in data/safety)
+  return d;
 }
 
 export const db = load();
@@ -123,7 +141,18 @@ if (!db.settings.v20) { db.settings.v20 = true; db.settings.spotLuckMode = 'nigh
 if (!db.settings.v18) { db.settings.v18 = true; const fa = db.settings.featAsk || {}; if (fa.ids === 'yes' || fa.looks === 'yes') db.settings.charsDefault = true; } // 🧍 said yes to men/women characters or character creation: battles use characters by default
 if (!db.settings.v5) { db.settings.v5 = true; if (!db.settings.lobbySeconds) db.settings.lobbySeconds = 5; } // 5-second countdown when you press Start
 
-let timer, tries = 0;
+let timer, tries = 0, bakAt = 0;
+/** 🛟 A zipped copy of the data file in data/safety: one each time the app opens (the newest 8 are kept) and one a day (the newest 14). */
+export function snapshot(why) {
+  try { if (!readGood(FILE)) return null; fs.mkdirSync(SAFE, { recursive: true });
+    const day = stampNow().slice(0, 10), name = why === 'day' ? `db-day-${day}.json.gz` : `db-${why}-${stampNow()}.json.gz`, full = path.join(SAFE, name);
+    if (why === 'day' && fs.existsSync(full)) return null;
+    fs.writeFileSync(full, zlib.gzipSync(fs.readFileSync(FILE)));
+    const all = fs.readdirSync(SAFE), trim = (re, keep) => { const l = all.filter(f => re.test(f)).sort(); for (const f of l.slice(0, Math.max(0, l.length - keep))) { try { fs.unlinkSync(path.join(SAFE, f)); } catch {} } };
+    trim(/^db-open-/, 8); trim(/^db-day-/, 14); trim(/^db-damaged-/, 6);
+    return name;
+  } catch { return null; }
+}
 // 💾 Save db.json. Windows sometimes locks the file for a moment (antivirus, the backup bot reading it, the old app still
 // closing after an update: Derek got "EPERM: operation not permitted, rename" on open) — never crash, just try again.
 export function save() {
@@ -134,7 +163,9 @@ export const saveInfo = { at: 0, err: null, errAt: 0 }; // (🤖 Test all: did t
 function writeNow() {
   const text = JSON.stringify(db, null, 1);
   try {
-    fs.writeFileSync(FILE + '.tmp', text);
+    // 🛟 written all the way to the disk before it takes the old file's place (a freeze / power cut can't leave an empty file), and the file from about a minute ago is kept as db.json.bak
+    const fd = fs.openSync(FILE + '.tmp', 'w'); try { fs.writeSync(fd, text); try { fs.fsyncSync(fd); } catch {} } finally { fs.closeSync(fd); }
+    if (Date.now() - bakAt > 60000) { try { if (readGood(FILE)) { fs.copyFileSync(FILE, FILE + '.bak'); bakAt = Date.now(); } } catch {} }
     try { fs.renameSync(FILE + '.tmp', FILE); }
     catch (e) { if (tries < 8) throw e; fs.writeFileSync(FILE, text); try { fs.unlinkSync(FILE + '.tmp'); } catch {} } // still locked after a while: write it straight in
     tries = 0; saveInfo.at = Date.now(); saveInfo.err = null;

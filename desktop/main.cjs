@@ -141,6 +141,7 @@ function makeTray() {
 }
 function applySettings(p) {
   const was = prefs.windowMode; Object.assign(prefs, p);
+  try { if (p.gfxVideoOverlay === true) { if (!fs.existsSync(OVERLAY_FLAG())) fs.writeFileSync(OVERLAY_FLAG(), 'on'); } else if (p.gfxVideoOverlay === false && fs.existsSync(OVERLAY_FLAG())) fs.unlinkSync(OVERLAY_FLAG()); } catch {}
   if (p.windowMode && was && p.windowMode !== was) setWindowMode(p.windowMode);
   try { app.setLoginItemSettings({ openAtLogin: !!prefs.startWithWindows, args: ['--hidden'] }); } catch {}
   muteCheck();
@@ -257,6 +258,11 @@ app.on('browser-window-created', (_e, w) => {
     if (w.isFullScreen() && w.__mode !== 'fullscreen') setTimeout(() => !w.isDestroyed() && w.isFullScreen() && w.setFullScreen(false), 150); // (not when you picked Fullscreen as the window mode)
   });
 });
+// 🖥️ (1.182.0, Derek: the whole PC froze when the popped-out Game capture window was moved to another monitor) video is drawn by the app itself
+// instead of being handed to Windows as its own screen layer ("overlay"), which is what graphics drivers choke on when a playing video crosses
+// monitors with different refresh rates / HDR. A guess at the cause, so it can be switched back: Settings → Graphics (the file below = old way).
+const OVERLAY_FLAG = () => path.join(app.getPath('userData'), 'video-overlays-on.txt');
+try { if (!fs.existsSync(OVERLAY_FLAG())) { app.commandLine.appendSwitch('disable-direct-composition-video-overlays'); app.commandLine.appendSwitch('disable-features', 'DirectCompositionVideoOverlays'); } } catch {}
 app.whenReady().then(async () => {
   try { const ses = require('electron').session.defaultSession; ses.setSpellCheckerEnabled(true); if (process.platform !== 'darwin') { const have = ses.availableSpellCheckerLanguages || []; const want = [app.getLocale(), 'en-US'].filter(l => have.includes(l)); if (want.length) ses.setSpellCheckerLanguages([...new Set(want)]); } } catch {} // ✍️ spell check
   Menu.setApplicationMenu(Menu.buildFromTemplate([
