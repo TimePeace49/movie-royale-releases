@@ -4,6 +4,10 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.182.2: What's new
+- **Fixed: some buttons did nothing on names with an apostrophe** (a wheel or battle entry like "Bob's pick").
+- {songs} **Fixed: rating stars did nothing on songs with an apostrophe in the title** ("I'll Be There For You").
+
 ## v1.182.1: What's new
 - **Fixed: the 💾 Save button in Settings.** On some setups pressing Save did nothing. It saves again.
 

@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.182.2
+- **Fixed: buttons did nothing on anything with an apostrophe in its name.** Rating stars on a song like "I'll Be There For You" did nothing, and the same went for a few delete / give / profile buttons on names with an apostrophe.
+
 ## 1.182.1
 - **Fixed: the 💾 Save button in Settings did nothing.** A couple of boxes on the Settings pages (map size, Kick) tripped it up, so pressing Save (or Ctrl+S) saved nothing. Options that save by themselves when you click them were fine, which is why only some pages seemed broken.
 
