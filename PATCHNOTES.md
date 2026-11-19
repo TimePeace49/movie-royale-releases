@@ -4,6 +4,9 @@ The big list of what's new in each **latest release** (the version everyone gets
 Test builds (pre-releases) are listed in CHANGELOG.md until they make it into a latest release.
 <!-- A bullet can start with a tag like {songs}, {ed:kirb}, {has:movies} or {!ed:birx}: it is then only shown to the editions it fits (see src/notesfilter.js). No tag = everyone. -->
 
+## v1.182.1: What's new
+- **Fixed: the 💾 Save button in Settings.** On some setups pressing Save did nothing. It saves again.
+
 ## v1.182.0: What's new
 - 🛟 **Your data can't be wiped by a crash any more.** If the PC freezes or loses power and the data file comes back damaged, the app no longer starts blank over it. It keeps the damaged file, opens the newest good copy and tells you. It also keeps its own copies now: one from about a minute ago, one from each of the last 8 times it opened, and one a day for two weeks.
 - 🖥️ **Safer video.** Video inside the app is drawn by the app itself, which avoids a graphics driver freeze some PCs get when a window with video moves between monitors. Settings → Graphics can switch it back.

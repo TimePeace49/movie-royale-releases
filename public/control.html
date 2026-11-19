@@ -9119,8 +9119,8 @@ async function obsTest() {
 }
 async function saveSettings() {
   const body = {};
-  document.querySelectorAll('#settingsBody [data-k]').forEach(el => {
-    const k = el.dataset.k;
+  document.querySelectorAll('#settingsBody input[data-k], #settingsBody select[data-k], #settingsBody textarea[data-k]').forEach(el => { /* (only real boxes: some redrawn parts keep their own note under the same name, which broke Save in 1.182.0 and before) */
+    const k = el.dataset.k; if (typeof el.value !== 'string') return;
     body[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' || el.type === 'range' || k === 'weekStart' ? Number(el.value) : el.value.trim();
   });
   if ($('bits')) body.bits = Object.fromEntries([...document.querySelectorAll('#bits .row')].map(r => [r.querySelector('.rt').value.trim(), r.querySelector('.re').value]).filter(([k]) => k));

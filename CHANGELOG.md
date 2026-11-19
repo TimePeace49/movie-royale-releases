@@ -2,6 +2,9 @@
 
 What changed in each version of Movie Royal. Newest first.
 
+## 1.182.1
+- **Fixed: the 💾 Save button in Settings did nothing.** A couple of boxes on the Settings pages (map size, Kick) tripped it up, so pressing Save (or Ctrl+S) saved nothing. Options that save by themselves when you click them were fine, which is why only some pages seemed broken.
+
 ## 1.182.0
 - 🛟 Your data can't be wiped by a crash any more. Before: if the PC froze or lost power at the wrong moment, the data file could come back damaged, and the app started blank and saved the blank over everything. Now:
   - a damaged data file is never replaced by a blank one: the app keeps it and opens the newest good copy, and tells you it did;
